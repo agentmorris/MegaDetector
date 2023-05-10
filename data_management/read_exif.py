@@ -236,6 +236,7 @@ def create_image_objects(image_files):
     
     # Enumerate *relative* paths
     if isinstance(image_files,str):
+        print('Enumerating image files in {}'.format(image_files))
         assert os.path.isdir(image_files), 'Invalid image folder {}'.format(image_files)
         image_files = enumerate_files(image_files)
         
@@ -375,7 +376,7 @@ def is_executable(name):
 
 def read_exif_from_folder(input_folder,output_file=None,options=None,filenames=None):
     """
-    Read EXIF for all images in input_folder.
+    Read EXIF data for all images in input_folder.
     
     If filenames is not None, it should be a list of relative filenames; only those files will 
     be processed.
