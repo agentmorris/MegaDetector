@@ -40,6 +40,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Canadian Parks and Wilderness Society (CPAWS) Northern Alberta Chapter](https://cpawsnab.org/)
 * [Conservation X Labs](https://conservationxlabs.com/)
 * [Czech University of Life Sciences Prague](https://www.czu.cz/en)
+* [Dudek Camera Trap AI Image Toolkit (AIT)](https://dudek.com/services/wildlife-camera-trap-ai-image-processing-and-management/)
 * [EcoLogic Consultants Ltd.](https://www.consult-ecologic.com/)
 * [Estación Biológica de Doñana](http://www.ebd.csic.es/inicio)
 * [Idaho Department of Fish and Game](https://idfg.idaho.gov/)

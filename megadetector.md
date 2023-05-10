@@ -507,6 +507,7 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 * [Animl](https://animl.camera/) ([code](https://github.com/tnc-ca-geo/animl-frontend)) (different from [the R package also called Animl](https://github.com/conservationtechlab/animl))
 * [Cam-WON](https://wildlifeobserver.net/)
 * [Zooniverse ML Subject Assistant](https://subject-assistant.zooniverse.org/#/intro)
+* [Dudek Wildlife Camera Trap AI Image Toolkit](https://dudek.com/services/wildlife-camera-trap-ai-image-processing-and-management/)
 
 
 ### Other ways of running MegaDetector that don't fit easily into one of those categories
