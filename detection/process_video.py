@@ -449,7 +449,7 @@ def main():
                             'a folder.')
 
     parser.add_argument('--frame_sample', type=int,
-                        default=None, help='procss every Nth frame (defaults to every frame)')
+                        default=None, help='process every Nth frame (defaults to every frame)')
 
     parser.add_argument('--debug_max_frames', type=int,
                         default=-1, help='trim to N frames for debugging (impacts model execution, '\
