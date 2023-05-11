@@ -120,7 +120,7 @@ The first series of images comes from [this issue](https://github.com/ultralytic
 
 <img src="images/failure-examples/sample-snapshotsafari-04.jpg" width="600">
 
-<br/>Maddening!!!  But also a reminder that in the <i>vast</i> majority of savanna data like this, MD does fine.  This appears to be something about a particular subset of older cameras from the Snapshot Serengeti program that confuse MD.
+Maddening!!!  But also a reminder that in the <i>vast</i> majority of savanna data like this, MD does fine.  This appears to be something about a particular subset of older cameras from the Snapshot Serengeti program that confuse MD.
 
 Last but not least, a dataset full of mountain goats where MD had no trouble with probably 90% of the goats, but in the other 10% we can just stare straight at a goat that MD doesn't see:
 
