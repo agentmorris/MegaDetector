@@ -122,7 +122,7 @@ The first series of images comes from [this issue](https://github.com/ultralytic
 
 Maddening!!!  But also a reminder that in the <i>vast</i> majority of savanna data like this, MD does fine.  This appears to be something about a particular subset of older cameras from the Snapshot Serengeti program that confuse MD.
 
-Last but not least, a dataset full of mountain goats where MD had no trouble with probably 90% of the goats, but in the other 10% we can just stare straight at a goat that MD doesn't see:
+Last but not least, a dataset full of mountain goats where MD had no trouble with probably 90% of the images with goats, but in the other 10% we can just stare straight at a goat that MD doesn't see:
 
 <img src="images/failure-examples/sample-dzf-01.jpg" width="600">
 <img src="images/failure-examples/sample-dzf-02.jpg" width="600">
