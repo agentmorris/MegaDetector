@@ -108,15 +108,15 @@ The first series of images comes from [this issue](https://github.com/ultralytic
 
 <img src="images/failure-examples/sample-snapshotsafari-01.jpg" width="600">
 
-<br/><i>Processed at 640 pixels on the long size</i>
+<i>Processed at 640 pixels on the long size</i>
 
 <img src="images/failure-examples/sample-snapshotsafari-02.jpg" width="600">
 
-<br/><i>Processed at the standard input size of 1280 pixels on the long side</i>
+<i>Processed at the standard input size of 1280 pixels on the long side</i>
 
 <img src="images/failure-examples/sample-snapshotsafari-03.jpg" width="600">
 
-<br/><i>Processed at 640 pixels on the long size</i>
+<i>Processed at 640 pixels on the long size</i>
 
 <img src="images/failure-examples/sample-snapshotsafari-04.jpg" width="600">
 
