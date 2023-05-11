@@ -55,6 +55,8 @@ class ProcessVideoOptions:
     keep_extracted_frames = False
     
     reuse_results_if_available = False
+    reuse_frames_if_available = False
+    
     recursive = False 
     verbose = False
 
@@ -94,7 +96,8 @@ def process_video(options):
     os.makedirs(frame_output_folder, exist_ok=True)
 
     frame_filenames, Fs = video_to_frames(
-        options.input_video_file, frame_output_folder, every_n_frames=options.frame_sample)
+        options.input_video_file, frame_output_folder, 
+        every_n_frames=options.frame_sample, overwrite=(not options.reuse_frames_if_available))
 
     image_file_names = frame_filenames
     if options.debug_max_frames > 0:
@@ -115,7 +118,8 @@ def process_video(options):
         run_detector_batch.write_results_to_file(
             results, options.output_json_file,
             relative_path_base=frame_output_folder,
-            detector_file=options.model_file)
+            detector_file=options.model_file,
+            custom_metadata={'video_frame_rate':Fs})
 
     if options.render_output_video:
         
@@ -139,7 +143,7 @@ def process_video(options):
 
         # Combine into a video
         print('Rendering video at {} fps'.format(Fs))
-        frames_to_video(detected_frame_files, Fs, options.output_video_file)
+        frames_to_video(detected_frame_files, Fs, options.output_video_file, codec_spec=options.fourcc)
         
         # Delete the temporary directory we used for detection images
         if not options.keep_rendered_frames:
@@ -204,7 +208,8 @@ def process_video_folder(options):
     frame_filenames, Fs, video_filenames = \
         video_folder_to_frames(input_folder=options.input_video_file,
                                output_folder_base=frame_output_folder, 
-                               recursive=options.recursive, overwrite=True,
+                               recursive=options.recursive, 
+                               overwrite=(not options.reuse_frames_if_available),
                                n_threads=options.n_cores,every_n_frames=options.frame_sample,
                                verbose=options.verbose)
     
@@ -240,7 +245,8 @@ def process_video_folder(options):
         run_detector_batch.write_results_to_file(
             results, frames_json,
             relative_path_base=frame_output_folder,
-            detector_file=options.model_file)
+            detector_file=options.model_file,
+            custom_metadata={'video_frame_rate':Fs})
     
     
     ## (Optionally) delete the frames on which we ran MegaDetector
@@ -285,6 +291,8 @@ def options_to_command(options):
         cmd += ' --keep_extracted_frames'
     if options.reuse_results_if_available:
         cmd += ' --reuse_results_if_available'    
+    if options.reuse_frames_if_available:
+        cmd += ' --reuse_frames_if_available'
     if options.render_output_video:
         cmd += ' --render_output_video'
     if options.keep_rendered_frames:
@@ -425,6 +433,9 @@ def main():
     parser.add_argument('--keep_extracted_frames',
                        action='store_true', help='Disable the deletion of extracted frames')
     
+    parser.add_argument('--reuse_frames_if_available',
+                       action='store_true', help="Don't extract frames that are already available in the frame extraction folder")
+    
     parser.add_argument('--reuse_results_if_available',
                        action='store_true', help='If the output .json files exists, and this flag is set,'\
                            'we\'ll skip running MegaDetector')
@@ -432,6 +443,9 @@ def main():
     parser.add_argument('--render_output_video', action='store_true',
                         help='enable video output rendering (not rendered by default)')
 
+    parser.add_argument('--fourcc', default=None,
+                        help='fourcc code to use for video encoding, only used if render_output_video is True')
+    
     parser.add_argument('--keep_rendered_frames',
                        action='store_true', help='Disable the deletion of rendered (w/boxes) frames')
 

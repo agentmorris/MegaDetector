@@ -127,7 +127,7 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
         
         for frame_number in range(0,n_frames):
             
-            frame_filename = 'frame{:05d}.jpg'.format(frame_number)
+            frame_filename = 'frame{:06d}.jpg'.format(frame_number)
             frame_filename = os.path.join(output_folder,frame_filename)
             frame_filenames.append(frame_filename)
             if os.path.isfile(frame_filename):
@@ -271,6 +271,8 @@ def frame_results_to_video_results(input_file,output_file,options:FrameToVideoOp
     Given an API output file produced at the *frame* level, corresponding to a directory 
     created with video_folder_to_frames, map those frame-level results back to the 
     video level for use in Timelapse.
+    
+    Preserves everything in the input .json file other than the images.
     """
 
     if options is None:

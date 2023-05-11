@@ -76,7 +76,7 @@ def visualize_detector_output(detector_output_path: str,
     os.makedirs(out_dir, exist_ok=True)
 
 
-    #%% Load detector output
+    ##%% Load detector output
 
     with open(detector_output_path) as f:
         detector_output = json.load(f)
@@ -107,7 +107,7 @@ def visualize_detector_output(detector_output_path: str,
         print(f'Sampled {len(images)} entries from the detector output file.')
 
 
-    #%% Load images, annotate them and save
+    ##%% Load images, annotate them and save
 
     print('Rendering detections above a confidence threshold of {}'.format(
         confidence_threshold))

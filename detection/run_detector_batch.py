@@ -471,7 +471,8 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
 
 
 def write_results_to_file(results, output_file, relative_path_base=None, 
-                          detector_file=None, info=None, include_max_conf=False):
+                          detector_file=None, info=None, include_max_conf=False,
+                          custom_metadata=None):
     """
     Writes list of detection results to JSON output file. Format matches:
 
@@ -481,6 +482,14 @@ def write_results_to_file(results, output_file, relative_path_base=None,
     - results: list of dict, each dict represents detections on one image
     - output_file: str, path to JSON output file, should end in '.json'
     - relative_path_base: str, path to a directory as the base for relative paths
+    - detector_file: filename of the detector used to generate these results, only
+        used to pull out a version number for the "info" field
+    - info: dictionary to use instead of the default "info" field
+    - include_max_conf: old files (version 1.2 and earlier) included a "max_conf" field
+        in each image; this was removed in version 1.3.  Set this flag to force the inclusion
+        of this field.
+    - custom_metadata: additional data to include as info['custom_metadata'].  Typically
+        a dictionary, but no format checks are performed.
     """
     
     if relative_path_base is not None:
@@ -517,6 +526,9 @@ def write_results_to_file(results, output_file, relative_path_base=None,
             print('Warning (write_results_to_file): info struct and detector file ' + \
                   'supplied, ignoring detector file')
 
+    if custom_metadata is not None:
+        info['custom_metadata'] = custom_metadata
+        
     # The 'max_detection_conf' field used to be included by default, and it caused all kinds
     # of headaches, so it's no longer included unless the user explicitly requests it.
     if not include_max_conf:
