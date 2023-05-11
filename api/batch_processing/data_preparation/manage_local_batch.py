@@ -94,7 +94,7 @@ if os.name == 'nt':
 
 input_path = '/drive/organization'
 
-organization_name_short = 'organizations'
+organization_name_short = 'organization'
 job_date = None # '2023-05-08'
 assert job_date is not None and organization_name_short != 'organization'
 
