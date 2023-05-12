@@ -16,6 +16,7 @@
 14. [Pretty picture](#pretty-picture)
 15. [Mesmerizing video](#mesmerizing-video)
 16. [Can you share the training data?](#can-you-share-the-training-data)
+17. [Anaconda takes forever to solve; do I have to use conda?](#anaconda-takes-forever-to-solve-do-i-have-to-use-conda)
 
 
 ## MegaDetector overview
@@ -696,3 +697,32 @@ MegaDetector v5a was trained on all MDv5b training data, and new public data fro
 * [COCO](https://cocodataset.org/#home)
 
 So if MegaDetector performs really well on those data sets, that's great, but it's a little bit cheating, because we haven't published the set of locations from those data sets that we use during training.
+
+
+## Anaconda takes forever to solve; do I have to use conda?
+
+Anaconda can be pretty slow, sometimes taking days to solve the environment even on a brand new PC.  It would be rocking the boat to completely switch our instructions away from Anaconda (yet), but... two tips for the experimentally-minded:
+
+1. We added an environment file called "[environment-detector-explicit.yml](environment-detector-explicit.yml)", in which all package versions are pinned.  This can dramatically speed up solving.  So instead of doing this:  
+&nbsp;  
+`conda env create --file environment-detector.yml`  
+&nbsp;    
+...do this:  
+&nbsp;  
+`conda env create --file environment-detector-explicit.yml`  
+&nbsp;  
+And instead of doing this:  
+&nbsp;  
+`conda activate cameratraps-detector`  
+&nbsp;  
+...do this:  
+&nbsp;  
+`conda activate cameratraps-detector-explicit`  
+
+2. We've been experimenting with [Mamba](https://mamba.readthedocs.io/en/latest/) as an alternative to conda, and so far it's fantastic.  This will probably replace Anaconda in our default instructions soon.  But for now, it's still experimental.  If you want to try this, follow all the instructions above, except:
+    * Instead of installing Anaconda, install [Mambaforge](https://github.com/conda-forge/miniforge#mambaforge).  We've tested with the links under the "Mambaforge" heading, not the links under the "Mambaforge-pypy3" heading.
+	* On Windows, instead of starting the shortcut called "Anaconda Prompt", start the shortcut called "Miniforge prompt".  No, that's not a typo.  Yes, it would be less confusing if it were called "Mambaforge prompt".
+	* Every time any of our instructions say "conda", use "mamba" instead.  E.g., instead of this:  
+	`conda env create --file environment-detector.yml`  
+	...do this:  
+	`mamba env create --file environment-detector.yml`  

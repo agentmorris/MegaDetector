@@ -15,8 +15,6 @@ dependencies:
   - humanfriendly
   - numpy
   - matplotlib
-  - nb_conda_kernels
-  - ipykernel
   - opencv
   - requests
 
@@ -31,6 +29,3 @@ dependencies:
   # - pytorch::torchvision=0.11.2
   # - conda-forge::cudatoolkit=11.3
   # - conda-forge::cudnn=8.1
-
-# the `nb_conda_kernels` and `ipykernel` packages are installed so that we
-# can use Jupyter Notebooks with this environment as a kernel

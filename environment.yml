@@ -13,10 +13,12 @@ dependencies:
 - humanfriendly
 - numpy
 - matplotlib
-- nb_conda_kernels
-- ipykernel
 - pandas
 - requests
+
+# So we can run Jupyter in this environment
+- nb_conda_kernels
+- ipykernel
 
 # Dependencies not in the MD environment
 - azure-storage-blob
