@@ -37,7 +37,7 @@ OK, now on to failure stories... these fall into basically three categories:
 
 ### Reptiles and other under-represented species
 
-In this series of images, the turtle in its nest is pretty similar in all three images, and pretty visually obvious.  But for some reason MD completely whiffs on one, finds one with 14% confidence, and find another with 75% confidence. These are not "difficult" images per se, rather this is a classic example of "this model hasn't seen enough turtles like this in training".
+In this series of images, the animal in the burrow is pretty visually obvious.  But for some reason MD completely whiffs on the first, finds the second with 14% confidence, and finds the third (visually very similar to the first) with 75% confidence. These are not "difficult" images per se, rather this is a classic example of "this model hasn't seen enough reptiles like this in training".
 
 <img src="images/failure-examples/sample-cfz-01.jpg" width="600">
 <img src="images/failure-examples/sample-cfz-03.jpg" width="600">
