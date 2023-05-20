@@ -11,6 +11,7 @@
 9. [What if I just want to run non-MD scripts from this repo?](#what-if-i-just-want-to-run-non-md-scripts-from-this-repo)
 10. [How do I use the results?](#how-do-i-use-the-results)
 11. [Have you evaluated MegaDetector's accuracy?](#have-you-evaluated-megadetectors-accuracy)
+11. [What is MegaDetector bad at?](#what-is-megadetector-bad-at)
 12. [Citing MegaDetector](#citing-megadetector)
 13. [Tell me more about why detectors are a good first step for camera trap images](#tell-me-more-about-why-detectors-are-a-good-first-step-for-camera-trap-images)
 14. [Pretty picture](#pretty-picture)
@@ -623,6 +624,17 @@ If you know of other validation studies that have been published, [let us know](
 P.S. Really, don't trust results from one ecosystem and assume they will hold in another. [This paper](https://openaccess.thecvf.com/content_ECCV_2018/html/Beery_Recognition_in_Terra_ECCV_2018_paper.html) is about just how catastrophically bad AI models for camera trap images <i>can</i> fail to generalize to new locations.  We hope that's not the case with MegaDetector!  But don't assume.
 
 
+## What is MegaDetector bad at?
+
+While MegaDetector works well in a variety of terrestrial ecosystems, it's not perfect, and we can't stress enough how important it us to test MegaDetector on your own data before trusting it.  We can help you do that; [email us](mailto:cameratraps@lila.science) if you have questions about how to evaluate MegaDetector on your own data, even if you don't have images you've already reviewed.
+
+But really, we'll answer the question... MegaDetector v5's biggest challenges are with reptiles.  This is an area where accuracy has dramatically improved since MDv4, but it's still the case that reptiles are under-represented in camera trap data, and an AI model is only as good as its training data.  That doesn't mean MDv5 doesn't support reptiles; sometimes it does amazing on reptile-heavy datasets.  But sometimes it drives you bonkers by missing obvious reptiles.
+
+If you want to read more about our favorite MD failure cases, check out the [MegaDetector challenges](megadetector-challenges.md) page.
+
+tl;dr: always test on your own data!
+ 
+
 ## Citing MegaDetector
 
 If you use the MegaDetector in a publication, please cite:
@@ -652,7 +664,7 @@ Image credit University of Washington.
 
 ## Mesmerizing video
 
-Here's a neat [video](http://dmorris.net/video/detector_video.html) of our v2 detector running in a variety of ecosystems, on locations unseen during training.
+Here's a neat [video](http://dmorris.net/video/detector_video.html) of MDv2 running in a variety of ecosystems, on locations unseen during training.
 
 <a href="http://dmorris.net/video/detector_video.html">
 <img width=600 src="http://dmorris.net/video/detector_video_thumbnail.png">
