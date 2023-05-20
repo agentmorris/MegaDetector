@@ -67,6 +67,8 @@ class ProcessVideoOptions:
     n_cores = 1
 
     debug_max_frames = -1
+    
+    class_mapping_filename = None
 
 
 #%% Main functions
@@ -309,6 +311,8 @@ def options_to_command(options):
         cmd += ' --debug_max_frames ' + str(options.debug_max_frames)
     if options.class_mapping_filename is not None:
         cmd += ' --class_mapping_filename ' + str(options.class_mapping_filename)
+    if options.fourcc is not None:
+        cmd += ' --fourcc ' + options.fourcc
 
     return cmd
 
@@ -368,9 +372,9 @@ if False:
     #%% Render a folder of videos, one file at a time
 
     model_file = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')
-    input_dir = r'g:\temp\test\input-video'
-    frame_folder = r'g:\temp\test\extracted-frames'
-    rendering_folder = r'g:\temp\test\rendered-frames'
+    input_dir = os.path.expanduser('~/Downloads/bird-video')
+    frame_folder = os.path.expanduser('~/Downloads/bird-video-frames')
+    rendering_folder = os.path.expanduser('~/Downloads/bird-video-frames-rendered')
     
     print('Processing folder {}'.format(input_dir))
     
@@ -379,7 +383,8 @@ if False:
     options.frame_folder = frame_folder
     options.frame_rendering_folder = rendering_folder
     options.render_output_video = True
-    options.rendering_confidence_threshold = 0.05
+    options.rendering_confidence_threshold = 0.01
+    options.fourcc = 'mp4v'
     
     from detection import video_utils
     video_files = video_utils.find_videos(input_dir)
@@ -388,12 +393,13 @@ if False:
     commands = []    
     for video_fn in video_files:
         options.input_video_file = video_fn    
+        options.output_json_file = video_fn + '-md_results.json'
         cmd = options_to_command(options)
         commands.append(cmd)
         
-    s = '\n\n'.join(commands)
+    s = '\n\n'.join(commands) + '\n\n'
     print(s)
-    # import clipboard; clipboard.copy(s)
+    import clipboard; clipboard.copy(s)
     
             
     

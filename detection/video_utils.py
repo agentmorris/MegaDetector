@@ -66,6 +66,9 @@ def frames_to_video(images, Fs, output_file_name, codec_spec='h264'):
     """
     Given a list of image files and a sample rate, concatenate those images into
     a video and write to [output_file_name].
+    
+    Note to self: h264 is a sensible default and generally works on Windows, but when this
+    fails (which is around 50% of the time on Linux), I fall back to mp4v.
     """
     
     if codec_spec is None:

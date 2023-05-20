@@ -26,6 +26,7 @@ import argparse
 import json
 from typing import Any, Dict, Iterable, Mapping, List, Optional
 
+
 #%% Merge functions
 
 def combine_api_output_files(input_files: List[str],
@@ -73,6 +74,7 @@ def combine_api_output_dictionaries(input_dicts: Iterable[Mapping[str, Any]],
 
     Returns: dict, represents the merged JSON
     """
+    
     # Map image filenames to detections, we'll convert to a list later
     images = {}
     info: Dict[str, str] = {}
@@ -158,6 +160,8 @@ def combine_api_output_dictionaries(input_dicts: Iterable[Mapping[str, Any]],
                    'images': sorted_images}
     return merged_dict
 
+# ...combine_api_output_files()
+
 
 def combine_api_shard_files(input_files, output_file=None):
     """
@@ -188,8 +192,10 @@ def combine_api_shard_files(input_files, output_file=None):
 
     return detections
 
+# ...combine_api_shard_files()
 
-#%% Driver
+
+#%% Command-line driver
 
 def main():
     parser = argparse.ArgumentParser()
