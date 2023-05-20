@@ -54,7 +54,7 @@ conda activate cameratraps-classifier
 
 ## Verifying that CUDA is available (and dealing with the case where it isn't)
 
-Verify that CUDA is available (assumes that the current working directory is the CameraTraps repo root):
+Verify that CUDA is available (assumes that the current working directory is the MegaDetector repo root):
 
 ```bash
 python sandbox/torch_test.py
@@ -112,7 +112,7 @@ crops/                          # local directory to save cropped images
     datasetX/                   # images are organized by dataset
         img0___crop00.jpg
 
-CameraTraps/                    # this git repo
+MegaDetector/                   # this git repo
     classification/
         BASE_LOGDIR/            # classification dataset and splits
             LOGDIR/             # logs and checkpoints from a single training run
@@ -128,7 +128,7 @@ The following environment variables are useful to have in `.bashrc`:
 
 ```bash
 # Python development
-export PYTHONPATH="/path/to/repos/CameraTraps:/path/to/repos/ai4eutils"
+export PYTHONPATH="/path/to/repos/MegaDetector:/path/to/repos/ai4eutils"
 export MYPYPATH=$PYTHONPATH
 
 # accessing MegaDB
@@ -146,7 +146,7 @@ export DETECTION_API_CALLER="[INTERNAL_USE]"
 
 ## Mypy Type Checking
 
-Invoke `mypy` from main CameraTraps repo directory. To type check all files in the classifications folder, run
+Invoke `mypy` from main MegaDetector repo directory. To type check all files in the classifications folder, run
 
 ```bash
 mypy -p classification
@@ -274,7 +274,7 @@ python merge_classification_detection_output.py \
 
 # Typical training pipeline
 
-Before doing any model training, create a directory under `CameraTraps/classification/` for tracking all of our generated files. We refer to this directory with the variable `$BASE_LOGDIR`.
+Before doing any model training, create a directory under `MegaDetector/classification/` for tracking all of our generated files. We refer to this directory with the variable `$BASE_LOGDIR`.
 
 ## 1. Select classification labels for training
 
@@ -342,7 +342,7 @@ This option is only recommended if you meet all of the following criteria:
 - all of your image files are from a single dataset in a single Azure container
 - none of the images already have cached MegaDetector results
 
-Download all of the images to `/path/to/images/name_of_dataset`. Then, follow the instructions from the [MegaDetector README](https://github.com/agentmorris/MegaDetector/blob/master/megadetector.md) to run MegaDetector. Finally, cache the detection results. The commands should be roughly as follows, assuming your terminal is in the `CameraTraps/` folder:
+Download all of the images to `/path/to/images/name_of_dataset`. Then, follow the instructions from the [MegaDetector README](https://github.com/agentmorris/MegaDetector/blob/master/megadetector.md) to run MegaDetector. Finally, cache the detection results. The commands should be roughly as follows, assuming your terminal is in the `MegaDetector/` folder:
 
 ```bash
 # Download the MegaDetector model file

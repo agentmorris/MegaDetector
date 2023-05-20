@@ -28,7 +28,7 @@ lila_dataset_to_categories_file = os.path.join(
 
 # This is a manually-curated file used to store mappings that had to be made manually
 lila_to_wi_supplementary_mapping_file = os.path.expanduser(
-    '~/git/cameratraps/taxonomy_mapping/lila_to_wi_supplementary_mapping_file.csv')
+    '~/git/MegaDetector/taxonomy_mapping/lila_to_wi_supplementary_mapping_file.csv')
 
 assert os.path.isfile(lila_dataset_to_categories_file)
 

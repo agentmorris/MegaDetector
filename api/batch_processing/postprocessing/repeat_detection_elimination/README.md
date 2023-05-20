@@ -36,15 +36,15 @@ cd c:\git
 git clone https://github.com/agentmorris/MegaDetector
 git clone https://github.com/Microsoft/ai4eutils
 pip install jsonpickle humanfriendly
-cd c:\git\cameratraps
-set PYTHONPATH=c:\git\cameratraps;c:\git\ai4eutils
+cd c:\git\MegaDetector
+set PYTHONPATH=c:\git\MegaDetector;c:\git\ai4eutils
 python api\batch_processing\postprocessing\repeat_detection_elimination\find_repeat_detections.py
 ```
 
 Subsequent times you open your Anaconda prompt, you'll just need to do:
 
-```cd c:\git\cameratraps\api\batch_processing\postprocessing
-set PYTHONPATH=c:\git\cameratraps;c:\git\ai4eutils
+```cd c:\git\MegaDetector\api\batch_processing\postprocessing
+set PYTHONPATH=c:\git\MegaDetector;c:\git\ai4eutils
 python find_repeat_detections.py
 ```
 

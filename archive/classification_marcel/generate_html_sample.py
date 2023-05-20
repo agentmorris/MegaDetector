@@ -16,7 +16,7 @@ import numpy as np
 import tensorflow as tf
 import PIL.Image
 
-# Assumes the cameratraps repo root is on the path
+# Assumes the MegaDetector repo root is on the path
 from api.batch_processing.postprocessing.postprocess_batch_results import \
     render_bounding_boxes, prepare_html_subpages, PostProcessingOptions
 

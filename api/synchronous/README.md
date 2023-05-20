@@ -17,7 +17,7 @@ The most notable prerequisite is nvidia-docker; install according to:
 
 ```bash
 git clone "https://github.com/agentmorris/MegaDetector/"
-cd CameraTraps
+cd MegaDetector
 ```
 
     

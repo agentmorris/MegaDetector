@@ -758,7 +758,7 @@ typical_classification_threshold_str = '0.75'
 ##%% Set up environment
 
 commands = []
-# commands.append('cd CameraTraps/classification\n')
+# commands.append('cd MegaDetector/classification\n')
 # commands.append('conda activate cameratraps-classifier\n')
 
 ##%% Crop images
@@ -2103,7 +2103,7 @@ os.chmod(cmd_file, st.st_mode | stat.S_IEXEC)
 import os
 import nbformat as nbf
 
-input_py_file = os.path.expanduser('~/git/CameraTraps/api/batch_processing/data_preparation/manage_local_batch.py')
+input_py_file = os.path.expanduser('~/git/MegaDetector/api/batch_processing/data_preparation/manage_local_batch.py')
 assert os.path.isfile(input_py_file)
 output_ipynb_file = input_py_file.replace('.py','.ipynb')
 

@@ -2,7 +2,7 @@
 make_active_learning_dataset.py
 
 Creates crops from detections in camera trap images for use in active learning for classification.
-Largely drawn from CameraTraps/data_management/databases/classification/make_classification_dataset.py.
+Largely drawn from MegaDetector/data_management/databases/classification/make_classification_dataset.py.
 
 '''
 

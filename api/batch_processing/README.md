@@ -53,10 +53,10 @@ This returns a json with the fields `Status`, `TaskId` (which is the `request_id
 
 
 #### `/supported_model_versions`
-Check which versions of the MegaDetector are supported by this API by making a GET call to this endpoint.
+Check which versions of MegaDetector are supported by this API by making a GET call to this endpoint.
 
 #### `/default_model_version`
-Check which version of the MegaDetector is used by default by making a GET call to this endpoint.
+Check which version of MegaDetector is used by default by making a GET call to this endpoint.
 
 #### `/cancel_request`
 If you have submitted a request by mistake, you can make a POST call to this endpoint to cancel it.

@@ -13,7 +13,7 @@
 #%% Constants and imports
 
 # Either add the eMammal directory to your path, or run from there
-# os.chdir(r'd:\git\CameraTraps\database_tools\eMammal')
+# os.chdir(r'd:\git\MegaDetector\database_tools\eMammal')
 
 import json
 import multiprocessing

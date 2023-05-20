@@ -44,7 +44,7 @@ import zipfile
 # From ai4eutils
 import path_utils
 
-# From CameraTraps
+# From MegaDetector
 from visualization import visualize_db
 
 

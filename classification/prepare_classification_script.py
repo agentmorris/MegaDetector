@@ -78,7 +78,7 @@ classifier_name = 'idfg4'
 #%% Set up environment
 
 commands = []
-# commands.append('cd CameraTraps/classification\n')
+# commands.append('cd MegaDetector/classification\n')
 # commands.append('conda activate cameratraps-classifier\n')
 
 

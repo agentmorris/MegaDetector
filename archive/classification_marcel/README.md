@@ -248,7 +248,7 @@ Trained models can be exported into a frozen graph, which includes all pre-proce
 
 The export is a two-step process of exporting the architecture as a graph definition file using `classification/export_inference_graph_definition.py` and then fusing this architecture with the learned parameters into a frozen graph using `classification/freeze_graph.py`. Both scripts were adapted from the similarly named scripts provided by Tensorflow.
 
-The scripts should be executed using `CameraTraps/classification/tf-slim` as the current working directory. The syntax of `export_inference_graph_definition.py`  is as follows:
+The scripts should be executed using `MegaDetector/classification/tf-slim` as the current working directory. The syntax of `export_inference_graph_definition.py`  is as follows:
 
 	python ../export_inference_graph_definition.py \
 	    --model_name=ARCHITECTURE_NAME
@@ -278,7 +278,7 @@ Once the pbtxt file is generated, the frozen graph can be generated with `freeze
 
 
 
-An example of the usage can be also found in the tutorial as well as in `CameraTraps/classification/export_inference_graph_serengeti.sh`.
+An example of the usage can be also found in the tutorial as well as in `MegaDetector/classification/export_inference_graph_serengeti.sh`.
 
 
 ## Inference

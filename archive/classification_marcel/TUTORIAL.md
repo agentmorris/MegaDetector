@@ -6,7 +6,7 @@ This tutorial walks through all steps required to train an animal species classi
 ### Hardware and software
 We assume that you have a Linux-based (virtual) machine running. It is also highly recommended to use a GPU for accelerating the animal detection and classifier training. The following steps will assume, that you have already set up the NVIDIA drivers and CUDA.
 
-First, clone this repository ([CameraTraps](https://github.com/agentmorris/MegaDetector)) to a local directory by running
+First, clone [this repository](https://github.com/agentmorris/MegaDetector) to a local directory by running
 
 ```bash
 CAMERATRAPS_DIR=/data/CameraTraps

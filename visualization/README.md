@@ -40,5 +40,5 @@ python visualize_detector_output.py path_to/requestID_detections.json rendered_i
 If you encounter an error where it complains about not finding the module `visualization_utils`, you need to append the absolute path to the current directory to your `PYTHONPATH`. At your terminal or command line:
 
 ```bash
-export PYTHONPATH=$PYTHONPATH:/absolute_path/CameraTraps
+export PYTHONPATH=$PYTHONPATH:/absolute_path/MegaDetector
 ```

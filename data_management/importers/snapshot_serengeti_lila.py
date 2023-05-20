@@ -34,7 +34,7 @@ import zipfile
 # import sys; sys.path.append(r'c:\git\ai4eutils')
 import path_utils
 
-# import sys; sys.path.append(r'c:\git\cameratraps')
+# import sys; sys.path.append(r'c:\git\MegaDetector')
    
 metadata_base = r'e:\snapshot-serengeti\MetaData\SER'
 image_base = r'e:\snapshot-serengeti\SER'
@@ -984,7 +984,7 @@ print('{} missing images in {} bounding boxes ({} found)'.format(len(missing_ima
 
 #%% Sanity-check a few files to make sure bounding boxes are still sensible
 
-# import sys; sys.path.append(r'C:\git\CameraTraps')
+# import sys; sys.path.append(r'C:\git\MegaDetector')
 from visualization import visualize_db
 output_base = r'E:\snapshot_temp'
 

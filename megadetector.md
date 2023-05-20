@@ -213,13 +213,13 @@ The first time you set all of this up, open an Anaconda Prompt, and run:
 ```batch
 mkdir c:\git
 cd c:\git
-git clone https://github.com/ecologize/yolov5/
 git clone https://github.com/agentmorris/MegaDetector
-git clone https://github.com/Microsoft/ai4eutils
-cd c:\git\cameratraps
+git clone https://github.com/ecologize/yolov5/
+git clone https://github.com/microsoft/ai4eutils
+cd c:\git\MegaDetector
 conda env create --file environment-detector.yml
 conda activate cameratraps-detector
-set PYTHONPATH=%PYTHONPATH%;c:\git\CameraTraps;c:\git\ai4eutils;c:\git\yolov5
+set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector;c:\git\ai4eutils;c:\git\yolov5
 ```
 
 If you want to use MDv4, there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
@@ -233,9 +233,9 @@ pip install tensorflow
 Your environment is set up now!  In the future, when you open an Anaconda prompt, you only need to run:
 
 ```batch
-cd c:\git\cameratraps
+cd c:\git\MegaDetector
 conda activate cameratraps-detector
-set PYTHONPATH=%PYTHONPATH%;c:\git\CameraTraps;c:\git\ai4eutils;c:\git\yolov5
+set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector;c:\git\ai4eutils;c:\git\yolov5
 ```
 
 Pro tip: if you have administrative access to your machine, rather than using the "set PYTHONPATH" steps, you can also create a permanent PYTHONPATH environment variable.  Here's a [good page](https://www.computerhope.com/issues/ch000549.htm) about editing environment variables in Windows.  But if you just want to "stick to the script" and do it exactly the way we recommend above, that's fine.
@@ -251,10 +251,10 @@ cd ~/git
 git clone https://github.com/ecologize/yolov5/
 git clone https://github.com/agentmorris/MegaDetector
 git clone https://github.com/Microsoft/ai4eutils
-cd ~/git/cameratraps
+cd ~/git/MegaDetector
 conda env create --file environment-detector.yml
 conda activate cameratraps-detector
-export PYTHONPATH="$PYTHONPATH:$HOME/git/CameraTraps:$HOME/git/ai4eutils:$HOME/git/yolov5"
+export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/ai4eutils:$HOME/git/yolov5"
 ```
 
 If you want to use MDv4, there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
@@ -268,9 +268,9 @@ pip install tensorflow
 Your environment is set up now!  In the future, whenever you start a new shell, you just need to do:
 
 ```batch
-cd ~/git/cameratraps
+cd ~/git/MegaDetector
 conda activate cameratraps-detector
-export PYTHONPATH="$PYTHONPATH:$HOME/git/CameraTraps:$HOME/git/ai4eutils:$HOME/git/yolov5"
+export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/ai4eutils:$HOME/git/yolov5"
 ```
 
 Pro tip: rather than updating your PYTHONPATH every time you start a new shell, you can add the "export" line to your .bashrc file.
@@ -288,10 +288,10 @@ cd ~/git
 git clone https://github.com/ecologize/yolov5/
 git clone https://github.com/agentmorris/MegaDetector
 git clone https://github.com/Microsoft/ai4eutils
-cd ~/git/cameratraps
+cd ~/git/MegaDetector
 conda env create --file environment-detector-mac.yml
 conda activate cameratraps-detector
-export PYTHONPATH="$PYTHONPATH:$HOME/git/CameraTraps:$HOME/git/ai4eutils:$HOME/git/yolov5"
+export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/ai4eutils:$HOME/git/yolov5"
 ```
 
 If you want to use MDv4, there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
@@ -305,9 +305,9 @@ pip install tensorflow
 Your environment is set up now!  In the future, whenever you start a new shell, you just need to do:
 
 ```batch
-cd ~/git/cameratraps
+cd ~/git/MegaDetector
 conda activate cameratraps-detector
-export PYTHONPATH="$PYTHONPATH:$HOME/git/CameraTraps:$HOME/git/ai4eutils:$HOME/git/yolov5"
+export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/ai4eutils:$HOME/git/yolov5"
 ```
 
 Pro tip: rather than updating your PYTHONPATH every time you start a new shell, you can add the "export" line to your .bashrc file.
@@ -328,9 +328,9 @@ The following examples assume you have an Anaconda prompt open, and have put thi
 To use run_detector.py on Windows, when you open a new Anaconda prompt, don't forget to do this:
 
 ```batch
-cd c:\git\CameraTraps
+cd c:\git\MegaDetector
 conda activate cameratraps-detector
-set PYTHONPATH=%PYTHONPATH%;c:\git\CameraTraps;c:\git\ai4eutils;c:\git\yolov5
+set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector;c:\git\ai4eutils;c:\git\yolov5
 ```
 
 Then you can run the script like this:
@@ -365,9 +365,9 @@ python detection\run_detector.py
 To use this script on Linux/Mac, when you open a new Anaconda prompt, don't forget to do this:
  
 ```batch
-cd ~/git/cameratraps
+cd ~/git/MegaDetector
 conda activate cameratraps-detector
-export PYTHONPATH="$PYTHONPATH:$HOME/git/cameratraps:$HOME/git/ai4eutils:$HOME/git/yolov5"
+export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/ai4eutils:$HOME/git/yolov5"
 ```
 
 Then you can run the script like this:
@@ -385,9 +385,9 @@ To apply this model to larger image sets on a single machine, we recommend a dif
 To use run_detector_batch.py on Windows, when you open a new Anaconda prompt, don't forget to do this:
 
 ```batch
-cd c:\git\CameraTraps
+cd c:\git\MegaDetector
 conda activate cameratraps-detector
-set PYTHONPATH=%PYTHONPATH%;c:\git\CameraTraps;c:\git\ai4eutils;c:\git\yolov5
+set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector;c:\git\ai4eutils;c:\git\yolov5
 ```
 
 Then you can run the script like this:
@@ -438,9 +438,9 @@ If you have an Nvidia GPU and you see "GPU available: False", your GPU environme
 To use this script on Linux/Mac, when you open a new Anaconda prompt, don't forget to do this:
  
 ```batch
-cd ~/git/cameratraps
+cd ~/git/MegaDetector
 conda activate cameratraps-detector
-export PYTHONPATH="$PYTHONPATH:$HOME/git/CameraTraps:$HOME/git/ai4eutils:$HOME/git/yolov5"
+export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/ai4eutils:$HOME/git/yolov5"
 ```
 
 Then you can run the script like this:
@@ -527,7 +527,7 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 #### Maintained within this repo
 
 * [Batch processing API](https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing) that runs images on many GPUs at once on Azure.  There is no public instance of this API, but the code allows you to stand up your own endpoint.
-* [Colab notebook](https://github.com/agentmorris/MegaDetector/blob/master/detection/megadetector_colab.ipynb) ([open in Colab](https://colab.research.google.com/github/microsoft/CameraTraps/blob/master/detection/megadetector_colab.ipynb)) for running MDv5 on images stored in Google Drive.
+* [Colab notebook](https://github.com/agentmorris/MegaDetector/blob/master/detection/megadetector_colab.ipynb) ([open in Colab](https://colab.research.google.com/github/agentmorris/MegaDetector/blob/master/detection/megadetector_colab.ipynb)) for running MDv5 on images stored in Google Drive.
 * [Real-time MegaDetector API using Flask](https://github.com/agentmorris/MegaDetector/tree/main/api/synchronous).  This is deployed via Docker, so the Dockerfile provided for the real-time may be a good starting point for other Docker-based MegaDetector deployments as well.
  
 
@@ -555,10 +555,10 @@ mkdir c:\git
 cd c:\git
 git clone https://github.com/agentmorris/MegaDetector
 git clone https://github.com/Microsoft/ai4eutils
-cd c:\git\cameratraps
+cd c:\git\MegaDetector
 conda env create --file environment.yml
 conda activate cameratraps-detector
-set PYTHONPATH=%PYTHONPATH%;c:\git\CameraTraps;c:\git\ai4eutils
+set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector;c:\git\ai4eutils
 ```
 
 ...or the following (on MacOS):
@@ -568,26 +568,26 @@ mkdir ~/git
 cd ~/git
 git clone https://github.com/agentmorris/MegaDetector
 git clone https://github.com/Microsoft/ai4eutils
-cd ~/git/cameratraps
+cd ~/git/MegaDetector
 conda env create --file environment-detector-mac.yml
 conda activate cameratraps-detector
-export PYTHONPATH="$PYTHONPATH:$HOME/git/CameraTraps:$HOME/git/ai4eutils"
+export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/ai4eutils"
 ```
 
 4. Whenever you want to start this environment again, run the following (on Windows):
 
 ```batch
-cd c:\git\cameratraps
+cd c:\git\MegaDetector
 conda activate cameratraps-detector
-set PYTHONPATH=%PYTHONPATH%;c:\git\CameraTraps;c:\git\ai4eutils
+set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector;c:\git\ai4eutils
 ```
 
 ...or the following (on MacOS):
 
 ```batch
-cd ~/git/cameratraps
+cd ~/git/MegaDetector
 conda activate cameratraps-detector
-export PYTHONPATH="$PYTHONPATH:$HOME/git/CameraTraps:$HOME/git/ai4eutils"
+export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/ai4eutils"
 ```
 
 Also, the environment file we use here ([environment.yml](environment.yml)) doesn't get quite the same level of TLC that our MegaDetector environment does, so if anyone tries to run scripts that don't directly involve MegaDetector using this environment, and packages are missing, [let us know](mailto:cameratraps@lila.science).
@@ -637,7 +637,7 @@ tl;dr: always test on your own data!
 
 ## Citing MegaDetector
 
-If you use the MegaDetector in a publication, please cite:
+If you use MegaDetector in a publication, please cite:
 ```BibTeX
 @article{beery2019efficient,
   title={Efficient Pipeline for Camera Trap Image Review},

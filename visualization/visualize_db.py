@@ -27,7 +27,7 @@ import humanfriendly
 # Assumes ai4eutils is on the path (github.com/Microsoft/ai4eutils)
 from write_html_image_list import write_html_image_list
 
-# Assumes the cameratraps repo root is on the path
+# Assumes the MegaDetector repo root is on the path
 import visualization.visualization_utils as vis_utils
 from data_management.cct_json_utils import IndexedJsonDb
 

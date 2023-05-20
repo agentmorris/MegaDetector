@@ -4,7 +4,7 @@ crop_images_from_batch_api_detections.py
 Creates cropped images for training a classifier.
 
 Prerequisite steps:
-- Run batch detector CameraTraps/detection/run_tf_detector_batch.py to get detections .csv file.
+- Run batch detector MegaDetector/detection/run_tf_detector_batch.py to get detections .csv file.
 
 Produces:
 - Cropped images in a specified crops output directory.

@@ -1,7 +1,7 @@
 '''
 initialize_pretrain_db.py
 
-(Largely draws from CameraTraps/research/active_learning/import_folder.py)
+(Largely draws from MegaDetector/research/active_learning/import_folder.py)
 
 Creates a PostgreSQL database of camera trap images for use in active learning for classification. The script assumes that the images have been
 used to prepare a classification dataset (i.e. the images have been cropped and organized into subfolders named by class).

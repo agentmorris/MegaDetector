@@ -14,7 +14,7 @@ import time
 import argparse
 import json
 
-# Assumes that the root of the CameraTraps repo is on the PYTHONPATH
+# Assumes that the root of the MegaDetector repo is on the PYTHONPATH
 import ct_utils
 
 import tensorflow as tf

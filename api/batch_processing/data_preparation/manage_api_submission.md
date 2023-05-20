@@ -42,9 +42,9 @@ This document is written 98% for internal use, so you will see some instructions
   * <a href="https://github.com/agentmorris/MegaDetector">github.com/agentmorris/MegaDetector</a>
   * <a href="https://github.com/microsoft/ai4eutils">github.com/microsoft/ai4eutils</a>
 
-* Put the roots of both of the above repos on your PYTHONPATH; see <a href="https://github.com/agentmorris/MegaDetector/#other-notes">instructions on the CameraTraps repo</a> re: setting your PYTHONPATH.
+* Put the roots of both of the above repos on your PYTHONPATH; see <a href="https://github.com/agentmorris/MegaDetector/#other-notes">instructions on the MegaDetector repo</a> re: setting your PYTHONPATH.
 
-* If you're into using conda environments, cd to the root of the CameraTraps repo and run:
+* If you're into using conda environments, cd to the root of the MegaDetector repo and run:
 
   `conda env create --file environment-api-task-management.yml`
 
@@ -53,7 +53,7 @@ This document is written 98% for internal use, so you will see some instructions
 
 ### Forking the template script
 
-* Make a copy of <a href="https://github.com/agentmorris/MegaDetector/blob/master/api/batch_processing/data_preparation/manage_api_submission.py">manage_api_submission.py</a>, <i>outside</i> of the CameraTraps repo.  You may or may not end up with credentials in this file, so your working copy should <i>not be on GitHub</i>.  Name this file as `organization-YYYYMMDD.py`.
+* Make a copy of <a href="https://github.com/agentmorris/MegaDetector/blob/master/api/batch_processing/data_preparation/manage_api_submission.py">manage_api_submission.py</a>, <i>outside</i> of the MegaDetector repo.  You may or may not end up with credentials in this file, so your working copy should <i>not be on GitHub</i>.  Name this file as `organization-YYYYMMDD.py`.
 
 * Fill in all the constants in the "constants I set per task" cell.  Specifically:
 
