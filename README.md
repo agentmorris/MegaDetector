@@ -136,6 +136,11 @@ This repo is organized into the following folders...
 Code for hosting our models as an API, either for synchronous operation (i.e., for real-time inference) or as a batch process (for large biodiversity surveys).  Common operations one might do after running MegaDetector &ndash; e.g. [generating preview pages to summarize your results](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/postprocessing/postprocess_batch_results.py), [separating images into different folders based on AI results](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/postprocessing/separate_detections_into_folders.py), or [converting results to a different format](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/postprocessing/convert_output_format.py) &ndash; also live in this folder, within the [api/batch_processing/postprocessing](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing/postprocessing) folder.
 
 
+## archive
+
+Old code that we didn't <i>quite</i> want to delete, but is basically obsolete.
+
+
 ## classification
 
 Experimental code for training species classifiers on new data sets, generally trained on MegaDetector crops.  Currently the main pipeline described in this folder relies on a large database of labeled images that is not publicly available; therefore, this folder is not yet set up to facilitate training of your own classifiers.  However, it is useful for <i>users</i> of the classifiers that we train, and contains some useful starting points if you are going to take a "DIY" approach to training classifiers on cropped images.  
@@ -161,9 +166,9 @@ Code for:
 Code for training, running, and evaluating MegaDetector.
 
 
-## research
+## images
 
-Ongoing research projects that use this repository in one way or another; as of the time I'm editing this README, there are projects in this folder around active learning and the use of simulated environments for training data augmentation.
+Media used in documentation.
 
 
 ## sandbox
@@ -179,7 +184,7 @@ Random things that don't fit in any other directory.  For example:
 Code to facilitate mapping data-set-specific categories (e.g. "lion", which means very different things in Idaho vs. South Africa) to a standard taxonomy.
 
 
-## test-images
+## test_images
 
 A handful of images from [LILA](https://lila.science) that facilitate testing and debugging.
 

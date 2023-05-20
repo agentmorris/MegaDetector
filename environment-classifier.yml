@@ -21,7 +21,6 @@ dependencies:
 - jsonpickle  # used by run_detector_batch.py
 - jupyterlab
 - matplotlib
-- mypy
 - nb_conda_kernels
 - networkx  # used for taxonomy graph
 - numpy

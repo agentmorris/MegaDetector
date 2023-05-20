@@ -561,7 +561,7 @@ def track_extreme_examples(tp_heaps: dict[int, list[HeapItem]],
     """
     with torch.no_grad():
         inputs = inputs.detach().to(device='cpu', dtype=torch.float16)
-        labels_list = labels.tolist()  # new var name to satisfy mypy
+        labels_list = labels.tolist()
         batch_probs = torch.nn.functional.softmax(logits, dim=1).cpu()
         zipped = zip(inputs, labels_list, batch_probs, img_files)  # all on CPU
         for img, label, confs, img_file in zipped:
