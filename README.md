@@ -24,9 +24,9 @@ Here's a "teaser" image of what detector output looks like:
 Image credit University of Washington.
 
 
-# Is this repo the same as [Microsoft/CameraTraps](https://github.com/microsoft/CameraTraps)?
+# Is this repo the same as microsoft/cameratraps?
 
-This repo is a direct descendent of the Microsoft repo.  MegaDetector was created by the [Microsoft AI for Earth program](https://www.microsoft.com/en-us/ai/ai-for-earth), and it wouldn't exist without the commitment and investment that Microsoft provided.  The developers who were working on MegaDetector have since left Microsoft, but we love working with our users and collaborators, and didn't want to lose the momentum that the community created around MegaDetector!  So we've created this new repo to continue the work that Microsoft started. 
+This repo is a direct descendent of the [microsoft/cameratraps](https://github.com/microsoft/cameratraps) repo.  MegaDetector was created by the [Microsoft AI for Earth program](https://www.microsoft.com/en-us/ai/ai-for-earth), and it wouldn't exist without the amazing commitment and investment that Microsoft provided.  The developers who were working on MegaDetector have since left Microsoft, but we love working with our users and collaborators, and we didn't want to lose the momentum that the community has created around MegaDetector!  So we created this new repo to continue the work that Microsoft started. 
 
 
 # How do I get started?
