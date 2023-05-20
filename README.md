@@ -118,6 +118,8 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 
 This repo does not directly host camera trap data, but we work with our collaborators to make data and annotations available whenever possible on [lila.science](http://lila.science).
 
+See the [MegaDetector training data](megadetector.md#can-you-share-the-training-data) section to learn more about the data used to train MegaDetector.
+
 
 # Contact
 
