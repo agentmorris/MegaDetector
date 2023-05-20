@@ -1,8 +1,11 @@
 # Overview
 
-This repo contains the tools for training, running, and evaluating detectors and classifiers for images collected from motion-triggered wildlife cameras.  The core functionality provided is:
+This repo contains the tools for training, running, [MegaDetector](megadetector.md), an object detection model that does a pretty good job finding animals, people, and vehicles (and therefore is pretty good at finding empty images) in camera trap images in a variety of terrestrial ecosystems.
 
-- Training and running models, particularly [MegaDetector](megadetector.md), an object detection model that does a pretty good job finding animals, people, and vehicles (and therefore is pretty good at finding empty images) in a variety of terrestrial ecosystems
+The core functionality provided is:
+
+- Training and running [MegaDetector](megadetector.md)
+- Training and some species classifiers that are used in conjunction with MegaDetector
 - Data parsing from frequently-used camera trap metadata formats into a common format
 - A [batch processing API](https://github.com/ecologize/CameraTraps/tree/main/api/batch_processing) that runs MegaDetector on large image collections, to accelerate population surveys
 - A [real-time API](https://github.com/ecologize/CameraTraps/tree/main/api/synchronous) that runs MegaDetector (and some species classifiers) synchronously, primarily to support anti-poaching scenarios (e.g. see this [blog post](https://customers.microsoft.com/en-us/story/1384184517929343083-wildlife-protection-solutions-nonprofit-ai-for-earth) describing how this API supports [Wildlife Protection Solutions](https://wildlifeprotectionsolutions.org/))
@@ -19,6 +22,11 @@ Here's a "teaser" image of what detector output looks like:
 ![Red bounding box on fox](images/detector_example.jpg)
 
 Image credit University of Washington.
+
+
+# Is this repo the same as [Microsoft/CameraTraps](https://github.com/microsoft/CameraTraps)?
+
+This repo is a direct descendent of the Microsoft repo.  MegaDetector was created by the [Microsoft AI for Earth program](https://www.microsoft.com/en-us/ai/ai-for-earth), and it wouldn't exist without the commitment and investment that Microsoft provided.  The developers who were working on MegaDetector have since left Microsoft, but we love working with our users and collaborators, and didn't want to lose the momentum that the community created around MegaDetector!  So we've created this new repo to continue the work that Microsoft started. 
 
 
 # How do I get started?
