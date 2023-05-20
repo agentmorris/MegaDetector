@@ -459,8 +459,8 @@ def main():
                         default=0.8, help="don't render boxes with confidence below this threshold")
 
     parser.add_argument('--json_confidence_threshold', type=float,
-                        default=0.0, help="don't include boxes in the .json file with confidence '\
-                            'below this threshold")
+                        default=0.0, help="don't include boxes in the .json file with confidence "\
+                            'below this threshold')
 
     parser.add_argument('--n_cores', type=int,
                         default=1, help='number of cores to use for frame separation and detection. '\

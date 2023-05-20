@@ -20,13 +20,13 @@ This page summarizes what we do with that model to help our collaborators, typic
 
 Basically this page is the response we give when someone emails us and says "I have too many camera trap images!  Can you help me?!?!".  If you're an ecologist reading this page, and that sounds familiar, feel free to answer the questions below in an email to <a href="mailto:cameratraps@lila.science">cameratraps@lila.science</a>.
 
-You can see a list of some of the organizations who have used our tools [here](https://github.com/ecologize/CameraTraps/#who-is-using-megadetector).
+You can see a list of some of the organizations who have used our tools [here](https://github.com/agentmorris/MegaDetector/#who-is-using-megadetector).
 
 If you are looking for a more technical description of our MegaDetector model, see [this page](megadetector.md).
 
 ## How people run MegaDetector
 
-MegaDetector is a publicly-available model, and there are instructions [here](https://github.com/ecologize/CameraTraps/blob/main/megadetector.md#using-the-model) for running it using our Python scripts.  Many of our users run MegaDetector on their own, either on the cloud or on their local computers.
+MegaDetector is a publicly-available model, and there are instructions [here](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#using-the-model) for running it using our Python scripts.  Many of our users run MegaDetector on their own, either on the cloud or on their local computers.
 
 That said, we know that Python can be a bit daunting, and that it requires significant processing power to run MegaDetector on millions of images.  So many of our users - particularly high-volume users - send us images (anywhere from tens of thousands to millions), which we run through MegaDetector, then we send back a results file.
 
@@ -39,7 +39,7 @@ That page isn't <i>quite</i> what a real results page would look like: rather th
 
 ## How people use MegaDetector results
 
-Of course, running MegaDetector doesn't do anything useful by itself: it just produces a file that tells you which images MegaDetector thinks have animals/people/vehicles in them.  You still need a way to use that file in a real image processing workflow.  We've integrated with a variety of tools that camera trap researchers already use, to make it relatively painless to use our results in the context of a real workflow.  Our most mature integration is with <a href="http://saul.cpsc.ucalgary.ca/timelapse/">Timelapse</a>, a fantastic open-source tool for reviewing camera trap images (very efficient even if you're not using AI!).  Read more about how to use MegaDetector results with Timelapse [here](https://github.com/ecologize/CameraTraps/blob/master/api/batch_processing/integration/timelapse.md).
+Of course, running MegaDetector doesn't do anything useful by itself: it just produces a file that tells you which images MegaDetector thinks have animals/people/vehicles in them.  You still need a way to use that file in a real image processing workflow.  We've integrated with a variety of tools that camera trap researchers already use, to make it relatively painless to use our results in the context of a real workflow.  Our most mature integration is with <a href="http://saul.cpsc.ucalgary.ca/timelapse/">Timelapse</a>, a fantastic open-source tool for reviewing camera trap images (very efficient even if you're not using AI!).  Read more about how to use MegaDetector results with Timelapse [here](https://github.com/agentmorris/MegaDetector/blob/master/api/batch_processing/integration/timelapse.md).
 
 We have somewhat-less-complete integrations with the [eMammal desktop application](https://github.com/ecologize/CameraTraps/blob/master/api/batch_processing/integration/eMammal) and with [digiKam](https://github.com/ecologize/CameraTraps/tree/master/api/batch_processing/integration/digiKam).
 
