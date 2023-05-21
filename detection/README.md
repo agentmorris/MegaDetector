@@ -12,7 +12,7 @@ This folder contains scripts and configuration files for training and evaluating
 * [run_inference_with_yolov5_val.py](run_inference_with_yolov5_val.py) is a slightly-beta replacement for run_detector_batch.py that uses the native YOLOv5 tools to run MDv5 on lots of images.  The main reason to do this is that it allows us to benefit from YOLOv5's [test-time augmentation](https://docs.ultralytics.com/yolov5/tutorials/test_time_augmentation/) tools.  If you have a dataset where MegaDetector works pretty well, and if you could just squeeze a *tiny* bit more recall out of it, you would be good to go, this may be useful to you.  If you're thinking of trying this out, you may want to [email us](mailto:cameratraps@lila.science).
 * [tf_detector.py](tf_detector.py) is a wrapper for the TensorFlow Object Detection API; users generally won't have to interact with this script directly.
 * [video_utils.py](video_utils.py) contains utilities for working with videos (extracting frames, rendering boxes on frames and assembling those into videos, etc.).
-* [detector_training](detector_training) contains configuration files used at the time MD was trained
+* [detector_training](detector_training) contains configuration files used at the time MD was trained.
 
 
 # Format notes
