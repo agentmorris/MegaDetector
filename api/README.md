@@ -16,6 +16,6 @@ The [batch_processing](batch_processing) folder also contains lots of postproces
 
 ### Gratuitous camera trap picture
 
-![cat in camera trap](/images/orinoquia-thumb-web.jpg)<br/>Image credit University of Minnesota, from the [Orinoquía Camera Traps](http://lila.science/datasets/orinoquia-camera-traps/) data set.
+![cat in camera trap](../images/orinoquia-thumb-web.jpg)<br/>Image credit University of Minnesota, from the [Orinoquía Camera Traps](http://lila.science/datasets/orinoquia-camera-traps/) data set.
 
 
