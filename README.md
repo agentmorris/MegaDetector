@@ -1,15 +1,19 @@
-# Table of contents
+# MegaDetector
+
+...helping conservation biologists spend less time doing boring things with camera trap images.
+
+## Table of contents
 
 1. [Repo overview](#repo-overview)
 2. [What's MegaDetector all about?](#whats-megadetector-all-about)
-3. [How do I get started?](#how-do-i-get-started)
+3. [How do I get started with MegaDetector?](#how-do-i-get-started-with-megadetector)
 4. [Who is using MegaDetector?](#who-is-using-megadetector)
 5. [Repo contents](#repo-contents)
 6. [Contact](#contact)
 7. [Gratuitous camera trap picture](#gratuitous-camera-trap-picture)
 
 
-# Repo overview
+## Repo overview
 
 This repo contains the tools for training and running [MegaDetector](megadetector.md), an object detection model that does a pretty good job finding animals, people, and vehicles (and therefore is pretty good at finding empty images) in camera trap images in a variety of terrestrial ecosystems.
 
@@ -24,7 +28,7 @@ The core functionality provided is:
 MegaDetector was initially developed by the [Microsoft AI for Earth program](https://www.microsoft.com/en-us/ai/ai-for-earth); this repo is derived from the [microsoft/cameratraps](https://github.com/microsoft/cameratraps) repo.
 
 
-# What's MegaDetector all about?
+## What's MegaDetector all about?
 
 The main model that we train and run using tools in this repo is [MegaDetector](megadetector.md), an object detection model that identifies animals, people, and vehicles in camera trap images.  This model is trained on several hundred thousand bounding boxes from a variety of ecosystems.  Lots more information &ndash; including download links and instructions for running the model &ndash; is available on the [MegaDetector page](megadetector.md).
 
@@ -35,7 +39,7 @@ Here's a &ldquo;teaser&rdquo; image of what MegaDetector output looks like:
 ![Red bounding box on fox](images/detector_example.jpg)<br/>Image credit University of Washington.
 
 
-# How do I get started?
+## How do I get started with MegaDetector?
 
 If you're just considering the use of AI in your workflow, and you aren't even sure yet whether MegaDetector would be useful to you, we recommend reading the "[getting started with MegaDetector](collaborations.md)" page.
 
@@ -44,7 +48,7 @@ If you're already familiar with MegaDetector and you're ready to run it on your 
 MegaDetector is just one of many tools that aims to make conservation biologists more efficient with AI.  If you want to learn about other ways to use AI to accelerate camera trap workflows, check out our of the field, affectionately titled &ldquo;[Everything I know about machine learning and camera traps](https://agentmorris.github.io/camera-trap-ml-survey/)&rdquo;.
 
 
-# Who is using MegaDetector?
+## Who is using MegaDetector?
 
 We work with ecologists all over the world to help them spend less time annotating images and more time thinking about conservation.  You can read a little more about how this works on our [getting started with MegaDetector](collaborations.md) page.
 
@@ -120,22 +124,22 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [San Diego Zoo Wildlife Alliance](https://science.sandiegozoo.org/)  ([Animl R package](https://github.com/conservationtechlab/animl))
 
 
-# Repo contents
+## Repo contents
 
 This repo is organized into the following folders...
 
 
-## api
+### api
 
 Code for hosting our models as an API, either for synchronous operation (i.e., for real-time inference) or as a batch process (for large biodiversity surveys).  Common operations one might do after running MegaDetector &ndash; e.g. [generating preview pages to summarize your results](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/postprocessing/postprocess_batch_results.py), [separating images into different folders based on AI results](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/postprocessing/separate_detections_into_folders.py), or [converting results to a different format](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/postprocessing/convert_output_format.py) &ndash; also live in this folder, within the [api/batch_processing/postprocessing](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing/postprocessing) folder.
 
 
-## archive
+### archive
 
 Old code that we didn't <i>quite</i> want to delete, but is basically obsolete.
 
 
-## classification
+### classification
 
 Experimental code for training species classifiers on new data sets, generally trained on MegaDetector crops.  Currently the main pipeline described in this folder relies on a large database of labeled images that is not publicly available; therefore, this folder is not yet set up to facilitate training of your own classifiers.  However, it is useful for <i>users</i> of the classifiers that we train, and contains some useful starting points if you are going to take a "DIY" approach to training classifiers on cropped images.  
 
@@ -144,7 +148,7 @@ All that said, here's another "teaser image" of what you get at the end of train
 <img src="images/warthog_classifications.jpg" width="700"><br/>Image credit University of Minnesota, from the Snapshot Safari program.
 
 
-## data_management
+### data_management
 
 Code for:
 
@@ -153,65 +157,62 @@ Code for:
 * Creating, visualizing, and  editing COCO Camera Traps .json databases
 
 
-## detection
+### detection
 
 Code for training, running, and evaluating MegaDetector.
 
 
-## images
+### images
 
 Media used in documentation.
 
 
-## md_utils
+### md_utils
 
 Small utility functions for string manipulation, filename manipulation, downloading files from URLs, etc.  Mostly drawn from the [ai4eutils](https://github.com/microsoft/ai4eutils) repo.
 
 
-## sandbox
+### sandbox
 
-Random things that don't fit in any other directory.  For example:
-
-* A not-super-useful but super-duper-satisfying and mostly-successful attempt to use OCR to pull metadata out of image pixels in a fairly generic way, to handle those pesky cases when image metadata is lost.
-* Experimental postprocessing scripts that were built for a single use case
+Random things that don't fit in any other directory, but aren't quite deprecated.  Mostly postprocessing scripts that were built for a single use case but could potentially be useful in the future.
 
 
-## taxonomy-mapping
+### taxonomy-mapping
 
 Code to facilitate mapping data-set-specific categories (e.g. "lion", which means very different things in Idaho vs. South Africa) to a standard taxonomy.
 
 
-## test_images
+### test_images
 
 A handful of images from [LILA](https://lila.science) that facilitate testing and debugging.
 
 
-## visualization
+### visualization
 
 Shared tools for visualizing images with ground truth and/or predicted annotations.
 
 
-# Contact
+## Contact
 
 For questions about this repo, contact [cameratraps@lila.science](mailto:cameratraps@lila.science).
 
 You can also chat with us and the broader camera trap AI community on the [AI for Conservation forum at WILDLABS](https://wildlabs.net/groups/ai-conservation) or the [AI for Conservation Slack group](https://aiforconservation.slack.com).
 
 
-# Gratuitous camera trap picture
+## Gratuitous camera trap picture
 
 ![Bird flying above water](images/nacti.jpg)<br/>Image credit USDA, from the [NACTI](http://lila.science/datasets/nacti) data set.
 
 
-# License
+## License
 
 This repository is licensed with the [MIT license](https://opensource.org/license/mit/).
 
 Code written on or before April 28, 2023 is [copyright Microsoft](https://github.com/Microsoft/dotnet/blob/main/LICENSE).
 
 
-# Contributing
+## Contributing
 
-This project welcomes contributions, as pull requests, issues, or suggestions by [email](mailto:cameratraps@lila.science).  We have a [list](https://github.com/agentmorris/MegaDetector/issues/84) of issues that we're hoping to address, many of which would be good starting points for new contributors.  We also depend on other open-source tools that help users run MegaDetector (e.g. [EcoAssist](https://github.com/PetervanLunteren/EcoAssist) and [CamTrap Detector](https://github.com/bencevans/camtrap-detector)) and work with MegaDetector results (e.g. [Timelapse](https://github.com/saulgreenberg/Timelapse)); particularly if you are looking to get involved in GUI development, reach out to the developers of those tools as well!
+This project welcomes contributions, as pull requests, issues, or suggestions by [email](mailto:cameratraps@lila.science).  We have a [list](https://github.com/agentmorris/MegaDetector/issues/84) of issues that we're hoping to address, many of which would be good starting points for new contributors.  We also depend on other open-source tools that help users run MegaDetector (e.g. [EcoAssist](https://github.com/PetervanLunteren/EcoAssist) and [CamTrap Detector](https://github.com/bencevans/camtrap-detector)) and work with MegaDetector results (e.g. [Timelapse](https://github.com/saulgreenberg/Timelapse)); if you are looking to get involved in GUI development, reach out to the developers of those tools as well!
 
 If you are interesting in getting involved in the conservation technology space, and MegaDetector just happens to be the first page you landed on, and none of our open issues are getting you fired up, don't fret!  Head over to the [WILDLABS discussion forums](https://wildlabs.net/discussions) and let the community know you're a developer looking to get involved.  Someone needs your help!
