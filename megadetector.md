@@ -709,7 +709,9 @@ So if MegaDetector performs really well on those data sets, that's great, but it
 Anaconda can be pretty slow, sometimes taking days to solve the environment even on a brand new PC.  It would be rocking the boat to completely switch our instructions away from Anaconda (yet), but... we've been experimenting with [Mamba](https://mamba.readthedocs.io/en/latest/) as an alternative to conda, and so far it's fantastic.  This will probably replace Anaconda in our default instructions soon.  But for now, it's still experimental.  If you want to try this, follow all the instructions above, except:
 
 * Instead of installing Anaconda, install [Mambaforge](https://github.com/conda-forge/miniforge#mambaforge).  We've tested with the links under the "Mambaforge" heading, not the links under the "Mambaforge-pypy3" heading.
+
 * On Windows, instead of starting the shortcut called "Anaconda Prompt", start the shortcut called "Miniforge prompt".  No, that's not a typo.  Yes, it would be less confusing if it were called "Mambaforge prompt".
+
 * Every time any of our instructions say "conda", use "mamba" instead.  E.g., instead of this:  
 `conda env create --file environment-detector.yml`  
 ...do this:  
