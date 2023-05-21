@@ -1,4 +1,15 @@
-# Overview
+# Table of contents
+
+1. [Repo overview](#repo-overview)
+2. [What's MegaDetector all about?](#whats-megadetector-all-about)
+3. [How do I get started?](#how-do-i-get-started)
+4. [Who is using MegaDetector?](#who-is-using-megadetector)
+5. [Contact](#contact)
+6. [Repo contents](#repo-contents)
+7. [Gratuitous pretty camera trap picture](#gratuitous-pretty-camera-trap-picture)
+
+
+# Repo overview
 
 This repo contains the tools for training and running [MegaDetector](megadetector.md), an object detection model that does a pretty good job finding animals, people, and vehicles (and therefore is pretty good at finding empty images) in camera trap images in a variety of terrestrial ecosystems.
 
@@ -10,7 +21,7 @@ The core functionality provided is:
 - A [batch processing API](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing) that runs MegaDetector on large image collections, to accelerate population surveys
 - A [real-time API](https://github.com/agentmorris/MegaDetector/tree/main/api/synchronous) that runs MegaDetector (and some species classifiers) synchronously, primarily to support anti-poaching scenarios (e.g. see this [blog post](https://customers.microsoft.com/en-us/story/1384184517929343083-wildlife-protection-solutions-nonprofit-ai-for-earth) describing how this API supports [Wildlife Protection Solutions](https://wildlifeprotectionsolutions.org/))
 
-This project was initially developed by the [Microsoft AI for Earth program](https://www.microsoft.com/en-us/ai/ai-for-earth), and this fork is maintained by folks at [Ecologize](http://ecologize.org/) who like looking at pictures of animals.  We want to support conservation, of course, but we also really like looking at pictures of animals.
+MegaDetector was initially developed by the [Microsoft AI for Earth program](https://www.microsoft.com/en-us/ai/ai-for-earth); this repo is derived from the [microsoft/cameratraps](https://github.com/microsoft/cameratraps) repo.
 
 
 # What's MegaDetector all about?
@@ -19,14 +30,9 @@ The main model that we train and run using tools in this repo is [MegaDetector](
 
 Here's a "teaser" image of what detector output looks like:
 
-![Red bounding box on fox](images/detector_example.jpg)
+![Red bounding box on fox](images/detector_example.jpg)<br/>Image credit University of Washington.
 
-Image credit University of Washington.
-
-
-# Is this repo the same as microsoft/cameratraps?
-
-This repo is a direct descendent of the [microsoft/cameratraps](https://github.com/microsoft/cameratraps) repo.  MegaDetector was created by the [Microsoft AI for Earth program](https://www.microsoft.com/en-us/ai/ai-for-earth), and it wouldn't exist without the amazing commitment and investment that Microsoft provided.  The developers who were working on MegaDetector have since left Microsoft, but we love working with our users and collaborators, and we didn't want to lose the momentum that the community has created around MegaDetector!  So we created this new repo to continue the work that Microsoft started. 
+This repo does not host the data used to train MegaDetector, but we work with our collaborators to make data and annotations available whenever possible on [lila.science](http://lila.science).  See the [MegaDetector training data](megadetector.md#can-you-share-the-training-data) section to learn more about the data used to train MegaDetector.
 
 
 # How do I get started?
@@ -112,21 +118,12 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [San Diego Zoo Wildlife Alliance](https://science.sandiegozoo.org/)  ([Animl R package](https://github.com/conservationtechlab/animl))
 
 
-
-
-# Data
-
-This repo does not directly host camera trap data, but we work with our collaborators to make data and annotations available whenever possible on [lila.science](http://lila.science).
-
-See the [MegaDetector training data](megadetector.md#can-you-share-the-training-data) section to learn more about the data used to train MegaDetector.
-
-
 # Contact
 
 For questions about this repo, contact [cameratraps@lila.science](mailto:cameratraps@lila.science).
 
 
-# Contents
+# Repo contents
 
 This repo is organized into the following folders...
 
@@ -147,9 +144,7 @@ Experimental code for training species classifiers on new data sets, generally t
 
 All that said, here's another "teaser image" of what you get at the end of training and running a classifier:
 
-<img src="images/warthog_classifications.jpg" width="700">
-
-Image credit University of Minnesota, from the Snapshot Safari program.
+<img src="images/warthog_classifications.jpg" width="700"><br/>Image credit University of Minnesota, from the Snapshot Safari program.
 
 
 ## data_management
@@ -196,12 +191,10 @@ Shared tools for visualizing images with ground truth and/or predicted annotatio
 
 # Gratuitous pretty camera trap picture
 
-![Bird flying above water](images/nacti.jpg)
-
-Image credit USDA, from the [NACTI](http://lila.science/datasets/nacti) data set.
+![Bird flying above water](images/nacti.jpg)<br/>Image credit USDA, from the [NACTI](http://lila.science/datasets/nacti) data set.
 
 
-## License
+# License
 
 This repository is licensed with the [MIT license](https://opensource.org/license/mit/).
 

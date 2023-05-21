@@ -92,18 +92,21 @@ Whenever possible, the category ID 0 is associated with a class called "empty", 
 This directory is organized into the following subdirectories...
 
 ## annotations
+
 Code for creating new bounding box annotation tasks and converting annotations to COCO Camera Traps format.
 
 ## databases
+
 Miscellaneous tools for manipulating COCO Camera Traps .json files.  Of particular note is `sanity_check_json_db.py`, which validates that a CCT database is well-formatted, optionally checking image existence and size.
 
-**databases/classifcation**: Scripts for creating and analyzing a dataset for classification specifically.
-
 ## importers
+
 Code for converting frequently-used metadata formats (or sometimes one-off data sets) to COCO Camera Traps .json files.
 
 ## megadb
-Code for querying and updating MegaDB.
+
+Code for querying and updating MegaDB. (obsolete)
 
 ## tfrecords
-Code for generating tfrecords from COCO Camera Traps .json files.  This directory is based on the [Visipedia tfrecords repo](https://github.com/visipedia/tfrecords).
+
+Code for generating tfrecords from COCO Camera Traps .json files.  This directory is based on the [Visipedia tfrecords repo](https://github.com/visipedia/tfrecords). (obsolete)

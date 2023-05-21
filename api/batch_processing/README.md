@@ -1,12 +1,127 @@
-# Camera trap batch processing API user guide
+# MegaDetector batch processing API
 
-Though most of our users either use the [MegaDetector](https://github.com/agentmorris/MegaDetector#megadetector) model directly or work with us to run MegaDetector on the cloud, we also offer an open-source reference implementation for a an API that processes a large quantity of camera trap images, to support  a variety of online scenarios. The output is most helpful for separating empty from non-empty images based on a detector confidence threshold that you select, and putting bounding boxes around animals, people, and vehicles to help manual review proceed more quickly.  If you are interested in setting up an endpoint to process very small numbers of images for real-time applications (e.g. for anti-poaching applications), see the source for our [real-time camera trap image processing API](https://github.com/agentmorris/MegaDetector/tree/main/api/synchronous).
+Though most users run MegaDetector locally, we also offer an open-source reference implementation for a an API that processes a large quantity of camera trap images, to support  a variety of online scenarios. If you are interested in setting up an endpoint to process very small numbers of images for real-time applications (e.g. for anti-poaching applications), see the source for our [real-time API](https://github.com/agentmorris/MegaDetector/tree/main/api/synchronous).
 
-With the batch processing API, you can process a batch of up to a few million images in one request to the API. If in addition you have some images that are labeled, we can evaluate the performance of the MegaDetector on your labeled images (see [Post-processing tools](#post-processing-tools)).
+This API is no longer in widespread use, but the output [format](#megadetector-batch-output-format) used by this API is still the format used for MegaDetector inference (particularly by [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_detector_batch.py)), so the postprocessing tools in this folder are still compatible with MegaDetector output.
 
-All references to &ldquo;container&rdquo; in this document refer to [Azure Blob Storage](https://azure.microsoft.com/en-us/services/storage/blobs/) containers.
 
-We have referred to one submission of images as a "request" in this documentation but as a "job" elsewhere in the source code and emails; confusingly, the endpoint for checking the status of a request/job is called `/task` and the RequestID is called `task_id`. Consider "request" and "job" interchangeable, and the `/task` endpoint a legacy issue. Note that the terms "job" and "task" mean different things in the source code (in the context of Azure Batch).
+## Post-processing tools
+
+The [postprocessing](postprocessing) folder contains tools for working with the output of our detector API.  In particular, [postprocess_batch_results.py](postprocessing/postprocess_batch_results.py) provides visualization and accuracy assessment tools for the output of the batch processing API. A sample output for the Snapshot Serengeti data when using ground-truth annotations can be seen [here](http://dolphinvm.westus2.cloudapp.azure.com/data/snapshot_serengeti/serengeti_val_detections_from_pkl_MDv1_20190528_w_classifications_eval/).
+
+
+## Integration with other tools
+
+The [integration](integration) folder contains guidelines and postprocessing scripts for using the output of our API in other applications, particularly [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/).
+
+
+## MegaDetector batch output format
+
+The output of the detector is saved in `requestID_detections_requestName_timestamp.json`. The `classifications` fields will be added if a classifier was trained for your project and applied to the images. 
+
+If an image could not be opened or an error occurred when applying the model to it, it will still have an entry in the output file images list, but it will have a `failure` field indicating the type of error (see last entry in the example below). However, if the API runs into problems processing an entire shard of images (usually 2000 images per shard), they will not have entries in the results file - this should be very rare.
+
+Example output with both detection and classification results:
+
+```json
+{
+    "info": {
+        "format_version": "1.3",
+        "detector": "md_v4.1.0.pb",
+        "detection_completion_time": "2019-05-22 02:12:19",
+        "classifier": "ecosystem1_v2",
+        "classification_completion_time": "2019-05-26 01:52:08",
+        "detector_metadata": {
+           "megadetector_version":"v4.1.0",
+           "typical_detection_threshold":0.8,
+           "conservative_detection_threshold":0.6
+        }
+        "classifier_metadata": {
+           "typical_classification_threshold":0.75
+        }
+    },
+    "detection_categories": {
+        "1": "animal",
+        "2": "person",
+        "3": "vehicle"
+    },
+    "classification_categories": {
+        "0": "fox",
+        "1": "elk",
+        "2": "wolf",
+        "3": "bear",
+        "4": "moose"
+    },
+    "images": [
+        {
+            "file": "path/from/base/dir/image_with_animal.jpg",
+            "meta": "optional free-text metadata",
+            "detections": [
+                {
+                    "category": "1",
+                    "conf": 0.926,
+                    "bbox": [0.0, 0.2762, 0.1539, 0.2825], 
+                    "classifications": [
+                        ["3", 0.901],
+                        ["1", 0.071],
+                        ["4", 0.025]
+                    ]
+                },
+                {
+                    "category": "1",
+                    "conf": 0.061,
+                    "bbox": [0.0451, 0.1849, 0.3642, 0.4636]
+                }
+            ]
+        },
+        {
+            "file": "/path/from/base/dir/empty_image.jpg",
+            "meta": "",
+            "detections": []
+        },
+        {
+            "file": "/path/from/base/dir2/corrupted_image.jpg",
+            "failure": "Failure image access"
+        }
+    ]
+}
+```
+
+### Model metadata
+
+The 'detector' field (within the 'info' field) specifies the filename of the detector model that produced this results file.  It was omitted in old files generated with run_detector_batch.py, so with extremely high probability, if this field is not present, you can assume the file was generated with MegaDetector v4.
+
+In newer files, this should contain the filename (base name only) of the model file, which typically will be one of:
+
+* megadetector_v4.1 (MegaDetector v4, run via the batch API) 
+* md_v4.1.0.pb (MegaDetector v4, run locally) 
+* md_v5a.0.0.pt (MegaDetector v5a) 
+* md_v5b.0.0.pt (MegaDetector v5b) 
+
+This string is used by some tools to choose appropriate default confidence values, which depend on the model version.  If you change the name of the MegaDetector file, you will break this convention, and YMMV.
+ 
+The "detector_metadata" and "classifier_metadata" fields are also optionally added as of format version 1.2.  These currently contain useful default confidence values for downstream tools (particularly Timelapse), but we strongly recommend against blindly trusting these defaults; always explore your data before choosing a confidence threshold, as the optimal value can vary widely.
+
+### Detector outputs
+
+The bounding box in the `bbox` field is represented as
+
+```
+[x_min, y_min, width_of_box, height_of_box]
+```
+
+where `(x_min, y_min)` is the upper-left corner of the detection bounding box, with the origin in the upper-left corner of the image. The coordinates and box width and height are *relative* to the width and height of the image. Note that this is different from the coordinate format used in the [COCO Camera Traps](data_management/README.md) databases, which are in absolute coordinates. 
+
+The detection category `category` can be interpreted using the `detection_categories` dictionary. 
+
+Detection categories not listed here are allowed by this format specification, but should be treated as "no detection".
+
+When the detector model detects no animal (or person or vehicle), the confidence `conf` is shown as 0.0 (not confident that there is an object of interest) and the `detections` field is an empty list.
+
+
+### Classifier outputs
+
+After a classifier is applied, each tuple in a `classifications` list represents `[species, confidence]`. They are listed in order of confidence. The species categories should be interpreted using the `classification_categories` dictionary.  Keys in `classification_categories` will always be nonnegative integers formatted as strings.
 
 
 ## API
@@ -192,122 +307,3 @@ Note that the field `Status` in the returned body is capitalized (since July 202
 The URL to the output file is valid for 180 days from the time the request has finished. If you neglected to retrieve them before the link expired, contact us with the RequestID and we can send the results to you. 
 
 The output file is a JSON in the format described below.
-
-
-#### Batch processing API output format
-
-The output of the detector is saved in `requestID_detections_requestName_timestamp.json`. The `classifications` fields will be added if a classifier was trained for your project and applied to the images. 
-
-If an image could not be opened or an error occurred when applying the model to it, it will still have an entry in the output file images list, but it will have a `failure` field indicating the type of error (see last entry in the example below). However, if the API runs into problems processing an entire shard of images (usually 2000 images per shard), they will not have entries in the results file - this should be very rare.
-
-Example output with both detection and classification results:
-
-```json
-{
-    "info": {
-        "format_version": "1.3",
-        "detector": "md_v4.1.0.pb",
-        "detection_completion_time": "2019-05-22 02:12:19",
-        "classifier": "ecosystem1_v2",
-        "classification_completion_time": "2019-05-26 01:52:08",
-        "detector_metadata": {
-           "megadetector_version":"v4.1.0",
-           "typical_detection_threshold":0.8,
-           "conservative_detection_threshold":0.6
-        }
-        "classifier_metadata": {
-           "typical_classification_threshold":0.75
-        }
-    },
-    "detection_categories": {
-        "1": "animal",
-        "2": "person",
-        "3": "vehicle"
-    },
-    "classification_categories": {
-        "0": "fox",
-        "1": "elk",
-        "2": "wolf",
-        "3": "bear",
-        "4": "moose"
-    },
-    "images": [
-        {
-            "file": "path/from/base/dir/image_with_animal.jpg",
-            "meta": "optional free-text metadata",
-            "detections": [
-                {
-                    "category": "1",
-                    "conf": 0.926,
-                    "bbox": [0.0, 0.2762, 0.1539, 0.2825], 
-                    "classifications": [
-                        ["3", 0.901],
-                        ["1", 0.071],
-                        ["4", 0.025]
-                    ]
-                },
-                {
-                    "category": "1",
-                    "conf": 0.061,
-                    "bbox": [0.0451, 0.1849, 0.3642, 0.4636]
-                }
-            ]
-        },
-        {
-            "file": "/path/from/base/dir/empty_image.jpg",
-            "meta": "",
-            "detections": []
-        },
-        {
-            "file": "/path/from/base/dir2/corrupted_image.jpg",
-            "failure": "Failure image access"
-        }
-    ]
-}
-```
-
-##### Model metadata
-
-The 'detector' field (within the 'info' field) specifies the filename of the detector model that produced this results file.  It was omitted in old files generated with run_detector_batch.py, so with extremely high probability, if this field is not present, you can assume the file was generated with MegaDetector v4.
-
-In newer files, this should contain the filename (base name only) of the model file, which typically will be one of:
-
-* megadetector_v4.1 (MegaDetector v4, run via the batch API) 
-* md_v4.1.0.pb (MegaDetector v4, run locally) 
-* md_v5a.0.0.pt (MegaDetector v5a) 
-* md_v5b.0.0.pt (MegaDetector v5b) 
-
-This string is used by some tools to choose appropriate default confidence values, which depend on the model version.  If you change the name of the MegaDetector file, you will break this convention, and YMMV.
- 
-The "detector_metadata" and "classifier_metadata" fields are also optionally added as of format version 1.2.  These currently contain useful default confidence values for downstream tools (particularly Timelapse), but we strongly recommend against blindly trusting these defaults; always explore your data before choosing a confidence threshold, as the optimal value can vary widely.
-
-##### Detector outputs
-
-The bounding box in the `bbox` field is represented as
-
-```
-[x_min, y_min, width_of_box, height_of_box]
-```
-
-where `(x_min, y_min)` is the upper-left corner of the detection bounding box, with the origin in the upper-left corner of the image. The coordinates and box width and height are *relative* to the width and height of the image. Note that this is different from the coordinate format used in the [COCO Camera Traps](data_management/README.md) databases, which are in absolute coordinates. 
-
-The detection category `category` can be interpreted using the `detection_categories` dictionary. 
-
-Detection categories not listed here are allowed by this format specification, but should be treated as "no detection".
-
-When the detector model detects no animal (or person or vehicle), the confidence `conf` is shown as 0.0 (not confident that there is an object of interest) and the `detections` field is an empty list.
-
-
-##### Classifier outputs
-
-After a classifier is applied, each tuple in a `classifications` list represents `[species, confidence]`. They are listed in order of confidence. The species categories should be interpreted using the `classification_categories` dictionary.  Keys in `classification_categories` will always be nonnegative integers formatted as strings.
-
-
-## Post-processing tools
-
-The [postprocessing](postprocessing) folder contains tools for working with the output of our detector API.  In particular, [postprocess_batch_results.py](postprocessing/postprocess_batch_results.py) provides visualization and accuracy assessment tools for the output of the batch processing API. A sample output for the Snapshot Serengeti data when using ground-truth annotations can be seen [here](http://dolphinvm.westus2.cloudapp.azure.com/data/snapshot_serengeti/serengeti_val_detections_from_pkl_MDv1_20190528_w_classifications_eval/).
-
-
-## Integration with other tools
-
-The [integration](integration) folder contains guidelines and postprocessing scripts for using the output of our API in other applications.

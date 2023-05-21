@@ -14,6 +14,10 @@ A [standalone application](https://github.com/agentmorris/MegaDetector/tree/mast
 
 [Python tools](digiKam/README.md) (which can be run with a GUI) to transfer MegaDetector results from our .json results format into XMP image metadata, specifically for use with[digiKam](https://www.digikam.org/).
 
+### The other 999999 tools in the universe
+
+Although most users read MegaDetector results directly into Timelapse, lots of users working with other systems run MegaDetector, then use, for example, [separate_detections_into_folders.py](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/postprocessing/separate_detections_into_folders.py) to move blank, human, and animal images into separate folders, where they may be processed differently.  For example, many users upload the animals to a citizen science platform for volunteer review, have internal staff review the human images, and do limited additional processing with the blank images.
+
 ### Data preparation
 
 For any of these use cases, you may also want to check out our [Camera Trap JSON Manager App](https://github.com/agentmorris/MegaDetector/blob/master/api/batch_processing/postprocessing/CameraTrapJsonManagerApp.md), which can help you split/modify our .json results files to break into smaller projects, adjust relative paths, etc.
