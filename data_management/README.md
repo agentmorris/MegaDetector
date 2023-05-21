@@ -89,7 +89,17 @@ Whenever possible, the category ID 0 is associated with a class called "empty", 
 
 # Contents
 
-This directory is organized into the following subdirectories...
+## Scripts in this folder
+
+* [cct_json_utils.py](cct_json_utils.py) contains utilities for working with COCO Camera Traps .json databases
+* [cct_to_wi.py](cct_to_wi.py) converts a COCO Camera Traps .json file to the [Wildlife Insights batch upload format](https://github.com/ConservationInternational/Wildlife-Insights----Data-Migration)
+* [coco_to_yolo.py](coco_to_yolo.py) converts a COCO-formatted dataset to a YOLO-formatted dataset.
+* [generate_crops_from_cct.py](generate_crops_from_cct.py) creates a cropped image for each bounding box in a CCT .json file
+* [get_image_sizes.py](get_image_sizes.py) retrieves the image size for every image in a json-formatted list of filenames
+* [read_exif.py](read_exif.py) reads EXIF/IPTC/XMP fields from all images in a folder, writing all that metadata to .json/.csv
+* [remove_exif.py](remove_exif.py) removes EXIF/IPTC/XMP metadata from a folder of images
+* [yolo_output_to_md_output.py](yolo_output_to_md_output.py) converts the output of YOLOv5's detect.py and val.py to the MD batch output format
+* [yolo_to_coco.py](yolo_to_coco.py) converts a YOLO-formatted dataset to a COCO-formatted dataset.  Supports flat folders only.
 
 ## annotations
 
@@ -97,16 +107,16 @@ Code for creating new bounding box annotation tasks and converting annotations t
 
 ## databases
 
-Miscellaneous tools for manipulating COCO Camera Traps .json files.  Of particular note is `sanity_check_json_db.py`, which validates that a CCT database is well-formatted, optionally checking image existence and size.
+Miscellaneous tools for manipulating COCO Camera Traps .json files.  Of particular note is `integrity_check_json_db.py`, which validates that a CCT database is well-formatted, optionally checking image existence and size.
+
+## lila
+
+Scripts for preparing data for upload to [LILA](https://lila.science), and working with LILA index files.
 
 ## importers
 
 Code for converting frequently-used metadata formats (or sometimes one-off data sets) to COCO Camera Traps .json files.
 
-## megadb
+# Gratuitous animal picture
 
-Code for querying and updating MegaDB. (obsolete)
-
-## tfrecords
-
-Code for generating tfrecords from COCO Camera Traps .json files.  This directory is based on the [Visipedia tfrecords repo](https://github.com/visipedia/tfrecords). (obsolete)
+![pheasant in camera trap](../images/pheasant_web.jpg)<br/>Image credit Saola Working Group, from the [SWG Camera Traps](https://lila.science/datasets/swg-camera-traps/) data set.

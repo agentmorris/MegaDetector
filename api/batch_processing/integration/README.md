@@ -4,7 +4,10 @@ This folder contains information about ways to use MegaDetector output files in 
 
 ### Timelapse2
 
-[Timelapse2](http://saul.cpsc.ucalgary.ca/timelapse/) can read the results produced by the [MegaDetector batch processing API](https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing) and/or [run_tf_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/master/detection/run_tf_detector_batch.py), as well as the species classification results produced by our [classification pipeline](https://github.com/agentmorris/MegaDetector/tree/master/classification).  For information about how to use this feature, see [timelapse.md](timelapse.md), but mostly see the section in the Timelapse manual called "Automatic Image Recognition".  If you're a Timelapse user, you may also want to check out our [guide to configuring Azure virtual machines](remote_desktop.md) to run Timelapse in the cloud, which can make it easier to split annotation workloads across your team.
+[Timelapse2](http://saul.cpsc.ucalgary.ca/timelapse/) can read the results produced by the [MegaDetector batch processing API](https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing) and/or [run_tf_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/master/detection/run_tf_detector_batch.py), as well as the species classification results produced by our [classification pipeline](https://github.com/agentmorris/MegaDetector/tree/master/classification).  This is how most users work with MegaDetector results.  For information about how to work with MegaDetector results in Timelapse, see [timelapse.md](timelapse.md), but mostly see the [Timelapse Image Recognition Guide](https://saul.cpsc.ucalgary.ca/timelapse/pmwiki.php?n=Main.ImageRecognition).
+
+<img src="../../../images/recognitionInTimelapse.jpg" width="500px;">
+
 
 ### eMammal
 
@@ -12,7 +15,7 @@ A [standalone application](https://github.com/agentmorris/MegaDetector/tree/mast
 
 ### digiKam
 
-[Python tools](digiKam/README.md) (which can be run with a GUI) to transfer MegaDetector results from our .json results format into XMP image metadata, specifically for use with[digiKam](https://www.digikam.org/).
+[Python tools](digiKam/README.md) (which can be run with a GUI) to transfer MegaDetector results from our .json results format into XMP image metadata, specifically for use with [digiKam](https://www.digikam.org/).
 
 ### The other 999999 tools in the universe
 

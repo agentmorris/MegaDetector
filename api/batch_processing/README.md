@@ -1,8 +1,8 @@
 # MegaDetector batch processing API
 
-Though most users run MegaDetector locally, we also offer an open-source reference implementation for a an API that processes a large quantity of camera trap images, to support  a variety of online scenarios. If you are interested in setting up an endpoint to process very small numbers of images for real-time applications (e.g. for anti-poaching applications), see the source for our [real-time API](https://github.com/agentmorris/MegaDetector/tree/main/api/synchronous).
+Though most users run MegaDetector locally, we also provide a reference implementation for a an API that processes a large quantity of camera trap images.  This API is no longer in widespread use, but the output [format](#megadetector-batch-output-format) used by this API is still the format used for MegaDetector inference (particularly by [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_detector_batch.py)), so the postprocessing tools in this folder are still compatible with MegaDetector output.
 
-This API is no longer in widespread use, but the output [format](#megadetector-batch-output-format) used by this API is still the format used for MegaDetector inference (particularly by [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_detector_batch.py)), so the postprocessing tools in this folder are still compatible with MegaDetector output.
+If you are interested in setting up an endpoint to process very small numbers of images for real-time applications (e.g. for anti-poaching applications), see the [real-time API](https://github.com/agentmorris/MegaDetector/tree/main/api/synchronous) folder.
 
 
 ## Post-processing tools

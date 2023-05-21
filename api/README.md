@@ -14,6 +14,7 @@ This API runs MegaDetector on lots of images (typically millions) and distribute
 
 The [batch_processing](batch_processing) folder also contains lots of postprocessing scripts (results preview, format conversion, etc.) that were originally used with batch API output, but are now used almost exclusively with local inference output (from [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_detector_batch.py)), which uses the same output format.
 
+
 ### Gratuitous camera trap picture
 
 ![cat in camera trap](../images/orinoquia-thumb-web.jpg)<br/>Image credit University of Minnesota, from the [Orinoquía Camera Traps](http://lila.science/datasets/orinoquia-camera-traps/) data set.

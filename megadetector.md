@@ -473,16 +473,15 @@ So, if you find yourself keeping track of lots of steps like this to manage larg
  
 ## Is there a GUI?
 
-Not exactly... most of our users either use our Python tools to run MegaDetector or have us run MegaDetector for them (see [this page](collaborations.md) for more information about that), then most of those users use [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/) to use their MegaDetector results in an image review workflow.
+Many of our users either use our Python tools to run MegaDetector or have us run MegaDetector for them (see [this page](collaborations.md) for more information about that), then most of those users use [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/) to use their MegaDetector results in an image review workflow.
 
-But we recognize that Python tools can be a bit daunting, so we're excited that a variety of tools allow you to run MegaDetector in a GUI.  We're interested in users' perspectives on all of these tools, so if you find them useful - or if you know of others - [let us know](mailto:cameratraps@lila.science)!
+But we recognize that Python tools can be a bit daunting, so we're excited that a variety of tools allow you to run MegaDetector in a GUI have emerged from the community.  We're interested in users' perspectives on all of these tools, so if you find them useful - or if you know of others - [let us know](mailto:cameratraps@lila.science), and thank those developers!
 
-### Tools for running MegaDetector locally
+### GUI tools for running MegaDetector locally
 
 * [EcoAssist](https://github.com/PetervanLunteren/EcoAssist) is a GUI-based tool for running MegaDetector (supports MDv5) and running some postprocessing functions (e.g. folder separation)
 * [CamTrap Detector](https://github.com/bencevans/camtrap-detector) is a GUI-based tool for running MegaDetector (supports MDv5)
 * [MegaDetector-GUI](https://github.com/petargyurov/megadetector-gui) is a GUI-based tool for running MegaDetector in Windows environments (MDv4 only as far as we know)
-
 
  
 ### Interactive demos/APIs
@@ -491,7 +490,7 @@ But we recognize that Python tools can be a bit daunting, so we're excited that 
 * [Ben Evans](https://bencevans.io/) set up a [Web-based MegaDetector demo](https://replicate.com/bencevans/megadetector) at [replicate.com](https://replicate.com)
 
 
-### Thick-client tools that leverage MegaDetector 
+### Thick-client tools that leverage MegaDetector
 
 * [DeepFaune](https://www.deepfaune.cnrs.fr/en/)
 
@@ -526,9 +525,9 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 
 #### Maintained within this repo
 
-* [Batch processing API](https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing) that runs images on many GPUs at once on Azure.  There is no public instance of this API, but the code allows you to stand up your own endpoint.
 * [Colab notebook](https://github.com/agentmorris/MegaDetector/blob/master/detection/megadetector_colab.ipynb) ([open in Colab](https://colab.research.google.com/github/agentmorris/MegaDetector/blob/master/detection/megadetector_colab.ipynb)) for running MDv5 on images stored in Google Drive.
-* [Real-time MegaDetector API using Flask](https://github.com/agentmorris/MegaDetector/tree/main/api/synchronous).  This is deployed via Docker, so the Dockerfile provided for the real-time may be a good starting point for other Docker-based MegaDetector deployments as well.
+* [Real-time MegaDetector API using Flask](https://github.com/agentmorris/MegaDetector/tree/main/api/synchronous).  This is deployed via Docker, so the Dockerfile provided for the real-time API may be a good starting point for other Docker-based MegaDetector deployments as well.
+* [Batch processing API](https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing) that runs images on many GPUs at once on Azure.  There is no public instance of this API, but the code allows you to stand up your own endpoint.
  
 
 ## What if I just want to run non-MD scripts from this repo?
@@ -592,6 +591,7 @@ export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/ai4eutils"
 
 Also, the environment file we use here ([environment.yml](environment.yml)) doesn't get quite the same level of TLC that our MegaDetector environment does, so if anyone tries to run scripts that don't directly involve MegaDetector using this environment, and packages are missing, [let us know](mailto:cameratraps@lila.science).
 
+
 ## How do I use the results?
 
 See the ["How do people use MegaDetector results?"](https://github.com/agentmorris/MegaDetector/blob/main/collaborations.md#how-people-use-megadetector-results) section of our "getting started" page.
@@ -626,7 +626,7 @@ P.S. Really, don't trust results from one ecosystem and assume they will hold in
 
 ## What is MegaDetector bad at?
 
-While MegaDetector works well in a variety of terrestrial ecosystems, it's not perfect, and we can't stress enough how important it us to test MegaDetector on your own data before trusting it.  We can help you do that; [email us](mailto:cameratraps@lila.science) if you have questions about how to evaluate MegaDetector on your own data, even if you don't have images you've already reviewed.
+While MegaDetector works well in a variety of terrestrial ecosystems, it's not perfect, and we can't stress enough how important it is to test MegaDetector on your own data before trusting it.  We can help you do that; [email us](mailto:cameratraps@lila.science) if you have questions about how to evaluate MegaDetector on your own data, even if you don't have images you've already reviewed.
 
 But really, we'll answer the question... MegaDetector v5's biggest challenges are with reptiles.  This is an area where accuracy has dramatically improved since MDv4, but it's still the case that reptiles are under-represented in camera trap data, and an AI model is only as good as its training data.  That doesn't mean MDv5 doesn't support reptiles; sometimes it does amazing on reptile-heavy datasets.  But sometimes it drives you bonkers by missing obvious reptiles.
 

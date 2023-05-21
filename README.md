@@ -203,3 +203,10 @@ You can also chat with us and the broader camera trap AI community on the [AI fo
 This repository is licensed with the [MIT license](https://opensource.org/license/mit/).
 
 Code written on or before April 28, 2023 is [copyright Microsoft](https://github.com/Microsoft/dotnet/blob/main/LICENSE).
+
+
+# Contributing
+
+This project welcomes contributions, as pull requests, issues, or suggestions by [email](mailto:cameratraps@lila.science).  We have a [list](https://github.com/agentmorris/MegaDetector/issues/84) of issues that we're hoping to address, many of which would be good starting points for new contributors.  We also depend on other open-source tools that help users run MegaDetector (e.g. [EcoAssist](https://github.com/PetervanLunteren/EcoAssist) and [CamTrap Detector](https://github.com/bencevans/camtrap-detector)) and work with MegaDetector results (e.g. [Timelapse](https://github.com/saulgreenberg/Timelapse)); particularly if you are looking to get involved in GUI development, reach out to the developers of those tools as well!
+
+If you are interesting in getting involved in the conservation technology space, and MegaDetector just happens to be the first page you landed on, and none of our open issues are getting you fired up, don't fret!  Head over to the [WILDLABS discussion forums](https://wildlabs.net/discussions) and let the community know you're a developer looking to get involved.  Someone needs your help!
