@@ -1,3 +1,5 @@
+# MegaDetector User Guide
+
 ## Table of contents
 
 1. [MegaDetector overview](#megadetector-overview)
@@ -28,7 +30,7 @@ Conservation biologists invest a huge amount of time reviewing camera trap image
 
 To this end, this page hosts a model we've trained - called "MegaDetector" - to detect animals, people, and vehicles in camera trap images.  It does not identify animals to the species level, it just finds them.  
 
-This page is about the technical elements of MegaDetector; if you are an ecologist looking to use MegaDetector, you may prefer to start at our ["Getting started with MegaDetector"](collaborations.md) page.
+This page guides you through the process of working with MegaDetector; if you are an ecologist looking to learn more about MegaDetector before diving in, you may prefer to start at our ["Getting started with MegaDetector"](collaborations.md) page.
 
 
 ## Our ask to MegaDetector users

@@ -30,7 +30,7 @@ MegaDetector was initially developed by the [Microsoft AI for Earth program](htt
 
 ## What's MegaDetector all about?
 
-The main model that we train and run using tools in this repo is [MegaDetector](megadetector.md), an object detection model that identifies animals, people, and vehicles in camera trap images.  This model is trained on several hundred thousand bounding boxes from a variety of ecosystems.  Lots more information &ndash; including download links and instructions for running the model &ndash; is available on the [MegaDetector page](megadetector.md).
+[MegaDetector](megadetector.md) is an object detection model that identifies animals, people, and vehicles in camera trap images (which also makes it useful for eliminating blank images).  This model is trained on several hundred thousand bounding boxes from a variety of ecosystems.  Lots more information &ndash; including download links and instructions for running the model &ndash; is available on the [MegaDetector User Guide](megadetector.md).
 
 This repo does not host the data used to train MegaDetector, but we work with our collaborators to make data and annotations available whenever possible on [lila.science](http://lila.science).  See the [MegaDetector training data](megadetector.md#can-you-share-the-training-data) section to learn more about the data used to train MegaDetector.
 
@@ -43,7 +43,7 @@ Here's a &ldquo;teaser&rdquo; image of what MegaDetector output looks like:
 
 If you're just considering the use of AI in your workflow, and you aren't even sure yet whether MegaDetector would be useful to you, we recommend reading the "[getting started with MegaDetector](collaborations.md)" page.
 
-If you're already familiar with MegaDetector and you're ready to run it on your data (and you have some familiarity with running Python code), see the [MegaDetector README](megadetector.md) for instructions on downloading and running MegaDetector.
+If you're already familiar with MegaDetector and you're ready to run it on your data (and you have some familiarity with running Python code), see the [MegaDetector User Guide](megadetector.md) for instructions on downloading and running MegaDetector.
 
 MegaDetector is just one of many tools that aims to make conservation biologists more efficient with AI.  If you want to learn about other ways to use AI to accelerate camera trap workflows, check out our of the field, affectionately titled &ldquo;[Everything I know about machine learning and camera traps](https://agentmorris.github.io/camera-trap-ml-survey/)&rdquo;.
 

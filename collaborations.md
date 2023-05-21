@@ -8,6 +8,7 @@
 4. [Questions about specific camera trap use cases](#questions-about-specific-camera-trap-use-cases)<br/>
 5. [Learn more](#learn-more)<br/>
 
+
 ## Overview
 
 Conservation biologists invest a huge amount of time reviewing camera trap images, and &ndash; even worse &ndash; a huge fraction of that time is spent reviewing images they aren't interested in.  This primarily includes empty images, but for many projects, images of people and vehicles are also "noise", or at least need to be handled separately from animals.
@@ -23,6 +24,7 @@ Basically this page is the response we give when someone emails us and says "I h
 You can see a list of some of the organizations who have used our tools [here](https://github.com/agentmorris/MegaDetector/#who-is-using-megadetector).
 
 If you are looking for a more technical description of our MegaDetector model, see [this page](megadetector.md).
+
 
 ## How people run MegaDetector
 
@@ -93,6 +95,7 @@ The remaining questions are only relevant to questions about training a custom m
 
 ## Learn more
 
+* Ready to get started with MegaDetector?  Head over to the [MegaDetector User Guide](megadetector.md).
 * We maintain a literature survey on "[everything we know about machine learning for camera traps](https://github.com/agentmorris/camera-trap-ml-survey)".
 * We maintain a repository of public, labeled camera trap data to facilitate training new models (the largest such repository that we're aware of) at [lila.science](http://lila.science/datasets).
 * Our camera trap work is part of our larger efforts in [using machine learning for biodiversity monitoring](http://aka.ms/biodiversitysurveys).
