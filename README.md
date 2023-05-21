@@ -203,6 +203,8 @@ You can also chat with us and the broader camera trap AI community on the [AI fo
 
 ![Bird flying above water](images/nacti.jpg)<br/>Image credit USDA, from the [NACTI](http://lila.science/datasets/nacti) data set.
 
+You will find lots more gratuitous camera trap pictures sprinkled about this repo.  It's like a scavenger hunt.
+
 
 ## License
 
