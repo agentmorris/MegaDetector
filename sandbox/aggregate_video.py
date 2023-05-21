@@ -10,7 +10,7 @@ import os
 import json
 from detection.process_video import ProcessVideoOptions
 from detection.video_utils import frames_to_video, video_to_frames
-from visualization import visualize_detector_output
+from md_visualization import visualize_detector_output
 
 video_file = os.path.expanduser('~/1_fps_20211216_101100.mp4')
 results_file_raw = os.path.expanduser('~/1_fps_20211216_101100.mp4.json')

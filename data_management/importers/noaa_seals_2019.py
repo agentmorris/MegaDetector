@@ -5,9 +5,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from md_utils import url_utils
-
-# from github.com/agentmorris/MegaDetector
-from visualization import visualization_utils
+from md_visualization import visualization_utils
 
 # A list of files in the lilablobssc container for this data set
 container_file_list = r'C:\temp\seals\seal_files.txt'

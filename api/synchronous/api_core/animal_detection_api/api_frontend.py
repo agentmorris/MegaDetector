@@ -21,7 +21,7 @@ from io import BytesIO
 from flask import Flask, Response, jsonify, make_response, request
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
-import visualization.visualization_utils as viz_utils
+import md_visualization.visualization_utils as vis_utils
 import config
 
 
@@ -197,7 +197,7 @@ def detect_sync():
                             
                             #image = Image.open(os.path.join(temp_direc, image_name))
                             image = open(f'{temp_direc}/{image_name}', "rb")
-                            image = viz_utils.load_image(image)
+                            image = vis_utils.load_image(image)
                             width, height = image.size
 
                             _detections = []
@@ -208,7 +208,7 @@ def detect_sync():
                                 bbox = [x1,y1,width,height]
                                 _detections.append({'bbox': bbox, 'conf': d[4], 'category': d[5]}) 
                             
-                            viz_utils.render_detection_bounding_boxes(_detections, image, 
+                            vis_utils.render_detection_bounding_boxes(_detections, image, 
                             confidence_threshold=rendering_confidence_threshold)
                             
                             output_img_stream = BytesIO()

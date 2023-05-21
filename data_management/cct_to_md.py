@@ -148,7 +148,7 @@ if False:
     
     #%%
     
-    from visualization import visualize_detector_output
+    from md_visualization import visualize_detector_output
     
     visualize_detector_output.visualize_detector_output(
                               detector_output_path=output_filename,

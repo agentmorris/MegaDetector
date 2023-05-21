@@ -194,12 +194,12 @@ class PTDetector:
 if __name__ == '__main__':
     # for testing
 
-    import visualization.visualization_utils as viz_utils
+    import md_visualization.visualization_utils as vis_utils
 
     model_file = "<path to the model .pt file>"
     im_file = "test_images/test_images/island_conservation_camera_traps_palau_cam10a_cam10a12122018_palau_cam10a12122018_20181108_174532_rcnx1035.jpg"
 
     detector = PTDetector(model_file)
-    image = viz_utils.load_image(im_file)
+    image = vis_utils.load_image(im_file)
 
     res = detector.generate_detections_one_image(image, im_file, detection_threshold=0.00001)

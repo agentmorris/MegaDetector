@@ -46,8 +46,8 @@ import pandas as pd
 from sklearn.metrics import precision_recall_curve, confusion_matrix, average_precision_score
 from tqdm import tqdm
 
-import visualization.visualization_utils as vis_utils
-import visualization.plot_utils as plot_utils
+import md_visualization.visualization_utils as vis_utils
+import md_visualization.plot_utils as plot_utils
 
 from md_utils.write_html_image_list import write_html_image_list
 from md_utils import path_utils

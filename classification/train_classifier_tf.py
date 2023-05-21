@@ -33,7 +33,7 @@ import tqdm
 from classification.train_utils import (
     HeapItem, recall_from_confusion_matrix, add_to_heap, fig_to_img,
     imgs_with_confidences, load_dataset_csv, prefix_all_keys)
-from visualization import plot_utils
+from md_visualization import plot_utils
 
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE

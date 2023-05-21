@@ -13,7 +13,7 @@ import uuid
 import datetime
 from tqdm import tqdm
 
-from visualization import visualize_db
+from md_visualization import visualize_db
 from data_management.databases import sanity_check_json_db
 from md_utils.path_utils import find_images, split_path, insert_before_extension
 

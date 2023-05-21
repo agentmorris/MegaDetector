@@ -26,8 +26,8 @@ from md_utils import path_utils
 from api.batch_processing.postprocessing.load_api_results import load_api_results, write_api_results
 from api.batch_processing.postprocessing.postprocess_batch_results import is_sas_url
 from api.batch_processing.postprocessing.postprocess_batch_results import relative_sas_url
+from md_visualization.visualization_utils import open_image, render_detection_bounding_boxes
 
-from visualization.visualization_utils import open_image, render_detection_bounding_boxes
 import ct_utils
 
 # "PIL cannot read EXIF metainfo for the images"

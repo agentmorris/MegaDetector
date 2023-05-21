@@ -9,9 +9,9 @@ import io
 
 from tqdm import tqdm
 
-from md_utils.write_html_image_list import write_html_image_list
 from data_management.megadb.megadb_utils import MegadbUtils
-from visualization import visualization_utils as vis_utils
+from md_utils.write_html_image_list import write_html_image_list
+from md_visualization import visualization_utils as vis_utils
 
 
 def render_image_info(rendering, args):

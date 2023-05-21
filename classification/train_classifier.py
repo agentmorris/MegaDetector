@@ -38,7 +38,7 @@ from classification import efficientnet, evaluate_model
 from classification.train_utils import (
     HeapItem, recall_from_confusion_matrix, add_to_heap, fig_to_img,
     imgs_with_confidences, load_dataset_csv, prefix_all_keys)
-from visualization import plot_utils
+from md_visualization import plot_utils
 
 
 # mean/std values from https://pytorch.org/docs/stable/torchvision/models.html

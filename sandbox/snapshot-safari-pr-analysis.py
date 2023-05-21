@@ -303,7 +303,7 @@ for seq_id in sequence_id_to_images:
 #%% Precision/recall analysis
 
 import numpy as np
-import visualization.plot_utils as plot_utils
+import md_visualization.plot_utils as plot_utils
 import matplotlib.pyplot as plt
 
 from sklearn.metrics import precision_recall_curve, confusion_matrix

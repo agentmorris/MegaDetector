@@ -42,7 +42,7 @@ from zipfile import ZipFile
 import zipfile
 
 from md_utils import path_utils
-from visualization import visualize_db
+from md_visualization import visualize_db
 
 
 #%% Constants
@@ -717,7 +717,7 @@ with open(summary_info_filename,'w') as f:
 
 #%% Generate preview, sanity-check labels
     
-from visualization import visualize_db
+from md_visualization import visualize_db
 viz_options = visualize_db.DbVizOptions()
 viz_options.num_to_visualize = 5000
 viz_options.trim_to_images_with_bboxes = False

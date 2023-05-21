@@ -20,7 +20,7 @@ from typing import Container,Iterable,List
 
 from md_utils import path_utils
     
-from visualization import visualization_utils as vis_utils
+from md_visualization import visualization_utils as vis_utils
 
 
 #%% Path utilities

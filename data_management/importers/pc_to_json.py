@@ -20,8 +20,8 @@ import PIL
 
 from data_management.databases import sanity_check_json_db
 from data_management.cct_json_utils import IndexedJsonDb
-from visualization import visualize_db
 from data_management import cct_json_to_filename_json
+from md_visualization import visualize_db
 from md_utils import path_utils
 
 input_base = r"g:\20190715"

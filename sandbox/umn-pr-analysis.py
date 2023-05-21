@@ -16,7 +16,7 @@ from pathlib import Path
 
 from sklearn.metrics import precision_recall_curve, confusion_matrix
 from IPython.core.display import display
-import visualization.plot_utils as plot_utils
+import md_visualization.plot_utils as plot_utils
 import numpy as np
 import matplotlib.pyplot as plt
 

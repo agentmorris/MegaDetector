@@ -49,7 +49,7 @@ from tqdm import tqdm
 from md_utils import path_utils
 import ct_utils
 
-from visualization import visualization_utils as visutils
+from md_visualization import visualization_utils as vis_utils
 
 from detection.run_detector import CONF_DIGITS, COORD_DIGITS
 
@@ -136,7 +136,7 @@ def yolo_json_output_to_md_output(yolo_json_file, image_folder,
         
         image_full_path = os.path.join(image_folder,image_file_relative)
         try:
-            pil_im = visutils.open_image(image_full_path)
+            pil_im = vis_utils.open_image(image_full_path)
         except Exception as e:
             s = str(e).replace('\n',' ')
             print('Warning: error opening image {}: {}'.format(image_full_path,s))

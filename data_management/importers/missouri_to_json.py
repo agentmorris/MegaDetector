@@ -782,7 +782,7 @@ sortedCategories
 
 #%% Generate previews
 
-from visualization import visualize_db
+from md_visualization import visualize_db
 
 output_dir = os.path.join(baseDir,'preview')
 

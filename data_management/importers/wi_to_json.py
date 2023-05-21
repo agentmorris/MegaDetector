@@ -21,7 +21,7 @@ import copy
 
 from collections import defaultdict
 from tqdm import tqdm
-from visualization import visualize_db
+from md_visualization import visualize_db
 from data_management.databases import integrity_check_json_db
 
 organization_name = 'organization'

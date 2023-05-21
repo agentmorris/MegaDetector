@@ -26,8 +26,7 @@ import humanfriendly
 
 from md_utils.write_html_image_list import write_html_image_list
 
-# Assumes the MegaDetector repo root is on the path
-import visualization.visualization_utils as vis_utils
+import md_visualization.visualization_utils as vis_utils
 from data_management.cct_json_utils import IndexedJsonDb
 
 

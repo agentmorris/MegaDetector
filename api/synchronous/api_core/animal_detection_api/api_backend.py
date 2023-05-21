@@ -18,7 +18,7 @@ from io import BytesIO
 
 from detection.run_detector import load_detector, convert_to_tf_coords
 import config
-import visualization.visualization_utils as viz_utils 
+import md_visualization.visualization_utils as vis_utils 
 
 #%% Initialization
 
@@ -54,7 +54,7 @@ def detect_process():
                     image_path = f'{temp_direc}/{filename}'
                     print('Reading image from {}'.format(image_path))
                     image = open(image_path, 'rb')
-                    image = viz_utils.load_image(image)
+                    image = vis_utils.load_image(image)
 
                     start_time = time.time()
                     result = detector.generate_detections_one_image(image, filename, detection_threshold=config.DEFAULT_CONFIDENCE_THRESHOLD)

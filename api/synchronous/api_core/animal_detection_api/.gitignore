@@ -1,5 +1,5 @@
 data_management/annotations/
-visualization/
+md_visualization/
 run_tf_detector.py
 ct_utils.py
 allowed_keys.txt

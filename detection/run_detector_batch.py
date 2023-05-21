@@ -73,7 +73,7 @@ from detection.run_detector import ImagePathUtils,\
     get_detector_version_from_filename,\
     get_detector_metadata_from_version_string
 
-import visualization.visualization_utils as viz_utils
+import md_visualization.visualization_utils as vis_utils
 
 # Numpy FutureWarnings from tensorflow import
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -96,7 +96,7 @@ def producer_func(q,image_files):
         try:
             if verbose:
                 print('Loading image {}'.format(im_file)); sys.stdout.flush()
-            image = viz_utils.load_image(im_file)
+            image = vis_utils.load_image(im_file)
         except Exception as e:
             print('Producer process: image {} cannot be loaded. Exception: {}'.format(im_file, e))
             raise
@@ -279,7 +279,7 @@ def process_image(im_file, detector, confidence_threshold, image=None,
     
     if image is None:
         try:
-            image = viz_utils.load_image(im_file)
+            image = vis_utils.load_image(im_file)
         except Exception as e:
             if not quiet:
                 print('Image {} cannot be loaded. Exception: {}'.format(im_file, e))

@@ -848,7 +848,7 @@ if __name__ == "__main__":
     
     #%% Preview labels
             
-    from visualization import visualize_db
+    from md_visualization import visualize_db
     
     viz_options = visualize_db.DbVizOptions()
     viz_options.num_to_visualize = 1000
@@ -1130,7 +1130,7 @@ if __name__ == "__main__":
     
     #%% Preview labels (original files)
             
-    from visualization import visualize_db
+    from md_visualization import visualize_db
     
     viz_options = visualize_db.DbVizOptions()
     viz_options.num_to_visualize = 1000
@@ -1263,7 +1263,7 @@ if __name__ == "__main__":
     
     #%% Preview labels (final filenames)
     
-    from visualization import visualize_db
+    from md_visualization import visualize_db
     
     viz_options = visualize_db.DbVizOptions()
     viz_options.num_to_visualize = 1500

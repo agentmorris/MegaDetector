@@ -157,7 +157,7 @@ _, _, _ = sanity_check_json_db.sanity_check_json_db(output_json, options)
 
 #%% Preview labels
 
-from visualization import visualize_db
+from md_visualization import visualize_db
 
 viz_options = visualize_db.DbVizOptions()
 viz_options.num_to_visualize = 100
@@ -273,7 +273,7 @@ _, _, _ = sanity_check_json_db.sanity_check_json_db(output_json, options)
 
 #%% Preview labels
 
-from visualization import visualize_db
+from md_visualization import visualize_db
 
 viz_options = visualize_db.DbVizOptions()
 viz_options.num_to_visualize = 100

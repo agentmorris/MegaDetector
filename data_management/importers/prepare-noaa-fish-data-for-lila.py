@@ -319,7 +319,7 @@ assert 'unknown' not in location_to_count.keys()
 
 #%% Preview some images
 
-from visualization import visualize_db
+from md_visualization import visualize_db
 
 viz_options = visualize_db.DbVizOptions()
 viz_options.num_to_visualize = 10000

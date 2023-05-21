@@ -50,7 +50,7 @@ import warnings
 import humanfriendly
 from tqdm import tqdm
 
-import visualization.visualization_utils as viz_utils
+import md_visualization.visualization_utils as vis_utils
 
 # ignoring all "PIL cannot read EXIF metainfo for the images" warnings
 warnings.filterwarnings('ignore', '(Possibly )?corrupt EXIF data', UserWarning)
@@ -370,7 +370,7 @@ def load_and_run_detector(model_file, image_file_names, output_dir,
         try:
             start_time = time.time()
 
-            image = viz_utils.load_image(im_file)
+            image = vis_utils.load_image(im_file)
 
             elapsed = time.time() - start_time
             time_load.append(elapsed)
@@ -402,7 +402,7 @@ def load_and_run_detector(model_file, image_file_names, output_dir,
         try:
             if crop_images:
 
-                images_cropped = viz_utils.crop_image(result['detections'], image)
+                images_cropped = vis_utils.crop_image(result['detections'], image)
 
                 for i_crop, cropped_image in enumerate(images_cropped):
                     output_full_path = input_file_to_detection_file(im_file, i_crop)
@@ -411,7 +411,7 @@ def load_and_run_detector(model_file, image_file_names, output_dir,
             else:
 
                 # Image is modified in place
-                viz_utils.render_detection_bounding_boxes(result['detections'], image,
+                vis_utils.render_detection_bounding_boxes(result['detections'], image,
                             label_map=DEFAULT_DETECTOR_LABEL_MAP,
                             confidence_threshold=render_confidence_threshold,
                             thickness=box_thickness, expansion=box_expansion)

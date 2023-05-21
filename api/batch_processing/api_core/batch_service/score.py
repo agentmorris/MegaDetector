@@ -19,7 +19,8 @@ print('score.py, tf.test.is_gpu_available:', tf.test.is_gpu_available())
 PRINT_EVERY = 500
 
 
-#%% Helper functions *copied* from ct_utils.py and visualization/visualization_utils.py
+#%% Helper functions *copied* from ct_utils.py and md_visualization/visualization_utils.py
+
 IMAGE_ROTATIONS = {
     3: 180,
     6: 270,

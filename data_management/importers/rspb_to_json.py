@@ -20,7 +20,7 @@ import humanfriendly
 import PIL
 
 from data_management.databases import sanity_check_json_db
-from visualization import visualize_db
+from md_visualization import visualize_db
 
 # [location] is an obfuscation
 baseDir = r'e:\wildlife_data\rspb_gola_data'

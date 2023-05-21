@@ -172,6 +172,11 @@ Media used in documentation.
 Small utility functions for string manipulation, filename manipulation, downloading files from URLs, etc.  Mostly drawn from the [ai4eutils](https://github.com/microsoft/ai4eutils) repo.
 
 
+### md_visualization
+
+Shared tools for visualizing images with ground truth and/or predicted annotations.
+
+
 ### sandbox
 
 Random things that don't fit in any other directory, but aren't quite deprecated.  Mostly postprocessing scripts that were built for a single use case but could potentially be useful in the future.
@@ -185,11 +190,6 @@ Code to facilitate mapping data-set-specific categories (e.g. "lion", which mean
 ### test_images
 
 A handful of images from [LILA](https://lila.science) that facilitate testing and debugging.
-
-
-### visualization
-
-Shared tools for visualizing images with ground truth and/or predicted annotations.
 
 
 ## Contact

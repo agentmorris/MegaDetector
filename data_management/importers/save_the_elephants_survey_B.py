@@ -7,7 +7,7 @@
 
 #%% Constants and environment
 
-from visualization import visualize_db
+from md_visualization import visualize_db
 from data_management.databases import sanity_check_json_db
 import pandas as pd
 import os
@@ -300,7 +300,7 @@ sortedCategories, data = sanity_check_json_db.sanity_check_json_db(output_json_f
 
 #%% Preview labels
 
-from visualization import visualize_db
+from md_visualization import visualize_db
 from data_management.databases import sanity_check_json_db
 
 viz_options = visualize_db.DbVizOptions()

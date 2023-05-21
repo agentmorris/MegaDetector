@@ -18,7 +18,7 @@ import argparse
 import itertools
 
 from detection import run_detector_batch
-from visualization import visualize_detector_output
+from md_visualization import visualize_detector_output
 from ct_utils import args_to_object
 from detection.video_utils import video_to_frames
 from detection.video_utils import frames_to_video

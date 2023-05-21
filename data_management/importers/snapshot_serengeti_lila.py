@@ -979,10 +979,10 @@ for i_ann,ann in enumerate(bbox_data['annotations']):
 print('{} missing images in {} bounding boxes ({} found)'.format(len(missing_images), len(bbox_data['annotations']), len(found_images)))
 
 
-#%% Sanity-check a few files to make sure bounding boxes are still sensible
+#%% Integrity-check a few files to make sure bounding boxes are still sensible
 
 # import sys; sys.path.append(r'C:\git\MegaDetector')
-from visualization import visualize_db
+from md_visualization import visualize_db
 output_base = r'E:\snapshot_temp'
 
 viz_options = visualize_db.DbVizOptions()

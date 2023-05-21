@@ -87,7 +87,7 @@ from tqdm import tqdm
 from ct_utils import args_to_object
 from detection.run_detector import get_typical_confidence_threshold_from_results
 
-import visualization.visualization_utils as viz_utils
+import md_visualization.visualization_utils as vis_utils
 
 friendly_folder_names = {'animal':'animals','person':'people','vehicle':'vehicles'}
 
@@ -341,7 +341,7 @@ def process_detections(im,options):
     else:
         
         # Open the source image
-        pil_image = viz_utils.load_image(source_path)
+        pil_image = vis_utils.load_image(source_path)
         
         # Render bounding boxes for each category separately, beacuse
         # we allow different thresholds for each category.
@@ -367,7 +367,7 @@ def process_detections(im,options):
                     if 'classifications' in d:
                         del d['classifications']
                 
-            viz_utils.render_detection_bounding_boxes(
+            vis_utils.render_detection_bounding_boxes(
                 category_detections, 
                 pil_image,
                 label_map=options.detection_categories,                                                  

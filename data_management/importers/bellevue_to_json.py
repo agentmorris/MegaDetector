@@ -256,7 +256,7 @@ sorted_categories  = sanity_check_json_db.sanity_check_json_db(output_filename,o
 
 #%% Label previews
 
-from visualization import visualize_db
+from md_visualization import visualize_db
 
 viz_options = visualize_db.DbVizOptions()
 viz_options.num_to_visualize = None

@@ -152,7 +152,7 @@ if False:
 
     #%%
     
-    from visualization.visualize_db import DbVizOptions,process_images
+    from md_visualization.visualize_db import DbVizOptions,process_images
     
     db_path = cct_file
     output_dir = os.path.expanduser('~/tmp/noaa-fish-preview')
