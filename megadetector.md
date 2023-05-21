@@ -652,9 +652,7 @@ Can do!  See these [slides](http://dmorris.net/misc/cameratraps/ai4e_camera_trap
 
 Here's a "teaser" image of what detector output looks like:
 
-![alt text](images/detector_example.jpg "Red bounding box on fox")
-
-Image credit University of Washington.
+![alt text](images/detector_example.jpg "Red bounding box on fox")<br/>Image credit University of Washington.
 
 
 ## Mesmerizing video
