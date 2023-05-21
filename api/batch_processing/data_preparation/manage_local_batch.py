@@ -2101,7 +2101,8 @@ os.chmod(cmd_file, st.st_mode | stat.S_IEXEC)
 import os
 import nbformat as nbf
 
-input_py_file = os.path.expanduser('~/git/MegaDetector/api/batch_processing/data_preparation/manage_local_batch.py')
+input_py_file = os.path.expanduser(
+    '~/git/MegaDetector/api/batch_processing/data_preparation/manage_local_batch.py')
 assert os.path.isfile(input_py_file)
 output_ipynb_file = input_py_file.replace('.py','.ipynb')
 
