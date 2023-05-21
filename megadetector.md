@@ -452,7 +452,7 @@ python detection/run_detector_batch.py "$HOME/megadetector/md_v5a.0.0.pt" "/some
 
 ## OK, but is that how the MD devs run the model?
 
-Almost... we run a lot of MegaDetector on a lot of images, and in addition to just running the main "run_detector_batch" script described in the previous section, running a large batch of images also usually includes:
+Almost... we run a lot of MegaDetector on a lot of images, and in addition to running the main "run_detector_batch" script described in the previous section, running a large batch of images also usually includes:
 
 * Dividing images into chunks for running on multiple GPUs
 * Making sure that the number of failed/corrupted images was reasonable
@@ -559,7 +559,9 @@ Bonus... this paper is not a formal review, but includes a thorough case study a
 
 If you know of other validation studies that have been published, [let us know](mailto:cameratraps@lila.science)!
 
-P.S. Really, don't trust results from one ecosystem and assume they will hold in another. [This paper](https://openaccess.thecvf.com/content_ECCV_2018/html/Beery_Recognition_in_Terra_ECCV_2018_paper.html) is about just how catastrophically bad AI models for camera trap images <i>can</i> fail to generalize to new locations.  We hope that's not the case with MegaDetector!  But don't assume.
+### One more reminder about evaluations on someone else's data
+
+Really, don't trust results from one ecosystem and assume they will hold in another. [This paper](https://openaccess.thecvf.com/content_ECCV_2018/html/Beery_Recognition_in_Terra_ECCV_2018_paper.html) is about just how catastrophically bad AI models for camera trap images <i>can</i> fail to generalize to new locations.  We hope that's not the case with MegaDetector!  But don't assume.
 
 
 ## What is MegaDetector bad at?
@@ -576,6 +578,11 @@ tl;dr: always test on your own data!
 ## Citing MegaDetector
 
 If you use MegaDetector in a publication, please cite:
+
+Beery S, Morris D, Yang S. Efficient pipeline for camera trap image review. arXiv preprint arXiv:1907.06772. 2019 Jul 15.
+
+BibTex format:
+
 ```BibTeX
 @article{beery2019efficient,
   title={Efficient Pipeline for Camera Trap Image Review},
@@ -666,6 +673,7 @@ Anaconda can be pretty slow, sometimes taking days to solve the environment even
 If you want to run scripts from this repo, but you won't actually be running MegaDetector, you can install a lighter-weight version of the same environment by doing the following:
 
 1. Install [Anaconda](https://www.anaconda.com/products/individual).  Anaconda is an environment for installing and running Python stuff.
+
 2. Install git. If you're not familiar with git, we recommend installing git from git-scm ([Windows link](https://git-scm.com/download/win)) ([Mac link](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)).
 
 The remaining steps will assume you are running at an Anaconda prompt.  You will know you are at an Anaconda prompt (as opposed to run-of-the-mill command prompt) if you see an environment name in parentheses before your current directory, like this:
@@ -686,7 +694,7 @@ cd c:\git
 git clone https://github.com/agentmorris/MegaDetector
 cd c:\git\MegaDetector
 conda env create --file environment.yml
-conda activate cameratraps-detector
+conda activate cameratraps
 set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector
 ```
 
@@ -697,8 +705,8 @@ mkdir ~/git
 cd ~/git
 git clone https://github.com/agentmorris/MegaDetector
 cd ~/git/MegaDetector
-conda env create --file environment-detector-mac.yml
-conda activate cameratraps-detector
+conda env create --file environment.yml
+conda activate cameratraps
 export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector"
 ```
 
@@ -706,7 +714,7 @@ export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector"
 
 ```batch
 cd c:\git\MegaDetector
-conda activate cameratraps-detector
+conda activate cameratraps
 set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector
 ```
 
@@ -714,7 +722,7 @@ set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector
 
 ```batch
 cd ~/git/MegaDetector
-conda activate cameratraps-detector
+conda activate cameratraps
 export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector"
 ```
 
