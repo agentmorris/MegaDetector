@@ -1,4 +1,4 @@
-name: cameratraps-detector-retest
+name: cameratraps-detector
 
 channels:
   - conda-forge
