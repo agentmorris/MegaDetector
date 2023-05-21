@@ -2,9 +2,9 @@
 
 This folder contains information about ways to use MegaDetector output files in various workflows.  Specifically...
 
-### Timelapse2
+### Timelapse
 
-[Timelapse2](http://saul.cpsc.ucalgary.ca/timelapse/) can read the results produced by the [MegaDetector batch processing API](https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing) and/or [run_tf_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/master/detection/run_tf_detector_batch.py), as well as the species classification results produced by our [classification pipeline](https://github.com/agentmorris/MegaDetector/tree/master/classification).  This is how most users work with MegaDetector results.  For information about how to work with MegaDetector results in Timelapse, see [timelapse.md](timelapse.md), but mostly see the [Timelapse Image Recognition Guide](https://saul.cpsc.ucalgary.ca/timelapse/pmwiki.php?n=Main.ImageRecognition).
+[Timelapse](http://saul.cpsc.ucalgary.ca/timelapse/) can read the results produced by the [MegaDetector batch processing API](https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing) and/or [run_tf_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/master/detection/run_tf_detector_batch.py), as well as the species classification results produced by our [classification pipeline](https://github.com/agentmorris/MegaDetector/tree/master/classification).  This is how most users work with MegaDetector results.  For information about how to work with MegaDetector results in Timelapse, see [timelapse.md](timelapse.md), but mostly see the [Timelapse Image Recognition Guide](https://saul.cpsc.ucalgary.ca/timelapse/pmwiki.php?n=Main.ImageRecognition).
 
 <img src="../../../images/recognitionInTimelapse.jpg" width="500px;">
 
