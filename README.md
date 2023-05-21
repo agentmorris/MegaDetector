@@ -6,7 +6,7 @@
 4. [Who is using MegaDetector?](#who-is-using-megadetector)
 5. [Repo contents](#repo-contents)
 6. [Contact](#contact)
-7. [Gratuitous pretty camera trap picture](#gratuitous-pretty-camera-trap-picture)
+7. [Gratuitous camera trap picture](#gratuitous-camera-trap-picture)
 
 
 # Repo overview
@@ -193,7 +193,7 @@ For questions about this repo, contact [cameratraps@lila.science](mailto:camerat
 You can also chat with us and the broader camera trap AI community on the [AI for Conservation forum at WILDLABS](https://wildlabs.net/groups/ai-conservation) or the [AI for Conservation Slack group](https://aiforconservation.slack.com).
 
 
-# Gratuitous pretty camera trap picture
+# Gratuitous camera trap picture
 
 ![Bird flying above water](images/nacti.jpg)<br/>Image credit USDA, from the [NACTI](http://lila.science/datasets/nacti) data set.
 
