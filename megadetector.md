@@ -18,8 +18,7 @@
 14. [Pretty picture](#pretty-picture)
 15. [Mesmerizing video](#mesmerizing-video)
 16. [Can you share the training data?](#can-you-share-the-training-data)
-17. [Anaconda takes forever to solve; do I have to use conda?](#anaconda-takes-forever-to-solve-do-i-have-to-use-conda)
-18. [What if I just want to run non-MD scripts from this repo?](#what-if-i-just-want-to-run-non-md-scripts-from-this-repo)
+17. [What if I just want to run non-MD scripts from this repo?](#what-if-i-just-want-to-run-non-md-scripts-from-this-repo)
 
 
 ## MegaDetector overview
@@ -178,13 +177,22 @@ Also see the <a href="#is-there-a-gui">&ldquo;Is there a GUI?&rdquo;</a> section
 
 The remainder of this section provides instructions for running our "official" scripts, including installing all the necessary Python dependencies.
 
-### 1. Install prerequisites: Anaconda, Git, and NVIDIA stuff
+### 1. Install prerequisites: Mambaforge, Git, and NVIDIA stuff
 
-All of the instructions that follow assume you have installed [Anaconda](https://www.anaconda.com/products/individual).  Anaconda is an environment for installing and running Python stuff.
+#### Install Mambaforge
 
-The instructions will also assume you have git installed.  If you're not familiar with git, and you are on a Windows machine, we recommend installing [Git for Windows](https://git-scm.com/download/win).
+All of the instructions that follow assume you have installed [Mambaforge](https://github.com/conda-forge/miniforge#mambaforge).  Mambaforge is an environment for installing and running Python stuff.  For purposes of this documentation, "Miniforge" and "Mambaforge" are the same thing.
 
-The instructions will assume you are running at an Anaconda prompt.  You will know you are at an Anaconda prompt (as opposed to run-of-the-mill command prompt) if you see an environment name in parentheses before your current directory, like this:
+If you know what you're doing, or you already have Anaconda installed, you can use either Anaconda or Mambaforge; the environment files work with both.  But our experiences have been best with Mambaforge, so, if you just want to get up and running, start by installing Mambaforge.  If you're using Anaconda and you're staring at a "solving environment" prompt that's been running for like a day, consider switching to Mambaforge.
+
+
+##### Install Mambaforge on Windows
+
+To install Mambaforge on Windows, just download and run the [Mambaforge installer](https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Windows-x86_64.exe).  If you get a "Windows protected your PC" warning, you might have to click "More info" and "run anyway". You can leave everything at the default value during installation.
+
+All the instructions below will assume you are running at the Mambaforge command prompt, which is basically just like a regular command prompt, but it has access to all the Python stuff.  On Windows, once you've installed Mambaforge, you can start your Mamba command prompt by launching the shortcut called "Miniforge prompt" (I know, it's confusing that you installed "Mambaforge", and the prompt is called "Miniforge prompt", but I promise they're the same thing).
+
+You will know you are at a Mambaforge prompt (as opposed to run-of-the-mill command prompt) if you see an environment name in parentheses before your current directory, like this:
 
 <img src="images/anaconda-prompt-base.jpg" style="margin-left:25px;">
 
@@ -192,9 +200,20 @@ The instructions will assume you are running at an Anaconda prompt.  You will kn
 
 <img src="images/anaconda-prompt-ct.jpg" style="margin-left:25px;">
 
-On Windows, when you install Anaconda, you will actually get two different Anaconda command prompts; in your start menu, they will be called "Anaconda Prompt (anaconda3)" and "Anaconda Powershell Prompt (anaconda3)".  These instructions assume you are using the "regular" Anaconda prompt, <b>not</b> the Powershell prompt.
 
-If you have a deep-learning-friendly GPU, you will also need to have a recent [NVIDIA driver](https://www.nvidia.com/download/index.aspx) installed. 
+##### Install Mambaforge on Linux/Mac
+
+The [list of Mambaforge installers](https://github.com/conda-forge/miniforge#mambaforge) has links for Linux and OSX.  If you're installing on a Mac, be sure to download the right installer: "x86_64" if you are on an Intel Mac, "arm64 (Apple Silicon)" if you are on an M1/M2 Mac with Apple silicon.  In all of these cases, you will be downloading a .sh file; after you run it to install Mambaforge, you should see an environment name in parentheses just like in the images above.
+
+
+#### Install git (if you're on Windows, otherwise you probably already have it)
+
+The instructions will also assume you have git installed.  If you're not familiar with git, and you are on a Windows machine, we recommend installing [Git for Windows](https://git-scm.com/download/win).  If you're on a Linux machine or a Mac, there's like a 99.9% chance you already have git installed.
+
+
+#### Install Nvidia stuff (if you have an Nvidia GPU, otherwise you don't need it)
+
+If you have a deep-learning-friendly GPU, you will also need to have a recent [NVIDIA driver](https://www.nvidia.com/download/index.aspx) installed.  If you don't have an Nvidia GPU, it's OK,  you can still run MegaDetector on your CPU, and you don't need to install any special drivers.
 
 
 ### 2. Download the MegaDetector model(s)
@@ -211,7 +230,7 @@ You will need the contents of two git repos to make everything work: this repo a
 
 #### Windows instructions for git/Python stuff
 
-The first time you set all of this up, open an Anaconda Prompt, and run:
+The first time you set all of this up, open your Mambaforge prompt, and run:
 
 ```batch
 mkdir c:\git
@@ -219,24 +238,24 @@ cd c:\git
 git clone https://github.com/agentmorris/MegaDetector
 git clone https://github.com/ecologize/yolov5/
 cd c:\git\MegaDetector
-conda env create --file environment-detector.yml
-conda activate cameratraps-detector
+mamba env create --file environment-detector.yml
+mamba activate cameratraps-detector
 set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector;c:\git\yolov5
 ```
 
 If you want to use MDv4, there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
 
 ```batch
-conda activate cameratraps-detector
+mamba activate cameratraps-detector
 pip install tensorflow
 ```
 
 <a name="windows-new-shell"></a>
-Your environment is set up now!  In the future, when you open an Anaconda prompt, you only need to run:
+Your environment is set up now!  In the future, when you open your Mambaforge prompt, you only need to run:
 
 ```batch
 cd c:\git\MegaDetector
-conda activate cameratraps-detector
+mamba activate cameratraps-detector
 set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector;c:\git\yolov5
 ```
 
@@ -245,7 +264,7 @@ Pro tip: if you have administrative access to your machine, rather than using th
 
 #### Linux instructions for git/Python stuff
 
-If you have installed Anaconda on Linux, you are probably always at an Anaconda prompt; i.e., you should see "(base)" at your command prompt.  Assuming you see that, the first time you set all of this up, and run:
+If you have installed Mambaforge on Linux, you are probably always at an Mambaforge prompt; i.e., you should see "(base)" at your command prompt.  Assuming you see that, the first time you set all of this up, and run:
 
 ```batch
 mkdir ~/git
@@ -253,15 +272,15 @@ cd ~/git
 git clone https://github.com/ecologize/yolov5/
 git clone https://github.com/agentmorris/MegaDetector
 cd ~/git/MegaDetector
-conda env create --file environment-detector.yml
-conda activate cameratraps-detector
+mamba env create --file environment-detector.yml
+mamba activate cameratraps-detector
 export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
 If you want to use MDv4, there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
 
 ```batch
-conda activate cameratraps-detector
+mamba activate cameratraps-detector
 pip install tensorflow
 ```
 
@@ -270,7 +289,7 @@ Your environment is set up now!  In the future, whenever you start a new shell, 
 
 ```batch
 cd ~/git/MegaDetector
-conda activate cameratraps-detector
+mamba activate cameratraps-detector
 export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
@@ -281,7 +300,7 @@ Pro tip: rather than updating your PYTHONPATH every time you start a new shell, 
 
 These are instructions for <i>Intel</i> Macs; see <a href="#regarding-m1-mac-support">below</a> for a note on M1 Mac support.
 
-If you have installed Anaconda on Linux, you are probably always at an Anaconda prompt; i.e., you should see "(base)" at your command prompt.  Assuming you see that, the first time you set all of this up, and run:
+If you have installed Mambaforge on Linux, you are probably always at an Mambaforge prompt; i.e., you should see "(base)" at your command prompt.  Assuming you see that, the first time you set all of this up, and run:
 
 ```batch
 mkdir ~/git
@@ -289,15 +308,15 @@ cd ~/git
 git clone https://github.com/ecologize/yolov5/
 git clone https://github.com/agentmorris/MegaDetector
 cd ~/git/MegaDetector
-conda env create --file environment-detector-mac.yml
-conda activate cameratraps-detector
+mamba env create --file environment-detector-mac.yml
+mamba activate cameratraps-detector
 export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
 If you want to use MDv4, there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
 
 ```batch
-conda activate cameratraps-detector
+mamba activate cameratraps-detector
 pip install tensorflow
 ```
 
@@ -306,7 +325,7 @@ Your environment is set up now!  In the future, whenever you start a new shell, 
 
 ```batch
 cd ~/git/MegaDetector
-conda activate cameratraps-detector
+mamba activate cameratraps-detector
 export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
@@ -323,13 +342,13 @@ M1 Macs are not officially supported right now, but with a bit of work, you can 
 
 To test MegaDetector out on small sets of images and get super-satisfying visual output, we provide [run_detector.py](https://github.com/agentmorris/MegaDetector/blob/master/detection/run_detector.py), an example script for invoking this detector on new images.  This isn't how we recommend running lots of images through MegaDetector (see [run_detector_batch.py](#2-run_detector_batchpy) below for "real" usage), but it's a quick way to test things out.  [Let us know](mailto:cameratraps@lila.science) how it works on your images!
 
-The following examples assume you have an Anaconda prompt open, and have put things in the same directories we put things in the above instructions.  If you put things in different places, adjust these examples to match your folders, and most importantly, adjust these examples to point to your images.
+The following examples assume you have your Mambaforge prompt open, and have put things in the same directories we put things in the above instructions.  If you put things in different places, adjust these examples to match your folders, and most importantly, adjust these examples to point to your images.
 
-To use run_detector.py on Windows, when you open a new Anaconda prompt, don't forget to do this:
+To use run_detector.py on Windows, when you open a new Mambaforge prompt, don't forget to do this:
 
 ```batch
 cd c:\git\MegaDetector
-conda activate cameratraps-detector
+mamba activate cameratraps-detector
 set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector;c:\git\yolov5
 ```
 
@@ -362,11 +381,11 @@ You can see all the options for this script by running:
 python detection\run_detector.py
 ```
 
-To use this script on Linux/Mac, when you open a new Anaconda prompt, don't forget to do this:
+To use this script on Linux/Mac, when you open a new Mambaforge prompt, don't forget to do this:
  
 ```batch
 cd ~/git/MegaDetector
-conda activate cameratraps-detector
+mamba activate cameratraps-detector
 export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
@@ -382,11 +401,11 @@ Don't forget to change "some_image_file.jpg" to point to a real image on your co
 
 To apply this model to larger image sets on a single machine, we recommend a different script, [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/master/detection/run_detector_batch.py).  This outputs data in the same format as our [batch processing API](https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing), so you can leverage all of our post-processing tools.  The format that this script produces is also compatible with [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/).
 
-To use run_detector_batch.py on Windows, when you open a new Anaconda prompt, don't forget to do this:
+To use run_detector_batch.py on Windows, when you open a new Mambaforge prompt, don't forget to do this:
 
 ```batch
 cd c:\git\MegaDetector
-conda activate cameratraps-detector
+mamba activate cameratraps-detector
 set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector;c:\git\yolov5
 ```
 
@@ -435,11 +454,11 @@ If you have an Nvidia GPU and you see "GPU available: False", your GPU environme
 
 #### Slightly modified run_detector_batch.py instructions for Linux/Mac
 
-To use this script on Linux/Mac, when you open a new Anaconda prompt, don't forget to do this:
+To use this script on Linux/Mac, when you open a new Mambaforge prompt, don't forget to do this:
  
 ```batch
 cd ~/git/MegaDetector
-conda activate cameratraps-detector
+mamba activate cameratraps-detector
 export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
@@ -654,29 +673,15 @@ MegaDetector v5a was trained on all MDv5b training data, and new public data fro
 So if MegaDetector performs really well on those data sets, that's great, but it's a little bit cheating, because we haven't published the set of locations from those data sets that we use during training.
 
 
-## Anaconda takes forever to solve; do I have to use conda?
-
-Anaconda can be pretty slow, sometimes taking days to solve the environment even on a brand new PC.  It would be rocking the boat to completely switch our instructions away from Anaconda (yet), but... we've been experimenting with [Mamba](https://mamba.readthedocs.io/en/latest/) as an alternative to conda, and so far it's fantastic.  This will probably replace Anaconda in our default instructions soon.  But for now, it's still experimental.  If you want to try this, follow all the instructions above, except:
-
-* Instead of installing Anaconda, install [Mambaforge](https://github.com/conda-forge/miniforge#mambaforge).  We've tested with the links under the "Mambaforge" heading, not the links under the "Mambaforge-pypy3" heading.
-
-* On Windows, instead of starting the shortcut called "Anaconda Prompt", start the shortcut called "Miniforge prompt".  No, that's not a typo.  Yes, it would be less confusing if it were called "Mambaforge prompt".
-
-* Every time any of our instructions say "conda", use "mamba" instead.  E.g., instead of this:  
-`conda env create --file environment-detector.yml`  
-...do this:  
-`mamba env create --file environment-detector.yml`  
-
-
 ## What if I just want to run non-MD scripts from this repo?
 
 If you want to run scripts from this repo, but you won't actually be running MegaDetector, you can install a lighter-weight version of the same environment by doing the following:
 
-1. Install [Anaconda](https://www.anaconda.com/products/individual).  Anaconda is an environment for installing and running Python stuff.
+1. Install [Mambaforge](https://github.com/conda-forge/miniforge#mambaforge), an environment for installing and running Python stuff.  If you already have Anaconda installed, you can use that instead.
 
 2. Install git. If you're not familiar with git, we recommend installing git from git-scm ([Windows link](https://git-scm.com/download/win)) ([Mac link](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)).
 
-The remaining steps will assume you are running at an Anaconda prompt.  You will know you are at an Anaconda prompt (as opposed to run-of-the-mill command prompt) if you see an environment name in parentheses before your current directory, like this:
+The remaining steps will assume you are running at a Mambaforge prompt.  You will know you are at a Mambaforge prompt (as opposed to run-of-the-mill command prompt) if you see an environment name in parentheses before your current directory, like this:
 
 <img src="images/anaconda-prompt-base.jpg" style="margin-left:25px;">
 
@@ -684,17 +689,15 @@ The remaining steps will assume you are running at an Anaconda prompt.  You will
 
 <img src="images/anaconda-prompt-ct.jpg" style="margin-left:25px;">
 
-On Windows, when you install Anaconda, you will actually get two different Anaconda command prompts; in your start menu, they will be called "Anaconda Prompt (anaconda3)" and "Anaconda Powershell Prompt (anaconda3)".  These instructions assume you are using the "regular" Anaconda prompt, <b>not</b> the Powershell prompt.
-
-3. In an Anaconda prompt, run the following to create your environment (on Windows):
+3. In your Mambaforge prompt, run the following to create your environment (on Windows):
 
 ```batch
 mkdir c:\git
 cd c:\git
 git clone https://github.com/agentmorris/MegaDetector
 cd c:\git\MegaDetector
-conda env create --file environment.yml
-conda activate cameratraps
+mamba env create --file environment.yml
+mamba activate cameratraps
 set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector
 ```
 
@@ -705,8 +708,8 @@ mkdir ~/git
 cd ~/git
 git clone https://github.com/agentmorris/MegaDetector
 cd ~/git/MegaDetector
-conda env create --file environment.yml
-conda activate cameratraps
+mamba env create --file environment.yml
+mamba activate cameratraps
 export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector"
 ```
 
@@ -714,7 +717,7 @@ export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector"
 
 ```batch
 cd c:\git\MegaDetector
-conda activate cameratraps
+mamba activate cameratraps
 set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector
 ```
 
@@ -722,9 +725,8 @@ set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector
 
 ```batch
 cd ~/git/MegaDetector
-conda activate cameratraps
+mamba activate cameratraps
 export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector"
 ```
 
 Also, the environment file we're referring to in this section ([environment.yml](environment.yml), the one without all the MegaDetector stuff) doesn't get quite the same level of TLC that our MegaDetector environment does, so if anyone tries to run scripts that don't directly involve MegaDetector using this environment, and packages are missing, [let us know](mailto:cameratraps@lila.science).
-
