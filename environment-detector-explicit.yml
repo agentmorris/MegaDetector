@@ -14,14 +14,13 @@ dependencies:
   - matplotlib=3.7.1
   - opencv=4.5.5
   - requests=2.29.0
+  - pyqtree=1.0.0
+  - scikit-learn=1.2.2
 
-  # So we can run Jupyter in this environment
+  # So we can run Jupyter notebooks in this environment
   - nb_conda_kernels=2.3.1
   - ipykernel=6.23.0
   
-  # For running MegaDetector v4
-  # - tensorflow>=2.0  
-
   # For running MegaDetector v5
   - pandas=2.0.1
   - seaborn=0.12.2
@@ -31,3 +30,7 @@ dependencies:
   - conda-forge::cudatoolkit=11.3
   - conda-forge::cudnn=8.1
 
+  # For running MegaDetector v4
+  # - tensorflow>=2.0  
+
+  

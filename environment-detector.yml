@@ -15,8 +15,10 @@ dependencies:
   - matplotlib
   - opencv
   - requests
+  - pyqtree
+  - scikit-learn>=0.19.1
 
-  # So we can run Jupyter notebook this environment
+  # So we can run Jupyter notebooks in this environment
   - nb_conda_kernels
   - ipykernel
   

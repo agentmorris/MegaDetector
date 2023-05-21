@@ -15,17 +15,23 @@ dependencies:
 - matplotlib
 - pandas
 - requests
+- scikit-learn>=0.19.1
 
 # So we can run Jupyter in this environment
 - nb_conda_kernels
 - ipykernel
 
-# Dependencies not in the MD environment
-- azure-storage-blob
-- joblib
-- scikit-image>=0.13.1
-- scikit-learn>=0.19.1
-- jsonschema
-- unidecode
-- pyqtree
+# I don't see evidence this is used in the repo, keeping it here for posterity
+# - scikit-image>=0.13.1
+
+# Only used for remove_exif.py
+# - joblib 
+
+# Only necessary when interacting with Azure Blob Storage
+# - azure-storage-blob
+
+# Used a zillion years ago for MegaDB work
+# - jsonschema 
+# - unidecode
+
 
