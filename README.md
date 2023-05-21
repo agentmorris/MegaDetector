@@ -30,7 +30,7 @@ MegaDetector was initially developed by the [Microsoft AI for Earth program](htt
 
 ## What's MegaDetector all about?
 
-[MegaDetector](megadetector.md) is an object detection model that identifies animals, people, and vehicles in camera trap images (which also makes it useful for eliminating blank images).  This model is trained on several hundred thousand bounding boxes from a variety of ecosystems.  Lots more information &ndash; including download links and instructions for running the model &ndash; is available on the [MegaDetector User Guide](megadetector.md).
+[MegaDetector](megadetector.md) is an object detection model that identifies animals, people, and vehicles in camera trap images (which also makes it useful for eliminating blank images).  This model is trained on several hundred thousand bounding boxes from a variety of ecosystems.  Lots more information &ndash; including download links and instructions for running the model &ndash; is available in the [MegaDetector User Guide](megadetector.md).
 
 This repo does not host the data used to train MegaDetector, but we work with our collaborators to make data and annotations available whenever possible on [lila.science](http://lila.science).  See the [MegaDetector training data](megadetector.md#can-you-share-the-training-data) section to learn more about the data used to train MegaDetector.
 
@@ -169,7 +169,7 @@ Media used in documentation.
 
 ### md_utils
 
-Small utility functions for string manipulation, filename manipulation, downloading files from URLs, etc.  Mostly drawn from the [ai4eutils](https://github.com/microsoft/ai4eutils) repo.
+Small utility functions for string manipulation, filename manipulation, downloading files from URLs, etc.  Mostly adapted from the [ai4eutils](https://github.com/microsoft/ai4eutils) repo.
 
 
 ### md_visualization
@@ -184,7 +184,7 @@ Random things that don't fit in any other directory, but aren't quite deprecated
 
 ### taxonomy-mapping
 
-Code to facilitate mapping data-set-specific categories (e.g. "lion", which means very different things in Idaho vs. South Africa) to a standard taxonomy.
+Code to facilitate mapping data-set-specific category names (e.g. "lion", which means very different things in Idaho vs. South Africa) to a standard taxonomy.
 
 
 ### test_images
