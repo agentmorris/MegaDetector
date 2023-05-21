@@ -29,7 +29,7 @@
 
 # Overview
 
-This README describes how to train and run an animal "species" classifier. "Species" is in quotes, because the classifier can be trained to identify animals at arbitrary levels within the biological taxonomy of animals.
+This README describes how to train and run an animal "species" classifier for camera trap images. "Species" is in quotes, because the classifier can be trained to identify animals at arbitrary taxonomic levels.
 
 This guide is written for internal use at Microsoft AI for Earth. Certain services, such as MegaDB and various private repos are only accessible internally within Microsoft. However, this guide may still be of interest to more technical users of the AI for Earth Camera Trap services.
 
