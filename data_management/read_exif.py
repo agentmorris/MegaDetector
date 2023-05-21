@@ -21,8 +21,7 @@ from multiprocessing.pool import Pool as Pool
 from tqdm import tqdm
 from PIL import Image, ExifTags
 
-# From ai4eutils
-from path_utils import find_images
+from md_utils.path_utils import find_images
 
 from ct_utils import args_to_object
 

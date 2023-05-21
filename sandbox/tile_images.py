@@ -15,8 +15,7 @@ import os
 from PIL import Image
 from tqdm import tqdm
 
-# from ai4eutils
-import path_utils
+from md_utils import path_utils
 
 
 #%% Main function

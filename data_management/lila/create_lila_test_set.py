@@ -13,7 +13,6 @@ import random
 
 from data_management.lila.lila_common import read_lila_metadata, get_json_file_for_dataset
 
-# from ai4eutils
 from url_utils import download_url
 
 n_empty_images_per_dataset = 1

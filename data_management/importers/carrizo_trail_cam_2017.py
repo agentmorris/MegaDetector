@@ -17,7 +17,7 @@ from PIL import Image
 import numpy as np
 
 from tqdm import tqdm
-from path_utils import find_images
+from md_utils.path_utils import find_images
 
 input_base = r'Z:\Trail Cam Carrizo 2017'
 open_metadata_file = os.path.join(input_base, 'Carrizo open 2017.csv')

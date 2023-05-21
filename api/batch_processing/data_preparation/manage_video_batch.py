@@ -7,8 +7,9 @@
 
 #%% Imports and constants
 
-import path_utils
 import os
+
+from md_utils import path_utils
 from detection import video_utils
 
 input_folder = '/datadrive/data'

@@ -24,7 +24,7 @@ from PIL import Image
 
 from visualization import visualize_db
 from data_management.databases import sanity_check_json_db
-from path_utils import find_images
+from md_utils.path_utils import find_images
 
 input_base = r'e:\ubc'
 assert(os.path.isdir(input_base))

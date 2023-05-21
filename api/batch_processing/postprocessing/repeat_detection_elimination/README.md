@@ -21,11 +21,11 @@ This document shows you how to run these scripts.
 
 # Prerequisites
 
-The suspicious detection elimination process assumes the following:
+The repeat detection elimination process assumes the following:
 
 1. You have Python installed.  If you&rsquo;re working on Windows, we recommend installing <a href="anaconda.com/distribution/">Anaconda</a>, which is Python plus a zillion useful packages.
-2. You have checked out this git repo, and the <a href="http://github.com/microsoft/ai4eutils">AI for Earth Utilities</a> repo.  If you&rsquo;re not familiar with git, we recommend installing <a href="https://git-scm.com/download/win">Git for Windows</a>.  Specific instructions for checking out the repo will be rolled into the next step.
-3. You have put the base folder of both repos on your Python path.  If you are using Windows, for example, you would do this by finding the directory to which you cloned each repo, and adding that directory to your PYTHONPATH environment variable.  Here&rsquo;s a <a href="https://www.computerhope.com/issues/ch000549.htm">good page</a> about editing environment variables in Windows.  You will need administrative access to your PC to set an environment variable.
+2. You have checked out this git repo.  If you&rsquo;re not familiar with git, we recommend installing <a href="https://git-scm.com/download/win">Git for Windows</a>.  Specific instructions for checking out the repo will be rolled into the next step.
+3. You have put the base folder of this repo on your Python path.  If you are using Windows, for example, you would do this by finding the directory to which you cloned each repo, and adding that directory to your PYTHONPATH environment variable.  Here&rsquo;s a <a href="https://www.computerhope.com/issues/ch000549.htm">good page</a> about editing environment variables in Windows.  You will need administrative access to your PC to set an environment variable.
 
 Here are instructions for steps 2 and 3 that assume you <i>don&rsquo;t</i> have administrative access to your PC (if you set the environment variable as per above, you can skip the &ldquo;set PYTHONPATH&rdquo; step here).  We&rsquo;re going to put things in &ldquo;c:\git&rdquo;, but you can use any folder you like. 
 
@@ -34,17 +34,16 @@ After installing git and Anaconda, open an Anaconda Prompt, and run:
 ```mkdir c:\git
 cd c:\git
 git clone https://github.com/agentmorris/MegaDetector
-git clone https://github.com/Microsoft/ai4eutils
 pip install jsonpickle humanfriendly
 cd c:\git\MegaDetector
-set PYTHONPATH=c:\git\MegaDetector;c:\git\ai4eutils
+set PYTHONPATH=c:\git\MegaDetector
 python api\batch_processing\postprocessing\repeat_detection_elimination\find_repeat_detections.py
 ```
 
 Subsequent times you open your Anaconda prompt, you'll just need to do:
 
 ```cd c:\git\MegaDetector\api\batch_processing\postprocessing
-set PYTHONPATH=c:\git\MegaDetector;c:\git\ai4eutils
+set PYTHONPATH=c:\git\MegaDetector
 python find_repeat_detections.py
 ```
 

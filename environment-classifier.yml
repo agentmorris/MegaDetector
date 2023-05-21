@@ -26,7 +26,7 @@ dependencies:
 - numpy
 - openpyxl  # used by taxonomy_mapping/species_by_dataset.py
 - pandas
-- progressbar2  # used by ai4eutils (which is called by taxonomy-mapping code)
+- progressbar2
 - pylint
 - python-graphviz  # used for taxonomy visualization
 - scikit-learn

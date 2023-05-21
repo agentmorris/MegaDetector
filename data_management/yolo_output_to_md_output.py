@@ -46,7 +46,7 @@ import csv
 from collections import defaultdict
 from tqdm import tqdm
 
-import path_utils
+from md_utils import path_utils
 import ct_utils
 
 from visualization import visualization_utils as visutils

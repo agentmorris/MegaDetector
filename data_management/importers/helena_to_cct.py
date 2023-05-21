@@ -17,7 +17,7 @@ from tqdm import tqdm
 import pandas as pd
 from datetime import datetime
 
-from path_utils import find_images
+from md_utils.path_utils import find_images
 
 base_directory = r'/mnt/blobfuse/wildlifeblobssc/'
 output_directory = r'/home/gramener'

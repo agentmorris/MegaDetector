@@ -22,9 +22,7 @@ from itertools import compress
 
 import pyqtree
 
-# from ai4eutils; this is assumed to be on the path, as per repo convention
-import path_utils
-
+from md_utils import path_utils
 from api.batch_processing.postprocessing.load_api_results import load_api_results, write_api_results
 from api.batch_processing.postprocessing.postprocess_batch_results import is_sas_url
 from api.batch_processing.postprocessing.postprocess_batch_results import relative_sas_url

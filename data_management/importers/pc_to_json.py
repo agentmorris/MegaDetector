@@ -22,7 +22,7 @@ from data_management.databases import sanity_check_json_db
 from data_management.cct_json_utils import IndexedJsonDb
 from visualization import visualize_db
 from data_management import cct_json_to_filename_json
-import path_utils
+from md_utils import path_utils
 
 input_base = r"g:\20190715"
 output_file = r"D:\wildlife_data\parks_canada\pc_20190715.json"

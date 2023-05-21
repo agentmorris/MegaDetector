@@ -128,7 +128,7 @@ The following environment variables are useful to have in `.bashrc`:
 
 ```bash
 # Python development
-export PYTHONPATH="/path/to/repos/MegaDetector:/path/to/repos/ai4eutils"
+export PYTHONPATH="/path/to/repos/MegaDetector"
 export MYPYPATH=$PYTHONPATH
 
 # accessing MegaDB

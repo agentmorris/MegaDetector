@@ -4,8 +4,7 @@ import os
 import pandas as pd
 from tqdm import tqdm
 
-# from github.com/microsoft/ai4eutils
-import url_utils
+from md_utils import url_utils
 
 # from github.com/agentmorris/MegaDetector
 from visualization import visualization_utils
@@ -173,5 +172,4 @@ img_ir.save(r'c:\temp\seals_ir.png')
 
 import shutil
 tmp_dir = os.path.dirname(rgb_image_fn)
-assert 'ai4eutils' in tmp_dir
 shutil.rmtree(tmp_dir)

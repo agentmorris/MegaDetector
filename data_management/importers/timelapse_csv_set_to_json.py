@@ -25,7 +25,7 @@ from tqdm import tqdm
 
 from visualization import visualize_db
 from data_management.databases import sanity_check_json_db
-import path_utils
+from md_utils import path_utils
 
 # Text file with relative paths to all files (images and .csv files)
 input_relative_file_list = ''

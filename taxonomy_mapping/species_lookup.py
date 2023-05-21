@@ -24,7 +24,7 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 
-import ai4e_web_utils
+from md_utils import url_utils
 
 taxonomy_download_dir = os.path.expanduser('~/taxonomy')
 
@@ -149,9 +149,9 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
             taxonomy_download_dir, zip_url.split('/')[-1])
 
         # Bypasses download if the file exists already
-        ai4e_web_utils.download_url(
+        url_utils.download_url(
             zip_url, os.path.join(zipfile_path),
-            progress_updater=ai4e_web_utils.DownloadProgressBar(),
+            progress_updater=url_utils.DownloadProgressBar(),
             verbose=True)
 
         # Unzip the files we need

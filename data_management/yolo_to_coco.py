@@ -15,8 +15,7 @@ import os
 from PIL import Image
 from tqdm import tqdm
 
-# from ai4eutils
-from path_utils import find_images
+from md_utils.path_utils import find_images
 
 
 #%% Support functions
@@ -213,7 +212,7 @@ if False:
                                                         image_base_dir=input_folder,
                                                         options=viz_options)
     
-    from path_utils import open_file
+    from md_utils.path_utils import open_file
     open_file(html_output_file)
 
 

@@ -5,7 +5,7 @@ import json
 import uuid
 import pandas as pd
 
-from path_utils import open_file
+from md_utils.path_utils import open_file
 
 base_folder = r'G:\temp\noaa'
 output_json_fn = os.path.join(base_folder,'noaa_estuary_fish.json')

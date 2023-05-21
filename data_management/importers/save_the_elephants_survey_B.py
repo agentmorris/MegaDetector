@@ -21,7 +21,7 @@ import numpy as np
 import logging
 from tqdm import tqdm
 
-from path_utils import find_images
+from md_utils.path_utils import find_images
 
 input_base = r'z:/ste_2019_08_drop'
 # input_base = r'/mnt/blobfuse/wildlifeblobssc/ste_2019_08_drop'

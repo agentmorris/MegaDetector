@@ -46,10 +46,7 @@ import pytesseract
 # pip install IPTCInfo3
 from iptcinfo3 import IPTCInfo
 
-# from the ai4eutils repo: https://github.com/Microsoft/ai4eutils
-#
-# Only used for writing out a summary, not important for the core metadata extraction
-import write_html_image_list        
+from md_utils import write_html_image_list        
 
 # ignoring all "PIL cannot read EXIF metainfo for the images" warnings
 warnings.filterwarnings("ignore", "(Possibly )?corrupt EXIF data", UserWarning)

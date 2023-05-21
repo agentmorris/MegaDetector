@@ -424,7 +424,7 @@ for i_image,image in tqdm(enumerate(images_to_download),total=len(images_to_down
 
 #%% Write preview HTML
 
-import write_html_image_list
+from md_utils import write_html_image_list
 
 """
 filename: the output file
@@ -458,5 +458,5 @@ for im in images_to_download:
     
 write_html_image_list.write_html_image_list(html_filename,html_images)
 
-from path_utils import open_file
+from md_utils.path_utils import open_file
 open_file(html_filename)

@@ -20,7 +20,7 @@ from tqdm import tqdm
 
 from visualization import visualize_db
 from data_management.databases import sanity_check_json_db
-from path_utils import find_images, insert_before_extension
+from md_utils.path_utils import find_images, insert_before_extension
 
 input_base_dir = r'e:\auckland-test\2_Testing'
 

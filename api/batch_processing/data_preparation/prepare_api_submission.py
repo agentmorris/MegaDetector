@@ -11,7 +11,7 @@ Here's the stuff we usually do before submitting a task:
     in this script.
 
 2) List the files you want the API to process.
-    ai4eutils.ai4e_azure_utils.enumerate_blobs_to_file()
+    azure_utils.enumerate_blobs_to_file()
 
 3) Divide that list into chunks that will become individual API submissions.
     divide_files_into_tasks()
@@ -54,8 +54,8 @@ import urllib
 
 import requests
 
-import ai4e_azure_utils  # from ai4eutils
-import path_utils  # from ai4eutils
+from md_utils import azure_utils
+from md_utils import path_utils
 
 
 #%% Constants
@@ -207,7 +207,7 @@ class Task:
         
         if blob_name is None:
             blob_name = os.path.basename(self.local_images_list_path)
-        self.remote_images_list_url = ai4e_azure_utils.upload_file_to_blob(
+        self.remote_images_list_url = azure_utils.upload_file_to_blob(
             account_name=account, container_name=container,
             local_path=self.local_images_list_path, blob_name=blob_name,
             sas_token=sas_token, overwrite=overwrite)
@@ -533,7 +533,7 @@ if False:
     rsearch = None # '^Y53'
     output_file = r'output.json'
     
-    blobs = ai4e_azure_utils.enumerate_blobs_to_file(
+    blobs = azure_utils.enumerate_blobs_to_file(
         output_file=output_file,
         account_name=account_name,
         sas_token=sas_token,

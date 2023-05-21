@@ -24,8 +24,7 @@ from PIL import Image
 from PIL.ExifTags import TAGS
 from tqdm import tqdm
 
-# from the ai4eutils repo
-from path_utils import find_images
+from md_utils.path_utils import find_images
 
 # Filenames will be stored in the output .json relative to this base dir
 base_dir = r'C:\temp\camera_trap_images_no_people'

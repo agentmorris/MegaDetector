@@ -69,8 +69,8 @@ import random
 from typing import Any
 
 import pandas as pd
-import path_utils  # from ai4eutils
-import sas_blob_utils  # from ai4eutils
+from md_utils import path_utils
+from md_utils import sas_blob_utils
 from tqdm import tqdm
 
 from data_management.megadb import megadb_utils

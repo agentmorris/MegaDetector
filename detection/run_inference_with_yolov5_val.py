@@ -39,11 +39,11 @@ import os
 import uuid
 import glob
 import tempfile
-import path_utils
-import process_utils
 import shutil
 import json
 
+from md_utils import path_utils
+from md_utils import process_utils
 from detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP
 from data_management import yolo_output_to_md_output
 
@@ -514,6 +514,6 @@ if False:
     
     results = compare_batch_results(options)
     
-    from path_utils import open_file # from ai4eutils
+    from md_utils.path_utils import open_file
     open_file(results.html_output_file)
     

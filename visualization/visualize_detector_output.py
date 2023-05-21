@@ -69,7 +69,7 @@ def visualize_detector_output(detector_output_path: str,
         f'Detector output file does not exist at {detector_output_path}.')
 
     if is_azure:
-        import sas_blob_utils
+        from md_utils import sas_blob_utils
     else:
         assert os.path.isdir(images_dir)
 
@@ -181,7 +181,7 @@ def visualize_detector_output(detector_output_path: str,
           f'saved to {out_dir}')
 
     if html_output_file is not None:
-        import write_html_image_list
+        from md_utils import write_html_image_list
         write_html_image_list.write_html_image_list(html_output_file,annotated_img_paths,
                                                     options=html_output_options)
         

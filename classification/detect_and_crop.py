@@ -116,8 +116,8 @@ from api.batch_processing.data_preparation.prepare_api_submission import (
 from classification.cache_batchapi_outputs import cache_detections
 from classification.crop_detections import load_and_crop
 from data_management.megadb import megadb_utils
-import path_utils  # from ai4eutils
-import sas_blob_utils  # from ai4eutils
+from md_utils import path_utils
+from md_utils import sas_blob_utils
 
 
 def main(queried_images_json_path: str,

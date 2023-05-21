@@ -440,7 +440,7 @@ for i_row,row in df.iterrows():
 
 #%% Rename .jpeg to .jpg
 
-import path_utils
+from md_utils import path_utils
 all_images = path_utils.recursive_file_list(image_base,False)
 
 for fn in tqdm(all_images):
@@ -582,6 +582,6 @@ with open(html_output_file, 'w') as f:
 
 #%% Open HTML preview
 
-from path_utils import open_file # from ai4eutils
+from md_utils.path_utils import open_file # from ai4eutils
 open_file(html_output_file)
 

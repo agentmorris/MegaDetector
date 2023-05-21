@@ -133,7 +133,7 @@ if False:
     import random
     fn = os.path.join(output_dir,random.choice(files))
     
-    from path_utils import open_file # from ai4eutils
+    from md_utils.path_utils import open_file
     open_file(fn)
 
     

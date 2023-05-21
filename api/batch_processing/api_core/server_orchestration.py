@@ -16,7 +16,7 @@ import urllib.parse
 from datetime import timedelta
 from random import shuffle
 
-import sas_blob_utils  # from ai4eutils
+import sas_blob_utils
 import requests
 from azure.storage.blob import ContainerClient, BlobSasPermissions, generate_blob_sas
 from tqdm import tqdm

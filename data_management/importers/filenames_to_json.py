@@ -16,8 +16,7 @@ import warnings
 import datetime
 from PIL import Image
 
-# from the ai4eutils repo
-from path_utils import find_images
+from md_utils.path_utils import find_images
 
 # ignoring all "PIL cannot read EXIF metainfo for the images" warnings
 warnings.filterwarnings("ignore", "(Possibly )?corrupt EXIF data", UserWarning)

@@ -10,7 +10,7 @@ import os
 from tqdm import tqdm
 
 from data_management.megadb import megadb_utils
-import sas_blob_utils
+from md_utils import sas_blob_utils
 
 
 images_dir = ''

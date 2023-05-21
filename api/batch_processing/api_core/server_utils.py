@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 from typing import Tuple, Any, Sequence, Optional
 
-import sas_blob_utils  # from ai4eutils
+import sas_blob_utils
 
 
 log = logging.getLogger(os.environ['FLASK_APP'])

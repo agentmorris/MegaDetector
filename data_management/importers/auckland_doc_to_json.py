@@ -15,7 +15,7 @@ from tqdm import tqdm
 
 from visualization import visualize_db
 from data_management.databases import sanity_check_json_db
-from path_utils import find_images, split_path, insert_before_extension
+from md_utils.path_utils import find_images, split_path, insert_before_extension
 
 # Filenames will be stored in the output .json relative to this base dir
 input_base_dir = 'y:\\'

@@ -587,7 +587,7 @@ copy_sampled_images(sampled_vehicle_mismatches,vehicle_mismatch_output_folder)
 
 filename_base_to_filename = {}
 
-from path_utils import is_image_file
+from md_utils.path_utils import is_image_file
 
 # fn = all_files_relative[0]
 for fn in tqdm(all_files_relative):

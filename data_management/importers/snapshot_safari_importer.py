@@ -41,10 +41,7 @@ from tqdm import tqdm
 from zipfile import ZipFile
 import zipfile
 
-# From ai4eutils
-import path_utils
-
-# From MegaDetector
+from md_utils import path_utils
 from visualization import visualize_db
 
 

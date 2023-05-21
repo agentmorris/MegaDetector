@@ -18,8 +18,7 @@ from multiprocessing.pool import ThreadPool
 from tqdm import tqdm
 from typing import Container,Iterable,List
 
-# from ai4eutils
-import path_utils
+from md_utils import path_utils
     
 from visualization import visualization_utils as vis_utils
 

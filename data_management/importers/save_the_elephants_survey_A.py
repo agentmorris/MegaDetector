@@ -16,7 +16,7 @@ import humanfriendly
 import numpy as np
 from tqdm import tqdm
 
-from path_utils import find_images
+from md_utils.path_utils import find_images
 
 input_base = r'z:/ste_2019_08_drop'
 input_metadata_file = os.path.join(input_base,'SURVEY_A.xlsx')

@@ -92,7 +92,7 @@ if False:
     image_list_file = os.path.join(base_dir,'images.json')
     relative_image_list_file = os.path.join(base_dir,'images_relative.json')
     image_size_file = os.path.join(base_dir,'image_sizes.json')
-    import path_utils
+    from md_utils import path_utils
     image_names = path_utils.find_images(base_dir,recursive=True)
     
     with open(image_list_file,'w') as f:

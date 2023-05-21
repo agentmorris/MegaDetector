@@ -6,7 +6,7 @@ import uuid
 import threading
 from datetime import timedelta
 
-import sas_blob_utils  # from ai4eutils
+import sas_blob_utils
 from flask import Flask, request, jsonify
 
 import server_api_config as api_config

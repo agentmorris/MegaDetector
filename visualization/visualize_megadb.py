@@ -1,4 +1,3 @@
-
 import argparse
 import json
 import os
@@ -10,10 +9,7 @@ import io
 
 from tqdm import tqdm
 
-# Assumes ai4eutils is on the path (github.com/Microsoft/ai4eutils)
-from write_html_image_list import write_html_image_list
-
-#from data_management.megadb.schema import sequences_schema_check
+from md_utils.write_html_image_list import write_html_image_list
 from data_management.megadb.megadb_utils import MegadbUtils
 from visualization import visualization_utils as vis_utils
 

@@ -18,9 +18,8 @@ from collections import defaultdict
 from random import sample
 
 from tqdm import tqdm
-from write_html_image_list import write_html_image_list # Assumes ai4eutils is on the path
 
-#from data_management.megadb.schema import sequences_schema_check
+from md_utils.write_html_image_list import write_html_image_list
 from data_management.megadb.megadb_utils import MegadbUtils
 from data_management.annotations.add_bounding_boxes_to_megadb import file_name_to_parts
 from data_management.cct_json_utils import IndexedJsonDb

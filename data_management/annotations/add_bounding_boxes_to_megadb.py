@@ -12,8 +12,7 @@ from collections import defaultdict
 from typing import Dict, Tuple
 
 from tqdm import tqdm
-import path_utils  # ai4eutils
-
+from md_utils import path_utils
 from data_management.cct_json_utils import IndexedJsonDb
 import ct_utils
 

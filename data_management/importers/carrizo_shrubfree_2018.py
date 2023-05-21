@@ -18,7 +18,7 @@ from tqdm import tqdm
 from PIL import Image
 import numpy as np
 
-from path_utils import find_images
+from md_utils.path_utils import find_images
 
 input_base = r'Z:\Shrub-free zone Carrizo 2018'
 input_metadata_file = os.path.join(input_base,'shrub-free 2018.csv')

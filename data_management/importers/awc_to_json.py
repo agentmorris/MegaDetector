@@ -15,7 +15,7 @@ import humanfriendly
 import os
 import PIL
 from visualization import visualize_db
-import path_utils
+from md_utils import path_utils
 
 input_metadata_file = r"D:\wildlife_data\awc\awc_imageinfo.csv"
 output_file = r"D:\wildlife_data\awc\awc_imageinfo.json"

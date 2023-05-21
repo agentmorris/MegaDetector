@@ -46,13 +46,11 @@ import pandas as pd
 from sklearn.metrics import precision_recall_curve, confusion_matrix, average_precision_score
 from tqdm import tqdm
 
-# Assumes ai4eutils is on the python path (https://github.com/Microsoft/ai4eutils)
-from write_html_image_list import write_html_image_list
-import path_utils
-
-# Assumes the cameratraps repo root is on the path
 import visualization.visualization_utils as vis_utils
 import visualization.plot_utils as plot_utils
+
+from md_utils.write_html_image_list import write_html_image_list
+from md_utils import path_utils
 from data_management.cct_json_utils import (CameraTrapJsonUtils, IndexedJsonDb)
 from api.batch_processing.postprocessing.load_api_results import load_api_results
 from ct_utils import args_to_object

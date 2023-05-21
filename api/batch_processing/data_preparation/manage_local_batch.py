@@ -19,9 +19,7 @@ import humanfriendly
 from tqdm import tqdm
 from collections import defaultdict
 
-# from ai4eutils
-import ai4e_azure_utils 
-import path_utils
+from md_utils import path_utils
 from ct_utils import is_list_sorted
 
 from detection.run_detector_batch import load_and_run_detector_batch, write_results_to_file
@@ -205,7 +203,7 @@ for i_chunk,chunk_list in enumerate(folder_chunks):
     
     chunk_fn = os.path.join(filename_base,'chunk{}.json'.format(str(i_chunk).zfill(3)))
     task_info.append({'id':i_chunk,'input_file':chunk_fn})
-    ai4e_azure_utils.write_list_to_file(chunk_fn, chunk_list)
+    path_utils.write_list_to_file(chunk_fn, chunk_list)
     
     
 #%% Generate commands
@@ -1876,7 +1874,7 @@ for i, j in itertools.combinations(list(range(0,len(filenames))),2):
 
 results = compare_batch_results(options)
 
-from path_utils import open_file # from ai4eutils
+from md_utils.path_utils import open_file
 open_file(results.html_output_file)
 
 

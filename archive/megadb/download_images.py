@@ -54,7 +54,7 @@ import requests
 from tqdm import tqdm
 
 from data_management.megadb.megadb_utils import MegadbUtils
-from sas_blob_utils import build_azure_storage_uri  # ai4eutils
+from sas_blob_utils import build_azure_storage_uri
 
 
 def download_file(url: str, filename: str, store_dir: str,

@@ -31,10 +31,7 @@ from tqdm import tqdm
 from zipfile import ZipFile
 import zipfile
 
-# import sys; sys.path.append(r'c:\git\ai4eutils')
-import path_utils
-
-# import sys; sys.path.append(r'c:\git\MegaDetector')
+from md_utils import path_utils
    
 metadata_base = r'e:\snapshot-serengeti\MetaData\SER'
 image_base = r'e:\snapshot-serengeti\SER'

@@ -34,9 +34,9 @@ from tqdm import tqdm
 import clipboard
 import humanfriendly
 
-import ai4e_azure_utils  # from ai4eutils
-import path_utils        # from ai4eutils
-import sas_blob_utils    # from ai4eutils
+from md_utils import azure_utils
+from md_utils import path_utils
+from md_utils import sas_blob_utils
 
 from api.batch_processing.data_preparation import prepare_api_submission
 from api.batch_processing.postprocessing import combine_api_outputs

@@ -20,9 +20,8 @@ from visualization import visualization_utils
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
 
-# Assumes ai4eutils is on the python path (https://github.com/Microsoft/ai4eutils)
-from write_html_image_list import write_html_image_list
-import path_utils
+from md_utils.write_html_image_list import write_html_image_list
+from md_utils import path_utils
 
 
 #%% Constants and support classes
