@@ -10,9 +10,8 @@
 6. [Using the model](#using-the-model)
 7. [OK, but is that how the MD devs run the model?](#ok-but-is-that-how-the-md-devs-run-the-model)
 8. [Is there a GUI?](#is-there-a-gui)
-9. [What if I just want to run non-MD scripts from this repo?](#what-if-i-just-want-to-run-non-md-scripts-from-this-repo)
-10. [How do I use the results?](#how-do-i-use-the-results)
-11. [Have you evaluated MegaDetector's accuracy?](#have-you-evaluated-megadetectors-accuracy)
+9. [How do I use the results?](#how-do-i-use-the-results)
+10. [Have you evaluated MegaDetector's accuracy?](#have-you-evaluated-megadetectors-accuracy)
 11. [What is MegaDetector bad at?](#what-is-megadetector-bad-at)
 12. [Citing MegaDetector](#citing-megadetector)
 13. [Tell me more about why detectors are a good first step for camera trap images](#tell-me-more-about-why-detectors-are-a-good-first-step-for-camera-trap-images)
@@ -20,6 +19,7 @@
 15. [Mesmerizing video](#mesmerizing-video)
 16. [Can you share the training data?](#can-you-share-the-training-data)
 17. [Anaconda takes forever to solve; do I have to use conda?](#anaconda-takes-forever-to-solve-do-i-have-to-use-conda)
+18. [What if I just want to run non-MD scripts from this repo?](#what-if-i-just-want-to-run-non-md-scripts-from-this-repo)
 
 
 ## MegaDetector overview
@@ -95,6 +95,8 @@ See <a href="https://github.com/agentmorris/MegaDetector/#who-is-using-megadetec
 
 ## Downloading the model
 
+In this section, we provide download links for lots of MegaDetector versions.  Unless you have a very esoteric scenario, you want MegaDetector v5, and you can ignore all the other MegaDetector versions.  The rest of this section, after the MDv5 download links, is more like a mini-MegaDetector-museum than part of the User Guide.
+
 ### MegaDetector v5.0, 2022.06.15
 
 #### Release notes
@@ -111,7 +113,6 @@ This release also represents a change in MegaDetector's architecture, from Faste
 MDv5 is actually two models (MDv5a and MDv5b), differing only in their training data (see the [training data](#can-you-share-the-training-data) section for details).  Both appear to be more accurate than MDv4, and both are 3x-4x faster than MDv4, but each MDv5 model can outperform the other slightly, depending on your data.  Guidelines about which to start with are TBD; we will work with the community to develop these guidelines over the next few months.  When in doubt, for now, try them both.  If you really twist our arms to recommend one... we recommend MDv5a.  But try them both and tell us which works better for you!
 
 See the [release page](https://github.com/agentmorris/MegaDetector/releases/tag/v5.0) for more details, and in particular, be aware that the range of confidence values produced by MDv5 is very different from the range of confidence values produced by MDv4!  <i>Don't use your MDv4 confidence thresholds with MDv5!</i>
-
 
 #### Download links
 
@@ -134,6 +135,7 @@ This release incorporates additional training data from Borneo, Australia and th
 
 If you're not sure which format to use, you want the "frozen model" file (the first link).
 
+
 ### MegaDetector v3, 2019.05.30
 
 #### Release notes
@@ -148,11 +150,12 @@ In addition to incorporating additional data, this release adds a preliminary "h
 - [TensorFlow SavedModel](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/saved_model_normalized_megadetector_v3_tf19.tar.gz) (inputs in TF [common image format](https://www.tensorflow.org/hub/common_signatures/images#image_input), `default` output signature)
 - [Tensorflow SavedModel for TFServing](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/saved_model_megadetector_v3_tf19.zip) (inputs in uint8 format, `serving_default` output signature)
 
+
 ### MegaDetector v2, 2018
 
 #### Release notes
 
-First MegaDetector release!
+First MegaDetector release!  Yes, that's right, v2 was the first release.  If there was a v1, we don't remember it.
 
 #### Download links
 
@@ -165,7 +168,7 @@ First MegaDetector release!
 
 ### Overview
 
-We provide two ways to apply this model to new images:
+We provide two ways to run MegaDetector on your images:
 
 1. A simple test script that makes neat pictures with bounding boxes, but doesn't produce a useful output file ([run_detector.py](https://github.com/agentmorris/MegaDetector/blob/master/detection/run_detector.py))
 
@@ -527,66 +530,6 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 * [Batch processing API](https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing) that runs images on many GPUs at once on Azure.  There is no public instance of this API, but the code allows you to stand up your own endpoint.
  
 
-## What if I just want to run non-MD scripts from this repo?
-
-If you want to run scripts from this repo, but you won't actually be running MegaDetector, you can install a lighter-weight version of the same environment by doing the following:
-
-1. Install [Anaconda](https://www.anaconda.com/products/individual).  Anaconda is an environment for installing and running Python stuff.
-2. Install git. If you're not familiar with git, we recommend installing git from git-scm ([Windows link](https://git-scm.com/download/win)) ([Mac link](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)).
-
-The remaining steps will assume you are running at an Anaconda prompt.  You will know you are at an Anaconda prompt (as opposed to run-of-the-mill command prompt) if you see an environment name in parentheses before your current directory, like this:
-
-<img src="images/anaconda-prompt-base.jpg" style="margin-left:25px;">
-
-...or this:
-
-<img src="images/anaconda-prompt-ct.jpg" style="margin-left:25px;">
-
-On Windows, when you install Anaconda, you will actually get two different Anaconda command prompts; in your start menu, they will be called "Anaconda Prompt (anaconda3)" and "Anaconda Powershell Prompt (anaconda3)".  These instructions assume you are using the "regular" Anaconda prompt, <b>not</b> the Powershell prompt.
-
-3. In an Anaconda prompt, run the following to create your environment (on Windows):
-
-```batch
-mkdir c:\git
-cd c:\git
-git clone https://github.com/agentmorris/MegaDetector
-cd c:\git\MegaDetector
-conda env create --file environment.yml
-conda activate cameratraps-detector
-set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector
-```
-
-...or the following (on MacOS):
-
-```batch
-mkdir ~/git
-cd ~/git
-git clone https://github.com/agentmorris/MegaDetector
-cd ~/git/MegaDetector
-conda env create --file environment-detector-mac.yml
-conda activate cameratraps-detector
-export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector"
-```
-
-4. Whenever you want to start this environment again, run the following (on Windows):
-
-```batch
-cd c:\git\MegaDetector
-conda activate cameratraps-detector
-set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector
-```
-
-...or the following (on MacOS):
-
-```batch
-cd ~/git/MegaDetector
-conda activate cameratraps-detector
-export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector"
-```
-
-Also, the environment file we use here ([environment.yml](environment.yml)) doesn't get quite the same level of TLC that our MegaDetector environment does, so if anyone tries to run scripts that don't directly involve MegaDetector using this environment, and packages are missing, [let us know](mailto:cameratraps@lila.science).
-
-
 ## How do I use the results?
 
 See the ["How do people use MegaDetector results?"](https://github.com/agentmorris/MegaDetector/blob/main/collaborations.md#how-people-use-megadetector-results) section of our "getting started" page.
@@ -716,3 +659,64 @@ Anaconda can be pretty slow, sometimes taking days to solve the environment even
 `conda env create --file environment-detector.yml`  
 ...do this:  
 `mamba env create --file environment-detector.yml`  
+
+
+## What if I just want to run non-MD scripts from this repo?
+
+If you want to run scripts from this repo, but you won't actually be running MegaDetector, you can install a lighter-weight version of the same environment by doing the following:
+
+1. Install [Anaconda](https://www.anaconda.com/products/individual).  Anaconda is an environment for installing and running Python stuff.
+2. Install git. If you're not familiar with git, we recommend installing git from git-scm ([Windows link](https://git-scm.com/download/win)) ([Mac link](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)).
+
+The remaining steps will assume you are running at an Anaconda prompt.  You will know you are at an Anaconda prompt (as opposed to run-of-the-mill command prompt) if you see an environment name in parentheses before your current directory, like this:
+
+<img src="images/anaconda-prompt-base.jpg" style="margin-left:25px;">
+
+...or this:
+
+<img src="images/anaconda-prompt-ct.jpg" style="margin-left:25px;">
+
+On Windows, when you install Anaconda, you will actually get two different Anaconda command prompts; in your start menu, they will be called "Anaconda Prompt (anaconda3)" and "Anaconda Powershell Prompt (anaconda3)".  These instructions assume you are using the "regular" Anaconda prompt, <b>not</b> the Powershell prompt.
+
+3. In an Anaconda prompt, run the following to create your environment (on Windows):
+
+```batch
+mkdir c:\git
+cd c:\git
+git clone https://github.com/agentmorris/MegaDetector
+cd c:\git\MegaDetector
+conda env create --file environment.yml
+conda activate cameratraps-detector
+set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector
+```
+
+...or the following (on MacOS):
+
+```batch
+mkdir ~/git
+cd ~/git
+git clone https://github.com/agentmorris/MegaDetector
+cd ~/git/MegaDetector
+conda env create --file environment-detector-mac.yml
+conda activate cameratraps-detector
+export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector"
+```
+
+4. Whenever you want to start this environment again, run the following (on Windows):
+
+```batch
+cd c:\git\MegaDetector
+conda activate cameratraps-detector
+set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector
+```
+
+...or the following (on MacOS):
+
+```batch
+cd ~/git/MegaDetector
+conda activate cameratraps-detector
+export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector"
+```
+
+Also, the environment file we're referring to in this section ([environment.yml](environment.yml), the one without all the MegaDetector stuff) doesn't get quite the same level of TLC that our MegaDetector environment does, so if anyone tries to run scripts that don't directly involve MegaDetector using this environment, and packages are missing, [let us know](mailto:cameratraps@lila.science).
+
