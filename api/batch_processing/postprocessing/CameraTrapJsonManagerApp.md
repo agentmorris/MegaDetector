@@ -4,7 +4,7 @@ The MegaDetector Output Manager is a Windows desktop application for making Mega
 
 - Retrieves all result entries where the image file path matches a specified query string. It optionally replaces that query string with a replacement token. If the query string is blank, it can be used to prepend a token to all image file paths. A "result entry" corresponds to one image, containing all detections on that image.
 
-- Splits the API's output JSON file into smaller files each containing only results corresponding to a subfolder of images. 
+- Splits the output JSON file into smaller files each containing only results corresponding to a subfolder of images. 
     - This could be useful for distributing the subsequent manual labeling and verification effort, or loading only the relevant results into a [Timelapse](../integration/timelapse.md) project.
     - All images in the subfolder `blah\foo\bar` will end up in a JSON file called `blah_foo_bar.json`.
 
@@ -47,9 +47,9 @@ The app's interface looks like this:
 
 | Option                   | Explanation                |
 |--------------------------|----------------------------|
-| Input file               | Path to the batch processing API's output file. It should end in `.json`. |
+| Input file               | Path to the MegaDetector output file. It should end in `.json`. |
 | Output file / folder     | Specify a file name (ending with `.json`) if you're replacing parts of image file paths in the output file with another token; specify a directory if creating smaller JSON files each with results for a subfolder of images.
-| Query                    | Retrieve result entries with image file path containing this query string/token. Leave blank to retrieve all entries. <br/> <br/> Examples:<ul><li>Specify `Unprocessed Images/Camera 3/` to restrict to images from this folder.</li><li>Specify `Location 1` to retrieve all image files that have `Location 1` in their paths.</li><li>If you are processing results from our batch processing API, remember to use forward slashes here, even on Windows.</li></ul>	
+| Query                    | Retrieve result entries with image file path containing this query string/token. Leave blank to retrieve all entries. <br/> <br/> Examples:<ul><li>Specify `Unprocessed Images/Camera 3/` to restrict to images from this folder.</li><li>Specify `Location 1` to retrieve all image files that have `Location 1` in their paths.</li></ul>	
 | Replacement              | A string/token to replace the Query string in the image file paths. If Query is left blank, the Replacement string will be prepended to all image file paths.  If "Enable replacement" is not checked, this text box is disabled and no replacement will occur.
 | Confidence threshold     | Only detections with confidence above this threshold will be included in the output file.  Leave blank for no thresholding.  All other things being equal, leave this blank.  Blank is not the same as zero: if you set this to zero, it will exclude detections with negative confidence values, which can exist in some cases, don't hurt, and can be useful for certain debugging situations.  Ergo, leave blank if you don't want to apply a confidence threshold (which you almost never want to do at this stage).
 | Split folders            | Check to split the input JSON file into (smaller) JSON files for individual folders.
@@ -63,7 +63,7 @@ The app's interface looks like this:
 
 ### "Split folder mode" explained
 
-Let's say the image file paths in your API output look like this:
+Let's say the image file paths in your output file look like this:
 
 ```
 A/B/C/D/image001.jpg
@@ -147,4 +147,4 @@ You should not need to worry about the fact that the output file uses forward sl
 
 ## Help
 
-If you run into any issues, email us at cameratraps@lila.science for help!
+If you run into any issues, email us at [cameratraps@lila.science](mailto:cameratraps@lila.science) for help!
