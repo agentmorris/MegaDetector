@@ -15,11 +15,11 @@ This repo contains the tools for training and running [MegaDetector](megadetecto
 
 The core functionality provided is:
 
-- Training and running [MegaDetector](megadetector.md)
-- Training and some species classifiers that are used in conjunction with MegaDetector
-- Data parsing from frequently-used camera trap metadata formats into a common format
-- A [batch processing API](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing) that runs MegaDetector on large image collections, to accelerate population surveys
-- A [real-time API](https://github.com/agentmorris/MegaDetector/tree/main/api/synchronous) that runs MegaDetector (and some species classifiers) synchronously, primarily to support anti-poaching scenarios (e.g. see this [blog post](https://customers.microsoft.com/en-us/story/1384184517929343083-wildlife-protection-solutions-nonprofit-ai-for-earth) describing how this API supports [Wildlife Protection Solutions](https://wildlifeprotectionsolutions.org/))
+- Training and running [MegaDetector](megadetector.md).
+- Training and running some [species classifiers](classification) that are used in conjunction with MegaDetector.
+- Tools to [convert](data_management) frequently-used camera trap metadata formats into a common format.
+- A [batch processing API](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing) that runs MegaDetector on large image collections, to accelerate population surveys.
+- A [real-time API](https://github.com/agentmorris/MegaDetector/tree/main/api/synchronous) that runs MegaDetector (and some species classifiers) synchronously, primarily to support biosecurity applications.
 
 MegaDetector was initially developed by the [Microsoft AI for Earth program](https://www.microsoft.com/en-us/ai/ai-for-earth); this repo is derived from the [microsoft/cameratraps](https://github.com/microsoft/cameratraps) repo.
 
@@ -28,11 +28,11 @@ MegaDetector was initially developed by the [Microsoft AI for Earth program](htt
 
 The main model that we train and run using tools in this repo is [MegaDetector](megadetector.md), an object detection model that identifies animals, people, and vehicles in camera trap images.  This model is trained on several hundred thousand bounding boxes from a variety of ecosystems.  Lots more information &ndash; including download links and instructions for running the model &ndash; is available on the [MegaDetector page](megadetector.md).
 
-Here's a "teaser" image of what detector output looks like:
+This repo does not host the data used to train MegaDetector, but we work with our collaborators to make data and annotations available whenever possible on [lila.science](http://lila.science).  See the [MegaDetector training data](megadetector.md#can-you-share-the-training-data) section to learn more about the data used to train MegaDetector.
+
+Here's a &ldquo;teaser&rdquo; image of what MegaDetector output looks like:
 
 ![Red bounding box on fox](images/detector_example.jpg)<br/>Image credit University of Washington.
-
-This repo does not host the data used to train MegaDetector, but we work with our collaborators to make data and annotations available whenever possible on [lila.science](http://lila.science).  See the [MegaDetector training data](megadetector.md#can-you-share-the-training-data) section to learn more about the data used to train MegaDetector.
 
 
 # How do I get started?
@@ -40,6 +40,8 @@ This repo does not host the data used to train MegaDetector, but we work with ou
 If you're just considering the use of AI in your workflow, and you aren't even sure yet whether MegaDetector would be useful to you, we recommend reading the "[getting started with MegaDetector](collaborations.md)" page.
 
 If you're already familiar with MegaDetector and you're ready to run it on your data (and you have some familiarity with running Python code), see the [MegaDetector README](megadetector.md) for instructions on downloading and running MegaDetector.
+
+MegaDetector is just one of many tools that aims to make conservation biologists more efficient with AI.  If you want to learn about other ways to use AI to accelerate camera trap workflows, check out our of the field, affectionately titled &ldquo;[Everything I know about machine learning and camera traps](https://agentmorris.github.io/camera-trap-ml-survey/)&rdquo;.
 
 
 # Who is using MegaDetector?
