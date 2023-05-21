@@ -49,8 +49,6 @@ def write_html_image_list(filename=None,images=None,options=None):
         
     """
     
-    print(options)
-    
     # returns an options struct
     if options is None:
         options = {}
