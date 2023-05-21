@@ -1,8 +1,38 @@
 # Overview
 
-Almost all the scripts in this directory create or operates on COCO Camera Traps databases, which are .json files structured as...
+Most of the scripts in this folder create or manipulate COCO Camera Traps databases, i.e. .json files in the [COCO Camera Traps format](#coco-camera-traps-format).
 
-## COCO Camera Traps format
+# Contents
+
+## Scripts in this folder
+
+* [cct_json_utils.py](cct_json_utils.py) contains utilities for working with COCO Camera Traps .json databases
+* [cct_to_wi.py](cct_to_wi.py) converts a COCO Camera Traps .json file to the [Wildlife Insights batch upload format](https://github.com/ConservationInternational/Wildlife-Insights----Data-Migration)
+* [coco_to_yolo.py](coco_to_yolo.py) converts a COCO-formatted dataset to a YOLO-formatted dataset.
+* [generate_crops_from_cct.py](generate_crops_from_cct.py) creates a cropped image for each bounding box in a CCT .json file
+* [get_image_sizes.py](get_image_sizes.py) retrieves the image size for every image in a json-formatted list of filenames
+* [read_exif.py](read_exif.py) reads EXIF/IPTC/XMP fields from all images in a folder, writing all that metadata to .json/.csv
+* [remove_exif.py](remove_exif.py) removes EXIF/IPTC/XMP metadata from a folder of images
+* [yolo_output_to_md_output.py](yolo_output_to_md_output.py) converts the output of YOLOv5's detect.py and val.py to the MD batch output format
+* [yolo_to_coco.py](yolo_to_coco.py) converts a YOLO-formatted dataset to a COCO-formatted dataset.  Supports flat folders only.
+
+## annotations
+
+Code for creating new bounding box annotation tasks and converting annotations to COCO Camera Traps format.
+
+## databases
+
+Miscellaneous tools for manipulating COCO Camera Traps .json files.  Of particular note is `integrity_check_json_db.py`, which validates that a CCT database is well-formatted, optionally checking image existence and size.
+
+## lila
+
+Scripts for preparing data for upload to [LILA](https://lila.science), and working with LILA index files.
+
+## importers
+
+Code for converting frequently-used metadata formats (or sometimes one-off data sets) to COCO Camera Traps .json files.
+
+# COCO Camera Traps format
 
 ```
 {
@@ -86,36 +116,6 @@ Note that the coordinates in the `bbox` field are absolute here, different from 
 Fields listed as "optional" are intended to standardize commonly-used parameters (such as date/time information).  When present, fields should follow the above conventions.  Additional fields may be present for specific data sets.
 
 Whenever possible, the category ID 0 is associated with a class called "empty", even if there are no empty images in a data set.  When preparing data sets, we normalize all versions of "empty" (such as "none", "Empty", "no animal", etc.) to "empty".
-
-# Contents
-
-## Scripts in this folder
-
-* [cct_json_utils.py](cct_json_utils.py) contains utilities for working with COCO Camera Traps .json databases
-* [cct_to_wi.py](cct_to_wi.py) converts a COCO Camera Traps .json file to the [Wildlife Insights batch upload format](https://github.com/ConservationInternational/Wildlife-Insights----Data-Migration)
-* [coco_to_yolo.py](coco_to_yolo.py) converts a COCO-formatted dataset to a YOLO-formatted dataset.
-* [generate_crops_from_cct.py](generate_crops_from_cct.py) creates a cropped image for each bounding box in a CCT .json file
-* [get_image_sizes.py](get_image_sizes.py) retrieves the image size for every image in a json-formatted list of filenames
-* [read_exif.py](read_exif.py) reads EXIF/IPTC/XMP fields from all images in a folder, writing all that metadata to .json/.csv
-* [remove_exif.py](remove_exif.py) removes EXIF/IPTC/XMP metadata from a folder of images
-* [yolo_output_to_md_output.py](yolo_output_to_md_output.py) converts the output of YOLOv5's detect.py and val.py to the MD batch output format
-* [yolo_to_coco.py](yolo_to_coco.py) converts a YOLO-formatted dataset to a COCO-formatted dataset.  Supports flat folders only.
-
-## annotations
-
-Code for creating new bounding box annotation tasks and converting annotations to COCO Camera Traps format.
-
-## databases
-
-Miscellaneous tools for manipulating COCO Camera Traps .json files.  Of particular note is `integrity_check_json_db.py`, which validates that a CCT database is well-formatted, optionally checking image existence and size.
-
-## lila
-
-Scripts for preparing data for upload to [LILA](https://lila.science), and working with LILA index files.
-
-## importers
-
-Code for converting frequently-used metadata formats (or sometimes one-off data sets) to COCO Camera Traps .json files.
 
 # Gratuitous animal picture
 
