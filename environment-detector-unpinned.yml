@@ -5,26 +5,27 @@ channels:
   - pytorch
 
 dependencies:
-  - python=3.8.15
+  - python=3.8
+  # We pin Pillow to make it as likely as possible that images are loaded via a loader that's identical to the training environment
   - Pillow=9.1.0 
-  - tqdm=4.65.0
-  - jsonpickle=3.0.0
-  - humanfriendly=10.0
-  - numpy=1.24.3
-  - matplotlib=3.7.1
-  - opencv=4.5.5
-  - requests=2.29.0
-  - pyqtree=1.0.0
-  - scikit-learn=1.2.2
+  - tqdm
+  - jsonpickle
+  - humanfriendly
+  - numpy
+  - matplotlib
+  - opencv
+  - requests
+  - pyqtree
+  - scikit-learn>=0.19.1
 
   # So we can run Jupyter notebooks in this environment
-  - nb_conda_kernels=2.3.1
-  - ipykernel=6.23.0
+  - nb_conda_kernels
+  - ipykernel
   
   # For running MegaDetector v5
-  - pandas=2.0.1
-  - seaborn=0.12.2
-  - PyYAML=6.0
+  - pandas
+  - seaborn>=0.11.0
+  - PyYAML>=5.3.1
   - pytorch::pytorch=1.10.1
   - pytorch::torchvision=0.11.2
   - conda-forge::cudatoolkit=11.3
