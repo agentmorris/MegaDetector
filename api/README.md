@@ -1,6 +1,6 @@
 # Camera Trap Image Processing APIs
 
-Though many users run MegaDetector locally, we also package useful components developed in the Camera Traps project into APIs that can process camera trap images in a variety of scenarios. This folder contains the source code of the APIs and documentation on how to set them up.  We don't current operate any public API instances.
+Though many users run MegaDetector locally, we also package MegaDetector and associated inference scripts into two APIs that can process camera trap images in a variety of scenarios. This folder contains the source code of the APIs, documentation on how to set them up, and tools for working with the output they produce.  We don't current operate any public API instances.
 
 
 ### Synchronous API
