@@ -4,8 +4,8 @@
 2. [What's MegaDetector all about?](#whats-megadetector-all-about)
 3. [How do I get started?](#how-do-i-get-started)
 4. [Who is using MegaDetector?](#who-is-using-megadetector)
-5. [Contact](#contact)
-6. [Repo contents](#repo-contents)
+5. [Repo contents](#repo-contents)
+6. [Contact](#contact)
 7. [Gratuitous pretty camera trap picture](#gratuitous-pretty-camera-trap-picture)
 
 
@@ -120,11 +120,6 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [San Diego Zoo Wildlife Alliance](https://science.sandiegozoo.org/)  ([Animl R package](https://github.com/conservationtechlab/animl))
 
 
-# Contact
-
-For questions about this repo, contact [cameratraps@lila.science](mailto:cameratraps@lila.science).
-
-
 # Repo contents
 
 This repo is organized into the following folders...
@@ -189,6 +184,13 @@ A handful of images from [LILA](https://lila.science) that facilitate testing an
 ## visualization
 
 Shared tools for visualizing images with ground truth and/or predicted annotations.
+
+
+# Contact
+
+For questions about this repo, contact [cameratraps@lila.science](mailto:cameratraps@lila.science).
+
+You can also chat with us and the broader camera trap AI community on the [AI for Conservation forum at WILDLABS](https://wildlabs.net/groups/ai-conservation) or the [AI for Conservation Slack group](https://aiforconservation.slack.com).
 
 
 # Gratuitous pretty camera trap picture
