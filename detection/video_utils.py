@@ -33,6 +33,7 @@ def is_video_file(s: str, video_extensions: Container[str] = VIDEO_EXTENSIONS
     Checks a file's extension against a hard-coded set of video file
     extensions.
     """
+    
     ext = os.path.splitext(s)[1]
     return ext.lower() in video_extensions
 
@@ -42,6 +43,7 @@ def find_video_strings(strings: Iterable[str]) -> List[str]:
     Given a list of strings that are potentially video file names, looks for
     strings that actually look like video file names (based on extension).
     """
+    
     return [s for s in strings if is_video_file(s.lower())]
 
 
@@ -50,6 +52,7 @@ def find_videos(dirname: str, recursive: bool = False) -> List[str]:
     Finds all files in a directory that look like video file names. Returns
     absolute paths.
     """
+    
     if recursive:
         strings = glob.glob(os.path.join(dirname, '**', '*.*'), recursive=True)
     else:

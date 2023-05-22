@@ -1,6 +1,10 @@
+########
+#
+# lila_common.py
 #
 # Common constants and functions related to LILA data management/retrieval.
 #
+########
 
 #%% Imports and constants
 
@@ -137,6 +141,7 @@ def get_json_file_for_dataset(ds_name,metadata_dir,metadata_table=None):
     Downloads if necessary - then unzips if necessary - the .json file for a specific dataset.
     Returns the .json filename on the local disk.
     """
+    
     if metadata_table is None:
         metadata_table = read_lila_metadata(metadata_dir)
         

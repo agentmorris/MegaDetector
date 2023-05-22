@@ -1,3 +1,4 @@
+########
 #
 # cct_to_csv.py
 #
@@ -10,6 +11,7 @@
 # Does not assume access to the images, therefore does not open .jpg files to find
 # datetime information if it's not in the metadata, just writes datetime as 'unknown'.
 #
+########
 
 #%% Imports
 

@@ -1,3 +1,4 @@
+########
 #
 # generate_lila_per_image_labels.py
 # 
@@ -12,6 +13,7 @@
 #
 # Does not include bounding box annotations.
 #
+########
 
 #%% Constants and imports
 
@@ -425,18 +427,6 @@ for i_image,image in tqdm(enumerate(images_to_download),total=len(images_to_down
 #%% Write preview HTML
 
 from md_utils import write_html_image_list
-
-"""
-filename: the output file
-
-image: a list of image filenames or dictionaries with one or more of the following fields:
-    
-    filename
-    imageStyle
-    textStyle
-    title
-    linkTarget
-"""
 
 html_filename = os.path.join(preview_folder,'index.html')
 

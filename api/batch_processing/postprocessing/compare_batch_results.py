@@ -1,10 +1,12 @@
-"""
-compare_batch_results.py
-
-Compare two sets of batch results; typically used to compare MegaDetector versions.
-
-Currently supports only detection results (not classification results).
-"""
+########
+#
+# compare_batch_results.py
+# 
+# Compare two sets of batch results; typically used to compare MegaDetector versions.
+# 
+# Currently supports only detection results (not classification results).
+#
+########
 
 #%% Imports
 
@@ -488,6 +490,7 @@ def _compare_batch_results(options,output_index,pairwise_options):
         
 # ...def compare_batch_results()
 
+
 def compare_batch_results(options):
     
     assert options.pairwise_options is not None    
@@ -550,4 +553,4 @@ if False:
 
 #%% Command-line driver
 
-## TODO
+# TODO

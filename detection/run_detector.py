@@ -1,41 +1,47 @@
-r"""
-Module to run an animal detection model on images.
+########
+#
+# run_detector.py
+#
+#
+# Module to run an animal detection model on images.
+# 
+# The main function in this script also renders the predicted
+# bounding boxes on images and saves the resulting images (with bounding boxes).
+# 
+# This script is not a good way to process lots of images (tens of thousands,
+# say). It does not facilitate checkpointing the results so if it crashes you
+# would have to start from scratch. If you want to run a detector (e.g., ours)
+# on lots of images, you should check out:
+# 
+# 1) run_detector_batch.py (for local execution)
+# 
+# 2) https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing
+#    (for running large jobs on Azure ML)
+# 
+# To run this script, we recommend you set up a conda virtual environment
+# following instructions in the Installation section on the main README, using
+# `environment-detector.yml` as the environment file where asked.
+# 
+# This is a good way to test our detector on a handful of images and get
+# super-satisfying, graphical results.  It's also a good way to see how fast a
+# detector model will run on a particular machine.
+# 
+# If you would like to *not* use the GPU on the machine, set the environment
+# variable CUDA_VISIBLE_DEVICES to "-1".
+# 
+# If no output directory is specified, writes detections for c:\foo\bar.jpg to
+# c:\foo\bar_detections.jpg.
+# 
+# This script will only consider detections with > 0.005 confidence at all times.
+# The `threshold` you provide is only for rendering the results. If you need to
+# see lower-confidence detections, you can change
+# DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD.
+# 
+# Reference:
+# https://github.com/tensorflow/models/blob/master/research/object_detection/inference/detection_inference.py
+# 
+########
 
-The main function in this script also renders the predicted
-bounding boxes on images and saves the resulting images (with bounding boxes).
-
-This script is not a good way to process lots of images (tens of thousands,
-say). It does not facilitate checkpointing the results so if it crashes you
-would have to start from scratch. If you want to run a detector (e.g., ours)
-on lots of images, you should check out:
-
-1) run_detector_batch.py (for local execution)
-
-2) https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing
-   (for running large jobs on Azure ML)
-
-To run this script, we recommend you set up a conda virtual environment
-following instructions in the Installation section on the main README, using
-`environment-detector.yml` as the environment file where asked.
-
-This is a good way to test our detector on a handful of images and get
-super-satisfying, graphical results.  It's also a good way to see how fast a
-detector model will run on a particular machine.
-
-If you would like to *not* use the GPU on the machine, set the environment
-variable CUDA_VISIBLE_DEVICES to "-1".
-
-If no output directory is specified, writes detections for c:\foo\bar.jpg to
-c:\foo\bar_detections.jpg.
-
-This script will only consider detections with > 0.005 confidence at all times.
-The `threshold` you provide is only for rendering the results. If you need to
-see lower-confidence detections, you can change
-DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD.
-
-Reference:
-https://github.com/tensorflow/models/blob/master/research/object_detection/inference/detection_inference.py
-"""
 
 #%% Constants, imports, environment
 
@@ -119,7 +125,9 @@ DEFAULT_BOX_EXPANSION = 0
 #%% Classes
 
 class ImagePathUtils:
-    """A collection of utility functions supporting this stand-alone script"""
+    """
+    A collection of utility functions supporting this stand-alone script
+    """
 
     # Stick this into filenames before the extension for the rendered result
     DETECTION_FILENAME_INSERT = '_detections'
@@ -131,6 +139,7 @@ class ImagePathUtils:
         """
         Check a file's extension against a hard-coded set of image file extensions
         """
+        
         ext = os.path.splitext(s)[1]
         return ext.lower() in ImagePathUtils.image_extensions
 
@@ -140,6 +149,7 @@ class ImagePathUtils:
         Given a list of strings that are potentially image file names, look for strings
         that actually look like image file names (based on extension).
         """
+        
         return [s for s in strings if ImagePathUtils.is_image_file(s)]
 
     @staticmethod
@@ -147,6 +157,7 @@ class ImagePathUtils:
         """
         Find all files in a directory that look like image file names
         """
+        
         if recursive:
             strings = glob.glob(os.path.join(dir_name, '**', '*.*'), recursive=True)
         else:
@@ -160,10 +171,12 @@ class ImagePathUtils:
 #%% Utility functions
 
 def convert_to_tf_coords(array):
-    """From [x1, y1, width, height] to [y1, x1, y2, x2], where x1 is x_min, x2 is x_max
+    """
+    From [x1, y1, width, height] to [y1, x1, y2, x2], where x1 is x_min, x2 is x_max
 
     This is only used to keep the interface of the synchronous API.
     """
+    
     x1 = array[0]
     y1 = array[1]
     width = array[2]
@@ -178,6 +191,7 @@ def get_detector_metadata_from_version_string(detector_version):
     Given a MegaDetector version string (e.g. "v4.1.0"), return the metadata for
     the model.  Used for writing standard defaults to batch output files.
     """
+    
     if detector_version not in DETECTOR_METADATA:
         print('Warning: no metadata for unknown detector version {}'.format(detector_version))
         default_detector_metadata = {
@@ -204,6 +218,7 @@ def get_detector_version_from_filename(detector_filename):
     ...for which we identify the version number as "v2.0.0", "v3.0.0", "v4.1.0", 
     "v4.1.0", "v5a.0.0", and "v5b.0.0", respectively.
     """
+    
     fn = os.path.basename(detector_filename)
     known_model_versions = {'v2':'v2.0.0',
                             'v3':'v3.0.0',
@@ -229,6 +244,7 @@ def get_typical_confidence_threshold_from_results(results):
     Given the .json data loaded from a MD results file, determine a typical confidence
     threshold based on the detector version.
     """
+    
     if 'detector_metadata' in results['info'] and \
         'typical_detection_threshold' in results['info']['detector_metadata']:
         default_threshold = results['info']['detector_metadata']['typical_detection_threshold']
@@ -247,9 +263,11 @@ def get_typical_confidence_threshold_from_results(results):
 
     
 def is_gpu_available(model_file):
-    """Decide whether a GPU is available, importing PyTorch or TF depending on the extension
+    """
+    Decide whether a GPU is available, importing PyTorch or TF depending on the extension
     of model_file.  Does not actually load model_file, just uses that to determine how to check 
-    for GPU availability."""
+    for GPU availability.
+    """
     
     if model_file.endswith('.pb'):
         import tensorflow.compat.v1 as tf
@@ -275,7 +293,9 @@ def is_gpu_available(model_file):
 
 
 def load_detector(model_file, force_cpu=False):
-    """Load a TF or PT detector, depending on the extension of model_file."""
+    """
+    Load a TF or PT detector, depending on the extension of model_file.
+    """
     
     start_time = time.time()
     if model_file.endswith('.pb'):
@@ -301,7 +321,9 @@ def load_and_run_detector(model_file, image_file_names, output_dir,
                           crop_images=False, box_thickness=DEFAULT_BOX_THICKNESS, 
                           box_expansion=DEFAULT_BOX_EXPANSION, image_size=None
                           ):
-    """Load and run detector on target images, and visualize the results."""
+    """
+    Load and run detector on target images, and visualize the results.
+    """
     
     if len(image_file_names) == 0:
         print('Warning: no files available')
@@ -322,7 +344,8 @@ def load_and_run_detector(model_file, image_file_names, output_dir,
     output_filename_collision_counts = {}
 
     def input_file_to_detection_file(fn, crop_index=-1):
-        """Creates unique file names for output files.
+        """
+        Creates unique file names for output files.
 
         This function does 3 things:
         1) If the --crop flag is used, then each input image may produce several output
@@ -349,6 +372,7 @@ def load_and_run_detector(model_file, image_file_names, output_dir,
 
         Returns: output file path
         """
+        
         fn = os.path.basename(fn).lower()
         name, ext = os.path.splitext(fn)
         if crop_index >= 0:

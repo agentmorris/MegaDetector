@@ -1,3 +1,4 @@
+########
 #
 # top_folders_to_bottom.py
 #
@@ -19,6 +20,7 @@
 #
 # camera01/animal/image01.jpg
 #
+########
 
 #%% Constants and imports
 
@@ -73,7 +75,8 @@ def process_file(relative_filename,options,execute=True):
         input_absolute_path = os.path.join(options.input_folder,relative_filename)
         
         if not options.overwrite:
-            assert not os.path.isfile(output_absolute_path), 'Error: output file {} exists'.format(output_absolute_path)
+            assert not os.path.isfile(output_absolute_path), \
+                'Error: output file {} exists'.format(output_absolute_path)
             
         # Move or copy
         if options.copy:
@@ -146,10 +149,8 @@ if False:
     #%%
     
     top_folders_to_bottom(options)
-    
-    
-    
-    
+
+
 #%% Command-line driver   
 
 # python top_folders_to_bottom.py "g:\temp\separated_images" "g:\temp\separated_images_inverted" --n_threads 100
@@ -174,7 +175,8 @@ def main():
     args = parser.parse_args()    
     
     # Convert to an options object
-    options = TopFoldersToBottomOptions(args.input_folder,args.output_folder,copy=args.copy,n_threads=args.n_threads)
+    options = TopFoldersToBottomOptions(
+        args.input_folder,args.output_folder,copy=args.copy,n_threads=args.n_threads)
     
     top_folders_to_bottom(options)
     

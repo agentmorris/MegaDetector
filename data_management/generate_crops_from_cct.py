@@ -1,9 +1,11 @@
+########
 #
 # generate_crops_from_cct.py
 #
 # Given a .json file in COCO Camera Traps format, create a cropped image for
 # each bounding box.
 #
+########
 
 #%% Imports and constants
 
@@ -136,8 +138,6 @@ if False:
     from md_utils.path_utils import open_file
     open_file(fn)
 
-    
-    
     
 #%% Command-line driver
 

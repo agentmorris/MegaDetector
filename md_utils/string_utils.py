@@ -1,6 +1,10 @@
-"""
-Miscellaneous string utilities
-"""
+########
+#
+# string_utils.py
+#
+# Miscellaneous string utilities
+#
+########
 
 import re
 

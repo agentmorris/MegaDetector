@@ -1,8 +1,12 @@
-"""
-Utilities for working with COCO Camera Traps .json databases
-
-https://github.com/agentmorris/MegaDetector/blob/master/data_management/README.md#coco-cameratraps-format
-"""
+########
+#
+# cct_json_utils.py
+#
+# Utilities for working with COCO Camera Traps .json databases
+#
+# https://github.com/agentmorris/MegaDetector/blob/master/data_management/README.md#coco-cameratraps-format
+#
+########
 
 #%% Constants and imports
 
@@ -22,14 +26,17 @@ class CameraTrapJsonUtils:
     """
     Miscellaneous utility functions for working with COCO Camera Traps databases
     """
+    
     @staticmethod
     def annotations_to_string(annotations, cat_id_to_name):
         """
         Given a list of annotations and a mapping from class IDs to names, produces
         a concatenated class list, always sorting alphabetically.
         """
+        
         class_names = CameraTrapJsonUtils.annotationsToClassnames(annotations, cat_id_to_name)
         return ','.join(class_names)
+
 
     @staticmethod
     def annotations_to_classnames(annotations, cat_id_to_name):
@@ -37,11 +44,13 @@ class CameraTrapJsonUtils:
         Given a list of annotations and a mapping from class IDs to names, produces
         a list of class names, always sorting alphabetically.
         """
+        
         # Collect all names
         class_names = [cat_id_to_name[ann['category_id']] for ann in annotations]
         # Make names unique and sort
         class_names = sorted(set(class_names))
         return class_names
+
 
     @staticmethod
     def order_db_keys(db: JSONObject) -> OrderedDict:
@@ -57,6 +66,7 @@ class CameraTrapJsonUtils:
         Returns:
             the same db but as an OrderedDict with keys ordered for readability
         """
+        
         ordered = OrderedDict([
             ('info', db['info']),
             ('categories', db['categories']),
@@ -64,12 +74,14 @@ class CameraTrapJsonUtils:
             ('images', db['images'])])
         return ordered
 
+
     @staticmethod
     def annotations_groupby_image_field(db_indexed, image_field='seq_id'):
         """
         Given an instance of IndexedJsonDb, group annotation entries by a field in the
         image entry.
         """
+        
         image_id_to_image_field = {}
         for image_id, image_entry in db_indexed.image_id_to_image.items():
             image_id_to_image_field[image_id] = image_entry[image_field]
@@ -80,6 +92,7 @@ class CameraTrapJsonUtils:
                 field_value = image_id_to_image_field[annotation_entry['image_id']]
                 res[field_value].append(annotation_entry)
         return res
+
 
     @staticmethod
     def get_entries_from_locations(db: JSONObject, locations: Iterable[str]
@@ -95,6 +108,7 @@ class CameraTrapJsonUtils:
         Returns:
             a dict with the 'images' and 'annotations' fields in the CCT format
         """
+        
         locations = set(locations)
         print('Original DB has {} image and {} annotation entries.'.format(
             len(db['images']), len(db['annotations'])))
@@ -184,6 +198,7 @@ class IndexedJsonDb:
 
     # ...__init__
 
+
     def get_annotations_for_image(self, image: JSONObject
                                   ) -> Optional[List[Dict[str, Any]]]:
         """
@@ -191,6 +206,7 @@ class IndexedJsonDb:
             None if the db has not been loaded,
             [] if no annotations are available
         """
+        
         if self.db is None:
             return None
 
@@ -207,6 +223,7 @@ class IndexedJsonDb:
 
         Returns None is the db has not been loaded, [] if no annotations are available
         """
+        
         if self.db is None:
             return None
 

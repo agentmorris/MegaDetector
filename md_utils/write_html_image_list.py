@@ -1,3 +1,4 @@
+########
 #
 # function write_html_image_list(filename,imageFilenames,titles, options)
 #
@@ -13,6 +14,7 @@
 #
 # Owner: Dan Morris (agentmorris@microsoft.com)
 #
+########
 
 
 #%% Constants and imports

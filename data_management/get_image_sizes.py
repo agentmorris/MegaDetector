@@ -1,6 +1,10 @@
+########
+#
+# get_image_sizes.py
 #
 # Given a json-formatted list of image filenames, retrieve the width and height of every image.
 #
+########
 
 #%% Constants and imports
 
@@ -43,6 +47,7 @@ def process_image(image_path,image_prefix=None):
         print('Error reading image {}: {}'.format(full_path,str(e)))
         return (image_path,-1,-1)
     
+    
 def process_images(filenames,image_prefix=None,n_threads=default_n_threads):
     
     if n_threads <= 1:
@@ -59,7 +64,8 @@ def process_images(filenames,image_prefix=None,n_threads=default_n_threads):
         else:
             pool = Pool(n_threads)
         # all_results = list(tqdm(pool.imap(process_image, filenames), total=len(filenames)))
-        all_results = list(tqdm(pool.imap(partial(process_image,image_prefix=image_prefix), filenames), total=len(filenames)))
+        all_results = list(tqdm(pool.imap(
+            partial(process_image,image_prefix=image_prefix), filenames), total=len(filenames)))
                 
     return all_results
 
@@ -115,13 +121,6 @@ if False:
 #%% Command-line driver
     
 def main():
-    
-    # python sanity_check_json_db.py "e:\wildlife_data\wellington_data\wellington_camera_traps.json" --baseDir "e:\wildlife_data\wellington_data\images" --bFindUnusedImages --bCheckImageSizes
-    # python sanity_check_json_db.py "D:/wildlife_data/mcgill_test/mcgill_test.json" --baseDir "D:/wildlife_data/mcgill_test" --bFindUnusedImages --bCheckImageSizes
-    
-    # Here the '-u' prevents buffering, which makes tee happier
-    #
-    # python -u sanity_check_json_db.py '/datadrive1/nacti_metadata.json' --baseDir '/datadrive1/nactiUnzip/' --bFindUnusedImages --bCheckImageSizes | tee ~/nactiTest.out
     
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file',type=str)

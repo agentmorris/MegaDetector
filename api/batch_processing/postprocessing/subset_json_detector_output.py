@@ -1,3 +1,4 @@
+########
 #
 # subset_json_detector_output.py
 #
@@ -45,10 +46,11 @@
 #
 # python subset_json_detector_output.py "d:\temp\1800_detections.json" "d:\temp\1800_detections_prefix.json" --replacement "prefix/"
 #
-###
+########
 #
 # To subset a COCO Camera Traps .json database, see subset_json_db.py
 #
+########
 
 #%% Constants and imports
 
@@ -214,6 +216,7 @@ def remove_failed_images(data,options):
     """
     Removed failed images from [data]
     """
+    
     images_in = data['images']
     images_out = []    
     
@@ -306,6 +309,7 @@ def split_path(path, maxdepth=100):
     
     http://nicks-liquid-soapbox.blogspot.com/2011/03/splitting-path-to-list-in-python.html
     """
+    
     (head, tail) = os.path.split(path)
     return split_path(head, maxdepth - 1) + [tail] \
         if maxdepth and head and head != path \
@@ -320,6 +324,7 @@ def top_level_folder(p):
     that isn't the drive.  E.g., top_level_folder(r"c:\blah\foo") returns "c:\blah".  Does not
     include the leaf node, i.e. top_level_folder('/blah/foo') returns '/blah'.
     """
+    
     if p == '':
         return ''
     
@@ -553,7 +558,6 @@ if False:
     
 
 #%% Command-line driver
-
 
 def main():
     

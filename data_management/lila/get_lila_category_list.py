@@ -1,3 +1,4 @@
+########
 #
 # get_lila_category_list.py
 #
@@ -9,6 +10,7 @@
 #
 # get_lila_category_counts counts the number of *images* for each category in each dataset.
 #
+########
 
 #%% Constants and imports
 
@@ -78,7 +80,8 @@ for ds_name in metadata_table.keys():
     metadata_table[ds_name]['json_filename'] = get_json_file_for_dataset(ds_name=ds_name,
                                                                          metadata_dir=metadata_dir,
                                                                          metadata_table=metadata_table)
-    
+
+
 #%% Get category names and counts for each dataset
 
 from collections import defaultdict

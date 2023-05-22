@@ -1,3 +1,4 @@
+########
 #
 # cct_to_wi.py
 #
@@ -10,6 +11,7 @@
 #
 # https://data.naturalsciences.org/wildlife-insights/taxonomy/search
 #
+########
 
 #%% Imports
 
@@ -38,7 +40,6 @@ os.makedirs(output_base,exist_ok = True)
 
     
 #%% Constants
-
 
 projects_file_name = 'Template Wildlife Insights Batch Upload - Projectv1.0.csv'
 deployments_file_name = 'Template Wildlife Insights Batch Upload - Deploymentv1.0.csv'

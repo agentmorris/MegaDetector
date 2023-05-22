@@ -1,3 +1,4 @@
+########
 #
 # coco_to_yolo.py
 #
@@ -12,6 +13,7 @@
 # Has only been tested on a handful of COCO Camera Traps data sets; if you
 # use it for more general COCO conversion, YMMV.
 #
+########
 
 #%% Imports and constants
 

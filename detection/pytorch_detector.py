@@ -1,7 +1,11 @@
-"""
-Module to run MegaDetector v5, a PyTorch YOLOv5 (Ultralytics) animal detection model,
-on images.
-"""
+########
+#
+# pytorch_detector.py
+#
+# Module to run MegaDetector v5, a PyTorch YOLOv5 animal detection model, on images.
+#
+########
+
 
 #%% Imports
 
@@ -64,7 +68,8 @@ class PTDetector:
 
     def generate_detections_one_image(self, img_original, image_id, 
                                       detection_threshold, image_size=None):
-        """Apply the detector to an image.
+        """
+        Apply the detector to an image.
 
         Args:
             img_original: the PIL Image object with EXIF rotation taken into account
@@ -192,7 +197,8 @@ class PTDetector:
 
 
 if __name__ == '__main__':
-    # for testing
+    
+    # For testing only... you don't really want to run this module directly
 
     import md_visualization.visualization_utils as vis_utils
 

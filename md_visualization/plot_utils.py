@@ -1,9 +1,14 @@
-"""Functions for plotting.
+########
+#
+# plut_utils.py
+# 
+# Utility functions for plotting.
+#
+# NOTE: Do NOT import matplotlib.pyplot here to avoid the interactive backend.
+# Thus, the matplotlib.figure.Figure objects returned by the functions here do not
+# need to be "closed" with `plt.close(fig)`.
+# 
 
-NOTE: Do NOT import matplotlib.pyplot here to avoid the interactive backend.
-Thus, the matplotlib.figure.Figure objects returned by the functions here do not
-need to be "closed" with `plt.close(fig)`.
-"""
 from typing import Any, Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -21,7 +26,8 @@ def plot_confusion_matrix(
         y_label: bool = True,
         fmt: str = '{:.0f}'
         ) -> matplotlib.figure.Figure:
-    """Plot a confusion matrix. By default, assumes values in the given matrix
+    """
+    Plot a confusion matrix. By default, assumes values in the given matrix
     are percentages. If the matrix contains counts, normalization can be applied
     by setting `normalize=True`.
 
@@ -40,6 +46,7 @@ def plot_confusion_matrix(
 
     Returns: matplotlib.figure.Figure, a reference to the figure
     """
+    
     num_classes = matrix.shape[0]
     assert matrix.shape[1] == num_classes
     assert len(classes) == num_classes
@@ -100,6 +107,7 @@ def plot_precision_recall_curve(
 
     Returns: matplotlib.figure.Figure, reference to the figure
     """
+    
     assert len(precisions) == len(recalls)
 
     fig = matplotlib.figure.Figure(tight_layout=True)
@@ -143,6 +151,7 @@ def plot_stacked_bar_chart(data: np.ndarray,
 
     Returns: matplotlib.figure.Figure, reference to figure
     """
+    
     data = np.asarray(data)
     num_series, num_columns = data.shape
     ind = np.arange(num_columns)
@@ -184,7 +193,8 @@ def plot_stacked_bar_chart(data: np.ndarray,
 
 def calibration_ece(true_scores: Sequence[int], pred_scores: Sequence[float],
                     num_bins: int) -> Tuple[np.ndarray, np.ndarray, float]:
-    """Expected calibration error (ECE) as defined in equation (3) of
+    """
+    Expected calibration error (ECE) as defined in equation (3) of
         Guo et al. "On Calibration of Modern Neural Networks." (2017).
 
     Implementation modified from sklearn.calibration.calibration_curve()
@@ -204,6 +214,7 @@ def calibration_ece(true_scores: Sequence[int], pred_scores: Sequence[float],
             each bin
         ece: float, expected calibration error
     """
+    
     assert len(true_scores) == len(pred_scores)
 
     bins = np.linspace(0., 1. + 1e-8, num=num_bins + 1)
@@ -231,7 +242,8 @@ def plot_calibration_curve(true_scores: Sequence[int],
                            ax: Optional[matplotlib.axes.Axes] = None,
                            **fig_kwargs: Any
                            ) -> matplotlib.figure.Figure:
-    """Plot a calibration curve.
+    """
+    Plot a calibration curve.
 
     Consider rewriting / removing this function if
         https://github.com/scikit-learn/scikit-learn/pull/17443
@@ -248,6 +260,7 @@ def plot_calibration_curve(true_scores: Sequence[int],
 
     Returns: matplotlib Figure
     """
+    
     accs, confs, ece = calibration_ece(true_scores, pred_scores, num_bins)
 
     created_fig = False

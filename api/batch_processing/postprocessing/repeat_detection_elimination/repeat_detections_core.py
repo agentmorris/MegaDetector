@@ -799,10 +799,12 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
     # Validate some options
     
     if options.customDirNameFunction is not None:
-        assert options.nDirLevelsFromLeaf == 0, 'Cannot mix custom dir name functions with nDirLevelsFromLeaf'
+        assert options.nDirLevelsFromLeaf == 0, \
+            'Cannot mix custom dir name functions with nDirLevelsFromLeaf'
         
     if options.nDirLevelsFromLeaf != 0:
-        assert options.customDirNameFunction is None, 'Cannot mix custom dir name functions with nDirLevelsFromLeaf'
+        assert options.customDirNameFunction is None, \
+            'Cannot mix custom dir name functions with nDirLevelsFromLeaf'
             
     if options.filterFileToLoad is not None and len(options.filterFileToLoad) > 0:
     

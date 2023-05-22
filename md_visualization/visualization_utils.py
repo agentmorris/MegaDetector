@@ -1,8 +1,10 @@
-"""
-visualization_utils.py
-
-Core rendering functions shared across visualization scripts
-"""
+########
+# 
+# visualization_utils.py
+# 
+# Core rendering functions shared across visualization scripts
+#
+########
 
 #%% Constants and imports
 
@@ -60,8 +62,9 @@ def open_image(input_file: Union[str, BytesIO]) -> Image:
             that PIL can open), or an image as a stream of bytes
 
     Returns:
-        an PIL image object in RGB mode
+        A PIL image object in RGB mode
     """
+    
     if (isinstance(input_file, str)
             and input_file.startswith(('http://', 'https://'))):
         try:
@@ -126,6 +129,7 @@ def load_image(input_file: Union[str, BytesIO]) -> Image:
 
     Returns: PIL.Image.Image, in RGB mode
     """
+    
     image = open_image(input_file)
     image.load()
     return image
@@ -491,6 +495,7 @@ def draw_bounding_box_on_image(image,
         coordinates as absolute.
     label_font_size: font size to attempt to load arial.ttf with
     """
+    
     if clss is None:
         color = colormap[1]
     else:
@@ -636,6 +641,7 @@ def render_megadb_bounding_boxes(boxes_info, image):
             where bbox coordinates are normalized [x_min, y_min, width, height]
         image: PIL.Image.Image, opened image
     """
+    
     display_boxes = []
     display_strs = []
     classes = []  # ints, for selecting colors
@@ -737,6 +743,7 @@ def draw_db_boxes_on_file(input_file, output_file, boxes, classes=None,
     
     detector_label_map is a dict mapping category IDs to strings.
     """
+    
     image = open_image(input_file)
 
     if classes is None:

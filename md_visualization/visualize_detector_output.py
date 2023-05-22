@@ -1,8 +1,12 @@
-"""
-Render images with bounding boxes annotated on them to a folder, based on a
-detector output result file (json). The original images can be local or in
-Azure Blob Storage.
-"""
+########
+#
+# visualize_detector_output.py
+#
+# Render images with bounding boxes annotated on them to a folder, based on a
+# detector output result file (json). The original images can be local or in
+# Azure Blob Storage.
+#
+########
 
 #%% Imports
 
@@ -44,7 +48,8 @@ def visualize_detector_output(detector_output_path: str,
                               html_output_file=None,
                               html_output_options=None) -> List[str]:
     
-    """Draw bounding boxes on images given the output of the detector.
+    """
+    Draw bounding boxes on images given the output of the detector.
 
     Args:
         detector_output_path: str, path to detector output json file

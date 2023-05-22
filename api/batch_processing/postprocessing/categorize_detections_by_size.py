@@ -1,13 +1,18 @@
-"""
+########
+#
+# categorize_detections_by_size.py
+#
+# Given an API output .json file, creates a separate category for bounding boxes
+# above a size threshold.
+# 
+########
 
-categorize_detections_by_size.py
-
-Given an API output .json file, creates a separate category for bounding boxes
-above a size threshold.
-
-"""
+#%% Constants and imports
 
 import json
+
+
+#%% Support classes
 
 class SizeCategorizationOptions:
 
@@ -21,6 +26,8 @@ class SizeCategorizationOptions:
     
     output_category_name = 'large_detection'
     
+
+#%% Main functions
     
 def categorize_detections_by_size(input_file,output_file,options=None):
     

@@ -1,3 +1,4 @@
+########
 #
 # load_api_results.py
 #
@@ -7,11 +8,11 @@
 #
 # Includes the deprecated functions that worked with the old CSV API output format.
 #
+########
 
 #%% Constants and imports
 
 from collections import defaultdict
-from tqdm import tqdm
 
 import json
 import os
@@ -86,6 +87,7 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
                 ['file', 'detections','failure']            
         other_fields: a dict containing fields in the results other than 'images'
     """
+    
     print('Loading API results from {}'.format(api_output_path))
 
     with open(api_output_path) as f:

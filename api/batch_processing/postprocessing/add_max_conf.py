@@ -1,3 +1,4 @@
+########
 #
 # add_max_conf.py
 #
@@ -8,6 +9,7 @@
 # Just in case someone took a dependency on that field, this script allows you
 # to add it back to an existing .json file.
 #
+########
 
 #%% Imports and constants
 

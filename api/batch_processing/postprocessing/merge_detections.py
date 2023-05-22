@@ -1,3 +1,6 @@
+########
+#
+# merge_detections.py
 #
 # Merge high-confidence detections from one results file into another file,
 # when the target file does not detect anything on an image.
@@ -8,6 +11,7 @@
 #
 # If you want to literally merge two .json files, see combine_api_outputs.py.
 #
+########
 
 #%% Constants and imports
 
@@ -229,4 +233,6 @@ if False:
     merge_detections(source_files, target_file, output_file, options)
     
     
-#%% Command-line driver (TODO)
+#%% Command-line driver 
+
+# TODO

@@ -1,3 +1,4 @@
+########
 #
 # Partially-formed stub to get from MegaDetector output files to COCO Camera Traps data.
 #
@@ -10,6 +11,7 @@
 #
 # https://github.com/StewartWILDlab/mdtools
 #
+########
 
 #%% Constants and imports
 

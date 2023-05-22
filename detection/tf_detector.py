@@ -1,7 +1,11 @@
-"""
-Module containing the class TFDetector for loading a TensorFlow detection model and
-running inference.
-"""
+########
+#
+# td_detector.py
+#
+# Module containing the class TFDetector for loading a TensorFlow detection model and
+# running inference.
+# 
+########
 
 import numpy as np
 
@@ -20,14 +24,18 @@ class TFDetector:
     the MegaDetector (TF). The inference batch size is set to 1; code needs to be modified
     to support larger batch sizes, including resizing appropriately.
     """
+    
     # MegaDetector was trained with batch size of 1, and the resizing function is a part
     # of the inference graph
     BATCH_SIZE = 1
 
 
     def __init__(self, model_path):
-        """Loads model from model_path and starts a tf.Session with this graph. Obtains
-        input and output tensor handles."""
+        """
+        Loads model from model_path and starts a tf.Session with this graph. Obtains
+        input and output tensor handles.
+        """
+        
         detection_graph = TFDetector.__load_model(model_path)
         self.tf_session = tf.Session(graph=detection_graph)
 
@@ -42,7 +50,8 @@ class TFDetector:
 
     @staticmethod
     def __convert_coords(tf_coords):
-        """Converts coordinates from the model's output format [y1, x1, y2, x2] to the
+        """
+        Converts coordinates from the model's output format [y1, x1, y2, x2] to the
         format used by our API and MegaDB: [x1, y1, width, height]. All coordinates
         (including model outputs) are normalized in the range [0, 1].
 
@@ -52,6 +61,7 @@ class TFDetector:
 
         Returns: list of Python float, predicted bounding box coordinates [x1, y1, width, height]
         """
+        
         # change from [y1, x1, y2, x2] to [x1, y1, width, height]
         width = tf_coords[3] - tf_coords[1]
         height = tf_coords[2] - tf_coords[0]
@@ -65,13 +75,15 @@ class TFDetector:
 
     @staticmethod
     def __load_model(model_path):
-        """Loads a detection model (i.e., create a graph) from a .pb file.
+        """
+        Loads a detection model (i.e., create a graph) from a .pb file.
 
         Args:
             model_path: .pb file of the model.
 
         Returns: the loaded graph.
         """
+        
         print('TFDetector: Loading graph...')
         detection_graph = tf.Graph()
         with detection_graph.as_default():
@@ -100,7 +112,8 @@ class TFDetector:
         return box_tensor_out, score_tensor_out, class_tensor_out
 
     def generate_detections_one_image(self, image, image_id, detection_threshold, image_size=None):        
-        """Apply the detector to an image.
+        """
+        Apply the detector to an image.
 
         Args:
             image: the PIL Image object
@@ -114,6 +127,7 @@ class TFDetector:
             - 'detections', which is a list of detection objects containing keys 'category', 'conf' and 'bbox'
             - 'failure'
         """
+        
         assert image_size is None, 'Image sizing not supported for TF detectors'
         result = {
             'file': image_id

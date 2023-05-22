@@ -1,3 +1,4 @@
+########
 #
 # read_exif.py
 #
@@ -8,6 +9,7 @@
 # can read everything).  The latter approach expects that exiftool is available on the system
 # path.  No attempt is made to be consistent in format across the two approaches.
 #
+########
 
 #%% Imports and constants
 

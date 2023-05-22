@@ -1,4 +1,4 @@
-#####
+########
 #
 # visualize_incoming_annotations.py
 #
@@ -8,6 +8,7 @@
 # Modified in 2021 March to use the new format (iMerit batch 12 onwards), which is a
 # COCO formatted JSON with relative coordinates for the bbox.
 #
+########
 
 import argparse
 import io
@@ -104,7 +105,8 @@ def visualize_incoming_annotations(args):
         images_html.append({
             'filename': '{}/{}'.format('rendered_images', file_name),
             'title': '{}, number of boxes: {}'.format(anno_file_name, len([b for b in boxes if len(b) > 0])),
-            'textStyle': 'font-family:verdana,arial,calibri;font-size:80%;text-align:left;margin-top:20;margin-bottom:5'
+            'textStyle': 
+                'font-family:verdana,arial,calibri;font-size:80%;text-align:left;margin-top:20;margin-bottom:5'
         })
 
     # Write to HTML

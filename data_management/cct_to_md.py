@@ -1,3 +1,4 @@
+########
 #
 # cct_to_md.py
 #
@@ -10,6 +11,7 @@
 # Currently assumes that width and height are present in the input data, does not
 # read them from images.
 #
+########
 
 #%% Constants and imports
 
@@ -84,7 +86,8 @@ def cct_to_md(input_filename,output_filename=None):
         
         annotations_this_image = image_id_to_annotations[im['id']]
         
-        max_detection_conf = 0
+        # This field is no longer included in MD output files by default
+        # max_detection_conf = 0
         
         for ann in annotations_this_image:
             
@@ -93,7 +96,7 @@ def cct_to_md(input_filename,output_filename=None):
                    det = {}
                    det['category'] = str(ann['category_id'])
                    det['conf'] = 1.0
-                   max_detection_conf = 1.0
+                   # max_detection_conf = 1.0
                    
                    # MegaDetector: [x,y,width,height] (normalized, origin upper-left)
                    # CCT: [x,y,width,height] (absolute, origin upper-left)

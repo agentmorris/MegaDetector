@@ -1,3 +1,4 @@
+########
 #
 # get_lila_category_counts.py
 #
@@ -7,6 +8,7 @@
 # as a template for doing operations like this on LILA data.  get_lila_category_list.py writes 
 # information out to a .json file, but it counts *annotations*, not *images*, for each category.
 #
+########
 
 #%% Constants and imports
 
@@ -107,6 +109,4 @@ for ds_name in ds_name_to_category_counts:
         print('{}: {}'.format(category_name,category_to_count[category_name]))
         
 # ...for each dataset
-
-
         

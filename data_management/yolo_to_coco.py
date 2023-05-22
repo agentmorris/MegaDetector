@@ -1,3 +1,4 @@
+########
 #
 # yolo_to_coco.py
 #
@@ -6,6 +7,7 @@
 # Currently supports only a single folder (i.e., no recursion).  Treats images without
 # corresponding .txt files as empty.
 #
+########
 
 #%% Imports and constants
 

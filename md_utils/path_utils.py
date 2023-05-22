@@ -1,9 +1,11 @@
+########
 # 
 # path_utils.py
 #
 # Miscellaneous useful utils for path manipulation, things that could *almost*
 # be in os.path, but aren't.
 #
+########
 
 #%% Imports and constants
 
