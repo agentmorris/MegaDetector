@@ -10,7 +10,9 @@ dependencies:
   - tqdm=4.65.0
   - jsonpickle=3.0.0
   - humanfriendly=10.0
-  - numpy=1.24.3
+  # Using yolov5's val.py (which is still experimental) for MDv5.0 requires a version
+  # of YOLOv5 that uses np.int, which was removed as of numpy 1.24.0
+  - numpy=1.23.5
   - matplotlib=3.7.1
   - opencv=4.5.5
   - requests=2.29.0
