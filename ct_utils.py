@@ -1,10 +1,13 @@
-"""
-ct_utils.py
+########
+#
+# ct_utils.py
+#
+# Utility functions that don't depend on other things in this repo.
+#
+########
 
-Utility functions that don't depend on other things in this repo.  Also see
-cct_json_utils.
+#%% Imports
 
-"""
 import subprocess
 import argparse
 import inspect
@@ -14,6 +17,9 @@ import os
 
 import jsonpickle
 import numpy as np
+
+
+#%% Functions
 
 def truncate_float_array(xs, precision=3):
     """
@@ -64,6 +70,7 @@ def args_to_object(args: argparse.Namespace, obj: object) -> None:
         args: argparse.Namespace
         obj: class or object whose whose attributes will be updated
     """
+    
     for n, v in inspect.getmembers(args):
         if not n.startswith('_'):
             setattr(obj, n, v)
@@ -119,6 +126,7 @@ def convert_yolo_to_xywh(yolo_box):
     Returns:
         bbox with coordinates represented as [x_min, y_min, width_of_box, height_of_box].
     """
+    
     x_center, y_center, width_of_box, height_of_box = yolo_box
     x_min = x_center - width_of_box / 2.0
     y_min = y_center - height_of_box / 2.0
@@ -136,6 +144,7 @@ def convert_xywh_to_tf(api_box):
     Returns:
         bbox with coordinates represented as [y_min, x_min, y_max, x_max]
     """
+    
     x_min, y_min, width_of_box, height_of_box = api_box
     x_max = x_min + width_of_box
     y_max = y_min + height_of_box
@@ -222,7 +231,8 @@ def _get_max_conf_from_detections(detections):
         confidences = [det['conf'] for det in detections]
         max_conf = max(confidences)
     return max_conf
-    
+
+
 def get_max_conf(im):
     """
     Given an image dict in the format used by the batch API, compute the maximum detection
@@ -237,6 +247,8 @@ def get_max_conf(im):
 
 
 #%% Functions for running commands as subprocesses
+
+# Also see md_utils/process_utils.py
 
 def execute_command(cmd):
   """
