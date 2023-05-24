@@ -40,16 +40,18 @@ The classifiers trained with this pipeline are intended to be used in conjunctio
 
 ## Installation
 
-Install Anaconda or [miniconda3](https://docs.conda.io/en/latest/miniconda.html). Then create the conda environment using the following command:
+Install Anaconda, Miniforge, or Mambaforge.  The [MegaDetector User Guide](https://github.com/ecologize/CameraTraps/blob/main/megadetector.md) recommends Mambaforge, but if you're reading this classification README, you're likely already pretty Python-savvy and choose your own environment.  We will use "mamba" in these instructions, but if you're using Anaconda, just replace "mamba" with "conda".
+
+Then create the environment using the following command:
 
 ```bash
-conda env update -f environment-classifier.yml --prune
+mamba env update -f environment-classifier.yml --prune
 ```
 
-Activate this conda environment:
+Activate this environment:
 
 ```bash
-conda activate cameratraps-classifier
+mamba activate cameratraps-classifier
 ```
 
 ## Verifying that CUDA is available (and dealing with the case where it isn't)
@@ -66,14 +68,14 @@ YMMV, but in at least one Linux environment, the following fixed this issue:
 
 ```bash
 pip uninstall torch torchvision
-conda install pytorch=1.10.1 torchvision=0.11.2 -c pytorch
+mamba install pytorch=1.10.1 torchvision=0.11.2 -c pytorch
 ```
 
 YMMV again, but in at least one Windows environment, the following fixed this issue:
 
 ```bash
 pip uninstall torch torchvision
-conda install pytorch==1.10.1 torchvision==0.11.2 torchaudio==0.10.1 cudatoolkit=11.3 -c pytorch -c conda-forge
+mamba install pytorch==1.10.1 torchvision==0.11.2 torchaudio==0.10.1 cudatoolkit=11.3 -c pytorch -c conda-forge
 ```
 
 ## Optional steps to make classification faster in Linux
@@ -81,7 +83,7 @@ conda install pytorch==1.10.1 torchvision==0.11.2 torchaudio==0.10.1 cudatoolkit
 If you are on Linux, you may also get some speedup by installing the [accimage](https://github.com/pytorch/accimage) package for acclerated image loading.  Because this is Linux-only and optional, we have commented it out of the environment file, but you can install it with:
 
 ```bash
-conda install -c conda-forge accimage
+mamba install -c conda-forge accimage
 ```
 
 Similarly, on Linux, you may get some speedup by installing [Pillow-SIMD](https://github.com/uploadcare/pillow-simd):
@@ -334,8 +336,8 @@ Download all of the images to `/path/to/images/name_of_dataset`. Then, follow th
 wget -O md_v4.1.0.pb https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb
 
 # install TensorFlow v1 and other dependences
-conda env update -f environment-detector.yml --prune
-conda activate cameratraps-detector
+mamba env update -f environment-detector.yml --prune
+mamba activate cameratraps-detector
 
 # run MegaDetector
 python detection/run_tf_detector_batch.py \
