@@ -5,9 +5,6 @@
 # Split a video (or folder of videos) into frames, run the frames through run_detector_batch.py,
 # and optionally stitch together results into a new video with detection boxes.
 #
-# TODO: allow video rendering when processing a whole folder
-# TODO: allow video rendering from existing results
-#
 ######
 
 #%% Constants, imports, environment
@@ -25,6 +22,9 @@ from detection.video_utils import frames_to_video
 from detection.video_utils import frame_results_to_video_results
 from detection.video_utils import video_folder_to_frames
 from uuid import uuid1
+
+
+#%% Options classes
 
 class ProcessVideoOptions:
 
@@ -71,7 +71,7 @@ class ProcessVideoOptions:
     class_mapping_filename = None
 
 
-#%% Main functions
+#%% Functions
 
 def process_video(options):
     """
@@ -318,7 +318,6 @@ def options_to_command(options):
 
     
 #%% Interactive driver
-
 
 if False:    
     

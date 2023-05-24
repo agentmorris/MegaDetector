@@ -6,7 +6,7 @@
 #
 ########
 
-#%% Imports
+#%% Imports and constants
 
 import re
 import urllib
@@ -112,5 +112,3 @@ def download_relative_filename(url, output_base, verbose=False):
     assert p.path.startswith('/'); relative_filename = p.path[1:]
     destination_filename = os.path.join(output_base,relative_filename)
     download_url(url, destination_filename, verbose=verbose)
-    
-
