@@ -1371,6 +1371,8 @@ now = datetime.datetime.now()
 
 image_info = []
 
+images_without_datetime = []
+
 # exif_result = exif_results[0]
 for exif_result in tqdm(exif_results):
     
@@ -1380,13 +1382,14 @@ for exif_result in tqdm(exif_results):
     im['location'] = os.path.dirname(exif_result['file_name'])
     im['file_name'] = exif_result['file_name']
     im['id'] = im['file_name']
-    if 'exif_tags' not in exif_result:
+    if 'exif_tags' not in exif_result or 'DateTime' not in exif_result['exif_tags']: 
         exif_dt = None
     else:
         exif_dt = exif_result['exif_tags']['DateTime']
         exif_dt = parse_date_from_exif_datetime(exif_dt)
     if exif_dt is None:
         im['datetime'] = None
+        images_without_datetime.append(im['file_name'])
     else:
         im['datetime'] = datetime.datetime.fromtimestamp(time.mktime(exif_dt))
     
@@ -1401,6 +1404,9 @@ for exif_result in tqdm(exif_results):
     image_info.append(im)
     
 # ...for each exif image result
+
+print('Parsed EXIF datetime information, unable to parse EXIF data from {} of {} images'.format(
+    len(images_without_datetime),len(exif_results)))
 
 
 #%% Assemble into sequences
