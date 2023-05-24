@@ -1,9 +1,11 @@
+########
 #
 # manage_video_batch.py
 #
 # Notebook-esque script to manage the process of running a local batch of videos
 # through MD.  Defers most of the heavy lifting to manage_local_batch.py .
 #
+########
 
 #%% Imports and constants
 
@@ -26,7 +28,7 @@ os.makedirs(output_folder_base,exist_ok=True)
 
 recursive = True
 overwrite = True
-n_threads = 5
+n_threads = 4
 every_n_frames = 10
 
 frame_filenames_by_video,fs_by_video,video_filenames = \
@@ -35,7 +37,8 @@ frame_filenames_by_video,fs_by_video,video_filenames = \
                                                               recursive=recursive,
                                                               overwrite=overwrite,
                                                               n_threads=n_threads,
-                                                              every_n_frames=every_n_frames)
+                                                              every_n_frames=every_n_frames,
+                                                              parallellization_uses_threads=False)
 
 
 #%% List frame files, break into folders

@@ -15,8 +15,10 @@ import json
 
 from collections import defaultdict
 from multiprocessing.pool import ThreadPool
+from multiprocessing.pool import Pool
 from tqdm import tqdm
 from typing import Container,Iterable,List
+from functools import partial
 
 from md_utils import path_utils
     
@@ -204,10 +206,32 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
     return frame_filenames,Fs
 
 
+def _video_to_frames_for_folder(relative_fn,input_folder,output_folder_base,every_n_frames,overwrite,verbose):
+    """
+    Internal function to call video_to_frames in the context of video_folder_to_frames; 
+    makes sure the right output folder exists, then calls video_to_frames.
+    """    
+    
+    input_fn_absolute = os.path.join(input_folder,relative_fn)
+    assert os.path.isfile(input_fn_absolute)
+
+    # Create the target output folder
+    output_folder_video = os.path.join(output_folder_base,relative_fn)
+    os.makedirs(output_folder_video,exist_ok=True)
+
+    # Render frames
+    # input_video_file = input_fn_absolute; output_folder = output_folder_video
+    frame_filenames,fs = video_to_frames(input_fn_absolute,output_folder_video,
+                                         overwrite=overwrite,every_n_frames=every_n_frames,
+                                         verbose=verbose)
+    
+    return frame_filenames,fs
+
+
 def video_folder_to_frames(input_folder:str, output_folder_base:str, 
                            recursive:bool=True, overwrite:bool=True,
                            n_threads:int=1, every_n_frames:int=None,
-                           verbose=False):
+                           verbose=False, parallelization_uses_threads=True):
     """
     For every video file in input_folder, create a folder within output_folder_base, and 
     render every frame of the video to .jpg in that folder.
@@ -227,37 +251,32 @@ def video_folder_to_frames(input_folder:str, output_folder_base:str,
     frame_filenames_by_video = []
     fs_by_video = []
     
-    def process_video(relative_fn):
-        
-        input_fn_absolute = os.path.join(input_folder,relative_fn)
-        assert os.path.isfile(input_fn_absolute)
-    
-        # Create the target output folder
-        output_folder_video = os.path.join(output_folder_base,relative_fn)
-        os.makedirs(output_folder_video,exist_ok=True)
-    
-        # Render frames
-        # input_video_file = input_fn_absolute; output_folder = output_folder_video
-        frame_filenames,fs = video_to_frames(input_fn_absolute,output_folder_video,
-                                             overwrite=overwrite,every_n_frames=every_n_frames,
-                                             verbose=verbose)
-        
-        return frame_filenames,fs
-    
     if n_threads == 1:
         # For each video
         #
         # input_fn_relative = input_files_relative_paths[0]
-        for input_fn_relative in input_files_relative_paths:
+        for input_fn_relative in tqdm(input_files_relative_paths):
         
-            frame_filenames,fs = process_video(input_fn_relative)
+            frame_filenames,fs = \
+                _video_to_frames_for_folder(input_fn_relative,input_folder,output_folder_base,
+                                            every_n_frames,overwrite,verbose)
             frame_filenames_by_video.append(frame_filenames)
             fs_by_video.append(fs)
     else:
-        pool = ThreadPool(n_threads)
-        # process_detection_with_options = partial(process_detection, options=options)
-        results = list(tqdm(pool.imap(process_video, 
-                                      input_files_relative_paths), 
+        if parallelization_uses_threads:
+            print('Starting a worker pool with {} threads'.format(n_threads))
+            pool = ThreadPool(n_threads)
+        else:
+            print('Starting a worker pool with {} processes'.format(n_threads))
+            pool = Pool(n_threads)
+        process_video_with_options = partial(_video_to_frames_for_folder, 
+                                             input_folder=input_folder,
+                                             output_folder_base=output_folder_base,
+                                             every_n_frames=every_n_frames,
+                                             overwrite=overwrite,
+                                             verbose=verbose)
+        results = list(tqdm(pool.imap(
+            partial(process_video_with_options),input_files_relative_paths), 
                             total=len(input_files_relative_paths)))
         frame_filenames_by_video = [x[0] for x in results]
         fs_by_video = [x[1] for x in results]
