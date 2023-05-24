@@ -2,15 +2,15 @@
 * [Overview](#overview)
 * [Setup](#setup)
   * [Installation](#installation)
-  * [Directory Structure](#directory-structure)
-  * [Environment Variables](#environment-variables)
+  * [Directory structure](#directory-structure)
+  * [Environment variables](#environment-variables)
 * [Run a trained classifier on new images](#run-a-trained-classifier-on-new-images)
   1. [Run MegaDetector](#1-run-megadetector)
   2. [Crop images](#2-crop-images)
   3. [Run classifier](#3-run-classifier)
   4. [(Optional) Map MegaClassifier categories to desired categories](#4-optional-map-megaclassifier-categories-to-desired-categories)
   5. [Merge classification results with detection JSON](#5-merge-classification-results-with-detection-json)
-* [Typical Training Pipeline](#typical-training-pipeline)
+* [Typical training pipeline](#typical-training-pipeline)
   1. [Select classification labels for training](#1-select-classification-labels-for-training)
   2. [Query MegaDB for labeled images](#2-query-megadb-for-labeled-images)
   3. [For images without ground-truth bounding boxes, generate bounding boxes using MegaDetector](#3-for-images-without-ground-truth-bounding-boxes-generate-bounding-boxes-using-megadetector)
@@ -21,8 +21,8 @@
   8. [Analyze classification results](#8-analyze-classification-results)
   9. [Export classification results as JSON](#9-export-classification-results-as-json)
   10. [(Optional) Identify potentially mislabeled images](#10-optional-identify-potentially-mislabeled-images)
-* [Miscellaneous Scripts](#miscellaneous-scripts)
-* [Label Specification Syntax](#label-specification-syntax)
+* [Miscellaneous scripts](#miscellaneous-scripts)
+* [Label specification syntax](#label-specification-syntax)
   * [CSV](#csv)
   * [JSON](#json)
 
@@ -91,9 +91,9 @@ pip uninstall -y pillow
 pip install pillow-simd
 ```
 
-## Directory Structure
+## Directory structure
 
-The classifier pipeline assumes the following directories:
+The classifier training pipeline assumes the following directories (only relevant to training):
 
 ```
 classifier-training/            # Azure container mounted locally
@@ -122,9 +122,9 @@ camera-traps-private/           # internal taxonomy git repo
 ```
 
 
-## Environment Variables
+## Environment variables
 
-The following environment variables are useful to have in `.bashrc`:
+The following environment variables are useful to have in `.bashrc` (only relevant to training):
 
 ```bash
 # Python development
@@ -707,7 +707,7 @@ python save_mislabeled.py /path/to/classifier-training /path/to/mislabeled_image
 ```
 
 
-# Miscellaneous Scripts
+# Miscellaneous scripts
 
 * `analyze_failed_images.py`: many scripts in the training pipeline produce log files which list images that either failed during detection, failed to download, or failed to crop. This script analyzes the log files to separate out the images into 5 categories:
   * `'good'`: no obvious issues
@@ -718,7 +718,7 @@ python save_mislabeled.py /path/to/classifier-training /path/to/mislabeled_image
 * `json_to_azcopy_list.py`: Given JSON file such as the `queried_images.json` file output from `json_validator.py`, generates one text file `{dataset}_images.txt` for every dataset included. The text file can then be passed to `azcopy` using the [undocumented](https://github.com/Azure/azure-storage-azcopy/wiki/Listing-specific-files-to-transfer) `--list-of-files` argument to be downloaded. However, until AzCopy fixes its [performance issues](https://github.com/Azure/azure-storage-azcopy/issues/1152) with the `--list-of-files` argument, this is not a recommended method for downloading image files from Azure. Instead, consider using the `data_management/megadb/download_images.py` script instead.
 
 
-# Label Specification Syntax
+# Label specification syntax
 
 ## CSV
 
@@ -814,3 +814,4 @@ A CSV label specification file can be converted to the [JSON label specification
     }
 }
 ```
+

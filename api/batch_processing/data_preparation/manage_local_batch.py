@@ -1,11 +1,11 @@
-"""
-
-    manage_local_batch.py
-    
-    Semi-automated process for managing a local MegaDetector job, including
-    standard postprocessing steps.
-    
-"""
+########
+#
+# manage_local_batch.py
+#    
+# Semi-automated process for managing a local MegaDetector job, including
+# standard postprocessing steps.
+#
+########
 
 #%% Imports and constants
 
@@ -594,7 +594,6 @@ if False:
 # Deliberately leaving these imports here, rather than at the top, because this
 # cell is not typically executed
 from api.batch_processing.postprocessing.repeat_detection_elimination import repeat_detections_core
-import path_utils
 task_index = 0
 
 options = repeat_detections_core.RepeatDetectionOptions()
