@@ -13,6 +13,7 @@ import os
 import tempfile
 import argparse
 import itertools
+import json
 
 from detection import run_detector_batch
 from md_visualization import visualize_detector_output
@@ -59,6 +60,7 @@ class ProcessVideoOptions:
     
     recursive = False 
     verbose = False
+    fourcc = None
 
     rendering_confidence_threshold = 0.15
     json_confidence_threshold = 0.005
@@ -108,7 +110,8 @@ def process_video(options):
     if options.reuse_results_if_available and \
         os.path.isfile(options.output_json_file):
             print('Loading results from {}'.format(options.output_json_file))
-            results = None
+            with open(options.output_json_file,'r') as f:
+                results = json.load(f)
     else:
         results = run_detector_batch.load_and_run_detector_batch(
             options.model_file, image_file_names,
@@ -348,10 +351,11 @@ if False:
     
     #%% Process a single video
 
+    # fn = None
     model_file = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')    
-    input_video_file = r"G:\temp\test\input-video\test.AVI"
-    frame_folder = r'g:\temp\test\extracted-frames'
-    rendering_folder = r'g:\temp\test\rendered-frames'
+    input_video_file = fn
+    frame_folder = os.path.expanduser('~/tmp/video-test/frames')
+    rendering_folder = os.path.expanduser('~/tmp/video-test/rendered-frames')
     
     options = ProcessVideoOptions()
     options.model_file = model_file
@@ -359,6 +363,7 @@ if False:
     options.frame_folder = frame_folder
     options.frame_rendering_folder = rendering_folder
     options.render_output_video = True
+    options.output_video_file = os.path.expanduser('~/tmp/video-test/detections.mp4')
     
     cmd = options_to_command(options)
     print(cmd)
