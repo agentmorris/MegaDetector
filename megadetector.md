@@ -600,7 +600,9 @@ If you use MegaDetector in a publication, please cite:
 
 Beery S, Morris D, Yang S. Efficient pipeline for camera trap image review. arXiv preprint arXiv:1907.06772. 2019 Jul 15.
 
-BibTex format:
+Please include the version of MegaDetector you used.  If you are including any analysis of false positives/negatives, please be sure to specify the confidence threshold you used as well.
+
+The same citation, in BibTex format:
 
 ```BibTeX
 @article{beery2019efficient,
