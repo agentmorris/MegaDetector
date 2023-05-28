@@ -351,7 +351,7 @@ if False:
     
     #%% Process a single video
 
-    # fn = None
+    fn = os.path.expanduser('~/tmp/video-test/test-video.mp4')
     model_file = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')    
     input_video_file = fn
     frame_folder = os.path.expanduser('~/tmp/video-test/frames')
