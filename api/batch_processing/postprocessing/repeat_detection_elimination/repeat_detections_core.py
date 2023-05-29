@@ -97,6 +97,8 @@ class RepeatDetectionOptions:
     # (optional) List of filenames remaining after deletion of identified 
     # repeated detections that are actually animals.  This should be a flat
     # text file, one relative filename per line.  See enumerate_images().
+    #
+    # TODO: this is a pretty esoteric code path and a candidate for removal.
     filteredFileListToLoad = None
 
     # Turn on/off optional outputs
@@ -247,6 +249,8 @@ class DetectionLocation:
         self.bbox = detection['bbox']
         self.relativeDir = relativeDir
         self.sampleImageRelativeFileName = ''
+        
+        # This ID is only guaranteed to be unique within a directory
         self.id = id
         self.clusterLabel = None
 
@@ -928,13 +932,18 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
     print('Finished separating {} files into {} directories'.format(len(detectionResults),
                                                                     len(rowsByDirectory)))
 
-
+    
     ##% Look for matches (or load them from file)
 
     dirsToSearch = list(rowsByDirectory.keys())
     if options.debugMaxDir > 0:
         dirsToSearch = dirsToSearch[0:options.debugMaxDir]
 
+    # Map numeric directory indices to names (we'll write this out to the detection index .json file)
+    dirIndexToName = {}
+    for iDir, dirName in enumerate(dirsToSearch):
+        dirIndexToName[iDir] = dirName
+    
     # Are we actually looking for matches, or just loading from a file?
     if len(options.filterFileToLoad) == 0:
 
@@ -950,7 +959,7 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
             dirNameAndRows.append((dirName,rowsThisDirectory))                    
                 
         allCandidateDetections = [None] * len(dirsToSearch)
-
+        
         if not options.bParallelizeComparisons:
 
             options.pbar = None
@@ -1054,6 +1063,9 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
 
         # We're skipping detection-finding, but to see which images are actually legit false
         # positives, we may be looking for physical files or loading from a text file.        
+        #
+        # Note to self: this is a very estoeric code path and its removal is marked above
+        # as "todo".
         fileList = None
         if options.filteredFileListToLoad is not None:
             with open(options.filteredFileListToLoad) as f:
@@ -1213,11 +1225,19 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
         
         # Write out the detection index
         detectionIndexFileName = os.path.join(filteringDir, DETECTION_INDEX_FILE_NAME)
-        jsonpickle.set_encoder_options('json', sort_keys=True, indent=4)
+        jsonpickle.set_encoder_options('json', sort_keys=True, indent=2)
+        
+        # Prepare the data we're going to write to the detection index file
         detectionInfo = {}
+        
         detectionInfo['suspiciousDetections'] = suspiciousDetections
+        detectionInfo['dirIndexToName'] = dirIndexToName
+        
+        # Remove the one non-serializable object from the options struct before serializing
+        # to .json
         options.pbar = None
         detectionInfo['options'] = options
+        
         s = jsonpickle.encode(detectionInfo,make_refs=False)
         with open(detectionIndexFileName, 'w') as f:
             f.write(s)
