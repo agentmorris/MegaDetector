@@ -426,7 +426,7 @@ def load_and_run_detector(model_file, image_file_names, output_dir,
         try:
             if crop_images:
 
-                images_cropped = viz_utils.crop_image(result['detections'], image,
+                images_cropped = vis_utils.crop_image(result['detections'], image,
                                    confidence_threshold=render_confidence_threshold,
                                    expansion=box_expansion)
 
