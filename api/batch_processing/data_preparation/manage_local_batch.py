@@ -621,7 +621,7 @@ options.otherDetectionsThreshold = options.confidenceMin
 
 options.bRenderHtml = False
 options.imageBase = input_path
-rde_string = 'rde_{:.2f}_{:.2f}_{}_{:.2f}'.format(
+rde_string = 'rde_{:.3f}_{:.3f}_{}_{:.3f}'.format(
     options.confidenceMin, options.iouThreshold,
     options.occurrenceThreshold, options.maxSuspiciousDetectionSize)
 options.outputBase = os.path.join(filename_base, rde_string + '_task_{}'.format(task_index))
