@@ -34,7 +34,8 @@ from typing import Any, Dict, Iterable, Mapping, List, Optional
 
 def combine_api_output_files(input_files: List[str],
                              output_file: Optional[str] = None,
-                             require_uniqueness: bool = True
+                             require_uniqueness: bool = True,
+                             verbose: bool = True
                              ) -> Dict[str, Any]:
     """
     Merges list of JSON API detection files *input_files* into a single
@@ -47,17 +48,21 @@ def combine_api_output_files(input_files: List[str],
             each input_dict be unique
     """
     
+    def print_if_verbose(s):
+        if verbose:
+            print(s)
+            
     input_dicts = []
-    print('Loading input files')
     for fn in input_files:
+        print_if_verbose('Loading results from {}'.format(fn))
         with open(fn, 'r', encoding='utf-8') as f:
             input_dicts.append(json.load(f))
 
-    print('Merging results')
+    print_if_verbose('Merging results')
     merged_dict = combine_api_output_dictionaries(
         input_dicts, require_uniqueness=require_uniqueness)
 
-    print('Writing output')
+    print_if_verbose('Writing output to {}'.format(output_file))
     if output_file is not None:
         with open(output_file, 'w') as f:
             json.dump(merged_dict, f, indent=1)

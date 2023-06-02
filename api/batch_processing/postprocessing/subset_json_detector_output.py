@@ -139,13 +139,9 @@ def write_detection_results(data, output_filename, options):
     else:
         os.makedirs(basedir, exist_ok=True)
     
-    print('Serializing to {}...'.format(output_filename), end='')
-    s = json.dumps(data, indent=1)
-    print(' ...done')
-    print('Writing output file...', end='')
-    with open(output_filename, "w") as f:
-        f.write(s)
-    print(' ...done')
+    print('Writing detection output to {}'.format(output_filename))
+    with open(output_filename, 'w') as f:
+        json.dump(data,f,indent=1)
 
 # ...write_detection_results()
 

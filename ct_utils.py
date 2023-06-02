@@ -6,9 +6,8 @@
 #
 ########
 
-#%% Imports
+#%% Imports and constants
 
-import subprocess
 import argparse
 import inspect
 import json
@@ -17,6 +16,10 @@ import os
 
 import jsonpickle
 import numpy as np
+
+# List of file extensions we'll consider images; comparisons will be case-insensitive
+# (i.e., no need to include both .jpg and .JPG on this list).
+image_extensions = ['.jpg', '.jpeg', '.gif', '.png']
 
 
 #%% Functions
@@ -93,6 +96,13 @@ def pretty_print_object(obj, b_print=True):
 
 
 def is_list_sorted(L,reverse=False):
+    """
+    Returns true if the list L appears to be sorted, otherwise False.
+    
+    Calling is_list_sorted(L,reverse=True) is the same as calling
+    is_list_sorted(L.reverse(),reverse=False).
+    """
+    
     if reverse:
         return all(L[i] >= L[i + 1] for i in range(len(L)-1))
     else:
@@ -104,12 +114,10 @@ def write_json(path, content, indent=1):
         json.dump(content, f, indent=indent)
 
 
-image_extensions = ['.jpg', '.jpeg', '.gif', '.png']
-
-
 def is_image_file(s):
     """
-    Check a file's extension against a hard-coded set of image file extensions
+    Check a file's extension against a hard-coded set of image file extensions; 
+    return True if it appears to be an image.
     """
 
     ext = os.path.splitext(s)[1]
@@ -172,7 +180,7 @@ def get_iou(bb1, bb2):
     """
     Calculate the Intersection over Union (IoU) of two bounding boxes.
 
-    Adapted from: https://stackoverflow.com/questions/25349178/calculating-percentage-of-bounding-box-overlap-for-image-detector-evaluation
+    Adapted from https://stackoverflow.com/questions/25349178/calculating-percentage-of-bounding-box-overlap-for-image-detector-evaluation
 
     Args:
         bb1: [x_min, y_min, width_of_box, height_of_box]
@@ -226,6 +234,10 @@ def get_iou(bb1, bb2):
 
 
 def _get_max_conf_from_detections(detections):
+    """
+    Internal function used by get_max_conf(); don't call this directly.
+    """
+    
     max_conf = 0.0
     if detections is not None and len(detections) > 0:
         confidences = [det['conf'] for det in detections]
@@ -244,96 +256,3 @@ def get_max_conf(im):
     if 'detections' in im and im['detections'] is not None and len(im['detections']) > 0:
         max_conf = _get_max_conf_from_detections(im['detections'])
     return max_conf
-
-
-#%% Functions for running commands as subprocesses
-
-# Also see md_utils/process_utils.py
-
-def execute_command(cmd):
-  """
-  Run [cmd] (a single string) in a shell, yielding each line of output to the caller.  
-  
-  Based on:
-        
-  stackoverflow/questions/4417546/constantly-print-subprocess-output-while-process-is-running
-  """
- 
-  popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, 
-                           stderr=subprocess.STDOUT, shell=True, universal_newlines=True)
-  for stdout_line in iter(popen.stdout.readline, ""):
-     yield stdout_line
-  popen.stdout.close()
-  return_code = popen.wait()
-  if return_code:
-    raise subprocess.CalledProcessError(return_code, cmd)
-
-
-def execute_command_and_print(cmd,print_output=True):
-  """
-  Run [cmd] (a single string) in a shell, capturing and printing output.  Returns
-  a dictionary with fields "status" and "output".
-  """
- 
-  to_return = {'status':'unknown','output':''}
-  output=[]
-  try:
-    for s in execute_command(cmd):
-      output.append(s)
-      if print_output:
-        print(s,end='',flush=True)
-    to_return['status'] = 0
-  except subprocess.CalledProcessError as cpe:
-    print('Caught error: {}'.format(cpe.output))
-    to_return['status'] = cpe.returncode
-  to_return['output'] = output
-   
-  return to_return
-
-
-#%%
-
-if False:
-   
-    #%% Test driver for execute_and_print
-
-    execute_command_and_print('echo hello && sleep 1 && echo goodbye')  
-     
-    
-    #%% Parallel test driver for execute_command_and_print
-   
-    from functools import partial
-    from multiprocessing.pool import ThreadPool as ThreadPool
-    from multiprocessing.pool import Pool as Pool
-   
-    n_workers = 8
-    
-    # Should we use threads (vs. processes) for parallelization?
-    use_threads = True
-   
-    # Only relevant if n_workers == 1, i.e. if we're not parallelizing
-    quit_on_error = True
-   
-    test_data = ['a','b','c','d']
-   
-    def process_sample(s):
-        execute_command_and_print('echo ' + s,True)
-       
-    if n_workers == 1:  
-     
-      results = []
-      for i_sample,sample in enumerate(test_data):    
-        results.append(process_sample(sample))
-     
-    else:
-     
-      n_threads = min(n_workers,len(test_data))
-     
-      if use_threads:
-        print('Starting parallel thread pool with {} workers'.format(n_threads))
-        pool = ThreadPool(n_threads)
-      else:
-        print('Starting parallel process pool with {} workers'.format(n_threads))
-        pool = Pool(n_threads)
-   
-      results = list(pool.map(partial(process_sample),test_data))

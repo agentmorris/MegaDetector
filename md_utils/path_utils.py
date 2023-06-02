@@ -196,6 +196,9 @@ def is_image_file(s: str, img_extensions: Container[str] = IMG_EXTENSIONS
     """
     Checks a file's extension against a hard-coded set of image file
     extensions.
+    
+    Does not check whether the file exists, only determines whether the filename
+    implies it's an image file.
     """
     
     ext = os.path.splitext(s)[1]
