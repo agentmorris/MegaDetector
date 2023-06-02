@@ -142,14 +142,14 @@ def render_images_with_thumbs(
     # Compute the final locations of the secondary images in the output image
     m = n = 0 # initialize grid coordinates to zero
     for image in cropped_images:
-        x = m * grid_width 
-        y = n * max_cropped_image_height 
+        x = n * grid_width 
+        y = m * max_cropped_image_height 
         #print(f'{m},{n} position is {x,y}')
         output_image.paste(image, (x,y))
-        m += 1
-        if m >= grid_count:
-            m = 0
-            n += 1
+        n += 1
+        if n >= grid_count:
+            n = 0
+            m += 1
 
     # Write output image to disk
     output_image.save(output_image_filename)
