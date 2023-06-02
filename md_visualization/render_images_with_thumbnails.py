@@ -78,18 +78,18 @@ def render_images_with_thumbs(
     # To make things easy, turn the secondary images into a 
     # n x n grid
     grid_count = math.ceil(math.sqrt(len(secondary_image_filename_list)))
-    print(f'Grid count is {grid_count}')
+    #print(f'Grid count is {grid_count}')
 
     # Compute the width of each grid. 
     grid_width = math.floor(cropped_grid_width / grid_count)
-    print(f'Grid width is {grid_width}')
+    #print(f'Grid width is {grid_width}')
 
     # Load primary image and resize to desired width
     primary_image = vis_utils.load_image(primary_image_filename)
-    print(primary_image.size)
+    #print(primary_image.size)
     primary_image = vis_utils.resize_image(
             primary_image, primary_image_width, -1)
-    print(primary_image.size)
+    #print(primary_image.size)
 
     # Load secondary images and their associated bounding boxes. Iterate
     # through them, crop them, and save them to a list of cropped_images
@@ -98,24 +98,24 @@ def render_images_with_thumbs(
     max_cropped_image_width = 0
     for (name, box) in zip(secondary_image_filename_list,
                            secondary_image_bounding_box_list):
-        print(f'{name} has {box}')
+        #print(f'{name} has {box}')
         other_image = vis_utils.load_image(name)
         cropped_image = crop_image_with_normalized_coordinates(
                 other_image, box)
-        print(f'Original cropped size {cropped_image.size}')
-        print(f'Aspect ratio is {cropped_image.size[0]/cropped_image.size[1]}')
+        #print(f'Original cropped size {cropped_image.size}')
+        #print(f'Aspect ratio is {cropped_image.size[0]/cropped_image.size[1]}')
 
         # Rescale the images to fit within the desired grid_width if the
         # crop is too big.
         # Note we probably could have used vis_utils.resize_image() instead
         # of doing this ourselves.
         scale_factor = cropped_image.size[0] / grid_width
-        print(f'scale factor is {scale_factor}')
+        #print(f'scale factor is {scale_factor}')
         if scale_factor >= 1: # only resize if image is too big
             cropped_image = cropped_image.resize(
                     ((int)(cropped_image.size[0] / scale_factor),
                      (int)(cropped_image.size[1] / scale_factor)))
-            print(f'Rescaled crop to {cropped_image.size}')
+            #print(f'Rescaled crop to {cropped_image.size}')
 
         cropped_images.append(cropped_image)
 
@@ -131,7 +131,7 @@ def render_images_with_thumbs(
     output_image_width = primary_image.size[0] + cropped_grid_width
     output_image_height = max(
             primary_image.size[1], max_cropped_image_height*grid_count)
-    print(f'output_image is {output_image_width} x {output_image_height}')
+    #print(f'output_image is {output_image_width} x {output_image_height}')
 
     # Create blank output image.
     output_image = Image.new("RGB", (output_image_width, output_image_height))
@@ -144,7 +144,7 @@ def render_images_with_thumbs(
     for image in cropped_images:
         x = m * grid_width 
         y = n * max_cropped_image_height 
-        print(f'{m},{n} position is {x,y}')
+        #print(f'{m},{n} position is {x,y}')
         output_image.paste(image, (x,y))
         m += 1
         if m >= grid_count:
@@ -152,8 +152,8 @@ def render_images_with_thumbs(
             n += 1
 
     # Write output image to disk
-    output_image.show()
     output_image.save(output_image_filename)
+    #output_image.show()
 
 
 def main():
