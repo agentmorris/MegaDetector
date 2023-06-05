@@ -23,7 +23,8 @@ def execute(cmd):
   """
  
   # https://stackoverflow.com/questions/4417546/constantly-print-subprocess-output-while-process-is-running
-  popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, universal_newlines=True)
+  popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                           shell=True, universal_newlines=True)
   for stdout_line in iter(popen.stdout.readline, ""):
      yield stdout_line
   popen.stdout.close()
@@ -47,7 +48,7 @@ def execute_and_print(cmd,print_output=True):
         print(s,end='',flush=True)
     to_return['status'] = 0
   except subprocess.CalledProcessError as cpe:
-    print('Caught error: {}'.format(cpe.output))
+    print('execute_and_print caught error: {}'.format(cpe.output))
     to_return['status'] = cpe.returncode
   to_return['output'] = output
    
@@ -84,7 +85,7 @@ if False:
     test_data = ['a','b','c','d']
    
     def process_sample(s):
-        execute_and_print('echo ' + s,True)
+        return execute_and_print('echo ' + s,True)
        
     if n_workers == 1:  
      
@@ -104,3 +105,6 @@ if False:
         pool = Pool(n_threads)
    
       results = list(pool.map(partial(process_sample),test_data))
+      
+      for r in results:
+          print(r)
