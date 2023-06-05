@@ -2,8 +2,8 @@
 # 
 # render_images_with_thumbnails.py
 # 
-# Render an output image with one primary and many secondary images,
-# used to check if suspicious detections are actually false positives or not.
+# Render an output image with one primary and crops from many secondary images,
+# used to check wheter suspicious detections are actually false positives or not.
 #
 ########
 
@@ -16,7 +16,9 @@ import random
 from md_visualization import visualization_utils as vis_utils
 from PIL import Image
 
+
 #%% Functions
+
 def crop_image_with_normalized_coordinates(
         image,
         bounding_box):
@@ -25,8 +27,9 @@ def crop_image_with_normalized_coordinates(
         image: image to crop
         bounding_box: tuple formatted as (x,y,w,h), where (0,0) is the
         upper-left of the image, and coordinates are normalized
-        (so (0,0,1,1) is a box containing the entire image.
+        (so (0,0,1,1) is a box containing the entire image).
     """
+    
     im_width, im_height = image.size
     (x_norm, y_norm, w_norm, h_norm) = bounding_box
     (x, y, w, h) = (x_norm * im_width,
@@ -42,7 +45,8 @@ def render_images_with_thumbs(
         secondary_image_filename_list,
         secondary_image_bounding_box_list,
         cropped_grid_width,
-        output_image_filename):
+        output_image_filename,
+        primary_image_location='right'):
     """
     Given a primary image filename and a list of secondary images, writes to
     the provided output_image_filename an image where the one
@@ -67,29 +71,30 @@ def render_images_with_thumbs(
             and coordinates are normalized (so (0,0,1,1) is a box containing
             the entire image.
         cropped_grid_width: width of all the cropped images
-        output_image_filename: str of the filename to write the output image
+        output_image_filename: str of the filename to write the output image        
+        primary_image_location: 'right' or left'; reserving 'top', 'bottom', etc.
+            for future use.
     """
 
     # Check to make sure the arguments are reasonable
     assert(len(secondary_image_filename_list) ==
-           len(secondary_image_bounding_box_list))
+           len(secondary_image_bounding_box_list)), \
+           'Length of secondary image list and bounding box list should be equal'
 
+    assert primary_image_location in ['left','right']
+    
     # Compute the number of grid elements for the secondary images
     # To make things easy, turn the secondary images into a 
     # n x n grid
     grid_count = math.ceil(math.sqrt(len(secondary_image_filename_list)))
-    #print(f'Grid count is {grid_count}')
-
-    # Compute the width of each grid. 
+    
+    # Compute the width of each grid
     grid_width = math.floor(cropped_grid_width / grid_count)
-    #print(f'Grid width is {grid_width}')
-
+    
     # Load primary image and resize to desired width
     primary_image = vis_utils.load_image(primary_image_filename)
-    #print(primary_image.size)
     primary_image = vis_utils.resize_image(
-            primary_image, primary_image_width, -1)
-    #print(primary_image.size)
+            primary_image, primary_image_width, -1)    
 
     # Load secondary images and their associated bounding boxes. Iterate
     # through them, crop them, and save them to a list of cropped_images
@@ -98,24 +103,20 @@ def render_images_with_thumbs(
     max_cropped_image_width = 0
     for (name, box) in zip(secondary_image_filename_list,
                            secondary_image_bounding_box_list):
-        #print(f'{name} has {box}')
+        
         other_image = vis_utils.load_image(name)
         cropped_image = crop_image_with_normalized_coordinates(
                 other_image, box)
-        #print(f'Original cropped size {cropped_image.size}')
-        #print(f'Aspect ratio is {cropped_image.size[0]/cropped_image.size[1]}')
-
+        
         # Rescale the images to fit within the desired grid_width if the
         # crop is too big.
-        # Note we probably could have used vis_utils.resize_image() instead
-        # of doing this ourselves.
         scale_factor = cropped_image.size[0] / grid_width
-        #print(f'scale factor is {scale_factor}')
-        if scale_factor >= 1: # only resize if image is too big
+        
+        # Only resize if image is too big
+        if scale_factor >= 1.0: 
             cropped_image = cropped_image.resize(
                     ((int)(cropped_image.size[0] / scale_factor),
-                     (int)(cropped_image.size[1] / scale_factor)))
-            #print(f'Rescaled crop to {cropped_image.size}')
+                     (int)(cropped_image.size[1] / scale_factor)))            
 
         cropped_images.append(cropped_image)
 
@@ -125,55 +126,65 @@ def render_images_with_thumbs(
         if cropped_image.size[1] > max_cropped_image_height:
             max_cropped_image_height = cropped_image.size[1]
 
-
+    # ...for each crop
+    
     # Compute the final output image size. This will depend upon the aspect
     # ratio of the crops.
     output_image_width = primary_image.size[0] + cropped_grid_width
     output_image_height = max(
-            primary_image.size[1], max_cropped_image_height*grid_count)
-    #print(f'output_image is {output_image_width} x {output_image_height}')
+            primary_image.size[1], max_cropped_image_height*grid_count)    
 
-    # Create blank output image.
-    output_image = Image.new("RGB", (output_image_width, output_image_height))
+    # Create blank output image
+    output_image = Image.new('RGB', (output_image_width, output_image_height))
 
     # Copy resized primary image to output image
-    output_image.paste(primary_image, (max_cropped_image_width*grid_count, 0))
+    if primary_image_location == 'right':
+        primary_image_x = max_cropped_image_width*grid_count
+    else:
+        primary_image_x = 0
+        
+    output_image.paste(primary_image, (primary_image_x, 0))
 
     # Compute the final locations of the secondary images in the output image
-    m = n = 0 # initialize grid coordinates to zero
+    m = 0; n = 0
     for image in cropped_images:
-        x = n * grid_width 
+        
+        x = n * grid_width
+        if primary_image_location == 'left':
+            x += primary_image.size[0]
         y = m * max_cropped_image_height 
-        #print(f'{m},{n} position is {x,y}')
         output_image.paste(image, (x,y))
         n += 1
         if n >= grid_count:
             n = 0
             m += 1
+            
+    # ...for each crop
 
     # Write output image to disk
-    output_image.save(output_image_filename)
-    #output_image.show()
+    output_image.save(output_image_filename)    
 
+
+#%% Command-line/interactive driver
 
 def main():
-    # Load images from test directory (which we know has 31 images).
-    # Make the first image in the directory the primary image, 
-    # the remaining ones the comparison images.
-    files = os.listdir("MTZ")
-
-    # Filter out non JPG files
-    files = [x for x in files if x.endswith("JPG")]
-
-    random.seed(3)
-    random.shuffle(files)
-
-    primary_image_filename = "MTZ/" + files[0]
-
-    # don't save the output file in MTZ otherwise from run-to-run
-    # we keep getting more images in our test directory
-    output_image_filename = "output_" + files[0]
     
+    #%%
+    
+    from md_utils import path_utils
+    
+    # Load images a test directory.
+    #
+    # Make the first image in the directory the primary image, 
+    # the remaining ones the comparison images.    
+    test_input_folder = os.path.expanduser('~/data/KRU-test')
+    output_image_filename = os.path.expanduser('~/tmp/thumbnail_test.jpg')
+    
+    files = path_utils.find_images(test_input_folder)    
+
+    random.seed(0); random.shuffle(files)
+    primary_image_filename = files[0]
+
     secondary_image_filename_list = []
     secondary_image_bounding_box_list = []
 
@@ -182,7 +193,7 @@ def main():
 
     # create the list of secondary images and their bounding boxes
     for file in files[1:]:
-        secondary_image_filename_list.append("MTZ/"+file)
+        secondary_image_filename_list.append(file)
         secondary_image_bounding_box_list.append(
                 (box[0] + random.uniform(-0.001, 0.001),
                  box[1] + random.uniform(-0.001, 0.001),
@@ -198,8 +209,9 @@ def main():
         secondary_image_filename_list,
         secondary_image_bounding_box_list,
         cropped_grid_width,
-        output_image_filename)
+        output_image_filename, 'left')
 
-
+    #%%
+    
 if __name__ == '__main__':
     main()
