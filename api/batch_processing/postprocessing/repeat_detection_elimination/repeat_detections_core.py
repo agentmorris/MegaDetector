@@ -22,6 +22,10 @@ from itertools import compress
 
 import pyqtree
 
+from multiprocessing.pool import ThreadPool
+from multiprocessing.pool import Pool
+from functools import partial
+
 from md_utils import path_utils
 from api.batch_processing.postprocessing.load_api_results import load_api_results, write_api_results
 from api.batch_processing.postprocessing.postprocess_batch_results import is_sas_url
@@ -251,7 +255,8 @@ class DetectionLocation:
         self.category = category
         self.bbox = detection['bbox']
         self.relativeDir = relativeDir
-        self.sampleImageRelativeFileName = ''
+        self.sampleImageRelativeFileName = ''        
+        self.sampleImageDetections = None
         
         # This ID is only guaranteed to be unique within a directory
         self.id = id
@@ -782,6 +787,84 @@ def update_detection_table(RepeatDetectionResults, options, outputFilename=None)
 # ...def update_detection_table(RepeatDetectionResults,options)
 
 
+def render_sample_image_for_detection(detection,filteringDir,options):
+    """
+    Render a sample image for one unique detection, possibly containing lightly-colored
+    high-confidence detections from elsewhere in the sample image.            
+    
+    "detections" is a DetectionLocation object.
+    
+    Depends on having already sorted instances within this detection by confidence, and
+    having already generated an output file name for this sample image.
+    """
+    
+    # Confidence values should already have been sorted in the previous loop
+    instance_confidences = [instance.confidence for instance in detection.instances]
+    assert ct_utils.is_list_sorted(instance_confidences,reverse=True)
+    
+    # Choose the highest-confidence index
+    instance = detection.instances[0]
+    relativePath = instance.filename
+    
+    outputRelativePath = detection.sampleImageRelativeFileName
+    assert len(outputRelativePath) > 0
+    
+    outputFullPath = os.path.join(filteringDir, outputRelativePath)
+    
+    if is_sas_url(options.imageBase):
+        inputFullPath = relative_sas_url(options.imageBase, relativePath)
+    else:
+        inputFullPath = os.path.join(options.imageBase, relativePath)
+        assert (os.path.isfile(inputFullPath)), 'Not a file: {}'.\
+            format(inputFullPath)
+        
+    try:
+        
+        # Should we render (typically in a very light color) detections
+        # *other* than the one we're highlighting here?
+        if options.bRenderOtherDetections:
+        
+            im = open_image(inputFullPath)
+            
+            assert detection.sampleImageDetections is not None
+            
+            # Render other detections first (typically in a thin+light box)
+            render_detection_bounding_boxes(detection.sampleImageDetections,
+                im,
+                label_map=None,
+                thickness=options.otherDetectionsLineWidth,
+                expansion=options.boxExpansion,
+                colormap=options.otherDetectionsColors,
+                confidence_threshold=options.otherDetectionsThreshold)
+            
+            # Now render the example detection (on top of at least one
+            # of the other detections)
+
+            # This converts the *first* instance to an API standard detection;
+            # because we just sorted this list in descending order by confidence,
+            # this is the highest-confidence detection.
+            d = detection.to_api_detection()
+            
+            render_detection_bounding_boxes([d],im,thickness=options.lineThickness,
+                                            expansion=options.boxExpansion,
+                                            confidence_threshold=-10)
+        
+            im.save(outputFullPath)
+            
+        else:
+            
+            render_bounding_box(detection, inputFullPath, outputFullPath,
+                lineWidth=options.lineThickness, expansion=options.boxExpansion)
+        
+        # ...if we are/aren't rendering other bounding boxes
+    
+    except Exception as e:
+        print('Warning: error rendering bounding box from {} to {}: {}'.format(
+            inputFullPath,outputFullPath,e))                    
+        if options.bFailOnRenderError:
+            raise                    
+            
+
 #%% Main function
 
 def find_repeat_detections(inputFilename, outputFilename=None, options=None):
@@ -962,11 +1045,7 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
                 allCandidateDetections[iDir] = \
                     find_matches_in_directory(dirNameAndRow, options)
 
-        else:
-            
-            from multiprocessing.pool import ThreadPool
-            from multiprocessing.pool import Pool
-            from functools import partial
+        else:            
             
             n_workers = options.nWorkers
             if n_workers > len(dirNameAndRows):
@@ -975,13 +1054,11 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
                 n_workers = len(dirNameAndRows)
                                     
             if options.parallelizationUsesThreads:
-                pool = ThreadPool(n_workers)
-                poolstring = 'threads'                
+                pool = ThreadPool(n_workers); poolstring = 'threads'                
             else:
-                pool = Pool(n_workers)
-                poolstring = 'processes'
+                pool = Pool(n_workers); poolstring = 'processes'
 
-            print('Starting pool with {} {}'.format(n_workers,poolstring))
+            print('Starting comparison pool with {} {}'.format(n_workers,poolstring))
             
             # We get slightly nicer progress bar behavior using threads, by passing a pbar 
             # object and letting it get updated.  We can't serialize this object across 
@@ -1045,7 +1122,6 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
         print('Found {} unique detections on {} images that are suspicious'.format(
                 nSuspiciousDetections, nImagesWithSuspiciousDetections))
 
-            
     # If we're just loading detections from a file...
     else:
 
@@ -1120,7 +1196,9 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
 
     toReturn.allRowsFiltered = update_detection_table(toReturn, options, outputFilename)
     
-    # Create filtering directory
+    
+    ##%% Create filtering directory
+    
     if options.bWriteFilteringFolder:
 
         print('Creating filtering folder...')
@@ -1129,92 +1207,85 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
         filteringDir = os.path.join(options.outputBase, 'filtering_' + dateString)
         os.makedirs(filteringDir, exist_ok=True)
 
-        # TODO: parallelize this (if requested via bParallelizeRendering)
-        
-        # iDir = 0; suspiciousDetectionsThisDir = suspiciousDetections[iDir]
+        # Take a first loop over every suspicious detection, and do the things that make
+        # sense to do in a serial sampleImageDetectionsloop:
+        #
+        # * Generate file names (which requires an index variable)
+        # * Sort instances by confidence
+        # * Look up detections for each sample image in the big table (so we don't have to pass the
+        #   table to workers)
         for iDir, suspiciousDetectionsThisDir in enumerate(tqdm(suspiciousDetections)):
-
-            # suspiciousDetectionsThisDir is a list of DetectionLocation objects
-            # iDetection = 0; detection = suspiciousDetectionsThisDir[0]
+            
             for iDetection, detection in enumerate(suspiciousDetectionsThisDir):
                 
                 # Sort instances in descending order by confidence
                 detection.instances.sort(key=attrgetter('confidence'),reverse=True)
-                
-                # Choose the highest-confidence index
-                instance = detection.instances[0]
-                relativePath = instance.filename
                 
                 if detection.clusterLabel is not None:
                     clusterString = '_c{:0>4d}'.format(detection.clusterLabel)
                 else:
                     clusterString = ''
                     
+                # Choose the highest-confidence index
+                instance = detection.instances[0]
+                relativePath = instance.filename
+                
                 outputRelativePath = 'dir{:0>4d}_det{:0>4d}{}_n{:0>4d}.jpg'.format(
                     iDir, iDetection, clusterString, len(detection.instances))
-                outputFullPath = os.path.join(filteringDir, outputRelativePath)
+                detection.sampleImageRelativeFileName = outputRelativePath                
+            
+                iRow = filenameToRow[relativePath]
+                row = detectionResults.iloc[iRow]
+                detection.sampleImageDetections = row['detections']
                 
-                if is_sas_url(options.imageBase):
-                    inputFullPath = relative_sas_url(options.imageBase, relativePath)
-                else:
-                    inputFullPath = os.path.join(options.imageBase, relativePath)
-                    assert (os.path.isfile(inputFullPath)), 'Not a file: {}'.\
-                        format(inputFullPath)
-                    
-                try:
-                    
-                    # Should we render (typically in a very light color) detections
-                    # *other* than the one we're highlighting here?
-                    if options.bRenderOtherDetections:
-                    
-                        iRow = filenameToRow[relativePath]
-                        row = detectionResults.iloc[iRow]
-                        detections_this_image = row['detections']
-
-                        im = open_image(inputFullPath)
-                        
-                        # Render other detections first (typically in a thin+light box)
-                        render_detection_bounding_boxes(detections_this_image,
-                            im,
-                            label_map=None,
-                            thickness=options.otherDetectionsLineWidth,
-                            expansion=options.boxExpansion,
-                            colormap=options.otherDetectionsColors,
-                            confidence_threshold=options.otherDetectionsThreshold)
-                        
-                        # Now render the example detection (on top of at least one
-                        # of the other detections)
-
-                        # This converts the *first* instance to an API standard detection;
-                        # because we just sorted this list in descending order by confidence,
-                        # this is the highest-confidence detection.
-                        d = detection.to_api_detection()
-                        
-                        render_detection_bounding_boxes([d],im,thickness=options.lineThickness,
-                                                        expansion=options.boxExpansion,
-                                                        confidence_threshold=-10)
-                    
-                        im.save(outputFullPath)
-                        
-                    else:
-                        
-                        render_bounding_box(detection, inputFullPath, outputFullPath,
-                            lineWidth=options.lineThickness, expansion=options.boxExpansion)
-                    
-                    # ...if we are/aren't rendering other bounding boxes
-                
-                except Exception as e:
-                    print('Warning: error rendering bounding box from {} to {}: {}'.format(
-                        inputFullPath,outputFullPath,e))                    
-                    if options.bFailOnRenderError:
-                        raise
-                        
-                detection.sampleImageRelativeFileName = outputRelativePath
-
-            # ...for each detection in this folder
+            # ...for each suspicious detection in this folder
             
         # ...for each folder
+                
+        # Collapse suspicious detections into a flat list 
+        allSuspiciousDetections = []        
         
+        # iDir = 0; suspiciousDetectionsThisDir = suspiciousDetections[iDir]
+        for iDir, suspiciousDetectionsThisDir in enumerate(tqdm(suspiciousDetections)):
+            for iDetection, detection in enumerate(suspiciousDetectionsThisDir):            
+                allSuspiciousDetections.append(detection)
+                    
+        # Render suspicious detections
+        if options.bParallelizeRendering:
+            
+            n_workers = options.nWorkers
+            
+            if options.parallelizationUsesThreads:
+                pool = ThreadPool(n_workers); poolstring = 'threads'                
+            else:
+                pool = Pool(n_workers); poolstring = 'processes'
+
+            print('Starting rendering pool with {} {}'.format(n_workers,poolstring))
+            
+            # We get slightly nicer progress bar behavior using threads, by passing a pbar 
+            # object and letting it get updated.  We can't serialize this object across 
+            # processes.
+            if options.parallelizationUsesThreads:
+                options.pbar = tqdm(total=len(allSuspiciousDetections))
+                allCandidateDetections = list(pool.imap(
+                    partial(render_sample_image_for_detection,filteringDir=filteringDir,
+                            options=options), allSuspiciousDetections))
+            else:
+                options.pbar = None                
+                allCandidateDetections = list(tqdm(pool.imap(
+                    partial(render_sample_image_for_detection,filteringDir=filteringDir,
+                            options=options), allSuspiciousDetections)))
+                
+        else:
+            
+            # Serial loop over detections
+            for detection in allSuspiciousDetections:
+                render_sample_image_for_detection(detection,filteringDir,options)
+            
+        # Delete (large) temporary data from the list of suspicious detections
+        for detection in allSuspiciousDetections:
+            detection.sampleImageDetections = None            
+            
         # Write out the detection index
         detectionIndexFileName = os.path.join(filteringDir, DETECTION_INDEX_FILE_NAME)
         jsonpickle.set_encoder_options('json', sort_keys=True, indent=2)
