@@ -7,7 +7,7 @@
 #
 ########
 
-#%% Constants and imports
+#%% Constants
 
 import math
 import os
@@ -173,7 +173,7 @@ def main():
     
     from md_utils import path_utils
     
-    # Load images a test directory.
+    # Load images from a test directory.
     #
     # Make the first image in the directory the primary image, 
     # the remaining ones the comparison images.    
@@ -188,10 +188,10 @@ def main():
     secondary_image_filename_list = []
     secondary_image_bounding_box_list = []
 
-    # initialize the x,y location of the bounding box
+    # Initialize the x,y location of the bounding box
     box = (random.uniform(0.25, 0.75), random.uniform(0.25, 0.75))
 
-    # create the list of secondary images and their bounding boxes
+    # Create the list of secondary images and their bounding boxes
     for file in files[1:]:
         secondary_image_filename_list.append(file)
         secondary_image_bounding_box_list.append(

@@ -90,8 +90,8 @@ class RepeatDetectionOptions:
 
     # Load detections from a filter file rather than finding them from the detector output
 
-    # .json file containing detections, should be called detectionIndex.json in the filtering_* folder 
-    # produced in the first pass
+    # .json file containing detections, generally this is the detectionIndex.json file in 
+    # the filtering_* folder produced in the first pass
     filterFileToLoad = ''
 
     # (optional) List of filenames remaining after deletion of identified 
@@ -99,6 +99,9 @@ class RepeatDetectionOptions:
     # text file, one relative filename per line.  See enumerate_images().
     #
     # TODO: this is a pretty esoteric code path and a candidate for removal.
+    # The scenario where I see it being most useful is the very hypothetical one
+    # where we use an external tool for image handling that allows us to do something
+    # smarter and less destructive than deleting images to mark them as non-false-positives.
     filteredFileListToLoad = None
 
     # Turn on/off optional outputs
@@ -290,6 +293,7 @@ def enumerate_images(dirName,outputFileName=None):
     Not used directly in this module, but provides a consistent way to enumerate
     files in the format expected by this module.
     """
+    
     imageList = path_utils.find_images(dirName)
     imageList = [os.path.basename(fn) for fn in imageList]
     
@@ -359,10 +363,10 @@ def sort_detections_for_directory(candidateDetections,options):
         # that's what we'll use for clustering
         points = []
         for det in candidateDetections:
-            # Upper-left
+            # To use the upper-left of the box as the clustering point
             # points.append([det.bbox[0],det.bbox[1]])
             
-            # Center
+            # To use the center of the box as the clustering point
             points.append([det.bbox[0]+det.bbox[2]/2.0,
                            det.bbox[1]+det.bbox[3]/2.0])
         X = np.array(points)
@@ -371,8 +375,9 @@ def sort_detections_for_directory(candidateDetections,options):
         unique_labels = np.unique(labels)
         
         # Labels *could* be any unique labels according to the docs, but in practice
-        # they are unique integers from 0:nClusters
-        # Make sure the labels are unique incrementing integers
+        # they are unique integers from 0:nClusters.
+        #
+        # Make sure the labels are unique incrementing integers.
         for i_label in range(1,len(unique_labels)):
             assert unique_labels[i_label] == 1 + unique_labels[i_label-1]
         
@@ -404,8 +409,6 @@ def sort_detections_for_directory(candidateDetections,options):
         new_cluster_labels = np.argsort(label_x_means)
         assert len(new_cluster_labels) == len(np.unique(new_cluster_labels))
         for old_cluster_label in unique_labels:
-            # old_cluster_label_to_new_cluster_label[old_cluster_label] =\
-            #    new_cluster_labels[old_cluster_label]
             old_cluster_label_to_new_cluster_label[old_cluster_label] =\
                 np.where(new_cluster_labels==old_cluster_label)[0][0]
                 
@@ -443,9 +446,6 @@ def find_matches_in_directory(dirNameAndRows, options):
     if options.pbar is not None:
         options.pbar.update()
 
-    # List of DetectionLocations
-    # candidateDetections = []
-    
     # Create a tree to store candidate detections
     candidateDetectionsIndex = pyqtree.Index(bbox=(-0.1,-0.1,1.1,1.1))
 
@@ -483,8 +483,6 @@ def find_matches_in_directory(dirNameAndRows, options):
     for iDirectoryRow, row in rows.iterrows():
 
         i_iteration += 1
-        # print('Searching row {} of {} (index {}) in dir {}'.\
-        # format(i_iteration,len(rows),iDirectoryRow,dirName))
         filename = row['file']
         if not ct_utils.is_image_file(filename):
             continue
@@ -502,9 +500,9 @@ def find_matches_in_directory(dirNameAndRows, options):
         # Array of dicts, where each element is
         # {
         #   'category': '1',  # str value, category ID
-        #   'conf': 0.926,  # confidence of this detections
+        #   'conf': 0.926,    # confidence of this detections
         #
-        #    # (x_min, y_min) is upper-left, all in relative coordinates
+        #    (x_min, y_min) is upper-left, all in relative coordinates
         #   'bbox': [x_min, y_min, width_of_box, height_of_box]  
         #                                                         
         # }
@@ -554,8 +552,7 @@ def find_matches_in_directory(dirNameAndRows, options):
             # Is this detection too big to be suspicious?
             w, h = bbox[2], bbox[3]
             
-            if (w == 0 or h == 0):
-                # print('Illegal zero-size bounding box on image {}'.format(filename))
+            if (w == 0 or h == 0):                
                 continue
             
             area = h * w
@@ -564,12 +561,10 @@ def find_matches_in_directory(dirNameAndRows, options):
             assert area >= 0.0 and area <= 1.0, \
                 'Illegal bounding box area {}'.format(area)
 
-            if area < options.minSuspiciousDetectionSize:
-                # print('Ignoring very small detection with area {}'.format(area))
+            if area < options.minSuspiciousDetectionSize:                
                 continue
             
-            if area > options.maxSuspiciousDetectionSize:
-                # print('Ignoring very large detection with area {}'.format(area))
+            if area > options.maxSuspiciousDetectionSize:                
                 continue
 
             category = detection['category']
@@ -642,12 +637,9 @@ def find_matches_in_directory(dirNameAndRows, options):
     
     candidateDetections = candidateDetectionsIndex.intersect([-100,-100,100,100])
     
-    # print('Found {} candidate detections for folder {}'.format(
-    #    len(candidateDetections),dirName))
-    
     # For debugging only, it's convenient to have these sorted
     # as if they had never gone into a tree structure.  Typically
-    # this is in practce a sort by filename.
+    # this is in practice a sort by filename.
     candidateDetections.sort(
         key=lambda x: x.id, reverse=False)
     
@@ -1005,6 +997,7 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
 
         print('\nFinished looking for similar detections')
 
+        
         ##%% Find suspicious locations based on match results
 
         print('Searching for repeat detections...')
@@ -1063,9 +1056,6 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
 
         # We're skipping detection-finding, but to see which images are actually legit false
         # positives, we may be looking for physical files or loading from a text file.        
-        #
-        # Note to self: this is a very estoeric code path and its removal is marked above
-        # as "todo".
         fileList = None
         if options.filteredFileListToLoad is not None:
             with open(options.filteredFileListToLoad) as f:
@@ -1139,6 +1129,8 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
         filteringDir = os.path.join(options.outputBase, 'filtering_' + dateString)
         os.makedirs(filteringDir, exist_ok=True)
 
+        # TODO: parallelize this (if requested via bParallelizeRendering)
+        
         # iDir = 0; suspiciousDetectionsThisDir = suspiciousDetections[iDir]
         for iDir, suspiciousDetectionsThisDir in enumerate(tqdm(suspiciousDetections)):
 
