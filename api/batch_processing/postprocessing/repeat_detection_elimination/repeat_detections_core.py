@@ -32,6 +32,7 @@ from api.batch_processing.postprocessing.postprocess_batch_results import is_sas
 from api.batch_processing.postprocessing.postprocess_batch_results import relative_sas_url
 from md_visualization.visualization_utils import open_image, render_detection_bounding_boxes
 from md_visualization import render_images_with_thumbnails
+from md_visualization import visualization_utils as vis_utils
 
 import ct_utils
 
@@ -126,6 +127,9 @@ class RepeatDetectionOptions:
     bPrintMissingImageWarnings = True
     missingImageWarningType = 'once'  # 'all'
 
+    # This does *not* include the tile image grid
+    maxOutputImageWidth = None
+    
     # Box rendering options
     lineThickness = 10
     boxExpansion = 2
@@ -171,7 +175,7 @@ class RepeatDetectionOptions:
     # of luck.
     detectionTilesCroppedGridWidth = 0.6
     detectionTilesPrimaryImageLocation='right'
-    detectionTilesMaxCrops = 100
+    detectionTilesMaxCrops = None
     
     # If bRenderOtherDetections is True, what color should we use to render the
     # (hopefully pretty subtle) non-target detections?
@@ -840,9 +844,14 @@ def render_sample_image_for_detection(detection,filteringDir,options):
         # Should we render (typically in a very light color) detections
         # *other* than the one we're highlighting here?
         if options.bRenderOtherDetections:
-        
-            # TODO: optionally resize
+                    
             im = open_image(inputFullPath)
+            
+            # Optionally resize the output image
+            if (options.maxOutputImageWidth is not None) and \
+                (im.size[0] > options.maxOutputImageWidth):
+                im = vis_utils.resize_image(im, options.maxOutputImageWidth, 
+                                            target_height=-1)
             
             assert detection.sampleImageDetections is not None
             
