@@ -31,6 +31,7 @@ from api.batch_processing.postprocessing.load_api_results import load_api_result
 from api.batch_processing.postprocessing.postprocess_batch_results import is_sas_url
 from api.batch_processing.postprocessing.postprocess_batch_results import relative_sas_url
 from md_visualization.visualization_utils import open_image, render_detection_bounding_boxes
+from md_visualization import render_images_with_thumbnails
 
 import ct_utils
 
@@ -155,6 +156,22 @@ class RepeatDetectionOptions:
     bRenderOtherDetections = False
     otherDetectionsThreshold = 0.2    
     otherDetectionsLineWidth = 1
+    
+    # Optionally show a grid that includes a sample image for the detection, plus
+    # the top N additional detections
+    bRenderDetectionTiles = False
+    
+    # If this is None, we'll render at the width of the original image
+    detectionTilesPrimaryImageWidth = None
+    
+    # Can be a width in pixels, or a number from 0 to 1 representing a fraction
+    # of the primary image width.
+    #
+    # If you want to render the grid at exactly 1 pixel wide, I guess you're out
+    # of luck.
+    detectionTilesCroppedGridWidth = 0.6
+    detectionTilesPrimaryImageLocation='right'
+    detectionTilesMaxCrops = 100
     
     # If bRenderOtherDetections is True, what color should we use to render the
     # (hopefully pretty subtle) non-target detections?
@@ -824,6 +841,7 @@ def render_sample_image_for_detection(detection,filteringDir,options):
         # *other* than the one we're highlighting here?
         if options.bRenderOtherDetections:
         
+            # TODO: optionally resize
             im = open_image(inputFullPath)
             
             assert detection.sampleImageDetections is not None
@@ -855,6 +873,50 @@ def render_sample_image_for_detection(detection,filteringDir,options):
             
             render_bounding_box(detection, inputFullPath, outputFullPath,
                 lineWidth=options.lineThickness, expansion=options.boxExpansion)
+        
+        if options.bRenderDetectionTiles:
+            
+            assert not is_sas_url(options.imageBase), "Can't render detection tiles from SAS URLs"
+            
+            if options.detectionTilesPrimaryImageWidth is not None:
+                primaryImageWidth = options.detectionTilesPrimaryImageWidth
+            else:
+                primaryImageWidth = im.size[0]
+            
+            if options.detectionTilesCroppedGridWidth <= 1.0:
+                croppedGridWidth = round(options.detectionTilesCroppedGridWidth * primaryImageWidth)
+            else:
+                croppedGridWidth = options.detectionTilesCroppedGridWidth
+                
+            secondaryImageFilenameList = []
+            secondaryImageBoundingBoxList = []
+            
+            # If we start from zero, we include the sample crop
+            for instance in detection.instances[0:]:
+                secondaryImageFilenameList.append(os.path.join(options.imageBase,
+                                                               instance.filename))
+                secondaryImageBoundingBoxList.append(instance.bbox)
+            
+            # Optionally limit the number of crops we pass to the rendering function
+            if (options.detectionTilesMaxCrops is not None) and \
+                (len(detection.instances) > options.detectionTilesMaxCrops):
+                    secondaryImageFilenameList = \
+                        secondaryImageFilenameList[0:options.detectionTilesMaxCrops]
+                    secondaryImageBoundingBoxList = \
+                        secondaryImageBoundingBoxList[0:options.detectionTilesMaxCrops]
+                
+            render_images_with_thumbnails.render_images_with_thumbnails(
+                primary_image_filename=outputFullPath,
+                primary_image_width=primaryImageWidth,
+                secondary_image_filename_list=secondaryImageFilenameList,
+                secondary_image_bounding_box_list=secondaryImageBoundingBoxList,
+                cropped_grid_width=croppedGridWidth,
+                output_image_filename=outputFullPath,
+                primary_image_location=options.detectionTilesPrimaryImageLocation)
+        
+            # bDetectionTilesPrimaryImageWidth = None
+            # bDetectionTilesCroppedGridWidth = 0.6
+            # bDetectionTilesPrimaryImageLocation='right'
         
         # ...if we are/aren't rendering other bounding boxes
     

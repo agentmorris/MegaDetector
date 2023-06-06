@@ -17,7 +17,7 @@ from md_visualization import visualization_utils as vis_utils
 from PIL import Image
 
 
-#%% Functions
+#%% Support functions
 
 def crop_image_with_normalized_coordinates(
         image,
@@ -39,7 +39,10 @@ def crop_image_with_normalized_coordinates(
     return image.crop((x, y, x+w, y+h))
 
 
-def render_images_with_thumbs(
+
+#%% Main function
+
+def render_images_with_thumbnails(
         primary_image_filename,
         primary_image_width,
         secondary_image_filename_list,
@@ -62,7 +65,8 @@ def render_images_with_thumbs(
     
     Args:
         primary_image_filename: filename of the primary image to load as str
-        primary_image_width: width at which to render the primary image,
+        primary_image_width: width at which to render the primary image; if this is 
+            None, will render at the original image width.
         secondary_image_filename_list: list of strs that are the filenames of
             the secondary images.
         secondary_image_bounding_box_list: list of tuples, one per secondary
@@ -83,24 +87,46 @@ def render_images_with_thumbs(
 
     assert primary_image_location in ['left','right']
     
-    # Compute the number of grid elements for the secondary images
-    # To make things easy, turn the secondary images into a 
-    # n x n grid
-    grid_count = math.ceil(math.sqrt(len(secondary_image_filename_list)))
-    
-    # Compute the width of each grid
-    grid_width = math.floor(cropped_grid_width / grid_count)
-    
     # Load primary image and resize to desired width
     primary_image = vis_utils.load_image(primary_image_filename)
-    primary_image = vis_utils.resize_image(
-            primary_image, primary_image_width, -1)    
+    if primary_image_width is not None:
+        primary_image = vis_utils.resize_image(primary_image, primary_image_width, 
+                                               target_height=-1)
 
+    # Compute the number of grid elements for the secondary images
+    # to best fit the available aspect ratio
+    grid_width = cropped_grid_width
+    grid_height = primary_image.size[1]
+    grid_aspect = grid_width / grid_height
+    
+    sample_crop_width = secondary_image_bounding_box_list[0][2]
+    sample_crop_height = secondary_image_bounding_box_list[0][3]
+    
+    n_crops = len(secondary_image_filename_list)
+    
+    optimal_n_rows = None
+    optimal_aspect_error = None
+    
+    for candidate_n_rows in range(1,n_crops+1):
+        candidate_n_cols = math.ceil(n_crops / candidate_n_rows)
+        candidate_grid_aspect = (candidate_n_cols*sample_crop_width) / \
+          (candidate_n_rows*sample_crop_height)
+        aspect_error = abs(grid_aspect-candidate_grid_aspect)
+        if optimal_n_rows is None or aspect_error < optimal_aspect_error:
+            optimal_n_rows = candidate_n_rows
+            optimal_aspect_error = aspect_error
+    
+    assert optimal_n_rows is not None
+    grid_rows = optimal_n_rows
+    grid_columns = math.ceil(n_crops/grid_rows)        
+    
+    # Compute the width of each grid cell
+    grid_cell_width = math.floor(grid_width / grid_columns)
+    grid_cell_height = math.floor(grid_height / grid_rows)
+    
     # Load secondary images and their associated bounding boxes. Iterate
     # through them, crop them, and save them to a list of cropped_images
     cropped_images = []
-    max_cropped_image_height = 0
-    max_cropped_image_width = 0
     for (name, box) in zip(secondary_image_filename_list,
                            secondary_image_bounding_box_list):
         
@@ -108,56 +134,49 @@ def render_images_with_thumbs(
         cropped_image = crop_image_with_normalized_coordinates(
                 other_image, box)
         
-        # Rescale the images to fit within the desired grid_width if the
-        # crop is too big.
-        scale_factor = cropped_image.size[0] / grid_width
+        # Rescale this crop to fit within the desired grid cell size
+        width_scale_factor = grid_cell_width / cropped_image.size[0]
+        height_scale_factor = grid_cell_height / cropped_image.size[1]
+        scale_factor = min(width_scale_factor,height_scale_factor)
         
-        # Only resize if image is too big
-        if scale_factor >= 1.0: 
-            cropped_image = cropped_image.resize(
-                    ((int)(cropped_image.size[0] / scale_factor),
-                     (int)(cropped_image.size[1] / scale_factor)))            
+        # Resize the cropped image, whether we're making it larger or smaller
+        cropped_image = cropped_image.resize(
+                ((int)(cropped_image.size[0] * scale_factor),
+                 (int)(cropped_image.size[1] * scale_factor)))            
 
-        cropped_images.append(cropped_image)
-
-        # Record the maximum width/height of the cropped images for later
-        if cropped_image.size[0] > max_cropped_image_width:
-            max_cropped_image_width = cropped_image.size[0]
-        if cropped_image.size[1] > max_cropped_image_height:
-            max_cropped_image_height = cropped_image.size[1]
+        cropped_images.append(cropped_image)        
 
     # ...for each crop
     
     # Compute the final output image size. This will depend upon the aspect
     # ratio of the crops.
-    output_image_width = primary_image.size[0] + cropped_grid_width
-    output_image_height = max(
-            primary_image.size[1], max_cropped_image_height*grid_count)    
+    output_image_width = primary_image.size[0] + grid_width
+    output_image_height = primary_image.size[1]
 
     # Create blank output image
     output_image = Image.new('RGB', (output_image_width, output_image_height))
 
     # Copy resized primary image to output image
     if primary_image_location == 'right':
-        primary_image_x = max_cropped_image_width*grid_count
+        primary_image_x = grid_width
     else:
         primary_image_x = 0
         
     output_image.paste(primary_image, (primary_image_x, 0))
 
     # Compute the final locations of the secondary images in the output image
-    m = 0; n = 0
+    i_row = 0; i_col = 0
     for image in cropped_images:
         
-        x = n * grid_width
+        x = i_col * grid_cell_width
         if primary_image_location == 'left':
             x += primary_image.size[0]
-        y = m * max_cropped_image_height 
+        y = i_row * grid_cell_height 
         output_image.paste(image, (x,y))
-        n += 1
-        if n >= grid_count:
-            n = 0
-            m += 1
+        i_col += 1
+        if i_col >= grid_columns:
+            i_col = 0
+            i_row += 1
             
     # ...for each crop
 
@@ -165,7 +184,43 @@ def render_images_with_thumbs(
     output_image.save(output_image_filename)    
 
 
-#%% Command-line/interactive driver
+#%% Interactive driver
+
+if False:
+    
+    pass
+
+    #%%
+    
+    primary_image_filename = '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0035.JPG'
+    
+    primary_image_width = 5152
+    
+    secondary_image_filename_list = ['/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0035.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0040.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0007.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0041.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0008.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0048.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0031.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0006.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0004.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0026.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0005.JPG']
+    
+    secondary_image_bounding_box_list = [[0, 0, 0.1853, 0.6552], [0, 0, 0.1855, 0.6527], [0, 0.000252, 0.1991, 0.6925], [0, 0, 0.1855, 0.6527], [0, 0.001008, 0.1902, 0.6774], [0, 0, 0.1845, 0.658], [0, 0, 0.1824, 0.6711], [0, 0.00252, 0.2005, 0.6857], [0, 0.002268, 0.1983, 0.6852], [0, 0, 0.1752, 0.6897], [0, 0.001764, 0.1989, 0.6887]]
+    
+    # cropped_grid_width = 3091
+    cropped_grid_width = 500
+    
+    primary_image_location = 'right'
+
+    output_image_filename = os.path.expanduser('~/tmp/grid-test.jpg')
+    
+    render_images_with_thumbnails(
+            primary_image_filename,
+            primary_image_width,
+            secondary_image_filename_list,
+            secondary_image_bounding_box_list,
+            cropped_grid_width,
+            output_image_filename,
+            primary_image_location='right')    
+
+    from md_utils import path_utils
+    path_utils.open_file(output_image_filename)
+    
+    
+#%% Command-line driver
 
 def main():
     
@@ -203,14 +258,17 @@ def main():
     primary_image_width = 1000
     cropped_grid_width = 1000
 
-    render_images_with_thumbs(
+    render_images_with_thumbnails(
         primary_image_filename,
         primary_image_width,
         secondary_image_filename_list,
         secondary_image_bounding_box_list,
         cropped_grid_width,
-        output_image_filename, 'left')
-
+        output_image_filename, 'right')
+    
+    from md_utils import path_utils
+    path_utils.open_file(output_image_filename)
+    
     #%%
     
 if __name__ == '__main__':
