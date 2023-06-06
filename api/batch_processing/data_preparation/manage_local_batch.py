@@ -613,6 +613,10 @@ options.nWorkers = default_workers_for_parallel_tasks
 options.bRenderOtherDetections = True
 options.otherDetectionsThreshold = options.confidenceMin
 
+options.bRenderDetectionTiles = True
+options.options.maxOutputImageWidth = 2000
+options.detectionTilesMaxCrops = None
+
 # options.lineThickness = 5
 # options.boxExpansion = 8
 
