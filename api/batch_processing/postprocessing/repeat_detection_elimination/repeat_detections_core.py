@@ -63,7 +63,7 @@ class RepeatDetectionOptions:
     outputBase = ''
 
     # Don't consider detections with confidence lower than this as suspicious
-    confidenceMin = 0.8
+    confidenceMin = 0.1
 
     # Don't consider detections with confidence higher than this as suspicious
     confidenceMax = 1.0

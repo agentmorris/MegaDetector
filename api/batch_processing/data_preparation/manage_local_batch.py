@@ -614,7 +614,7 @@ options.bRenderOtherDetections = True
 options.otherDetectionsThreshold = options.confidenceMin
 
 options.bRenderDetectionTiles = True
-options.options.maxOutputImageWidth = 2000
+options.maxOutputImageWidth = 2000
 options.detectionTilesMaxCrops = None
 
 # options.lineThickness = 5
