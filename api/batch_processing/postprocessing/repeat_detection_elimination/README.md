@@ -134,7 +134,7 @@ When you see a red box on a rock and you <i>don't</i> delete that image, you're 
 
 Ergo, we've recently added a neat new feature (thanks, [Doantam](https://www.linkedin.com/in/doantam-phan/)!) that lets you visualize a grid of many (possibly all) of the detections that were identical to the one in the red box.  This lets you quickly see what you're throwing away when you <i>don't</i> delete one of these images.  We will probably make this the default at some point, because it's super-duper-useful, but we don't like to rock the boat.  For now, you can enable this with the `--renderDetectionTiles` option.
 
-Here's an example where you can see immediately that all 99 instances of this detection are exactly the same bush:
+Here's an example where you can see in just a glance that all 99 instances of this detection are exactly the same bush:
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/rde_tiles_all_fps.jpg" width="500"><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a href="https://raw.githubusercontent.com/agentmorris/MegaDetector/main/api/batch_processing/postprocessing/images/rde_tiles_all_fps.jpg">direct image link</a>)
@@ -149,7 +149,7 @@ You can see right away that this one is an elk that just sat in one spot for lon
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/rde_tiles_sleeping_elk.jpg" width="500"><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a href="https://raw.githubusercontent.com/agentmorris/MegaDetector/main/api/batch_processing/postprocessing/images/rde_tiles_sleeping_elk.jpg">direct image link</a>)
 
-This is pathological case we're looking for... the sample image for this detection has a red box on a rock, and most of the detections at this location are the same rock, but one image has an elk at exactly that location.  If it makes you feel better, though, it took me <i>forever</i> to find an image that illustrated this case, and I had to use parameters I probably wouldn't have used in a real RDE pass.
+This is pathological case we're looking for... the sample image for this detection has a red box on a rock, so if you weren't seeing the grid, you would treat this as a false detection.  And most of the detections at this location are the same rock, but one image has an elk at exactly that location.  If it makes you feel better, though, it took me <i>forever</i> to find an image that illustrated this case (seriously, forever), and I had to use parameters I probably wouldn't have used in a real RDE pass to force the issue.  But it's a real risk!
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/rde_tiles_hidden_tp.jpg" width="500"><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a href="https://raw.githubusercontent.com/agentmorris/MegaDetector/main/api/batch_processing/postprocessing/images/rde_tiles_hidden_tp.jpg">direct image link</a>)
