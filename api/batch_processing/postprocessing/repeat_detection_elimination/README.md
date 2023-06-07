@@ -160,6 +160,7 @@ This one isn't illustrating anything at all, it just looks cool:
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/rde_tiles_cool_image.jpg" width="500"><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a href="https://raw.githubusercontent.com/agentmorris/MegaDetector/main/api/batch_processing/postprocessing/images/rde_tiles_cool_image.jpg">direct image link</a>)
 
+All of these sample images (for the tiling feature) came from the <a href="https://lila.science/datasets/idaho-camera-traps/">Idaho Camera Traps</a> dataset.
 
 # Advanced options
 
