@@ -111,6 +111,8 @@ def main():
                         help='Detections larger than this fraction of image area are not ' + \
                             'considered suspicious')
 
+    parser.add_argument('--renderDetectionTiles', action='store_true',
+                        dest='bRenderDetectionTiles', help='Should we render a grid showing every instance for each detection?')
     parser.add_argument('--renderHtml', action='store_true',
                         dest='bRenderHtml', help='Should we render HTML output?')
     parser.add_argument('--omitFilteringFolder', action='store_false',

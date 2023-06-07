@@ -58,7 +58,9 @@ When the script finishes, you'll have a folder called something like `filtering_
 
 `c:\repeat_detection_stuff\filtering_2023.05.24.13.40.45`
 
-This directory will have lots of pictures with bounding boxes on them.  Importantly, you are not looking at <i>every</i> detection; each one of these images represents potentially very many nearly-identical detections.  Even though you're doing some manual work here, machine learning is saving you lots of time!
+This folder will have lots of pictures with bounding boxes on them.  Importantly, you are not looking at <i>every</i> detection; each one of these images represents potentially very many nearly-identical detections.  Even though you're doing some manual work here, machine learning is saving you lots of time!
+
+<b>tl;dr for this whole section: deleting one of these images tells this process that the thing in the red box was actually an animal/person/vehicle. Leaving an image in the folder tells this process that the thing in the red box was indeed a false detection (rock, stick, etc.).</b>
 
 Most of these images indeed correspond to repeated false positives:
 
@@ -124,6 +126,33 @@ This script takes your original .json file and removes detections corresponding 
 # What next?
 
 After running this process, you still have a .json file in the standard MegaDetector resultsformat, just with (hopefully) many fewer false positives that are above your confidence threshold.  At this point, you can proceed with whatever workflow you would normally use to work with our API output, e.g. our <a href="https://github.com/agentmorris/MegaDetector/blob/master/api/batch_processing/integration/timelapse.md">integration with Timelapse</a>.
+
+
+# Visualizing the stuff you're throwing away
+
+When you see a red box on a rock and you <i>don't</i> delete that image, you're making a judgement call that all the other detections that appear in more or less exactly that same spot are also that same rock.  But you're always taking a small risk that an animal happened to line itself up <i>just so</i> at some point, i.e. that it lined up <i>exactly</i> with that rock, in which case suppressing the potentially hundreds of repetitions of that rock could also suppress that animal.  With a sufficiently high IoU threshold (more on this below, but basically, how similar two boxes need to be to be considered the same) and a sufficiently high occurrence threshold (more in this below, but basically, the number of times a detection has to occur to be "suspicious"), the risk is low.  But it's not zero!
+
+Ergo, we've recently added a neat new feature (thanks, [Doantam](https://www.linkedin.com/in/doantam-phan/)!) that lets you visualize a grid of many (possibly all) of the detections that were identical to the one in the red box.  This lets you quickly see what you're throwing away when you <i>don't</i> delete one of these images.  We will probably make this the default at some point, because it's super-duper-useful, but we don't like to rock the boat.  For now, you can enable this with the `--renderDetectionTiles` option.
+
+Here's an example where you can see immediately that all 99 instances of this detection are exactly the same bush:
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/rde_tiles_all_fps.jpg" width="500"><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;([direct image link](https://raw.githubusercontent.com/agentmorris/MegaDetector/main/api/batch_processing/postprocessing/images/rde_tiles_all_fps.jpg))
+
+This one is more interesting: the red box is on an animal (the back of an elk), but we can see that the other 123 detections at the same location are all the same bush.  Also note the "bonus elk", with the usual light gray box.  It's not a coincidence that the first one is the only real animal; for exactly this reason, the "primary" image (the one you would see in all the examples earlier on this page) is always the one with the highest-confidence detection at the boxed location.
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/rde_tiles_primary_tp.jpg" width="500"><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;([direct image link](https://raw.githubusercontent.com/agentmorris/MegaDetector/main/api/batch_processing/postprocessing/images/rde_tiles_primary_tp.jpg))
+
+You can see right away that this one is an elk that just sat in one spot for long time, and was detected in 146 images:
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/rde_tiles_sleeping_elk.jpg" width="500"><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;([direct image link](https://raw.githubusercontent.com/agentmorris/MegaDetector/main/api/batch_processing/postprocessing/images/rde_tiles_sleeping_elk.jpg))
+
+This one isn't illustrating anything at all, it just looks cool:
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/rde_tiles_cool_image.jpg" width="500"><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;([direct image link](https://raw.githubusercontent.com/agentmorris/MegaDetector/main/api/batch_processing/postprocessing/images/rde_tiles_cool_image.jpg))
 
 
 # Advanced options
