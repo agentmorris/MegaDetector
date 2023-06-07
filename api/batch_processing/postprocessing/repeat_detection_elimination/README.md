@@ -149,6 +149,12 @@ You can see right away that this one is an elk that just sat in one spot for lon
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/rde_tiles_sleeping_elk.jpg" width="500"><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a href="https://raw.githubusercontent.com/agentmorris/MegaDetector/main/api/batch_processing/postprocessing/images/rde_tiles_sleeping_elk.jpg">direct image link</a>)
 
+This is pathological case we're looking for... the sample image for this detection has a red box on a rock, and most of the detections at this location are the same rock, but one image has an elk at exactly that location.  If it makes you feel better, though, it took me <i>forever</i> to find an image that illustrated this case, and I had to use parameters I probably wouldn't have used in a real RDE pass.
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/rde_tiles_hidden_tp.jpg" width="500"><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a href="https://raw.githubusercontent.com/agentmorris/MegaDetector/main/api/batch_processing/postprocessing/images/rde_tiles_hidden_tp.jpg">direct image link</a>)
+
+
 This one isn't illustrating anything at all, it just looks cool:
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/rde_tiles_cool_image.jpg" width="500"><br/>
