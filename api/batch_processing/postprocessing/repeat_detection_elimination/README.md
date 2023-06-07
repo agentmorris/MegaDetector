@@ -137,7 +137,7 @@ Ergo, we've recently added a neat new feature (thanks, [Doantam](https://www.lin
 Here's an example where you can see immediately that all 99 instances of this detection are exactly the same bush:
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/rde_tiles_all_fps.jpg" width="500"><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;([direct image link](https://raw.githubusercontent.com/agentmorris/MegaDetector/main/api/batch_processing/postprocessing/images/rde_tiles_all_fps.jpg))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a href="../images/rde_tiles_all_fps.jpg">direct image link</a>)
 
 This one is more interesting: the red box is on an animal (the back of an elk), but we can see that the other 123 detections at the same location are all the same bush.  Also note the "bonus elk", with the usual light gray box.  It's not a coincidence that the first one is the only real animal; for exactly this reason, the "primary" image (the one you would see in all the examples earlier on this page) is always the one with the highest-confidence detection at the boxed location.
 
