@@ -548,18 +548,18 @@ path_utils.open_file(html_output_file)
 
 #%% RDE (sample directory collapsing)
 
-def remove_overflow_folders(relativePath):
+def remove_overflow_folders(relative_path):
     
     import re
     
     # In this example, the camera created folders called "100EK113", "101EK113", etc., for every N images
     pat = '\/\d+EK\d+\/'
     
-    relativePath = relativePath.replace('\\','/')    
-    relativePath = re.sub(pat,'/',relativePath)
-    dirName = os.path.dirname(relativePath)
+    relative_path = relative_path.replace('\\','/')    
+    relative_path = re.sub(pat,'/',relative_path)
+    dir_name = os.path.dirname(relative_path)
     
-    return dirName
+    return dir_name
 
 if False:
 
@@ -567,8 +567,8 @@ if False:
 
     #%%
     
-    relativePath = 'a/b/c/d/100EK113/blah.jpg'
-    print(remove_overflow_folders(relativePath))
+    relative_path = 'a/b/c/d/100EK113/blah.jpg'
+    print(remove_overflow_folders(relative_path))
     
     #%%
     
@@ -578,15 +578,15 @@ if False:
     
     #%%
     
-    dirNames = set()
+    dir_names = set()
     
     # relativePath = image_filenames[0]
     for relativePath in tqdm(image_filenames):
-        dirName = remove_overflow_folders(relativePath)
-        dirNames.add(dirName)
+        dir_name = remove_overflow_folders(relative_path)
+        dir_names.add(dir_name)
         
-    dirNames = list(dirNames)
-    dirNames.sort()
+    dir_names = list(dir_names)
+    dir_names.sort()
 
 
 #%% Repeat detection elimination, phase 1
