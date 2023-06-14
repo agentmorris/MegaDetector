@@ -52,10 +52,7 @@ def prefix_all_keys(d: Mapping[str, Any], prefix: str) -> dict[str, Any]:
 
 def fig_to_img(fig: matplotlib.figure.Figure) -> np.ndarray:
     """Converts a matplotlib figure to an image represented by a numpy array.
-
-    TODO: potential speedup by avoiding PNG compression and PIL dependency
-    See https://stackoverflow.com/a/61443397
-
+    
     Returns: np.ndarray, type uint8, shape [H, W, 3]
     """
     with io.BytesIO() as b:
@@ -236,7 +233,6 @@ def load_dataset_csv(dataset_csv_path: str,
         df['weights'] = 1.0
 
         # only weight the training set by detection confidence
-        # TODO: consider weighting val and test set as well
         train_mask = df['dataset_location'].isin(split_to_locs['train'])
         df.loc[train_mask, 'weights'] = df.loc[train_mask, 'confidence']
 
@@ -249,7 +245,7 @@ def load_dataset_csv(dataset_csv_path: str,
 
     if label_weighted:
         if multilabel:
-            raise NotImplementedError  # TODO
+            raise NotImplementedError
 
         if 'weights' not in df.columns:
             df['weights'] = 1.0

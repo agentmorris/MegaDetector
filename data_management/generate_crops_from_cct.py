@@ -51,8 +51,6 @@ def generate_crops_from_cct(cct_file,image_dir,output_dir,padding=0,flat_output=
     
     ## Generate crops
         
-    # TODO: parallelize this loop
-    
     # im = d['images'][0]
     for im in tqdm(d['images']):
         
@@ -137,11 +135,6 @@ if False:
     
     from md_utils.path_utils import open_file
     open_file(fn)
-
-    
-#%% Command-line driver
-
-# TODO
 
 
 #%% Scrap

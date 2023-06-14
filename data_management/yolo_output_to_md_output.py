@@ -316,8 +316,3 @@ if False:
     image_folder = os.path.expanduser('~/data/KRU-test')
     output_file = os.path.expanduser('~/data/mdv5a-yolo-pt-kru.json')    
     yolo_txt_output_to_md_output(input_results_folder,image_folder,output_file)
-    
-
-#%% Command-line driver
-
-# TODO

@@ -233,6 +233,3 @@ if False:
     merge_detections(source_files, target_file, output_file, options)
     
     
-#%% Command-line driver 
-
-# TODO

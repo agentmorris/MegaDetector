@@ -70,9 +70,6 @@ def create_dataset(
         img_file: tf.Tensor, scalar, type str
         sample_weight: tf.Tensor, scalar, type float32
 
-    Possible TODO: oversample the imbalanced classes
-        see tf.data.experimental.sample_from_datasets
-
     Args:
         img_files: list of str, relative paths from img_base_dir
         labels: list of int if multilabel=False
@@ -342,7 +339,7 @@ def main(dataset_dir: str,
             model.base_model.trainable = True
 
         print('- train:')
-        # TODO: change weighted to False if oversampling minority classes
+        
         train_metrics, train_heaps, train_cm = run_epoch(
             model, loader=loaders['train'], weighted=label_weighted,
             loss_fn=loss_fn, weight_decay=weight_decay, optimizer=optimizer,

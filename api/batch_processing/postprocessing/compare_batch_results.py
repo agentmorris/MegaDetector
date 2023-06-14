@@ -550,7 +550,3 @@ if False:
     
     path_utils.open_file(results.html_output_file)
     
-
-#%% Command-line driver
-
-# TODO

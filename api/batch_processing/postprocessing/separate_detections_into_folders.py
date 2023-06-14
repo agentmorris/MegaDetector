@@ -234,10 +234,14 @@ def process_detections(im,options):
         # If this is above multiple thresholds
         if len(categories_above_threshold) > 1:
             
-            # TODO: handle species-based separation in, e.g., the animal_person case
+            # Currently "animal_person" images get put into the "animal_person" folder, even if we're
+            # doing species-based separation.  Ideally, we would optionally put these in either the "deer"
+            # folder or a "deer_person" folder, but this is pretty esoteric, so not worrying about this
+            # for now.
             target_folder = options.category_name_to_folder['_'.join(categories_above_threshold)]
     
         elif len(categories_above_threshold) == 0:
+            
             target_folder = options.category_name_to_folder['empty']
             
         else:

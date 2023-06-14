@@ -258,13 +258,12 @@ def make_spreadsheet(megadb_utils: MegadbUtils, output_dir: str) -> None:
         ws.append(r)
 
     # hyperlink Bing search URLs
-    for i_row, cell in enumerate(ws['D']):  # TODO hardcoded column number
+    for i_row, cell in enumerate(ws['D']):
         if i_row > 0:
             cell.hyperlink = cell.value
             cell.style = 'Hyperlink'
 
     # hyperlink example image SAS URLs
-    # TODO hardcoded columns: change if # of examples or col_order changes
     sas_cols = [ws['L'], ws['M'], ws['N'], ws['O'], ws['P'], ws['Q'], ws['R']]
     assert len(sas_cols) == NUMBER_EXAMPLES_PER_SPECIES
 

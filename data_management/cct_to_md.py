@@ -132,11 +132,6 @@ def cct_to_md(input_filename,output_filename=None):
 # ...cct_to_md()    
     
 
-#%% Command-line driver
-
-# TODO
-
-
 #%% Interactive driver
 
 if False:

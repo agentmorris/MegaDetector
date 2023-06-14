@@ -216,9 +216,3 @@ if False:
     
     from md_utils.path_utils import open_file
     open_file(html_output_file)
-
-
-
-#%% Command-line driver
-
-# TODO

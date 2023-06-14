@@ -66,6 +66,7 @@ category_mappings = {'blank':'empty'}
 
 process_images_n_threads = 20
 
+max_files_per_archive = None
 
 #%% Folder/file creation
 
@@ -158,7 +159,7 @@ next_category_id = empty_category_id + 1
 
 #%% Convert to dictionaries (loops)
     
-# TODO: iterrows() is a terrible way to do this, but this is one of those days
+# iterrows() is a terrible way to do this, but this is one of those days
 # where I want to get this done, not get better at Python.
 
 print('Processing image table')
@@ -544,7 +545,7 @@ for iImage,im in tqdm(enumerate(images),total=len(images)):
     n_images_added += 1
     
     # Possibly start a new archive
-    if n_images_added >= max_files_per_archive:
+    if (max_files_per_archive is not None) and (n_images_added >= max_files_per_archive):
         zip.close()
         zipfilename = zipfilename.replace('.zip','.{}.zip'.format(n_images_added))
         print('Starting new archive: {}'.format(zipfilename))
@@ -574,7 +575,7 @@ zip.close()
 print('\nFinished writing {}, added {} files'.format(zipfilename,n_images_added))
 
 
-#%% Sanity-check .json file
+#%% Consistency-check-check .json file
 
 from data_management.databases import sanity_check_json_db
 
@@ -717,7 +718,6 @@ with open(summary_info_filename,'w') as f:
 
 #%% Generate preview, sanity-check labels
     
-from md_visualization import visualize_db
 viz_options = visualize_db.DbVizOptions()
 viz_options.num_to_visualize = 5000
 viz_options.trim_to_images_with_bboxes = False

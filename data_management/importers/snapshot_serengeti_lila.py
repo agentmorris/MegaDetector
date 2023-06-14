@@ -117,7 +117,7 @@ next_category_id = empty_category_id + 1
 
 #%% Convert to dictionaries (loops)
     
-# TODO: iterrows() is a terrible way to do this, but this is one of those days
+# iterrows() is a terrible way to do this, but this is one of those days
 # where I want to get this done, not get better at Python.
 
 print('Processing image table')
@@ -601,12 +601,12 @@ for season in range(1,nSeasons+3):
         data['info']['description'] = data['info']['description'] + ', seasons 1-11'
         data['images'] = images
         data['annotations'] = annotations
-        fn = os.path.join(output_base,'SnapshotSeregeti_v2.1.json'.format(season))
+        fn = os.path.join(output_base,'SnapshotSerengeti_v2.1.json')
     elif i_season == nSeasons:
         data['info']['description'] = data['info']['description'] + ', seasons 1-10'
         data['images'] = images_public
         data['annotations'] = annotations_public        
-        fn = os.path.join(output_base,'SnapshotSeregeti_v2.0.json'.format(season))
+        fn = os.path.join(output_base,'SnapshotSeregenti_v2.0.json')
     else:
         data['info']['description'] = data['info']['description'] + ', season {}'.format(season)    
         data['images'] = images_by_season[i_season]

@@ -1,8 +1,10 @@
+########
 #
-# kga-pr-analysis.py
+# snapshot-safari-pr-analysis.py
 #
 # Precision/recall analysis for KGA data
 #
+########
 
 #%% Imports and constants
 
@@ -186,13 +188,11 @@ for ann in ground_truth_all['annotations']:
     
     sequence_id_to_annotations[seq_id].append(ann)
         
-print('TODO: verify consistency of annotation within a sequence')
-
-# Verify consistency of annotation within a sequence
+# TODO: verify consistency of annotation within a sequence
 for seq_id in sequence_id_to_annotations:
     
     annotations_this_sequence = sequence_id_to_annotations[seq_id]
-    # TODO
+
 
 
 #%% Find max confidence values for each category for each sequence

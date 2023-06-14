@@ -304,9 +304,6 @@ unknown_queries = set(
 blank_queries = set(['empty'])
 animal_queries = set(['animalia'])
 
-# TODO:
-# ['subspecies','variety']
-
 lila_dataset_category_to_wi_taxon = {}
 
 # i_taxon = 0; taxon = lila_taxonomy[i_taxon]; print(taxon)

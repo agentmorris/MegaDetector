@@ -116,16 +116,18 @@ class PTDetector:
             # ...if the caller has specified an image size
             
             img = letterbox(img_original, new_shape=target_size,
-                                 stride=PTDetector.STRIDE, auto=True)[0]  # JIT requires auto=False
+                                 stride=PTDetector.STRIDE, auto=True)[0]
             
-            img = img.transpose((2, 0, 1))  # HWC to CHW; PIL Image is RGB already
+            # HWC to CHW; PIL Image is RGB already
+            img = img.transpose((2, 0, 1))
             img = np.ascontiguousarray(img)
             img = torch.from_numpy(img)
             img = img.to(self.device)
             img = img.float()
             img /= 255
 
-            if len(img.shape) == 3:  # always true for now, TODO add inference using larger batch size
+            # In practice this is always true 
+            if len(img.shape) == 3:  
                 img = torch.unsqueeze(img, 0)
 
             pred: list = self.model(img)[0]
@@ -140,7 +142,9 @@ class PTDetector:
                 pred = non_max_suppression(prediction=pred, conf_thres=detection_threshold)
 
             # format detections/bounding boxes
-            gn = torch.tensor(img_original.shape)[[1, 0, 1, 0]]  # normalization gain whwh
+            #
+            # normalization gain whwh
+            gn = torch.tensor(img_original.shape)[[1, 0, 1, 0]]
 
             # This is a loop over detection batches, which will always be length 1 in our case,
             # since we're not doing batch inference.

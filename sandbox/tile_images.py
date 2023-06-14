@@ -26,7 +26,7 @@ def split_image_folder(input_folder,output_folder,n_rows=2,n_cols=2,overwrite=Fa
     image_relative_paths = [os.path.relpath(fn,input_folder) for fn in image_full_paths]
     os.makedirs(output_folder,exist_ok=True)
     
-    # TODO: parallelization
+    # TODO: parallelize this loop
     #
     # i_fn = 2; relative_fn = image_relative_paths[i_fn]
     for i_fn,relative_fn in tqdm(enumerate(image_relative_paths),total=len(image_relative_paths)):
@@ -44,7 +44,7 @@ def split_image_folder(input_folder,output_folder,n_rows=2,n_cols=2,overwrite=Fa
                 
                 for i_row in range(0, n_rows):
                     
-                    # TODO: super-sloppy that I'm pasting this code from below
+                    # TODO: it's super-sloppy that I'm pasting this code from below
                     tokens = os.path.splitext(relative_fn)
                     base_fn = tokens[0]; ext = tokens[1]
                     output_relative_fn = base_fn + '_row_{}_col_{}'.format(i_row,i_col) + ext

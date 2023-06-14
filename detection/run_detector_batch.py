@@ -176,8 +176,6 @@ def run_detector_with_image_queue(image_files,model_file,confidence_threshold,
     producer.daemon = False
     producer.start()
  
-    # TODO
-    #
     # The queue system is a little more elegant if we start one thread for reading and one
     # for processing, and this works fine on Windows, but because we import TF at module load,
     # CUDA will only work in the main process, so currently the consumer function runs here.

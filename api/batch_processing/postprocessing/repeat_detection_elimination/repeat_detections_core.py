@@ -104,7 +104,8 @@ class RepeatDetectionOptions:
     # repeated detections that are actually animals.  This should be a flat
     # text file, one relative filename per line.  See enumerate_images().
     #
-    # TODO: this is a pretty esoteric code path and a candidate for removal.
+    # This is a pretty esoteric code path and a candidate for removal.
+    #
     # The scenario where I see it being most useful is the very hypothetical one
     # where we use an external tool for image handling that allows us to do something
     # smarter and less destructive than deleting images to mark them as non-false-positives.

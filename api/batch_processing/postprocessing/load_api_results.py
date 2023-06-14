@@ -184,10 +184,6 @@ def load_api_results_csv(filename, normalize_paths=True, filename_replacements={
 
         replacement_string = filename_replacements[string_to_replace]
 
-        # TODO: hit some silly issues with vectorized str() and escaped characters, vectorize
-        # this later.
-        #
-        # detection_results['image_path'].str.replace(string_to_replace,replacement_string)
         # iRow = 0
         for iRow in range(0,len(detection_results)):
             row = detection_results.iloc[iRow]

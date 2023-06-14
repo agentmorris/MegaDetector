@@ -233,7 +233,7 @@ class Task:
                 with read and list permissions if the container is not public.
                 Only provide this parameter when the image paths in
                 self.remote_images_list_url are relative to a container.
-            image_path_prefix: optional str, TODO
+            image_path_prefix: optional str
             kwargs: additional API input parameters
 
         Returns: dict, represents the JSON request to be submitted
