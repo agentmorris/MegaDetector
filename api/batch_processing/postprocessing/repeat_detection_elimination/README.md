@@ -125,7 +125,7 @@ This script takes your original .json file and removes detections corresponding 
 
 # What next?
 
-After running this process, you still have a .json file in the standard MegaDetector resultsformat, just with (hopefully) many fewer false positives that are above your confidence threshold.  At this point, you can proceed with whatever workflow you would normally use to work with our API output, e.g. our <a href="https://github.com/agentmorris/MegaDetector/blob/master/api/batch_processing/integration/timelapse.md">integration with Timelapse</a>.
+After running this process, you still have a .json file in the standard MegaDetector resultsformat, just with (hopefully) many fewer false positives that are above your confidence threshold.  At this point, you can proceed with whatever workflow you would normally use to work with our API output, e.g. our <a href="https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/integration/timelapse.md">integration with Timelapse</a>.
 
 
 # Visualizing the stuff you're throwing away
