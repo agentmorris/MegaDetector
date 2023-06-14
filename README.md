@@ -187,7 +187,7 @@ Shared tools for visualizing images with ground truth and/or predicted annotatio
 Random things that don't fit in any other directory, but aren't quite deprecated.  Mostly postprocessing scripts that were built for a single use case but could potentially be useful in the future.
 
 
-### taxonomy-mapping
+### taxonomy_mapping
 
 Code to facilitate mapping data-set-specific category names (e.g. "lion", which means very different things in Idaho vs. South Africa) to a standard taxonomy.
 
