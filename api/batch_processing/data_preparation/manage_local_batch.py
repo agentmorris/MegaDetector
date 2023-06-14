@@ -1061,7 +1061,8 @@ os.chmod(output_file, st.st_mode | stat.S_IEXEC)
 
 #%% Run the classifier(s) via the .sh script(s) or batch file(s) we just wrote
 
-# ...
+# I do this manually, primarily because this requires a different mamba environment
+# (cameratraps-classifier) from MegaDetector's environment (cameratraps-detector).
 
 
 #%% Within-image classification smoothing
@@ -1352,7 +1353,6 @@ else:
 
 #%% Prepare COCO-camera-traps-compatible image objects for EXIF results
 
-# import dateutil
 import datetime    
 import time
 
@@ -1360,10 +1360,6 @@ min_valid_timestamp_year = 2015
 
 def parse_date_from_exif_datetime(s):
         
-    # This is a standard format for EXIF datetime, and dateutil.parser 
-    # doesn't handle it correctly.
-    
-    # return dateutil.parser.parse(s)    
     dt = None
     try:
         dt = time.strptime(s, '%Y:%m:%d %H:%M:%S')
