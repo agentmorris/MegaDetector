@@ -164,7 +164,7 @@ Code for training, running, and evaluating MegaDetector.
 
 ### envs
 
-Environment files... specifically .yml files for mamba/conda environments (these are what we recommend in our [MegaDetector User Guide](megadetector.md]), and a requirements.txt for the pip-inclined.
+Environment files... specifically .yml files for mamba/conda environments (these are what we recommend in our [MegaDetector User Guide](megadetector.md)), and a requirements.txt for the pip-inclined.
 
 
 ### images
