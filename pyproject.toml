@@ -14,13 +14,23 @@
 # python -m build
 # dir dist
 # pip install twine
+#
+# For test uploads:
+# python -m twine upload --repository testpypi dist/*
+#
+# For prod uplaods:
 # python -m twine upload dist/*
 # 
 # mamba create -n md-pip-test python=3.9.16 -y
 # mamba activate md-pip-test
 #
-# pip install -i https://test.pypi.org/simple/ megadetector==5.0.0
+# For test installs (will install properly, but won't work for lack of dependencies):
 # pip install -i https://test.pypi.org/simple/ megadetector==5.0.0 --no-deps
+#
+# For prod installs:
+# pip install megadetector
+#
+# python -c "import megadetector; print(megadetector.__file___)"
 
 [project]
 name = "megadetector"
