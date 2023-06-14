@@ -77,7 +77,7 @@ FWIW, MDv5 is consistently 3x-4x faster than MDv4, so if you see a device listed
 
  #### Contributing to this benchmark list
  
-If you want to run this benchmark on your own, here are <a href="https://github.com/agentmorris/MegaDetector/blob/master/download_megadetector_timing_benchmark_set.bat">azcopy commands</a> to download those 13,226 images, and we're happy to help you get MegaDetector running on your setup.  Or if you're using MegaDetector on other images with other GPUs, we'd love to include that data here as well.  <a href="mailto:cameratraps@lila.science">Email us</a>!
+If you want to run this benchmark on your own, here are <a href="https://github.com/agentmorris/MegaDetector/blob/main/sandbox/download_megadetector_timing_benchmark_set.bat">azcopy commands</a> to download those 13,226 images, and we're happy to help you get MegaDetector running on your setup.  Or if you're using MegaDetector on other images with other GPUs, we'd love to include that data here as well.  <a href="mailto:cameratraps@lila.science">Email us</a>!
 
 ### User-reported timings on other data
 
@@ -169,9 +169,9 @@ First MegaDetector release!  Yes, that's right, v2 was the first release.  If th
 
 We provide two ways to run MegaDetector on your images:
 
-1. A simple test script that makes neat pictures with bounding boxes, but doesn't produce a useful output file ([run_detector.py](https://github.com/agentmorris/MegaDetector/blob/master/detection/run_detector.py))
+1. A simple test script that makes neat pictures with bounding boxes, but doesn't produce a useful output file ([run_detector.py](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_detector.py))
 
-2. A script for running large batches of images on a local GPU ([run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/master/detection/run_detector_batch.py))
+2. A script for running large batches of images on a local GPU ([run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_detector_batch.py))
 
 Also see the <a href="#is-there-a-gui">&ldquo;Is there a GUI?&rdquo;</a> section for graphical options and other ways of running MD, including real-time APIs, Docker environments, and other goodies.
 
@@ -238,7 +238,7 @@ cd c:\git
 git clone https://github.com/agentmorris/MegaDetector
 git clone https://github.com/ecologize/yolov5/
 cd c:\git\MegaDetector
-mamba env create --file environment-detector.yml
+mamba env create --file envs\environment-detector.yml
 mamba activate cameratraps-detector
 set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector;c:\git\yolov5
 ```
@@ -272,7 +272,7 @@ cd ~/git
 git clone https://github.com/ecologize/yolov5/
 git clone https://github.com/agentmorris/MegaDetector
 cd ~/git/MegaDetector
-mamba env create --file environment-detector.yml
+mamba env create --file envs/environment-detector.yml
 mamba activate cameratraps-detector
 export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
@@ -308,7 +308,7 @@ cd ~/git
 git clone https://github.com/ecologize/yolov5/
 git clone https://github.com/agentmorris/MegaDetector
 cd ~/git/MegaDetector
-mamba env create --file environment-detector-mac.yml
+mamba env create --file envs/environment-detector-mac.yml
 mamba activate cameratraps-detector
 export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
@@ -340,7 +340,7 @@ M1 Macs are not officially supported right now, but with a bit of work, you can 
 
 #### run_detector.py
 
-To test MegaDetector out on small sets of images and get super-satisfying visual output, we provide [run_detector.py](https://github.com/agentmorris/MegaDetector/blob/master/detection/run_detector.py), an example script for invoking this detector on new images.  This isn't how we recommend running lots of images through MegaDetector (see [run_detector_batch.py](#2-run_detector_batchpy) below for "real" usage), but it's a quick way to test things out.  [Let us know](mailto:cameratraps@lila.science) how it works on your images!
+To test MegaDetector out on small sets of images and get super-satisfying visual output, we provide [run_detector.py](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_detector.py), an example script for invoking this detector on new images.  This isn't how we recommend running lots of images through MegaDetector (see [run_detector_batch.py](#2-run_detector_batchpy) below for "real" usage), but it's a quick way to test things out.  [Let us know](mailto:cameratraps@lila.science) how it works on your images!
 
 The following examples assume you have your Mambaforge prompt open, and have put things in the same directories we put things in the above instructions.  If you put things in different places, adjust these examples to match your folders, and most importantly, adjust these examples to point to your images.
 
@@ -399,7 +399,7 @@ Don't forget to change "some_image_file.jpg" to point to a real image on your co
 
 #### run_detector_batch.py
 
-To apply this model to larger image sets on a single machine, we recommend a different script, [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/master/detection/run_detector_batch.py).  This outputs data in the same format as our [batch processing API](https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing), so you can leverage all of our post-processing tools.  The format that this script produces is also compatible with [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/).
+To apply this model to larger image sets on a single machine, we recommend a different script, [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_detector_batch.py).  This outputs data in the same format as our [batch processing API](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing), so you can leverage all of our post-processing tools.  The format that this script produces is also compatible with [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/).
 
 To use run_detector_batch.py on Windows, when you open a new Mambaforge prompt, don't forget to do this:
 
@@ -544,9 +544,9 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 
 #### Maintained within this repo
 
-* [Colab notebook](https://github.com/agentmorris/MegaDetector/blob/master/detection/megadetector_colab.ipynb) ([open in Colab](https://colab.research.google.com/github/agentmorris/MegaDetector/blob/master/detection/megadetector_colab.ipynb)) for running MDv5 on images stored in Google Drive.
+* [Colab notebook](https://github.com/agentmorris/MegaDetector/blob/main/detection/megadetector_colab.ipynb) ([open in Colab](https://colab.research.google.com/github/agentmorris/MegaDetector/blob/main/detection/megadetector_colab.ipynb)) for running MDv5 on images stored in Google Drive.
 * [Real-time MegaDetector API using Flask](https://github.com/agentmorris/MegaDetector/tree/main/api/synchronous).  This is deployed via Docker, so the Dockerfile provided for the real-time API may be a good starting point for other Docker-based MegaDetector deployments as well.
-* [Batch processing API](https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing) that runs images on many GPUs at once on Azure.  There is no public instance of this API, but the code allows you to stand up your own endpoint.
+* [Batch processing API](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing) that runs images on many GPUs at once on Azure.  There is no public instance of this API, but the code allows you to stand up your own endpoint.
  
 
 ## How do I use the results?
@@ -698,7 +698,7 @@ mkdir c:\git
 cd c:\git
 git clone https://github.com/agentmorris/MegaDetector
 cd c:\git\MegaDetector
-mamba env create --file environment.yml
+mamba env create --file envs\environment.yml
 mamba activate cameratraps
 set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector
 ```
@@ -710,7 +710,7 @@ mkdir ~/git
 cd ~/git
 git clone https://github.com/agentmorris/MegaDetector
 cd ~/git/MegaDetector
-mamba env create --file environment.yml
+mamba env create --file envs/environment.yml
 mamba activate cameratraps
 export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector"
 ```
@@ -731,4 +731,4 @@ mamba activate cameratraps
 export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector"
 ```
 
-Also, the environment file we're referring to in this section ([environment.yml](environment.yml), the one without all the MegaDetector stuff) doesn't get quite the same level of TLC that our MegaDetector environment does, so if anyone tries to run scripts that don't directly involve MegaDetector using this environment, and packages are missing, [let us know](mailto:cameratraps@lila.science).
+Also, the environment file we're referring to in this section ([envs/environment.yml](environment.yml), the one without all the MegaDetector stuff) doesn't get quite the same level of TLC that our MegaDetector environment does, so if anyone tries to run scripts that don't directly involve MegaDetector using this environment, and packages are missing, [let us know](mailto:cameratraps@lila.science).

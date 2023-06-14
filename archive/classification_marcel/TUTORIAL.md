@@ -16,7 +16,7 @@ git clone https://github.com/agentmorris/MegaDetector.git $CAMERATRAPS_DIR
 Our code was tested with Python 3.6 and uses the libraries [TensorFlow](https://www.tensorflow.org/), [pycocotools](https://github.com/cocodataset/cocoapi/tree/master/PythonAPI), and the [TensorFlow object detection library](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/installation.md). You can install the necessary libraries by running
 
 ```bash
-conda env create -f ${CAMERATRAPS_DIR}/environment-classifier.yml
+conda env create -f ${CAMERATRAPS_DIR}/envs/environment-classifier.yml
 ```
 
 ### Data
