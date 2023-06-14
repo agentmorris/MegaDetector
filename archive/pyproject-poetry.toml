@@ -1,0 +1,80 @@
+# Experimental project file that uses Poetry to build.  Works conceptually, but
+# is not practical because of this issue, which requires poetry to download
+# lots of PyTorch wheels to figure out the right version:
+#
+# https://github.com/python-poetry/poetry/issues/6409
+#
+# This will probably be moot after upgrading to PyTorch 2.0+.
+#
+# Notes to self:
+#
+# mamba create -n md-poetry-test python=3.9.16 -y
+# mamba activate md-poetry-test
+# mamba install poetry -y
+# poetry install -vvv
+# poetry cache:clear pypi --all
+
+[tool.poetry]
+name = "megadetector"
+version = "5.0.0"
+description = "MegaDetector is an AI model that helps conservation folks spend less time doing boring things with camera trap images."
+authors = ["Your friendly neighborhood MegaDetector devs <cameratraps@lila.science>"]
+license = "MIT"
+keywords = ["wildlife", "camera trap", "conservation"]
+homepage = "https://github.com/agentmorris/MegaDetector/"
+repository = "https://github.com/agentmorris/MegaDetector/"
+documentation = "https://github.com/agentmorris/MegaDetector/"
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",    
+]
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/agentmorris/MegaDetector/issues"
+
+[tool.poetry.dependencies]
+python = "3.9.16"
+Pillow = "9.1.0"
+tqdm = "4.65.0"
+jsonpickle = "3.0.0"
+humanfriendly = "10.0"
+
+# Using yolov5's val.py (which is still experimental) for MDv5.0 requires a version
+# of YOLOv5 that uses np.int, which was removed as of numpy 1.24.0
+numpy = "1.23.5"
+matplotlib = "3.7.1"
+opencv-python = "4.5.5.64"
+requests = "2.29.0"
+pyqtree = "1.0.0"
+scikit-learn = "1.2.2"
+
+# So we can run Jupyter notebooks in this environment
+# nb_conda_kernels = "2.3.1"
+# ipykernel = "6.23.0"
+  
+# For running MegaDetector v5
+pandas = "2.0.1"
+seaborn = "0.12.2"
+PyYAML = "6.0"
+
+torch = { version = "1.10.1", source="pytorch-cu113" }
+torchvision = { version = "0.11.2", source="pytorch-cu113" }
+
+# Packaged with torch
+# cuda-python = 11.3
+# nvidia-cudnn = 8.1
+
+# For running MegaDetector v4
+# tensorflow> = 2.0
+
+[[tool.poetry.source]]
+name = "pytorch-cu113"
+url = "https://download.pytorch.org/whl/cu113"
+priority = "explicit"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,72 @@
+# Experimental project file that uses Hatchling to build, and uses the hatch-requirements-txt
+# plugin to push the dependency list out to a requirements.txt file.  Works conceptually, but 
+# getting the right version of PyTorch installed is difficult, because I need to point to a source
+# other than PyPI, and I can't figure out how to do that with Hatchling and/or hatch-requirements-txt.
+#
+# This will likely become moot after upgrading to PyTorch 2.0+.
+#
+# Notes to self:
+#
+# mamba create -n md-hatch-test python=3.9.16 -y
+# mamba activate md-hatch-test
+#
+# pip install build
+# python -m build
+# dir dist
+# pip install twine
+#
+# For test uploads:
+# python -m twine upload --repository testpypi dist/*
+#
+# For prod uplaods:
+# python -m twine upload dist/*
+# 
+# mamba create -n md-pip-test python=3.9.16 -y
+# mamba activate md-pip-test
+#
+# For test installs (will install properly, but won't work for lack of dependencies):
+# pip install -i https://test.pypi.org/simple/ megadetector==5.0.0 --no-deps
+#
+# For prod installs:
+# pip install megadetector
+#
+# python -c "import megadetector; print(megadetector.__file___)"
+
+[project]
+name = "megadetector"
+version = "5.0.0"
+dynamic = ["dependencies"]
+description = "MegaDetector is an AI model that helps conservation folks spend less time doing boring things with camera trap images."
+readme = "README.md"
+requires-python = ">=3.9,<3.10"
+license = {file = "LICENSE"}
+keywords = ["camera traps", "conservation", "wildlife", "ai"]
+authors = [
+  {name = "Your friendly neighborhood MegaDetector team", email = "cameratraps@lila.science" }
+]
+maintainers = [
+  {name = "Your friendly neighborhood MegaDetector team", email = "cameratraps@lila.science" }
+]
+
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+]
+
+# dependencies = [
+#   "declared-as-dynamic"
+# ]
+
+[project.urls]
+"Homepage" = "https://github.com/agentmorris/MegaDetector"
+"Bug Reports" = "https://github.com/agentmorris/MegaDetector/issues"
+"Source" = "https://github.com/agentmorris/MegaDetector"
+
+[build-system]
+requires = ["hatchling", "hatch-requirements-txt"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata.hooks.requirements_txt]
+files = ["requirements.hatch.txt"]
