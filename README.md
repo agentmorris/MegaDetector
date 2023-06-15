@@ -73,6 +73,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Taronga Conservation Society](https://taronga.org.au/)
 * [The Nature Conservancy in Wyoming](https://www.nature.org/en-us/about-us/where-we-work/united-states/wyoming/)
 * [TrapTagger](https://wildeyeconservation.org/trap-tagger-about/)
+* [University of California Davis Natural Reserves](https://naturalreserves.ucdavis.edu/)
 * [Upper Yellowstone Watershed Group](https://www.upperyellowstone.org/)
 
 * [Applied Conservation Macro Ecology Lab](http://www.acmelab.ca/), University of Victoria
