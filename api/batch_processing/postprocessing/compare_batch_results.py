@@ -2,10 +2,16 @@
 #
 # compare_batch_results.py
 # 
-# Compare sets of batch results; typically used to compare MegaDetector versions, or
-# results files before/after RDE.  Makes pairwise comparisons, but can take lists of
-# results files (will perform all pairwise comparisons).  Results are written to HTML 
-# files.
+# Compare sets of batch results; typically used to compare:
+#
+# * MegaDetector versions
+# * Results before/after RDE
+# * Results with/without augmentation
+
+# Makes pairwise comparisons, but can take lists of results files (will perform 
+# all pairwise comparisons).  Results are written to an HTML page that shows the number
+# and nature of disagreements (in the sense of each image being a detection or non-detection), 
+# with sample images for each category.
 # 
 ########
 
@@ -62,6 +68,7 @@ class BatchComparisonOptions:
     
     output_folder = None
     image_folder = None
+    job_name = ''
     
     max_images_per_category = 1000
     colormap_a = ['Red']
@@ -130,7 +137,7 @@ main_page_footer = '<br/><br/><br/></body></html>\n'
 
 #%% Comparison functions
 
-def render_image_pair(fn,image_pairs,category_folder,pairwise_options):
+def render_image_pair(fn,image_pairs,category_folder,options,pairwise_options):
     """
     Render two sets of results (i.e., a comparison) for a single image.
     """
@@ -199,9 +206,12 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
 
     ##%% Validate inputs
     
-    assert os.path.isfile(pairwise_options.results_filename_a)
-    assert os.path.isfile(pairwise_options.results_filename_b)
-    assert os.path.isdir(options.image_folder)
+    assert os.path.isfile(pairwise_options.results_filename_a), \
+        "Can't find results file {}".format(pairwise_options.results_filename_a)
+    assert os.path.isfile(pairwise_options.results_filename_b), \
+        "Can't find results file {}".format(pairwise_options.results_filename_b)
+    assert os.path.isdir(options.image_folder), \
+        "Can't find image folder {}".format(pairwise_options.image_folder)
     os.makedirs(options.output_folder,exist_ok=True)
     
     
@@ -371,8 +381,7 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
            pool = ThreadPool(options.n_rendering_workers)    
        else:
            pool = Pool(options.n_rendering_workers)    
-    
-    
+        
     categories_to_image_pairs = {
         'common_detections':common_detections,
         'common_non_detections':common_non_detections,
@@ -403,11 +412,13 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
         if options.n_rendering_workers <= 1:
             output_image_paths = []
             for fn in tqdm(image_filenames):        
-                output_image_paths.append(render_image_pair(fn,image_pairs,category_folder,pairwise_options))
+                output_image_paths.append(render_image_pair(fn,image_pairs,category_folder,
+                                                            options,pairwise_options))
         else:            
             output_image_paths = list(tqdm(pool.imap(
                 partial(render_image_pair, image_pairs=image_pairs, 
-                        category_folder=category_folder,pairwise_options=pairwise_options),
+                        category_folder=category_folder,options=options,
+                        pairwise_options=pairwise_options),
                 image_filenames), 
                 total=len(image_filenames)))
         
@@ -590,8 +601,11 @@ def compare_batch_results(options):
         all_pairwise_results.append(pairwise_results)
 
     html_output_string = main_page_header
-    html_output_string += '<h2>Comparison of results for {}</h2>\n'.format(
-        options.job_name)
+    job_name_string = ''
+    if len(options.job_name) > 0:
+        job_name_string = ' for {}'.format(options.job_name)
+    html_output_string += '<h2>Comparison of results{}</h2>\n'.format(
+        job_name_string)
     html_output_string += html_content
     html_output_string += main_page_footer
     
@@ -650,10 +664,12 @@ if False:
     
     #%% Running KGA test
     
-    # CUDA_VISIBLE_DEVICES=0 python run_detector_batch.py  ~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt ~/data/KGA/ ~/data/KGA-5a.json --recursive --output_relative_filenames
-    # CUDA_VISIBLE_DEVICES=1 python run_detector_batch.py  ~/models/camera_traps/megadetector/md_v5.0.0/md_v5b.0.0.pt ~/data/KGA/ ~/data/KGA-5b.json --recursive --output_relative_filenames
+    # CUDA_VISIBLE_DEVICES=0 python run_detector_batch.py  ~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt ~/data/KGA/ ~/data/KGA-5a.json --recursive --output_relative_filenames --quiet
+    # CUDA_VISIBLE_DEVICES=1 python run_detector_batch.py  ~/models/camera_traps/megadetector/md_v5.0.0/md_v5b.0.0.pt ~/data/KGA/ ~/data/KGA-5b.json --recursive --output_relative_filenames --quiet
     
-    # python run_detector_batch.py  ~/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb ~/data/KGA ~/data/KGA-4.json --recursive --output_relative_filenames
+    # python run_detector_batch.py  ~/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb ~/data/KGA ~/data/KGA-4.json --recursive --output_relative_filenames --quiet
+    
+    # CUDA_VISIBLE_DEVICES=0 python run_detector_batch.py  ~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt ~/data/KGA/ ~/data/KGA-5a-pillow-9.2.0.json --recursive --output_relative_filenames --quiet
 
 
     #%% Test two-way comparison
@@ -702,7 +718,7 @@ if False:
 
     detection_thresholds = [0.7,0.15,0.15]
 
-    results = n_way_comparison(filenames,detection_thresholds,rendering_thresholds=None)
+    results = n_way_comparison(filenames,options,detection_thresholds,rendering_thresholds=None)
     
     from md_utils.path_utils import open_file
     open_file(results.html_output_file)
@@ -711,7 +727,9 @@ if False:
 #%% Command-line driver
 
 """
-python compare_batch_results.py ~/tmp/comparison-test ~/data/KRU ~/data/KRU-5a.json ~/data/KRU-5b.json ~/data/KRU-4.json --detection_thresholds 0.15 0.15 0.7 --rendering_thresholds 0.1 0.1 0.6
+python compare_batch_results.py ~/tmp/comparison-test ~/data/KGA ~/data/KGA-5a.json ~/data/KGA-5b.json ~/data/KGA-4.json --detection_thresholds 0.15 0.15 0.7 --rendering_thresholds 0.1 0.1 0.6 --use_processes
+
+python compare_batch_results.py ~/tmp/comparison-test ~/data/KGA ~/data/KGA-5a.json ~/data/KGA-5b.json ~/data/KGA-4.json --detection_thresholds 0.15 0.15 0.7 --rendering_thresholds 0.1 0.1 0.6 --use_processes
 """
 
 import sys,argparse,textwrap
@@ -729,13 +747,30 @@ def main():
            '''))
           
     parser.add_argument('output_folder', type=str, help='folder to which to write html results')
+
     parser.add_argument('image_folder', type=str, help='image source folder')
+
     parser.add_argument('results_files', nargs='*', type=str, help='list of .json files to be compared')
-    parser.add_argument('--detection_thresholds', nargs='*', type=float, help='list of detection thresholds, same length as the number of .json files, defaults to 0.15 for all files')
-    parser.add_argument('--rendering_thresholds', nargs='*', type=float, help='list of rendering thresholds, same length as the number of .json files, defaults to 0.10 for all files')
+
+    parser.add_argument('--detection_thresholds', nargs='*', type=float,
+                        help='list of detection thresholds, same length as the number of .json files, ' + \
+                             'defaults to 0.15 for all files')
+    
+    parser.add_argument('--rendering_thresholds', nargs='*', type=float,
+                        help='list of rendering thresholds, same length as the number of .json files, ' + \
+                             'defaults to 0.10 for all files')
+    
+    parser.add_argument('--max_images_per_category', type=int, default=options.max_images_per_category,
+                       help='number of images to sample for each agreement category (common detections, etc.)')
     
     parser.add_argument('--target_width', type=int, default=options.target_width, 
                         help='output image width, defaults to {}'.format(options.target_width))
+    
+    parser.add_argument('--use_processes', action='store_true', 
+                        help='use processes rather than threads for parallelization')
+    
+    parser.add_argument('--open_results', action='store_true', 
+                        help='open the output html file when done')
     
     parser.add_argument('--n_rendering_workers', type=int, default=options.n_rendering_workers,
                         help='number of workers for parallel rendering, defaults to {}'.format(
@@ -766,12 +801,20 @@ def main():
     options.image_folder = args.image_folder
     options.target_width = args.target_width
     options.n_rendering_workers = args.n_rendering_workers    
+    options.max_images_per_category = args.max_images_per_category
     
-    error_on_non_matching_lists = True
+    if args.use_processes:
+        options.parallelize_rendering_with_threads = False
+        
+    results = n_way_comparison(args.results_files,options,args.detection_thresholds,args.rendering_thresholds)
     
+    if args.open_results:
+        path_utils.open_file(results.html_output_file)
+        
+    print('Wrote results to {}'.format(results.html_output_file))
     
-    if False:
-        n_way_comparison(filenames,args.detection_thresholds,args.rendering_thresholds,options=options)
+# ...main()
+
     
 if __name__ == '__main__':
     

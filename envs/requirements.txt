@@ -18,7 +18,7 @@ humanfriendly == 10.0
 numpy == 1.23.5
 matplotlib == 3.7.1
 opencv-python == 4.5.5.64
-requests == 2.29.0
+requests == 2.31.0
 pyqtree == 1.0.0
 scikit-learn == 1.2.2
 
