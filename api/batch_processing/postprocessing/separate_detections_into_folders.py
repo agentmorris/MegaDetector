@@ -604,9 +604,6 @@ if False:
     
 #%% Command-line driver   
 
-# python api\batch_processing\postprocessing\separate_detections_into_folders.py "d:\temp\rspb_mini.json" "d:\temp\demo_images\rspb_2018_2019_mini" "d:\temp\separation_test" --nthreads 2
-
-
 def main():
     
     parser = argparse.ArgumentParser()
@@ -625,7 +622,8 @@ def main():
     parser.add_argument('--vehicle_threshold', type=float, default=None,
                         help='Confidence threshold for vehicle category')
     parser.add_argument('--classification_thresholds', type=str, default=None,
-                        help='List of classification thresholds to use for species-based folder separation, formatted like deer=0.75,cow=0.75"')
+                        help='List of classification thresholds to use for species-based folder ' + \
+                             'separation, formatted as, e.g., "deer=0.75,cow=0.75"')
     
     parser.add_argument('--n_threads', type=int, default=1,
                         help='Number of threads to use for parallel operation (default=1)')
