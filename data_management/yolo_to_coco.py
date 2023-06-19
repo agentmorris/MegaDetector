@@ -20,7 +20,7 @@ from tqdm import tqdm
 from md_utils.path_utils import find_images
 
 
-#%% Support functions
+#%% Main conversion function
 
 def yolo_to_coco(input_folder,class_name_file,output_file=None):
     

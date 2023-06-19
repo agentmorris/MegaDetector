@@ -728,8 +728,6 @@ if False:
 
 """
 python compare_batch_results.py ~/tmp/comparison-test ~/data/KGA ~/data/KGA-5a.json ~/data/KGA-5b.json ~/data/KGA-4.json --detection_thresholds 0.15 0.15 0.7 --rendering_thresholds 0.1 0.1 0.6 --use_processes
-
-python compare_batch_results.py ~/tmp/comparison-test ~/data/KGA ~/data/KGA-5a.json ~/data/KGA-5b.json ~/data/KGA-4.json --detection_thresholds 0.15 0.15 0.7 --rendering_thresholds 0.1 0.1 0.6 --use_processes
 """
 
 import sys,argparse,textwrap
