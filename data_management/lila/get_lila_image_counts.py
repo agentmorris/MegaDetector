@@ -1,11 +1,11 @@
 ########
 #
-# get_lila_category_counts.py
+# get_lila_image_counts.py
 #
 # Count the number of images and bounding boxes with each label in one or more LILA datasets.
 #
 # This script doesn't write these counts out anywhere other than the console, it's just intended
-# as a template for doing operations like this on LILA data.  get_lila_category_list.py writes 
+# as a template for doing operations like this on LILA data.  get_lila_annotation_counts.py writes 
 # information out to a .json file, but it counts *annotations*, not *images*, for each category.
 #
 ########
@@ -17,7 +17,7 @@ import os
 
 from collections import defaultdict
 
-from data_management.lila.lila_common import read_lila_metadata, get_json_file_for_dataset
+from data_management.lila.lila_common import read_lila_metadata, read_metadata_file_for_dataset
 
 # If None, will use all datasets
 datasets_of_interest = None
@@ -40,7 +40,7 @@ if datasets_of_interest is None:
     datasets_of_interest = list(metadata_table.keys())
 
 for ds_name in datasets_of_interest:    
-    metadata_table[ds_name]['json_filename'] = get_json_file_for_dataset(ds_name=ds_name,
+    metadata_table[ds_name]['json_filename'] = read_metadata_file_for_dataset(ds_name=ds_name,
                                                                          metadata_dir=metadata_dir,
                                                                          metadata_table=metadata_table)
     
@@ -104,9 +104,8 @@ for ds_name in ds_name_to_category_counts:
     print('\n** Category counts for {} **\n'.format(ds_name))
     
     category_to_count = ds_name_to_category_counts[ds_name]
+    category_to_count = {k: v for k, v in sorted(category_to_count.items(), reverse=True, 
+                                                 key=lambda item: item[1])}
     
     for category_name in category_to_count.keys():        
         print('{}: {}'.format(category_name,category_to_count[category_name]))
-        
-# ...for each dataset
-        

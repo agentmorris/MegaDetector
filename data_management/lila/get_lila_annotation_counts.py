@@ -1,6 +1,6 @@
 ########
 #
-# get_lila_category_list.py
+# get_lila_annotation_counts.py
 #
 # Generates a .json-formatted dictionary mapping each LILA dataset to all categories
 # that exist for that dataset, with counts for the number of occurrences of each category 
@@ -8,7 +8,7 @@
 #
 # Also loads the taxonomy mapping file, to include scientific names for each category.
 #
-# get_lila_category_counts counts the number of *images* for each category in each dataset.
+# get_lila_image_counts.py counts the number of *images* for each category in each dataset.
 #
 ########
 
@@ -18,7 +18,7 @@ import json
 import os
 
 from data_management.lila.lila_common import read_lila_metadata,\
-    get_json_file_for_dataset, read_lila_taxonomy_mapping
+    read_metadata_file_for_dataset, read_lila_taxonomy_mapping
 
 # array to fill for output
 category_list = []
@@ -77,7 +77,7 @@ metadata_table = read_lila_metadata(metadata_dir)
 #%% Download and extract metadata for the datasets we're interested in
 
 for ds_name in metadata_table.keys():    
-    metadata_table[ds_name]['json_filename'] = get_json_file_for_dataset(ds_name=ds_name,
+    metadata_table[ds_name]['json_filename'] = read_metadata_file_for_dataset(ds_name=ds_name,
                                                                          metadata_dir=metadata_dir,
                                                                          metadata_table=metadata_table)
 
@@ -94,9 +94,7 @@ for ds_name in metadata_table.keys():
     print('Finding categories in {}'.format(ds_name))
     
     json_filename = metadata_table[ds_name]['json_filename']
-    sas_url = metadata_table[ds_name]['sas_url']
-    
-    base_url = sas_url.split('?')[0]    
+    base_url = metadata_table[ds_name]['image_base_url']
     assert not base_url.endswith('/')
     
     # Open the metadata file    
@@ -141,12 +139,6 @@ for ds_name in metadata_table.keys():
 # ...for each dataset
 
 
-#%% Save dict
-
-with open(output_file, 'w') as f:
-    json.dump(dataset_to_categories,f,indent=2)
-
-
 #%% Print the results
 
 # ds_name = list(dataset_to_categories.keys())[0]
@@ -155,8 +147,15 @@ for ds_name in dataset_to_categories:
     print('\n** Category counts for {} **\n'.format(ds_name))
     
     categories = dataset_to_categories[ds_name]
+    categories = sorted(categories, key=lambda x: x['count'], reverse=True)
     
     for c in categories:
         print('{} ({}): {}'.format(c['name'],c['scientific_name_from_taxonomy_mapping'],c['count']))
         
 # ...for each dataset
+
+
+#%% Save the results
+
+with open(output_file, 'w') as f:
+    json.dump(dataset_to_categories,f,indent=2)

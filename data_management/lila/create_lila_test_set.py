@@ -13,9 +13,9 @@ import json
 import os
 import random
 
-from data_management.lila.lila_common import read_lila_metadata, get_json_file_for_dataset
+from data_management.lila.lila_common import read_lila_metadata, read_metadata_file_for_dataset
 
-from url_utils import download_url
+from md_utils.url_utils import download_url
 
 n_empty_images_per_dataset = 1
 n_non_empty_images_per_dataset = 1
@@ -29,6 +29,8 @@ os.makedirs(output_dir,exist_ok=True)
 metadata_dir = os.path.join(lila_local_base,'metadata')
 os.makedirs(metadata_dir,exist_ok=True)
 
+random.seed(0)
+
 
 #%% Download and parse the metadata file
 
@@ -38,7 +40,7 @@ metadata_table = read_lila_metadata(metadata_dir)
 #%% Download and extract metadata for every dataset
 
 for ds_name in metadata_table.keys():
-    metadata_table[ds_name]['json_filename'] = get_json_file_for_dataset(ds_name=ds_name,
+    metadata_table[ds_name]['metadata_filename'] = read_metadata_file_for_dataset(ds_name=ds_name,
                                                                          metadata_dir=metadata_dir,
                                                                          metadata_table=metadata_table)
 
@@ -50,7 +52,7 @@ for ds_name in metadata_table.keys():
 
     print('Choosing images for {}'.format(ds_name))
     
-    json_filename = metadata_table[ds_name]['json_filename']
+    json_filename = metadata_table[ds_name]['metadata_filename']
     
     with open(json_filename,'r') as f:
         d = json.load(f)
@@ -102,9 +104,7 @@ for ds_name in metadata_table.keys():
 # ds_name = (list(metadata_table.keys()))[0]
 for ds_name in metadata_table.keys():
 
-    sas_url = metadata_table[ds_name]['sas_url']
-    
-    base_url = sas_url.split('?')[0]    
+    base_url = metadata_table[ds_name]['image_base_url']
     assert not base_url.endswith('/')
     
     # Retrieve image file names
@@ -127,10 +127,7 @@ for ds_name in metadata_table.keys():
 # ds_name = (list(metadata_table.keys()))[0]
 for ds_name in metadata_table.keys():
 
-    # This URL may not be a SAS URL, we will remove a SAS token if it's present
-    sas_url = metadata_table[ds_name]['sas_url']
-    
-    base_url = sas_url.split('?')[0]    
+    base_url = metadata_table[ds_name]['image_base_url']
     assert not base_url.endswith('/')
     base_url += '/'
         

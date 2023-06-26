@@ -93,6 +93,8 @@ def download_url(url, destination_filename=None, progress_updater=None,
     else:
         if verbose:
             print('Downloading file {} to {}'.format(os.path.basename(url_no_sas),destination_filename),end='')
+        target_dir = os.path.dirname(destination_filename)
+        os.makedirs(target_dir,exist_ok=True)
         urllib.request.urlretrieve(url, destination_filename, progress_updater)  
         assert(os.path.isfile(destination_filename))
         nBytes = os.path.getsize(destination_filename)

@@ -12,17 +12,18 @@ import os
 import json
 import zipfile
 import pandas as pd
+import numpy as np
 
 from urllib.parse import urlparse
 
-# LILA camera trap master metadata file
-lila_metadata_url = 'http://lila.science/wp-content/uploads/2020/03/lila_sas_urls.txt'
-
+# LILA camera trap primary metadata file
+lila_metadata_url = 'http://lila.science/wp-content/uploads/2023/06/lila_camera_trap_datasets.csv'
 lila_taxonomy_mapping_url = 'https://lila.science/wp-content/uploads/2022/07/lila-taxonomy-mapping_release.csv'
+lila_all_images_url = 'https://lila.science/public/lila_image_urls_and_labels.csv.zip'
 
 wildlife_insights_page_size = 30000
-# wildlife_insights_taxonomy_url = 'https://api.wildlifeinsights.org/api/v1/taxonomy?fields=class,order,family,genus,species,authority,taxonomyType,uniqueIdentifier,commonNameEnglish&page[size]={}'.format(wildlife_insights_page_size)
-wildlife_insights_taxonomy_url = 'https://api.wildlifeinsights.org/api/v1/taxonomy/taxonomies-all?fields=class,order,family,genus,species,authority,taxonomyType,uniqueIdentifier,commonNameEnglish&page[size]={}'.format(wildlife_insights_page_size)
+wildlife_insights_taxonomy_url = 'https://api.wildlifeinsights.org/api/v1/taxonomy/taxonomies-all?fields=class,order,family,genus,species,authority,taxonomyType,uniqueIdentifier,commonNameEnglish&page[size]={}'.format(
+    wildlife_insights_page_size)
 wildlife_insights_taxonomy_local_json_filename = 'wi_taxonomy.json'
 wildlife_insights_taxonomy_local_csv_filename = \
     wildlife_insights_taxonomy_local_json_filename.replace('.json','.csv')
@@ -76,7 +77,7 @@ def read_lila_taxonomy_mapping(metadata_dir):
     """
     Reads the LILA taxonomy mapping file, downloading the .csv file if necessary.
     
-    Returns a Pandas dataframe.
+    Returns a Pandas dataframe, with one row per identification.
     """
     
     p = urlparse(lila_taxonomy_mapping_url)
@@ -87,14 +88,25 @@ def read_lila_taxonomy_mapping(metadata_dir):
     
     return df
 
-    
+   
+def is_empty(v):
+    if v is None:
+        return True
+    if isinstance(v,str) and v == '':
+        return True
+    if isinstance(v,float) and np.isnan(v):
+        return True
+    return False
+
+
 def read_lila_metadata(metadata_dir):
     """
     Reads LILA metadata (URLs to each dataset), downloading the txt file if necessary.
     
     Returns a dict mapping dataset names (e.g. "Caltech Camera Traps") to dicts
-    with keys "sas_url" (pointing to the image base) and "json_url" (pointing to the metadata
-    file).
+    with keys corresponding to the headers in the .csv file, currently:
+        
+    name,image_base_url,metadata_url,bbox_url,continent,country,region
     """
     
     # Put the master metadata file in the same folder where we're putting images
@@ -102,41 +114,54 @@ def read_lila_metadata(metadata_dir):
     metadata_filename = os.path.join(metadata_dir,os.path.basename(p.path))
     download_url(lila_metadata_url, metadata_filename)
     
-    # Read lines from the master metadata file
-    with open(metadata_filename,'r') as f:
-        metadata_lines = f.readlines()
-    metadata_lines = [s.strip() for s in metadata_lines]
+    df = pd.read_csv(metadata_filename)
     
-    # Parse those lines into a table
+    records = df.to_dict('records')
+    
+    # Parse into a table keyed by dataset name
     metadata_table = {}
     
-    for s in metadata_lines:
-        
-        if len(s) == 0 or s[0] == '#':
+    # r = records[0]
+    for r in records:
+        if is_empty(r['name']):
             continue
         
-        # Each line in this file is name/sas_url/json_url/[bbox_json_url]
-        tokens = s.split(',')
-        assert len(tokens) == 4
-        ds_name = tokens[0].strip()
-        url_mapping = {'sas_url':tokens[1],'json_url':tokens[2]}
-        metadata_table[ds_name] = url_mapping
-        
-        # Create a separate entry for bounding boxes if they exist
-        if len(tokens[3].strip()) > 0:
-            print('Adding bounding box dataset for {}'.format(ds_name))
-            bbox_url_mapping = {'sas_url':tokens[1],'json_url':tokens[3]}
-            metadata_table[tokens[0]+'_bbox'] = bbox_url_mapping
-            assert 'https' in bbox_url_mapping['json_url']
-    
-        assert 'https' not in tokens[0]
-        assert 'https' in url_mapping['sas_url']
-        assert 'https' in url_mapping['json_url']
+        # Convert NaN's to None
+        for k in r.keys():
+            if is_empty(r[k]):
+                r[k] = None
+                
+        metadata_table[r['name']] = r
     
     return metadata_table    
     
 
-def get_json_file_for_dataset(ds_name,metadata_dir,metadata_table=None):
+def read_lila_all_images_file(metadata_dir):
+    """
+    Downloads if necessary - then unzips if necessary - the .csv file with label mappings for
+    all LILA files, and opens the resulting .csv file as a Pandas DataFrame.
+    """
+        
+    p = urlparse(lila_all_images_url)
+    lila_all_images_zip_filename = os.path.join(metadata_dir,os.path.basename(p.path))
+    download_url(lila_all_images_url, lila_all_images_zip_filename)
+    
+    with zipfile.ZipFile(lila_all_images_zip_filename,'r') as z:
+        files = z.namelist()
+    assert len(files) == 1
+    
+    unzipped_csv_filename = os.path.join(metadata_dir,files[0])
+    if not os.path.isfile(unzipped_csv_filename):
+        unzip_file(lila_all_images_zip_filename,metadata_dir)
+    else:
+        print('{} already unzipped'.format(unzipped_csv_filename))    
+    
+    df = pd.read_csv(unzipped_csv_filename)
+    
+    return df
+
+
+def read_metadata_file_for_dataset(ds_name,metadata_dir,metadata_table=None):
     """
     Downloads if necessary - then unzips if necessary - the .json file for a specific dataset.
     Returns the .json filename on the local disk.
@@ -145,7 +170,7 @@ def get_json_file_for_dataset(ds_name,metadata_dir,metadata_table=None):
     if metadata_table is None:
         metadata_table = read_lila_metadata(metadata_dir)
         
-    json_url = metadata_table[ds_name]['json_url']
+    json_url = metadata_table[ds_name]['metadata_url']
     
     p = urlparse(json_url)
     json_filename = os.path.join(metadata_dir,os.path.basename(p.path))

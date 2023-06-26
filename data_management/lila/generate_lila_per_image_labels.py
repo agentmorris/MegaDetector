@@ -27,10 +27,10 @@ from collections import defaultdict
 from tqdm import tqdm
 
 from data_management.lila.lila_common import read_lila_metadata, \
-    get_json_file_for_dataset, \
+    read_metadata_file_for_dataset, \
     read_lila_taxonomy_mapping
 
-from url_utils import download_url
+from md_utils.url_utils import download_url
 
 # We'll write images, metadata downloads, and temporary files here
 lila_local_base = os.path.expanduser('~/lila')
@@ -56,7 +56,10 @@ ds_name_to_annotation_level['NACTI'] = 'unknown'
 
 known_unmapped_labels = set(['WCS Camera Traps:#ref!'])
 
-debug_max_images_per_dataset = None
+debug_max_images_per_dataset = 100
+if debug_max_images_per_dataset > 0:
+    print('Running in debug mode')
+    output_file = output_file.replace('.csv','_debug.csv')
 
 
 #%% Download and parse the metadata file
@@ -72,7 +75,7 @@ if False:
 #%% Download and extract metadata for the datasets we're interested in
 
 for ds_name in metadata_table.keys():    
-    metadata_table[ds_name]['json_filename'] = get_json_file_for_dataset(ds_name=ds_name,
+    metadata_table[ds_name]['metadata_filename'] = read_metadata_file_for_dataset(ds_name=ds_name,
                                                                          metadata_dir=metadata_dir,
                                                                          metadata_table=metadata_table)
     
@@ -131,7 +134,7 @@ with open(output_file,'w') as f:
     
         print('Processing dataset {}'.format(ds_name))
         
-        json_filename = metadata_table[ds_name]['json_filename']
+        json_filename = metadata_table[ds_name]['metadata_filename']
         with open(json_filename, 'r') as f:
             data = json.load(f)
         
@@ -148,8 +151,7 @@ with open(output_file,'w') as f:
         # Go through annotations, marking each image with the categories that are present
         #
         # ann = annotations[0]
-        for ann in annotations:
-            
+        for ann in annotations:            
             image_id_to_annotations[ann['image_id']].append(ann)
     
         unannotated_images = []
@@ -167,11 +169,11 @@ with open(output_file,'w') as f:
         for i_image,im in enumerate(images):
             
             if (debug_max_images_per_dataset is not None) and (debug_max_images_per_dataset > 0) \
-                and (i_image > debug_max_images_per_dataset):
+                and (i_image >= debug_max_images_per_dataset):
                 break
             
             file_name = im['file_name'].replace('\\','/')
-            base_url = metadata_table[ds_name]['sas_url']
+            base_url = metadata_table[ds_name]['image_base_url']
             assert not base_url.endswith('/')
             url = base_url + '/' + file_name
             
@@ -319,7 +321,7 @@ with open(output_file,'w') as f:
         
     # ...for each dataset
 
-# ...with open()    
+# ...with open()
 
 
 #%% Read the .csv back
@@ -349,6 +351,7 @@ def check_row(row):
         assert isint(row['frame_num']) and row['frame_num'] >= -1
     assert row['annotation_level'] in valid_annotation_levels
 
+# Faster, but more annoying to debug
 if False:
     
     df.progress_apply(check_row, axis=1)
@@ -389,15 +392,15 @@ for ds_name in metadata_table.keys():
     
     if len(empty_rows) == 0:
         print('No empty images available for {}'.format(ds_name))
-    else:
-        empty_rows_to_download = empty_rows.sample(n=n_empty_images_per_dataset)
-        images_to_download.extend(empty_rows_to_download.to_dict('records'))
+    elif len(empty_rows) > n_empty_images_per_dataset:
+        empty_rows = empty_rows.sample(n=n_empty_images_per_dataset)
+    images_to_download.extend(empty_rows.to_dict('records'))
 
     if len(non_empty_rows) == 0:
         print('No non-empty images available for {}'.format(ds_name))
-    else:
-        non_empty_rows_to_download = non_empty_rows.sample(n=n_non_empty_images_per_dataset)
-        images_to_download.extend(non_empty_rows_to_download.to_dict('records'))
+    elif len(non_empty_rows) > n_non_empty_images_per_dataset:
+        non_empty_rows = non_empty_rows.sample(n=n_non_empty_images_per_dataset)
+    images_to_download.extend(non_empty_rows.to_dict('records'))
     
  # ...for each dataset
 
@@ -406,9 +409,11 @@ print('Selected {} total images'.format(len(images_to_download)))
 
 #%% Download images
 
+# Expect a few errors for images with human or human-esque labels
+
 import urllib.request
 
-# i_image = 0; image = images_to_download[i_image]
+# i_image = 10; image = images_to_download[i_image]
 for i_image,image in tqdm(enumerate(images_to_download),total=len(images_to_download)):
     
     url = image['url']
