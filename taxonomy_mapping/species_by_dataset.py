@@ -1,42 +1,44 @@
-r"""
-This program compiles an Excel spreadsheet for manually mapping dataset-specific
-species names to a common taxonomy.
+########
+#
+# species_by_dataset.py
+#
+# This script compiles an Excel spreadsheet for manually mapping dataset-specific
+# species names to a common taxonomy.
+# 
+# It first goes through the list of datasets in the `datasets` table to find out
+# which "species" are in each dataset and the count of its "occurrences" (each
+# sequence is counted as 1 if the class label is on the sequence; each image is
+# counted as 1 as well if the class label is on the image level; so a
+# sequence/image count mixture). This information is saved in a JSON file in the
+# `output_dir` for each dataset.
+#
+# Once this information is collected, for each "species" in a dataset, it queries
+# the TOP 100 sequences where the "species" is in the list of class names at
+# either the sequence or the image level. It samples 7 of these TOP 500 sequences
+# (sequences returned by TOP may have little variety) and from each sequence
+# samples an image to surface as an example. The spreadsheet is then prepared,
+# adding a Bing search URL with the species class name as the query string and
+# fields to filter and fill in Excel.
+# 
+# Because querying for all species present in a dataset may take a long time, a
+# dataset is only queried if it does not yet have a JSON file in the `output_dir`.
+#
+# Also, the spreadsheet creation step is only done for datasets in
+# DATASETS_TO_INCLUDE_IN_SPREADSHEET specified below. This is usually the datasets
+# just ingested that need their species names mapped next.
+# 
+# Leave out the flag `--query-species` if you only want to prepare the spreadsheet
+# using previously queried species presence result.
+#
+#
+# Example invocation:
+#     python taxonomy_mapping/species_by_dataset.py \
+#        --output-dir $HOME/megadb_query_results/species_by_dataset_trial \
+#        --query-species
+#
+########
 
-We are currently doing the counting of species here instead of as a part of the
-Cosmos DB query
-- see SDK issue in notes.
-
-It first goes through the list of datasets in the `datasets` table to find out
-which "species" are in each dataset and the count of its "occurrences" (each
-sequence is counted as 1 if the class label is on the sequence; each image is
-counted as 1 as well if the class label is on the image level; so a
-sequence/image count mixture). This information is saved in a JSON file in the
-`output_dir` for each dataset.
-
-Once this information is collected, for each "species" in a dataset, it queries
-the TOP 100 sequences where the "species" is in the list of class names at
-either the sequence or the image level. It samples 7 of these TOP 500 sequences
-(sequences returned by TOP may have little variety) and from each sequence
-samples an image to surface as an example. The spreadsheet is then prepared,
-adding a Bing search URL with the species class name as the query string and
-fields to filter and fill in Excel.
-
-Because querying for all species present in a dataset may take a long time, a
-dataset is only queried if it does not yet have a JSON file in the `output_dir`.
-
-Also, the spreadsheet creation step is only done for datasets in
-DATASETS_TO_INCLUDE_IN_SPREADSHEET specified below. This is usually the datasets
-just ingested that need their species names mapped next.
-
-Leave out the flag `--query-species` if you only want to prepare the spreadsheet
-using previously queried species presence result.
-
-
-Example invocation:
-    python taxonomy_mapping/species_by_dataset.py \
-        --output-dir $HOME/megadb_query_results/species_by_dataset_trial \
-        --query-species
-"""
+#%% Imports and constants
 
 import argparse
 from collections import Counter
@@ -66,6 +68,8 @@ DATASETS_TO_INCLUDE_IN_SPREADSHEET = [
     'idfg_swwlf_2019'
 ]
 
+
+#%% Querying functions
 
 def query_species_by_dataset(megadb_utils: MegadbUtils,
                              output_dir: str) -> None:
@@ -281,6 +285,8 @@ def make_spreadsheet(megadb_utils: MegadbUtils, output_dir: str) -> None:
     date = datetime.now().strftime('%Y_%m_%d')
     wb.save(os.path.join(output_dir, f'species_by_dataset_{date}.xlsx'))
 
+
+#%% Command-line driver
 
 def main():
     parser = argparse.ArgumentParser()
