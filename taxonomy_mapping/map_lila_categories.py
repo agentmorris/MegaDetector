@@ -1,9 +1,13 @@
+########
+#
+# map_lila_categories.py
 #
 # Using the taxonomy .csv file, map all LILA datasets to the standard taxonomy 
 #
-# Does not currently produce results; this is just used to confirm that all category names
-# have mappings in the taxonomy file.
+# Does not currently produce results; this is just used to confirm that all category 
+# names have mappings in the taxonomy file.
 #
+########
 
 #%% Constants and imports
 

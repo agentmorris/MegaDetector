@@ -1,3 +1,4 @@
+########
 #
 # retrieve_sample_image.py
 #
@@ -8,6 +9,7 @@
 # Simple wrapper around simple_image_download, but I've had to swap in and out the underlying
 # downloader a few times.
 #
+########
 
 #%% Imports and environment
 
@@ -26,8 +28,6 @@ elif method == 'google_images_download':
 else:
     
     raise ValueError('Unrecognized method {}'.format(method))
-
-#%%
 
 
 #%% Main entry point

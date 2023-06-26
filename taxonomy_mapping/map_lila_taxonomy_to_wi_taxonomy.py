@@ -2,8 +2,8 @@
 #
 # map_lila_taxonomy_to_wi_taxonomy.py
 #
-# Loads the LILA category mapping (in which taxonomy information comes from an iNat taxonomy snapshot)
-# and tries to map each class to the Wildlife Insights taxonomy.
+# Loads the LILA category mapping (in which taxonomy information comes from an 
+# iNat taxonomy snapshot) and tries to map each class to the Wildlife Insights taxonomy.
 #
 ########
 

@@ -1,7 +1,11 @@
+########
 # 
+# megadb_taxonomy_to_lila_taxonomy.py
+#
 # Takes the megadb taxonomy mapping, extracts the rows that are relevant to
 # LILA, and does some cleanup.
 #
+########
 
 #%% Constants and imports
 
@@ -173,4 +177,3 @@ df = df[cols]
 df.to_csv(output_taxonomy_file)
 
 print('Wrote updated table to {}'.format(output_taxonomy_file))
-

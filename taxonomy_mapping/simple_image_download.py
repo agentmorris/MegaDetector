@@ -1,16 +1,26 @@
+########
+#
+# simple_image_download.py
+#
+# Web image downloader, used in preview_lila_taxonomy.py
+#
+# Slightly modified from:
+#
+# https://github.com/RiddlerQ/simple_image_download
+#
+########
+
+#%% Imports
+
 import os
 import urllib
 import requests
 import magic
-import progressbar
 from urllib.parse import quote
 import random
-from requests.exceptions import ReadTimeout,ConnectTimeout
 
 
-################
-# ---> CONSTANTS
-################
+#%% Constants
 
 BASE_URL = 'https://www.google.com/search?q='
 GOOGLE_PICTURE_ID = '''&biw=1536&bih=674&tbm=isch&sxsrf=ACYBGNSXXpS6YmAKUiLKKBs6xWb4uUY5gA:1581168823770&source=lnms&sa=X&ved=0ahUKEwioj8jwiMLnAhW9AhAIHbXTBMMQ_AUI3QUoAQ'''
@@ -21,6 +31,8 @@ HEADERS = {
 SCANNER_COUNTER = None
 
 
+#%% Support functions
+
 def generate_search_url(keywords):
     keywords_to_search = [str(item).strip() for item in keywords.split(',')][0].split()
     keywords_count = len(keywords_to_search)
@@ -28,7 +40,10 @@ def generate_search_url(keywords):
 
 
 def generate_urls(search):
-    """Generates a URLS in the correct format that brings to Google Image seearch page"""
+    """
+    Generate Google search URLs for all tokens in the list [search]
+    """
+    
     return [(BASE_URL+quote(word)+GOOGLE_PICTURE_ID) for word in search]
 
 
@@ -44,7 +59,10 @@ def check_webpage(url):
 
 
 def scan_webpage(webpage, extensions, timer):
-    """Scans for pictures to download based on the keywords"""
+    """
+    Scan for pictures to download based on keywords
+    """
+    
     global SCANNER_COUNTER
     scanner = webpage.find
     found = False
@@ -66,10 +84,12 @@ def scan_webpage(webpage, extensions, timer):
         return object_ready
 
 
+#%% Main class
+
 class Downloader:
     """
-        Main Downloader
-        ::param extension:iterable of Files extensions
+    Main Downloader
+    ::param extension:iterable of Files extensions
     """
     def __init__(self, extensions=None):
         if extensions:

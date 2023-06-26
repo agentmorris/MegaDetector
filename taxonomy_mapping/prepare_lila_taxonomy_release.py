@@ -1,9 +1,11 @@
+########
 #
 # prepare_lila_taxonomy_release.py
 #
 # Given the private intermediate taxonomy mapping, prepare the public (release)
 # taxonomy mapping file.
 #
+########
 
 #%% Imports and constants
 
