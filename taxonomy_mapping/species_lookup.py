@@ -771,7 +771,6 @@ if False:
     t = str(matches[1]['taxonomy'])
     print(t)
     import clipboard; clipboard.copy(t)
-        
     
 
     #%% Directly access the taxonomy tables

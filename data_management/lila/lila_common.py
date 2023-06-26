@@ -27,7 +27,7 @@ wildlife_insights_taxonomy_local_json_filename = 'wi_taxonomy.json'
 wildlife_insights_taxonomy_local_csv_filename = \
     wildlife_insights_taxonomy_local_json_filename.replace('.json','.csv')
 
-from url_utils import download_url
+from md_utils.url_utils import download_url
 from md_utils.path_utils import unzip_file
 
 

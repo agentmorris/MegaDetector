@@ -4,8 +4,10 @@
 #
 #
 # Checks the taxonomy CSV file to make sure that for each row:
+#
 # 1) The 'taxonomy_level' column matches the lowest-level taxon level in the
 #     'taxonomy_string' column.
+#
 # 2) The 'scientific_name' column matches the scientific name from the
 #     lowest-level taxon level in the 'taxonomy_string' column.
 # 
@@ -47,7 +49,10 @@ def check_taxonomy_csv(csv_path: str) -> None:
         ds_label = row['query']
         scientific_name = row['scientific_name']
         level = row['taxonomy_level']
-        id_source = row['source']
+        
+        # This used to represent the source of the mapping: iNat, gbif, or manual.  We've
+        # stopped tracking this, so this is now vestigial.
+        id_source = 0 # row['source']
 
         taxa_ancestry = row['taxonomy_string']
         if pd.isna(taxa_ancestry):
@@ -139,6 +144,7 @@ if False:
     
     #%%
     
-    csv_path = r"G:\git\agentmorrisprivate\lila-taxonomy\lila-taxonomy-mapping-input.csv"
+    import os
+    csv_path = os.path.expanduser('~/lila/lila-taxonomy-mapping_release.csv')
     check_taxonomy_csv(csv_path)
     

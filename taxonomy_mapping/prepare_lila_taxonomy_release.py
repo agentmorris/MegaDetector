@@ -2,8 +2,8 @@
 #
 # prepare_lila_taxonomy_release.py
 #
-# Given the private intermediate taxonomy mapping, prepare the public (release)
-# taxonomy mapping file.
+# Given the private intermediate taxonomy mapping (produced by map_new_lila_datasets.py), 
+# prepare the public (release) taxonomy mapping file.
 #
 ########
 
@@ -55,7 +55,7 @@ for i_row,row in df.iterrows():
         print('Dropping unused mapping {}'.format(mapping_name))
 
 df = df[df.used]
-df = df.drop('used',1)
+df = df.drop('used',axis=1)
 
 
 #%% Generate the final output file
@@ -127,5 +127,5 @@ for i_row,row in df.iterrows():
         if level in levels_to_include:
             df.loc[i_row,level] = match_at_level[2]
 
-df = df.drop('source',1)
+df = df.drop('source',axis=1)
 df.to_csv(release_taxonomy_file,header=True,index=False)

@@ -37,6 +37,8 @@ assert os.path.isfile(lila_dataset_to_categories_file)
 # This is the main output file from this whole process
 wi_mapping_table_file = os.path.join(lila_local_base,'lila_wi_mapping_table.csv')
 
+id_column = 'uniqueIdentifier' # 'id'
+
 
 #%% Load category and taxonomy files
 
@@ -97,7 +99,7 @@ unknown_taxon = None
 
 ignore_taxa = set(['No CV Result', 'CV Needed', 'CV Failed'])
 
-known_problematic_taxon_ids = []
+known_problematic_taxon_ids = ['f94e6d97-59cf-4d38-a05a-a75efdd2863b']
 
 human_taxa = []
 
@@ -184,13 +186,18 @@ for taxon in tqdm(wi_taxonomy):
         taxon_name = taxon['commonNameEnglish'].strip().lower()
 
     if taxon_name in wi_taxon_name_to_taxa:
-        if taxon['id'] in known_problematic_taxon_ids:
-            print('Skipping problematic taxon ID {}'.format(taxon['id']))
+        if taxon[id_column] in known_problematic_taxon_ids:
+            print('Skipping problematic taxon ID {}'.format(taxon[id_column]))
         else:
             previous_taxa = wi_taxon_name_to_taxa[taxon_name]
             for previous_taxon in previous_taxa:
                 for level in ['class', 'order', 'family', 'genus', 'species']:
-                    assert taxonomy_items_equal(previous_taxon[level], taxon[level])
+                    error_string = 'Error: taxon {} appeared previously in {} {} (as {}), now in {} {}'.format(
+                        taxon_name,
+                        level,previous_taxon[level],
+                        previous_taxon['taxon_name'],
+                        level,taxon[level])
+                    assert taxonomy_items_equal(previous_taxon[level], taxon[level]), error_string
                 
     taxon['taxon_name'] = taxon_name
     if taxon_name == 'homo sapiens':
@@ -221,31 +228,68 @@ if False:
 
     #%% Manual review of redundant taxa
     
-    s = taxon_names_with_multiple_entries[-2]
+    s = taxon_names_with_multiple_entries[15]
     taxa = wi_taxon_name_to_taxa[s]
     for t in taxa:
-        print(t,end='\n\n')
+        for k in t.keys():
+            print('{}: {}'.format(k,t[k]))
+        print()
+        # print(t,end='\n\n')
 
 
 #%% Clean up redundant taxa
 
 taxon_name_to_preferred_taxon_id = {}
-taxon_name_to_preferred_taxon_id['diplopoda'] = 2021760 # redundant
-taxon_name_to_preferred_taxon_id['homo sapiens'] = 2002045 # multiple sensible human entries
-taxon_name_to_preferred_taxon_id['squamata'] = 2021703
-taxon_name_to_preferred_taxon_id['dremomys'] = 2019370
-taxon_name_to_preferred_taxon_id['numida meleagris'] = 2005826
-taxon_name_to_preferred_taxon_id['canis familiaris'] = 2021548 # "domestic dog" and "dog-on-leash"
-taxon_name_to_preferred_taxon_id['cervus canadensis'] = 2021592 # "domestic elk" and "elk" 
-taxon_name_to_preferred_taxon_id['muridae'] = 2021642 # different interpretations of "muridae"
-taxon_name_to_preferred_taxon_id['stagonopleura bella'] = 2021939
-taxon_name_to_preferred_taxon_id['bison bison'] = 2021593 # "American bison" vs. "domestic bison"
-taxon_name_to_preferred_taxon_id['meleagris gallopavo'] = 2021598 # "domestic turkey" vs. "wild turkey"
-taxon_name_to_preferred_taxon_id['tomopterna adiastola'] = 2021834
-taxon_name_to_preferred_taxon_id['mammalia'] = 2021108 # "small mammal" vs. "mammal"
-taxon_name_to_preferred_taxon_id['sericornis'] = 2021776
-taxon_name_to_preferred_taxon_id['motacilla flava'] = 2016194 # "yellow wagtail" vs. "yellow crowned-wagtail"
 
+# "helmeted guineafowl" vs "domestic guineafowl"
+taxon_name_to_preferred_taxon_id['numida meleagris'] = '83133617-8358-4910-82ee-4c23e40ba3dc' # 2005826 
+
+# "domestic turkey" vs. "wild turkey"
+taxon_name_to_preferred_taxon_id['meleagris gallopavo'] = 'c10547c3-1748-48bf-a451-8066c820f22f' # 2021598 
+
+# multiple sensible human entries
+taxon_name_to_preferred_taxon_id['homo sapiens'] = '990ae9dd-7a59-4344-afcb-1b7b21368000' # 2002045 
+
+# "domestic dog" and "dog-on-leash"
+taxon_name_to_preferred_taxon_id['canis familiaris'] = '3d80f1d6-b1df-4966-9ff4-94053c7a902a' # 2021548 
+
+# "small mammal" vs. "mammal"
+taxon_name_to_preferred_taxon_id['mammalia'] = 'f2d233e3-80e3-433d-9687-e29ecc7a467a' # 2021108 
+
+# "Hispaniolan Mango" vs. NaN
+taxon_name_to_preferred_taxon_id['anthracothorax dominicus'] = 'f94e6d97-59cf-4d38-a05a-a75efdd2863b'
+
+# "millipedes" vs. "Millipede"
+taxon_name_to_preferred_taxon_id['diplopoda'] =  '065884eb-4e64-4233-84dc-de25bd06ffd2' # 2021760
+
+# Different suborders: Squamata vs. Lacertilia
+taxon_name_to_preferred_taxon_id['squamata'] = '710c4066-bd5d-4313-bcf4-0217c4c84da7' # 2021703
+
+# Redundancy (both "beautiful firetail")
+taxon_name_to_preferred_taxon_id['stagonopleura bella'] = '7fec8e7e-fd3b-4d7f-99fd-3ade6f3bbaa5' # 2021939
+
+# "yellow wagtail" vs. "yellow crowned-wagtail"
+taxon_name_to_preferred_taxon_id['motacilla flava'] = 'ac6669bc-9f9e-4473-b609-b9082f9bf50c' # 2016194 
+
+# "dremomys species" vs. "dremomys genus"
+taxon_name_to_preferred_taxon_id['dremomys'] = '1507d153-af11-46f1-bfb8-77918d035ab3' # 2019370
+
+# "elk" vs. "domestic elk"
+taxon_name_to_preferred_taxon_id['cervus canadensis'] = 'c5ce946f-8f0d-4379-992b-cc0982381f5e' 
+
+# "American bison" vs. "domestic bison"
+taxon_name_to_preferred_taxon_id['bison bison'] = '539ebd55-081b-429a-9ae6-5a6a0f6999d4' # 2021593 
+
+# "woodrat or rat or mouse species" vs. "mouse species"
+taxon_name_to_preferred_taxon_id['muridae'] = 'e7503287-468c-45af-a1bd-a17821bb62f2' # 2021642 
+
+# both "southern sand frog"
+taxon_name_to_preferred_taxon_id['tomopterna adiastola'] = 'a5dc63cb-41be-4090-84a7-b944b16dcee4' # 2021834
+
+# sericornis species vs. scrubwren species
+taxon_name_to_preferred_taxon_id['sericornis'] = 'ad82c0ac-df48-4028-bf71-d2b2f4bc4129' # 2021776
+
+    
 # taxon_name = list(taxon_name_to_preferred_taxon_id.keys())[0]
 for taxon_name in taxon_name_to_preferred_taxon_id.keys():
     
@@ -253,12 +297,12 @@ for taxon_name in taxon_name_to_preferred_taxon_id.keys():
     
     # If we've gotten this far, we should be choosing from multiple taxa.
     #
-    # This will become untrue if any of these are resolved later, at which point we shoudl
+    # This will become untrue if any of these are resolved later, at which point we should
     # remove them from taxon_name_to_preferred_id
-    assert len(candidate_taxa) > 1
+    assert len(candidate_taxa) > 1, 'Only one taxon available for {}'.format(taxon_name)
     
     # Choose the preferred taxa
-    selected_taxa = [t for t in candidate_taxa if t['id'] == \
+    selected_taxa = [t for t in candidate_taxa if t[id_column] == \
                      taxon_name_to_preferred_taxon_id[taxon_name]]
     assert len(selected_taxa) == 1
     wi_taxon_name_to_taxa[taxon_name] = selected_taxa

@@ -109,7 +109,7 @@ class TaxonNode:
             self.graph.add_edge(self, c)
 
     def add_id(self, source: str, taxon_id: int) -> None:
-        assert source in ['gbif', 'inat', 'manual']
+        # assert source in ['gbif', 'inat', 'manual']
         self.ids.add((source, taxon_id))
 
     def add_parent(self, parent: TaxonNode) -> None:

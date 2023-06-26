@@ -13,13 +13,18 @@
 
 #%% Imports and environment
 
+import os
+
+output_folder = os.path.expanduser('~/tmp/image-download-test')
+os.makedirs(output_folder,exist_ok=True)
+                                   
 method = 'simple_image_download' # 'google_images_download'
 
 if method == 'simple_image_download':
     
     from taxonomy_mapping import simple_image_download
     google_image_downloader = simple_image_download.Downloader()
-    google_image_downloader.directory = r'g:\temp\downloads'
+    google_image_downloader.directory = output_folder
  
 elif method == 'google_images_download':
     
@@ -62,5 +67,5 @@ if False:
     
     #%%
     
-    paths = download_images(query='redunca',output_directory=r'g:\temp\download-test',
+    paths = download_images(query='redunca',output_directory=output_folder,
                     limit=20,verbose=True) 
