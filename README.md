@@ -97,6 +97,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [McLoughlin Lab in Population Ecology](http://mcloughlinlab.ca/lab/), University of Saskatchewan
 * [National Wildlife Refuge System, Southwest Region](https://www.fws.gov/about/region/southwest), U.S. Fish & Wildlife Service
 * [Northern Great Plains Program](https://nationalzoo.si.edu/news/restoring-americas-prairie), Smithsonian
+* [Polar Ecology Group](https://polarecologygroup.wordpress.com), University of Gdansk
 * [Quantitative Ecology Lab](https://depts.washington.edu/sefsqel/), University of Washington
 * [Santa Monica Mountains Recreation Area](https://www.nps.gov/samo/index.htm), National Park Service
 * [Seattle Urban Carnivore Project](https://www.zoo.org/seattlecarnivores), Woodland Park Zoo
