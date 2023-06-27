@@ -8,12 +8,9 @@
 # * Verifies that annotations refer to valid images
 # * Verifies that annotations refer to valid categories
 # * Verifies that image, category, and annotation IDs are unique 
-#
 # * Optionally checks file existence
-#
 # * Finds un-annotated images
 # * Finds unused categories
-#
 # * Prints a list of categories sorted by count
 #
 ########
@@ -33,9 +30,8 @@ from tqdm import tqdm
 import ct_utils
 
 
-#%% Functions
+#%% Classes and environment
 
-# If baseDir is non-empty, checks image existence
 class IntegrityCheckOptions:
     
     baseDir = ''
@@ -50,10 +46,11 @@ class IntegrityCheckOptions:
 defaultOptions = IntegrityCheckOptions()
 
 
+#%% Functions
+
 def check_image_existence_and_size(image,options=None):
 
-    if options is None:
-        
+    if options is None:        
         options = defaultOptions
     
     assert options.bCheckImageExistence
@@ -78,18 +75,16 @@ def check_image_existence_and_size(image,options=None):
 
   
 def integrity_check_json_db(jsonFile, options=None):
-    '''
+    """
     jsonFile can be a filename or an already-loaded json database
     
     return sortedCategories, data, errorInfo
-    '''
+    """
     
-    if options is None:   
-        
+    if options is None:       
         options = IntegrityCheckOptions()
     
-    if options.bCheckImageSizes:
-        
+    if options.bCheckImageSizes:        
         options.bCheckImageExistence = True
         
     print(options.__dict__)
@@ -418,7 +413,7 @@ if False:
     """
     
     # Integrity-check .json files for LILA
-    jsonFiles = [os.path.expanduser('~/data/ena24.json')]
+    json_files = [os.path.expanduser('~/data/ena24.json')]
     
     options = IntegrityCheckOptions()
     options.baseDir = os.path.expanduser('~/data/ENA24')
@@ -428,6 +423,6 @@ if False:
     
     # options.iMaxNumImages = 10    
     
-    for jsonFile in jsonFiles:
+    for json_file in json_files:
         
-        sortedCategories,data,_ = integrity_check_json_db(jsonFile, options)
+        sortedCategories,data,_ = integrity_check_json_db(json_file, options)

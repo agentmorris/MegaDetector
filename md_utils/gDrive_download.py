@@ -124,11 +124,12 @@ class DataEnumerator:
 
 
 def PrepareFolderDownload(folderID,folderTargetDir,dataEnumerator=None):
-    '''
+    """
     Enumerate files and directories in a single folder, specified by the GUID
     folderID.  Will be called once for every folder we encounter.  Does not make
     recursive calls.
-    '''
+    """
+    
     if dataEnumerator == None:
 
         dataEnumerator = DataEnumerator()

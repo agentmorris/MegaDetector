@@ -18,7 +18,7 @@ Most of the scripts in this folder create or manipulate COCO Camera Traps databa
 
 ## annotations
 
-Code for creating new bounding box annotation tasks and converting annotations to COCO Camera Traps format.
+The only file in this folder is `annotation_constants.py`, which defines a set of shared constants mapping class IDs to categories.
 
 ## databases
 

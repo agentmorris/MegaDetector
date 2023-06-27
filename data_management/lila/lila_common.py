@@ -16,6 +16,9 @@ import numpy as np
 
 from urllib.parse import urlparse
 
+from md_utils.url_utils import download_url
+from md_utils.path_utils import unzip_file
+
 # LILA camera trap primary metadata file
 lila_metadata_url = 'http://lila.science/wp-content/uploads/2023/06/lila_camera_trap_datasets.csv'
 lila_taxonomy_mapping_url = 'https://lila.science/wp-content/uploads/2022/07/lila-taxonomy-mapping_release.csv'
@@ -27,9 +30,6 @@ wildlife_insights_taxonomy_url = 'https://api.wildlifeinsights.org/api/v1/taxono
 wildlife_insights_taxonomy_local_json_filename = 'wi_taxonomy.json'
 wildlife_insights_taxonomy_local_csv_filename = \
     wildlife_insights_taxonomy_local_json_filename.replace('.json','.csv')
-
-from md_utils.url_utils import download_url
-from md_utils.path_utils import unzip_file
 
 
 #%% Common functions

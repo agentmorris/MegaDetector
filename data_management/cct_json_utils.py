@@ -143,9 +143,10 @@ class IndexedJsonDb:
                  b_normalize_paths: bool = False,
                  filename_replacements: Optional[Mapping[str, str]] = None,
                  b_convert_classes_to_lower: bool = True):
-        '''
+        """
         json_filename can also be an existing json db
-        '''
+        """
+        
         if isinstance(json_filename, str):
             with open(json_filename) as f:
                 self.db = json.load(f)
