@@ -1,43 +1,42 @@
+########
 #
 # remove_corrupted_images_from_database.py
 #
-# Given a coco-camera-traps .json file, checks all images for TF-friendliness and generates
-# a new .json file that only contains the non-corrupted images.
+# Given a coco-camera-traps .json file, checks all images for corruption
+# and generates a new .json file that only contains the non-corrupted images.
 #
+########
 
 #%% Imports and constants
 
 import argparse
-# import multiprocessing
 import gc
 import json
 import os
 import time
+
 from multiprocessing.pool import ThreadPool
 
 import humanfriendly
 import numpy as np
 import tensorflow as tf
 
-N_THREADS = 16 # 1 # multiprocessing.cpu_count()
+N_THREADS = 16
 DEBUG_MAX_IMAGES = -1
-
-# I leave this at an annoying low number, since by definition weird stuff will
-# be happening in the TF kernel, and it's useful to keep having content in the console.
 IMAGE_PRINT_FREQUENCY = 10
 
 
 #%% Function definitions
 
 def check_images(images, image_file_root):    
-    ''' 
+    """
     Checks all the images in [images] for corruption using TF.
     
     [images] is a list of image dictionaries, as they would appear in COCO
     files.
     
     Returns a dictionary mapping image IDs to booleans. 
-    '''    
+    """    
     
     # I sometimes pass in a list of images, sometimes a dict with a single
     # element mapping a job ID to the list of images
@@ -90,10 +89,10 @@ def check_images(images, image_file_root):
 
 
 def remove_corrupted_images_from_database(data, image_file_root):
-    '''
+    """
     Given the COCO database [data], checks all images for corruption using
     TF, and returns a subset of [data] containing only non-corrupted images.
-    '''
+    """
     
     # Map Image IDs to boolean (should I keep this image?)
     images = data['images']
@@ -188,9 +187,5 @@ def main():
     json.dump(uncorrupted_data, open(args.output_file,'w'))
 
 
-if __name__ == '__main__':
-    
+if __name__ == '__main__':    
     main()
-
-
-

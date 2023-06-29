@@ -1,3 +1,4 @@
+########
 #
 # make_detection_db_for_viewing.py
 #
@@ -5,6 +6,7 @@
 # creates a new .json file with separate classes for ground truth and detection, suitable for viewing in the Visipedia
 # annotation tool.
 #
+########
  
 #%% Imports and constants
 
@@ -44,7 +46,12 @@ def make_detection_db(detection_file, gt_db, det_thresh=0.9):
         ann['category_id'] = 0
 
     # collect all detections by image
-    per_image_detections = {detection_results['images'][idx] :{'bboxes': detection_results['detections'][idx], 'scores': detection_results['detection_scores'][idx], 'labels':detection_results['detection_labels'][idx]} for idx in range(len(detection_results['images']))}
+    per_image_detections = {
+        detection_results['images'][idx]:{
+            'bboxes': detection_results['detections'][idx],
+            'scores': detection_results['detection_scores'][idx],
+            'labels':detection_results['detection_labels'][idx]
+            } for idx in range(len(detection_results['images']))}
     
     # keep any detection with score above det_thresh
     for im, dets in per_image_detections.iteritems():
@@ -64,7 +71,7 @@ def make_detection_db(detection_file, gt_db, det_thresh=0.9):
 
     # add "info" and "licenses" for annotation tools to function
     info = data['info']
-    info['description'] = 'detections above %0.2f'.format(det_thresh)
+    info['description'] = 'detections above {}'.format(det_thresh)
     licenses = []
     
     # create new db
@@ -78,12 +85,9 @@ def make_detection_db(detection_file, gt_db, det_thresh=0.9):
     return new_data
 
 
-#%% Command-line handling
+#%% Command-line driver
     
 if __name__ == '__main__':
     new_data = make_detection_db(detection_file, gt_db)
     with open(output_file,'w') as f:
         json.dump(new_data,f)
-
-
-

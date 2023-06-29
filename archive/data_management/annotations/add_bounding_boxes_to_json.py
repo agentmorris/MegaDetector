@@ -1,19 +1,19 @@
+########
 #
 # add_bounding_boxes_to_json.py
 #
-# This script takes a image database in the COCO Camera Traps format and merges in a set of bounding 
-# box annotations in the format that iMerit uses (a .json where actually only each row is a valid json).
+# This script takes a image database in the COCO Camera Traps format and merges in
+# a set of bounding  box annotations in the format that iMerit uses (a ".json" file that 
+# is not actually valid json, but within which each row is a json).
 #
-# If you need to update an existing bbox database, please get all the original annotation files and 
-# re-generate from scratch
-#
+########
 
 #%% Imports
 
 import json
 import re
-from datetime import datetime, date
 
+from datetime import datetime, date
 from tqdm import tqdm
 
 from data_management.annotations import annotation_constants

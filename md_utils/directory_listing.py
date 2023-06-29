@@ -32,7 +32,7 @@ from azure.storage.blob import BlobServiceClient, ContentSettings
 #%% Directory enumeration functions
 
 def is_image_file(path):
-    '''
+    """
     Checks whether the provided file path points to an image by checking the
     file extension. The following file extensions are considered images: jpg,
     jpeg.  The check is case-insensitive.
@@ -42,13 +42,13 @@ def is_image_file(path):
 
     Returns:
         boolean, True if the file is an image
-    '''
+    """
 
     return os.path.splitext(path)[1].lower()[1:] in ['jpg', 'jpeg'] #, 'gif', 'tiff', 'tif', 'png']
 
 
 def create_plain_index(root, dirs, files, dirname=None):
-    '''
+    """
     Creates the fairly plain HTML folder index
     including a preview of a single image file, if any is present.
     Returns the HTML source as string.
@@ -61,7 +61,7 @@ def create_plain_index(root, dirs, files, dirname=None):
         dirname: name to print in the html, which may be different than *root*
 
     Returns: HTML source of the directory listing
-    '''
+    """
 
     if dirname is None:
         dirname = root or '/'
@@ -131,7 +131,7 @@ def create_plain_index(root, dirs, files, dirname=None):
 
 def traverse_and_create_index(dir, sas_url=None, overwrite_files=False,
                               template_fun=create_plain_index, basepath=None):
-    '''
+    """
     Recursively traverses the local directory *dir* and generates a index
     file for each folder using *template_fun* to generate the HTML output.
     Excludes hidden files.
@@ -144,7 +144,7 @@ def traverse_and_create_index(dir, sas_url=None, overwrite_files=False,
 
     Return:
         None
-    '''
+    """
 
     print("Traversing {}".format(dir))
 

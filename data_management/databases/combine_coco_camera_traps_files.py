@@ -1,18 +1,24 @@
-"""
-Merges two or more .json files in COCO Camera Traps format, optionally
-writing the results to another .json file.
-- Concatenates image lists, erroring if images are not unique.
-- Errors on unrecognized fields.
-- Checks compatibility in info structs, within reason.
-
-combine_coco_camera_traps_files input1.json input2.json ... inputN.json output.json
-"""
+########
+#
+# combine_coco_camera_traps_files.py
+# 
+# Merges two or more .json files in COCO Camera Traps format, optionally
+# writing the results to another .json file.
+#
+# - Concatenates image lists, erroring if images are not unique.
+# - Errors on unrecognized fields.
+# - Checks compatibility in info structs, within reason.
+# 
+# combine_coco_camera_traps_files input1.json input2.json ... inputN.json output.json
+#
+########
 
 #%% Constants and imports
 
 import argparse
 import json
 from typing import Any, Dict, Iterable, Mapping, List, Optional
+
 
 #%% Merge functions
 
@@ -21,7 +27,8 @@ def combine_cct_files(input_files: List[str],
                              require_uniqueness: Optional[bool] = True,
                              filename_prefixes: Optional[dict] = None
                              ) -> Dict[str, Any]:
-    """Merges list of COCO Camera Traps files *input_files* into a single
+    """
+    Merges list of COCO Camera Traps files *input_files* into a single
     dictionary, optionally writing the result to *output_file*.
 
     Args:
@@ -55,7 +62,8 @@ def combine_cct_files(input_files: List[str],
 def combine_cct_dictionaries(input_dicts: Iterable[Mapping[str, Any]],
                                     require_uniqueness: Optional[bool] = True                                    
                                     ) -> Dict[str, Any]:
-    """Merges the list of COCO Camera Traps dictionaries *input_dicts*.  See header
+    """
+    Merges the list of COCO Camera Traps dictionaries *input_dicts*.  See header
     comment for details on merge rules.
 
     Args:
@@ -170,7 +178,7 @@ def combine_cct_dictionaries(input_dicts: Iterable[Mapping[str, Any]],
     return merged_dict
 
 
-#%% Driver
+#%% Command-line driver
 
 def main():
     parser = argparse.ArgumentParser()

@@ -15,7 +15,7 @@ import ntpath
 #%% sec2hms()
         
 def sec2hms(tSeconds):
-    '''
+    """
     function [str,h,m,s] = sec2hms(tSeconds,separator)
     
         Convert a time in seconds to a string of the form:
@@ -24,7 +24,7 @@ def sec2hms(tSeconds):
     
     I prefer using the humanfriendly package for this, but I use this when
     porting from Matlab.    
-    '''
+    """
 
     # https://stackoverflow.com/questions/775049/python-time-seconds-to-hms    
     m, s = divmod(tSeconds, 60)
@@ -51,13 +51,15 @@ def sec2hms(tSeconds):
             
     return hms
 
+#%% Test driver for sec2hms()
+    
 if False:
 
-    #%% Test driver for sec2hms()
+    pass
+
+    #%%
     
-    TEST_VALUES = [
-            60033, 30.4, 245234523454.1
-            ]
+    TEST_VALUES = [60033, 30.4, 245234523454.1]
     
     for n in TEST_VALUES:
         s = sec2hms(n)
