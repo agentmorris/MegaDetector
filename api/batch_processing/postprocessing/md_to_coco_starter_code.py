@@ -1,5 +1,7 @@
 ########
 #
+# md_to_coco_starter_code.py
+#
 # Partially-formed stub to get from MegaDetector output files to COCO Camera Traps data.
 #
 # Was actually written to convert *many* MD .json files to a single CCT file, hence 
