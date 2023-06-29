@@ -496,7 +496,7 @@ assert len(combined_results['images']) == len(set(result_filenames))
 # im = combined_results['images'][0]
 for im in combined_results['images']:
     assert im['file'].startswith(input_path + os.path.sep)
-    im['file']= im['file'].replace(input_path + os.path.sep,'',1)    
+    im['file'] = im['file'].replace(input_path + os.path.sep,'',1)    
     
 combined_api_output_file = os.path.join(
     combined_api_output_folder,
@@ -580,8 +580,8 @@ if False:
     
     dir_names = set()
     
-    # relativePath = image_filenames[0]
-    for relativePath in tqdm(image_filenames):
+    # relative_path = image_filenames[0]
+    for relative_path in tqdm(image_filenames):
         dir_name = remove_overflow_folders(relative_path)
         dir_names.add(dir_name)
         
