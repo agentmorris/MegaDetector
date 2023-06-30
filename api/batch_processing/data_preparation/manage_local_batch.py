@@ -76,6 +76,9 @@ yolo_working_dir = os.path.expanduser('~/git/yolov5')
 remove_yolo_intermediate_results = False
 remove_yolo_symlink_folder = False
 
+# Set later if EK113/RCNX101-style overflow folders are being handled in this dataset
+overflow_folder_handling_enabled = False
+
 # Should we apply YOLOv5's augmentation?  Only allowed when use_yolo_inference_scripts
 # is True.
 augment = False
@@ -621,7 +624,7 @@ options.detectionTilesMaxCrops = None
 # options.boxExpansion = 8
 
 # To invoke custom collapsing of folders for a particular manufacturer's naming scheme
-# options.customDirNameFunction = remove_overflow_folders
+# options.customDirNameFunction = remove_overflow_folders; overflow_folder_handling_enabled = True
 
 options.bRenderHtml = False
 options.imageBase = input_path
@@ -1372,14 +1375,19 @@ now = datetime.datetime.now()
 image_info = []
 
 images_without_datetime = []
+images_with_invalid_datetime = []
 
 # exif_result = exif_results[0]
 for exif_result in tqdm(exif_results):
     
     im = {}
     
-    # Currently we assume that each leaf-node folder is a location
-    im['location'] = os.path.dirname(exif_result['file_name'])
+    # By default we assume that each leaf-node folder is a location
+    if overflow_folder_handling_enabled:
+        im['location'] = remove_overflow_folders(os.path.dirname(exif_result['file_name']))
+    else:
+        im['location'] = os.path.dirname(exif_result['file_name'])       
+    
     im['file_name'] = exif_result['file_name']
     im['id'] = im['file_name']
     if 'exif_tags' not in exif_result or 'DateTime' not in exif_result['exif_tags']: 
@@ -1391,15 +1399,24 @@ for exif_result in tqdm(exif_results):
         im['datetime'] = None
         images_without_datetime.append(im['file_name'])
     else:
-        im['datetime'] = datetime.datetime.fromtimestamp(time.mktime(exif_dt))
-    
-        if im['datetime'].year < min_valid_timestamp_year:
-            print('Warning: datetime for {} is {}, treating as an error'.format(
-                im['file_name'],im['datetime']))
+        dt = datetime.datetime.fromtimestamp(time.mktime(exif_dt))
+        
+        # An image from the future (or within the last 24 hours) is invalid
+        if (now - dt).total_seconds() <= 1*24*60*60:
+            print('Warning: datetime for {} is {}'.format(
+                im['file_name'],dt))
+            im['datetime'] = None            
+            images_with_invalid_datetime.append(im['file_name'])
+        
+        # An image from before the dawn of time is also invalid
+        elif dt.year < min_valid_timestamp_year:
+            print('Warning: datetime for {} is {}'.format(
+                im['file_name'],dt))
             im['datetime'] = None
+            images_with_invalid_datetime.append(im['file_name'])
+        
         else:
-            assert (now - im['datetime']).total_seconds() > 1*24*60*60
-
+            im['datetime'] = dt
 
     image_info.append(im)
     
