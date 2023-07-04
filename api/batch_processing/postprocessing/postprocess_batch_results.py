@@ -753,7 +753,7 @@ def process_batch_results(options: PostProcessingOptions
         # Explicitly forcing a copy() operation here to suppress "trying to be set
         # on a copy" # warnings (and associated risks) below.
         detections_df = detections_df[detections_df['failure'].isna()].copy()
-    
+        
     assert other_fields is not None
 
     detection_categories = other_fields['detection_categories']
@@ -1568,6 +1568,10 @@ def main():
         '--parallelize_rendering_with_processes', 
         action='store_true',
         help='Should we use processes (instead of threads) for parallelization?')
+    parser.add_argument(
+        '--no_separate_detections_by_category', 
+        action='store_true',
+        help='Collapse all categories into just "detections" and "non-detections"')    
     
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -1583,6 +1587,9 @@ def main():
         args.parallelize_rendering_n_cores = args.n_cores        
 
     args_to_object(args, options)
+
+    if args.no_separate_detections_by_category:
+        options.separate_detections_by_category = False
     
     process_batch_results(options)
 
