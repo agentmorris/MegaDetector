@@ -31,9 +31,13 @@ wildlife_insights_taxonomy_local_json_filename = 'wi_taxonomy.json'
 wildlife_insights_taxonomy_local_csv_filename = \
     wildlife_insights_taxonomy_local_json_filename.replace('.json','.csv')
 
+lila_azure_storage_account = 'https://lilablobssc.blob.core.windows.net'
+gcp_bucket_api_url = 'https://storage.googleapis.com/public-datasets-lila'
+gcp_bucket_gs_url = 'gs://public-datasets-lila'
+
 
 #%% Common functions
-    
+
 def read_wildlife_insights_taxonomy_mapping(metadata_dir):
     """
     Reads the WI taxonomy mapping file, downloading the .json data (and writing to .csv) if necessary.
@@ -190,3 +194,71 @@ def read_metadata_file_for_dataset(ds_name,metadata_dir,metadata_table=None):
         json_filename = unzipped_json_filename
     
     return json_filename
+
+
+def azure_url_to_gcp_http_url(url):
+    """
+    Most URLs point to Azure by default, but most files are available on both Azure and GCP.
+    This function converts an Azure URL to the corresponding GCP http:// url.
+    """
+    
+    assert url.startswith(lila_azure_storage_account)
+    gcp_url = url.replace(lila_azure_storage_account,gcp_bucket_api_url,1)
+    return gcp_url
+
+
+def azure_url_to_gcp_gs_url(url):
+    """
+    Most URLs point to Azure by default, but most files are available on both Azure and GCP.
+    This function converts an Azure URL to the corresponding GCP gs:// url.
+    """
+    
+    return azure_url_to_gcp_http_url(url).replace(gcp_bucket_api_url,
+                                                  gcp_bucket_gs_url,1)
+
+
+#%% Interactive test driver
+
+if False:
+    
+    pass
+
+    #%% Verify that all base URLs exist
+    
+    # LILA camera trap primary metadata file
+    urls = (lila_metadata_url,lila_taxonomy_mapping_url,lila_all_images_url,wildlife_insights_taxonomy_url)
+    
+    from md_utils import url_utils
+    
+    status_codes = url_utils.test_urls(urls)
+    
+    
+    #%% Verify that the metadata URLs exist for individual datasets
+    
+    metadata_dir = os.path.expanduser('~/lila/metadata')
+    
+    dataset_metadata = read_lila_metadata(metadata_dir)
+    
+    urls_to_test = []
+    # ds_name = next(iter(dataset_metadata.keys()))
+    for ds_name in dataset_metadata.keys():
+        
+        ds_info = dataset_metadata[ds_name]
+        urls_to_test.append(ds_info['metadata_url'])
+        if ds_info['bbox_url'] != None:
+            urls_to_test.append(ds_info['bbox_url'])
+            
+    status_codes = url_utils.test_urls(urls_to_test)    
+    
+    
+    #%% Verify that the GCP versions of all metadata files exist
+    
+    gcp_urls = []
+    
+    # url = urls_to_test[0]
+    for url in urls_to_test:
+        assert url.startswith(lila_azure_storage_account)
+        gcp_url = url.replace(lila_azure_storage_account,gcp_bucket_api_url,1)
+        gcp_urls.append(gcp_url)
+        
+    status_codes = url_utils.test_urls(gcp_urls)

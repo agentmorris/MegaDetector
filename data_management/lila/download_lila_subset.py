@@ -9,18 +9,22 @@
 # what you want to query for, etc., is very application-specific; this is just meant as a 
 # demo.
 #
+# Can download from either Azure or GCP.
+#
 ########
 
 #%% Constants and imports
 
 import os
+import random
 
 from tqdm import tqdm
 from multiprocessing.pool import ThreadPool
 from urllib.parse import urlparse
 from collections import defaultdict
 
-from data_management.lila.lila_common import read_lila_all_images_file, read_lila_metadata, is_empty
+from data_management.lila.lila_common import \
+    read_lila_all_images_file, read_lila_metadata, is_empty, azure_url_to_gcp_http_url
 from md_utils.url_utils import download_url
 
 # If any of these strings appear in the common name of a species, we'll download that image
@@ -40,7 +44,9 @@ n_download_threads = 50
 
 max_images_per_dataset = 10 # None
 
-import random
+# This impacts the data download, but not the metadata download
+image_download_source = 'azure' # 'azure' or 'gcp'
+
 random.seed(0)
 
 
@@ -111,9 +117,13 @@ def download_relative_filename(url, output_base, verbose=False):
     destination_filename = os.path.join(output_base,relative_filename)
     download_url(url, destination_filename, verbose=verbose)
     
-# Loop over URLs
 all_urls = list(ds_name_to_urls.values())
 all_urls = [item for sublist in all_urls for item in sublist]
+
+# Convert Azure URLs to GCP URLs if necessary
+if image_download_source != 'azure':
+    assert image_download_source == 'gcp'
+    all_urls = [azure_url_to_gcp_http_url(url) for url in all_urls]
 
 print('Downloading {} images with Python requests'.format(len(all_urls)))
 

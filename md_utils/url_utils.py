@@ -8,11 +8,13 @@
 
 #%% Imports and constants
 
+import os
 import re
 import urllib
-import os
 import tempfile
+import requests
 
+from tqdm import tqdm
 from urllib.parse import urlparse
 
 # pip install progressbar2
@@ -114,3 +116,28 @@ def download_relative_filename(url, output_base, verbose=False):
     assert p.path.startswith('/'); relative_filename = p.path[1:]
     destination_filename = os.path.join(output_base,relative_filename)
     download_url(url, destination_filename, verbose=verbose)
+
+
+def test_urls(urls, error_on_failure=True):
+    """
+    Verify that a list of URLs is available (returns status 200).  By default,
+    errors if any URL is unavailable.  If error_on_failure is False, returns
+    status codes for each URL.
+    
+    TODO: trivially parallelizable.
+    """
+    
+    status_codes = []
+    
+    for url in tqdm(urls):
+        
+        r = requests.get(url)
+        
+        if error_on_failure and r.status_code != 200:        
+            raise ValueError('Could not access {}: error {}'.format(url,r.status_code))
+        status_codes.append(r.status_code)
+        
+    return status_codes
+
+
+    
