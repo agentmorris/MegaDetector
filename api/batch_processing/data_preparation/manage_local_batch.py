@@ -581,11 +581,14 @@ def remove_overflow_folders(relative_path):
     
     return dir_name
 
+
+#%% Test cells for remove_overflow_folders
+
 if False:
 
     pass
 
-    #%%
+    #%% Test the generic cases
     
     relative_path = 'a/b/c/d/100EK113/blah.jpg'
     print(remove_overflow_folders(relative_path))
@@ -593,13 +596,12 @@ if False:
     relative_path = 'a/b/c/d/100RECNX/blah.jpg'
     print(remove_overflow_folders(relative_path))
     
-    #%%
+    
+    #%% Test remove_overflow_folders on the current dataset
     
     with open(combined_api_output_file,'r') as f:
         d = json.load(f)
     image_filenames = [im['file'] for im in d['images']]
-    
-    #%%
     
     dir_names = set()
     
@@ -610,6 +612,9 @@ if False:
         
     dir_names = list(dir_names)
     dir_names.sort()
+    
+    for s in dir_names:
+        print(s)
 
 
 #%% Repeat detection elimination, phase 1
