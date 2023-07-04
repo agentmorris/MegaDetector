@@ -552,14 +552,31 @@ path_utils.open_file(html_output_file)
 #%% RDE (sample directory collapsing)
 
 def remove_overflow_folders(relative_path):
+    """
+    This is a sample function that returns a camera name given an image path.  By 
+    default in the RDE process, leaf-node folders are equivalent to cameras.  To map 
+    something other than leaf-node folders to cameras, fill in this function, and un-comment the 
+    line below containing "remove_overflow_folders".
+    
+    Sample regular expressions are included here for common patterns, particularly the 
+    overflow folders created by Reconyx and Bushnell camera traps.  So if one of those 
+    fits your scenario, you don't have to modify this function, just un-comment the line
+    below that enables this feature.
+    
+    Nothing bad happens if you have overflow folders like this and you don't
+    enable this mapping, you are just taking a more conservative approach to RDE in that
+    scenario.
+    """
     
     import re
     
-    # In this example, the camera created folders called "100EK113", "101EK113", etc., for every N images
-    pat = '\/\d+EK\d+\/'
+    # 100RECNX is the overflow folder style for Reconyx cameras
+    # 100EK113 is (for some reason) the overflow folder style for Bushnell cameras
+    patterns = ['\/\d+RECNX\/','\/\d+EK\d+\/']
     
     relative_path = relative_path.replace('\\','/')    
-    relative_path = re.sub(pat,'/',relative_path)
+    for pat in patterns:
+        relative_path = re.sub(pat,'/',relative_path)
     dir_name = os.path.dirname(relative_path)
     
     return dir_name
@@ -571,6 +588,9 @@ if False:
     #%%
     
     relative_path = 'a/b/c/d/100EK113/blah.jpg'
+    print(remove_overflow_folders(relative_path))
+    
+    relative_path = 'a/b/c/d/100RECNX/blah.jpg'
     print(remove_overflow_folders(relative_path))
     
     #%%
