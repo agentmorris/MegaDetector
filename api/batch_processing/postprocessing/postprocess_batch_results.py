@@ -749,8 +749,10 @@ def process_batch_results(options: PostProcessingOptions
     n_failures = 0
     if 'failure' in detections_df.columns:
         n_failures = detections_df['failure'].count()
-        print('Warning: {} failed images'.format(n_failures))
-        detections_df = detections_df[detections_df['failure'].isna()]
+        print('Ignoring {} failed images'.format(n_failures))
+        # Explicitly forcing a copy() operation here to suppress "trying to be set
+        # on a copy" # warnings (and associated risks) below.
+        detections_df = detections_df[detections_df['failure'].isna()].copy()
     
     assert other_fields is not None
 
