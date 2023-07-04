@@ -106,24 +106,34 @@ else:
 
 #%% Download those image files
 
-def download_relative_filename(url, output_base, verbose=False):
+def download_relative_filename(url, output_base, verbose=False, url_base=None):
     """
     Download a URL to output_base, preserving relative path
     """
     
+    if url_base is None:
+        url_base = '/'
+    assert url_base.startswith('/') and url_base.endswith('/')
+    
     p = urlparse(url)
+    relative_filename = str(p.path)
     # remove the leading '/'
-    assert p.path.startswith('/'); relative_filename = p.path[1:]
+    assert relative_filename.startswith(url_base)
+    relative_filename = relative_filename.replace(url_base,'',1)        
+    
     destination_filename = os.path.join(output_base,relative_filename)
     download_url(url, destination_filename, verbose=verbose)
     
 all_urls = list(ds_name_to_urls.values())
 all_urls = [item for sublist in all_urls for item in sublist]
 
+url_base = '/'
+
 # Convert Azure URLs to GCP URLs if necessary
 if image_download_source != 'azure':
     assert image_download_source == 'gcp'
-    all_urls = [azure_url_to_gcp_http_url(url) for url in all_urls]
+    url_base = '/public-datasets-lila/'
+    all_urls = [azure_url_to_gcp_http_url(url) for url in all_urls]    
 
 print('Downloading {} images with Python requests'.format(len(all_urls)))
 
@@ -131,10 +141,10 @@ if n_download_threads <= 1:
 
     # url = all_urls[0]
     for url in tqdm(all_urls):        
-        download_relative_filename(url,output_dir,verbose=True)
+        download_relative_filename(url,output_dir,verbose=True,url_base=url_base)
     
 else:
 
     pool = ThreadPool(n_download_threads)        
-    tqdm(pool.imap(lambda s: download_relative_filename(s,output_dir,verbose=False), 
+    tqdm(pool.imap(lambda s: download_relative_filename(s,output_dir,verbose=False,url_base=url_base), 
                    all_urls), total=len(all_urls))
