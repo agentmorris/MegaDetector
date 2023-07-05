@@ -1,3 +1,4 @@
+########
 #
 # rde_debug.py
 #
@@ -5,6 +6,7 @@
 # elimination process, specifically to make sure that after optimizations,
 # results are the same up to ordering.
 #
+########
 
 #%% Compare two RDE files
 
@@ -52,8 +54,8 @@ for i_dir in range(0,len(d1['suspiciousDetections'])):
         box1 = detections1[i_det]['bbox']
         box2 = detections2[i_det]['bbox']
         assert box1 == box2
-        
-        
+
+# ...for each folder
+
 diff = DeepDiff(d1,d2)
 print(diff)
-

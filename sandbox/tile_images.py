@@ -1,3 +1,4 @@
+########
 #
 # tile_images.py
 #
@@ -7,6 +8,7 @@
 # a/b/c/d_row_0_col_0.jpg    
 # a/b/c/d_row_0_col_1.jpg
 #
+########
 
 #%% Imports and constants
 
@@ -107,7 +109,9 @@ def split_image_folder(input_folder,output_folder,n_rows=2,n_cols=2,overwrite=Fa
 
     # ...for each image
     
-    
+# ...def split_image_folder()
+
+
 #%% Interactive driver
 
 if False:

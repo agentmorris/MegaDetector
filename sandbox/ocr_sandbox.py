@@ -1,3 +1,4 @@
+########
 #
 # ocr_sandbox.py
 #
@@ -21,9 +22,8 @@
 # The metadata extraction (EXIF, IPTC) here is just sample code that seemed to 
 # belong in this file.
 #
-# Contact: Dan Morris (cameratraps@lila.science)
-#
-   
+########
+
 #%% Constants and imports
 
 import os
@@ -36,6 +36,7 @@ import re
 import logging
 
 from PIL import Image
+from PIL.ExifTags import TAGS
 
 # pip install pytesseract
 #
@@ -85,7 +86,6 @@ minBackgroundFractionForBackgroundRow = 0.5
 
 #%% Support functions
 
-from PIL.ExifTags import TAGS
 def get_exif(img):
     
     ret = {}
@@ -414,7 +414,8 @@ os.startfile(outputSummaryFile)
 
 #%% Scrap
 
-# Alternative approaches to finding the text/background  region
+# Alternative approaches to finding the text/background region
+
 # Using findContours()
 if False:
 
@@ -479,4 +480,3 @@ if False:
                     maxX = x
                 if y > maxY:
                     maxY = y
-    

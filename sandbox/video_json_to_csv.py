@@ -1,7 +1,12 @@
+########
 #
-# Takes a .json file with MD results for an individual video, and converts to a .csv that includes 
-# frame times.  This is very bespoke to animal detection and does not include other classes.
+# video_json_to_csv.py
 #
+# Takes a .json file with MD results for an individual video, and converts to a .csv 
+# that includes frame times.  This is very bespoke to animal detection and does not
+# include other classes.
+#
+########
 
 #%% Imports and constants
 
@@ -72,6 +77,7 @@ with open(output_file,'w') as f:
             if i_detection != n_detections_to_include - 1:
                 f.write(',')
         f.write('\n')
-                
-                
-                
+
+    # ...for each image
+    
+# ... with open()
