@@ -1,13 +1,13 @@
-######
+########
 #
 # process_video.py
 #
 # Split a video (or folder of videos) into frames, run the frames through run_detector_batch.py,
 # and optionally stitch together results into a new video with detection boxes.
 #
-######
+########
 
-#%% Constants, imports, environment
+#%% Imports
 
 import os
 import tempfile

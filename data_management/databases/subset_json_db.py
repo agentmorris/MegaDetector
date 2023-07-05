@@ -1,4 +1,4 @@
-#######
+########
 #
 # subset_json_db.py
 #
@@ -8,7 +8,7 @@
 # To subset the .json files in the MegaDetector output format, see 
 # subset_json_detector_output.py
 #
-#######
+########
     
 #%% Constants and imports
 

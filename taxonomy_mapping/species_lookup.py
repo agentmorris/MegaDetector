@@ -1,4 +1,4 @@
-#######
+########
 #
 # species_lookup.py
 #
@@ -7,7 +7,7 @@
 #
 # Run initialize_taxonomy_lookup() before calling any other function.
 #
-#######
+########
 
 #%% Constants and imports
 
