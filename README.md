@@ -54,6 +54,8 @@ We work with ecologists all over the world to help them spend less time annotati
 
 Here are a few of the organizations that have used MegaDetector... we're only listing organizations who (a) we know about and (b) have given us permission to refer to them here (or have posted publicly about their use of MegaDetector), so if you're using MegaDetector or other tools from this repo and would like to be added to this list, <a href="mailto:cameratraps@lila.science">email us</a>!
 
+Also see [Peter's map of EcoAssist users](https://github.com/PetervanLunteren/EcoAssist#users) (who are also MegaDetector users!) and the list of papers tagged "MegaDetector" on (breaking the fourth wall for a second) my (Dan's) [list of papers about ML and camera traps](https://agentmorris.github.io/camera-trap-ml-survey/#camera-trap-ml-papers).
+
 * [Arizona Department of Environmental Quality](http://azdeq.gov/)
 * [Blackbird Environmental](https://blackbirdenv.com/)
 * [Camelot](https://camelotproject.org/)
