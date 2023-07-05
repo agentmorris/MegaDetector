@@ -347,7 +347,7 @@ def process_detections(im,options):
         # Open the source image
         pil_image = vis_utils.load_image(source_path)
         
-        # Render bounding boxes for each category separately, beacuse
+        # Render bounding boxes for each category separately, because
         # we allow different thresholds for each category.
         
         category_name_to_id = {v: k for k, v in options.category_id_to_category_name.items()}

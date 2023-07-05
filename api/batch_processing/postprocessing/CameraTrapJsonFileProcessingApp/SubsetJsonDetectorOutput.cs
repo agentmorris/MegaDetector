@@ -571,7 +571,7 @@ namespace CameraTrapJsonManagerApp
                 }
             }
 
-            // Write the detector ouput *data* to *output_filename*
+            // Write the detector output *data* to *output_filename*
             if (!Path.IsPathRooted(outputFileName))
             {
                 string msg = string.Format("Must specify an absolute output path");

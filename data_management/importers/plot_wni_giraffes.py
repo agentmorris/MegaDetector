@@ -50,7 +50,7 @@ def draw_fancy_ellipse(image, x, y, radius, width=1, outline='white', antialias=
     bounds = (x-radius,y-radius,x+radius,y+radius)
     
     # Use a single channel image (mode='L') as mask.
-    # The size of the mask can be increased relative to the imput image
+    # The size of the mask can be increased relative to the input image
     # to get smoother looking results. 
     mask = Image.new(
         size=[int(dim * antialias) for dim in image.size],

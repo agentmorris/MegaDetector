@@ -36,7 +36,7 @@ namespace eMammal_integration_application
 
                     connection.Open();
                 }
-                logger.Info(Constants.LOG_OPENING_CLOSED_DATABASE_CONNECTION_SUCCESSFULL);
+                logger.Info(Constants.LOG_OPENING_CLOSED_DATABASE_CONNECTION_SUCCESSFUL);
 
                 return true;
             }

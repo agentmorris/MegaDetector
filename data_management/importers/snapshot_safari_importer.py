@@ -17,7 +17,7 @@
 # * Create or update LILA page
 # * Push zipfile and unzipped images to LILA
 # * Push unzipped humans to wildlifeblobssc
-# * Delete images from UMN uplaod storage
+# * Delete images from UMN upload storage
 #
 # Snapshot Serengeti is handled specially, because we're dealing with bounding
 # boxes too.  See snapshot_serengeti_lila.py.

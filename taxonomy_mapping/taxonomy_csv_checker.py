@@ -94,7 +94,7 @@ def check_taxonomy_csv(csv_path: str) -> None:
 
             taxon_child = node
     
-    # ...for each row in the taxnomy file        
+    # ...for each row in the taxonomy file        
             
     assert nx.is_directed_acyclic_graph(graph)
 

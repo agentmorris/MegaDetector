@@ -422,7 +422,7 @@ def get_missing_images_from_json(submitted_images,detections,n_failed_shards,ver
               f'(~approx {estimated_failed_shard_images} images)')
         print('{} images not in results'.format(len(missing_images)))
 
-    # Confirm that the procesed images are a subset of the submitted images
+    # Confirm that the processed images are a subset of the submitted images
     assert set(processed_images) <= set(submitted_images), (
         'Failed images should be a subset of missing images')
     

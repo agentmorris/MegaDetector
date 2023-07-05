@@ -39,7 +39,7 @@ from PIL import Image
 
 # pip install pytesseract
 #
-# Also intall tesseract from: https://github.com/UB-Mannheim/tesseract/wiki, and add
+# Also install tesseract from: https://github.com/UB-Mannheim/tesseract/wiki, and add
 # the installation dir to your path (on Windows, typically C:\Program Files (x86)\Tesseract-OCR)
 import pytesseract
 
@@ -415,7 +415,7 @@ os.startfile(outputSummaryFile)
 #%% Scrap
 
 # Alternative approaches to finding the text/background  region
-# Using findCountours()
+# Using findContours()
 if False:
 
     # imagePil = Image.fromarray(analysisImage); imagePil

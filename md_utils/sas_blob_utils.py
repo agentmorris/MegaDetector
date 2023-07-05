@@ -340,7 +340,7 @@ def download_blob_to_stream(sas_uri: str) -> Tuple[io.BytesIO, BlobProperties]:
         blob_properties: BlobProperties
 
     Raises: azure.core.exceptions.ResourceNotFoundError, if sas_uri points
-        to a non-existant blob
+        to a non-existent blob
     """
     
     with BlobClient.from_blob_url(sas_uri) as blob_client:

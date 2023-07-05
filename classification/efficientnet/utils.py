@@ -243,7 +243,7 @@ class Conv2dDynamicSamePadding(nn.Conv2d):
 
 class Conv2dStaticSamePadding(nn.Conv2d):
     """2D Convolutions like TensorFlow's 'SAME' mode, with the given input image size.
-       The padding mudule is calculated in construction function, then used in forward.
+       The padding module is calculated in construction function, then used in forward.
     """
 
     # With the same calculation as Conv2dDynamicSamePadding
@@ -313,7 +313,7 @@ class MaxPool2dDynamicSamePadding(nn.MaxPool2d):
 
 class MaxPool2dStaticSamePadding(nn.MaxPool2d):
     """2D MaxPooling like TensorFlow's 'SAME' mode, with the given input image size.
-       The padding mudule is calculated in construction function, then used in forward.
+       The padding module is calculated in construction function, then used in forward.
     """
 
     def __init__(self, kernel_size, stride, image_size=None, **kwargs):

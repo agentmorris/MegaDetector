@@ -70,7 +70,7 @@ def check_image_condition(img_path: str,
         datasets_table: dict, maps dataset name to dict of information
 
     Returns: (img_file, status) tuple, where status is one of
-        'nonexistant': blob does not exist in the container
+        'nonexistent': blob does not exist in the container
         'non_image': img_file does not have valid file extension
         'good': image exists and is able to be opened without setting
             ImageFile.LOAD_TRUNCATED_IMAGES=True
@@ -102,7 +102,7 @@ def check_image_condition(img_path: str,
         blob=img_file)
     blob_exists = sas_blob_utils.check_blob_exists(blob_url)
     if not blob_exists:
-        return img_file, 'nonexistant'
+        return img_file, 'nonexistent'
 
     stream, _ = sas_blob_utils.download_blob_to_stream(blob_url)
     stream.seek(0)
@@ -176,7 +176,7 @@ def analyze_images(url_or_path: str, json_keys: Optional[Sequence[str]] = None,
 
     mapping: dict[str, list[str]] = {
         status: []
-        for status in ['good', 'nonexistant', 'non_image', 'truncated', 'bad']
+        for status in ['good', 'nonexistent', 'non_image', 'truncated', 'bad']
     }
 
     pool = futures.ThreadPoolExecutor(max_workers=100)
