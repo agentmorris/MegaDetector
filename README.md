@@ -76,6 +76,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [TrapTagger](https://wildeyeconservation.org/trap-tagger-about/)
 * [University of California Davis Natural Reserves](https://naturalreserves.ucdavis.edu/)
 * [Upper Yellowstone Watershed Group](https://www.upperyellowstone.org/)
+* [Zamba Cloud](https://www.zambacloud.com/)
 
 * [Applied Conservation Macro Ecology Lab](http://www.acmelab.ca/), University of Victoria
 * [Banff National Park Resource Conservation](https://www.pc.gc.ca/en/pn-np/ab/banff/nature/conservation), Parks Canada
@@ -126,7 +127,9 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [The Nature Conservancy in California](https://www.nature.org/en-us/about-us/where-we-work/united-states/california/) ([Animl platform](https://github.com/tnc-ca-geo/animl-frontend))
 * [San Diego Zoo Wildlife Alliance](https://science.sandiegozoo.org/)  ([Animl R package](https://github.com/conservationtechlab/animl))
 
-Also see [Peter's map of EcoAssist users](https://github.com/PetervanLunteren/EcoAssist#users) (who are also MegaDetector users!) and the list of papers tagged "MegaDetector" on our [list of papers about ML and camera traps](https://agentmorris.github.io/camera-trap-ml-survey/#camera-trap-ml-papers).
+Also see the [list of MD-related GUIs, platforms, and GitHub repos](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#is-there-a-gui) on the MegaDetector User Guide.
+
+<i>Also</i> also see [Peter's map of EcoAssist users](https://github.com/PetervanLunteren/EcoAssist#users) (who are also MegaDetector users!) and the list of papers tagged "MegaDetector" on our [list of papers about ML and camera traps](https://agentmorris.github.io/camera-trap-ml-survey/#camera-trap-ml-papers).
 
 ## Repo contents
 
