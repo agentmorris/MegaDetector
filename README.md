@@ -127,9 +127,11 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [The Nature Conservancy in California](https://www.nature.org/en-us/about-us/where-we-work/united-states/california/) ([Animl platform](https://github.com/tnc-ca-geo/animl-frontend))
 * [San Diego Zoo Wildlife Alliance](https://science.sandiegozoo.org/)  ([Animl R package](https://github.com/conservationtechlab/animl))
 
-Also see the [list of MD-related GUIs, platforms, and GitHub repos](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#is-there-a-gui) on the MegaDetector User Guide.
+Also see:
 
-<i>Also</i> also see [Peter's map of EcoAssist users](https://github.com/PetervanLunteren/EcoAssist#users) (who are also MegaDetector users!) and the list of papers tagged "MegaDetector" on our [list of papers about ML and camera traps](https://agentmorris.github.io/camera-trap-ml-survey/#camera-trap-ml-papers).
+* The [list of MD-related GUIs, platforms, and GitHub repos](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#is-there-a-gui) on the MegaDetector User Guide.
+* [Peter's map of EcoAssist users](https://github.com/PetervanLunteren/EcoAssist#users) (who are also MegaDetector users!)
+* The list of papers tagged "MegaDetector" on our [list of papers about ML and camera traps](https://agentmorris.github.io/camera-trap-ml-survey/#camera-trap-ml-papers)
 
 ## Repo contents
 
