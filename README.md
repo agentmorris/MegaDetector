@@ -129,8 +129,10 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 
 Also see:
 
-* The [list of MD-related GUIs, platforms, and GitHub repos](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#is-there-a-gui) on the MegaDetector User Guide.
+* The [list of MD-related GUIs, platforms, and GitHub repos](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#is-there-a-gui) on the MegaDetector User Guide
+
 * [Peter's map of EcoAssist users](https://github.com/PetervanLunteren/EcoAssist#users) (who are also MegaDetector users!)
+
 * The list of papers tagged "MegaDetector" on our [list of papers about ML and camera traps](https://agentmorris.github.io/camera-trap-ml-survey/#camera-trap-ml-papers)
 
 ## Repo contents
