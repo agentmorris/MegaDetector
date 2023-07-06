@@ -524,22 +524,33 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 * [Camelot](https://camelotproject.org/)
 * [WildePod](https://wildepod.org/)
 * [wpsWatch](https://wildlifeprotectionsolutions.org/wpswatch/)
-* [Animl](https://animl.camera/) ([code](https://github.com/tnc-ca-geo/animl-frontend)) (different from [the R package also called Animl](https://github.com/conservationtechlab/animl))
+* [TNC Animl](https://animl.camera/) ([code](https://github.com/tnc-ca-geo/animl-frontend))
 * [Cam-WON](https://wildlifeobserver.net/)
 * [Zooniverse ML Subject Assistant](https://subject-assistant.zooniverse.org/#/intro)
 * [Dudek Wildlife Camera Trap AI Image Toolkit](https://dudek.com/services/wildlife-camera-trap-ai-image-processing-and-management/)
+* [Zamba Cloud](https://github.com/drivendataorg/zamba)
 
 
 ### Other ways of running MegaDetector that don't fit easily into one of those categories
 
-#### Third-party
+#### Third-party repos that use MegaDetector
 
-* [FastAPI/Streamlit package for serving MD and visualizing results](https://github.com/abhayolo/megadetector-fastapi)
-* [SpSeg](https://github.com/bhlab/SpSeg/) (pipeline for running MD along with a custom classifier)
-* [Animl](https://github.com/conservationtechlab/animl) (R package that runs MD, among many other things) ([on rdrr](https://rdrr.io/github/conservationtechlab/animl/f/README.md)) (not to be confused with [the real-time platform that uses MD](https://animl.camera/), also called Animl)
-* [MegaDetectorLite](https://github.com/timmh/MegaDetectorLite) is a set of scripts to convert MDv5 into ONNX and TensorRT formats for embedded deployments.
-* [Docker environment](https://github.com/zaandahl/megadetector) for running MDv5
-* [pip-installable wrapper](https://github.com/bencevans/camtrapml) for MegaDetector (and other camera-trap-related models)
+<!-- Sync'd with the last chunk of the list of repos on the camera trap ML survey -->
+* MegaDetectorLite (ONNX/TensorRT conversions for MD) ([github.com/timmh/MegaDetectorLite](https://github.com/timmh/MegaDetectorLite))
+* MegaDetector-FastAPI (MD serving via FastAPI/Streamlit) ([github.com/abhayolo/megadetector-fastapi](https://github.com/abhayolo/megadetector-fastapi))
+* MegaDetector UI (tools for server-side invocation of MegaDetector) ([github.com/NINAnor/megadetector_ui](https://github.com/NINAnor/megadetector_ui)
+* MegaDetector Container (Docker image for running MD) ([github.com/bencevans/megadetector-contained](https://github.com/bencevans/megadetector-contained))
+* MEWC (Mega Efficient Wildlife Classifier) ([github.com/zaandahl/mewc](https://github.com/zaandahl/mewc))
+* CamTrapML (Python library for camera trap ML) ([github.com/bencevans/camtrapml](https://github.com/bencevans/camtrapml))
+* WildCo-Faceblur (MD-based human blurring tool for camera traps) ([github.com/WildCoLab/WildCo_Face_Blur](https://github.com/WildCoLab/WildCo_Face_Blur))
+* CamTrap Detector (MDv5 GUI) ([github.com/bencevans/camtrap-detector](https://github.com/bencevans/camtrap-detector))
+* SDZG Animl (package for running MD and other models via R) ([github.com/conservationtechlab/animl](https://github.com/conservationtechlab/animl))
+* SpSeg (WII Species Segregator) ([github.com/bhlab/SpSeg](https://github.com/bhlab/SpSeg))
+* Wildlife ML (detector/classifier training with active learning) ([github.com/slds-lmu/wildlife-ml](https://github.com/slds-lmu/wildlife-ml))
+* BayDetect (GUI and automation pipeline for running MD) ([github.com/enguy-hub/BayDetect](https://github.com/enguy-hub/BayDetect))
+
+#### Third-party things that aren't repos
+
 * [Kaggle notebook](https://www.kaggle.com/code/evmans/train-megadetector-tutorial) for fine-tuning MegaDetector to add additional classes
 
 #### Maintained within this repo
