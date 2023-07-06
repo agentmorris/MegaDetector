@@ -211,7 +211,7 @@ def run_detector_with_image_queue(image_files,model_file,confidence_threshold,
     return results
 
 
-#%% Other support funtions
+#%% Other support functions
 
 def chunks_by_number_of_chunks(ls, n):
     """

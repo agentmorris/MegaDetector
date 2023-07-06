@@ -32,14 +32,14 @@ namespace eMammal_integration_application
         public const string LOG_DATABASE_CONNECTION_NOT_OPEN = "Database connection not open";
         public const string LOG_ERROR_WHILE_CLOSING_DATABASE_CONNECTION = "Error occurred while trying to close database connection";
         public const string LOG_OPEN_CLOSED_DATABASE_CONNECTION = "Opening closed connection";
-        public const string LOG_OPENING_CLOSED_DATABASE_CONNECTION_SUCCESSFULL = "Opening closed database connection was successfull";
+        public const string LOG_OPENING_CLOSED_DATABASE_CONNECTION_SUCCESSFUL = "Opening closed database connection was successful";
         public const string LOG_ERROR_WHILE_OPENING_DATABASE_CONNECTION = "Error occurred while opening database connection";
         public const string LOG_ADDING_UNIQUE_KEY_CONSTRAINT = "Adding unique key constraint";
         public const string LOG_CHECKING_IF_UNIQUE_KEY_ALREADY_EXISTS = "Checking if unique key already exists in the database";
         public const string LOG_UNIQUE_KEY_ALREADY_EXISTS = "Unique key already exists in the database";
         public const string LOG_START_PROCESSING_IMAGES = "Starting image processing";
         public const string LOG_GETTING_IMAGE_SEQUENCE_DATA_FROM_DB = "Getting image sequence data from the database";
-        public const string LOG_COULD_NOT_RETRIEVE_IMAGE_SEQUENCES_FROM_DATABASE = "Could not retrive image sequences from the database";
+        public const string LOG_COULD_NOT_RETRIEVE_IMAGE_SEQUENCES_FROM_DATABASE = "Could not retrieve image sequences from the database";
         public const string LOG_NUM_IMAGE_SEQUENCES = "Number of image sequences returned from DB: ";
         public const string LOG_ITERATING_IMAGES_IN_JSON_FILE = "Iterating through the images in the JSON file";
 

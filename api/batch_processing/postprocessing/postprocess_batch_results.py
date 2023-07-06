@@ -977,7 +977,7 @@ def process_batch_results(options: PostProcessingOptions
                 pred_categories = set(pred_classnames)
 
                 # Compute the accuracy as intersection of union,
-                # i.e. (# of categories in both prediciton and GT)
+                # i.e. (# of categories in both prediction and GT)
                 #      divided by (# of categories in either prediction or GT
                 #
                 # In case of only one GT category, the result will be 1.0, if

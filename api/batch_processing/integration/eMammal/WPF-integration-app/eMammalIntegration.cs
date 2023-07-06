@@ -215,7 +215,7 @@ namespace eMammal_integration_application
 
        
         /// <summary>
-        /// Enumerate detections and udpate sql query
+        /// Enumerate detections and update sql query
         /// </summary>
         /// <param name="eMammalCategory"></param>
         /// <param name="count"></param>

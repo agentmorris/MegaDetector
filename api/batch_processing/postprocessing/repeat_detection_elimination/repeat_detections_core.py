@@ -303,7 +303,7 @@ class DetectionLocation:
         
         # It's not clear whether it's better to use instances[0].bbox or self.bbox
         # here... they should be very similar, unless iouThreshold is very low.
-        # self.bbox is a better representation of the overal DetectionLocation.
+        # self.bbox is a better representation of the overall DetectionLocation.
         detection = {'conf':self.instances[0].confidence,
                      'bbox':self.bbox,'category':self.instances[0].category}
         return detection

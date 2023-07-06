@@ -139,7 +139,7 @@ for i_location,location in tqdm(enumerate(locations),total=len(locations)):
         # Start a new sequence if:
         #
         # * This image has no timestamp
-        # * This iamge has a frame number of zero
+        # * This image has a frame number of zero
         # * We have no previous image timestamp
         #
         if dt is None:

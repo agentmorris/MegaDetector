@@ -1,8 +1,11 @@
+########
 #
 # aggregate_video.py
 #
-# Aggregate results and render output video for a video that's already been run through MD
+# Aggregate results and render output video for a video that's already been run 
+# through MD.
 #
+########
 
 #%% Constants
 
@@ -108,4 +111,3 @@ detected_frame_files = visualize_detector_output.visualize_detector_output(
 
 Fs = 20
 frames_to_video(detected_frame_files, Fs, options.output_video_file)
-

@@ -70,9 +70,9 @@ def scan_webpage(webpage, extensions, timer):
     while counter < timer:
         new_line = scanner('"https://', SCANNER_COUNTER + 1)  # How Many New lines
         SCANNER_COUNTER = scanner('"', new_line + 1)  # Ends of line
-        buffor = scanner('\\', new_line + 1, SCANNER_COUNTER)
-        if buffor != -1:
-            object_raw = webpage[new_line + 1:buffor]
+        buffer = scanner('\\', new_line + 1, SCANNER_COUNTER)
+        if buffer != -1:
+            object_raw = webpage[new_line + 1:buffer]
         else:
             object_raw = webpage[new_line + 1:SCANNER_COUNTER]
         if any(extension in object_raw for extension in extensions):

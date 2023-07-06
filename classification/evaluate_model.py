@@ -314,7 +314,7 @@ def test_epoch(model: torch.nn.Module,
         label_names: list of str, label names in order of label id
         top: tuple of int, list of values of k for calculating top-K accuracy
         loss_fn: optional loss function, calculates per-example loss
-        target_mapping: optional dict, label_id => list of ids from classifer
+        target_mapping: optional dict, label_id => list of ids from classifier
             that should map to the label_id
 
     Returns:

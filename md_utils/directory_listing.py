@@ -100,7 +100,7 @@ def create_plain_index(root, dirs, files, dirname=None):
         html += "<p><a href='../index.html'>To parent directory</a></p>\n"
     else:
         html += "\n"
-        # html += "<p>This is the root directoy.</p>\n"
+        # html += "<p>This is the root directory.</p>\n"
 
     html += "<h2>Folders</h2>\n"
     if len(dirs) > 0:
@@ -164,7 +164,7 @@ def traverse_and_create_index(dir, sas_url=None, overwrite_files=False,
         # Remove https:// from base url
         # 'accname.blob.core.windows.net/bname/path/to/folder'
         base_url = base_url.split("//", 1)[1]
-        # Everything up to the first dot is accout name
+        # Everything up to the first dot is account name
         # 'accname'
         account_name = base_url.split(".", 1)[0]
         # get everything after the first /

@@ -63,7 +63,7 @@ all_files_relative_set = set(all_files_relative)
 #
 # _report_lila.csv (this is the one we want to use, with the species/count/etc. for each sequence)
 # _report_lila_image_inventory.csv (maps captures to images)
-# _report_lila_overview.csv (distrubution of species)
+# _report_lila_overview.csv (distribution of species)
 csv_files = [fn for fn in all_files_relative if fn.endswith('.csv')]
 
 

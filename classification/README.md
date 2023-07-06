@@ -80,7 +80,7 @@ mamba install pytorch==1.10.1 torchvision==0.11.2 torchaudio==0.10.1 cudatoolkit
 
 ## Optional steps to make classification faster in Linux
 
-If you are on Linux, you may also get some speedup by installing the [accimage](https://github.com/pytorch/accimage) package for acclerated image loading.  Because this is Linux-only and optional, we have commented it out of the environment file, but you can install it with:
+If you are on Linux, you may also get some speedup by installing the [accimage](https://github.com/pytorch/accimage) package for accelerated image loading.  Because this is Linux-only and optional, we have commented it out of the environment file, but you can install it with:
 
 ```bash
 mamba install -c conda-forge accimage
@@ -159,7 +159,7 @@ v0.1_efficientnet-b3 | EfficientNet-B3 | 82.755%       | 92.615%
 
 *Unfortunately, there are some duplicated taxa. Ideally, these should be corrected in the next revision of the taxonomy CSV. The known list of duplicates includes:
 * _domestic dogs_: sometimes tagged as species "Canis familiaris" and other times tagged as subspecies "Canis lupus familiaris" (see [Wikipedia](https://en.wikipedia.org/wiki/Dog))
-* _zebras_: usually tagged as a species under the genus "equus" but occasionally tagged under the genus "zebra" (see [Wikipedia](https://en.wikipedia.org/wiki/Zebra) and [GBIF](https://www.gbif.org/species/3239462))
+* _zebras_: usually tagged as a species under the genus "equus" but occasionally tagged under the genus "zebra" (see [Wikipedia](https://en.wikipedia.org/wiki/Zebra) and [GBIF](https://www.gbif.org/species/3239462))
 
 
 # Run a trained classifier on new images
@@ -713,7 +713,7 @@ python save_mislabeled.py /path/to/classifier-training /path/to/mislabeled_image
 
 * `analyze_failed_images.py`: many scripts in the training pipeline produce log files which list images that either failed during detection, failed to download, or failed to crop. This script analyzes the log files to separate out the images into 5 categories:
   * `'good'`: no obvious issues
-  * `'nonexistant'`: image file does not exist in Azure Blob Storage
+  * `'nonexistent'`: image file does not exist in Azure Blob Storage
   * `'non_image'`: file is not a recognized image file (based on file extension)
   * `'truncated'`: file is truncated but can only be opened by Pillow by setting `PIL.ImageFile.LOAD_TRUNCATED_IMAGES = True`
   * `'bad'`: file exists, but cannot be opened even when setting `PIL.ImageFile.LOAD_TRUNCATED_IMAGES = True`

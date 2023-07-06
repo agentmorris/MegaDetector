@@ -192,7 +192,7 @@ print('Done getting image sizes')
 #%% Assemble top-level dictionaries
 
 db_info = {
-    'year': 'unkown',
+    'year': 'unknown',
     'version': version,
     'description': description,
     'contributor': contributor,

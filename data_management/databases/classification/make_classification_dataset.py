@@ -268,7 +268,7 @@ def main(input_json: str,
     random.seed(0)
     print('Example of the annotation of a single image:')
     print(list(coco.imgs.items())[0])
-    print('The corresponding category annoation:')
+    print('The corresponding category annotation:')
     print(coco.imgToAnns[list(coco.imgs.items())[0][0]])
     locations = sorted(set(ann[split_by] for ann in coco.imgs.values()))
     test_locations = sorted(

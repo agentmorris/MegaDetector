@@ -80,9 +80,9 @@ is run:
     log of images missing detections and images that failed to properly
     download and crop
 - <output_dir>/batchapi_tasklists/{task_id}.json
-    (if --run-dectector) task lists uploaded to the Batch Detection API
+    (if --run-detector) task lists uploaded to the Batch Detection API
 - <output_dir>/batchapi_response/{task_id}.json
-    (if --run-dectector) task status responses for completed tasks
+    (if --run-detector) task status responses for completed tasks
 
 Example command:
 

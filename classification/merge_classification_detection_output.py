@@ -39,7 +39,7 @@ category ID.
 If the CSV contains both [label names] and 'label' columns, then both the
 predicted categories and label category will be included. By default, the
 label-category is included last; if the --label-first flag is given, then the
-label catgory is placed first in the results.
+label category is placed first in the results.
     "classifications": [
         ["1000004", 1.0],  # label put first if --label-first flag is given
         ["3", 0.901],  # all other results are sorted by confidence

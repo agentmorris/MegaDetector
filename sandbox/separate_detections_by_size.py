@@ -1,9 +1,11 @@
+########
 #
 # separate_detections_by_size
 #
 # Not-super-well-maintained script to break a list of API output files up
 # based on bounding box size.
 #
+########
 
 #%% Imports and constants
 
@@ -123,6 +125,6 @@ for i_size,size_threshold in enumerate(size_thresholds):
         with open(empty_filename, 'w') as f:
             json.dump(data, f, indent=1)
     
-    # ...for each size threshold
+    # ...for each file
             
-# ...for each file
+# ...for each size threshold
