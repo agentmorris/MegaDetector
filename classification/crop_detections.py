@@ -1,39 +1,48 @@
-r"""
-Given a detections JSON file from MegaDetector, crops the bounding boxes above
-a certain confidence threshold.
+########
+#
+# crop_detections.py
+#
+# Given a detections JSON file from MegaDetector, crops the bounding boxes above
+# a certain confidence threshold.
+# 
+# This script takes as input a detections JSON file, usually the output of
+# detection/run_tf_detector_batch.py or the output of the Batch API in the
+# "Batch processing API output format".
+# 
+# See https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing.
+# 
+# The script can crop images that are either available locally or that need to be
+# downloaded from an Azure Blob Storage container.
+# 
+# We assume that no image contains over 100 bounding boxes, and we always save
+# crops as RGB .jpg files for consistency. For each image, each bounding box is
+# cropped and saved to a file with a suffix "___cropXX_mdvY.Y.jpg" added to the
+# filename as the original image. "XX" ranges from "00" to "99" and "Y.Y"
+# ndicates the MegaDetector version. Based on the given confidence threshold, we
+# may skip saving certain bounding box crops, but we still increment the bounding
+# box number for skipped boxes.
+# 
+# Example cropped image path (with MegaDetector bbox):
+#
+#   "path/to/image.jpg___crop00_mdv4.1.jpg"
+# 
+# By default, the images are cropped exactly per the given bounding box
+# coordinates. However, if square crops are desired, pass the --square-crops
+# flag. This will always generate a square crop whose size is the larger of the
+# bounding box width or height. In the case that the square crop boundaries exceed
+# the original image size, the crop is padded with 0s.
+# 
+# This script outputs a log file to:
+#    
+#    <output_dir>/crop_detections_log_{timestamp}.json
+#
+# ...which contains images that failed to download and crop properly.
+# 
+########
 
-This script takes as input a detections JSON file, usually the output of
-detection/run_tf_detector_batch.py or the output of the Batch API in the
-"Batch processing API output format".
+#%% Example usage
 
-See https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing.
-
-The script can crop images that are either available locally or that need to be
-downloaded from an Azure Blob Storage container.
-
-We assume that no image contains over 100 bounding boxes, and we always save
-crops as RGB .jpg files for consistency. For each image, each bounding box is
-cropped and saved to a file with a suffix "___cropXX_mdvY.Y.jpg" added to the
-filename as the original image. "XX" ranges from "00" to "99" and "Y.Y"
-ndicates the MegaDetector version. Based on the given confidence threshold, we
-may skip saving certain bounding box crops, but we still increment the bounding
-box number for skipped boxes.
-
-Example cropped image path (with MegaDetector bbox)
-    "path/to/image.jpg___crop00_mdv4.1.jpg"
-
-By default, the images are cropped exactly per the given bounding box
-coordinates. However, if square crops are desired, pass the --square-crops
-flag. This will always generate a square crop whose size is the larger of the
-bounding box width or height. In the case that the square crop boundaries exceed
-the original image size, the crop is padded with 0s.
-
-This script outputs a log file to
-    <output_dir>/crop_detections_log_{timestamp}.json
-which contains images that failed to download and crop properly.
-
-Example command:
-
+"""
 python crop_detections.py \
     detections.json \
     /path/to/crops \
@@ -45,6 +54,9 @@ python crop_detections.py \
     --threads 50 \
     --logdir "."
 """
+
+#%% Imports
+
 from __future__ import annotations
 
 import argparse
@@ -60,6 +72,8 @@ from azure.storage.blob import ContainerClient
 from PIL import Image, ImageOps
 from tqdm import tqdm
 
+
+#%% Main function
 
 def main(detections_json_path: str,
          cropped_images_dir: str,
@@ -92,6 +106,7 @@ def main(detections_json_path: str,
         threads: int, number of threads to use for downloading images
         logdir: str, path to directory to save log file
     """
+    
     # error checking
     assert 0 <= confidence_threshold <= 1, \
             'Invalid confidence threshold {}'.format(confidence_threshold)
@@ -166,6 +181,8 @@ def main(detections_json_path: str,
         json.dump(log, f, indent=1)
 
 
+#%% Support functions
+
 def download_and_crop(
         detections: Mapping[str, Mapping[str, Any]],
         cropped_images_dir: str,
@@ -217,6 +234,7 @@ def download_and_crop(
         total_downloads: int, number of images downloaded
         total_new_crops: int, number of new crops saved to cropped_images_dir
     """
+    
     # True for ground truth, False for MegaDetector
     # always save as .jpg for consistency
     crop_path_template = {
@@ -275,7 +293,10 @@ def download_and_crop(
 
 
 def load_local_image(img_path: str |  BinaryIO) -> Optional[Image.Image]:
-    """Attempts to load an image from a local path."""
+    """
+    Attempts to load an image from a local path.
+    """
+    
     try:
         with Image.open(img_path) as img:
             img.load()
@@ -295,7 +316,8 @@ def load_and_crop(img_path: str,
                   save_full_image: bool,
                   square_crops: bool,
                   check_crops_valid: bool) -> tuple[bool, int]:
-    """Given an image and a list of bounding boxes, checks if the crops already
+    """
+    Given an image and a list of bounding boxes, checks if the crops already
     exist. If not, loads the image locally or Azure Blob Storage, then crops it.
 
     local image path: <images_dir>/<img_path>
@@ -324,6 +346,7 @@ def load_and_crop(img_path: str,
         did_download: bool, whether image was downloaded from Azure Blob Storage
         num_new_crops: int, number of new crops successfully saved
     """
+    
     did_download = False
     num_new_crops = 0
 
@@ -382,7 +405,8 @@ def load_and_crop(img_path: str,
 
 def save_crop(img: Image.Image, bbox_norm: Sequence[float], square_crop: bool,
               save: str) -> bool:
-    """Crops an image and saves the crop to file.
+    """
+    Crops an image and saves the crop to file.
 
     Args:
         img: PIL.Image.Image object, already loaded
@@ -393,6 +417,7 @@ def save_crop(img: Image.Image, bbox_norm: Sequence[float], square_crop: bool,
 
     Returns: bool, True if a crop was saved, False otherwise
     """
+    
     img_w, img_h = img.size
     xmin = int(bbox_norm[0] * img_w)
     ymin = int(bbox_norm[1] * img_h)
@@ -427,8 +452,10 @@ def save_crop(img: Image.Image, bbox_norm: Sequence[float], square_crop: bool,
     return True
 
 
+#%% Command-line driver
+
 def _parse_args() -> argparse.Namespace:
-    """Parses arguments."""
+    
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Crop detections from MegaDetector.')
@@ -473,6 +500,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
+    
     args = _parse_args()
     main(detections_json_path=args.detections_json,
          cropped_images_dir=args.cropped_images_dir,

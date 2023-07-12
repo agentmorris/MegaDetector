@@ -1,3 +1,4 @@
+########
 #
 # separate_detections_into_folders.py
 #
@@ -70,6 +71,7 @@
 # No classification-based separation is done within the animal_person, animal_vehicle, or 
 # animal_person_vehicle folders.
 #
+########
    
 #%% Constants and imports
 

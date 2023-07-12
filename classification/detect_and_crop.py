@@ -1,91 +1,99 @@
-r"""
-Run MegaDetector on images via Batch API, then save crops of the detected
-bounding boxes.
+########
+#
+# Run MegaDetector on images via Batch API, then save crops of the detected
+# bounding boxes.
+# 
+# The input to this script is a "queried images" JSON file, whose keys are paths
+# to images and values are dicts containing information relevant for training
+# a classifier, including labels and (optionally) ground-truth bounding boxes.
+# The image paths are in the format `<dataset-name>/<blob-name>` where we assume
+# that the dataset name does not contain '/'.
+# 
+# {
+#     "caltech/cct_images/59f79901-23d2-11e8-a6a3-ec086b02610b.jpg": {
+#         "dataset": "caltech",
+#         "location": 13,
+#         "class": "mountain_lion",  # class from dataset
+#         "bbox": [{"category": "animal",
+#                   "bbox": [0, 0.347, 0.237, 0.257]}],   # ground-truth bbox
+#         "label": ["monutain_lion"]  # labels to use in classifier
+#     },
+#     "caltech/cct_images/59f5fe2b-23d2-11e8-a6a3-ec086b02610b.jpg": {
+#         "dataset": "caltech",
+#         "location": 13,
+#         "class": "mountain_lion",  # class from dataset
+#         "label": ["monutain_lion"]  # labels to use in classifier
+#     },
+#     ...
+# }
+# 
+# We assume that no image contains over 100 bounding boxes, and we always save
+# crops as RGB .jpg files for consistency. For each image, each bounding box is
+# cropped and saved to a file with a suffix "___cropXX.jpg" (ground truth bbox) or
+# "___cropXX_mdvY.Y.jpg" (detected bbox) added to the filename of the original
+# image. "XX" ranges from "00" to "99" and "Y.Y" indicates the MegaDetector
+# version. If an image has ground truth bounding boxes, we assume that they are
+# exhaustive--i.e., there are no other objects of interest, so we don't need to
+# run MegaDetector on the image. If an image does not have ground truth bounding
+# boxes, we run MegaDetector on the image and label the detected boxes in order
+# from 00 up to 99. Based on the given confidence threshold, we may skip saving
+# certain bounding box crops, but we still increment the bounding box number for
+# skipped boxes.
+# 
+# Example cropped image path (with ground truth bbox from MegaDB)
+#
+#     "path/to/crops/image.jpg___crop00.jpg"
+#
+# Example cropped image path (with MegaDetector bbox)
+#
+#     "path/to/crops/image.jpg___crop00_mdv4.1.jpg"
+# 
+# By default, the images are cropped exactly per the given bounding box
+# coordinates. However, if square crops are desired, pass the --square-crops
+# flag. This will always generate a square crop whose size is the larger of the
+# bounding box width or height. In the case that the square crop boundaries exceed
+# the original image size, the crop is padded with 0s.
+# 
+# This script currently only supports running MegaDetector via the Batch Detection
+# API. See the classification README for instructions on running MegaDetector
+# locally. If running the Batch Detection API, set the following environment
+# variables for the Azure Blob Storage container in which we save the intermediate
+# task lists:
+# 
+#     BATCH_DETECTION_API_URL                  # API URL
+#     CLASSIFICATION_BLOB_STORAGE_ACCOUNT      # storage account name
+#     CLASSIFICATION_BLOB_CONTAINER            # container name
+#     CLASSIFICATION_BLOB_CONTAINER_WRITE_SAS  # SAS token, without leading '?'
+#     DETECTION_API_CALLER                     # allow-listed API caller
+# 
+# This script allows specifying a directory where MegaDetector outputs are cached
+# via the --detector-output-cache-dir argument. This directory must be
+# organized as:
+#
+#   <cache-dir>/<MegaDetector-version>/<dataset-name>.json
+# 
+#     Example: If the `cameratrapssc/classifier-training` Azure blob storage
+#     container is mounted to the local machine via blobfuse, it may be used as
+#     a MegaDetector output cache directory by passing
+#         "cameratrapssc/classifier-training/mdcache/"
+#     as the value for --detector-output-cache-dir.
+# 
+# This script outputs either 1 or 3 files, depending on whether the Batch Detection API
+# is run:
+# 
+# - <output_dir>/detect_and_crop_log_{timestamp}.json
+#     log of images missing detections and images that failed to properly
+#     download and crop
+# - <output_dir>/batchapi_tasklists/{task_id}.json
+#     (if --run-detector) task lists uploaded to the Batch Detection API
+# - <output_dir>/batchapi_response/{task_id}.json
+#     (if --run-detector) task status responses for completed tasks
+# 
+########
 
-The input to this script is a "queried images" JSON file, whose keys are paths
-to images and values are dicts containing information relevant for training
-a classifier, including labels and (optionally) ground-truth bounding boxes.
-The image paths are in the format `<dataset-name>/<blob-name>` where we assume
-that the dataset name does not contain '/'.
+#%% Example usage
 
-{
-    "caltech/cct_images/59f79901-23d2-11e8-a6a3-ec086b02610b.jpg": {
-        "dataset": "caltech",
-        "location": 13,
-        "class": "mountain_lion",  # class from dataset
-        "bbox": [{"category": "animal",
-                  "bbox": [0, 0.347, 0.237, 0.257]}],   # ground-truth bbox
-        "label": ["monutain_lion"]  # labels to use in classifier
-    },
-    "caltech/cct_images/59f5fe2b-23d2-11e8-a6a3-ec086b02610b.jpg": {
-        "dataset": "caltech",
-        "location": 13,
-        "class": "mountain_lion",  # class from dataset
-        "label": ["monutain_lion"]  # labels to use in classifier
-    },
-    ...
-}
-
-We assume that no image contains over 100 bounding boxes, and we always save
-crops as RGB .jpg files for consistency. For each image, each bounding box is
-cropped and saved to a file with a suffix "___cropXX.jpg" (ground truth bbox) or
-"___cropXX_mdvY.Y.jpg" (detected bbox) added to the filename of the original
-image. "XX" ranges from "00" to "99" and "Y.Y" indicates the MegaDetector
-version. If an image has ground truth bounding boxes, we assume that they are
-exhaustive--i.e., there are no other objects of interest, so we don't need to
-run MegaDetector on the image. If an image does not have ground truth bounding
-boxes, we run MegaDetector on the image and label the detected boxes in order
-from 00 up to 99. Based on the given confidence threshold, we may skip saving
-certain bounding box crops, but we still increment the bounding box number for
-skipped boxes.
-
-Example cropped image path (with ground truth bbox from MegaDB)
-    "path/to/crops/image.jpg___crop00.jpg"
-Example cropped image path (with MegaDetector bbox)
-    "path/to/crops/image.jpg___crop00_mdv4.1.jpg"
-
-By default, the images are cropped exactly per the given bounding box
-coordinates. However, if square crops are desired, pass the --square-crops
-flag. This will always generate a square crop whose size is the larger of the
-bounding box width or height. In the case that the square crop boundaries exceed
-the original image size, the crop is padded with 0s.
-
-This script currently only supports running MegaDetector via the Batch Detection
-API. See the classification README for instructions on running MegaDetector
-locally. If running the Batch Detection API, set the following environment
-variables for the Azure Blob Storage container in which we save the intermediate
-task lists:
-
-    BATCH_DETECTION_API_URL                  # API URL
-    CLASSIFICATION_BLOB_STORAGE_ACCOUNT      # storage account name
-    CLASSIFICATION_BLOB_CONTAINER            # container name
-    CLASSIFICATION_BLOB_CONTAINER_WRITE_SAS  # SAS token, without leading '?'
-    DETECTION_API_CALLER                     # allow-listed API caller
-
-This script allows specifying a directory where MegaDetector outputs are cached
-via the --detector-output-cache-dir argument. This directory must be
-organized as
-    <cache-dir>/<MegaDetector-version>/<dataset-name>.json
-
-    Example: If the `cameratrapssc/classifier-training` Azure blob storage
-    container is mounted to the local machine via blobfuse, it may be used as
-    a MegaDetector output cache directory by passing
-        "cameratrapssc/classifier-training/mdcache/"
-    as the value for --detector-output-cache-dir.
-
-This script outputs either 1 or 3 files, depending on if the Batch Detection API
-is run:
-
-- <output_dir>/detect_and_crop_log_{timestamp}.json
-    log of images missing detections and images that failed to properly
-    download and crop
-- <output_dir>/batchapi_tasklists/{task_id}.json
-    (if --run-detector) task lists uploaded to the Batch Detection API
-- <output_dir>/batchapi_response/{task_id}.json
-    (if --run-detector) task status responses for completed tasks
-
-Example command:
-
+"""
     python detect_and_crop.py \
         base_logdir/queried_images.json \
         base_logdir \
@@ -95,6 +103,10 @@ Example command:
         --cropped-images-dir /path/to/crops --square-crops --threshold 0.9 \
         --save-full-images --images-dir /path/to/images --threads 50
 """
+
+
+#%% Imports
+
 from __future__ import annotations
 
 import argparse
@@ -119,6 +131,8 @@ from data_management.megadb import megadb_utils
 from md_utils import path_utils
 from md_utils import sas_blob_utils
 
+
+#%% Main function
 
 def main(queried_images_json_path: str,
          output_dir: str,
@@ -252,12 +266,15 @@ def main(queried_images_json_path: str,
         json.dump(log, f, indent=1)
 
 
+#%% Support functions
+
 def load_detection_cache(detector_output_cache_dir: str,
                          datasets: Collection[str]) -> tuple[
                              dict[str, dict[str, dict[str, Any]]],
                              dict[str, str]
                          ]:
-    """Loads detection cache for a given dataset. Returns empty dictionaries
+    """
+    Loads detection cache for a given dataset. Returns empty dictionaries
     if the cache does not exist.
 
     Args:
@@ -272,6 +289,7 @@ def load_detection_cache(detector_output_cache_dir: str,
             if no cached detections were found for the given dataset ds.
         detection_categories: dict, maps str category ID to str category name
     """
+    
     # cache of Detector outputs: dataset name => {img_path => detection_dict}
     detection_cache = {}
     detection_categories: dict[str, str] = {}
@@ -299,7 +317,8 @@ def filter_detected_images(
         ) -> tuple[list[str],
                    dict[str, dict[str, dict[str, Any]]],
                    dict[str, str]]:
-    """Checks image paths against cached Detector outputs, and prepares
+    """
+    Checks image paths against cached Detector outputs, and prepares
     the SAS URIs for each image not in the cache.
 
     Args:
@@ -318,6 +337,7 @@ def filter_detected_images(
         detection_categories: dict, maps str category ID to str category name,
             empty dict if no cached detections are found
     """
+    
     datasets = set(img_path[:img_path.find('/')]
                    for img_path in potential_images_to_detect)
     detection_cache, detection_categories = load_detection_cache(
@@ -342,6 +362,7 @@ def split_images_list_by_dataset(images_to_detect: Iterable[str]
 
     Returns: dict, maps dataset name to a list of image paths
     """
+    
     images_by_dataset: dict[str, list[str]] = {}
     for img_path in images_to_detect:
         dataset = img_path[:img_path.find('/')]
@@ -379,6 +400,7 @@ def submit_batch_detection_api(images_to_detect: Iterable[str],
 
     Returns: dict, maps str dataset name to list of Task objects
     """
+    
     filtered_images_to_detect = [
         x for x in images_to_detect if path_utils.is_image_file(x)]
     not_images = set(images_to_detect) - set(filtered_images_to_detect)
@@ -454,6 +476,7 @@ def submit_batch_detection_api_by_dataset(
 
     Returns: list of Task objects
     """
+    
     os.makedirs(task_lists_dir, exist_ok=True)
 
     date = datetime.now().strftime('%Y%m%d_%H%M%S')  # e.g., '20200722_110816'
@@ -497,6 +520,7 @@ def resume_tasks(resume_file_path: str, batch_detection_api_url: str
 
     Returns: dict, maps str dataset name to list of Task objects
     """
+    
     with open(resume_file_path, 'r') as f:
         resume_json = json.load(f)
 
@@ -518,7 +542,8 @@ def wait_for_tasks(tasks_by_dataset: Mapping[str, Iterable[Task]],
                    detector_output_cache_dir: str,
                    output_dir: Optional[str] = None,
                    poll_interval: int = 120) -> None:
-    """Waits for the Batch Detection API tasks to finish running.
+    """
+    Waits for the Batch Detection API tasks to finish running.
 
     For jobs that finish successfully, merges the output with cached detector
     outputs.
@@ -532,6 +557,7 @@ def wait_for_tasks(tasks_by_dataset: Mapping[str, Iterable[Task]],
             saved to <output_dir>/batchapi_response/{task_id}.json
         poll_interval: int, # of seconds between pinging the task status API
     """
+    
     remaining_tasks: list[tuple[str, Task]] = [
         (dataset, task) for dataset, tasks in tasks_by_dataset.items()
         for task in tasks]
@@ -648,6 +674,7 @@ def download_and_crop(
     Returns: list of str, images with bounding boxes that failed to download or
         crop properly
     """
+    
     # error checking before we download and crop any images
     valid_img_paths = set(queried_images_json.keys())
     if images_missing_detections is not None:
@@ -746,8 +773,10 @@ def download_and_crop(
     return images_failed_download, total_downloads, total_new_crops
 
 
+#%% Command-line driver
+
 def _parse_args() -> argparse.Namespace:
-    """Parses arguments."""
+
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Detects and crops images.')
@@ -807,6 +836,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
+    
     args = _parse_args()
     main(queried_images_json_path=args.queried_images_json,
          output_dir=args.output_dir,

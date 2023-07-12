@@ -1,48 +1,58 @@
-"""
-Script to cache Batch Detection API outputs.
+########
+#
+# cache_batchapi_outputs.py
+#
+# Script to cache Batch Detection API outputs.
+# 
+# This script can handle either the Batch Detection API JSON Response or the
+# detections JSON.
+# 
+# Batch Detection API Response format:
+# 
+#     {
+#         "Status": {
+#             "request_status": "completed",
+#             "message": {
+#                 "num_failed_shards": 0,
+#                 "output_file_urls": {
+#                     "detections": "https://url/to/detections.json",
+#                     "failed_images": "https://url/to/failed_images.json",
+#                     "images": https://url/to/images.json",
+#                 }
+#             },
+#         },
+#         "Endpoint": "/v3/camera-trap/detection-batch/request_detections",
+#         "TaskId": "ea26326e-7e0d-4524-a9ea-f57a5799d4ba"
+#     }
+# 
+# Detections JSON format:
+#
+#     {
+#         "info": {...}
+#         "detection_categories": {...}
+#         "classification_categories": {...}
+#         "images": [
+#             {
+#                 "file": "path/from/base/dir/image1.jpg",
+#                 "max_detection_conf": 0.926,
+#                 "detections": [{
+#                         "category": "1",
+#                         "conf": 0.061,
+#                         "bbox": [0.0451, 0.1849, 0.3642, 0.4636]
+#                 }]
+#             }
+#         ]
+#     }
+# 
+# 
+# Batch Detection API Output Format:
+#
+# github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#api-outputs
+#
+########
 
-This script can handle either the Batch Detection API JSON Response or the
-detections JSON.
+#%% Imports
 
-Batch Detection API Response format:
-    {
-        "Status": {
-            "request_status": "completed",
-            "message": {
-                "num_failed_shards": 0,
-                "output_file_urls": {
-                    "detections": "https://url/to/detections.json",
-                    "failed_images": "https://url/to/failed_images.json",
-                    "images": https://url/to/images.json",
-                }
-            },
-        },
-        "Endpoint": "/v3/camera-trap/detection-batch/request_detections",
-        "TaskId": "ea26326e-7e0d-4524-a9ea-f57a5799d4ba"
-    }
-
-Detections JSON format:
-    {
-        "info": {...}
-        "detection_categories": {...}
-        "classification_categories": {...}
-        "images": [
-            {
-                "file": "path/from/base/dir/image1.jpg",
-                "max_detection_conf": 0.926,
-                "detections": [{
-                        "category": "1",
-                        "conf": 0.061,
-                        "bbox": [0.0451, 0.1849, 0.3642, 0.4636]
-                }]
-            }
-        ]
-    }
-
-
-Batch Detection API Output Format:
-github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#api-outputs
-"""
 from __future__ import annotations
 
 import argparse
@@ -59,6 +69,8 @@ from api.batch_processing.postprocessing.combine_api_outputs import (
     combine_api_output_dictionaries)
 
 
+#%% Support functions
+
 def cache_json(json_path: str,
                is_detections: bool,
                dataset: str,
@@ -73,6 +85,7 @@ def cache_json(json_path: str,
         detector_output_cache_base_dir: str
         detector_version: str
     """
+    
     with open(json_path, 'r') as f:
         js = json.load(f)
 
@@ -126,6 +139,7 @@ def cache_detections(detections: Mapping[str, Any], dataset: str,
 
     Returns: str, message
     """
+    
     # combine detections with cache
     dataset_cache_path = os.path.join(
         detector_output_cache_dir, f'{dataset}.json')
@@ -147,8 +161,10 @@ def cache_detections(detections: Mapping[str, Any], dataset: str,
     return msg
 
 
+#%% Command-line driver
+
 def _parse_args() -> argparse.Namespace:
-    """Parses arguments."""
+
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Caches detector outputs.')
@@ -173,6 +189,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
+    
     args = _parse_args()
     cache_json(
         json_path=args.json_file,

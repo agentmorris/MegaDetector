@@ -1,45 +1,45 @@
-"""
-
-prepare_api_submission.py
-
-This module defines the Task class and helper methods that are useful for
-submitting tasks to the AI for Earth Camera Trap Batch Detection API.
-
-Here's the stuff we usually do before submitting a task:
-
-1) Upload images to Azure Blob Storage... we do this with azcopy, not addressed
-    in this script.
-
-2) List the files you want the API to process.
-    azure_utils.enumerate_blobs_to_file()
-
-3) Divide that list into chunks that will become individual API submissions.
-    divide_files_into_tasks()
-
-3) Put each .json file in a blob container and get a read-only SAS URL for it.
-    Task.upload_images_list()
-
-4) Generate the API query(ies) you'll submit to the API.
-    Task.generate_api_request()
-
-5) Submit the API query. This can be done manually with Postman as well.
-    Task.submit()
-
-6) Monitor task status
-    Task.check_status()
-
-7) Combine multiple API outputs
-
-8) We're now into what we really call "postprocessing", rather than
-    "data_preparation", but... possibly do some amount of partner-specific
-    renaming, folder manipulation, etc. This is very partner-specific, but
-    generally done via:
-
-    find_repeat_detections.py
-    subset_json_detector_output.py
-    postprocess_batch_results.py
-    
-"""
+########
+#
+# prepare_api_submission.py
+#
+# This module defines the Task class and helper methods that are useful for
+# submitting tasks to the AI for Earth Camera Trap Batch Detection API.
+#
+# Here's the stuff we usually do before submitting a task:
+#
+# 1) Upload images to Azure Blob Storage... we do this with azcopy, not addressed
+#     in this script.
+#
+# 2) List the files you want the API to process.
+#     azure_utils.enumerate_blobs_to_file()
+#
+# 3) Divide that list into chunks that will become individual API submissions.
+#     divide_files_into_tasks()
+#
+# 3) Put each .json file in a blob container and get a read-only SAS URL for it.
+#     Task.upload_images_list()
+#
+# 4) Generate the API query(ies) you'll submit to the API.
+#     Task.generate_api_request()
+#
+# 5) Submit the API query. This can be done manually with Postman as well.
+#     Task.submit()
+#
+# 6) Monitor task status
+#     Task.check_status()
+#
+# 7) Combine multiple API outputs
+#
+# 8) We're now into what we really call "postprocessing", rather than
+#     "data_preparation", but... possibly do some amount of partner-specific
+#     renaming, folder manipulation, etc. This is very partner-specific, but
+#     generally done via:
+# 
+#     find_repeat_detections.py
+#     subset_json_detector_output.py
+#     postprocess_batch_results.py
+#    
+########
 
 
 #%% Imports

@@ -1,9 +1,16 @@
-"""
-Given a queried_images.json file output from json_validator.py, generates
-one text file <dataset>_images.txt for every dataset included.
+########
+#
+# json_to_azcopy_list.py
+#
+# Given a queried_images.json file output from json_validator.py, generates
+# one text file <dataset>_images.txt for every dataset included.
+# 
+# See: https://github.com/Azure/azure-storage-azcopy/wiki/Listing-specific-files-to-transfer
+#
+########
 
-See: https://github.com/Azure/azure-storage-azcopy/wiki/Listing-specific-files-to-transfer
-"""
+#%% Imports and constants 
+
 import json
 import os
 
@@ -12,10 +19,12 @@ from tqdm import tqdm
 from data_management.megadb import megadb_utils
 from md_utils import sas_blob_utils
 
-
 images_dir = ''
 queried_images_json_path = 'run_idfg2/queried_images.json'
 output_dir = 'run_idfg2/'
+
+
+#%% Prepare AzCopy list
 
 with open(queried_images_json_path, 'r') as f:
     js = json.load(f)

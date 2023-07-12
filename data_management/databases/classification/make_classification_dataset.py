@@ -1,9 +1,15 @@
-"""
-Batch file for applying an object detection graph to a COCO style dataset,
-cropping images to the detected animals inside and creating a COCO-
-style classification dataset out of it. It also saves the detections
-to a pickle file.
-"""
+########
+#
+# make_classification_dataset.py
+#
+# Applied an object detection graph to a COCO style dataset,
+# cropping images to the detected animals inside and creating a COCO-
+# style classification dataset out of it. It also saves the detections
+# to a pickle file.
+#
+########
+
+#%% Imports and constants
 
 import argparse
 from distutils.version import StrictVersion
@@ -29,13 +35,14 @@ import create_tfrecords as tfr
 if StrictVersion(tf.__version__) < StrictVersion('1.9.0'):
     raise ImportError('Please upgrade TensorFlow to v1.9.* or later!')
 
-
 TMP_IMAGE = str(uuid.uuid4()) + '.jpg'
 
 # global flag for whether or not we encounter missing images
 # - will only print "missing image" warning once
 images_missing = False
 
+
+#%% Dataset prepation
 
 # TFRecords variables
 class TFRecordsWriter():

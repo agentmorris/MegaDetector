@@ -1,3 +1,4 @@
+########
 #
 # prepare_classification_script.py
 #
@@ -6,6 +7,7 @@
 #
 # Differs from prepare_classification_script_mc.py only in the final class mapping step.
 #
+########
 
 #%% Job options
 

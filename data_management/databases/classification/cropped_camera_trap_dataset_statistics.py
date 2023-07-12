@@ -1,9 +1,22 @@
+########
+#
+# cropped_camera_trap_dataset_statistics.py
+#
+# Tools for getting dataset statistics. Works for datasets generated with
+# make_classification_dataset.py.')
+#
+########
+
+#%% Imports
+
 import argparse
 import json
 
 import numpy as np
 import pycocotools.coco
 
+
+#%% Dataset review
 
 parser = argparse.ArgumentParser(
     'Tools for getting dataset statistics. Works for datasets generated with '

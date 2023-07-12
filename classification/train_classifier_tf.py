@@ -1,18 +1,30 @@
-r"""Train an EfficientNet classifier.
+########
+# 
+# train_classifier_tf.py
+#
+# Train an EfficientNet classifier.
+#
+# Currently the implementation of multi-label multi-class classification is
+# non-functional.
+#
+# During training, start tensorboard from within the classification/ directory:
+#    tensorboard --logdir run --bind_all --samples_per_plugin scalars=0,images=0
+#
+########
 
-Currently implementation of multi-label multi-class classification is
-non-functional.
+#%% Example usage
 
-During training, start tensorboard from within the classification/ directory:
-    tensorboard --logdir run --bind_all --samples_per_plugin scalars=0,images=0
-
-Example usage:
+"""    
     python train_classifier_tf.py run_idfg /ssd/crops_sq \
         -m "efficientnet-b0" --pretrained --finetune --label-weighted \
         --epochs 50 --batch-size 512 --lr 1e-4 \
         --seed 123 \
         --logdir run_idfg
 """
+
+
+#%% Imports and constants
+
 from __future__ import annotations
 
 import argparse
@@ -51,6 +63,8 @@ EFFICIENTNET_MODELS: Mapping[str, Mapping[str, Any]] = {
 }
 
 
+#%% Support functions
+
 def create_dataset(
         img_files: Sequence[str],
         labels: Sequence[Any],
@@ -60,7 +74,8 @@ def create_dataset(
         target_transform: Optional[Callable[[Any], Any]] = None,
         cache: bool | str = False
         ) -> tf.data.Dataset:
-    """Create a tf.data.Dataset.
+    """
+    Create a tf.data.Dataset.
 
     The dataset returns elements (img, label, img_file, sample_weight) if
     sample_weights is not None, or (img, label, img_file) if
@@ -82,6 +97,7 @@ def create_dataset(
 
     Returns: tf.data.Dataset
     """
+    
     # images dataset
     img_ds = tf.data.Dataset.from_tensor_slices(img_files)
     img_ds = img_ds.map(lambda p: tf.io.read_file(img_base_dir + os.sep + p),
@@ -146,6 +162,7 @@ def create_dataloaders(
         datasets: dict, maps split to DataLoader
         label_names: list of str, label names in order of label id
     """
+    
     df, label_names, split_to_locs = load_dataset_csv(
         dataset_csv_path, label_index_json_path, splits_json_path,
         multilabel=multilabel, label_weighted=label_weighted,
@@ -218,7 +235,10 @@ def create_dataloaders(
 
 def build_model(model_name: str, num_classes: int, img_size: int,
                 pretrained: bool, finetune: bool) -> tf.keras.Model:
-    """Creates a model with an EfficientNet base."""
+    """
+    Creates a model with an EfficientNet base.
+    """
+    
     class_name = EFFICIENTNET_MODELS[model_name]['cls']
     dropout = EFFICIENTNET_MODELS[model_name]['dropout']
 
@@ -245,6 +265,244 @@ def build_model(model_name: str, num_classes: int, img_size: int,
     return model
 
 
+def log_images_with_confidence(
+        heap_dict: Mapping[int, list[HeapItem]],
+        label_names: Sequence[str],
+        epoch: int,
+        tag: str) -> None:
+    """
+    Args:
+        heap_dict: dict, maps label_id to list of HeapItem, where each HeapItem
+            data is a list [img, target, top3_conf, top3_preds, img_file],
+            and img is a tf.Tensor of shape [H, W, 3]
+        label_names: list of str, label names in order of label id
+        epoch: int
+        tag: str
+    """
+    
+    for label_id, heap in heap_dict.items():
+        label_name = label_names[label_id]
+
+        sorted_heap = sorted(heap, reverse=True)  # sort largest to smallest
+        imgs_list = [item.data for item in sorted_heap]
+        fig, img_files = imgs_with_confidences(imgs_list, label_names)
+
+        # tf.summary.image requires input of shape [N, H, W, C]
+        fig_img = tf.convert_to_tensor(fig_to_img(fig)[np.newaxis, ...])
+        tf.summary.image(f'{label_name}/{tag}', fig_img, step=epoch)
+        tf.summary.text(f'{label_name}/{tag}_files', '\n\n'.join(img_files),
+                        step=epoch)
+
+
+def track_extreme_examples(tp_heaps: dict[int, list[HeapItem]],
+                           fp_heaps: dict[int, list[HeapItem]],
+                           fn_heaps: dict[int, list[HeapItem]],
+                           inputs: tf.Tensor,
+                           labels: tf.Tensor,
+                           img_files: tf.Tensor,
+                           logits: tf.Tensor) -> None:
+    """
+    Updates the 5 most extreme true-positive (tp), false-positive (fp), and
+    false-negative (fn) examples with examples from this batch.
+
+    Each HeapItem's data attribute is a tuple with:
+    - img: np.ndarray, shape [H, W, 3], type uint8
+    - label: int
+    - top3_conf: list of float
+    - top3_preds: list of float
+    - img_file: str
+
+    Args:
+        *_heaps: dict, maps label_id (int) to heap of HeapItems
+        inputs: tf.Tensor, shape [batch_size, H, W, 3], type float32
+        labels: tf.Tensor, shape [batch_size]
+        img_files: tf.Tensor, shape [batch_size], type tf.string
+        logits: tf.Tensor, shape [batch_size, num_classes]
+    """
+    
+    labels = labels.numpy().tolist()
+    inputs = inputs.numpy().astype(np.uint8)
+    img_files = img_files.numpy().astype(str).tolist()
+    batch_probs = tf.nn.softmax(logits, axis=1)
+    iterable = zip(labels, inputs, img_files, batch_probs)
+    for label, img, img_file, confs in iterable:
+        label_conf = confs[label].numpy().item()
+
+        top3_conf, top3_preds = tf.math.top_k(confs, k=3, sorted=True)
+        top3_conf = top3_conf.numpy().tolist()
+        top3_preds = top3_preds.numpy().tolist()
+
+        data = (img, label, top3_conf, top3_preds, img_file)
+        if top3_preds[0] == label:  # true positive
+            item = HeapItem(priority=label_conf - top3_conf[1], data=data)
+            add_to_heap(tp_heaps[label], item, k=5)
+        else:
+            # false positive for top3_pred[0]
+            # false negative for label
+            item = HeapItem(priority=top3_conf[0] - label_conf, data=data)
+            add_to_heap(fp_heaps[top3_preds[0]], item, k=5)
+            add_to_heap(fn_heaps[label], item, k=5)
+
+
+def run_epoch(model: tf.keras.Model,
+              loader: tf.data.Dataset,
+              weighted: bool,
+              top: Sequence[int] = (1, 3),
+              loss_fn: Optional[tf.keras.losses.Loss] = None,
+              weight_decay: float = 0,
+              finetune: bool = False,
+              optimizer: Optional[tf.keras.optimizers.Optimizer] = None,
+              return_extreme_images: bool = False
+              ) -> tuple[
+                  dict[str, float],
+                  dict[str, dict[int, list[HeapItem]]],
+                  np.ndarray
+              ]:
+    """
+    Runs for 1 epoch.
+
+    Args:
+        model: tf.keras.Model
+        loader: tf.data.Dataset
+        weighted: bool, whether to use sample weights in calculating loss and
+            accuracy
+        top: tuple of int, list of values of k for calculating top-K accuracy
+        loss_fn: optional loss function, calculates the mean loss over a batch
+        weight_decay: float, L2-regularization constant
+        finetune: bool, if true sets model's dropout and BN layers to eval mode
+        optimizer: optional optimizer
+
+    Returns:
+        metrics: dict, metrics from epoch, contains keys:
+            'loss': float, mean per-example loss over entire epoch,
+                only included if loss_fn is not None
+            'acc_top{k}': float, accuracy@k over the entire epoch
+        heaps: dict, keys are ['tp', 'fp', 'fn'], values are heap_dicts,
+            each heap_dict maps label_id (int) to a heap of <= 5 HeapItems with
+            data attribute (img, target, top3_conf, top3_preds, img_file)
+            - 'tp': priority is the difference between target confidence and
+                2nd highest confidence
+            - 'fp': priority is the difference between highest confidence and
+                target confidence
+            - 'fn': same as 'fp'
+        confusion_matrix: np.ndarray, shape [num_classes, num_classes],
+            C[i, j] = # of samples with true label i, predicted as label j
+    """
+    # if evaluating or finetuning, set dropout & BN layers to eval mode
+    is_train = False
+    train_dropout_and_bn = False
+
+    if optimizer is not None:
+        assert loss_fn is not None
+        is_train = True
+
+        if not finetune:
+            train_dropout_and_bn = True
+            reg_vars = [
+                v for v in model.trainable_variables if 'kernel' in v.name]
+
+    if loss_fn is not None:
+        losses = tf.keras.metrics.Mean()
+    accuracies_topk = {
+        k: tf.keras.metrics.SparseTopKCategoricalAccuracy(k) for k in top
+    }
+
+    # for each label, track 5 most-confident and least-confident examples
+    tp_heaps: dict[int, list[HeapItem]] = defaultdict(list)
+    fp_heaps: dict[int, list[HeapItem]] = defaultdict(list)
+    fn_heaps: dict[int, list[HeapItem]] = defaultdict(list)
+
+    all_labels = []
+    all_preds = []
+
+    tqdm_loader = tqdm.tqdm(loader)
+    for batch in tqdm_loader:
+        if weighted:
+            inputs, labels, img_files, weights = batch
+        else:
+            # even if batch contains sample weights, don't use them
+            inputs, labels, img_files = batch[0:3]
+            weights = None
+
+        all_labels.append(labels.numpy())
+        desc = []
+        with tf.GradientTape(watch_accessed_variables=is_train) as tape:
+            outputs = model(inputs, training=train_dropout_and_bn)
+            if loss_fn is not None:
+                loss = loss_fn(labels, outputs)
+                if weights is not None:
+                    loss *= weights
+                # we do not track L2-regularization loss in the loss metric
+                losses.update_state(loss, sample_weight=weights)
+                desc.append(f'Loss {losses.result().numpy():.4f}')
+
+            if optimizer is not None:
+                loss = tf.math.reduce_mean(loss)
+                if not finetune:  # only regularize layers before the final FC
+                    loss += weight_decay * tf.add_n(
+                        tf.nn.l2_loss(v) for v in reg_vars)
+
+        all_preds.append(tf.math.argmax(outputs, axis=1).numpy())
+
+        if optimizer is not None:
+            gradients = tape.gradient(loss, model.trainable_variables)
+            optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+
+        for k, acc in accuracies_topk.items():
+            acc.update_state(labels, outputs, sample_weight=weights)
+            desc.append(f'Acc@{k} {acc.result().numpy() * 100:.3f}')
+        tqdm_loader.set_description(' '.join(desc))
+
+        if return_extreme_images:
+            track_extreme_examples(tp_heaps, fp_heaps, fn_heaps, inputs,
+                                   labels, img_files, outputs)
+
+    confusion_matrix = sklearn.metrics.confusion_matrix(
+        y_true=np.concatenate(all_labels), y_pred=np.concatenate(all_preds))
+
+    metrics = {}
+    if loss_fn is not None:
+        metrics['loss'] = losses.result().numpy().item()
+    for k, acc in accuracies_topk.items():
+        metrics[f'acc_top{k}'] = acc.result().numpy().item() * 100
+    heaps = {'tp': tp_heaps, 'fp': fp_heaps, 'fn': fn_heaps}
+    return metrics, heaps, confusion_matrix
+
+
+def log_run(split: str, epoch: int, writer: tf.summary.SummaryWriter,
+            label_names: Sequence[str], metrics: MutableMapping[str, float],
+            heaps: Mapping[str, Mapping[int, list[HeapItem]]], cm: np.ndarray
+            ) -> None:
+    """
+    Logs the outputs (metrics, confusion matrix, tp/fp/fn images) from a
+    single epoch run to Tensorboard.
+
+    Args:
+        metrics: dict, keys already prefixed with {split}/
+    """
+    
+    per_class_recall = recall_from_confusion_matrix(cm, label_names)
+    metrics.update(prefix_all_keys(per_class_recall, f'{split}/label_recall/'))
+
+    # log metrics
+    for metric, value in metrics.items():
+        tf.summary.scalar(metric, value, epoch)
+
+    # log confusion matrix
+    cm_fig = plot_utils.plot_confusion_matrix(cm, classes=label_names,
+                                              normalize=True)
+    cm_fig_img = tf.convert_to_tensor(fig_to_img(cm_fig)[np.newaxis, ...])
+    tf.summary.image(f'confusion_matrix/{split}', cm_fig_img, step=epoch)
+
+    # log tp/fp/fn images
+    for heap_type, heap_dict in heaps.items():
+        log_images_with_confidence(heap_dict, label_names, epoch=epoch,
+                                   tag=f'{split}/{heap_type}')
+    writer.flush()
+
+
+#%% Main function
+
 def main(dataset_dir: str,
          cropped_images_dir: str,
          multilabel: bool,
@@ -260,7 +518,7 @@ def main(dataset_dir: str,
          seed: Optional[int] = None,
          logdir: str = '',
          cache_splits: Sequence[str] = ()) -> None:
-    """Main function."""
+    
     # input validation
     assert os.path.exists(dataset_dir)
     assert os.path.exists(cropped_images_dir)
@@ -387,235 +645,7 @@ def main(dataset_dir: str,
     writer.close()
 
 
-def log_run(split: str, epoch: int, writer: tf.summary.SummaryWriter,
-            label_names: Sequence[str], metrics: MutableMapping[str, float],
-            heaps: Mapping[str, Mapping[int, list[HeapItem]]], cm: np.ndarray
-            ) -> None:
-    """Logs the outputs (metrics, confusion matrix, tp/fp/fn images) from a
-    single epoch run to Tensorboard.
-
-    Args:
-        metrics: dict, keys already prefixed with {split}/
-    """
-    per_class_recall = recall_from_confusion_matrix(cm, label_names)
-    metrics.update(prefix_all_keys(per_class_recall, f'{split}/label_recall/'))
-
-    # log metrics
-    for metric, value in metrics.items():
-        tf.summary.scalar(metric, value, epoch)
-
-    # log confusion matrix
-    cm_fig = plot_utils.plot_confusion_matrix(cm, classes=label_names,
-                                              normalize=True)
-    cm_fig_img = tf.convert_to_tensor(fig_to_img(cm_fig)[np.newaxis, ...])
-    tf.summary.image(f'confusion_matrix/{split}', cm_fig_img, step=epoch)
-
-    # log tp/fp/fn images
-    for heap_type, heap_dict in heaps.items():
-        log_images_with_confidence(heap_dict, label_names, epoch=epoch,
-                                   tag=f'{split}/{heap_type}')
-    writer.flush()
-
-
-def log_images_with_confidence(
-        heap_dict: Mapping[int, list[HeapItem]],
-        label_names: Sequence[str],
-        epoch: int,
-        tag: str) -> None:
-    """
-    Args:
-        heap_dict: dict, maps label_id to list of HeapItem, where each HeapItem
-            data is a list [img, target, top3_conf, top3_preds, img_file],
-            and img is a tf.Tensor of shape [H, W, 3]
-        label_names: list of str, label names in order of label id
-        epoch: int
-        tag: str
-    """
-    for label_id, heap in heap_dict.items():
-        label_name = label_names[label_id]
-
-        sorted_heap = sorted(heap, reverse=True)  # sort largest to smallest
-        imgs_list = [item.data for item in sorted_heap]
-        fig, img_files = imgs_with_confidences(imgs_list, label_names)
-
-        # tf.summary.image requires input of shape [N, H, W, C]
-        fig_img = tf.convert_to_tensor(fig_to_img(fig)[np.newaxis, ...])
-        tf.summary.image(f'{label_name}/{tag}', fig_img, step=epoch)
-        tf.summary.text(f'{label_name}/{tag}_files', '\n\n'.join(img_files),
-                        step=epoch)
-
-
-def track_extreme_examples(tp_heaps: dict[int, list[HeapItem]],
-                           fp_heaps: dict[int, list[HeapItem]],
-                           fn_heaps: dict[int, list[HeapItem]],
-                           inputs: tf.Tensor,
-                           labels: tf.Tensor,
-                           img_files: tf.Tensor,
-                           logits: tf.Tensor) -> None:
-    """Updates the 5 most extreme true-positive (tp), false-positive (fp), and
-    false-negative (fn) examples with examples from this batch.
-
-    Each HeapItem's data attribute is a tuple with:
-    - img: np.ndarray, shape [H, W, 3], type uint8
-    - label: int
-    - top3_conf: list of float
-    - top3_preds: list of float
-    - img_file: str
-
-    Args:
-        *_heaps: dict, maps label_id (int) to heap of HeapItems
-        inputs: tf.Tensor, shape [batch_size, H, W, 3], type float32
-        labels: tf.Tensor, shape [batch_size]
-        img_files: tf.Tensor, shape [batch_size], type tf.string
-        logits: tf.Tensor, shape [batch_size, num_classes]
-    """
-    labels = labels.numpy().tolist()
-    inputs = inputs.numpy().astype(np.uint8)
-    img_files = img_files.numpy().astype(str).tolist()
-    batch_probs = tf.nn.softmax(logits, axis=1)
-    iterable = zip(labels, inputs, img_files, batch_probs)
-    for label, img, img_file, confs in iterable:
-        label_conf = confs[label].numpy().item()
-
-        top3_conf, top3_preds = tf.math.top_k(confs, k=3, sorted=True)
-        top3_conf = top3_conf.numpy().tolist()
-        top3_preds = top3_preds.numpy().tolist()
-
-        data = (img, label, top3_conf, top3_preds, img_file)
-        if top3_preds[0] == label:  # true positive
-            item = HeapItem(priority=label_conf - top3_conf[1], data=data)
-            add_to_heap(tp_heaps[label], item, k=5)
-        else:
-            # false positive for top3_pred[0]
-            # false negative for label
-            item = HeapItem(priority=top3_conf[0] - label_conf, data=data)
-            add_to_heap(fp_heaps[top3_preds[0]], item, k=5)
-            add_to_heap(fn_heaps[label], item, k=5)
-
-
-def run_epoch(model: tf.keras.Model,
-              loader: tf.data.Dataset,
-              weighted: bool,
-              top: Sequence[int] = (1, 3),
-              loss_fn: Optional[tf.keras.losses.Loss] = None,
-              weight_decay: float = 0,
-              finetune: bool = False,
-              optimizer: Optional[tf.keras.optimizers.Optimizer] = None,
-              return_extreme_images: bool = False
-              ) -> tuple[
-                  dict[str, float],
-                  dict[str, dict[int, list[HeapItem]]],
-                  np.ndarray
-              ]:
-    """Runs for 1 epoch.
-
-    Args:
-        model: tf.keras.Model
-        loader: tf.data.Dataset
-        weighted: bool, whether to use sample weights in calculating loss and
-            accuracy
-        top: tuple of int, list of values of k for calculating top-K accuracy
-        loss_fn: optional loss function, calculates the mean loss over a batch
-        weight_decay: float, L2-regularization constant
-        finetune: bool, if true sets model's dropout and BN layers to eval mode
-        optimizer: optional optimizer
-
-    Returns:
-        metrics: dict, metrics from epoch, contains keys:
-            'loss': float, mean per-example loss over entire epoch,
-                only included if loss_fn is not None
-            'acc_top{k}': float, accuracy@k over the entire epoch
-        heaps: dict, keys are ['tp', 'fp', 'fn'], values are heap_dicts,
-            each heap_dict maps label_id (int) to a heap of <= 5 HeapItems with
-            data attribute (img, target, top3_conf, top3_preds, img_file)
-            - 'tp': priority is the difference between target confidence and
-                2nd highest confidence
-            - 'fp': priority is the difference between highest confidence and
-                target confidence
-            - 'fn': same as 'fp'
-        confusion_matrix: np.ndarray, shape [num_classes, num_classes],
-            C[i, j] = # of samples with true label i, predicted as label j
-    """
-    # if evaluating or finetuning, set dropout & BN layers to eval mode
-    is_train = False
-    train_dropout_and_bn = False
-
-    if optimizer is not None:
-        assert loss_fn is not None
-        is_train = True
-
-        if not finetune:
-            train_dropout_and_bn = True
-            reg_vars = [
-                v for v in model.trainable_variables if 'kernel' in v.name]
-
-    if loss_fn is not None:
-        losses = tf.keras.metrics.Mean()
-    accuracies_topk = {
-        k: tf.keras.metrics.SparseTopKCategoricalAccuracy(k) for k in top
-    }
-
-    # for each label, track 5 most-confident and least-confident examples
-    tp_heaps: dict[int, list[HeapItem]] = defaultdict(list)
-    fp_heaps: dict[int, list[HeapItem]] = defaultdict(list)
-    fn_heaps: dict[int, list[HeapItem]] = defaultdict(list)
-
-    all_labels = []
-    all_preds = []
-
-    tqdm_loader = tqdm.tqdm(loader)
-    for batch in tqdm_loader:
-        if weighted:
-            inputs, labels, img_files, weights = batch
-        else:
-            # even if batch contains sample weights, don't use them
-            inputs, labels, img_files = batch[0:3]
-            weights = None
-
-        all_labels.append(labels.numpy())
-        desc = []
-        with tf.GradientTape(watch_accessed_variables=is_train) as tape:
-            outputs = model(inputs, training=train_dropout_and_bn)
-            if loss_fn is not None:
-                loss = loss_fn(labels, outputs)
-                if weights is not None:
-                    loss *= weights
-                # we do not track L2-regularization loss in the loss metric
-                losses.update_state(loss, sample_weight=weights)
-                desc.append(f'Loss {losses.result().numpy():.4f}')
-
-            if optimizer is not None:
-                loss = tf.math.reduce_mean(loss)
-                if not finetune:  # only regularize layers before the final FC
-                    loss += weight_decay * tf.add_n(
-                        tf.nn.l2_loss(v) for v in reg_vars)
-
-        all_preds.append(tf.math.argmax(outputs, axis=1).numpy())
-
-        if optimizer is not None:
-            gradients = tape.gradient(loss, model.trainable_variables)
-            optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-
-        for k, acc in accuracies_topk.items():
-            acc.update_state(labels, outputs, sample_weight=weights)
-            desc.append(f'Acc@{k} {acc.result().numpy() * 100:.3f}')
-        tqdm_loader.set_description(' '.join(desc))
-
-        if return_extreme_images:
-            track_extreme_examples(tp_heaps, fp_heaps, fn_heaps, inputs,
-                                   labels, img_files, outputs)
-
-    confusion_matrix = sklearn.metrics.confusion_matrix(
-        y_true=np.concatenate(all_labels), y_pred=np.concatenate(all_preds))
-
-    metrics = {}
-    if loss_fn is not None:
-        metrics['loss'] = losses.result().numpy().item()
-    for k, acc in accuracies_topk.items():
-        metrics[f'acc_top{k}'] = acc.result().numpy().item() * 100
-    heaps = {'tp': tp_heaps, 'fp': fp_heaps, 'fn': fn_heaps}
-    return metrics, heaps, confusion_matrix
-
+#%% Command-line driver
 
 def _parse_args() -> argparse.Namespace:
     """Parses arguments."""

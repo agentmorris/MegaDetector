@@ -1,54 +1,61 @@
-r"""
-Merges classification results with Batch Detection API outputs.
+########
+#
+# Merges classification results with Batch Detection API outputs.
+#
+# This script takes 2 main files as input:
+#
+# 1) Either a "dataset CSV" (output of create_classification_dataset.py) or a
+#     "classification results CSV" (output of evaluate_model.py). The CSV is
+#     expected to have columns listed below. The 'label' and [label names] columns
+#     are optional, but at least one of them must be provided.
+#     * 'path': str, path to cropped image
+#         * if passing in a detections JSON, must match
+#             <img_file>___cropXX_mdvY.Y.jpg
+#         * if passing in a queried images JSON, must match
+#             <dataset>/<img_file>___cropXX_mdvY.Y.jpg or
+#             <dataset>/<img_file>___cropXX.jpg
+#     * 'label': str, label assigned to this crop
+#     * [label names]: float, confidence in each label
+# 
+# 2) Either a "detections JSON" (output of MegaDetector) or a "queried images
+#     JSON" (output of json_validatory.py).
+# 
+# If the CSV contains [label names] columns (e.g., output of evaluate_model.py),
+# then each crop's "classifications" output will have one value per category.
+# Categories are sorted decreasing by confidence.
+#     "classifications": [
+#         ["3", 0.901],
+#         ["1", 0.071],
+#         ["4", 0.025],
+#         ["2", 0.003],
+#    ]
+#
+# If the CSV only contains the 'label' column (e.g., output of
+# create_classification_dataset.py), then each crop's "classifications" output
+# will have only one value, with a confidence of 1.0. The label's classification
+# category ID is always greater than 1,000,000, to distinguish it from a predicted
+# category ID.
+#     "classifications": [
+#         ["1000004", 1.0]
+#     ]
+# 
+# If the CSV contains both [label names] and 'label' columns, then both the
+# predicted categories and label category will be included. By default, the
+# label-category is included last; if the --label-first flag is given, then the
+# label category is placed first in the results.
+#     "classifications": [
+#         ["1000004", 1.0],  # label put first if --label-first flag is given
+#         ["3", 0.901],  # all other results are sorted by confidence
+#         ["1", 0.071],
+#         ["4", 0.025],
+#         ["2", 0.003]
+#     ]
+#
+########
 
-This script takes 2 main files as input:
-1) Either a "dataset CSV" (output of create_classification_dataset.py) or a
-    "classification results CSV" (output of evaluate_model.py). The CSV is
-    expected to have columns listed below. The 'label' and [label names] columns
-    are optional, but at least one of them must be provided.
-    - 'path': str, path to cropped image
-        - if passing in a detections JSON, must match
-            <img_file>___cropXX_mdvY.Y.jpg
-        - if passing in a queried images JSON, must match
-            <dataset>/<img_file>___cropXX_mdvY.Y.jpg or
-            <dataset>/<img_file>___cropXX.jpg
-    - 'label': str, label assigned to this crop
-    - [label names]: float, confidence in each label
-2) Either a "detections JSON" (output of MegaDetector) or a "queried images
-    JSON" (output of json_validatory.py).
+#%% Example usage
 
-If the CSV contains [label names] columns (e.g., output of evaluate_model.py),
-then each crop's "classifications" output will have one value per category.
-Categories are sorted decreasing by confidence.
-    "classifications": [
-        ["3", 0.901],
-        ["1", 0.071],
-        ["4", 0.025],
-        ["2", 0.003],
-    ]
-
-If the CSV only contains the 'label' column (e.g., output of
-create_classification_dataset.py), then each crop's "classifications" output
-will have only one value, with a confidence of 1.0. The label's classification
-category ID is always greater than 1,000,000, to distinguish it from a predicted
-category ID.
-    "classifications": [
-        ["1000004", 1.0]
-    ]
-
-If the CSV contains both [label names] and 'label' columns, then both the
-predicted categories and label category will be included. By default, the
-label-category is included last; if the --label-first flag is given, then the
-label category is placed first in the results.
-    "classifications": [
-        ["1000004", 1.0],  # label put first if --label-first flag is given
-        ["3", 0.901],  # all other results are sorted by confidence
-        ["1", 0.071],
-        ["4", 0.025],
-        ["2", 0.003]
-    ]
-
-Example usage:
+"""
     python merge_classification_detection_output.py \
         BASE_LOGDIR/LOGDIR/outputs_test.csv.gz \
         BASE_LOGDIR/label_index.json \
@@ -59,13 +66,18 @@ Example usage:
         --output-json BASE_LOGDIR/LOGDIR/classifier_results.json \
         --datasets idfg idfg_swwlf_2019
 """
+
+
+#%% Imports
+
 from __future__ import annotations
 
 import argparse
-from collections.abc import Mapping, Sequence
 import datetime
 import json
 import os
+
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 import pandas as pd
@@ -74,6 +86,8 @@ from tqdm import tqdm
 from ct_utils import truncate_float
 
 
+#%% Support functions
+
 def row_to_classification_list(row: Mapping[str, Any],
                                label_names: Sequence[str],
                                contains_preds: bool,
@@ -81,7 +95,8 @@ def row_to_classification_list(row: Mapping[str, Any],
                                threshold: float,
                                relative_conf: bool = False
                                ) -> list[tuple[str, float]]:
-    """Given a mapping from label name to output probability, returns a list of
+    """
+    Given a mapping from label name to output probability, returns a list of
     tuples, (str(label_id), prob), which can be serialized into the Batch API
     output format.
 
@@ -92,6 +107,7 @@ def row_to_classification_list(row: Mapping[str, Any],
     (label_id + 1_000_000, 1.) to the list. If label_pos='first', we put this at
     the front of the list. Otherwise, we put it at the end.
     """
+    
     contains_label = ('label' in row)
     assert contains_label or contains_preds
     if relative_conf:
@@ -124,82 +140,6 @@ def row_to_classification_list(row: Mapping[str, Any],
     return result
 
 
-def main(classification_csv_path: str,
-         label_names_json_path: str,
-         output_json_path: str,
-         classifier_name: str,
-         threshold: float,
-         datasets: Sequence[str] | None,
-         detection_json_path: str | None,
-         queried_images_json_path: str | None,
-         detector_output_cache_base_dir: str | None,
-         detector_version: str | None,
-         samples_per_label: int | None,
-         seed: int,
-         label_pos: str | None,
-         relative_conf: bool,
-         typical_confidence_threshold: float) -> None:
-    """Main function."""
-    # input validation
-    assert os.path.exists(classification_csv_path)
-    assert os.path.exists(label_names_json_path)
-    assert 0 <= threshold <= 1
-    for x in [detection_json_path, queried_images_json_path]:
-        if x is not None:
-            assert os.path.exists(x)
-    assert label_pos in [None, 'first', 'last']
-
-    # load classification CSV
-    print('Loading classification CSV...')
-    df = pd.read_csv(classification_csv_path, float_precision='high',
-                     index_col='path')
-    if relative_conf or label_pos is not None:
-        assert 'label' in df.columns
-
-    # load label names
-    with open(label_names_json_path, 'r') as f:
-        idx_to_label = json.load(f)
-    label_names = [idx_to_label[str(i)] for i in range(len(idx_to_label))]
-    if 'label' in df.columns:
-        for i, label in enumerate(label_names):
-            idx_to_label[str(i + 1_000_000)] = f'label: {label}'
-
-    if queried_images_json_path is not None:
-        assert detector_output_cache_base_dir is not None
-        assert detector_version is not None
-        detection_js = process_queried_images(
-            df=df, queried_images_json_path=queried_images_json_path,
-            detector_output_cache_base_dir=detector_output_cache_base_dir,
-            detector_version=detector_version, datasets=datasets,
-            samples_per_label=samples_per_label, seed=seed)
-    elif detection_json_path is not None:
-        with open(detection_json_path, 'r') as f:
-            detection_js = json.load(f)
-        images = {}
-        for img in detection_js['images']:
-            path = img['file']
-            if datasets is None or path[:path.find('/')] in datasets:
-                images[path] = img
-        detection_js['images'] = images
-
-    classification_time = datetime.date.fromtimestamp(
-        os.path.getmtime(classification_csv_path))
-    classifier_timestamp = classification_time.strftime('%Y-%m-%d %H:%M:%S')
-
-    classification_js = combine_classification_with_detection(
-        detection_js=detection_js, df=df, idx_to_label=idx_to_label,
-        label_names=label_names, classifier_name=classifier_name,
-        classifier_timestamp=classifier_timestamp, threshold=threshold,
-        label_pos=label_pos, relative_conf=relative_conf,
-        typical_confidence_threshold=typical_confidence_threshold)
-
-    os.makedirs(os.path.dirname(output_json_path), exist_ok=True)
-    with open(output_json_path, 'w') as f:
-        json.dump(classification_js, f, indent=1)
-
-    print('Wrote merged classification/detection results to {}'.format(output_json_path))
-
-
 def process_queried_images(
          df: pd.DataFrame,
          queried_images_json_path: str,
@@ -209,7 +149,8 @@ def process_queried_images(
          samples_per_label: int | None = None,
          seed: int = 123
          ) -> dict[str, Any]:
-    """Creates a detection JSON object roughly in the Batch API detection
+    """
+    Creates a detection JSON object roughly in the Batch API detection
     format.
 
     Detections are either ground-truth (from the queried images JSON) or
@@ -233,6 +174,7 @@ def process_queried_images(
     Returns: dict, detections JSON file, except that the 'images' field is a
         dict (img_path => dict) instead of a list
     """
+    
     # input validation
     assert os.path.exists(queried_images_json_path)
     detection_cache_dir = os.path.join(
@@ -330,8 +272,9 @@ def combine_classification_with_detection(
         label_pos: str | None = None,
         relative_conf: bool = False,
         typical_confidence_threshold: float = None
-        ) -> dict[str, Any]:
-    """Adds classification information to a detection JSON. Classification
+        ) -> dict[str, Any]:    
+    """
+    Adds classification information to a detection JSON. Classification
     information may include the true label and/or the predicted confidences
     of each label.
 
@@ -357,6 +300,7 @@ def combine_classification_with_detection(
 
     Returns: dict, detections JSON file updated with classification results
     """
+    
     classification_metadata = {
         'classifier': classifier_name,
         'classification_completion_time': classifier_timestamp
@@ -391,8 +335,88 @@ def combine_classification_with_detection(
     return detection_js
 
 
+#%% Main function
+
+def main(classification_csv_path: str,
+         label_names_json_path: str,
+         output_json_path: str,
+         classifier_name: str,
+         threshold: float,
+         datasets: Sequence[str] | None,
+         detection_json_path: str | None,
+         queried_images_json_path: str | None,
+         detector_output_cache_base_dir: str | None,
+         detector_version: str | None,
+         samples_per_label: int | None,
+         seed: int,
+         label_pos: str | None,
+         relative_conf: bool,
+         typical_confidence_threshold: float) -> None:
+   
+    # input validation
+    assert os.path.exists(classification_csv_path)
+    assert os.path.exists(label_names_json_path)
+    assert 0 <= threshold <= 1
+    for x in [detection_json_path, queried_images_json_path]:
+        if x is not None:
+            assert os.path.exists(x)
+    assert label_pos in [None, 'first', 'last']
+
+    # load classification CSV
+    print('Loading classification CSV...')
+    df = pd.read_csv(classification_csv_path, float_precision='high',
+                     index_col='path')
+    if relative_conf or label_pos is not None:
+        assert 'label' in df.columns
+
+    # load label names
+    with open(label_names_json_path, 'r') as f:
+        idx_to_label = json.load(f)
+    label_names = [idx_to_label[str(i)] for i in range(len(idx_to_label))]
+    if 'label' in df.columns:
+        for i, label in enumerate(label_names):
+            idx_to_label[str(i + 1_000_000)] = f'label: {label}'
+
+    if queried_images_json_path is not None:
+        assert detector_output_cache_base_dir is not None
+        assert detector_version is not None
+        detection_js = process_queried_images(
+            df=df, queried_images_json_path=queried_images_json_path,
+            detector_output_cache_base_dir=detector_output_cache_base_dir,
+            detector_version=detector_version, datasets=datasets,
+            samples_per_label=samples_per_label, seed=seed)
+    elif detection_json_path is not None:
+        with open(detection_json_path, 'r') as f:
+            detection_js = json.load(f)
+        images = {}
+        for img in detection_js['images']:
+            path = img['file']
+            if datasets is None or path[:path.find('/')] in datasets:
+                images[path] = img
+        detection_js['images'] = images
+
+    classification_time = datetime.date.fromtimestamp(
+        os.path.getmtime(classification_csv_path))
+    classifier_timestamp = classification_time.strftime('%Y-%m-%d %H:%M:%S')
+
+    classification_js = combine_classification_with_detection(
+        detection_js=detection_js, df=df, idx_to_label=idx_to_label,
+        label_names=label_names, classifier_name=classifier_name,
+        classifier_timestamp=classifier_timestamp, threshold=threshold,
+        label_pos=label_pos, relative_conf=relative_conf,
+        typical_confidence_threshold=typical_confidence_threshold)
+
+    os.makedirs(os.path.dirname(output_json_path), exist_ok=True)
+    with open(output_json_path, 'w') as f:
+        json.dump(classification_js, f, indent=1)
+
+    print('Wrote merged classification/detection results to {}'.format(output_json_path))
+
+
+#%% Command-line driver
+
 def _parse_args() -> argparse.Namespace:
-    """Parses arguments."""
+    
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Merges classification results with Batch Detection API '
@@ -461,6 +485,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
+    
     args = _parse_args()
     main(classification_csv_path=args.classification_csv,
          label_names_json_path=args.label_names_json,

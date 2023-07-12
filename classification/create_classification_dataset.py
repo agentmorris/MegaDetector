@@ -1,65 +1,77 @@
+########
+#
+# create_classification_dataset.py
+# 
+# Creates a classification dataset CSV with a corresponding JSON file determining
+# the train/val/test split.
+# 
+# This script takes as input a "queried images" JSON file whose keys are paths to
+# images and values are dictionaries containing information relevant for training
+# a classifier, including labels and (optionally) ground-truth bounding boxes.
+# The image paths are in the format `<dataset-name>/<blob-name>` where we assume
+# that the dataset name does not contain '/'.
+# 
+# {
+#     "caltech/cct_images/59f79901-23d2-11e8-a6a3-ec086b02610b.jpg": {
+#         "dataset": "caltech",
+#         "location": 13,
+#         "class": "mountain_lion",  # class from dataset
+#         "bbox": [{"category": "animal",
+#                   "bbox": [0, 0.347, 0.237, 0.257]}],   # ground-truth bbox
+#         "label": ["monutain_lion"]  # labels to use in classifier
+#     },
+#     "caltech/cct_images/59f5fe2b-23d2-11e8-a6a3-ec086b02610b.jpg": {
+#         "dataset": "caltech",
+#         "location": 13,
+#         "class": "mountain_lion",  # class from dataset
+#         "label": ["monutain_lion"]  # labels to use in classifier
+#     },
+#     ...
+# }
+# 
+# We assume that the tuple (dataset, location) identifies a unique location. In
+# other words, we assume that no two datasets have overlapping locations. This
+# probably isn't 100% true, but it's pretty much the best we can do in terms of
+# avoiding overlapping locations between the train/val/test splits.
+# 
+# This script outputs 3 files to <output_dir>:
+# 
+# 1) classification_ds.csv, contains columns:
+#    
+#     - 'path': str, path to cropped images
+#     - 'dataset': str, name of dataset
+#     - 'location': str, location that image was taken, as saved in MegaDB
+#     - 'dataset_class': str, original class assigned to image, as saved in MegaDB
+#     - 'confidence': float, confidence that this crop is of an actual animal,
+#         1.0 if the crop is a "ground truth bounding box" (i.e., from MegaDB),
+#         <= 1.0 if the bounding box was detected by MegaDetector
+#     - 'label': str, comma-separated list of label(s) assigned to this crop for
+#         the sake of classification
+# 
+# 2) label_index.json: maps integer to label name
+#
+#     - keys are string representations of Python integers (JSON requires keys to
+#       be strings), numbered from 0 to num_labels-1
+#     - values are strings, label names
+# 
+# 3) splits.json: serialization of a Python dict that maps each split
+#    ['train', 'val', 'test'] to a list of length-2 lists, where each inner list
+#    is [<dataset>, <location>]
+#
+########
+
+#%% Example usage
+
 """
-Creates a classification dataset CSV with a corresponding JSON file determining
-the train/val/test split.
-
-This script takes as input a "queried images" JSON file whose keys are paths to
-images and values are dictionaries containing information relevant for training
-a classifier, including labels and (optionally) ground-truth bounding boxes.
-The image paths are in the format `<dataset-name>/<blob-name>` where we assume
-that the dataset name does not contain '/'.
-
-{
-    "caltech/cct_images/59f79901-23d2-11e8-a6a3-ec086b02610b.jpg": {
-        "dataset": "caltech",
-        "location": 13,
-        "class": "mountain_lion",  # class from dataset
-        "bbox": [{"category": "animal",
-                  "bbox": [0, 0.347, 0.237, 0.257]}],   # ground-truth bbox
-        "label": ["monutain_lion"]  # labels to use in classifier
-    },
-    "caltech/cct_images/59f5fe2b-23d2-11e8-a6a3-ec086b02610b.jpg": {
-        "dataset": "caltech",
-        "location": 13,
-        "class": "mountain_lion",  # class from dataset
-        "label": ["monutain_lion"]  # labels to use in classifier
-    },
-    ...
-}
-
-We assume that the tuple (dataset, location) identifies a unique location. In
-other words, we assume that no two datasets have overlapping locations. This
-probably isn't 100% true, but it's pretty much the best we can do in terms of
-avoiding overlapping locations between the train/val/test splits.
-
-This script outputs 3 files to <output_dir>:
-
-1) classification_ds.csv, contains columns:
-    - 'path': str, path to cropped images
-    - 'dataset': str, name of dataset
-    - 'location': str, location that image was taken, as saved in MegaDB
-    - 'dataset_class': str, original class assigned to image, as saved in MegaDB
-    - 'confidence': float, confidence that this crop is of an actual animal,
-        1.0 if the crop is a "ground truth bounding box" (i.e., from MegaDB),
-        <= 1.0 if the bounding box was detected by MegaDetector
-    - 'label': str, comma-separated list of label(s) assigned to this crop for
-        the sake of classification
-
-2) label_index.json: maps integer to label name
-    - keys are string representations of Python integers (JSON requires keys to
-        be strings), numbered from 0 to num_labels-1
-    - values are strings, label names
-
-3) splits.json: serialization of a Python dict that maps each split
-    ['train', 'val', 'test'] to a list of length-2 lists, where each inner list
-    is [<dataset>, <location>]
-
-Example usage:
     python create_classification_dataset.py \
         run_idfg2 \
         --queried-images-json run_idfg2/queried_images.json \
         --cropped-images-dir /ssd/crops_sq \
         -d $HOME/classifier-training/mdcache -v "4.1" -t 0.8
 """
+
+#%% Imports and constants
+
 from __future__ import annotations
 
 import argparse
@@ -80,6 +92,8 @@ LABEL_INDEX_FILENAME = 'label_index.json'
 SPLITS_FILENAME = 'splits.json'
 
 
+#%% Main function
+
 def main(output_dir: str,
          mode: list[str],
          match_test: Optional[list[str]],
@@ -93,7 +107,7 @@ def main(output_dir: str,
          test_frac: Optional[float],
          splits_method: Optional[str],
          label_spec_json_path: Optional[str]) -> None:
-    """Main function."""
+    
     # input validation
     assert set(mode) <= {'csv', 'splits'}
     if label_spec_json_path is not None:
@@ -170,6 +184,8 @@ def main(output_dir: str,
             json.dump(split_to_locs, f, indent=1)
 
 
+#%% Support functions
+
 def create_classification_csv(
         queried_images_json_path: str,
         detector_output_cache_base_dir: str,
@@ -180,7 +196,8 @@ def create_classification_csv(
         append_df: Optional[pd.DataFrame] = None,
         exclude_locs: Optional[Container[tuple[str, str]]] = None
         ) -> tuple[pd.DataFrame, dict[str, list]]:
-    """Creates a classification dataset.
+    """
+    Creates a classification dataset.
 
     The classification dataset is a pd.DataFrame with columns:
     - path: str, <dataset>/<crop-filename>
@@ -218,6 +235,7 @@ def create_classification_csv(
             'missing crops': list of tuple (img_path, i), where i is the
                 i-th crop index
     """
+    
     assert 0 <= confidence_threshold <= 1
 
     columns = [
@@ -340,6 +358,7 @@ def create_splits_random(df: pd.DataFrame, val_frac: float,
     Returns: dict, keys are ['train', 'val', 'test'], values are lists of locs,
         where each loc is a tuple (dataset, location)
     """
+    
     if test_split is not None:
         assert test_frac == 0
     train_frac = 1. - val_frac - test_frac
@@ -425,6 +444,7 @@ def create_splits_smallest_label_first(
     Returns: dict, keys are ['train', 'val', 'test'], values are lists of locs,
         where each loc is a tuple (dataset, location)
     """
+    
     # label => list of datasets to prioritize for test and validation sets
     prioritize = {}
     if label_spec_json_path is not None:
@@ -492,7 +512,8 @@ def create_splits_smallest_label_first(
 def sort_locs_by_size(loc_to_size: MutableMapping[tuple[str, str], int],
                       prioritize: Optional[Container[str]] = None
                       ) -> list[tuple[str, str]]:
-    """Sorts locations by size, optionally prioritizing locations from certain
+    """
+    Sorts locations by size, optionally prioritizing locations from certain
     datasets first.
 
     Args:
@@ -503,6 +524,7 @@ def sort_locs_by_size(loc_to_size: MutableMapping[tuple[str, str], int],
     Returns: list of (dataset, location) tuples, ordered from smallest size to
         largest. Locations from prioritized datasets come first.
     """
+    
     result = []
     if prioritize is not None:
         # modify loc_to_size in place, so copy its keys before iterating
@@ -516,8 +538,10 @@ def sort_locs_by_size(loc_to_size: MutableMapping[tuple[str, str], int],
     return result
 
 
+#%% Command-line driver
+
 def _parse_args() -> argparse.Namespace:
-    """Parses arguments."""
+
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Creates classification dataset.')
@@ -585,6 +609,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
+    
     args = _parse_args()
     main(output_dir=args.output_dir,
          mode=args.mode,

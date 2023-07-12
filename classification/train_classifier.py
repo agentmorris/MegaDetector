@@ -1,20 +1,29 @@
-r"""Train a EfficientNet or ResNet classifier.
+########
+#
+# train_classifier.py
+#
+# Train a EfficientNet or ResNet classifier.
+# 
+# Currently the implementation of multi-label multi-class classification is
+# non-functional.
+#
+# During training, start tensorboard from within the classification/ directory:
+#   tensorboard --logdir run --bind_all --samples_per_plugin scalars=0,images=0
+# 
+########
 
-NOTE: Currently implementation of multi-label multi-class classification is
-non-functional.
+#%% Example usage
 
-
-
-During training, start tensorboard from within the classification/ directory:
-    tensorboard --logdir run --bind_all --samples_per_plugin scalars=0,images=0
-
-Example usage:
+"""    
     python train_classifier.py run_idfg /ssd/crops_sq \
         -m "efficientnet-b0" --pretrained --finetune --label-weighted \
         --epochs 50 --batch-size 512 --lr 1e-4 \
         --num-workers 12 --seed 123 \
         --logdir run_idfg
 """
+
+#%% Imports and constants
+
 from __future__ import annotations
 
 import argparse

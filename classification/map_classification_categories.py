@@ -1,45 +1,58 @@
-r"""Maps a classifier's output categories to desired target categories.
+########
+#
+# Maps a classifier's output categories to desired target categories.
+# 
+# In this file, we use the following terminology:
+# * "category": a category output by the classifier
+# * "target": name of a desired group, comprising >= 1 classifier categories
+# 
+# Takes as input 2 label specification JSON files:
+#
+# 1) desired label specification JSON file
+#    this should not have a target named "other"
+#    
+# 2) label specification JSON file of trained classifier
+#
+# The mapping is accomplished as follows:
+#    
+# 1. For each category in the classifier label spec, find all taxon nodes that
+#     belong to that category.
+#
+# 2. Given a target in the desired label spec, find all taxon nodes that belong
+#     to that target. If there is any classifier category whose nodes are a
+#     subset of the target nodes, then map the classifier category to that target.
+#     Any partial intersection between a target's nodes and a category's nodes
+#     is considered an error.
+#
+# 3. If there are any classifier categories that have not yet been assigned a
+#     target, group them into the "other" target.
+# 
+# This script outputs a JSON file that maps each target to a list of classifier
+# categories.
+# 
+# The taxonomy mapping parts of this script are very similar to json_validator.py.
+#
+########
 
-In this file, we use the following terminology:
-- "category": a category output by the classifier
-- "target": name of a desired group, comprising >= 1 classifier categories
+#%% Example usage
 
-Takes as input 2 label specification JSON files:
-1) desired label specification JSON file
-    this should not have a target named "other"
-2) label specification JSON file of trained classifier
-
-The mapping is accomplished as follows:
-1. For each category in the classifier label spec, find all taxon nodes that
-    belong to that category.
-2. Given a target in the desired label spec, find all taxon nodes that belong
-    to that target. If there is any classifier category whose nodes are a
-    subset of the target nodes, then map the classifier category to that target.
-    Any partial intersection between a target's nodes and a category's nodes
-    is considered an error.
-3. If there are any classifier categories that have not yet been assigned a
-    target, group them into the "other" target.
-
-This script outputs a JSON file that maps each target to a list of classifier
-categories.
-
-Implementation Note: the taxonomy mapping parts of this script are very similar
-    to json_validator.py.
-
-Example usage:
-
+"""
     python map_classification_categories.py \
         desired_label_spec.json \
         /path/to/classifier/label_spec.json \
         $HOME/camera-traps-private/camera_trap_taxonomy_mapping.csv
 """
+
+#%% Imports
+
 from __future__ import annotations
 
 import argparse
-from collections import defaultdict
-from collections.abc import Mapping
 import json
 import os
+
+from collections import defaultdict
+from collections.abc import Mapping
 from typing import Any, Optional
 
 import networkx as nx
@@ -50,12 +63,14 @@ from taxonomy_mapping.taxonomy_graph import (
     build_taxonomy_graph, dag_to_tree, TaxonNode)
 
 
+#%% Main function
+
 def main(desired_label_spec_json_path: str,
          classifier_label_spec_json_path: str,
          taxonomy_csv_path: str,
          output_json_path: str,
          classifier_label_index_path: Optional[str]) -> None:
-    """Main function."""
+
     print('Reading label spec JSON files')
     with open(desired_label_spec_json_path, 'r') as f:
         target_spec = json.load(f)
@@ -91,11 +106,14 @@ def main(desired_label_spec_json_path: str,
         json.dump(target_to_classifier_labels, f, indent=1)
 
 
+#%% Support functions
+
 def map_target_to_classifier(
         target_label_to_nodes: Mapping[str, set[TaxonNode]],
         classifier_label_to_nodes: Mapping[str, set[TaxonNode]]
         ) -> dict[str, list[str]]:
-    """For each target, if there is any classifier category whose nodes are a
+    """
+    For each target, if there is any classifier category whose nodes are a
     subset of the target nodes, then assign the classifier category to that
     target. Any partial intersection between a target's nodes and a category's
     nodes is considered an error.
@@ -108,6 +126,7 @@ def map_target_to_classifier(
 
     Returns: dict, maps target label to set of classifier labels
     """
+    
     remaining_classifier_labels = set(classifier_label_to_nodes.keys())
     target_to_classifier_labels: defaultdict[str, set[str]] = defaultdict(set)
     for target, target_nodes in tqdm(target_label_to_nodes.items()):
@@ -150,6 +169,7 @@ def parse_spec(spec_dict: Mapping[str, Any],
 
     Raises: ValueError, if specification does not match any dataset labels
     """
+    
     result = set()
     if 'taxa' in spec_dict:
         for taxon in spec_dict['taxa']:
@@ -178,7 +198,8 @@ def label_spec_to_nodes(label_spec_js: dict[str, dict[str, Any]],
                         taxon_to_node: dict[tuple[str, str], TaxonNode],
                         label_to_node: dict[tuple[str, str], TaxonNode]
                         ) -> dict[str, set[TaxonNode]]:
-    """Convert label spec to a mapping from classification labels to a set of
+    """
+    Convert label spec to a mapping from classification labels to a set of
     nodes.
 
     Args:
@@ -193,6 +214,7 @@ def label_spec_to_nodes(label_spec_js: dict[str, dict[str, Any]],
     Raises: ValueError, if a classification label specification matches no
         TaxonNode, or if a node is included in two or more classification labels
     """
+    
     # maps output label name to set of (dataset, dataset_label) tuples
     seen_nodes: set[TaxonNode] = set()
     label_to_nodes: dict[str, set[TaxonNode]] = {}
@@ -211,8 +233,10 @@ def label_spec_to_nodes(label_spec_js: dict[str, dict[str, Any]],
     return label_to_nodes
 
 
+#%% Command-line driver
+
 def _parse_args() -> argparse.Namespace:
-    """Parses arguments."""
+    
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Create mapping from target categories to classifier '
@@ -240,6 +264,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
+    
     args = _parse_args()
     main(desired_label_spec_json_path=args.desired_label_spec_json,
          classifier_label_spec_json_path=args.classifier_label_spec_json,

@@ -1,34 +1,41 @@
-r"""Evaluate a species classifier.
+########
+# 
+# evaluate_model.py
+#
+# Evaluate a species classifier.
+# 
+# Currently the implementation of multi-label multi-class classification is
+# non-functional.
+# 
+# Outputs the following files:
+# 
+# 1) outputs_{split}.csv, one file per split, contains columns:
+#     - 'path': str, path to cropped image
+#     - 'label': str
+#     - 'weight': float
+#     - [label names]: float, confidence in each label
+# 
+# 2) overall_metrics.csv, contains columns:
+#     - 'split': str
+#     - 'loss': float, mean per-example loss over entire epoch
+#     - 'acc_top{k}': float, accuracy@k over the entire epoch
+#     - 'loss_weighted' and 'acc_weighted_top{k}': float, weighted versions
+# 
+# 3) confusion_matrices.npz
+#     - keys ['train', 'val', 'test']
+#     - values are np.ndarray, confusion matrices
+# 
+# 4) label_stats.csv, per-label statistics, columns
+#     - 'split': str
+#     - 'label': str
+#     - 'precision': float
+#     - 'recall': float
+#
+########
 
-Currently implementation of multi-label multi-class classification is
-non-functional.
+#%% Example usage
 
-Outputs the following files:
-
-1) outputs_{split}.csv, one file per split, contains columns:
-    - 'path': str, path to cropped image
-    - 'label': str
-    - 'weight': float
-    - [label names]: float, confidence in each label
-
-2) overall_metrics.csv, contains columns:
-    - 'split': str
-    - 'loss': float, mean per-example loss over entire epoch
-    - 'acc_top{k}': float, accuracy@k over the entire epoch
-    - 'loss_weighted' and 'acc_weighted_top{k}': float, weighted versions
-
-3) confusion_matrices.npz
-    - keys ['train', 'val', 'test']
-    - values are np.ndarray, confusion matrices
-
-4) label_stats.csv, per-label statistics, columns
-    - 'split': str
-    - 'label': str
-    - 'precision': float
-    - 'recall': float
-
-
-Example usage:
+"""
     python evaluate_model.py \
         $BASE_LOGDIR/$LOGDIR/params.json \
         $BASE_LOGDIR/$LOGDIR/ckpt_XX.pt \
@@ -36,6 +43,9 @@ Example usage:
         --splits train val test \
         --batch-size 256
 """
+
+#%% Imports and constants
+
 from __future__ import annotations
 
 import argparse
@@ -54,13 +64,17 @@ import tqdm
 
 from classification import efficientnet, train_classifier
 
-
 SPLITS = ['train', 'val', 'test']
 
 
+#%% Support functions
+
 def check_override(params: Mapping[str, Any], key: str,
                    override: Optional[Any]) -> Any:
-    """Return desired value, with optional override."""
+    """
+    Return desired value, with optional override.
+    """
+    
     if override is None:
         return params[key]
     saved = params.get(key, None)
@@ -70,7 +84,8 @@ def check_override(params: Mapping[str, Any], key: str,
 
 def trace_model(model_name: str, ckpt_path: str, num_classes: int,
                 img_size: int) -> str:
-    """Use TorchScript tracing to compile trained model into standalone file.
+    """
+    Use TorchScript tracing to compile trained model into standalone file.
 
     For now, we have to use tracing instead of scripting. See
         https://github.com/lukemelas/EfficientNet-PyTorch/issues/89
@@ -86,6 +101,7 @@ def trace_model(model_name: str, ckpt_path: str, num_classes: int,
         '/path/to/ckpt_16.pt', then the returned path is
         '/path/to/ckpt_16_compiled.pt'.
     """
+    
     root, ext = os.path.splitext(ckpt_path)
     compiled_path = root + '_compiled' + ext
     if os.path.exists(compiled_path):
@@ -105,11 +121,187 @@ def trace_model(model_name: str, ckpt_path: str, num_classes: int,
     return compiled_path
 
 
+def calc_per_label_stats(cm: np.ndarray, label_names: Sequence[str]
+                         ) -> pd.DataFrame:
+    """
+    Args:
+        cm: np.ndarray, type int, confusion matrix C such that C[i,j] is the #
+            of observations from group i that are predicted to be in group j
+        label_names: list of str, label names in order of label id
+
+    Returns: pd.DataFrame, index 'label', columns ['precision', 'recall']
+        precision values are in [0, 1]
+        recall values are in [0, 1], or np.nan if that label had 0 ground-truth
+            observations
+    """
+    
+    tp = np.diag(cm)  # true positives
+
+    predicted_positives = cm.sum(axis=0, dtype=np.float64)  # tp + fp
+    predicted_positives[predicted_positives == 0] += 1e-8
+
+    all_positives = cm.sum(axis=1, dtype=np.float64)  # tp + fn
+    all_positives[all_positives == 0] = np.nan
+
+    df = pd.DataFrame()
+    df['label'] = label_names
+    df['precision'] = tp / predicted_positives
+    df['recall'] = tp / all_positives
+    df.set_index('label', inplace=True)
+    return df
+
+
+def test_epoch(model: torch.nn.Module,
+               loader: torch.utils.data.DataLoader,
+               weighted: bool,
+               device: torch.device,
+               label_names: Sequence[str],
+               top: Sequence[int] = (1, 3),
+               loss_fn: Optional[torch.nn.Module] = None,
+               target_mapping: Mapping[int, Sequence[int]] = None
+               ) -> tuple[pd.DataFrame, pd.Series, np.ndarray]:
+    """
+    Runs for 1 epoch.
+
+    Args:
+        model: torch.nn.Module
+        loader: torch.utils.data.DataLoader
+        weighted: bool, whether to calculate weighted accuracy statistics
+        device: torch.device
+        label_names: list of str, label names in order of label id
+        top: tuple of int, list of values of k for calculating top-K accuracy
+        loss_fn: optional loss function, calculates per-example loss
+        target_mapping: optional dict, label_id => list of ids from classifier
+            that should map to the label_id
+
+    Returns:
+        df: pd.DataFrame, columns ['img_file', 'label', 'weight', label_names]
+        metrics: pd.Series, type float, index includes:
+            'loss': mean per-example loss over entire epoch,
+                only included if loss_fn is not None
+            'acc_top{k}': accuracy@k over the entire epoch
+            'loss_weighted' and 'acc_weighted_top{k}': weighted versions, only
+                included if weighted=True
+        cm: np.ndarray, confusion matrix C such that C[i,j] is the # of
+            observations known to be in group i and predicted to be in group j
+    """
+    
+    # set dropout and BN layers to eval mode
+    model.eval()
+
+    if loss_fn is not None:
+        losses = train_classifier.AverageMeter()
+    accuracies_topk = {k: train_classifier.AverageMeter() for k in top}  # acc@k
+    if weighted:
+        accs_weighted = {k: train_classifier.AverageMeter() for k in top}
+        losses_weighted = train_classifier.AverageMeter()
+
+    num_examples = len(loader.dataset)
+    num_labels = len(label_names)
+
+    all_img_files = []
+    all_probs = np.zeros([num_examples, len(label_names)], dtype=np.float32)
+    all_labels = np.zeros(num_examples, dtype=np.int32)
+    if weighted:
+        all_weights = np.zeros(num_examples, dtype=np.float32)
+
+    batch_slice = slice(0, 0)
+    tqdm_loader = tqdm.tqdm(loader)
+    with torch.no_grad():
+        for batch in tqdm_loader:
+            if weighted:
+                inputs, labels, img_files, weights = batch
+            else:
+                # even if batch contains sample weights, don't use them
+                inputs, labels, img_files = batch[0:3]
+                weights = None
+
+            all_img_files.append(img_files)
+
+            batch_size = labels.size(0)
+            batch_slice = slice(batch_slice.stop, batch_slice.stop + batch_size)
+            all_labels[batch_slice] = labels
+            if weighted:
+                all_weights[batch_slice] = weights
+                weights = weights.to(device, non_blocking=True)
+
+            inputs = inputs.to(device, non_blocking=True)
+            labels = labels.to(device, non_blocking=True)
+            outputs = model(inputs)
+
+            # Do target mapping on the outputs (unnormalized logits) instead of
+            # the normalized (softmax) probabilities, because the loss function
+            # uses unnormalized logits. Summing probabilities is equivalent to
+            # log-sum-exp of unnormalized logits.
+            if target_mapping is not None:
+                outputs_mapped = torch.zeros(
+                    [batch_size, num_labels], dtype=outputs.dtype,
+                    device=outputs.device)
+                for target, cols in target_mapping.items():
+                    outputs_mapped[:, target] = torch.logsumexp(
+                        outputs[:, cols], dim=1)
+                outputs = outputs_mapped
+
+            probs = torch.nn.functional.softmax(outputs, dim=1).cpu()
+            all_probs[batch_slice] = probs
+
+            desc = []
+            if loss_fn is not None:
+                loss = loss_fn(outputs, labels)
+                losses.update(loss.mean().item(), n=batch_size)
+                desc.append(f'Loss {losses.val:.3f} ({losses.avg:.3f})')
+                if weights is not None:
+                    loss_weighted = (loss * weights).mean()
+                    losses_weighted.update(loss_weighted.item(), n=batch_size)
+
+            top_correct = train_classifier.correct(
+                outputs, labels, weights=None, top=top)
+            for k, acc in accuracies_topk.items():
+                acc.update(top_correct[k] * (100. / batch_size), n=batch_size)
+                desc.append(f'Acc@{k} {acc.val:.2f} ({acc.avg:.2f})')
+
+            if weighted:
+                top_correct = train_classifier.correct(
+                    outputs, labels, weights=weights, top=top)
+                for k, acc in accs_weighted.items():
+                    acc.update(top_correct[k] * (100. / batch_size),
+                               n=batch_size)
+                    desc.append(f'Acc_w@{k} {acc.val:.2f} ({acc.avg:.2f})')
+
+            tqdm_loader.set_description(' '.join(desc))
+
+    # a confusion matrix C is such that C[i,j] is the # of observations known to
+    # be in group i and predicted to be in group j.
+    all_preds = all_probs.argmax(axis=1)
+    cm = sklearn.metrics.confusion_matrix(
+        y_true=all_labels, y_pred=all_preds, labels=np.arange(num_labels))
+
+    df = pd.DataFrame()
+    df['path'] = np.concatenate(all_img_files)
+    df['label'] = list(map(label_names.__getitem__, all_labels))
+    df['weight'] = all_weights
+    df[label_names] = all_probs
+
+    metrics = {}
+    if loss_fn is not None:
+        metrics['loss'] = losses.avg
+        if weighted:
+            metrics['loss_weighted'] = losses_weighted.avg
+    for k, acc in accuracies_topk.items():
+        metrics[f'acc_top{k}'] = acc.avg
+    if weighted:
+        for k, acc in accs_weighted.items():
+            metrics[f'acc_weighted_top{k}'] = acc.avg
+    return df, pd.Series(metrics), cm
+
+
+#%% Main function
+
 def main(params_json_path: str, ckpt_path: str, output_dir: str,
          splits: Sequence[str], target_mapping_json_path: Optional[str] = None,
          label_index_json_path: Optional[str] = None,
          **kwargs: Any) -> None:
-    """Main function."""
+
     # input validation
     assert os.path.exists(params_json_path)
     assert os.path.exists(ckpt_path)
@@ -122,7 +314,7 @@ def main(params_json_path: str, ckpt_path: str, output_dir: str,
     # Evaluating with accimage is much faster than Pillow or Pillow-SIMD, but accimage
     # is Linux-only.
     try:
-        import accimage
+        import accimage # noqa
         torchvision.set_image_backend('accimage')
     except:
         print('Warning: could not start accimage backend (ignore this if you\'re not using Linux)')
@@ -266,179 +458,10 @@ def main(params_json_path: str, ckpt_path: str, output_dir: str,
     label_stats_df.to_csv(label_stats_csv_path, index=False)
 
 
-def calc_per_label_stats(cm: np.ndarray, label_names: Sequence[str]
-                         ) -> pd.DataFrame:
-    """
-    Args:
-        cm: np.ndarray, type int, confusion matrix C such that C[i,j] is the #
-            of observations from group i that are predicted to be in group j
-        label_names: list of str, label names in order of label id
-
-    Returns: pd.DataFrame, index 'label', columns ['precision', 'recall']
-        precision values are in [0, 1]
-        recall values are in [0, 1], or np.nan if that label had 0 ground-truth
-            observations
-    """
-    tp = np.diag(cm)  # true positives
-
-    predicted_positives = cm.sum(axis=0, dtype=np.float64)  # tp + fp
-    predicted_positives[predicted_positives == 0] += 1e-8
-
-    all_positives = cm.sum(axis=1, dtype=np.float64)  # tp + fn
-    all_positives[all_positives == 0] = np.nan
-
-    df = pd.DataFrame()
-    df['label'] = label_names
-    df['precision'] = tp / predicted_positives
-    df['recall'] = tp / all_positives
-    df.set_index('label', inplace=True)
-    return df
-
-
-def test_epoch(model: torch.nn.Module,
-               loader: torch.utils.data.DataLoader,
-               weighted: bool,
-               device: torch.device,
-               label_names: Sequence[str],
-               top: Sequence[int] = (1, 3),
-               loss_fn: Optional[torch.nn.Module] = None,
-               target_mapping: Mapping[int, Sequence[int]] = None
-               ) -> tuple[pd.DataFrame, pd.Series, np.ndarray]:
-    """Runs for 1 epoch.
-
-    Args:
-        model: torch.nn.Module
-        loader: torch.utils.data.DataLoader
-        weighted: bool, whether to calculate weighted accuracy statistics
-        device: torch.device
-        label_names: list of str, label names in order of label id
-        top: tuple of int, list of values of k for calculating top-K accuracy
-        loss_fn: optional loss function, calculates per-example loss
-        target_mapping: optional dict, label_id => list of ids from classifier
-            that should map to the label_id
-
-    Returns:
-        df: pd.DataFrame, columns ['img_file', 'label', 'weight', label_names]
-        metrics: pd.Series, type float, index includes:
-            'loss': mean per-example loss over entire epoch,
-                only included if loss_fn is not None
-            'acc_top{k}': accuracy@k over the entire epoch
-            'loss_weighted' and 'acc_weighted_top{k}': weighted versions, only
-                included if weighted=True
-        cm: np.ndarray, confusion matrix C such that C[i,j] is the # of
-            observations known to be in group i and predicted to be in group j
-    """
-    # set dropout and BN layers to eval mode
-    model.eval()
-
-    if loss_fn is not None:
-        losses = train_classifier.AverageMeter()
-    accuracies_topk = {k: train_classifier.AverageMeter() for k in top}  # acc@k
-    if weighted:
-        accs_weighted = {k: train_classifier.AverageMeter() for k in top}
-        losses_weighted = train_classifier.AverageMeter()
-
-    num_examples = len(loader.dataset)
-    num_labels = len(label_names)
-
-    all_img_files = []
-    all_probs = np.zeros([num_examples, len(label_names)], dtype=np.float32)
-    all_labels = np.zeros(num_examples, dtype=np.int32)
-    if weighted:
-        all_weights = np.zeros(num_examples, dtype=np.float32)
-
-    batch_slice = slice(0, 0)
-    tqdm_loader = tqdm.tqdm(loader)
-    with torch.no_grad():
-        for batch in tqdm_loader:
-            if weighted:
-                inputs, labels, img_files, weights = batch
-            else:
-                # even if batch contains sample weights, don't use them
-                inputs, labels, img_files = batch[0:3]
-                weights = None
-
-            all_img_files.append(img_files)
-
-            batch_size = labels.size(0)
-            batch_slice = slice(batch_slice.stop, batch_slice.stop + batch_size)
-            all_labels[batch_slice] = labels
-            if weighted:
-                all_weights[batch_slice] = weights
-                weights = weights.to(device, non_blocking=True)
-
-            inputs = inputs.to(device, non_blocking=True)
-            labels = labels.to(device, non_blocking=True)
-            outputs = model(inputs)
-
-            # Do target mapping on the outputs (unnormalized logits) instead of
-            # the normalized (softmax) probabilities, because the loss function
-            # uses unnormalized logits. Summing probabilities is equivalent to
-            # log-sum-exp of unnormalized logits.
-            if target_mapping is not None:
-                outputs_mapped = torch.zeros(
-                    [batch_size, num_labels], dtype=outputs.dtype,
-                    device=outputs.device)
-                for target, cols in target_mapping.items():
-                    outputs_mapped[:, target] = torch.logsumexp(
-                        outputs[:, cols], dim=1)
-                outputs = outputs_mapped
-
-            probs = torch.nn.functional.softmax(outputs, dim=1).cpu()
-            all_probs[batch_slice] = probs
-
-            desc = []
-            if loss_fn is not None:
-                loss = loss_fn(outputs, labels)
-                losses.update(loss.mean().item(), n=batch_size)
-                desc.append(f'Loss {losses.val:.3f} ({losses.avg:.3f})')
-                if weights is not None:
-                    loss_weighted = (loss * weights).mean()
-                    losses_weighted.update(loss_weighted.item(), n=batch_size)
-
-            top_correct = train_classifier.correct(
-                outputs, labels, weights=None, top=top)
-            for k, acc in accuracies_topk.items():
-                acc.update(top_correct[k] * (100. / batch_size), n=batch_size)
-                desc.append(f'Acc@{k} {acc.val:.2f} ({acc.avg:.2f})')
-
-            if weighted:
-                top_correct = train_classifier.correct(
-                    outputs, labels, weights=weights, top=top)
-                for k, acc in accs_weighted.items():
-                    acc.update(top_correct[k] * (100. / batch_size),
-                               n=batch_size)
-                    desc.append(f'Acc_w@{k} {acc.val:.2f} ({acc.avg:.2f})')
-
-            tqdm_loader.set_description(' '.join(desc))
-
-    # a confusion matrix C is such that C[i,j] is the # of observations known to
-    # be in group i and predicted to be in group j.
-    all_preds = all_probs.argmax(axis=1)
-    cm = sklearn.metrics.confusion_matrix(
-        y_true=all_labels, y_pred=all_preds, labels=np.arange(num_labels))
-
-    df = pd.DataFrame()
-    df['path'] = np.concatenate(all_img_files)
-    df['label'] = list(map(label_names.__getitem__, all_labels))
-    df['weight'] = all_weights
-    df[label_names] = all_probs
-
-    metrics = {}
-    if loss_fn is not None:
-        metrics['loss'] = losses.avg
-        if weighted:
-            metrics['loss_weighted'] = losses_weighted.avg
-    for k, acc in accuracies_topk.items():
-        metrics[f'acc_top{k}'] = acc.avg
-    if weighted:
-        for k, acc in accs_weighted.items():
-            metrics[f'acc_weighted_top{k}'] = acc.avg
-    return df, pd.Series(metrics), cm
-
+#%% Command-line driver
 
 def _parse_args() -> argparse.Namespace:
-    """Parses arguments."""
+
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Evaluate trained model.')
@@ -486,6 +509,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
+    
     args = _parse_args()
     main(params_json_path=args.params_json, ckpt_path=args.ckpt_path,
          output_dir=args.output_dir, splits=args.splits,

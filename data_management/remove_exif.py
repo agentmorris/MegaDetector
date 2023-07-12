@@ -1,9 +1,11 @@
+########
 #
 # remove_exif.py
 #
 # Removes all EXIF/IPTC/XMP metadata from a folder of images, without making 
 # backup copies, using pyexiv2.
 #
+########
 
 #%% Imports and constants
 

@@ -1,60 +1,78 @@
-r"""Validates a classification label specification JSON file and optionally
-queries MegaDB to find matching image files.
+########
+#
+# json_validator.py
+#
+# Validates a classification label specification JSON file and optionally
+# queries MegaDB to find matching image files.
+# 
+# See README.md for an example of a classification label specification JSON file.
+# 
+# The validation step takes the classification label specification JSON file and
+# finds the dataset labels that belong to each classification label. It checks
+# that the following conditions hold:
+#    
+# 1) Each classification label specification matches at least 1 dataset label.
+#
+# 2) If the classification label includes a taxonomical specification, then the
+#    taxa is actually a part of our master taxonomy.
+#    
+# 3) If the 'prioritize' key is found for a given label, then the label must
+#    also have a 'max_count' key.
+#
+# 4) If --allow-multilabel=False, then no dataset label is included in more than
+#    one classification label.
+#
+# If --output-dir <output_dir> is given, then we query MegaDB for images
+# that match the dataset labels identified during the validation step. We filter
+# out images that have unaccepted file extensions and images that don't actually
+# exist in Azure Blob Storage. In total, we output the following files:
+# 
+# <output_dir>/
+#
+# - included_dataset_labels.txt
+#   lists the original dataset classes included for each classification label
+#
+# - image_counts_by_label_presample.json
+#    number of images for each classification label after filtering bad
+#    images, but before sampling
+#
+# - image_counts_by_label_sampled.json
+#   number of images for each classification label in queried_images.json
+#
+# - json_validator_log_{timestamp}.json
+#   log of excluded images / labels
+#
+# - queried_images.json
+#  main output file, ex:
+#     
+#     {
+#         "caltech/cct_images/59f5fe2b-23d2-11e8-a6a3-ec086b02610b.jpg": {
+#             "dataset": "caltech",
+#             "location": 13,
+#             "class": "mountain_lion",  // class from dataset
+#             "label": ["monutain_lion"]  // labels to use in classifier
+#         },
+#         "caltech/cct_images/59f79901-23d2-11e8-a6a3-ec086b02610b.jpg": {
+#             "dataset": "caltech",
+#             "location": 13,
+#             "class": "mountain_lion",  // class from dataset
+#             "bbox": [{"category": "animal",
+#                     "bbox": [0, 0.347, 0.237, 0.257]}],
+#             "label": ["monutain_lion"]  // labels to use in classifier
+#         },
+#         ...
+#     }
+#
+########
 
-See README.md for an example of a classification label specification JSON file.
+#%% Example usage
 
-The validation step takes the classification label specification JSON file and
-finds the dataset labels that belong to each classification label. It checks
-that the following conditions hold:
-1) Each classification label specification matches at least 1 dataset label.
-2) If the classification label includes a taxonomical specification, then the
-    taxa is actually a part of our master taxonomy.
-3) If the 'prioritize' key is found for a given label, then the label must
-    also have a 'max_count' key.
-4) If --allow-multilabel=False, then no dataset label is included in more than
-    one classification label.
-
-If --output-dir <output_dir> is given, then we query MegaDB for images
-that match the dataset labels identified during the validation step. We filter
-out images that have unaccepted file extensions and images that don't actually
-exist in Azure Blob Storage. In total, we output the following files:
-
-<output_dir>/
-- included_dataset_labels.txt
-    lists the original dataset classes included for each classification label
-- image_counts_by_label_presample.json
-    number of images for each classification label after filtering bad
-    images, but before sampling
-- image_counts_by_label_sampled.json
-    number of images for each classification label in queried_images.json
-- json_validator_log_{timestamp}.json
-    log of excluded images / labels
-- queried_images.json
-    main output file, ex:
-    {
-        "caltech/cct_images/59f5fe2b-23d2-11e8-a6a3-ec086b02610b.jpg": {
-            "dataset": "caltech",
-            "location": 13,
-            "class": "mountain_lion",  // class from dataset
-            "label": ["monutain_lion"]  // labels to use in classifier
-        },
-        "caltech/cct_images/59f79901-23d2-11e8-a6a3-ec086b02610b.jpg": {
-            "dataset": "caltech",
-            "location": 13,
-            "class": "mountain_lion",  // class from dataset
-            "bbox": [{"category": "animal",
-                    "bbox": [0, 0.347, 0.237, 0.257]}],
-            "label": ["monutain_lion"]  // labels to use in classifier
-        },
-        ...
-    }
-
-Example usage:
-
+"""
     python json_validator.py label_spec.json \
         $HOME/camera-traps-private/camera_trap_taxonomy_mapping.csv \
         --output-dir run --json-indent 2
 """
+
 from __future__ import annotations
 
 import argparse
@@ -78,6 +96,8 @@ from taxonomy_mapping.taxonomy_graph import (
     build_taxonomy_graph, dag_to_tree, TaxonNode)
 
 
+#%% Main function
+
 def main(label_spec_json_path: str,
          taxonomy_csv_path: str,
          allow_multilabel: bool = False,
@@ -88,7 +108,7 @@ def main(label_spec_json_path: str,
          json_indent: int | None = None,
          seed: int = 123,
          mislabeled_images_dir: str | None = None) -> None:
-    """Main function."""
+    
     # input validation
     assert os.path.exists(label_spec_json_path)
     assert os.path.exists(taxonomy_csv_path)
@@ -173,10 +193,13 @@ def main(label_spec_json_path: str,
         json.dump(image_counts_by_label, f, indent=1)
 
 
+#%% Support functions
+
 def parse_spec(spec_dict: Mapping[str, Any],
                taxonomy_dict: dict[tuple[str, str], TaxonNode]
                ) -> set[tuple[str, str]]:
-    """Gathers the dataset labels corresponding to a particular classification
+    """
+    Gathers the dataset labels corresponding to a particular classification
     label specification.
 
     Args:
@@ -187,6 +210,7 @@ def parse_spec(spec_dict: Mapping[str, Any],
 
     Raises: ValueError, if specification does not match any dataset labels
     """
+    
     results = set()
     if 'taxa' in spec_dict:
         # spec_dict['taxa']: list of dict
@@ -217,7 +241,8 @@ def parse_spec(spec_dict: Mapping[str, Any],
 def validate_json(input_js: dict[str, dict[str, Any]],
                   taxonomy_dict: dict[tuple[str, str], TaxonNode],
                   allow_multilabel: bool) -> dict[str, set[tuple[str, str]]]:
-    """Validates JSON.
+    """
+    Validates JSON.
 
     Args:
         input_js: dict, Python dict representation of JSON file
@@ -232,6 +257,7 @@ def validate_json(input_js: dict[str, dict[str, Any]],
         dataset labels, or if allow_multilabel=False but a dataset label is
         included in two or more classification labels
     """
+    
     # maps output label name to set of (dataset, dataset_label) tuples
     label_to_inclusions: dict[str, set[tuple[str, str]]] = {}
     for label, spec_dict in input_js.items():
@@ -253,7 +279,8 @@ def validate_json(input_js: dict[str, dict[str, Any]],
 def get_output_json(label_to_inclusions: dict[str, set[tuple[str, str]]],
                     mislabeled_images_dir: str | None = None
                     ) -> dict[str, dict[str, Any]]:
-    """Queries MegaDB to get image paths matching dataset_labels.
+    """
+    Queries MegaDB to get image paths matching dataset_labels.
 
     Args:
         label_to_inclusions: dict, maps label name to set of
@@ -269,7 +296,9 @@ def get_output_json(label_to_inclusions: dict[str, set[tuple[str, str]]],
         - 'label': list of str, assigned output label
         - 'bbox': list of dicts, optional
     """
-    # because MegaDB is organized by dataset, we do the same
+    
+    # Because MegaDB is organized by dataset, we do the same...
+    #
     # ds_to_labels = {
     #     'dataset_name': {
     #         'dataset_label': [output_label1, output_label2]
@@ -326,7 +355,9 @@ def get_output_json(label_to_inclusions: dict[str, set[tuple[str, str]]],
     '''
 
     output_json = {}  # maps full image path to json object
+    
     for ds in tqdm(sorted(ds_to_labels.keys())):  # sort for determinism
+    
         mislabeled_images: Mapping[str, Any] = {}
         if mislabeled_images_dir is not None:
             csv_path = os.path.join(mislabeled_images_dir, f'{ds}.csv')
@@ -382,7 +413,8 @@ def get_output_json(label_to_inclusions: dict[str, set[tuple[str, str]]],
 
 
 def get_image_sas_uris(img_paths: Iterable[str]) -> list[str]:
-    """Converts a image paths to Azure Blob Storage blob URIs with SAS tokens.
+    """
+    Converts a image paths to Azure Blob Storage blob URIs with SAS tokens.
 
     Args:
         img_paths: list of str, <dataset-name>/<image-filename>
@@ -391,6 +423,7 @@ def get_image_sas_uris(img_paths: Iterable[str]) -> list[str]:
         image_sas_uris: list of str, image blob URIs with SAS tokens, ready to
             pass to the batch detection API
     """
+    
     # we need the datasets table for getting SAS keys
     datasets_table = megadb_utils.MegadbUtils().get_datasets_table()
 
@@ -414,7 +447,8 @@ def get_image_sas_uris(img_paths: Iterable[str]) -> list[str]:
 
 def remove_non_images(js: MutableMapping[str, dict[str, Any]],
                       log: MutableMapping[str, Any]) -> None:
-    """Remove images with non-image file extensions. Modifies [js] and [log]
+    """
+    Remove images with non-image file extensions. Modifies [js] and [log]
     in-place.
 
     Args:
@@ -434,7 +468,8 @@ def remove_nonexistent_images(js: MutableMapping[str, dict[str, Any]],
                               log: MutableMapping[str, Any],
                               check_local: str | None = None,
                               num_threads: int = 50) -> None:
-    """Remove images that don't actually exist locally or on Azure Blob Storage.
+    """
+    Remove images that don't actually exist locally or on Azure Blob Storage.
     Modifies [js] and [log] in-place.
 
     Args:
@@ -443,6 +478,7 @@ def remove_nonexistent_images(js: MutableMapping[str, dict[str, Any]],
         check_local: optional str, path to local dir
         num_threads: int, number of threads to use for checking blob existence
     """
+    
     def check_local_then_azure(local_path: str, blob_url: str) -> bool:
         return (os.path.exists(local_path)
                 or sas_blob_utils.check_blob_exists(blob_url))
@@ -487,7 +523,8 @@ def remove_nonexistent_images(js: MutableMapping[str, dict[str, Any]],
 def remove_images_insufficient_locs(js: MutableMapping[str, dict[str, Any]],
                                     log: MutableMapping[str, Any],
                                     min_locs: int) -> None:
-    """Removes images that have labels that don't have at least min_locs
+    """
+    Removes images that have labels that don't have at least min_locs
     locations. Modifies [js] and [log] in-place.
 
     Args:
@@ -496,6 +533,7 @@ def remove_images_insufficient_locs(js: MutableMapping[str, dict[str, Any]],
         min_locs: optional int, minimum # of locations that each label must
             have in order to be included
     """
+    
     # 1st pass: populate label_to_locs
     # label (tuple of str) => set of (dataset, location)
     label_to_locs = defaultdict(set)
@@ -519,7 +557,8 @@ def remove_images_insufficient_locs(js: MutableMapping[str, dict[str, Any]],
 
 def filter_images(output_js: Mapping[str, Mapping[str, Any]], label: str,
                   datasets: Container[str] | None = None) -> set[str]:
-    """Finds image files from output_js that have a given label and are from
+    """
+    Finds image files from output_js that have a given label and are from
     a set of datasets.
 
     Args:
@@ -530,6 +569,7 @@ def filter_images(output_js: Mapping[str, Mapping[str, Any]], label: str,
 
     Returns: set of str, image files that match the filtering criteria
     """
+    
     img_files: set[str] = set()
     for img_file, img_dict in output_js.items():
         cond1 = (label in img_dict['label'])
@@ -542,12 +582,14 @@ def filter_images(output_js: Mapping[str, Mapping[str, Any]], label: str,
 def sample_with_priority(input_js: Mapping[str, Mapping[str, Any]],
                          output_js: Mapping[str, dict[str, Any]]
                          ) -> dict[str, dict[str, Any]]:
-    """Uses the optional 'max_count' and 'prioritize' keys from the input
+    """
+    Uses the optional 'max_count' and 'prioritize' keys from the input
     classification labels specifications JSON file to sample images for each
     classification label.
 
     Returns: dict, keys are image file names, sorted alphabetically
     """
+    
     filtered_imgs: set[str] = set()
     for label, spec_dict in input_js.items():
         if 'prioritize' in spec_dict and 'max_count' not in spec_dict:
@@ -585,8 +627,10 @@ def sample_with_priority(input_js: Mapping[str, Mapping[str, Any]],
     return output_js
 
 
+#%% Command-line driver
+
 def _parse_args() -> argparse.Namespace:
-    """Parses arguments."""
+    
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Validates JSON.')
@@ -636,6 +680,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
+    
     args = _parse_args()
     main(label_spec_json_path=args.label_spec_json,
          taxonomy_csv_path=args.taxonomy_csv,
@@ -647,9 +692,3 @@ if __name__ == '__main__':
          json_indent=args.json_indent,
          seed=args.seed,
          mislabeled_images_dir=args.mislabeled_images)
-
-# main(
-#     label_spec_json_path='idfg_classes.json',
-#     taxonomy_csv_path='../../camera-traps-private/camera_trap_taxonomy_mapping.csv',
-#     output_dir='run_idfg',
-#     json_indent=4)

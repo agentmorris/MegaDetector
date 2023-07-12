@@ -1,26 +1,36 @@
-r"""
-Update the list of known mislabeled images in MegaDB.
+########
+#
+# save_mislabeled.py
+#
+# Update the list of known mislabeled images in MegaDB.
+#
+# List of known mislabeled images is stored in Azure Blob Storage.
+# * storage account: cameratrapsc
+# * container: classifier-training
+# * blob: megadb_mislabeled/{dataset}.csv, one file per dataset
+# 
+# Each file megadb_mislabeled/{dataset}.csv has two columns:
+#    
+# * 'file': str, blob name
+#
+# * 'correct_class': optional str, correct dataset class
+#
+#   if empty, indicates that the existing class in MegaDB is inaccurate, but
+#   the correct class is unknown.
+#
+# This script assumes that the classifier-training container is mounted locally.
+# 
+# Takes as input a CSV file (output from Timelapse) with the following columns:
+#
+# * 'File': str, <blob_basename>
+# * 'RelativePath': str, <dataset>\<blob_dirname>
+# * 'mislabeled': str, values in ['true', 'false']
+# * 'correct_class': either empty or str
+#
+########
 
-List of known mislabeled images is stored in Azure Blob Storage.
-- storage account: cameratrapsc
-- container: classifier-training
-- blob: megadb_mislabeled/{dataset}.csv, one file per dataset
+#%% Imports
 
-Each file megadb_mislabeled/{dataset}.csv has two columns:
-- 'file': str, blob name
-- 'correct_class': optional str, correct dataset class
-    - if empty, indicates that the existing class in MegaDB is inaccurate, but
-      the correct class is unknown
-
-This script assumes that the classifier-training container is mounted locally.
-
-Takes as input a CSV file (output from Timelapse) with the following columns:
-- 'File': str, <blob_basename>
-- 'RelativePath': str, <dataset>\<blob_dirname>, note the use of '\' because of
-    Windows
-- 'mislabeled': str, values in ['true', 'false']
-- 'correct_class': either empty or str
-"""
 import argparse
 import os
 import pathlib
@@ -28,8 +38,10 @@ import pathlib
 import pandas as pd
 
 
+#%% Main function
+
 def update_mislabeled_images(container_path: str, input_csv_path: str) -> None:
-    """Main function."""
+    
     df = pd.read_csv(input_csv_path, index_col=False)
 
     # error checking
@@ -50,6 +62,7 @@ def update_mislabeled_images(container_path: str, input_csv_path: str) -> None:
     df['file'] = df['blob_dirname'] + '/' + df['File']
 
     for ds, ds_df in df.groupby('dataset'):
+        
         sr_path = os.path.join(container_path, 'megadb_mislabeled', f'{ds}.csv')
         if os.path.exists(sr_path):
             old_sr = pd.read_csv(sr_path, index_col='file', squeeze=True)
@@ -73,8 +86,10 @@ def update_mislabeled_images(container_path: str, input_csv_path: str) -> None:
         new_sr.to_csv(sr_path, index=True)
 
 
+#%% Command-line driver
+
 def _parse_args() -> argparse.Namespace:
-    """Parses arguments."""
+    
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Merges classification results with Batch Detection API '
@@ -89,6 +104,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
+    
     args = _parse_args()
     update_mislabeled_images(container_path=args.container_path,
                              input_csv_path=args.input_csv)

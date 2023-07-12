@@ -1,9 +1,16 @@
-"""
-Utility functions useful for training a classifier.
+########
+# 
+# train_utils.py
+#
+# Utility functions useful for training a classifier.
+#
+# This script should NOT depend on any other file within this repo. It should
+# especially be agnostic to PyTorch vs. TensorFlow.
+#
+########
 
-This script should NOT depend on any other file within this repo. It should
-especially be agnostic to PyTorch vs. TensorFlow.
-"""
+#%% Imports
+
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -20,15 +27,21 @@ import PIL.Image
 import scipy.interpolate
 
 
+#%% Classes
+
 @dataclasses.dataclass(order=True)
 class HeapItem:
-    """A wrapper over non-comparable data with a comparable priority value."""
+    """
+    A wrapper over non-comparable data with a comparable priority value.
+    """
+    
     priority: Any
     data: Any = dataclasses.field(compare=False, repr=False)
 
 
 def add_to_heap(h: list[Any], item: HeapItem, k: Optional[int] = None) -> None:
-    """Tracks the max k elements using a heap.
+    """
+    Tracks the max k elements using a heap.
 
     We use a min-heap for this task. When a new element comes in, we compare it
     to the smallest node in the heap, h[0]. If the new value is greater than
@@ -39,22 +52,30 @@ def add_to_heap(h: list[Any], item: HeapItem, k: Optional[int] = None) -> None:
         item: HeapItem
         k: int, desired capacity of the heap, or None for no limit
     """
+    
     if k is None or len(h) < k:
         heapq.heappush(h, item)
     else:
         heapq.heappushpop(h, item)
 
 
+#%% Functions
+
 def prefix_all_keys(d: Mapping[str, Any], prefix: str) -> dict[str, Any]:
-    """Returns a new dict where the keys are prefixed by <prefix>."""
+    """
+    Returns a new dict where the keys are prefixed by <prefix>.
+    """
+    
     return {f'{prefix}{k}': v for k, v in d.items()}
 
 
 def fig_to_img(fig: matplotlib.figure.Figure) -> np.ndarray:
-    """Converts a matplotlib figure to an image represented by a numpy array.
+    """
+    Converts a matplotlib figure to an image represented by a numpy array.
     
     Returns: np.ndarray, type uint8, shape [H, W, 3]
     """
+    
     with io.BytesIO() as b:
         fig.savefig(b, transparent=False, bbox_inches='tight', pad_inches=0,
                     format='png')
@@ -81,6 +102,7 @@ def imgs_with_confidences(imgs_list: list[tuple[Any, ...]],
         fig: matplotlib.figure.Figure
         img_files: list of str
     """
+    
     imgs, img_files, tags, titles = [], [], [], []
     for img, label_id, topk_conf, topk_preds, img_file in imgs_list:
         imgs.append(img)
@@ -102,7 +124,8 @@ def plot_img_grid(imgs: Sequence[Any], row_h: float, col_w: float,
                   tags: Optional[Sequence[str]] = None,
                   titles: Optional[Sequence[str]] = None
                   ) -> matplotlib.figure.Figure:
-    """Plots a grid of images.
+    """
+    Plots a grid of images.
 
     Args:
         imgs: list of images, each image is either an array or a PIL Image,
@@ -116,6 +139,7 @@ def plot_img_grid(imgs: Sequence[Any], row_h: float, col_w: float,
 
     Returns: matplotlib.figure.Figure
     """
+    
     # input validation
     num_images = len(imgs)
     if tags is not None:
@@ -152,7 +176,8 @@ def plot_img_grid(imgs: Sequence[Any], row_h: float, col_w: float,
 
 
 def load_splits(splits_json_path: str) -> dict[str, set[tuple[str, str]]]:
-    """Loads location splits from JSON file and assert that there are no
+    """
+    Loads location splits from JSON file and assert that there are no
     overlaps between splits.
 
     Args:
@@ -160,6 +185,7 @@ def load_splits(splits_json_path: str) -> dict[str, set[tuple[str, str]]]:
 
     Returns: dict, maps split to set of (dataset, location) tuples
     """
+    
     with open(splits_json_path, 'r') as f:
         split_to_locs_js = json.load(f)
     split_to_locs = {
@@ -208,6 +234,7 @@ def load_dataset_csv(dataset_csv_path: str,
         label_names: list of str, label names in order of label id
         split_to_locs: dict, maps split to set of (dataset, location) tuples
     """
+    
     # read in dataset CSV and create merged (dataset, location) col
     df = pd.read_csv(dataset_csv_path, index_col=False, float_precision='high')
     df['dataset_location'] = list(zip(df['dataset'], df['location']))
@@ -287,6 +314,7 @@ def recall_from_confusion_matrix(
 
     Returns: dict, label_name => recall
     """
+    
     result = {
         label_name: confusion_matrix[i, i] / (confusion_matrix[i].sum() + 1e-8)
         for i, label_name in enumerate(label_names)

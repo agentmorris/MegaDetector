@@ -1,15 +1,23 @@
-"""
-Converts CSV to JSON format for label specification.
-
-There are 3 possible values for the 'type' column in the CSV:
-- "row": this selects a specific rowfrom the master taxonomy CSV
-    content syntax: <dataset_name>|<dataset_label>
-- "datasettaxon": this selects all animals in a taxon from a particular dataset
-    content syntax: <dataset_name>|<taxon_level>|<taxon_name>
-- <taxon_level>: this selects all animals in a taxon across all datasets
-    content syntax: <taxon_name>
-
-Example CSV input:
+########
+#
+# csv_to_json.py
+#
+# Converts CSV to JSON format for label specification.
+# 
+# There are 3 possible values for the 'type' column in the CSV:
+#
+# - "row": this selects a specific rowfrom the master taxonomy CSV
+#     content syntax: <dataset_name>|<dataset_label>
+#
+# - "datasettaxon": this selects all animals in a taxon from a particular dataset
+#     content syntax: <dataset_name>|<taxon_level>|<taxon_name>
+#
+# - <taxon_level>: this selects all animals in a taxon across all datasets
+#     content syntax: <taxon_name>
+# 
+# Example CSV input:
+#
+"""   
     # comment lines starting with '#' are allowed
     output_label,type,content
 
@@ -32,9 +40,11 @@ Example CSV input:
 
     !bird,row,idfg_swwlf_2019|turkey
     !bird,genus,meleagris
-
-Example JSON output:
-
+"""
+#
+# Example JSON output:
+#
+"""    
     {
         "cervid": {
             "dataset_labels": {
@@ -88,6 +98,11 @@ Example JSON output:
         }
     }
 """
+#
+########
+
+#%% Imports
+
 from __future__ import annotations
 
 import argparse
@@ -98,6 +113,8 @@ from typing import Any
 import pandas as pd
 
 
+#%% Main function
+
 def main():
     args = _parse_args()
     js = csv_to_jsondict(args.input_csv_file)
@@ -107,25 +124,12 @@ def main():
         json.dump(js, f, indent=args.json_indent)
 
 
-def _parse_args() -> argparse.Namespace:
-    """Parses arguments."""
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description='Converts CSV to JSON format for label specification.')
-    parser.add_argument(
-        'input_csv_file',
-        help='path to CSV file containing label specification')
-    parser.add_argument(
-        'output_json_path',
-        help='path to save converted JSON file')
-    parser.add_argument(
-        '--json-indent', type=int,
-        help='number of spaces to use for JSON indent (default no indent)')
-    return parser.parse_args()
-
-
+#%% Support functions
 def parse_csv_row(obj: dict[str, Any], rowtype: str, content: str) -> None:
-    """Parses a row in the CSV."""
+    """
+    Parses a row in the CSV.
+    """
+    
     if rowtype == 'row':
         if 'dataset_labels' not in obj:
             obj['dataset_labels'] = defaultdict(list)
@@ -165,7 +169,10 @@ def parse_csv_row(obj: dict[str, Any], rowtype: str, content: str) -> None:
 
 
 def csv_to_jsondict(csv_path: str) -> dict[str, dict[str, Any]]:
-    """Converts CSV to json-style dictionary"""
+    """
+    Converts CSV to json-style dictionary.
+    """
+    
     df = pd.read_csv(csv_path, comment='#', skip_blank_lines=True)
     assert (df.columns == ['output_label', 'type', 'content']).all()
 
@@ -186,7 +193,10 @@ def csv_to_jsondict(csv_path: str) -> dict[str, dict[str, Any]]:
 
 
 def order_spec_dict(spec_dict: dict[str, Any]) -> dict[str, Any]:
-    """Returns spec_dict with keys in a specific order. Requires Python 3.6+."""
+    """
+    Returns spec_dict with keys in a specific order.
+    """
+    
     if 'exclude' in spec_dict:
         spec_dict['exclude'] = order_spec_dict(spec_dict['exclude'])
     ordered_spec_dict: dict[str, Any] = {}
@@ -194,6 +204,25 @@ def order_spec_dict(spec_dict: dict[str, Any]) -> dict[str, Any]:
         if key in spec_dict:
             ordered_spec_dict[key] = spec_dict[key]
     return ordered_spec_dict
+
+
+#%% Command-line driver
+
+def _parse_args() -> argparse.Namespace:
+    
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description='Converts CSV to JSON format for label specification.')
+    parser.add_argument(
+        'input_csv_file',
+        help='path to CSV file containing label specification')
+    parser.add_argument(
+        'output_json_path',
+        help='path to save converted JSON file')
+    parser.add_argument(
+        '--json-indent', type=int,
+        help='number of spaces to use for JSON indent (default no indent)')
+    return parser.parse_args()
 
 
 if __name__ == '__main__':

@@ -1,37 +1,56 @@
-r"""
-Identify images that may have been mislabeled.
-
-A "mislabeled candidate" is defined as an image meeting both criteria:
-- according to the ground-truth label, the model made an incorrect prediction
-- the model's prediction confidence exceeds its confidence for the ground-truth
-    label by at least <margin>
-
-This script outputs for each dataset a text file containing the filenames of
-mislabeled candidates, one per line. The text files are saved to:
-    <logdir>/mislabeled_candidates_{split}_{dataset}.txt
-
-To this list of files can then be passed to AzCopy to be downloaded:
-    azcopy cp "http://<url_of_container>?<sas_token>" "/save/files/here" \
-        --list-of-files "/path/to/mislabeled_candidates_{split}_{dataset}.txt"
-
-To save the filename as <dataset_name>/<blob_name> (instead of just <blob_name>
-by default), pass the --include-dataset-in-filename flag. Then, the images can
-be downloaded with
+########
+#
+# identify_mislabeled_candidates.py
+#
+# Identify images that may have been mislabeled.
+# 
+# A "mislabeled candidate" is defined as an image meeting both criteria:
+#     
+# * according to the ground-truth label, the model made an incorrect prediction
+#
+# * the model's prediction confidence exceeds its confidence for the ground-truth
+#   label by at least <margin>
+# 
+# This script outputs for each dataset a text file containing the filenames of
+# mislabeled candidates, one per line. The text files are saved to:
+#    
+#     <logdir>/mislabeled_candidates_{split}_{dataset}.txt
+# 
+# To this list of files can then be passed to AzCopy to be downloaded:
+#
+"""  
+azcopy cp "http://<url_of_container>?<sas_token>" "/save/files/here" \
+         --list-of-files "/path/to/mislabeled_candidates_{split}_{dataset}.txt"
+"""
+# 
+# To save the filename as <dataset_name>/<blob_name> (instead of just <blob_name>
+# by default), pass the --include-dataset-in-filename flag. Then, the images can
+# be downloaded with:
+#
+"""
     python data_management/megadb/download_images.py txt \
         "/path/to/mislabeled_candidates_{split}_{dataset}.txt" \
         /save/files/here \
         --threads 50
+"""
+#
+# Assumes the following directory layout:
+#     <base_logdir>/
+#         label_index.json
+#         <logdir>/
+#             outputs_{split}.csv.gz
+# 
+########
 
-Assumes the following directory layout:
-    <base_logdir>/
-        label_index.json
-        <logdir>/
-            outputs_{split}.csv.gz
+#%% Example usage
 
-Example usage:
+"""
     python identify_mislabeled_candidates.py <base_logdir>/<logdir> \
         --margin 0.5 --splits val test
 """
+
+#%% Imports
+
 from __future__ import annotations
 
 import argparse
@@ -44,8 +63,11 @@ import pandas as pd
 from tqdm import tqdm
 
 
+#%% Main function
+
 def main(logdir: str, splits: Iterable[str], margin: float,
          include_dataset_in_filename: bool) -> None:
+    
     # load files
     logdir = os.path.normpath(logdir)  # removes any trailing slash
     base_logdir = os.path.dirname(logdir)
@@ -81,11 +103,15 @@ def main(logdir: str, splits: Iterable[str], margin: float,
                     f.write(img_file + '\n')
 
 
+#%% Support functions
+
 def get_candidates_df(outputs_csv_path: str, label_names: Sequence[str],
                       margin: float) -> pd.DataFrame:
-    """Returns a DataFrame containing crops only from mislabeled candidate
+    """
+    Returns a DataFrame containing crops only from mislabeled candidate
     images.
     """
+    
     df = pd.read_csv(outputs_csv_path, float_precision='high')
     all_rows = range(len(df))
     df['pred'] = df[label_names].idxmax(axis=1)
@@ -96,8 +122,10 @@ def get_candidates_df(outputs_csv_path: str, label_names: Sequence[str],
     return candidates_df
 
 
+#%% Command-line driver
+
 def _parse_args() -> argparse.Namespace:
-    """Parses arguments."""
+
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Identify mislabeled candidate images.')
@@ -117,6 +145,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
+    
     args = _parse_args()
     main(logdir=args.logdir, splits=args.splits, margin=args.margin,
          include_dataset_in_filename=args.include_dataset_in_filename)

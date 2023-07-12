@@ -1,8 +1,18 @@
+########
+#
+# analyze_failed_images.py
+#
+########
+
+#%% Example usage
+
 """
-Example usage:
     python analyze_failed_images.py failed.json \
         -a ACCOUNT -c CONTAINER -s SAS_TOKEN
 """
+
+#%% Imports and constants
+
 from __future__ import annotations
 
 import argparse
@@ -23,34 +33,8 @@ from md_utils import sas_blob_utils
 
 ImageFile.LOAD_TRUNCATED_IMAGES = False
 
-def _parse_args() -> argparse.Namespace:
-    """Parses arguments."""
-    parser = argparse.ArgumentParser(
-        description='Analyze a list of images that failed to download or crop.')
-    parser.add_argument(
-        'failed_images', metavar='URL_OR_PATH',
-        help='URL or path to text or JSON file containing list of image paths')
-    parser.add_argument(
-        '-k', '--json-keys', nargs='*',
-        help='list of keys in JSON file containing image paths')
-    parser.add_argument(
-        '-a', '--account',
-        help='name of Azure Blob Storage account. If not given, then image '
-             'paths are assumed to start with the dataset name, so we can look '
-             'up the account from MegaDB.')
-    parser.add_argument(
-        '-c', '--container',
-        help='name of Azure Blob Storage container. If not given, then image '
-             'paths are assumed to start with the dataset name, so we can look '
-             'up the container from MegaDB.')
-    parser.add_argument(
-        '-s', '--sas-token',
-        help='optional SAS token (without leading "?") if the container is not '
-             'publicly accessible. If account and container not given, then '
-             'image paths are assumed to start with the dataset name, so we '
-             'can look up the SAS Token from MegaDB.')
-    return parser.parse_args()
 
+#%% Support functions
 
 def check_image_condition(img_path: str,
                           truncated_images_lock: threading.Lock,
@@ -79,6 +63,7 @@ def check_image_condition(img_path: str,
         'bad': image exists, but cannot be opened even when setting
             ImageFile.LOAD_TRUNCATED_IMAGES=True
     """
+    
     if (account is None) or (container is None) or (datasets_table is not None):
         assert account is None
         assert container is None
@@ -112,7 +97,7 @@ def check_image_condition(img_path: str,
             with Image.open(stream) as img:
                 img.load()
         return img_file, 'good'
-    except OSError as e:  # PIL.UnidentifiedImageError is a subclass of OSError
+    except OSError:  # PIL.UnidentifiedImageError is a subclass of OSError
         try:
             stream.seek(0)
             with truncated_images_lock:
@@ -125,6 +110,8 @@ def check_image_condition(img_path: str,
             tqdm.write(f'Unable to load {img_file}. {exception_type}: {e}.')
             return img_file, 'bad'
 
+
+#%% Main function
 
 def analyze_images(url_or_path: str, json_keys: Optional[Sequence[str]] = None,
                    account: Optional[str] = None,
@@ -147,6 +134,7 @@ def analyze_images(url_or_path: str, json_keys: Optional[Sequence[str]] = None,
         sas_token: str, optional SAS token (without leading '?') if the
             container is not publicly accessible
     """
+    
     datasets_table = None
     if (account is None) or (container is None):
         assert account is None
@@ -201,7 +189,40 @@ def analyze_images(url_or_path: str, json_keys: Optional[Sequence[str]] = None,
         pprint(sorted(img_list))
 
 
+#%% Command-line driver
+
+def _parse_args() -> argparse.Namespace:
+    
+    
+    parser = argparse.ArgumentParser(
+        description='Analyze a list of images that failed to download or crop.')
+    parser.add_argument(
+        'failed_images', metavar='URL_OR_PATH',
+        help='URL or path to text or JSON file containing list of image paths')
+    parser.add_argument(
+        '-k', '--json-keys', nargs='*',
+        help='list of keys in JSON file containing image paths')
+    parser.add_argument(
+        '-a', '--account',
+        help='name of Azure Blob Storage account. If not given, then image '
+             'paths are assumed to start with the dataset name, so we can look '
+             'up the account from MegaDB.')
+    parser.add_argument(
+        '-c', '--container',
+        help='name of Azure Blob Storage container. If not given, then image '
+             'paths are assumed to start with the dataset name, so we can look '
+             'up the container from MegaDB.')
+    parser.add_argument(
+        '-s', '--sas-token',
+        help='optional SAS token (without leading "?") if the container is not '
+             'publicly accessible. If account and container not given, then '
+             'image paths are assumed to start with the dataset name, so we '
+             'can look up the SAS Token from MegaDB.')
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
+    
     args = _parse_args()
     analyze_images(url_or_path=args.failed_images, json_keys=args.json_keys,
                    account=args.account, container=args.container,

@@ -1,19 +1,30 @@
-r"""Aggregate probabilities from a classifier's outputs according to a mapping
-from the desired (target) categories to the classifier's categories.
+########
+#
+# aggregate_classifier_probs.py
+#
+# Aggregate probabilities from a classifier's outputs according to a mapping
+# from the desired (target) categories to the classifier's categories.
+#
+# Using the mapping, create a new version of the classifier output CSV with
+# probabilities summed within each target category. Also output a new
+# "index-to-name" JSON file which identifies the sequential order of the target
+# categories.
+# 
+########
 
-Using the mapping, create a new version of the classifier output CSV with
-probabilities summed within each target category. Also output a new
-"index-to-name" JSON file which identifies the sequential order of the target
-categories.
+#%%  Example usage
 
-Example usage:
-
+"""
 python aggregate_classifier_probs.py \
     classifier_output.csv.gz \
     --target-mapping target_to_classifier_labels.json \
     --output-csv classifier_output_remapped.csv.gz \
     --output-label-index label_index_remapped.json
 """
+
+
+#%% Imports
+
 from __future__ import annotations
 
 import argparse
@@ -22,11 +33,15 @@ import json
 import pandas as pd
 from tqdm import tqdm
 
+
+#%% Main function
+
 def main(classifier_results_csv_path: str,
          target_mapping_json_path: str,
          output_csv_path: str,
          output_label_index_json_path: str) -> None:
-    """Main function.
+    """
+    Main function.
 
     Because the output CSV is often very large, we process it in chunks of 1000
     rows at a time.
@@ -63,8 +78,12 @@ def main(classifier_results_csv_path: str,
         json.dump(dict(enumerate(target_names)), f, indent=1)
 
 
+#%% Command-line driver
+
 def _parse_args() -> argparse.Namespace:
-    """Parses arguments."""
+    """
+    Parses arguments.
+    """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Aggregate classifier probabilities to target classes.')

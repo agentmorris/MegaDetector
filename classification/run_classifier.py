@@ -1,31 +1,41 @@
-r"""Run a species classifier.
+########
+#
+# Run a species classifier.
+#
+# This script is the classifier counterpart to detection/run_tf_detector_batch.py.
+# This script takes as input:
+# 1) a detections JSON file, usually the output of run_tf_detector_batch.py or the
+#     output of the Batch API in the "Batch processing API output format"
+# 2) a path to a directory containing crops of bounding boxes from the detections
+#     JSON file
+# 3) a path to a PyTorch TorchScript compiled model file
+# 4) (if the model is EfficientNet) an image size
+#
+# By default, this script overwrites the detections JSON file, adding in
+# classification results. To output a new JSON file, use the --output argument.
+#
+########
 
-This script is the classifier counterpart to detection/run_tf_detector_batch.py.
-This script takes as input:
-1) a detections JSON file, usually the output of run_tf_detector_batch.py or the
-    output of the Batch API in the "Batch processing API output format"
-2) a path to a directory containing crops of bounding boxes from the detections
-    JSON file
-3) a path to a PyTorch TorchScript compiled model file
-4) (if the model is EfficientNet) an image size
+#%% Example usage
 
-By default, this script overwrites the detections JSON file, adding in
-classification results. To output a new JSON file, use the --output argument.
-
-Example usage:
+"""
     python run_classifier.py \
         detections.json \
         /path/to/crops \
         /path/to/model.pt \
         --image-size 224
 """
+
+#%% Imports
+
 from __future__ import annotations
 
 import argparse
-from collections.abc import Callable, Sequence
 import json
 import os
-from typing import Any, Optional
+from tqdm import tqdm
+from typing import Any
+from collections.abc import Callable, Sequence
 
 import pandas as pd
 import PIL
@@ -33,13 +43,16 @@ import torch
 import torch.utils
 import torchvision as tv
 from torchvision.datasets.folder import default_loader
-from tqdm import tqdm
 
 from classification import train_classifier
 
 
+#%% Classes
+
 class SimpleDataset(torch.utils.data.Dataset):
-    """Very simple dataset."""
+    """
+    Very simple dataset.
+    """
 
     def __init__(self, img_files: Sequence[str],
                  images_dir: str | None = None,
@@ -67,13 +80,16 @@ class SimpleDataset(torch.utils.data.Dataset):
         return len(self.img_files)
 
 
+#%% Support functions
+
 def create_loader(cropped_images_dir: str,
                   detections_json_path: str | None,
                   img_size: int,
                   batch_size: int,
                   num_workers: int
                   ) -> torch.utils.data.DataLoader:
-    """Creates a DataLoader.
+    """
+    Creates a DataLoader.
 
     Args:
         cropped_images_dir: str, path to image crops
@@ -83,6 +99,7 @@ def create_loader(cropped_images_dir: str,
         batch_size: int, batch size in dataloader
         num_workers: int, # of workers in dataloader
     """
+    
     crop_files = []
 
     if detections_json_path is None:
@@ -128,6 +145,8 @@ def create_loader(cropped_images_dir: str,
     return loader
 
 
+#%% Main function
+
 def main(model_path: str,
          cropped_images_dir: str,
          output_csv_path: str,
@@ -137,12 +156,11 @@ def main(model_path: str,
          batch_size: int,
          num_workers: int,
          device_id: int | None = None) -> None:
-    """Main function."""
     
     # Evaluating with accimage is much faster than Pillow or Pillow-SIMD, but accimage
     # is Linux-only.
     try:
-        import accimage
+        import accimage # noqa
         tv.set_image_backend('accimage')
     except:
         print('Warning: could not start accimage backend (ignore this if you\'re not using Linux)')
@@ -173,7 +191,8 @@ def test_epoch(model: torch.nn.Module,
                device: torch.device,
                label_names: Sequence[str] | None,
                output_csv_path: str) -> None:
-    """Runs for 1 epoch.
+    """
+    Runs for 1 epoch.
 
     Writes results to the output CSV in batches.
 
@@ -184,6 +203,7 @@ def test_epoch(model: torch.nn.Module,
         label_names: optional list of str, label names
         output_csv_path: str
     """
+    
     # set dropout and BN layers to eval mode
     model.eval()
 
@@ -208,8 +228,10 @@ def test_epoch(model: torch.nn.Module,
                 mode = 'a'
 
 
+#%% Command-line driver
+
 def _parse_args() -> argparse.Namespace:
-    """Parses arguments."""
+
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Run classifier.')
@@ -248,6 +270,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
+    
     args = _parse_args()
     main(model_path=args.model,
          cropped_images_dir=args.crops_dir,
