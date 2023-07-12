@@ -10,7 +10,6 @@
 #
 # Image files are copied, not moved.
 #
-#
 ### Output structure
 #
 # Preserves relative paths within each of those folders; cannot be used with .json
