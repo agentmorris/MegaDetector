@@ -1,6 +1,6 @@
 ########
 #
-# td_detector.py
+# tf_detector.py
 #
 # Module containing the class TFDetector for loading a TensorFlow detection model and
 # running inference.

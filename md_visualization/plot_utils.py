@@ -1,6 +1,6 @@
 ########
 #
-# plut_utils.py
+# plot_utils.py
 # 
 # Utility functions for plotting.
 #
@@ -8,12 +8,17 @@
 # Thus, the matplotlib.figure.Figure objects returned by the functions here do not
 # need to be "closed" with `plt.close(fig)`.
 # 
+########
+
+#%% Imports
 
 from typing import Any, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import matplotlib.figure  # this also imports mpl.{cm, axes, colors}
 
+
+#%% Plotting functions
 
 def plot_confusion_matrix(
         matrix: np.ndarray,

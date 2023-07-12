@@ -1,5 +1,7 @@
 ########
 #
+# merge_classification_detection_output.py
+#
 # Merges classification results with Batch Detection API outputs.
 #
 # This script takes 2 main files as input:

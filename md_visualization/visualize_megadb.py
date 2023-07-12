@@ -1,3 +1,13 @@
+########
+#
+# visualize_megadb.py
+#
+# Create visual previews of images/sequences in MegaDB.
+#
+########
+
+#%% Imports
+
 import argparse
 import json
 import os
@@ -14,7 +24,10 @@ from md_utils.write_html_image_list import write_html_image_list
 from md_visualization import visualization_utils as vis_utils
 
 
+#%% Support functions
+
 def render_image_info(rendering, args):
+    
     storage_client = rendering['storage_client']
     image_obj = io.BytesIO()
 
@@ -37,6 +50,7 @@ def render_image_info(rendering, args):
 
 
 def visualize_sequences(datasets_table, sequences, args):
+    
     num_images = 0
 
     images_html = []
@@ -109,7 +123,10 @@ def visualize_sequences(datasets_table, sequences, args):
     )
 
 
+#%% Command-line driver
+
 def main():
+    
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'megadb_entries', type=str,

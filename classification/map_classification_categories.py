@@ -1,5 +1,7 @@
 ########
 #
+# map_classification_categories.py
+#
 # Maps a classifier's output categories to desired target categories.
 # 
 # In this file, we use the following terminology:

@@ -2,7 +2,6 @@
 #
 # run_detector.py
 #
-#
 # Module to run an animal detection model on images.
 # 
 # The main function in this script also renders the predicted
@@ -41,7 +40,6 @@
 # https://github.com/tensorflow/models/blob/master/research/object_detection/inference/detection_inference.py
 # 
 ########
-
 
 #%% Constants, imports, environment
 

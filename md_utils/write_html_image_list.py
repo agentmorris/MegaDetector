@@ -1,6 +1,6 @@
 ########
 #
-# function write_html_image_list(filename,imageFilenames,titles, options)
+# write_html_image_list.py
 #
 # Given a list of image file names, writes an HTML file that
 # shows all those images, with optional one-line headers above each.
@@ -12,10 +12,7 @@
 #
 # Tries to convert absolute to relative paths if options.makeRelative == 2.
 #
-# Owner: Dan Morris (agentmorris@microsoft.com)
-#
 ########
-
 
 #%% Constants and imports
 

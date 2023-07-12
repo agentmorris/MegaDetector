@@ -2,7 +2,6 @@
 #
 # taxonomy_csv_checker.py
 #
-#
 # Checks the taxonomy CSV file to make sure that for each row:
 #
 # 1) The 'taxonomy_level' column matches the lowest-level taxon level in the

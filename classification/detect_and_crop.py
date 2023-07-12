@@ -1,5 +1,7 @@
 ########
 #
+# detect_and_crop.py
+#
 # Run MegaDetector on images via Batch API, then save crops of the detected
 # bounding boxes.
 # 

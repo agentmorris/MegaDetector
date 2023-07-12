@@ -1,9 +1,13 @@
+########
 #
 # copy_checkpoints.py
 #
 # Run this script with specified source_dir and target_dir while the model is training to make a copy
 # of every checkpoint (checkpoints are kept once an hour by default and is difficult to adjust)
 #
+########
+
+#%% Imports and constants
 
 import time
 import os
@@ -16,6 +20,8 @@ target_dir = '/datadrive/megadetectorv3/experiments/0425_checkpoints'
 
 os.makedirs(target_dir, exist_ok=True)
 
+
+#%% Main loop
 
 num_checks = 0
 
