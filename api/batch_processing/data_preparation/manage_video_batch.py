@@ -114,8 +114,8 @@ for fn in low_frame_videos:
     
 #%% Process images like we would for any other camera trap job
 
-# ...typically using manage_local_batch.py, but do this however you like, as long
-# as you get a results file at the end.
+# ...typically using manage_local_batch.py or manage_local_batch.ipynb, but do this however 
+# you like, as long as you get a results file at the end.
 #
 # If you do RDE, remember to use the second folder from the bottom, rather than the
 # bottom-most folder.
@@ -168,3 +168,81 @@ if False:
     
     input_folder = '/datadrive/tmp/organization/data'
     video_filenames = video_utils.find_videos(input_folder,recursive=True)
+
+
+#%% End notebook: turn this script into a notebook (how meta!)
+
+import os
+import nbformat as nbf
+
+input_py_file = os.path.expanduser(
+    '~/git/MegaDetector/api/batch_processing/data_preparation/manage_video_batch.py')
+assert os.path.isfile(input_py_file)
+output_ipynb_file = input_py_file.replace('.py','.ipynb')
+
+nb_header = '# Managing a local MegaDetector video batch'
+
+nb_header += '\n'
+
+nb_header += \
+"""
+This notebook represents an interactive process for running MegaDetector on large batches of videos, including typical and optional postprocessing steps.
+
+This notebook is auto-generated from manage_video_batch.py (a cell-delimited .py file that is used the same way, typically in Spyder or VS Code).
+
+"""
+
+with open(input_py_file,'r') as f:
+    lines = f.readlines()
+
+nb = nbf.v4.new_notebook()
+nb['cells'].append(nbf.v4.new_markdown_cell(nb_header))
+
+i_line = 0
+
+# Exclude everything before the first cell
+while(not lines[i_line].startswith('#%%')):
+    i_line += 1
+
+current_cell = []
+
+def write_code_cell(c):
+    
+    first_non_empty_line = None
+    last_non_empty_line = None
+    
+    for i_code_line,code_line in enumerate(c):
+        if len(code_line.strip()) > 0:
+            if first_non_empty_line is None:
+                first_non_empty_line = i_code_line
+            last_non_empty_line = i_code_line
+            
+    # Remove the first [first_non_empty_lines] from the list
+    c = c[first_non_empty_line:]
+    last_non_empty_line -= first_non_empty_line
+    c = c[:last_non_empty_line+1]
+    
+    nb['cells'].append(nbf.v4.new_code_cell('\n'.join(c)))
+        
+while(True):    
+            
+    line = lines[i_line].rstrip()
+    
+    if 'end notebook' in line.lower():
+        break
+    
+    if lines[i_line].startswith('#%% '):
+        if len(current_cell) > 0:
+            write_code_cell(current_cell)
+            current_cell = []
+        markdown_content = line.replace('#%%','##')
+        nb['cells'].append(nbf.v4.new_markdown_cell(markdown_content))
+    else:
+        current_cell.append(line)
+
+    i_line += 1
+
+# Add the last cell
+write_code_cell(current_cell)
+
+nbf.write(nb,output_ipynb_file)

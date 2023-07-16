@@ -14,6 +14,7 @@ import tempfile
 import argparse
 import itertools
 import json
+import shutil
 
 from detection import run_detector_batch
 from md_visualization import visualize_detector_output
@@ -55,6 +56,16 @@ class ProcessVideoOptions:
     # Should we keep the extracted frames?
     keep_extracted_frames = False
     
+    # Should we delete the entire folder the extracted frames are written to?
+    #
+    # By default, we delete the frame files but leave the (probably-empty) folder in place.
+    force_extracted_frame_folder_deletion = False
+    
+    # Should we delete the entire folder the rendered frames are written to?
+    #
+    # By default, we delete the frame files but leave the (probably-empty) folder in place.
+    force_rendered_frame_folder_deletion = False
+        
     reuse_results_if_available = False
     reuse_frames_if_available = False
     
@@ -153,9 +164,11 @@ def process_video(options):
         # Delete the temporary directory we used for detection images
         if not options.keep_rendered_frames:
             try:
-                # shutil.rmtree(rendering_output_dir)
-                for rendered_frame_fn in detected_frame_files:
-                    os.remove(rendered_frame_fn)
+                if options.force_rendered_frame_folder_deletion:
+                    shutil.rmtree(rendering_output_dir)
+                else:
+                    for rendered_frame_fn in detected_frame_files:
+                        os.remove(rendered_frame_fn)
             except Exception as e:
                 print('Warning: error deleting rendered frames from folder {}:\n{}'.format(
                     rendering_output_dir,str(e)))
@@ -164,11 +177,14 @@ def process_video(options):
     # (Optionally) delete the frames on which we ran MegaDetector
     if not options.keep_extracted_frames:
         try:
-            # shutil.rmtree(frame_output_folder)
-            for extracted_frame_fn in frame_filenames:
-                os.remove(extracted_frame_fn)
+            if options.force_extracted_frame_folder_deletion:
+                print('Recursively deleting frame output folder {}'.format(frame_output_folder))
+                shutil.rmtree(frame_output_folder)
+            else:
+                for extracted_frame_fn in frame_filenames:
+                    os.remove(extracted_frame_fn)
         except Exception as e:
-            print('Warning: error extracted frames from folder {}:\n{}'.format(
+            print('Warning: error removing extracted frames from folder {}:\n{}'.format(
                 frame_output_folder,str(e)))
             pass
         
@@ -259,9 +275,12 @@ def process_video_folder(options):
     if not options.keep_extracted_frames:
         try:
             print('Deleting frame cache')
-            # shutil.rmtree(frame_output_folder)
-            for frame_fn in image_file_names:
-                os.remove(frame_fn)
+            if options.force_extracted_frame_folder_deletion:
+                print('Recursively deleting frame output folder {}'.format(frame_output_folder))
+                shutil.rmtree(frame_output_folder)
+            else:
+                for frame_fn in image_file_names:
+                    os.remove(frame_fn)
         except Exception as e:
             print('Warning: error deleting frames from folder {}:\n{}'.format(
                 frame_output_folder,str(e)))
@@ -459,6 +478,18 @@ def main():
     parser.add_argument('--keep_rendered_frames',
                        action='store_true', help='Disable the deletion of rendered (w/boxes) frames')
 
+    parser.add_argument('--force_extracted_frame_folder_deletion',
+                       action='store_true', help='By default, when keep_extracted_frames is False, we '\
+                           'delete the frames, but leave the (probably-empty) folder in place.  This option '\
+                           'forces deletion of the folder as well.  Use at your own risk; does not check '\
+                           'whether other files were present in the folder.')
+        
+    parser.add_argument('--force_rendered_frame_folder_deletion',
+                       action='store_true', help='By default, when keep_rendered_frames is False, we '\
+                           'delete the frames, but leave the (probably-empty) folder in place.  This option '\
+                           'forces deletion of the folder as well.  Use at your own risk; does not check '\
+                           'whether other files were present in the folder.')
+        
     parser.add_argument('--rendering_confidence_threshold', type=float,
                         default=0.8, help="don't render boxes with confidence below this threshold")
 
