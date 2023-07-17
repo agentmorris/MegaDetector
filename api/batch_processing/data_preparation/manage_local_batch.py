@@ -572,7 +572,8 @@ def remove_overflow_folders(relative_path):
     
     # 100RECNX is the overflow folder style for Reconyx cameras
     # 100EK113 is (for some reason) the overflow folder style for Bushnell cameras
-    patterns = ['\/\d+RECNX\/','\/\d+EK\d+\/']
+    # 100_BTCF is the overflow folder style for Browning cameras
+    patterns = ['\/\d+RECNX\/','\/\d+EK\d+\/','\/\d+_BTCF\/']
     
     relative_path = relative_path.replace('\\','/')    
     for pat in patterns:
