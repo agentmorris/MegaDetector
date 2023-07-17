@@ -9,6 +9,7 @@
 #%% Imports and environment
 
 import os
+import copy
 import warnings
 import sklearn.cluster
 import numpy as np
@@ -856,8 +857,17 @@ def render_sample_image_for_detection(detection,filteringDir,options):
             
             assert detection.sampleImageDetections is not None
             
+            # At this point, suspicious detections have already been flipped 
+            # negative, which we don't want for rendering purposes
+            rendered_detections = []
+            
+            for det in detection.sampleImageDetections:
+                rendered_det = copy.copy(det)
+                rendered_det['conf'] = abs(rendered_det['conf'])
+                rendered_detections.append(rendered_det)    
+                
             # Render other detections first (typically in a thin+light box)
-            render_detection_bounding_boxes(detection.sampleImageDetections,
+            render_detection_bounding_boxes(rendered_detections,
                 im,
                 label_map=None,
                 thickness=options.otherDetectionsLineWidth,

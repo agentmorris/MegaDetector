@@ -10,7 +10,6 @@
 #
 # Image files are copied, not moved.
 #
-#
 ### Output structure
 #
 # Preserves relative paths within each of those folders; cannot be used with .json
@@ -140,6 +139,8 @@ class SeparateDetectionsIntoFoldersOptions:
         self.line_thickness = default_line_thickness
         self.box_expansion = default_box_expansion
         
+        # Should we move rather than copy?
+        self.move_images = False
         
         # Originally specified as a string, converted to a dict mapping name:threshold
         self.classification_thresholds = None
@@ -342,7 +343,10 @@ def process_detections(im,options):
         (categories_above_threshold is None) or \
         (len(categories_above_threshold) == 0):
         
-        shutil.copyfile(source_path,target_path)
+        if options.move_images:
+            shutil.move(source_path,target_path)
+        else:
+            shutil.copyfile(source_path,target_path)
         
     else:
         
@@ -416,6 +420,13 @@ def process_detections(im,options):
 
 def separate_detections_into_folders(options):
 
+    # Input validation
+    
+    # Currently we don't support moving (instead of copying) when we're also rendering
+    # bounding boxes.
+    assert not (options.render_boxes and options.move_images), \
+        'Cannot specify both render_boxes and move_images'
+                
     # Create output folder if necessary
     if (os.path.isdir(options.base_output_folder)) and \
         (len(os.listdir(options.base_output_folder) ) > 0):
@@ -636,6 +647,9 @@ def main():
                              'specify --allow_existing_directory')    
     parser.add_argument('--skip_empty_images', action='store_true',
                         help='Don\'t copy empty images to the output folder')
+    parser.add_argument('--move_images', action='store_true',
+                        help='Move images (rather than coping) (we don\'t recommend this if you haven\'t ' + \
+                             'backed up your data!)')
     parser.add_argument('--render_boxes', action='store_true',
                         help='Render bounding boxes on output images; may result in some ' + \
                              'metadata not being transferred')

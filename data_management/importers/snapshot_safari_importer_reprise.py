@@ -1,11 +1,13 @@
+########
 #
-# snapshot_safar_importer_reprise.py
+# snapshot_safari_importer_reprise.py
 #
 # This is a 2023 update to snapshot_safari_importer.py.  We do a bunch of things now that
 # we didn't do the last time we imported Snapshot data (like updating the big taxonomy)
 # file, and we skip a bunch of things now that we used to do (like generating massive
 # zipfiles).  So, new year, new importer.
 #
+########
 
 #%% Constants and imports
 
@@ -19,6 +21,8 @@ import pandas as pd
 
 from tqdm import tqdm
 from collections import defaultdict
+
+from md_utils import path_utils
 
 input_base = '/media/user/Elements'
 output_base = os.path.expanduser('~/data/snapshot-safari-metadata')
@@ -61,10 +65,15 @@ all_files_relative_set = set(all_files_relative)
 
 # CSV files are one of:
 #
-# _report_lila.csv (this is the one we want to use, with the species/count/etc. for each sequence)
+# _report_lila.csv (species/count/etc. for each capture)
 # _report_lila_image_inventory.csv (maps captures to images)
 # _report_lila_overview.csv (distribution of species)
 csv_files = [fn for fn in all_files_relative if fn.endswith('.csv')]
+
+all_image_files = path_utils.find_image_strings(all_files_relative)
+
+print('Found a total of {} files, {} of which are images'.format(
+    len(all_files_relative),len(all_image_files)))
 
 
 #%% Copy all csv files to the annotation cache folder
@@ -76,6 +85,11 @@ for fn in csv_files:
     shutil.copyfile(source_file,target_file)    
 
 def read_cached_csv_file(fn):
+    """
+    Later cells will ask to read a .csv file from the original hard drive;
+    read from the annotation cache instead.
+    """
+    
     cached_csv_file = os.path.join(annotation_cache_dir,os.path.basename(fn))
     df = pd.read_csv(cached_csv_file)
     return df
@@ -83,7 +97,7 @@ def read_cached_csv_file(fn):
 
 #%% List project folders
 
-# Project folders look like one of these:
+# There are two formats for project folder names:
 #
 # APN
 # Snapshot Cameo/DEB
@@ -110,6 +124,10 @@ project_codes = sorted(list(project_code_to_project_folder.keys()))
 project_folders = sorted(list(project_code_to_project_folder.values()))
 
 def file_to_project_folder(fn):
+    """
+    For a given filename relative to the drive root, return the corresponding
+    project folder (also relative to the drive root).
+    """
     
     tokens = fn.split('/')
     if len(tokens[0]) == 3:
@@ -120,13 +138,35 @@ def file_to_project_folder(fn):
     assert project_folder in project_folders
     return project_folder
 
+
 def file_to_project_code(fn):
+    """
+    For a given filename relative to the drive root, return the corresponding
+    three-letter project code (e.g. "CDB").
+    """    
     
     return project_folder_to_project_code[file_to_project_folder(fn)]
 
-
+assert file_to_project_folder(
+    'APN/APN_S2/DW/DW_R5/APN_S2_DW_R5_IMAG0003.JPG') == 'APN'
+assert file_to_project_folder(
+    'Snapshot South Africa/BLO/BLO_S1/B05/B05_R1/BLO_S1_B05_R1_IMAG0003.JPG') == \
+    'Snapshot South Africa/BLO'
+assert file_to_project_code(
+    'Snapshot South Africa/BLO/BLO_S1/B05/B05_R1/BLO_S1_B05_R1_IMAG0003.JPG') == \
+    'BLO'
+    
+    
 #%% Map report and inventory files to codes
 
+# Maps a three-letter project code to a list of per-season _report_lila.csv files
+#
+# E.g.:
+#
+# 'DHP': ['Snapshot South Africa/DHP/LILA_Reports/DHP_S1_report_lila.csv',
+# 'Snapshot South Africa/DHP/LILA_Reports/DHP_S2_report_lila.csv',
+# 'Snapshot South Africa/DHP/LILA_Reports/DHP_S3_report_lila.csv']
+#
 project_code_to_report_files = defaultdict(list)
 
 # fn = csv_files[0]
@@ -148,6 +188,7 @@ for project_code in project_code_to_project_folder.keys():
 
 all_report_files = [item for sublist in project_code_to_report_files.values() \
                     for item in sublist]
+
 for fn in all_report_files:
     inventory_file = fn.replace('.csv','_image_inventory.csv')
     assert inventory_file in csv_files
@@ -609,7 +650,7 @@ if False:
     species = capture_id_to_species[capture_id]
     
     
-#%% Look at the distribution of labels for these mismatched images    
+#%% Look at the distribution of labels for the mismatched images    
 
 gt_missing_images = set(gt_missing_human_images).union(set(gt_missing_vehicle_images))
 

@@ -88,7 +88,11 @@ One thing all of those examples have in common: there's clearly signal there, so
 
 ### Unusual camera angles
 
-This is a bit of a catch-all category, including some things we tried to fix between MDv4 and MDv5 (e.g. cameras in trees looking straight down), but a lot of things that are rare and difficult to fix just by accumulating data: cameras inside dens or nests, cameras looking straight down a metal pole, etc.  But top of mind in this category right now is cameras looking out over water, especially with aquatic mammals swimming in said water.  Sometimes MD does fine, sometimes not so much, sometimes resizing the images matters, basically all the things that suggest "right at the edge of the training domain".
+This is a bit of a catch-all category, including some things we tried to fix between MDv4 and MDv5 (e.g. cameras in trees looking straight down), but a lot of things that are rare and difficult to fix just by accumulating data: cameras inside dens or nests, cameras looking straight down a metal pole, etc.
+
+#### Aquatic mammals with their adorable heads just peeking out of the water
+
+Top of mind in this category right now is cameras looking out over water, especially with aquatic mammals swimming in said water.  Sometimes MD does fine, sometimes not so much, sometimes resizing the images matters, basically all the things that suggest "right at the edge of the training domain".
 
 In the first image here, it looks like we get the swimming otter at 95%... so, all good right?  Not quite: that's a rare case where MDv4 finds something that MDv5 misses, the second image is MDv5's total whiff on this image.  And that MDv4 hit is cherry-picked; all versions of MD are unpredictable at best on most of these images.  And then you get the third example, which is not only a hit, it even manages to separate the two happy beavers.  This unpredictability again screams "edge of the training domain".
 
@@ -97,6 +101,25 @@ In the first image here, it looks like we get the swimming otter at 95%... so, a
 <img src="images/failure-examples/sample-sdsucheeseman-03.jpg" width="600">
 
 <i>Images credit Cheeseman Lab, South Dakota State University</i>
+
+#### Mega-occlusion that humans are smart enough to parse, but AI is not
+
+Fences/cages/etc. that partially occlude things are often fine, but having animals interrupted by vertical bars can definitely degrade performance.  Here's an extreme case, where you and I can see an animal behind the fence, but it's more than 50% obscured, and MegaDetector misses it completely:
+
+<img src="images/failure-examples/sample-skyisland-behindfence.png" width="600">
+
+MegaDetector does fine when the animals are in front of the fence:
+
+<img src="images/failure-examples/sample-skyisland-frontfence-0.png" width="600">
+
+...even when they're a bit difficult:
+
+<img src="images/failure-examples/sample-skyisland-frontfence-1.png" width="600"><br/>
+<i>Images credit Sky Island Alliance</i>
+
+...but animals behind that fence are a little too much to ask of MD right now.
+
+
 
 ### Random AI failures
 

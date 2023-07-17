@@ -44,7 +44,6 @@
 #         ]
 #     }
 # 
-# 
 # Batch Detection API Output Format:
 #
 # github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#api-outputs
