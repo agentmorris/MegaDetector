@@ -13,12 +13,13 @@
 9. [How do I use the results?](#how-do-i-use-the-results)
 10. [Have you evaluated MegaDetector's accuracy?](#have-you-evaluated-megadetectors-accuracy)
 11. [What is MegaDetector bad at?](#what-is-megadetector-bad-at)
-12. [Citing MegaDetector](#citing-megadetector)
-13. [Tell me more about why detectors are a good first step for camera trap images](#tell-me-more-about-why-detectors-are-a-good-first-step-for-camera-trap-images)
-14. [Pretty picture](#pretty-picture)
-15. [Mesmerizing video](#mesmerizing-video)
-16. [Can you share the training data?](#can-you-share-the-training-data)
-17. [What if I just want to run non-MD scripts from this repo?](#what-if-i-just-want-to-run-non-md-scripts-from-this-repo)
+12. [Pro tips for coaxing every bit of accuracy out of MegaDetector](#pro-tips-for-coaxing-every-bit-of-accuracy-out-of-megadetector)
+13. [Citing MegaDetector](#citing-megadetector)
+14. [Tell me more about why detectors are a good first step for camera trap images](#tell-me-more-about-why-detectors-are-a-good-first-step-for-camera-trap-images)
+15. [Pretty picture](#pretty-picture)
+16. [Mesmerizing video](#mesmerizing-video)
+17. [Can you share the training data?](#can-you-share-the-training-data)
+18. [What if I just want to run non-MD scripts from this repo?](#what-if-i-just-want-to-run-non-md-scripts-from-this-repo)
 
 
 ## MegaDetector overview
@@ -109,7 +110,7 @@ This release incorporates additional training data, specifically aiming to impro
 
 This release also represents a change in MegaDetector's architecture, from Faster-RCNN to [YOLOv5](https://github.com/ultralytics/yolov5).  Our inference scripts have been updated to support both architectures, so the transition should be <i>mostly</i> seamless.
 
-MDv5 is actually two models (MDv5a and MDv5b), differing only in their training data (see the [training data](#can-you-share-the-training-data) section for details).  Both appear to be more accurate than MDv4, and both are 3x-4x faster than MDv4, but each MDv5 model can outperform the other slightly, depending on your data.  Guidelines about which to start with are TBD; we will work with the community to develop these guidelines over the next few months.  When in doubt, for now, try them both.  If you really twist our arms to recommend one... we recommend MDv5a.  But try them both and tell us which works better for you!
+MDv5 is actually two models (MDv5a and MDv5b), differing only in their training data (see the [training data](#can-you-share-the-training-data) section for details).  Both appear to be more accurate than MDv4, and both are 3x-4x faster than MDv4, but each MDv5 model can outperform the other slightly, depending on your data.  When in doubt, for now, try them both.  If you really twist our arms to recommend one... we recommend MDv5a.  But try them both and tell us which works better for you!  The [pro tips](#pro-tips-for-coaxing-every-bit-of-accuracy-out-of-megadetector) section contains some additional thoughts on when to try multiple versions of MD.
 
 See the [release page](https://github.com/agentmorris/MegaDetector/releases/tag/v5.0) for more details, and in particular, be aware that the range of confidence values produced by MDv5 is very different from the range of confidence values produced by MDv4!  <i>Don't use your MDv4 confidence thresholds with MDv5!</i>
 
@@ -130,7 +131,7 @@ This release incorporates additional training data from Borneo, Australia and th
 * [Frozen model (.pb)](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb)
 * [TFODAPI config file](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.config)
 * [Last checkpoint (for resuming training)](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0_checkpoint.zip)
-* [Tensorflow SavedModel for TFServing](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0_saved_model.zip) (inputs in uint8 format, `serving_default` output signature)
+* [TensorFlow SavedModel for TFServing](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0_saved_model.zip) (inputs in uint8 format, `serving_default` output signature)
 
 If you're not sure which format to use, you want the "frozen model" file (the first link).
 
@@ -147,7 +148,7 @@ In addition to incorporating additional data, this release adds a preliminary "h
 - [TFODAPI config file](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/megadetector_v3.config)
 - [Last checkpoint (for resuming training)](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/megadetector_v3_checkpoint.zip)
 - [TensorFlow SavedModel](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/saved_model_normalized_megadetector_v3_tf19.tar.gz) (inputs in TF [common image format](https://www.tensorflow.org/hub/common_signatures/images#image_input), `default` output signature)
-- [Tensorflow SavedModel for TFServing](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/saved_model_megadetector_v3_tf19.zip) (inputs in uint8 format, `serving_default` output signature)
+- [TensorFlow SavedModel for TFServing](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/saved_model_megadetector_v3_tf19.zip) (inputs in uint8 format, `serving_default` output signature)
 
 
 ### MegaDetector v2, 2018
@@ -604,6 +605,28 @@ If you want to read more about our favorite MD failure cases, check out the [Meg
 
 tl;dr: always test on your own data!
  
+
+## Pro tips for coaxing every bit of accuracy out of MegaDetector
+
+As per the [training data](#can-you-share-the-training-data) section, MDv5 is actually two models (MDv5a and MDv5b), differing only in their training data.  In fact, MDv5a's training data is a superset of MDv5b's training data.  So, when should you use each?  What should you do if MegaDetector is working, but not <i>quite</i> well enough for a difficult scenario, like the ones on our [MegaDetector challenges](megadetector-challenges.md) page?  Or what if MegaDetector is working great, but you're a perfectionist who wants to push the envelope on precision?  This section is a very rough flowchart for how the MegaDetector developers choose MegaDetector versions/enhancements when presented with a new dataset.
+
+1. The first thing we always run is MDv5a... <b>95% of the time, the flowchart stops here</b>.  That's in bold because we want to stress that this whole section is about the unusual case, not the typical case.  There are enough complicated things in life, don't make choosing MegaDetector versions more complicated than it needs to be.<br/></br>Though FWIW, we're not usually trying to squeeze every bit of precision out of a particular dataset, we're almost always focused on recall (i.e., not missing animals).  So if MDv5a is finding all the animals and the number of false positives is "fine", we don't usually run MDv5b, for example, just to see whether it would slightly further reduce the number of false positives.
+
+2. If things are working great, but you're going to be using MegaDetector a lot and you want to add a step to your process that has a bit of a learning curve, but can eliminate a bunch of false positives once you get used to it, consider the [repeat detection elimination](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing/postprocessing/repeat_detection_elimination) process.
+
+3. If anything looks off, specifically if you're missing animals that you think MegaDetector should be getting, or if you just want to see if you can squeeze a little more precision out, try MDv5b.  Usually, we've found that 
+MDv5a works at least as well as MDv5b, but every dataset is different.<br/><br/>For example, [WildEye](https://wildeyeconservation.org/) did a thorough [MegaDetector v5 evaluation](https://wildeyeconservation.org/megadetector-version-5/) and found slightly better precision with MDv5b.  MDv5a is trained on everything MDv5b was trained on, plus some non-camera-trap data, so as a general rule, MDv5a may do <i>slightly</i> better on reptiles, birds, and distant vehicles.  MDv5b may do <i>slightly</i> better on very dark or low-contrast images.
+
+4. If you're still missing animals, but one or both models look close, try again using YOLOv5's [test-time augmentation tools](https://docs.ultralytics.com/yolov5/tutorials/test_time_augmentation/) via this [alternative MegaDetector inference script](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_inference_with_yolov5_val.py), which produces output in the same format as the standard inference script, but uses YOLOv5's native inference tools.  It will run a little more slowly, and still lacks some of the bells and whistles of the standard inference script, but sometimes augmentation helps.
+
+5. If something still looks off, try MDv4.
+
+6. If none of the above are quite working well enough, but two or three of the above are close, try using [merge_detections.py](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/postprocessing/merge_detections.py) to get the best of both worlds, i.e. to take the high-confidence detections from multiple MegaDetector results files.
+
+7. If things are still not good enough, we have a case where MD just seems not to work; that's what the [MegaDetector challenges](megadetector-challenges.md) page is all about.  Now we're in DIY territory.
+
+And please please please, <b>if you find you need to do anything other than step 1 (simple MDv5a), please [let us know](mailto:cameratraps@lila.science)!</b>  It's really helpful for us to hear about cases where MegaDetector either doesn't work well or requires extra tinkering.
+
 
 ## Citing MegaDetector
 
