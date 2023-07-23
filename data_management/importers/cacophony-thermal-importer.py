@@ -26,10 +26,13 @@ from collections import defaultdict
 import cv2
 
 from multiprocessing.pool import Pool
+from ct_utils import truncate_float
 
 base_dir = '/bigdata/home/sftp/cacophony-ferraro_/data/cacophony-thermal/'
-output_base = os.path.expanduser('~/tmp/tmp/cacophony-thermal-out')
+output_base = os.path.expanduser('~/tmp/cacophony-thermal-out')
 os.makedirs(output_base,exist_ok=True)
+
+main_metadata_filename = 'new-zealand-thermal-wildlife-imaging.json'
 
 # Every HDF file specifies a crop rectangle within which the pixels are trustworthy;
 # in practice this is the same across all files.
@@ -51,6 +54,8 @@ expected_track_attributes = ['end_frame', 'id', 'start_frame']
 optional_track_attributes = ['human_tag', 'human_tag_confidence', 'human_tags', 
                              'human_tags_confidence', 'ai_tag', 'ai_tag_confidence']
 
+labels_to_ignore_when_another_label_is_present = ['false-positive','unidentified','part','poor tracking']
+
 frame_rate = 9
 
 use_default_filtering = False
@@ -58,13 +63,15 @@ write_as_color = False
 
 # codec = 'ffv1'
 # codec = 'hfyu'
-codec = 'mp4v'
+codec = 'h264'
+overwrite_video = False
 
-codec_to_extension = {'mp4v':'.mp4','ffv1':'.avi','hfyu':'.avi'}
+codec_to_extension = {'mp4v':'.mp4','ffv1':'.avi','hfyu':'.avi','h264':'.mp4'}
 
 # Set to >0 to process only a subset of clips
 debug_n = -1
 n_workers = 16
+confidence_digits = 3
 
 
 #%% Support functions
@@ -77,8 +84,9 @@ def remove_tracking_points(clip_metadata):
     """
     
     slim_metadata = deepcopy(clip_metadata)
-    for t in slim_metadata['tracks']:
-        del t['points']
+    if 'tracks' in slim_metadata:
+        for t in slim_metadata['tracks']:
+            del t['points']
     return slim_metadata
 
     
@@ -148,7 +156,7 @@ def process_file(fn_relative,verbose=False):
     clip_metadata['error'] = None
         
     try:
-        h5f = h5py.File(fn_abs, "r")
+        h5f = h5py.File(fn_abs, 'r')
     except Exception as e:
         print('Could not open file {}: {}'.format(
             fn_relative,str(e)))
@@ -198,13 +206,15 @@ def process_file(fn_relative,verbose=False):
     assert clip_attrs.get('res_x') == thermal_frames.shape[2]
     assert clip_attrs.get('res_y') == thermal_frames.shape[1]    
     assert clip_attrs.get('model') in [None,'lepton3.5','lepton3']
-    
+        
     tracks = h5f['tracks']
     
     track_ids = list(tracks.keys())
     
     # List of dicts
     tracks_this_clip = []
+    
+    # TODO: ignore zero-confidence tags, ignore tracks with only zero-confidence tags
     
     # i_track = 0; track_id = track_ids[i_track]
     for i_track,track_id in enumerate(track_ids):
@@ -243,7 +253,7 @@ def process_file(fn_relative,verbose=False):
                 tag_info = {}
                 tag_info['label'] = tag
                 conf = float(human_tag_confidences_this_clip[i_tag])
-                tag_info['confidence'] = conf
+                tag_info['confidence'] = truncate_float(conf,confidence_digits)
                 track_tags.append(tag_info)
                 
         track_start_frame = int(round(track.attrs.get('start_frame')))
@@ -292,36 +302,21 @@ def process_file(fn_relative,verbose=False):
             # pixels cropped out of the border.  IMO this is OK because for this dataset,
             # this is just an approximate set of coordinates used to disambiguate simultaneous 
             # areas of movement when multiple different labels are present in the same video.
-            position_info = [float((right-left)/2),
-                             float((bottom-top)/2),
+            position_info = [left+float((right-left)/2),
+                             top+float((bottom-top)/2),
                              int(frame_number)]
             track_info['points'].append(position_info)
             
-            # TODO: remove
-            # if left > right:
-            #   left_right_issues.append((i_file,i_track,i_position))
+            # In a small number of tracks, boxes are turned upside-down or left-over-right, 
+            # we don't bother checking for coordinate validity in those tracks.
+            if left <= right:
+                assert left >= 0 and left < clip_attrs.get('res_x')
+                assert right >= 0 and right < clip_attrs.get('res_x')
             
-            # TODO: remove
-            # if top > bottom:
-            #    top_bottom_issues.append((i_file,i_track,i_position))
-            
-            boxes_can_extend_beyond_frame = False
-            
-            if boxes_can_extend_beyond_frame:
-                tolerance = 5
-                assert left >= -1 * tolerance
-                assert right >= -1 * tolerance
-                assert top >= -1 * tolerance
-                assert bottom >= -1 * tolerance                
-            else:
-                if left <= right:
-                    assert left >= 0 and left < clip_attrs.get('res_x')
-                    assert right >= 0 and right < clip_attrs.get('res_x')
-                
-                if top <= bottom:
-                    assert top >= 0 and top < clip_attrs.get('res_y')
-                    assert bottom >= 0 and bottom < clip_attrs.get('res_y')
-            
+            if top <= bottom:
+                assert top >= 0 and top < clip_attrs.get('res_y')
+                assert bottom >= 0 and bottom < clip_attrs.get('res_y')
+        
             # frame_number should be approximately equal to i_position + start_frame, but this
             # can be off by a little when 'start_frame' and/or 'end_frame' are not integers. 
             # Make sure this is approximately true.
@@ -431,22 +426,43 @@ def process_file(fn_relative,verbose=False):
     video_w = filtered_frames[0].shape[1]
     video_h = filtered_frames[0].shape[0]
     
-    filtered_video_fn = os.path.join(output_base,str(clip_id) + '_filtered' + codec_to_extension[codec])    
-    filtered_video_out = cv2.VideoWriter(filtered_video_fn, cv2.VideoWriter_fourcc(*codec), frame_rate, 
-                          (video_w, video_h), isColor=write_as_color)
-
-    for i_frame,filtered_frame in enumerate(filtered_frames): 
-        filtered_video_out.write(filtered_frame)
-    filtered_video_out.release()
+    clip_metadata['width'] = video_w
+    clip_metadata['height'] = video_h
+    clip_metadata['frame_rate'] = frame_rate
     
+    filtered_video_fn = os.path.join(output_base,str(clip_id) + '_filtered' + codec_to_extension[codec])        
     unfiltered_video_fn = os.path.join(output_base,str(clip_id) + codec_to_extension[codec])    
-    unfiltered_video_out = cv2.VideoWriter(unfiltered_video_fn, cv2.VideoWriter_fourcc(*codec), frame_rate, 
-                          (video_w, video_h), isColor=write_as_color)
-
-    for i_frame,frame in enumerate(original_frames): 
-        unfiltered_video_out.write(frame)
-    unfiltered_video_out.release()
+    
+    if overwrite_video or (not os.path.isfile(filtered_video_fn)):
         
+        filtered_video_out = cv2.VideoWriter(filtered_video_fn, cv2.VideoWriter_fourcc(*codec), frame_rate, 
+                              (video_w, video_h), isColor=write_as_color)
+        
+        for i_frame,filtered_frame in enumerate(filtered_frames): 
+            filtered_video_out.write(filtered_frame)
+        filtered_video_out.release()
+    
+    if overwrite_video or (not os.path.isfile(unfiltered_video_fn)):
+        
+        unfiltered_video_out = cv2.VideoWriter(unfiltered_video_fn, cv2.VideoWriter_fourcc(*codec), frame_rate, 
+                              (video_w, video_h), isColor=write_as_color)
+            
+        for i_frame,frame in enumerate(original_frames): 
+            unfiltered_video_out.write(frame)
+        unfiltered_video_out.release()
+        
+    labels_this_clip = set()
+    
+    # Build up the list of labels for this clip
+    for track_info in clip_metadata['tracks']:
+        for tag in track_info['tags']:
+            tag_label = tag['label']
+            
+            # TODO: ignore zero-confidence tags
+            labels_this_clip.add(tag_label)                
+
+    clip_metadata['labels'] = sorted(list(labels_this_clip))
+    
     metadata_fn = os.path.join(output_base,str(clip_id) + '_metadata.json')
     
     # clip_metadata['id'] = clip_id
@@ -456,6 +472,7 @@ def process_file(fn_relative,verbose=False):
     clip_metadata['filtered_video_filename'] = os.path.basename(filtered_video_fn)
     clip_metadata['location'] = station_id
     clip_metadata['calibration_frames'] = ffc_frames
+    clip_metadata['metadata_filename'] = os.path.basename(metadata_fn)
     
     with open(metadata_fn,'w') as f:
         json.dump(clip_metadata,f,indent=1)
@@ -524,6 +541,34 @@ for label in label_to_video_count:
     print('{}: {}'.format(label,label_to_video_count[label]))
 
 
+#%% Build the main .json file
+
+main_metadata_filename_abs = os.path.join(output_base,main_metadata_filename)
+
+info = {}
+info['version'] = '1.0.0'
+info['description'] = 'New Zealand Thermal Wildlife Imaging'
+info['contributor'] = 'Cacophony Project'
+
+main_metadata = {}
+main_metadata['info'] = info
+main_metadata['clips'] = []
+
+# clip_metadata = all_clip_metadata[0]
+for clip_metadata in tqdm(all_clip_metadata):
+    slim_metadata = remove_tracking_points(clip_metadata)
+    
+    if 'tracks' in slim_metadata:
+        for track in slim_metadata['tracks']:
+            for tag in track['tags']:
+                tag['confidence'] = truncate_float(tag['confidence'],confidence_digits)
+                
+    main_metadata['clips'].append(slim_metadata)
+    
+with open(main_metadata_filename_abs,'w') as f:
+    json.dump(main_metadata,f,indent=1)
+
+
 #%% Scrap
 
 if False:
@@ -532,7 +577,8 @@ if False:
 
     #%%
 
-    i_file = 8; fn_relative = all_hdf_files_relative[i_file]
+    # i_file = 110680; fn_relative = all_hdf_files_relative[i_file]    
+    i_file = 8; fn_relative = all_hdf_files_relative[i_file]    
     clip_metadata = process_file(fn_relative)
     
     
@@ -541,7 +587,7 @@ if False:
     target_label = 'pukeko'    
     target_clips = []
     
-    for clip_metadata in all_clip_metadata:    
+    for clip_metadata in all_clip_metadata:
         
         if clip_metadata['error'] is not None:
             continue
@@ -580,13 +626,11 @@ if False:
     
         labels_this_clip = set()
         
-        labels_to_ignore = ['false-positive','unidentified','part','poor tracking']
-        
         # track_info = clip_metadata['tracks'][0]
         for track_info in clip_metadata['tracks']:
             for tag in track_info['tags']:
                 tag_label = tag['label']
-                if tag_label not in labels_to_ignore:
+                if tag_label not in labels_to_ignore_when_another_label_is_present:
                     labels_this_clip.add(tag_label)                
     
         assert len(labels_this_clip) <= 3
@@ -596,3 +640,41 @@ if False:
                 i_clip,len(labels_this_clip),str(labels_this_clip)))
         
         # remove_tracking_points(clip_metadata)
+        
+        
+    #%% Add the .json filename to each clip in all_clip_metadata
+    
+    for i_clip,clip_metadata in tqdm(enumerate(all_clip_metadata),
+                                     total=len(all_clip_metadata)): 
+    
+        clip_metadata['metadata_filename'] = clip_metadata['hdf_filename'].replace('.hdf5',
+                                                                                     '_metadata.json')
+        
+        
+    #%% Add a "labels" field to each .json file
+    
+    # This was only necessary during debugging; this is added in the main loop now.
+    
+    for i_clip,clip_metadata in tqdm(enumerate(all_clip_metadata),
+                                     total=len(all_clip_metadata)): 
+        
+        if clip_metadata['error'] is not None:
+            continue
+    
+        labels_this_clip = set()
+        
+        # track_info = clip_metadata['tracks'][0]
+        for track_info in clip_metadata['tracks']:
+            for tag in track_info['tags']:
+                tag_label = tag['label']
+                # if tag_label not in labels_to_ignore_when_another_label_is_present:
+                if True:
+                    labels_this_clip.add(tag_label)                
+    
+        clip_metadata['labels'] = sorted(list(labels_this_clip))
+        
+        json_filename = os.path.join(output_base,str(clip_metadata['id']) + '_metadata.json')
+        assert os.path.isfile(json_filename)
+                
+        with open(json_filename,'w') as f:
+            json.dump(clip_metadata,f,indent=1)

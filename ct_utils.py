@@ -40,9 +40,11 @@ def truncate_float_array(xs, precision=3):
 def truncate_float(x, precision=3):
     """
     Function for truncating a float scalar to the defined precision.
+    
     For example: truncate_float(0.0003214884) --> 0.000321
+    
     This function is primarily used to achieve a certain float representation
-    before exporting to JSON
+    before exporting to JSON.
 
     Args:
     x         (float) Scalar to truncate
@@ -53,13 +55,17 @@ def truncate_float(x, precision=3):
     assert precision > 0
 
     if np.isclose(x, 0):
+        
         return 0
+    
     else:
+        
         # Determine the factor, which shifts the decimal point of x
-        # just behind the last significant digit
+        # just behind the last significant digit.
         factor = math.pow(10, precision - 1 - math.floor(math.log10(abs(x))))
+        
         # Shift decimal point by multiplicatipon with factor, flooring, and
-        # division by factor
+        # division by factor.
         return math.floor(x * factor)/factor
 
 
