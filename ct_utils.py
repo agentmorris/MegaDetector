@@ -39,7 +39,7 @@ def truncate_float_array(xs, precision=3):
 
 def truncate_float(x, precision=3):
     """
-    Function for truncating a float scalar to the defined precision.
+    Truncates a floating-point value to a specific number of significant digits.
     
     For example: truncate_float(0.0003214884) --> 0.000321
     
@@ -71,7 +71,7 @@ def truncate_float(x, precision=3):
 
 def args_to_object(args: argparse.Namespace, obj: object) -> None:
     """
-    Copy all fields from a Namespace (i.e., the output from parse_args) to an
+    Copies all fields from a Namespace (i.e., the output from parse_args) to an
     object. Skips fields starting with _. Does not check existence in the target
     object.
 
@@ -93,7 +93,7 @@ def pretty_print_object(obj, b_print=True):
     # _ = pretty_print_object(obj)
 
     # Sloppy that I'm making a module-wide change here...
-    jsonpickle.set_encoder_options('json', sort_keys=True, indent=4)
+    jsonpickle.set_encoder_options('json', sort_keys=True, indent=2)
     a = jsonpickle.encode(obj)
     s = '{}'.format(a)
     if b_print:
@@ -116,13 +116,17 @@ def is_list_sorted(L,reverse=False):
         
 
 def write_json(path, content, indent=1):
+    """
+    Standardized wrapper for json.dump
+    """
+    
     with open(path, 'w') as f:
         json.dump(content, f, indent=indent)
 
 
 def is_image_file(s):
     """
-    Check a file's extension against a hard-coded set of image file extensions; 
+    Checks a file's extension against a hard-coded set of image file extensions; 
     return True if it appears to be an image.
     """
 
@@ -184,9 +188,11 @@ def convert_xywh_to_xyxy(api_bbox):
 
 def get_iou(bb1, bb2):
     """
-    Calculate the Intersection over Union (IoU) of two bounding boxes.
+    Calculates the Intersection over Union (IoU) of two bounding boxes.
 
-    Adapted from https://stackoverflow.com/questions/25349178/calculating-percentage-of-bounding-box-overlap-for-image-detector-evaluation
+    Adapted from:
+        
+    https://stackoverflow.com/questions/25349178/calculating-percentage-of-bounding-box-overlap-for-image-detector-evaluation
 
     Args:
         bb1: [x_min, y_min, width_of_box, height_of_box]
