@@ -292,11 +292,11 @@ def process_file(fn_relative,verbose=False):
         # i_position = 0; position = positions[i_position]
         for i_position,position in enumerate(positions):
             
-            left = position[0]
-            top = position[1]
-            right = position[2]
-            bottom = position[3]
-            frame_number = position[4]
+            left = float(position[0])
+            top = float(position[1])
+            right = float(position[2])
+            bottom = float(position[3])
+            frame_number = int(position[4])
             
             # TODO: I'm being lazy about the fact that these don't reflect the
             # pixels cropped out of the border.  IMO this is OK because for this dataset,
