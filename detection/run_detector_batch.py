@@ -53,7 +53,7 @@ from tqdm import tqdm
 # from multiprocessing.pool import ThreadPool as workerpool
 import multiprocessing
 from threading import Thread
-from multiprocessing import Process
+from multiprocessing import Process, Manager
 from multiprocessing.pool import Pool as workerpool
 
 # Number of images to pre-fetch
@@ -229,7 +229,7 @@ def chunks_by_number_of_chunks(ls, n):
 #%% Image processing functions
 
 def process_images(im_files, detector, confidence_threshold, use_image_queue=False, 
-                   quiet=False, image_size=None):
+                   quiet=False, image_size=None, checkpoint_queue=None):
     """
     Runs MegaDetector over a list of image files.
 
@@ -255,8 +255,13 @@ def process_images(im_files, detector, confidence_threshold, use_image_queue=Fal
     else:
         results = []
         for im_file in im_files:
-            results.append(process_image(im_file, detector, confidence_threshold,
-                                         quiet=quiet, image_size=image_size))
+            result = process_image(im_file, detector, confidence_threshold,
+                                         quiet=quiet, image_size=image_size)
+
+            if checkpoint_queue is not None:
+                checkpoint_queue.put(result)
+            results.append(result)                                    
+            
         return results
     
 
@@ -460,17 +465,50 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
 
         pool = workerpool(n_cores)
 
-        image_batches = list(chunks_by_number_of_chunks(image_file_names, n_cores))
-        results = pool.map(partial(process_images, detector=detector,
-                                   confidence_threshold=confidence_threshold,image_size=image_size), 
-                           image_batches)
+        if checkpoint_path is not None:
+            checkpoint_queue = Manager().Queue()
+            checkpoint_writer_thread = Thread(target=checkpoint_writer, args=(checkpoint_path, checkpoint_frequency, checkpoint_queue), daemon=True)
+            checkpoint_writer_thread.start()
 
-        results = list(itertools.chain.from_iterable(results))
+            image_batches = list(chunks_by_number_of_chunks(image_file_names, n_cores))
+            results = pool.map(partial(process_images, detector=detector,
+                                    confidence_threshold=confidence_threshold,image_size=image_size, checkpoint_queue=checkpoint_queue), 
+                            image_batches)
+
+            results = list(itertools.chain.from_iterable(results))
+
+            checkpoint_queue.put(None)
+            checkpoint_queue.join()
+
+        else:
+            image_batches = list(chunks_by_number_of_chunks(image_file_names, n_cores))
+            results = pool.map(partial(process_images, detector=detector,
+                                    confidence_threshold=confidence_threshold,image_size=image_size), 
+                            image_batches)
+
+            results = list(itertools.chain.from_iterable(results))
 
     # Results may have been modified in place, but we also return it for
     # backwards-compatibility.
     return results
 
+def checkpoint_writer(checkpoint_path, checkpoint_frequency, checkpoint_queue):
+    with open(checkpoint_path, 'w') as f:
+        count = 0
+
+        while True:
+            count +=1
+            result = checkpoint_queue.get()            
+            if result is None:            
+                break        
+
+            #need to conform to results{images[]}
+            f.write(json.dumps(result))
+            f.flush()        
+            os.fsync(f)
+
+            checkpoint_queue.task_done()
+    checkpoint_queue.task_done()
 
 def write_results_to_file(results, output_file, relative_path_base=None, 
                           detector_file=None, info=None, include_max_conf=False,
