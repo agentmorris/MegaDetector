@@ -366,16 +366,34 @@ for gpu_number in gpu_to_scripts:
 
 #%% Run the tasks
 
-"""
-I strongly prefer to manually run the scripts we just generated, but this cell demonstrates
-how one would invoke run_detector_batch programmatically.  Normally when I run manually on 
-a multi-GPU machine, I run the scripts in N separate shells, one for each GPU.  This programmatic
-approach does not yet know how to do something like that, so all chunks will run serially.
-This is a no-op if you're on a single-GPU machine.
+r"""
+The cells we've run so far wrote out some shell scripts (.bat files on Windows, 
+.sh files on Linx/Mac) that will run MegaDetector.  I like to leave the interactive
+environment at this point and run those scripts at the command line.  So, for example,
+if you're on Windows, and you've basically used the default values above, there will be
+batch files called, e.g.:
+
+c:\users\[username]\postprocessing\[organization]\[job_name]\run_chunk_000_gpu_00.bat
+c:\users\[username]\postprocessing\[organization]\[job_name]\run_chunk_001_gpu_01.bat
+
+Those batch files expect to be run from the "detection" folder of the MegaDetector repo,
+typically:
+    
+c:\git\MegaDetector\detection
+
+All of that said, you don't *have* to do this at the command line.  The following cell 
+runs these scripts programmatically, so if you just run the "run the tasks (commented out)"
+cell, you should be running MegaDetector.
+
+One downside of the programmatic approach is that this cell doesn't yet parallelize over
+multiple processes, so the tasks will run serially.  This only matters if you have multiple
+GPUs.
 """
 
 if False:
     
+    pass
+
     #%%% Run the tasks (commented out)
 
     # i_task = 0; task = task_info[i_task]
