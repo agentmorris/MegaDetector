@@ -5,6 +5,71 @@
 # Semi-automated process for managing a local MegaDetector job, including
 # standard postprocessing steps.
 #
+# This script is not intended to be run from top to bottom like a typical Python script,
+# it's a notebook disguised with a .py extension.  It's the Bestest Most Awesome way to
+# run MegaDetector, but it's also pretty subtle; if you want to play with this, you might
+# want to check in with cameratraps@lila.science for some tips.  Otherwise... YMMV.
+#
+# Some general notes on using this script, which I do in Spyder, though everything will be
+# the same if you are reading this in Jupyter Notebook (using the .ipynb version of the 
+# script):
+#
+# * You can specify the MegaDetector location, but you may find it useful to use the same paths 
+#   I use; on all the machines where I run MD, I keep all versions of MegaDetector handy at these 
+#   paths:
+#  
+#   ~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt
+#   ~/models/camera_traps/megadetector/md_v5.0.0/md_v5b.0.0.pt
+#   ~/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb
+#
+#   On Windows, this translates to, for example:
+#
+#   c:\users\dmorr\models\camera_traps\megadetector\md_v5.0.0\md_v5a.0.0.pt
+#    
+# * Typically when I have a MegaDetector job to run, I make a copy of this script.  Let's 
+#   say I'm running a job for an organization called "bibblebop"; I have a big folder of
+#   job-specific copies of this script, and I might save a new one called "bibblebop-2023-07-26.py" 
+#   (the filename doesn't matter, it just helps me keep these organized).
+#
+# * There are three variables you need to set in this script before you start running code:
+#   "input_path", "organization_name_short", and "job_date".  You will get a sensible error if you forget 
+#   to set any of these.  In this case I might set those to "/data/bibblebobcamerastuff",
+#   "bibblebop", and "2023-07-26", respectively.
+#
+# * The defaults assume you want to split the job into two tasks (this is the default because I have 
+#   two GPUs).  Nothing bad will happen if you do this on a zero-GPU or single-GPU machine, but if you
+#   want everything to run in one logical task, change "n_gpus" and "n_jobs" to 1 (instead of 2).
+#
+# * After setting the required variables, I run the first few cells - up to and including the one 
+#   called "Generate commands" - which collectively take basically zero seconds.  After you run the
+#   "Generate commands" cell, you will have a folder that looks something like:
+#
+#   ~/postprocessing/bibblebop/bibblebop-2023-07-06-mdv5a/
+#  
+#   On Windows, this means:
+#
+#   ~/postprocessing/bibblebop/bibblebop-2023-07-06-mdv5a/    
+#
+#   Everything related to this job - scripts, outputs, intermediate stuff - will be in this folder.
+#   Specifically, after the "Generate commands" cell, you'll have scripts in that folder called something
+#   like:
+#
+#   run_chunk_000_gpu_00.sh (or .bat on Windows)
+#
+#   Personally, I like to run that script directly in a command prompt (I just leave Spyder open, though 
+#   it's OK if Spyder gets shut down while MD is running).  
+#
+#   At this point, once you get the hang of it, you've invested about zero seconds of human time,
+#   but possibly several days of unattended compute time, depending on the size of your job.
+#   
+# * Then when the jobs are done, back to the interactive environment!  I run the next few cells,
+#   which make sure the job finished OK, and the cell called "Post-processing (pre-RDE)", which 
+#   generates an HTML preview of the results.  You are very plausibly done at this point, and can ignore
+#   all the remaining cells.  If you want to do things like repeat detection elimination, or running 
+#   a classifier, or splitting your results file up in specialized ways, there are cells for all of those
+#   things, but now you're in power-user territory, so I'm going to leave this guide here.  Email
+#   cameratraps@lila.science with questions about the fancy stuff.
+#
 ########
 
 #%% Imports and constants
@@ -396,6 +461,9 @@ if False:
 
     #%%% Run the tasks (commented out)
 
+    assert not use_yolo_inference_scripts, \
+        'If you want to use the YOLOv5 inference scripts, you can\'t run the model interactively (yet)'
+        
     # i_task = 0; task = task_info[i_task]
     for i_task,task in enumerate(task_info):
     
@@ -697,13 +765,22 @@ suspiciousDetectionResults = repeat_detections_core.find_repeat_detections(combi
                                                                            None,
                                                                            options)
 
-# import clipboard; clipboard.copy(os.path.dirname(suspiciousDetectionResults.filterFile))
-# path_utils.open_file(os.path.dirname(suspiciousDetectionResults.filterFile))
-
 
 #%% Manual RDE step
 
 ## DELETE THE VALID DETECTIONS ##
+
+# If you run this line, it will open the folder up in your file browser
+path_utils.open_file(os.path.dirname(suspiciousDetectionResults.filterFile))
+
+# If you don't want to do the RDE step, but you still want to do stuff below this 
+# (e.g. run classifiers), that's fine, but don't just blast through this cell.  You're 
+# implicitly telling the notebook that you looked at everything in that folder, and confirmed
+# there were no red boxes on animals.
+#
+# Instead, look below where it refers to "filtered_api_output_file" (which is produced
+# by the RDE process), and change it to "combined_api_output_file" (the raw output
+# from MegaDetector).  Then it will be like all this RDE stuff doesn't exist.
 
 
 #%% Re-filtering
@@ -2187,14 +2264,28 @@ This notebook is auto-generated from manage_local_batch.py (a cell-delimited .py
 with open(input_py_file,'r') as f:
     lines = f.readlines()
 
-nb = nbf.v4.new_notebook()
-nb['cells'].append(nbf.v4.new_markdown_cell(nb_header))
-
 i_line = 0
 
-# Exclude everything before the first cell
+header_comment = ''
+
+lines_to_ignore = 7
+
+# Everything before the first cell is the header comment
 while(not lines[i_line].startswith('#%%')):
+    if i_line < lines_to_ignore:
+        i_line += 1
+        continue
+    
+    s = lines[i_line].replace('#','').strip()
+    if len(s) == 0:
+        header_comment += '\n\n'
+    else:
+        header_comment += ' ' + s
     i_line += 1
+
+nb_header += header_comment
+nb = nbf.v4.new_notebook()
+nb['cells'].append(nbf.v4.new_markdown_cell(nb_header))
 
 current_cell = []
 
