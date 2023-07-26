@@ -23,7 +23,7 @@
 # 
 # Has preliminary multiprocessing support for CPUs only; if a GPU is available, it will
 # use the GPU instead of CPUs, and the --ncores option will be ignored.  Checkpointing
-# is not supported when using multiprocessing.
+# is not supported when using a GPU.
 # 
 # Does not have a command-line option to bind the process to a particular GPU, but you can 
 # prepend with "CUDA_VISIBLE_DEVICES=0 ", for example, to bind to GPU 0, e.g.:
@@ -434,24 +434,7 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
                 print('Writing a new checkpoint after having processed {} images since '
                       'last restart'.format(count))
                 
-                assert checkpoint_path is not None                
-                
-                # Back up any previous checkpoints, to protect against crashes while we're writing
-                # the checkpoint file.
-                checkpoint_tmp_path = None
-                if os.path.isfile(checkpoint_path):
-                    checkpoint_tmp_path = checkpoint_path + '_tmp'
-                    shutil.copyfile(checkpoint_path,checkpoint_tmp_path)
-                    
-                # Write the new checkpoint
-                with open(checkpoint_path, 'w') as f:
-                    json.dump({'images': results}, f, indent=1)
-                    
-                # Remove the backup checkpoint if it exists
-                if checkpoint_tmp_path is not None:
-                    os.remove(checkpoint_tmp_path)
-                    
-            # ...if it's time to make a checkpoint
+                write_checkpoint(checkpoint_path, results)
             
     else:
         
@@ -461,54 +444,73 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
         print('Creating pool with {} cores'.format(n_cores))
 
         if len(already_processed) > 0:
+            #image_file_names = image_file_names - already processed 
+            image_file_names = [f for f in image_file_names if f not in already_processed]
             print('Warning: when using multiprocessing, all images are reprocessed')
 
         pool = workerpool(n_cores)
 
         if checkpoint_path is not None:
             checkpoint_queue = Manager().Queue()
-            checkpoint_writer_thread = Thread(target=checkpoint_writer, args=(checkpoint_path, checkpoint_frequency, checkpoint_queue), daemon=True)
-            checkpoint_writer_thread.start()
+            checkpoint_thread = Thread(target=checkpoint_queue_handler, args=(checkpoint_path, checkpoint_frequency, checkpoint_queue, results), daemon=True)
+            checkpoint_thread.start()
 
             image_batches = list(chunks_by_number_of_chunks(image_file_names, n_cores))
-            results = pool.map(partial(process_images, detector=detector,
+            
+            #in this instance the queue handler is already appending results
+            pool.map(partial(process_images, detector=detector,
                                     confidence_threshold=confidence_threshold,image_size=image_size, checkpoint_queue=checkpoint_queue), 
                             image_batches)
 
-            results = list(itertools.chain.from_iterable(results))
-
             checkpoint_queue.put(None)
-            checkpoint_queue.join()
 
         else:
             image_batches = list(chunks_by_number_of_chunks(image_file_names, n_cores))
-            results = pool.map(partial(process_images, detector=detector,
+            new_results = pool.map(partial(process_images, detector=detector,
                                     confidence_threshold=confidence_threshold,image_size=image_size), 
                             image_batches)
 
-            results = list(itertools.chain.from_iterable(results))
+            results.append(list(itertools.chain.from_iterable(new_results)))
 
     # Results may have been modified in place, but we also return it for
     # backwards-compatibility.
     return results
 
-def checkpoint_writer(checkpoint_path, checkpoint_frequency, checkpoint_queue):
+def checkpoint_queue_handler(checkpoint_path, checkpoint_frequency, checkpoint_queue, results=[]):
+
+    count = 0
+    while True:
+        result = checkpoint_queue.get()        
+        if result is None:            
+            break  
+        
+        count +=1
+        results.append(result)
+
+        if checkpoint_frequency != -1 and count % checkpoint_frequency == 0:
+                
+            print('Writing a new checkpoint after having processed {} images since '
+                    'last restart'.format(count))
+            
+            write_checkpoint(checkpoint_path, results)
+
+def write_checkpoint(checkpoint_path, results):
+    assert checkpoint_path is not None              
+            
+    # Back up any previous checkpoints, to protect against crashes while we're writing
+    # the checkpoint file.
+    checkpoint_tmp_path = None
+    if os.path.isfile(checkpoint_path):
+        checkpoint_tmp_path = checkpoint_path + '_tmp'
+        shutil.copyfile(checkpoint_path,checkpoint_tmp_path)
+        
+    # Write the new checkpoint
     with open(checkpoint_path, 'w') as f:
-        count = 0
-
-        while True:
-            count +=1
-            result = checkpoint_queue.get()            
-            if result is None:            
-                break        
-
-            #need to conform to results{images[]}
-            f.write(json.dumps(result))
-            f.flush()        
-            os.fsync(f)
-
-            checkpoint_queue.task_done()
-    checkpoint_queue.task_done()
+        json.dump({'images': results}, f, indent=1)
+        
+    # Remove the backup checkpoint if it exists
+    if checkpoint_tmp_path is not None:
+        os.remove(checkpoint_tmp_path)
 
 def write_results_to_file(results, output_file, relative_path_base=None, 
                           detector_file=None, info=None, include_max_conf=False,
@@ -698,8 +700,7 @@ def main():
         '--ncores',
         type=int,
         default=0,
-        help='Number of cores to use; only applies to CPU-based inference, ' + \
-             'does not support checkpointing when ncores > 1')
+        help='Number of cores to use; only applies to CPU-based inference')
     parser.add_argument(
         '--class_mapping_filename',
         type=str,
