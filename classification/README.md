@@ -93,6 +93,17 @@ pip uninstall -y pillow
 pip install pillow-simd
 ```
 
+## Random non-CUDA errors we've seen
+
+...when doing stuff in the classifier environment.
+
+In at least one Windows environment, we've seen a "DLL load failed error" related to Pillow versions.  If you see a mysterious "DLL load failed" error, try:
+
+```bash
+pip install pillow==9.0.0
+```
+
+
 ## Directory structure
 
 The classifier training pipeline assumes the following directories (only relevant to training):
