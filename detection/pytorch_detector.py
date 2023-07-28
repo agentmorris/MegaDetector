@@ -62,6 +62,14 @@ class PTDetector:
     @staticmethod
     def _load_model(model_pt_path, device):
         checkpoint = torch.load(model_pt_path, map_location=device)
+        
+        # Compatibility fix that allows us to load older YOLOv5 models with 
+        # newer versions of YOLOv5/PT
+        for m in checkpoint['model'].modules():
+            t = type(m)
+            if t is torch.nn.Upsample and not hasattr(m, 'recompute_scale_factor'):
+                m.recompute_scale_factor = None
+            
         model = checkpoint['model'].float().fuse().eval()  # FP32 model
         return model
 
