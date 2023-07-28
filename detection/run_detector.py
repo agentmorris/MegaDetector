@@ -118,7 +118,8 @@ DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD = 0.005
 
 DEFAULT_BOX_THICKNESS = 4
 DEFAULT_BOX_EXPANSION = 0
-    
+DEFAULT_LABEL_FONT_SIZE = 16
+
 
 #%% Classes
 
@@ -317,7 +318,8 @@ def load_detector(model_file, force_cpu=False):
 def load_and_run_detector(model_file, image_file_names, output_dir,
                           render_confidence_threshold=DEFAULT_RENDERING_CONFIDENCE_THRESHOLD,
                           crop_images=False, box_thickness=DEFAULT_BOX_THICKNESS, 
-                          box_expansion=DEFAULT_BOX_EXPANSION, image_size=None
+                          box_expansion=DEFAULT_BOX_EXPANSION, image_size=None,
+                          label_font_size=DEFAULT_LABEL_FONT_SIZE
                           ):
     """
     Load and run detector on target images, and visualize the results.
@@ -438,7 +440,8 @@ def load_and_run_detector(model_file, image_file_names, output_dir,
                 vis_utils.render_detection_bounding_boxes(result['detections'], image,
                             label_map=DEFAULT_DETECTOR_LABEL_MAP,
                             confidence_threshold=render_confidence_threshold,
-                            thickness=box_thickness, expansion=box_expansion)
+                            thickness=box_thickness, expansion=box_expansion,
+                            label_font_size=label_font_size)
                 output_full_path = input_file_to_detection_file(im_file)
                 image.save(output_full_path)
 
@@ -528,6 +531,13 @@ def main():
         default=DEFAULT_BOX_EXPANSION,
         help=('Number of pixels to expand boxes by (defaults to {})'.format(
               DEFAULT_BOX_EXPANSION)))
+    
+    parser.add_argument(
+        '--label_font_size',
+        type=int,
+        default=DEFAULT_LABEL_FONT_SIZE,
+        help=('Label font size (defaults to {})'.format(
+              DEFAULT_LABEL_FONT_SIZE)))
         
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -562,7 +572,8 @@ def main():
                           box_thickness=args.box_thickness,
                           box_expansion=args.box_expansion,                          
                           crop_images=args.crop,
-                          image_size=args.image_size)
+                          image_size=args.image_size,
+                          label_font_size=args.label_font_size)
 
 
 if __name__ == '__main__':

@@ -42,7 +42,8 @@ n_retries = 10
 retry_sleep_time = 0.01
 error_names_for_retry = ['ConnectionError']
 
-DEFAULT_BOX_THICKNESS = 4                
+DEFAULT_BOX_THICKNESS = 4
+DEFAULT_LABEL_FONT_SIZE = 16
 
 
 #%% Functions
@@ -267,7 +268,8 @@ def render_detection_bounding_boxes(detections, image,
                                     classification_confidence_threshold=0.3,
                                     max_classifications=3,
                                     colormap=DEFAULT_COLORS,
-                                    textalign=TEXTALIGN_LEFT):
+                                    textalign=TEXTALIGN_LEFT,
+                                    label_font_size=DEFAULT_LABEL_FONT_SIZE):
     """
     Renders bounding boxes, label, and confidence on an image if confidence is above the threshold.
 
@@ -408,7 +410,8 @@ def render_detection_bounding_boxes(detections, image,
 
     draw_bounding_boxes_on_image(image, display_boxes, classes,
                                  display_strs=display_strs, thickness=thickness, 
-                                 expansion=expansion, colormap=colormap, textalign=textalign)
+                                 expansion=expansion, colormap=colormap, textalign=textalign,
+                                 label_font_size=label_font_size)
 
 
 def draw_bounding_boxes_on_image(image,
@@ -418,7 +421,8 @@ def draw_bounding_boxes_on_image(image,
                                  expansion=0,
                                  display_strs=None,
                                  colormap=DEFAULT_COLORS,
-                                 textalign=TEXTALIGN_LEFT):
+                                 textalign=TEXTALIGN_LEFT,
+                                 label_font_size=DEFAULT_LABEL_FONT_SIZE):
     """
     Draws bounding boxes on an image.
 
@@ -452,7 +456,8 @@ def draw_bounding_boxes_on_image(image,
                                        thickness=thickness, expansion=expansion,
                                        display_str_list=display_str_list,
                                        colormap=colormap,
-                                       textalign=textalign)
+                                       textalign=textalign,
+                                       label_font_size=label_font_size)
 
 
 def draw_bounding_box_on_image(image,
@@ -465,7 +470,7 @@ def draw_bounding_box_on_image(image,
                                expansion=0,
                                display_str_list=(),
                                use_normalized_coordinates=True,
-                               label_font_size=16,
+                               label_font_size=DEFAULT_LABEL_FONT_SIZE,
                                colormap=DEFAULT_COLORS,
                                textalign=TEXTALIGN_LEFT):
     """
