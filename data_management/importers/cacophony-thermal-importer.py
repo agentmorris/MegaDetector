@@ -64,7 +64,7 @@ write_as_color = False
 # codec = 'ffv1'
 # codec = 'hfyu'
 codec = 'h264'
-overwrite_video = False
+overwrite_video = True
 
 codec_to_extension = {'mp4v':'.mp4','ffv1':'.avi','hfyu':'.avi','h264':'.mp4'}
 
@@ -72,6 +72,18 @@ codec_to_extension = {'mp4v':'.mp4','ffv1':'.avi','hfyu':'.avi','h264':'.mp4'}
 debug_n = -1
 n_workers = 16
 confidence_digits = 3
+
+# Standardize a few tag names
+tag_mappings = {
+    'bird/kiwi':'bird',
+    'allbirds':'bird',
+    'not identifiable':'unidentified',
+    'part':'unidentified',
+    'pest':'unidentified'
+}    
+
+# Discard tracks and labels that are below this confidence threshold.
+confidence_threshold = 0.001
 
 
 #%% Support functions
@@ -213,8 +225,6 @@ def process_file(fn_relative,verbose=False):
     
     # List of dicts
     tracks_this_clip = []
-    
-    # TODO: ignore zero-confidence tags, ignore tracks with only zero-confidence tags
     
     # i_track = 0; track_id = track_ids[i_track]
     for i_track,track_id in enumerate(track_ids):
@@ -453,12 +463,48 @@ def process_file(fn_relative,verbose=False):
         
     labels_this_clip = set()
     
+    
+    ## Do some cleanup of tracks and track labels
+    
+    valid_tracks = []
+    
+    for track_info in clip_metadata['tracks']:
+    
+        valid_tags = []
+        
+        # Replace some tags with standardized names (e.g. map "allbirds" to "bird")
+        for tag in track_info['tags']:
+            if tag['label'] in tag_mappings:
+                tag['label'] = tag_mappings[tag['label']]
+                
+            # Discard tags below the minumum confidence
+            if tag['confidence'] >= confidence_threshold:
+                valid_tags.append(tag)
+            else:
+                # TODO
+                print('Zero-confidence tag in {}'.format(fn_relative))                
+                
+        track_info['tags'] = valid_tags
+        
+        # Don't keep any tracks that had no tags above the minimum confidence
+        if len(valid_tags) > 0:
+            valid_tracks.append(track_info)
+        else:
+            # TODO
+            print('Invalid track in {}'.format(fn_relative))
+        
+    # ...for each track
+    
+    if (len(clip_metadata['tracks']) > 0) and (len(valid_tracks) == 0):
+        # TODO
+        print('Removed all tracks from {}'.format(fn_relative))
+        
+    clip_metadata['tracks'] = valid_tracks
+                
     # Build up the list of labels for this clip
     for track_info in clip_metadata['tracks']:
         for tag in track_info['tags']:
-            tag_label = tag['label']
-            
-            # TODO: ignore zero-confidence tags
+            tag_label = tag['label']            
             labels_this_clip.add(tag_label)                
 
     clip_metadata['labels'] = sorted(list(labels_this_clip))
@@ -483,6 +529,8 @@ def process_file(fn_relative,verbose=False):
 
 
 #%% Process files
+
+n_workers = 16
 
 if debug_n > 0:
     files_to_process = all_hdf_files_relative[0:debug_n]
@@ -577,8 +625,11 @@ if False:
 
     #%%
 
-    # i_file = 110680; fn_relative = all_hdf_files_relative[i_file]    
-    i_file = 8; fn_relative = all_hdf_files_relative[i_file]    
+    # i_file = 110680; fn_relative = all_hdf_files_relative[i_file]        
+    # i_file = 8; fn_relative = all_hdf_files_relative[i_file]    
+    
+    fn_relative = [fn for fn in all_hdf_files_relative if '450281' in fn][0]
+    
     clip_metadata = process_file(fn_relative)
     
     
