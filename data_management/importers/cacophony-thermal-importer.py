@@ -23,16 +23,25 @@ from tqdm import tqdm
 from copy import deepcopy
 from collections import defaultdict
 
+import zipfile
+from zipfile import ZipFile
+
 import cv2
 
 from multiprocessing.pool import Pool
 from ct_utils import truncate_float
 
-base_dir = '/bigdata/home/sftp/cacophony-ferraro_/data/cacophony-thermal/'
-output_base = os.path.expanduser('~/tmp/cacophony-thermal-out')
-os.makedirs(output_base,exist_ok=True)
+from md_utils import path_utils
 
-main_metadata_filename = 'new-zealand-thermal-wildlife-imaging.json'
+base_dir = '/bigdata/home/sftp/cacophony-ferraro_/data/cacophony-thermal/'
+output_base = os.path.expanduser('~/tmp/new-zealand-wildlife-thermal-imaging')
+video_output_folder = os.path.join(output_base,'videos')
+individual_metadata_output_folder = os.path.join(output_base,'individual-metadata')
+
+os.makedirs(video_output_folder,exist_ok=True)
+os.makedirs(individual_metadata_output_folder,exist_ok=True)
+
+main_metadata_filename = 'new-zealand-wildlife-thermal-imaging.json'
 
 # Every HDF file specifies a crop rectangle within which the pixels are trustworthy;
 # in practice this is the same across all files.
@@ -141,7 +150,6 @@ def norm_image(image,vmin=None,vmax=None,do_normalization=True,stack_channels=Tr
 
 #%% Enumerate files
 
-from md_utils import path_utils
 all_files = path_utils.recursive_file_list(base_dir)
 all_hdf_files_relative = [os.path.relpath(fn,base_dir) for fn in all_files if fn.lower().endswith('.hdf5')]
 
@@ -160,7 +168,7 @@ def process_file(fn_relative,verbose=False):
     fn_abs = os.path.join(base_dir,fn_relative)
     
     clip_id = int(os.path.basename(fn_relative).split('.')[0])
-    metadata_fn = os.path.join(output_base,str(clip_id) + '_metadata.json')
+    metadata_fn = os.path.join(individual_metadata_output_folder,str(clip_id) + '_metadata.json')
     
     clip_metadata = {}
     clip_metadata['hdf_filename'] = os.path.basename(fn_relative)    
@@ -440,8 +448,8 @@ def process_file(fn_relative,verbose=False):
     clip_metadata['height'] = video_h
     clip_metadata['frame_rate'] = frame_rate
     
-    filtered_video_fn = os.path.join(output_base,str(clip_id) + '_filtered' + codec_to_extension[codec])        
-    unfiltered_video_fn = os.path.join(output_base,str(clip_id) + codec_to_extension[codec])    
+    filtered_video_fn = os.path.join(video_output_folder,str(clip_id) + '_filtered' + codec_to_extension[codec])        
+    unfiltered_video_fn = os.path.join(video_output_folder,str(clip_id) + codec_to_extension[codec])    
     
     if overwrite_video or (not os.path.isfile(filtered_video_fn)):
         
@@ -509,7 +517,7 @@ def process_file(fn_relative,verbose=False):
 
     clip_metadata['labels'] = sorted(list(labels_this_clip))
     
-    metadata_fn = os.path.join(output_base,str(clip_id) + '_metadata.json')
+    metadata_fn = os.path.join(individual_metadata_output_folder,str(clip_id) + '_metadata.json')
     
     # clip_metadata['id'] = clip_id
     # clip_metadata['hdf_filename'] = os.path.basename(fn_relative)
@@ -589,7 +597,17 @@ for label in label_to_video_count:
     print('{}: {}'.format(label,label_to_video_count[label]))
 
 
-#%% Build the main .json file
+#%% Write count .csv
+
+count_csv_file_name = os.path.join(output_base,'new-zealand-wildlife-thermal-imaging-counts.csv')
+
+with open(count_csv_file_name,'w') as f:
+    f.write('label,count\n')
+    for label in label_to_video_count:
+        f.write('{},{}\n'.format(label,label_to_video_count[label]))        
+
+
+#%% Build and zip the main .json file
 
 main_metadata_filename_abs = os.path.join(output_base,main_metadata_filename)
 
@@ -616,6 +634,36 @@ for clip_metadata in tqdm(all_clip_metadata):
 with open(main_metadata_filename_abs,'w') as f:
     json.dump(main_metadata,f,indent=1)
 
+zip_file_name = main_metadata_filename_abs.replace('.json','-metadata.json.zip')
+with ZipFile(zip_file_name,'w',zipfile.ZIP_DEFLATED) as zipf:
+    zipf.write(main_metadata_filename_abs,
+               arcname=os.path.basename(main_metadata_filename_abs),
+               compresslevel=9,compress_type=zipfile.ZIP_DEFLATED)
+
+
+#%% Create a zipfile containing videos, main metadata, and individual metadata
+
+zip_file_name = os.path.join(output_base,'new-zealand-wildlife-thermal-imaging.zip')
+
+all_files = path_utils.recursive_file_list(output_base)
+all_files_relative = [os.path.relpath(fn,output_base) for fn in all_files]
+all_files_to_zip_relative = [fn for fn in all_files_relative if \
+                             (\
+                              ('individual-metadata/' in fn) or \
+                              ('videos/' in fn) or \
+                              (fn.endswith('.json'))
+                             )]
+
+print('Zipping {} files (of {} total files)'.format(len(all_files_to_zip_relative),len(all_files)))
+
+with ZipFile(zip_file_name,'w',zipfile.ZIP_DEFLATED) as zipf:
+    for fn_relative in tqdm(all_files_to_zip_relative):
+        fn_abs = os.path.join(output_base,fn_relative)
+        if fn_abs.endswith('.mp4'):
+            zipf.write(fn_abs,arcname=fn_relative,compresslevel=0,compress_type=zipfile.ZIP_STORED)
+        else:
+            zipf.write(fn_abs,arcname=fn_relative,compresslevel=9,compress_type=zipfile.ZIP_DEFLATED)
+
 
 #%% Scrap
 
@@ -623,7 +671,7 @@ if False:
 
     pass
 
-    #%%
+    #%% Process one file
 
     # i_file = 110680; fn_relative = all_hdf_files_relative[i_file]        
     # i_file = 8; fn_relative = all_hdf_files_relative[i_file]    
@@ -633,6 +681,24 @@ if False:
     clip_metadata = process_file(fn_relative)
     
     
+    #%% Move individual metadata files
+
+    source_folder = base_dir
+    target_folder = os.path.expanduser('~/tmp/cacophony-thermal-out-individual-metadata')
+    assert os.path.isdir(source_folder) and os.path.isdir(target_folder)
+
+    from md_utils import path_utils
+    all_files = path_utils.recursive_file_list(source_folder)
+    files_to_move = [fn for fn in all_files if '_metadata.json' in fn]
+    print('Moving {} of {} files'.format(len(files_to_move),len(all_files)))
+
+    import shutil
+    # source_fn = files_to_move[0]
+    for source_fn in tqdm(files_to_move):
+        target_fn = os.path.join(target_folder,os.path.basename(source_fn))
+        shutil.move(source_fn,target_fn)        
+
+
     #%% Choose a random video with a particular label
 
     target_label = 'pukeko'    
