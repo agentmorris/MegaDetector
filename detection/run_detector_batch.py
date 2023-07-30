@@ -337,7 +337,7 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
     - class_mapping_filename: str, use a non-default class mapping supplied in a .json file
 
     Returns
-    - results: list of dict, each dict represents detections on one image
+    - results: list of dicts; each dict represents detections on one image
     """
     
     if n_cores is None:
@@ -560,6 +560,8 @@ def write_results_to_file(results, output_file, relative_path_base=None,
         of this field.
     - custom_metadata: additional data to include as info['custom_metadata'].  Typically
         a dictionary, but no format checks are performed.
+        
+    Returns the complete output dictionary that was written to the output file.
     """
     
     if relative_path_base is not None:
@@ -615,6 +617,8 @@ def write_results_to_file(results, output_file, relative_path_base=None,
     with open(output_file, 'w') as f:
         json.dump(final_output, f, indent=1)
     print('Output file saved at {}'.format(output_file))
+    
+    return final_output
 
 # ...def write_results_to_file(...)
 

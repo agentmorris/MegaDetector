@@ -31,7 +31,7 @@ CHAR_LIMIT = 255
 
 #%% General path functions
 
-def recursive_file_list(base_dir, convert_slashes=True):
+def recursive_file_list(base_dir, convert_slashes=True, return_relative_paths=False):
     """
     Enumerate files (not directories) in [base_dir], optionally converting
     \ to /
@@ -46,6 +46,9 @@ def recursive_file_list(base_dir, convert_slashes=True):
                 full_path = full_path.replace('\\', '/')
             all_files.append(full_path)
 
+    if return_relative_paths:
+        all_files = [os.path.relpath(fn,base_dir) for fn in all_files]
+        
     return all_files
 
 

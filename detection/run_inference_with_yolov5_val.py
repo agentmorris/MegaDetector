@@ -257,7 +257,7 @@ def run_inference_with_yolo_val(options):
         temporary_folder is not None:
             
         pass
-    
+        
 # ...def run_inference_with_yolo_val()
 
 

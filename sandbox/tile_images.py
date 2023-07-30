@@ -2,11 +2,14 @@
 #
 # tile_images.py
 #
-# Split a folder of images into tiles.  Preserves relative folder structure in a
-# new output folder, with a/b/c/d.jpg becoming, e.g.:
+# Split a folder of images into tiles with a specified number of rows and columns.
+# Preserves relative folder structure in a new output folder, with a/b/c/d.jpg becoming,
+# e.g.:
 # 
 # a/b/c/d_row_0_col_0.jpg    
 # a/b/c/d_row_0_col_1.jpg
+#
+# This script is largely obsolete, and has been replaced by run_tiled_inference.py
 #
 ########
 
@@ -126,4 +129,5 @@ if False:
     n_cols = 2
         
     #%%
+    
     split_image_folder(input_folder,output_folder,n_rows,n_cols)
