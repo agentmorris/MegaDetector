@@ -71,7 +71,7 @@ These questions help us assess how we can best help a new collaborator, and whic
 
 7. If you are only interested in specific species (i.e., if there are a number of species you consider noise and would prefer not to even review), about what percentage of your images that contain animals contain your target species?
 
-8. Do you have a GPU available (or access to cloud-based GPUs)?  "I don't know what a GPU is" is a perfectly good answer.
+8. Do you have an NVIDIA GPU available (or access to cloud-based NVIDIA GPUs)?  "I don't know what a GPU is" is a perfectly good answer.  If you are running Windows, [here](https://www.windowscentral.com/how-determine-graphics-card-windows-10) is a useful guide to checking your GPU make/model.
 
 9. How did you hear about MegaDetector?
 

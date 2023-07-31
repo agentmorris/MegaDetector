@@ -251,7 +251,7 @@ def in_place_nms(md_results, iou_thres=0.45, verbose=True):
 # ...in_place_nms()
 
 
-def _extract_tiles_for_image(fn_relative,image_folder,tiling_folder,patch_size,patch_stride):
+def _extract_tiles_for_image(fn_relative,image_folder,tiling_folder,patch_size,patch_stride,overwrite):
     """
     Extract tiles for a single image
     
@@ -280,7 +280,7 @@ def _extract_tiles_for_image(fn_relative,image_folder,tiling_folder,patch_size,p
         patch_info = extract_patch_from_image(im,patch_xy,patch_size,
                                  patch_folder=tiling_folder,
                                  image_name=image_name,
-                                 overwrite=True)
+                                 overwrite=overwrite)
         patch_info['source_fn'] = fn_relative
         patches.append(patch_info)
         
@@ -297,7 +297,8 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
                         tile_size_x=1280, tile_size_y=1280, tile_overlap=0.5,
                         checkpoint_path=None, checkpoint_frequency=-1, remove_tiles=False, 
                         yolo_inference_options=None,
-                        n_patch_extraction_workers=default_n_patch_extraction_workers):
+                        n_patch_extraction_workers=default_n_patch_extraction_workers,
+                        overwrite_tiles=True):
     """
     Run inference using [model_file] on the images in [image_folder], fist splitting each image up 
     into tiles of size [tile_size_x] x [tile_size_y], writing those tiles to [tiling_folder],
@@ -351,7 +352,8 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
         # fn_relative = image_files_relative[0]        
         for fn_relative in tqdm(image_files_relative):        
             image_patch_info = \
-                _extract_tiles_for_image(fn_relative,image_folder,tiling_folder,patch_size,patch_stride)
+                _extract_tiles_for_image(fn_relative,image_folder,tiling_folder,patch_size,patch_stride,
+                                         overwrite=overwrite_tiles)
             all_image_patch_info.append(image_patch_info)
             
     else:
@@ -378,7 +380,8 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
                         image_folder=image_folder,
                         tiling_folder=tiling_folder,
                         patch_size=patch_size,
-                        patch_stride=patch_stride), 
+                        patch_stride=patch_stride,
+                        overwrite=overwrite_tiles), 
                 image_files_relative),total=len(image_files_relative)))
         
     # ...for each image
