@@ -15,6 +15,9 @@
 # a lot more than that (depending on the overlap between adjacent tiles).  This is 
 # inefficient, but easy to debug.
 #
+# Programmatic invocation supports using YOLOv5's inference scripts (and test-time
+# augmentation); the command-line interface only supports standard inference right now.
+#
 ########
 
 #%% Imports and constants
@@ -39,6 +42,11 @@ patch_jpeg_quality = 95
 # This isn't NMS in the usual sense of redundant model predictions; this is being
 # used to de-duplicate predictions from overlapping patches.
 nms_iou_threshold = 0.45
+
+default_tile_size = [1280,1280]
+
+default_n_patch_extraction_workers = 1
+parallelization_uses_threads = False
 
 
 #%% Support functions
@@ -243,12 +251,53 @@ def in_place_nms(md_results, iou_thres=0.45, verbose=True):
 # ...in_place_nms()
 
 
+def _extract_tiles_for_image(fn_relative,image_folder,tiling_folder,patch_size,patch_stride):
+    """
+    Extract tiles for a single image
+    
+    Not really a standalone function; isolated from the main function to simplify
+    multiprocessing.
+    """
+    
+    fn_abs = os.path.join(image_folder,fn_relative)
+    
+    image_name = relative_path_to_image_name(fn_relative)
+    
+    # Open the image
+    im = vis_utils.open_image(fn_abs)
+    image_size = [im.width,im.height]
+            
+    # Generate patch boundaries (a list of [x,y] starting points)
+    patch_boundaries = get_patch_boundaries(image_size,patch_size,patch_stride)        
+    
+    # Extract patches
+    #
+    # patch_xy = patch_boundaries[0]
+    patches = []
+    
+    for patch_xy in patch_boundaries:
+        
+        patch_info = extract_patch_from_image(im,patch_xy,patch_size,
+                                 patch_folder=tiling_folder,
+                                 image_name=image_name,
+                                 overwrite=True)
+        patch_info['source_fn'] = fn_relative
+        patches.append(patch_info)
+        
+    image_patch_info = {}
+    image_patch_info['patches'] = patches
+    image_patch_info['image_fn'] = fn_relative
+    
+    return image_patch_info
+    
+    
 #%% Main function
     
 def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
                         tile_size_x=1280, tile_size_y=1280, tile_overlap=0.5,
                         checkpoint_path=None, checkpoint_frequency=-1, remove_tiles=False, 
-                        yolo_inference_options=None):
+                        yolo_inference_options=None,
+                        n_patch_extraction_workers=default_n_patch_extraction_workers):
     """
     Run inference using [model_file] on the images in [image_folder], fist splitting each image up 
     into tiles of size [tile_size_x] x [tile_size_y], writing those tiles to [tiling_folder],
@@ -283,50 +332,54 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
     
     ##%% List files
     
-    image_files_relative = path_utils.recursive_file_list(image_folder, return_relative_paths=True)
+    image_files_relative = path_utils.find_images(image_folder, recursive=True, return_relative_paths=True)    
+    assert len(image_files_relative) > 0, 'No images found in folder {}'.format(image_folder)
     
     
     ##%% Generate tiles
     
-    all_image_patch_info = []
+    all_image_patch_info = None
     
-    # For each image
-    #
-    # fn_relative = image_files_relative[0]
-    #
-    # TODO: parallelize this loop
-    for fn_relative in tqdm(image_files_relative):
+    print('Extracting patches from {} images'.format(len(image_files_relative)))
+    
+    n_workers = n_patch_extraction_workers
+    
+    if n_workers <= 1:
         
-        fn_abs = os.path.join(image_folder,fn_relative)
+        all_image_patch_info = []
         
-        image_name = relative_path_to_image_name(fn_relative)
-        
-        # Open the image
-        im = vis_utils.open_image(fn_abs)
-        image_size = [im.width,im.height]
-                
-        # Generate patch boundaries (a list of [x,y] starting points)
-        patch_boundaries = get_patch_boundaries(image_size,patch_size,patch_stride)        
-        
-        # Extract patches
-        #
-        # patch_xy = patch_boundaries[0]
-        patches = []
-        
-        for patch_xy in patch_boundaries:
+        # fn_relative = image_files_relative[0]        
+        for fn_relative in tqdm(image_files_relative):        
+            image_patch_info = \
+                _extract_tiles_for_image(fn_relative,image_folder,tiling_folder,patch_size,patch_stride)
+            all_image_patch_info.append(image_patch_info)
             
-            patch_info = extract_patch_from_image(im,patch_xy,patch_size,
-                                     patch_folder=tiling_folder,
-                                     image_name=image_name,
-                                     overwrite=True)
-            patch_info['source_fn'] = fn_relative
-            patches.append(patch_info)
-            
-        image_patch_info = {}
-        image_patch_info['patches'] = patches
-        image_patch_info['image_fn'] = fn_relative
+    else:
         
-        all_image_patch_info.append(image_patch_info)
+        from multiprocessing.pool import ThreadPool
+        from multiprocessing.pool import Pool
+        from functools import partial
+
+        if n_workers > len(image_files_relative):
+            
+            print('Pool of {} requested, but only {} images available, reducing pool to {}'.\
+                  format(n_workers,len(image_files_relative),len(image_files_relative)))
+            n_workers = len(image_files_relative)
+                                
+        if parallelization_uses_threads:
+            pool = ThreadPool(n_workers); poolstring = 'threads'                
+        else:
+            pool = Pool(n_workers); poolstring = 'processes'
+
+        print('Starting patch extraction pool with {} {}'.format(n_workers,poolstring))
+        
+        all_image_patch_info = list(tqdm(pool.imap(
+                partial(_extract_tiles_for_image,
+                        image_folder=image_folder,
+                        tiling_folder=tiling_folder,
+                        patch_size=patch_size,
+                        patch_stride=patch_stride), 
+                image_files_relative),total=len(image_files_relative)))
         
     # ...for each image
         
@@ -370,7 +423,8 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
         inference_results = load_and_run_detector_batch(model_file, 
                                                         patch_file_names, 
                                                         checkpoint_path=checkpoint_path,
-                                                        checkpoint_frequency=checkpoint_frequency)
+                                                        checkpoint_frequency=checkpoint_frequency,
+                                                        quiet=True)
         
         patch_level_output_file = os.path.join(tiling_folder,folder_name + '_patch_level_results.json')
         
@@ -527,14 +581,16 @@ if False:
     tiling_folder = os.path.expanduser('~/tmp/tiling-test')
     output_file = os.path.expanduser('~/tmp/KRU-test-tiled.json')
 
-    tile_size_x=1280
-    tile_size_y=1280
-    tile_overlap=0.5
-    checkpoint_path=None
-    checkpoint_frequency=-1
-    remove_tiles=False
+    tile_size_x = 1280
+    tile_size_y = 1280
+    tile_overlap = 0.5
+    checkpoint_path = None
+    checkpoint_frequency = -1
+    remove_tiles = False
     
-    if False:
+    use_yolo_inference = False
+    
+    if not use_yolo_inference:
         
         yolo_inference_options = None
         
@@ -554,6 +610,12 @@ if False:
                             remove_tiles=remove_tiles, 
                             yolo_inference_options=yolo_inference_options)
     
+    #%%
+    
+    """
+    python run_tiled_inference.py  $MDV5A ~/data/KRU-test ~/tmp/tiling-test ~/tmp/KRU-test-tiled.json --tile_overlap 0.8 --no_remove_tiles 
+    """
+
     
     #%% Preview tiled inference
     
@@ -588,3 +650,65 @@ if False:
     
     
 #%% Command-line driver
+
+import sys,argparse
+
+def main():
+            
+    parser = argparse.ArgumentParser(
+        description='Chop a folder of images up into tiles, run MD on the tiles, and stitch the results together')
+    parser.add_argument(
+        'model_file',
+        help='Path to detector model file (.pb or .pt)')
+    parser.add_argument(
+        'image_folder',
+        help='Folder containing images for inference (always recursive)')
+    parser.add_argument(
+        'tiling_folder',
+        help='Temporary folder where tiles and intermediate results will be stored')
+    parser.add_argument(
+        'output_file',
+        help='Path to output JSON results file, should end with a .json extension')
+    parser.add_argument(
+        '--no_remove_tiles',
+        action='store_true',
+        help='Tiles are removed by default; this option suppresses tile deletion')
+    
+    parser.add_argument(
+        '--tile_size_x',
+        type=int,
+        default=default_tile_size[0],
+        help=('Tile width (defaults to {})'.format(default_tile_size[0])))
+    parser.add_argument(
+        '--tile_size_y',
+        type=int,
+        default=default_tile_size[0],
+        help=('Tile height (defaults to {})'.format(default_tile_size[1])))
+    parser.add_argument(
+        '--tile_overlap',
+        type=float,
+        default=default_patch_overlap,
+        help=('Overlap between tiles [0,1] (defaults to {})'.format(default_patch_overlap)))
+        
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
+
+    args = parser.parse_args()
+
+    assert os.path.exists(args.model_file), \
+        'detector file {} does not exist'.format(args.model_file)
+    
+    if os.path.exists(args.output_file):
+        print('Warning: output_file {} already exists and will be overwritten'.format(
+            args.output_file))
+
+    remove_tiles = (not args.no_remove_tiles)
+
+    run_tiled_inference(args.model_file, args.image_folder, args.tiling_folder, args.output_file,
+                        tile_size_x=args.tile_size_x, tile_size_y=args.tile_size_y, 
+                        tile_overlap=args.tile_overlap,
+                        remove_tiles=remove_tiles)
+        
+if __name__ == '__main__':
+    main()

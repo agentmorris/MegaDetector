@@ -217,17 +217,23 @@ def find_image_strings(strings: Iterable[str]) -> List[str]:
     return [s for s in strings if is_image_file(s)]
 
 
-def find_images(dirname: str, recursive: bool = False) -> List[str]:
+def find_images(dirname: str, recursive: bool = False, return_relative_paths: bool = False) -> List[str]:
     """
     Finds all files in a directory that look like image file names. Returns
-    absolute paths.    
+    absolute paths unless return_relative_paths is set.    
     """
     
     if recursive:
         strings = glob.glob(os.path.join(dirname, '**', '*.*'), recursive=True)
     else:
         strings = glob.glob(os.path.join(dirname, '*.*'))
-    return find_image_strings(strings)
+    
+    image_files = find_image_strings(strings)
+    
+    if return_relative_paths:
+        image_files = [os.path.relpath(fn,dirname) for fn in image_files]
+    
+    return image_files
 
 
 #%% Filename cleaning functions
