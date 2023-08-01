@@ -392,11 +392,13 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
     print('GPU available: {}'.format(is_gpu_available(model_file)))
     
     if n_cores > 1 and is_gpu_available(model_file):
+        
         print('Warning: multiple cores requested, but a GPU is available; parallelization across ' + \
               'GPUs is not currently supported, defaulting to one GPU')
         n_cores = 1
 
     if n_cores > 1 and use_image_queue:
+        
         print('Warning: multiple cores requested, but the image queue is enabled; parallelization ' + \
               'with the image queue is not currently supported, defaulting to one worker')
         n_cores = 1
@@ -487,6 +489,10 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
 
             results = list(itertools.chain.from_iterable(results))
 
+        # ...if checkpointing is/isn't enabled
+        
+    # ...if we're running (1) with image queue, (2) on one core, (3) on multiple cores
+    
     # 'results' may have been modified in place, but we also return it for
     # backwards-compatibility.
     return results
