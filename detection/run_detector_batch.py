@@ -475,17 +475,17 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
                                     confidence_threshold=confidence_threshold,
                                     image_size=image_size, 
                                     checkpoint_queue=checkpoint_queue), 
-                            image_batches)
+                                    image_batches)
 
             checkpoint_queue.put(None)
 
         else:
             
-            new_results = pool.map(partial(process_images, detector=detector,
-                                    confidence_threshold=confidence_threshold,image_size=image_size), 
-                            image_batches)
+            results = pool.map(partial(process_images, detector=detector,
+                                   confidence_threshold=confidence_threshold,image_size=image_size), 
+                                   image_batches)
 
-            results.append(list(itertools.chain.from_iterable(new_results)))
+            results = list(itertools.chain.from_iterable(results))
 
     # 'results' may have been modified in place, but we also return it for
     # backwards-compatibility.
