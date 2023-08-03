@@ -52,24 +52,20 @@ from functools import partial
 import humanfriendly
 from tqdm import tqdm
 
-# from multiprocessing.pool import ThreadPool as workerpool
 import multiprocessing
 from threading import Thread
 from multiprocessing import Process, Manager
+
+# Multiprocessing uses processes, not threads... leaving this here (and commented out)
+# to make sure I don't change this casually at some point, it changes a number of 
+# assumptions about interaction with PyTorch and TF.
+# from multiprocessing.pool import ThreadPool as workerpool
 from multiprocessing.pool import Pool as workerpool
 
 # Number of images to pre-fetch
 max_queue_size = 10
 use_threads_for_queue = False
 verbose = False
-
-# Useful hack to force CPU inference.
-#
-# Need to do this before any PT/TF imports, which happen when we import
-# from run_detector.
-force_cpu = False
-if force_cpu:
-    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 import detection.run_detector as run_detector
 from detection.run_detector import ImagePathUtils,\
