@@ -405,6 +405,10 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
         
     if use_image_queue:
         
+        assert checkpoint_frequency < 0, \
+            'Using an image queue is not currently supported when checkpointing is enabled'
+        assert len(results) == 0, \
+            'Using an image queue with results loaded from a checkpoint is not currently supported'
         assert n_cores <= 1
         results = run_detector_with_image_queue(image_file_names, model_file, 
                                                 confidence_threshold, quiet, 
@@ -418,7 +422,8 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
         elapsed = time.time() - start_time
         print('Loaded model in {}'.format(humanfriendly.format_timespan(elapsed)))
 
-        # Does not count those already processed
+        # This is only used for console reporting, so it's OK that it doesn't
+        # include images we might have loaded from a previous checkpoint
         count = 0
 
         for im_file in tqdm(image_file_names):
@@ -446,7 +451,11 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
             
     else:
         
-        # When using multiprocessing, let the workers load the model
+        # Multiprocessing is enabled at this point
+        
+        # When using multiprocessing, tell the workers to load the model on each
+        # process, by passing the model_file string as the "model" argument to
+        # process_images.
         detector = model_file
 
         print('Creating pool with {} cores'.format(n_cores))
@@ -457,17 +466,20 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
             print('Loaded {} of {} images from checkpoint'.format(
                 len(already_processed),n_images_all))
         
-        # Divide images into chunks; we'll send one chunk to each worker process        
+        # Divide images into chunks; we'll send one chunk to each worker process   
         image_batches = list(chunks_by_number_of_chunks(image_file_names, n_cores))
                 
         pool = workerpool(n_cores)
 
         if checkpoint_path is not None:
             
+            # Multiprocessing and checkpointing are both enabled at this point
+            
             checkpoint_queue = Manager().Queue()
             
-            # Pass the "results" array to the checkpoint queue handler function, which will
-            # append results to the list as they become available.
+            # Pass the "results" array (which may already contain images loaded from an existing
+            # checkpoint) to the checkpoint queue handler function, which will append results to 
+            # the list as they become available.
             checkpoint_thread = Thread(target=checkpoint_queue_handler, 
                                        args=(checkpoint_path, checkpoint_frequency,
                                              checkpoint_queue, results), daemon=True)
@@ -483,11 +495,17 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
 
         else:
             
-            results = pool.map(partial(process_images, detector=detector,
+            # Multprocessing is enabled, but checkpointing is not
+            
+            new_results = pool.map(partial(process_images, detector=detector,
                                    confidence_threshold=confidence_threshold,image_size=image_size), 
                                    image_batches)
 
-            results = list(itertools.chain.from_iterable(results))
+            new_results = list(itertools.chain.from_iterable(new_results))
+            
+            # Append the results we just computed to "results", which is *usually* empty, but will
+            # be non-empty if we resumed from a checkpoint
+            results += new_results
 
         # ...if checkpointing is/isn't enabled
         
