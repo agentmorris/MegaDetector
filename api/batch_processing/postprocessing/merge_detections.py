@@ -185,7 +185,7 @@ def merge_detections(source_files,target_file,output_file,options=None):
                             det['transferred_from'] = source_detector_name
                             detections_to_transfer.append(det)
 
-                        #check individual detecions                       
+                        #check individual detections                       
                         else:         
                             nomatch = True
                             for target_detection in target_detections_this_category:
@@ -253,7 +253,8 @@ def main():
         '--target_confidence_threshold',
         type=float,
         default=0.8,
-        help='Don\'t merge if target file\'s detection confidence is already higher than this')
+        help='Don\'t merge if target file\'s detection confidence is already higher than this. ' + \
+              'Ignored unless --merge_empty_only is set')
     parser.add_argument(
         '--categories_to_include',
         type=int,
