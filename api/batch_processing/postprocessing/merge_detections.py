@@ -46,7 +46,7 @@ class MergeDetectionsOptions:
         # target results file.
         self.merge_empty_only = False
         
-        self.iou_threshold = 0.9
+        self.iou_threshold = 0.65
 
 
 #%% Main function
@@ -69,7 +69,9 @@ def merge_detections(source_files,target_file,output_file,options=None):
     if options.categories_to_include is not None:
         options.categories_to_include = [int(c) for c in options.categories_to_include]
         
-    assert len(source_files) == len(options.source_confidence_thresholds)
+    assert len(source_files) == len(options.source_confidence_thresholds), \
+        '{} source files provided, but {} source confidence thresholds provided'.format(
+            len(source_files),len(options.source_confidence_thresholds))
     
     for fn in source_files:
         assert os.path.isfile(fn), 'Could not find source file {}'.format(fn)
@@ -117,7 +119,7 @@ def merge_detections(source_files,target_file,output_file,options=None):
     
     # i_source_file = 0; source_file = source_files[i_source_file]
     for i_source_file,source_file in enumerate(source_files):
-        
+    
         print('Processing detections from file {}'.format(source_file))
         
         with open(source_file,'r') as f:
@@ -186,13 +188,17 @@ def merge_detections(source_files,target_file,output_file,options=None):
                         (det['bbox'][2]*det['bbox'][3] <= options.max_detection_size) and \
                         (det['bbox'][2]*det['bbox'][3] >= options.min_detection_size) \
                         ]
-                                
+                           
+                # det = source_detections_this_category_filtered[0]
                 for det in source_detections_this_category_filtered:
                     
                     if det['conf'] >= source_confidence_threshold:
 
                         # Check only whole images
                         if options.merge_empty_only:
+                            
+                            # We verified this above, asserting here for clarity
+                            assert max_target_confidence_this_category < options.target_confidence_threshold
                             det['transferred_from'] = source_detector_name
                             detections_to_transfer.append(det)
 
@@ -203,9 +209,10 @@ def merge_detections(source_files,target_file,output_file,options=None):
                             # target category detections?
                             matches_existing_box = False
                             
+                            # target_detection = target_detections_this_category[0]
                             for target_detection in target_detections_this_category:
                                 
-                                if (target_detection['conf'] < options.target_confidence_threshold) \
+                                if (target_detection['conf'] >= options.target_confidence_threshold) \
                                    and \
                                    (get_iou(det['bbox'],target_detection['bbox']) >= options.iou_threshold):
                                     matches_existing_box = True
@@ -247,6 +254,9 @@ def merge_detections(source_files,target_file,output_file,options=None):
 #%% Command-line driver
 
 def main():
+    
+    default_options = MergeDetectionsOptions()
+    
     parser = argparse.ArgumentParser(
         description='Merge detections from one or more MegaDetector results files into an existing reuslts file')
     parser.add_argument(
@@ -255,32 +265,40 @@ def main():
         help='Path to source .json file(s) to merge from')
     parser.add_argument(
         'target_file',
-        help='Path to a single .json file to merge detections into')
+        help='Path to a .json file to merge detections into')
     parser.add_argument(
         'output_file',
         help='Path to output .json results file')
     parser.add_argument(
         '--max_detection_size',
         type=float,
-        default=1.01,
-        help='Ignore detections with an area larger than this')    
+        default=default_options.max_detection_size,
+        help='Ignore detections with an area larger than this (as a fraction of ' + \
+             'image size) (default {})'.format(
+             default_options.max_detection_size))
     parser.add_argument(
         '--min_detection_size',
-        default=0,
+        default=default_options.min_detection_size,
         type=float,
-        help='Ignore detections with an area smaller than this')
+        help='Ignore detections with an area smaller than this (as a fraction of ' + \
+              'image size) (default {})'.format(
+              default_options.min_detection_size))
     parser.add_argument(
         '--source_confidence_thresholds',
         nargs="+",
         type=float,
-        default=[0.8],
-        help='List of thresholds for each source file. ' + \
-            'Merge only if the source file\'s detection confidence is higher than its corresponding threshold here.')
+        default=default_options.source_confidence_thresholds,
+        help='List of thresholds for each source file (default {}). '.format(
+            default_options.source_confidence_thresholds) + \
+            'Merge only if the source file\'s detection confidence is higher than its ' + \
+            'corresponding threshold.  Should be the same length as the number of source files.')
     parser.add_argument(
         '--target_confidence_threshold',
         type=float,
-        default=0.8,
-        help='Don\'t merge if target file\'s detection confidence is already higher than this. ')
+        default=default_options.target_confidence_threshold,
+        help='Don\'t merge if target file\'s detection confidence is already higher ' + \
+             'than this (default {}). '.format(
+             default_options.target_confidence_threshold))
     parser.add_argument(
         '--categories_to_include',
         type=int,
@@ -296,12 +314,14 @@ def main():
     parser.add_argument(
         '--merge_empty_only',
         action='store_true',
-        help='Ignore individual detections and only merge images for which the target file contains no detections')   
+        help='Ignore individual detections and only merge images for which the target ' + \
+             'file contains no detections')   
     parser.add_argument(
         '--iou_threshold',
         type=float,
-        default=0.9,
-        help='Sets the minimum IoU for a source detection to be considered the same as a target detection')          
+        default=default_options.iou_threshold,
+        help='Sets the minimum IoU for a source detection to be considered the same as ' + \
+             'a target detection (default {})'.format(default_options.iou_threshold))
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -310,15 +330,15 @@ def main():
     args = parser.parse_args()
 
     options = MergeDetectionsOptions()
-    options.max_detection_size=args.max_detection_size
-    options.min_detection_size=args.min_detection_size
-    options.source_confidence_thresholds=args.source_confidence_thresholds
-    options.target_confidence_threshold=args.target_confidence_threshold
-    options.categories_to_include=args.categories_to_include
-    options.categories_to_exclude=args.categories_to_exclude
-    options.merge_empty_only=args.merge_empty_only
-    options.iou_threshold=args.iou_threshold
-
+    options.max_detection_size = args.max_detection_size
+    options.min_detection_size = args.min_detection_size
+    options.source_confidence_thresholds = args.source_confidence_thresholds
+    options.target_confidence_threshold = args.target_confidence_threshold
+    options.categories_to_include = args.categories_to_include
+    options.categories_to_exclude = args.categories_to_exclude
+    options.merge_empty_only = args.merge_empty_only
+    options.iou_threshold = args.iou_threshold
+    
     merge_detections(args.source_files, args.target_file, args.output_file, options)
 
 

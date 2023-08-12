@@ -269,7 +269,8 @@ def render_detection_bounding_boxes(detections, image,
                                     max_classifications=3,
                                     colormap=DEFAULT_COLORS,
                                     textalign=TEXTALIGN_LEFT,
-                                    label_font_size=DEFAULT_LABEL_FONT_SIZE):
+                                    label_font_size=DEFAULT_LABEL_FONT_SIZE,
+                                    custom_strings=None):
     """
     Renders bounding boxes, label, and confidence on an image if confidence is above the threshold.
 
@@ -335,10 +336,19 @@ def render_detection_bounding_boxes(detections, image,
         classification_confidence_threshold: confidence above which classification result is retained.
         
         max_classifications: maximum number of classification results retained for one image.
+        
+        custom_strings: optional set of strings to append to detection labels, should have the
+        same length as [detections].  Appended before classification labels, if classification
+        data is provided.
 
     image is modified in place.
     """
 
+    if custom_strings is not None:
+        assert len(custom_strings) == len(detections), \
+            '{} custom strings provided for {} detections'.format(
+                len(custom_strings),len(detections))
+            
     display_boxes = []
     
     # list of lists, one list of strings for each bounding box (to accommodate multiple labels)
@@ -347,7 +357,7 @@ def render_detection_bounding_boxes(detections, image,
     # for color selection
     classes = []  
 
-    for detection in detections:
+    for i_detection,detection in enumerate(detections):
 
         score = detection['conf']
         
@@ -370,6 +380,15 @@ def render_detection_bounding_boxes(detections, image,
             else:
                 displayed_label = ''
 
+            if custom_strings is not None:
+                custom_string = custom_strings[i_detection]
+                if custom_string is not None and len(custom_string) > 0:
+                    if isinstance(displayed_label,str):
+                        displayed_label += ' ' + custom_string
+                    else:
+                        assert len(displayed_label) == 1
+                        displayed_label[0] += ' ' + custom_string
+                                    
             if 'classifications' in detection:
 
                 # To avoid duplicate colors with detection-only visualization, offset

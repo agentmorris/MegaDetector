@@ -150,6 +150,22 @@ def render_image_pair(fn,image_pairs,category_folder,options,pairwise_options):
     detections_a = image_pair[0]['detections']
     detections_b = image_pair[1]['detections']
     
+    custom_strings_a = [''] * len(detections_a)
+    custom_strings_b = [''] * len(detections_b)    
+    
+    # This function is often used to compare results before/after various merging
+    # steps, so we have some special-case formatting based on the "transferred_from"
+    # field generated in merge_detections.py.
+    for i_det,det in enumerate(detections_a):
+        if 'transferred_from' in det:
+            custom_strings_a[i_det] = '({})'.format(
+                det['transferred_from'].split('.')[0])
+    
+    for i_det,det in enumerate(detections_b):
+        if 'transferred_from' in det:
+            custom_strings_b[i_det] = '({})'.format(
+                det['transferred_from'].split('.')[0])
+    
     if options.target_width is not None:
         im = visualization_utils.resize_image(im, options.target_width)
         
@@ -157,12 +173,14 @@ def render_image_pair(fn,image_pairs,category_folder,options,pairwise_options):
         confidence_threshold=pairwise_options.rendering_confidence_threshold_a,
         thickness=4,expansion=0,
         colormap=options.colormap_a,
-        textalign=visualization_utils.TEXTALIGN_LEFT)
+        textalign=visualization_utils.TEXTALIGN_LEFT,
+        custom_strings=custom_strings_a)
     visualization_utils.render_detection_bounding_boxes(detections_b,im,
         confidence_threshold=pairwise_options.rendering_confidence_threshold_b,
         thickness=2,expansion=0,
         colormap=options.colormap_b,
-        textalign=visualization_utils.TEXTALIGN_RIGHT)
+        textalign=visualization_utils.TEXTALIGN_RIGHT,
+        custom_strings=custom_strings_b)
 
     output_image_fn = path_utils.flatten_path(fn)
     output_image_path = os.path.join(category_folder,output_image_fn)
