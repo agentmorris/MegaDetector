@@ -2,12 +2,9 @@
 #
 # merge_detections.py
 #
-# Merge high-confidence detections from one results file into another file,
-# when the target file does not detect anything on an image.
-#
-# Does not currently attempt to merge every detection based on whether individual 
-# detections are missing; only merges detections into images that would otherwise
-# be considered blank.
+# Merge high-confidence detections from one or more results files into another 
+# file.   Typically used to combine results from MDv5b and/or MDv4 into a "primary"
+# results file from MDv5a.
 #
 # If you want to literally merge two .json files, see combine_api_outputs.py.
 #
@@ -15,9 +12,14 @@
 
 #%% Constants and imports
 
+import argparse
+import sys
 import json
 import os
+
 from tqdm import tqdm
+
+from ct_utils import get_iou
 
 
 #%% Structs
@@ -28,17 +30,24 @@ class MergeDetectionsOptions:
         
         self.max_detection_size = 1.01
         self.min_detection_size = 0
-        self.source_confidence_thresholds = [0.8]
+        self.source_confidence_thresholds = [0.2]
         
-        # Don't bother merging into target images where the max detection is already
-        # higher than this threshold
-        self.target_confidence_threshold = 0.8
+        # Don't bother merging into target images if there is a similar detection
+        # above this threshold (or if there is *any* detection above this threshold,
+        # and merge_empty_only is True)
+        self.target_confidence_threshold = 0.2
         
         # If you want to merge only certain categories, specify one
         # (but not both) of these.
         self.categories_to_include = None
         self.categories_to_exclude = None
+
+        # Only merge detections into images that have *no* detections in the 
+        # target results file.
+        self.merge_empty_only = False
         
+        self.iou_threshold = 0.65
+
 
 #%% Main function
 
@@ -60,7 +69,9 @@ def merge_detections(source_files,target_file,output_file,options=None):
     if options.categories_to_include is not None:
         options.categories_to_include = [int(c) for c in options.categories_to_include]
         
-    assert len(source_files) == len(options.source_confidence_thresholds)
+    assert len(source_files) == len(options.source_confidence_thresholds), \
+        '{} source files provided, but {} source confidence thresholds provided'.format(
+            len(source_files),len(options.source_confidence_thresholds))
     
     for fn in source_files:
         assert os.path.isfile(fn), 'Could not find source file {}'.format(fn)
@@ -108,7 +119,7 @@ def merge_detections(source_files,target_file,output_file,options=None):
     
     # i_source_file = 0; source_file = source_files[i_source_file]
     for i_source_file,source_file in enumerate(source_files):
-        
+    
         print('Processing detections from file {}'.format(source_file))
         
         with open(source_file,'r') as f:
@@ -158,9 +169,11 @@ def merge_detections(source_files,target_file,output_file,options=None):
                     max_target_confidence_this_category = max([det['conf'] for \
                       det in target_detections_this_category])
                 
-                # This is already a detection, no need to proceed looking for detections to 
-                # transfer
-                if max_target_confidence_this_category >= options.target_confidence_threshold:
+                # If we have a valid detection in the target file, and we're only merging
+                # into images that have no detections at all, we don't need to review the individual
+                # detections in the source file.
+                if options.merge_empty_only and \
+                    (max_target_confidence_this_category >= options.target_confidence_threshold):
                     continue
                 
                 source_detections_this_category_raw = [det for det in \
@@ -169,21 +182,54 @@ def merge_detections(source_files,target_file,output_file,options=None):
                 # Boxes are x/y/w/h
                 # source_sizes = [det['bbox'][2]*det['bbox'][3] for det in source_detections_this_category_raw]
                 
-                # Only look at boxes below the size threshold
+                # Only look at source boxes within the size range
                 source_detections_this_category_filtered = [
                     det for det in source_detections_this_category_raw if \
                         (det['bbox'][2]*det['bbox'][3] <= options.max_detection_size) and \
                         (det['bbox'][2]*det['bbox'][3] >= options.min_detection_size) \
                         ]
-                                
+                           
+                # det = source_detections_this_category_filtered[0]
                 for det in source_detections_this_category_filtered:
-                    if det['conf'] >= source_confidence_threshold:
-                        det['transferred_from'] = source_detector_name
-                        detections_to_transfer.append(det)
                     
+                    if det['conf'] >= source_confidence_threshold:
+
+                        # Check only whole images
+                        if options.merge_empty_only:
+                            
+                            # We verified this above, asserting here for clarity
+                            assert max_target_confidence_this_category < options.target_confidence_threshold
+                            det['transferred_from'] = source_detector_name
+                            detections_to_transfer.append(det)
+
+                        # Check individual detections                       
+                        else:
+                            
+                            # Does this source detection match any existing above-threshold
+                            # target category detections?
+                            matches_existing_box = False
+                            
+                            # target_detection = target_detections_this_category[0]
+                            for target_detection in target_detections_this_category:
+                                
+                                if (target_detection['conf'] >= options.target_confidence_threshold) \
+                                   and \
+                                   (get_iou(det['bbox'],target_detection['bbox']) >= options.iou_threshold):
+                                    matches_existing_box = True
+                                    break
+                                
+                            if (not matches_existing_box):
+                                det['transferred_from'] = source_detector_name
+                                detections_to_transfer.append(det)
+                    
+                    # ...if this source detection is above the confidence threshold
+                    
+                # ...for each source detection within category                            
+                                    
             # ...for each detection category
             
             if len(detections_to_transfer) > 0:
+                
                 # print('Adding {} detections to image {}'.format(len(detections_to_transfer),image_filename))
                 detections = fn_to_image[image_filename]['detections']                
                 detections.extend(detections_to_transfer)
@@ -192,7 +238,9 @@ def merge_detections(source_files,target_file,output_file,options=None):
                 if 'max_detection_conf' in fn_to_image[image_filename]:
                     fn_to_image[image_filename]['max_detection_conf'] = \
                         max([d['conf'] for d in detections])
-                
+            
+            # ...if we have any detections to transfer
+            
         # ...for each image
         
     # ...for each source file        
@@ -201,6 +249,97 @@ def merge_detections(source_files,target_file,output_file,options=None):
         json.dump(output_data,f,indent=2)
     
     print('Saved merged results to {}'.format(output_file))
+
+
+#%% Command-line driver
+
+def main():
+    
+    default_options = MergeDetectionsOptions()
+    
+    parser = argparse.ArgumentParser(
+        description='Merge detections from one or more MegaDetector results files into an existing reuslts file')
+    parser.add_argument(
+        'source_files',
+        nargs="+",
+        help='Path to source .json file(s) to merge from')
+    parser.add_argument(
+        'target_file',
+        help='Path to a .json file to merge detections into')
+    parser.add_argument(
+        'output_file',
+        help='Path to output .json results file')
+    parser.add_argument(
+        '--max_detection_size',
+        type=float,
+        default=default_options.max_detection_size,
+        help='Ignore detections with an area larger than this (as a fraction of ' + \
+             'image size) (default {})'.format(
+             default_options.max_detection_size))
+    parser.add_argument(
+        '--min_detection_size',
+        default=default_options.min_detection_size,
+        type=float,
+        help='Ignore detections with an area smaller than this (as a fraction of ' + \
+              'image size) (default {})'.format(
+              default_options.min_detection_size))
+    parser.add_argument(
+        '--source_confidence_thresholds',
+        nargs="+",
+        type=float,
+        default=default_options.source_confidence_thresholds,
+        help='List of thresholds for each source file (default {}). '.format(
+            default_options.source_confidence_thresholds) + \
+            'Merge only if the source file\'s detection confidence is higher than its ' + \
+            'corresponding threshold.  Should be the same length as the number of source files.')
+    parser.add_argument(
+        '--target_confidence_threshold',
+        type=float,
+        default=default_options.target_confidence_threshold,
+        help='Don\'t merge if target file\'s detection confidence is already higher ' + \
+             'than this (default {}). '.format(
+             default_options.target_confidence_threshold))
+    parser.add_argument(
+        '--categories_to_include',
+        type=int,
+        nargs="+",
+        default=None,
+        help='List of numeric detection category IDs to include')
+    parser.add_argument(
+        '--categories_to_exclude',
+        type=int,
+        nargs="+",
+        default=None,
+        help='List of numeric detection categories to include')
+    parser.add_argument(
+        '--merge_empty_only',
+        action='store_true',
+        help='Ignore individual detections and only merge images for which the target ' + \
+             'file contains no detections')   
+    parser.add_argument(
+        '--iou_threshold',
+        type=float,
+        default=default_options.iou_threshold,
+        help='Sets the minimum IoU for a source detection to be considered the same as ' + \
+             'a target detection (default {})'.format(default_options.iou_threshold))
+
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
+
+    args = parser.parse_args()
+
+    options = MergeDetectionsOptions()
+    options.max_detection_size = args.max_detection_size
+    options.min_detection_size = args.min_detection_size
+    options.source_confidence_thresholds = args.source_confidence_thresholds
+    options.target_confidence_threshold = args.target_confidence_threshold
+    options.categories_to_include = args.categories_to_include
+    options.categories_to_exclude = args.categories_to_exclude
+    options.merge_empty_only = args.merge_empty_only
+    options.iou_threshold = args.iou_threshold
+    
+    merge_detections(args.source_files, args.target_file, args.output_file, options)
 
 
 #%% Test driver
@@ -232,4 +371,6 @@ if False:
     output_file = '/home/user/postprocessing/iwildcam/merged-detections/mdv4_mdv5-camonly_mdv5-camcocoinat-2022-05-02.json'
     merge_detections(source_files, target_file, output_file, options)
     
-    
+if __name__ == '__main__':
+    main()
+
