@@ -102,6 +102,7 @@ This string is used by some tools to choose appropriate default confidence value
  
 The "detector_metadata" and "classifier_metadata" fields are also optionally added as of format version 1.2.  These currently contain useful default confidence values for downstream tools (particularly Timelapse), but we strongly recommend against blindly trusting these defaults; always explore your data before choosing a confidence threshold, as the optimal value can vary widely.
 
+
 ### Detector outputs
 
 The bounding box in the `bbox` field is represented as
