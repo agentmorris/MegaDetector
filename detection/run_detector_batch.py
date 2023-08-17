@@ -77,6 +77,8 @@ from detection.run_detector import ImagePathUtils,\
 
 import md_visualization.visualization_utils as vis_utils
 
+from PIL import ExifTags
+
 # Numpy FutureWarnings from tensorflow import
 warnings.filterwarnings('ignore', category=FutureWarning)
 
@@ -229,7 +231,7 @@ def chunks_by_number_of_chunks(ls, n):
 
 def process_images(im_files, detector, confidence_threshold, use_image_queue=False, 
                    quiet=False, image_size=None, checkpoint_queue=None, include_image_size=False,
-                   include_image_timestamp=False):
+                   include_image_timestamp=False, include_exif_data=False):
     """
     Runs MegaDetector over a list of image files.
 
@@ -252,13 +254,17 @@ def process_images(im_files, detector, confidence_threshold, use_image_queue=Fal
     if use_image_queue:
         run_detector_with_image_queue(im_files, detector, confidence_threshold, 
                                       quiet=quiet, image_size=image_size,
-                                      include_image_size=include_image_size, include_image_timestamp=include_image_timestamp)
+                                      include_image_size=include_image_size, 
+                                      include_image_timestamp=include_image_timestamp,
+                                      include_exif_data=include_exif_data)
     else:
         results = []
         for im_file in im_files:
             result = process_image(im_file, detector, confidence_threshold,
                                          quiet=quiet, image_size=image_size, 
-                                         include_image_size=include_image_size, include_image_timestamp=include_image_timestamp)
+                                         include_image_size=include_image_size, 
+                                         include_image_timestamp=include_image_timestamp,
+                                         include_exif_data=include_exif_data)
 
             if checkpoint_queue is not None:
                 checkpoint_queue.put(result)
@@ -271,7 +277,7 @@ def process_images(im_files, detector, confidence_threshold, use_image_queue=Fal
 
 def process_image(im_file, detector, confidence_threshold, image=None, 
                   quiet=False, image_size=None, include_image_size=False,
-                  include_image_timestamp=False):
+                  include_image_timestamp=False, include_exif_data=False):
     """
     Runs MegaDetector on a single image file.
 
@@ -321,6 +327,9 @@ def process_image(im_file, detector, confidence_threshold, image=None,
     if include_image_timestamp:
         result['datetime'] = get_image_datetime(im_file, image, quiet)
 
+    if include_exif_data:
+        result['metadata'] = get_image_metadata(im_file, image, quiet)
+
     return result
 
 # ...def process_image(...)
@@ -332,7 +341,7 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
                                 confidence_threshold=run_detector.DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD,
                                 checkpoint_frequency=-1, results=None, n_cores=1,
                                 use_image_queue=False, quiet=False, image_size=None, class_mapping_filename=None, 
-                                include_image_size=False, include_image_timestamp=False):
+                                include_image_size=False, include_image_timestamp=False, include_exif_data=False):
     """
     Args
     - model_file: str,quiet path to .pb model file
@@ -449,7 +458,8 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
             result = process_image(im_file, detector, 
                                    confidence_threshold, quiet=quiet, 
                                    image_size=image_size, include_image_size=include_image_size,
-                                   include_image_timestamp=include_image_timestamp)
+                                   include_image_timestamp=include_image_timestamp,
+                                   include_exif_data=include_exif_data)
             results.append(result)
 
             # Write a checkpoint if necessary
@@ -501,6 +511,7 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
                                     image_size=image_size, 
                                     include_image_size=include_image_size,
                                     include_image_timestamp=include_image_timestamp,
+                                    include_exif_data=include_exif_data,
                                     checkpoint_queue=checkpoint_queue), 
                                     image_batches)
 
@@ -513,7 +524,8 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
             new_results = pool.map(partial(process_images, detector=detector,
                                    confidence_threshold=confidence_threshold,image_size=image_size,
                                    include_image_size=include_image_size,
-                                   include_image_timestamp=include_image_timestamp), 
+                                   include_image_timestamp=include_image_timestamp,
+                                   include_exif_data=include_exif_data), 
                                    image_batches)
 
             new_results = list(itertools.chain.from_iterable(new_results))
@@ -598,6 +610,21 @@ def get_image_datetime(im_file, image, quiet):
     except Exception as e:
         if not quiet:
             print('Image {} datetime info either not found or invalid. Exception: {}'.format(im_file, e))
+        return None 
+
+def get_image_metadata(im_file, image, quiet):
+    try:
+        exif_info = image.getexif()
+        exif_tags = {}
+        for k, v in exif_info.items():
+            if k in ExifTags.TAGS:
+                exif_tags[ExifTags.TAGS[k]] = str(v)
+            elif isinstance(k,str) or isinstance(k,int):
+                exif_tags[k] = str(v)
+        return exif_tags 
+    except Exception as e:
+        if not quiet:
+            print('Image {} exif data either not found or invalid. Exception: {}'.format(im_file, e))
         return None 
 
 def write_results_to_file(results, output_file, relative_path_base=None, 
@@ -812,6 +839,11 @@ def main():
         action='store_true',
         help='Include image datetime (if available) in output file'
     )
+    parser.add_argument(
+        '--include_exif_data',
+        action='store_true',
+        help='Include available exif data in output file'
+    )
     
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -953,7 +985,8 @@ def main():
                                           image_size=args.image_size,
                                           class_mapping_filename=args.class_mapping_filename,
                                           include_image_size=args.include_image_size,
-                                          include_image_timestamp=args.include_image_timestamp)
+                                          include_image_timestamp=args.include_image_timestamp,
+                                          include_exif_data=args.include_exif_data)
 
     elapsed = time.time() - start_time
     images_per_second = len(results) / elapsed
