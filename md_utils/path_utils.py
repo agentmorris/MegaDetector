@@ -21,7 +21,7 @@ import unicodedata
 from datetime import datetime
 from typing import Container, Iterable, List, Optional, Tuple, Sequence
 
-IMG_EXTENSIONS = ('.jpg', '.jpeg', '.gif', '.png', '.tif', '.tiff')
+IMG_EXTENSIONS = ('.jpg', '.jpeg', '.gif', '.png', '.tif', '.tiff', '.bmp')
 
 VALID_FILENAME_CHARS = f"~-_.() {string.ascii_letters}{string.digits}"
 SEPARATOR_CHARS = r":\/"

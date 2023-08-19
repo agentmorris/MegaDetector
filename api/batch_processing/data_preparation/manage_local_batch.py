@@ -1462,6 +1462,7 @@ exif_options.verbose = False
 exif_options.n_workers = default_workers_for_parallel_tasks
 exif_options.use_threads = parallelization_defaults_to_threads
 exif_options.processing_library = 'pil'
+exif_options.byte_handling = 'delete'
 
 exif_results_file = os.path.join(filename_base,'exif_data.json')
 
@@ -1498,6 +1499,8 @@ image_info = []
 images_without_datetime = []
 images_with_invalid_datetime = []
 
+exif_datetime_tag = 'DateTimeOriginal'
+
 # exif_result = exif_results[0]
 for exif_result in tqdm(exif_results):
     
@@ -1507,14 +1510,14 @@ for exif_result in tqdm(exif_results):
     if overflow_folder_handling_enabled:
         im['location'] = remove_overflow_folders(os.path.dirname(exif_result['file_name']))
     else:
-        im['location'] = os.path.dirname(exif_result['file_name'])       
-    
+        im['location'] = os.path.dirname(exif_result['file_name'])
+        
     im['file_name'] = exif_result['file_name']
     im['id'] = im['file_name']
-    if 'exif_tags' not in exif_result or 'DateTime' not in exif_result['exif_tags']: 
+    if 'exif_tags' not in exif_result or exif_datetime_tag not in exif_result['exif_tags']: 
         exif_dt = None
     else:
-        exif_dt = exif_result['exif_tags']['DateTime']
+        exif_dt = exif_result['exif_tags'][exif_datetime_tag]
         exif_dt = parse_date_from_exif_datetime(exif_dt)
     if exif_dt is None:
         im['datetime'] = None

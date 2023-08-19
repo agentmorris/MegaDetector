@@ -45,12 +45,10 @@ import copy
 import shutil
 import warnings
 import itertools
-import time
+import humanfriendly
 
 from datetime import datetime
 from functools import partial
-
-import humanfriendly
 from tqdm import tqdm
 
 import multiprocessing
@@ -63,24 +61,27 @@ from multiprocessing import Process, Manager
 # from multiprocessing.pool import ThreadPool as workerpool
 from multiprocessing.pool import Pool as workerpool
 
+import detection.run_detector as run_detector
+from detection.run_detector import is_gpu_available,\
+    load_detector,\
+    get_detector_version_from_filename,\
+    get_detector_metadata_from_version_string
+
+from md_utils import path_utils
+import md_visualization.visualization_utils as vis_utils
+from data_management import read_exif
+
+# Numpy FutureWarnings from tensorflow import
+warnings.filterwarnings('ignore', category=FutureWarning)
+
 # Number of images to pre-fetch
 max_queue_size = 10
 use_threads_for_queue = False
 verbose = False
 
-import detection.run_detector as run_detector
-from detection.run_detector import ImagePathUtils,\
-    is_gpu_available,\
-    load_detector,\
-    get_detector_version_from_filename,\
-    get_detector_metadata_from_version_string
-
-import md_visualization.visualization_utils as vis_utils
-
-from PIL import ExifTags
-
-# Numpy FutureWarnings from tensorflow import
-warnings.filterwarnings('ignore', category=FutureWarning)
+exif_options = read_exif.ReadExifOptions()
+exif_options.processing_library = 'pil'
+exif_options.byte_handling = 'convert_to_string'
 
 
 #%% Support functions for multiprocessing
@@ -289,7 +290,8 @@ def process_image(im_file, detector, confidence_threshold, image=None,
 
     Returns:
     - result: dict representing detections on one image
-        see the 'images' key in https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
+        see the 'images' key in 
+        https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
     """
     
     if not quiet:
@@ -325,10 +327,10 @@ def process_image(im_file, detector, confidence_threshold, image=None,
         result['height'] = image.height
 
     if include_image_timestamp:
-        result['datetime'] = get_image_datetime(im_file, image, quiet)
+        result['datetime'] = get_image_datetime(image)
 
     if include_exif_data:
-        result['metadata'] = get_image_metadata(im_file, image, quiet)
+        result['exif_metadata'] = read_exif.read_pil_exif(image,exif_options)
 
     return result
 
@@ -341,7 +343,8 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
                                 confidence_threshold=run_detector.DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD,
                                 checkpoint_frequency=-1, results=None, n_cores=1,
                                 use_image_queue=False, quiet=False, image_size=None, class_mapping_filename=None, 
-                                include_image_size=False, include_image_timestamp=False, include_exif_data=False):
+                                include_image_size=False, include_image_timestamp=False, 
+                                include_exif_data=False):
     """
     Args
     - model_file: str,quiet path to .pb model file
@@ -384,7 +387,7 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
         # Find the images to score; images can be a directory, may need to recurse
         if os.path.isdir(image_file_names):
             image_dir = image_file_names
-            image_file_names = ImagePathUtils.find_images(image_dir, True)
+            image_file_names = path_utils.find_images(image_dir, True)
             print('{} image files found in folder {}'.format(len(image_file_names),image_dir))
             
         # A json list of image paths
@@ -395,13 +398,13 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
             print('Loaded {} image filenames from list file {}'.format(len(image_file_names),list_file))
             
         # A single image file
-        elif os.path.isfile(image_file_names) and ImagePathUtils.is_image_file(image_file_names):
+        elif os.path.isfile(image_file_names) and path_utils.is_image_file(image_file_names):
             image_file_names = [image_file_names]
             print('Processing image {}'.format(image_file_names[0]))
             
         else:        
             raise ValueError('image_file_names is a string, but is not a directory, a json ' + \
-                             'list (.json), or an image file (png/jpg/jpeg/gif)')
+                             'list (.json), or an image file')
     
     if results is None:
         results = []
@@ -591,41 +594,23 @@ def write_checkpoint(checkpoint_path, results):
         os.remove(checkpoint_tmp_path)
 
 
-def get_image_datetime(im_file, image, quiet):
+def get_image_datetime(image):
+    """
+    Returns the EXIF datetime from [image] (a PIL Image object), if available, as a string.
+    
+    [im_file] is used only for error reporting.
+    """
+    
+    exif_tags = read_exif.read_pil_exif(image,exif_options)
+    
     try:
-        #Exif tags to look for
-        DateTime_TagId = 0x0132
-        DateTimeOriginal_TagId = 0x9003
+        datetime_str = exif_tags['DateTimeOriginal']
+        _ = time.strptime(datetime_str, '%Y:%m:%d %H:%M:%S')
+        return datetime_str
 
-        exif_info = image.getexif()
+    except Exception:
+        return None        
 
-        datetime = exif_info.get(DateTime_TagId)
-        if datetime is None:
-            exif_info.get(DateTimeOriginal_TagId)      
-
-        #Validate timestamp only
-        time.strptime(datetime, '%Y:%m:%d %H:%M:%S')
-        return datetime
-
-    except Exception as e:
-        if not quiet:
-            print('Image {} datetime info either not found or invalid. Exception: {}'.format(im_file, e))
-        return None 
-
-def get_image_metadata(im_file, image, quiet):
-    try:
-        exif_info = image.getexif()
-        exif_tags = {}
-        for k, v in exif_info.items():
-            if k in ExifTags.TAGS:
-                exif_tags[ExifTags.TAGS[k]] = str(v)
-            elif isinstance(k,str) or isinstance(k,int):
-                exif_tags[k] = str(v)
-        return exif_tags 
-    except Exception as e:
-        if not quiet:
-            print('Image {} exif data either not found or invalid. Exception: {}'.format(im_file, e))
-        return None 
 
 def write_results_to_file(results, output_file, relative_path_base=None, 
                           detector_file=None, info=None, include_max_conf=False,
@@ -728,7 +713,7 @@ if False:
     quiet = False
     image_dir = r'G:\temp\demo_images\ssmini'
     image_size = None
-    image_file_names = ImagePathUtils.find_images(image_dir, recursive=False)    
+    image_file_names = path_utils.find_images(image_dir, recursive=False)    
     
     start_time = time.time()
     
@@ -842,7 +827,7 @@ def main():
     parser.add_argument(
         '--include_exif_data',
         action='store_true',
-        help='Include available exif data in output file'
+        help='Include available EXIF data in output file'
     )
     
     if len(sys.argv[1:]) == 0:
@@ -896,9 +881,9 @@ def main():
 
     # Find the images to score; images can be a directory, may need to recurse
     if os.path.isdir(args.image_file):
-        image_file_names = ImagePathUtils.find_images(args.image_file, args.recursive)
+        image_file_names = path_utils.find_images(args.image_file, args.recursive)
         if len(image_file_names) > 0:
-            print('{} image files found in the input directory'.format(len(image_file_names)))
+            print('{} image files found in the input directory'.format(len(image_file_names)))                        
         else:
             if (args.recursive):
                 print('No image files found in directory {}, exiting'.format(args.image_file))
@@ -916,7 +901,7 @@ def main():
             len(image_file_names),args.image_file))
         
     # A single image file
-    elif os.path.isfile(args.image_file) and ImagePathUtils.is_image_file(args.image_file):
+    elif os.path.isfile(args.image_file) and path_utils.is_image_file(args.image_file):
         image_file_names = [args.image_file]
         print('Processing image {}'.format(args.image_file))
         
