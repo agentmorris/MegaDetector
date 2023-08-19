@@ -14,7 +14,7 @@ import datetime
 from tqdm import tqdm
 
 from md_visualization import visualize_db
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 from md_utils.path_utils import find_images, split_path, insert_before_extension
 
 # Filenames will be stored in the output .json relative to this base dir
@@ -170,15 +170,15 @@ json.dump(data, open(test_fn, 'w'), indent=2)
     
 #%% Validate .json files
 
-options = sanity_check_json_db.SanityCheckOptions()
+options = integrity_check_json_db.IntegrityCheckOptions()
 options.baseDir = input_base_dir
 options.bCheckImageSizes = False
 options.bCheckImageExistence = True
 options.bFindUnusedImages = True
 
-sortedCategories, data = sanity_check_json_db.sanity_check_json_db(output_json_filename, options)
-sortedCategories, data = sanity_check_json_db.sanity_check_json_db(train_fn, options)
-sortedCategories, data = sanity_check_json_db.sanity_check_json_db(test_fn, options)
+sorted_categories, data, _ = integrity_check_json_db.integrity_check_json_db(output_json_filename, options)
+sorted_categories, data, _ = integrity_check_json_db.integrity_check_json_db(train_fn, options)
+sorted_categories, data, _ = integrity_check_json_db.integrity_check_json_db(test_fn, options)
 
 
 #%% Preview labels

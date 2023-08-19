@@ -17,9 +17,13 @@ import posixpath
 import string
 import json
 import unicodedata
+import zipfile
 
+from zipfile import ZipFile
 from datetime import datetime
 from typing import Container, Iterable, List, Optional, Tuple, Sequence
+from multiprocessing.pool import ThreadPool
+from tqdm import tqdm
 
 IMG_EXTENSIONS = ('.jpg', '.jpeg', '.gif', '.png', '.tif', '.tiff')
 
@@ -337,3 +341,40 @@ def read_list_from_file(filename: str) -> List[str]:
         assert isinstance(s, str)
     return file_list
 
+
+#%% Zip functions
+
+def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compresslevel=9):
+    """
+    Zip a single file, by default writing to a new file called [input_fn].zip
+    """
+    
+    basename = os.path.basename(input_fn)
+    
+    if output_fn is None:
+        output_fn = input_fn + '.zip'
+        
+    if (not overwrite) and (os.path.isfile(output_fn)):
+        print('Skipping existing file {}'.format(output_fn))
+        return
+    
+    if verbose:
+        print('Zipping {} to {}'.format(input_fn,output_fn))
+    
+    with ZipFile(output_fn,'w',zipfile.ZIP_DEFLATED) as zipf:
+        zipf.write(input_fn,arcname=basename,compresslevel=compresslevel,
+                   compress_type=zipfile.ZIP_DEFLATED)
+
+    return output_fn
+
+
+def parallel_zip_files(input_files):
+    """
+    Zip one or more files to separate output files in parallel, leaving the 
+    original files in place.
+    """
+
+    pool = ThreadPool(len(input_files))
+    with tqdm(total=len(input_files)) as pbar:
+        for i,_ in enumerate(pool.imap_unordered(zip_file,input_files)):
+            pbar.update()

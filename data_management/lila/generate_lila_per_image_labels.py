@@ -56,7 +56,7 @@ ds_name_to_annotation_level['NACTI'] = 'unknown'
 
 known_unmapped_labels = set(['WCS Camera Traps:#ref!'])
 
-debug_max_images_per_dataset = 100
+debug_max_images_per_dataset = 0
 if debug_max_images_per_dataset > 0:
     print('Running in debug mode')
     output_file = output_file.replace('.csv','_debug.csv')
@@ -98,6 +98,8 @@ for i_row,row in taxonomy_df.iterrows():
     
 
 #%% Process annotations for each dataset
+
+# Takes several hours
 
 import csv
 
@@ -200,15 +202,23 @@ with open(output_file,'w') as f:
                     
             dt_string = ''                
             if (has_valid_datetime(im)):
+                
                 dt = dateparser.parse(im['datetime'])
                 
                 if dt is None or dt.year < 1990 or dt.year > 2025:
+                    
                     # raise ValueError('Suspicious date parsing result')
                     
-                    # Special case we don't want to print a warning about
-                    print('Suspicious date parsing result for image {}: {}'.format(im['id'],
-                      im['datetime']))                    
+                    # Special case we don't want to print a warning about... this is 
+                    # in invalid date that very likely originates on the camera, not at
+                    # some intermediate processing step.
+                    #
+                    # print('Suspicious date for image {}: {} ({})'.format(
+                    #    im['id'], im['datetime'], ds_name))
+                    pass                
+                    
                 else:
+                    
                     found_date = True
                     dt_string = dt.strftime("%m-%d-%Y %H:%M:%S")
                 
@@ -308,6 +318,7 @@ with open(output_file,'w') as f:
         if not found_date:
             pass
             # print('Warning: no date information available for this dataset')
+            
         if not found_location:
             pass
             # print('Warning: no location information available for this dataset')
@@ -332,6 +343,8 @@ print('Read {} lines from {}'.format(len(df),output_file))
 
 #%% Do some post-hoc integrity checking
 
+# Takes ~10 minutes without using apply()
+
 tqdm.pandas()
 
 def isint(v):
@@ -339,27 +352,43 @@ def isint(v):
 
 valid_annotation_levels = set(['sequence','image','unknown'])
 
+dataset_name_to_locations = defaultdict(set)
+
 def check_row(row):
+    
     assert row['dataset_name'] in metadata_table.keys()
     assert row['url'].startswith('https://')
     assert ' : ' in row['image_id']
     assert 'seq' not in row['location_id'].lower()
+    assert row['annotation_level'] in valid_annotation_levels
+
+    # frame_num should either be NaN or an integer
     if isinstance(row['frame_num'],float):
         assert np.isnan(row['frame_num'])
     else:
-        # -1 isn't *really* valid, but we use it sometimes for sequences of unknown length
+        # -1 is sometimes used for sequences of unknown length
         assert isint(row['frame_num']) and row['frame_num'] >= -1
-    assert row['annotation_level'] in valid_annotation_levels
 
+    ds_name = row['dataset_name']
+    dataset_name_to_locations[ds_name].add(row['location_id'])
+    
 # Faster, but more annoying to debug
 if False:
     
     df.progress_apply(check_row, axis=1)
 
 else:
+    
     # i_row = 0; row = df.iloc[i_row]
     for i_row,row in tqdm(df.iterrows(),total=len(df)):
         check_row(row)
+
+
+#%% Check for datasets that have only one location string
+
+for ds_name in dataset_name_to_locations.keys():
+    if len(dataset_name_to_locations[ds_name]) == 1:
+        print('No location information for {}'.format(ds_name))
 
 
 #%% Preview constants
@@ -409,7 +438,7 @@ print('Selected {} total images'.format(len(images_to_download)))
 
 #%% Download images
 
-# Expect a few errors for images with human or human-esque labels
+# Expect a few errors for images with human or vehicle labels (or things like "ignore" that *could* be humans)
 
 import urllib.request
 
@@ -418,8 +447,8 @@ for i_image,image in tqdm(enumerate(images_to_download),total=len(images_to_down
     
     url = image['url']
     ext = os.path.splitext(url)[1]
-    output_file = os.path.join(preview_folder,'image_{}'.format(str(i_image).zfill(4)) + ext)
-    relative_file = os.path.relpath(output_file,preview_folder)
+    image_file = os.path.join(preview_folder,'image_{}'.format(str(i_image).zfill(4)) + ext)
+    relative_file = os.path.relpath(image_file,preview_folder)
     try:
         download_url(url,output_file,verbose=False)
         image['relative_file'] = relative_file
@@ -455,3 +484,10 @@ write_html_image_list.write_html_image_list(html_filename,html_images)
 
 from md_utils.path_utils import open_file
 open_file(html_filename)
+
+
+#%% Zip output file
+
+from md_utils.path_utils import zip_file
+
+zip_file(output_file,verbose=True)
