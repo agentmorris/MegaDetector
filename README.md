@@ -70,6 +70,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Point No Point Treaty Council](https://pnptc.org/)
 * [Ramat Hanadiv Nature Park](https://www.ramat-hanadiv.org.il/en/)
 * [SPEA (Portuguese Society for the Study of Birds)](https://spea.pt/en/)
+* [Sky Island Alliance](https://skyislandalliance.org/)
 * [Synthetaic](https://www.synthetaic.com/)
 * [Taronga Conservation Society](https://taronga.org.au/)
 * [The Nature Conservancy in Wyoming](https://www.nature.org/en-us/about-us/where-we-work/united-states/wyoming/)
