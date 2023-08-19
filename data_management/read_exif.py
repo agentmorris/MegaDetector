@@ -21,7 +21,7 @@ from multiprocessing.pool import ThreadPool as ThreadPool
 from multiprocessing.pool import Pool as Pool
 
 from tqdm import tqdm
-from PIL import Image, ExifTags
+from PIL import Image, ExifTags, TiffImagePlugin
 
 from md_utils.path_utils import find_images
 
@@ -48,6 +48,13 @@ class ReadExifOptions:
     
     exiftool_command_name = 'exiftool'
     
+    # How should we handle byte-formatted EXIF tags?
+    #
+    # 'convert_to_string': convert to a Python string
+    # 'delete': don't include at all
+    # 'raw': include as a byte string
+    byte_handling = 'convert_to_string' # 'convert_to_string','delete','raw'
+    
     # Should we use exiftool or pil?
     processing_library = 'exiftool' # 'exiftool','pil'
 
@@ -64,6 +71,91 @@ def enumerate_files(input_folder):
     image_files = [s.replace('\\','/') for s in image_files]
     print('Enumerated {} files'.format(len(image_files)))
     return image_files
+
+
+def get_exif_ifd(exif):
+    """
+    Read EXIF data by finding the EXIF offset and reading tags directly
+    
+    https://github.com/python-pillow/Pillow/issues/5863
+    """
+    
+    # Find the offset for all the EXIF information
+    for key, value in ExifTags.TAGS.items():
+        if value == "ExifOffset":
+            break
+    info = exif.get_ifd(key)
+    return {
+        ExifTags.TAGS.get(key, key): value
+        for key, value in info.items()
+    }
+
+
+def read_pil_exif(im,options=None):
+    """
+    Read all the EXIF data we know how to read from [im] (path or PIL Image), whether it's 
+    in the PIL default EXIF data or not.
+    """
+    
+    if options is None:
+        options = ReadExifOptions()
+        
+    image_name = '[image]'
+    if isinstance(im,str):
+        image_name = im
+        im = Image.open(im)
+        
+    exif_tags = {}
+    try:
+        exif_info = im.getexif()
+    except Exception:
+        exif_info = None
+        
+    if exif_info is None:
+        return exif_tags
+    
+    for k, v in exif_info.items():
+        assert isinstance(k,str) or isinstance(k,int), \
+            'Invalid EXIF key {}'.format(str(k))
+        if k in ExifTags.TAGS:
+            exif_tags[ExifTags.TAGS[k]] = str(v)
+        else:
+            # print('Warning: unrecognized EXIF tag: {}'.format(k))
+            exif_tags[k] = str(v)
+    
+    exif_idf_tags = get_exif_ifd(exif_info)
+    
+    for k in exif_idf_tags.keys():
+        v = exif_idf_tags[k]
+        if k in exif_tags:
+            print('Warning: redundant EXIF values for {} in {}:\n{}\n{}'.format(
+                k,image_name,exif_tags[k],v))
+        else:
+            exif_tags[k] = v
+    
+    exif_tag_names = list(exif_tags.keys())
+    
+    # Type conversion
+    for k in exif_tag_names:
+        
+        if isinstance(exif_tags[k],TiffImagePlugin.IFDRational):
+            if exif_tags[k]._denominator == 0:
+                exif_tags[k] = float('nan')
+            else:
+                exif_tags[k] = exif_tags[k]._numerator / exif_tags[k]._denominator
+            
+        elif isinstance(exif_tags[k],bytes):
+            if options.byte_handling == 'delete':
+                del exif_tags[k]
+            elif options.byte_handling == 'raw':
+                pass
+            else:
+                assert options.byte_handling == 'convert_to_string'
+                exif_tags[k] = str(exif_tags[k])
+                
+    return exif_tags
+
+# ...read_pil_exif()
 
 
 def read_exif_tags_for_image(file_path,options=None):
@@ -87,21 +179,7 @@ def read_exif_tags_for_image(file_path,options=None):
     if options.processing_library == 'pil':
         
         try:
-            img = Image.open(file_path)
-            # exif_tags = img.info['exif'] if ('exif' in img.info) else None
-            exif_info = img.getexif()
-            if exif_info is None:
-                exif_tags = None
-            else:
-                exif_tags = {}
-                for k, v in exif_info.items():
-                    assert isinstance(k,str) or isinstance(k,int), \
-                        'Invalid EXIF key {}'.format(str(k))
-                    if k in ExifTags.TAGS:
-                        exif_tags[ExifTags.TAGS[k]] = str(v)
-                    else:
-                        # print('Warning: unrecognized EXIF tag: {}'.format(k))
-                        exif_tags[k] = str(v)
+            exif_tags = read_pil_exif(file_path,options)
 
         except Exception as e:
             print('Read failure for image {}: {}'.format(

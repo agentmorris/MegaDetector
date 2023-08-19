@@ -25,7 +25,7 @@ from typing import Container, Iterable, List, Optional, Tuple, Sequence
 from multiprocessing.pool import ThreadPool
 from tqdm import tqdm
 
-IMG_EXTENSIONS = ('.jpg', '.jpeg', '.gif', '.png', '.tif', '.tiff')
+IMG_EXTENSIONS = ('.jpg', '.jpeg', '.gif', '.png', '.tif', '.tiff', '.bmp')
 
 VALID_FILENAME_CHARS = f"~-_.() {string.ascii_letters}{string.digits}"
 SEPARATOR_CHARS = r":\/"

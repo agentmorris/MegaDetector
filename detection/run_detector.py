@@ -44,7 +44,6 @@
 #%% Constants, imports, environment
 
 import argparse
-import glob
 import os
 import statistics
 import sys
@@ -54,6 +53,7 @@ import warnings
 import humanfriendly
 from tqdm import tqdm
 
+import md_utils.path_utils as path_utils
 import md_visualization.visualization_utils as vis_utils
 
 # ignoring all "PIL cannot read EXIF metainfo for the images" warnings
@@ -125,52 +125,7 @@ DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD = 0.005
 DEFAULT_BOX_THICKNESS = 4
 DEFAULT_BOX_EXPANSION = 0
 DEFAULT_LABEL_FONT_SIZE = 16
-
-
-#%% Classes
-
-class ImagePathUtils:
-    """
-    A collection of utility functions supporting this stand-alone script
-    """
-
-    # Stick this into filenames before the extension for the rendered result
-    DETECTION_FILENAME_INSERT = '_detections'
-
-    image_extensions = ['.jpg', '.jpeg', '.gif', '.png']
-
-    @staticmethod
-    def is_image_file(s):
-        """
-        Check a file's extension against a hard-coded set of image file extensions
-        """
-        
-        ext = os.path.splitext(s)[1]
-        return ext.lower() in ImagePathUtils.image_extensions
-
-    @staticmethod
-    def find_image_files(strings):
-        """
-        Given a list of strings that are potentially image file names, look for strings
-        that actually look like image file names (based on extension).
-        """
-        
-        return [s for s in strings if ImagePathUtils.is_image_file(s)]
-
-    @staticmethod
-    def find_images(dir_name, recursive=False):
-        """
-        Find all files in a directory that look like image file names
-        """
-        
-        if recursive:
-            strings = glob.glob(os.path.join(dir_name, '**', '*.*'), recursive=True)
-        else:
-            strings = glob.glob(os.path.join(dir_name, '*.*'))
-
-        image_strings = ImagePathUtils.find_image_files(strings)
-
-        return image_strings
+DETECTION_FILENAME_INSERT = '_detections'
 
 
 #%% Utility functions
@@ -383,7 +338,7 @@ def load_and_run_detector(model_file, image_file_names, output_dir,
         name, ext = os.path.splitext(fn)
         if crop_index >= 0:
             name += '_crop{:0>2d}'.format(crop_index)
-        fn = '{}{}{}'.format(name, ImagePathUtils.DETECTION_FILENAME_INSERT, '.jpg')
+        fn = '{}{}{}'.format(name, DETECTION_FILENAME_INSERT, '.jpg')
         if fn in output_filename_collision_counts:
             n_collisions = output_filename_collision_counts[fn]
             fn = '{:0>4d}'.format(n_collisions) + '_' + fn
@@ -558,7 +513,7 @@ def main():
     if args.image_file:
         image_file_names = [args.image_file]
     else:
-        image_file_names = ImagePathUtils.find_images(args.image_dir, args.recursive)
+        image_file_names = path_utils.find_images(args.image_dir, args.recursive)
 
     print('Running detector on {} images...'.format(len(image_file_names)))
 
@@ -592,7 +547,7 @@ if False:
 
     #%%
     model_file = r'c:\temp\models\md_v4.1.0.pb'
-    image_file_names = ImagePathUtils.find_images(r'c:\temp\demo_images\ssverymini')
+    image_file_names = path_utils.find_images(r'c:\temp\demo_images\ssverymini')
     output_dir = r'c:\temp\demo_images\ssverymini'
     render_confidence_threshold = 0.8
     crop_images = True

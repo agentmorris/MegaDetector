@@ -45,11 +45,10 @@ import copy
 import shutil
 import warnings
 import itertools
+import humanfriendly
 
 from datetime import datetime
 from functools import partial
-
-import humanfriendly
 from tqdm import tqdm
 
 import multiprocessing
@@ -62,22 +61,27 @@ from multiprocessing import Process, Manager
 # from multiprocessing.pool import ThreadPool as workerpool
 from multiprocessing.pool import Pool as workerpool
 
+import detection.run_detector as run_detector
+from detection.run_detector import is_gpu_available,\
+    load_detector,\
+    get_detector_version_from_filename,\
+    get_detector_metadata_from_version_string
+
+from md_utils import path_utils
+import md_visualization.visualization_utils as vis_utils
+from data_management import read_exif
+
+# Numpy FutureWarnings from tensorflow import
+warnings.filterwarnings('ignore', category=FutureWarning)
+
 # Number of images to pre-fetch
 max_queue_size = 10
 use_threads_for_queue = False
 verbose = False
 
-import detection.run_detector as run_detector
-from detection.run_detector import ImagePathUtils,\
-    is_gpu_available,\
-    load_detector,\
-    get_detector_version_from_filename,\
-    get_detector_metadata_from_version_string
-
-import md_visualization.visualization_utils as vis_utils
-
-# Numpy FutureWarnings from tensorflow import
-warnings.filterwarnings('ignore', category=FutureWarning)
+exif_options = read_exif.ReadExifOptions()
+exif_options.processing_library = 'pil'
+exif_options.byte_handling = 'convert_to_string'
 
 
 #%% Support functions for multiprocessing
@@ -227,7 +231,8 @@ def chunks_by_number_of_chunks(ls, n):
 #%% Image processing functions
 
 def process_images(im_files, detector, confidence_threshold, use_image_queue=False, 
-                   quiet=False, image_size=None, checkpoint_queue=None):
+                   quiet=False, image_size=None, checkpoint_queue=None, include_image_size=False,
+                   include_image_timestamp=False, include_exif_data=False):
     """
     Runs MegaDetector over a list of image files.
 
@@ -249,12 +254,18 @@ def process_images(im_files, detector, confidence_threshold, use_image_queue=Fal
 
     if use_image_queue:
         run_detector_with_image_queue(im_files, detector, confidence_threshold, 
-                                      quiet=quiet, image_size=image_size)
+                                      quiet=quiet, image_size=image_size,
+                                      include_image_size=include_image_size, 
+                                      include_image_timestamp=include_image_timestamp,
+                                      include_exif_data=include_exif_data)
     else:
         results = []
         for im_file in im_files:
             result = process_image(im_file, detector, confidence_threshold,
-                                         quiet=quiet, image_size=image_size)
+                                         quiet=quiet, image_size=image_size, 
+                                         include_image_size=include_image_size, 
+                                         include_image_timestamp=include_image_timestamp,
+                                         include_exif_data=include_exif_data)
 
             if checkpoint_queue is not None:
                 checkpoint_queue.put(result)
@@ -266,7 +277,8 @@ def process_images(im_files, detector, confidence_threshold, use_image_queue=Fal
 
 
 def process_image(im_file, detector, confidence_threshold, image=None, 
-                  quiet=False, image_size=None):
+                  quiet=False, image_size=None, include_image_size=False,
+                  include_image_timestamp=False, include_exif_data=False):
     """
     Runs MegaDetector on a single image file.
 
@@ -278,7 +290,8 @@ def process_image(im_file, detector, confidence_threshold, image=None,
 
     Returns:
     - result: dict representing detections on one image
-        see the 'images' key in https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
+        see the 'images' key in 
+        https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
     """
     
     if not quiet:
@@ -299,6 +312,7 @@ def process_image(im_file, detector, confidence_threshold, image=None,
     try:
         result = detector.generate_detections_one_image(
             image, im_file, detection_threshold=confidence_threshold, image_size=image_size)
+
     except Exception as e:
         if not quiet:
             print('Image {} cannot be processed. Exception: {}'.format(im_file, e))
@@ -307,6 +321,16 @@ def process_image(im_file, detector, confidence_threshold, image=None,
             'failure': run_detector.FAILURE_INFER
         }
         return result
+
+    if include_image_size:
+        result['width'] = image.width
+        result['height'] = image.height
+
+    if include_image_timestamp:
+        result['datetime'] = get_image_datetime(image)
+
+    if include_exif_data:
+        result['exif_metadata'] = read_exif.read_pil_exif(image,exif_options)
 
     return result
 
@@ -318,10 +342,12 @@ def process_image(im_file, detector, confidence_threshold, image=None,
 def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=None,
                                 confidence_threshold=run_detector.DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD,
                                 checkpoint_frequency=-1, results=None, n_cores=1,
-                                use_image_queue=False, quiet=False, image_size=None, class_mapping_filename=None):
+                                use_image_queue=False, quiet=False, image_size=None, class_mapping_filename=None, 
+                                include_image_size=False, include_image_timestamp=False, 
+                                include_exif_data=False):
     """
     Args
-    - model_file: str, path to .pb model file
+    - model_file: str,quiet path to .pb model file
     - image_file_names: list of strings (image filenames), a single image filename, 
                         a folder to recursively search for images in, or a .json file containing
                         a list of images.
@@ -361,7 +387,7 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
         # Find the images to score; images can be a directory, may need to recurse
         if os.path.isdir(image_file_names):
             image_dir = image_file_names
-            image_file_names = ImagePathUtils.find_images(image_dir, True)
+            image_file_names = path_utils.find_images(image_dir, True)
             print('{} image files found in folder {}'.format(len(image_file_names),image_dir))
             
         # A json list of image paths
@@ -372,13 +398,13 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
             print('Loaded {} image filenames from list file {}'.format(len(image_file_names),list_file))
             
         # A single image file
-        elif os.path.isfile(image_file_names) and ImagePathUtils.is_image_file(image_file_names):
+        elif os.path.isfile(image_file_names) and path_utils.is_image_file(image_file_names):
             image_file_names = [image_file_names]
             print('Processing image {}'.format(image_file_names[0]))
             
         else:        
             raise ValueError('image_file_names is a string, but is not a directory, a json ' + \
-                             'list (.json), or an image file (png/jpg/jpeg/gif)')
+                             'list (.json), or an image file')
     
     if results is None:
         results = []
@@ -434,7 +460,9 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
 
             result = process_image(im_file, detector, 
                                    confidence_threshold, quiet=quiet, 
-                                   image_size=image_size)
+                                   image_size=image_size, include_image_size=include_image_size,
+                                   include_image_timestamp=include_image_timestamp,
+                                   include_exif_data=include_exif_data)
             results.append(result)
 
             # Write a checkpoint if necessary
@@ -484,6 +512,9 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
             pool.map(partial(process_images, detector=detector,
                                     confidence_threshold=confidence_threshold,
                                     image_size=image_size, 
+                                    include_image_size=include_image_size,
+                                    include_image_timestamp=include_image_timestamp,
+                                    include_exif_data=include_exif_data,
                                     checkpoint_queue=checkpoint_queue), 
                                     image_batches)
 
@@ -494,7 +525,10 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
             # Multprocessing is enabled, but checkpointing is not
             
             new_results = pool.map(partial(process_images, detector=detector,
-                                   confidence_threshold=confidence_threshold,image_size=image_size), 
+                                   confidence_threshold=confidence_threshold,image_size=image_size,
+                                   include_image_size=include_image_size,
+                                   include_image_timestamp=include_image_timestamp,
+                                   include_exif_data=include_exif_data), 
                                    image_batches)
 
             new_results = list(itertools.chain.from_iterable(new_results))
@@ -558,6 +592,24 @@ def write_checkpoint(checkpoint_path, results):
     # Remove the backup checkpoint if it exists
     if checkpoint_tmp_path is not None:
         os.remove(checkpoint_tmp_path)
+
+
+def get_image_datetime(image):
+    """
+    Returns the EXIF datetime from [image] (a PIL Image object), if available, as a string.
+    
+    [im_file] is used only for error reporting.
+    """
+    
+    exif_tags = read_exif.read_pil_exif(image,exif_options)
+    
+    try:
+        datetime_str = exif_tags['DateTimeOriginal']
+        _ = time.strptime(datetime_str, '%Y:%m:%d %H:%M:%S')
+        return datetime_str
+
+    except Exception:
+        return None        
 
 
 def write_results_to_file(results, output_file, relative_path_base=None, 
@@ -661,7 +713,7 @@ if False:
     quiet = False
     image_dir = r'G:\temp\demo_images\ssmini'
     image_size = None
-    image_file_names = ImagePathUtils.find_images(image_dir, recursive=False)    
+    image_file_names = path_utils.find_images(image_dir, recursive=False)    
     
     start_time = time.time()
     
@@ -762,6 +814,21 @@ def main():
         help='Use a non-default class mapping, supplied in a .json file with a dictionary mapping' + \
             'int-strings to strings.  This will also disable the addition of "1" to all category ' + \
             'IDs, so your class mapping should start at zero.')
+    parser.add_argument(
+        '--include_image_size',
+        action='store_true',
+        help='Include image dimensions in output file'
+    )
+    parser.add_argument(
+        '--include_image_timestamp',
+        action='store_true',
+        help='Include image datetime (if available) in output file'
+    )
+    parser.add_argument(
+        '--include_exif_data',
+        action='store_true',
+        help='Include available EXIF data in output file'
+    )
     
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -814,9 +881,9 @@ def main():
 
     # Find the images to score; images can be a directory, may need to recurse
     if os.path.isdir(args.image_file):
-        image_file_names = ImagePathUtils.find_images(args.image_file, args.recursive)
+        image_file_names = path_utils.find_images(args.image_file, args.recursive)
         if len(image_file_names) > 0:
-            print('{} image files found in the input directory'.format(len(image_file_names)))
+            print('{} image files found in the input directory'.format(len(image_file_names)))                        
         else:
             if (args.recursive):
                 print('No image files found in directory {}, exiting'.format(args.image_file))
@@ -834,7 +901,7 @@ def main():
             len(image_file_names),args.image_file))
         
     # A single image file
-    elif os.path.isfile(args.image_file) and ImagePathUtils.is_image_file(args.image_file):
+    elif os.path.isfile(args.image_file) and path_utils.is_image_file(args.image_file):
         image_file_names = [args.image_file]
         print('Processing image {}'.format(args.image_file))
         
@@ -901,7 +968,10 @@ def main():
                                           use_image_queue=args.use_image_queue,
                                           quiet=args.quiet,
                                           image_size=args.image_size,
-                                          class_mapping_filename=args.class_mapping_filename)
+                                          class_mapping_filename=args.class_mapping_filename,
+                                          include_image_size=args.include_image_size,
+                                          include_image_timestamp=args.include_image_timestamp,
+                                          include_exif_data=args.include_exif_data)
 
     elapsed = time.time() - start_time
     images_per_second = len(results) / elapsed
