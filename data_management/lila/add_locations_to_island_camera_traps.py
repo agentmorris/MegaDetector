@@ -71,8 +71,7 @@ viz_options.sort_by_filename = False
 viz_options.parallelize_rendering = True
 viz_options.classes_to_exclude = ['test']
 html_output_file, image_db = visualize_db.process_images(db_path=output_fn,
-                                                         output_dir=os.path.join(
-                                                         preview_folder),
+                                                         output_dir=preview_folder,
                                                          image_base_dir=image_directory,
                                                          options=viz_options)
 

@@ -42,8 +42,16 @@ class DbVizOptions:
     htmlOptions = write_html_image_list()
     sort_by_filename = True
     trim_to_images_with_bboxes = False
+    
     random_seed = 0 # None
+    
+    # Should we include Web search links for each category name?    
     add_search_links = False
+    
+    # Should each thumbnail image link back to the original image?
+    include_image_links = False
+    
+    # Should there be a text link back to each original image?
     include_filename_links = False
     
     box_thickness = 4
@@ -289,13 +297,18 @@ def process_images(db_path, output_dir, image_base_dir, options=None):
         # We're adding html for an image before we render it, so it's possible this image will
         # fail to render.  For applications where this script is being used to debua a database
         # (the common case?), this is useful behavior, for other applications, this is annoying.
-        images_html.append({
+        image_dict = \
+        {
             'filename': '{}/{}'.format('rendered_images', file_name),
             'title': '{}<br/>{}, num boxes: {}, {}class labels: {}{}'.format(
                 filename_text, img_id, len(bboxes), frameString, imageClasses, labelLevelString),
             'textStyle': 'font-family:verdana,arial,calibri;font-size:80%;' + \
                 'text-align:left;margin-top:20;margin-bottom:5'
-        })
+        }
+        if options.include_image_links:
+            image_dict['linkTarget'] = img_path
+            
+        images_html.append(image_dict)
     
     # ...for each image
 
