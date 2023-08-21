@@ -9,7 +9,6 @@
 
 #%% Imports and constants
 
-import zipfile
 import glob
 import ntpath
 import os

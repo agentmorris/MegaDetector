@@ -141,16 +141,12 @@ def read_pil_exif(im,options=None):
     
     exif_tag_names = list(exif_tags.keys())
     
-    # Type conversion
+    # Type conversion and cleanup
+    # 
+    # Most quirky types will get serialized to string when we write to .json.
     for k in exif_tag_names:
         
-        if isinstance(exif_tags[k],TiffImagePlugin.IFDRational):
-            if exif_tags[k]._denominator == 0:
-                exif_tags[k] = float('nan')
-            else:
-                exif_tags[k] = float(exif_tags[k]._numerator / exif_tags[k]._denominator)
-            
-        elif isinstance(exif_tags[k],bytes):
+        if isinstance(exif_tags[k],bytes):
             
             if options.byte_handling == 'delete':
                 del exif_tags[k]
@@ -159,7 +155,11 @@ def read_pil_exif(im,options=None):
             else:
                 assert options.byte_handling == 'convert_to_string'
                 exif_tags[k] = str(exif_tags[k])
-                
+        
+        elif isinstance(exif_tags[k],str):
+            
+            exif_tags[k] = exif_tags[k].strip()
+            
     return exif_tags
 
 # ...read_pil_exif()
@@ -280,9 +280,9 @@ def read_exif_tags_for_image(file_path,options=None):
 
 def populate_exif_data(im, image_base, options=None):
     """
-    Populate EXIF data into the image object [im].
+    Populate EXIF data into the 'exif_tags' field in the image object [im].
     
-    im['file_name'] is relative to image_base.
+    im['file_name'] should be prepopulated, relative to image_base.
     
     Returns a modified version of [im], also modifies [im] in place.
     """
@@ -303,6 +303,10 @@ def populate_exif_data(im, image_base, options=None):
             exif_tags = result['tags']            
             im['exif_tags'] = exif_tags
         else:
+            im['exif_tags'] = None
+            im['status'] = result['status']
+            if 'error' in result:
+                im['error'] = result['error']
             if options.verbose:
                 print('Error reading EXIF data for {}'.format(file_path))
     
@@ -391,7 +395,7 @@ def write_exif_results(results,output_file):
     if output_file.endswith('.json'):
         
         with open(output_file,'w') as f:
-            json.dump(results,f,indent=1)
+            json.dump(results,f,indent=1,default=str)
             
     elif output_file.endswith('.csv'):
         
