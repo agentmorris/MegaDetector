@@ -36,6 +36,11 @@ class ReadExifOptions:
     
     verbose = False
     
+    # If this is True and an output file is specified for read_exif_from_folder,
+    # and we encounter a serialization issue, we'll return the results but won't
+    # error.    
+    allow_write_error = False
+    
     # Number of concurrent workers
     n_workers = 1
     
@@ -56,7 +61,7 @@ class ReadExifOptions:
     byte_handling = 'convert_to_string' # 'convert_to_string','delete','raw'
     
     # Should we use exiftool or pil?
-    processing_library = 'exiftool' # 'exiftool','pil'
+    processing_library = 'pil' # 'exiftool','pil'
 
 
 #%% Functions
@@ -128,8 +133,9 @@ def read_pil_exif(im,options=None):
     for k in exif_idf_tags.keys():
         v = exif_idf_tags[k]
         if k in exif_tags:
-            print('Warning: redundant EXIF values for {} in {}:\n{}\n{}'.format(
-                k,image_name,exif_tags[k],v))
+            if options.verbose:
+                print('Warning: redundant EXIF values for {} in {}:\n{}\n{}'.format(
+                    k,image_name,exif_tags[k],v))
         else:
             exif_tags[k] = v
     
@@ -142,9 +148,10 @@ def read_pil_exif(im,options=None):
             if exif_tags[k]._denominator == 0:
                 exif_tags[k] = float('nan')
             else:
-                exif_tags[k] = exif_tags[k]._numerator / exif_tags[k]._denominator
+                exif_tags[k] = float(exif_tags[k]._numerator / exif_tags[k]._denominator)
             
         elif isinstance(exif_tags[k],bytes):
+            
             if options.byte_handling == 'delete':
                 del exif_tags[k]
             elif options.byte_handling == 'raw':
@@ -182,8 +189,9 @@ def read_exif_tags_for_image(file_path,options=None):
             exif_tags = read_pil_exif(file_path,options)
 
         except Exception as e:
-            print('Read failure for image {}: {}'.format(
-                file_path,str(e)))
+            if options.verbose:
+                print('Read failure for image {}: {}'.format(
+                    file_path,str(e)))
             result['status'] = 'read_failure'
             result['error'] = str(e)
         
@@ -461,6 +469,10 @@ def read_exif_from_folder(input_folder,output_file=None,options=None,filenames=N
     be processed.
     
     input_folder can be None or '', in which case filenames should be a list of absolute paths.
+    
+    if output_file is not None, results will be written to the specified .json file.
+    
+    returns a dictionary mapping relative filenames to EXIF data.
     """
     
     if options is None:
@@ -500,7 +512,13 @@ def read_exif_from_folder(input_folder,output_file=None,options=None,filenames=N
     results = populate_exif_for_images(input_folder,images,options)
     
     if output_file is not None:
-        write_exif_results(results,output_file)
+        try:
+            write_exif_results(results,output_file)
+        except Exception as e:
+            if not options.allow_write_error:
+                raise
+            else:
+                print('Warning: error serializing EXIF data: {}'.format(str(e)))                
         
     return results
 
