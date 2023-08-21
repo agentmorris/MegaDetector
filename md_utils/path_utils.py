@@ -368,6 +368,35 @@ def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compressl
     return output_fn
 
 
+def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, compresslevel=9):
+    """
+    Recursively zip everything in [input_folder], storing outputs as relative paths.
+    
+    Defaults to writing to [input_folder].zip
+    """
+    
+    if output_fn is None:
+        output_fn = input_folder + '.zip'
+        
+    if not overwrite:
+        assert not os.path.isfile(output_fn), 'Zip file {} exists'.format(output_fn)
+        
+    if verbose:
+        print('Zipping {} to {}'.format(input_folder,output_fn))
+    
+    relative_filenames = recursive_file_list(input_folder,return_relative_paths=True)
+    
+    with ZipFile(output_fn,'w',zipfile.ZIP_DEFLATED) as zipf:
+        for input_fn_relative in relative_filenames:
+            input_fn_abs = os.path.join(input_folder,input_fn_relative)            
+            zipf.write(input_fn_abs,
+                       arcname=input_fn_relative,
+                       compresslevel=compresslevel,
+                       compress_type=zipfile.ZIP_DEFLATED)
+
+    return output_fn
+
+        
 def parallel_zip_files(input_files):
     """
     Zip one or more files to separate output files in parallel, leaving the 

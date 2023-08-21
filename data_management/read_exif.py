@@ -284,7 +284,7 @@ def populate_exif_data(im, image_base, options=None):
     
     im['file_name'] is relative to image_base.
     
-    Returns a modified version of [im].
+    Returns a modified version of [im], also modifies [im] in place.
     """
     
     if options is None:
@@ -295,6 +295,7 @@ def populate_exif_data(im, image_base, options=None):
         print('Processing {}'.format(fn))
     
     try:
+        
         file_path = os.path.join(image_base,fn)
         assert os.path.isfile(file_path), 'Could not find file {}'.format(file_path)
         result = read_exif_tags_for_image(file_path,options)
@@ -304,10 +305,13 @@ def populate_exif_data(im, image_base, options=None):
         else:
             if options.verbose:
                 print('Error reading EXIF data for {}'.format(file_path))
+    
     except Exception as e:
+        
         s = 'Error on {}: {}'.format(fn,str(e))
         print(s)
         return s    
+    
     return im
 
 # ...populate_exif_data()
@@ -323,7 +327,7 @@ def create_image_objects(image_files):
     """
     
     # Enumerate *relative* paths
-    if isinstance(image_files,str):
+    if isinstance(image_files,str):    
         print('Enumerating image files in {}'.format(image_files))
         assert os.path.isdir(image_files), 'Invalid image folder {}'.format(image_files)
         image_files = enumerate_files(image_files)
@@ -532,17 +536,13 @@ if False:
     
     input_folder = os.path.expanduser('~/data/KRU-test')
     output_file = os.path.expanduser('~/data/test-exif.json')
-    # output_file = os.path.expanduser('~/data/test-exif.csv')
     options = ReadExifOptions()
     options.verbose = False
     options.n_workers = 10
     options.use_threads = False
-    options.processing_library = 'exiftool'
-    # options.processing_library = 'pil'
-
-    # file_path = os.path.join(input_folder,'KRU_S1_11_R1_IMAG0148.JPG')
+    options.processing_library = 'pil'
+    # options.processing_library = 'exiftool'
     
-    output_file = None
     results = read_exif_from_folder(input_folder,output_file,options)
 
     #%%

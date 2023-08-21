@@ -190,7 +190,8 @@ else:
 
 checkpoint_frequency = 10000
 
-base_task_name = organization_name_short + '-' + job_date + job_description_string + '-' + get_detector_version_from_filename(model_file)
+base_task_name = organization_name_short + '-' + job_date + job_description_string + '-' + \
+    get_detector_version_from_filename(model_file)
 base_output_folder_name = os.path.join(postprocessing_base,organization_name_short)
 os.makedirs(base_output_folder_name,exist_ok=True)
 
@@ -2084,7 +2085,7 @@ from api.batch_processing.postprocessing.subset_json_detector_output import (
     subset_json_detector_output, SubsetJsonDetectorOutputOptions)
 
 input_filename = filtered_output_filename
-output_base = os.path.join(filename_base,'json_subsets')
+output_base = os.path.join(combined_api_output_folder,base_task_name + '_json_subsets')
 
 if False:
     if data is None:
@@ -2108,6 +2109,10 @@ options.overwrite_json_files = False
 options.confidence_threshold = 0.01
 
 subset_data = subset_json_detector_output(input_filename, output_base, options, data)
+
+# Zip the subsets folder
+from md_utils.path_utils import zip_folder
+zip_folder(output_base,verbose=True)
 
 
 #%% Custom splitting/subsetting
