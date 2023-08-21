@@ -302,7 +302,8 @@ def populate_exif_data(im, image_base, options=None):
             exif_tags = result['tags']            
             im['exif_tags'] = exif_tags
         else:
-            print('Error reading EXIF data for {}'.format(file_path))
+            if options.verbose:
+                print('Error reading EXIF data for {}'.format(file_path))
     except Exception as e:
         s = 'Error on {}: {}'.format(fn,str(e))
         print(s)
