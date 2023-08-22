@@ -396,13 +396,14 @@ def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, com
     return output_fn
 
         
-def parallel_zip_files(input_files):
+def parallel_zip_files(input_files,max_workers=16):
     """
     Zip one or more files to separate output files in parallel, leaving the 
     original files in place.
     """
 
-    pool = ThreadPool(len(input_files))
+    n_workers = min(max_workers,len(input_files))
+    pool = ThreadPool(n_workers)
     with tqdm(total=len(input_files)) as pbar:
         for i,_ in enumerate(pool.imap_unordered(zip_file,input_files)):
             pbar.update()

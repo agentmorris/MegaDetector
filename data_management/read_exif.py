@@ -16,12 +16,13 @@
 import os
 import subprocess
 import json
+from datetime import datetime
 
 from multiprocessing.pool import ThreadPool as ThreadPool
 from multiprocessing.pool import Pool as Pool
 
 from tqdm import tqdm
-from PIL import Image, ExifTags, TiffImagePlugin
+from PIL import Image, ExifTags
 
 from md_utils.path_utils import find_images
 
@@ -163,6 +164,33 @@ def read_pil_exif(im,options=None):
     return exif_tags
 
 # ...read_pil_exif()
+
+
+def format_datetime_as_exif_datetime_string(dt):
+    """
+    Returns a Python datetime object rendered using the standard Exif datetime
+    string format
+    """
+    
+    return datetime.strftime(dt, '%Y:%m:%d %H:%M:%S')
+    
+
+def parse_exif_datetime_string(s,verbose=False):
+    """"
+    Exif datetimes are strings, but in a standard format:        
+        
+    %Y:%m:%d %H:%M:%S
+    
+    Parse one of those strings into a Python datetime object.
+    """
+    
+    dt = None
+    try:
+        dt = datetime.strptime(s, '%Y:%m:%d %H:%M:%S')
+    except Exception:
+        if verbose:
+            print('Warning: could not parse datetime {}'.format(str(s)))
+    return dt
 
 
 def read_exif_tags_for_image(file_path,options=None):

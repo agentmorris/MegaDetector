@@ -1480,18 +1480,9 @@ else:
 #%% Prepare COCO-camera-traps-compatible image objects for EXIF results
 
 import datetime    
-import time
+from data_management.read_exif import parse_exif_datetime_string
 
 min_valid_timestamp_year = 2015
-
-def parse_date_from_exif_datetime(s):
-        
-    dt = None
-    try:
-        dt = time.strptime(s, '%Y:%m:%d %H:%M:%S')
-    except Exception:
-        print('Warning: could not parse datetime {}'.format(str(s)))
-    return dt
 
 now = datetime.datetime.now()
 
@@ -1519,7 +1510,7 @@ for exif_result in tqdm(exif_results):
         exif_dt = None
     else:
         exif_dt = exif_result['exif_tags'][exif_datetime_tag]
-        exif_dt = parse_date_from_exif_datetime(exif_dt)
+        exif_dt = parse_exif_datetime_string(exif_dt)
     if exif_dt is None:
         im['datetime'] = None
         images_without_datetime.append(im['file_name'])
@@ -1937,35 +1928,13 @@ path_utils.open_file(ppresults.output_html_file)
 
 #%% Zip .json files
 
+from md_utils.path_utils import parallel_zip_files
+
 json_files = os.listdir(combined_api_output_folder)
 json_files = [fn for fn in json_files if fn.endswith('.json')]
 json_files = [os.path.join(combined_api_output_folder,fn) for fn in json_files]
 
-import zipfile
-from zipfile import ZipFile
-
-output_path = combined_api_output_folder
-
-def zip_json_file(fn, overwrite=False):
-    
-    assert fn.endswith('.json')
-    basename = os.path.basename(fn)
-    zip_file_name = os.path.join(output_path,basename + '.zip')
-    
-    if (not overwrite) and (os.path.isfile(zip_file_name)):
-        print('Skipping existing file {}'.format(zip_file_name))
-        return
-    
-    print('Zipping {} to {}'.format(fn,zip_file_name))
-    
-    with ZipFile(zip_file_name,'w',zipfile.ZIP_DEFLATED) as zipf:
-        zipf.write(fn,arcname=basename,compresslevel=9,compress_type=zipfile.ZIP_DEFLATED)
-
-from multiprocessing.pool import ThreadPool
-pool = ThreadPool(len(json_files))
-with tqdm(total=len(json_files)) as pbar:
-    for i,_ in enumerate(pool.imap_unordered(zip_json_file,json_files)):
-        pbar.update()
+parallel_zip_files(json_files)
 
 
 #%% 99.9% of jobs end here
