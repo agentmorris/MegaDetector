@@ -18,17 +18,17 @@
 # Currently requires the user to supply the path where a working YOLOv5 install lives,
 # and assumes that the current conda environment is all set up for YOLOv5.
 #
-# TODO:
+# Currently requires admin privileges on Windows... technically only requires
+# permissions to create symbolic links, but I've never seen a case where someone has
+# that permission and *doesn't* have admin privileges.
 #
-# * Figure out what happens when images are corrupted... right now this is the #1
-#   reason not to use this script, it may be the case that corrupted images look the
-#   same as empty images.
+# TODO:
 #
 # * Multiple GPU support
 #
 # * Checkpointing
 #
-# * Windows support (I have no idea what all the symlink operations will do on Windows)
+# * Windows support without admin privileges
 #
 # * Support alternative class names at the command line (currently defaults to MD classes,
 #   though other class names can be supplied programmatically)
