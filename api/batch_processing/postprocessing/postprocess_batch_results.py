@@ -168,6 +168,10 @@ class PostProcessingOptions:
     
     sort_classification_results_by_count = False    
     
+    # Should we split individual pages up into smaller pages if there are more than
+    # N images?
+    max_figures_per_html_file = None
+    
 # ...PostProcessingOptions
 
 
@@ -469,7 +473,7 @@ def prepare_html_subpages(images_html, output_dir, options=None):
     """
     
     if options is None:
-            options = PostProcessingOptions()
+        options = PostProcessingOptions()
 
     # Count items in each category
     image_counts = {}
@@ -483,15 +487,18 @@ def prepare_html_subpages(images_html, output_dir, options=None):
             sorted_array = sorted(array, key=lambda x: x['filename'])
             images_html_sorted[res] = sorted_array
         images_html = images_html_sorted
-
+    
     # Write the individual HTML files
     for res, array in images_html.items():
+        
+        html_image_list_options = {}    
+        html_image_list_options['maxFiguresPerHtmlFile'] = options.max_figures_per_html_file
+        html_image_list_options['headerHtml'] = '<h1>{}</h1>'.format(res.upper())
+        
         write_html_image_list(
             filename=os.path.join(output_dir, '{}.html'.format(res)),
             images=array,
-            options={
-                'headerHtml': '<h1>{}</h1>'.format(res.upper())
-            })
+            options=html_image_list_options)
 
     return image_counts
 
@@ -1153,7 +1160,7 @@ def process_batch_results(options: PostProcessingOptions
                 images_html[assignment[0]].append(assignment[1])
 
         # Prepare the individual html image files
-        image_counts = prepare_html_subpages(images_html, output_dir)
+        image_counts = prepare_html_subpages(images_html, output_dir, options)
 
         print('{} images rendered (of {})'.format(image_rendered_count,image_count))
 
@@ -1377,7 +1384,7 @@ def process_batch_results(options: PostProcessingOptions
                 images_html[assignment[0]].append(assignment[1])
 
         # Prepare the individual html image files
-        image_counts = prepare_html_subpages(images_html, output_dir)
+        image_counts = prepare_html_subpages(images_html, output_dir, options)
 
         if image_rendered_count == 0:
             seconds_per_image = 0.0
