@@ -247,7 +247,6 @@ def yolo_txt_output_to_md_output(input_results_folder, image_folder,
         label_path = os.path.join(input_results_folder, label_fn)
             
         detections = []
-        max_conf = 0.0
         
         if not os.path.exists(label_path):
             # This is assumed to be an image with no detections
@@ -261,8 +260,7 @@ def yolo_txt_output_to_md_output(input_results_folder, image_folder,
                                                              float(row[3]), float(row[4])])
     
                     conf = ct_utils.truncate_float(float(row[5]), precision=4)
-                    max_conf = max(max_conf, conf)
-    
+                    
                     detections.append({
                         'category': str(category),
                         'conf': conf,

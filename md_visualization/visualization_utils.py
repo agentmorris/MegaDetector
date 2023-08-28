@@ -161,6 +161,10 @@ def resize_image(image, target_width, target_height=-1):
             target_width = int(aspect_ratio * target_height)
 
     resized_image = image.resize((target_width, target_height), Image.ANTIALIAS)
+    
+    # Note to self, in Pillow 10, this became:
+    # resized_image = image.resize((target_width, target_height), Image.Resampling.LANCZOS)
+        
     return resized_image
 
 
