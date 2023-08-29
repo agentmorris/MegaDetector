@@ -241,8 +241,8 @@ def find_images(dirname: str, recursive: bool = False, return_relative_paths: bo
 
 #%% Filename cleaning functions
 
-def clean_filename(filename: str, whitelist: str = VALID_FILENAME_CHARS,
-                   char_limit: int = CHAR_LIMIT) -> str:
+def clean_filename(filename: str, allow_list: str = VALID_FILENAME_CHARS,
+                   char_limit: int = CHAR_LIMIT, force_lower: bool = False) -> str:
     """
     Removes non-ASCII and other invalid filename characters (on any
     reasonable OS) from a filename, then trims to a maximum length.
@@ -257,19 +257,24 @@ def clean_filename(filename: str, whitelist: str = VALID_FILENAME_CHARS,
     cleaned_filename = (unicodedata.normalize('NFKD', filename)
                         .encode('ASCII', 'ignore').decode())
 
-    # keep only whitelisted chars
-    cleaned_filename = ''.join([c for c in cleaned_filename if c in whitelist])
-    return cleaned_filename[:char_limit]
+    # keep only allow-listed chars
+    cleaned_filename = ''.join([c for c in cleaned_filename if c in allow_list])
+    if char_limit is not None:
+        cleaned_filename = cleaned_filename[:char_limit]
+    if force_lower:
+        cleaned_filename = cleaned_filename.lower()
+    return cleaned_filename
 
 
-def clean_path(pathname: str, whitelist: str = VALID_PATH_CHARS,
-               char_limit: int = CHAR_LIMIT) -> str:
+def clean_path(pathname: str, allow_list: str = VALID_PATH_CHARS,
+               char_limit: int = CHAR_LIMIT, force_lower: bool = False) -> str:
     """
     Removes non-ASCII and other invalid path characters (on any reasonable
     OS) from a path, then trims to a maximum length.
     """
     
-    return clean_filename(pathname, whitelist=whitelist, char_limit=char_limit)
+    return clean_filename(pathname, allow_list=allow_list, 
+                          char_limit=char_limit, force_lower=force_lower)
 
 
 def flatten_path(pathname: str, separator_chars: str = SEPARATOR_CHARS) -> str:

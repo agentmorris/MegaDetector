@@ -52,16 +52,26 @@ parallelization_uses_threads = False
 #%% Support functions
 
 def get_patch_boundaries(image_size,patch_size,patch_stride=None):
-    """    
-    Get a list of patch starting coordinates (x,y) given an image size
-    and a stride.  Stride defaults to half the patch size.
+    """
+    Get a list of patch starting coordinates (x,y) given an image size (w,h)
+    and a stride (x,y).  Stride defaults to half the patch size.
     
-    image_size, patch_size, and patch_stride are all represented as [w,h].
+    patch_stride can also be a single float, in which case that is interpreted 
+    as the stride relative to the patch size (0.1 == 10% stride).
+    
+    Patch size is guaranteed, stride may deviate to make sure all pixels are covered.
+    I.e., we move by regular strides until the current patch walks off the right/bottom,
+    at which point it backs up to one patch from the end.  So if your image is 15
+    pixels wide and you have a stride of 10 pixels, you will get starting positions 
+    of 0 (from 0 to 9) and 5 (from 5 to 14).
     """
     
     if patch_stride is None:
         patch_stride = (round(patch_size[0]*(1.0-default_patch_overlap)),
                         round(patch_size[1]*(1.0-default_patch_overlap)))
+    elif isinstance(patch_stride,float):
+        patch_stride = (round(patch_size[0]*(patch_stride)),
+                        round(patch_size[1]*(patch_stride)))
         
     image_width = image_size[0]
     image_height = image_size[1]
@@ -78,12 +88,17 @@ def get_patch_boundaries(image_size,patch_size,patch_stride=None):
             
             patch_start_positions.append([x_start,y_start])
             
+            # If this patch put us right at the end of the last column, we're done
+            if x_end == image_width - 1:
+                break
+            
+            # Move one patch to the right
             x_start += patch_stride[0]
             x_end = x_start + patch_size[0] - 1
              
-            if x_end == image_width - 1:
-                break
-            elif x_end > (image_width - 1):
+            # If this patch flows over the edge, add one more patch to cover
+            # the pixels on the end, then we're done.
+            if x_end > (image_width - 1):
                 overshoot = (x_end - image_width) + 1
                 x_start -= overshoot
                 x_end = x_start + patch_size[0] - 1
@@ -97,17 +112,22 @@ def get_patch_boundaries(image_size,patch_size,patch_stride=None):
     patch_start_positions = []
     
     y_start = 0; y_end = y_start + patch_size[1] - 1
-        
+    
     while(True):
     
         patch_start_positions = add_patch_row(patch_start_positions,y_start)
         
+        # If this patch put us right at the bottom of the lats row, we're done
+        if y_end == image_height - 1:
+            break
+        
+        # Move one patch down
         y_start += patch_stride[1]
         y_end = y_start + patch_size[1] - 1
         
-        if y_end == image_height - 1:
-            break
-        elif y_end > (image_height - 1):
+        # If this patch flows over the bottom, add one more patch to cover
+        # the pixels at the bottom, then we're done
+        if y_end > (image_height - 1):
             overshoot = (y_end - image_height) + 1
             y_start -= overshoot
             y_end = y_start + patch_size[1] - 1
@@ -116,20 +136,20 @@ def get_patch_boundaries(image_size,patch_size,patch_stride=None):
     
     # ...for each row
     
-    assert patch_start_positions[-1][0]+patch_size[0] == image_width
-    assert patch_start_positions[-1][1]+patch_size[1] == image_height
+    # The last patch should always end at the bottom-right of the image
+    assert patch_start_positions[-1][0]+patch_size[0] == image_width, \
+        'Patch generation error (last patch does not end on the right)'
+    assert patch_start_positions[-1][1]+patch_size[1] == image_height, \
+        'Patch generation error (last patch does not end at the bottom)'
+    
+    # All patches should be unique
+    patch_start_positions_tuples = [tuple(x) for x in patch_start_positions]
+    assert len(patch_start_positions_tuples) == len(set(patch_start_positions_tuples)), \
+        'Patch generation error (duplicate start position)'
     
     return patch_start_positions
 
-
-def relative_path_to_image_name(rp):
-    """
-    Given a path name, replace slashes and backslashes with underscores, so we can
-    use the result as a filename.
-    """
-    
-    image_name = rp.lower().replace('\\','/').replace('/','_')
-    return image_name
+# ...get_patch_boundaries()
 
 
 def patch_info_to_patch_name(image_name,patch_x_min,patch_y_min):
@@ -261,7 +281,7 @@ def _extract_tiles_for_image(fn_relative,image_folder,tiling_folder,patch_size,p
     
     fn_abs = os.path.join(image_folder,fn_relative)
     
-    image_name = relative_path_to_image_name(fn_relative)
+    image_name = path_utils.clean_filename(fn_relative,char_limit=None,force_lower=True)
     
     # Open the image
     im = vis_utils.open_image(fn_abs)

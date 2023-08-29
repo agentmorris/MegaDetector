@@ -402,7 +402,8 @@ if False:
     options.input_folder = input_folder
     options.model_filename = model_filename
     
-    options.yolo_results_folder = '/home/user/postprocessing/test/test-2023-04-18-v5a.0.0/yolo_results/yolo_results_001'
+    options.yolo_results_folder = \
+        '/home/user/postprocessing/test/test-2023-04-18-v5a.0.0/yolo_results/yolo_results_001'
     options.symlink_folder = '/home/user/postprocessing/test/test-2023-04-18-v5a.0.0/symlinks/symlinks_001'
     
     options.remove_temporary_symlink_folder = False
