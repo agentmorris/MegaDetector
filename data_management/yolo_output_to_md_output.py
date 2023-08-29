@@ -94,7 +94,8 @@ def yolo_json_output_to_md_output(yolo_json_file, image_folder,
     image_file_relative_to_image_id = {}
     for image_id in image_id_to_relative_path:
         relative_path = image_id_to_relative_path[image_id]
-        assert relative_path not in image_file_relative_to_image_id
+        assert relative_path not in image_file_relative_to_image_id, \
+            'Duplication image IDs in YOLO output conversion for image {}'.format(relative_path)
         image_file_relative_to_image_id[relative_path] = image_id
         
     with open(yolo_json_file,'r') as f:

@@ -75,7 +75,12 @@ def get_patch_boundaries(image_size,patch_size,patch_stride=None):
         
     image_width = image_size[0]
     image_height = image_size[1]
-        
+    
+    assert patch_size[0] <= image_size[0], 'Patch width {} is larger than image width {}'.format(
+        patch_size[0],image_size[0])
+    assert patch_size[1] <= image_size[1], 'Patch height {} is larger than image height {}'.format(
+        patch_size[1],image_size[1])
+    
     def add_patch_row(patch_start_positions,y_start):
         """
         Add one row to our list of patch start positions, i.e.
@@ -136,6 +141,10 @@ def get_patch_boundaries(image_size,patch_size,patch_stride=None):
     
     # ...for each row
     
+    for p in patch_start_positions:
+        assert p[0] >= 0 and p[1] >= 0 and p[0] <= image_width and p[1] <= image_height, \
+        'Patch generation error (illegal patch {})'.format(p)
+        
     # The last patch should always end at the bottom-right of the image
     assert patch_start_positions[-1][0]+patch_size[0] == image_width, \
         'Patch generation error (last patch does not end on the right)'
@@ -341,7 +350,7 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
 
     ##%% Validate arguments
     
-    assert tile_overlap < 1 and tile_overlap > 0, \
+    assert tile_overlap < 1 and tile_overlap >= 0, \
         'Illegal tile overlap value {}'.format(tile_overlap)
     
     patch_size = [tile_size_x,tile_size_y]
@@ -407,7 +416,7 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
     # ...for each image
         
     # Write tile information to file; this is just a debugging convenience
-    folder_name = relative_path_to_image_name(image_folder)
+    folder_name = path_utils.clean_filename(image_folder,force_lower=True)
     if folder_name.startswith('_'):
         folder_name = folder_name[1:]
         
@@ -597,15 +606,15 @@ if False:
     
     pass
 
-    #%% Run tiled inference
+    #%% Run tiled inference (in Python)
     
     model_file = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')
     image_folder = os.path.expanduser('~/data/KRU-test')
     tiling_folder = os.path.expanduser('~/tmp/tiling-test')
     output_file = os.path.expanduser('~/tmp/KRU-test-tiled.json')
 
-    tile_size_x = 1280
-    tile_size_y = 1280
+    tile_size_x = 3000
+    tile_size_y = 3000
     tile_overlap = 0.5
     checkpoint_path = None
     checkpoint_frequency = -1
@@ -621,10 +630,7 @@ if False:
         
         yolo_inference_options = YoloInferenceOptions()
         yolo_inference_options.yolo_working_folder = os.path.expanduser('~/git/yolov5')
-            
-            
-    #%%
-    
+                    
     run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
                             tile_size_x=tile_size_x, tile_size_y=tile_size_y, 
                             tile_overlap=tile_overlap,
@@ -633,12 +639,24 @@ if False:
                             remove_tiles=remove_tiles, 
                             yolo_inference_options=yolo_inference_options)
     
-    #%%
     
-    """
-    python run_tiled_inference.py  $MDV5A ~/data/KRU-test ~/tmp/tiling-test ~/tmp/KRU-test-tiled.json --tile_overlap 0.8 --no_remove_tiles 
-    """
-
+    #%% Run tiled inference (generate a command)
+    
+    import os
+    
+    model_file = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')
+    image_folder = os.path.expanduser('~/data/KRU-test')
+    tiling_folder = os.path.expanduser('~/tmp/tiling-test')
+    output_file = os.path.expanduser('~/tmp/KRU-test-tiled.json')
+    tile_size = [5152,3968]
+    tile_overlap = 0.8
+    
+    cmd = f'python run_tiled_inference.py {model_file} {image_folder} {tiling_folder} {output_file} ' + \
+          f'--tile_overlap {tile_overlap} --no_remove_tiles --tile_size_x {tile_size[0]} --tile_size_y {tile_size[1]}'
+    
+    print(cmd)
+    import clipboard; clipboard.copy(cmd)
+    
     
     #%% Preview tiled inference
     
@@ -695,8 +713,7 @@ def main():
     parser.add_argument(
         '--no_remove_tiles',
         action='store_true',
-        help='Tiles are removed by default; this option suppresses tile deletion')
-    
+        help='Tiles are removed by default; this option suppresses tile deletion')    
     parser.add_argument(
         '--tile_size_x',
         type=int,

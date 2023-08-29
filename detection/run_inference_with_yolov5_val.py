@@ -18,17 +18,17 @@
 # Currently requires the user to supply the path where a working YOLOv5 install lives,
 # and assumes that the current conda environment is all set up for YOLOv5.
 #
-# Currently requires admin privileges on Windows... technically only requires
-# permissions to create symbolic links, but I've never seen a case where someone has
-# that permission and *doesn't* have admin privileges.
+# By default, this script uses symlinks to format the input images in a way that YOLOv5's 
+# val.py likes.  This requires admin privileges on Windows... actually technically this only 
+# requires permissions to create symbolic links, but I've never seen a case where someone has
+# that permission and *doesn't* have admin privileges.  If you are running this script on
+# Windows and you don't have admin privileges, use --no_use_symlinks.
 #
 # TODO:
 #
 # * Multiple GPU support
 #
 # * Checkpointing
-#
-# * Windows support without admin privileges
 #
 # * Support alternative class names at the command line (currently defaults to MD classes,
 #   though other class names can be supplied programmatically)
@@ -70,6 +70,8 @@ class YoloInferenceOptions:
     augment = True
 
     symlink_folder = None
+    use_symlinks = True
+    
     yolo_results_folder = None
     
     remove_symlink_folder = True
@@ -148,7 +150,10 @@ def run_inference_with_yolo_val(options):
         image_id_to_file[image_id_string] = image_fn
         symlink_name = image_id_string + ext
         symlink_full_path = os.path.join(symlink_folder,symlink_name)
-        path_utils.safe_create_link(image_fn,symlink_full_path)
+        if options.use_symlinks:
+            path_utils.safe_create_link(image_fn,symlink_full_path)
+        else:
+            shutil.copyfile(image_fn,symlink_full_path)
         
     # ...for each image
 
@@ -305,7 +310,9 @@ def main():
     parser.add_argument(
         '--yolo_results_folder', type=str,
         help='temporary folder for YOLO intermediate output')
-    
+    parser.add_argument(
+        '--no_use_symlinks', action='store_true',
+        help='copy files instead of creating symlinks when preparing the yolo input folder')
     parser.add_argument(
         '--no_remove_symlink_folder', action='store_true',
         help='don\'t remove the temporary folder full of symlinks')
@@ -330,6 +337,7 @@ def main():
     args_to_object(args, options)
     options.remove_symlink_folder = (not options.no_remove_symlink_folder)
     options.remove_yolo_results_folder = (not options.no_remove_yolo_results_folder)
+    options.use_symlinks = (not options.no_use_symlinks)
     options.augment = (options.augment_enabled > 0)        
             
     print(options.__dict__)
@@ -347,72 +355,67 @@ if False:
     
     #%% Test driver (folder)
     
-    project_name = ''
+    project_name = 'KRU-test'
     input_folder = os.path.expanduser(f'~/data/{project_name}')
-    output_folder = os.path.expanduser('~/tmp/{project_name}')
+    output_folder = os.path.expanduser(f'~/tmp/{project_name}')
     model_filename = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')
-    yolo_working_folder = os.path.expanduser('~/git/yolov5')
+    # yolo_working_folder = os.path.expanduser('~/git/yolov5')
+    yolo_working_folder = 'c:/git/yolov5'
     model_name = os.path.splitext(os.path.basename(model_filename))[0]
-        
-    options = YoloInferenceOptions()
     
-    options.yolo_working_folder = yolo_working_folder
+    symlink_folder = os.path.join(output_folder,'symlinks')
+    yolo_results_folder = os.path.join(output_folder,'yolo_results')
     
-    options.output_file = os.path.join(output_folder,'{}_{}-md_format.json'.format(
+    output_file = os.path.join(output_folder,'{}_{}-md_format.json'.format(
         project_name,model_name))
     
-    options.image_size = 1280 * 1.3
-    options.conf_thres = '0.001'
-    options.batch_size = 1
-    options.device_string = '0'
-    options.augment = True
-
-    options.input_folder = input_folder
-    options.model_filename = model_filename
-    
-    options.yolo_results_folder = None # os.path.join(output_file + '_yolo.json')        
-    options.symlink_folder = None # os.path.join(output_folder,'symlinks')
-    output_file = None
-    
-    options.remove_temporary_symlink_folder = True
-    options.remove_yolo_results_file = True
-    
-
-    #%% Test driver (file)
-    
-    input_folder = '/home/user/postprocessing/test/test-2023-04-18-v5a.0.0/chunk001.json'
-    output_file = '/home/user/postprocessing/test/test-2023-04-18-v5a.0.0/chunk001_results.json'
-    
-    model_filename = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')
-    yolo_working_folder = os.path.expanduser('~/git/yolov5')
-    model_name = os.path.splitext(os.path.basename(model_filename))[0]
-        
     options = YoloInferenceOptions()
     
     options.yolo_working_folder = yolo_working_folder
     
     options.output_file = output_file
     
-    options.image_size = 1280 * 1.3
+    options.augment = False
     options.conf_thres = '0.001'
     options.batch_size = 1
     options.device_string = '0'
-    options.augment = True
 
+    if options.augment:
+        options.image_size = round(1280 * 1.3)
+    else:
+        options.image_size = 1280
+    
     options.input_folder = input_folder
     options.model_filename = model_filename
     
-    options.yolo_results_folder = \
-        '/home/user/postprocessing/test/test-2023-04-18-v5a.0.0/yolo_results/yolo_results_001'
-    options.symlink_folder = '/home/user/postprocessing/test/test-2023-04-18-v5a.0.0/symlinks/symlinks_001'
+    options.yolo_results_folder = yolo_results_folder # os.path.join(output_folder + 'yolo_results')        
+    options.symlink_folder = symlink_folder # os.path.join(output_folder,'symlinks')
+    options.use_symlinks = False
     
-    options.remove_temporary_symlink_folder = False
-    options.remove_yolo_results_file = False
+    options.remove_temporary_symlink_folder = True
+    options.remove_yolo_results_file = True
+    
+    cmd = f'python run_inference_with_yolov5_val.py {model_filename} {input_folder} {output_file} {yolo_working_folder} ' + \
+          f' --image_size {options.image_size} --conf_thres {options.conf_thres} --batch_size {options.batch_size} ' + \
+          f' --symlink_folder {options.symlink_folder} --yolo_results_folder {options.yolo_results_folder} ' + \
+          ' --no_remove_symlink_folder --no_remove_yolo_results_folder'
+      
+    if not options.use_symlinks:
+        cmd += ' --no_use_symlinks'
+    if not options.augment:
+        cmd += ' --augment_enabled 0'
+        
+    print(cmd)
+    execute_in_python = False
+    if execute_in_python:
+        run_inference_with_yolo_val(options)
+    else:
+        import clipboard; clipboard.copy(cmd)
     
     
     #%% Preview results
     
-    postprocessing_output_folder = os.path.join(output_folder,'yolo-aug-preview')
+    postprocessing_output_folder = os.path.join(output_folder,'yolo-val-preview')
     md_json_file = options.output_file
     
     from api.batch_processing.postprocessing.postprocess_batch_results import (
@@ -423,29 +426,29 @@ if False:
     
     base_task_name = os.path.basename(md_json_file)
     
-    options = PostProcessingOptions()
-    options.image_base_dir = input_folder
-    options.include_almost_detections = True
-    options.num_images_to_sample = None
-    options.confidence_threshold = 0.05
-    options.almost_detection_confidence_threshold = options.confidence_threshold - 0.025
-    options.ground_truth_json_file = None
-    options.separate_detections_by_category = True
-    # options.sample_seed = 0
+    pp_options = PostProcessingOptions()
+    pp_options.image_base_dir = input_folder
+    pp_options.include_almost_detections = True
+    pp_options.num_images_to_sample = None
+    pp_options.confidence_threshold = 0.1
+    pp_options.almost_detection_confidence_threshold = pp_options.confidence_threshold - 0.025
+    pp_options.ground_truth_json_file = None
+    pp_options.separate_detections_by_category = True
+    # pp_options.sample_seed = 0
     
-    options.parallelize_rendering = True
-    options.parallelize_rendering_n_cores = 16
-    options.parallelize_rendering_with_threads = False
+    pp_options.parallelize_rendering = True
+    pp_options.parallelize_rendering_n_cores = 16
+    pp_options.parallelize_rendering_with_threads = False
     
     output_base = os.path.join(postprocessing_output_folder,
-        base_task_name + '_{:.3f}'.format(options.confidence_threshold))
+        base_task_name + '_{:.3f}'.format(pp_options.confidence_threshold))
     
     os.makedirs(output_base, exist_ok=True)
     print('Processing to {}'.format(output_base))
     
-    options.api_output_file = md_json_file
-    options.output_dir = output_base
-    ppresults = process_batch_results(options)
+    pp_options.api_output_file = md_json_file
+    pp_options.output_dir = output_base
+    ppresults = process_batch_results(pp_options)
     html_output_file = ppresults.output_html_file
     
     path_utils.open_file(html_output_file)
