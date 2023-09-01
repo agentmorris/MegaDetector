@@ -15,7 +15,7 @@ dependencies:
 - cudatoolkit=11.3  # for GPU
 
 # from defaults channel
-- Pillow
+- Pillow<10.0
 - humanfriendly
 - ipywidgets
 - jsonpickle  # used by run_detector_batch.py
