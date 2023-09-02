@@ -1,0 +1,36 @@
+name: cameratraps-classifier
+
+channels:
+- pytorch
+- defaults
+- conda-forge
+
+dependencies:
+- python>=3.7, <=3.7.6
+- pytorch==1.9.0
+- torchvision==0.10.0
+- cudatoolkit=11.3
+
+- Pillow
+- humanfriendly
+- ipywidgets
+- jsonpickle
+- jupyterlab
+- matplotlib
+- nb_conda_kernels
+- networkx
+- numpy
+- openpyxl
+- pandas
+- progressbar2
+- pylint
+- python-graphviz
+- scikit-learn
+- seaborn
+- tqdm
+- xlrd
+- pip
+
+- pip:
+  - azure-storage-blob>  # require v12.5.0 for BlobClient.exists()
+  - tensorboard

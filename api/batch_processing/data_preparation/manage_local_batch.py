@@ -1506,7 +1506,8 @@ for exif_result in tqdm(exif_results):
         
     im['file_name'] = exif_result['file_name']
     im['id'] = im['file_name']
-    if 'exif_tags' not in exif_result or exif_datetime_tag not in exif_result['exif_tags']: 
+    if ('exif_tags' not in exif_result) or (exif_result['exif_tags'] is None) or \
+        (exif_datetime_tag not in exif_result['exif_tags']): 
         exif_dt = None
     else:
         exif_dt = exif_result['exif_tags'][exif_datetime_tag]
@@ -1515,7 +1516,7 @@ for exif_result in tqdm(exif_results):
         im['datetime'] = None
         images_without_datetime.append(im['file_name'])
     else:
-        dt = datetime.datetime.fromtimestamp(time.mktime(exif_dt))
+        dt = exif_dt
         
         # An image from the future (or within the last 24 hours) is invalid
         if (now - dt).total_seconds() <= 1*24*60*60:

@@ -733,7 +733,8 @@ def render_db_bounding_boxes(boxes, classes, image, original_size=None,
 def draw_bounding_boxes_on_file(input_file, output_file, detections, confidence_threshold=0.0,
                                 detector_label_map=DEFAULT_DETECTOR_LABEL_MAP,
                                 thickness=DEFAULT_BOX_THICKNESS, expansion=0,
-                                colormap=DEFAULT_COLORS):
+                                colormap=DEFAULT_COLORS,
+                                custom_strings=None):
     """
     Render detection bounding boxes on an image loaded from file, writing the results to a
     new image file.
@@ -749,6 +750,10 @@ def draw_bounding_boxes_on_file(input_file, output_file, detections, confidence_
     Normalized, with the origin at the upper-left.
     
     detector_label_map is a dict mapping category IDs to strings.
+    
+    custom_strings: optional set of strings to append to detection labels, should have the
+    same length as [detections].  Appended before classification labels, if classification
+    data is provided.
     """
     
     image = open_image(input_file)
@@ -756,7 +761,8 @@ def draw_bounding_boxes_on_file(input_file, output_file, detections, confidence_
     render_detection_bounding_boxes(
             detections, image, label_map=detector_label_map,
             confidence_threshold=confidence_threshold,
-            thickness=thickness,expansion=expansion,colormap=colormap)
+            thickness=thickness,expansion=expansion,colormap=colormap,
+            custom_strings=custom_strings)
 
     image.save(output_file)
 

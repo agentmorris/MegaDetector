@@ -45,7 +45,7 @@ Install Anaconda, Miniforge, or Mambaforge.  The [MegaDetector User Guide](https
 Then create the environment using the following command:
 
 ```bash
-mamba env update -f envs/environment-classifier.yml --prune
+mamba env create -f envs\environment-classifier.yml
 ```
 
 Activate this environment:
