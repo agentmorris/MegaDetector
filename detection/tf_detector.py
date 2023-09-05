@@ -111,7 +111,8 @@ class TFDetector:
 
         return box_tensor_out, score_tensor_out, class_tensor_out
 
-    def generate_detections_one_image(self, image, image_id, detection_threshold, image_size=None, skip_image_resizing=False):
+    def generate_detections_one_image(self, image, image_id, detection_threshold, image_size=None,
+                                      skip_image_resizing=False):
         """
         Apply the detector to an image.
 
@@ -119,7 +120,6 @@ class TFDetector:
             image: the PIL Image object
             image_id: a path to identify the image; will be in the "file" field of the output object
             detection_threshold: confidence above which to include the detection proposal
-            skip_image_resizing: no-op, added for compatibility with PTDetector
 
         Returns:
         A dict with the following fields, see the 'images' key in https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
@@ -130,6 +130,7 @@ class TFDetector:
         """
         
         assert image_size is None, 'Image sizing not supported for TF detectors'
+        assert not skip_image_resizing, 'Image sizing not supported for TF detectors'
         result = {
             'file': image_id
         }
