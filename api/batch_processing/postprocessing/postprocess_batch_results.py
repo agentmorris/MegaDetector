@@ -134,7 +134,12 @@ class PostProcessingOptions:
     job_name_string = None
     model_version_string = None
     
+    # These should really be mutually exclusive, but I'm not enforcing this.
+    #
+    # Nothing bad happens if you set both to true; the confidence sort happens
+    # second.
     sort_html_by_filename = True
+    sort_html_by_confidence = False
 
     link_images_to_originals = True
     
@@ -364,7 +369,7 @@ def render_bounding_boxes(
     
     Only very preliminary support is provided for ground truth box rendering.
     
-    Returns the html info struct for this image in the form that's used for
+    Returns the html info struct for this image in the format that's used for
     write_html_image_list.
     """
 
@@ -488,6 +493,19 @@ def prepare_html_subpages(images_html, output_dir, options=None):
             images_html_sorted[res] = sorted_array
         images_html = images_html_sorted
     
+    # Optionally sort by confidence before writing to html
+    if options.sort_html_by_confidence:
+        images_html_sorted = {}
+        for res, array in images_html.items():
+            
+            if not all(['max_conf' in d for d in array]):
+                print("Warning: some elements in the {} page don't have confidence values, can't sort by confidence".format(
+                    res))
+            else:
+                sorted_array = sorted(array, key=lambda x: x['max_conf'], reverse=True)
+                images_html_sorted[res] = sorted_array
+                images_html = images_html_sorted
+        
     # Write the individual HTML files
     for res, array in images_html.items():
         
@@ -512,7 +530,28 @@ def get_positive_categories(detections,options):
             positive_categories.add(d['category'])
     return sorted(positive_categories)
 
+
 # Render an image (with no ground truth information)
+#
+# Returns a list of rendering structs, where the first item is a category (e.g. "detections_animal"), 
+# and  the second is a dict of information needed for rendering.  E.g.:
+#
+# [['detections_animal', 
+# {
+#  'filename': 'detections_animal/detections_animal_blah~01060415.JPG', 
+#  'title': '<b>Result type</b>: detections_animal, 
+#            <b>Image</b>: blah\\01060415.JPG,
+#            <b>Max conf</b>: 0.897',
+#   'textStyle': 'font-family:verdana,arial,calibri;font-size:80%;text-align:left;margin-top:20;margin-bottom:5',
+#   'linkTarget': 'full_path_to_%5C01060415.JPG'
+# }]]
+# 
+# When no classification data is present, this list will always be length-1.  When
+# classification data is present, an image may appear in multiple categories.
+#
+# Populates the 'max_conf' field of the first element of the list.
+#
+# Returns None if there are any errors.
 def render_image_no_gt(file_info,detection_categories_to_results_name,
                        detection_categories,classification_categories,
                        options):
@@ -574,7 +613,12 @@ def render_image_no_gt(file_info,detection_categories_to_results_name,
 
         image_result = [[res, rendered_image_html_info]]
 
+        max_conf = 0
+        
         for det in detections:
+            
+            if det['conf'] > max_conf:
+                max_conf = det['conf']
 
             if ('classifications' in det):
 
@@ -598,11 +642,17 @@ def render_image_no_gt(file_info,detection_categories_to_results_name,
 
         # ...for each detection
 
+        image_result[0][1]['max_conf'] = max_conf
+        
+    # ...if we got valid rendering info back from render_bounding_boxes()
+    
     return image_result
 
 # ...def render_image_no_gt()
     
 
+# Render an image with ground truth information.  See render_image_no_gt for return
+# data format.
 def render_image_with_gt(file_info,ground_truth_indexed_db,
                          detection_categories,classification_categories,options):
 

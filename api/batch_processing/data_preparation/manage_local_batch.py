@@ -140,6 +140,7 @@ yolo_working_dir = os.path.expanduser('~/git/yolov5')
 # Only relevant if use_yolo_inference_scripts is True.
 remove_yolo_intermediate_results = False
 remove_yolo_symlink_folder = False
+use_symlinks_for_yolo_inference = True
 
 # Set later if EK113/RCNX101-style overflow folders are being handled in this dataset
 overflow_folder_handling_enabled = False
@@ -335,12 +336,16 @@ for i_task,task in enumerate(task_info):
         
         # Check whether this output file exists
         
-        cmd += 'if test -e "{}"; then\n'.format(output_fn)
-        cmd +=  '  echo "Results file {} exists, cannot continue"\n'.format(output_fn)
-        cmd +=  '  exit -1\n'
-        cmd += 'fi\n\n'
+        if not os.name == 'nt':
+            cmd += 'if test -e "{}"; then\n'.format(output_fn)
+            cmd +=  '  echo "Results file {} exists, cannot continue"\n'.format(output_fn)
+            cmd +=  '  exit -1\n'
+            cmd += 'fi\n\n'
         
         cmd += f'python run_inference_with_yolov5_val.py "{model_file}" "{chunk_file}" "{output_fn}" "{yolo_working_dir}" {image_size_string} {augment_string} {symlink_folder_string} {yolo_results_folder_string} {remove_yolo_results_string} {remove_symlink_folder_string} {confidence_threshold_string} {device_string}'
+        
+        if not use_symlinks_for_yolo_inference:
+            cmd += ' --no_use_symlinks'
         
         cmd += '\n'
         
@@ -610,6 +615,8 @@ options.confidence_threshold = 0.2
 options.almost_detection_confidence_threshold = options.confidence_threshold - 0.05
 options.ground_truth_json_file = None
 options.separate_detections_by_category = True
+options.sort_html_by_confidence = False
+
 # options.sample_seed = 0
 
 options.parallelize_rendering = True
