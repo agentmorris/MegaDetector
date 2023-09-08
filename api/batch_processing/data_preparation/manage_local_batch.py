@@ -1425,42 +1425,6 @@ for final_output_path in classification_detection_files:
 # ...for each file we want to smooth
 
 
-#%% Post-processing (post-classification, post-within-image-smoothing)
-
-classification_detection_files = smoothed_classification_files
-    
-assert all([os.path.isfile(fn) for fn in classification_detection_files])
-    
-# classification_detection_file = classification_detection_files[1]
-for classification_detection_file in classification_detection_files:
-    
-    options = PostProcessingOptions()
-    options.image_base_dir = input_path
-    options.include_almost_detections = True
-    options.num_images_to_sample = 10000
-    options.confidence_threshold = 0.2
-    options.classification_confidence_threshold = 0.75
-    options.almost_detection_confidence_threshold = options.confidence_threshold - 0.05
-    options.ground_truth_json_file = None
-    options.separate_detections_by_category = True
-    
-    options.parallelize_rendering = True
-    options.parallelize_rendering_n_cores = default_workers_for_parallel_tasks
-    options.parallelize_rendering_with_threads = parallelization_defaults_to_threads
-    
-    folder_token = classification_detection_file.split(os.path.sep)[-1].replace('classifier.json','')
-    
-    output_base = os.path.join(postprocessing_output_folder, folder_token + \
-        base_task_name + '_{:.3f}'.format(options.confidence_threshold))
-    os.makedirs(output_base, exist_ok=True)
-    print('Processing {} to {}'.format(base_task_name, output_base))
-    
-    options.api_output_file = classification_detection_file
-    options.output_dir = output_base
-    ppresults = process_batch_results(options)
-    path_utils.open_file(ppresults.output_html_file)
-
-
 #%% Read EXIF data from all images
 
 from data_management import read_exif
