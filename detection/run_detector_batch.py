@@ -587,7 +587,7 @@ def write_checkpoint(checkpoint_path, results):
         
     # Write the new checkpoint
     with open(checkpoint_path, 'w') as f:
-        json.dump({'images': results}, f, indent=1)
+        json.dump({'images': results}, f, indent=1, default=str)
         
     # Remove the backup checkpoint if it exists
     if checkpoint_tmp_path is not None:
@@ -687,7 +687,7 @@ def write_results_to_file(results, output_file, relative_path_base=None,
     }
     
     with open(output_file, 'w') as f:
-        json.dump(final_output, f, indent=1)
+        json.dump(final_output, f, indent=1, default=str)
     print('Output file saved at {}'.format(output_file))
     
     return final_output
