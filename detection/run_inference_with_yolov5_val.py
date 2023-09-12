@@ -44,6 +44,8 @@ import tempfile
 import shutil
 import json
 
+from tqdm import tqdm
+
 from md_utils import path_utils
 from md_utils import process_utils
 from detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP
@@ -78,6 +80,9 @@ class YoloInferenceOptions:
     remove_yolo_results_folder = True
     
     yolo_category_id_to_name = {0:'animal',1:'person',2:'vehicle'}
+    
+    # 'error','skip','overwrite'
+    overwrite_handling = 'skip'
             
     
 #%% Main function
@@ -93,6 +98,17 @@ def run_inference_with_yolo_val(options):
     assert os.path.isfile(options.model_filename), \
         'Could not find model file {}'.format(options.model_filename)
     
+    if os.path.exists(options.output_file):
+        if options.overwrite_handling == 'skip':
+            print('Warning: output file {} exists, skipping'.format(options.output_file))
+            return
+        elif options.overwrite_handling == 'overwrite':
+            print('Warning: output file {} exists, overwriting'.format(options.output_file))
+        elif options.overwrite_handling == 'error':
+            raise ValueError('Output file {} exists'.format(options.output_file))
+        else:
+            raise ValueError('Unknown output handling method {}'.format(options.overwrite_handling))
+            
     os.makedirs(os.path.dirname(options.output_file),exist_ok=True)
     
     temporary_folder = None
@@ -141,8 +157,13 @@ def run_inference_with_yolo_val(options):
     
     image_id_to_file = {}    
     
+    if options.use_symlinks:
+        print('Creating {} symlinks in {}'.format(len(image_files_absolute),symlink_folder))
+    else:
+        print('Symlinks disabled, copying {} images to {}'.format(len(image_files_absolute),symlink_folder))
+        
     # i_image = 0; image_fn = image_files_absolute[i_image]
-    for i_image,image_fn in enumerate(image_files_absolute):
+    for i_image,image_fn in tqdm(enumerate(image_files_absolute),total=len(image_files_absolute)):
         
         ext = os.path.splitext(image_fn)[1]
         
@@ -303,13 +324,17 @@ def main():
     parser.add_argument(
         '--device_string', default=options.device_string, type=str,
         help='CUDA device specifier, e.g. "0" or "cpu" (default {})'.format(options.device_string))
-    
+    parser.add_argument(
+        '--overwrite_handling', default=options.overwrite_handling, type=str,
+        help='action to take if the output file exists (skip, error, overwrite) (default {})'.format(
+            options.overwrite_handling)    )
+
     parser.add_argument(
         '--symlink_folder', type=str,
-        help='temporary folder for symlinks')
+        help='temporary folder for symlinks (defaults to a folder in the system temp dir)')
     parser.add_argument(
         '--yolo_results_folder', type=str,
-        help='temporary folder for YOLO intermediate output')
+        help='temporary folder for YOLO intermediate output (defaults to a folder in the system temp dir)')
     parser.add_argument(
         '--no_use_symlinks', action='store_true',
         help='copy files instead of creating symlinks when preparing the yolo input folder')

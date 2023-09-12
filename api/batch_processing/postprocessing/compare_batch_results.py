@@ -7,7 +7,7 @@
 # * MegaDetector versions
 # * Results before/after RDE
 # * Results with/without augmentation
-
+#
 # Makes pairwise comparisons, but can take lists of results files (will perform 
 # all pairwise comparisons).  Results are written to an HTML page that shows the number
 # and nature of disagreements (in the sense of each image being a detection or non-detection), 

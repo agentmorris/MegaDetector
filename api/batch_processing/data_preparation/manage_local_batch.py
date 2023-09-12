@@ -141,6 +141,7 @@ yolo_working_dir = os.path.expanduser('~/git/yolov5')
 remove_yolo_intermediate_results = False
 remove_yolo_symlink_folder = False
 use_symlinks_for_yolo_inference = True
+yolo_inference_overwrite_handling = 'skip' # 'skip', 'error', or 'overwrite'
 
 # Set later if EK113/RCNX101-style overflow folders are being handled in this dataset
 overflow_folder_handling_enabled = False
@@ -190,7 +191,9 @@ if ('v5') in model_file:
     gpu_images_per_second = 10
 else:
     gpu_images_per_second = 2.9
-
+if augment:
+    gpu_images_per_second = gpu_images_per_second * 0.7
+    
 checkpoint_frequency = 10000
 
 base_task_name = organization_name_short + '-' + job_date + job_description_string + '-' + \
@@ -336,15 +339,9 @@ for i_task,task in enumerate(task_info):
         
         device_string = '--device {}'.format(gpu_number)
         
-        # Check whether this output file exists
+        overwrite_handling_string = '--overwrite_handling {}'.format(yolo_inference_overwrite_handling)        
         
-        if not os.name == 'nt':
-            cmd += 'if test -e "{}"; then\n'.format(output_fn)
-            cmd +=  '  echo "Results file {} exists, cannot continue"\n'.format(output_fn)
-            cmd +=  '  exit -1\n'
-            cmd += 'fi\n\n'
-        
-        cmd += f'python run_inference_with_yolov5_val.py "{model_file}" "{chunk_file}" "{output_fn}" "{yolo_working_dir}" {image_size_string} {augment_string} {symlink_folder_string} {yolo_results_folder_string} {remove_yolo_results_string} {remove_symlink_folder_string} {confidence_threshold_string} {device_string}'
+        cmd += f'python run_inference_with_yolov5_val.py "{model_file}" "{chunk_file}" "{output_fn}" "{yolo_working_dir}" {image_size_string} {augment_string} {symlink_folder_string} {yolo_results_folder_string} {remove_yolo_results_string} {remove_symlink_folder_string} {confidence_threshold_string} {device_string} {overwrite_handling_string}'
         
         if not use_symlinks_for_yolo_inference:
             cmd += ' --no_use_symlinks'
