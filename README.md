@@ -125,6 +125,8 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Irvine Ranch Conservancy](http://www.irconservancy.org/) ([story](https://www.ocregister.com/2022/03/30/ai-software-is-helping-researchers-focus-on-learning-about-ocs-wild-animals/))
 * [Wildlife Protection Solutions](https://wildlifeprotectionsolutions.org/) ([story](https://customers.microsoft.com/en-us/story/1384184517929343083-wildlife-protection-solutions-nonprofit-ai-for-earth), [story](https://www.enterpriseai.news/2023/02/20/ai-helps-wildlife-protection-solutions-safeguard-endangered-species/))
 * [Q42](https://www.q42.nl/en) ([blog post](https://engineering.q42.nl/ai-bear-repeller/))
+* [Agouti](https://agouti.eu/) ([report](https://efsa.onlinelibrary.wiley.com/doi/pdf/10.2903/sp.efsa.2023.EN-8217))
+* [Trapper](https://trapper-project.readthedocs.io/en/latest/overview.html) ([tutorial](https://trapper-project.readthedocs.io/en/latest/tutorial.html))
 
 * [Road Ecology Center](https://roadecology.ucdavis.edu/), University of California, Davis ([Wildlife Observer Network platform](https://wildlifeobserver.net/))
 * [The Nature Conservancy in California](https://www.nature.org/en-us/about-us/where-we-work/united-states/california/) ([Animl platform](https://github.com/tnc-ca-geo/animl-frontend))
