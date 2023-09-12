@@ -522,6 +522,8 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 * [Wildlife Insights](https://wildlifeinsights.org/)
 * [TrapTagger](https://wildeyeconservation.org/trap-tagger-about/)
 * [WildTrax](https://www.wildtrax.ca/)
+* [Agouti](https://agouti.eu/)
+* [Trapper](https://trapper-project.readthedocs.io/en/latest/overview.html)
 * [Camelot](https://camelotproject.org/)
 * [WildePod](https://wildepod.org/)
 * [wpsWatch](https://wildlifeprotectionsolutions.org/wpswatch/)
