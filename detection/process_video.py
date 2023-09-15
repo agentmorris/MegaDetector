@@ -97,7 +97,8 @@ def process_video(options):
     if options.render_output_video and (options.output_video_file is None):
         options.output_video_file = options.input_video_file + '.detections.mp4'
 
-    tempdir = os.path.join(tempfile.gettempdir(), 'process_camera_trap_video')
+    tempdir = os.path.join(tempfile.gettempdir(), 'process_camera_trap_video')    
+    os.makedirs(tempdir,exist_ok=True)
     
     # TODO:
     # 
