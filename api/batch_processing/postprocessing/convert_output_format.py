@@ -29,6 +29,13 @@ CONF_DIGITS = 3
 
 def convert_json_to_csv(input_path,output_path=None,min_confidence=None,
                         omit_bounding_boxes=False,output_encoding=None):
+    """
+    Convert .json to .csv
+    
+    TODO: this function should obviously be using Pandas or some other sensible structured
+    representation of tabular data.  Even a list of dicts.  This implementation is quite
+    brittle and depends on adding fields to every row in exactly the right order.
+    """
     
     if output_path is None:
         output_path = os.path.splitext(input_path)[0]+'.csv'
@@ -37,6 +44,8 @@ def convert_json_to_csv(input_path,output_path=None,min_confidence=None,
     json_output = json.load(open(input_path))
 
     rows = []
+    
+    fixed_columns = ['image_path', 'max_confidence', 'detections']
     
     # We add an output column for each class other than 'empty', 
     # containing the maximum probability of  that class for each image
@@ -61,8 +70,29 @@ def convert_json_to_csv(input_path,output_path=None,min_confidence=None,
             classification_category_id_to_column_number[category_id] = i_category
 
         n_classification_categories = len(classification_category_ids)
+    
+    # There are several fields for which we add columns, other random bespoke fields
+    # will be ignored.
+    optional_fields = ['width','height','datetime','exif_metadata']
+    optional_fields_present = set()
+    
+    # Iterate once over the data to check for optional fields
+    print('Looking for optional fields...')
+    
+    for im in tqdm(json_output['images']):
+        # Which optional fields are present for this image?
+        for k in im.keys():
+            if k in optional_fields:
+                optional_fields_present.add(k)
+                
+    optional_fields_present = sorted(list(optional_fields_present))
+    if len(optional_fields_present) > 0:
+        print('Found {} optional fields'.format(len(optional_fields_present)))
+            
+    expected_row_length = len(fixed_columns) + len(detection_category_column_names) + \
+        n_classification_categories + len(optional_fields_present)
         
-    print('Iterating through results...')
+    print('Formatting results...')
     
     # i_image = 0; im = json_output['images'][i_image]
     for im in tqdm(json_output['images']):
@@ -136,17 +166,28 @@ def convert_json_to_csv(input_path,output_path=None,min_confidence=None,
         row = [image_id, max_conf, detection_string]
         row.extend(max_detection_category_probabilities)
         row.extend(max_classification_category_probabilities)
+        
+        for field_name in optional_fields_present:
+            if field_name not in im:
+                row.append('')
+            else:
+                row.append(str(im[field_name]))
+                
+        assert len(row) == expected_row_length
         rows.append(row)
         
     # ...for each image
 
     print('Writing to csv...')
+    
     with open(output_path, 'w', newline='', encoding=output_encoding) as f:
         writer = csv.writer(f, delimiter=',')
-        header = ['image_path', 'max_confidence', 'detections']
+        header = fixed_columns
         header.extend(detection_category_column_names)
         if n_classification_categories > 0:
             header.extend(classification_category_column_names)
+        for field_name in optional_fields_present:
+            header.append(field_name)
         writer.writerow(header)
         writer.writerows(rows)
 
