@@ -99,6 +99,18 @@ def process_video(options):
 
     tempdir = os.path.join(tempfile.gettempdir(), 'process_camera_trap_video')
     
+    # TODO:
+    # 
+    # This is a lazy fix to an issue... if multiple users run this script, the
+    # "process_camera_trap_video" is owned by the first person who creates it, and others
+    # can't write to it.  I could create uniquely-named folders, but I philosophically prefer
+    # to put all the individual UUID-named folders within a larger folder, so as to be a 
+    # good tempdir citizen.  So, the lazy fix is to make this world-writable.
+    try:
+        os.chmod(tempdir,0o777)
+    except Exception:
+        pass
+    
     if options.frame_folder is not None:
         frame_output_folder = options.frame_folder
     else:
@@ -158,7 +170,7 @@ def process_video(options):
             confidence_threshold=options.rendering_confidence_threshold)
 
         # Combine into a video
-        print('Rendering video at {} fps'.format(Fs))
+        print('Rendering video to {} at {} fps'.format(options.output_video_file,Fs))
         frames_to_video(detected_frame_files, Fs, options.output_video_file, codec_spec=options.fourcc)
         
         # Delete the temporary directory we used for detection images
