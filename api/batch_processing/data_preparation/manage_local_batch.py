@@ -227,7 +227,7 @@ print('Output folder:\n{}'.format(filename_base))
 
 #%% Enumerate files
 
-all_images = path_utils.find_images(input_path,recursive=True)
+all_images = sorted(path_utils.find_images(input_path,recursive=True))
 
 print('Enumerated {} image files in {}'.format(len(all_images),input_path))
 
@@ -247,6 +247,7 @@ if False:
             chunk = json.load(f)
             assert isinstance(chunk,list)
             all_images.extend(chunk)
+    all_images = sorted(all_images)
     print('Loaded {} image files from chunks in {}'.format(len(all_images),filename_base))
     
 
@@ -565,29 +566,38 @@ print('Processed all {} images with {} failures'.format(
 
 #%% Merge results files and make images relative
 
-import copy
-
-combined_results = None
+combined_results = {}
+combined_results['images'] = []
+images_processed = set()
 
 for i_task,task in enumerate(task_info):
 
-    if i_task == 0:
-        combined_results = copy.deepcopy(task['results'])
-        combined_results['images'] = copy.deepcopy(task['results']['images'])
-        continue
     task_results = task['results']
-    assert task_results['info']['format_version'] == combined_results['info']['format_version']
-    assert task_results['detection_categories'] == combined_results['detection_categories']
-    combined_results['images'].extend(copy.deepcopy(task_results['images']))
     
+    if i_task == 0:
+        combined_results['info'] = task_results['info']
+        combined_results['detection_categories'] = task_results['detection_categories']        
+    else:
+        assert task_results['info']['format_version'] == combined_results['info']['format_version']
+        assert task_results['detection_categories'] == combined_results['detection_categories']
+        
+    # Make sure we didn't see this image in another chunk
+    for im in task_results['images']:
+        assert im['file'] not in images_processed
+        images_processed.add(im['file'])
+
+    combined_results['images'].extend(task_results['images'])
+    
+# Check that we ended up with the right number of images    
 assert len(combined_results['images']) == len(all_images), \
     'Expected {} images in combined results, found {}'.format(
         len(all_images),len(combined_results['images']))
 
+# Check uniqueness
 result_filenames = [im['file'] for im in combined_results['images']]
 assert len(combined_results['images']) == len(set(result_filenames))
 
-# im = combined_results['images'][0]
+# Check for valid path names
 for im in combined_results['images']:
     assert im['file'].startswith(input_path + os.path.sep)
     im['file'] = im['file'].replace(input_path + os.path.sep,'',1)    

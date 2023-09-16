@@ -48,7 +48,6 @@ from tqdm import tqdm
 
 from md_utils import path_utils
 from md_utils import process_utils
-from detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP
 from data_management import yolo_output_to_md_output
 
 
@@ -79,6 +78,8 @@ class YoloInferenceOptions:
     remove_symlink_folder = True
     remove_yolo_results_folder = True
     
+    # These are deliberately offset from the standard MD categories; YOLOv5
+    # needs categories IDs to start at 0.
     yolo_category_id_to_name = {0:'animal',1:'person',2:'vehicle'}
     
     # 'error','skip','overwrite'
@@ -115,11 +116,13 @@ def run_inference_with_yolo_val(options):
     symlink_folder_is_temp_folder = False
     yolo_folder_is_temp_folder = False
     
+    job_id = str(uuid.uuid1())
+    
     def get_job_temporary_folder(tf):
         if tf is not None:
             return tf
         tempdir_base = tempfile.gettempdir()
-        tf = os.path.join(tempdir_base,'md_to_yolo','md_to_yolo_' + str(uuid.uuid1()))
+        tf = os.path.join(tempdir_base,'md_to_yolo','md_to_yolo_' + job_id)
         os.makedirs(tf,exist_ok=True)
         return tf
         
@@ -136,7 +139,10 @@ def run_inference_with_yolo_val(options):
         yolo_results_folder = os.path.join(temporary_folder,'yolo_results')
         yolo_folder_is_temp_folder = True
         
-    os.makedirs(symlink_folder,exist_ok=True)
+    # Attach a GUID to the symlink folder, regardless of whether we created it
+    symlink_folder_inner = os.path.join(symlink_folder,job_id)
+    
+    os.makedirs(symlink_folder_inner,exist_ok=True)
     os.makedirs(yolo_results_folder,exist_ok=True)
     
 
@@ -155,37 +161,40 @@ def run_inference_with_yolo_val(options):
     
     ##%% Create symlinks to give a unique ID to each image
     
-    image_id_to_file = {}    
+    image_id_to_file = {}  
+    image_id_to_error = {}
     
     if options.use_symlinks:
-        print('Creating {} symlinks in {}'.format(len(image_files_absolute),symlink_folder))
+        print('Creating {} symlinks in {}'.format(len(image_files_absolute),symlink_folder_inner))
     else:
-        print('Symlinks disabled, copying {} images to {}'.format(len(image_files_absolute),symlink_folder))
+        print('Symlinks disabled, copying {} images to {}'.format(len(image_files_absolute),symlink_folder_inner))
         
     # i_image = 0; image_fn = image_files_absolute[i_image]
     for i_image,image_fn in tqdm(enumerate(image_files_absolute),total=len(image_files_absolute)):
         
         ext = os.path.splitext(image_fn)[1]
         
-        image_id_string = str(i_image).zfill(10)
-        image_id_to_file[image_id_string] = image_fn
-        symlink_name = image_id_string + ext
-        symlink_full_path = os.path.join(symlink_folder,symlink_name)
-        if options.use_symlinks:
-            path_utils.safe_create_link(image_fn,symlink_full_path)
-        else:
-            shutil.copyfile(image_fn,symlink_full_path)
+        image_id = str(i_image).zfill(10)
+        image_id_to_file[image_id] = image_fn
+        symlink_name = image_id + ext
+        symlink_full_path = os.path.join(symlink_folder_inner,symlink_name)
+        
+        try:
+            if options.use_symlinks:
+                path_utils.safe_create_link(image_fn,symlink_full_path)
+            else:
+                shutil.copyfile(image_fn,symlink_full_path)
+        except Exception as e:
+            image_id_to_error[image_id] = str(e)
+            print('Warning: error copying/creating link for input file {}: {}'.format(
+                image_fn,str(e)))
+            continue
         
     # ...for each image
 
 
     ##%% Create the dataset file
     
-    if False:
-        for category_id in options.yolo_category_id_to_name:
-            assert DEFAULT_DETECTOR_LABEL_MAP[str(category_id+1)] == \
-                options.yolo_category_id_to_name[category_id]
-        
     # Category IDs need to be continuous integers starting at 0
     category_ids = sorted(list(options.yolo_category_id_to_name.keys()))
     assert category_ids[0] == 0
@@ -194,7 +203,7 @@ def run_inference_with_yolo_val(options):
     dataset_file = os.path.join(yolo_results_folder,'dataset.yaml')
     
     with open(dataset_file,'w') as f:
-        f.write('path: {}\n'.format(symlink_folder))
+        f.write('path: {}\n'.format(symlink_folder_inner))
         f.write('train: .\n')
         f.write('val: .\n')
         f.write('test: .\n')
@@ -226,13 +235,32 @@ def run_inference_with_yolo_val(options):
     
     current_dir = os.getcwd()
     os.chdir(options.yolo_working_folder)    
-    _ = process_utils.execute_and_print(cmd)
+    execution_result = process_utils.execute_and_print(cmd)
+    assert execution_result['status'] == 0, 'Error running YOLOv5'
+    yolo_console_output = execution_result['output']
+    
+    yolo_read_failures = []
+    for line in yolo_console_output:
+        if 'cannot identify image file' in line:
+            tokens = line.split('cannot identify image file')
+            image_name = tokens[-1].strip()
+            assert image_name[0] == "'" and image_name [-1] == "'"
+            image_name = image_name[1:-1]
+            yolo_read_failures.append(image_name)            
+            
+    # image_file = yolo_read_failures[0]
+    for image_file in yolo_read_failures:
+        image_id = os.path.splitext(os.path.basename(image_file))[0]
+        assert image_id in image_id_to_file
+        if image_id not in image_id_to_error:
+            image_id_to_error[image_id] = 'YOLOv5 read failure'
+    
     os.chdir(current_dir)
         
     
     ##%% Convert results to MD format
     
-    json_files = glob.glob(yolo_results_folder + '/yolo_results/*.json')
+    json_files = glob.glob(yolo_results_folder+ '/yolo_results/*.json')
     assert len(json_files) == 1    
     yolo_json_file = json_files[0]
 
@@ -261,7 +289,8 @@ def run_inference_with_yolo_val(options):
         output_file=options.output_file,
         yolo_category_id_to_name=options.yolo_category_id_to_name,
         detector_name=os.path.basename(options.model_filename),
-        image_id_to_relative_path=image_id_to_relative_path)
+        image_id_to_relative_path=image_id_to_relative_path,
+        image_id_to_error=image_id_to_error)
 
 
     ##%% Clean up
@@ -277,13 +306,7 @@ def run_inference_with_yolo_val(options):
     elif yolo_folder_is_temp_folder:
         print('Warning: using temporary YOLO results folder {}, but not removing it'.format(
             yolo_results_folder))
-        
-    if options.remove_yolo_results_folder and \
-        options.remove_symlink_folder and \
-        temporary_folder is not None:
             
-        pass
-        
 # ...def run_inference_with_yolo_val()
 
 
@@ -378,14 +401,23 @@ if __name__ == '__main__':
 
 if False:
     
+    #%% Run from a set of options
+    
+    options = YoloInferenceOptions()
+
+    args = {'augment': 1, 'batch_size': 1, 'conf_thres': 0.005, 'device_string': '1', 'image_size': 1664.0, 'input_folder': '/home/user/postprocessing/usgs-kissel/usgs-kissel-2023-09-11-aug-v5a.0.0/chunk031.json', 'model_filename': '/home/user/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt', 'output_file': '/home/user/postprocessing/usgs-kissel/usgs-kissel-2023-09-11-aug-v5a.0.0/chunk031_results.json', 'overwrite_handling': 'skip', 'symlink_folder': '/home/user/postprocessing/usgs-kissel/usgs-kissel-2023-09-11-aug-v5a.0.0/symlinks/symlinks_031', 'yolo_results_folder': '/home/user/postprocessing/usgs-kissel/usgs-kissel-2023-09-11-aug-v5a.0.0/yolo_results/yolo_results_031', 'yolo_working_folder': '/home/user/git/yolov5', 'remove_symlink_folder': True, 'remove_yolo_results_folder': True, 'use_symlinks': False, 'augment': True}
+    
+    for k in args:
+        setattr(options, k, args[k])
+
+
     #%% Test driver (folder)
     
-    project_name = 'KRU-test'
+    project_name = 'KRU-test-corrupted'
     input_folder = os.path.expanduser(f'~/data/{project_name}')
     output_folder = os.path.expanduser(f'~/tmp/{project_name}')
     model_filename = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')
-    # yolo_working_folder = os.path.expanduser('~/git/yolov5')
-    yolo_working_folder = 'c:/git/yolov5'
+    yolo_working_folder = os.path.expanduser('~/git/yolov5')
     model_name = os.path.splitext(os.path.basename(model_filename))[0]
     
     symlink_folder = os.path.join(output_folder,'symlinks')
@@ -417,8 +449,8 @@ if False:
     options.symlink_folder = symlink_folder # os.path.join(output_folder,'symlinks')
     options.use_symlinks = False
     
-    options.remove_temporary_symlink_folder = True
-    options.remove_yolo_results_file = True
+    options.remove_temporary_symlink_folder = False
+    options.remove_yolo_results_file = False
     
     cmd = f'python run_inference_with_yolov5_val.py {model_filename} {input_folder} {output_file} {yolo_working_folder} ' + \
           f' --image_size {options.image_size} --conf_thres {options.conf_thres} --batch_size {options.batch_size} ' + \

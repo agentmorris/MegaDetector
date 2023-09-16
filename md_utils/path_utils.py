@@ -52,6 +52,7 @@ def recursive_file_list(base_dir, convert_slashes=True, return_relative_paths=Fa
     if return_relative_paths:
         all_files = [os.path.relpath(fn,base_dir) for fn in all_files]
         
+    all_files = sorted(all_files)
     return all_files
 
 
@@ -236,6 +237,7 @@ def find_images(dirname: str, recursive: bool = False, return_relative_paths: bo
     if return_relative_paths:
         image_files = [os.path.relpath(fn,dirname) for fn in image_files]
     
+    image_files = sorted(image_files)
     return image_files
 
 

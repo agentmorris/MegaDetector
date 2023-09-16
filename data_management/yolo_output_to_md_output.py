@@ -63,13 +63,38 @@ def yolo_json_output_to_md_output(yolo_json_file, image_folder,
                                   detector_name='unknown',
                                   image_id_to_relative_path=None,
                                   offset_yolo_class_ids=True,
-                                  truncate_to_standard_md_precision=True):
+                                  truncate_to_standard_md_precision=True,
+                                  image_id_to_error=None):
+    """
+    Convert a YOLOv5 .json file to MD .json format.
     
+    Args
+    - yolo_json_file: the .json file to convert from YOLOv5 format to MD output format
+    - image_folder: the .json file contains relative path names, this is the path base
+    - yolo_category_id_to_name: the .json file contains only numeric identifiers for
+      categories, but we want names and numbers for the output format; this is a 
+      dict mapping numbers to names
+    - detector_name: a string put in the output file, not otherwise used here
+    - image_id_to_relative_path: YOLOv5 .json uses only basenames (e.g. abc1234.JPG);
+      by default these will be appended to the input path to create pathnames, so if you
+      have a flat folder, this is fine.  If you want to map base names to relative paths, use
+      this dict.
+    - offset_yolo_class_ids: YOLOv5 class IDs always start at zero; if you want to make the 
+      output classes start at 1, set offset_yolo_class_ids
+    - truncate_to_standard_md_precision: YOLOv5 .json includes lots of (not-super-meaningful)
+      precision, set this to truncate to COORD_DIGITS and CONF_DIGITS.
+    - image_id_to_error: if you want to include image IDs in the output file because you couldn't
+      prepare the input file in the first place, include them here.
+    """    
+        
     assert os.path.isfile(yolo_json_file), \
         'Could not find YOLO .json file {}'.format(yolo_json_file)
     assert os.path.isdir(image_folder), \
         'Could not find image folder {}'.format(image_folder)
-        
+      
+    if image_id_to_error is None:
+        image_id_to_error = {}
+            
     print('Converting {} to MD format'.format(yolo_json_file))
     
     if image_id_to_relative_path is None:
@@ -121,7 +146,18 @@ def yolo_json_output_to_md_output(yolo_json_file, image_folder,
         for det in detections:
             assert isinstance(det['image_id'],int), \
                 'Found mixed int and string image IDs'
-                
+        
+        # Convert the keys in image_id_to_error to ints
+        #
+        # This should error if we're given non-int-friendly IDs        
+        int_formatted_image_id_to_error = {}        
+        for image_id in image_id_to_error:
+            int_formatted_image_id_to_error[int(image_id)] = \
+                image_id_to_error[image_id]
+        image_id_to_error = int_formatted_image_id_to_error        
+           
+    # ...if image IDs are formatted as integers in YOLO output
+    
     output_images = []
     
     # image_file_relative = image_files_relative[10]
@@ -132,7 +168,11 @@ def yolo_json_output_to_md_output(yolo_json_file, image_folder,
         image_id = image_file_relative_to_image_id[image_file_relative]
         if int_formatted_image_ids:
             image_id = int(image_id)
-        if image_id not in image_id_to_detections:
+        if image_id in image_id_to_error:
+            im['failure'] = str(image_id_to_error[image_id])
+            output_images.append(im)
+            continue
+        elif image_id not in image_id_to_detections:
             detections = []
         else:
             detections = image_id_to_detections[image_id]
@@ -142,7 +182,7 @@ def yolo_json_output_to_md_output(yolo_json_file, image_folder,
             pil_im = vis_utils.open_image(image_full_path)
         except Exception as e:
             s = str(e).replace('\n',' ')
-            print('Warning: error opening image {}: {}'.format(image_full_path,s))
+            print('Warning: error opening image {}: {}, outputting as a failure'.format(image_full_path,s))
             im['failure'] = 'Conversion error: {}'.format(s)
             output_images.append(im)
             continue
