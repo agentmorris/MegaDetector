@@ -198,14 +198,6 @@ def get_iou(bb1, bb2):
         bb1: [x_min, y_min, width_of_box, height_of_box]
         bb2: [x_min, y_min, width_of_box, height_of_box]
 
-    These will be converted to
-
-    bb1: [x1,y1,x2,y2]
-    bb2: [x1,y1,x2,y2]
-
-    The (x1, y1) position is at the top left corner (or the bottom right - either way works).
-    The (x2, y2) position is at the bottom right corner (or the top left).
-
     Returns:
         intersection_over_union, a float in [0, 1]
     """

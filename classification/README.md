@@ -10,6 +10,7 @@
   3. [Run classifier](#3-run-classifier)
   4. [(Optional) Map MegaClassifier categories to desired categories](#4-optional-map-megaclassifier-categories-to-desired-categories)
   5. [Merge classification results with detection JSON](#5-merge-classification-results-with-detection-json)
+* [Use a trained classifier as a feature extractor] (#use-a-trained-classifier-as-a-feature-extractor)
 * [Typical training pipeline](#typical-training-pipeline)
   1. [Select classification labels for training](#1-select-classification-labels-for-training)
   2. [Query MegaDB for labeled images](#2-query-megadb-for-labeled-images)
@@ -269,6 +270,24 @@ python merge_classification_detection_output.py \
     --detection-json detections.json
 ```
 
+# Use a trained classifier as a feature extractor
+
+To use MegaClassifier to extract features from images, use the following code:
+
+```python
+import efficientnet
+import torch
+
+model = efficientnet.EfficientNet.from_name('efficientnet-b3', num_classes=169)
+ckpt = torch.load('v0.1_efficientnet-b3.pt')
+model.load_state_dict(ckpt['model'])
+
+x = torch.rand((1, 3, 224, 224))  # random image, batch size 1
+conv_features = model.extract_features(x)
+print(conv_features.shape)  # torch.Size([1, 1536, 7, 7])
+features = model._avg_pooling(conv_features).flatten(start_dim=1)
+print(features.shape)  # torch.Size([1, 1536])
+```
 
 # Typical training pipeline
 

@@ -38,6 +38,8 @@ class DbVizOptions:
     num_to_visualize = None
     
     # Target size for rendering; set either dimension to -1 to preserve aspect ratio
+    #
+    # If viz_size is None or (-1,-1), the original image size is used.
     viz_size = (675, -1)
     htmlOptions = write_html_image_list()
     sort_by_filename = True
@@ -327,7 +329,7 @@ def process_images(db_path, output_dir, image_base_dir, options=None):
         try:
             original_image = vis_utils.open_image(img_path)
             original_size = original_image.size
-            if options.viz_size[0] == -1 and options.viz_size[1] == -1:
+            if (options.viz_size is None) or (options.viz_size[0] == -1 and options.viz_size[1] == -1):
                 image = original_image
             else:
                 image = vis_utils.resize_image(original_image, options.viz_size[0],
