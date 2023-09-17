@@ -10,7 +10,7 @@
   3. [Run classifier](#3-run-classifier)
   4. [(Optional) Map MegaClassifier categories to desired categories](#4-optional-map-megaclassifier-categories-to-desired-categories)
   5. [Merge classification results with detection JSON](#5-merge-classification-results-with-detection-json)
-* [Use a trained classifier as a feature extractor] (#use-a-trained-classifier-as-a-feature-extractor)
+* [Use a trained classifier as a feature extractor](#use-a-trained-classifier-as-a-feature-extractor)
 * [Typical training pipeline](#typical-training-pipeline)
   1. [Select classification labels for training](#1-select-classification-labels-for-training)
   2. [Query MegaDB for labeled images](#2-query-megadb-for-labeled-images)
