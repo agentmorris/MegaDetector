@@ -78,6 +78,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [University of California Davis Natural Reserves](https://naturalreserves.ucdavis.edu/)
 * [Upper Yellowstone Watershed Group](https://www.upperyellowstone.org/)
 * [Zamba Cloud](https://www.zambacloud.com/)
+* [Parc national du Mont-Tremblant](https://www.sepaq.com/pq/mot/index.dot?language_id=1)
 
 * [Applied Conservation Macro Ecology Lab](http://www.acmelab.ca/), University of Victoria
 * [Banff National Park Resource Conservation](https://www.pc.gc.ca/en/pn-np/ab/banff/nature/conservation), Parks Canada
