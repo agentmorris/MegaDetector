@@ -111,7 +111,8 @@ class TFDetector:
 
         return box_tensor_out, score_tensor_out, class_tensor_out
 
-    def generate_detections_one_image(self, image, image_id, detection_threshold, image_size=None):        
+    def generate_detections_one_image(self, image, image_id, detection_threshold, image_size=None,
+                                      skip_image_resizing=False):
         """
         Apply the detector to an image.
 
@@ -129,6 +130,7 @@ class TFDetector:
         """
         
         assert image_size is None, 'Image sizing not supported for TF detectors'
+        assert not skip_image_resizing, 'Image sizing not supported for TF detectors'
         result = {
             'file': image_id
         }
