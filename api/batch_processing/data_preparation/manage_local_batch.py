@@ -607,7 +607,7 @@ combined_api_output_file = os.path.join(
     '{}_detections.json'.format(base_task_name))
 
 with open(combined_api_output_file,'w') as f:
-    json.dump(combined_results,f,indent=2)
+    json.dump(combined_results,f,indent=1)
 
 print('Wrote results to {}'.format(combined_api_output_file))
 
@@ -1426,7 +1426,7 @@ for final_output_path in classification_detection_files:
           n_other_classifications_changed,n_other_images_changed))
     
     with open(classifier_output_path_within_image_smoothing,'w') as f:
-        json.dump(d,f,indent=2)
+        json.dump(d,f,indent=1)
         
     print('Wrote results to:\n{}'.format(classifier_output_path_within_image_smoothing))
     smoothed_classification_files.append(classifier_output_path_within_image_smoothing)
