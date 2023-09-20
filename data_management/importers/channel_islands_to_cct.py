@@ -1,3 +1,4 @@
+########
 #
 # channel_islands_to_cct.py
 #
@@ -6,6 +7,7 @@
 # Uses the command-line tool ExifTool (exiftool.org) to pull EXIF tags from images,
 # because every Python package we tried failed to pull the "Maker Notes" field properly.
 #
+########
 
 #%% Imports, constants, paths
 

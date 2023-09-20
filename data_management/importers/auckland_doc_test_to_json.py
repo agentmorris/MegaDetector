@@ -1,3 +1,4 @@
+########
 #
 # auckland_doc_test_to_json.py
 #
@@ -5,6 +6,7 @@
 # for a testing data set where a .csv file was provided with class
 # information.
 #
+########
 
 #%% Constants and imports
 
@@ -20,7 +22,7 @@ from tqdm import tqdm
 
 from md_visualization import visualize_db
 from data_management.databases import sanity_check_json_db
-from md_utils.path_utils import find_images, insert_before_extension
+from md_utils.path_utils import find_images
 
 input_base_dir = r'e:\auckland-test\2_Testing'
 

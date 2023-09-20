@@ -1,8 +1,10 @@
+########
 #
 # pc_to_json.py
 #
-# Convert a particular collection of .csv files to CCT format.
+# Convert a particular collection of .csv files from Parks Canada to CCT format.
 #
+########
 
 #%% Constants and environment
 

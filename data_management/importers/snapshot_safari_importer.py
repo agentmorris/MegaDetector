@@ -1,3 +1,4 @@
+########
 #
 # Import a Snapshot Safari project (one project, one season)
 #
@@ -22,6 +23,7 @@
 # Snapshot Serengeti is handled specially, because we're dealing with bounding
 # boxes too.  See snapshot_serengeti_lila.py.
 #
+########
 
 #%% Imports
 

@@ -1,3 +1,4 @@
+########
 #
 # idfg_iwildcam_lila_prep.py
 #
@@ -6,6 +7,7 @@
 #
 # This version works with the public iWildCam release images.
 #
+########
 
 #%% ############ Take one, from iWildCam .json files ############ 
 

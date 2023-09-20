@@ -1,3 +1,11 @@
+########
+#
+# noaa_seals_2019.py
+#
+# Prepare the NOAA Artic Seals 2019 metadata for LILA.
+#
+########
+
 #%% Imports and constants
 
 import os

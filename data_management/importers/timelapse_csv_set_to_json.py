@@ -1,4 +1,4 @@
-###
+########
 #
 # timelapse_csv_set_to_json.py
 #
@@ -8,7 +8,7 @@
 # Assumes that you have a list of all files in the directory tree, including 
 # image and .csv files.
 #
-###
+########
 
 #%% Constants and imports
 

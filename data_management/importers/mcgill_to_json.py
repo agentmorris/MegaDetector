@@ -1,9 +1,11 @@
+########
 #
 # mcgill_to_json.py
 #
 # Convert the .csv file provided for the McGill test data set to a 
 # COCO-camera-traps .json file
 #
+########
 
 #%% Constants and environment
 

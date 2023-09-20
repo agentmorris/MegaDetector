@@ -1,3 +1,4 @@
+########
 #
 # bellevue_to_json.py
 #
@@ -11,7 +12,7 @@
 # "2018.03.30\coyote\DSCF0091.JPG"
 # "2018.07.18\oldcam\empty\DSCF0001.JPG"
 #
-
+########
 
 #%% Constants and imports
 

@@ -1,8 +1,10 @@
+########
 #
 # ena24_to_json_2017.py
 #
 # Convert the ENA24 data set to a COCO-camera-traps .json file
 #
+########
 
 #%% Constants and environment
 

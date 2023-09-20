@@ -1,3 +1,11 @@
+########
+# 
+# prepare_zsl_imerit.py
+#
+# Prepare ZSL Borneo data for annotation (convert input data to iMerit-friendly format).
+#
+########
+
 #%% Imports and constants
 
 import json

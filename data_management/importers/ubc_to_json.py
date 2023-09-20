@@ -1,3 +1,4 @@
+########
 #
 # ubc_to_json.py
 #
@@ -9,6 +10,7 @@
 # formats, the two formats corresponding to folders starting with "SC_" and 
 # otherwise.
 #
+########
 
 #%% Constants and environment
 

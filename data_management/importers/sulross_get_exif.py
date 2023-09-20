@@ -1,21 +1,30 @@
+########
+#
+# sulross_get_exif.py
+#
+# For the Sul Ross dataset, species informationw was stored in XMP metadata; pull 
+# all that metadata out to .json.
+#
+########
+
 import os
 import json
 from tqdm import tqdm
 
 import exiftool
 
-
 image_ids_path = '/home/beaver/cameratraps/data/sulross/20190522_image_ids.json'
-
 data_dir = '/home/beaver/cameratraps/mnt/sulross'
 
 
 def get_metadata():
+    
     image_ids = json.load(open(image_ids_path))
 
     image_id_to_metadata = {}
 
-    batch_size = 20  # exiftool can process a batch of images at a time, but bottleneck is blobfuse reading the images
+    # exiftool can process a batch of images at a time, but bottleneck is blobfuse reading the images
+    batch_size = 20  
 
     num_images_processed = 0
 

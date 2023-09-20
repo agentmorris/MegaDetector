@@ -1,8 +1,10 @@
+########
 #
 # awc_to_json.py
 #
-# Convert a particular .csv file to CCT format.
+# Convert a particular .csv file from Australian Wildlife Conservancy to CCT format.
 #
+########
 
 #%% Constants and environment
 
@@ -179,9 +181,9 @@ sortedCategories,data = sanity_check_json_db.sanity_check_json_db(output_file, o
 bbox_db_path = output_file
 output_dir = preview_base
 
-options = visualize_bbox_db.BboxDbVizOptions()
+options = visualize_db.BboxDbVizOptions()
 options.num_to_visualize = 1000
 options.sort_by_filename = False
 
-htmlOutputFile = visualize_bbox_db.process_images(bbox_db_path,output_dir,image_base,options)
+htmlOutputFile = visualize_db.process_images(bbox_db_path,output_dir,image_base,options)
 
