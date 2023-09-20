@@ -74,7 +74,8 @@ class PTDetector:
         return model
 
     def generate_detections_one_image(self, img_original, image_id, 
-                                      detection_threshold, image_size=None):
+                                      detection_threshold, image_size=None,
+                                      skip_image_resizing=False):
         """
         Apply the detector to an image.
 
@@ -82,6 +83,7 @@ class PTDetector:
             img_original: the PIL Image object with EXIF rotation taken into account
             image_id: a path to identify the image; will be in the "file" field of the output object
             detection_threshold: confidence above which to include the detection proposal
+            skip_image_resizing: whether to skip internal image resizing and rely on external resizing
 
         Returns:
         A dict with the following fields, see the 'images' key in https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
@@ -122,8 +124,11 @@ class PTDetector:
                 
             # ...if the caller has specified an image size
             
-            img = letterbox(img_original, new_shape=target_size,
-                                 stride=PTDetector.STRIDE, auto=True)[0]
+            if skip_image_resizing:
+                img = img_original
+            else:
+                img = letterbox(img_original, new_shape=target_size,
+                                stride=PTDetector.STRIDE, auto=True)[0]
             
             # HWC to CHW; PIL Image is RGB already
             img = img.transpose((2, 0, 1))

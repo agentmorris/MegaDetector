@@ -278,7 +278,8 @@ def process_images(im_files, detector, confidence_threshold, use_image_queue=Fal
 
 def process_image(im_file, detector, confidence_threshold, image=None, 
                   quiet=False, image_size=None, include_image_size=False,
-                  include_image_timestamp=False, include_exif_data=False):
+                  include_image_timestamp=False, include_exif_data=False,
+                  skip_image_resizing=False):
     """
     Runs MegaDetector on a single image file.
 
@@ -287,6 +288,7 @@ def process_image(im_file, detector, confidence_threshold, image=None,
     - detector: loaded model
     - confidence_threshold: float, only detections above this threshold are returned
     - image: previously-loaded image, if available
+    - skip_image_resizing: whether to skip internal image resizing and rely on external resizing
 
     Returns:
     - result: dict representing detections on one image
@@ -311,8 +313,8 @@ def process_image(im_file, detector, confidence_threshold, image=None,
 
     try:
         result = detector.generate_detections_one_image(
-            image, im_file, detection_threshold=confidence_threshold, image_size=image_size)
-
+            image, im_file, detection_threshold=confidence_threshold, image_size=image_size,
+            skip_image_resizing=skip_image_resizing)
     except Exception as e:
         if not quiet:
             print('Image {} cannot be processed. Exception: {}'.format(im_file, e))
