@@ -775,7 +775,7 @@ Also, the environment file we're referring to in this section ([envs/environment
 
 We've historically gone a little bonkers making sure that MegaDetector results are absolutely repeatable, so have been very wary of changing PyTorch/YOLOv5 versions, or even Pillow versions.  On top of that, various combinations of YOLOv5 and PyTorch versions were unable to load models trained with the specific versions that existed when MDv5 was created.  The result of this is that our recommended environment uses older versions of PyTorch (1.10) and YOLOv5.
 
-But... all of those incompatibilities have worked themselves out with only minimal changes to MegaDetector-related code, so as of 2023.09, you can run MegaDetector in the newest versions of Python (3.11.5), PyTorch (2.0.1), and YOLOv5.  We haven't tested the identical-ness (is that a word? definitely not a word) of the results out to lots of decimal places, but we can say that MD "works" in this environment.  If you are OK living on the cutting edge with us, you can now set up MegaDetector like this, using a requirements.txt file that doesn't pin any package versions:
+But... all of those incompatibilities have worked themselves out with only minimal changes to MegaDetector-related code, so as of 2023.09, you can run MegaDetector in the newest versions of Python (3.11.5), PyTorch (2.0.1), and YOLOv5.  Results are <i>very slightly</i> different than they are in the recommended environment, typically around the third decimal place in both confidence values and box coordinates.  But if you are OK living on the cutting edge with us, you can now set up MegaDetector like this, using a requirements.txt file that doesn't pin any package versions:
 
 ### On Windows
 
