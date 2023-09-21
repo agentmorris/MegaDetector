@@ -26,7 +26,7 @@ if False:
         from ultralytics.utils.ops import scale_coords
         from ultralytics.data.augment import LetterBox
         def letterbox(img,new_shape,stride,auto=True):
-            L = LetterBox((1280,1280),stride=stride,auto=auto)
+            L = LetterBox(new_shape,stride=stride,auto=auto)
             letterbox_result = L(image=img)
             return [letterbox_result]
         utils_imported = True
