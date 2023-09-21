@@ -160,10 +160,12 @@ def resize_image(image, target_width, target_height=-1):
             # w = ar * h
             target_width = int(aspect_ratio * target_height)
 
-    resized_image = image.resize((target_width, target_height), Image.ANTIALIAS)
-    
-    # Note to self, in Pillow 10, this became:
-    # resized_image = image.resize((target_width, target_height), Image.Resampling.LANCZOS)
+    # This parameter changed between Pillow vesions 9 and 10, and for a bit, I'd like to
+    # support both.
+    try:
+        resized_image = image.resize((target_width, target_height), Image.ANTIALIAS)
+    except:
+        resized_image = image.resize((target_width, target_height), Image.Resampling.LANCZOS)
         
     return resized_image
 
@@ -570,10 +572,23 @@ def draw_bounding_box_on_image(image,
     except IOError:
         font = ImageFont.load_default()
 
+    def get_text_size(font,s):
+
+        # This is what we did w/Pillow 9
+        # w,h = font.getsize(s)
+        
+        # I would *think* this would be the equivalent for Pillow 10
+        # l,t,r,b = font.getbbox(s); w = r-l; h=b-t
+        
+        # ...but this actually produces the most similar results to Pillow 9
+        l,t,r,b = font.getbbox(s); w = r; h=b
+        
+        return w,h
+    
     # If the total height of the display strings added to the top of the bounding
     # box exceeds the top of the image, stack the strings below the bounding box
     # instead of above.
-    display_str_heights = [font.getsize(ds)[1] for ds in display_str_list]
+    display_str_heights = [get_text_size(font,ds)[1] for ds in display_str_list]
 
     # Each display_str has a top and bottom margin of 0.05x.
     total_display_str_height = (1 + 2 * 0.05) * sum(display_str_heights)
@@ -590,7 +605,7 @@ def draw_bounding_box_on_image(image,
         if len(display_str) == 0:
             continue
         
-        text_width, text_height = font.getsize(display_str)
+        text_width, text_height = get_text_size(font,display_str)
         
         text_left = left
         

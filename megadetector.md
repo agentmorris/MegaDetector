@@ -20,6 +20,7 @@
 16. [Mesmerizing video](#mesmerizing-video)
 17. [Can you share the training data?](#can-you-share-the-training-data)
 18. [What if I just want to run non-MD scripts from this repo?](#what-if-i-just-want-to-run-non-md-scripts-from-this-repo)
+19. [What if I want to use MD without all the baggage of your very specific package versions?](#what-if-i-want-to-use-md-without-all-the-baggage-of-your-very-specific-package-versions)
 
 
 ## MegaDetector overview
@@ -768,3 +769,24 @@ export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector"
 ```
 
 Also, the environment file we're referring to in this section ([envs/environment.yml](environment.yml), the one without all the MegaDetector stuff) doesn't get quite the same level of TLC that our MegaDetector environment does, so if anyone tries to run scripts that don't directly involve MegaDetector using this environment, and packages are missing, [let us know](mailto:cameratraps@lila.science).
+
+
+## What if I want to use MD without all the baggage of your very specific package versions?
+
+We've historically gone a little bonkers making sure that MegaDetector results are absolutely repeatable, so have been very wary of changing PyTorch/YOLOv5 versions, or even Pillow versions.  On top of that, various combinations of YOLOv5 and PyTorch versions were unable to load models trained with the specific versions that existed when MD was trained.  The result of this is that our recommend environment uses older versions of PyTorch (1.10) and YOLOv5.
+
+But... all of those incompatibilities have worked themselves out with only minimal changes to MegaDetector-related code, so as of 2023.09, you can run MegaDetector in the newest versions of Python (3.11.5), PyTorch (2.0.1), and YOLOv5.  We haven't testing the identical-ness (is that a word? definitely not a word) of the results out to lots of decimal places, but we can say that MD works in this environment.  If you are OK living on the cutting edge with us, you can now set up MegaDetector like this, using a requirements.txt file that doesn't pin any package versions:
+
+```batch
+mkdir c:\git
+cd c:\git
+git clone https://github.com/agentmorris/MegaDetector
+git clone https://github.com/ultralytics/yolov5
+cd c:\git\MegaDetector
+mamba env create -n cameratraps-detector
+mamba activate cameratraps-detector
+pip install envs\requirements.txt
+set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector;c:\git\yolov5
+```
+
+YMMV.

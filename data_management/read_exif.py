@@ -342,7 +342,9 @@ def populate_exif_data(im, image_base, options=None):
         
         s = 'Error on {}: {}'.format(fn,str(e))
         print(s)
-        return s    
+        im['error'] = s
+        im['status'] = 'read failure'
+        im['exif_tags'] = None
     
     return im
 
