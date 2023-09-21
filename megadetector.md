@@ -804,7 +804,7 @@ mamba create -n cameratraps-detector
 mamba activate cameratraps-detector
 mamba install pip
 pip install -r envs/requirements.txt
-export PYTHONPATH=$HOME/git/MegaDetector:$HOME/git/yolov5"
+export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
 YMMV.
