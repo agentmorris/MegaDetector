@@ -19,7 +19,10 @@ utils_imported = False
 
 # We support "utils" just being on the PYTHONPATH, or "ultralytics" being
 # installed as a package.
-if False:
+
+# First try importing all the functions we need from the ultralytics package
+if True:
+    
     try:
         from ultralytics.utils.ops import non_max_suppression
         from ultralytics.utils.ops import xyxy2xywh
@@ -33,15 +36,17 @@ if False:
     except Exception as e:
         print('module import failed: {}'.format(str(e)))
 
+# ...if that failes, import from the YOLOv5 repo
 if not utils_imported:
+    
     try:
         # import pre- and post-processing functions from the YOLOv5 repo
-        from utils.general import non_max_suppression, xyxy2xywh
-        from utils.augmentations import letterbox
+        from utils.general import non_max_suppression, xyxy2xywh # noqa
+        from utils.augmentations import letterbox # noqa
         
         # scale_coords() became scale_boxes() in later YOLOv5 versions
         try:
-            from utils.general import scale_coords
+            from utils.general import scale_coords # noqa
         except ImportError:
             from utils.general import scale_boxes as scale_coords
         utils_imported = True
@@ -235,14 +240,35 @@ class PTDetector:
         return result
 
 
+#%% Command-line driver
+
 if __name__ == '__main__':
     
     # For testing only... you don't really want to run this module directly
 
+    #%%
+    
+    import sys
+    dn = r'c:\git\yolov5-current'
+    if dn not in sys.path:
+        sys.path.append(dn)
+        
+    #%% 
+    
     import md_visualization.visualization_utils as vis_utils
+    import os
+    import sys
+    os.chdir('g:\\temp')
+    
+    if False:
+        import ultralytics
+        from ultralytics import models
+        dn = os.path.dirname(ultralytics.__file__)
+        if dn not in sys.path:
+            sys.path.append(dn)
 
-    model_file = "<path to the model .pt file>"
-    im_file = "test_images/test_images/island_conservation_camera_traps_palau_cam10a_cam10a12122018_palau_cam10a12122018_20181108_174532_rcnx1035.jpg"
+    model_file = os.path.expanduser('C:/Users/dmorr/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')
+    im_file = r"G:\temp\coyote\DSCF0043.JPG"
 
     detector = PTDetector(model_file)
     image = vis_utils.load_image(im_file)
