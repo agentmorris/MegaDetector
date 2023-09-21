@@ -15,18 +15,40 @@ import traceback
 from detection.run_detector import CONF_DIGITS, COORD_DIGITS, FAILURE_INFER
 import ct_utils
 
-try:
-    # import pre- and post-processing functions from the YOLOv5 repo
-    from utils.general import non_max_suppression, xyxy2xywh
-    from utils.augmentations import letterbox
-    
-    # scale_coords() became scale_boxes() in later YOLOv5 versions
+utils_imported = False
+
+# We support "utils" just being on the PYTHONPATH, or "ultralytics" being
+# installed as a package.
+if False:
     try:
-        from utils.general import scale_coords
-    except ImportError:        
-        from utils.general import scale_boxes as scale_coords
-except ModuleNotFoundError:
-    raise ModuleNotFoundError('Could not import YOLOv5 functions.')
+        from ultralytics.utils.ops import non_max_suppression
+        from ultralytics.utils.ops import xyxy2xywh
+        from ultralytics.utils.ops import scale_coords
+        from ultralytics.data.augment import LetterBox
+        def letterbox(img,new_shape,stride,auto=True):
+            L = LetterBox((1280,1280),stride=stride,auto=auto)
+            letterbox_result = L(image=img)
+            return [letterbox_result]
+        utils_imported = True
+    except Exception as e:
+        print('module import failed: {}'.format(str(e)))
+
+if not utils_imported:
+    try:
+        # import pre- and post-processing functions from the YOLOv5 repo
+        from utils.general import non_max_suppression, xyxy2xywh
+        from utils.augmentations import letterbox
+        
+        # scale_coords() became scale_boxes() in later YOLOv5 versions
+        try:
+            from utils.general import scale_coords
+        except ImportError:
+            from utils.general import scale_boxes as scale_coords
+        utils_imported = True
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError('Could not import YOLOv5 functions.')
+
+assert utils_imported, 'YOLOv5 import error'
 
 print(f'Using PyTorch version {torch.__version__}')
 
@@ -127,8 +149,9 @@ class PTDetector:
             if skip_image_resizing:
                 img = img_original
             else:
-                img = letterbox(img_original, new_shape=target_size,
-                                stride=PTDetector.STRIDE, auto=True)[0]
+                letterbox_result = letterbox(img_original, new_shape=target_size,
+                                stride=PTDetector.STRIDE, auto=True)
+                img = letterbox_result[0]                
             
             # HWC to CHW; PIL Image is RGB already
             img = img.transpose((2, 0, 1))
