@@ -777,16 +777,34 @@ We've historically gone a little bonkers making sure that MegaDetector results a
 
 But... all of those incompatibilities have worked themselves out with only minimal changes to MegaDetector-related code, so as of 2023.09, you can run MegaDetector in the newest versions of Python (3.11.5), PyTorch (2.0.1), and YOLOv5.  We haven't tested the identical-ness (is that a word? definitely not a word) of the results out to lots of decimal places, but we can say that MD "works" in this environment.  If you are OK living on the cutting edge with us, you can now set up MegaDetector like this, using a requirements.txt file that doesn't pin any package versions:
 
+### On Windows
+
 ```batch
 mkdir c:\git
 cd c:\git
 git clone https://github.com/agentmorris/MegaDetector
 git clone https://github.com/ultralytics/yolov5
 cd c:\git\MegaDetector
-mamba env create -n cameratraps-detector
+mamba create -n cameratraps-detector
 mamba activate cameratraps-detector
-pip install envs\requirements.txt
-set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector;c:\git\yolov5
+mamba install pip
+pip install -r envs\requirements.txt
+set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
+```
+
+### On Linux
+
+```batch
+mkdir ~/git
+cd ~git
+git clone https://github.com/agentmorris/MegaDetector
+git clone https://github.com/ultralytics/yolov5
+cd ~/git/MegaDetector
+mamba create -n cameratraps-detector
+mamba activate cameratraps-detector
+mamba install pip
+pip install -r envs/requirements.txt
+export PYTHONPATH=$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
 YMMV.
