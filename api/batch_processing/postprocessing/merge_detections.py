@@ -19,7 +19,7 @@ import os
 
 from tqdm import tqdm
 
-from ct_utils import get_iou
+from md_utils.ct_utils import get_iou
 
 
 #%% Structs

@@ -49,7 +49,7 @@ from collections import defaultdict
 from tqdm import tqdm
 
 from md_utils import path_utils
-import ct_utils
+from md_utils import ct_utils
 
 from md_visualization import visualization_utils as vis_utils
 

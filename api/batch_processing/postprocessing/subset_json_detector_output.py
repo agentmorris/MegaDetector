@@ -63,8 +63,8 @@ import re
 
 from tqdm import tqdm
 
-from ct_utils import args_to_object
-from ct_utils import get_max_conf
+from md_utils.ct_utils import args_to_object
+from md_utils.ct_utils import get_max_conf
 
 
 #%% Helper classes

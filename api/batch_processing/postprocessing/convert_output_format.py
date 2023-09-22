@@ -20,7 +20,7 @@ from tqdm import tqdm
 from api.batch_processing.postprocessing.load_api_results import load_api_results_csv
 from data_management.annotations import annotation_constants
 
-import ct_utils
+from md_utils import ct_utils
 
 CONF_DIGITS = 3
 

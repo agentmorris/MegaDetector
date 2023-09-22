@@ -28,14 +28,13 @@ from multiprocessing.pool import Pool
 from functools import partial
 
 from md_utils import path_utils
+from md_utils import ct_utils
 from api.batch_processing.postprocessing.load_api_results import load_api_results, write_api_results
 from api.batch_processing.postprocessing.postprocess_batch_results import is_sas_url
 from api.batch_processing.postprocessing.postprocess_batch_results import relative_sas_url
 from md_visualization.visualization_utils import open_image, render_detection_bounding_boxes
 from md_visualization import render_images_with_thumbnails
 from md_visualization import visualization_utils as vis_utils
-
-import ct_utils
 
 # "PIL cannot read EXIF metainfo for the images"
 warnings.filterwarnings('ignore', '(Possibly )?corrupt EXIF data', UserWarning)

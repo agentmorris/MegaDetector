@@ -13,7 +13,7 @@ import numpy as np
 import traceback
 
 from detection.run_detector import CONF_DIGITS, COORD_DIGITS, FAILURE_INFER
-import ct_utils
+from md_utils import ct_utils
 
 # We support a few ways of accessing the YOLOv5 dependencies:
 #
@@ -40,7 +40,8 @@ if try_yolov5_import and not utils_imported:
         utils_imported = True
         print('Imported YOLOv5 from YOLOv5 package')
     except Exception:
-        print('YOLOv5 module import failed, falling back to path-based import')
+        # print('YOLOv5 module import failed, falling back to path-based import')
+        pass
 
 # If we haven't succeeded yet, import from the ultralytics package        
 if try_ultralytics_import and not utils_imported:
@@ -59,7 +60,8 @@ if try_ultralytics_import and not utils_imported:
         utils_imported = True
         print('Imported YOLOv5 from ultralytics package')
     except Exception:
-        print('Ultralytics module import failed, falling back to yolov5 import')
+        # print('Ultralytics module import failed, falling back to yolov5 import')
+        pass
 
 # If we haven't succeeded yet, import from the YOLOv5 repo
 if not utils_imported:
@@ -114,7 +116,19 @@ class PTDetector:
 
     @staticmethod
     def _load_model(model_pt_path, device):
-        checkpoint = torch.load(model_pt_path, map_location=device)
+        
+        # There are two very slightly different ways to load the model, (1) using the
+        # map_location=device parameter to torch.load and (2) calling .to(device) after
+        # loading the model.  The former is what we did for a zillion years, but is not
+        # supported on Apple silicon at of 2029.09.  Switching to the latter causes
+        # very slight changes to the output, which always make me nervous, so I'm not
+        # doing a wholesale swap just yet.  Instead, we'll just do this on M1 hardware.
+        use_map_location = (device != 'mps')        
+        
+        if use_map_location:
+            checkpoint = torch.load(model_pt_path, map_location=device)
+        else:
+            checkpoint = torch.load(model_pt_path)
         
         # Compatibility fix that allows us to load older YOLOv5 models with 
         # newer versions of YOLOv5/PT
@@ -122,8 +136,12 @@ class PTDetector:
             t = type(m)
             if t is torch.nn.Upsample and not hasattr(m, 'recompute_scale_factor'):
                 m.recompute_scale_factor = None
+        
+        if use_map_location:
+            model = checkpoint['model'].float().fuse().eval()
+        else:
+            model = checkpoint['model'].float().fuse().eval().to(device)
             
-        model = checkpoint['model'].float().fuse().eval()  # FP32 model
         return model
 
     def generate_detections_one_image(self, img_original, image_id, 
