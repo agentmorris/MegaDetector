@@ -127,6 +127,15 @@ DEFAULT_BOX_EXPANSION = 0
 DEFAULT_LABEL_FONT_SIZE = 16
 DETECTION_FILENAME_INSERT = '_detections'
 
+# The model filenames "MDV5A", "MDV5B", and "MDV4" are special; they will trigger an 
+# automatic model download to the system temp folder, or they will use the paths specified in the 
+# $MDV4, $MDV5A, or $MDV5B environment variables if they exist.
+downloadable_models = {
+    'MDV4':'https://github.com/agentmorris/MegaDetector/releases/download/v4.1/md_v4.1.0.pb',
+    'MDV5A':'https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt',
+    'MDV5B':'https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.0.pt'
+}
+
 
 #%% Utility functions
 
@@ -429,6 +438,55 @@ def load_and_run_detector(model_file, image_file_names, output_dir,
 # ...def load_and_run_detector()
 
 
+def download_model(model_name,force_download=False):
+    """
+    Download one of the known models to local temp space if it hasn't already been downloaded
+    """
+    
+    import tempfile
+    from md_utils.url_utils import download_url
+    model_tempdir = os.path.join(tempfile.gettempdir(), 'megadetector_models')    
+    os.makedirs(model_tempdir,exist_ok=True)
+    
+    # This is a lazy fix to an issue... if multiple users run this script, the
+    # "megadetector_models" folder is owned by the first person who creates it, and others
+    # can't write to it.  I could create uniquely-named folders, but I philosophically prefer
+    # to put all the individual UUID-named folders within a larger folder, so as to be a 
+    # good tempdir citizen.  So, the lazy fix is to make this world-writable.
+    try:
+        os.chmod(model_tempdir,0o777)
+    except Exception:
+        pass
+    if model_name not in downloadable_models:
+        print('Unrecognized downloadable model {}'.format(model_name))
+        return None
+    url = downloadable_models[model_name]
+    destination_filename = os.path.join(model_tempdir,url.split('/')[-1])
+    local_file = download_url(url, destination_filename=destination_filename, progress_updater=None, 
+                     force_download=force_download, verbose=True)
+    return local_file
+
+
+def try_load_known_detector(detector_file):
+    """
+    Check whether detector_file is really the name of a known model, in which case we will
+    either read the actual filename from the corresponding environment variable or download
+    (if necessary) to local temp space.  Otherwise just returns the input string.
+    """
+    
+    if detector_file in downloadable_models:
+        if detector_file in os.environ:
+            fn = os.environ[detector_file]
+            print('Reading MD location from environment variable {}: {}'.format(
+                detector_file,fn))
+            detector_file = fn
+        else:
+            print('Downloading model {}'.format(detector_file))
+            detector_file = download_model(detector_file)
+    return detector_file
+        
+    
+
 #%% Command-line driver
 
 def main():
@@ -506,6 +564,10 @@ def main():
 
     args = parser.parse_args()
 
+    # If the specified detector file is really the name of a known model, find 
+    # (and possibly download) that model
+    args.detector_file = try_load_known_detector(args.detector_file)
+    
     assert os.path.exists(args.detector_file), 'detector file {} does not exist'.format(
         args.detector_file)
     assert 0.0 < args.threshold <= 1.0, 'Confidence threshold needs to be between 0 and 1'

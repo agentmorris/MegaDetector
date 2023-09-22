@@ -85,7 +85,7 @@ assert utils_imported, 'YOLOv5 import error'
 
 print(f'Using PyTorch version {torch.__version__}')
 
-
+    
 #%% Classes
 
 class PTDetector:

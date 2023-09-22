@@ -103,7 +103,7 @@ def process_video(options):
     # TODO:
     # 
     # This is a lazy fix to an issue... if multiple users run this script, the
-    # "process_camera_trap_video" is owned by the first person who creates it, and others
+    # "process_camera_trap_video" folder is owned by the first person who creates it, and others
     # can't write to it.  I could create uniquely-named folders, but I philosophically prefer
     # to put all the individual UUID-named folders within a larger folder, so as to be a 
     # good tempdir citizen.  So, the lazy fix is to make this world-writable.

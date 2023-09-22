@@ -64,6 +64,7 @@ from multiprocessing.pool import Pool as workerpool
 import detection.run_detector as run_detector
 from detection.run_detector import is_gpu_available,\
     load_detector,\
+    try_load_known_detector,\
     get_detector_version_from_filename,\
     get_detector_metadata_from_version_string
 
@@ -838,6 +839,10 @@ def main():
 
     args = parser.parse_args()
 
+    # If the specified detector file is really the name of a known model, find 
+    # (and possibly download) that model
+    args.detector_file = try_load_known_detector(args.detector_file)
+    
     assert os.path.exists(args.detector_file), \
         'detector file {} does not exist'.format(args.detector_file)
     assert 0.0 < args.threshold <= 1.0, 'Confidence threshold needs to be between 0 and 1'

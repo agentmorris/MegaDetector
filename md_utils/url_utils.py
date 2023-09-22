@@ -17,9 +17,6 @@ import requests
 from tqdm import tqdm
 from urllib.parse import urlparse
 
-# pip install progressbar2
-import progressbar
-
 url_utils_temp_dir = None
 max_path_len = 255
 
@@ -36,6 +33,10 @@ class DownloadProgressBar():
 
     def __call__(self, block_num, block_size, total_size):
         if not self.pbar:
+            # This is a pretty random import I'd rather not depend on outside of the
+            # rare case where it's used, so importing locally
+            # pip install progressbar2
+            import progressbar            
             self.pbar = progressbar.ProgressBar(max_value=total_size)
             self.pbar.start()
             
