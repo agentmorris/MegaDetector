@@ -808,9 +808,10 @@ YMMV.
 If you're feeling even more experimental, this also works:
 
 ```batch
+mamba create -n cameratraps-detector-pip pip -y
+mamba activate cameratraps-detector-pip
 pip install megadetector --upgrade
-python -m detection.run_detector_batch
+python -m detection.run_detector_batch --help
 ```
 
 This comes with the same caveats as above: this will not produce results that are literally identical to the training environment, so, YMMV.  If you use this route, make sure the MegaDetector and YOLOv5 folders are <i>not</i> on your PYTHONPATH.
-
