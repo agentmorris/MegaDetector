@@ -49,3 +49,11 @@ dependencies = [
 "Bug Reports" = "https://github.com/agentmorris/MegaDetector/issues"
 "Source" = "https://github.com/agentmorris/MegaDetector"
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]
+exclude = [
+  "archive*", "images*", "envs*","dist*","megadetector.egg-info*",
+  "sandbox*","test-images*","__pycache__*"
+]
+

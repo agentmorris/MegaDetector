@@ -786,7 +786,7 @@ git clone https://github.com/agentmorris/MegaDetector
 cd c:\git\MegaDetector
 mamba create -n cameratraps-detector
 mamba activate cameratraps-detector
-mamba install pip
+mamba install -y pip
 pip install -r envs\requirements.txt
 set PYTHONPATH=c:\git\MegaDetector
 ```
@@ -800,9 +800,18 @@ git clone https://github.com/agentmorris/MegaDetector
 cd ~/git/MegaDetector
 mamba create -n cameratraps-detector
 mamba activate cameratraps-detector
-mamba install pip
+mamba install -y pip
 pip install -r envs/requirements.txt
 export PYTHONPATH="$HOME/git/MegaDetector"
 ```
 
 YMMV.
+
+If you're feeling even more experimental:
+
+```batch
+pip install megadetector
+```
+
+...also works, with the same caveats as above: this will not produce results that are literally identical to the training environment, so, YMMV.  If you use this route, make sure the MegaDetector and YOLOv5 folders are <i>not</i> on your PYTHONPATH.
+
