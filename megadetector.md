@@ -797,7 +797,6 @@ set PYTHONPATH=c:\git\MegaDetector
 mkdir ~/git
 cd ~git
 git clone https://github.com/agentmorris/MegaDetector
-git clone https://github.com/ultralytics/yolov5
 cd ~/git/MegaDetector
 mamba create -n cameratraps-detector
 mamba activate cameratraps-detector
