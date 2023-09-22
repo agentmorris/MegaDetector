@@ -2,7 +2,7 @@
 #
 # pytorch_detector.py
 #
-# Module to run MegaDetector v5, a PyTorch YOLOv5 animal detection model, on images.
+# Module to run MegaDetector v5, a PyTorch YOLOv5 animal detection model.
 #
 ########
 
@@ -15,18 +15,71 @@ import traceback
 from detection.run_detector import CONF_DIGITS, COORD_DIGITS, FAILURE_INFER
 import ct_utils
 
-try:
-    # import pre- and post-processing functions from the YOLOv5 repo
-    from utils.general import non_max_suppression, xyxy2xywh
-    from utils.augmentations import letterbox
+# We support a few ways of accessing the YOLOv5 dependencies:
+#
+# * The standard configuration as of 9.2023 expects that the YOLOv5 repo is checked
+#   out and on the PYTHONPATH (import utils)
+#
+# * Experimental: pip install ultralytics (doesn't totally work yet)
+#
+# * Experimental but works so far: pip install yolov5
+
+utils_imported = False
+try_yolov5_import = True
+
+# This still encounters some namespace issues
+try_ultralytics_import = False
+
+# First try importing from the yolov5 package
+if try_yolov5_import and not utils_imported:
     
-    # scale_coords() became scale_boxes() in later YOLOv5 versions
     try:
-        from utils.general import scale_coords
-    except ImportError:        
-        from utils.general import scale_boxes as scale_coords
-except ModuleNotFoundError:
-    raise ModuleNotFoundError('Could not import YOLOv5 functions.')
+        from yolov5.utils.general import non_max_suppression, xyxy2xywh # noqa
+        from yolov5.utils.augmentations import letterbox # noqa
+        from yolov5.utils.general import scale_boxes as scale_coords # noqa
+        utils_imported = True
+        print('Imported YOLOv5 from YOLOv5 package')
+    except Exception:
+        print('YOLOv5 module import failed, falling back to path-based import')
+
+# If we haven't succeeded yet, import from the ultralytics package        
+if try_ultralytics_import and not utils_imported:
+    
+    try:
+        from ultralytics.utils.ops import non_max_suppression # noqa
+        from ultralytics.utils.ops import xyxy2xywh # noqa
+        from ultralytics.utils.ops import scale_coords # noqa
+        from ultralytics.data.augment import LetterBox
+        
+        # letterbox() became a LetterBox class in the ultralytics package
+        def letterbox(img,new_shape,stride,auto=True): # noqa
+            L = LetterBox(new_shape,stride=stride,auto=auto)
+            letterbox_result = L(image=img)
+            return [letterbox_result]
+        utils_imported = True
+        print('Imported YOLOv5 from ultralytics package')
+    except Exception:
+        print('Ultralytics module import failed, falling back to yolov5 import')
+
+# If we haven't succeeded yet, import from the YOLOv5 repo
+if not utils_imported:
+    
+    try:
+        # import pre- and post-processing functions from the YOLOv5 repo
+        from utils.general import non_max_suppression, xyxy2xywh # noqa
+        from utils.augmentations import letterbox # noqa
+        
+        # scale_coords() became scale_boxes() in later YOLOv5 versions
+        try:
+            from utils.general import scale_coords # noqa
+        except ImportError:
+            from utils.general import scale_boxes as scale_coords
+        utils_imported = True
+        print('Imported YOLOv5 from PYTHONPATH')
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError('Could not import YOLOv5 functions.')
+
+assert utils_imported, 'YOLOv5 import error'
 
 print(f'Using PyTorch version {torch.__version__}')
 
@@ -127,8 +180,9 @@ class PTDetector:
             if skip_image_resizing:
                 img = img_original
             else:
-                img = letterbox(img_original, new_shape=target_size,
-                                stride=PTDetector.STRIDE, auto=True)[0]
+                letterbox_result = letterbox(img_original, new_shape=target_size,
+                                stride=PTDetector.STRIDE, auto=True)
+                img = letterbox_result[0]                
             
             # HWC to CHW; PIL Image is RGB already
             img = img.transpose((2, 0, 1))
@@ -212,14 +266,19 @@ class PTDetector:
         return result
 
 
+#%% Command-line driver
+
 if __name__ == '__main__':
     
     # For testing only... you don't really want to run this module directly
 
+    #%%
+    
     import md_visualization.visualization_utils as vis_utils
-
-    model_file = "<path to the model .pt file>"
-    im_file = "test_images/test_images/island_conservation_camera_traps_palau_cam10a_cam10a12122018_palau_cam10a12122018_20181108_174532_rcnx1035.jpg"
+    import os
+    
+    model_file = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')
+    im_file = r"G:\temp\coyote\DSCF0043.JPG"
 
     detector = PTDetector(model_file)
     image = vis_utils.load_image(im_file)
