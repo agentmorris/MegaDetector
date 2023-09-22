@@ -13,7 +13,7 @@ import numpy as np
 import traceback
 
 from detection.run_detector import CONF_DIGITS, COORD_DIGITS, FAILURE_INFER
-import ct_utils
+from md_utils import ct_utils
 
 # We support a few ways of accessing the YOLOv5 dependencies:
 #

@@ -18,7 +18,7 @@ import shutil
 
 from detection import run_detector_batch
 from md_visualization import visualize_detector_output
-from ct_utils import args_to_object
+from md_utils.ct_utils import args_to_object
 from detection.video_utils import video_to_frames
 from detection.video_utils import frames_to_video
 from detection.video_utils import frame_results_to_video_results

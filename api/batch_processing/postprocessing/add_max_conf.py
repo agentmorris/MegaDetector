@@ -15,7 +15,7 @@
 
 import os
 import json
-import ct_utils
+from md_utils import ct_utils
 
 
 #%% Main function

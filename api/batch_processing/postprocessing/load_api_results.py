@@ -21,7 +21,7 @@ from typing import Dict, Mapping, Optional, Tuple
 
 import pandas as pd
 
-import ct_utils
+from md_utils import ct_utils
 
 headers = ['image_path', 'max_confidence', 'detections']
 

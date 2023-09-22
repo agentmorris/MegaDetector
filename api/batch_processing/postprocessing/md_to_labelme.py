@@ -21,7 +21,7 @@ import json
 from tqdm import tqdm
 
 from md_visualization.visualization_utils import open_image
-from ct_utils import truncate_float
+from md_utils.ct_utils import truncate_float
 
 output_precision = 3
 

@@ -25,8 +25,7 @@ from tqdm import tqdm
 from PIL import Image, ExifTags
 
 from md_utils.path_utils import find_images
-
-from ct_utils import args_to_object
+from md_utils.ct_utils import args_to_object
 
 debug_max_images = None
 

@@ -22,15 +22,14 @@ import json
 from tqdm import tqdm
 from copy import deepcopy
 from collections import defaultdict
+from multiprocessing.pool import Pool
 
 import zipfile
 from zipfile import ZipFile
 
 import cv2
 
-from multiprocessing.pool import Pool
-from ct_utils import truncate_float
-
+from md_utils.ct_utils import truncate_float
 from md_utils import path_utils
 
 base_dir = '/bigdata/home/sftp/cacophony-ferraro_/data/cacophony-thermal/'
