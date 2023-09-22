@@ -1,0 +1,58 @@
+[build-system]
+requires = [
+  "setuptools>61"
+]
+
+[project]
+name = "megadetector"
+version = "5.0.3"
+description = "MegaDetector is an AI model that helps conservation folks spend less time doing boring things with camera trap images."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {file = "LICENSE"}
+keywords = ["camera traps", "conservation", "wildlife", "ai"]
+authors = [
+  {name = "Your friendly neighborhood MegaDetector team", email = "cameratraps@lila.science" }
+]
+maintainers = [
+  {name = "Your friendly neighborhood MegaDetector team", email = "cameratraps@lila.science" }
+]
+
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+]
+
+dependencies = [
+  "Pillow",
+  "tqdm",
+  "jsonpickle",
+  "humanfriendly",
+  "numpy",
+  "matplotlib",
+  "opencv-python",
+  "requests",
+  "pyqtree",
+  "scikit-learn",
+  "pandas",
+  "seaborn",
+  "PyYAML",
+  "torch",
+  "torchvision",
+  "yolov5"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/agentmorris/MegaDetector"
+"Bug Reports" = "https://github.com/agentmorris/MegaDetector/issues"
+"Source" = "https://github.com/agentmorris/MegaDetector"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]
+exclude = [
+  "archive*", "images*", "envs*","dist*","megadetector.egg-info*",
+  "sandbox*","test-images*","__pycache__*"
+]
+

@@ -85,7 +85,7 @@ from tqdm import tqdm
 from collections import defaultdict
 
 from md_utils import path_utils
-from ct_utils import is_list_sorted
+from md_utils.ct_utils import is_list_sorted
 
 from detection.run_detector_batch import load_and_run_detector_batch, write_results_to_file
 from detection.run_detector import DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
@@ -1560,7 +1560,7 @@ for im in tqdm(d['images']):
 
 #%% Smooth classification results over sequences (prep)
 
-from ct_utils import is_list_sorted
+from md_utils.ct_utils import is_list_sorted
 
 classification_category_id_to_name = d['classification_categories']
 classification_category_name_to_id = {v: k for k, v in classification_category_id_to_name.items()}

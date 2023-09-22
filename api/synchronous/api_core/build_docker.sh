@@ -17,7 +17,8 @@ git checkout c23a441c9df7ca9b1f275e8c8719c949269160d1
 cd ../
 
 # Copy other required dependencies from our repo 
-cp ../../../ct_utils.py animal_detection_api/
+mkdir -p animal_detection_api/md_utils/
+cp ../../../md_utils.py/ct_utils.py animal_detection_api/md_utils/
 
 mkdir -p animal_detection_api/md_visualization/
 cp ../../../md_visualization/visualization_utils.py animal_detection_api/md_visualization/

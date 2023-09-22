@@ -22,7 +22,7 @@ from tqdm import tqdm
 from data_management.annotations.annotation_constants import (
     detector_bbox_category_id_to_name)  # here id is int
 from md_visualization import visualization_utils as vis_utils
-from ct_utils import get_max_conf
+from md_utils.ct_utils import get_max_conf
 
 
 #%% Constants

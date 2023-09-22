@@ -52,7 +52,7 @@ from md_utils.write_html_image_list import write_html_image_list
 from md_utils import path_utils
 from data_management.cct_json_utils import (CameraTrapJsonUtils, IndexedJsonDb)
 from api.batch_processing.postprocessing.load_api_results import load_api_results
-from ct_utils import args_to_object
+from md_utils.ct_utils import args_to_object
 
 from detection.run_detector import get_typical_confidence_threshold_from_results
 

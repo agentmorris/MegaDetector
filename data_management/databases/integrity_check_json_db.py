@@ -27,7 +27,7 @@ from operator import itemgetter
 from PIL import Image
 from tqdm import tqdm
 
-import ct_utils
+from md_utils import ct_utils
 
 
 #%% Classes and environment

@@ -85,7 +85,7 @@ from multiprocessing.pool import ThreadPool
 from functools import partial
 from tqdm import tqdm
 
-from ct_utils import args_to_object
+from md_utils.ct_utils import args_to_object
 from detection.run_detector import get_typical_confidence_threshold_from_results
 
 import md_visualization.visualization_utils as vis_utils
