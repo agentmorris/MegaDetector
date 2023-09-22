@@ -2,7 +2,7 @@
 #
 # pytorch_detector.py
 #
-# Module to run MegaDetector v5, a PyTorch YOLOv5 animal detection model, on images.
+# Module to run MegaDetector v5, a PyTorch YOLOv5 animal detection model.
 #
 ########
 
@@ -15,28 +15,53 @@ import traceback
 from detection.run_detector import CONF_DIGITS, COORD_DIGITS, FAILURE_INFER
 import ct_utils
 
+# We support a few ways of accessing the YOLOv5 dependencies:
+#
+# * The standard configuration as of 9.2023 expects that the YOLOv5 repo is checked
+#   out and on the PYTHONPATH (import utils)
+#
+# * Experimental: pip install ultralytics (doesn't totally work yet)
+#
+# * Experimental but works so far: pip install yolov5
+
 utils_imported = False
+try_yolov5_import = True
 
-# We support "utils" just being on the PYTHONPATH, or "ultralytics" being
-# installed as a package.
+# This still encounters some namespace issues
+try_ultralytics_import = False
 
-# First try importing all the functions we need from the ultralytics package
-if True:
+# First try importing from the yolov5 package
+if try_yolov5_import and not utils_imported:
     
     try:
-        from ultralytics.utils.ops import non_max_suppression
-        from ultralytics.utils.ops import xyxy2xywh
-        from ultralytics.utils.ops import scale_coords
+        from yolov5.utils.general import non_max_suppression, xyxy2xywh # noqa
+        from yolov5.utils.augmentations import letterbox # noqa
+        from yolov5.utils.general import scale_boxes as scale_coords # noqa
+        utils_imported = True
+        print('Imported YOLOv5 from YOLOv5 package')
+    except Exception:
+        print('YOLOv5 module import failed, falling back to path-based import')
+
+# If we haven't succeeded yet, import from the ultralytics package        
+if try_ultralytics_import and not utils_imported:
+    
+    try:
+        from ultralytics.utils.ops import non_max_suppression # noqa
+        from ultralytics.utils.ops import xyxy2xywh # noqa
+        from ultralytics.utils.ops import scale_coords # noqa
         from ultralytics.data.augment import LetterBox
-        def letterbox(img,new_shape,stride,auto=True):
+        
+        # letterbox() became a LetterBox class in the ultralytics package
+        def letterbox(img,new_shape,stride,auto=True): # noqa
             L = LetterBox(new_shape,stride=stride,auto=auto)
             letterbox_result = L(image=img)
             return [letterbox_result]
         utils_imported = True
-    except Exception as e:
-        print('module import failed: {}'.format(str(e)))
+        print('Imported YOLOv5 from ultralytics package')
+    except Exception:
+        print('Ultralytics module import failed, falling back to yolov5 import')
 
-# ...if that failes, import from the YOLOv5 repo
+# If we haven't succeeded yet, import from the YOLOv5 repo
 if not utils_imported:
     
     try:
@@ -50,6 +75,7 @@ if not utils_imported:
         except ImportError:
             from utils.general import scale_boxes as scale_coords
         utils_imported = True
+        print('Imported YOLOv5 from PYTHONPATH')
     except ModuleNotFoundError:
         raise ModuleNotFoundError('Could not import YOLOv5 functions.')
 
@@ -248,26 +274,10 @@ if __name__ == '__main__':
 
     #%%
     
-    import sys
-    dn = r'c:\git\yolov5-current'
-    if dn not in sys.path:
-        sys.path.append(dn)
-        
-    #%% 
-    
     import md_visualization.visualization_utils as vis_utils
     import os
-    import sys
-    os.chdir('g:\\temp')
     
-    if False:
-        import ultralytics
-        from ultralytics import models
-        dn = os.path.dirname(ultralytics.__file__)
-        if dn not in sys.path:
-            sys.path.append(dn)
-
-    model_file = os.path.expanduser('C:/Users/dmorr/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')
+    model_file = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')
     im_file = r"G:\temp\coyote\DSCF0043.JPG"
 
     detector = PTDetector(model_file)
