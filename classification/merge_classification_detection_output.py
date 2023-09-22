@@ -85,7 +85,7 @@ from typing import Any
 import pandas as pd
 from tqdm import tqdm
 
-from ct_utils import truncate_float
+from md_utils.ct_utils import truncate_float
 
 
 #%% Support functions
