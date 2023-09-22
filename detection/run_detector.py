@@ -496,7 +496,7 @@ def main():
     
     parser.add_argument(
         'detector_file',
-        help='Path to TensorFlow (.pb) or PyTorch (.pt) detector model file')
+        help='Path detector model file (.pb or .pt).  Can also be MDV4, MDV5A, or MDV5B to request automatic download.')
     
     # Must specify either an image file or a directory
     group = parser.add_mutually_exclusive_group(required=True)    
