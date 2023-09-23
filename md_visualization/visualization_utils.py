@@ -160,7 +160,7 @@ def resize_image(image, target_width, target_height=-1):
             # w = ar * h
             target_width = int(aspect_ratio * target_height)
 
-    # This parameter changed between Pillow vesions 9 and 10, and for a bit, I'd like to
+    # This parameter changed between Pillow versions 9 and 10, and for a bit, I'd like to
     # support both.
     try:
         resized_image = image.resize((target_width, target_height), Image.ANTIALIAS)

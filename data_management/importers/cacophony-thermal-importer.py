@@ -484,7 +484,7 @@ def process_file(fn_relative,verbose=False):
             if tag['label'] in tag_mappings:
                 tag['label'] = tag_mappings[tag['label']]
                 
-            # Discard tags below the minumum confidence
+            # Discard tags below the minimum confidence
             if tag['confidence'] >= confidence_threshold:
                 valid_tags.append(tag)
             else:
