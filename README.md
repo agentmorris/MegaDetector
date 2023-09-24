@@ -25,7 +25,7 @@ The core functionality provided is:
 - A [batch processing API](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing) that runs MegaDetector on large image collections, to accelerate population surveys.
 - A [real-time API](https://github.com/agentmorris/MegaDetector/tree/main/api/synchronous) that runs MegaDetector (and some species classifiers) synchronously, primarily to support biosecurity applications.
 
-MegaDetector was initially developed by the [Microsoft AI for Earth program](https://www.microsoft.com/en-us/ai/ai-for-earth); this repo is derived from the [microsoft/cameratraps](https://github.com/microsoft/cameratraps) repo and maintained by the original MegaDetector developers (who are no longer at Microsoft, but are absolutely fantastically eternally grateful to Microsoft for the investment and commitment that made MegaDetector happen).
+MegaDetector was initially developed by the [Microsoft AI for Earth program](https://www.microsoft.com/en-us/ai/ai-for-earth); this repo was forked from the microsoft/cameratraps repo and is maintained by the original MegaDetector developers (who are no longer at Microsoft, but are absolutely fantastically eternally grateful to Microsoft for the investment and commitment that made MegaDetector happen).
 
 
 ## What's MegaDetector all about?
