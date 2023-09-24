@@ -19,7 +19,7 @@ If you are a computer-vision-y person looking to run or fine-tune MegaDetector p
 
 If you want to programatically interact with the postprocessing tools from the MegaDetector repo, or programmatically run MegaDetector in a way that produces [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse)-friendly output (i.e., output in the standard [MegaDetector output format](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing#megadetector-batch-output-format)), this package might be for you.
 
-Although even if that describes you, you <i>still</i> might be better off cloning the MegaDetector repo.  Pip-installability requires that some dependencies be newer than what was available at the time MDv5 was trained, so results are <i>very slightly</i> different than the "official" or published results.  These differences <i>probably</i> don't matter much, but they have not been formally characterized.
+Although even if that describes you, you <i>still</i> might be better off cloning the MegaDetector repo.  Pip-installability requires that some dependencies be newer than what was available at the time MDv5 was trained, so results are <i>very slightly</i> different than results produced in the "official" environment.  These differences <i>probably</i> don't matter much, but they have not been formally characterized.
 
 ## If I haven't talked you out of using this package...
 
@@ -38,7 +38,7 @@ from md_utils import url_utils
 from md_visualization import visualization_utils as vis_utils
 from detection import run_detector
 
-# This is the imae at the bottom of this page, it has one animal in it
+# This is the image at the bottom of this page, it has one animal in it
 image_url = 'https://github.com/agentmorris/MegaDetector/raw/main/images/orinoquia-thumb-web.jpg'
 temporary_filename = url_utils.download_url(image_url)
 
