@@ -45,6 +45,8 @@ If you're just considering the use of AI in your workflow, and you aren't even s
 
 If you're already familiar with MegaDetector and you're ready to run it on your data (and you have some familiarity with running Python code), see the [MegaDetector User Guide](megadetector.md) for instructions on downloading and running MegaDetector.
 
+If you're a programmer-type looking to use tools from this repo, we generally recommend cloning the repo, but there is also a [Python package](https://pypi.org/project/megadetector/) that provides access to everything in this repo (yes, you guessed it, "pip install megadetector").
+
 MegaDetector is just one of many tools that aims to make conservation biologists more efficient with AI.  If you want to learn about other ways to use AI to accelerate camera trap workflows, check out our of the field, affectionately titled &ldquo;[Everything I know about machine learning and camera traps](https://agentmorris.github.io/camera-trap-ml-survey/)&rdquo;.
 
 
