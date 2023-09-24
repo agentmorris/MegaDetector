@@ -30,6 +30,7 @@ dependencies:
 - pylint
 - python-graphviz  # used for taxonomy visualization
 - scikit-learn
+# Not used directly, but used by YOLOv5 imports
 - seaborn>=0.11
 - tqdm
 - xlrd          # for pandas Excel support, needed by taxonomy_mapping/process_species_by_dataset

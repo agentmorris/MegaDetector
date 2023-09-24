@@ -266,6 +266,9 @@ def load_detector(model_file, force_cpu=False):
     Load a TF or PT detector, depending on the extension of model_file.
     """
     
+    # Possibly automatically download the model
+    model_file = try_download_known_detector(model_file)
+    
     start_time = time.time()
     if model_file.endswith('.pb'):
         from detection.tf_detector import TFDetector
@@ -298,6 +301,9 @@ def load_and_run_detector(model_file, image_file_names, output_dir,
     if len(image_file_names) == 0:
         print('Warning: no files available')
         return
+
+    # Possibly automatically download the model
+    model_file = try_download_known_detector(model_file)
 
     print('GPU available: {}'.format(is_gpu_available(model_file)))
     
@@ -467,7 +473,7 @@ def download_model(model_name,force_download=False):
     return local_file
 
 
-def try_load_known_detector(detector_file):
+def try_download_known_detector(detector_file):
     """
     Check whether detector_file is really the name of a known model, in which case we will
     either read the actual filename from the corresponding environment variable or download
@@ -566,7 +572,7 @@ def main():
 
     # If the specified detector file is really the name of a known model, find 
     # (and possibly download) that model
-    args.detector_file = try_load_known_detector(args.detector_file)
+    args.detector_file = try_download_known_detector(args.detector_file)
     
     assert os.path.exists(args.detector_file), 'detector file {} does not exist'.format(
         args.detector_file)

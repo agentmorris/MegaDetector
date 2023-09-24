@@ -64,7 +64,7 @@ from multiprocessing.pool import Pool as workerpool
 import detection.run_detector as run_detector
 from detection.run_detector import is_gpu_available,\
     load_detector,\
-    try_load_known_detector,\
+    try_download_known_detector,\
     get_detector_version_from_filename,\
     get_detector_metadata_from_version_string
 
@@ -414,6 +414,8 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
 
     already_processed = set([i['file'] for i in results])
 
+    model_file = try_download_known_detector(model_file)
+        
     print('GPU available: {}'.format(is_gpu_available(model_file)))
     
     if n_cores > 1 and is_gpu_available(model_file):
@@ -841,7 +843,7 @@ def main():
 
     # If the specified detector file is really the name of a known model, find 
     # (and possibly download) that model
-    args.detector_file = try_load_known_detector(args.detector_file)
+    args.detector_file = try_download_known_detector(args.detector_file)
     
     assert os.path.exists(args.detector_file), \
         'detector file {} does not exist'.format(args.detector_file)

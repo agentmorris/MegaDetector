@@ -5,9 +5,9 @@ requires = [
 
 [project]
 name = "megadetector"
-version = "5.0.3"
+version = "5.0.4"
 description = "MegaDetector is an AI model that helps conservation folks spend less time doing boring things with camera trap images."
-readme = "README.md"
+readme = "README-package.md"
 requires-python = ">=3.9"
 license = {file = "LICENSE"}
 keywords = ["camera traps", "conservation", "wildlife", "ai"]
@@ -25,22 +25,22 @@ classifiers = [
 ]
 
 dependencies = [
-  "Pillow",
-  "tqdm",
-  "jsonpickle",
-  "humanfriendly",
-  "numpy",
-  "matplotlib",
-  "opencv-python",
-  "requests",
-  "pyqtree",
-  "scikit-learn",
-  "pandas",
-  "seaborn",
-  "PyYAML",
-  "torch",
-  "torchvision",
-  "yolov5"
+  "Pillow >= 9.5",
+  "tqdm >= 4.64.0",
+  "jsonpickle >= 3.0.2",
+  "humanfriendly >= 10.0",
+  "numpy >= 1.26.0",
+  "matplotlib >= 3.8.0",
+  "opencv-python >= 4.8.0",
+  "requests >= 2.31.0",
+  "pyqtree >= 1.0.0",
+  "seaborn >= 0.12.2",
+  "scikit-learn >= 1.3.1",
+  "pandas >= 2.1.1",
+  "PyYAML >= 6.0.1",
+  "torch >= 2.0.1",
+  "torchvision >= 0.15.2",
+  "yolov5 >= 7.0.12"
 ]
 
 [project.urls]

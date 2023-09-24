@@ -144,8 +144,8 @@ class PTDetector:
             
         return model
 
-    def generate_detections_one_image(self, img_original, image_id, 
-                                      detection_threshold, image_size=None,
+    def generate_detections_one_image(self, img_original, image_id='unknown', 
+                                      detection_threshold=0.00001, image_size=None,
                                       skip_image_resizing=False):
         """
         Apply the detector to an image.

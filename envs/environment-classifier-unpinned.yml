@@ -26,6 +26,7 @@ dependencies:
 - pylint
 - python-graphviz
 - scikit-learn
+# Not used directly, but used by YOLOv5 imports
 - seaborn
 - tqdm
 - xlrd
