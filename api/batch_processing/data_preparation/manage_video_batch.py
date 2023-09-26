@@ -38,7 +38,7 @@ frame_filenames_by_video,fs_by_video,video_filenames = \
                                                               overwrite=overwrite,
                                                               n_threads=n_threads,
                                                               every_n_frames=every_n_frames,
-                                                              parallellization_uses_threads=False)
+                                                              parallelization_uses_threads=False)
 
 
 #%% List frame files, break into folders
