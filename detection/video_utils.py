@@ -110,6 +110,10 @@ def get_video_fs(input_video_file):
     return Fs
 
 
+def frame_number_to_filename(frame_number):
+    return 'frame{:05d}.jpg'.format(frame_number)
+
+
 def video_to_frames(input_video_file, output_folder, overwrite=True, 
                     every_n_frames=None, verbose=False):
     """
@@ -134,7 +138,11 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
         
         for frame_number in range(0,n_frames):
             
-            frame_filename = 'frame{:06d}.jpg'.format(frame_number)
+            if every_n_frames is not None:
+                if frame_number % every_n_frames != 0:
+                    continue
+            
+            frame_filename = frame_number_to_filename(frame_number)
             frame_filename = os.path.join(output_folder,frame_filename)
             frame_filenames.append(frame_filename)
             if os.path.isfile(frame_filename):
@@ -149,7 +157,8 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
         
         if missing_frame_number is None or \
             (allow_last_frame_missing and (missing_frame_number == n_frames-1)):
-            print('Skipping video {}, all output frames exist'.format(input_video_file))
+            if verbose:
+                print('Skipping video {}, all output frames exist'.format(input_video_file))
             return frame_filenames,Fs
         else:
             pass
@@ -177,7 +186,7 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
             if frame_number % every_n_frames != 0:
                 continue
             
-        frame_filename = 'frame{:05d}.jpg'.format(frame_number)
+        frame_filename = frame_number_to_filename(frame_number)
         frame_filename = os.path.join(output_folder,frame_filename)
         frame_filenames.append(frame_filename)
         

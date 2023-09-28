@@ -112,8 +112,6 @@ def process_images(db_path, output_dir, image_base_dir, options=None):
         print('Warning: process-based parallelization is not yet supported by visualize_db')
         options.parallelize_rendering_with_threads = True
         
-    print(options.__dict__)
-    
     if image_base_dir.startswith('http'):
         if not image_base_dir.endswith('/'):
             image_base_dir += '/'
@@ -192,6 +190,7 @@ def process_images(db_path, output_dir, image_base_dir, options=None):
         imagesWithValidClasses = list(compress(images, bValidClass))
         images = imagesWithValidClasses    
     
+    # ...if we need to include/exclude categories
     
     # Put the annotations in a dataframe so we can select all annotations for a given image
     print('Creating data frames')
@@ -275,8 +274,12 @@ def process_images(db_path, output_dir, image_base_dir, options=None):
         imageClasses = ', '.join(imageCategories)
                 
         img_id_string = str(img_id).lower()        
-        file_name = '{}_gt.jpg'.format(img_id_string.split('.jpg')[0])
-        file_name = file_name.replace('/', '~').replace('\\','~').replace(':','~')
+        file_name = '{}_gt.jpg'.format(os.path.splitext(img_id_string)[0])
+        
+        # Replace characters that muck up image links
+        illegal_characters = ['/','\\',':','\t','#',' ','%']
+        for c in illegal_characters:
+            file_name = file_name.replace(c,'~')
         
         rendering_info.append({'bboxes':bboxes, 'boxClasses':boxClasses, 'img_path':img_path,
                                'output_file_name':file_name})
@@ -292,9 +295,12 @@ def process_images(db_path, output_dir, image_base_dir, options=None):
         else:
             frameString = ' '
         
-        filename_text = img_relative_path
+        if options.show_full_paths:
+            filename_text = img_path
+        else:
+            filename_text = img_relative_path
         if options.include_filename_links:
-            filename_text = '<a href="{}">{}</a>'.format(img_path,img_relative_path)
+            filename_text = '<a href="{}">{}</a>'.format(img_path,filename_text)
             
         # We're adding html for an image before we render it, so it's possible this image will
         # fail to render.  For applications where this script is being used to debua a database
