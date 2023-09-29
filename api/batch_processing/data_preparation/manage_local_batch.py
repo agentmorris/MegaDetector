@@ -141,7 +141,8 @@ yolo_working_dir = os.path.expanduser('~/git/yolov5')
 remove_yolo_intermediate_results = False
 remove_yolo_symlink_folder = False
 use_symlinks_for_yolo_inference = True
-yolo_inference_overwrite_handling = 'skip' # 'skip', 'error', or 'overwrite'
+
+overwrite_handling = 'skip' # 'skip', 'error', or 'overwrite'
 
 # Set later if EK113/RCNX101-style overflow folders are being handled in this dataset
 overflow_folder_handling_enabled = False
@@ -340,7 +341,7 @@ for i_task,task in enumerate(task_info):
         
         device_string = '--device {}'.format(gpu_number)
         
-        overwrite_handling_string = '--overwrite_handling {}'.format(yolo_inference_overwrite_handling)        
+        overwrite_handling_string = '--overwrite_handling {}'.format(overwrite_handling)        
         
         cmd += f'python run_inference_with_yolov5_val.py "{model_file}" "{chunk_file}" "{output_fn}" "{yolo_working_dir}" {image_size_string} {augment_string} {symlink_folder_string} {yolo_results_folder_string} {remove_yolo_results_string} {remove_symlink_folder_string} {confidence_threshold_string} {device_string} {overwrite_handling_string}'
         
@@ -379,8 +380,9 @@ for i_task,task in enumerate(task_info):
         confidence_threshold_string = ''
         if json_threshold is not None:
             confidence_threshold_string = '--threshold {}'.format(json_threshold)
-                
-        cmd = f'{cuda_string} python run_detector_batch.py "{model_file}" "{chunk_file}" "{output_fn}" {checkpoint_frequency_string} {checkpoint_path_string} {use_image_queue_string} {ncores_string} {quiet_string} {image_size_string} {confidence_threshold_string}'
+        
+        overwrite_handling_string = '--overwrite_handling {}'.format(overwrite_handling)        
+        cmd = f'{cuda_string} python run_detector_batch.py "{model_file}" "{chunk_file}" "{output_fn}" {checkpoint_frequency_string} {checkpoint_path_string} {use_image_queue_string} {ncores_string} {quiet_string} {image_size_string} {confidence_threshold_string} {overwrite_handling_string}'
                 
     cmd_file = os.path.join(filename_base,'run_chunk_{}_gpu_{}{}'.format(str(i_task).zfill(3),
                             str(gpu_number).zfill(2),script_extension))

@@ -834,6 +834,12 @@ def main():
         action='store_true',
         help='Include available EXIF data in output file'
     )
+    parser.add_argument(
+        '--overwrite_handling',
+        type=str,
+        default='overwrite',
+        help='What should we do if the output file exists?  overwrite/skip/error (default overwrite)'
+    )
     
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -857,8 +863,17 @@ def main():
                 '--output_relative_filenames is set'
 
     if os.path.exists(args.output_file):
-        print('Warning: output_file {} already exists and will be overwritten'.format(
-            args.output_file))
+        if args.overwrite_handling == 'overwrite':
+            print('Warning: output file {} already exists and will be overwritten'.format(
+                args.output_file))
+        elif args.overwrite_handling == 'skip':
+            print('Output file {} exists, returning'.format(
+                args.output_file))
+            return
+        elif args.overwrite_handling == 'error':
+            raise Exception('Output file {} exists'.format(args.output_file))
+        else:
+            raise ValueError('Illegal overwrite handling string {}'.format(args.overwrite_handling))
 
     # This is an experimental hack to allow the use of non-MD YOLOv5 models through
     # the same infrastructure; it disables the code that enforces MDv5-like class lists.
