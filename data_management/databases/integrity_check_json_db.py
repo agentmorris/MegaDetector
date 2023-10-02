@@ -215,7 +215,7 @@ def integrity_check_json_db(jsonFile, options=None):
     # Are we checking for unused images?
     if (len(baseDir) > 0) and options.bFindUnusedImages:    
         
-        print('Enumerating images...')
+        print('\nEnumerating images...')
         
         # Recursively enumerate images
         imagePaths = []

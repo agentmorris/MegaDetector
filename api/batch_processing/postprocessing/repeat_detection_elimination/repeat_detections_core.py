@@ -576,7 +576,7 @@ def find_matches_in_directory(dirNameAndRows, options):
             bbox = detection['bbox']
             confidence = detection['conf']
             
-            # Is this detection too big to be suspicious?
+            # Is this detection too big or too small for consideration?
             w, h = bbox[2], bbox[3]
             
             if (w == 0 or h == 0):                
@@ -584,7 +584,6 @@ def find_matches_in_directory(dirNameAndRows, options):
             
             area = h * w
 
-            # These are relative coordinates
             assert area >= 0.0 and area <= 1.0, \
                 'Illegal bounding box area {}'.format(area)
 

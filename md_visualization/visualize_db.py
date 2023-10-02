@@ -79,6 +79,9 @@ class DbVizOptions:
     parallelize_rendering_with_threads = True
     parallelize_rendering = False
     
+    # Should we show absolute (vs. relative) paths for each image?
+    show_full_paths = False
+    
 
 #%% Helper functions
 

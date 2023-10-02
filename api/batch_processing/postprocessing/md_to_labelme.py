@@ -35,7 +35,7 @@ def get_labelme_dict_for_image(im,image_base_name,category_id_to_name,info=None,
     labelme format.  Returns a dict.
     """
     
-    if confidence_threshold is None:
+    if confidence_threshold is None:        
         confidence_threshold = -1.0
         
     output_dict = {}

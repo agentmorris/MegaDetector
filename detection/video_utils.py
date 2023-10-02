@@ -111,7 +111,7 @@ def get_video_fs(input_video_file):
 
 
 def frame_number_to_filename(frame_number):
-    return 'frame{:05d}.jpg'.format(frame_number)
+    return 'frame{:06d}.jpg'.format(frame_number)
 
 
 def video_to_frames(input_video_file, output_folder, overwrite=True, 
