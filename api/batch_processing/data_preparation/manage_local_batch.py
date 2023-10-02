@@ -183,20 +183,27 @@ model_file = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md
 
 postprocessing_base = os.path.expanduser('~/postprocessing')
 
-# Number of jobs to split data into, typically equal to the number of available GPUs
+# Number of jobs to split data into, typically equal to the number of available GPUs, though
+# when using augmentation or an image queue (and thus not using checkpoints), I typically
+# use ~100 jobs per GPU; those serve as de facto checkpoints.
 n_jobs = 2
 n_gpus = 2
 
-# Only used to print out a time estimate
+# Set to "None" when using augmentation or an image queue, which don't currently support
+# checkpointing.  Don't worry, this will be assert()'d in the next cell.
+checkpoint_frequency = 10000
+
+# gpu_images_per_second is only used to print out a time estimate, and it's completely
+# tied to the assumption of running on an RTX 3090.  YMMV.
 if ('v5') in model_file:
     gpu_images_per_second = 10
 else:
     gpu_images_per_second = 2.9
+    
+# Rough estimate for how much slower everything runs when using augmentation    
 if augment:
     gpu_images_per_second = gpu_images_per_second * 0.7
     
-checkpoint_frequency = 10000
-
 base_task_name = organization_name_short + '-' + job_date + job_description_string + '-' + \
     get_detector_version_from_filename(model_file)
 base_output_folder_name = os.path.join(postprocessing_base,organization_name_short)
@@ -205,12 +212,16 @@ os.makedirs(base_output_folder_name,exist_ok=True)
 
 #%% Derived variables, constant validation, path setup
 
+if use_image_queue:
+    assert checkpoint_frequency is None,\
+        'Checkpointing is not supported when using an image queue'        
+    
 if augment:
+    assert checkpoint_frequency is None,\
+        'Checkpointing is not supported when using augmentation'
+    
     assert use_yolo_inference_scripts,\
         'Augmentation is only supported when running with the YOLO inference scripts'
-if use_yolo_inference_scripts:
-    assert os.name != 'nt',\
-        'Running inference with the YOLO inference scripts is not yet supported on Windows'
 
 filename_base = os.path.join(base_output_folder_name, base_task_name)
 combined_api_output_folder = os.path.join(filename_base, 'combined_api_outputs')
@@ -400,7 +411,7 @@ for i_task,task in enumerate(task_info):
     
     gpu_to_scripts[gpu_number].append(cmd_file)
     
-    if not use_yolo_inference_scripts:
+    if checkpoint_frequency is not None:
         
         resume_string = ' --resume_from_checkpoint "{}"'.format(checkpoint_filename)
         resume_cmd = cmd + resume_string
@@ -429,7 +440,12 @@ for gpu_number in gpu_to_scripts:
         str(gpu_number).zfill(2),script_extension))
     with open(gpu_script_file,'w') as f:
         for script_name in gpu_to_scripts[gpu_number]:
-            f.write(script_name + '\n')
+            s = script_name
+            # When calling a series of batch files on Windows from within a batch file, you need to
+            # use "call", or only the first will be executed.  No, it doesn't make sense.
+            if os.name == 'nt':
+                s = 'call ' + s
+            f.write(s + '\n')
         f.write('echo "Finished all commands for GPU {}"'.format(gpu_number))
     st = os.stat(gpu_script_file)
     os.chmod(gpu_script_file, st.st_mode | stat.S_IEXEC)
