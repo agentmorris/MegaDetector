@@ -207,7 +207,11 @@ def process_images(db_path, output_dir, image_base_dir, options=None):
     
     # Take a sample of images
     if options.num_to_visualize is not None:
-        df_img = df_img.sample(n=options.num_to_visualize,random_state=options.random_seed)
+        if options.num_to_visualize > len(df_img):
+            print('Warning: asked to visualize {} images, but only {} are available, keeping them all'.\
+                  format(options.num_to_visualize,len(df_img)))
+        else:                  
+            df_img = df_img.sample(n=options.num_to_visualize,random_state=options.random_seed)
     
     images_html = []
     

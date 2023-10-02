@@ -388,28 +388,8 @@ def process_detections(im,options):
         
         # ...for each category
         
-        # Read EXIF metadata
-        exif = pil_image.info['exif'] if ('exif' in pil_image.info) else None
-        
-        # Write output with EXIF metadata if available, and quality='keep' if this is a JPEG
-        # image.  Unfortunately, neither parameter likes "None", so we get a slightly
-        # icky cascade of if's here.
-        if exif is not None:
-            if pil_image.format == "JPEG":
-                pil_image.save(target_path, exif=exif, quality='keep')
-            else:
-                pil_image.save(target_path, exif=exif)
-        else:
-            if pil_image.format == "JPEG":            
-                pil_image.save(target_path, quality='keep')
-            else:
-                pil_image.save(target_path)
-        
-        # Also see:
-        #
-        # https://discuss.dizzycoding.com/determining-jpg-quality-in-python-pil/
-        # 
-        # ...for more ways to preserve jpeg quality if quality='keep' doesn't do the trick.
+        # Try to preserve EXIF data and image quality when saving
+        vis_utils.exif_preserving_save(pil_image,target_path)        
         
     # ...if we don't/do need to render boxes
     

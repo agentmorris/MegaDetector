@@ -346,7 +346,7 @@ def integrity_check_json_db(jsonFile, options=None):
     
     sortedCategories = sorted(categories, key=itemgetter('_count'), reverse=True)
     
-    print('Categories and counts:\n')
+    print('Categories and annotation (not image) counts:\n')
     
     for cat in sortedCategories:
         print('{:6} {}'.format(cat['_count'],cat['name']))

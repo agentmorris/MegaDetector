@@ -1,4 +1,3 @@
-
 ########
 #
 # labelme_to_coco.py
@@ -284,11 +283,11 @@ if False:
     # category_id_to_category_name = DEFAULT_DETECTOR_LABEL_MAP
     category_id_to_category_name = None
     
-    # input_folder = os.path.expanduser('~/data/labelme-json-test')
-    # output_file = os.path.expanduser('~/tmp/labelme_to_coco_test.json')
+    input_folder = os.path.expanduser('~/data/labelme-json-test')
+    output_file = os.path.expanduser('~/tmp/labelme_to_coco_test.json')
     
-    input_folder = os.path.expanduser('~/data/usgs-kissel-training')
-    output_file = os.path.expanduser('~/tmp/usgs-tegus.json')
+    # input_folder = os.path.expanduser('~/data/usgs-kissel-training')
+    # output_file = os.path.expanduser('~/tmp/usgs-tegus.json')
     
     output_dict = labelme_to_coco(input_folder,output_file,
                                   category_id_to_category_name=category_id_to_category_name,
@@ -301,6 +300,9 @@ if False:
     
     
     #%% Validate
+    
+    input_folder = os.path.expanduser('~/data/usgs-kissel-training')
+    output_file = os.path.expanduser('~/tmp/usgs-tegus.json')    
     
     from data_management.databases import integrity_check_json_db
     

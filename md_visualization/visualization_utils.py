@@ -117,6 +117,36 @@ def open_image(input_file: Union[str, BytesIO]) -> Image:
     return image
 
 
+def exif_preserving_save(pil_image,output_file):
+    """
+    Save [pil_image] to [output_file], making a moderate attempt to preserve EXIF
+    data and JPEG quality.  Neither is guaranteed.
+    
+    Also see:
+    
+    https://discuss.dizzycoding.com/determining-jpg-quality-in-python-pil/
+     
+    ...for more ways to preserve jpeg quality if quality='keep' doesn't do the trick.
+    """
+    
+    # Read EXIF metadata
+    exif = pil_image.info['exif'] if ('exif' in pil_image.info) else None
+    
+    # Write output with EXIF metadata if available, and quality='keep' if this is a JPEG
+    # image.  Unfortunately, neither parameter likes "None", so we get a slightly
+    # icky cascade of if's here.
+    if exif is not None:
+        if pil_image.format == "JPEG":
+            pil_image.save(output_file, exif=exif, quality='keep')
+        else:
+            pil_image.save(output_file, exif=exif)
+    else:
+        if pil_image.format == "JPEG":            
+            pil_image.save(output_file, quality='keep')
+        else:
+            pil_image.save(output_file)
+            
+            
 def load_image(input_file: Union[str, BytesIO]) -> Image:
     """
     Loads the image at input_file as a PIL Image into memory.
