@@ -77,6 +77,10 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 
 # Number of images to pre-fetch
 max_queue_size = 10
+
+# How often should we print progress when using the image queue?
+n_queue_print = 1000
+
 use_threads_for_queue = False
 verbose = False
 
@@ -129,7 +133,8 @@ def consumer_func(q,return_queue,model_file,confidence_threshold,image_size=None
     start_time = time.time()
     detector = load_detector(model_file)
     elapsed = time.time() - start_time
-    print('Loaded model (before queueing) in {}'.format(humanfriendly.format_timespan(elapsed)))
+    print('Loaded model (before queueing) in {}, printing updates every {} images'.format(
+        humanfriendly.format_timespan(elapsed),n_queue_print))
     sys.stdout.flush()
         
     results = []
@@ -145,7 +150,7 @@ def consumer_func(q,return_queue,model_file,confidence_threshold,image_size=None
         n_images_processed += 1
         im_file = r[0]
         image = r[1]
-        if verbose or ((n_images_processed % 10) == 0):
+        if verbose or ((n_images_processed % n_queue_print) == 1):
             elapsed = time.time() - start_time
             images_per_second = n_images_processed / elapsed
             print('De-queued image {} ({:.2f}/s) ({})'.format(n_images_processed,
