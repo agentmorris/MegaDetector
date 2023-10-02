@@ -440,7 +440,12 @@ for gpu_number in gpu_to_scripts:
         str(gpu_number).zfill(2),script_extension))
     with open(gpu_script_file,'w') as f:
         for script_name in gpu_to_scripts[gpu_number]:
-            f.write(script_name + '\n')
+            s = script_name
+            # When calling a series of batch files on Windows from within a batch file, you need to
+            # use "call", or only the first will be executed.  No, it doesn't make sense.
+            if os.name == 'nt':
+                s = 'call ' + s
+            f.write(s + '\n')
         f.write('echo "Finished all commands for GPU {}"'.format(gpu_number))
     st = os.stat(gpu_script_file)
     os.chmod(gpu_script_file, st.st_mode | stat.S_IEXEC)
