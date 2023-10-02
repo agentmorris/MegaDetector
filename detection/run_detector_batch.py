@@ -107,13 +107,13 @@ def producer_func(q,image_files):
             if verbose:
                 print('Loading image {}'.format(im_file)); sys.stdout.flush()
             image = vis_utils.load_image(im_file)
-        except Exception as e:
-            print('Producer process: image {} cannot be loaded. Exception: {}'.format(im_file, e))
-            raise
+        except Exception:
+            print('Producer process: image {} cannot be loaded.'.format(im_file))
+            image = run_detector.FAILURE_IMAGE_OPEN            
         
         if verbose:
             print('Queueing image {}'.format(im_file)); sys.stdout.flush()
-        q.put([im_file,image])                    
+        q.put([im_file,image])
     
     q.put(None)
         
@@ -157,9 +157,14 @@ def consumer_func(q,return_queue,model_file,confidence_threshold,image_size=None
                                                           images_per_second,
                                                           im_file));
             sys.stdout.flush()
-        results.append(process_image(im_file=im_file,detector=detector,
-                                     confidence_threshold=confidence_threshold,
-                                     image=image,quiet=True,image_size=image_size))
+        if isinstance(image,str):
+            # This is how the producer function communicates read errors
+            results.append({'file': im_file,
+                            'failure': image})
+        else:
+            results.append(process_image(im_file=im_file,detector=detector,
+                                         confidence_threshold=confidence_threshold,
+                                         image=image,quiet=True,image_size=image_size))
         if verbose:
             print('Processed image {}'.format(im_file)); sys.stdout.flush()
         q.task_done()
