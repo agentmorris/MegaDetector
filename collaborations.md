@@ -50,7 +50,7 @@ We also have Python tools that use MegaDetector results to just separate a folde
 
 ## Questions about specific camera trap use cases
 
-These questions help us assess how we can best help a new collaborator, and which of our tools will be most applicable to a particular project.
+These questions help us assess which of our tools (or someone else's tools!) will be most applicable to a particular project, and whether you really want AI in your life at all (we love AI, but sometimes it's not worth the hassle!).
 
 1. Can you provide a short overview of your project?  What ecosystem are you working in, and what are the key species of interest?
 

@@ -2,13 +2,14 @@
 #
 # coco_to_yolo.py
 #
-# Converts a COCO-formatted dataset to a YOLO-formatted dataset. 
+# Converts a COCO-formatted dataset to a YOLO-formatted dataset, flattening
+# the dataset (to a single folder) in the process.
 #
 # If the input and output folders are the same, writes .txt files to the input folder,
 # and neither moves nor modifies images.
 #
 # Currently ignores segmentation masks, and errors if an annotation has a 
-# segmentation polygon but no bbox
+# segmentation polygon but no bbox.
 # 
 # Has only been tested on a handful of COCO Camera Traps data sets; if you
 # use it for more general COCO conversion, YMMV.
@@ -24,34 +25,127 @@ import shutil
 from collections import defaultdict
 from tqdm import tqdm
 
+from md_utils.path_utils import safe_create_link,find_images
+
 
 #%% Support functions
 
+def write_yolo_dataset_file(yolo_dataset_file,
+                            dataset_base_dir,
+                            class_list,
+                            train_folder_relative=None,
+                            val_folder_relative=None,
+                            test_folder_relative=None):
+    """
+    Write a YOLOv5 dataset.yaml file to the file yolo_dataset_file (should
+    have a .yaml extension, though it's only a warning if it doesn't).  
+
+    [dataset_base_dir] should be the absolute path of the dataset root.
+
+    [class_list] can be an ordered list of class names (the first item will be class 0, 
+    etc.), or the name of a text file containing an ordered list of class names (one per 
+    line, starting from class zero).
+    """
+    
+    # Read class names
+    if isinstance(class_list,str):
+        with open(class_list,'r') as f:
+            class_lines = f.readlines()
+        class_lines = [s.strip() for s in class_lines]    
+        class_list = [s for s in class_lines if len(s) > 0]
+
+    # Write dataset.yaml
+    with open(yolo_dataset_file,'w') as f:
+        
+        f.write('# Train/val sets\n')
+        f.write('path: {}\n'.format(dataset_base_dir))
+        if train_folder_relative is not None:
+            f.write('train: {}\n'.format(train_folder_relative))
+        if val_folder_relative is not None:
+            f.write('val: {}\n'.format(val_folder_relative))
+        if test_folder_relative is not None:
+            f.write('val: {}\n'.format(test_folder_relative))
+            
+        f.write('\n')
+        
+        f.write('# Classes\n')
+        f.write('names:\n')
+        for i_class,class_name in enumerate(class_list):
+            f.write('  {}: {}\n'.format(i_class,class_name))
+
+# ...def write_yolo_dataset_file(...)
+
+            
 def coco_to_yolo(input_image_folder,output_folder,input_file,
-                 source_format='coco',overwrite_images=False,
+                 source_format='coco',
+                 overwrite_images=False,
                  create_image_and_label_folders=False,
                  class_file_name='classes.txt',
                  allow_empty_annotations=False,
                  clip_boxes=False,
-                 image_id_to_output_image_json_file=None):
+                 image_id_to_output_image_json_file=None,
+                 images_to_exclude=None,
+                 path_replacement_char='#',
+                 category_names_to_exclude=None,
+                 write_output=True):
+    """
+    Convert a COCO-formatted dataset to a YOLO-formatted dataset, flattening the dataset
+    (to a single folder) in the process.
+    
+    If the input and output folders are the same, writes .txt files to the input folder,
+    and neither moves nor modifies images.
+    
+    Currently ignores segmentation masks, and errors if an annotation has a 
+    segmentation polygon but no bbox.
+    
+    source_format can be 'coco' (default) or 'coco_camera_traps'.  The only difference
+    is that when source_format is 'coco_camera_traps', we treat an image with a non-bbox
+    annotation with a category id of 0 as a special case, i.e. that's how an empty image
+    is indicated.  The original COCO standard is a little ambiguous on this issue.  If
+    source_format is 'coco', we either treat images as empty or error, depending on the value
+    of allow_empty_annotations.  allow_empty_annotations has no effect if source_format is
+    'coco_camera_traps'.
+    
+    If create_image_and_label_folders is false, a/b/c/image001.jpg will become a#b#c#image001.jpg, 
+    and the corresponding text file will be a#b#c#image001.txt.  
+    
+    If create_image_and_label_folders is true, a/b/c/image001.jpg will become 
+    images/a#b#c#image001.jpg, and the corresponding text file will be 
+    labels/a#b#c#image001.txt.  Some tools still use this variant of the YOLO standard.
+    
+    If clip_boxes is True, bounding boxes coordinates will be clipped to [0,1].
+    
+    image_id_to_output_image_json_file is an optional *output* file, to which we will write
+    a mapping from image IDs to output file names.
+    
+    images_to_exclude is a list of image files (relative paths in the input folder) that we 
+    should ignore.
+    
+    write_output determines whether we actually copy images and write annotations;
+    setting this to False basically puts this function in "test mode".  The class list
+    file is written regardless of the value of write_output.
+    """
+        
+    ## Validate input
     
     if output_folder is None:
         output_folder = input_image_folder
     
-    # Validate input
-    
+    if images_to_exclude is not None:
+        images_to_exclude = set(images_to_exclude)
+            
     assert os.path.isdir(input_image_folder)
     assert os.path.isfile(input_file)
     os.makedirs(output_folder,exist_ok=True)
     
     
-    # Read input data
+    ## Read input data
     
     with open(input_file,'r') as f:
         data = json.load(f)
         
         
-    # Parse annotations
+    ## Parse annotations
   
     image_id_to_annotations = defaultdict(list)
     
@@ -74,32 +168,46 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
         
     # Re-map class IDs to make sure they run from 0...n-classes-1
     #
-    # TODO: this allows unused categories in the output data set, which I *think* is OK,
-    # but I'm only 81% sure.
+    # Note: this allows unused categories in the output data set.  This is OK for
+    # some training pipelines, not for others.
     next_category_id = 0
-    coco_id_to_yolo_id = {}
+    coco_id_to_yolo_id = {}    
+    coco_id_to_name = {}
     yolo_id_to_name = {}
+    coco_category_ids_to_exclude = set()
+    category_exclusion_warnings_printed = set()
+    
     for category in data['categories']:
+        coco_id_to_name[category['id']] = category['name']
+        if (category['name'] in category_names_to_exclude):
+            coco_category_ids_to_exclude.add(category['id'])
+            continue               
         assert category['id'] not in coco_id_to_yolo_id
         coco_id_to_yolo_id[category['id']] = next_category_id
         yolo_id_to_name[next_category_id] = category['name']
         next_category_id += 1
         
     
-    # Process images (everything but I/O)
+    ## Process images (everything but I/O)
     
     # List of dictionaries with keys 'source_image','dest_image','bboxes','dest_txt'
     images_to_copy = []
     
     missing_images = []
+    excluded_images = []
     
     image_names = set()
     
     typical_image_extensions = set(['.jpg','.jpeg','.png','.gif','.tif','.bmp'])
     
-    printing_empty_annotation_warning = False
+    printed_empty_annotation_warning = False
     
     image_id_to_output_image_name = {}
+    
+    print('Processing annotations')
+    
+    n_clipped_boxes = 0
+    n_total_boxes = 0
     
     # i_image = 0; im = data['images'][i_image]
     for i_image,im in tqdm(enumerate(data['images']),total=len(data['images'])):
@@ -108,11 +216,16 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
         source_image = os.path.join(input_image_folder,im['file_name'])        
         output_info['source_image'] = source_image
         
+        if images_to_exclude is not None and im['file_name'] in images_to_exclude:
+            excluded_images.append(im['file_name'])
+            continue
+        
         tokens = os.path.splitext(im['file_name'])
         if tokens[1].lower() not in typical_image_extensions:
             print('Warning: unusual image file name {}'.format(im['file_name']))
                   
-        image_name = tokens[0].replace('\\','/').replace('/','_') + '_' + str(i_image).zfill(6)
+        image_name = tokens[0].replace('\\','/').replace('/',path_replacement_char) + \
+            '_' + str(i_image).zfill(6)
         assert image_name not in image_names, 'Image name collision for {}'.format(image_name)
         image_names.add(image_name)
         
@@ -134,7 +247,7 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
         image_id = im['id']
         
         image_bboxes = []
-                
+            
         if image_id in image_id_to_annotations:
                         
             for ann in image_id_to_annotations[image_id]:
@@ -152,21 +265,37 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
                         else:
                             continue
                     
-                    else:
+                    elif source_format == 'coco_camera_traps':
                         
                         # We allow empty bbox lists in COCO camera traps; this is typically a negative
                         # example in a dataset that has bounding boxes, and 0 is typically the empty 
                         # category.
                         if ann['category_id'] != 0:
-                            if not printing_empty_annotation_warning:
-                                printing_empty_annotation_warning = True
-                                print('Warning: empty annotation found with category {}'.format(
+                            if not printed_empty_annotation_warning:
+                                printed_empty_annotation_warning = True
+                                print('Warning: non-bbox annotation found with category {}'.format(
                                     ann['category_id']))
                         continue
+                    
+                    else:
+                        
+                        raise ValueError('Unrecognized COCO variant: {}'.format(source_format))
                     
                 # ...if this is an empty annotation
                 
                 coco_bbox = ann['bbox']
+                
+                # This category isn't in our category list.  This typically corresponds to whole sets
+                # of images that were excluded from the YOLO set.
+                if ann['category_id'] in coco_category_ids_to_exclude:
+                    category_name = coco_id_to_name[ann['category_id']]
+                    if category_name not in category_exclusion_warnings_printed:
+                        category_exclusion_warnings_printed.add(category_name)
+                        print('Warning: ignoring category {} in image {}'.format(
+                            category_name,image_id),end='')
+                        print('...are you sure you didn\'t mean to exclude this image?')                        
+                    continue
+                
                 yolo_category_id = coco_id_to_yolo_id[ann['category_id']]
                 
                 # COCO: [x_min, y_min, width, height] in absolute coordinates
@@ -176,7 +305,7 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
                 img_w = im['width']
                 img_h = im['height']
                                 
-                if source_format == 'coco':
+                if source_format in ('coco','coco_camera_traps'):
                     
                     x_min_absolute = coco_bbox[0]
                     y_min_absolute = coco_bbox[1]
@@ -229,13 +358,14 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
                         y_center_relative += (overhang / 2.0)
                         
                     if clipped_box:
-                        print('Warning: clipped box for image {}'.format(image_id))
+                        n_clipped_boxes += 1
                 
                 yolo_box = [yolo_category_id,
                             x_center_relative, y_center_relative, 
                             box_w_relative, box_h_relative]
                 
                 image_bboxes.append(yolo_box)
+                n_total_boxes += 1
                 
             # ...for each annotation 
             
@@ -247,10 +377,15 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
     
     # ...for each image
         
+    print('\nWriting {} boxes ({} clipped) for {} images'.format(n_total_boxes,
+                                                               n_clipped_boxes,len(images_to_copy)))
     print('{} missing images (of {})'.format(len(missing_images),len(data['images'])))
     
+    if images_to_exclude is not None:
+        print('{} excluded images (of {})'.format(len(excluded_images),len(data['images'])))
+            
     
-    # Write output
+    ## Write output
     
     print('Generating class list')
     
@@ -266,60 +401,112 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
         print('Writing image ID mapping to {}'.format(image_id_to_output_image_json_file))
         with open(image_id_to_output_image_json_file,'w') as f:
             json.dump(image_id_to_output_image_name,f,indent=1)
-            
-    print('Copying images and creating annotation files')
     
-    if create_image_and_label_folders:
-        dest_image_folder = os.path.join(output_folder,'images')
-        dest_txt_folder = os.path.join(output_folder,'labels')
-    else:
-        dest_image_folder = output_folder
-        dest_txt_folder = output_folder
-        
-    # TODO: parallelize this loop
-    #
-    # output_info = images_to_copy[0]
-    for output_info in tqdm(images_to_copy):
-
-        source_image = output_info['source_image']
-        dest_image_relative = output_info['dest_image_relative']
-        dest_txt_relative = output_info['dest_txt_relative']
-        
-        dest_image = os.path.join(dest_image_folder,dest_image_relative)
-        os.makedirs(os.path.dirname(dest_image),exist_ok=True)
-        
-        dest_txt = os.path.join(dest_txt_folder,dest_txt_relative)
-        os.makedirs(os.path.dirname(dest_txt),exist_ok=True)
-        
-        if not create_image_and_label_folders:
-            assert os.path.dirname(dest_image) == os.path.dirname(dest_txt)
-        
-        if (not os.path.isfile(dest_image)) or (overwrite_images):
-            shutil.copyfile(source_image,dest_image)
-        
-        bboxes = output_info['bboxes']        
-        
-        # Only write an annotation file if there are bounding boxes.  Images with 
-        # no .txt files are treated as hard negatives, at least by YOLOv5:
-        #
-        # https://github.com/ultralytics/yolov5/issues/3218
-        #
-        # I think this is also true for images with empty annotation files, but 
-        # I'm using the convention suggested on that issue, i.e. hard negatives 
-        # are expressed as images without .txt files.
-        if len(bboxes) > 0:
+    if (write_output):
+    
+        print('Copying images and creating annotation files')
+    
+        if create_image_and_label_folders:
+            dest_image_folder = os.path.join(output_folder,'images')
+            dest_txt_folder = os.path.join(output_folder,'labels')
+        else:
+            dest_image_folder = output_folder
+            dest_txt_folder = output_folder
             
-            with open(dest_txt,'w') as f:
+        # TODO: parallelize this loop
+        #
+        # output_info = images_to_copy[0]
+        for output_info in tqdm(images_to_copy):
+    
+            source_image = output_info['source_image']
+            dest_image_relative = output_info['dest_image_relative']
+            dest_txt_relative = output_info['dest_txt_relative']
+            
+            dest_image = os.path.join(dest_image_folder,dest_image_relative)
+            os.makedirs(os.path.dirname(dest_image),exist_ok=True)
+            
+            dest_txt = os.path.join(dest_txt_folder,dest_txt_relative)
+            os.makedirs(os.path.dirname(dest_txt),exist_ok=True)
+            
+            if not create_image_and_label_folders:
+                assert os.path.dirname(dest_image) == os.path.dirname(dest_txt)
+            
+            if (not os.path.isfile(dest_image)) or (overwrite_images):
+                shutil.copyfile(source_image,dest_image)
+            
+            bboxes = output_info['bboxes']        
+            
+            # Only write an annotation file if there are bounding boxes.  Images with 
+            # no .txt files are treated as hard negatives, at least by YOLOv5:
+            #
+            # https://github.com/ultralytics/yolov5/issues/3218
+            #
+            # I think this is also true for images with empty annotation files, but 
+            # I'm using the convention suggested on that issue, i.e. hard negatives 
+            # are expressed as images without .txt files.
+            if len(bboxes) > 0:
                 
-                # bbox = bboxes[0]
-                for bbox in bboxes:
-                    assert len(bbox) == 5
-                    s = '{} {} {} {} {}'.format(bbox[0],bbox[1],bbox[2],bbox[3],bbox[4])
-                    f.write(s + '\n')
-            
-    # ...for each image              
+                with open(dest_txt,'w') as f:
+                    
+                    # bbox = bboxes[0]
+                    for bbox in bboxes:
+                        assert len(bbox) == 5
+                        s = '{} {} {} {} {}'.format(bbox[0],bbox[1],bbox[2],bbox[3],bbox[4])
+                        f.write(s + '\n')
+                
+        # ...for each image
+        
+    # ...if we're actually writing output
 
-# ...def coco_to_yolo()
+    return_info = {}
+    return_info['class_list_filename'] = class_list_filename
+    
+    return return_info
+
+# ...def coco_to_yolo(...)
+
+
+def create_yolo_symlinks(source_folder,images_folder,labels_folder,
+                         class_list_file=None,
+                         class_list_output_name='object.data',
+                         force_lowercase_image_extension=False):
+    """
+    Given a YOLO-formatted folder of images and .txt files, create a folder
+    of symlinks to all the images, and a folder of symlinks to all the labels. 
+    Used to support preview/editing tools (like BoundingBoxEditor) that assume
+    images and labels are in separate folders.
+    """    
+    
+    assert source_folder != images_folder and source_folder != labels_folder
+    
+    image_files_relative = find_images(source_folder,recursive=True,return_relative_paths=True)
+    
+    # image_fn_relative = image_files_relative[0]=    
+    for image_fn_relative in tqdm(image_files_relative):
+        
+        source_file_abs = os.path.join(source_folder,image_fn_relative)
+        target_file_abs = os.path.join(images_folder,image_fn_relative)
+        
+        if force_lowercase_image_extension:
+            tokens = os.path.splitext(target_file_abs)
+            target_file_abs = tokens[0] + tokens[1].lower()
+            
+        os.makedirs(os.path.dirname(target_file_abs),exist_ok=True)
+        safe_create_link(source_file_abs,target_file_abs)
+        source_annotation_file_abs = os.path.splitext(source_file_abs)[0] + '.txt'
+        if os.path.isfile(source_annotation_file_abs):
+            target_annotation_file_abs = \
+                os.path.splitext(os.path.join(labels_folder,image_fn_relative))[0] + '.txt'
+            os.makedirs(os.path.dirname(target_annotation_file_abs),exist_ok=True)
+            safe_create_link(source_annotation_file_abs,target_annotation_file_abs)
+
+    # ...for each image  
+
+    if class_list_file is not None:
+        target_class_list_file = os.path.join(labels_folder,class_list_output_name)
+        safe_create_link(class_list_file,target_class_list_file)
+
+# ...def create_yolo_symlinks(...)
 
 
 #%% Interactive driver

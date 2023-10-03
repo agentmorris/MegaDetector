@@ -159,7 +159,7 @@ if False:
     # target_size = (600,-1)
     
     input_folder = os.path.expanduser('~/data/usgs-kissel-training')
-    input_filename = os.path.expanduser('~/tmp/usgs-tegus.json')
+    input_filename = os.path.expanduser('~/data/usgs-tegus.json')
     target_size = (1600,-1)
     
     output_filename = insert_before_extension(input_filename,'resized')

@@ -113,9 +113,9 @@ def fileparts(path: str) -> Tuple[str, str, str]:
     return p, n, e
 
 
-def insert_before_extension(filename: str, s: str = '') -> str:
+def insert_before_extension(filename: str, s: str = '', separator='.') -> str:
     """
-    Insert string [s] before the extension in [filename], separated with '.'.
+    Insert string [s] before the extension in [filename], separated with [separator].
 
     If [s] is empty, generates a date/timestamp. If [filename] has no extension,
     appends [s].
@@ -133,7 +133,7 @@ def insert_before_extension(filename: str, s: str = '') -> str:
     if len(s) == 0:
         s = datetime.now().strftime('%Y.%m.%d.%H.%M.%S')
     name, ext = os.path.splitext(filename)
-    return f'{name}.{s}{ext}'
+    return f'{name}{separator}{s}{ext}'
 
 
 def top_level_folder(p: str, windows: Optional[bool] = None) -> str:
