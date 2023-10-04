@@ -611,7 +611,12 @@ def draw_bounding_box_on_image(image,
         # l,t,r,b = font.getbbox(s); w = r-l; h=b-t
         
         # ...but this actually produces the most similar results to Pillow 9
-        l,t,r,b = font.getbbox(s); w = r; h=b
+        # l,t,r,b = font.getbbox(s); w = r; h=b
+        
+        try:
+            l,t,r,b = font.getbbox(s); w = r; h=b  
+        except Exception:
+            w,h = font.getsize(s)
         
         return w,h
     
