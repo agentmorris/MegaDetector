@@ -752,7 +752,7 @@ options = repeat_detections_core.RepeatDetectionOptions()
 options.confidenceMin = 0.15
 options.confidenceMax = 1.01
 options.iouThreshold = 0.85
-options.occurrenceThreshold = 20
+options.occurrenceThreshold = 15
 options.maxSuspiciousDetectionSize = 0.2
 # options.minSuspiciousDetectionSize = 0.05
 
@@ -766,7 +766,7 @@ options.otherDetectionsThreshold = options.confidenceMin
 
 options.bRenderDetectionTiles = True
 options.maxOutputImageWidth = 2000
-options.detectionTilesMaxCrops = 1500
+options.detectionTilesMaxCrops = 1000
 
 # options.lineThickness = 5
 # options.boxExpansion = 8
