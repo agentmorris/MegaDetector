@@ -46,7 +46,8 @@ def visualize_detector_output(detector_output_path: str,
                               render_detections_only: bool = False,
                               classification_confidence_threshold = 0.1,
                               html_output_file=None,
-                              html_output_options=None) -> List[str]:
+                              html_output_options=None,
+                              preserve_path_structure=False) -> List[str]:
     
     """
     Draw bounding boxes on images given the output of the detector.
@@ -167,9 +168,14 @@ def visualize_detector_output(detector_output_path: str,
             confidence_threshold=confidence_threshold,
             classification_confidence_threshold=classification_confidence_threshold)
 
-        for char in ['/', '\\', ':']:
-            image_id = image_id.replace(char, '~')
-        annotated_img_path = os.path.join(out_dir, f'anno_{image_id}')
+        if not preserve_path_structure:
+            for char in ['/', '\\', ':']:
+                image_id = image_id.replace(char, '~')
+            annotated_img_path = os.path.join(out_dir, f'anno_{image_id}')
+        else:
+            assert not os.path.isabs(image_id), "Can't preserve paths when operating on absolute paths"
+            annotated_img_path = os.path.join(out_dir, image_id)
+            os.makedirs(os.path.dirname(annotated_img_path),exist_ok=True)
         annotated_img_paths.append(annotated_img_path)
         image.save(annotated_img_path)
         num_saved += 1
@@ -237,9 +243,15 @@ def main() -> None:
         '-r', '--random_seed', type=int, default=None,
         help='Integer, for deterministic order of image sampling')
     parser.add_argument(
+        '-html', '--html_output_file', type=str, default=None,
+        help='Filename to which we should write an HTML image index (off by default)')
+    parser.add_argument(
         '-do', '--detections_only', action='store_true',
         help='Only render images with above-threshold detections (by default, '
              'both empty and non-empty images are rendered).')
+    parser.add_argument(
+        '-pps', '--preserve_path_structure', action='store_true',
+        help='Preserve relative image paths (otherwise flattens and assigns unique file names)')
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -255,7 +267,9 @@ def main() -> None:
         sample=args.sample,
         output_image_width=args.output_image_width,
         random_seed=args.random_seed,
-        render_detections_only=args.detections_only)
+        render_detections_only=args.detections_only,
+        preserve_path_structure=args.preserve_path_structure,
+        html_output_file=args.html_output_file)
 
 
 if __name__ == '__main__':
