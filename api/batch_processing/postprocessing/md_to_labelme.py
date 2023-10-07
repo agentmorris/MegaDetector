@@ -78,7 +78,8 @@ def get_labelme_dict_for_image(im,image_base_name,category_id_to_name,info=None,
 # ...def get_labelme_dict_for_image()
 
 
-def md_to_labelme(results_file,image_base,confidence_threshold=None,overwrite=False):
+def md_to_labelme(results_file,image_base,confidence_threshold=None,
+                  overwrite=False):
     """
     For all the images in [results_file], write a .json file in labelme format alongside the
     corresponding relative path within image_base.
@@ -94,14 +95,37 @@ def md_to_labelme(results_file,image_base,confidence_threshold=None,overwrite=Fa
     #
     # im = md_results['images'][0]
     for im in tqdm(md_results['images']):
+        
+        # Make sure this file exists
         im_full_path = os.path.join(image_base,im['file'])
-        pil_im = open_image(im_full_path)
-        im['width'] = pil_im.width
-        im['height'] = pil_im.height
+        assert os.path.isfile(im_full_path), 'Image file {} does not exist'.format(im_full_path)
+        
+        # Load w/h information if necessary
+        if 'height' not in im or 'width' not in im:
+            
+            try:
+                pil_im = open_image(im_full_path)
+                im['width'] = pil_im.width
+                im['height'] = pil_im.height
+            except Exception:
+                print('Warning: cannot open image {}, treating as a failure during inference'.format(
+                    im_full_path))
+                if 'failure' not in im:
+                    im['failure'] = 'Failure image access'        
 
+        # ...if we need to read w/h information
+        
+    # ...for each image
+    
     # Write output
     for im in tqdm(md_results['images']):
         
+        if 'failure' in im and im['failure'] is not None:
+            assert 'detections' not in im
+            print('Warning: skipping labelme file generation for failed image {}'.format(
+                im['file']))
+            continue
+            
         im_full_path = os.path.join(image_base,im['file'])
         json_path = os.path.splitext(im_full_path)[0] + '.json'
         
@@ -114,12 +138,12 @@ def md_to_labelme(results_file,image_base,confidence_threshold=None,overwrite=Fa
                                                  category_id_to_name=md_results['detection_categories'],
                                                  info=md_results['info'],
                                                  confidence_threshold=confidence_threshold)
-        
+                
         with open(json_path,'w') as f:
             json.dump(output_dict,f,indent=1)
             
     # ...for each image
-
+    
 # ...def md_to_labelme()
 
 
@@ -129,12 +153,40 @@ if False:
     
     pass
 
-    #%%
+    #%% Configure options
     
-    results_file = os.path.expanduser('~/data/labelme-format-test/mdv5a.json')
-    image_base = os.path.expanduser('~/data/labelme-format-test')
-    confidence_threshold = 0.01
-    overwrite = True
+    md_results_file = os.path.expanduser('~/data/md-test.json')
+    coco_output_file = os.path.expanduser('~/data/md-test-coco.json')
+    image_folder = os.path.expanduser('~/data/md-test')    
+    confidence_threshold = 0.2
+    overwrite = True    
+    
+    
+    #%% Programmatic execution
+    
+    md_to_labelme(results_file=md_results_file,
+                  image_base=image_folder,
+                  confidence_threshold=confidence_threshold,
+                  overwrite=overwrite)
+
+    
+    #%% Command-line execution
+    
+    s = 'python md_to_labelme.py {} {} --confidence_threshold {}'.format(md_results_file,
+                                                                         image_folder,
+                                                                         confidence_threshold)
+    if overwrite:
+        s += ' --overwrite'
+        
+    print(s)
+    import clipboard; clipboard.copy(s)
+
+
+    #%% Opening labelme
+    
+    s = 'python labelme {}'.format(image_folder)
+    print(s)
+    import clipboard; clipboard.copy(s)
     
 
 #%% Command-line driver
@@ -156,7 +208,7 @@ def main():
         help='Path to images (also the output folder)')
     
     parser.add_argument(
-        'confidence_threshold',
+        '--confidence_threshold',
         type=float,
         default=default_confidence_threshold,
         help='Confidence threshold (default {})'.format(default_confidence_threshold)

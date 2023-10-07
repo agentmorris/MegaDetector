@@ -20,54 +20,6 @@ from tqdm import tqdm
 
 #%% Functions
 
-def find_empty_labelme_files(input_folder,recursive=True):
-    """
-    Returns a list of all image files in in [input_folder] associated with .json files that have 
-    no boxes in them.  Also returns a list of images with no associated .json files.  Specifically,
-    returns a dict:
-        
-    {
-       'images_with_empty_json_files':[list],
-       'images_with_no_json_files':[list],
-       'images_with_non_empty_json_files':[list]
-    }    
-    """
-    image_filenames_relative = path_utils.find_images(input_folder,recursive=True,
-                                                      return_relative_paths=True)
-    
-    images_with_empty_json_files = []
-    images_with_no_json_files = []
-    images_with_non_empty_json_files = []
-    
-    # fn_relative = image_filenames_relative[0]
-    for fn_relative in image_filenames_relative:
-        
-        image_fn_abs = os.path.join(input_folder,fn_relative)
-        json_fn_abs = os.path.splitext(image_fn_abs)[0] + '.json'
-        
-        if not os.path.isfile(json_fn_abs):
-            images_with_no_json_files.append(fn_relative)
-            continue
-        
-        else:
-           # Read the .json file
-           with open(json_fn_abs,'r') as f:
-               labelme_data = json.load(f) 
-           shapes = labelme_data['shapes']
-           if len(shapes) == 0:
-               images_with_empty_json_files.append(fn_relative)
-           else:
-               images_with_non_empty_json_files.append(fn_relative)
-               
-    # ...for every image
-    
-    return {'images_with_empty_json_files':images_with_empty_json_files,
-            'images_with_no_json_files':images_with_no_json_files,
-            'images_with_non_empty_json_files':images_with_non_empty_json_files}
-
-# ...def find_empty_labelme_files(...)
-
-
 def labelme_to_coco(input_folder,output_file=None,category_id_to_category_name=None,
                     empty_category_name='empty',empty_category_id=None,info_struct=None,
                     relative_paths_to_include=None,relative_paths_to_exclude=None,
@@ -162,8 +114,12 @@ def labelme_to_coco(input_folder,output_file=None,category_id_to_category_name=N
                     image_fn_relative))
             
             # ...or treat it as empty.
-            elif no_json_handling == 'empty':                
-                pil_im = open_image(image_fn_abs)
+            elif no_json_handling == 'empty':
+                try:
+                    pil_im = open_image(image_fn_abs)
+                except Exception:
+                    print('Warning: error opening image {}, skipping'.format(image_fn_abs))
+                    continue
                 im['width'] = pil_im.width
                 im['height'] = pil_im.height
                 shapes = []
@@ -181,7 +137,11 @@ def labelme_to_coco(input_folder,output_file=None,category_id_to_category_name=N
             im['height'] = labelme_data['imageHeight']
             
             if validate_image_sizes:
-                pil_im = open_image(image_fn_abs)
+                try:
+                    pil_im = open_image(image_fn_abs)
+                except Exception:
+                    print('Warning: error opening image {}, skipping'.format(image_fn_abs))
+                    continue                
                 assert im['width'] == pil_im.width and im['height'] == pil_im.height, \
                     'Image size validation error for file {}'.format(image_fn_relative)                
                 
@@ -264,45 +224,84 @@ def labelme_to_coco(input_folder,output_file=None,category_id_to_category_name=N
 # ...def labelme_to_coco()
 
 
+def find_empty_labelme_files(input_folder,recursive=True):
+    """
+    Returns a list of all image files in in [input_folder] associated with .json files that have 
+    no boxes in them.  Also returns a list of images with no associated .json files.  Specifically,
+    returns a dict:
+        
+    {
+       'images_with_empty_json_files':[list],
+       'images_with_no_json_files':[list],
+       'images_with_non_empty_json_files':[list]
+    }    
+    """
+    image_filenames_relative = path_utils.find_images(input_folder,recursive=True,
+                                                      return_relative_paths=True)
+    
+    images_with_empty_json_files = []
+    images_with_no_json_files = []
+    images_with_non_empty_json_files = []
+    
+    # fn_relative = image_filenames_relative[0]
+    for fn_relative in image_filenames_relative:
+        
+        image_fn_abs = os.path.join(input_folder,fn_relative)
+        json_fn_abs = os.path.splitext(image_fn_abs)[0] + '.json'
+        
+        if not os.path.isfile(json_fn_abs):
+            images_with_no_json_files.append(fn_relative)
+            continue
+        
+        else:
+           # Read the .json file
+           with open(json_fn_abs,'r') as f:
+               labelme_data = json.load(f) 
+           shapes = labelme_data['shapes']
+           if len(shapes) == 0:
+               images_with_empty_json_files.append(fn_relative)
+           else:
+               images_with_non_empty_json_files.append(fn_relative)
+               
+    # ...for every image
+    
+    return {'images_with_empty_json_files':images_with_empty_json_files,
+            'images_with_no_json_files':images_with_no_json_files,
+            'images_with_non_empty_json_files':images_with_non_empty_json_files}
+
+# ...def find_empty_labelme_files(...)
+
+
 #%% Interactive driver
 
 if False:
     
     pass
 
-    #%% Convert labelme to json
+    #%% Options
     
-    import os, json, uuid # noqa
-    from md_utils import path_utils # noqa
-    
-    from detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP # noqa
     empty_category_name = 'empty'
     empty_category_id = None
+    category_id_to_category_name = None
     info_struct = None
     
-    # category_id_to_category_name = DEFAULT_DETECTOR_LABEL_MAP
-    category_id_to_category_name = None
+    input_folder = os.path.expanduser('~/data/md-test')
+    output_file = os.path.expanduser('~/data/md-test-labelme-to-coco.json')
     
-    input_folder = os.path.expanduser('~/data/labelme-json-test')
-    output_file = os.path.expanduser('~/tmp/labelme_to_coco_test.json')
     
-    # input_folder = os.path.expanduser('~/data/usgs-kissel-training')
-    # output_file = os.path.expanduser('~/tmp/usgs-tegus.json')
+    #%% Programmatic execution
     
     output_dict = labelme_to_coco(input_folder,output_file,
                                   category_id_to_category_name=category_id_to_category_name,
-                                  empty_category_name='empty',
+                                  empty_category_name=empty_category_name,
                                   empty_category_id=empty_category_id,
-                                  info_struct=info_struct,
-                                  use_folders_as_labels=True,
-                                  validate_image_sizes=True,
+                                  info_struct=None,
+                                  use_folders_as_labels=False,
+                                  validate_image_sizes=False,
                                   no_json_handling='empty')
     
     
     #%% Validate
-    
-    input_folder = os.path.expanduser('~/data/usgs-kissel-training')
-    output_file = os.path.expanduser('~/tmp/usgs-tegus.json')    
     
     from data_management.databases import integrity_check_json_db
     
@@ -333,28 +332,39 @@ if False:
     path_utils.open_file(html_file)
     
     
-    #%% Find empty files
-    
-    input_folder = os.path.expanduser('~/data/usgs-kissel-training')
-    empty_labelme_files_info = find_empty_labelme_files(input_folder,recursive=True)
-    
-    for fn_relative in empty_labelme_files_info['images_with_no_json_files']:
-        assert 'blanks_and_very_small_things' in fn_relative
-    for fn_relative in empty_labelme_files_info['images_with_empty_json_files']:
-        assert 'blanks_and_very_small_things' not in fn_relative
-    for fn_relative in empty_labelme_files_info['images_with_non_empty_json_files']:
-        assert 'blanks_and_very_small_things' not in fn_relative
-        
-    print('Found {} empty .json files'.format(len(
-        empty_labelme_files_info['images_with_empty_json_files'])))
-    
-    print('Found {} non-empty .json files'.format(len(
-        empty_labelme_files_info['images_with_non_empty_json_files'])))
-    
-    print('Found {} images with no .json files'.format(len(
-        empty_labelme_files_info['images_with_no_json_files'])))
-    
+    #%% Prepare command line
+
+    s = 'python labelme_to_coco.py {} {}'.format(input_folder,output_file)
+    print(s)
+    import clipboard; clipboard.copy(s)
+
     
 #%% Command-line driver
 
-# TODO
+import sys,argparse
+
+def main():
+
+    parser = argparse.ArgumentParser(
+        description='Convert labelme-formatted data to COCO')
+    
+    parser.add_argument(
+        'input_folder',
+        type=str,
+        help='Path to images and .json annotation files')
+    
+    parser.add_argument(
+        'output_file',
+        type=str,
+        help='Output filename (.json)')
+    
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
+
+    args = parser.parse_args()
+
+    labelme_to_coco(args.input_folder,args.output_file)
+    
+if __name__ == '__main__':
+    main()

@@ -1629,6 +1629,10 @@ def main():
         '--no_separate_detections_by_category', 
         action='store_true',
         help='Collapse all categories into just "detections" and "non-detections"')    
+    parser.add_argument(
+        '--open_output_file', 
+        action='store_true',
+        help='Open the HTML output file when finished')    
     
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -1648,8 +1652,10 @@ def main():
     if args.no_separate_detections_by_category:
         options.separate_detections_by_category = False
     
-    process_batch_results(options)
-
+    ppresults = process_batch_results(options)
+    
+    if options.open_output_file:
+        path_utils.open_file(ppresults.output_html_file)
 
 if __name__ == '__main__':
     main()

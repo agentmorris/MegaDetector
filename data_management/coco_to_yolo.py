@@ -134,6 +134,9 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
     if images_to_exclude is not None:
         images_to_exclude = set(images_to_exclude)
             
+    if category_names_to_exclude is None:
+        category_names_to_exclude = {}
+        
     assert os.path.isdir(input_image_folder)
     assert os.path.isfile(input_file)
     os.makedirs(output_folder,exist_ok=True)
@@ -475,9 +478,14 @@ def create_yolo_symlinks(source_folder,images_folder,labels_folder,
     of symlinks to all the images, and a folder of symlinks to all the labels. 
     Used to support preview/editing tools (like BoundingBoxEditor) that assume
     images and labels are in separate folders.
+    
+    images_folder and labels_folder are absolute paths.
     """    
     
     assert source_folder != images_folder and source_folder != labels_folder
+    
+    os.makedirs(images_folder,exist_ok=True)
+    os.makedirs(labels_folder,exist_ok=True)
     
     image_files_relative = find_images(source_folder,recursive=True,return_relative_paths=True)
     
@@ -515,46 +523,93 @@ if False:
     
     pass
 
-    #%% CCT data
+    #%% Options
     
-    input_image_folder = os.path.expanduser('~/data/noaa-fish/JPEGImages')
-    output_folder = os.path.expanduser('~/data/noaa-fish/AllImagesWithAnnotations')
-    input_file = os.path.expanduser('~/data/noaa-fish/noaa_estuary_fish.json')
+    input_file = os.path.expanduser('~/data/md-test-coco.json')
+    image_folder = os.path.expanduser('~/data/md-test')    
+    output_folder = os.path.expanduser('~/data/md-test-yolo')    
+    create_image_and_label_folders=False
+    class_file_name='classes.txt'
+    allow_empty_annotations=False
+    clip_boxes=False
+    image_id_to_output_image_json_file=None
+    images_to_exclude=None
+    path_replacement_char='#'
+    category_names_to_exclude=None
+                                  
+                                               
+    #%% Programmatic execution
+    
+    coco_to_yolo_results = coco_to_yolo(image_folder,output_folder,input_file,
+                     source_format='coco',
+                     overwrite_images=False,
+                     create_image_and_label_folders=create_image_and_label_folders,
+                     class_file_name=class_file_name,
+                     allow_empty_annotations=allow_empty_annotations,
+                     clip_boxes=clip_boxes)                     
+    
+    create_yolo_symlinks(source_folder=output_folder,
+                         images_folder=output_folder + '/images',
+                         labels_folder=output_folder + '/labels',
+                         class_list_file=coco_to_yolo_results['class_list_filename'],
+                         class_list_output_name='object.data',
+                         force_lowercase_image_extension=True)
 
-    # If preview_export is True, I'm exporting to preview these with BoundingBoxEditor:
-    #
-    # https://github.com/mfl28/BoundingBoxEditor
-    #
-    # This export will be compatible, other than the fact that you need to move
-    # "object.data" into the "labels" folder.
-    #
-    # Otherwise I'm exporting for training, in the YOLOv5 flat format.
-    preview_export = False
-    
-    if preview_export:
-        
-        coco_to_yolo(input_image_folder,output_folder,input_file,
-                     source_format='coco',
-                     overwrite_images=False,
-                     create_image_and_label_folders=True,
-                     class_file_name='object.data',
-                     allow_empty_annotations=True,
-                     clip_boxes=True)
-        
-    else:
-        
-        coco_to_yolo(input_image_folder,output_folder,input_file,
-                     source_format='coco',
-                     overwrite_images=False,
-                     create_image_and_label_folders=False,
-                     class_file_name='classes.txt',
-                     allow_empty_annotations=True,
-                     clip_boxes=True,
-                     image_id_to_output_image_json_file=\
-                         os.path.join(output_folder,'image_id_to_output_image_name.json'))
-    
-    
+
+    #%% Prepare command-line example
+
+    s = 'python coco_to_yolo.py {} {} {} --create_bounding_box_editor_symlinks'.format(
+        image_folder,output_folder,input_file)
+    print(s)
+    import clipboard; clipboard.copy(s)    
+
 
 #%% Command-line driver
 
-# TODO
+import sys,argparse
+
+def main():
+
+    parser = argparse.ArgumentParser(
+        description='Convert COCO-formatted data to YOLO format, flattening the image structure')
+    
+    # input_image_folder,output_folder,input_file
+    
+    parser.add_argument(
+        'input_folder',
+        type=str,
+        help='Path to input images')
+    
+    parser.add_argument(
+        'output_folder',
+        type=str,
+        help='Path to flat, YOLO-formatted dataset')
+    
+    parser.add_argument(
+        'input_file',
+        type=str,
+        help='Path to COCO dataset file (.json)')
+    
+    parser.add_argument(
+        '--create_bounding_box_editor_symlinks',
+        action='store_true',
+        help='Prepare symlinks so the whole folder is BoundingBoxEditor-friendly')        
+    
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
+
+    args = parser.parse_args()
+
+    coco_to_yolo_results = coco_to_yolo(args.input_folder,args.output_folder,args.input_file)
+    
+    if args.create_bounding_box_editor_symlinks:
+        create_yolo_symlinks(source_folder=args.output_folder,
+                             images_folder=args.output_folder + '/images',
+                             labels_folder=args.output_folder + '/labels',
+                             class_list_file=coco_to_yolo_results['class_list_filename'],
+                             class_list_output_name='object.data',
+                             force_lowercase_image_extension=True)
+    
+if __name__ == '__main__':
+    main()

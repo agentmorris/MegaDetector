@@ -756,7 +756,7 @@ def main():
         description='Module to run a TF/PT animal detection model on lots of images')
     parser.add_argument(
         'detector_file',
-        help='Path to detector model file (.pb or .pt).  Can also be MDV4, MDV5A, or MDV5B to request automatic download.')
+        help='Path to detector model file (.pb or .pt).  Can also be the strings "MDV4", "MDV5A", or "MDV5B" to request automatic download.')
     parser.add_argument(
         'image_file',
         help='Path to a single image file, a JSON file containing a list of paths to images, or a directory')
