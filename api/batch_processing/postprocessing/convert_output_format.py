@@ -12,9 +12,11 @@
 #%% Constants and imports
 
 import argparse
-import csv
 import json
+import csv
+import sys
 import os
+
 from tqdm import tqdm
 
 from api.batch_processing.postprocessing.load_api_results import load_api_results_csv
@@ -325,7 +327,12 @@ def main():
                         help='Input filename ending in .json or .csv')
     parser.add_argument('--output_path',type=str,default=None,
                         help='Output filename ending in .json or .csv (defaults to ' + \
-                            'input file, with .json/.csv replaced by .csv/.json)')
+                             'input file, with .json/.csv replaced by .csv/.json)')
+    
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
+
     args = parser.parse_args()
     
     if args.output_path is None:

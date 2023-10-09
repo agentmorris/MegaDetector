@@ -17,6 +17,8 @@
 
 import argparse
 import json
+import sys
+
 from typing import Any, Dict, Iterable, Mapping, List, Optional
 
 
@@ -188,9 +190,13 @@ def main():
     parser.add_argument(
         'output_path',
         help='Output .json file')
+
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
+        
     args = parser.parse_args()
     combine_cct_files(args.input_paths, args.output_path)
-
 
 if __name__ == '__main__':
     main()

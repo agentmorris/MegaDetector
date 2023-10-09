@@ -42,7 +42,7 @@ def add_max_conf(input_file,output_file):
 
 #%% Driver
 
-import argparse
+import sys,argparse
 
 def main():
     
@@ -51,6 +51,11 @@ def main():
                         help='Input .json file')
     parser.add_argument('output_file',type=str,
                         help='Output .json file')
+    
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
+
     args = parser.parse_args()
     add_max_conf(args.input_file, args.output_file)
 

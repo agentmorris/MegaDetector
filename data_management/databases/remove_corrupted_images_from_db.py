@@ -12,6 +12,7 @@
 import argparse
 import gc
 import json
+import sys
 import os
 import time
 
@@ -155,9 +156,9 @@ if False:
     json.dump(data_uncorrupted, open(output_file,'w'))
     
     
-#%% Command-line driver
+#%% Command-line driver 
 
-def parse_args():
+def main():
     
     parser = argparse.ArgumentParser(description = 'Remove images from a .json file that can''t be opened in TF')
 
@@ -171,13 +172,12 @@ def parse_args():
                          help='Path to store uncorrupted .json database',
                          type=str, required=True)
 
-    args = parser.parse_args()
-    return args
- 
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
 
-def main():
+    args = parser.parse_args()
     
-    args = parse_args()
     print('Reading input file')
     with open(args.input_file,'r') as f:
         data = json.load(f)

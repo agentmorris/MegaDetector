@@ -10,6 +10,7 @@
 #%% Constants and environment
 
 import json
+import sys
 import os
 from itertools import compress
 
@@ -63,6 +64,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('inputFilename')
     parser.add_argument('outputFilename')
+
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
     
     args = parser.parse_args()    
     convertJsonToStringList(args.jsonFile,args)

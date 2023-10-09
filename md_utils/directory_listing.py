@@ -225,7 +225,7 @@ def traverse_and_create_index(dir, sas_url=None, overwrite_files=False,
 
 #%% Command-line driver
 
-def parse_args(argv=sys.argv[1:]):
+if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("directory", type=str, help='Path to directory which should be traversed.')
@@ -237,12 +237,12 @@ def parse_args(argv=sys.argv[1:]):
         "'https://accname.blob.core.windows.net/bname/path/to/folder?st=...&se=...&sp=...&...'")
     parser.add_argument("--enable_overwrite", action='store_true', default=False,
                         help='If set, the script will overwrite existing index.html files.')
-    return parser.parse_args(argv)
 
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
 
-if __name__ == '__main__':
-
-    args = parse_args()
+    args = parser.parse_args()
 
     assert os.path.isdir(args.directory), "{} is not a valid directory".format(args.directory)
     assert re.match('https?://[^\.]+\.blob\.core\.windows\.net/.+', args.sas_url), "--sas_url does not " + \

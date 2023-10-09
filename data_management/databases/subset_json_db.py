@@ -12,6 +12,7 @@
     
 #%% Constants and imports
 
+import sys
 import json
 import argparse
 
@@ -91,6 +92,11 @@ def main():
     parser.add_argument('output_json', type=str, help='Output file')    
     parser.add_argument('query', type=str, help='Filename query')    
     parser.add_argument('--ignore_case', action='store_true')
+    
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
+
     args = parser.parse_args()    
     
     subset_json_db(args.input_json,args.query,args.output_json,args.ignore_case)
