@@ -40,7 +40,9 @@ dependencies = [
   "PyYAML >= 6.0.1",
   "torch >= 2.0.1",
   "torchvision >= 0.15.2",
-  "yolov5 >= 7.0.12"
+  # As of 2023.10.10, later versions of the ultralytics package break yolov5-pip
+  "ultralytics==8.0.186",
+  "yolov5 == 7.0.12"
 ]
 
 [project.urls]
