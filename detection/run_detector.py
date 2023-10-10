@@ -193,7 +193,11 @@ def get_detector_version_from_filename(detector_filename):
                             'v3':'v3.0.0',
                             'v4.1':'v4.1.0',
                             'v5a.0.0':'v5a.0.0',
-                            'v5b.0.0':'v5b.0.0'}
+                            'v5b.0.0':'v5b.0.0',
+                            'MDV5A':'v5a.0.0',
+                            'MDV5B':'v5b.0.0',
+                            'MDV4':'v4.1.0',
+                            'MDV3':'v3.0.0'}
     matches = []
     for s in known_model_versions.keys():
         if s in fn:
@@ -508,9 +512,13 @@ def main():
     group = parser.add_mutually_exclusive_group(required=True)    
     group.add_argument(
         '--image_file',
+        type=str,
+        default=None,
         help='Single file to process, mutually exclusive with --image_dir')
     group.add_argument(
         '--image_dir',
+        type=str,
+        default=None,
         help='Directory to search for images, with optional recursion by adding --recursive')
     
     parser.add_argument(
@@ -520,6 +528,8 @@ def main():
     
     parser.add_argument(
         '--output_dir',
+        type=str,
+        default=None,
         help='Directory for output images (defaults to same as input)')
     
     parser.add_argument(

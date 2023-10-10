@@ -875,6 +875,10 @@ path_utils.open_file(html_output_file)
 
 #%% Run MegaClassifier (actually, write out a script that runs MegaClassifier)
 
+# Variables that will indicate which classifiers we ran
+final_output_path_mc = None
+final_output_path_ic = None
+
 classifier_name_short = 'megaclassifier'
 threshold_str = '0.15' # 0.6
 classifier_name = 'megaclassifier_v0.1_efficientnet-b3'
@@ -1224,6 +1228,10 @@ os.chmod(output_file, st.st_mode | stat.S_IEXEC)
 
 # I do this manually, primarily because this requires a different mamba environment
 # (cameratraps-classifier) from MegaDetector's environment (cameratraps-detector).
+#
+# The next few pseudo-cells (#%) in this script are basically always run all at once, getting us
+# all the way from running the classifier to classification previews and zipped .json files that
+# are ready to upload.
 
 
 #%% Within-image classification smoothing
@@ -1270,9 +1278,15 @@ detection_confidence_threshold = 0.2
 # Which detections should we even bother over-writing?
 detection_overwrite_threshold = 0.05
 
-classification_detection_files = [    
-    final_output_path_mc,final_output_path_ic
-    ]
+classification_detection_files = []
+
+# Did we run MegaClassifier
+if final_output_path_mc is not None:
+    classification_detection_files.append(final_output_path_mc)
+    
+# Did we run the IDFG classifier?
+if final_output_path_ic is not None:
+    classification_detection_files.append(final_output_path_ic)
 
 assert all([os.path.isfile(fn) for fn in classification_detection_files])
 
@@ -1454,7 +1468,7 @@ for final_output_path in classification_detection_files:
 # ...for each file we want to smooth
 
 
-#%% Read EXIF data from all images
+#% Read EXIF data from all images
 
 from data_management import read_exif
 exif_options = read_exif.ReadExifOptions()
@@ -1477,7 +1491,7 @@ else:
                                                    options=exif_options)
 
 
-#%% Prepare COCO-camera-traps-compatible image objects for EXIF results
+#% Prepare COCO-camera-traps-compatible image objects for EXIF results
 
 import datetime    
 from data_management.read_exif import parse_exif_datetime_string
@@ -1543,7 +1557,7 @@ print('Parsed EXIF datetime information, unable to parse EXIF data from {} of {}
     len(images_without_datetime),len(exif_results)))
 
 
-#%% Assemble into sequences
+#% Assemble into sequences
 
 from collections import defaultdict
 from data_management import cct_json_utils
@@ -1562,7 +1576,7 @@ for im in tqdm(image_info):
 all_sequences = list(sorted(sequence_to_images.keys()))
 
 
-#%% Load classification results
+#% Load classification results
 
 sequence_level_smoothing_input_file = smoothed_classification_files[0]
 
@@ -1576,7 +1590,7 @@ for im in tqdm(d['images']):
     filename_to_results[im['file'].replace('\\','/')] = im
 
 
-#%% Smooth classification results over sequences (prep)
+#% Smooth classification results over sequences (prep)
 
 from md_utils.ct_utils import is_list_sorted
 
@@ -1635,7 +1649,7 @@ flipped_unclassified_confidence_value = 0.6
 min_detection_confidence_for_unclassified_flipping = 0.15
 
 
-#%% Smooth classification results over sequences (supporting functions)
+#% Smooth classification results over sequences (supporting functions)
     
 def results_for_sequence(images_this_sequence):
     """
@@ -1765,7 +1779,7 @@ def get_first_value_from_sorted_dictionary(di):
     return next(iter(di.items()))[1]
 
 
-#%% Smooth classifications at the sequence level (main loop)
+#% Smooth classifications at the sequence level (main loop)
 
 n_other_flips = 0
 n_classification_flips = 0
@@ -1884,7 +1898,7 @@ print('Flipped {} species classifications'.format(n_classification_flips))
 print('Flipped {} unclassified detections'.format(n_unclassified_flips))
     
 
-#%% Write smoothed classification results
+#% Write smoothed classification results
 
 sequence_smoothed_classification_file = sequence_level_smoothing_input_file.replace(
     '.json','_seqsmoothing.json')
@@ -1896,7 +1910,7 @@ with open(sequence_smoothed_classification_file,'w') as f:
     json.dump(d,f,indent=1)
 
 
-#%% Post-processing (post-classification, post-within-image-and-within-sequence-smoothing)
+#% Post-processing (post-classification, post-within-image-and-within-sequence-smoothing)
 
 options = PostProcessingOptions()
 options.image_base_dir = input_path
@@ -1928,7 +1942,7 @@ ppresults = process_batch_results(options)
 path_utils.open_file(ppresults.output_html_file)
 
 
-#%% Zip .json files
+#% Zip .json files
 
 from md_utils.path_utils import parallel_zip_files
 

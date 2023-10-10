@@ -184,7 +184,7 @@ def render_image_pair(fn,image_pairs,category_folder,options,pairwise_options):
 
     output_image_fn = path_utils.flatten_path(fn)
     output_image_path = os.path.join(category_folder,output_image_fn)
-    im.save(output_image_path)           
+    im.save(output_image_path)
     return output_image_path
 
 # ...def render_image_pair()
