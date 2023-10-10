@@ -360,7 +360,7 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
                                 include_exif_data=False):
     """
     Args
-    - model_file: str,quiet path to .pb model file
+    - model_file: path to model file, or supported model string (e.g. "MDV5A")
     - image_file_names: list of strings (image filenames), a single image filename, 
                         a folder to recursively search for images in, or a .json file containing
                         a list of images.
