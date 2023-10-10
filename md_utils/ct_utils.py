@@ -71,7 +71,7 @@ def truncate_float(x, precision=3):
 
 def args_to_object(args: argparse.Namespace, obj: object) -> None:
     """
-    Copies all fields from a Namespace (i.e., the output from parse_args) to an
+    Copies all fields from a Namespace (typically the output from parse_args) to an
     object. Skips fields starting with _. Does not check existence in the target
     object.
 

@@ -16,7 +16,9 @@
 #%% Imports
 
 import os
+import sys
 import json
+
 from tqdm import tqdm
 from collections import defaultdict 
 
@@ -121,10 +123,15 @@ import argparse
 
 def main():
 
-    parser = argparse.ArgumentParser(description=('"Convert" a COCO Camera Traps .json file to .csv (read code to see why "convert" is in quotes)'))
+    parser = argparse.ArgumentParser(description=(
+        '"Convert" a COCO Camera Traps .json file to .csv (read code to see why "convert" is in quotes)'))
 
     parser.add_argument('input_file', type=str)                        
     parser.add_argument('--output_file', type=str, default=None)
+
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
     
     args = parser.parse_args()
     cct_to_csv(args.input_file,args.output_file)

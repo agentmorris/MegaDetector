@@ -12,17 +12,19 @@
 #%% Constants and imports
 
 import argparse
-from collections import defaultdict
-from itertools import compress
-import os
 import pickle
 import shutil
-from typing import Any, Dict, List, Mapping, Sequence, Set
 import zipfile
+import sys
+import os
+
+from collections import defaultdict
+from itertools import compress
+from tqdm import tqdm
+from typing import Any, Dict, List, Mapping, Sequence, Set
 
 import pandas as pd
 import numpy as np
-from tqdm import tqdm
 
 from md_utils import url_utils
 
@@ -788,6 +790,11 @@ def main():
     # Read command line inputs (absolute path)
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file')
+        
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
+
     args = parser.parse_args()
     input_file = args.input_file
 

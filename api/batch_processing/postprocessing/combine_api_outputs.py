@@ -28,6 +28,7 @@
 #%% Constants and imports
 
 import argparse
+import sys
 import json
 from typing import Any, Dict, Iterable, Mapping, List, Optional
 
@@ -126,6 +127,9 @@ def combine_api_output_dictionaries(input_dicts: Iterable[Mapping[str, Any]],
 
         # Merge image lists, checking uniqueness
         for im in input_dict['images']:
+            # Normalize path separators so we don't treat images as different if they
+            # were processed on different OS's
+            im['file'] = im['file'].replace('\\','/')
             im_file = im['file']
             if require_uniqueness:
                 assert im_file not in images, f'Duplicate image: {im_file}'
@@ -218,6 +222,11 @@ def main():
     parser.add_argument(
         'output_path',
         help='Output .json file')
+    
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
+
     args = parser.parse_args()
     combine_api_output_files(args.input_paths, args.output_path)
 

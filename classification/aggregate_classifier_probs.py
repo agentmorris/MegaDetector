@@ -103,6 +103,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
+    
     args = _parse_args()
     main(classifier_results_csv_path=args.classifier_results_csv,
          target_mapping_json_path=args.target_mapping,

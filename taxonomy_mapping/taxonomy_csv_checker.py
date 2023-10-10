@@ -19,10 +19,13 @@
 
 #%% Imports
 
+import sys
 import argparse
-from typing import Optional
+
 import networkx as nx
 import pandas as pd
+
+from typing import Optional
 
 from taxonomy_mapping.taxonomy_graph import TaxonNode, dag_to_tree
 
@@ -132,6 +135,11 @@ if __name__ == '__main__':
     parser.add_argument(
         'taxonomy_csv_path',
         help='path to taxonomy CSV file')
+    
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
+    
     args = parser.parse_args()
 
     check_taxonomy_csv(args.taxonomy_csv_path)

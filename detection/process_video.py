@@ -10,6 +10,7 @@
 #%% Imports
 
 import os
+import sys
 import tempfile
 import argparse
 import itertools
@@ -150,6 +151,9 @@ def process_video(options):
             detector_file=options.model_file,
             custom_metadata={'video_frame_rate':Fs})
 
+    
+    ## (Optionally) render output video
+    
     if options.render_output_video:
         
         # Render detections to images
@@ -186,9 +190,14 @@ def process_video(options):
                 print('Warning: error deleting rendered frames from folder {}:\n{}'.format(
                     rendering_output_dir,str(e)))
                 pass
-        
-    # (Optionally) delete the frames on which we ran MegaDetector
+    
+    # ...if we're rendering video
+    
+    
+    ## (Optionally) delete the extracted frames
+    
     if not options.keep_extracted_frames:
+        
         try:
             if options.force_extracted_frame_folder_deletion:
                 print('Recursively deleting frame output folder {}'.format(frame_output_folder))
@@ -213,9 +222,6 @@ def process_video_folder(options):
     
     ## Validate options
 
-    assert not options.render_output_video, \
-        'Video rendering is not supported when rendering a folder'
-       
     assert os.path.isdir(options.input_video_file), \
         '{} is not a folder'.format(options.input_video_file)
            
@@ -234,8 +240,17 @@ def process_video_folder(options):
         frame_output_folder = options.frame_folder
     else:
         tempdir = os.path.join(tempfile.gettempdir(), 'process_camera_trap_video')
+        os.makedirs(tempdir,exist_ok=True)
+        
+        # TODO: see above; this is a lazy fix to a permissions issue
+        try:
+            os.chmod(tempdir,0o777)
+        except Exception:
+            pass
+
         frame_output_folder = os.path.join(
             tempdir, os.path.basename(options.input_video_file) + '_frames_' + str(uuid1()))
+
     os.makedirs(frame_output_folder, exist_ok=True)
 
     print('Extracting frames')
@@ -283,7 +298,103 @@ def process_video_folder(options):
             custom_metadata={'video_frame_rate':Fs})
     
     
-    ## (Optionally) delete the frames on which we ran MegaDetector
+    ## Convert frame-level results to video-level results
+
+    print('Converting frame-level results to video-level results')
+    frame_results_to_video_results(frames_json,video_json)
+
+
+    ## (Optionally) render output videos
+    
+    if options.render_output_video:
+
+        # Render detections to images
+        if options.frame_rendering_folder is not None:
+            frame_rendering_output_dir = options.frame_rendering_folder
+        else:
+            frame_rendering_output_dir = os.path.join(
+                tempdir, os.path.basename(options.input_video_file) + '_detections')
+        
+        # TODO: keep track of whether we created this folder, delete if we're deleting the rendered
+        # frames and we created the folder, and the output files aren't in the same folder.  For now,
+        # we're just deleting the rendered frames and leaving the empty folder around in this case.
+        os.makedirs(frame_rendering_output_dir,exist_ok=True)
+        
+        detected_frame_files = visualize_detector_output.visualize_detector_output(
+            detector_output_path=frames_json,
+            out_dir=frame_rendering_output_dir,
+            images_dir=frame_output_folder,
+            confidence_threshold=options.rendering_confidence_threshold,
+            preserve_path_structure=True,
+            output_image_width=-1)
+        
+        # Choose an output folder
+        output_folder_is_input_folder = False
+        if options.output_video_file is not None:
+            if os.path.isfile(options.output_video_file):
+                raise ValueError('Rendering videos for a folder, but an existing file was specified as output')
+            elif options.output_video_file == options.input_video_file:
+                output_folder_is_input_folder = True
+                output_video_folder = options.input_video_file
+            else:
+                os.makedirs(options.output_video_file,exist_ok=True)
+                output_video_folder = options.output_video_file
+        else:
+            output_folder_is_input_folder = True
+            output_video_folder = options.input_video_file
+                                
+        # For each video
+        # i_video=0; input_video_file_abs = video_filenames[i_video]
+        for i_video,input_video_file_abs in enumerate(video_filenames):
+            
+            video_fs = Fs[i_video]
+            
+            input_video_file_relative = os.path.relpath(input_video_file_abs,options.input_video_file)
+            video_frame_output_folder = os.path.join(frame_rendering_output_dir,input_video_file_relative)
+            assert os.path.isdir(video_frame_output_folder), \
+                'Could not find frame folder for video {}'.format(input_video_file_relative)
+            
+            # Find the corresponding rendered frame folder
+            video_frame_files = [fn for fn in detected_frame_files if \
+                                 fn.startswith(video_frame_output_folder)]
+            assert len(video_frame_files) > 0, 'Could not find rendered frames for video {}'.format(
+                input_video_file_relative)
+            
+            from md_utils.path_utils import insert_before_extension
+            
+            # Select the output filename for the rendered video
+            if output_folder_is_input_folder:
+                video_output_file = insert_before_extension(input_video_file_abs,'annotated','_')
+            else:
+                video_output_file = os.path.join(output_video_folder,input_video_file_relative)
+            
+            os.makedirs(os.path.dirname(video_output_file),exist_ok=True)
+            
+            # Create the output video            
+            print('Rendering detections for video {} to {} at {} fps'.format(input_video_file_relative,
+                                                              video_output_file,video_fs))
+            frames_to_video(video_frame_files, video_fs, video_output_file, codec_spec=options.fourcc)
+            
+    
+        # ...for each video
+        
+        # Possibly clean up rendered frames
+        if not options.keep_rendered_frames:
+            try:
+                if options.force_rendered_frame_folder_deletion:
+                    shutil.rmtree(frame_rendering_output_dir)
+                else:
+                    for rendered_frame_fn in detected_frame_files:
+                        os.remove(rendered_frame_fn)
+            except Exception as e:
+                print('Warning: error deleting rendered frames from folder {}:\n{}'.format(
+                    frame_rendering_output_dir,str(e)))
+                pass
+        
+    # ...if we're rendering video
+    
+    
+    ## (Optionally) delete the extracted frames
     
     if not options.keep_extracted_frames:
         try:
@@ -298,13 +409,8 @@ def process_video_folder(options):
             print('Warning: error deleting frames from folder {}:\n{}'.format(
                 frame_output_folder,str(e)))
             pass
+        
     
-
-    ## Convert frame-level results to video-level results
-
-    print('Converting frame-level results to video-level results')
-    frame_results_to_video_results(frames_json,video_json)
-
 # ...process_video_folder()
 
 
@@ -355,23 +461,33 @@ def options_to_command(options):
 #%% Interactive driver
 
 if False:    
-    
+        
     #%% Process a folder of videos
     
-    model_file = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')
-    input_dir = r'g:\temp\test\input-video'
-    frame_folder = r'g:\temp\test\extracted-frames'
-    rendering_folder = r'g:\temp\test\rendered-frames'
-    output_json_file = r'g:\temp\test\output.json'
+    model_file = 'MDV5A'
+    input_dir = r'c:\git\MegaDetector\test_images\test_images'    
+    frame_folder = r'g:\temp\video_test\frames'
+    rendering_folder = r'g:\temp\video_test\rendered-frames'
+    output_json_file = r'g:\temp\video_test\video-test.json'
+    output_video_folder = r'g:\temp\video_test\output_videos'    
     
     print('Processing folder {}'.format(input_dir))
     
     options = ProcessVideoOptions()    
     options.model_file = model_file
     options.input_video_file = input_dir
+    options.output_video_file = output_video_folder
     options.frame_folder = frame_folder
     options.output_json_file = output_json_file
     options.frame_rendering_folder = rendering_folder
+    options.render_output_video = True
+    options.keep_extracted_frames = True
+    options.keep_rendered_frames = True
+    options.recursive = True
+    options.reuse_frames_if_available = True
+    options.reuse_results_if_available = True
+    # options.confidence_threshold = 0.15
+    # options.fourcc = 'mp4v'        
     
     cmd = options_to_command(options)
     print(cmd)
@@ -384,7 +500,7 @@ if False:
     #%% Process a single video
 
     fn = os.path.expanduser('~/tmp/video-test/test-video.mp4')
-    model_file = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')    
+    model_file = 'MDV5A'
     input_video_file = fn
     frame_folder = os.path.expanduser('~/tmp/video-test/frames')
     rendering_folder = os.path.expanduser('~/tmp/video-test/rendered-frames')
@@ -402,41 +518,7 @@ if False:
     # import clipboard; clipboard.copy(cmd)
     
     if False:        
-        process_video(options)
-    
-    
-    #%% Render a folder of videos, one file at a time
-
-    model_file = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')
-    input_dir = os.path.expanduser('~/Downloads/bird-video')
-    frame_folder = os.path.expanduser('~/Downloads/bird-video-frames')
-    rendering_folder = os.path.expanduser('~/Downloads/bird-video-frames-rendered')
-    
-    print('Processing folder {}'.format(input_dir))
-    
-    options = ProcessVideoOptions()    
-    options.model_file = model_file
-    options.frame_folder = frame_folder
-    options.frame_rendering_folder = rendering_folder
-    options.render_output_video = True
-    options.rendering_confidence_threshold = 0.01
-    options.fourcc = 'mp4v'
-    
-    from detection import video_utils
-    video_files = video_utils.find_videos(input_dir)
-    video_files = [fn for fn in video_files if 'detections' not in fn]
-
-    commands = []    
-    for video_fn in video_files:
-        options.input_video_file = video_fn    
-        options.output_json_file = video_fn + '-md_results.json'
-        cmd = options_to_command(options)
-        commands.append(cmd)
-        
-    s = '\n\n'.join(commands) + '\n\n'
-    print(s)
-    import clipboard; clipboard.copy(s)
-    
+        process_video(options)    
             
     
 #%% Command-line driver
@@ -470,7 +552,7 @@ def main():
 
     parser.add_argument('--output_video_file', type=str,
                         default=None, help='video output file (or folder), defaults to '\
-                            '[video file].mp4 for files, or [video file]_annotated] for folders')
+                            '[video file].mp4 for files, or [video file]_annotated for folders')
 
     parser.add_argument('--keep_extracted_frames',
                        action='store_true', help='Disable the deletion of extracted frames')
@@ -530,6 +612,10 @@ def main():
                             'the addition of "1" to all category IDs, so your class mapping should start '\
                             'at zero.')
 
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
+        
     args = parser.parse_args()
     options = ProcessVideoOptions()
     args_to_object(args,options)
