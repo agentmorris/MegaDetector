@@ -48,13 +48,15 @@ class MDTestOptions:
     force_data_download = False
     force_data_unzip = False
     test_image_subdir = 'md-test-images'
-    value_deviation_is_error = False
+    max_coord_error = 0.001
+    max_conf_error = 0.005
     cli_working_dir = None
 
 
 #%% Support functions
 
 def get_expected_results_filename(gpu_is_available):
+    
     if gpu_is_available:
         return 'md-test-results-gpu-pt1.10.1.json'
     else:
@@ -235,14 +237,16 @@ def run_python_tests(options):
 
     ## Verify results
 
+    #%%
+    
     # Read expected results
     expected_results_filename = get_expected_results_filename(is_gpu_available(verbose=False))
     
     with open(os.path.join(options.scratch_dir,expected_results_filename),'r') as f:
         expected_results = json.load(f)
             
-    filename_to_results = {im['file']:im for im in results_from_file['images']}
-    filename_to_results_expected = {im['file']:im for im in expected_results['images']}
+    filename_to_results = {im['file'].replace('\\','/'):im for im in results_from_file['images']}
+    filename_to_results_expected = {im['file'].replace('\\','/'):im for im in expected_results['images']}
     
     assert len(filename_to_results) == len(filename_to_results_expected), \
         'Error: expected {} files in results, found {}'.format(
@@ -254,7 +258,7 @@ def run_python_tests(options):
     
     # fn = next(iter(filename_to_results.keys()))
     for fn in filename_to_results.keys():
-        
+                
         actual_image_results = filename_to_results[fn]
         expected_image_results = filename_to_results_expected[fn]
         
@@ -292,15 +296,20 @@ def run_python_tests(options):
         
     # ...for each image
     
-    if options.value_deviation_is_error:
-        assert max_conf_error == 0.0 and max_coord_error == 0.0, \
-            'Expecting results to be identical to canonical results, but deviations are {},{}'.format(
-                max_conf_error,max_coord_error)
-    else:
-        print('Max conf error: {}'.format(max_conf_error))
-        print('Max coord error: {}'.format(max_coord_error))
+    #%%
     
+    assert max_conf_error <= options.max_conf_error, \
+        'Confidence error {} is greater than allowable ({})'.format(
+            max_conf_error,options.max_conf_error)
     
+    assert max_coord_error <= options.max_coord_error, \
+        'Coord error {} is greater than allowable ({})'.format(
+            max_coord_error,options.max_coord_error)
+    
+    print('Max conf error: {}'.format(max_conf_error))
+    print('Max coord error: {}'.format(max_coord_error))
+
+
     ## Postprocess results
     
     from api.batch_processing.postprocessing.postprocess_batch_results import \
@@ -457,6 +466,8 @@ if False:
 
 def main():
 
+    options = MDTestOptions()
+    
     parser = argparse.ArgumentParser(
         description='MegaDetector test suite')
     
@@ -492,10 +503,19 @@ def main():
         help='Force extraction of all files in the test data file, even if they\'re already available')
     
     parser.add_argument(
-        '--value_deviation_is_error',
-        action='store_true',
-        help='Treat any deviation from expected values as an error')
+        '--max_conf_error',
+        type=float,
+        default=options.max_conf_error,
+        help='Maximum tolerable confidence value deviation from expected (default {})'.format(
+            options.max_conf_error))
     
+    parser.add_argument(
+        '--max_coord_error',
+        type=float,
+        default=options.max_coord_error,
+        help='Maximum tolerable coordinate value deviation from expected (default {})'.format(
+            options.max_coord_error))
+
     parser.add_argument(
         '--cli_working_dir',
         type=str,
@@ -503,15 +523,14 @@ def main():
         help='Working directory for CLI tests')
         
     args = parser.parse_args()
-    
-    options = MDTestOptions()
-    
+        
     options.disable_gpu = args.disable_gpu
     options.cpu_execution_is_error = args.cpu_execution_is_error
     options.disable_video_tests = args.disable_video_tests
     options.scratch_dir = args.scratch_dir
     options.force_data_download = args.force_data_download
-    options.value_deviation_is_error = args.value_deviation_is_error
+    options.max_conf_error = args.max_conf_error
+    options.max_coord_error = args.max_coord_error
     options.cli_working_dir = args.cli_working_dir
 
     run_tests(options)
