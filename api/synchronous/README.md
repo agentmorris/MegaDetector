@@ -85,9 +85,14 @@ The following will run the API on port 5050, but you can change that to the port
     sudo docker run -it -p 5050:1213 $API_DOCKER_IMAGE
     ```
 
+## Test the API with curl
+
+`curl -F image=@some_image.jpg http://localhost:5050/v1/camera-trap/sync/detect`
+
+
 ## Test the API in Postman
 
-- To test in Postman, in a Postman tab, enter the URL of the API, e.g.:
+- In a Postman tab, enter the URL of the API, e.g.:
 
   `http://100.100.200.200:5050/v1/camera-trap/sync/detect`
   

@@ -18,7 +18,7 @@ cd ../
 
 # Copy other required dependencies from our repo 
 mkdir -p animal_detection_api/md_utils/
-cp ../../../md_utils.py/ct_utils.py animal_detection_api/md_utils/
+cp ../../../md_utils/* animal_detection_api/md_utils/
 
 mkdir -p animal_detection_api/md_visualization/
 cp ../../../md_visualization/visualization_utils.py animal_detection_api/md_visualization/

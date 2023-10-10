@@ -10,7 +10,6 @@ EXPOSE  6379
 
 RUN apt-get update --fix-missing \
     && apt-get install -y software-properties-common \
-    && add-apt-repository ppa:deadsnakes/ppa \
     && apt-get update \
     && apt-get install -y apt-utils \
         supervisor \
@@ -83,7 +82,7 @@ RUN true
 COPY ./startup.sh /
 RUN chmod +x /startup.sh
 
-ENV PYTHONPATH="${PYTHONPATH}:/app/animal_detection_api/:/app/yolov5/"
+ENV PYTHONPATH="/app/animal_detection_api/:/app/yolov5/"
 ENV PYTHONUNBUFFERED=TRUE
 
 # Expose the API port
