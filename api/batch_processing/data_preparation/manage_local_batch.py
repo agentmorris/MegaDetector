@@ -671,7 +671,20 @@ html_output_file = ppresults.output_html_file
 path_utils.open_file(html_output_file)
 
 
+
 #%% RDE (sample directory collapsing)
+
+#
+# The next few cells are about repeat detection elimination; if you want to skip this,
+# and still do other stuff in this notebook (e.g. running classifiers), that's fine, but
+# the rest of the notebook weakly assumes you've done this.  Specifically, it looks for
+# the variable "filtered_api_output_file" (a file produced by the RDE process).  If you
+# don't run the RDE cells, just change "filtered_api_output_file" to "combined_api_output_file"
+# (the raw output from MegaDetector).  Then it will be like all this RDE stuff doesn't exist.
+#
+# Though FWIW, once you're sufficiently power-user-ish to use this notebook, RDE is almost
+# always worth it.
+#
 
 def remove_overflow_folders(relative_path):
     """
@@ -809,14 +822,15 @@ suspiciousDetectionResults = repeat_detections_core.find_repeat_detections(combi
 # If you run this line, it will open the folder up in your file browser
 path_utils.open_file(os.path.dirname(suspiciousDetectionResults.filterFile))
 
-# If you don't want to do the RDE step, but you still want to do stuff below this 
-# (e.g. run classifiers), that's fine, but don't just blast through this cell.  You're 
-# implicitly telling the notebook that you looked at everything in that folder, and confirmed
-# there were no red boxes on animals.
 #
-# Instead, look below where it refers to "filtered_api_output_file" (which is produced
-# by the RDE process), and change it to "combined_api_output_file" (the raw output
-# from MegaDetector).  Then it will be like all this RDE stuff doesn't exist.
+# If you ran the previous cell, but then you change your mind and you don't want to do 
+# the RDE step, that's fine, but don't just blast through this cell once you've run the 
+# previous cell.  If you do that, you're implicitly telling the notebook that you looked 
+# at everything in that folder, and confirmed there were no red boxes on animals.
+#
+# Instead, either change "filtered_api_output_file" below to "combined_api_output_file", 
+# or delete *all* the images in the filtering folder.
+#
 
 
 #%% Re-filtering
