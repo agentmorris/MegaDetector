@@ -452,7 +452,7 @@ If you have an Nvidia GPU, and it's being utilized correctly, near the beginning
 
 `GPU available: True`
 
-If you have an Nvidia GPU and you see "GPU available: False", your GPU environment may not be set up correctly.  95% of the time, this is fixed by <a href="https://www.nvidia.com/en-us/geforce/drivers/">updating your Nvidia driver"</a> and rebooting.  If you have an Nvidia GPU, and you've installed the latest driver, and you've rebooted, and you're still seeing "GPU available: False", <a href="mailto:cameratraps@lila.science">email us</a>.
+If you have an Nvidia GPU and you see "GPU available: False", your GPU environment may not be set up correctly.  95% of the time, this is fixed by <a href="https://www.nvidia.com/en-us/geforce/drivers/">updating your Nvidia driver</a> and rebooting.  If you have an Nvidia GPU, and you've installed the latest driver, and you've rebooted, and you're still seeing "GPU available: False", <a href="mailto:cameratraps@lila.science">email us</a>.
 
 #### Slightly modified run_detector_batch.py instructions for Linux/Mac
 
