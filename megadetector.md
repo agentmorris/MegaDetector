@@ -300,9 +300,7 @@ Pro tip: rather than updating your PYTHONPATH every time you start a new shell, 
 
 #### Mac instructions for git/Python stuff
 
-These are instructions for <i>Intel</i> Macs; see <a href="#regarding-m1-mac-support">below</a> for a note on M1 Mac support.
-
-If you have installed Mambaforge on Linux, you are probably always at an Mambaforge prompt; i.e., you should see "(base)" at your command prompt.  Assuming you see that, the first time you set all of this up, and run:
+If you have installed Mambaforge on Mac, you are probably always at an Mambaforge prompt; i.e., you should see "(base)" at your command prompt.  Assuming you see that, the first time you set all of this up, and run:
 
 ```batch
 mkdir ~/git
@@ -310,7 +308,7 @@ cd ~/git
 git clone https://github.com/ecologize/yolov5/
 git clone https://github.com/agentmorris/MegaDetector
 cd ~/git/MegaDetector
-mamba env create --file envs/environment-detector-mac.yml
+./envs/md-mac-env-setup.sh
 mamba activate cameratraps-detector
 export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
@@ -332,10 +330,6 @@ export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
 Pro tip: rather than updating your PYTHONPATH every time you start a new shell, you can add the "export" line to your .bashrc file.
-
-##### Regarding M1 Mac support
-
-M1 Macs are not officially supported right now, but with a bit of work, you can not only run MegaDetector on an M1 Mac, you can even use the M1 for accelerated inference.  Details about doing this are on <a href="https://github.com/agentmorris/MegaDetector/issues/297">this issue</a>.  YMMV.
 
 
 ### 4. Hooray, we finally get to run MegaDetector!

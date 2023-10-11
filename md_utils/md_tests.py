@@ -77,6 +77,18 @@ def get_expected_results_filename(gpu_is_available):
     else:
         assert torch_version.startswith('2'), 'Unknown torch version: {}'.format(torch_version)
         pt_string = 'pt2.x'
+    
+    # A hack for now to account for the fact that even with acceleration enabled and PT2 
+    # installed, Apple silicon appears to provide the same results as CPU/PT1 inference
+    try:
+        import torch
+        m1_inference = torch.backends.mps.is_built and torch.backends.mps.is_available()
+        if m1_inference:
+            hw_string = 'cpu'
+        pt_string = 'pt1.10.1'
+    except Exception:
+        pass
+    
     return 'md-test-results-{}-{}.json'.format(hw_string,pt_string)
     
     
@@ -158,7 +170,7 @@ def download_test_data(options):
 
 def is_gpu_available(verbose=True):
     """
-    Check whether CUDA is available.
+    Check whether a GPU (including M1/M2 MPS) is available.
     """
     
     # Import torch inside this function, so we have a chance to set CUDA_VISIBLE_DEVICES
@@ -166,12 +178,23 @@ def is_gpu_available(verbose=True):
     import torch
     gpu_available = torch.cuda.is_available()
     
-    if verbose:    
-        print('CUDA available: {}'.format(gpu_available))
-        device_ids = list(range(torch.cuda.device_count()))
-        if len(device_ids) > 1:
-            print('Found multiple devices: {}'.format(str(device_ids)))
+    if gpu_available:
+        if verbose:
+            print('CUDA available: {}'.format(gpu_available))
+            device_ids = list(range(torch.cuda.device_count()))
+            if len(device_ids) > 1:
+                print('Found multiple devices: {}'.format(str(device_ids)))
+    else:
+        try:
+            gpu_available = torch.backends.mps.is_built and torch.backends.mps.is_available()
+        except AttributeError:
+            pass
+        if gpu_available:
+            print('Metal performance shaders available')
     
+    if not gpu_available:
+        print('No GPU available')
+        
     return gpu_available            
         
     
