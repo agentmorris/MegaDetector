@@ -42,11 +42,14 @@ class MDTestOptions:
     
     disable_gpu = False
     cpu_execution_is_error = False
-    disable_video_tests = False
+    skip_video_tests = False
+    skip_python_tests = False
+    skip_cli_tests = False
     scratch_dir = None
     test_data_url = 'https://lila.science/public/md-test-package.zip'
     force_data_download = False
     force_data_unzip = False
+    warning_mode = False
     test_image_subdir = 'md-test-images'
     max_coord_error = 0.001
     max_conf_error = 0.005
@@ -237,8 +240,6 @@ def run_python_tests(options):
 
     ## Verify results
 
-    #%%
-    
     # Read expected results
     expected_results_filename = get_expected_results_filename(is_gpu_available(verbose=False))
     
@@ -272,9 +273,17 @@ def run_python_tests(options):
         actual_detections = actual_image_results['detections']
         expected_detections = expected_image_results['detections']
         
+        s = 'expected {} detections for file {}, found {}'.format(
+            len(expected_detections),fn,len(actual_detections))
+        s += '\nExpected results file: {}\nActual results file: {}'.format(
+            expected_results_filename,inference_output_file)
+        
+        if options.warning_mode:
+            if len(actual_detections) != len(expected_detections):
+                print('Warning: {}'.format(s))
+            continue
         assert len(actual_detections) == len(expected_detections), \
-            'Error: expected {} detections for file {}, found {}'.format(
-                len(expected_detections),fn,len(actual_detections))
+            'Error: {}'.format(s)
         
         # i_det = 0
         for i_det in range(0,len(actual_detections)):
@@ -296,16 +305,16 @@ def run_python_tests(options):
         
     # ...for each image
     
-    #%%
-    
-    assert max_conf_error <= options.max_conf_error, \
-        'Confidence error {} is greater than allowable ({})'.format(
-            max_conf_error,options.max_conf_error)
-    
-    assert max_coord_error <= options.max_coord_error, \
-        'Coord error {} is greater than allowable ({})'.format(
-            max_coord_error,options.max_coord_error)
-    
+    if not options.warning_mode:
+        
+        assert max_conf_error <= options.max_conf_error, \
+            'Confidence error {} is greater than allowable ({})'.format(
+                max_conf_error,options.max_conf_error)
+        
+        assert max_coord_error <= options.max_coord_error, \
+            'Coord error {} is greater than allowable ({})'.format(
+                max_coord_error,options.max_coord_error)
+        
     print('Max conf error: {}'.format(max_conf_error))
     print('Max coord error: {}'.format(max_coord_error))
 
@@ -366,7 +375,11 @@ def run_cli_tests(options):
     model_file = 'MDV5A'
     image_fn = os.path.join(options.scratch_dir,options.test_images[0])
     output_dir = os.path.join(options.scratch_dir,'single_image_test')
-    cmd = 'python detection/run_detector.py {} --image_file {} --output_dir {}'.format(
+    if options.cli_working_dir is None:
+        cmd = 'python -m detection.run_detector'
+    else:
+        cmd = 'python detection/run_detector.py'
+    cmd += ' {} --image_file {} --output_dir {}'.format(
         model_file,image_fn,output_dir)
     print('Running: {}'.format(cmd))
     cmd_results = execute_and_print(cmd)
@@ -386,9 +399,14 @@ def run_cli_tests(options):
     image_folder = os.path.join(options.scratch_dir,'md-test-images')
     assert os.path.isdir(image_folder), 'Test image folder {} is not available'.format(image_folder)
     inference_output_file = os.path.join(options.scratch_dir,'folder_inference_output.json')
-    cmd = 'python detection/run_detector_batch.py {} {} {} --recursive'.format(
+    if options.cli_working_dir is None:
+        cmd = 'python -m detection.run_detector_batch'
+    else:
+        cmd = 'python detection/run_detector_batch.py'
+    cmd += ' {} {} {} --recursive'.format(
         model_file,image_folder,inference_output_file)
-    cmd += ' --output_relative_filenames --quiet --include_image_size --include_image_timestamp --include_exif_data'
+    cmd += ' --output_relative_filenames --quiet --include_image_size'
+    cmd += ' --include_image_timestamp --include_exif_data'
     print('Running: {}'.format(cmd))
     cmd_results = execute_and_print(cmd)
     
@@ -402,14 +420,17 @@ def run_cli_tests(options):
     
     postprocessing_output_dir = os.path.join(options.scratch_dir,'postprocessing_output_cli')
     
-    cmd = 'python api/batch_processing/postprocessing/postprocess_batch_results.py {} {}'.format(
+    if options.cli_working_dir is None:
+        cmd = 'python -m api.batch_processing.postprocessing.postprocess_batch_results'
+    else:
+        cmd = 'python api/batch_processing/postprocessing/postprocess_batch_results.py'
+    cmd += ' {} {}'.format(
         inference_output_file,postprocessing_output_dir)
     cmd += ' --image_base_dir {}'.format(image_folder)
     print('Running: {}'.format(cmd))
     cmd_results = execute_and_print(cmd)
                 
 # ...def run_cli_tests(...)
-
 
 
 #%% Main test wrapper
@@ -431,13 +452,15 @@ def run_tests(options):
     
     # If the GPU should be disabled, verify that it is
     if options.disable_gpu:
-        assert (not gpu_available), 'Oops, CPU execution specified, but the GPU appears to be available'
+        assert (not gpu_available), 'CPU execution specified, but the GPU appears to be available'
         
     # Run python tests
-    run_python_tests(options)
+    if not options.skip_python_tests:
+        run_python_tests(options)
     
     # Run CLI tests
-    run_cli_tests(options)
+    if not options.skip_cli_tests:
+        run_cli_tests(options)
 
 
 #%% Interactive driver
@@ -488,9 +511,19 @@ def main():
         help='Directory for temporary storage (defaults to system temp dir)')
     
     parser.add_argument(
-        '--disable_video_tests',
+        '--skip_video_tests',
         action='store_true',
-        help='Disable tests related to video (which can be slow)')
+        help='Skip tests related to video (which can be slow)')
+        
+    parser.add_argument(
+        '--skip_python_tests',
+        action='store_true',
+        help='Skip python tests')
+        
+    parser.add_argument(
+        '--skip_cli_tests',
+        action='store_true',
+        help='Skip CLI tests')
         
     parser.add_argument(
         '--force_data_download',
@@ -501,6 +534,11 @@ def main():
         '--force_data_unzip',
         action='store_true',
         help='Force extraction of all files in the test data file, even if they\'re already available')
+    
+    parser.add_argument(
+        '--warning_mode',
+        action='store_true',
+        help='Turns numeric/content errors into warnings')
     
     parser.add_argument(
         '--max_conf_error',
@@ -526,8 +564,11 @@ def main():
         
     options.disable_gpu = args.disable_gpu
     options.cpu_execution_is_error = args.cpu_execution_is_error
-    options.disable_video_tests = args.disable_video_tests
+    options.skip_video_tests = args.skip_video_tests
+    options.skip_python_tests = args.skip_python_tests
+    options.skip_cli_tests = args.skip_cli_tests
     options.scratch_dir = args.scratch_dir
+    options.warning_mode = args.warning_mode
     options.force_data_download = args.force_data_download
     options.max_conf_error = args.max_conf_error
     options.max_coord_error = args.max_coord_error
@@ -538,4 +579,3 @@ def main():
     
 if __name__ == '__main__':
     main()
-

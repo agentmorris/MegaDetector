@@ -37,9 +37,14 @@ image_file_names = path_utils.find_images(image_folder,recursive=True)
 # This will automatically download MDv5a to the system temp folder;
 # you can also specify a filename explicitly, or set the $MDV5A
 # environment variable to point to the model file.
-results = load_and_run_detector_batch('MDV5A', image_file_names)
+detector_filename = 'MDV5A'
 
-# Write results as relative filenames, this is what Timelapse
-# and other downstream tools expect.
-write_results_to_file(results,output_file,relative_path_base=image_folder)
+results = load_and_run_detector_batch(detector_filename, image_file_names, quiet=True)
+
+# Write results as relative filenames; this is what Timelapse
+# and other downstream tools expect.  The detector file is being
+# passed here only so the version information can get written to the 
+# output file. 
+write_results_to_file(results,output_file,relative_path_base=image_folder,
+    detector_file=detector_filename)
 

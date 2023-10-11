@@ -5,10 +5,11 @@ requires = [
 
 [project]
 name = "megadetector"
-version = "5.0.4"
+version = "5.0.5"
 description = "MegaDetector is an AI model that helps conservation folks spend less time doing boring things with camera trap images."
 readme = "README-package.md"
-requires-python = ">=3.9"
+# As of 2023.10.10, PyTorch isn't installable on Python 3.12
+requires-python = ">=3.9,<3.12"
 license = {file = "LICENSE"}
 keywords = ["camera traps", "conservation", "wildlife", "ai"]
 authors = [
@@ -41,7 +42,7 @@ dependencies = [
   "torch >= 2.0.1",
   "torchvision >= 0.15.2",
   # As of 2023.10.10, later versions of the ultralytics package break yolov5-pip
-  "ultralytics==8.0.186",
+  "ultralytics == 8.0.186",
   "yolov5 == 7.0.12"
 ]
 
