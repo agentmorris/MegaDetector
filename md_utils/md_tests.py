@@ -59,6 +59,11 @@ class MDTestOptions:
 #%% Support functions
 
 def get_expected_results_filename(gpu_is_available):
+    """
+    Expected results vary just a little across inference environments, particularly
+    between PT 1.x and 2.x, so when making sure things are working acceptably, we 
+    compare to a reference file that matches the current environment.
+    """
     
     if gpu_is_available:
         hw_string = 'gpu'
@@ -76,6 +81,9 @@ def get_expected_results_filename(gpu_is_available):
     
     
 def download_test_data(options):
+    """
+    Download the test zipfile if necessary, unzip if necessary.
+    """
     
     if options.scratch_dir is None:        
         tempdir_base = tempfile.gettempdir()
@@ -149,7 +157,10 @@ def download_test_data(options):
 
 
 def is_gpu_available(verbose=True):
-        
+    """
+    Check whether CUDA is available.
+    """
+    
     # Import torch inside this function, so we have a chance to set CUDA_VISIBLE_DEVICES
     # before checking GPU availability.
     import torch
