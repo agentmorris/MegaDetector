@@ -61,9 +61,18 @@ class MDTestOptions:
 def get_expected_results_filename(gpu_is_available):
     
     if gpu_is_available:
-        return 'md-test-results-gpu-pt1.10.1.json'
+        hw_string = 'gpu'
     else:
-        return 'md-test-results-cpu-pt1.10.1.json'
+        hw_string = 'cpu'
+    import torch
+    torch_version = str(torch.__version__)
+    if torch_version.startswith('1'):
+        assert torch_version == '1.10.1', 'Only tested against PT 1.10.1 and PT 2.x'
+        pt_string = 'pt1.10.1'
+    else:
+        assert torch_version.startswith('2'), 'Unknown torch version: {}'.format(torch_version)
+        pt_string = 'pt2.x'
+    return 'md-test-results-{}-{}.json'.format(hw_string,pt_string)
     
     
 def download_test_data(options):
