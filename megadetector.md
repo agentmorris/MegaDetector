@@ -242,7 +242,7 @@ git clone https://github.com/ecologize/yolov5/
 cd c:\git\MegaDetector
 mamba env create --file envs\environment-detector.yml
 mamba activate cameratraps-detector
-set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector;c:\git\yolov5
+set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
 ```
 
 If you want to use MDv4, there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
@@ -258,7 +258,7 @@ Your environment is set up now!  In the future, when you open your Mambaforge pr
 ```batch
 cd c:\git\MegaDetector
 mamba activate cameratraps-detector
-set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector;c:\git\yolov5
+set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
 ```
 
 Pro tip: if you have administrative access to your machine, rather than using the "set PYTHONPATH" steps, you can also create a permanent PYTHONPATH environment variable.  Here's a [good page](https://www.computerhope.com/issues/ch000549.htm) about editing environment variables in Windows.  But if you just want to "stick to the script" and do it exactly the way we recommend above, that's fine.
@@ -351,7 +351,7 @@ To use run_detector.py on Windows, when you open a new Mambaforge prompt, don't 
 ```batch
 cd c:\git\MegaDetector
 mamba activate cameratraps-detector
-set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector;c:\git\yolov5
+set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
 ```
 
 Then you can run the script like this:
@@ -408,7 +408,7 @@ To use run_detector_batch.py on Windows, when you open a new Mambaforge prompt, 
 ```batch
 cd c:\git\MegaDetector
 mamba activate cameratraps-detector
-set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector;c:\git\yolov5
+set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
 ```
 
 Then you can run the script like this:
@@ -737,7 +737,7 @@ git clone https://github.com/agentmorris/MegaDetector
 cd c:\git\MegaDetector
 mamba env create --file envs\environment.yml
 mamba activate cameratraps
-set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector
+set PYTHONPATH=c:\git\MegaDetector
 ```
 
 ...or the following (on MacOS):
@@ -757,7 +757,7 @@ export PYTHONPATH="$HOME/git/MegaDetector"
 ```batch
 cd c:\git\MegaDetector
 mamba activate cameratraps
-set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector
+set PYTHONPATH=c:\git\MegaDetector
 ```
 
 ...or the following (on MacOS):
