@@ -276,7 +276,7 @@ git clone https://github.com/agentmorris/MegaDetector
 cd ~/git/MegaDetector
 mamba env create --file envs/environment-detector.yml
 mamba activate cameratraps-detector
-export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/yolov5"
+export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
 If you want to use MDv4, there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
@@ -292,7 +292,7 @@ Your environment is set up now!  In the future, whenever you start a new shell, 
 ```batch
 cd ~/git/MegaDetector
 mamba activate cameratraps-detector
-export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/yolov5"
+export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
 Pro tip: rather than updating your PYTHONPATH every time you start a new shell, you can add the "export" line to your .bashrc file.
@@ -312,7 +312,7 @@ git clone https://github.com/agentmorris/MegaDetector
 cd ~/git/MegaDetector
 mamba env create --file envs/environment-detector-mac.yml
 mamba activate cameratraps-detector
-export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/yolov5"
+export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
 If you want to use MDv4, there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
@@ -328,7 +328,7 @@ Your environment is set up now!  In the future, whenever you start a new shell, 
 ```batch
 cd ~/git/MegaDetector
 mamba activate cameratraps-detector
-export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/yolov5"
+export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
 Pro tip: rather than updating your PYTHONPATH every time you start a new shell, you can add the "export" line to your .bashrc file.
@@ -388,7 +388,7 @@ To use this script on Linux/Mac, when you open a new Mambaforge prompt, don't fo
 ```batch
 cd ~/git/MegaDetector
 mamba activate cameratraps-detector
-export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/yolov5"
+export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
 Then you can run the script like this:
@@ -461,7 +461,7 @@ To use this script on Linux/Mac, when you open a new Mambaforge prompt, don't fo
 ```batch
 cd ~/git/MegaDetector
 mamba activate cameratraps-detector
-export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector:$HOME/git/yolov5"
+export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
 Then you can run the script like this:
@@ -749,7 +749,7 @@ git clone https://github.com/agentmorris/MegaDetector
 cd ~/git/MegaDetector
 mamba env create --file envs/environment.yml
 mamba activate cameratraps
-export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector"
+export PYTHONPATH="$HOME/git/MegaDetector"
 ```
 
 4. Whenever you want to start this environment again, run the following (on Windows):
@@ -765,7 +765,7 @@ set PYTHONPATH=%PYTHONPATH%;c:\git\MegaDetector
 ```batch
 cd ~/git/MegaDetector
 mamba activate cameratraps
-export PYTHONPATH="$PYTHONPATH:$HOME/git/MegaDetector"
+export PYTHONPATH="$HOME/git/MegaDetector"
 ```
 
 Also, the environment file we're referring to in this section ([envs/environment.yml](environment.yml), the one without all the MegaDetector stuff) doesn't get quite the same level of TLC that our MegaDetector environment does, so if anyone tries to run scripts that don't directly involve MegaDetector using this environment, and packages are missing, [let us know](mailto:cameratraps@lila.science).
