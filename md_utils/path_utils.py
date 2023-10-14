@@ -222,10 +222,13 @@ def find_image_strings(strings: Iterable[str]) -> List[str]:
     return [s for s in strings if is_image_file(s)]
 
 
-def find_images(dirname: str, recursive: bool = False, return_relative_paths: bool = False) -> List[str]:
+def find_images(dirname: str, recursive: bool = False, 
+                return_relative_paths: bool = False, convert_slashes: bool = False) -> List[str]:
     """
     Finds all files in a directory that look like image file names. Returns
-    absolute paths unless return_relative_paths is set.    
+    absolute paths unless return_relative_paths is set.  Uses the OS-native
+    path separator unless convert_slahes is set, in which case will always
+    use '/'.
     """
     
     if recursive:
@@ -239,6 +242,10 @@ def find_images(dirname: str, recursive: bool = False, return_relative_paths: bo
         image_files = [os.path.relpath(fn,dirname) for fn in image_files]
     
     image_files = sorted(image_files)
+    
+    if convert_slashes:
+        image_files = [fn.replace('\\', '/') for fn in image_files]
+        
     return image_files
 
 
