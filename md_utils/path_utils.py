@@ -45,12 +45,13 @@ def recursive_file_list(base_dir, convert_slashes=True, return_relative_paths=Fa
     for root, _, filenames in os.walk(base_dir):
         for filename in filenames:
             full_path = os.path.join(root, filename)
-            if convert_slashes:
-                full_path = full_path.replace('\\', '/')
             all_files.append(full_path)
 
     if return_relative_paths:
         all_files = [os.path.relpath(fn,base_dir) for fn in all_files]
+
+    if convert_slashes:
+        all_files = [fn.replace('\\', '/') for fn in all_files]
         
     all_files = sorted(all_files)
     return all_files

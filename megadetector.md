@@ -249,7 +249,7 @@ If you want to use MDv4, there's one extra setup step (this will not break your 
 
 ```batch
 mamba activate cameratraps-detector
-pip install tensorflow
+pip install "tensorflow<=2.10"
 ```
 
 <a name="windows-new-shell"></a>
