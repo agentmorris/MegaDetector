@@ -45,12 +45,13 @@ def recursive_file_list(base_dir, convert_slashes=True, return_relative_paths=Fa
     for root, _, filenames in os.walk(base_dir):
         for filename in filenames:
             full_path = os.path.join(root, filename)
-            if convert_slashes:
-                full_path = full_path.replace('\\', '/')
             all_files.append(full_path)
 
     if return_relative_paths:
         all_files = [os.path.relpath(fn,base_dir) for fn in all_files]
+
+    if convert_slashes:
+        all_files = [fn.replace('\\', '/') for fn in all_files]
         
     all_files = sorted(all_files)
     return all_files
@@ -221,10 +222,13 @@ def find_image_strings(strings: Iterable[str]) -> List[str]:
     return [s for s in strings if is_image_file(s)]
 
 
-def find_images(dirname: str, recursive: bool = False, return_relative_paths: bool = False) -> List[str]:
+def find_images(dirname: str, recursive: bool = False, 
+                return_relative_paths: bool = False, convert_slashes: bool = False) -> List[str]:
     """
     Finds all files in a directory that look like image file names. Returns
-    absolute paths unless return_relative_paths is set.    
+    absolute paths unless return_relative_paths is set.  Uses the OS-native
+    path separator unless convert_slahes is set, in which case will always
+    use '/'.
     """
     
     if recursive:
@@ -238,6 +242,10 @@ def find_images(dirname: str, recursive: bool = False, return_relative_paths: bo
         image_files = [os.path.relpath(fn,dirname) for fn in image_files]
     
     image_files = sorted(image_files)
+    
+    if convert_slashes:
+        image_files = [fn.replace('\\', '/') for fn in image_files]
+        
     return image_files
 
 

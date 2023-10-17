@@ -686,7 +686,7 @@ path_utils.open_file(html_output_file)
 # always worth it.
 #
 
-def remove_overflow_folders(relative_path):
+def relative_path_to_location(relative_path):
     """
     This is a sample function that returns a camera name given an image path.  By 
     default in the RDE process, leaf-node folders are equivalent to cameras.  To map 
@@ -713,9 +713,9 @@ def remove_overflow_folders(relative_path):
     relative_path = relative_path.replace('\\','/')    
     for pat in patterns:
         relative_path = re.sub(pat,'/',relative_path)
-    dir_name = os.path.dirname(relative_path)
+    location_name = os.path.dirname(relative_path)
     
-    return dir_name
+    return location_name
 
 
 #%% Test cells for remove_overflow_folders
@@ -727,10 +727,10 @@ if False:
     #%% Test the generic cases
     
     relative_path = 'a/b/c/d/100EK113/blah.jpg'
-    print(remove_overflow_folders(relative_path))
+    print(relative_path_to_location(relative_path))
     
     relative_path = 'a/b/c/d/100RECNX/blah.jpg'
-    print(remove_overflow_folders(relative_path))
+    print(relative_path_to_location(relative_path))
     
     
     #%% Test remove_overflow_folders on the current dataset
@@ -739,17 +739,17 @@ if False:
         d = json.load(f)
     image_filenames = [im['file'] for im in d['images']]
     
-    dir_names = set()
+    location_names = set()
     
     # relative_path = image_filenames[0]
     for relative_path in tqdm(image_filenames):
-        dir_name = remove_overflow_folders(relative_path)
-        dir_names.add(dir_name)
+        location_name = relative_path_to_location(relative_path)
+        location_names.add(location_name)
         
-    dir_names = list(dir_names)
-    dir_names.sort()
+    location_names = list(location_names)
+    location_names.sort()
     
-    for s in dir_names:
+    for s in location_names:
         print(s)
 
 
@@ -785,7 +785,7 @@ options.detectionTilesMaxCrops = 1000
 # options.boxExpansion = 8
 
 # To invoke custom collapsing of folders for a particular manufacturer's naming scheme
-# options.customDirNameFunction = remove_overflow_folders; overflow_folder_handling_enabled = True
+# options.customDirNameFunction = relative_path_to_location; overflow_folder_handling_enabled = True
 
 options.bRenderHtml = False
 options.imageBase = input_path
@@ -1528,7 +1528,7 @@ for exif_result in tqdm(exif_results):
     
     # By default we assume that each leaf-node folder is a location
     if overflow_folder_handling_enabled:
-        im['location'] = remove_overflow_folders(os.path.dirname(exif_result['file_name']))
+        im['location'] = relative_path_to_location(os.path.dirname(exif_result['file_name']))
     else:
         im['location'] = os.path.dirname(exif_result['file_name'])
         
