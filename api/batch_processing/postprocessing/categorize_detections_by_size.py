@@ -3,7 +3,7 @@
 # categorize_detections_by_size.py
 #
 # Given an API output .json file, creates a separate category for bounding boxes
-# above a size threshold.
+# above one or more size thresholds.
 # 
 ########
 
@@ -11,12 +11,16 @@
 
 import json
 
+from collections import defaultdict
+from tqdm import tqdm
+
 
 #%% Support classes
 
 class SizeCategorizationOptions:
 
-    threshold = 0.95
+    # Should be sorted from smallest to largest
+    size_thresholds = [0.95]
     
     # List of category numbers to use in separation; uses all categories if None
     categories_to_separate = None
@@ -24,12 +28,13 @@ class SizeCategorizationOptions:
     # Can be "size", "width", or "height"
     measurement = 'size'
     
-    output_category_name = 'large_detection'
+    # Should have the same length as "size_thresholds"
+    size_category_names = ['large_detection']
     
-
+                                                 
 #%% Main functions
     
-def categorize_detections_by_size(input_file,output_file,options=None):
+def categorize_detections_by_size(input_file,output_file=None,options=None):
     
     if options is None:
         options = SizeCategorizationOptions()
@@ -38,6 +43,14 @@ def categorize_detections_by_size(input_file,output_file,options=None):
         options.categories_to_separate = \
             [str(c) for c in options.categories_to_separate]
     
+    assert len(options.size_thresholds) == len(options.size_category_names), \
+        'Options struct should have the same number of category names and size thresholds'
+
+    # Sort size thresholds and names from largest to smallest
+    options.size_category_names = [x for _,x in sorted(zip(options.size_thresholds,
+                                                             options.size_category_names),reverse=True)]
+    options.size_thresholds = sorted(options.size_thresholds,reverse=True)
+    
     with open(input_file) as f:
         data = json.load(f)
     
@@ -45,12 +58,18 @@ def categorize_detections_by_size(input_file,output_file,options=None):
     category_keys = list(detection_categories.keys())
     category_keys = [int(k) for k in category_keys]
     max_key = max(category_keys)
-    large_detection_category_id = str(max_key+1)
-    detection_categories[large_detection_category_id] = options.output_category_name    
     
-    print('Creating large-box category for {} with ID {}'.format(
-        options.output_category_name,large_detection_category_id))
-    
+    threshold_to_category_id = {}
+    for i_threshold,threshold in enumerate(options.size_thresholds):
+        
+        category_id = str(max_key+1)
+        max_key += 1
+        detection_categories[category_id] = options.size_category_names[i_threshold]
+        threshold_to_category_id[i_threshold] = category_id
+        
+        print('Creating category for {} with ID {}'.format(
+            options.size_category_names[i_threshold],category_id))
+        
     images = data['images']
     
     print('Loaded {} images'.format(len(images)))
@@ -58,10 +77,10 @@ def categorize_detections_by_size(input_file,output_file,options=None):
     # For each image...
     #
     # im = images[0]
+        
+    category_id_to_count = defaultdict(int)
     
-    n_large_detections = 0
-    
-    for im in images:
+    for im in tqdm(images):
         
         if im['detections'] is None:
             assert im['failure'] is not None and len(im['failure']) > 0
@@ -95,19 +114,31 @@ def categorize_detections_by_size(input_file,output_file,options=None):
                 metric = h                
             assert metric is not None
             
-            if metric >= options.threshold:
+            for i_threshold,threshold in enumerate(options.size_thresholds):
                 
-                d['category'] = large_detection_category_id
-                n_large_detections += 1                
+                if metric >= threshold:
+                    
+                    category_id = threshold_to_category_id[i_threshold]
+                    
+                    category_id_to_count[category_id] += 1
+                    d['category'] = category_id                    
+                    
+                    break
                 
+            # ...for each threshold
         # ...for each detection
         
     # ...for each image
     
-    print('Found {} large detections'.format(n_large_detections))
+    for i_threshold in range(0,len(options.size_thresholds)):
+        category_name = options.size_category_names[i_threshold]
+        category_id = threshold_to_category_id[i_threshold]
+        category_count = category_id_to_count[category_id]
+        print('Found {} detections in category {}'.format(category_count,category_name))
     
-    with open(output_file,'w') as f:
-        json.dump(data,f,indent=1)
+    if output_file is not None:
+        with open(output_file,'w') as f:
+            json.dump(data,f,indent=1)
         
     return data
     
