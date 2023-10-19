@@ -49,6 +49,7 @@ from tqdm import tqdm
 from md_utils import path_utils
 from md_utils import process_utils
 from data_management import yolo_output_to_md_output
+from detection.run_detector import try_download_known_detector
 
 
 #%% Options class
@@ -96,8 +97,12 @@ def run_inference_with_yolo_val(options):
         'Could not find input {}'.format(options.input_folder)
     assert os.path.isdir(options.yolo_working_folder), \
         'Could not find working folder {}'.format(options.yolo_working_folder)
-    assert os.path.isfile(options.model_filename), \
-        'Could not find model file {}'.format(options.model_filename)
+    
+    # If the model filename is a known model string (e.g. "MDv5A", download the model if necessary)
+    model_filename = try_download_known_detector(options.model_filename)
+    
+    assert os.path.isfile(model_filename), \
+        'Could not find model file {}'.format(model_filename)
     
     if os.path.exists(options.output_file):
         if options.overwrite_handling == 'skip':
@@ -221,7 +226,7 @@ def run_inference_with_yolo_val(options):
     
     image_size_string = str(round(options.image_size))
     cmd = 'python val.py --data "{}"'.format(dataset_file)
-    cmd += ' --weights "{}"'.format(options.model_filename)
+    cmd += ' --weights "{}"'.format(model_filename)
     cmd += ' --batch-size {} --imgsz {} --conf-thres {} --task test'.format(
         options.batch_size,image_size_string,options.conf_thres)
     cmd += ' --device "{}" --save-json'.format(options.device_string)
@@ -288,7 +293,7 @@ def run_inference_with_yolo_val(options):
         image_folder=image_base,
         output_file=options.output_file,
         yolo_category_id_to_name=options.yolo_category_id_to_name,
-        detector_name=os.path.basename(options.model_filename),
+        detector_name=os.path.basename(model_filename),
         image_id_to_relative_path=image_id_to_relative_path,
         image_id_to_error=image_id_to_error)
 

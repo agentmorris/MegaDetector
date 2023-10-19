@@ -30,6 +30,7 @@ import time
 import uuid
 import urllib
 import warnings
+import random
 
 from typing import Any, Dict, Iterable, Optional, Tuple
 from enum import IntEnum
@@ -134,13 +135,9 @@ class PostProcessingOptions:
     job_name_string = None
     model_version_string = None
     
-    # These should really be mutually exclusive, but I'm not enforcing this.
-    #
-    # Nothing bad happens if you set both to true; the confidence sort happens
-    # second.
-    sort_html_by_filename = True
-    sort_html_by_confidence = False
-
+    # Sort order for the output, should be one of "filename", "confidence", or "random"
+    html_sort_order = 'filename'
+   
     link_images_to_originals = True
     
     # Optionally separate detections into categories (animal/vehicle/human)
@@ -486,7 +483,7 @@ def prepare_html_subpages(images_html, output_dir, options=None):
         image_counts[res] = len(array)
 
     # Optionally sort by filename before writing to html
-    if options.sort_html_by_filename:
+    if options.html_sort_order == 'filename':
         images_html_sorted = {}
         for res, array in images_html.items():
             sorted_array = sorted(array, key=lambda x: x['filename'])
@@ -494,7 +491,7 @@ def prepare_html_subpages(images_html, output_dir, options=None):
         images_html = images_html_sorted
     
     # Optionally sort by confidence before writing to html
-    if options.sort_html_by_confidence:
+    elif options.html_sort_order == 'confidence':
         images_html_sorted = {}
         for res, array in images_html.items():
             
@@ -505,6 +502,15 @@ def prepare_html_subpages(images_html, output_dir, options=None):
                 sorted_array = sorted(array, key=lambda x: x['max_conf'], reverse=True)
                 images_html_sorted[res] = sorted_array
                 images_html = images_html_sorted
+        
+    else:
+        assert options.html_sort_order == 'random',\
+            'Unrecognized sort order {}'.format(options.html_sort_order)
+        images_html_sorted = {}
+        for res, array in images_html.items():
+            sorted_array = random.sample(array,len(array))
+            images_html_sorted[res] = sorted_array
+        images_html = images_html_sorted
         
     # Write the individual HTML files
     for res, array in images_html.items():
@@ -1616,8 +1622,11 @@ def main():
         '--include_almost_detections', action='store_true',
         help='Include a separate category for images just above a second confidence threshold')
     parser.add_argument(
-        '--random_output_sort', action='store_true',
-        help='Sort output randomly (defaults to sorting by filename)')
+        '--html_sort_order', type=str, default='filename',
+        help='Sort order for output pages, should be one of [filename,confidence,random] (defaults to filename)')
+    parser.add_argument(
+        '--sort_by_confidence', action='store_true',
+        help='Sort output in decreasing order by confidence (defaults to sorting by filename)')
     parser.add_argument(
         '--n_cores', type=int, default=1,
         help='Number of threads to use for rendering (default: 1)')
@@ -1639,7 +1648,7 @@ def main():
         parser.exit()
 
     args = parser.parse_args()
-    args.sort_html_by_filename = (not args.random_output_sort)
+    
     if args.n_cores != 1:
         assert (args.n_cores > 1), 'Illegal number of cores: {}'.format(args.n_cores)
         if args.parallelize_rendering_with_processes:
@@ -1647,7 +1656,7 @@ def main():
         args.parallelize_rendering = True
         args.parallelize_rendering_n_cores = args.n_cores        
 
-    args_to_object(args, options)
+    args_to_object(args, options)    
 
     if args.no_separate_detections_by_category:
         options.separate_detections_by_category = False

@@ -312,21 +312,6 @@ def open_file(filename):
         subprocess.call([opener, filename])
 
 
-#%% zipfile management functions
-
-def unzip_file(input_file, output_folder=None):
-    """
-    Unzip a zipfile to the specified output folder, defaulting to the same location as
-    the input file    
-    """
-    
-    if output_folder is None:
-        output_folder = os.path.dirname(input_file)
-        
-    with zipfile.ZipFile(input_file, 'r') as zf:
-        zf.extractall(output_folder)
-
-
 #%% File list functions
 
 def write_list_to_file(output_file: str, strings: Sequence[str]) -> None:
@@ -422,3 +407,16 @@ def parallel_zip_files(input_files,max_workers=16):
     with tqdm(total=len(input_files)) as pbar:
         for i,_ in enumerate(pool.imap_unordered(zip_file,input_files)):
             pbar.update()
+
+
+def unzip_file(input_file, output_folder=None):
+    """
+    Unzip a zipfile to the specified output folder, defaulting to the same location as
+    the input file    
+    """
+    
+    if output_folder is None:
+        output_folder = os.path.dirname(input_file)
+        
+    with zipfile.ZipFile(input_file, 'r') as zf:
+        zf.extractall(output_folder)

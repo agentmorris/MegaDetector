@@ -642,7 +642,6 @@ options.confidence_threshold = 0.2
 options.almost_detection_confidence_threshold = options.confidence_threshold - 0.05
 options.ground_truth_json_file = None
 options.separate_detections_by_category = True
-options.sort_html_by_confidence = False
 
 # options.sample_seed = 0
 # options.max_figures_per_html_file = 5000
