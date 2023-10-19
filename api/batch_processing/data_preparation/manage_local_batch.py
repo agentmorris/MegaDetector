@@ -2047,15 +2047,17 @@ from api.batch_processing.postprocessing import categorize_detections_by_size
 
 size_options = categorize_detections_by_size.SizeCategorizationOptions()
 
-# This is a size threshold, not a confidence threshold
-size_options.threshold = 0.9
-size_options.output_category_name = 'large_detections'
-# size_options.categories_to_separate = [3]
+size_options.size_thresholds = [0.9]
+size_options.size_category_names = ['large_detections']
+
+size_options.categories_to_separate = [1]
 size_options.measurement = 'size' # 'width'
+
+threshold_string = '-'.join([str(x) for x in size_options.size_thresholds])
 
 input_file = filtered_output_filename
 size_separated_file = input_file.replace('.json','-size-separated-{}.json'.format(
-    size_options.threshold))
+    threshold_string))
 d = categorize_detections_by_size.categorize_detections_by_size(input_file,size_separated_file,
                                                                 size_options)
 
@@ -2063,7 +2065,7 @@ d = categorize_detections_by_size.categorize_detections_by_size(input_file,size_
 #%% Preview large boxes
 
 output_base_large_boxes = os.path.join(postprocessing_output_folder, 
-    base_task_name + '_{}_{:.3f}_large_boxes'.format(rde_string, options.confidence_threshold))    
+    base_task_name + '_{}_{:.3f}_size_separated_boxes'.format(rde_string, options.confidence_threshold))    
 os.makedirs(output_base_large_boxes, exist_ok=True)
 print('Processing post-RDE, post-size-separation to {}'.format(output_base_large_boxes))
 
