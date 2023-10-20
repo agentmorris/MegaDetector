@@ -582,7 +582,7 @@ print('Processed all {} images with {} failures'.format(
     len(all_images),n_total_failures))
         
 
-#%% Merge results files and make images relative
+#%% Merge results files and make filenames relative
 
 combined_results = {}
 combined_results['images'] = []
@@ -690,7 +690,7 @@ def relative_path_to_location(relative_path):
     This is a sample function that returns a camera name given an image path.  By 
     default in the RDE process, leaf-node folders are equivalent to cameras.  To map 
     something other than leaf-node folders to cameras, fill in this function, and un-comment the 
-    line below containing "remove_overflow_folders".
+    line below containing "relative_path_to_location".
     
     Sample regular expressions are included here for common patterns, particularly the 
     overflow folders created by Reconyx and Bushnell camera traps.  So if one of those 
@@ -717,7 +717,7 @@ def relative_path_to_location(relative_path):
     return location_name
 
 
-#%% Test cells for remove_overflow_folders
+#%% Test cells for relative_path_to_location
 
 if False:
 
@@ -732,7 +732,7 @@ if False:
     print(relative_path_to_location(relative_path))
     
     
-    #%% Test remove_overflow_folders on the current dataset
+    #%% Test relative_path_to_location on the current dataset
     
     with open(combined_api_output_file,'r') as f:
         d = json.load(f)
