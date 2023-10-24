@@ -23,6 +23,11 @@ from md_utils.path_utils import find_images
 #%% Main conversion function
 
 def yolo_to_coco(input_folder,class_name_file,output_file=None):
+    """
+    Convert the YOLO-formatted data in [input_folder] to a COCO-formatted dictionary,
+    reading class names from the flat list [class_name_file].  Optionally writes the output
+    dataset to [output_file].
+    """
     
     # Validate input
     
