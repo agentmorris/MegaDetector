@@ -28,8 +28,9 @@ def plot_confusion_matrix(
         cmap: Union[str, matplotlib.colors.Colormap] = matplotlib.cm.Blues,
         vmax: Optional[float] = None,
         use_colorbar: bool = True,
-        y_label: bool = True,
-        fmt: str = '{:.0f}'
+        y_label: bool = True,        
+        fmt: str = '{:.0f}',
+        fig=None
         ) -> matplotlib.figure.Figure:
     """
     Plot a confusion matrix. By default, assumes values in the given matrix
@@ -56,18 +57,20 @@ def plot_confusion_matrix(
     assert matrix.shape[1] == num_classes
     assert len(classes) == num_classes
 
+    normalized_matrix = matrix.astype(np.float64) / (
+        matrix.sum(axis=1, keepdims=True) + 1e-7)
     if normalize:
-        matrix = matrix.astype(np.float64) / (
-            matrix.sum(axis=1, keepdims=True) + 1e-7)
+        matrix = normalized_matrix
 
     fig_h = 3 + 0.3 * num_classes
     fig_w = fig_h
     if use_colorbar:
         fig_w += 0.5
 
-    fig = matplotlib.figure.Figure(figsize=(fig_w, fig_h), tight_layout=True)
+    if fig is None:
+        fig = matplotlib.figure.Figure(figsize=(fig_w, fig_h), tight_layout=True)
     ax = fig.subplots(1, 1)
-    im = ax.imshow(matrix, interpolation='nearest', cmap=cmap, vmax=vmax)
+    im = ax.imshow(normalized_matrix, interpolation='nearest', cmap=cmap, vmax=vmax)
     ax.set_title(title)
 
     if use_colorbar:
@@ -86,10 +89,11 @@ def plot_confusion_matrix(
         ax.set_ylabel('Ground-truth class')
 
     for i, j in np.ndindex(matrix.shape):
-        ax.text(j, i, fmt.format(matrix[i, j] * 100),
+        v = matrix[i, j]        
+        ax.text(j, i, fmt.format(v),
                 horizontalalignment='center',
                 verticalalignment='center',
-                color='white' if matrix[i, j] > 0.5 else 'black')
+                color='white' if normalized_matrix[i, j] > 0.5 else 'black')
 
     return fig
 

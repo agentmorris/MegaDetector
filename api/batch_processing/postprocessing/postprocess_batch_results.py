@@ -404,8 +404,7 @@ def render_bounding_boxes(
             image = None
             # return ''
         
-        # Render images to a flat folder... we can use os.sep here because we've
-        # already normalized paths
+        # Render images to a flat folder
         sample_name = res + '_' + path_utils.flatten_path(image_relative_path)
         fullpath = os.path.join(options.output_dir, res, sample_name)
 
@@ -468,10 +467,13 @@ def render_bounding_boxes(
 
 def prepare_html_subpages(images_html, output_dir, options=None):
     """
-    Write out a series of html image lists, e.g. the fp/tp/fn/tn pages.
+    Write out a series of html image lists, e.g. the "detections" or "non-detections"
+    pages.
 
-    image_html is a dictionary mapping an html page name (e.g. "fp") to a list
-    of image structs friendly to write_html_image_list
+    image_html is a dictionary mapping an html page name (e.g. "detections_animal") to 
+    a list of image structs friendly to write_html_image_list.
+    
+    Returns a dictionary mapping category names to image counts.
     """
     
     if options is None:
@@ -496,8 +498,7 @@ def prepare_html_subpages(images_html, output_dir, options=None):
         for res, array in images_html.items():
             
             if not all(['max_conf' in d for d in array]):
-                print("Warning: some elements in the {} page don't have confidence values, can't sort by confidence".format(
-                    res))
+                print("Warning: some elements in the {} page don't have confidence values, can't sort by confidence".format(res))
             else:
                 sorted_array = sorted(array, key=lambda x: x['max_conf'], reverse=True)
                 images_html_sorted[res] = sorted_array
@@ -519,10 +520,14 @@ def prepare_html_subpages(images_html, output_dir, options=None):
         html_image_list_options['maxFiguresPerHtmlFile'] = options.max_figures_per_html_file
         html_image_list_options['headerHtml'] = '<h1>{}</h1>'.format(res.upper())
         
-        write_html_image_list(
-            filename=os.path.join(output_dir, '{}.html'.format(res)),
-            images=array,
-            options=html_image_list_options)
+        # Don't write empty pages
+        if len(array) == 0:
+            continue
+        else:
+            write_html_image_list(
+                filename=os.path.join(output_dir, '{}.html'.format(res)),
+                images=array,
+                options=html_image_list_options)
 
     return image_counts
 
@@ -808,7 +813,7 @@ def process_batch_results(options: PostProcessingOptions
         if options.almost_detection_confidence_threshold < 0:
             options.almost_detection_confidence_threshold = 0
             
-    # Remove failed rows
+    # Remove rows with inference failures (typically due to corrupt images)
     n_failures = 0
     if 'failure' in detections_df.columns:
         n_failures = detections_df['failure'].count()
@@ -829,8 +834,10 @@ def process_batch_results(options: PostProcessingOptions
             for k, v in classification_categories.items()
         }
 
-    # Add column 'pred_detection_label' to indicate predicted detection status,
-    # not separating out the classes
+    # Add column 'pred_detection_label' to indicate predicted detection status.
+    #
+    # This column doesn't capture category information, it's just about detections,
+    # non-detections, and almost-detections.    
     det_status = 'pred_detection_label'
     if options.include_almost_detections:
         detections_df[det_status] = DetectionStatus.DS_ALMOST
@@ -855,7 +862,7 @@ def process_batch_results(options: PostProcessingOptions
         print('...and {} almost-positives'.format(n_almosts))
 
 
-    ##%% Pull out descriptive metadata
+    ##%% Find descriptive metadata to include at the top of the page
 
     if options.job_name_string is not None:
         job_name_string = options.job_name_string
@@ -896,7 +903,7 @@ def process_batch_results(options: PostProcessingOptions
         print('Trimmed detection results to {} files'.format(len(detector_files)))
 
 
-    ##%% Sample images for visualization
+    ##%% (Optionally) sample from the full set of images
 
     images_to_visualize = detections_df
 
@@ -1206,7 +1213,7 @@ def process_batch_results(options: PostProcessingOptions
         elapsed = time.time() - start_time
 
         # Map all the rendering results in the list rendering_results into the
-        # dictionary images_html
+        # dictionary images_html, which maps category names to lists of results
         image_rendered_count = 0
         for rendering_result in rendering_results:
             if rendering_result is None:
@@ -1343,11 +1350,23 @@ def process_batch_results(options: PostProcessingOptions
         # Maps detection categories - e.g. "human" - to result set names, e.g.
         # "detections_human"
         detection_categories_to_results_name = {}
-
+        
+        # Keep track of which categories are single-class (e.g. "animal") and which are
+        # combinations (e.g. "animal_vehicle")
+        detection_categories_to_category_count = {}
+        detection_categories_to_category_count['detections'] = 0
+        detection_categories_to_category_count['non_detections'] = 0
+        detection_categories_to_category_count['almost_detections'] = 0
+        
         if not options.separate_detections_by_category:
+            # For the creation of a "detections" category
             images_html['detections']
         else:
-            # Add a set of results for each category and combination of categories
+            # Add a set of results for each category and combination of categories, e.g.
+            # "detections_animal_vehicle".  When we're using this script for non-MegaDetector
+            # results, this can generate lots of categories, e.g. detections_bear_bird_cat_dog_pig.
+            # We'll keep that huge set of combinations in this map, but we'll only write
+            # out links for the ones that are non-empty.            
             keys = detection_categories.keys()
             subsets = []
             for L in range(1, len(keys)+1):
@@ -1360,6 +1379,7 @@ def process_batch_results(options: PostProcessingOptions
                     results_name = results_name + '_' + detection_categories[category_id]
                 images_html[results_name]
                 detection_categories_to_results_name[sorted_subset] = results_name
+                detection_categories_to_category_count[results_name] = len(sorted_subset)
 
         if options.include_almost_detections:
             images_html['almost_detections']
@@ -1369,8 +1389,7 @@ def process_batch_results(options: PostProcessingOptions
             os.makedirs(os.path.join(output_dir, res), exist_ok=True)
 
         image_count = len(images_to_visualize)
-        has_classification_info = False
-
+        
         # Each element will be a list of 2-tuples, with elements [collection name,html info struct]
         rendering_results = []
 
@@ -1427,6 +1446,9 @@ def process_batch_results(options: PostProcessingOptions
                 
         elapsed = time.time() - start_time
 
+        # Do we have classification results in addition to detection results?
+        has_classification_info = False
+        
         # Map all the rendering results in the list rendering_results into the
         # dictionary images_html
         image_rendered_count = 0
@@ -1441,7 +1463,7 @@ def process_batch_results(options: PostProcessingOptions
 
         # Prepare the individual html image files
         image_counts = prepare_html_subpages(images_html, output_dir, options)
-
+        
         if image_rendered_count == 0:
             seconds_per_image = 0.0
         else:
@@ -1507,18 +1529,32 @@ def process_batch_results(options: PostProcessingOptions
             filename = result_set_name + '.html'
             label = result_set_name_to_friendly_name(result_set_name)
             image_count = image_counts[result_set_name]
+            
+            # Don't include line items for empty multi-category pages
+            if image_count == 0 and \
+                detection_categories_to_category_count[result_set_name] > 1:
+                    continue
+            
             if total_images == 0:
                 image_fraction = -1
             else:
                 image_fraction = image_count / total_images
-            index_page += '<a href="{}">{}</a> ({}, {:.1%})<br/>\n'.format(
-                filename,label,image_count,image_fraction)
+                
+            # Write the line item for this category, including a link only if the
+            # category is non-empty
+            if image_count == 0:
+                index_page += '{} ({}, {:.1%})<br/>\n'.format(
+                    label,image_count,image_fraction)
+            else:
+                index_page += '<a href="{}">{}</a> ({}, {:.1%})<br/>\n'.format(
+                    filename,label,image_count,image_fraction)
 
         index_page += '</div>\n'
 
         if has_classification_info:
             index_page += '<h3>Images of detected classes</h3>'
-            index_page += '<p>The same image might appear under multiple classes if multiple species were detected.</p>\n'
+            index_page += '<p>The same image might appear under multiple classes ' + \
+                'if multiple species were detected.</p>\n'
             index_page += '<p>Classifications with confidence less than {:.1%} confidence are considered "unreliable".</p>\n'.format(
                 options.classification_confidence_threshold)
             index_page += '<div class="contentdiv">\n'

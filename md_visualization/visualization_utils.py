@@ -784,7 +784,8 @@ def draw_bounding_boxes_on_file(input_file, output_file, detections, confidence_
                                 detector_label_map=DEFAULT_DETECTOR_LABEL_MAP,
                                 thickness=DEFAULT_BOX_THICKNESS, expansion=0,
                                 colormap=DEFAULT_COLORS,
-                                custom_strings=None):
+                                label_font_size=DEFAULT_LABEL_FONT_SIZE,
+                                custom_strings=None,target_size=None):
     """
     Render detection bounding boxes on an image loaded from file, writing the results to a
     new image file.
@@ -804,15 +805,21 @@ def draw_bounding_boxes_on_file(input_file, output_file, detections, confidence_
     custom_strings: optional set of strings to append to detection labels, should have the
     same length as [detections].  Appended before classification labels, if classification
     data is provided.
+    
+    target_size: tuple of (target_width,target_height).  Either or both can be -1,
+    see resize_image for documentation.  If None or (-1,-1), uses the original image size.
     """
     
     image = open_image(input_file)
-
+    
+    if target_size is not None:
+        image = resize_image(image,target_size[0],target_size[1])
+        
     render_detection_bounding_boxes(
             detections, image, label_map=detector_label_map,
             confidence_threshold=confidence_threshold,
             thickness=thickness,expansion=expansion,colormap=colormap,
-            custom_strings=custom_strings)
+            custom_strings=custom_strings,label_font_size=label_font_size)
 
     image.save(output_file)
 
