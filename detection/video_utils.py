@@ -49,17 +49,27 @@ def find_video_strings(strings: Iterable[str]) -> List[str]:
     return [s for s in strings if is_video_file(s.lower())]
 
 
-def find_videos(dirname: str, recursive: bool = False) -> List[str]:
+def find_videos(dirname: str, recursive: bool = False,
+                convert_slashes: bool=False,
+                return_relative_paths: bool=False) -> List[str]:
     """
     Finds all files in a directory that look like video file names. Returns
-    absolute paths.
+    absolute paths unless return_relative_paths is set.  Uses the native
+    path separator unless convert_slashes is set.
     """
     
     if recursive:
-        strings = glob.glob(os.path.join(dirname, '**', '*.*'), recursive=True)
+        files = glob.glob(os.path.join(dirname, '**', '*.*'), recursive=True)
     else:
-        strings = glob.glob(os.path.join(dirname, '*.*'))
-    return find_video_strings(strings)
+        files = glob.glob(os.path.join(dirname, '*.*'))
+        
+    if return_relative_paths:
+        files = [os.path.relpath(fn,dirname) for fn in files]
+
+    if convert_slashes:
+        files = [fn.replace('\\', '/') for fn in files]
+    
+    return find_video_strings(files)
 
 
 #%% Function for rendering frames to video and vice-versa

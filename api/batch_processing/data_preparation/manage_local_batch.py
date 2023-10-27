@@ -582,7 +582,7 @@ print('Processed all {} images with {} failures'.format(
     len(all_images),n_total_failures))
         
 
-#%% Merge results files and make filenames relative
+##%% Merge results files and make filenames relative
 
 combined_results = {}
 combined_results['images'] = []
@@ -617,8 +617,12 @@ assert len(combined_results['images']) == len(set(result_filenames))
 
 # Check for valid path names
 for im in combined_results['images']:
-    assert im['file'].startswith(input_path + os.path.sep)
-    im['file'] = im['file'].replace(input_path + os.path.sep,'',1)    
+    if input_path.endswith(':'):
+        assert im['file'].startswith(input_path)
+        im['file'] = im['file'].replace(input_path,'',1)
+    else:
+        assert im['file'].startswith(input_path + os.path.sep)
+        im['file'] = im['file'].replace(input_path + os.path.sep,'',1)
     
 combined_api_output_file = os.path.join(
     combined_api_output_folder,

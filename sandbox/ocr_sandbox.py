@@ -15,28 +15,41 @@
 #
 # * Crop to the refined crop, then run pytesseract to extract text
 #
-# * Use regular expressions to find time and date, in the future can add, e.g.,
-#   temperature (which is often present *only* in the images, unlike time/date which
-#   are also usually in EXIF but often wrong or lost in processing)
-#
-# The metadata extraction (EXIF, IPTC) here is just sample code that seemed to 
-# belong in this file.
+# * Use regular expressions to find time and date
 #
 ########
+
+#%% Notes to self
+
+"""
+
+* To use the legacy engine (--oem 0), I had to download an updated eng.traineddata file from:
+    
+  https://github.com/tesseract-ocr/tessdata
+  
+"""
 
 #%% Constants and imports
 
 import os
-import warnings
-import glob
-import cv2
 import numpy as np
-import ntpath
-import re
-import logging
+import datetime
 
+import cv2
 from PIL import Image
-from PIL.ExifTags import TAGS
+from tqdm import tqdm
+
+from md_utils.path_utils import find_images
+from md_visualization import visualization_utils as vis_utils
+from md_utils import write_html_image_list        
+
+# pip install dateparser
+import dateparser
+
+# pip install datefinder
+import datefinder
+
+from dateparser.search import search_dates # noqa
 
 # pip install pytesseract
 #
@@ -44,223 +57,173 @@ from PIL.ExifTags import TAGS
 # the installation dir to your path (on Windows, typically C:\Program Files (x86)\Tesseract-OCR)
 import pytesseract
 
-# pip install IPTCInfo3
-from iptcinfo3 import IPTCInfo
-
-from md_utils import write_html_image_list        
-
-# ignoring all "PIL cannot read EXIF metainfo for the images" warnings
-warnings.filterwarnings("ignore", "(Possibly )?corrupt EXIF data", UserWarning)
-# Metadata Warning, tag 256 had too many entries: 42, expected 1
-warnings.filterwarnings("ignore", "Metadata warning", UserWarning)
-
-baseDir = r'd:\temp\camera_trap_images_for_metadata_extraction'
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 # Using a semi-arbitrary metric of how much it feels like we found the 
 # text-containing region, discard regions that appear to be extraction failures
-pCropSuccessThreshold = 0.5
+p_crop_success_threshold = 0.5
 
 # Pad each crop with a few pixels to make tesseract happy
-borderWidth = 10        
+crop_padding = 10        
 
-# Discard text from the top 
-minTextLength = 4
+# Discard short text, typically text from the top of the image
+min_text_length = 4
 
 # When we're looking for pixels that match the background color, allow some 
 # tolerance around the dominant color
-backgroundTolerance = 2
+background_tolerance = 2
     
 # We need to see a consistent color in at least this fraction of pixels in our rough 
 # crop to believe that we actually found a candidate metadata region.
-minBackgroundFraction = 0.3
+min_background_fraction = 0.3
 
 # What fraction of the [top,bottom] of the image should we use for our rough crop?
-imageCropFraction = [0.045 , 0.045]
+image_crop_fraction = [0.045 , 0.045]
 
 # A row is considered a probable metadata row if it contains at least this fraction
 # of the background color.  This is used only to find the top and bottom of the crop area, 
 # so it's not that *every* row needs to hit this criteria, only the rows that are generally
 # above and below the text.
-minBackgroundFractionForBackgroundRow = 0.5
+min_background_fraction_for_background_row = 0.5
+
+# psm 6: "assume a single uniform block of text"
+# psm 13: raw line
+# oem: 0 == legacy, 1 == lstm
+# tesseract_config_string = '--oem 0 --psm 6'
+tesseract_config_string = '--oem 1 --psm 6'
+
+dateparser_settings = {'PREFER_DATES_FROM':'past','STRICT_PARSING':True}
 
 
 #%% Support functions
 
-def get_exif(img):
+def crop_to_solid_region(image):
+    """   
+    cropped_image,p_success,padded_image = crop_to_solid_region(image)
     
-    ret = {}
-    try:
-        if isinstance(img,str):
-            img = Image.open(img)
-        info = img._getexif()
-        for tag, value in info.items():
-            decoded = TAGS.get(tag, tag)
-            ret[decoded] = value
-    except:
-        pass
+    image should be a numpy array.
     
-    return ret
+    Within a region of an image (typically a crop from the top-ish or bottom-ish part of 
+    an image), tightly crop to the solid portion (typically a region with a black background).
 
-
-#%% Load some images, pull EXIF and IPTC data for fun
-
-images = []
-exifInfo = []
-iptcInfo = []
-
-logger = logging.getLogger('iptcinfo')
-logger.disabled = True
-
-imageFileNames = glob.glob(os.path.join(baseDir,'*.jpg'))
-
-for fn in imageFileNames:
+    The success metric is just a binary indicator right now: 1.0 if we found a region we believe
+    contains a solid background, 0.0 otherwise.
+    """
+           
+    analysis_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)        
+    analysis_image = analysis_image.astype('uint8')     
+    analysis_image = cv2.medianBlur(analysis_image,3) 
+    pixel_values = analysis_image.flatten()
+    counts = np.bincount(pixel_values)
+    background_value = int(np.argmax(counts))
     
-    img = Image.open(fn)
-    exifInfo.append(get_exif(img))
-    images.append(img)
-    iptc = []
-    try:
-        iptc = IPTCInfo(fn)                
-    except:
-        pass
-    iptcInfo.append(iptc)        
-
-
-#%% Rough crop 
-
-# This will be an nImages x 1 list of 2 x 1 lists (image top, image bottom)
-imageRegions = []
+    # Did we find a sensible mode that looks like a background value?
+    background_value_count = int(np.max(counts))
+    p_background_value = background_value_count / np.sum(counts)
     
-# image = images[0]
-for image in images:
+    # This looks very scientific, right?  Definitely a probability?
+    if (p_background_value < min_background_fraction):
+        p_success = 0.0
+    else:
+        p_success = 1.0
+        
+    analysis_image = cv2.inRange(analysis_image,
+                                background_value-background_tolerance,
+                                background_value+background_tolerance)
     
-    exif_data = image._getexif()
-    h = image.height
+    # Notes to self, things I tried that didn't really go anywhere...
+    #
+    # analysis_image = cv2.blur(analysis_image, (3,3))
+    # analysis_image = cv2.medianBlur(analysis_image,5) 
+    # analysis_image = cv2.Canny(analysis_image,100,100)
+    # image_pil = Image.fromarray(analysis_image); image_pil
+    
+    # Use row heuristics to refine the crop        
+    h = analysis_image.shape[0]
+    w = analysis_image.shape[1]
+    
+    min_x = 0
+    min_y = -1
+    max_x = w
+    max_y = -1
+    
+    for y in range(h):
+        row_count = 0
+        for x in range(w):
+            if analysis_image[y][x] > 0:
+                row_count += 1
+        row_fraction = row_count / w
+        if row_fraction > min_background_fraction_for_background_row:
+            if min_y == -1:
+                min_y = y
+            max_y = y
+    
+    x = min_x
+    y = min_y
+    w = max_x-min_x
+    h = max_y-min_y
+    
+    x = min_x
+    y = min_y
+    w = max_x-min_x
+    h = max_y-min_y
+
+    # Crop the image
+    cropped_image = image[y:y+h,x:x+w]
+      
+    # Tesseract doesn't like characters really close to the edge, so pad a little.
+    padded_crop = cv2.copyMakeBorder(cropped_image,crop_padding,crop_padding,crop_padding,crop_padding,
+                                     cv2.BORDER_CONSTANT,
+                                     value=[background_value,background_value,background_value])
+
+    return cropped_image,p_success,padded_crop
+    
+# ...crop_to_solid_region(...)    
+
+
+def rough_crop(image):
+    """
+    Crops the top and bottom regions out of an image, returns those as a length-two list of
+    images.
+    
+    [image] can be a PIL image or a file name.
+    """
+    
+    if isinstance(image,str):
+        image = vis_utils.open_image(image)
+        
     w = image.width
+    h = image.height
     
-    cropHeightTop = round(imageCropFraction[0] * h)
-    cropHeightBottom = round(imageCropFraction[1] * h)
+    crop_height_top = round(image_crop_fraction[0] * h)
+    crop_height_bottom = round(image_crop_fraction[1] * h)
     
     # l,t,r,b
     #
     # 0,0 is upper-left
-    topCrop = image.crop([0,0,w,cropHeightTop])
-    bottomCrop = image.crop([0,h-cropHeightBottom,w,h])
-    imageRegions.append([topCrop,bottomCrop])    
-
-
-#%% Close-crop around the text, return a revised image and success metric
+    top_crop = image.crop([0,0,w,crop_height_top])
+    bottom_crop = image.crop([0,h-crop_height_bottom,w,h])
+    return [top_crop,bottom_crop]
     
-def crop_to_solid_region(image):
-    """   
-    croppedImage,pSuccess,paddedImage = crop_to_solid_region(image):
+# ...def rough_crop(...)
 
-    The success metric is totally arbitrary right now, but is a placeholder.
+
+def find_text_in_crops(crops):
     """
-           
-    analysisImage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)        
-    analysisImage = analysisImage.astype('uint8')     
-    analysisImage = cv2.medianBlur(analysisImage,3) 
-    pixelValues = analysisImage.flatten()
-    counts = np.bincount(pixelValues)
-    backgroundValue = int(np.argmax(counts))
+    Find all text in each Image in the list [crops]; those images should be pretty small 
+    regions by the time they get to this function, roughly the top or bottom 20% of an image.
     
-    # Did we find a sensible mode that looks like a background value?
-    backgroundValueCount = int(np.max(counts))
-    pBackGroundValue = backgroundValueCount / np.sum(counts)
+    Returns a dict with fields "text_results" and "padded_crops", each the same length as [crops].
+    """
     
-    # This looks very scientific, right?  Definitely a probability?
-    if (pBackGroundValue < minBackgroundFraction):
-        # print('Failed min background fraction test: {} of {}'.format(pBackGroundValue,minBackgroundFraction))
-        pSuccess = 0.0
-    else:
-        pSuccess = 1.0
-        
-    analysisImage = cv2.inRange(analysisImage,
-                                backgroundValue-backgroundTolerance,
-                                backgroundValue+backgroundTolerance)
+    text_results = []
+    padded_crops = []
     
-    # Notes to self, things I tried that didn't really go anywhere...
-    # analysisImage = cv2.blur(analysisImage, (3,3))
-    # analysisImage = cv2.medianBlur(analysisImage,5) 
-    # analysisImage = cv2.Canny(analysisImage,100,100)
-    # imagePil = Image.fromarray(analysisImage); imagePil
-    
-    # Use row heuristics to refine the crop
-    #
-    # This egregious block of code makes me miss my fluency in Matlab.
-    if True:
-        
-        h = analysisImage.shape[0]
-        w = analysisImage.shape[1]
-        
-        minX = 0
-        minY = -1
-        maxX = w
-        maxY = -1
-        
-        for y in range(h):
-            rowCount = 0
-            for x in range(w):
-                if analysisImage[y][x] > 0:
-                    rowCount += 1
-            rowFraction = rowCount / w
-            if rowFraction > minBackgroundFractionForBackgroundRow:
-                if minY == -1:
-                    minY = y
-                maxY = y
-        
-        x = minX
-        y = minY
-        w = maxX-minX
-        h = maxY-minY
-        
-        x = minX
-        y = minY
-        w = maxX-minX
-        h = maxY-minY
-    
-    # print('Cropping to {},{},{},{}'.format(x,y,w,h))
-    
-    # Crop the image
-    croppedImage = image[y:y+h,x:x+w]
-      
-    # For some reason, tesseract doesn't like characters really close to the edge
-    paddedCrop = cv2.copyMakeBorder(croppedImage,borderWidth,borderWidth,borderWidth,borderWidth,
-                                   cv2.BORDER_CONSTANT,value=[backgroundValue,backgroundValue,
-                                                              backgroundValue])
-        
-        
-    # imagePil = Image.fromarray(croppedImage); imagePil
-    
-    return croppedImage,pSuccess,paddedCrop
-    
-    
-#%% Go to OCR-town
-
-# An nImages x 2 list of strings, extracted from the top and bottom of each image
-imageText = []
-
-# An nImages x 2 list of cropped images
-processedRegions = []
-    
-# iImage = 0; iRegion = 1; regionSet = imageRegions[iImage]; region = regionSet[iRegion]
-
-for iImage,regionSet in enumerate(imageRegions):
-    
-    regionText = []
-    processedRegionsThisImage = []
-        
-    for iRegion,region in enumerate(regionSet):
-
-        regionText.append('')
-        processedRegionsThisImage.append(None)
-        
-        # text = pytesseract.image_to_string(region)
+    for i_crop,crop in enumerate(crops):
 
         # pil --> cv2        
-        image = np.array(region) 
-        image = image[:, :, ::-1].copy()         
+        crop = np.array(crop) 
+        crop = crop[:, :, ::-1].copy()         
         
         # image = cv2.medianBlur(image, 3)        
         # image = cv2.erode(image, None, iterations=2)
@@ -269,147 +232,215 @@ for iImage,regionSet in enumerate(imageRegions):
         # image = cv2.blur(image, (3,3))
         # image = cv2.copyMakeBorder(image,10,10,10,10,cv2.BORDER_CONSTANT,value=[0,0,0])
         
-        crop,pSuccess,paddedCrop = crop_to_solid_region(image)
+        crop,p_success,padded_crop = crop_to_solid_region(crop)
         
-        if pSuccess < pCropSuccessThreshold:
+        if p_success < p_crop_success_threshold:
+            text_results.append('')
             continue
         
-        imagePil = Image.fromarray(paddedCrop)
-        processedRegionsThisImage[-1] = imagePil
-        # text = pytesseract.image_to_string(imagePil, lang='eng')
+        padded_crop_pil = Image.fromarray(padded_crop)
+        padded_crops.append(padded_crop_pil)
+        
+        # text = pytesseract.image_to_string(image_pil, lang='eng')
         # https://github.com/tesseract-ocr/tesseract/wiki/Command-Line-Usage
         
-        # psm 6: "assume a single uniform block of text"
-        #
-        text = pytesseract.image_to_string(imagePil, lang='eng', config='--psm 6') 
-        
+        text = pytesseract.image_to_string(padded_crop_pil, lang='eng', config=tesseract_config_string)
         text = text.replace('\n', ' ').replace('\r', '').strip()
 
-        regionText[-1] = text
-        
-        if len(text) > minTextLength:
-            print('Image {} ({}), region {}:\n{}\n'.format(iImage,imageFileNames[iImage],
-                  iRegion,text))
-
+        text_results.append(text)
+                
     # ...for each cropped region
     
-    imageText.append(regionText)
-    processedRegions.append(processedRegionsThisImage)
+    return {'text_results':text_results,
+            'padded_crops':padded_crops}
     
-# ...for each image
+# ...def find_text_in_crops(...)
     
 
-#%% Extract dates and times    
+def get_datetime_from_strings(strings):
+    """
+    Given a list of strings, search for exactly one datetime in those strings. 
     
-imageExtractedDatestamps = []
-
-import dateutil
-
-for iImage,regionTextList in enumerate(imageText):
+    Strings are currently just concatenated before searching for a datetime.
+    """
     
-    allTextThisImage = ''.join(regionTextList)        
-    imageExtractedDatestamps.append('')
-    
-    print('Source: ' + allTextThisImage)
-    
-    datePat = r'(\d+[/-]\d+[/-]\d+)'    
-    s = allTextThisImage
-    match = re.findall(datePat,s)     
-    dateString = ''
-    if len(match) > 1:
-        print('Oops: multiple date matches for {}'.format(allTextThisImage))
-    elif len(match) == 1:
-        dateString = match[0]
-    
-    timePat = r'(\d+:\d+(:\d+)?\s*(am|pm)?)'    
-    # s = '1:22 pm'
-    # s = '1:23:44 pm'
-    s = allTextThisImage
-    match = re.findall(timePat,s,re.IGNORECASE)     
-    
-    if len(match) > 0:
-        timeString = match[0][0]
-    else:
-        timeString = ''
+    s = ' '.join(strings)    
         
-    if len(dateString) == 0 or len(timeString) == 0:
-        continue
+    dateparser_result = dateparser.search.search_dates(s, settings=dateparser_settings)
     
-    dtString = dateString + ' ' + timeString
+    if dateparser_result is not None:
+        assert len(dateparser_result) == 1
+        extracted_datetime = dateparser_result[0][1]
+    else:
+        matches = datefinder.find_dates(s,strict=False)
+        matches_list = [m for m in matches]
+        if len(matches_list) == 1:
+            extracted_datetime = matches_list[0]
+        else:
+            extracted_datetime = None
+        
+    if extracted_datetime is not None:        
+        assert extracted_datetime.year <= 2023 and extracted_datetime.year >= 1990
     
-    print('Found datetime: {}'.format(dtString))    
+    return extracted_datetime
     
-    dt = dateutil.parser.parse(dtString)
+# ...def get_datetime_from_strings(...)
 
-    print('Converted datetime: {}'.format(str(dt)))
+
+def get_datetime_from_image(image):
+    """
+    Find the datetime string (if present) in [image], which can be a PIL image or a 
+    filename.  Returns a dict:
+        
+    text_results: length-2 list of strings
+    crops: length-2 list of images
+    padded_crops: length-2 list of images
+    datetime: Python datetime object, or None
+    """
     
-    imageExtractedDatestamps[-1] = dt
+    if isinstance(image,str):
+        image = vis_utils.open_image(image)
+
+    # Crop the top and bottom from the image
+    crops = rough_crop(image)
+    assert len(crops) == 2
     
-    print('')
+    # Find text
+    ocr_results = find_text_in_crops(crops)
+    text_results = ocr_results['text_results']
+    padded_crops = ocr_results['padded_crops']
+    assert len(text_results) == 2
+    assert len(padded_crops) == 2
+        
+    # Find datetime
+    extracted_datetime = get_datetime_from_strings(text_results)
+    assert isinstance(extracted_datetime,datetime.datetime) or (extracted_datetime is None)
+    
+    to_return = {}
+    to_return['crops'] = crops
+    to_return['padded_crops'] = padded_crops
+    to_return['text_results'] = text_results
+    to_return['datetime'] = extracted_datetime
+    
+    return to_return
+
+# ...def get_datetime_from_image(...)
+
+
+#%% Process images
+
+image_dir = r'g:\temp\ocr-test'
+n_to_sample = -1
+
+image_dir = r"d:\lila\channel-islands-camera-traps\images"
+n_to_sample = -1
+
+image_file_names = find_images(image_dir,convert_slashes=True,return_relative_paths=True,recursive=True)
+
+if n_to_sample > 0:
+    import random
+    random.seed(0)
+    image_file_names = random.sample(image_file_names,n_to_sample)
+    
+n_cores = 10
+use_threads = True
+
+def get_datetime_from_relative_path(fn_relative):
+    fn_abs = os.path.join(image_dir,fn_relative)
+    result = {}
+    result['error'] = None        
+    try:
+        result = get_datetime_from_image(fn_abs)                
+    except Exception as e:
+        result['error'] = str(e)
+    result['crops'] = None
+    result['padded_crops'] = None
+    return result
+
+if n_cores <= 1:
+    all_results = []
+    for fn_relative in tqdm(image_file_names):
+        all_results.append(get_datetime_from_relative_path(fn_relative))
+else:    
+    
+    if use_threads:
+        from multiprocessing.pool import ThreadPool
+        pool = ThreadPool(n_cores)
+        worker_string = 'threads'        
+    else:
+        from multiprocessing.pool import Pool
+        pool = Pool(n_cores)
+        worker_string = 'processes'
+        
+    print('Starting a pool of {} {}'.format(n_cores,worker_string))
+    
+    all_results = list(tqdm(pool.imap(
+        get_datetime_from_relative_path,image_file_names), total=len(image_file_names)))
+
+filename_to_results = {}
+
+# fn_relative = image_file_names[0]
+for i_file,fn_relative in enumerate(image_file_names):
+    filename_to_results[fn_relative] = all_results[i_file]
+
+import json
+with open(r'g:\temp\ocr_results.json','w') as f:
+    json.dump(filename_to_results,f,indent=1,default=str)
     
     
-#%% Write results to a handy html file
+#%% Write results to an HTML file for testing
       
-def resizeImage(img):
-    
-    targetWidth = 600
-    wpercent = (targetWidth / float(img.size[0]))
-    hsize = int((float(img.size[1]) * float(wpercent)))
-    imgResized = img.resize((targetWidth, hsize), Image.ANTIALIAS)
-    return imgResized
- 
-    
-outputDir = r'd:\temp\ocrTest'
-os.makedirs(outputDir,exist_ok=True)
+preview_dir = r'g:\temp\ocr-preview'
+os.makedirs(preview_dir,exist_ok=True)
+output_summary_file = os.path.join(preview_dir,'summary.html')
 
-outputSummaryFile = os.path.join(outputDir,'summary.html')
+html_image_list = []
+html_title_list = []
 
-htmlImageList = []
-htmlTitleList = []
+html_options = write_html_image_list.write_html_image_list()
 
-options = write_html_image_list.write_html_image_list()
-
-for iImage,regionSet in enumerate(imageRegions):
+# i_image = 0; fn_relative = next(iter(filename_to_results))
+for i_image,fn_relative in tqdm(enumerate(filename_to_results),total=len(filename_to_results)):
         
     # Add image name and resized image
-    image = resizeImage(images[iImage])
-    fn = os.path.join(outputDir,'img_{}_base.png'.format(iImage))
-    image.save(fn)
+    fn_abs = os.path.join(image_dir,fn_relative)
+    resized_image = vis_utils.resize_image(fn_abs,target_width=600)
+    resized_fn = os.path.join(preview_dir,'img_{}_base.png'.format(i_image))
+    resized_image.save(resized_fn)
     
-    title = 'Image: {}'.format(ntpath.basename(imageFileNames[iImage]))
-    htmlImageList.append({'filename':fn,'title':title})
-            
-    bPrintedDate = False
-    
-    # Add results and individual region images
-    for iRegion,region in enumerate(regionSet):
-            
-        text = imageText[iImage][iRegion].strip()
-        if (len(text) == 0):
-            continue
-                
-        image = resizeImage(processedRegions[iImage][iRegion])
-        fn = os.path.join(outputDir,'img_{}_r{}_processed.png'.format(iImage,iRegion))
-        image.save(fn)
+    results_this_image = filename_to_results[fn_relative]
         
-        imageStyle = options['defaultImageStyle'] + 'margin-left:50px;'
-        textStyle = options['defaultTextStyle'] + 'margin-left:50px;'
-        imageFilename = fn
-        extractedText = str(imageExtractedDatestamps[iImage])
-        title = 'Raw text: ' + text
-        if (not bPrintedDate) and (len(extractedText) != 0):
-            title += '<br/>Extracted datetime: ' + extractedText
-            bPrintedDate = True
-
+    extracted_datetime = results_this_image['datetime']
+    title = 'Image: {}<br/>Extracted datetime: {}'.format(fn_relative,extracted_datetime)
+    html_image_list.append({'filename':resized_fn,'title':title})
+            
+    for i_crop,crop in enumerate(results_this_image['crops']):
+            
+        image = vis_utils.resize_image(crop,target_width=600)
+        fn_crop = os.path.join(preview_dir,'img_{}_r{}_processed.png'.format(i_image,i_crop))
+        image.save(fn_crop)
+        
+        image_style = html_options['defaultImageStyle'] + 'margin-left:50px;'
+        text_style = html_options['defaultTextStyle'] + 'margin-left:50px;'
+        
+        if i_crop == len(results_this_image['crops']) - 1:
+            image_style += 'margin-bottom:30px;'
+            
+        title = 'Raw text: ' + results_this_image['text_results'][i_crop]
+        
         # textStyle = "font-family:calibri,verdana,arial;font-weight:bold;font-size:150%;text-align:left;margin-left:50px;"
-        htmlImageList.append({'filename':fn,'imageStyle':imageStyle,'title':title,'textStyle':textStyle})
+        html_image_list.append({'filename':fn_crop,'imageStyle':image_style,'title':title,'textStyle':text_style})
                         
-htmlOptions = {}
-htmlOptions['makeRelative'] = True
-write_html_image_list.write_html_image_list(outputSummaryFile,
-                                            htmlImageList,
-                                            htmlOptions)
-os.startfile(outputSummaryFile)
+    # ...for each crop
+
+# ...for each image
+        
+html_options['makeRelative'] = True
+write_html_image_list.write_html_image_list(output_summary_file,
+                                            html_image_list,
+                                            html_options)
+from md_utils.path_utils import open_file
+open_file(output_summary_file)
 
 
 #%% Scrap
@@ -419,13 +450,13 @@ os.startfile(outputSummaryFile)
 # Using findContours()
 if False:
 
-    # imagePil = Image.fromarray(analysisImage); imagePil
+    # image_pil = Image.fromarray(analysis_image); image_pil
     
-    # analysisImage = cv2.erode(analysisImage, None, iterations=3)
-    # analysisImage = cv2.dilate(analysisImage, None, iterations=3)
+    # analysis_image = cv2.erode(analysis_image, None, iterations=3)
+    # analysis_image = cv2.dilate(analysis_image, None, iterations=3)
 
-    # analysisImage = cv2.threshold(analysisImage, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    im2, contours, hierarchy = cv2.findContours(analysisImage,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    # analysis_image = cv2.threshold(analysis_image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    im2, contours, hierarchy = cv2.findContours(analysis_image,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE) # noqa
     
     # Find object with the biggest bounding box
     mx = (0,0,0,0)      # biggest bounding box so far
@@ -441,9 +472,9 @@ if False:
 # Using connectedComponents()
 if False:
     
-    # analysisImage = image
+    # analysis_image = image
     nb_components, output, stats, centroids = \
-        cv2.connectedComponentsWithStats(analysisImage, connectivity = 4)
+        cv2.connectedComponentsWithStats(analysis_image, connectivity = 4) # noqa
     # print('Found {} components'.format(nb_components))
     sizes = stats[:, -1]
 
@@ -457,26 +488,26 @@ if False:
     # We just want the *background* image
     max_label = 0
     
-    maskImage = np.zeros(output.shape)
-    maskImage[output == max_label] = 255
+    mask_image = np.zeros(output.shape)
+    mask_image[output == max_label] = 255
     
     thresh = 127
-    binaryImage = cv2.threshold(maskImage, thresh, 255, cv2.THRESH_BINARY)[1]
+    binary_image = cv2.threshold(mask_image, thresh, 255, cv2.THRESH_BINARY)[1]
     
-    minX = -1
-    minY = -1
-    maxX = -1
-    maxY = -1
-    h = binaryImage.shape[0]
-    w = binaryImage.shape[1]
+    min_x = -1
+    min_y = -1
+    max_x = -1
+    max_y = -1
+    h = binary_image.shape[0]
+    w = binary_image.shape[1]
     for y in range(h):
         for x in range(w):
-            if binaryImage[y][x] > thresh:
-                if minX == -1:
-                    minX = x
-                if minY == -1:
-                    minY = y
-                if x > maxX:
-                    maxX = x
-                if y > maxY:
-                    maxY = y
+            if binary_image[y][x] > thresh:
+                if min_x == -1:
+                    min_x = x
+                if min_y == -1:
+                    min_y = y
+                if x > max_x:
+                    max_x = x
+                if y > max_y:
+                    max_y = y
