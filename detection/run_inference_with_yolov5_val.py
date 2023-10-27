@@ -284,7 +284,7 @@ def run_inference_with_yolo_val(options):
         raise ValueError('Unrecognized model type {}'.format(options.model_type))
         
     # print(cmd); import clipboard; clipboard.copy(cmd)
-        
+
     
     ##%% Run YOLO command
     
@@ -568,10 +568,8 @@ if False:
     options = YoloInferenceOptions()
     
     options.model_type = 'yolov8'    
-    options.yolo_category_id_to_name = dataset_file
-    
-    options.yolo_working_folder = yolo_working_folder
-    
+    options.yolo_category_id_to_name = dataset_file    
+    options.yolo_working_folder = None    
     options.output_file = output_file
     
     options.augment = False
@@ -599,6 +597,7 @@ if False:
           f' --image_size {options.image_size} --conf_thres {options.conf_thres} ' + \
           f' --batch_size {options.batch_size} --symlink_folder {options.symlink_folder} ' + \
           f'--yolo_results_folder {options.yolo_results_folder} --model_type {options.model_type}' + \
+          f' --yolo_dataset_file {options.yolo_category_id_to_name}' + \
           ' --no_remove_symlink_folder --no_remove_yolo_results_folder'
       
     if not options.use_symlinks:
