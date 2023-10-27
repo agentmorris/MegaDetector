@@ -42,8 +42,9 @@
 #%% Imports and constants
 
 import json
-import os
 import csv
+import os
+import re
 
 from collections import defaultdict
 from tqdm import tqdm
@@ -58,6 +59,26 @@ from detection.run_detector import CONF_DIGITS, COORD_DIGITS
 
 #%% Support functions
 
+def read_classes_from_yolo_dataset_file(fn):
+    """
+    Read a dictionary mapping integer class IDs to class names from a YOLOv5 dataset.yaml
+    file.
+    """
+        
+    with open(fn,'r') as f:
+        lines = f.readlines()
+            
+    category_id_to_name = {}
+    pat = '\d+:.+'
+    for s in lines:
+        if re.search(pat,s) is not None:
+            tokens = s.split(':')
+            assert len(tokens) == 2, 'Invalid token in category file {}'.format(fn)
+            category_id_to_name[int(tokens[0].strip())] = tokens[1].strip()
+        
+    return category_id_to_name
+    
+
 def yolo_json_output_to_md_output(yolo_json_file, image_folder,
                                   output_file, yolo_category_id_to_name,                              
                                   detector_name='unknown',
@@ -68,23 +89,32 @@ def yolo_json_output_to_md_output(yolo_json_file, image_folder,
     """
     Convert a YOLOv5 .json file to MD .json format.
     
-    Args
-    - yolo_json_file: the .json file to convert from YOLOv5 format to MD output format
-    - image_folder: the .json file contains relative path names, this is the path base
+    Args:
+        
+    - yolo_json_file: the .json file to convert from YOLOv5 format to MD output format.
+    
+    - image_folder: the .json file contains relative path names, this is the path base.
+    
     - yolo_category_id_to_name: the .json file contains only numeric identifiers for
       categories, but we want names and numbers for the output format; this is a 
-      dict mapping numbers to names
-    - detector_name: a string put in the output file, not otherwise used here
+      dict mapping numbers to names.  Can also be a YOLOv5 dataset.yaml file.
+    
+    - detector_name: a string that gets put in the output file, not otherwise used within
+      this function.
+    
     - image_id_to_relative_path: YOLOv5 .json uses only basenames (e.g. abc1234.JPG);
       by default these will be appended to the input path to create pathnames, so if you
       have a flat folder, this is fine.  If you want to map base names to relative paths, use
       this dict.
+    
     - offset_yolo_class_ids: YOLOv5 class IDs always start at zero; if you want to make the 
-      output classes start at 1, set offset_yolo_class_ids
+      output classes start at 1, set offset_yolo_class_ids to True.
+    
     - truncate_to_standard_md_precision: YOLOv5 .json includes lots of (not-super-meaningful)
       precision, set this to truncate to COORD_DIGITS and CONF_DIGITS.
-    - image_id_to_error: if you want to include image IDs in the output file because you couldn't
-      prepare the input file in the first place, include them here.
+    
+    - image_id_to_error: if you want to include image IDs in the output file for which you couldn't
+      prepare the input file in the first place due to errors, include them here.
     """    
         
     assert os.path.isfile(yolo_json_file), \
@@ -96,6 +126,12 @@ def yolo_json_output_to_md_output(yolo_json_file, image_folder,
         image_id_to_error = {}
             
     print('Converting {} to MD format'.format(yolo_json_file))
+    
+    if isinstance(yolo_category_id_to_name,str):
+        assert os.path.isfile(yolo_category_id_to_name), \
+            'YOLO category mapping specified as a string, but file does not exist: {}'.format(
+                yolo_category_id_to_name)
+        yolo_category_id_to_name = read_classes_from_yolo_dataset_file(yolo_category_id_to_name)        
     
     if image_id_to_relative_path is None:
         
@@ -248,9 +284,18 @@ def yolo_json_output_to_md_output(yolo_json_file, image_folder,
     with open(output_file,'w') as f:
         json.dump(d,f,indent=1)
             
+# ...def yolo_json_output_to_md_output(...)
     
+
 def yolo_txt_output_to_md_output(input_results_folder, image_folder,
                                  output_file, detector_tag=None):
+    """
+    Converts a folder of YOLO-outptu .txt files to MD .json format.
+    
+    Less finished than the .json conversion function; this .txt conversion assumes 
+    a hard-coded mapping representing the standard MD categories (in MD indexing, 
+    1/2/3=animal/person/vehicle; in YOLO indexing, 0/1/2=animal/person/vehicle).
+    """
     
     assert os.path.isdir(input_results_folder)
     assert os.path.isdir(image_folder)
@@ -339,7 +384,7 @@ def yolo_txt_output_to_md_output(input_results_folder, image_folder,
     with open(output_file,'w') as f:
         json.dump(output_content,f,indent=1)
     
-# ...def yolo_output_to_md_output()
+# ...def yolo_txt_output_to_md_output(...)
 
 
 #%% Interactive driver

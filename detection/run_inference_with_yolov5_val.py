@@ -51,6 +51,9 @@ from md_utils import process_utils
 from data_management import yolo_output_to_md_output
 from detection.run_detector import try_download_known_detector
 
+default_image_size_with_augmentation = int(1280 * 1.3)
+default_image_size_with_no_augmentation = 1280
+
 
 #%% Options class
 
@@ -65,7 +68,7 @@ class YoloInferenceOptions:
 
     ## Optional ##
     
-    image_size = 1280 * 1.3
+    image_size = default_image_size_with_augmentation
     conf_thres = '0.001'
     batch_size = 1
     device_string = '0'
@@ -117,6 +120,16 @@ def run_inference_with_yolo_val(options):
             
     os.makedirs(os.path.dirname(options.output_file),exist_ok=True)
     
+    ##%% Other input handling
+    
+    if isinstance(options.yolo_category_id_to_name,str):
+        assert os.path.isfile(options.yolo_category_id_to_name)
+        yolo_dataset_file = options.yolo_category_id_to_name
+        options.yolo_category_id_to_name = \
+            yolo_output_to_md_output.read_classes_from_yolo_dataset_file(yolo_dataset_file)
+        print('Loaded {} category mappings from {}'.format(
+            len(options.yolo_category_id_to_name),yolo_dataset_file))
+
     temporary_folder = None
     symlink_folder_is_temp_folder = False
     yolo_folder_is_temp_folder = False
@@ -339,9 +352,9 @@ def main():
         help='folder in which to execute val.py')
     
     parser.add_argument(
-        '--image_size', default=options.image_size, type=int,
-        help='image size for model execution (default {})'.format(
-            options.image_size))
+        '--image_size', default=None, type=int,
+        help='image size for model execution (default {} when augmentation is enabled, else {})'.format(
+            default_image_size_with_augmentation,default_image_size_with_no_augmentation))
     parser.add_argument(
         '--conf_thres', default=options.conf_thres, type=float,
         help='confidence threshold for including detections in the output file (default {})'.format(
@@ -355,7 +368,11 @@ def main():
     parser.add_argument(
         '--overwrite_handling', default=options.overwrite_handling, type=str,
         help='action to take if the output file exists (skip, error, overwrite) (default {})'.format(
-            options.overwrite_handling)    )
+            options.overwrite_handling))
+    parser.add_argument(
+        '--yolo_dataset_file', default=None, type=str,
+        help='YOLOv5 dataset.yml file from which we should load category information ' + \
+            '(otherwise defaults to MD categories)')
 
     parser.add_argument(
         '--symlink_folder', type=str,
@@ -377,6 +394,7 @@ def main():
         default_augment_enabled = 1
     else:
         default_augment_enabled = 0
+            
     parser.add_argument(
         '--augment_enabled', default=default_augment_enabled, type=int,
         help='enable/disable augmentation (default {})'.format(default_augment_enabled))
@@ -386,8 +404,26 @@ def main():
         parser.exit()
 
     args = parser.parse_args()
-    
+        
+    # If the caller hasn't specified an image size, choose one based on whether augmentation
+    # is enabled.
+    if args.image_size is None:
+        assert options.augment in (0,1)
+        if options.augment == 1:
+            args.image_size = default_image_size_with_augmentation
+        else:
+            args.image_size = default_image_size_with_no_augmentation
+        augment_enabled_string = 'enabled'
+        if not options.augment:
+            augment_enabled_string = 'disabled'
+        print('Augmentation is {}, using default image size {}'.format(
+            augment_enabled_string,args.image_size))
+        
     args_to_object(args, options)
+    
+    if args.yolo_dataset_file is not None:
+        options.yolo_category_id_to_name = args.yolo_dataset_file
+        
     options.remove_symlink_folder = (not options.no_remove_symlink_folder)
     options.remove_yolo_results_folder = (not options.no_remove_yolo_results_folder)
     options.use_symlinks = (not options.no_use_symlinks)
