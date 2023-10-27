@@ -171,8 +171,13 @@ def resize_image(image, target_width, target_height=-1):
     Resizes a PIL image object to the specified width and height; does not resize
     in place. If either width or height are -1, resizes with aspect ratio preservation.
     If both are -1, returns the original image (does not copy in this case).
+    
+    [image] can be a PIL image or a filename.
     """
 
+    if isinstance(image,str):
+        image = load_image(image)
+        
     # Null operation
     if target_width == -1 and target_height == -1:
         return image
