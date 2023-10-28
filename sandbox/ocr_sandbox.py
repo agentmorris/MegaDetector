@@ -2,7 +2,7 @@
 #
 # ocr_sandbox.py
 #
-# sandbox for experimenting with using OCR to pull metadata from camera trap images
+# Use OCR (via the Tesseract package) to pull metadata from camera trap images.
 #
 # The general approach is:
 #
@@ -17,6 +17,12 @@
 #
 # * Use regular expressions to find time and date
 #
+# Prior to using this module:
+#
+# * Install Tesseract from https://tesseract-ocr.github.io/tessdoc/Installation.html
+#
+# * pip install pytesseract
+#    
 ########
 
 #%% Notes to self
@@ -32,6 +38,7 @@
 #%% Constants and imports
 
 import os
+import json
 import numpy as np
 import datetime
 
@@ -287,7 +294,7 @@ def get_datetime_from_strings(strings):
 # ...def get_datetime_from_strings(...)
 
 
-def get_datetime_from_image(image):
+def get_datetime_from_image(image,include_crops=True):
     """
     Find the datetime string (if present) in [image], which can be a PIL image or a 
     filename.  Returns a dict:
@@ -317,138 +324,157 @@ def get_datetime_from_image(image):
     assert isinstance(extracted_datetime,datetime.datetime) or (extracted_datetime is None)
     
     to_return = {}
-    to_return['crops'] = crops
-    to_return['padded_crops'] = padded_crops
     to_return['text_results'] = text_results
     to_return['datetime'] = extracted_datetime
     
+    if include_crops:
+        to_return['crops'] = crops
+        to_return['padded_crops'] = padded_crops
+        
     return to_return
 
 # ...def get_datetime_from_image(...)
 
 
-#%% Process images
-
-image_dir = r'g:\temp\ocr-test'
-n_to_sample = -1
-
-image_dir = r"d:\lila\channel-islands-camera-traps\images"
-n_to_sample = -1
-
-image_file_names = find_images(image_dir,convert_slashes=True,return_relative_paths=True,recursive=True)
-
-if n_to_sample > 0:
-    import random
-    random.seed(0)
-    image_file_names = random.sample(image_file_names,n_to_sample)
-    
-n_cores = 10
-use_threads = True
-
-def get_datetime_from_relative_path(fn_relative):
-    fn_abs = os.path.join(image_dir,fn_relative)
+def try_get_datetime_from_image(filename,include_crops=False):
+    """
+    Try/catch wrapper for get_datetime_from_image, defaults to returning 
+    metadata only.
+    """
+        
     result = {}
     result['error'] = None        
     try:
-        result = get_datetime_from_image(fn_abs)                
+        result = get_datetime_from_image(filename,include_crops)
     except Exception as e:
         result['error'] = str(e)
-    result['crops'] = None
-    result['padded_crops'] = None
     return result
 
-if n_cores <= 1:
-    all_results = []
-    for fn_relative in tqdm(image_file_names):
-        all_results.append(get_datetime_from_relative_path(fn_relative))
-else:    
+
+def get_datetimes_for_folder(folder_name,output_file,n_to_sample=-1):
+    """
+    Retrieve metadata from every image in [folder_name], and 
+    write the results to the .json file [output_file].
+    """
     
-    if use_threads:
-        from multiprocessing.pool import ThreadPool
-        pool = ThreadPool(n_cores)
-        worker_string = 'threads'        
-    else:
-        from multiprocessing.pool import Pool
-        pool = Pool(n_cores)
-        worker_string = 'processes'
+    image_file_names = \
+        find_images(folder_name,convert_slashes=True,
+                    return_relative_paths=False,recursive=True)
+    
+    if n_to_sample > 0:
+        import random
+        random.seed(0)
+        image_file_names = random.sample(image_file_names,n_to_sample)
         
-    print('Starting a pool of {} {}'.format(n_cores,worker_string))
+    n_cores = 8
+    use_threads = False
     
-    all_results = list(tqdm(pool.imap(
-        get_datetime_from_relative_path,image_file_names), total=len(image_file_names)))
-
-filename_to_results = {}
-
-# fn_relative = image_file_names[0]
-for i_file,fn_relative in enumerate(image_file_names):
-    filename_to_results[fn_relative] = all_results[i_file]
-
-import json
-with open(r'g:\temp\ocr_results.json','w') as f:
-    json.dump(filename_to_results,f,indent=1,default=str)
-    
-    
-#%% Write results to an HTML file for testing
-      
-preview_dir = r'g:\temp\ocr-preview'
-os.makedirs(preview_dir,exist_ok=True)
-output_summary_file = os.path.join(preview_dir,'summary.html')
-
-html_image_list = []
-html_title_list = []
-
-html_options = write_html_image_list.write_html_image_list()
-
-# i_image = 0; fn_relative = next(iter(filename_to_results))
-for i_image,fn_relative in tqdm(enumerate(filename_to_results),total=len(filename_to_results)):
+    if n_cores <= 1:
+        all_results = []
+        for fn_abs in tqdm(image_file_names):
+            all_results.append(try_get_datetime_from_image(fn_abs))
+    else:    
         
-    # Add image name and resized image
-    fn_abs = os.path.join(image_dir,fn_relative)
-    resized_image = vis_utils.resize_image(fn_abs,target_width=600)
-    resized_fn = os.path.join(preview_dir,'img_{}_base.png'.format(i_image))
-    resized_image.save(resized_fn)
-    
-    results_this_image = filename_to_results[fn_relative]
-        
-    extracted_datetime = results_this_image['datetime']
-    title = 'Image: {}<br/>Extracted datetime: {}'.format(fn_relative,extracted_datetime)
-    html_image_list.append({'filename':resized_fn,'title':title})
+        if use_threads:
+            from multiprocessing.pool import ThreadPool
+            pool = ThreadPool(n_cores)
+            worker_string = 'threads'        
+        else:
+            from multiprocessing.pool import Pool
+            pool = Pool(n_cores)
+            worker_string = 'processes'
             
-    for i_crop,crop in enumerate(results_this_image['crops']):
-            
-        image = vis_utils.resize_image(crop,target_width=600)
-        fn_crop = os.path.join(preview_dir,'img_{}_r{}_processed.png'.format(i_image,i_crop))
-        image.save(fn_crop)
+        print('Starting a pool of {} {}'.format(n_cores,worker_string))
         
-        image_style = html_options['defaultImageStyle'] + 'margin-left:50px;'
-        text_style = html_options['defaultTextStyle'] + 'margin-left:50px;'
-        
-        if i_crop == len(results_this_image['crops']) - 1:
-            image_style += 'margin-bottom:30px;'
-            
-        title = 'Raw text: ' + results_this_image['text_results'][i_crop]
-        
-        # textStyle = "font-family:calibri,verdana,arial;font-weight:bold;font-size:150%;text-align:left;margin-left:50px;"
-        html_image_list.append({'filename':fn_crop,'imageStyle':image_style,'title':title,'textStyle':text_style})
-                        
-    # ...for each crop
-
-# ...for each image
-        
-html_options['makeRelative'] = True
-write_html_image_list.write_html_image_list(output_summary_file,
-                                            html_image_list,
-                                            html_options)
-from md_utils.path_utils import open_file
-open_file(output_summary_file)
+        all_results = list(tqdm(pool.imap(
+            try_get_datetime_from_image,image_file_names), total=len(image_file_names)))
+    
+    filename_to_results = {}
+    
+    # fn_relative = image_file_names[0]
+    for i_file,fn_abs in enumerate(image_file_names):
+        filename_to_results[fn_abs] = all_results[i_file]
+    
+    with open(output_file,'w') as f:
+        json.dump(filename_to_results,f,indent=1,default=str)
 
 
-#%% Scrap
+#%% Interactive driver
 
-# Alternative approaches to finding the text/background region
-
-# Using findContours()
 if False:
+    
+    #%% Process images
+    
+    folder_name = r'g:\temp\island_conservation_camera_traps'
+    output_file = r'g:\temp\ocr_results.json'
+    assert os.path.isdir(folder_name)
+    get_datetimes_for_folder(folder_name,output_file)
+    
+
+    #%% Write results to an HTML file for testing
+          
+    with open(output_file,'r') as f:
+        filename_to_results = json.load(f)
+        
+    preview_dir = r'g:\temp\ocr-preview'
+    os.makedirs(preview_dir,exist_ok=True)
+    output_summary_file = os.path.join(preview_dir,'summary.html')
+    
+    html_image_list = []
+    html_title_list = []
+    
+    html_options = write_html_image_list.write_html_image_list()
+    
+    # i_image = 0; fn_relative = next(iter(filename_to_results))
+    for i_image,fn_abs in tqdm(enumerate(filename_to_results),total=len(filename_to_results)):
+            
+        fn_relative = os.path.relpath(fn_abs,folder_name)
+        
+        # Add image name and resized image
+        resized_image = vis_utils.resize_image(fn_abs,target_width=600)
+        resized_fn = os.path.join(preview_dir,'img_{}_base.png'.format(i_image))
+        resized_image.save(resized_fn)
+        
+        results_this_image = filename_to_results[fn_abs]
+            
+        extracted_datetime = results_this_image['datetime']
+        title = 'Image: {}<br/>Extracted datetime: {}'.format(fn_relative,extracted_datetime)
+        html_image_list.append({'filename':resized_fn,'title':title})
+                
+        for i_crop,crop in enumerate(results_this_image['crops']):
+                
+            image = vis_utils.resize_image(crop,target_width=600)
+            fn_crop = os.path.join(preview_dir,'img_{}_r{}_processed.png'.format(i_image,i_crop))
+            image.save(fn_crop)
+            
+            image_style = html_options['defaultImageStyle'] + 'margin-left:50px;'
+            text_style = html_options['defaultTextStyle'] + 'margin-left:50px;'
+            
+            if i_crop == len(results_this_image['crops']) - 1:
+                image_style += 'margin-bottom:30px;'
+                
+            title = 'Raw text: ' + results_this_image['text_results'][i_crop]
+            
+            # textStyle = "font-family:calibri,verdana,arial;font-weight:bold;font-size:150%;text-align:left;margin-left:50px;"
+            html_image_list.append({'filename':fn_crop,'imageStyle':image_style,'title':title,'textStyle':text_style})
+                            
+        # ...for each crop
+    
+    # ...for each image
+            
+    html_options['makeRelative'] = True
+    write_html_image_list.write_html_image_list(output_summary_file,
+                                                html_image_list,
+                                                html_options)
+    from md_utils.path_utils import open_file
+    open_file(output_summary_file)
+
+
+#%% Alternative approaches to finding the text/background region
+
+if False:
+    
+    #%% Using findContours()
 
     # image_pil = Image.fromarray(analysis_image); image_pil
     
@@ -469,8 +495,8 @@ if False:
             mx_area = area
     x,y,w,h = mx
    
-# Using connectedComponents()
-if False:
+    
+   #%% Using connectedComponents()
     
     # analysis_image = image
     nb_components, output, stats, centroids = \

@@ -197,6 +197,23 @@ def safe_create_link(link_exists,link_new):
         os.symlink(link_exists,link_new)
         
 
+def get_file_sizes(base_dir, convert_slashes=True):
+    """
+    Get sizes recursively for all files in base_dir, returning a dict mapping
+    relative filenames to size.
+    """
+    
+    relative_filenames = recursive_file_list(base_dir, convert_slashes=convert_slashes, 
+                                             return_relative_paths=True)
+    
+    fn_to_size = {}
+    for fn_relative in tqdm(relative_filenames):
+        fn_abs = os.path.join(base_dir,fn_relative)
+        fn_to_size[fn_relative] = os.path.getsize(fn_abs)
+                   
+    return fn_to_size
+        
+
 #%% Image-related path functions
 
 def is_image_file(s: str, img_extensions: Container[str] = IMG_EXTENSIONS
