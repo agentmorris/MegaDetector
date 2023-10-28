@@ -116,6 +116,8 @@ class PostProcessingOptions:
 
     # By default, choose a confidence threshold based on the detector version
     confidence_threshold = None
+    
+    # Confidence threshold to apply to classification (not detection) results
     classification_confidence_threshold = 0.5
 
     # Used for summary statistics only

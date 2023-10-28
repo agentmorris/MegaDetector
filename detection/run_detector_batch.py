@@ -350,14 +350,43 @@ def process_image(im_file, detector, confidence_threshold, image=None,
 # ...def process_image(...)
 
 
+def load_custom_class_mapping(class_mapping_filename):
+    """
+    This is an experimental hack to allow the use of non-MD YOLOv5 models through
+    the same infrastructure; it disables the code that enforces MDv5-like class lists.
+    
+    Should be a .json file that maps int-strings to strings, or a YOLOv5 dataset.yaml file.
+    """
+    
+    if class_mapping_filename is None:
+        return
+    
+    run_detector.USE_MODEL_NATIVE_CLASSES = True
+    if class_mapping_filename.endswith('.json'):
+        with open(class_mapping_filename,'r') as f:
+            class_mapping = json.load(f)
+    elif (class_mapping_filename.endswith('.yml') or class_mapping_filename.endswith('.yaml')):
+        from data_management.yolo_output_to_md_output import read_classes_from_yolo_dataset_file
+        class_mapping = read_classes_from_yolo_dataset_file(class_mapping_filename)
+        # convert from ints to int-strings
+        class_mapping = {str(k):v for k,v in class_mapping.items()}
+    else:
+        raise ValueError('Unrecognized class mapping file {}'.format(class_mapping_filename))
+        
+    print('Loaded custom class mapping:')
+    print(class_mapping)
+    run_detector.DEFAULT_DETECTOR_LABEL_MAP = class_mapping
+    return class_mapping
+    
+    
 #%% Main function
 
 def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=None,
                                 confidence_threshold=run_detector.DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD,
                                 checkpoint_frequency=-1, results=None, n_cores=1,
-                                use_image_queue=False, quiet=False, image_size=None, class_mapping_filename=None, 
-                                include_image_size=False, include_image_timestamp=False, 
-                                include_exif_data=False):
+                                use_image_queue=False, quiet=False, image_size=None, 
+                                class_mapping_filename=None, include_image_size=False, 
+                                include_image_timestamp=False, include_exif_data=False):
     """
     Args
     - model_file: path to model file, or supported model string (e.g. "MDV5A")
@@ -370,6 +399,7 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
     - results: list of dict, existing results loaded from checkpoint
     - n_cores: int, # of CPU cores to use
     - class_mapping_filename: str, use a non-default class mapping supplied in a .json file
+      or YOLOv5 dataset.yaml file.
 
     Returns
     - results: list of dicts; each dict represents detections on one image
@@ -384,15 +414,8 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
     if checkpoint_frequency is None:
         checkpoint_frequency = -1
 
-    # This is an experimental hack to allow the use of non-MD YOLOv5 models through
-    # the same infrastructure; it disables the code that enforces MDv5-like class lists.
     if class_mapping_filename is not None:
-        run_detector.USE_MODEL_NATIVE_CLASSES = True
-        with open(class_mapping_filename,'r') as f:
-            class_mapping = json.load(f)
-        print('Loaded custom class mapping:')
-        print(class_mapping)
-        run_detector.DEFAULT_DETECTOR_LABEL_MAP = class_mapping
+        load_custom_class_mapping(class_mapping_filename)
         
     # Handle the case where image_file_names is not yet actually a list
     if isinstance(image_file_names,str):
@@ -828,7 +851,7 @@ def main():
         default=None,
         help='Use a non-default class mapping, supplied in a .json file with a dictionary mapping' + \
             'int-strings to strings.  This will also disable the addition of "1" to all category ' + \
-            'IDs, so your class mapping should start at zero.')
+            'IDs, so your class mapping should start at zero.  Can also be a YOLOv5 dataset.yaml file.')
     parser.add_argument(
         '--include_image_size',
         action='store_true',
@@ -885,15 +908,8 @@ def main():
         else:
             raise ValueError('Illegal overwrite handling string {}'.format(args.overwrite_handling))
 
-    # This is an experimental hack to allow the use of non-MD YOLOv5 models through
-    # the same infrastructure; it disables the code that enforces MDv5-like class lists.
     if args.class_mapping_filename is not None:
-        run_detector.USE_MODEL_NATIVE_CLASSES = True
-        with open(args.class_mapping_filename,'r') as f:
-            class_mapping = json.load(f)
-        print('Loaded custom class mapping:')
-        print(class_mapping)
-        run_detector.DEFAULT_DETECTOR_LABEL_MAP = class_mapping
+        load_custom_class_mapping(args.class_mapping_filename)
         
     # Load the checkpoint if available
     #

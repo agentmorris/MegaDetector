@@ -131,7 +131,7 @@ def yolo_json_output_to_md_output(yolo_json_file, image_folder,
         assert os.path.isfile(yolo_category_id_to_name), \
             'YOLO category mapping specified as a string, but file does not exist: {}'.format(
                 yolo_category_id_to_name)
-        yolo_category_id_to_name = read_classes_from_yolo_dataset_file(yolo_category_id_to_name)        
+        yolo_category_id_to_name = read_classes_from_yolo_dataset_file(yolo_category_id_to_name)
     
     if image_id_to_relative_path is None:
         
@@ -274,7 +274,7 @@ def yolo_json_output_to_md_output(yolo_json_file, image_folder,
     d['images'] = output_images
     d['info'] = {'format_version':1.3,'detector':detector_name}
     d['detection_categories'] = {}
-    
+        
     for cat_id in yolo_category_id_to_name:
         yolo_cat_id = int(cat_id)
         if offset_yolo_class_ids:

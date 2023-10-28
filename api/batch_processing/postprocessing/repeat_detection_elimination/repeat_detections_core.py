@@ -74,7 +74,7 @@ class RepeatDetectionOptions:
     # How many occurrences of a single location (as defined by the IOU threshold)
     # are required before we declare it suspicious?
     occurrenceThreshold = 20
-
+    
     # Ignore "suspicious" detections larger than some size; these are often animals
     # taking up the whole image.  This is expressed as a fraction of the image size.
     maxSuspiciousDetectionSize = 0.2
@@ -120,6 +120,10 @@ class RepeatDetectionOptions:
     debugMaxRenderInstance = -1
     bParallelizeComparisons = True
     bParallelizeRendering = True
+    
+    # If this is False (default), a detection from class A is not considered to be "the same"
+    # as a detection from class B, even if they're at the same location.
+    categoryAgnosticComparisons = False
     
     # Determines whether bounding-box rendering errors (typically network errors) should
     # be treated as failures    
@@ -615,7 +619,7 @@ def find_matches_in_directory(dirNameAndRows, options):
                     overlappingCandidateDetections):
                 
                 # Don't match across categories
-                if candidate.category != category:
+                if (candidate.category != category) and (not (options.categoryAgnosticComparisons)):
                     continue
                 
                 # Is this a match?                    

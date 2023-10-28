@@ -63,11 +63,15 @@ class YoloInferenceOptions:
     
     input_folder = None
     model_filename = None
-    yolo_working_folder = None
     output_file = None
-
+    
     ## Optional ##
     
+    # Required for YOLOv5 models, not for YOLOv8 models
+    yolo_working_folder = None
+    
+    model_type = 'yolov5' # currently 'yolov5' and 'yolov8' are supported
+
     image_size = default_image_size_with_augmentation
     conf_thres = '0.001'
     batch_size = 1
@@ -84,6 +88,8 @@ class YoloInferenceOptions:
     
     # These are deliberately offset from the standard MD categories; YOLOv5
     # needs categories IDs to start at 0.
+    #
+    # This can also be a string that points to a YOLOv5 dataset.yaml file.
     yolo_category_id_to_name = {0:'animal',1:'person',2:'vehicle'}
     
     # 'error','skip','overwrite'
@@ -96,10 +102,15 @@ def run_inference_with_yolo_val(options):
 
     ##%% Path handling
     
+    if options.yolo_working_folder is None:
+        assert options.model_type == 'yolov8', \
+            'A working folder is required to run YOLOv5 val.py'
+    else:
+        assert os.path.isdir(options.yolo_working_folder), \
+            'Could not find working folder {}'.format(options.yolo_working_folder)
+                
     assert os.path.isdir(options.input_folder) or os.path.isfile(options.input_folder), \
         'Could not find input {}'.format(options.input_folder)
-    assert os.path.isdir(options.yolo_working_folder), \
-        'Could not find working folder {}'.format(options.yolo_working_folder)
     
     # If the model filename is a known model string (e.g. "MDv5A", download the model if necessary)
     model_filename = try_download_known_detector(options.model_filename)
@@ -119,6 +130,7 @@ def run_inference_with_yolo_val(options):
             raise ValueError('Unknown output handling method {}'.format(options.overwrite_handling))
             
     os.makedirs(os.path.dirname(options.output_file),exist_ok=True)
+    
     
     ##%% Other input handling
     
@@ -211,16 +223,20 @@ def run_inference_with_yolo_val(options):
     # ...for each image
 
 
-    ##%% Create the dataset file
+    ##%% Create the dataset file if necessary
+    
+    # This may have been passed in as a string, but at this point, we should have
+    # loaded the dataset file.
+    assert isinstance(options.yolo_category_id_to_name,dict)
     
     # Category IDs need to be continuous integers starting at 0
     category_ids = sorted(list(options.yolo_category_id_to_name.keys()))
     assert category_ids[0] == 0
     assert len(category_ids) == 1 + category_ids[-1]
     
-    dataset_file = os.path.join(yolo_results_folder,'dataset.yaml')
+    yolo_dataset_file = os.path.join(yolo_results_folder,'dataset.yaml')
     
-    with open(dataset_file,'w') as f:
+    with open(yolo_dataset_file,'w') as f:
         f.write('path: {}\n'.format(symlink_folder_inner))
         f.write('train: .\n')
         f.write('val: .\n')
@@ -235,26 +251,48 @@ def run_inference_with_yolo_val(options):
                                         options.yolo_category_id_to_name[category_id]))
 
 
-    ##%% Prepare YOLOv5 command
+    ##%% Prepare Python command or YOLO CLI command
     
     image_size_string = str(round(options.image_size))
-    cmd = 'python val.py --data "{}"'.format(dataset_file)
-    cmd += ' --weights "{}"'.format(model_filename)
-    cmd += ' --batch-size {} --imgsz {} --conf-thres {} --task test'.format(
-        options.batch_size,image_size_string,options.conf_thres)
-    cmd += ' --device "{}" --save-json'.format(options.device_string)
-    cmd += ' --project "{}" --name "{}" --exist-ok'.format(yolo_results_folder,'yolo_results')
     
-    if options.augment:
-        cmd += ' --augment'
+    if options.model_type == 'yolov5':
+        
+        cmd = 'python val.py --task test --data "{}"'.format(yolo_dataset_file)
+        cmd += ' --weights "{}"'.format(model_filename)
+        cmd += ' --batch-size {} --imgsz {} --conf-thres {}'.format(
+            options.batch_size,image_size_string,options.conf_thres)
+        cmd += ' --device "{}" --save-json'.format(options.device_string)
+        cmd += ' --project "{}" --name "{}" --exist-ok'.format(yolo_results_folder,'yolo_results')
+        
+        if options.augment:
+            cmd += ' --augment'
     
+    elif options.model_type == 'yolov8':
+        
+        if options.augment:
+            augment_string = 'augment'
+        else:
+            augment_string = ''
+            
+        cmd = 'yolo val {} model={} imgsz={} batch={} data={} project={} name={}'.format(
+            augment_string,model_filename,image_size_string,options.batch_size,yolo_dataset_file,
+            yolo_results_folder,'yolo_results')        
+        cmd += ' save_hybrid save_json'        
+    
+    else:
+        
+        raise ValueError('Unrecognized model type {}'.format(options.model_type))
+        
+    # print(cmd); import clipboard; clipboard.copy(cmd)
 
-    ##%% Run YOLOv5 command
     
-    current_dir = os.getcwd()
-    os.chdir(options.yolo_working_folder)    
+    ##%% Run YOLO command
+    
+    if options.yolo_working_folder is not None:
+        current_dir = os.getcwd()
+        os.chdir(options.yolo_working_folder)    
     execution_result = process_utils.execute_and_print(cmd)
-    assert execution_result['status'] == 0, 'Error running YOLOv5'
+    assert execution_result['status'] == 0, 'Error running {}'.format(options.model_type)
     yolo_console_output = execution_result['output']
     
     yolo_read_failures = []
@@ -271,9 +309,10 @@ def run_inference_with_yolo_val(options):
         image_id = os.path.splitext(os.path.basename(image_file))[0]
         assert image_id in image_id_to_file
         if image_id not in image_id_to_error:
-            image_id_to_error[image_id] = 'YOLOv5 read failure'
+            image_id_to_error[image_id] = 'YOLO read failure'
     
-    os.chdir(current_dir)
+    if options.yolo_working_folder is not None:
+        os.chdir(current_dir)
         
     
     ##%% Convert results to MD format
@@ -347,10 +386,10 @@ def main():
     parser.add_argument(
         'output_file',type=str,
         help='.json file where output will be written')
-    parser.add_argument(
-        'yolo_working_folder',type=str,
-        help='folder in which to execute val.py')
     
+    parser.add_argument(
+        '--yolo_working_folder',type=str,default=None,
+        help='folder in which to execute val.py')    
     parser.add_argument(
         '--image_size', default=None, type=int,
         help='image size for model execution (default {} when augmentation is enabled, else {})'.format(
@@ -373,6 +412,9 @@ def main():
         '--yolo_dataset_file', default=None, type=str,
         help='YOLOv5 dataset.yml file from which we should load category information ' + \
             '(otherwise defaults to MD categories)')
+    parser.add_argument(
+        '--model_type', default=options.model_type, type=str,
+        help='Model type (yolov5 or yolov8) (default {})'.format(options.model_type))
 
     parser.add_argument(
         '--symlink_folder', type=str,
@@ -441,16 +483,6 @@ if __name__ == '__main__':
 #%% Scrap
 
 if False:
-    
-    #%% Run from a set of options
-    
-    options = YoloInferenceOptions()
-
-    args = {'augment': 1, 'batch_size': 1, 'conf_thres': 0.005, 'device_string': '1', 'image_size': 1664.0, 'input_folder': '/home/user/postprocessing/usgs-kissel/usgs-kissel-2023-09-11-aug-v5a.0.0/chunk031.json', 'model_filename': '/home/user/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt', 'output_file': '/home/user/postprocessing/usgs-kissel/usgs-kissel-2023-09-11-aug-v5a.0.0/chunk031_results.json', 'overwrite_handling': 'skip', 'symlink_folder': '/home/user/postprocessing/usgs-kissel/usgs-kissel-2023-09-11-aug-v5a.0.0/symlinks/symlinks_031', 'yolo_results_folder': '/home/user/postprocessing/usgs-kissel/usgs-kissel-2023-09-11-aug-v5a.0.0/yolo_results/yolo_results_031', 'yolo_working_folder': '/home/user/git/yolov5', 'remove_symlink_folder': True, 'remove_yolo_results_folder': True, 'use_symlinks': False, 'augment': True}
-    
-    for k in args:
-        setattr(options, k, args[k])
-
 
     #%% Test driver (folder)
     
@@ -493,9 +525,79 @@ if False:
     options.remove_temporary_symlink_folder = False
     options.remove_yolo_results_file = False
     
-    cmd = f'python run_inference_with_yolov5_val.py {model_filename} {input_folder} {output_file} {yolo_working_folder} ' + \
-          f' --image_size {options.image_size} --conf_thres {options.conf_thres} --batch_size {options.batch_size} ' + \
+    cmd = f'python run_inference_with_yolov5_val.py {model_filename} {input_folder} ' + \
+          f'{output_file} --yolo_working_folder {yolo_working_folder} ' + \
+          f' --image_size {options.image_size} --conf_thres {options.conf_thres} ' + \
+          f' --batch_size {options.batch_size} ' + \
           f' --symlink_folder {options.symlink_folder} --yolo_results_folder {options.yolo_results_folder} ' + \
+          ' --no_remove_symlink_folder --no_remove_yolo_results_folder'
+      
+    if not options.use_symlinks:
+        cmd += ' --no_use_symlinks'
+    if not options.augment:
+        cmd += ' --augment_enabled 0'
+        
+    print(cmd)
+    execute_in_python = False
+    if execute_in_python:
+        run_inference_with_yolo_val(options)
+    else:
+        import clipboard; clipboard.copy(cmd)
+    
+    
+    #%% Test driver (folder) (YOLOv8 model)
+    
+    project_name = 'yolov8-inference-test'
+    input_folder = os.path.expanduser('~/data/usgs-kissel-training-resized/val')
+    dataset_file = os.path.expanduser('~/data/usgs-kissel-training-yolo/dataset.yaml')
+    output_folder = os.path.expanduser(f'~/tmp/{project_name}')
+    model_filename = os.path.expanduser(
+        '~/models/usgs-tegus/usgs-tegus-yolov8x-2023.10.25-b-1-img640-e200-best.pt')
+    model_name = os.path.splitext(os.path.basename(model_filename))[0]
+    
+    assert os.path.isdir(input_folder)
+    assert os.path.isfile(dataset_file)
+    assert os.path.isfile(model_filename)    
+    
+    symlink_folder = os.path.join(output_folder,'symlinks')
+    yolo_results_folder = os.path.join(output_folder,'yolo_results')
+    
+    output_file = os.path.join(output_folder,'{}_{}-md_format.json'.format(
+        project_name,model_name))
+    
+    options = YoloInferenceOptions()
+    
+    options.model_type = 'yolov8'    
+    options.yolo_category_id_to_name = dataset_file    
+    options.yolo_working_folder = None    
+    options.output_file = output_file
+    
+    options.augment = False
+    options.conf_thres = '0.001'
+    options.batch_size = 1
+    options.device_string = '0'
+
+    if options.augment:
+        options.image_size = round(640 * 1.3)
+    else:
+        options.image_size = 640
+    
+    options.input_folder = input_folder
+    options.model_filename = model_filename
+    
+    options.yolo_results_folder = yolo_results_folder 
+    options.symlink_folder = symlink_folder
+    options.use_symlinks = False
+    
+    options.remove_temporary_symlink_folder = False
+    options.remove_yolo_results_file = False
+    
+    cmd = f'python run_inference_with_yolov5_val.py {model_filename} ' + \
+          f'{input_folder} {output_file}' + \
+          f' --image_size {options.image_size} --conf_thres {options.conf_thres} ' + \
+          f' --batch_size {options.batch_size} --symlink_folder {options.symlink_folder} ' + \
+          f'--yolo_results_folder {options.yolo_results_folder} --model_type {options.model_type}' + \
+          f' --yolo_dataset_file {options.yolo_category_id_to_name}' + \
           ' --no_remove_symlink_folder --no_remove_yolo_results_folder'
       
     if not options.use_symlinks:
