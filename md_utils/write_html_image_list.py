@@ -8,10 +8,6 @@
 # Each "filename" can also be a dict with elements 'filename','title',
 # 'imageStyle','textStyle', 'linkTarget'
 #
-# Strips directory information away if options.makeRelative == 1.
-#
-# Tries to convert absolute to relative paths if options.makeRelative == 2.
-#
 ########
 
 #%% Constants and imports
@@ -39,7 +35,6 @@ def write_html_image_list(filename=None,images=None,options=None):
     options: a dict with one or more of the following fields:
         
         fHtml
-        makeRelative
         headerHtml
         trailerHtml
         defaultTextStyle
@@ -54,9 +49,6 @@ def write_html_image_list(filename=None,images=None,options=None):
         
     if 'fHtml' not in options:
         options['fHtml'] = -1
-    
-    if 'makeRelative' not in options:
-        options['makeRelative'] = 0
     
     if 'headerHtml' not in options or options['headerHtml'] is None:
         options['headerHtml'] = ''        
@@ -97,24 +89,6 @@ def write_html_image_list(filename=None,images=None,options=None):
             textStyle = options['defaultTextStyle']
             imageInfo['textStyle'] = options['defaultTextStyle']
         images[iImage] = imageInfo            
-    
-    # Remove leading directory information from filenames if requested
-    if options['makeRelative'] == 1:
-        
-        for iImage in range(0,len(images)):
-            _,n,e = path_utils.fileparts(images[iImage]['filename'])
-            images[iImage]['filename'] = n + e
-        
-    elif options['makeRelative'] == 2:
-        
-        baseDir,_,_ = path_utils.fileparts(filename)
-        if len(baseDir) > 1 and baseDir[-1] != '\\':
-            baseDir = baseDir + '\\'
-        
-        for iImage in range(0,len(images)):
-            fn = images[iImage]['filename']
-            fn = fn.replace(baseDir,'')
-            images[iImage]['filename'] = fn        
     
     nImages = len(images)
     

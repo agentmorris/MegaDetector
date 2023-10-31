@@ -1,27 +1,31 @@
 ########
 #
-# ocr_sandbox.py
+# ocr_tools.py
 #
-# Use OCR (via the Tesseract package) to pull metadata from camera trap images.
+# Use OCR (via the Tesseract package) to pull metadata (particularly times and
+# dates from camera trap images).
 #
 # The general approach is:
 #
 # * Crop a fixed percentage from the top and bottom of an image, slightly larger
 #   than the largest examples we've seen of how much space is used for metadata.
 #
-# * Refine that crop by blurring a little, then looking for huge peaks in the 
-#   color histogram suggesting a solid background, then finding rows that are
-#   mostly that color.
+# * Define the background color as the median pixel value, and find rows that are
+#   mostly that color to refine the crop.
 #
-# * Crop to the refined crop, then run pytesseract to extract text
+# * Crop to the refined crop, then run pytesseract to extract text.
 #
-# * Use regular expressions to find time and date
+# * Use regular expressions to find time and date.
 #
 # Prior to using this module:
 #
 # * Install Tesseract from https://tesseract-ocr.github.io/tessdoc/Installation.html
 #
 # * pip install pytesseract
+#    
+# Known limitations:
+#
+# * Semi-transparent overlays (which I've only seen on consumer cameras) usually fail.
 #    
 ########
 
@@ -43,10 +47,11 @@ import numpy as np
 import datetime
 import re
 
+from functools import partial
 from dateutil.parser import parse as dateparse
 
 import cv2
-from PIL import Image
+from PIL import Image, ImageFilter
 from tqdm import tqdm
 
 from md_utils.path_utils import find_images
@@ -59,13 +64,11 @@ from md_utils.path_utils import open_file
 # Also install tesseract from: https://github.com/UB-Mannheim/tesseract/wiki, and add
 # the installation dir to your path (on Windows, typically C:\Program Files (x86)\Tesseract-OCR)
 import pytesseract
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 
 #%% Extraction options
 
 class DatetimeExtractionOptions:
-
             
     def __init__(self):
         
@@ -89,6 +92,7 @@ class DatetimeExtractionOptions:
         
         # What fraction of the [top,bottom] of the image should we use for our rough crop?
         self.image_crop_fraction = [0.045 , 0.045]
+        # self.image_crop_fraction = [0.08 , 0.08]
         
         # Within that rough crop, how much should we use for determining the background color?
         self.background_crop_fraction_of_rough_crop = 0.5
@@ -107,6 +111,17 @@ class DatetimeExtractionOptions:
         # Try these configuration strings in order until we find a valid datetime
         self.tesseract_config_strings = ['--oem 1 --psm 13','--oem 0 --psm 13',
                                          '--oem 1 --psm 6','--oem 0 --psm 6']
+        
+        self.force_all_ocr_options = False
+        
+        self.apply_sharpening_filter = True
+        
+        # Tesseract should be on your system path, but you can also specify the
+        # path explicitly.
+        #
+        # os.environ['PATH'] += r';C:\Program Files\Tesseract-OCR'
+        # self.tesseract_cmd = 'r"C:\Program Files\Tesseract-OCR\tesseract.exe"'
+        self.tesseract_cmd = 'tesseract.exe'
 
 
 #%% Support functions
@@ -142,8 +157,9 @@ def make_rough_crops(image,options=None):
 
 
 def crop_to_solid_region(rough_crop,crop_location,options=None):
-    """   
-    cropped_image,p_success,padded_image = crop_to_solid_region(image)
+    """       
+    Given a rough crop from the top or bottom of an imaeg, find the background color
+    and crop to the metadata region.
     
     rough_crop should be PIL Image, crop_location should be 'top' or 'bottom'.
     
@@ -152,6 +168,8 @@ def crop_to_solid_region(rough_crop,crop_location,options=None):
 
     The success metric is just a binary indicator right now: 1.0 if we found a region we believe
     contains a solid background, 0.0 otherwise.
+    
+    Returns cropped_image,p_success,padded_image
     """
     
     if options is None:
@@ -160,7 +178,7 @@ def crop_to_solid_region(rough_crop,crop_location,options=None):
     crop_to_solid_region_result = {}
     crop_to_solid_region_result['crop_pil'] = None
     crop_to_solid_region_result['padded_crop_pil'] = None
-    crop_to_solid_region_result['p_success'] = None
+    crop_to_solid_region_result['p_success'] = 0.0
     
     # pil --> cv2        
     rough_crop_np = np.array(rough_crop) 
@@ -189,10 +207,7 @@ def crop_to_solid_region(rough_crop,crop_location,options=None):
     background_value_count = int(np.max(counts))
     p_background_value = background_value_count / np.sum(counts)
     
-    # This looks very scientific, right?  Definitely a probability?
     if (p_background_value < options.min_background_fraction):
-        p_success = 0.0
-        crop_to_solid_region_result['p_success'] = p_success
         return crop_to_solid_region_result
     else:
         p_success = 1.0
@@ -215,6 +230,7 @@ def crop_to_solid_region(rough_crop,crop_location,options=None):
     max_x = w
     max_y = -1
     
+    # Find the first and last row that are mostly the background color
     for y in range(h):
         row_count = 0
         for x in range(w):
@@ -225,6 +241,14 @@ def crop_to_solid_region(rough_crop,crop_location,options=None):
             if min_y == -1:
                 min_y = y
             max_y = y
+    
+    assert (min_y == -1 and max_y == -1) or (min_y != -1 and max_y != -1)
+    
+    if min_y == -1:
+        return crop_to_solid_region_result
+    
+    if max_y == min_y:
+        return crop_to_solid_region_result
     
     x = min_x
     y = min_y
@@ -272,6 +296,7 @@ def find_text_in_crops(rough_crops,options=None,tesseract_config_string=None):
     find_text_in_crops_results = {}
     
     # crop_location = 'top'
+    # crop_location = 'bottom'
     for crop_location in ('top','bottom'):
 
         find_text_in_crops_results[crop_location] = {}
@@ -279,26 +304,26 @@ def find_text_in_crops(rough_crops,options=None,tesseract_config_string=None):
         find_text_in_crops_results[crop_location]['crop_to_solid_region_results'] = None
         
         rough_crop = rough_crops[crop_location]
-                
-        # image = cv2.medianBlur(image, 3)        
-        # image = cv2.erode(image, None, iterations=2)
-        # image = cv2.dilate(image, None, iterations=4)
-        # image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-        # image = cv2.blur(image, (3,3))
-        # image = cv2.copyMakeBorder(image,10,10,10,10,cv2.BORDER_CONSTANT,value=[0,0,0])
         
+        # Crop to the portion of the rough crop with a solid background color
         crop_to_solid_region_results = crop_to_solid_region(rough_crop,crop_location,options)
-        
-        if crop_to_solid_region_results['p_success'] < options.p_crop_success_threshold:
-            continue
         
         find_text_in_crops_results[crop_location]['crop_to_solid_region_results'] = \
             crop_to_solid_region_results
         
-        # text = pytesseract.image_to_string(image_pil, lang='eng')
-        # https://github.com/tesseract-ocr/tesseract/wiki/Command-Line-Usage
+        # Try cropping to a solid region; if that doesn't work, try running OCR on the whole
+        # rough crop.
+        if crop_to_solid_region_results['p_success'] >= options.p_crop_success_threshold:
+            padded_crop_pil = crop_to_solid_region_results['padded_crop_pil']
+        else:            
+            # continue
+            padded_crop_pil = rough_crop        
+            
+        if options.apply_sharpening_filter:
+            padded_crop_pil = padded_crop_pil.filter(ImageFilter.SHARPEN)
         
-        padded_crop_pil = crop_to_solid_region_results['padded_crop_pil']
+        # Find text in the padded crop
+        pytesseract.pytesseract.tesseract_cmd = options.tesseract_cmd
         text = pytesseract.image_to_string(padded_crop_pil, lang='eng', 
                                            config=tesseract_config_string)
         
@@ -317,6 +342,9 @@ def datetime_string_to_datetime(matched_string):
     """
     Takes an OCR-matched datetime string, does a little cleanup, and parses a date
     from it.
+    
+    By the time a string gets to this function, it should be a proper date string, with
+    no extraneous characters other than spaces around colons or hyphens.
     """
     
     matched_string = matched_string.replace(' -','-')
@@ -332,7 +360,8 @@ def datetime_string_to_datetime(matched_string):
 
 def get_datetime_from_strings(strings,options=None):
     """
-    Given a string or list of strings, search for exactly one datetime in those strings. 
+    Given a string or list of strings, search for exactly one datetime in those strings.
+    using a series of regular expressions.
     
     Strings are currently just concatenated before searching for a datetime.
     """
@@ -345,8 +374,10 @@ def get_datetime_from_strings(strings,options=None):
     else:
         s = ' '.join(strings).lower()
     s = s.replace('—','-')    
-    s = ''.join(e for e in s if e.isalnum() or e in ':-' or e.isspace())
+    s = ''.join(e for e in s if e.isalnum() or e in ':-/' or e.isspace())
         
+    ### AM/PM
+    
     # 2013-10-02 11:40:50 AM
     m = re.search('(\d\d\d\d)\s?-\s?(\d\d)\s?-\s?(\d\d)\s+(\d+)\s?:?\s?(\d\d)\s?:\s?(\d\d)\s*([a|p]m)',s)
     if m is not None:        
@@ -372,6 +403,8 @@ def get_datetime_from_strings(strings,options=None):
     if m is not None:        
         return datetime_string_to_datetime(m.group(0))        
     
+    ### No AM/PM
+    
     # 2013-07-27 04:56:35
     m = re.search('(\d\d\d\d)\s?-\s?(\d\d)\s?-\s?(\d\d)\s*(\d\d)\s?:\s?(\d\d)\s?:\s?(\d\d)',s)
     if m is not None:        
@@ -379,6 +412,16 @@ def get_datetime_from_strings(strings,options=None):
     
     # 07-27-2013 04:56:35
     m = re.search('(\d\d)\s?-\s?(\d\d)\s?-\s?(\d\d\d\d)\s*(\d\d)\s?:\s?(\d\d)\s?:\s?(\d\d)',s)
+    if m is not None:        
+        return datetime_string_to_datetime(m.group(0))        
+    
+    # 2013/07/27 04:56:35
+    m = re.search('(\d\d\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d)\s*(\d\d)\s?:\s?(\d\d)\s?:\s?(\d\d)',s)
+    if m is not None:        
+        return datetime_string_to_datetime(m.group(0))        
+    
+    # 07/27/2013 04:56:35
+    m = re.search('(\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d\d\d)\s*(\d\d)\s?:\s?(\d\d)\s?:\s?(\d\d)',s)
     if m is not None:        
         return datetime_string_to_datetime(m.group(0))        
     
@@ -392,10 +435,18 @@ def get_datetime_from_image(image,include_crops=True,options=None):
     Find the datetime string (if present) in [image], which can be a PIL image or a 
     filename.  Returns a dict:
         
-    text_results: length-2 list of strings
-    crops: length-2 list of images
-    padded_crops: length-2 list of images
     datetime: Python datetime object, or None
+    
+    text_results: length-2 list of strings
+    
+    all_extracted_datetimes: if we ran multiple option sets, this will contain the 
+    datetimes extracted for each option set
+    
+    ocr_results: detailed results from the OCR process, including crops as PIL images;
+    only included if include_crops is True.
+        
+    [options] can be None, a DatetimeExtractionOptions object, or a list of 
+    DatetimeExtractionOptions objects to try for each image.    
     """
     
     if options is None:
@@ -408,31 +459,51 @@ def get_datetime_from_image(image,include_crops=True,options=None):
     rough_crops = make_rough_crops(image,options)
     assert len(rough_crops) == 2
     
-    # Find text, trying config strings until we match a datetime
+    all_extracted_datetimes = {}
+    all_text_results = []
+    all_ocr_results = []
+    
+    extracted_datetime = None
+    
+    # Find text, possibly trying all config strings
     #
     # tesseract_config_string = options.tesseract_config_strings[0]
     for tesseract_config_string in options.tesseract_config_strings:
         
         ocr_results = find_text_in_crops(rough_crops,options,tesseract_config_string)
+        all_ocr_results.append(ocr_results)
         
         text_results = [v['text'] for v in ocr_results.values()]
         assert len(text_results) == 2
+        all_text_results.append(text_results)
             
         # Find datetime
-        extracted_datetime = get_datetime_from_strings(text_results,options)
-        assert isinstance(extracted_datetime,datetime.datetime) or (extracted_datetime is None)
-        if extracted_datetime is not None:        
-            assert extracted_datetime.year <= 2023 and extracted_datetime.year >= 1990
+        extracted_datetime_this_option_set = get_datetime_from_strings(text_results,options)
+        assert isinstance(extracted_datetime_this_option_set,datetime.datetime) or \
+            (extracted_datetime_this_option_set is None)
+        
+        all_extracted_datetimes[tesseract_config_string] = \
+            extracted_datetime_this_option_set
+            
+        if extracted_datetime_this_option_set is not None:
+            if extracted_datetime is None:
+                extracted_datetime = extracted_datetime_this_option_set
+            if not options.force_all_ocr_options:
+                break        
+            
+    # ...for each set of OCR options
     
-        if extracted_datetime is not None:
-            break
-    
+    if extracted_datetime is not None:        
+        assert extracted_datetime.year <= 2023 and extracted_datetime.year >= 1990
+
     to_return = {}
-    to_return['text_results'] = text_results
     to_return['datetime'] = extracted_datetime
     
+    to_return['text_results'] = all_text_results
+    to_return['all_extracted_datetimes'] = all_extracted_datetimes
+    
     if include_crops:
-        to_return['ocr_results'] = ocr_results        
+        to_return['ocr_results'] = all_ocr_results
     else:
         to_return['ocr_results'] = None
         
@@ -441,28 +512,51 @@ def get_datetime_from_image(image,include_crops=True,options=None):
 # ...def get_datetime_from_image(...)
 
 
+def is_iterable(x):
+    try:
+        _ = iter(x)
+    except:
+       return False
+    return True
+
+
 def try_get_datetime_from_image(filename,include_crops=False,options=None):
     """
-    Try/catch wrapper for get_datetime_from_image, defaults to returning 
-    metadata only.
+    Try/catch wrapper for get_datetime_from_image, optionally trying multiple option sets
+    until we find a datetime.
     """
     
     if options is None:
         options = DatetimeExtractionOptions()
+
+    if not is_iterable(options):
+        options = [options]
     
     result = {}
-    result['error'] = None        
-    try:
-        result = get_datetime_from_image(filename,include_crops=include_crops,options=options)
-    except Exception as e:
-        result['error'] = str(e)
+    result['error'] = None
+    
+    for i_option_set,current_options in enumerate(options):
+        try:
+            result = get_datetime_from_image(filename,include_crops=include_crops,options=current_options)
+            result['options_index'] = i_option_set
+            if 'datetime' in result and result['datetime'] is not None:
+                break
+        except Exception as e:
+            result['error'] = str(e)
+    
     return result
 
 
-def get_datetimes_for_folder(folder_name,output_file,n_to_sample=-1,options=None):
+def get_datetimes_for_folder(folder_name,output_file=None,n_to_sample=-1,options=None):
     """
     Retrieve metadata from every image in [folder_name], and 
     write the results to the .json file [output_file].
+    
+    [options] can be None, a DatetimeExtractionOptions object, or a list of 
+    DatetimeExtractionOptions objects to try for each image.
+    
+    Returns a dict mapping filenames to datetime extraction results.  Optionally writes
+    results to the .json file [output_file].
     """
     
     if options is None:
@@ -481,11 +575,17 @@ def get_datetimes_for_folder(folder_name,output_file,n_to_sample=-1,options=None
     use_threads = False
     
     if n_cores <= 1:
+        
         all_results = []
         for fn_abs in tqdm(image_file_names):
-            all_results.append(try_get_datetime_from_image(fn_abs))
+            all_results.append(try_get_datetime_from_image(fn_abs,options=options))
+            
     else:    
         
+        # Don't spawn more than one worker per image
+        if n_cores > len(image_file_names):
+            n_cores = len(image_file_names)
+            
         if use_threads:
             from multiprocessing.pool import ThreadPool
             pool = ThreadPool(n_cores)
@@ -498,7 +598,8 @@ def get_datetimes_for_folder(folder_name,output_file,n_to_sample=-1,options=None
         print('Starting a pool of {} {}'.format(n_cores,worker_string))
         
         all_results = list(tqdm(pool.imap(
-            try_get_datetime_from_image,image_file_names), total=len(image_file_names)))
+            partial(try_get_datetime_from_image,options=options),image_file_names),
+            total=len(image_file_names)))
     
     filename_to_results = {}
     
@@ -506,8 +607,9 @@ def get_datetimes_for_folder(folder_name,output_file,n_to_sample=-1,options=None
     for i_file,fn_abs in enumerate(image_file_names):
         filename_to_results[fn_abs] = all_results[i_file]
     
-    with open(output_file,'w') as f:
-        json.dump(filename_to_results,f,indent=1,default=str)
+    if output_file is not None:
+        with open(output_file,'w') as f:
+            json.dump(filename_to_results,f,indent=1,default=str)
 
     return filename_to_results
 
@@ -519,24 +621,58 @@ if False:
     #%% Process images
     
     folder_name = r'g:\temp\island_conservation_camera_traps'
+    # folder_name = r'g:\camera_traps\camera_trap_images'
     output_file = r'g:\temp\ocr_results.json'
+    from md_utils.path_utils import insert_before_extension
+    output_file = insert_before_extension(output_file)
     n_to_sample = -1
     assert os.path.isdir(folder_name)
-    filename_to_results = get_datetimes_for_folder(folder_name,output_file,n_to_sample=n_to_sample)
+    options_a = DatetimeExtractionOptions()
+    options_b = DatetimeExtractionOptions()
+    options_b.image_crop_fraction = [0.08 , 0.08]
+    options_a.force_all_ocr_options = False
+    options_b.force_all_ocr_options = False
+    # all_options = [options_a,options_b]
+    all_options = [options_a]
+    filename_to_results = get_datetimes_for_folder(folder_name,output_file,
+                                                   n_to_sample=n_to_sample,options=all_options)
     
 
-    #%% Explore text
+    #%% Load results
     
+    # output_file = r"G:\temp\ocr_results.2023.10.30.18.21.17.json"
     with open(output_file,'r') as f:
         filename_to_results = json.load(f)
     filenames = sorted(list(filename_to_results.keys()))
     print('Loaded results for {} files'.format(len(filename_to_results)))
     
     
-    #%%
+    #%% Scrap cell
+    
+    fn = 'g:/camera_traps/camera_trap_images/2018.07.02/newcam/people/DSCF0273.JPG'
+    # fn = r'g:\camera_traps\camera_trap_images\2022.01.29\cam0\coyote\DSCF0057.JPG'
+    # fn = 'g:/temp/island_conservation_camera_traps/chile/frances01/frances012013/chile_frances012013_02012013105658.jpg'
+    # fn = 'g:/temp/island_conservation_camera_traps/dominicanrepublic/camara06/cam0618junio2016/dominicanrepublic_cam0618junio2016_20160614_114115_img_0013.jpg'
+    # fn = os.path.join(folder_name,r'dominicanrepublic\camara22\cam228noviembre2015\dominicanrepublic_cam228noviembre2015_20151105_071226_img_0132.jpg')
+    # fn = 'g:/camera_traps/camera_trap_images/2021.06.06/camera01/empty/DSCF0873.JPG'
+    include_crops = False
+    options_a = DatetimeExtractionOptions()
+    options_b = DatetimeExtractionOptions()
+    options_b.image_crop_fraction = [0.08 , 0.08]
+    image = vis_utils.open_image(fn) # noqa    
+    result = try_get_datetime_from_image(fn,options=[options_a,options_b]) # noqa
+    print(result)
+    
+    # open_file(fn)
+    # rough_crops = make_rough_crops(image,options=options)
+        
+        
+    #%% Look for OCR or parsing failures
     
     bad_tokens = ()
     
+    files_with_disagreements = set()
+            
     # i_fn = 0; fn = filenames[i_fn]
     for i_fn,fn in enumerate(filenames):
         
@@ -544,10 +680,11 @@ if False:
         results = filename_to_results[fn]
         
         if 'text_results' not in results:
+            raise Exception('no results available for {} ({})'.format(i_fn,fn))
             print('Skipping {}, no results'.format(i_fn))
             continue
         
-        s = ' '.join(results['text_results'])
+        s = ' '.join([x[0] for x in results['text_results']])
         
         known_bad = False
         for bad_token in bad_tokens:
@@ -556,142 +693,106 @@ if False:
         if known_bad: 
             continue
                 
-        extracted_datetime = get_datetime_from_strings([s])
+        extracted_datetime = results['datetime']
+        
+        # If we have a datetime, make sure all successful OCR results agree
+        if extracted_datetime is not None:
+            for config_string in results['all_extracted_datetimes']:
+                if results['all_extracted_datetimes'][config_string] is not None:
+                    if results['all_extracted_datetimes'][config_string] != extracted_datetime:
+                        files_with_disagreements.add(fn)
+        else:
+            print('Falling back for {} ({})'.format(i_fn,fn))
+            ocr_results = get_datetime_from_image(fn)
+            extracted_datetime = ocr_results['datetime']
         
         if extracted_datetime is None:
-            print('Fallback at {}'.format(i_fn))
-            extracted_datetime = get_datetime_from_image(fn)
-            
-        assert extracted_datetime is not None, 'Error at {}: {}'.format(i_fn,s)
-    
+            print('Failure at {}: {}'.format(i_fn,s))
+        
         # open_file(fn)
         # get_datetime_from_image(fn)
+    
     
     #%% Write results to an HTML file for testing
           
     preview_dir = r'g:\temp\ocr-preview'
     os.makedirs(preview_dir,exist_ok=True)
-    output_summary_file = os.path.join(preview_dir,'summary.html')
     
-    html_image_list = []
-    html_title_list = []
-    
-    html_options = write_html_image_list.write_html_image_list()
-    
-    # i_image = 0; fn_relative = next(iter(filename_to_results))
-    for i_image,fn_abs in tqdm(enumerate(filename_to_results),total=len(filename_to_results)):
-            
-        fn_relative = os.path.relpath(fn_abs,folder_name)
-        
-        # Add image name and resized image
+    def resize_image_for_preview(fn_abs):
+        fn_relative = os.path.relpath(fn_abs,folder_name)        
         resized_image = vis_utils.resize_image(fn_abs,target_width=600)
-        resized_fn = os.path.join(preview_dir,'img_{}_base.png'.format(i_image))
+        resized_fn = os.path.join(preview_dir,fn_relative)
+        os.makedirs(os.path.dirname(resized_fn),exist_ok=True)
         resized_image.save(resized_fn)
+        return resized_fn
         
+    # Resize images in parallel
+    n_rendering_workers = 16
+        
+    if n_rendering_workers <= 1:
+        for fn_abs in tqdm(filename_to_results.keys()):
+            resize_image_for_preview(fn_abs)
+    else:
+        # from multiprocessing.pool import Pool as RenderingPool; worker_string = 'processes'
+        from multiprocessing.pool import ThreadPool as RenderingPool; worker_string = 'threads'
+        pool = RenderingPool(n_rendering_workers)
+        
+        print('Starting rendering pool with {} {}'.format(n_rendering_workers,worker_string))
+    
+        _ = list(tqdm(pool.imap(resize_image_for_preview,filename_to_results.keys()),
+                      total=len(filename_to_results)))
+    
+    
+    def make_datetime_preview_page(filenames,html_file):
+        
+        html_image_list = []
+        html_options = write_html_image_list.write_html_image_list()
+        html_options['maxFiguresPerHtmlFile'] = 2500
+        html_options['defaultImageStyle'] = 'margin:0px;margin-top:5px;margin-bottom:30px;'
+        
+        # fn_abs = filenames[0]
+        for fn_abs in filenames:
+            
+            fn_relative = os.path.relpath(fn_abs,folder_name)        
+            # resized_fn = os.path.join(preview_dir,fn_relative)
+            results_this_image = filename_to_results[fn_abs]
+                
+            extracted_datetime = results_this_image['datetime']
+            title = 'Image: {}<br/>Extracted datetime: {}'.format(fn_relative,extracted_datetime)
+            html_image_list.append({'filename':fn_relative,'title':title})
+            
+            # ...for each crop
+        
+        # ...for each image
+                
+        html_options['makeRelative'] = True
+        write_html_image_list.write_html_image_list(html_file,
+                                                    html_image_list,
+                                                    html_options)
+        open_file(html_file)
+        return html_image_list
+    
+    failed_files = []
+    for fn_abs in filename_to_results:
         results_this_image = filename_to_results[fn_abs]
-            
-        extracted_datetime = results_this_image['datetime']
-        title = 'Image: {}<br/>Extracted datetime: {}'.format(fn_relative,extracted_datetime)
-        html_image_list.append({'filename':resized_fn,'title':title})
-                
-        for i_crop,crop in enumerate(results_this_image['crops']):
-                
-            image = vis_utils.resize_image(crop,target_width=600)
-            fn_crop = os.path.join(preview_dir,'img_{}_r{}_processed.png'.format(i_image,i_crop))
-            image.save(fn_crop)
-            
-            image_style = html_options['defaultImageStyle'] + 'margin-left:50px;'
-            text_style = html_options['defaultTextStyle'] + 'margin-left:50px;'
-            
-            if i_crop == len(results_this_image['crops']) - 1:
-                image_style += 'margin-bottom:30px;'
-                
-            title = 'Raw text: ' + results_this_image['text_results'][i_crop]
-            
-            # textStyle = "font-family:calibri,verdana,arial;font-weight:bold;font-size:150%;text-align:left;margin-left:50px;"
-            html_image_list.append({'filename':fn_crop,'imageStyle':image_style,'title':title,'textStyle':text_style})
-                            
-        # ...for each crop
+        if results_this_image['datetime'] is None:
+            failed_files.append(fn_abs)
     
-    # ...for each image
-            
-    html_options['makeRelative'] = True
-    write_html_image_list.write_html_image_list(output_summary_file,
-                                                html_image_list,
-                                                html_options)
-    open_file(output_summary_file)
-
-
-#%% Alternative approaches to finding the text/background region
-
-if False:
+    print('Found {} failures'.format(len(failed_files)))
     
-    #%% Using findContours()
+    output_summary_file = os.path.join(preview_dir,'summary.html')
+    html_image_list = make_datetime_preview_page(sorted(list(filename_to_results.keys())),output_summary_file)
+    
+    failure_summary_file = os.path.join(preview_dir,'failures.html')    
+    html_image_list_failures = make_datetime_preview_page(failed_files,failure_summary_file)
+    
+    filenames = failed_files
+    html_file = failure_summary_file
 
-    # image_pil = Image.fromarray(analysis_image); image_pil
     
-    # analysis_image = cv2.erode(analysis_image, None, iterations=3)
-    # analysis_image = cv2.dilate(analysis_image, None, iterations=3)
-
-    # analysis_image = cv2.threshold(analysis_image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    im2, contours, hierarchy = cv2.findContours(analysis_image,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE) # noqa
-    
-    # Find object with the biggest bounding box
-    mx = (0,0,0,0)      # biggest bounding box so far
-    mx_area = 0
-    for cont in contours:
-        x,y,w,h = cv2.boundingRect(cont)
-        area = w*h
-        if area > mx_area:
-            mx = x,y,w,h
-            mx_area = area
-    x,y,w,h = mx
-   
-    
-   #%% Using connectedComponents()
-    
-    # analysis_image = image
-    nb_components, output, stats, centroids = \
-        cv2.connectedComponentsWithStats(analysis_image, connectivity = 4) # noqa
-    # print('Found {} components'.format(nb_components))
-    sizes = stats[:, -1]
-
-    max_label = 1
-    max_size = sizes[1]
-    for i in range(2, nb_components):
-        if sizes[i] > max_size:
-            max_label = i
-            max_size = sizes[i]
-
-    # We just want the *background* image
-    max_label = 0
-    
-    mask_image = np.zeros(output.shape)
-    mask_image[output == max_label] = 255
-    
-    thresh = 127
-    binary_image = cv2.threshold(mask_image, thresh, 255, cv2.THRESH_BINARY)[1]
-    
-    min_x = -1
-    min_y = -1
-    max_x = -1
-    max_y = -1
-    h = binary_image.shape[0]
-    w = binary_image.shape[1]
-    for y in range(h):
-        for x in range(w):
-            if binary_image[y][x] > thresh:
-                if min_x == -1:
-                    min_x = x
-                if min_y == -1:
-                    min_y = y
-                if x > max_x:
-                    max_x = x
-                if y > max_y:
-                    max_y = y
-
-
     #%% Other approaches to getting dates from strings
+    
+    # ...that didn't really work out.
     
     # pip install dateparser
     import dateparser
@@ -718,4 +819,3 @@ if False:
         
     if extracted_datetime is not None:        
         assert extracted_datetime.year <= 2023 and extracted_datetime.year >= 1990
-        
