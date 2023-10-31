@@ -232,7 +232,8 @@ def _video_to_frames_for_folder(relative_fn,input_folder,output_folder_base,ever
     """    
     
     input_fn_absolute = os.path.join(input_folder,relative_fn)
-    assert os.path.isfile(input_fn_absolute)
+    assert os.path.isfile(input_fn_absolute),\
+        'Could not find file {}'.format(input_fn_absolute)
 
     # Create the target output folder
     output_folder_video = os.path.join(output_folder_base,relative_fn)
@@ -254,6 +255,8 @@ def video_folder_to_frames(input_folder:str, output_folder_base:str,
     """
     For every video file in input_folder, create a folder within output_folder_base, and 
     render every frame of the video to .jpg in that folder.
+    
+    return frame_filenames_by_video,fs_by_video,input_files_full_paths
     """
     
     # Recursively enumerate video files
@@ -308,6 +311,9 @@ class FrameToVideoOptions:
     # zero-indexed
     nth_highest_confidence = 1
     
+    # 'error' or 'skip_with_warning'
+    non_video_behavior = 'error'
+    
     
 def frame_results_to_video_results(input_file,output_file,options:FrameToVideoOptions = None):
     """
@@ -337,7 +343,15 @@ def frame_results_to_video_results(input_file,output_file,options:FrameToVideoOp
         
         fn = im['file']
         video_name = os.path.dirname(fn)
-        assert is_video_file(video_name)
+        if not is_video_file(video_name):
+            if options.non_video_behavior == 'error':
+                raise ValueError('{} is not a video file'.format(video_name))
+            elif options.non_video_behavior == 'skip_with_warning':
+                print('Warning: {} is not a video file'.format(video_name))
+                continue
+            else:
+                raise ValueError('Unrecognized non-video handling behavior: {}'.format(
+                    options.non_video_behavior))
         video_to_frames[video_name].append(im)
     
     print('Found {} unique videos in {} frame-level results'.format(
