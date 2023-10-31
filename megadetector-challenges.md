@@ -3,10 +3,11 @@
 ## Table of contents
 
 * [Overview](#overview)
-* [Examples](#examples)
+* [Known challenges](#known-challenges)
   * [Reptiles and other under-represented species](#reptiles-and-other-under-represented-species)
   * [Unusual camera angles](#unusual-camera-angles)
   * [Random AI failures that will drive you bonkers](#random-ai-failures)
+  * [Small objects that are <i>just</i> at the detection threshold](#very-small-things)
 * [What can we do about these cases?](#what-can-we-do-about-these-cases)
 * [Ending on a happier note](#ending-on-a-happier-note)
 
@@ -23,17 +24,21 @@ The reason we made this page is two-fold:
 
 * We always want to remind users that no matter how many evaluations you read of MegaDetector (or any AI model!) that say it's X% accurate, <i>there's no substitute for trying a model on your own data before you use it to avoid looking at images</i>.  We can help you do this; in the typical case where you don't already know the right answer for lots of images, we typically recommend making a sample page like [this one](https://lila.science/public/snapshot_safari_public/snapshot-safari-kar-2022-00-00-v5a.0.0_0.200/) that helps you quickly grok how well MegaDetector is or isn't working.
 
-* We want to catalyze the community to help us fill these gaps.  There are two ways to fill these gaps: (1) accumulating lots of training data for a hypothetical next version of MegaDetector, or (2) fine-tuning MDv5 to work better in specific cases.  We're quite bullish on (2)!
+* We want to catalyze the community to help us fill these gaps.  There are three ways to fill these gaps: (1) accumulating lots of training data for a hypothetical next version of MegaDetector, (2) fine-tuning MDv5 to work better in specific cases, and (3) adding features to the inference code improve performance on difficult cases, sometimes with a small amount of human intervention.  We're quite bullish on (2) and (3)!
 
 All that said, before we embark on a page full of failure stories, a reminder that for 90% of the camera trap datasets we see, MegaDetector works, where "works" is defined as "can save the user time".
 
-OK, now on to failure stories... these fall into basically three categories:
+OK, now on to failure stories... these fall into basically four categories:
 
-* Species that are in MD's domain, but are under-represented in training data.  Basically another word for this is "reptiles".
-* Quirky camera angles or environments that are unlike what MD saw in training, e.g. a camera placed upside-down inside a hyena den, or - as per examples below - aquatic mammals in the water, where the same species standing in the middle of a field would work fine.
-* Random things where AI should work but it just doesn't, because reasons.
+* [Reptiles and other species](#reptiles-and-other-under-represented-species) that are in MD's domain in principle, but are under-represented in training data.
+  
+* [Quirky camera angles or environments](#unusual-camera-angles) that are unlike what MD saw in training, e.g. a camera placed upside-down inside a hyena den, or - as per examples below - aquatic mammals in the water, where the same species standing in the middle of a field would work fine.
+  
+* [Random things where AI should work](#random-ai-failures) but it just doesn't, because... reasons.
 
-## Examples
+* [Things that are very small](#very-small-things), but not so small that we would consider them out of domain.  There is a gray area here by definition, but somewhere at the border between "very very small" and "an elephant right in front of the camera" is an object size that is <i>just barely</i> detectable.
+
+## Known challenges
 
 ### Reptiles and other under-represented species
 
@@ -120,7 +125,6 @@ MegaDetector does fine when the animals are in front of the fence:
 ...but animals behind that fence are a little too much to ask of MD right now.
 
 
-
 ### Random AI failures
 
 And last but not least, sometimes we see a set of images that we consider to be squarely in the training domain - and in one of these cases, <i>literally in the training data</i> - but for some reason that our eyes can't see, MD gets confused.  I wouldn't think of these as "something about the animal is difficult", it's likely more like "something about the camera or jpeg encoding is difficult".
@@ -166,12 +170,49 @@ Sigh, just to make myself feel better, here are some from the 90% where it worke
 
 <i>Images credit Denver Zoo</i>
 
+Another user reported that MegaDetector was having some difficulty finding sage-grouse, like the one in this image:
+
+<img src="images/failure-examples/sage-grouse-raw.jpg" width="600">
+
+<i>Image credit University of Idaho</i>
+
+This is not the easiest image ever, but the grouse is fairly obvious to a human, and birds are adequately represented in training.  So we'd like MD to find this, and it does, but only at 8% confidence, which is below typical confidence thresholds, and some other, slightly more challenging grouse were missed entirely or found at an even lower confidence.  In this case, there is some good news; using YOLOv5's [test-time augmentation](https://docs.ultralytics.com/yolov5/tutorials/test_time_augmentation/) (TTA) via [run_inference_with_yolov5_val.py](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_inference_with_yolov5_val.py) made a substantial difference, boosting the confidence of this grouse, for example, to 53% (well above any reasonable threshold):
+
+<img src="images/failure-examples/sage-grouse-tta.jpg" width="600">
+
+<i>Image credit University of Idaho</i>
+
+Even after TTA, recall was not 100% on this dataset, but TTA substantially improved performance on grouse (boosting recall into the high 90s) and made a qualitative difference in the utility of MegaDetector for this user.
+
+
+## Very small things
+
+Any object detector will have a lower limit on the size of objects it can detect.  Furthermore, most computer vision tools reduce the size of images to a standard size as part of the inference process: in MegaDetector's case, the default inference size is 1280 pixels on the long side.  That's pretty large, but at some point an object on the horizon becomes too small to meaningfully classify as an animal (both both humans and AI); those objects would be "out of domain", and thus outside the scope of this page.
+
+Rather than come up with a new example, I'm going to include a figure from an excellent paper about this very issue:
+
+> Leorna S, Brinkman T. Human vs. machine: [Detecting wildlife in camera trap images](https://www.sciencedirect.com/science/article/pii/S1574954122003260). Ecological Informatics. 2022 Oct 27:101876.
+
+They compare the minimum size of an animal required for detection by (a) the camera's PIR sensor, (b) MDv4, and (c) a human looking at a <i>sequence</i> of images:
+
+<img src="images/failure-examples/leorna-2022-figure.jpg" width="500">
+
+<i>Image credit [Leorna et al](https://www.sciencedirect.com/science/article/pii/S1574954122003260).</i>
+
+The numbers in this figure are based on MDv4, which had a smaller input size than MDv5 and was less accurate overall, so the numbers would change a little if the same experiments were run with MDv5.  But the qualitative conclusions would be the same for MDv5: MD can detect things much smaller than a PIR sensor, but humans looking at sequences will always be able to see things that are much smaller than an object detector looking at a single image.
+
+[Klemens at al](https://esa2023.eventscribe.net/fsPopup.asp?Mode=presInfo&PresentationID=1275706) came to a similar conclusion; they placed cameras on long, straight stretches of highway to monitor animal crossings, and found that MDv5 did well for animals within some distance of the camera, but at some point far away, performance started to fall off.
+
+But what about objects that are <i>right</i> on that line?  Can we do something to find them?  As discussed above, [test-time augmentation](https://docs.ultralytics.com/yolov5/tutorials/test_time_augmentation/) is likely to help in some of these cases.  Also, if your original image is larger than 1280 pixels on the long side, you are sort of throwing away some pixels when you run your image through MegaDetector.  We have a [preliminary script](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_tiled_inference.py) that chops images into smaller images (typically 1280px), runs MD on the smaller images, and stitches the results together.  This creates some new false positives, but definitely improves recall for far-away objects.  If you're interested in trying this out, <a href="mailto:cameratraps@lila.science">email us</a>!
+
 
 ## What can we do about these cases?
 
 <a href="mailto:cameratraps@lila.science">Email us!</a>  We want to hear about the cases where MD doesn't work; this helps us prioritize training data.  This is how we made some improvements between MDv4 and MDv5, for example: we heard from users that bait stations in particular where causing MDv4 to misbehave, so we went wild with bait station training data for MDv5, and we think the situation is lots better now.
 
-But also, there is real signal in *all* of these cases, which suggests that a modest amount of fine-tuning would work really well.  We are excited to work with the community to make the annotation and fine-tuning processes easier, which is 99% about ergonomics and workflow, 1% about AI.
+As with the grouse example above, there is often something we can do at inference time - without training any new models - to improve results.  This typically includes [test-time augmentation](https://docs.ultralytics.com/yolov5/tutorials/test_time_augmentation/), [repeat detection elimination](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing/postprocessing/repeat_detection_elimination) (which can allow a much lower confidence threshold), and merging of MDv5a/MDv5b results.
+
+Sometimes a difficult case is beyond the reach of inference-time enhancements, but there is real signal in *all* of the above cases, which suggests that a modest amount of fine-tuning would work really well.  We are excited to work with the community to make the annotation and fine-tuning processes easier, which is 99% about ergonomics and workflow, 1% about AI.
 
 
 ## Ending on a happier note

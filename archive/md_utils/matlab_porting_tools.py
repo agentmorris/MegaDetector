@@ -7,11 +7,6 @@
 #
 ########
 
-#%% Constants and imports
-
-import ntpath
-
-
 #%% sec2hms()
         
 def sec2hms(tSeconds):
