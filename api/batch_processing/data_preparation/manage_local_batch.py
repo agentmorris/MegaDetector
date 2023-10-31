@@ -241,6 +241,10 @@ print('Output folder:\n{}'.format(filename_base))
 
 all_images = sorted(path_utils.find_images(input_path,recursive=True))
 
+# It's common to run this notebook on an external drive with the main folders in the drive root
+all_images = [fn for fn in all_images if not \
+              (fn.startswith('$RECYCLE') or fn.startswith('System Volume Information'))]
+    
 print('Enumerated {} image files in {}'.format(len(all_images),input_path))
 
 if False:
@@ -354,7 +358,11 @@ for i_task,task in enumerate(task_info):
         
         overwrite_handling_string = '--overwrite_handling {}'.format(overwrite_handling)        
         
-        cmd += f'python run_inference_with_yolov5_val.py "{model_file}" "{chunk_file}" "{output_fn}" "{yolo_working_dir}" {image_size_string} {augment_string} {symlink_folder_string} {yolo_results_folder_string} {remove_yolo_results_string} {remove_symlink_folder_string} {confidence_threshold_string} {device_string} {overwrite_handling_string}'
+        cmd += f'python run_inference_with_yolov5_val.py "{model_file}" "{chunk_file}" "{output_fn}" '
+        cmd += f'--yolo_working_folder "{yolo_working_dir}" {image_size_string} {augment_string} '
+        cmd += f'{symlink_folder_string} {yolo_results_folder_string} {remove_yolo_results_string} '
+        cmd += f'{remove_symlink_folder_string} {confidence_threshold_string} {device_string} '
+        cmd += f'{overwrite_handling_string}'
         
         if not use_symlinks_for_yolo_inference:
             cmd += ' --no_use_symlinks'
