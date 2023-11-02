@@ -681,7 +681,6 @@ html_output_file = ppresults.output_html_file
 path_utils.open_file(html_output_file)
 
 
-
 #%% RDE (sample directory collapsing)
 
 #
