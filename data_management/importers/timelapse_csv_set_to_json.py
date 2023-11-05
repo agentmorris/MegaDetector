@@ -84,7 +84,6 @@ for fn in image_files:
 print('Found {} image files and {} .csv files ({} non-matching files)'.format(
         len(image_files),len(csv_files),len(non_matching_files)))
 
-
     
 #%% Verify column consistency, create a giant array with all rows from all .csv files
 
@@ -489,4 +488,3 @@ options.classes_to_exclude = ['unlabeled','empty','ambiguous']
 
 html_output_file,data = visualize_db.process_images(output_file,preview_base,file_base,options)
 os.startfile(html_output_file)
-

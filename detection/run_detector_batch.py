@@ -391,8 +391,8 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
     Args
     - model_file: path to model file, or supported model string (e.g. "MDV5A")
     - image_file_names: list of strings (image filenames), a single image filename, 
-                        a folder to recursively search for images in, or a .json file containing
-                        a list of images.
+                        a folder to recursively search for images in, or a .json or .txt file
+                        containing a list of images.
     - checkpoint_path: str, path to JSON checkpoint file
     - confidence_threshold: float, only detections above this threshold are returned
     - checkpoint_frequency: int, write results to JSON checkpoint file every N images
@@ -426,22 +426,32 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
             image_file_names = path_utils.find_images(image_dir, True)
             print('{} image files found in folder {}'.format(len(image_file_names),image_dir))
             
-        # A json list of image paths
-        elif os.path.isfile(image_file_names) and image_file_names.endswith('.json'):
+        # A single file, or a list of image paths
+        elif os.path.isfile(image_file_names):
             list_file = image_file_names
-            with open(list_file) as f:
-                image_file_names = json.load(f)
-            print('Loaded {} image filenames from list file {}'.format(len(image_file_names),list_file))
+            if image_file_names.endswith('.json'):
+                with open(list_file,'r') as f:
+                    image_file_names = json.load(f)
+                print('Loaded {} image filenames from .json list file {}'.format(
+                    len(image_file_names),list_file))
+            elif image_file_names.endswith('.txt'):
+                with open(list_file,'r') as f:
+                    image_file_names = f.readlines()
+                    image_file_names = [s.strip() for s in image_file_names if len(s.strip()) > 0]
+                print('Loaded {} image filenames from .txt list file {}'.format(
+                    len(image_file_names),list_file))
+            elif path_utils.is_image_file(image_file_names):
+                image_file_names = [image_file_names]
+                print('Processing image {}'.format(image_file_names[0]))
+            else:
+                raise ValueError(
+                    'File {} supplied as [image_file_names] argument, but extension is neither .json nor .txt'\
+                        .format(
+                        list_file))
+        else:            
+            raise ValueError(
+                '{} supplied as [image_file_names] argument, but it does not appear to be a file or folder')
             
-        # A single image file
-        elif os.path.isfile(image_file_names) and path_utils.is_image_file(image_file_names):
-            image_file_names = [image_file_names]
-            print('Processing image {}'.format(image_file_names[0]))
-            
-        else:        
-            raise ValueError('image_file_names is a string, but is not a directory, a json ' + \
-                             'list (.json), or an image file')
-    
     if results is None:
         results = []
 
@@ -782,7 +792,8 @@ def main():
         help='Path to detector model file (.pb or .pt).  Can also be the strings "MDV4", "MDV5A", or "MDV5B" to request automatic download.')
     parser.add_argument(
         'image_file',
-        help='Path to a single image file, a JSON file containing a list of paths to images, or a directory')
+        help=\
+        'Path to a single image file, a .json or .txt file containing a list of paths to images, or a directory')
     parser.add_argument(
         'output_file',
         help='Path to output JSON results file, should end with a .json extension')
@@ -947,7 +958,15 @@ def main():
     elif os.path.isfile(args.image_file) and args.image_file.endswith('.json'):
         with open(args.image_file) as f:
             image_file_names = json.load(f)
-        print('Loaded {} image filenames from list file {}'.format(
+        print('Loaded {} image filenames from .json list file {}'.format(
+            len(image_file_names),args.image_file))
+    
+    # A text list of image paths
+    elif os.path.isfile(args.image_file) and args.image_file.endswith('.txt'):
+        with open(args.image_file) as f:
+            image_file_names = f.readlines()
+            image_file_names = [fn.strip() for fn in image_file_names if len(fn.strip()) > 0]
+        print('Loaded {} image filenames from .txt list file {}'.format(
             len(image_file_names),args.image_file))
         
     # A single image file
@@ -961,7 +980,7 @@ def main():
 
     assert len(image_file_names) > 0, 'Specified image_file does not point to valid image files'
     assert os.path.exists(image_file_names[0]), \
-        'The first image to be scored does not exist at {}'.format(image_file_names[0])
+        'The first image to be processed does not exist at {}'.format(image_file_names[0])
 
     output_dir = os.path.dirname(args.output_file)
 
