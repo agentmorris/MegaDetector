@@ -45,9 +45,9 @@ def visualize_detector_output(detector_output_path: str,
                               random_seed: Optional[int] = None,
                               render_detections_only: bool = False,
                               classification_confidence_threshold = 0.1,
-                              html_output_file=None,
-                              html_output_options=None,
-                              preserve_path_structure=False) -> List[str]:
+                              html_output_file = None,
+                              html_output_options = None,
+                              preserve_path_structure = False) -> List[str]:
     
     """
     Draw bounding boxes on images given the output of the detector.
@@ -246,6 +246,9 @@ def main() -> None:
         '-html', '--html_output_file', type=str, default=None,
         help='Filename to which we should write an HTML image index (off by default)')
     parser.add_argument(
+        '--open_html_output_file', action='store_true',
+        help='Open the .html output file when done')
+    parser.add_argument(
         '-do', '--detections_only', action='store_true',
         help='Only render images with above-threshold detections (by default, '
              'both empty and non-empty images are rendered).')
@@ -271,6 +274,32 @@ def main() -> None:
         preserve_path_structure=args.preserve_path_structure,
         html_output_file=args.html_output_file)
 
+    if args.html_output_file is not None and args.open_html_output_file:
+        from md_utils.path_utils import open_file
+        open_file(args.html_output_file)
 
 if __name__ == '__main__':
     main()
+
+
+#%% Interactive driver
+
+if False:
+    
+    pass
+
+    #%%
+    
+    detector_output_path = r"g:\temp\animl-runs\animl-runs\Coati_v2\manifest.csv.json"
+    out_dir = r'g:\temp\preview'
+    is_azure = False
+    confidence_threshold = 0.15
+    sample = -1
+    output_image_width = 700
+    random_seed = None
+    render_detections_only = False
+    classification_confidence_threshold = 0.1
+    html_output_file = None
+    html_output_options = None,
+    preserve_path_structure = False
+        

@@ -2,7 +2,7 @@
 #
 # zamba_results_to_md_results.py
 #
-# Convert a labels.csv file produced by Zamba cloud to a MD results file suitable
+# Convert a labels.csv file produced by Zamba Cloud to a MD results file suitable
 # for import into Timelapse.
 #
 # Columns are expected to be:
@@ -155,7 +155,7 @@ import sys,argparse
 def main():
 
     parser = argparse.ArgumentParser(
-        description='Convert Zamba-formatted .csv results file to MD-formatted .json results file')
+        description='Convert a Zamba-formatted .csv results file to a MD-formatted .json results file')
     
     parser.add_argument(
         'input_file',
