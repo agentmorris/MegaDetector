@@ -640,7 +640,7 @@ if False:
 
     #%% Load results
     
-    # output_file = r"G:\temp\ocr_results.2023.10.30.18.21.17.json"
+    # output_file = r"G:\temp\ocr_results.2023.10.31.07.37.54.json"
     with open(output_file,'r') as f:
         filename_to_results = json.load(f)
     filenames = sorted(list(filename_to_results.keys()))
@@ -715,6 +715,14 @@ if False:
     
     #%% Write results to an HTML file for testing
           
+    n_to_sample = 5000
+    if (n_to_sample >= 0) and (len(filename_to_results) > n_to_sample):
+        filenames = sorted(list(filename_to_results.keys()))        
+        import random
+        random.seed(0)
+        keys = random.sample(filenames,n_to_sample)
+        filename_to_results = {k: filename_to_results[k] for k in keys}
+
     preview_dir = r'g:\temp\ocr-preview'
     os.makedirs(preview_dir,exist_ok=True)
     
