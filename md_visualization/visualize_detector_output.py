@@ -292,6 +292,7 @@ if False:
     
     detector_output_path = r"g:\temp\animl-runs\animl-runs\Coati_v2\manifest.csv.json"
     out_dir = r'g:\temp\preview'
+    images_dir = r"g:\temp\animl-runs\animl-runs\Coati_v2"
     is_azure = False
     confidence_threshold = 0.15
     sample = -1
