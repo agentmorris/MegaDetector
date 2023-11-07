@@ -2,7 +2,7 @@
 #
 # ct_utils.py
 #
-# Utility functions that don't depend on other things in this repo.
+# Numeric/geometry utility functions that don't depend on other things in this repo.
 #
 ########
 
@@ -260,3 +260,65 @@ def get_max_conf(im):
     if 'detections' in im and im['detections'] is not None and len(im['detections']) > 0:
         max_conf = _get_max_conf_from_detections(im['detections'])
     return max_conf
+
+
+def point_dist(p1,p2):
+    """
+    Distance between two points, represented as length-two tuples.
+    """
+    return math.sqrt( ((p1[0]-p2[0])**2) + ((p1[1]-p2[1])**2) )
+
+
+def rect_distance(r1, r2, format='x0y0x1y1'):
+    """
+    Minimum distance between two axis-aligned rectangles, each represented as 
+    (x0,y0,x1,y1) by default.
+    
+    Can also specify "format" as x0y0wh for MD-style bbox formatting (x0,y0,w,h).    
+    """
+    
+    assert format in ('x0y0x1y1','x0y0wh')
+    
+    if format == 'x0y0wh':
+        # Convert to x0y0x1y1 without modifying the original rectangles
+        r1 = [r1[0],r1[1],r1[0]+r1[2],r1[1]+r1[3]]
+        r2 = [r2[0],r2[1],r2[0]+r2[2],r2[1]+r2[3]]
+        
+    # https://stackoverflow.com/a/26178015
+    x1, y1, x1b, y1b = r1
+    x2, y2, x2b, y2b = r2
+    left = x2b < x1
+    right = x1b < x2
+    bottom = y2b < y1
+    top = y1b < y2
+    if top and left:
+        return point_dist((x1, y1b), (x2b, y2))
+    elif left and bottom:
+        return point_dist((x1, y1), (x2b, y2b))
+    elif bottom and right:
+        return point_dist((x1b, y1), (x2, y2b))
+    elif right and top:
+        return point_dist((x1b, y1b), (x2, y2))
+    elif left:
+        return x1 - x2b
+    elif right:
+        return x2 - x1b
+    elif bottom:
+        return y1 - y2b
+    elif top:
+        return y2 - y1b
+    else:
+        return 0.0
+
+if False:
+    
+    #%% Test a few rectangle distances
+    
+    r1 = [0,0,1,1]; r2 = [0,0,1,1]; assert rect_distance(r1,r2)==0
+    r1 = [0,0,1,1]; r2 = [0,0,1,100]; assert rect_distance(r1,r2)==0
+    r1 = [0,0,1,1]; r2 = [1,1,2,2]; assert rect_distance(r1,r2)==0
+    r1 = [0,0,1,1]; r2 = [1.1,0,0,1.1]; assert abs(rect_distance(r1,r2)-.1) < 0.00001
+    
+    r1 = [0.4,0.8,10,22]; r2 = [100, 101, 200, 210.4]; assert abs(rect_distance(r1,r2)-119.753) < 0.001
+    r1 = [0.4,0.8,10,22]; r2 = [101, 101, 200, 210.4]; assert abs(rect_distance(r1,r2)-120.507) < 0.001    
+    r1 = [0.4,0.8,10,22]; r2 = [120, 120, 200, 210.4]; assert abs(rect_distance(r1,r2)-147.323) < 0.001
