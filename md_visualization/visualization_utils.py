@@ -850,4 +850,74 @@ def draw_db_boxes_on_file(input_file, output_file, boxes, classes=None,
 
     image.save(output_file)
     
+
+def gray_scale_fraction(image,crop_size=(0.1,0.1)):
+    """
+    Returns the fraction of the pixels in [image] that appear to be grayscale (R==G==B), 
+    useful for approximating whether this is a night-time image when flash information is not
+    available in EXIF data (or for video frames, where this information is often not available
+    in structured metadata at all).
+    
+    [image] can be a PIL image or a file name.
+    
+    crop_size should be a 2-element list/tuple, representing the fraction of the image 
+    to crop at the top and bottom, respectively, before analyzing (to minimize the possibility
+    of including color elements in the image chrome).
+    """
+    
+    if isinstance(image,str):
+        image = Image.open(image)
+    
+    if image.mode == 'L':
+        return 1.0
+    
+    if len(image.getbands()) == 1:
+        return 1.0
+    
+    # Crop if necessary
+    if crop_size[0] > 0 or crop_size[1] > 0:
+        
+        assert (crop_size[0] + crop_size[1]) < 1.0, \
+            print('Illegal crop size: {}'.format(str(crop_size)))
+            
+        top_crop_pixels = int(image.height * crop_size[0])
+        bottom_crop_pixels = int(image.height * crop_size[1])
+        
+        left = 0
+        right = image.width
+        
+        # Remove pixels from the top
+        first_crop_top = top_crop_pixels
+        first_crop_bottom = image.height        
+        first_crop = image.crop((left, first_crop_top, right, first_crop_bottom))
+        
+        # Remove pixels from the bottom
+        second_crop_top = 0
+        second_crop_bottom = first_crop.height - bottom_crop_pixels
+        second_crop = first_crop.crop((left, second_crop_top, right, second_crop_bottom))
+        
+        image = second_crop
+    
+    # It doesn't matter if these are actually R/G/B, they're just names
+    r = np.array(image.getchannel(0))
+    g = np.array(image.getchannel(1))
+    b = np.array(image.getchannel(2))
+        
+    gray_pixels = np.logical_and(r == g, r == b)
+    n_pixels = gray_pixels.size
+    n_gray_pixels = gray_pixels.sum()
+    
+    return n_gray_pixels / n_pixels
+
+    # Non-numpy way to do the same thing, briefly keeping this here for posterity
+    if False:
+        
+        w, h = image.size
+        n_pixels = w*h
+        n_gray_pixels = 0
+        for i in range(w):
+            for j in range(h):
+                r, g, b = image.getpixel((i,j))
+                if r == g and r == b and g == b:
+                    n_gray_pixels += 1            
     

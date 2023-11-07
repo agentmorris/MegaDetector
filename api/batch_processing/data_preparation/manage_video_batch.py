@@ -151,6 +151,80 @@ if False:
     
     pass
 
+    #%% Render one or more sample videos...
+        
+    # ...while we still have the frames and detections around
+    
+    ## Imports
+    
+    from md_visualization import visualize_detector_output
+    from detection.video_utils import frames_to_video    
+    
+    
+    ## Constants and paths
+    
+    confidence_threshold = 0.2
+    input_fs = 30
+    
+    filtered_output_filename = '/a/b/c/blah_detections.filtered_rde_0.150_0.850_10_1.000.json'
+    video_fn_relative = '4.10cam6/IMG_0022.MP4'
+    output_video_base = os.path.expanduser('~/tmp/video_preview')
+    
+    
+    ## Filename handling
+    
+    video_fn_relative = video_fn_relative.replace('\\','/')
+    video_fn_flat = video_fn_relative.replace('/','#')
+    video_name = os.path.splitext(video_fn_flat)[0]
+    output_video = os.path.join(output_video_base,'{}_detections.mp4'.format(video_name))        
+    output_fs = input_fs / every_n_frames
+    
+    rendered_detections_folder = os.path.join(output_video_base,'rendered_detections_{}'.format(video_name))
+    os.makedirs(rendered_detections_folder,exist_ok=True)
+    
+    
+    ## Find frames corresponding to this video
+    
+    with open(filtered_output_filename,'r') as f:
+        frame_results = json.load(f)
+    
+    frame_results_this_video = []
+    
+    # im = frame_results['images'][0]
+    for im in frame_results['images']:
+        if im['file'].replace('\\','/').startswith(video_fn_relative):
+            frame_results_this_video.append(im)
+
+    assert len(frame_results_this_video) > 0, \
+        'No frame results matched {}'.format(video_fn_relative)
+    print('Found {} matching frame results'.format(len(frame_results_this_video)))
+    
+    frame_results['images'] = frame_results_this_video
+    
+    frames_json = os.path.join(rendered_detections_folder,video_fn_flat + '.json')
+    
+    with open(frames_json,'w') as f:
+        json.dump(frame_results,f,indent=1)        
+        
+        
+    ## Render detections on those frames    
+    
+    detected_frame_files = visualize_detector_output.visualize_detector_output(
+        detector_output_path=frames_json,
+        out_dir=rendered_detections_folder,
+        images_dir=output_folder_base,
+        confidence_threshold=confidence_threshold,
+        preserve_path_structure=True,
+        output_image_width=-1)
+        
+    
+    ## Render the output video
+    
+    frames_to_video(detected_frame_files, output_fs, output_video, codec_spec='h264')
+    
+    # from md_utils.path_utils import open_file; open_file(output_video)
+
+
     #%% Test a possibly-broken video
     
     fn = '/datadrive/tmp/video.AVI'
