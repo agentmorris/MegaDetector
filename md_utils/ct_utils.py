@@ -2,7 +2,7 @@
 #
 # ct_utils.py
 #
-# Numeric/geometry utility functions that don't depend on other things in this repo.
+# Numeric/geometry utility functions
 #
 ########
 
@@ -310,7 +310,12 @@ def rect_distance(r1, r2, format='x0y0x1y1'):
     else:
         return 0.0
 
+
+#%% Test drivers
+
 if False:
+    
+    pass
     
     #%% Test a few rectangle distances
     
