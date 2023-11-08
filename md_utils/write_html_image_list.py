@@ -14,6 +14,7 @@
 
 import os
 import math
+import urllib
 
 from md_utils import path_utils
 
@@ -40,6 +41,7 @@ def write_html_image_list(filename=None,images=None,options=None):
         defaultTextStyle
         defaultImageStyle
         maxFiguresPerHtmlFile
+        urlEncodeFilenames (default True, e.g. '#' will be replaced by '%23')
         
     """
     
@@ -63,6 +65,9 @@ def write_html_image_list(filename=None,images=None,options=None):
     if 'defaultImageStyle' not in options or options['defaultImageStyle'] is None:
         options['defaultImageStyle'] = \
         "margin:0px;margin-top:5px;margin-bottom:5px;"
+    
+    if 'urlEncodeFilenames' not in options or options['urlEncodeFilenames'] is None:
+        options['urlEncodeFilenames'] = True
         
     # Possibly split the html output for figures into multiple files; Chrome gets sad with
     # thousands of images in a single tab.        
@@ -170,6 +175,9 @@ def write_html_image_list(filename=None,images=None,options=None):
         # Remove unicode characters
         title = title.encode('ascii','ignore').decode('ascii')
         filename = filename.encode('ascii','ignore').decode('ascii')
+        
+        if options['urlEncodeFilenames']:
+            filename = urllib.parse.quote(filename)
         
         if len(title) > 0:       
             fHtml.write(
