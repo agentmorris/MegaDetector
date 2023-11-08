@@ -19,7 +19,7 @@ This folder contains scripts and configuration files for training and evaluating
 
 Most users don't need to know anything about any of these formats; if you run MegaDetector and load the results into, e.g., Timelapse, all of this happens under the hood.  But if you are writing code to work with MegaDetector or any of the file formats described in this repo, some handy tips that might avoid confusion later:
 
-* The [MegaDetector batch output format](../api/batch_processing#megadetector-batch-output-format) (the one all of our tools eventually produce, and the one downstream applications know how to read) uses normalized coordinates, as `[xmin, ymin, width_of_box, height_of_box]`
+* The [MegaDetector results format](../api/batch_processing#megadetector-batch-output-format) (the one all of our tools eventually produce, and the one downstream applications know how to read) uses normalized coordinates, as `[xmin, ymin, width_of_box, height_of_box]`
 * Bounding boxes predicted by the underlying MegaDetector model are in normalized coordinates, as `[ymin, xmin, ymax, xmax]`
 * The [COCO Camera Traps format](../data_management#coco-camera-traps-format) uses absolute coordinates, as `[xmin, ymin, width_of_box, height_of_box]`
 

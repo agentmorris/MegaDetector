@@ -1,6 +1,6 @@
 # Postprocessing tools for MegaDetector results
 
-This folder contains scripts for working with MegaDetector results, i.e. results in the [MegaDetector batch output format](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing#megadetector-batch-output-format).
+This folder contains scripts for working with MegaDetector results, i.e. results in the [MegaDetector results format](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing#megadetector-batch-output-format).
 
 Modules in this folder include...
 

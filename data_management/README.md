@@ -34,6 +34,9 @@ Code for converting frequently-used metadata formats (or sometimes one-off data 
 
 # COCO Camera Traps format
 
+The COCO Camera Traps (CCT) format (used for camera trap data on [LILA](https://lila.science)) and for some intermediate processing by other scripts in this repo is an extension of the [COCO format](https://docs.aws.amazon.com/rekognition/latest/customlabels-dg/md-coco-overview.html) to add fields that are relevant for camera trap data. CCT is a superset of COCO, so CCT datasets are compatible with tools that expect COCO-formatted data.
+
+
 ```
 {
   "info" : info,
@@ -44,11 +47,13 @@ Code for converting frequently-used metadata formats (or sometimes one-off data 
 
 info 
 {
-  # Required
+  ## Required ##
+
   "version" : str,
   "description" : str,
   
-  # Optional
+  ## Optional ##
+
   "year" : int,
   "contributor" : str
   "date_created" : datetime
@@ -56,17 +61,33 @@ info
 
 image
 {
-  # Required
+  ## Required ##
+
   "id" : str,
   "file_name" : str,
   
-  # Optional
+  ## Optional ##
+
   "width" : int,
   "height" : int,
   "rights_holder" : str,    
+
+  # Precise date formats have varied a little across datasets, the spirit is
+  # "any obvious format that dateutil knows how to parse".  Going forward,
+  # we are using Python's standard string representation for datetimes, which
+  # looks like: 
+  #
+  # 2022-12-31 09:52:50
   "datetime": datetime,  
+
+  # A unique identifier for the sequence (aka burst, episode, or event) to 
+  # which this image belongs
   "seq_id": str,
+
+  # The total number of images in this event
   "seq_num_frames": int,
+
+  # The zero-indexed index of this image within this event
   "frame_num": int
   
   # This is an int in older data sets, but convention is now strings
@@ -80,22 +101,29 @@ image
 
 category
 {
-  # Required
+  ## Required ##
   
   # Category ID 0 reserved for the class "empty"; all other categories vary by data
   # set.  Non-negative integers only.
   "id" : int,
+
+  # Can be any string, but if the category indicates empty, the standard is "empty"
+  # (as opposed to "blank", "false trigger", "none", "misfire", etc.). 
+  #
+  # Lower-case names without spaces are encouraged, but not required.  I.e., all other
+  # things being equal, use "gray_wolf" rather than "Gray Wolf".
   "name" : str  
 }
 
 annotation
 {
-  # Required
+  ## Required ##
+
   "id" : str,
   "image_id" : str,  
   "category_id" : int,
   
-  # Optional
+  ## Optional ##
   
   # These are in absolute, floating-point coordinates, with the origin at the upper-left
   "bbox": [x,y,width,height],
@@ -107,16 +135,11 @@ annotation
 }
 ```
 
-`seq_num_frames` is the total number of frames in the sequence that this image belongs to.
-
-`frame_num` specifies this frame's order in the sequence.
-
-Note that the coordinates in the `bbox` field are absolute here, different from those in the [batch processing API](api/batch_processing/README.md) output, which are relative.
+Note that the coordinates in the `bbox` field are absolute here, different from those in the [MegaDetector results format](api/batch_processing/README.md#megadetector-batch-output-format), which are normalized.
 
 Fields listed as "optional" are intended to standardize commonly-used parameters (such as date/time information).  When present, fields should follow the above conventions.  Additional fields may be present for specific data sets.
 
-Whenever possible, the category ID 0 is associated with a class called "empty", even if there are no empty images in a data set.  When preparing data sets, we normalize all versions of "empty" (such as "none", "Empty", "no animal", etc.) to "empty".
-
 # Gratuitous animal picture
 
-![pheasant in camera trap](../images/pheasant_web.jpg)<br/>Image credit Saola Working Group, from the [SWG Camera Traps](https://lila.science/datasets/swg-camera-traps/) data set.
+![pheasant in camera trap](../images/pheasant_web_detections.jpg)<br/>Image credit Saola Working Group, from the [SWG Camera Traps](https://lila.science/datasets/swg-camera-traps/) data set.
+
