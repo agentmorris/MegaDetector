@@ -10,7 +10,7 @@
 #%% Constants and environment
 
 from md_visualization import visualize_db
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 import pandas as pd
 import os
 import glob
@@ -289,21 +289,21 @@ print('Finished writing .json file with {} images, {} annotations, and {} catego
 
 #%% Validate output
 
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 
-options = sanity_check_json_db.SanityCheckOptions()
+options = integrity_check_json_db.IntegrityCheckOptions()
 options.baseDir = image_directory
 options.bCheckImageSizes = False
 options.bCheckImageExistence = False
 options.bFindUnusedImages = False
     
-sortedCategories, data = sanity_check_json_db.sanity_check_json_db(output_json_file,options)
+sortedCategories, data = integrity_check_json_db.integrity_check_json_db(output_json_file,options)
 
 
 #%% Preview labels
 
 from md_visualization import visualize_db
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 
 viz_options = visualize_db.DbVizOptions()
 viz_options.num_to_visualize = 1000
@@ -311,7 +311,7 @@ viz_options.trim_to_images_with_bboxes = False
 viz_options.add_search_links = True
 viz_options.sort_by_filename = False
 viz_options.parallelize_rendering = True
-html_output_file,image_db = visualize_db.process_images(db_path=output_json_file,
+html_output_file,image_db = visualize_db.visualize_db(db_path=output_json_file,
                                                         output_dir=os.path.join(output_base,'preview'),
                                                         image_base_dir=image_directory,
                                                         options=viz_options)

@@ -25,7 +25,7 @@ from tqdm import tqdm
 from PIL import Image
 
 from md_visualization import visualize_db
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 from md_utils.path_utils import find_images
 
 input_base = r'e:\ubc'
@@ -373,13 +373,13 @@ print('Finished writing .json file with {} images, {} annotations, and {} catego
 
 #%% Validate output
 
-options = sanity_check_json_db.SanityCheckOptions()
+options = integrity_check_json_db.IntegrityCheckOptions()
 options.baseDir = output_base
 options.bCheckImageSizes = False
 options.bCheckImageExistence = False
 options.bFindUnusedImages = True
 
-sortedCategories, data, errors = sanity_check_json_db.sanity_check_json_db(
+sortedCategories, data, errors = integrity_check_json_db.integrity_check_json_db(
     output_json_file, options)
 
 
@@ -391,7 +391,7 @@ viz_options.trim_to_images_with_bboxes = False
 viz_options.add_search_links = True
 viz_options.sort_by_filename = False
 viz_options.parallelize_rendering = True
-html_output_file, image_db = visualize_db.process_images(db_path=output_json_file,
+html_output_file, image_db = visualize_db.visualize_db(db_path=output_json_file,
                                                          output_dir=os.path.join(
                                                              output_base, 'preview'),
                                                          image_base_dir=output_base,

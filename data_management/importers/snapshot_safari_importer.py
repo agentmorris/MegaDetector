@@ -262,7 +262,7 @@ print('Converted {} annotations, {} images, {} categories ({} invalid dates)'.fo
     len(annotations),len(images),len(categories),n_invalid_dates))
 
     
-#%% Take a look at categories (just sanity-checking)
+#%% Take a look at categories
 
 assert(len(im_id_to_image)==len(images)) 
 print('Loaded metadata about {} images and {} sequences'.format(len(images),len(seq_id_to_annotations)))
@@ -389,7 +389,7 @@ print('\nOf {} images: {} missing, {} corrupt, {} no annotation'.format(len(imag
       n_missing, n_corrupt, n_no_annotation))
     
     
-#%% Print distribution of sequence lengths (sanity-check)
+#%% Print distribution of sequence lengths
 
 seq_id_to_sequence_length = {}
 
@@ -445,7 +445,7 @@ print('{} files not in the database (of {})'.format(len(files_not_in_db),len(ima
 del fn
 
 
-#%% Sanity-check image and annotation uniqueness
+#%% Validate image and annotation uniqueness
              
 tmp_img_ids = set()
 tmp_ann_ids = set()
@@ -458,7 +458,7 @@ for ann in tqdm(annotations):
     assert ann['id'] not in tmp_ann_ids
     tmp_ann_ids.add(ann['id'])
     
-print('Finished uniqueness sanity-check')
+print('Finished uniqueness check')
 
 
 #%% Minor updates to fields
@@ -579,15 +579,15 @@ print('\nFinished writing {}, added {} files'.format(zipfilename,n_images_added)
 
 #%% Consistency-check-check .json file
 
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 
-options = sanity_check_json_db.SanityCheckOptions()
+options = integrity_check_json_db.IntegrityCheckOptions()
 options.baseDir = output_public_folder
 options.bCheckImageSizes = False
 options.bCheckImageExistence = True
 options.bFindUnusedImages = False
 
-sortedCategories, data, errorInfo = sanity_check_json_db.sanity_check_json_db(json_filename,options)
+sortedCategories, data, errorInfo = integrity_check_json_db.integrity_check_json_db(json_filename,options)
 
 # This will produce some validation errors, because this zipfile doesn't include humans
 assert(len(errorInfo['validationErrors']) == len(human_image_ids))
@@ -718,7 +718,7 @@ with open(summary_info_filename,'w') as f:
     f.write(s)
     
 
-#%% Generate preview, sanity-check labels
+#%% Generate preview, integrity-check labels
     
 viz_options = visualize_db.DbVizOptions()
 viz_options.num_to_visualize = 5000
@@ -728,7 +728,7 @@ viz_options.sort_by_filename = False
 viz_options.parallelize_rendering = True
 viz_options.classes_to_exclude = ['test','empty']
 # viz_options.classes_to_include = ['jackalblackbacked','bustardkori']
-html_output_file, image_db = visualize_db.process_images(db_path=json_filename,
+html_output_file, image_db = visualize_db.visualize_db(db_path=json_filename,
                                                          output_dir=output_preview_folder,
                                                          image_base_dir=output_public_folder,
                                                          options=viz_options)

@@ -3,7 +3,7 @@
 # visualize_db.py
 # 
 # Outputs an HTML page visualizing annotations (class labels and/or bounding boxes)
-# on a sample of images in a database in the COCO Camera Traps format
+# on a sample of images in a database in the COCO Camera Traps format.
 #
 ########
 
@@ -96,7 +96,7 @@ def image_filename_to_path(image_file_name, image_base_dir, pathsep_replacement=
 
 #%% Core functions
 
-def process_images(db_path, output_dir, image_base_dir, options=None):
+def visualize_db(db_path, output_dir, image_base_dir, options=None):
     """
     Writes images and html to output_dir to visualize the annotations in the json file
     db_path.
@@ -418,7 +418,7 @@ def process_images(db_path, output_dir, image_base_dir, options=None):
     
     return htmlOutputFile,image_db
 
-# def process_images(...)
+# def visualize_db(...)
     
     
 #%% Command-line driver
@@ -452,7 +452,8 @@ def main():
     parser.add_argument('--random_seed', action='store', type=int, default=None,
                         help='Random seed for image selection')
     parser.add_argument('--pathsep_replacement', action='store', type=str, default='',
-                        help='Replace path separators in relative filenames with another character (frequently ~)')
+                        help='Replace path separators in relative filenames with another ' + \
+                             'character (frequently ~)')
     
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -466,7 +467,7 @@ def main():
     if options.random_sort:
         options.sort_by_filename = False
         
-    process_images(options.db_path,options.output_dir,options.image_base_dir,options) 
+    visualize_db(options.db_path,options.output_dir,options.image_base_dir,options) 
 
 
 if __name__ == '__main__':
@@ -474,7 +475,7 @@ if __name__ == '__main__':
     main()
 
 
-#%% Interactive driver(s)
+#%% Interactive driver
 
 if False:
     
@@ -487,6 +488,5 @@ if False:
     options = DbVizOptions()
     options.num_to_visualize = 100
     
-    htmlOutputFile,db = process_images(db_path,output_dir,image_base_dir,options)
+    htmlOutputFile,db = visualize_db(db_path,output_dir,image_base_dir,options)
     # os.startfile(htmlOutputFile)
-

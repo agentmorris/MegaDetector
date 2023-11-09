@@ -882,16 +882,16 @@ print('Finished writing .json file with {} images, {} annotations, and {} catego
 
 #%% Validate output
 
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 
 fn = output_file
-options = sanity_check_json_db.SanityCheckOptions()
+options = integrity_check_json_db.IntegrityCheckOptions()
 options.baseDir = output_image_folder
 options.bCheckImageSizes = False
 options.bCheckImageExistence = False
 options.bFindUnusedImages = False
     
-sortedCategories, data, error = sanity_check_json_db.sanity_check_json_db(fn,options)
+sortedCategories, data, error = integrity_check_json_db.integrity_check_json_db(fn,options)
 
 
 #%% Preview labels
@@ -906,7 +906,7 @@ viz_options.trim_to_images_with_bboxes = False
 viz_options.add_search_links = False
 viz_options.sort_by_filename = False
 viz_options.parallelize_rendering = True
-html_output_file,image_db = visualize_db.process_images(db_path=output_file,
+html_output_file,image_db = visualize_db.visualize_db(db_path=output_file,
                                                         output_dir=os.path.join(output_base,'preview'),
                                                         image_base_dir=output_image_folder,
                                                         options=viz_options)

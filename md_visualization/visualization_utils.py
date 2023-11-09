@@ -920,4 +920,3 @@ def gray_scale_fraction(image,crop_size=(0.1,0.1)):
                 r, g, b = image.getpixel((i,j))
                 if r == g and r == b and g == b:
                     n_gray_pixels += 1            
-    

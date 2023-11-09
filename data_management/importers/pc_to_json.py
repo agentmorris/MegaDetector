@@ -20,7 +20,7 @@ import humanfriendly
 import os
 import PIL
 
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 from data_management.cct_json_utils import IndexedJsonDb
 from data_management import cct_json_to_filename_json
 from md_visualization import visualize_db
@@ -337,11 +337,11 @@ print('Finished writing .json file with {} images, {} annotations, and {} catego
         len(images),len(annotations),len(categories)))
 
 
-#%% Sanity-check the database's integrity
+#%% Validate the database's integrity
 
 json_data = json.load(open(output_file))
-options = sanity_check_json_db.SanityCheckOptions()
-sortedCategories,data = sanity_check_json_db.sanity_check_json_db(json_data, options)
+options = integrity_check_json_db.IntegrityCheckOptions()
+sortedCategories,data = integrity_check_json_db.integrity_check_json_db(json_data, options)
 
     
 #%% Render a bunch of images to make sure the labels got carried along correctly
@@ -354,7 +354,7 @@ options.sort_by_filename = False
 # options.classes_to_exclude = ['unlabeled']
 options.classes_to_exclude = None
 
-htmlOutputFile,_ = visualize_db.process_images(json_data,output_dir,input_base,options)
+htmlOutputFile,_ = visualize_db.visualize_db(json_data,output_dir,input_base,options)
 os.startfile(htmlOutputFile)
 
 

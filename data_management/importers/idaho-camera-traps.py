@@ -837,15 +837,15 @@ if __name__ == "__main__":
     
     #%% Validate .json file
 
-    from data_management.databases import sanity_check_json_db
+    from data_management.databases import integrity_check_json_db
 
-    options = sanity_check_json_db.SanityCheckOptions()
+    options = integrity_check_json_db.IntegrityCheckOptions()
     options.baseDir = input_base
     options.bCheckImageSizes = False
     options.bCheckImageExistence = False
     options.bFindUnusedImages = False
 
-    _, _, _ = sanity_check_json_db.sanity_check_json_db(output_json_original_strings, options)
+    _, _, _ = integrity_check_json_db.integrity_check_json_db(output_json_original_strings, options)
     
     
     #%% Preview labels
@@ -861,7 +861,7 @@ if __name__ == "__main__":
     viz_options.include_filename_links = True
     
     viz_options.classes_to_exclude = ['empty','deer','elk']
-    html_output_file, _ = visualize_db.process_images(db_path=output_json_original_strings,
+    html_output_file, _ = visualize_db.visualize_db(db_path=output_json_original_strings,
                                                              output_dir=os.path.join(
                                                              output_base,'preview'),
                                                              image_base_dir=input_base,
@@ -1119,15 +1119,15 @@ if __name__ == "__main__":
     
     #%% Validate .json file (modified strings, original files)
 
-    from data_management.databases import sanity_check_json_db
+    from data_management.databases import integrity_check_json_db
 
-    options = sanity_check_json_db.SanityCheckOptions()
+    options = integrity_check_json_db.IntegrityCheckOptions()
     options.baseDir = input_base
     options.bCheckImageSizes = False
     options.bCheckImageExistence = False
     options.bFindUnusedImages = False
 
-    _, _, _ = sanity_check_json_db.sanity_check_json_db(output_json_remapped_ids, options)
+    _, _, _ = integrity_check_json_db.integrity_check_json_db(output_json_remapped_ids, options)
     
     
     #%% Preview labels (original files)
@@ -1146,7 +1146,7 @@ if __name__ == "__main__":
     # viz_options.classes_to_include = ['bobcat']
     viz_options.classes_to_include = [viz_options.multiple_categories_tag] 
     
-    html_output_file, _ = visualize_db.process_images(db_path=output_json_remapped_ids,
+    html_output_file, _ = visualize_db.visualize_db(db_path=output_json_remapped_ids,
                                                              output_dir=os.path.join(
                                                              output_base,'preview'),
                                                              image_base_dir=input_base,
@@ -1252,15 +1252,15 @@ if __name__ == "__main__":
 
     #%% Validate .json file (final filenames)
 
-    from data_management.databases import sanity_check_json_db
+    from data_management.databases import integrity_check_json_db
 
-    options = sanity_check_json_db.SanityCheckOptions()
+    options = integrity_check_json_db.IntegrityCheckOptions()
     options.baseDir = input_base
     options.bCheckImageSizes = False
     options.bCheckImageExistence = False
     options.bFindUnusedImages = False
 
-    _, _, _ = sanity_check_json_db.sanity_check_json_db(output_json, options)
+    _, _, _ = integrity_check_json_db.integrity_check_json_db(output_json, options)
     
     
     #%% Preview labels (final filenames)
@@ -1281,7 +1281,7 @@ if __name__ == "__main__":
     # viz_options.classes_to_include = [viz_options.multiple_categories_tag] 
     # viz_options.classes_to_include = ['human','vehicle','domestic dog'] 
     
-    html_output_file, _ = visualize_db.process_images(db_path=output_json,
+    html_output_file, _ = visualize_db.visualize_db(db_path=output_json,
                                                              output_dir=os.path.join(
                                                              output_base,'final-preview-01'),
                                                              image_base_dir=output_image_base_public,

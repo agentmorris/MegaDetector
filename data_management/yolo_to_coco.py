@@ -214,7 +214,7 @@ if False:
     viz_options.parallelize_rendering = True
     viz_options.include_filename_links = True
 
-    html_output_file, _ = visualize_db.process_images(db_path=output_file,
+    html_output_file, _ = visualize_db.visualize_db(db_path=output_file,
                                                         output_dir=preview_folder,
                                                         image_base_dir=input_folder,
                                                         options=viz_options)

@@ -21,7 +21,7 @@ import ntpath
 import humanfriendly
 import PIL
 
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 from md_visualization import visualize_db
 
 # [location] is an obfuscation
@@ -320,11 +320,11 @@ print('Finished writing .json file with {} images, {} annotations, and {} catego
 
 #%% Check database integrity
 
-options = sanity_check_json_db.SanityCheckOptions()
+options = integrity_check_json_db.IntegrityCheckOptions()
 options.baseDir = imageBaseDir
 options.bCheckImageSizes = False
 options.bFindUnusedImages = False
-sanity_check_json_db.sanity_check_json_db(outputFile, options)
+integrity_check_json_db.integrity_check_json_db(outputFile, options)
 
 
 #%% Preview a few images to make sure labels were passed along sensibly
@@ -334,7 +334,7 @@ output_dir = os.path.join(baseDir,'label_preview')
 image_base_dir = imageBaseDir
 options = visualize_db.DbVizOptions()
 options.num_to_visualize = 100
-htmlOutputFile = visualize_db.process_images(db_path,output_dir,image_base_dir,options)
+htmlOutputFile = visualize_db.visualize_db(db_path,output_dir,image_base_dir,options)
     
 
 #%% One-time processing step: copy images to a flat directory for annotation

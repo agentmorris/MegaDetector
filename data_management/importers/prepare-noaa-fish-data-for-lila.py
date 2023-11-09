@@ -335,10 +335,10 @@ viz_options.sort_by_filename = False
 viz_options.parallelize_rendering = True
 viz_options.include_filename_links = True
 
-html_output_file, _ = visualize_db.process_images(db_path=output_json_fn,
-                                                         output_dir=os.path.join(base_folder,'preview'),
-                                                         image_base_dir=os.path.join(base_folder,jpeg_image_folder),
-                                                         options=viz_options)
+html_output_file, _ = visualize_db.visualize_db(db_path=output_json_fn,
+                                                output_dir=os.path.join(base_folder,'preview'),
+                                                image_base_dir=os.path.join(base_folder,jpeg_image_folder),
+                                                options=viz_options)
 open_file(html_output_file)
 
 

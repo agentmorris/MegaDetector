@@ -16,7 +16,7 @@ from operator import itemgetter
 from shutil import copyfile
 
 from md_visualization import visualize_db
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 from data_management.cct_json_utils import IndexedJsonDb
 
 annotation_list_filename = r'd:\wildlife_data\zsl_borneo\all_img_ids_to_bbox.json'
@@ -39,15 +39,15 @@ indexedData = IndexedJsonDb(image_json)
 print('Done loading data')    
     
 
-#%% Sanity-check data
+#%% Validate data
 
-options = sanity_check_json_db.SanityCheckOptions()
+options = integrity_check_json_db.IntegrityCheckOptions()
 options.baseDir = image_base
 options.bCheckImageSizes = False
 options.bCheckImageExistence = True
 options.bFindUnusedImages = False
     
-sortedCategories = sanity_check_json_db.sanity_check_json_db(indexedData.db,options)
+sortedCategories = integrity_check_json_db.integrity_check_json_db(indexedData.db,options)
 
 
 #%% Label previews
@@ -57,7 +57,7 @@ viz_options.num_to_visualize = 500
 viz_options.trim_to_images_with_bboxes = False
 viz_options.add_search_links = True
 viz_options.sort_by_filename = False
-html_output_file,image_db = visualize_db.process_images(indexedData.db,
+html_output_file,image_db = visualize_db.visualize_db(indexedData.db,
                                                         os.path.join(output_base,'preview'),
                                                         image_base,viz_options)
 os.startfile(html_output_file)

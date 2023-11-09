@@ -158,4 +158,4 @@ for ds_name in dataset_to_categories:
 #%% Save the results
 
 with open(output_file, 'w') as f:
-    json.dump(dataset_to_categories,f,indent=2)
+    json.dump(dataset_to_categories,f,indent=1)

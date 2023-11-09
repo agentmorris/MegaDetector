@@ -251,7 +251,7 @@ for iSequence,sequence in enumerate(annData):
             
         new_fn_to_old_id[imFileName] = old_id
         
-        # Sanity-check image size
+        # Validate image size
         new_im = im_id_to_im[old_id]
         new_im['file_name'] = imFileName
         assert 'height' in new_im
@@ -377,7 +377,7 @@ new_data['licenses'] = {}
 json.dump(new_data, open(outputFile,'w'))
 
 
-#%% Sanity-check empty images
+#%% Validate empty images
 
 nEmpty = 0
 annotations = new_data['annotations']

@@ -167,7 +167,7 @@ def load_api_results_csv(filename, normalize_paths=True, filename_replacements={
 
     print('De-serializing API results from {}'.format(filename))
 
-    # Sanity-check that this is really a detector output file
+    # Confirm that this is really a detector output file
     for s in ['image_path','max_confidence','detections']:
         assert s in detection_results.columns
 

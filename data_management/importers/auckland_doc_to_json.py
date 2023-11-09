@@ -192,7 +192,7 @@ viz_options.add_search_links = False
 viz_options.sort_by_filename = False
 viz_options.parallelize_rendering = True
 viz_options.classes_to_exclude = ['test']
-html_output_file, image_db = visualize_db.process_images(db_path=output_json_filename,
+html_output_file, image_db = visualize_db.visualize_db(db_path=output_json_filename,
                                                          output_dir=os.path.join(
                                                          output_base_dir, 'preview'),
                                                          image_base_dir=input_base_dir,

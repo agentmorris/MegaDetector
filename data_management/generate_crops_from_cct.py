@@ -145,7 +145,7 @@ if False:
 
     #%%
     
-    from md_visualization.visualize_db import DbVizOptions,process_images
+    from md_visualization.visualize_db import DbVizOptions,visualize_db
     
     db_path = cct_file
     output_dir = os.path.expanduser('~/tmp/noaa-fish-preview')
@@ -163,5 +163,5 @@ if False:
     options.box_thickness = 4
     options.box_expansion = 25
     
-    htmlOutputFile,db = process_images(db_path,output_dir,image_base_dir,options)
+    htmlOutputFile,db = visualize_db(db_path,output_dir,image_base_dir,options)
     

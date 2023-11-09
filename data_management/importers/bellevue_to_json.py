@@ -242,17 +242,17 @@ json.dump(data, open(output_filename,'w'), indent=1)
 print('Finished writing json to {}'.format(output_filename))
 
 
-#%% Sanity-check data
+#%% Validate data
 
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 
-options = sanity_check_json_db.SanityCheckOptions()
+options = integrity_check_json_db.IntegrityCheckOptions()
 options.baseDir = base_dir
 options.bCheckImageSizes = False
 options.bCheckImageExistence = True
 options.bFindUnusedImages = False
     
-sorted_categories  = sanity_check_json_db.sanity_check_json_db(output_filename,options)
+sorted_categories  = integrity_check_json_db.integrity_check_json_db(output_filename,options)
 
 
 #%% Label previews
@@ -266,7 +266,7 @@ viz_options.parallelize_rendering = True
 viz_options.trim_to_images_with_bboxes = False
 viz_options.add_search_links = True
 viz_options.sort_by_filename = False
-html_output_file,image_db = visualize_db.process_images(output_filename,
+html_output_file,image_db = visualize_db.visualize_db(output_filename,
                                                         os.path.join(output_base,'preview'),
                                                         base_dir,viz_options)
 os.startfile(html_output_file)

@@ -228,7 +228,7 @@ if False:
              seq_id_to_annotations,annotations,categories,species_to_category = cct_cache
          
 
-#%% Take a look at categories (just sanity-checking)
+#%% Take a look at categories
 
 if False:
     
@@ -365,7 +365,7 @@ print('\nOf {} images: {} missing, {} corrupt, {} no annotation'.format(len(imag
       n_missing, n_corrupt, n_no_annotation))
     
 
-#%% Print distribution of sequence lengths (sanity-check)
+#%% Print distribution of sequence lengths
 
 seq_id_to_sequence_length = {}
 
@@ -508,7 +508,7 @@ for iSeason,season_mismatches in enumerate(mismatches_by_season):
     print('Size mismatches in season {}: {}'.format(iSeason+1,len(mismatches_by_season[iSeason])))
 
 
-#%% Sanity-check image and annotation uniqueness
+#%% Validate image and annotation uniqueness
              
 tmp_img_ids = set()
 tmp_ann_ids = set()
@@ -852,22 +852,22 @@ for i_season in seasons_to_zip:
 # ...for each season
 
  
-#%% Sanity-check .json files
+#%% Validate .json files
 
 # %logstart -o r'E:\snapshot_temp\python.txt'
     
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 
 files_to_check = glob.glob(os.path.join(output_base,'*.json'))
 
-options = sanity_check_json_db.SanityCheckOptions()
+options = integrity_check_json_db.IntegrityCheckOptions()
 options.baseDir = image_base
 options.bCheckImageSizes = False
 options.bCheckImageExistence = True
 options.bFindUnusedImages = False
     
 for fn in files_to_check:    
-    sortedCategories, data = sanity_check_json_db.sanity_check_json_db(fn,options)
+    sortedCategories, data = integrity_check_json_db.integrity_check_json_db(fn,options)
 
 
 #%% Zip up .json and .csv files
@@ -894,7 +894,7 @@ for fn in tqdm(files_to_zip):
     zip_single_file(fn)
   
  
-#%% Super-sanity-check that S11 info isn't leaking
+#%% Validate that S11 info isn't leaking
 
 files_to_check = glob.glob(os.path.join(output_base,'*.json'))
 
@@ -992,7 +992,7 @@ viz_options.num_to_visualize = 500
 viz_options.trim_to_images_with_bboxes = True
 viz_options.add_search_links = True
 viz_options.sort_by_filename = False
-html_output_file,bbox_db = visualize_db.process_images(bbox_json_fn,os.path.join(output_base,'preview2'),image_base,viz_options)
+html_output_file,bbox_db = visualize_db.visualize_db(bbox_json_fn,os.path.join(output_base,'preview2'),image_base,viz_options)
 os.startfile(html_output_file)
 
 

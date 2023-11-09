@@ -1372,7 +1372,7 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
             
         # Write out the detection index
         detectionIndexFileName = os.path.join(filteringDir, DETECTION_INDEX_FILE_NAME)
-        jsonpickle.set_encoder_options('json', sort_keys=True, indent=2)
+        jsonpickle.set_encoder_options('json', sort_keys=True, indent=1)
         
         # Prepare the data we're going to write to the detection index file
         detectionInfo = {}

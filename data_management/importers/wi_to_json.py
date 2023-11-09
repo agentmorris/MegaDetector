@@ -351,7 +351,7 @@ viz_options.sort_by_filename = False
 viz_options.parallelize_rendering = True
 viz_options.include_filename_links = True
 
-html_output_file, _ = visualize_db.process_images(db_path=output_json_filename,
+html_output_file, _ = visualize_db.visualize_db(db_path=output_json_filename,
                                                          output_dir=preview_base,
                                                          image_base_dir=image_base,
                                                          options=viz_options)
@@ -426,7 +426,7 @@ if create_ordered_dataset:
     viz_options.parallelize_rendering = True
     viz_options.include_filename_links = True
     
-    html_output_file, _ = visualize_db.process_images(db_path=ordered_json_filename,
+    html_output_file, _ = visualize_db.visualize_db(db_path=ordered_json_filename,
                                                              output_dir=ordered_preview_base,
                                                              image_base_dir=ordered_image_base,
                                                              options=viz_options)

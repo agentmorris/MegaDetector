@@ -324,7 +324,7 @@ if False:
     options.viz_size = (900, -1)
     options.num_to_visualize = 5000
 
-    html_file,_ = visualize_db.process_images(output_file,os.path.expanduser('~/tmp/labelme_to_coco_preview'),
+    html_file,_ = visualize_db.visualize_db(output_file,os.path.expanduser('~/tmp/labelme_to_coco_preview'),
                                 input_folder,options)
     
 

@@ -483,7 +483,7 @@ options.classes_to_exclude = None
 options.trim_to_images_with_bboxes = False
 options.parallelize_rendering = True
 
-htmlOutputFile,_ = visualize_db.process_images(outputJsonFilenameSet1,output_dir,imageDir,options)
+htmlOutputFile,_ = visualize_db.visualize_db(outputJsonFilenameSet1,output_dir,imageDir,options)
 
 from md_utils.path_utils import open_file
 open_file(htmlOutputFile)

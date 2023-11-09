@@ -140,11 +140,11 @@ print('Finished writing .json file with {} images, {} annotations, and {} catego
         len(images),len(annotations),len(categories)))
 
 
-#%% Sanity-check
+#%% Validate
 
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 
-options = sanity_check_json_db.SanityCheckOptions()
-sortedCategories,data = sanity_check_json_db.sanity_check_json_db(output_file, options)
+options = integrity_check_json_db.IntegrityCheckOptions()
+sortedCategories,data = integrity_check_json_db.integrity_check_json_db(output_file, options)
 
 

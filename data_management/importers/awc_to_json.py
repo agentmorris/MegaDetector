@@ -168,12 +168,12 @@ print('Finished writing .json file with {} images, {} annotations, and {} catego
         len(images),len(annotations),len(categories)))
 
 
-#%% Sanity-check the database's integrity
+#%% Validate the database's integrity
 
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 
-options = sanity_check_json_db.SanityCheckOptions()
-sortedCategories,data = sanity_check_json_db.sanity_check_json_db(output_file, options)
+options = integrity_check_json_db.IntegrityCheckOptions()
+sortedCategories,data = integrity_check_json_db.integrity_check_json_db(output_file, options)
 
     
 #%% Render a bunch of images to make sure the labels got carried along correctly
@@ -185,5 +185,5 @@ options = visualize_db.BboxDbVizOptions()
 options.num_to_visualize = 1000
 options.sort_by_filename = False
 
-htmlOutputFile = visualize_db.process_images(bbox_db_path,output_dir,image_base,options)
+htmlOutputFile = visualize_db.visualize_db(bbox_db_path,output_dir,image_base,options)
 

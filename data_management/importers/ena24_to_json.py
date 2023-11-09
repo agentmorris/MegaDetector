@@ -245,22 +245,22 @@ zipdir(non_human_dir,non_human_zipfile)
 
 #%% Validate output
 
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 
 fn = output_file
-options = sanity_check_json_db.SanityCheckOptions()
+options = integrity_check_json_db.IntegrityCheckOptions()
 options.baseDir = image_directory
 options.bCheckImageSizes = False
 options.bCheckImageExistence = True
 options.bFindUnusedImages = True
     
-sortedCategories, data = sanity_check_json_db.sanity_check_json_db(fn,options)
+sortedCategories, data = integrity_check_json_db.integrity_check_json_db(fn,options)
 
 
 #%% Preview labels
 
 from md_visualization import visualize_db
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 
 viz_options = visualize_db.DbVizOptions()
 viz_options.num_to_visualize = None
@@ -268,7 +268,7 @@ viz_options.trim_to_images_with_bboxes = False
 viz_options.add_search_links = True
 viz_options.sort_by_filename = False
 viz_options.parallelize_rendering = True
-html_output_file,image_db = visualize_db.process_images(db_path=output_file,
+html_output_file,image_db = visualize_db.visualize_db(db_path=output_file,
                                                         output_dir=os.path.join(base_directory,'preview'),
                                                         image_base_dir=image_directory,
                                                         options=viz_options)

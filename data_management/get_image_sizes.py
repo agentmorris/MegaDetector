@@ -2,7 +2,8 @@
 #
 # get_image_sizes.py
 #
-# Given a json-formatted list of image filenames, retrieve the width and height of every image.
+# Given a json-formatted list of image filenames, retrieve the width and height of 
+# every image, optionally writing the results to a new .json file.
 #
 ########
 
@@ -70,7 +71,7 @@ def process_images(filenames,image_prefix=None,n_threads=default_n_threads):
     return all_results
 
 
-def process_list_file(input_file,output_file,image_prefix=None,n_threads=default_n_threads):
+def process_list_file(input_file,output_file=None,image_prefix=None,n_threads=default_n_threads):
     
     assert os.path.isdir(os.path.dirname(output_file))
     assert os.path.isfile(input_file)
@@ -81,8 +82,9 @@ def process_list_file(input_file,output_file,image_prefix=None,n_threads=default
     
     all_results = process_images(filenames,image_prefix=image_prefix,n_threads=n_threads)
     
-    with open(output_file,'w') as f:
-        json.dump(all_results,f,indent=2)
+    if output_file is not None:
+        with open(output_file,'w') as f:
+            json.dump(all_results,f,indent=1)
     
     
 #%% Interactive driver
@@ -102,14 +104,14 @@ if False:
     image_names = path_utils.find_images(base_dir,recursive=True)
     
     with open(image_list_file,'w') as f:
-        json.dump(image_names,f,indent=2)
+        json.dump(image_names,f,indent=1)
         
     relative_image_names = []
     for s in image_names:
         relative_image_names.append(os.path.relpath(s,base_dir))
     
     with open(relative_image_list_file,'w') as f:
-        json.dump(relative_image_names,f,indent=2)
+        json.dump(relative_image_names,f,indent=1)
     
     
     #%%

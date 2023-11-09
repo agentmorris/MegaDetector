@@ -24,7 +24,7 @@ import numpy as np
 from tqdm import tqdm
 
 from md_visualization import visualize_db
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 from md_utils import path_utils
 
 # Text file with relative paths to all files (images and .csv files)
@@ -472,10 +472,10 @@ print('Finished writing .json file with {} images, {} annotations, and {} catego
         len(images),len(annotations),len(categories)))
 
 
-#%% Sanity-check the database's integrity
+#%% Validate the database's integrity
 
-options = sanity_check_json_db.SanityCheckOptions()
-sortedCategories,data = sanity_check_json_db.sanity_check_json_db(output_file, options)
+options = integrity_check_json_db.IntegrityCheckOptions()
+sortedCategories,data = integrity_check_json_db.integrity_check_json_db(output_file, options)
 
 
 #%% Render a bunch of images to make sure the labels got carried along correctly
@@ -486,5 +486,5 @@ options.parallelize_rendering = True
 options.sort_by_filename = False
 options.classes_to_exclude = ['unlabeled','empty','ambiguous']
 
-html_output_file,data = visualize_db.process_images(output_file,preview_base,file_base,options)
+html_output_file,data = visualize_db.visualize_db(output_file,preview_base,file_base,options)
 os.startfile(html_output_file)

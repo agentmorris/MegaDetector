@@ -292,7 +292,7 @@ import uuid
 import datetime
 from tqdm import tqdm
 
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 
 output_base = 'f:\orinoquia_camera_traps'
 output_image_base = os.path.join(output_base,'images')
@@ -431,13 +431,13 @@ print('Finished writing json to {}'.format(output_json_filename))
     
 #%% Validate .json file
 
-options = sanity_check_json_db.SanityCheckOptions()
+options = integrity_check_json_db.IntegrityCheckOptions()
 options.baseDir = output_base
 options.bCheckImageSizes = False
 options.bCheckImageExistence = False
 options.bFindUnusedImages = False
 
-_, _, _ = sanity_check_json_db.sanity_check_json_db(output_json_filename, options)
+_, _, _ = integrity_check_json_db.integrity_check_json_db(output_json_filename, options)
 
 
 #%% Map relative paths to annotation categories
@@ -497,7 +497,7 @@ viz_options.parallelize_rendering = True
 viz_options.include_filename_links = True
 
 # viz_options.classes_to_exclude = ['test']
-html_output_file, _ = visualize_db.process_images(db_path=output_json_filename,
+html_output_file, _ = visualize_db.visualize_db(db_path=output_json_filename,
                                                          output_dir=os.path.join(
                                                          output_base,'preview'),
                                                          image_base_dir=os.path.join(output_image_base,'public'),

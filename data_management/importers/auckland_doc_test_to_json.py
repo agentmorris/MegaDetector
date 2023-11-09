@@ -21,7 +21,7 @@ import numpy as np
 from tqdm import tqdm
 
 from md_visualization import visualize_db
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 from md_utils.path_utils import find_images
 
 input_base_dir = r'e:\auckland-test\2_Testing'
@@ -314,13 +314,13 @@ print('Finished writing json to {}'.format(output_json_filename))
 
 #%% Validate .json file
 
-options = sanity_check_json_db.SanityCheckOptions()
+options = integrity_check_json_db.IntegrityCheckOptions()
 options.baseDir = input_base_dir
 options.bCheckImageSizes = False
 options.bCheckImageExistence = False
 options.bFindUnusedImages = False
 
-sortedCategories, data, _ = sanity_check_json_db.sanity_check_json_db(output_json_filename, options)
+sortedCategories, data, _ = integrity_check_json_db.integrity_check_json_db(output_json_filename, options)
 
 
 #%% Preview labels
@@ -332,7 +332,7 @@ viz_options.add_search_links = False
 viz_options.sort_by_filename = False
 viz_options.parallelize_rendering = True
 viz_options.classes_to_exclude = ['empty']
-html_output_file, image_db = visualize_db.process_images(db_path=output_json_filename,
+html_output_file, image_db = visualize_db.visualize_db(db_path=output_json_filename,
                                                          output_dir=os.path.join(
                                                          output_base_dir, 'preview'),
                                                          image_base_dir=input_base_dir,

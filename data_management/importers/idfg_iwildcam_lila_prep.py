@@ -146,15 +146,15 @@ with open(output_json,'w') as f:
 
 #%% Validate .json file
 
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 
-options = sanity_check_json_db.SanityCheckOptions()
+options = integrity_check_json_db.IntegrityCheckOptions()
 options.baseDir = os.path.join(base_folder,'images'); assert os.path.isdir(options.baseDir)
 options.bCheckImageSizes = False
 options.bCheckImageExistence = False
 options.bFindUnusedImages = False
 
-_, _, _ = sanity_check_json_db.sanity_check_json_db(output_json, options)
+_, _, _ = integrity_check_json_db.integrity_check_json_db(output_json, options)
 
 
 #%% Preview labels
@@ -170,7 +170,7 @@ viz_options.parallelize_rendering = True
 viz_options.include_filename_links = True
 
 # viz_options.classes_to_exclude = ['test']
-html_output_file, _ = visualize_db.process_images(db_path=output_json,
+html_output_file, _ = visualize_db.visualize_db(db_path=output_json,
                                                          output_dir=os.path.join(
                                                          base_folder,'preview'),
                                                          image_base_dir=os.path.join(base_folder,'images'),
@@ -262,15 +262,15 @@ with open(output_json,'w') as f:
 
 #%% Validate .json file
 
-from data_management.databases import sanity_check_json_db
+from data_management.databases import integrity_check_json_db
 
-options = sanity_check_json_db.SanityCheckOptions()
+options = integrity_check_json_db.IntegrityCheckOptions()
 options.baseDir = remote_image_base_dir
 options.bCheckImageSizes = False
 options.bCheckImageExistence = False
 options.bFindUnusedImages = False
 
-_, _, _ = sanity_check_json_db.sanity_check_json_db(output_json, options)
+_, _, _ = integrity_check_json_db.integrity_check_json_db(output_json, options)
 
 
 #%% Preview labels
@@ -286,7 +286,7 @@ viz_options.parallelize_rendering = True
 viz_options.include_filename_links = True
 
 # viz_options.classes_to_exclude = ['test']
-html_output_file, _ = visualize_db.process_images(db_path=output_json,
+html_output_file, _ = visualize_db.visualize_db(db_path=output_json,
                                                          output_dir=os.path.join(
                                                          base_folder,'preview'),
                                                          image_base_dir=remote_image_base_dir,

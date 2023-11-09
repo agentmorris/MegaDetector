@@ -68,7 +68,7 @@ with open(results_file_raw,'r') as f:
         n_valid_detections,n_detections,min_valid_confidence))
     
     with open(results_file,'w') as f:
-        json.dump(d,f,indent=2)
+        json.dump(d,f,indent=1)
         
 base_dir = os.path.expanduser('~/frame_processing')
 min_confidence = 0.001
