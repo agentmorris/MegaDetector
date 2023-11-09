@@ -166,7 +166,7 @@ def load_image(input_file: Union[str, BytesIO]) -> Image:
     return image
 
 
-def resize_image(image, target_width, target_height=-1):
+def resize_image(image, target_width, target_height=-1, output_file=None):
     """
     Resizes a PIL image object to the specified width and height; does not resize
     in place. If either width or height are -1, resizes with aspect ratio preservation.
@@ -201,6 +201,9 @@ def resize_image(image, target_width, target_height=-1):
         resized_image = image.resize((target_width, target_height), Image.ANTIALIAS)
     except:
         resized_image = image.resize((target_width, target_height), Image.Resampling.LANCZOS)
+        
+    if output_file is not None:
+        exif_preserving_save(resized_image,output_file)
         
     return resized_image
 
