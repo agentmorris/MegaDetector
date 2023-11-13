@@ -311,6 +311,14 @@ def rect_distance(r1, r2, format='x0y0x1y1'):
         return 0.0
 
 
+def list_is_sorted(l):
+    """
+    Returns True if the list [l] is sorted, else False.
+    """
+    
+    return all(l[i] <= l[i+1] for i in range(len(l)-1))
+
+
 #%% Test drivers
 
 if False:

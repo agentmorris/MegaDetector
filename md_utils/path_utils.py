@@ -186,7 +186,7 @@ def safe_create_link(link_exists,link_new):
     and if it has a different target than link_exists, remove and re-create
     it.
     
-    Errors of link_new already exists but it's not a link.
+    Errors if link_new already exists but it's not a link.
     """    
     if os.path.exists(link_new) or os.path.islink(link_new):
         assert os.path.islink(link_new)

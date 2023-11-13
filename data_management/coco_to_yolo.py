@@ -37,10 +37,12 @@ def write_yolo_dataset_file(yolo_dataset_file,
                             val_folder_relative=None,
                             test_folder_relative=None):
     """
-    Write a YOLOv5 dataset.yaml file to the file yolo_dataset_file (should
+    Write a YOLOv5 dataset.yaml file to the absolute path yolo_dataset_file (should
     have a .yaml extension, though it's only a warning if it doesn't).  
 
     [dataset_base_dir] should be the absolute path of the dataset root.
+    
+    yolo_dataset_file does not have to be within dataset_base_dir.
 
     [class_list] can be an ordered list of class names (the first item will be class 0, 
     etc.), or the name of a text file containing an ordered list of class names (one per 
