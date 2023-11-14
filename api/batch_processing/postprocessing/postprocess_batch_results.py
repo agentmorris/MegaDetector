@@ -1680,6 +1680,10 @@ def main():
         '--open_output_file', 
         action='store_true',
         help='Open the HTML output file when finished')    
+    parser.add_argument(
+        '--max_figures_per_html_file', 
+        type=int, default=None,
+        help='Maximum number of images to put on a single HTML page')
     
     if len(sys.argv[1:]) == 0:
         parser.print_help()
