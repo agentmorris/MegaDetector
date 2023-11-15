@@ -40,7 +40,7 @@ def get_labelme_dict_for_image(im,image_base_name,category_id_to_name,info=None,
         
     output_dict = {}
     if info is not None:
-        output_dict['md_info'] = info
+        output_dict['detector_info'] = info
     output_dict['version'] = '5.3.0a0'
     output_dict['flags'] = {}
     output_dict['shapes'] = []
