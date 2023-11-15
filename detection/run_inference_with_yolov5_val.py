@@ -38,6 +38,7 @@
 #%% Imports
 
 import os
+import sys
 import uuid
 import glob
 import tempfile
@@ -94,6 +95,8 @@ class YoloInferenceOptions:
     
     # 'error','skip','overwrite'
     overwrite_handling = 'skip'
+    
+    preview_yolo_command_only = False
             
     
 #%% Main function
@@ -266,7 +269,7 @@ def run_inference_with_yolo_val(options):
         
         if options.augment:
             cmd += ' --augment'
-    
+                
     elif options.model_type == 'yolov8':
         
         if options.augment:
@@ -274,11 +277,11 @@ def run_inference_with_yolo_val(options):
         else:
             augment_string = ''
             
-        cmd = 'yolo val {} model={} imgsz={} batch={} data={} project={} name={}'.format(
+        cmd = 'yolo val {} model="{}" imgsz={} batch={} data="{}" project="{}" name="{}"'.format(
             augment_string,model_filename,image_size_string,options.batch_size,yolo_dataset_file,
             yolo_results_folder,'yolo_results')        
         cmd += ' save_hybrid save_json'        
-    
+            
     else:
         
         raise ValueError('Unrecognized model type {}'.format(options.model_type))
@@ -291,6 +294,24 @@ def run_inference_with_yolo_val(options):
     if options.yolo_working_folder is not None:
         current_dir = os.getcwd()
         os.chdir(options.yolo_working_folder)    
+    print('Running YOLO inference command:\n{}\n'.format(cmd))
+    
+    if options.preview_yolo_command_only:
+        if options.remove_symlink_folder:
+            try:
+                shutil.rmtree(symlink_folder)
+            except Exception:
+                print('Warning: error removing symlink folder {}'.format(symlink_folder))
+                pass
+        if options.remove_yolo_results_folder:
+            try:
+                shutil.rmtree(yolo_results_folder)
+            except Exception:
+                print('Warning: error removing YOLO results folder {}'.format(yolo_results_folder))
+                pass
+        
+        sys.exit()
+        
     execution_result = process_utils.execute_and_print(cmd)
     assert execution_result['status'] == 0, 'Error running {}'.format(options.model_type)
     yolo_console_output = execution_result['output']
@@ -389,7 +410,7 @@ def main():
     
     parser.add_argument(
         '--yolo_working_folder',type=str,default=None,
-        help='folder in which to execute val.py')    
+        help='folder in which to execute val.py (not necessary for YOLOv8 inference)')
     parser.add_argument(
         '--image_size', default=None, type=int,
         help='image size for model execution (default {} when augmentation is enabled, else {})'.format(
@@ -431,6 +452,10 @@ def main():
     parser.add_argument(
         '--no_remove_yolo_results_folder', action='store_true',
         help='don\'t remove the temporary folder full of YOLO intermediate files')
+    
+    parser.add_argument(
+        '--preview_yolo_command_only', action='store_true',
+        help='don\'t run inference, just preview the YOLO inference command (still creates symlinks)')
     
     if options.augment:
         default_augment_enabled = 1
