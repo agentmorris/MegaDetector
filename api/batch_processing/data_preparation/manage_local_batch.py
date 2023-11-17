@@ -86,6 +86,7 @@ from collections import defaultdict
 
 from md_utils import path_utils
 from md_utils.ct_utils import is_list_sorted
+from md_utils.ct_utils import split_list_into_n_chunks
 
 from detection.run_detector_batch import load_and_run_detector_batch, write_results_to_file
 from detection.run_detector import DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
@@ -269,11 +270,7 @@ if False:
 
 #%% Divide images into chunks 
 
-def split_list(L, n):
-    k, m = divmod(len(L), n)
-    return list(L[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n))
-
-folder_chunks = split_list(all_images,n_jobs)
+folder_chunks = split_list_into_n_chunks(all_images,n_jobs)
 
 
 #%% Estimate total time

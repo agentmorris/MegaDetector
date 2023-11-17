@@ -319,6 +319,26 @@ def list_is_sorted(l):
     return all(l[i] <= l[i+1] for i in range(len(l)-1))
 
 
+def split_list_into_fixed_size_chunks(L,n):
+    """
+    Split the list or tuple L into chunks of size n (allowing chunks of size n-1 if necessary,
+    i.e. len(L) does not have to be a multiple of n.
+    """
+    
+    return [L[i * n:(i + 1) * n] for i in range((len(L) + n - 1) // n )]
+
+
+def split_list_into_n_chunks(L, n):
+    """
+    Splits the list or tuple L into n equally-sized chunks (some chunks may be one 
+    element smaller than others, i.e. len(L) does not have to be a multiple of n.
+    """
+    
+    k, m = divmod(len(L), n)
+    return list(L[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n))
+
+
+
 #%% Test drivers
 
 if False:
