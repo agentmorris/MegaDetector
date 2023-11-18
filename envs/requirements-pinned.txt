@@ -41,4 +41,3 @@ torchvision == 0.11.2
 # For running MegaDetector v4
 # tensorflow> == 2.0
 
-  

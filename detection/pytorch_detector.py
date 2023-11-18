@@ -17,17 +17,31 @@ from md_utils import ct_utils
 
 # We support a few ways of accessing the YOLOv5 dependencies:
 #
-# * The standard configuration as of 9.2023 expects that the YOLOv5 repo is checked
+# * The standard configuration as of 2023.09 expects that the YOLOv5 repo is checked
 #   out and on the PYTHONPATH (import utils)
 #
-# * Experimental: pip install ultralytics (doesn't totally work yet)
+# * Supported but non-default (used for PyPI packaging):
 #
-# * Experimental but works so far: pip install yolov5
+#   pip install ultralytics-yolov5
+#
+# * Works, but not supported:
+#
+#   pip install yolov5
+#
+# * Unfinished:
+#
+#   pip install ultralytics
+#
+#   If try_ultralytics_import is True, we'll try to import all YOLOv5 dependencies from 
+#   ultralytics.utils and ultralytics.data.  But as of 2023.11, this results in a "No 
+#   module named 'models'" error when running MDv5, and there's no upside to this approach
+#   compared to using either of the YOLOv5 PyPI packages, so... punting on this for now.
 
 utils_imported = False
 try_yolov5_import = True
 
-# This still encounters some namespace issues
+# See above; this should remain as "False" unless we update the MegaDetector .pt file
+# to use more recent YOLOv5 namespace conventions.
 try_ultralytics_import = False
 
 # First try importing from the yolov5 package
@@ -77,7 +91,7 @@ if not utils_imported:
         except ImportError:
             from utils.general import scale_boxes as scale_coords
         utils_imported = True
-        print('Imported YOLOv5 from PYTHONPATH')
+        print('Imported YOLOv5 as utils.*')
     except ModuleNotFoundError:
         raise ModuleNotFoundError('Could not import YOLOv5 functions.')
 
@@ -295,10 +309,11 @@ if __name__ == '__main__':
     import md_visualization.visualization_utils as vis_utils
     import os
     
-    model_file = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')
-    im_file = r"G:\temp\coyote\DSCF0043.JPG"
+    model_file = 'MDV5A'
+    im_file = os.path.expanduser('~/git/MegaDetector/images/nacti.jpg')
 
     detector = PTDetector(model_file)
     image = vis_utils.load_image(im_file)
 
     res = detector.generate_detections_one_image(image, im_file, detection_threshold=0.00001)
+    print(res)
