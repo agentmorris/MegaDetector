@@ -12,13 +12,6 @@
 #
 ########
 
-#%% TODO
-
-# Video tests
-# Augmented inference tests
-# Checkpoint tests
-
-
 #%% Imports and constants
 
 ### Only standard imports belong here, not MD-specific imports ###
