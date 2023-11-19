@@ -48,6 +48,7 @@ def get_labelme_dict_for_image(im,image_base_name,category_id_to_name,info=None,
     output_dict['imageHeight'] = im['height']
     output_dict['imageWidth'] = im['width']
     output_dict['imageData'] = None
+    output_dict['detections'] = im['detections']
     
     for det in im['detections']:
         
