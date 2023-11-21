@@ -41,7 +41,15 @@ class DbVizOptions:
     #
     # If viz_size is None or (-1,-1), the original image size is used.
     viz_size = (675, -1)
+    
+    # The most relevant option one might want to set here is:
+    #
+    # htmlOptions['maxFiguresPerHtmlFile']
+    #
+    # ...which can be used to paginate previews to a number of images that will load well
+    # in a brower (5000 is a reasonable limit).
     htmlOptions = write_html_image_list()
+    
     sort_by_filename = True
     trim_to_images_with_bboxes = False
     

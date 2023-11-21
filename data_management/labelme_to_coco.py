@@ -20,10 +20,17 @@ from tqdm import tqdm
 
 #%% Functions
 
-def labelme_to_coco(input_folder,output_file=None,category_id_to_category_name=None,
-                    empty_category_name='empty',empty_category_id=None,info_struct=None,
-                    relative_paths_to_include=None,relative_paths_to_exclude=None,
-                    use_folders_as_labels=False,recursive=True,no_json_handling='skip',
+def labelme_to_coco(input_folder,
+                    output_file=None,
+                    category_id_to_category_name=None,
+                    empty_category_name='empty',
+                    empty_category_id=None,
+                    info_struct=None,
+                    relative_paths_to_include=None,
+                    relative_paths_to_exclude=None,
+                    use_folders_as_labels=False,
+                    recursive=True,
+                    no_json_handling='skip',
                     validate_image_sizes=True):
     """
     Find all images in [input_folder] that have corresponding .json files, and convert
