@@ -143,7 +143,11 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
     assert os.path.isfile(input_file)
     os.makedirs(output_folder,exist_ok=True)
     
-    
+    if (output_folder == input_image_folder) and (overwrite_images) and \
+        (not create_image_and_label_folders):
+            print('Warning: output folder and input folder are the same, disabling overwrite_images')
+            overwrite_images = False
+            
     ## Read input data
     
     with open(input_file,'r') as f:
@@ -407,9 +411,16 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
         with open(image_id_to_output_image_json_file,'w') as f:
             json.dump(image_id_to_output_image_name,f,indent=1)
     
-    if (write_output):
+    if not write_output:
+        
+        print('Bypassing annotation file creation')
+        
+    else:
     
-        print('Copying images and creating annotation files')
+        if (output_folder == input_image_folder) and (not create_image_and_label_folders):
+            print('Creating annotation files (not copying images, input and output folder are the same)')
+        else:
+            print('Copying images and creating annotation files')
     
         if create_image_and_label_folders:
             dest_image_folder = os.path.join(output_folder,'images')
