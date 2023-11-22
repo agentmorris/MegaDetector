@@ -530,7 +530,7 @@ def main():
         'producing a new video with detections annotated'))
 
     parser.add_argument('model_file', type=str,
-                        help='MegaDetector model file')
+                        help='MegaDetector model file (.pt or .pb) or model name (e.g. "MDV5A")')
 
     parser.add_argument('input_video_file', type=str,
                         help='video file (or folder) to process')
