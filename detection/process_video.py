@@ -26,12 +26,17 @@ from detection.video_utils import frame_results_to_video_results
 from detection.video_utils import video_folder_to_frames
 from uuid import uuid1
 
+from detection.video_utils import default_fourcc
+
 
 #%% Options classes
 
 class ProcessVideoOptions:
 
+    # Can be a model filename (.pt or .pb) or a model name (e.g. "MDV5A")
     model_file = ''
+    
+    # Can be a file or a folder
     input_video_file = ''
 
     output_json_file = None
@@ -72,9 +77,10 @@ class ProcessVideoOptions:
     
     recursive = False 
     verbose = False
+    
     fourcc = None
 
-    rendering_confidence_threshold = 0.15
+    rendering_confidence_threshold = None
     json_confidence_threshold = 0.005
     frame_sample = None
     
@@ -175,8 +181,14 @@ def process_video(options):
             confidence_threshold=options.rendering_confidence_threshold)
 
         # Combine into a video
-        print('Rendering video to {} at {} fps'.format(options.output_video_file,Fs))
-        frames_to_video(detected_frame_files, Fs, options.output_video_file, codec_spec=options.fourcc)
+        if options.frame_sample is None:
+            rendering_fs = Fs
+        else:
+            rendering_fs = Fs / options.frame_sample
+            
+        print('Rendering video to {} at {} fps (original video {} fps)'.format(
+            options.output_video_file,rendering_fs,Fs))
+        frames_to_video(detected_frame_files, rendering_fs, options.output_video_file, codec_spec=options.fourcc)
         
         # Delete the temporary directory we used for detection images
         if not options.keep_rendered_frames:
@@ -344,10 +356,18 @@ def process_video_folder(options):
             output_video_folder = options.input_video_file
                                 
         # For each video
+        #
+        # TODO: parallelize this loop
+        #
         # i_video=0; input_video_file_abs = video_filenames[i_video]
         for i_video,input_video_file_abs in enumerate(video_filenames):
             
             video_fs = Fs[i_video]
+            
+            if options.frame_sample is None:                
+                rendering_fs = video_fs
+            else:
+                rendering_fs = video_fs / options.frame_sample
             
             input_video_file_relative = os.path.relpath(input_video_file_abs,options.input_video_file)
             video_frame_output_folder = os.path.join(frame_rendering_output_dir,input_video_file_relative)
@@ -371,11 +391,10 @@ def process_video_folder(options):
             os.makedirs(os.path.dirname(video_output_file),exist_ok=True)
             
             # Create the output video            
-            print('Rendering detections for video {} to {} at {} fps'.format(input_video_file_relative,
-                                                              video_output_file,video_fs))
-            frames_to_video(video_frame_files, video_fs, video_output_file, codec_spec=options.fourcc)
-            
-    
+            print('Rendering detections for video {} to {} at {} fps (original video {} fps)'.format(
+                input_video_file_relative,video_output_file,rendering_fs,video_fs))
+            frames_to_video(video_frame_files, rendering_fs, video_output_file, codec_spec=options.fourcc)
+                
         # ...for each video
         
         # Possibly clean up rendered frames
@@ -525,6 +544,8 @@ if False:
 
 def main():
 
+    default_options = ProcessVideoOptions()
+    
     parser = argparse.ArgumentParser(description=(
         'Run MegaDetector on each frame in a video (or every Nth frame), optionally '\
         'producing a new video with detections annotated'))
@@ -567,8 +588,8 @@ def main():
     parser.add_argument('--render_output_video', action='store_true',
                         help='enable video output rendering (not rendered by default)')
 
-    parser.add_argument('--fourcc', default=None,
-                        help='fourcc code to use for video encoding, only used if render_output_video is True')
+    parser.add_argument('--fourcc', default=default_fourcc,
+                        help='fourcc code to use for video encoding (default {}), only used if render_output_video is True'.format(default_fourcc))
     
     parser.add_argument('--keep_rendered_frames',
                        action='store_true', help='Disable the deletion of rendered (w/boxes) frames')
@@ -586,11 +607,12 @@ def main():
                            'whether other files were present in the folder.')
         
     parser.add_argument('--rendering_confidence_threshold', type=float,
-                        default=0.8, help="don't render boxes with confidence below this threshold")
+                        default=None, help="don't render boxes with confidence below this threshold (defaults to choosing based on the MD version)")
 
     parser.add_argument('--json_confidence_threshold', type=float,
                         default=0.0, help="don't include boxes in the .json file with confidence "\
-                            'below this threshold')
+                            'below this threshold (default {})'.format(
+                                default_options.json_confidence_threshold))
 
     parser.add_argument('--n_cores', type=int,
                         default=1, help='number of cores to use for frame separation and detection. '\

@@ -23,6 +23,7 @@ from data_management.annotations.annotation_constants import (
     detector_bbox_category_id_to_name)  # here id is int
 from md_visualization import visualization_utils as vis_utils
 from md_utils.ct_utils import get_max_conf
+from detection.run_detector import get_typical_confidence_threshold_from_results
 
 
 #%% Constants
@@ -68,9 +69,6 @@ def visualize_detector_output(detector_output_path: str,
     Returns: list of str, paths to annotated images
     """
     
-    assert confidence_threshold >= 0 and confidence_threshold <= 1, (
-        f'Confidence threshold {confidence_threshold} is invalid, must be in (0, 1).')
-
     assert os.path.exists(detector_output_path), (
         f'Detector output file does not exist at {detector_output_path}.')
 
@@ -89,7 +87,13 @@ def visualize_detector_output(detector_output_path: str,
     assert 'images' in detector_output, (
         'Detector output file should be a json with an "images" field.')
     images = detector_output['images']
-
+    
+    if confidence_threshold is None:
+        confidence_threshold = get_typical_confidence_threshold_from_results(detector_output)
+        
+    assert confidence_threshold >= 0 and confidence_threshold <= 1, (
+        f'Confidence threshold {confidence_threshold} is invalid, must be in (0, 1).')
+    
     if 'detection_categories' in detector_output:
         print('Using custom label mapping')
         detector_label_map = detector_output['detection_categories']

@@ -24,6 +24,8 @@ from md_utils import path_utils
     
 from md_visualization import visualization_utils as vis_utils
 
+default_fourcc = 'h264'
+
 
 #%% Path utilities
 
@@ -76,7 +78,7 @@ def find_videos(dirname: str, recursive: bool = False,
 
 # http://tsaith.github.io/combine-images-into-a-video-with-python-3-and-opencv-3.html
 
-def frames_to_video(images, Fs, output_file_name, codec_spec='h264'):
+def frames_to_video(images, Fs, output_file_name, codec_spec=default_fourcc):
     """
     Given a list of image files and a sample rate, concatenate those images into
     a video and write to [output_file_name].
