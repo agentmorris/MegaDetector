@@ -31,7 +31,8 @@ def labelme_to_coco(input_folder,
                     use_folders_as_labels=False,
                     recursive=True,
                     no_json_handling='skip',
-                    validate_image_sizes=True):
+                    validate_image_sizes=True,
+                    right_edge_quantization_threshold=None):
     """
     Find all images in [input_folder] that have corresponding .json files, and convert
     to a COCO .json file.
@@ -55,7 +56,13 @@ def labelme_to_coco(input_folder,
         
     * 'skip': ignore image files with no corresponding .json files
     * 'empty': treat image files with no corresponding .json files as empty
-    * 'error': throw an error when an image file has no corresponding .json file 
+    * 'error': throw an error when an image file has no corresponding .json file
+    
+    right_edge_quantization_threshold is an off-by-default hack to handle cases where 
+    boxes that really should be running off the right side of the image only extend like 99%
+    of the way there, due to what appears to be a slight bias inherent to MD.  If a box extends
+    within [right_edge_quantization_threshold] (a small number, from 0 to 1, but probably around 
+    0.02) of the right edge of the image, it will be extended to the far right edge.    
     """
     
     if category_id_to_category_name is None:
@@ -92,6 +99,8 @@ def labelme_to_coco(input_folder,
         
     images = []
     annotations = []
+    
+    n_edges_quantized = 0
     
     # image_fn_relative = image_filenames_relative[0]
     for image_fn_relative in tqdm(image_filenames_relative):
@@ -189,6 +198,14 @@ def labelme_to_coco(input_folder,
                 x1 = max(p0[0],p1[0])
                 y0 = min(p0[1],p1[1])
                 y1 = max(p0[1],p1[1])
+                
+                if right_edge_quantization_threshold is not None:                    
+                    x1_rel = x1 / (im['width'] - 1)
+                    right_edge_distance = 1.0 - x1_rel
+                    if right_edge_distance < right_edge_quantization_threshold:
+                        n_edges_quantized += 1
+                        x1 = im['width'] - 1
+                        
                 bbox = [x0,y0,abs(x1-x0),abs(y1-y0)]
                 ann = {}
                 ann['id'] = str(uuid.uuid1())
@@ -204,6 +221,10 @@ def labelme_to_coco(input_folder,
                   
     # ..for each image                
     
+    if n_edges_quantized > 0:
+        print('Quantized the right edge in {} of {} images'.format(
+            n_edges_quantized,len(image_filenames_relative)))
+        
     output_dict = {}
     output_dict['images'] = images
     output_dict['annotations'] = annotations
