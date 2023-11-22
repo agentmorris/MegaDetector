@@ -338,6 +338,18 @@ def split_list_into_n_chunks(L, n):
     return list(L[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n))
 
 
+def sort_dictionary_by_value(d,sort_values=None,reverse=False):
+    """
+    Sorts the dictionary [d] by value.  If sort_values is None, uses d.values(),
+    otherwise uses the dictionary sort_values as the sorting criterion.
+    """
+    
+    if sort_values is None:
+        d = {k: v for k, v in sorted(d.items(), key=lambda item: item[1], reverse=reverse)}
+    else:
+        d = {k: v for k, v in sorted(d.items(), key=lambda item: sort_values[item[0]], reverse=reverse)}
+    return d
+
 
 #%% Test drivers
 
