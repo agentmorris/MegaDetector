@@ -390,7 +390,7 @@ def run_inference_with_yolo_val(options):
 
 #%% Command-line driver
 
-import argparse,sys
+import argparse
 from md_utils.ct_utils import args_to_object
 
 def main():
