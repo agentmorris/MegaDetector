@@ -164,7 +164,7 @@ remove_yolo_symlink_folder = True
 use_symlinks_for_yolo_inference = True
 
 # Should we apply YOLOv5's test-time augmentation?
-augment = True
+augment = False
 
 
 #%% Constants I set per script
