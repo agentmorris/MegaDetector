@@ -313,6 +313,8 @@ gpu_to_scripts = defaultdict(list)
 for i_task,task in enumerate(task_info):
     
     chunk_file = task['input_file']
+    checkpoint_filename = chunk_file.replace('.json','_checkpoint.json')
+    
     output_fn = chunk_file.replace('.json','_results.json')
     
     task['output_file'] = output_fn
@@ -387,7 +389,6 @@ for i_task,task in enumerate(task_info):
                 
         checkpoint_frequency_string = ''
         checkpoint_path_string = ''
-        checkpoint_filename = chunk_file.replace('.json','_checkpoint.json')
         
         if checkpoint_frequency is not None and checkpoint_frequency > 0:
             checkpoint_frequency_string = f'--checkpoint_frequency {checkpoint_frequency}'
