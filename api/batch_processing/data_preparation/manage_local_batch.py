@@ -1099,7 +1099,6 @@ with open(output_file,'w') as f:
     for s in commands:
         f.write('{}'.format(s))
 
-import stat
 st = os.stat(output_file)
 os.chmod(output_file, st.st_mode | stat.S_IEXEC)
 
@@ -1268,8 +1267,6 @@ os.chmod(output_file, st.st_mode | stat.S_IEXEC)
 
 
 #%% Within-image classification smoothing
-
-from collections import defaultdict
 
 #
 # Only count detections with a classification confidence threshold above
