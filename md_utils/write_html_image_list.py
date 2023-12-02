@@ -177,6 +177,7 @@ def write_html_image_list(filename=None,images=None,options=None):
         filename = filename.encode('ascii','ignore').decode('ascii')
         
         if options['urlEncodeFilenames']:
+            filename = filename.replace('\\','/')
             filename = urllib.parse.quote(filename)
         
         if len(title) > 0:       
