@@ -328,14 +328,27 @@ def split_list_into_fixed_size_chunks(L,n):
     return [L[i * n:(i + 1) * n] for i in range((len(L) + n - 1) // n )]
 
 
-def split_list_into_n_chunks(L, n):
+def split_list_into_n_chunks(L, n, chunk_strategy='greedy'):
     """
     Splits the list or tuple L into n equally-sized chunks (some chunks may be one 
     element smaller than others, i.e. len(L) does not have to be a multiple of n.
+    
+    chunk_strategy can be "greedy" (default, if there are k samples per chunk, the first
+    k go into the first chunk) or "balanced" (alternate between chunks when pulling
+    items from the list).
     """
     
-    k, m = divmod(len(L), n)
-    return list(L[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n))
+    if chunk_strategy == 'greedy':
+        k, m = divmod(len(L), n)
+        return list(L[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n))
+    elif chunk_strategy == 'balanced':
+        chunks = [ [] for _ in range(n) ]
+        for i_item,item in enumerate(L):
+            i_chunk = i_item % n
+            chunks[i_chunk].append(item)
+        return chunks
+    else:
+        raise ValueError('Invalid chunk strategy: {}'.format(chunk_strategy))
 
 
 def sort_dictionary_by_value(d,sort_values=None,reverse=False):

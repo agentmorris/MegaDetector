@@ -89,10 +89,12 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
                  images_to_exclude=None,
                  path_replacement_char='#',
                  category_names_to_exclude=None,
-                 write_output=True):
+                 category_names_to_include=None,
+                 write_output=True,
+                 flatten_paths=True):
     """
-    Convert a COCO-formatted dataset to a YOLO-formatted dataset, flattening the dataset
-    (to a single folder) in the process.
+    Convert a COCO-formatted dataset to a YOLO-formatted dataset, optionally flattening the 
+    dataset to a single folder in the process.
     
     If the input and output folders are the same, writes .txt files to the input folder,
     and neither moves nor modifies images.
@@ -130,6 +132,9 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
         
     ## Validate input
     
+    if category_names_to_include is not None and category_names_to_exclude is not None:
+        raise ValueError('category_names_to_include and category_names_to_exclude are mutually exclusive')
+        
     if output_folder is None:
         output_folder = input_image_folder
     
@@ -138,13 +143,13 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
             
     if category_names_to_exclude is None:
         category_names_to_exclude = {}
-        
+            
     assert os.path.isdir(input_image_folder)
     assert os.path.isfile(input_file)
     os.makedirs(output_folder,exist_ok=True)
     
     if (output_folder == input_image_folder) and (overwrite_images) and \
-        (not create_image_and_label_folders):
+        (not create_image_and_label_folders) and (not flatten_paths):
             print('Warning: output folder and input folder are the same, disabling overwrite_images')
             overwrite_images = False
             
@@ -188,7 +193,11 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
     
     for category in data['categories']:
         coco_id_to_name[category['id']] = category['name']
-        if (category['name'] in category_names_to_exclude):
+        if (category_names_to_include is not None) and \
+            (category['name'] not in category_names_to_include):
+            coco_category_ids_to_exclude.add(category['id'])
+            continue
+        elif (category['name'] in category_names_to_exclude):
             coco_category_ids_to_exclude.add(category['id'])
             continue               
         assert category['id'] not in coco_id_to_yolo_id
@@ -232,9 +241,13 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
         tokens = os.path.splitext(im['file_name'])
         if tokens[1].lower() not in typical_image_extensions:
             print('Warning: unusual image file name {}'.format(im['file_name']))
-                  
-        image_name = tokens[0].replace('\\','/').replace('/',path_replacement_char) + \
-            '_' + str(i_image).zfill(6)
+                
+        if flatten_paths:
+            image_name = tokens[0].replace('\\','/').replace('/',path_replacement_char) + \
+                '_' + str(i_image).zfill(6)            
+        else:
+            image_name = tokens[0]
+
         assert image_name not in image_names, 'Image name collision for {}'.format(image_name)
         image_names.add(image_name)
         
@@ -297,12 +310,6 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
                 # This category isn't in our category list.  This typically corresponds to whole sets
                 # of images that were excluded from the YOLO set.
                 if ann['category_id'] in coco_category_ids_to_exclude:
-                    category_name = coco_id_to_name[ann['category_id']]
-                    if category_name not in category_exclusion_warnings_printed:
-                        category_exclusion_warnings_printed.add(category_name)
-                        print('Warning: ignoring category {} in image {}'.format(
-                            category_name,image_id),end='')
-                        print('...are you sure you didn\'t mean to exclude this image?')                        
                     continue
                 
                 yolo_category_id = coco_id_to_yolo_id[ann['category_id']]
@@ -411,37 +418,38 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
         with open(image_id_to_output_image_json_file,'w') as f:
             json.dump(image_id_to_output_image_name,f,indent=1)
     
-    if not write_output:
-        
-        print('Bypassing annotation file creation')
-        
+
+    if (output_folder == input_image_folder) and (not create_image_and_label_folders):
+        print('Creating annotation files (not copying images, input and output folder are the same)')
     else:
+        print('Copying images and creating annotation files')
+
+    if create_image_and_label_folders:
+        dest_image_folder = os.path.join(output_folder,'images')
+        dest_txt_folder = os.path.join(output_folder,'labels')
+    else:
+        dest_image_folder = output_folder
+        dest_txt_folder = output_folder
+        
+    source_image_to_dest_image = {}
     
-        if (output_folder == input_image_folder) and (not create_image_and_label_folders):
-            print('Creating annotation files (not copying images, input and output folder are the same)')
-        else:
-            print('Copying images and creating annotation files')
-    
-        if create_image_and_label_folders:
-            dest_image_folder = os.path.join(output_folder,'images')
-            dest_txt_folder = os.path.join(output_folder,'labels')
-        else:
-            dest_image_folder = output_folder
-            dest_txt_folder = output_folder
+    # TODO: parallelize this loop
+    #
+    # output_info = images_to_copy[0]
+    for output_info in tqdm(images_to_copy):
+
+        source_image = output_info['source_image']
+        dest_image_relative = output_info['dest_image_relative']
+        dest_txt_relative = output_info['dest_txt_relative']
+        
+        dest_image = os.path.join(dest_image_folder,dest_image_relative)
+        dest_txt = os.path.join(dest_txt_folder,dest_txt_relative)
+        
+        source_image_to_dest_image[source_image] = dest_image
+        
+        if write_output:
             
-        # TODO: parallelize this loop
-        #
-        # output_info = images_to_copy[0]
-        for output_info in tqdm(images_to_copy):
-    
-            source_image = output_info['source_image']
-            dest_image_relative = output_info['dest_image_relative']
-            dest_txt_relative = output_info['dest_txt_relative']
-            
-            dest_image = os.path.join(dest_image_folder,dest_image_relative)
-            os.makedirs(os.path.dirname(dest_image),exist_ok=True)
-            
-            dest_txt = os.path.join(dest_txt_folder,dest_txt_relative)
+            os.makedirs(os.path.dirname(dest_image),exist_ok=True)        
             os.makedirs(os.path.dirname(dest_txt),exist_ok=True)
             
             if not create_image_and_label_folders:
@@ -449,7 +457,7 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
             
             if (not os.path.isfile(dest_image)) or (overwrite_images):
                 shutil.copyfile(source_image,dest_image)
-            
+        
             bboxes = output_info['bboxes']        
             
             # Only write an annotation file if there are bounding boxes.  Images with 
@@ -469,15 +477,17 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
                         assert len(bbox) == 5
                         s = '{} {} {} {} {}'.format(bbox[0],bbox[1],bbox[2],bbox[3],bbox[4])
                         f.write(s + '\n')
-                
-        # ...for each image
+                        
+        # ...if we're actually writing output
         
-    # ...if we're actually writing output
-
-    return_info = {}
-    return_info['class_list_filename'] = class_list_filename
+    # ...for each image
     
-    return return_info
+    coco_to_yolo_info = {}
+    coco_to_yolo_info['class_list_filename'] = class_list_filename
+    coco_to_yolo_info['source_image_to_dest_image'] = source_image_to_dest_image
+    coco_to_yolo_info['coco_id_to_yolo_id'] = coco_id_to_yolo_id
+    
+    return coco_to_yolo_info
 
 # ...def coco_to_yolo(...)
 

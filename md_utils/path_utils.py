@@ -21,7 +21,8 @@ import zipfile
 from zipfile import ZipFile
 from datetime import datetime
 from typing import Container, Iterable, List, Optional, Tuple, Sequence
-from multiprocessing.pool import ThreadPool
+from multiprocessing.pool import Pool, ThreadPool
+from functools import partial
 from tqdm import tqdm
 
 IMG_EXTENSIONS = ('.jpg', '.jpeg', '.gif', '.png', '.tif', '.tiff', '.bmp')
@@ -35,7 +36,7 @@ CHAR_LIMIT = 255
 #%% General path functions
 
 def recursive_file_list(base_dir, convert_slashes=True, return_relative_paths=False):
-    """
+    r"""
     Enumerate files (not directories) in [base_dir], optionally converting
     \ to /
     """
@@ -58,7 +59,7 @@ def recursive_file_list(base_dir, convert_slashes=True, return_relative_paths=Fa
 
 
 def split_path(path: str) -> List[str]:
-    """
+    r"""
     Splits [path] into all its constituent tokens.
 
     Non-recursive version of:
@@ -88,7 +89,7 @@ def split_path(path: str) -> List[str]:
 
 
 def fileparts(path: str) -> Tuple[str, str, str]:
-    """
+    r"""
     Breaks down a path into the directory path, filename, and extension.
 
     Note that the '.' lives with the extension, and separators are removed.
@@ -270,7 +271,7 @@ def find_images(dirname: str, recursive: bool = False,
 
 def clean_filename(filename: str, allow_list: str = VALID_FILENAME_CHARS,
                    char_limit: int = CHAR_LIMIT, force_lower: bool = False) -> str:
-    """
+    r"""
     Removes non-ASCII and other invalid filename characters (on any
     reasonable OS) from a filename, then trims to a maximum length.
 
@@ -403,7 +404,7 @@ def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, com
     relative_filenames = recursive_file_list(input_folder,return_relative_paths=True)
     
     with ZipFile(output_fn,'w',zipfile.ZIP_DEFLATED) as zipf:
-        for input_fn_relative in relative_filenames:
+        for input_fn_relative in tqdm(relative_filenames,disable=(not verbose)):
             input_fn_abs = os.path.join(input_folder,input_fn_relative)            
             zipf.write(input_fn_abs,
                        arcname=input_fn_relative,
@@ -413,16 +414,42 @@ def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, com
     return output_fn
 
         
-def parallel_zip_files(input_files,max_workers=16):
+def parallel_zip_files(input_files, max_workers=16, use_threads=True):
     """
     Zip one or more files to separate output files in parallel, leaving the 
-    original files in place.
+    original files in place.  Each file is zipped to [filename].zip.
     """
 
     n_workers = min(max_workers,len(input_files))
-    pool = ThreadPool(n_workers)
+
+    if use_threads:
+        pool = ThreadPool(n_workers)
+    else:
+        pool = Pool(n_workers)
+
     with tqdm(total=len(input_files)) as pbar:
         for i,_ in enumerate(pool.imap_unordered(zip_file,input_files)):
+            pbar.update()
+
+
+def parallel_zip_folders(input_folders, max_workers=16, use_threads=True,
+                         compresslevel=9, overwrite=False):
+    """
+    Zip one or more folders to separate output files in parallel, leaving the 
+    original folders in place.  Each folder is zipped to [folder_name].zip.
+    """
+
+    n_workers = min(max_workers,len(input_folders))
+
+    if use_threads:
+        pool = ThreadPool(n_workers)
+    else:
+        pool = Pool(n_workers)
+    
+    with tqdm(total=len(input_folders)) as pbar:
+        for i,_ in enumerate(pool.imap_unordered(
+                partial(zip_folder,overwrite=overwrite,compresslevel=compresslevel),
+                input_folders)):
             pbar.update()
 
 
