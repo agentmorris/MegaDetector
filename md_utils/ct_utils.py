@@ -364,6 +364,14 @@ def sort_dictionary_by_value(d,sort_values=None,reverse=False):
     return d
 
 
+def invert_dictionary(d):
+    """
+    Create a new dictionary that maps d.values() to d.keys().  Does not check
+    uniqueness.    
+    """
+    return {v: k for k, v in d.items()}
+
+
 #%% Test drivers
 
 if False:

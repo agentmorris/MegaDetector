@@ -130,27 +130,10 @@ parallelization_defaults_to_threads = False
 # This is for things like image rendering, not for MegaDetector
 default_workers_for_parallel_tasks = 30
 
-# Should we use YOLOv5's val.py instead of run_detector_batch.py?
-use_yolo_inference_scripts = False
-
-# Directory in which to run val.py.  Only relevant if use_yolo_inference_scripts is True.
-yolo_working_dir = os.path.expanduser('~/git/yolov5')
-
-# Should we remove intermediate files used for running YOLOv5's val.py?
-#
-# Only relevant if use_yolo_inference_scripts is True.
-remove_yolo_intermediate_results = False
-remove_yolo_symlink_folder = False
-use_symlinks_for_yolo_inference = True
-
 overwrite_handling = 'skip' # 'skip', 'error', or 'overwrite'
 
 # Set later if EK113/RCNX101-style overflow folders are being handled in this dataset
 overflow_folder_handling_enabled = False
-
-# Should we apply YOLOv5's augmentation?  Only allowed when use_yolo_inference_scripts
-# is True.
-augment = False
 
 if os.name == 'nt':
     slcc = '^'
@@ -158,6 +141,30 @@ if os.name == 'nt':
     script_extension = '.bat'
     parallelization_defaults_to_threads = True
     default_workers_for_parallel_tasks = 10
+
+## Constants related to using YOLOv5's val.py
+
+# Should we use YOLOv5's val.py instead of run_detector_batch.py?
+use_yolo_inference_scripts = True
+
+# Directory in which to run val.py.
+yolo_working_dir = os.path.expanduser('~/git/yolov5')
+
+# Only used for loading the mapping from class indices to names
+yolo_dataset_file = None
+
+# 'yolov5' or 'yolov8'; assumes YOLOv5 if this is None
+yolo_model_type = None
+
+# Should we remove intermediate files used for running YOLOv5's val.py?
+#
+# Only relevant if use_yolo_inference_scripts is True.
+remove_yolo_intermediate_results = True
+remove_yolo_symlink_folder = True
+use_symlinks_for_yolo_inference = True
+
+# Should we apply YOLOv5's test-time augmentation?
+augment = False
 
 
 #%% Constants I set per script
@@ -167,7 +174,7 @@ input_path = '/drive/organization'
 assert not (input_path.endswith('/') or input_path.endswith('\\'))
 
 organization_name_short = 'organization'
-job_date = None # '2023-05-08'
+job_date = None # '2023-12-01'
 assert job_date is not None and organization_name_short != 'organization'
 
 # Optional descriptor
@@ -306,6 +313,8 @@ gpu_to_scripts = defaultdict(list)
 for i_task,task in enumerate(task_info):
     
     chunk_file = task['input_file']
+    checkpoint_filename = chunk_file.replace('.json','_checkpoint.json')
+    
     output_fn = chunk_file.replace('.json','_results.json')
     
     task['output_file'] = output_fn
@@ -360,7 +369,12 @@ for i_task,task in enumerate(task_info):
         cmd += f'{symlink_folder_string} {yolo_results_folder_string} {remove_yolo_results_string} '
         cmd += f'{remove_symlink_folder_string} {confidence_threshold_string} {device_string} '
         cmd += f'{overwrite_handling_string}'
-        
+                
+        if yolo_dataset_file is not None:
+            cmd += ' --yolo_dataset_file "{}"'.format(yolo_dataset_file)
+        if yolo_model_type is not None:
+            cmd += ' --model_type {}'.format(yolo_model_type)
+            
         if not use_symlinks_for_yolo_inference:
             cmd += ' --no_use_symlinks'
         
@@ -375,7 +389,6 @@ for i_task,task in enumerate(task_info):
                 
         checkpoint_frequency_string = ''
         checkpoint_path_string = ''
-        checkpoint_filename = chunk_file.replace('.json','_checkpoint.json')
         
         if checkpoint_frequency is not None and checkpoint_frequency > 0:
             checkpoint_frequency_string = f'--checkpoint_frequency {checkpoint_frequency}'
@@ -714,7 +727,7 @@ def relative_path_to_location(relative_path):
     # 100RECNX is the overflow folder style for Reconyx cameras
     # 100EK113 is (for some reason) the overflow folder style for Bushnell cameras
     # 100_BTCF is the overflow folder style for Browning cameras
-    patterns = ['\/\d+RECNX\/','\/\d+EK\d+\/','\/\d+_BTCF\/']
+    patterns = ['\/\d+RECNX\/','\/\d+EK\d+\/','\/\d+_BTCF\/','\/\d+MEDIA\/']
     
     relative_path = relative_path.replace('\\','/')    
     for pat in patterns:
@@ -1086,7 +1099,6 @@ with open(output_file,'w') as f:
     for s in commands:
         f.write('{}'.format(s))
 
-import stat
 st = os.stat(output_file)
 os.chmod(output_file, st.st_mode | stat.S_IEXEC)
 
@@ -1255,8 +1267,6 @@ os.chmod(output_file, st.st_mode | stat.S_IEXEC)
 
 
 #%% Within-image classification smoothing
-
-from collections import defaultdict
 
 #
 # Only count detections with a classification confidence threshold above

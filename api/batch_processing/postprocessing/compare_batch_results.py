@@ -36,9 +36,6 @@ from md_utils import path_utils
 
 
 #%% Constants and support classes
-
-# We will confirm that this matches what we load from each file
-default_detection_categories = {'1': 'animal', '2': 'person', '3': 'vehicle'}
     
 class PairwiseBatchComparisonOptions:
     """
@@ -52,8 +49,8 @@ class PairwiseBatchComparisonOptions:
     results_description_a = None
     results_description_b = None
     
-    detection_thresholds_a = {'animal':0.15,'person':0.15,'vehicle':0.15}
-    detection_thresholds_b = {'animal':0.15,'person':0.15,'vehicle':0.15}
+    detection_thresholds_a = {'animal':0.15,'person':0.15,'vehicle':0.15,'default':0.15}
+    detection_thresholds_b = {'animal':0.15,'person':0.15,'vehicle':0.15,'default':0.15}
 
     rendering_confidence_threshold_a = 0.1
     rendering_confidence_threshold_b = 0.1
@@ -76,6 +73,12 @@ class BatchComparisonOptions:
 
     # Process-based parallelization isn't supported yet; this must be "True"
     parallelize_rendering_with_threads = True
+    
+    # List of filenames to include in the comparison, or None to use all files
+    filenames_to_include = None
+    
+    # Compare only detections/non-detections, ignore categories (still renders categories)
+    class_agnostic_comparison = False
     
     target_width = 800
     n_rendering_workers = 20
@@ -241,10 +244,20 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
     with open(pairwise_options.results_filename_b,'r') as f:
         results_b = json.load(f)
         
-    # assert results_a['detection_categories'] == default_detection_categories
-    # assert results_b['detection_categories'] == default_detection_categories
-    assert results_a['detection_categories'] == results_b['detection_categories']
-    detection_categories = results_a['detection_categories']
+    # Don't let path separators confuse things
+    for im in results_a['images']:
+        if 'file' in im:
+            im['file'] = im['file'].replace('\\','/')
+    for im in results_b['images']:
+        if 'file' in im:
+            im['file'] = im['file'].replace('\\','/')
+    
+    if not options.class_agnostic_comparison:
+        assert results_a['detection_categories'] == results_b['detection_categories'], \
+            "Cannot perform a class-sensitive comparison across results with different categories"
+            
+    detection_categories_a = results_a['detection_categories']
+    detection_categories_b = results_b['detection_categories']
     
     if pairwise_options.results_description_a is None:
         if 'detector' not in results_a['info']:
@@ -286,6 +299,10 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
     assert len(filenames_a) == len(images_a)
     assert len(filenames_b_set) == len(images_b)    
     
+    if options.filenames_to_include is None:
+        filenames_to_compare = filenames_a
+    else:
+        filenames_to_compare = options.filenames_to_include
     
     ##%% Find differences
     
@@ -298,9 +315,9 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
     detections_a_only = {}
     detections_b_only = {}
     class_transitions = {}
-    
-    # fn = filenames_a[0]
-    for fn in tqdm(filenames_a):
+        
+    # fn = filenames_to_compare[0]
+    for fn in tqdm(filenames_to_compare):
     
         if fn not in filename_to_image_b:
             
@@ -330,14 +347,19 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
             
             category_id = det['category']
             
-            if category_id not in detection_categories:
+            if category_id not in detection_categories_a:
                 print('Warning: unexpected category {} for model A on file {}'.format(category_id,fn))
                 invalid_category_error = True
                 break
                 
             conf = det['conf']
             
-            if conf >= pairwise_options.detection_thresholds_a[detection_categories[category_id]]:
+            if detection_categories_a[category_id] in pairwise_options.detection_thresholds_a:
+                conf_thresh = pairwise_options.detection_thresholds_a[detection_categories_a[category_id]]
+            else:
+                conf_thresh = pairwise_options.detection_thresholds_a['default']
+                
+            if conf >= conf_thresh:
                 categories_above_threshold_a.add(category_id)
                             
         if invalid_category_error:
@@ -349,14 +371,19 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
             
             category_id = det['category']
             
-            if category_id not in detection_categories:
+            if category_id not in detection_categories_b:
                 print('Warning: unexpected category {} for model B on file {}'.format(category_id,fn))
                 invalid_category_error = True
                 break
             
             conf = det['conf']
             
-            if conf >= pairwise_options.detection_thresholds_b[detection_categories[category_id]]:
+            if detection_categories_b[category_id] in pairwise_options.detection_thresholds_b:
+                conf_thresh = pairwise_options.detection_thresholds_b[detection_categories_b[category_id]]
+            else:
+                conf_thresh = pairwise_options.detection_thresholds_a['default']
+                
+            if conf >= conf_thresh:
                 categories_above_threshold_b.add(category_id)
                             
         if invalid_category_error:
@@ -368,7 +395,8 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
         detection_b = (len(categories_above_threshold_b) > 0)
                 
         if detection_a and detection_b:            
-            if categories_above_threshold_a == categories_above_threshold_b:
+            if (categories_above_threshold_a == categories_above_threshold_b) or \
+                options.class_agnostic_comparison:
                 common_detections[fn] = im_pair
             else:
                 class_transitions[fn] = im_pair
@@ -383,7 +411,7 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
     # ...for each filename
     
     print('Of {} files:\n{} common detections\n{} common non-detections\n{} A only\n{} B only\n{} class transitions'.format(
-        len(filenames_a),len(common_detections),
+        len(filenames_to_compare),len(common_detections),
         len(common_non_detections),len(detections_a_only),
         len(detections_b_only),len(class_transitions)))
         
@@ -559,7 +587,7 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
     html_output_string += '<br/>'
     
     html_output_string += ('Of {} total files:<br/><br/><div style="margin-left:15px;">{} common detections<br/>{} common non-detections<br/>{} A only<br/>{} B only<br/>{} class transitions</div><br/>'.format(
-        len(filenames_a),len(common_detections),
+        len(filenames_to_compare),len(common_detections),
         len(common_non_detections),len(detections_a_only),
         len(detections_b_only),len(class_transitions)))
     
@@ -583,7 +611,7 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
             
     return pairwise_results
         
-# ...def compare_batch_results()
+# ...def pairwise_compare_batch_results()
 
 
 def compare_batch_results(options):
@@ -663,12 +691,9 @@ def n_way_comparison(filenames,options,detection_thresholds=None,rendering_thres
         pairwise_options.rendering_confidence_threshold_a = rendering_thresholds[i]
         pairwise_options.rendering_confidence_threshold_b = rendering_thresholds[j]
         
-        pairwise_options.detection_thresholds_a = {'animal':detection_thresholds[i],
-                                                   'person':detection_thresholds[i],
-                                                   'vehicle':detection_thresholds[i]}
-        pairwise_options.detection_thresholds_b = {'animal':detection_thresholds[j],
-                                                   'person':detection_thresholds[j],
-                                                   'vehicle':detection_thresholds[j]}
+        pairwise_options.detection_thresholds_a = {'default':detection_thresholds[i]}
+        pairwise_options.detection_thresholds_b = {'default':detection_thresholds[j]}
+        
         options.pairwise_options.append(pairwise_options)
 
     return compare_batch_results(options)
