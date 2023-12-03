@@ -18,6 +18,7 @@ from PIL import Image
 from tqdm import tqdm
 
 from md_utils.path_utils import find_images
+from data_management.yolo_output_to_md_output import read_classes_from_yolo_dataset_file
 
 
 #%% Main conversion function
@@ -25,8 +26,10 @@ from md_utils.path_utils import find_images
 def yolo_to_coco(input_folder,class_name_file,output_file=None):
     """
     Convert the YOLO-formatted data in [input_folder] to a COCO-formatted dictionary,
-    reading class names from the flat list [class_name_file].  Optionally writes the output
-    dataset to [output_file].
+    reading class names from [class_name_file], which can be a flat list with a .txt
+    extension or a YOLO dataset.yml file.  Optionally writes the output dataset to [output_file].
+    
+    Returns a COCO-formatted dictionary.
     """
     
     # Validate input
@@ -35,29 +38,39 @@ def yolo_to_coco(input_folder,class_name_file,output_file=None):
     assert os.path.isfile(class_name_file)
     
     
-    # Class names
+    # Read class names
     
-    with open(class_name_file,'r') as f:
-        lines = f.readlines()
-    assert len(lines) > 0, 'Empty class name file {}'.format(class_name_file)
-    lines = [s.strip() for s in lines]
-    assert len(lines[0]) > 0, 'Empty class name file {} (empty first line)'.format(class_name_file)
+    ext = os.path.splitext(class_name_file)[1][1:]
+    assert ext in ('yml','txt','yaml'), 'Unrecognized class name file type {}'.format(
+        class_name_file)
     
-    # Blank lines should only appear at the end
-    b_found_blank = False
-    for s in lines:
-        if len(s) == 0:
-            b_found_blank = True
-        elif b_found_blank:
-            raise ValueError('Invalid class name file {}, non-blank line after the last blank line'.format(
-                class_name_file))
+    if ext == 'txt':
+        
+        with open(class_name_file,'r') as f:
+            lines = f.readlines()
+        assert len(lines) > 0, 'Empty class name file {}'.format(class_name_file)
+        class_names = [s.strip() for s in lines]
+        assert len(lines[0]) > 0, 'Empty class name file {} (empty first line)'.format(class_name_file)
+        
+        # Blank lines should only appear at the end
+        b_found_blank = False
+        for s in lines:
+            if len(s) == 0:
+                b_found_blank = True
+            elif b_found_blank:
+                raise ValueError('Invalid class name file {}, non-blank line after the last blank line'.format(
+                    class_name_file))
+    
+        category_id_to_name = {}        
+        for i_category_id,category_name in enumerate(class_names):
+            assert len(category_name) > 0
+            category_id_to_name[i_category_id] = category_name
             
-    category_id_to_name = {}
+    else:
         
-    for i_category_id,category_name in enumerate(lines):
-        assert len(category_name) > 0
-        category_id_to_name[i_category_id] = category_name
-        
+        assert ext in ('yml','yaml')
+        category_id_to_name = read_classes_from_yolo_dataset_file(class_name_file)
+            
         
     # Enumerate images
     
