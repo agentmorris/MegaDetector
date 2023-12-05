@@ -145,7 +145,7 @@ if os.name == 'nt':
 ## Constants related to using YOLOv5's val.py
 
 # Should we use YOLOv5's val.py instead of run_detector_batch.py?
-use_yolo_inference_scripts = True
+use_yolo_inference_scripts = False
 
 # Directory in which to run val.py.
 yolo_working_dir = os.path.expanduser('~/git/yolov5')
