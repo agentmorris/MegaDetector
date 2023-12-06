@@ -4,7 +4,7 @@
 # 
 # Compare sets of batch results; typically used to compare:
 #
-# * MegaDetector versions
+# * Results from different MegaDetector versions
 # * Results before/after RDE
 # * Results with/without augmentation
 #
@@ -84,6 +84,9 @@ class BatchComparisonOptions:
     n_rendering_workers = 20
     random_seed = 0
     
+    # Default to sorting by filename
+    sort_by_confidence = False
+    
     error_on_non_matching_lists = True
     
     pairwise_options = []
@@ -93,7 +96,7 @@ class BatchComparisonOptions:
 
 class PairwiseBatchComparisonResults:
     """
-    The results from a single pairwise comparison
+    The results from a single pairwise comparison.
     """
     
     html_content = None
@@ -101,7 +104,7 @@ class PairwiseBatchComparisonResults:
     
     # A dictionary with keys including:
     #
-    # "common_detections"
+    # common_detections
     # common_non_detections
     # detections_a_only
     # detections_b_only
@@ -210,7 +213,8 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
     # in the options object.
     assert options.pairwise_options is None
     
-    random.seed(options.random_seed)
+    if options.random_seed is not None:
+        random.seed(options.random_seed)
 
     # Warn the user if some "detections" might not get rendered
     max_classification_threshold_a = max(list(pairwise_options.detection_thresholds_a.values()))
@@ -520,15 +524,34 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
             max_conf_b = maxempty([det['conf'] for det in image_b['detections']])
             
             title = input_path_relative + ' (max conf {:.2f},{:.2f})'.format(max_conf_a,max_conf_b)
+            
+            # Only used if sort_by_confidence is True
+            if category == 'common_detections':
+                sort_conf = max(max_conf_a,max_conf_b)
+            elif category == 'common_non_detections':
+                sort_conf = max(max_conf_a,max_conf_b)
+            elif category == 'detections_a_only':
+                sort_conf = max_conf_a
+            elif category == 'detections_b_only':
+                sort_conf = max_conf_b
+            elif category == 'class_transitions':
+                sort_conf = max(max_conf_a,max_conf_b)
+            else:
+                print('Warning: unknown sort category {}'.format(category))
+                sort_conf = max(max_conf_a,max_conf_b)
+                
             info = {
                 'filename': fn,
                 'title': title,
                 'textStyle': 'font-family:verdana,arial,calibri;font-size:' + \
                     '80%;text-align:left;margin-top:20;margin-bottom:5',
-                'linkTarget': urllib.parse.quote(input_image_absolute_paths[i_fn])
+                'linkTarget': urllib.parse.quote(input_image_absolute_paths[i_fn]),
+                'sort_conf':sort_conf
             }
             image_info.append(info)
     
+        # ...for each image
+        
         category_page_header_string = '<h1>{}</h1>'.format(categories_to_page_titles[category])
         category_page_header_string += '<p style="font-weight:bold;">\n'
         category_page_header_string += 'Model A: {}<br/>\n'.format(
@@ -549,6 +572,12 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
             str(pairwise_options.rendering_confidence_threshold_b))
         category_page_header_string += '</p>\n'        
         
+        # Default to sorting by filename
+        if options.sort_by_confidence:
+            image_info = sorted(image_info, key=lambda d: d['sort_conf'], reverse=True)
+        else:
+            image_info = sorted(image_info, key=lambda d: d['filename'])
+            
         write_html_image_list(
             category_html_filename,
             images=image_info,
@@ -704,32 +733,25 @@ def n_way_comparison(filenames,options,detection_thresholds=None,rendering_thres
 #%% Interactive driver
 
 if False:
-    
-    #%% Running KGA test
-    
-    # CUDA_VISIBLE_DEVICES=0 python run_detector_batch.py  ~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt ~/data/KGA/ ~/data/KGA-5a.json --recursive --output_relative_filenames --quiet
-    # CUDA_VISIBLE_DEVICES=1 python run_detector_batch.py  ~/models/camera_traps/megadetector/md_v5.0.0/md_v5b.0.0.pt ~/data/KGA/ ~/data/KGA-5b.json --recursive --output_relative_filenames --quiet
-    
-    # python run_detector_batch.py  ~/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb ~/data/KGA ~/data/KGA-4.json --recursive --output_relative_filenames --quiet
-    
-    # CUDA_VISIBLE_DEVICES=0 python run_detector_batch.py  ~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt ~/data/KGA/ ~/data/KGA-5a-pillow-9.2.0.json --recursive --output_relative_filenames --quiet
-
-
+        
     #%% Test two-way comparison
     
     options = BatchComparisonOptions()
 
-    options.parallelize_rendering_with_threads = False
+    options.parallelize_rendering_with_threads = True
     
-    options.job_name = 'KGA-test'
-    options.output_folder = os.path.expanduser('~/tmp/md-comparison-test')
-    options.image_folder = os.path.expanduser('~/data/KGA')
-
+    options.job_name = 'BCT'
+    options.output_folder = r'g:\temp\comparisons'
+    options.image_folder = r'g:\camera_traps\camera_trap_images'
+    options.max_images_per_category = 100
+    options.sort_by_confidence = True
+    
     options.pairwise_options = []
 
-    filenames = [
-        os.path.expanduser('~/data/KGA-5a.json'),
-        os.path.expanduser('~/data/KGA-5b.json')
+    results_base = os.path.expanduser('~/postprocessing/bellevue-camera-traps')
+    filenames = [                
+        os.path.join(results_base,r'bellevue-camera-traps-2023-12-05-v5a.0.0\combined_api_outputs\bellevue-camera-traps-2023-12-05-v5a.0.0_detections.json'),
+        os.path.join(results_base,r'bellevue-camera-traps-2023-12-05-aug-v5a.0.0\combined_api_outputs\bellevue-camera-traps-2023-12-05-aug-v5a.0.0_detections.json')
         ]
 
     detection_thresholds = [0.15,0.15]
@@ -860,4 +882,3 @@ def main():
 if __name__ == '__main__':
     
     main()
-    
