@@ -10,12 +10,7 @@
 # This script is not a good way to process lots of images (tens of thousands,
 # say). It does not facilitate checkpointing the results so if it crashes you
 # would have to start from scratch. If you want to run a detector (e.g., ours)
-# on lots of images, you should check out:
-# 
-# 1) run_detector_batch.py (for local execution)
-# 
-# 2) https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing
-#    (for running large jobs on Azure ML)
+# on lots of images, you should check out run_detector_batch.py.
 # 
 # To run this script, we recommend you set up a conda virtual environment
 # following instructions in the Installation section on the main README, using

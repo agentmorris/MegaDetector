@@ -7,7 +7,7 @@ If you are interested in setting up an endpoint to process very small numbers of
 
 ## Post-processing tools
 
-The [postprocessing](postprocessing) folder contains tools for working with the output of our detector API.  In particular, [postprocess_batch_results.py](postprocessing/postprocess_batch_results.py) provides visualization and accuracy assessment tools for the output of the batch processing API. A sample output for the Snapshot Serengeti data when using ground-truth annotations can be seen [here](http://dolphinvm.westus2.cloudapp.azure.com/data/snapshot_serengeti/serengeti_val_detections_from_pkl_MDv1_20190528_w_classifications_eval/).
+The [postprocessing](postprocessing) folder contains tools for working with MegaDetector output.  In particular, [postprocess_batch_results.py](postprocessing/postprocess_batch_results.py) provides visualization and accuracy assessment tools; a sample output report is available [here](https://lila.science/public/snapshot_safari_public/snapshot-safari-kar-2022-00-00-v5a.0.0_0.200/index.html) for the case where ground truth is not available (the typical case).
 
 
 ## Integration with other tools
