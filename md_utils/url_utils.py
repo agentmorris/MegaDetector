@@ -140,5 +140,3 @@ def test_urls(urls, error_on_failure=True):
         
     return status_codes
 
-
-    
