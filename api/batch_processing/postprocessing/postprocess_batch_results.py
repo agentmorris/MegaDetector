@@ -114,7 +114,7 @@ class PostProcessingOptions:
     # detections_animal, detections_person, detections_vehicle
     rendering_bypass_sets = []
 
-    # By default, choose a confidence threshold based on the detector version
+    # If this is None, choose a confidence threshold based on the detector version.
     confidence_threshold = None
     
     # Confidence threshold to apply to classification (not detection) results

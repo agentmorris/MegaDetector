@@ -218,11 +218,11 @@ The instructions will also assume you have git installed.  If you're not familia
 If you have a deep-learning-friendly GPU, you will also need to have a recent [NVIDIA driver](https://www.nvidia.com/download/index.aspx) installed.  If you don't have an Nvidia GPU, it's OK,  you can still run MegaDetector on your CPU, and you don't need to install any special drivers.
 
 
-### 2. Download the MegaDetector model(s)
+### 2. Download the MegaDetector model(s) (optional)
 
-Download one or more MegaDetector model files ([MDv5a](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt), [MDv5b](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.0.pt), and/or [MDv4](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb)) to your computer.  These instructions will assume that you have downloaded MegaDetector to a folder called "c:\megadetector" (on Windows) or to a folder called "megadetector" within your home folder (on Linux/Mac), but if you put it somewhere else, that's fine, just be sure to change it in the steps below that point to a model file.  If you don't care where it goes, and you don't know yet which version you want to use, you'll have an easier time working through these instructions if you download [MDv5a](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt) to those folders, i.e. if the model file lives at "c:\megadetector\md_v5a.0.0.pt" (on Windows) or "/Users/your-user-name/megadetector/md_v5a.0.0pt" (on Mac).
+This step is optional; when you run MegaDetector, you can tell it to automatically download a MegaDetector model file, in which case it will get put in a temporary directory on your computer.
 
-The instructions below will assume that you are using MDv5a; one step will be slightly different for MDv4, but we'll call that out when we get there.
+If you want to save MegaDetector to a particular folder, download one or more MegaDetector model files ([MDv5a](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt), [MDv5b](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.0.pt), and/or [MDv4](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb)) to your computer.  These instructions will assume that you have downloaded MegaDetector to a folder called "c:\megadetector" (on Windows) or to a folder called "megadetector" within your home folder (on Linux/Mac), but if you put it somewhere else, that's fine, just be sure to change it in the steps below that point to a model file.  If you don't care where it goes, and you don't know yet which version you want to use, you'll have an easier time working through these instructions if you download [MDv5a](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt) to those folders, i.e. if the model file lives at "c:\megadetector\md_v5a.0.0.pt" (on Windows) or "/Users/your-user-name/megadetector/md_v5a.0.0pt" (on Mac).
 
 
 ### 3. Clone the relevant git repos and add them to your path, and set up your Python environment
@@ -245,7 +245,7 @@ mamba activate cameratraps-detector
 set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
 ```
 
-If you want to use MDv4, there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
+If you want to use MDv4 (which you probably don't, unless you have a really good reason to), there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
 
 ```batch
 mamba activate cameratraps-detector
@@ -279,7 +279,7 @@ mamba activate cameratraps-detector
 export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
-If you want to use MDv4, there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
+If you want to use MDv4 (which you probably don't, unless you have a really good reason to), there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
 
 ```batch
 mamba activate cameratraps-detector
@@ -313,7 +313,7 @@ mamba activate cameratraps-detector
 export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
-If you want to use MDv4, there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
+If you want to use MDv4 (which you probably don't, unless you have a really good reason to), there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
 
 ```batch
 mamba activate cameratraps-detector
@@ -351,8 +351,10 @@ set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
 Then you can run the script like this:
 
 ```batch
-python detection\run_detector.py "c:\megadetector\md_v5a.0.0.pt" --image_file "some_image_file.jpg" --threshold 0.1
+python detection\run_detector.py MDV5A --image_file "some_image_file.jpg" --threshold 0.1
 ```
+
+"MDV5A" tells this script to automatically download MegaDetector v5a; if you already downloaded it, you can replace this with the full path to your MegaDetector model file (e.g. "c:\megadetector\md_v5a.0.0.pt").
 
 Change "some_image_file.jpg" to point to a real image on your computer.
 
@@ -388,7 +390,7 @@ export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 Then you can run the script like this:
 
 ```batch
-python detection/run_detector.py "$HOME/megadetector/md_v5a.0.0.pt" --image_file "some_image_file.jpg" --threshold 0.1
+python detection/run_detector.py MDV5A --image_file "some_image_file.jpg" --threshold 0.1
 ```
 
 Don't forget to change "some_image_file.jpg" to point to a real image on your computer.
@@ -408,8 +410,10 @@ set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
 Then you can run the script like this:
 
 ```batch
-python detection\run_detector_batch.py "c:\megadetector\md_v5a.0.0.pt" "c:\some_image_folder" "c:\megadetector\test_output.json" --output_relative_filenames --recursive --checkpoint_frequency 10000 --quiet
+python detection\run_detector_batch.py MDV5A "c:\some_image_folder" "c:\megadetector\test_output.json" --output_relative_filenames --recursive --checkpoint_frequency 10000 --quiet
 ```
+
+"MDV5A" tells this script to automatically download MegaDetector v5a; if you already downloaded it, you can replace this with the full path to your MegaDetector model file (e.g. "c:\megadetector\md_v5a.0.0.pt").
 
 Change "c:\some_image_folder" to point to the real folder on your computer where your images live.
 
@@ -425,19 +429,19 @@ python detection\run_detector_batch.py
 
 If you are running very large batches, we strongly recommend adding the `--checkpoint_frequency` option to save checkpoints every N images (you don't want to lose all the work your PC has done if your computer crashes!).  10000 is a good value for checkpoint frequency; that will save the results every 10000 images.  This is what we've used in the example above.  When you include this option, you'll see a line in the output that looks like this:
 
-`The checkpoint file will be written to c:\megadetector\checkpoint_20230305232323.json`
+`The checkpoint file will be written to c:\megadetector\md_checkpoint_20230305232323.json`
 
-The default checkpoint file will be in the same folder as your output file; in this case, because we told the script to write the final output to c:\megadetector\test_output.json, the checkpoint will be written in the c:\megadetector folder.  If everything goes smoothly, the checkpoint file will be deleted when the script finishes.  If your computer crashes/reboots/etc. while the script is running, you can pick up where you left off by running exactly the same command you ran the first time, but adding the "--resume_from_checkpoint" option, with the checkpoint file you want to resume from.  So, in this case, you would run:
+The default checkpoint file will be in the same folder as your output file; in this case, because we told the script to write the final output to c:\megadetector\test_output.json, the checkpoint will be written in the c:\megadetector folder.  If everything goes smoothly, the checkpoint file will be deleted when the script finishes.  If your computer crashes/reboots/etc. while the script is running, you can pick up where you left off by running exactly the same command you ran the first time, but adding the "--resume_from_checkpoint" option, with the checkpoint file you want to resume from, or you can just say "auto" to use the most recent checkpoint.  So, in this case, you would run:
 
 ```batch
-python detection\run_detector_batch.py "c:\megadetector\md_v5a.0.0.pt" "c:\some_image_folder" "c:\megadetector\test_output.json" --output_relative_filenames --recursive --checkpoint_frequency 10000 --quiet --resume_from_checkpoint "c:\megadetector\checkpoint_20230305232323.json"
+python detection\run_detector_batch.py MDV5A "c:\some_image_folder" "c:\megadetector\test_output.json" --output_relative_filenames --recursive --checkpoint_frequency 10000 --quiet --resume_from_checkpoint auto
 ```
 
 You will see something like this at the beginning of the output:
 
 `Restored 80000 entries from the checkpoint`
 
-If your computer happens to crash *while* a checkpoint is getting written... don't worry, you're still safe, but it's a bit outside the scope of this tutorial, so just <a href="mailto:cameratraps@lila.science">email us</a> in that case.
+If the extremely unlikely event that your computer happens to crash *while* a checkpoint is getting written... don't worry, you're still safe, but it's a bit outside the scope of this tutorial, so just <a href="mailto:cameratraps@lila.science">email us</a> in that case.
 
 
 #### If your GPU isn't recognized by run_detector_batch.py
@@ -461,7 +465,7 @@ export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 Then you can run the script like this:
 
 ```batch
-python detection/run_detector_batch.py "$HOME/megadetector/md_v5a.0.0.pt" "/some/image/folder" "$HOME/megadetector/test_output.json" --output_relative_filenames --recursive --checkpoint_frequency 10000
+python detection/run_detector_batch.py MDV5A "/some/image/folder" "$HOME/megadetector/test_output.json" --output_relative_filenames --recursive --checkpoint_frequency 10000
 ```
 
 

@@ -751,17 +751,75 @@ if False:
 
     #%%
     
-    checkpoint_path = None
-    model_file = r'G:\temp\models\md_v4.1.0.pb'
-    confidence_threshold = 0.1
-    checkpoint_frequency = -1
-    results = None
-    ncores = 1
-    use_image_queue = False
-    quiet = False
-    image_dir = r'G:\temp\demo_images\ssmini'
+    model_file = 'MDV5A'
+    image_dir = r'g:\camera_traps\camera_trap_images'
+    output_file = r'g:\temp\md-test.json'
+    
+    recursive = True
+    output_relative_filenames = True
+    include_max_conf = False
+    quiet = True
     image_size = None
+    use_image_queue = False
+    confidence_threshold = 0.0001
+    checkpoint_frequency = 5   
+    checkpoint_path = None
+    resume_from_checkpoint = 'auto'
+    allow_checkpoint_overwrite = False
+    ncores = 1
+    class_mapping_filename = None
+    include_image_size = True
+    include_image_timestamp = True
+    include_exif_data = True
+    overwrite_handling = None
+        
+    # Generate a command line
+    cmd = 'python run_detector_batch.py "{}" "{}" "{}"'.format(
+        model_file,image_dir,output_file)
+    
+    if recursive:
+        cmd += ' --recursive'
+    if output_relative_filenames:
+        cmd += ' --output_relative_filenames'
+    if include_max_conf:
+        cmd += ' --include_max_conf'
+    if quiet:
+        cmd += ' --quiet'
+    if image_size is not None:
+        cmd += ' --image_size {}'.format(image_size)
+    if use_image_queue:
+        cmd += ' --use_image_queue'
+    if confidence_threshold is not None:
+        cmd += ' --threshold {}'.format(confidence_threshold)
+    if checkpoint_frequency is not None:
+        cmd += ' --checkpoint_frequency {}'.format(checkpoint_frequency)
+    if checkpoint_path is not None:
+        cmd += ' --checkpoint_path "{}"'.format(checkpoint_path)
+    if resume_from_checkpoint is not None:
+        cmd += ' --resume_from_checkpoint "{}"'.format(resume_from_checkpoint)
+    if allow_checkpoint_overwrite:
+        cmd += ' --allow_checkpoint_overwrite'
+    if ncores is not None:
+        cmd += ' --ncores {}'.format(ncores)
+    if class_mapping_filename is not None:
+        cmd += ' --class_mapping_filename "{}"'.format(class_mapping_filename)
+    if include_image_size:
+        cmd += ' --include_image_size'
+    if include_image_timestamp:
+        cmd += ' --include_image_timestamp'
+    if include_exif_data:
+        cmd += ' --include_exif_data'
+    if overwrite_handling is not None:
+        cmd += ' --overwrite_handling {}'.format(overwrite_handling)
+    
+    print(cmd)
+    import clipboard; clipboard.copy(cmd)
+    
+    
+    #%% Run inference interactively
+    
     image_file_names = path_utils.find_images(image_dir, recursive=False)    
+    results = None
     
     start_time = time.time()
     
@@ -840,12 +898,15 @@ def main():
         '--checkpoint_path',
         type=str,
         default=None,
-        help='File name to which checkpoints will be written if checkpoint_frequency is > 0')    
+        help='File name to which checkpoints will be written if checkpoint_frequency is > 0, ' + \
+             'defaults to md_checkpoint_[date].json in the same folder as the output file')    
     parser.add_argument(
         '--resume_from_checkpoint',
         type=str,
         default=None,
-        help='Path to a JSON checkpoint file to resume from')
+        help='Path to a JSON checkpoint file to resume from, or "auto" to ' + \
+             'find the most recent checkpoint in the same folder as the output file.  "auto" uses' + \
+             'checkpoint_path (rather than searching the output folder) if checkpoint_path is specified.')
     parser.add_argument(
         '--allow_checkpoint_overwrite',
         action='store_true',
@@ -919,19 +980,42 @@ def main():
         else:
             raise ValueError('Illegal overwrite handling string {}'.format(args.overwrite_handling))
 
+    output_dir = os.path.dirname(args.output_file)
+
+    if len(output_dir) > 0:
+        os.makedirs(output_dir,exist_ok=True)
+        
+    assert not os.path.isdir(args.output_file), 'Specified output file is a directory'
+    
     if args.class_mapping_filename is not None:
         load_custom_class_mapping(args.class_mapping_filename)
-        
+    
     # Load the checkpoint if available
     #
     # Relative file names are only output at the end; all file paths in the checkpoint are
-    # still full paths.
+    # still absolute paths.
     if args.resume_from_checkpoint is not None:
-        assert os.path.exists(args.resume_from_checkpoint), \
+        if args.resume_from_checkpoint == 'auto':
+            checkpoint_files = os.listdir(output_dir)
+            checkpoint_files = [fn for fn in checkpoint_files if \
+                                (fn.startswith('md_checkpoint') and fn.endswith('.json'))]
+            if len(checkpoint_files) == 0:
+                raise ValueError('resume_from_checkpoint set to "auto", but no checkpoints found in {}'.format(
+                    output_dir))
+            else:
+                if len(checkpoint_files) > 1:
+                    print('Warning: found {} checkpoints in {}, using the latest'.format(
+                        len(checkpoint_files),output_dir))
+                    checkpoint_files = sorted(checkpoint_files)
+                checkpoint_file_relative = checkpoint_files[-1]
+                checkpoint_file = os.path.join(output_dir,checkpoint_file_relative)                                
+        else:
+            checkpoint_file = args.resume_from_checkpoint
+        assert os.path.exists(checkpoint_file), \
             'File at resume_from_checkpoint specified does not exist'
-        with open(args.resume_from_checkpoint) as f:
+        with open(checkpoint_file) as f:
             print('Loading previous results from checkpoint file {}'.format(
-                args.resume_from_checkpoint))
+                checkpoint_file))
             saved = json.load(f)
         assert 'images' in saved, \
             'The checkpoint file does not have the correct fields; cannot be restored'
@@ -982,13 +1066,6 @@ def main():
     assert os.path.exists(image_file_names[0]), \
         'The first image to be processed does not exist at {}'.format(image_file_names[0])
 
-    output_dir = os.path.dirname(args.output_file)
-
-    if len(output_dir) > 0:
-        os.makedirs(output_dir,exist_ok=True)
-        
-    assert not os.path.isdir(args.output_file), 'Specified output file is a directory'
-
     # Test that we can write to the output_file's dir if checkpointing requested
     if args.checkpoint_frequency != -1:
         
@@ -996,7 +1073,7 @@ def main():
             checkpoint_path = args.checkpoint_path
         else:
             checkpoint_path = os.path.join(output_dir,
-                                           'checkpoint_{}.json'.format(
+                                           'md_checkpoint_{}.json'.format(
                                                datetime.utcnow().strftime("%Y%m%d%H%M%S")))
         
         # Don't overwrite existing checkpoint files, this is a sure-fire way to eventually
@@ -1023,6 +1100,9 @@ def main():
         
     else:
         
+        if args.checkpoint_path is not None:
+            print('Warning: checkpointing disabled because checkpoint_frequency is -1, ' + \
+                  'but a checkpoint path was specified')
         checkpoint_path = None
 
     start_time = time.time()
