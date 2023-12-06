@@ -57,7 +57,7 @@ for i_row,row in df.iterrows():
         df.loc[i_row,'mdv5a_results_raw'] = md_base_url + mdv5a_files[0]
         df.loc[i_row,'mdv5b_results_raw'] = md_base_url + mdv5b_files[0]
     else:
-        # Exclude single-season files for snpashot-serengeti    
+        # Exclude single-season files for snapshot-serengeti    
         if dataset_shortname == 'snapshot-serengeti':
             matching_files = [fn for fn in matching_files if '_S' not in fn]
             assert len(matching_files) == 2        

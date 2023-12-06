@@ -2,7 +2,7 @@
 #
 # noaa_seals_2019.py
 #
-# Prepare the NOAA Artic Seals 2019 metadata for LILA.
+# Prepare the NOAA Arctic Seals 2019 metadata for LILA.
 #
 ########
 

@@ -47,7 +47,7 @@ class DbVizOptions:
     # htmlOptions['maxFiguresPerHtmlFile']
     #
     # ...which can be used to paginate previews to a number of images that will load well
-    # in a brower (5000 is a reasonable limit).
+    # in a browser (5000 is a reasonable limit).
     htmlOptions = write_html_image_list()
     
     sort_by_filename = True

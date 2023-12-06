@@ -1649,7 +1649,7 @@ min_dominant_class_classifications_above_threshold_for_class_smoothing = 5 # 2
 max_secondary_class_classifications_above_threshold_for_class_smoothing = 5
 
 # If the ratio between a dominant class and a secondary class count is greater than this, 
-# regardless of the secondary class count, switch those classificaitons (i.e., ignore
+# regardless of the secondary class count, switch those classifications (i.e., ignore
 # max_secondary_class_classifications_above_threshold_for_class_smoothing).
 #
 # This may be different for different dominant classes, e.g. if we see lots of cows, they really
@@ -2304,3 +2304,4 @@ while(True):
 write_code_cell(current_cell)
 
 nbf.write(nb,output_ipynb_file)
+

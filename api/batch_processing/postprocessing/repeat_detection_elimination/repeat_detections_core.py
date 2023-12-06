@@ -347,7 +347,7 @@ def render_bounding_box(detection, inputFileName, outputFileName, lineWidth=5,
 
 
 def detection_rect_to_rtree_rect(detection_rect):
-    # We store detetions as x/y/w/h, rtree and pyqtree use l/b/r/t
+    # We store detections as x/y/w/h, rtree and pyqtree use l/b/r/t
     l = detection_rect[0]
     b = detection_rect[1]
     r = detection_rect[0] + detection_rect[2]
@@ -356,7 +356,7 @@ def detection_rect_to_rtree_rect(detection_rect):
 
 
 def rtree_rect_to_detection_rect(rtree_rect):
-    # We store detetions as x/y/w/h, rtree and pyqtree use l/b/r/t
+    # We store detections as x/y/w/h, rtree and pyqtree use l/b/r/t
     x = rtree_rect[0]
     y = rtree_rect[1]
     w = rtree_rect[2] - rtree_rect[0]

@@ -1,6 +1,6 @@
 ########
 #
-# md-tests.py
+# md_tests.py
 #
 # A series of tests to validate basic repo functionality and verify either "correct"
 # inference behavior, or - when operating in environments other than the training
@@ -595,6 +595,10 @@ def main():
         type=str,
         default=None,
         help='Working directory for CLI tests')
+        
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
         
     args = parser.parse_args()
         

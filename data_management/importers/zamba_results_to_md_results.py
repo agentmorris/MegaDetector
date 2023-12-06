@@ -166,7 +166,7 @@ def main():
         '--output_file',
         type=str,
         default=None,
-        help='output .json file (defaults to input file appened with ".json")')
+        help='output .json file (defaults to input file appended with ".json")')
     
     if len(sys.argv[1:]) == 0:
         parser.print_help()
