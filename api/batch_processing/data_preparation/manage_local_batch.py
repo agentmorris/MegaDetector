@@ -708,18 +708,9 @@ path_utils.open_file(html_output_file)
 def relative_path_to_location(relative_path):
     """
     This is a sample function that returns a camera name given an image path.  By 
-    default in the RDE process, leaf-node folders are equivalent to cameras.  To map 
-    something other than leaf-node folders to cameras, fill in this function, and un-comment the 
-    line below containing "relative_path_to_location".
-    
-    Sample regular expressions are included here for common patterns, particularly the 
-    overflow folders created by Reconyx and Bushnell camera traps.  So if one of those 
-    fits your scenario, you don't have to modify this function, just un-comment the line
-    below that enables this feature.
-    
-    Nothing bad happens if you have overflow folders like this and you don't
-    enable this mapping, you are just taking a more conservative approach to RDE in that
-    scenario.
+    default in the RDE process, leaf-node folders are equivalent to cameras.  This function
+    injects a slightly more sophisticated heuristic that recognizes common overflow folder
+    types.
     """
     
     import re
@@ -727,6 +718,7 @@ def relative_path_to_location(relative_path):
     # 100RECNX is the overflow folder style for Reconyx cameras
     # 100EK113 is (for some reason) the overflow folder style for Bushnell cameras
     # 100_BTCF is the overflow folder style for Browning cameras
+    # 100MEDIA is the overflow folder style used on a number of consumer-grade cameras
     patterns = ['\/\d+RECNX\/','\/\d+EK\d+\/','\/\d+_BTCF\/','\/\d+MEDIA\/']
     
     relative_path = relative_path.replace('\\','/')    
@@ -804,7 +796,7 @@ options.detectionTilesMaxCrops = 500
 # options.boxExpansion = 8
 
 # To invoke custom collapsing of folders for a particular manufacturer's naming scheme
-# options.customDirNameFunction = relative_path_to_location; overflow_folder_handling_enabled = True
+options.customDirNameFunction = relative_path_to_location; overflow_folder_handling_enabled = True
 
 options.bRenderHtml = False
 options.imageBase = input_path
@@ -829,7 +821,7 @@ options.debugMaxRenderInstance = -1
 # Can be None, 'xsort', or 'clustersort'
 options.smartSort = 'xsort'
 
-suspiciousDetectionResults = repeat_detections_core.find_repeat_detections(combined_api_output_file,
+suspicious_detection_results = repeat_detections_core.find_repeat_detections(combined_api_output_file,
                                                                            None,
                                                                            options)
 
@@ -839,7 +831,7 @@ suspiciousDetectionResults = repeat_detections_core.find_repeat_detections(combi
 ## DELETE THE VALID DETECTIONS ##
 
 # If you run this line, it will open the folder up in your file browser
-path_utils.open_file(os.path.dirname(suspiciousDetectionResults.filterFile))
+path_utils.open_file(os.path.dirname(suspicious_detection_results.filterFile))
 
 #
 # If you ran the previous cell, but then you change your mind and you don't want to do 
@@ -861,7 +853,7 @@ filtered_output_filename = path_utils.insert_before_extension(combined_api_outpu
 remove_repeat_detections.remove_repeat_detections(
     inputFile=combined_api_output_file,
     outputFile=filtered_output_filename,
-    filteringDir=os.path.dirname(suspiciousDetectionResults.filterFile)
+    filteringDir=os.path.dirname(suspicious_detection_results.filterFile)
     )
 
 
@@ -2304,4 +2296,3 @@ while(True):
 write_code_cell(current_cell)
 
 nbf.write(nb,output_ipynb_file)
-
