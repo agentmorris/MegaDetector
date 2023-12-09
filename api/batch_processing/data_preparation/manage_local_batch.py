@@ -365,11 +365,13 @@ for i_task,task in enumerate(task_info):
         overwrite_handling_string = '--overwrite_handling {}'.format(overwrite_handling)        
         
         cmd += f'python run_inference_with_yolov5_val.py "{model_file}" "{chunk_file}" "{output_fn}" '
-        cmd += f'--yolo_working_folder "{yolo_working_dir}" {image_size_string} {augment_string} '
+        cmd += f'{image_size_string} {augment_string} '
         cmd += f'{symlink_folder_string} {yolo_results_folder_string} {remove_yolo_results_string} '
         cmd += f'{remove_symlink_folder_string} {confidence_threshold_string} {device_string} '
         cmd += f'{overwrite_handling_string}'
                 
+        if yolo_working_dir is not None:
+            cmd += f' --yolo_working_folder "{yolo_working_dir}"'
         if yolo_dataset_file is not None:
             cmd += ' --yolo_dataset_file "{}"'.format(yolo_dataset_file)
         if yolo_model_type is not None:
