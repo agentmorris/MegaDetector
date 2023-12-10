@@ -277,10 +277,10 @@ def run_inference_with_yolo_val(options):
         else:
             augment_string = ''
             
-        cmd = 'yolo val {} model="{}" imgsz={} batch={} data="{}" project="{}" name="{}"'.format(
-            augment_string,model_filename,image_size_string,options.batch_size,yolo_dataset_file,
-            yolo_results_folder,'yolo_results')        
-        cmd += ' save_hybrid save_json'        
+        cmd = 'yolo val {} model="{}" imgsz={} batch={} data="{}" project="{}" name="{}" device="{}"'.\
+            format(augment_string,model_filename,image_size_string,options.batch_size,
+                   yolo_dataset_file,yolo_results_folder,'yolo_results',options.device_string)
+        cmd += ' save_hybrid save_json exist_ok'
             
     else:
         
