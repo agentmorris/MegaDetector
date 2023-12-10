@@ -90,10 +90,12 @@ from md_utils.ct_utils import split_list_into_n_chunks
 
 from detection.run_detector_batch import load_and_run_detector_batch, write_results_to_file
 from detection.run_detector import DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
+from detection.run_detector import estimate_md_images_per_second
 
 from api.batch_processing.postprocessing.postprocess_batch_results import (
     PostProcessingOptions, process_batch_results)
 from detection.run_detector import get_detector_version_from_filename
+from md_utils.ct_utils import image_file_to_camera_folder
 
 max_task_name_length = 92
 
@@ -132,8 +134,17 @@ default_workers_for_parallel_tasks = 30
 
 overwrite_handling = 'skip' # 'skip', 'error', or 'overwrite'
 
-# Set later if EK113/RCNX101-style overflow folders are being handled in this dataset
-overflow_folder_handling_enabled = False
+# Only relevant to repeat detection elimination; try to identify EK113/RCNX101-style
+# overflow folders and treat them as the same camera
+overflow_folder_handling_enabled = True
+
+# The function used to get camera names from image paths; can also replace this
+# with a custom function.
+relative_path_to_location = image_file_to_camera_folder
+
+# This will be the .json results file after RDE; if this is still None when
+# we get to classification stuff, that will indicate that we didn't do RDE.
+filtered_api_output_file = None
 
 if os.name == 'nt':
     slcc = '^'
@@ -201,16 +212,12 @@ n_gpus = 2
 # checkpointing.  Don't worry, this will be assert()'d in the next cell.
 checkpoint_frequency = 10000
 
-# gpu_images_per_second is only used to print out a time estimate, and it's completely
-# tied to the assumption of running on an RTX 3090.  YMMV.
-if ('v5') in model_file:
-    gpu_images_per_second = 10
-else:
-    gpu_images_per_second = 2.9
+# Estimate inference speed for the current GPU
+approx_images_per_second = estimate_md_images_per_second(model_file) 
     
 # Rough estimate for how much slower everything runs when using augmentation    
 if augment:
-    gpu_images_per_second = gpu_images_per_second * 0.7
+    approx_images_per_second = approx_images_per_second * 0.7
     
 base_task_name = organization_name_short + '-' + job_date + job_description_string + '-' + \
     get_detector_version_from_filename(model_file)
@@ -282,13 +289,19 @@ folder_chunks = split_list_into_n_chunks(all_images,n_jobs)
 
 #%% Estimate total time
 
-n_images = len(all_images)
-execution_seconds = n_images / gpu_images_per_second
-wallclock_seconds = execution_seconds / n_gpus
-print('Expected time: {}'.format(humanfriendly.format_timespan(wallclock_seconds)))
-
-seconds_per_chunk = len(folder_chunks[0]) / gpu_images_per_second
-print('Expected time per chunk: {}'.format(humanfriendly.format_timespan(seconds_per_chunk)))
+if approx_images_per_second is None:
+    
+    print('Can not estimate inference time for the current environment')
+    
+else:
+        
+    n_images = len(all_images)
+    execution_seconds = n_images / approx_images_per_second
+    wallclock_seconds = execution_seconds / n_gpus
+    print('Expected time: {}'.format(humanfriendly.format_timespan(wallclock_seconds)))
+    
+    seconds_per_chunk = len(folder_chunks[0]) / approx_images_per_second
+    print('Expected time per chunk: {}'.format(humanfriendly.format_timespan(seconds_per_chunk)))
 
 
 #%% Write file lists
@@ -693,79 +706,6 @@ html_output_file = ppresults.output_html_file
 path_utils.open_file(html_output_file)
 
 
-#%% RDE (sample directory collapsing)
-
-#
-# The next few cells are about repeat detection elimination; if you want to skip this,
-# and still do other stuff in this notebook (e.g. running classifiers), that's fine, but
-# the rest of the notebook weakly assumes you've done this.  Specifically, it looks for
-# the variable "filtered_api_output_file" (a file produced by the RDE process).  If you
-# don't run the RDE cells, just change "filtered_api_output_file" to "combined_api_output_file"
-# (the raw output from MegaDetector).  Then it will be like all this RDE stuff doesn't exist.
-#
-# Though FWIW, once you're sufficiently power-user-ish to use this notebook, RDE is almost
-# always worth it.
-#
-
-def relative_path_to_location(relative_path):
-    """
-    This is a sample function that returns a camera name given an image path.  By 
-    default in the RDE process, leaf-node folders are equivalent to cameras.  This function
-    injects a slightly more sophisticated heuristic that recognizes common overflow folder
-    types.
-    """
-    
-    import re
-    
-    # 100RECNX is the overflow folder style for Reconyx cameras
-    # 100EK113 is (for some reason) the overflow folder style for Bushnell cameras
-    # 100_BTCF is the overflow folder style for Browning cameras
-    # 100MEDIA is the overflow folder style used on a number of consumer-grade cameras
-    patterns = ['\/\d+RECNX\/','\/\d+EK\d+\/','\/\d+_BTCF\/','\/\d+MEDIA\/']
-    
-    relative_path = relative_path.replace('\\','/')    
-    for pat in patterns:
-        relative_path = re.sub(pat,'/',relative_path)
-    location_name = os.path.dirname(relative_path)
-    
-    return location_name
-
-
-#%% Test cells for relative_path_to_location
-
-if False:
-
-    pass
-
-    #%% Test the generic cases
-    
-    relative_path = 'a/b/c/d/100EK113/blah.jpg'
-    print(relative_path_to_location(relative_path))
-    
-    relative_path = 'a/b/c/d/100RECNX/blah.jpg'
-    print(relative_path_to_location(relative_path))
-    
-    
-    #%% Test relative_path_to_location on the current dataset
-    
-    with open(combined_api_output_file,'r') as f:
-        d = json.load(f)
-    image_filenames = [im['file'] for im in d['images']]
-    
-    location_names = set()
-    
-    # relative_path = image_filenames[0]
-    for relative_path in tqdm(image_filenames):
-        location_name = relative_path_to_location(relative_path)
-        location_names.add(location_name)
-        
-    location_names = list(location_names)
-    location_names.sort()
-    
-    for s in location_names:
-        print(s)
-
-
 #%% Repeat detection elimination, phase 1
 
 # Deliberately leaving these imports here, rather than at the top, because this
@@ -798,7 +738,7 @@ options.detectionTilesMaxCrops = 500
 # options.boxExpansion = 8
 
 # To invoke custom collapsing of folders for a particular manufacturer's naming scheme
-options.customDirNameFunction = relative_path_to_location; overflow_folder_handling_enabled = True
+options.customDirNameFunction = relative_path_to_location
 
 options.bRenderHtml = False
 options.imageBase = input_path
@@ -906,6 +846,10 @@ path_utils.open_file(html_output_file)
 final_output_path_mc = None
 final_output_path_ic = None
 
+# If we didn't do RDE
+if filtered_api_output_file is None:
+    filtered_api_output_file = combined_api_output_file
+    
 classifier_name_short = 'megaclassifier'
 threshold_str = '0.15' # 0.6
 classifier_name = 'megaclassifier_v0.1_efficientnet-b3'
@@ -2208,13 +2152,47 @@ video_output_filename = filtered_output_filename.replace('.json','_aggregated.js
 frame_results_to_video_results(filtered_output_filename,video_output_filename)
 
 
+#%% Sample custom path replacement function
+
+def custom_relative_path_to_location(relative_path):
+    
+    relative_path = relative_path.replace('\\','/')    
+    tokens = relative_path.split('/')
+    location_name = '/'.join(tokens[0:2])
+    return location_name
+
+
+#%% Test relative_path_to_location on the current dataset
+
+with open(combined_api_output_file,'r') as f:
+    d = json.load(f)
+image_filenames = [im['file'] for im in d['images']]
+
+location_names = set()
+
+# relative_path = image_filenames[0]
+for relative_path in tqdm(image_filenames):
+    location_name = relative_path_to_location(relative_path)
+    location_names.add(location_name)
+    
+location_names = list(location_names)
+location_names.sort()
+
+for s in location_names:
+    print(s)
+
+
 #%% End notebook: turn this script into a notebook (how meta!)
 
 import os
 import nbformat as nbf
 
-input_py_file = os.path.expanduser(
-    '~/git/MegaDetector/api/batch_processing/data_preparation/manage_local_batch.py')
+if os.name == 'nt':
+    git_base = r'c:\git'
+else:
+    git_base = os.path.expanduer('~/git')
+    
+input_py_file = git_base + '/MegaDetector/api/batch_processing/data_preparation/manage_local_batch.py'
 assert os.path.isfile(input_py_file)
 output_ipynb_file = input_py_file.replace('.py','.ipynb')
 

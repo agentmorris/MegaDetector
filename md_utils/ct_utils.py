@@ -266,6 +266,7 @@ def point_dist(p1,p2):
     """
     Distance between two points, represented as length-two tuples.
     """
+    
     return math.sqrt( ((p1[0]-p2[0])**2) + ((p1[1]-p2[1])**2) )
 
 
@@ -369,14 +370,56 @@ def invert_dictionary(d):
     Create a new dictionary that maps d.values() to d.keys().  Does not check
     uniqueness.    
     """
+    
     return {v: k for k, v in d.items()}
 
+
+def image_file_to_camera_folder(image_fn):
+    """
+    Remove common overflow folders (e.g. RECNX101, RECNX102) from paths, i.e. turn:
+        
+    a\b\c\RECNX101\image001.jpg
+    
+    ...into:
+        
+    a\b\c
+
+    Returns the same thing as os.dirname() (i.e., just the folder name) if no overflow folders are 
+    present.
+
+    Always converts backslashes to slashes.
+    """
+    
+    import re
+    
+    # 100RECNX is the overflow folder style for Reconyx cameras
+    # 100EK113 is (for some reason) the overflow folder style for Bushnell cameras
+    # 100_BTCF is the overflow folder style for Browning cameras
+    # 100MEDIA is the overflow folder style used on a number of consumer-grade cameras
+    patterns = ['\/\d+RECNX\/','\/\d+EK\d+\/','\/\d+_BTCF\/','\/\d+MEDIA\/']
+    
+    image_fn = image_fn.replace('\\','/')    
+    for pat in patterns:
+        image_fn = re.sub(pat,'/',image_fn)
+    camera_folder = os.path.dirname(image_fn)
+    
+    return camera_folder
+    
 
 #%% Test drivers
 
 if False:
     
     pass
+    
+    #%% Test image_file_to_camera_folder()
+    
+    relative_path = 'a/b/c/d/100EK113/blah.jpg'
+    print(image_file_to_camera_folder(relative_path))
+    
+    relative_path = 'a/b/c/d/100RECNX/blah.jpg'
+    print(image_file_to_camera_folder(relative_path))
+    
     
     #%% Test a few rectangle distances
     

@@ -131,6 +131,30 @@ downloadable_models = {
     'MDV5B':'https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.0.pt'
 }
 
+model_string_to_model_version = {
+    'v2':'v2.0.0',
+    'v3':'v3.0.0',
+    'v4.1':'v4.1.0',
+    'v5a.0.0':'v5a.0.0',
+    'v5b.0.0':'v5b.0.0',
+    'mdv5a':'v5a.0.0',
+    'mdv5b':'v5b.0.0',
+    'mdv4':'v4.1.0',
+    'mdv3':'v3.0.0'
+}
+
+# Approximate inference speeds for MDv5 based on benchmarks, only used for reporting
+# very coarse expectations about inference time.
+device_token_to_mdv5_inference_speed = {
+    '3090':1.0/11.4,
+    '3080':1.0/9.5,
+    '3050':1.0/4.2,
+    'P2000':1.0/2.1,
+    'V100':(1.0/2.79)*3.5,
+    '2080':(1.0/2.3)*3.5,
+    '2060':(1.0/1.6)*3.5
+}
+    
 
 #%% Utility functions
 
@@ -185,18 +209,9 @@ def get_detector_version_from_filename(detector_filename):
     "v4.1.0", "v5a.0.0", and "v5b.0.0", respectively.
     """
     
-    fn = os.path.basename(detector_filename)
-    known_model_versions = {'v2':'v2.0.0',
-                            'v3':'v3.0.0',
-                            'v4.1':'v4.1.0',
-                            'v5a.0.0':'v5a.0.0',
-                            'v5b.0.0':'v5b.0.0',
-                            'MDV5A':'v5a.0.0',
-                            'MDV5B':'v5b.0.0',
-                            'MDV4':'v4.1.0',
-                            'MDV3':'v3.0.0'}
+    fn = os.path.basename(detector_filename).lower()
     matches = []
-    for s in known_model_versions.keys():
+    for s in model_string_to_model_version.keys():
         if s in fn:
             matches.append(s)
     if len(matches) == 0:
@@ -206,9 +221,51 @@ def get_detector_version_from_filename(detector_filename):
         print('Warning: multiple MegaDetector versions for model file {}'.format(detector_filename))
         return 'multiple'
     else:
-        return known_model_versions[matches[0]]
+        return model_string_to_model_version[matches[0]]
     
 
+def estimate_md_images_per_second(model_file, device_name=None):
+    """
+    Estimate how fast MegaDetector will run based on benchmarks.  Defaults to querying
+    the current device.  Returns None if no data is available for the current card/model.
+    Estimates only available for a small handful of GPUs.
+    """
+    
+    if device_name is None:
+        try:
+            import torch
+            device_name = torch.cuda.get_device_name()
+        except Exception as e:
+            print('Error querying device name: {}'.format(e))
+            return None
+    
+    model_file = model_file.lower().strip()
+    if model_file in model_string_to_model_version.values():
+        model_version = model_file
+    else:
+        model_version = get_detector_version_from_filename(model_file)
+        if model_version not in model_string_to_model_version.values():
+            print('Error determining model version for model file {}'.format(model_file))
+            return None
+    
+    mdv5_inference_speed = None
+    for device_token in device_token_to_mdv5_inference_speed.keys():
+        if device_token in device_name:
+            mdv5_inference_speed = device_token_to_mdv5_inference_speed[device_token]
+            break
+    
+    if mdv5_inference_speed is None:
+        print('No speed estimate available for {}'.format(device_name))
+    
+    if 'v5' in model_version:
+        return mdv5_inference_speed
+    elif 'v2' in model_version or 'v3' in model_version or 'v4' in model_version:
+        return mdv5_inference_speed / 3.5
+    else:
+        print('Could not estimate inference speed for model file {}'.format(model_file))
+        return None
+    
+    
 def get_typical_confidence_threshold_from_results(results):
     """
     Given the .json data loaded from a MD results file, determine a typical confidence

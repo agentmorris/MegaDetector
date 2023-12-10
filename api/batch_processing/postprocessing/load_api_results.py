@@ -2,17 +2,18 @@
 #
 # load_api_results.py
 #
-# Loads the output of the batch processing API (json) into a pandas dataframe.
+# DEPRECATED
 #
-# Also functions to group entries by seq_id.
+# As of 2023.12, this module is used in postprocessing and RDE.  Not recommended
+# for new code.
 #
-# Includes the deprecated functions that worked with the old CSV API output format.
+# Loads the output of the batch processing API (json) into a Pandas dataframe.
+#
+# Includes functions to read/write the (very very old) .csv results format.
 #
 ########
 
-#%% Constants and imports
-
-from collections import defaultdict
+#%% Imports
 
 import json
 import os
@@ -23,60 +24,17 @@ import pandas as pd
 
 from md_utils import ct_utils
 
-headers = ['image_path', 'max_confidence', 'detections']
 
-
-#%% Functions for grouping by sequence_id
-
-def ss_file_to_file_name(f):
-    # example
-    # input 'file': 'SER/S1/F08/F08_R3/S1_F08_R3_PICT1150.JPG'
-    # output 'id': 'S1/F08/F08_R3/S1_F08_R3_PICT1150.JPG'
-    return f.split('SER/')[1].split('.JPG')[0]
-
-
-def caltech_file_to_file_name(f):
-    return f.split('cct_images/')[1].split('.')[0]
-
-
-def api_results_groupby(api_output_path, gt_db_indexed, file_to_image_id, field='seq_id'):
-    """
-    Given the output file of the API, groupby (currently only seq_id).
-
-    Args:
-        api_output_path: path to the API output json file
-        gt_db_indexed: an instance of IndexedJsonDb so we know the seq_id to image_id mapping
-        file_to_image_id: a function that takes in the 'file' field in 'images' in the detector
-            output file and converts it to the 'id' field in the gt DB.
-        field: which field in the 'images' array to group by
-
-    Returns:
-    A dict where the keys are of the field requested, each points to an array
-    containing entries in the 'images' section of the output file
-    """
-
-    with open(api_output_path) as f:
-        detection_results = json.load(f)
-
-    res = defaultdict(list)
-    for i in detection_results['images']:
-        image_id = file_to_image_id(i['file'])
-        field_val = gt_db_indexed.image_id_to_image[image_id][field]
-        res[field_val].append(i)
-    return res
-
-
-#%% Functions for loading the result as a Pandas DataFrame
+#%% Functions for loading .json results into a Pandas DataFrame, and writing back to .json
 
 def load_api_results(api_output_path: str, normalize_paths: bool = True,
                      filename_replacements: Optional[Mapping[str, str]] = None
                      ) -> Tuple[pd.DataFrame, Dict]:
     """
-    Loads the json formatted results from the batch processing API to a
-    Pandas DataFrame, mainly useful for various postprocessing functions.
+    Loads json-formatted MegaDetector results to a Pandas DataFrame.
 
     Args:
-        api_output_path: path to the API output json file
+        api_output_path: path to the output json file
         normalize_paths: whether to apply os.path.normpath to the 'file' field
             in each image entry in the output file
         filename_replacements: replace some path tokens to match local paths to
@@ -88,7 +46,7 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
         other_fields: a dict containing fields in the results other than 'images'
     """
     
-    print('Loading API results from {}'.format(api_output_path))
+    print('Loading results from {}'.format(api_output_path))
 
     with open(api_output_path) as f:
         detection_results = json.load(f)
@@ -97,7 +55,7 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
     for s in ['info', 'detection_categories', 'images']:
         assert s in detection_results, 'Missing field {} in detection results'.format(s)
 
-    # Fields in the API output json other than 'images'
+    # Fields in the output json other than 'images'
     other_fields = {}
     for k, v in detection_results.items():
         if k != 'images':
@@ -127,9 +85,7 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
     # Pack the json output into a Pandas DataFrame
     detection_results = pd.DataFrame(detection_results['images'])
     
-        
-
-    print('Finished loading API results for {} images from {}'.format(
+    print('Finished loading MegaDetector results for {} images from {}'.format(
             len(detection_results),api_output_path))
 
     return detection_results, other_fields
@@ -137,7 +93,7 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
 
 def write_api_results(detection_results_table, other_fields, out_path):
     """
-    Writes a Pandas DataFrame back to a json that is compatible with the API output format.
+    Writes a Pandas DataFrame to the MegaDetector .json format.
     """
 
     print('Writing detection results to {}'.format(out_path))
@@ -148,6 +104,27 @@ def write_api_results(detection_results_table, other_fields, out_path):
                                              double_precision=3)
     images = json.loads(images)
     fields['images'] = images
+    
+    # Convert the 'version' field back to a string as per format convention
+    try:
+        version = other_fields['info']['format_version']
+        if not isinstance(version,str):
+            other_fields['info']['format_version'] = str(version)
+    except Exception:
+        print('Warning: error determining format version')
+        pass
+    
+    # Remove 'max_detection_conf' as per newer file convention (format >= v1.3)
+    try:
+        version = other_fields['info']['format_version']
+        version = float(version)
+        if version >= 1.3:
+            for im in images:
+                if 'max_detection_conf' in im:
+                    del im['max_detection_conf']
+    except Exception:
+        print('Warning: error removing max_detection_conf from output')
+        pass
 
     with open(out_path, 'w') as f:
         json.dump(fields, f, indent=1)
@@ -157,15 +134,16 @@ def write_api_results(detection_results_table, other_fields, out_path):
 
 def load_api_results_csv(filename, normalize_paths=True, filename_replacements={}, nrows=None):
     """
-    DEPRECATED
-    Loads .csv-formatted results from the batch processing API to a pandas table
+    [DEPRECATED]
+    
+    Loads .csv-formatted MegaDetector results to a pandas table
     """
 
-    print('Loading API results from {}'.format(filename))
+    print('Loading MegaDetector results from {}'.format(filename))
 
     detection_results = pd.read_csv(filename,nrows=nrows)
 
-    print('De-serializing API results from {}'.format(filename))
+    print('De-serializing MegaDetector results from {}'.format(filename))
 
     # Confirm that this is really a detector output file
     for s in ['image_path','max_confidence','detections']:
@@ -191,17 +169,18 @@ def load_api_results_csv(filename, normalize_paths=True, filename_replacements={
             fn = fn.replace(string_to_replace,replacement_string)
             detection_results.at[iRow,'image_path'] = fn
 
-    print('Finished loading and de-serializing API results for {} images from {}'.format(
+    print('Finished loading and de-serializing MD results for {} images from {}'.format(
         len(detection_results),filename))
 
     return detection_results
 
 
 def write_api_results_csv(detection_results, filename):
-    """
-    DEPRECATED
-    Writes a pandas table to csv in a way that's compatible with the .csv API output
-    format.  Currently just a wrapper around to_csv that just forces output writing
+    """    
+    [DEPRECATED]
+    
+    Writes a Pandas table to csv in a way that's compatible with the .csv output
+    format.  Currently just a wrapper around to_csv that forces output writing
     to go through a common code path.
     """
 
