@@ -68,6 +68,7 @@ class BatchComparisonOptions:
     job_name = ''
     
     max_images_per_category = 1000
+    max_images_per_page = None
     colormap_a = ['Red']
     colormap_b = ['RoyalBlue']
 
@@ -485,14 +486,16 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
         # Choose detection pairs we're going to render for this category
         image_pairs = categories_to_image_pairs[category]
         image_filenames = list(image_pairs.keys())
-        if len(image_filenames) > options.max_images_per_category:
-            print('Sampling {} of {} image pairs for category {}'.format(
-                options.max_images_per_category,
-                len(image_filenames),
-                category))
-            image_filenames = random.sample(image_filenames,
-                                            options.max_images_per_category)
-        assert len(image_filenames) <= options.max_images_per_category
+        
+        if options.max_images_per_category is not None and options.max_images_per_category > 0:
+            if len(image_filenames) > options.max_images_per_category:
+                print('Sampling {} of {} image pairs for category {}'.format(
+                    options.max_images_per_category,
+                    len(image_filenames),
+                    category))
+                image_filenames = random.sample(image_filenames,
+                                                options.max_images_per_category)
+            assert len(image_filenames) <= options.max_images_per_category
 
         input_image_absolute_paths = [os.path.join(options.image_folder,fn) for fn in image_filenames]
         
@@ -582,7 +585,8 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
             category_html_filename,
             images=image_info,
             options={
-                'headerHtml': category_page_header_string
+                'headerHtml': category_page_header_string,
+                'maxFiguresPerHtmlFile': options.max_images_per_page
             })
         
     # ...for each category

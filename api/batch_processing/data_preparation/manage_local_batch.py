@@ -573,7 +573,7 @@ if False:
 n_total_failures = 0
 
 # i_task = 0; task = task_info[i_task]
-for i_task,task in enumerate(task_info):
+for i_task,task in tqdm(enumerate(task_info),total=len(task_info)):
     
     chunk_file = task['input_file']
     output_file = task['output_file']
@@ -621,7 +621,7 @@ combined_results = {}
 combined_results['images'] = []
 images_processed = set()
 
-for i_task,task in enumerate(task_info):
+for i_task,task in tqdm(enumerate(task_info),total=len(task_info)):
 
     task_results = task['results']
     

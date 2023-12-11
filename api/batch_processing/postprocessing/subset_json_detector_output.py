@@ -17,6 +17,11 @@
 #    rather than an output path.  All images in the folder blah\foo\bar will end up 
 #    in a .json file called blah_foo_bar.json.
 #
+# Can also apply a confidence threshold.
+#
+# Can also subset by categories above a threshold (programmatic invocation only, this is
+# not supported at the command line yet).
+#
 ###
 #
 # Sample invocations (splitting into multiple json's):
@@ -118,6 +123,10 @@ class SubsetJsonDetectorOutputOptions:
     # Should we remove failed images?
     remove_failed_images = False
     
+    # Dictionary mapping categories to thresholds.  Removes non-matching detections,
+    # does not remove images.
+    categories_to_keep = None
+    
     debug_max_images = -1
     
     
@@ -151,7 +160,7 @@ def subset_json_detector_output_by_confidence(data, options):
     Remove all detections below options.confidence_threshold, update max confidences accordingly.
     """
     
-    if not options.confidence_threshold:
+    if options.confidence_threshold is None:
         return data
     
     images_in = data['images']
@@ -161,8 +170,8 @@ def subset_json_detector_output_by_confidence(data, options):
     
     n_max_changes = 0
     
-    # iImage = 0; im = images_in[0]
-    for iImage, im in tqdm(enumerate(images_in), total=len(images_in)):
+    # im = images_in[0]
+    for i_image, im in tqdm(enumerate(images_in), total=len(images_in)):
         
         if ('detections' not in im) or (im['detections'] is None):
             continue
@@ -182,7 +191,7 @@ def subset_json_detector_output_by_confidence(data, options):
 
         # Otherwise find the max confidence
         else:
-            p = max(d['conf'] for d in detections)
+            p = max([d['conf'] for d in detections])
         
         im['detections'] = detections
 
@@ -190,11 +199,13 @@ def subset_json_detector_output_by_confidence(data, options):
         if abs(p_orig - p) > 0.00001:
 
             # We should only be *lowering* max confidence values (i.e., making them negative)
-            assert (p_orig <= 0) or (p < p_orig), 'Confidence changed from {} to {}'.format(p_orig, p)
+            assert (p_orig <= 0) or (p < p_orig), \
+                'Confidence changed from {} to {}'.format(p_orig, p)
             n_max_changes += 1
         
         if 'max_detection_conf' in im:
             im['max_detection_conf'] = p
+            
         images_out.append(im)
         
     # ...for each image        
@@ -206,6 +217,62 @@ def subset_json_detector_output_by_confidence(data, options):
     return data
 
 # ...subset_json_detector_output_by_confidence()
+
+
+def subset_json_detector_output_by_categories(data, options):
+    """
+    Remove all detections without detections above a threshold for specific categories.
+    """
+    
+    if options.categories_to_keep is None:
+        return data
+    
+    images_in = data['images']
+    images_out = []    
+    
+    print('Subsetting by categories (keeping {} categories)'.format(
+        len(options.categories_to_keep)))
+    
+    n_detections_in = 0
+    n_detections_kept = 0
+    
+    # im = images_in[0]
+    for i_image, im in tqdm(enumerate(images_in), total=len(images_in)):
+        
+        if ('detections' not in im) or (im['detections'] is None):
+            continue
+        
+        n_detections_in += len(im['detections'])
+                                  
+        # Find all matching detections for this image
+        detections = []
+        for d in im['detections']:
+            if (d['category'] in options.categories_to_keep) and \
+               (d['conf'] > options.categories_to_keep[d['category']]):
+               detections.append(d)
+                       
+        im['detections'] = detections
+
+        if 'max_detection_conf' in im:
+            if len(detections) == 0:
+                p = 0
+            else:
+                p = max([d['conf'] for d in detections])
+            im['max_detection_conf'] = p
+        
+        n_detections_kept += len(im['detections'])
+            
+        images_out.append(im)
+        
+    # ...for each image        
+    
+    data['images'] = images_out    
+    print('done, kept {} detections (of {})'.format(
+        n_detections_kept,n_detections_in))
+    
+    return data
+
+# ...subset_json_detector_output_by_categories()
 
 
 def remove_failed_images(data,options):
@@ -398,6 +465,10 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
     if options.confidence_threshold is not None:
         
         data = subset_json_detector_output_by_confidence(data, options)
+        
+    if options.categories_to_keep is not None:
+        
+        data = subset_json_detector_output_by_categories(data, options)
         
     if not options.split_folders:
         
