@@ -188,7 +188,8 @@ def safe_create_link(link_exists,link_new):
     it.
     
     Errors if link_new already exists but it's not a link.
-    """    
+    """
+    
     if os.path.exists(link_new) or os.path.islink(link_new):
         assert os.path.islink(link_new)
         if not os.readlink(link_new) == link_exists:
