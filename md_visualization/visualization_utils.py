@@ -172,11 +172,19 @@ def resize_image(image, target_width, target_height=-1, output_file=None):
     in place. If either width or height are -1, resizes with aspect ratio preservation.
     If both are -1, returns the original image (does not copy in this case).
     
+    None is equivalent to -1 for target_width and target_height.
+    
     [image] can be a PIL image or a filename.
     """
 
     if isinstance(image,str):
         image = load_image(image)
+        
+    if target_width is None:
+        target_width = -1
+    
+    if target_height is None:
+        target_height = -1
         
     # Null operation
     if target_width == -1 and target_height == -1:
