@@ -24,7 +24,7 @@ from urllib.parse import urlparse
 from collections import defaultdict
 
 from data_management.lila.lila_common import \
-    read_lila_all_images_file, read_lila_metadata, is_empty, azure_url_to_gcp_http_url
+    read_lila_all_images_file, is_empty, azure_url_to_gcp_http_url
 from md_utils.url_utils import download_url
 
 # If any of these strings appear in the common name of a species, we'll download that image
@@ -40,7 +40,7 @@ output_dir = os.path.join(lila_local_base,'lila_downloads_by_dataset')
 os.makedirs(output_dir,exist_ok=True)
 
 # Number of concurrent download threads
-n_download_threads = 50
+n_download_threads = 20
 
 max_images_per_dataset = 10 # None
 
@@ -50,15 +50,10 @@ image_download_source = 'azure' # 'azure' or 'gcp'
 random.seed(0)
 
 
-#%% Download and open the giant table of image metadata
+#%% Download and open the giant table of image URLs and labels
 
-# Opening this huge .csv file make take ~30 seconds
+# Make take 30-60 seconds to download, unzip, and open
 df = read_lila_all_images_file(metadata_dir)
-
-
-#%% Download and parse the metadata file
-
-metadata_table = read_lila_metadata(metadata_dir)
 
 
 #%% Find all the images we want to download
@@ -106,10 +101,12 @@ else:
 
 #%% Download those image files
 
-def download_relative_filename(url, output_base, verbose=False, url_base=None):
+def download_relative_filename(url, output_base, verbose=False, url_base=None, overwrite=False):
     """
     Download a URL to output_base, preserving relative path
     """
+    
+    result = {'status':'unknown','url':url,'destination_filename':None}
     
     if url_base is None:
         url_base = '/'
@@ -122,8 +119,24 @@ def download_relative_filename(url, output_base, verbose=False, url_base=None):
     relative_filename = relative_filename.replace(url_base,'',1)        
     
     destination_filename = os.path.join(output_base,relative_filename)
-    download_url(url, destination_filename, verbose=verbose)
+    result['destination_filename'] = destination_filename
     
+    if ((os.path.isfile(destination_filename)) and (not overwrite)):
+        result['status'] = 'skipped'
+        return result
+    try:
+        download_url(url, destination_filename, verbose=verbose)
+    except Exception as e:
+        print('Warning: error downloading URL {}: {}'.format(
+            url,str(e)))     
+        result['status'] = 'error: {}'.format(str(e))
+        return result
+    
+    result['status'] = 'success'
+    return result
+
+
+# ds_name_to_urls maps dataset names to lists of URLs; flatten to a single list of URLs
 all_urls = list(ds_name_to_urls.values())
 all_urls = [item for sublist in all_urls for item in sublist]
 
@@ -135,16 +148,19 @@ if image_download_source != 'azure':
     url_base = '/public-datasets-lila/'
     all_urls = [azure_url_to_gcp_http_url(url) for url in all_urls]    
 
-print('Downloading {} images with Python requests'.format(len(all_urls)))
+print('Downloading {} images on {} workers'.format(len(all_urls),n_download_threads))
 
 if n_download_threads <= 1:
 
+    results = []
+    
     # url = all_urls[0]
     for url in tqdm(all_urls):        
-        download_relative_filename(url,output_dir,verbose=True,url_base=url_base)
+        results.append(download_relative_filename(url,output_dir,url_base=url_base))
     
 else:
 
     pool = ThreadPool(n_download_threads)        
-    tqdm(pool.imap(lambda s: download_relative_filename(s,output_dir,verbose=False,url_base=url_base), 
-                   all_urls), total=len(all_urls))
+    results = list(tqdm(pool.imap(lambda s: download_relative_filename(
+        s,output_dir,url_base=url_base), 
+        all_urls), total=len(all_urls)))
