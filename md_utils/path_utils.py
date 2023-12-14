@@ -35,7 +35,8 @@ CHAR_LIMIT = 255
 
 #%% General path functions
 
-def recursive_file_list(base_dir, convert_slashes=True, return_relative_paths=False):
+def recursive_file_list(base_dir, convert_slashes=True, 
+                        return_relative_paths=False, sort_files=True):
     r"""
     Enumerate files (not directories) in [base_dir], optionally converting
     \ to /
@@ -53,8 +54,10 @@ def recursive_file_list(base_dir, convert_slashes=True, return_relative_paths=Fa
 
     if convert_slashes:
         all_files = [fn.replace('\\', '/') for fn in all_files]
+    
+    if sort_files:
+        all_files = sorted(all_files)
         
-    all_files = sorted(all_files)
     return all_files
 
 
