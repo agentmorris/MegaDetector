@@ -143,16 +143,18 @@ model_string_to_model_version = {
     'mdv3':'v3.0.0'
 }
 
-# Approximate inference speeds for MDv5 based on benchmarks, only used for reporting
-# very coarse expectations about inference time.
+# Approximate inference speeds (in images per second) for MDv5 based on 
+# benchmarks, only used for reporting very coarse expectations about inference time.
 device_token_to_mdv5_inference_speed = {
-    '3090':1.0/11.4,
-    '3080':1.0/9.5,
-    '3050':1.0/4.2,
-    'P2000':1.0/2.1,
-    'V100':(1.0/2.79)*3.5,
-    '2080':(1.0/2.3)*3.5,
-    '2060':(1.0/1.6)*3.5
+    '3090':11.4,
+    '3080':9.5,
+    '3050':4.2,
+    'P2000':2.1,
+    # These are written this way because they're MDv4 benchmarks, and MDv5
+    # is around 3.5x faster than MDv4.
+    'V100':2.79*3.5,
+    '2080':2.3*3.5,
+    '2060':1.6*3.5
 }
     
 
