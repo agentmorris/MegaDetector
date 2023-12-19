@@ -146,6 +146,7 @@ model_string_to_model_version = {
 # Approximate inference speeds (in images per second) for MDv5 based on 
 # benchmarks, only used for reporting very coarse expectations about inference time.
 device_token_to_mdv5_inference_speed = {
+    '4090':17.6,
     '3090':11.4,
     '3080':9.5,
     '3050':4.2,

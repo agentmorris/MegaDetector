@@ -245,7 +245,8 @@ def find_image_strings(strings: Iterable[str]) -> List[str]:
 
 
 def find_images(dirname: str, recursive: bool = False, 
-                return_relative_paths: bool = False, convert_slashes: bool = False) -> List[str]:
+                return_relative_paths: bool = False, 
+                convert_slashes: bool = False) -> List[str]:
     """
     Finds all files in a directory that look like image file names. Returns
     absolute paths unless return_relative_paths is set.  Uses the OS-native

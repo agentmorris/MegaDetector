@@ -254,7 +254,7 @@ print('Output folder:\n{}'.format(filename_base))
 
 #%% Enumerate files
 
-all_images = sorted(path_utils.find_images(input_path,recursive=True))
+all_images = sorted(path_utils.find_images(input_path,recursive=True,convert_slashes=True))
 
 # It's common to run this notebook on an external drive with the main folders in the drive root
 all_images = [fn for fn in all_images if not \
