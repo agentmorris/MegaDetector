@@ -146,6 +146,9 @@ relative_path_to_location = image_file_to_camera_folder
 # we get to classification stuff, that will indicate that we didn't do RDE.
 filtered_api_output_file = None
 
+# Force forward slashes in the final output file, even on Windows
+force_forward_slashes = True
+
 if os.name == 'nt':
     slcc = '^'
     scc = 'REM'
@@ -654,8 +657,10 @@ for im in combined_results['images']:
         assert im['file'].startswith(input_path)
         im['file'] = im['file'].replace(input_path,'',1)
     else:
-        assert im['file'].startswith(input_path + os.path.sep)
+        assert im['file'].startswith(input_path)
         im['file'] = im['file'].replace(input_path + os.path.sep,'',1)
+    if force_forward_slashes:
+        im['file'] = im['file'].replace('\\','/')
     
 combined_api_output_file = os.path.join(
     combined_api_output_folder,
