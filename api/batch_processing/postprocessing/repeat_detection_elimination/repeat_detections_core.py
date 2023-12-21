@@ -1003,7 +1003,8 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
     # Load file to a pandas dataframe.  Also populates 'max_detection_conf', even if it's
     # not present in the .json file.
     detectionResults, otherFields = load_api_results(inputFilename, normalize_paths=True,
-                                         filename_replacements=options.filenameReplacements)
+                                         filename_replacements=options.filenameReplacements,
+                                         force_forward_slashes=True)
     toReturn.detectionResults = detectionResults
     toReturn.otherFields = otherFields
 
@@ -1027,7 +1028,7 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
             assert os.path.isfile(absolutePath), 'Could not find file {}'.format(absolutePath)
 
 
-    ##%% Separate files into directories
+    ##%% Separate files into locations
 
     # This will be a map from a directory name to smaller data frames
     rowsByDirectory = {}
@@ -1035,12 +1036,12 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
     # This is a mapping back into the rows of the original table
     filenameToRow = {}
 
-    print('Separating files into directories...')
+    print('Separating images into locations...')
 
     nCustomDirReplacements = 0
     
     # iRow = 0; row = detectionResults.iloc[0]
-    for iRow, row in detectionResults.iterrows():
+    for iRow, row in tqdm(detectionResults.iterrows(),total=len(detectionResults)):
         
         relativePath = row['file']
         
@@ -1078,7 +1079,7 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
     if options.customDirNameFunction is not None:
         print('Custom dir name function made {} replacements (of {} images)'.format(
             nCustomDirReplacements,len(detectionResults)))
-    
+
     # Convert lists of rows to proper DataFrames
     dirs = list(rowsByDirectory.keys())
     for d in dirs:
@@ -1087,9 +1088,8 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
     toReturn.rowsByDirectory = rowsByDirectory
     toReturn.filenameToRow = filenameToRow
 
-    print('Finished separating {} files into {} directories'.format(len(detectionResults),
-                                                                    len(rowsByDirectory)))
-
+    print('Finished separating {} files into {} locations'.format(len(detectionResults),
+                                                                  len(rowsByDirectory)))
     
     ##% Look for matches (or load them from file)
 
