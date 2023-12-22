@@ -162,9 +162,13 @@ def consumer_func(q,return_queue,model_file,confidence_threshold,image_size=None
             results.append({'file': im_file,
                             'failure': image})
         else:
-            results.append(process_image(im_file=im_file,detector=detector,
-                                         confidence_threshold=confidence_threshold,
-                                         image=image,quiet=True,image_size=image_size))
+            result = process_image(im_file=im_file,detector=detector,
+                                   confidence_threshold=confidence_threshold,
+                                   image=image,quiet=True,image_size=image_size)
+
+            if result is not None:
+                results.append(result)
+
         if verbose:
             print('Processed image {}'.format(im_file)); sys.stdout.flush()
         q.task_done()
@@ -280,7 +284,9 @@ def process_images(im_files, detector, confidence_threshold, use_image_queue=Fal
 
             if checkpoint_queue is not None:
                 checkpoint_queue.put(result)
-            results.append(result)                                    
+            
+            if result is not None:
+                results.append(result)                                    
             
         return results
 
@@ -308,7 +314,17 @@ def process_image(im_file, detector, confidence_threshold, image=None,
     """
     
     if not quiet:
-        print('Processing image {}'.format(im_file))
+        try:
+            print('Processing image {}'.format(im_file))
+        except UnicodeEncodeError:
+            im_file.encode('utf-8').decode('utf-8')
+            try:
+                print(f"LENGTH : {len(im_file)}")
+                print('Processing image {}'.format(im_file))
+            except Exception as e:
+                if not quiet:
+                    print('Image path cannot be read. Skipping this file. Exception: {}'.format(e))
+                return None
     
     if image is None:
         try:
@@ -511,7 +527,9 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
                                    image_size=image_size, include_image_size=include_image_size,
                                    include_image_timestamp=include_image_timestamp,
                                    include_exif_data=include_exif_data)
-            results.append(result)
+            
+            if result is not None:
+                results.append(result)
 
             # Write a checkpoint if necessary
             if checkpoint_frequency != -1 and count % checkpoint_frequency == 0:
