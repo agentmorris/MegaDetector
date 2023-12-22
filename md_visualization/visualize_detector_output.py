@@ -66,6 +66,7 @@ def render_image(entry,
         rendering_result['missing_image'] = True
         return rendering_result
 
+    # If output_image_width is -1 or None, this will just return the original image
     image = vis_utils.resize_image(
         vis_utils.open_image(image_obj), output_image_width)
 
@@ -238,11 +239,13 @@ def visualize_detector_output(detector_output_path: str,
     
     print(f'Rendered detection results to {out_dir}')
 
+    annotated_image_paths = [r['annotated_image_path'] for r in rendering_results if \
+                             r['annotated_image_path'] is not None]
+    
     if html_output_file is not None:
-        annotated_image_paths = [r['annotated_image_path'] for r in rendering_results if \
-                                 r['annotated_image_path'] is not None]
-        annotated_image_paths = [os.path.relpath(fn,images_dir) for fn in annotated_image_paths]
-        _ = write_html_image_list.write_html_image_list(html_output_file,annotated_image_paths,
+        html_dir = os.path.dirname(html_output_file)
+        annotated_image_paths_relative = [os.path.relpath(fn,html_dir) for fn in annotated_image_paths]
+        _ = write_html_image_list.write_html_image_list(html_output_file,annotated_image_paths_relative,
                                                     options=html_output_options)
         
     return annotated_image_paths

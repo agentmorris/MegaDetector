@@ -35,7 +35,8 @@ CHAR_LIMIT = 255
 
 #%% General path functions
 
-def recursive_file_list(base_dir, convert_slashes=True, return_relative_paths=False):
+def recursive_file_list(base_dir, convert_slashes=True, 
+                        return_relative_paths=False, sort_files=True):
     r"""
     Enumerate files (not directories) in [base_dir], optionally converting
     \ to /
@@ -53,8 +54,10 @@ def recursive_file_list(base_dir, convert_slashes=True, return_relative_paths=Fa
 
     if convert_slashes:
         all_files = [fn.replace('\\', '/') for fn in all_files]
+    
+    if sort_files:
+        all_files = sorted(all_files)
         
-    all_files = sorted(all_files)
     return all_files
 
 
@@ -242,7 +245,8 @@ def find_image_strings(strings: Iterable[str]) -> List[str]:
 
 
 def find_images(dirname: str, recursive: bool = False, 
-                return_relative_paths: bool = False, convert_slashes: bool = False) -> List[str]:
+                return_relative_paths: bool = False, 
+                convert_slashes: bool = False) -> List[str]:
     """
     Finds all files in a directory that look like image file names. Returns
     absolute paths unless return_relative_paths is set.  Uses the OS-native

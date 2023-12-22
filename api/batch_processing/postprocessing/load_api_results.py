@@ -28,7 +28,8 @@ from md_utils import ct_utils
 #%% Functions for loading .json results into a Pandas DataFrame, and writing back to .json
 
 def load_api_results(api_output_path: str, normalize_paths: bool = True,
-                     filename_replacements: Optional[Mapping[str, str]] = None
+                     filename_replacements: Optional[Mapping[str, str]] = None,
+                     force_forward_slashes: bool = True
                      ) -> Tuple[pd.DataFrame, Dict]:
     """
     Loads json-formatted MegaDetector results to a Pandas DataFrame.
@@ -39,6 +40,8 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
             in each image entry in the output file
         filename_replacements: replace some path tokens to match local paths to
             the original blob structure
+        force_forward_slashes: whether to convert backslashes to forward slashes
+            in filenames
 
     Returns:
         detection_results: pd.DataFrame, contains at least the columns:
@@ -67,6 +70,10 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
             image['file'] = os.path.normpath(image['file'])
             # image['file'] = image['file'].replace('\\','/')
 
+    if force_forward_slashes:
+        for image in detection_results['images']:
+            image['file'] = image['file'].replace('\\','/')
+            
     # Replace some path tokens to match local paths to original blob structure
     if filename_replacements is not None:
         for string_to_replace in filename_replacements.keys():
