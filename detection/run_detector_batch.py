@@ -319,7 +319,6 @@ def process_image(im_file, detector, confidence_threshold, image=None,
         except UnicodeEncodeError:
             im_file.encode('utf-8').decode('utf-8')
             try:
-                print(f"LENGTH : {len(im_file)}")
                 print('Processing image {}'.format(im_file))
             except Exception as e:
                 if not quiet:
