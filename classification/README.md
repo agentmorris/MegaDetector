@@ -27,7 +27,7 @@ The "[publicly-available ML models for camera traps](https://agentmorris.github.
 
 ## Data for training your own classifiers
 
-There are >10M [camera trap images available on LILA](https://lila.science/category/camera-traps/); for many classifiers, you may find sufficient data there, or you may be able to complement your own data with LILA data.  We don't recommend messing around with individual LILA datasets; instead, check out the [taxonomy mapping for camera trap datasets](https://lila.science/taxonomy-mapping-for-camera-trap-data-sets/) page, which treats all the camera trap data on LILA as one big dataset, represented in a single .csv file, with a consistent taxonomy.  This combined dataset has also been [imported into Hugging Face](https://huggingface.co/datasets/society-ethics/lila_camera_traps).  If you are training a classifier on MegaDetector crops from LILA data, you don't have to run MD yourself: [we have already run MegaDetector on all camera trap data on LILA](https://lila.science/megadetector-results-for-camera-trap-datasets/).
+There are &gt;10M [camera trap images available on LILA](https://lila.science/category/camera-traps/); for many classifiers, you may find sufficient data there, or you may be able to complement your own data with LILA data.  We don't recommend messing around with individual LILA datasets; instead, check out the [taxonomy mapping for camera trap datasets](https://lila.science/taxonomy-mapping-for-camera-trap-data-sets/) page, which treats all the camera trap data on LILA as one big dataset, represented in a single .csv file, with a consistent taxonomy.  This combined dataset has also been [imported into Hugging Face](https://huggingface.co/datasets/society-ethics/lila_camera_traps).  If you are training a classifier on MegaDetector crops from LILA data, you don't have to run MD yourself: [we have already run MegaDetector on all camera trap data on LILA](https://lila.science/megadetector-results-for-camera-trap-datasets/).
 
 # Running MegaClassifier
 
@@ -52,21 +52,21 @@ Also, although I'm just calling this section "MegaClassifier" to keep things sim
 #### Files you need to run MegaClassifier
 
 Model file<br/>
-<https://lilablobssc.blob.core.windows.net/models/camera_traps/megaclassifier/v0.1/v0.1_efficientnet-b3_compiled.pt>
+[megaclassifier/v0.1/v0.1_efficientnet-b3_compiled.pt](https://lilablobssc.blob.core.windows.net/models/camera_traps/megaclassifier/v0.1/v0.1_efficientnet-b3_compiled.pt)
 
 Mapping of model outputs to class names<br/>
-<https://lilablobssc.blob.core.windows.net/models/camera_traps/megaclassifier/v0.1/v0.1_index_to_name.json>
+[megaclassifier/v0.1/v0.1_index_to_name.json](https://lilablobssc.blob.core.windows.net/models/camera_traps/megaclassifier/v0.1/v0.1_index_to_name.json)
 
 Mapping file to get MegaClassifier classes to Idaho-relevant classes<br/>
-<https://lilablobssc.blob.core.windows.net/models/camera_traps/megaclassifier/v0.1/idfg_to_megaclassifier_labels.json>
+[idfg_to_megaclassifier_labels.json](https://lilablobssc.blob.core.windows.net/models/camera_traps/megaclassifier/v0.1/idfg_to_megaclassifier_labels.json)
 
 #### Files you need to run the IDFG classifier
 
 Model file<br/>
-<https://lilablobssc.blob.core.windows.net/models/camera_traps/idfg_classifier/idfg_classifier_20200905_042558/idfg_classifier_ckpt_14_compiled.pt>
+[idfg_classifier_ckpt_14_compiled.pt](https://lilablobssc.blob.core.windows.net/models/camera_traps/idfg_classifier/idfg_classifier_20200905_042558/idfg_classifier_ckpt_14_compiled.pt)
 
 Mapping of model outputs to class names<br/>
-<https://lilablobssc.blob.core.windows.net/models/camera_traps/idfg_classifier/idfg_classifier_20200905_042558/label_index.json>
+[idfg_classifier_20200905_042558/label_index.json](https://lilablobssc.blob.core.windows.net/models/camera_traps/idfg_classifier/idfg_classifier_20200905_042558/label_index.json)
 
 
 ### Environment setup
