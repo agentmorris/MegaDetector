@@ -27,13 +27,7 @@ The "[publicly-available ML models for camera traps](https://agentmorris.github.
 
 ## Data for training your own classifiers
 
-There are >10M [camera trap images available on LILA](https://lila.science/category/camera-traps/); for many classifiers, you may find sufficient data there, or you may be able to complement your own data with public data.  We don't recommend messing around with individual datasets; instead, check out the [taxonomy mapping for camera trap datasets](https://lila.science/taxonomy-mapping-for-camera-trap-data-sets/) page, which treats all the camera trap data on LILA as one big dataset, represented in a single .csv file, with a consistent taxonomy.  This combined dataset has also been [imported into Hugging Face](https://huggingface.co/datasets/society-ethics/lila_camera_traps).  If you are training on MegaDetector crops, you don't have to run MD yourself: [we have already run MegaDetector on all camera trap data on LILA](https://lila.science/megadetector-results-for-camera-trap-datasets/).
-
-describes how to train and run an animal "species" classifier for camera trap images. "Species" is in quotes, because the classifier can be trained to identify animals at arbitrary taxonomic levels.
-
-This guide is written for internal use at Microsoft AI for Earth. Certain services, such as MegaDB and various private repos are only accessible internally within Microsoft. However, this guide may still be of interest to more technical users of the AI for Earth Camera Trap services.
-
-The classifiers trained with this pipeline are intended to be used in conjunction with <a href="https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md">MegaDetector</a>, i.e., we use MegaDetector to find animals and crop them out, and we train/run our classifiers on those crops.
+There are >10M [camera trap images available on LILA](https://lila.science/category/camera-traps/); for many classifiers, you may find sufficient data there, or you may be able to complement your own data with LILA data.  We don't recommend messing around with individual LILA datasets; instead, check out the [taxonomy mapping for camera trap datasets](https://lila.science/taxonomy-mapping-for-camera-trap-data-sets/) page, which treats all the camera trap data on LILA as one big dataset, represented in a single .csv file, with a consistent taxonomy.  This combined dataset has also been [imported into Hugging Face](https://huggingface.co/datasets/society-ethics/lila_camera_traps).  If you are training a classifier on MegaDetector crops from LILA data, you don't have to run MD yourself: [we have already run MegaDetector on all camera trap data on LILA](https://lila.science/megadetector-results-for-camera-trap-datasets/).
 
 # Running MegaClassifier
 
