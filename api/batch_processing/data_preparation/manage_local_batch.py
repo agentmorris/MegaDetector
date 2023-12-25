@@ -78,6 +78,7 @@ import json
 import os
 import stat
 import time
+import re    
 
 import humanfriendly
 
@@ -97,19 +98,21 @@ from api.batch_processing.postprocessing.postprocess_batch_results import (
 from detection.run_detector import get_detector_version_from_filename
 from md_utils.ct_utils import image_file_to_camera_folder
 
-max_task_name_length = 92
-
 # To specify a non-default confidence threshold for including detections in the .json file
 json_threshold = None
 
 # Turn warnings into errors if more than this many images are missing
 max_tolerable_failed_images = 100
 
+# Should we supply the --image_queue_option to run_detector_batch.py?  I only set this 
+# when I have a very slow drive and a comparably fast GPU.  When this is enabled, checkpointing
+# is not supported within a job, so I set n_jobs to a large number (typically 100).
 use_image_queue = False
 
 # Only relevant when we're using a single GPU
 default_gpu_number = 0
 
+# Should we supply --quiet to run_detector_batch.py?
 quiet_mode = True
 
 # Specify a target image size when running MD... strongly recommended to leave this at "None"
@@ -118,13 +121,17 @@ image_size = None
 # Only relevant when running on CPU
 ncores = 1
 
-# OS-specific script line continuation character
+# OS-specific script line continuation character (modified later if we're running on Windows)
 slcc = '\\'
 
-# OS-specific script comment character
+# OS-specific script comment character (modified later if we're running on Windows)
 scc = '#' 
 
+# # OS-specific script extension (modified later if we're running on Windows)
 script_extension = '.sh'
+
+# If False, we'll load chunk files with file lists if they exist
+force_enumeration = False
 
 # Prefer threads on Windows, processes on Linux
 parallelization_defaults_to_threads = False
@@ -150,9 +157,13 @@ filtered_api_output_file = None
 force_forward_slashes = True
 
 if os.name == 'nt':
+    
     slcc = '^'
     scc = 'REM'
     script_extension = '.bat'
+    
+    # My experience has been that Python multiprocessing is flaky on Windows, so 
+    # default to threads on Windows
     parallelization_defaults_to_threads = True
     default_workers_for_parallel_tasks = 10
 
@@ -188,7 +199,7 @@ input_path = '/drive/organization'
 assert not (input_path.endswith('/') or input_path.endswith('\\'))
 
 organization_name_short = 'organization'
-job_date = None # '2023-12-01'
+job_date = None # '2024-01-01'
 assert job_date is not None and organization_name_short != 'organization'
 
 # Optional descriptor
@@ -199,9 +210,7 @@ if job_tag is None:
 else:
     job_description_string = '-' + job_tag
 
-model_file = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')
-# model_file = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5b.0.0.pt')
-# model_file = os.path.expanduser('~/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb')
+model_file = 'MDV5A' # 'MDV5A', 'MDV5B', 'MDV4'
 
 postprocessing_base = os.path.expanduser('~/postprocessing')
 
@@ -218,7 +227,7 @@ checkpoint_frequency = 10000
 # Estimate inference speed for the current GPU
 approx_images_per_second = estimate_md_images_per_second(model_file) 
     
-# Rough estimate for how much slower everything runs when using augmentation    
+# Rough estimate for the inference time cost of augmentation    
 if augment:
     approx_images_per_second = approx_images_per_second * 0.7
     
@@ -257,24 +266,17 @@ print('Output folder:\n{}'.format(filename_base))
 
 #%% Enumerate files
 
-all_images = sorted(path_utils.find_images(input_path,recursive=True,convert_slashes=True))
+# Have we already listed files for this job?
+chunk_files = os.listdir(filename_base)
+pattern = re.compile('chunk\d+.json')
+chunk_files = [fn for fn in chunk_files if pattern.match(fn)]
 
-# It's common to run this notebook on an external drive with the main folders in the drive root
-all_images = [fn for fn in all_images if not \
-              (fn.startswith('$RECYCLE') or fn.startswith('System Volume Information'))]
+if (not force_enumeration) and (len(chunk_files) > 0):
     
-print('Enumerated {} image files in {}'.format(len(all_images),input_path))
-
-if False:
-
-    pass 
+    print('Found {} chunk files in folder {}, bypassing enumeration'.format(
+        len(chunk_files),
+        filename_base))
     
-    #%% Load files from prior enumeration
-    
-    import re    
-    chunk_files = os.listdir(filename_base)
-    pattern = re.compile('chunk\d+.json')
-    chunk_files = [fn for fn in chunk_files if pattern.match(fn)]
     all_images = []
     for fn in chunk_files:
         with open(os.path.join(filename_base,fn),'r') as f:
@@ -282,8 +284,24 @@ if False:
             assert isinstance(chunk,list)
             all_images.extend(chunk)
     all_images = sorted(all_images)
-    print('Loaded {} image files from chunks in {}'.format(len(all_images),filename_base))
     
+    print('Loaded {} image files from {} chunks in {}'.format(
+        len(all_images),len(chunk_files),filename_base))
+
+else:
+
+    print('Enumerating image files in {}'.format(input_path))
+    
+    all_images = sorted(path_utils.find_images(input_path,recursive=True,convert_slashes=True))
+    
+    # It's common to run this notebook on an external drive with the main folders in the drive root
+    all_images = [fn for fn in all_images if not \
+                  (fn.startswith('$RECYCLE') or fn.startswith('System Volume Information'))]
+        
+    print('')
+        
+    print('Enumerated {} image files in {}'.format(len(all_images),input_path))
+        
 
 #%% Divide images into chunks 
 
@@ -294,7 +312,7 @@ folder_chunks = split_list_into_n_chunks(all_images,n_jobs)
 
 if approx_images_per_second is None:
     
-    print('Can not estimate inference time for the current environment')
+    print("Can't estimate inference time for the current environment")
     
 else:
         
@@ -515,12 +533,10 @@ multiple processes, so the tasks will run serially.  This only matters if you ha
 GPUs.
 """
 
-if False:
+run_tasks_in_notebook = False
+
+if run_tasks_in_notebook:
     
-    pass
-
-    #%%% Run the tasks (commented out)
-
     assert not use_yolo_inference_scripts, \
         'If you want to use the YOLOv5 inference scripts, you can\'t run the model interactively (yet)'
         
@@ -568,7 +584,7 @@ if False:
                 
     # ...for each chunk
     
-# ...if False
+# ...if we're running tasks in this notebook
 
     
 #%% Load results, look for failed or missing images in each task
@@ -2046,12 +2062,6 @@ from api.batch_processing.postprocessing.subset_json_detector_output import (
 
 input_filename = filtered_output_filename
 output_base = os.path.join(combined_api_output_folder,base_task_name + '_json_subsets')
-
-if False:
-    if data is None:
-        with open(input_filename) as f:
-            data = json.load(f)
-    print('Data set contains {} images'.format(len(data['images'])))
 
 print('Processing file {} to {}'.format(input_filename,output_base))          
 
