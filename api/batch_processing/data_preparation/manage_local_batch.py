@@ -785,8 +785,8 @@ options.debugMaxRenderInstance = -1
 options.smartSort = 'xsort'
 
 suspicious_detection_results = repeat_detections_core.find_repeat_detections(combined_api_output_file,
-                                                                           None,
-                                                                           options)
+                                                                             outputFilename=None,
+                                                                             options=options)
 
 
 #%% Manual RDE step
@@ -811,7 +811,8 @@ path_utils.open_file(os.path.dirname(suspicious_detection_results.filterFile))
 
 from api.batch_processing.postprocessing.repeat_detection_elimination import remove_repeat_detections
 
-filtered_output_filename = path_utils.insert_before_extension(combined_api_output_file, 'filtered_{}'.format(rde_string))
+filtered_output_filename = path_utils.insert_before_extension(combined_api_output_file, 
+                                                              'filtered_{}'.format(rde_string))
 
 remove_repeat_detections.remove_repeat_detections(
     inputFile=combined_api_output_file,

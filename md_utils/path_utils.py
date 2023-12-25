@@ -280,7 +280,7 @@ def clean_filename(filename: str, allow_list: str = VALID_FILENAME_CHARS,
     Removes non-ASCII and other invalid filename characters (on any
     reasonable OS) from a filename, then trims to a maximum length.
 
-    Does not allow :\/, use clean_path if you want to preserve those.
+    Does not allow :\/ by default, use clean_path if you want to preserve those.
 
     Adapted from
     https://gist.github.com/wassname/1393c4a57cfcbf03641dbc31886123b8
