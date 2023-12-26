@@ -14,18 +14,6 @@
 # the same if you are reading this in Jupyter Notebook (using the .ipynb version of the 
 # script):
 #
-# * You can specify the MegaDetector location, but you may find it useful to use the same paths 
-#   I use; on all the machines where I run MD, I keep all versions of MegaDetector handy at these 
-#   paths:
-#  
-#   ~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt
-#   ~/models/camera_traps/megadetector/md_v5.0.0/md_v5b.0.0.pt
-#   ~/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb
-#
-#   On Windows, this translates to, for example:
-#
-#   c:\users\dmorr\models\camera_traps\megadetector\md_v5.0.0\md_v5a.0.0.pt
-#    
 # * Typically when I have a MegaDetector job to run, I make a copy of this script.  Let's 
 #   say I'm running a job for an organization called "bibblebop"; I have a big folder of
 #   job-specific copies of this script, and I might save a new one called "bibblebop-2023-07-26.py" 
