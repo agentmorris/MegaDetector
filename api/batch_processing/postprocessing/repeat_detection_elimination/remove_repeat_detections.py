@@ -30,7 +30,7 @@ def remove_repeat_detections(inputFile,outputFile,filteringDir):
     else:
         assert os.path.isdir(filteringDir), '{} is not a valid folder'.format(filteringDir)
         options.filterFileToLoad = \
-            os.path.join(filteringDir,repeat_detections_core.DETECTION_INDEX_FILE_NAME)
+            os.path.join(filteringDir,repeat_detections_core.detection_index_file_name_base)
     repeat_detections_core.find_repeat_detections(inputFile, outputFile, options)
 
 
