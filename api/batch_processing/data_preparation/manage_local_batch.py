@@ -14,18 +14,6 @@
 # the same if you are reading this in Jupyter Notebook (using the .ipynb version of the 
 # script):
 #
-# * You can specify the MegaDetector location, but you may find it useful to use the same paths 
-#   I use; on all the machines where I run MD, I keep all versions of MegaDetector handy at these 
-#   paths:
-#  
-#   ~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt
-#   ~/models/camera_traps/megadetector/md_v5.0.0/md_v5b.0.0.pt
-#   ~/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb
-#
-#   On Windows, this translates to, for example:
-#
-#   c:\users\dmorr\models\camera_traps\megadetector\md_v5.0.0\md_v5a.0.0.pt
-#    
 # * Typically when I have a MegaDetector job to run, I make a copy of this script.  Let's 
 #   say I'm running a job for an organization called "bibblebop"; I have a big folder of
 #   job-specific copies of this script, and I might save a new one called "bibblebop-2023-07-26.py" 
@@ -151,7 +139,7 @@ relative_path_to_location = image_file_to_camera_folder
 
 # This will be the .json results file after RDE; if this is still None when
 # we get to classification stuff, that will indicate that we didn't do RDE.
-filtered_api_output_file = None
+filtered_output_filename = None
 
 # Force forward slashes in the final output file, even on Windows
 force_forward_slashes = True
@@ -724,7 +712,7 @@ options.api_output_file = combined_api_output_file
 options.output_dir = output_base
 ppresults = process_batch_results(options)
 html_output_file = ppresults.output_html_file
-path_utils.open_file(html_output_file)
+path_utils.open_file(html_output_file,attempt_to_open_in_wsl_host=True)
 
 
 #%% Repeat detection elimination, phase 1
@@ -785,8 +773,8 @@ options.debugMaxRenderInstance = -1
 options.smartSort = 'xsort'
 
 suspicious_detection_results = repeat_detections_core.find_repeat_detections(combined_api_output_file,
-                                                                           None,
-                                                                           options)
+                                                                             outputFilename=None,
+                                                                             options=options)
 
 
 #%% Manual RDE step
@@ -794,7 +782,8 @@ suspicious_detection_results = repeat_detections_core.find_repeat_detections(com
 ## DELETE THE VALID DETECTIONS ##
 
 # If you run this line, it will open the folder up in your file browser
-path_utils.open_file(os.path.dirname(suspicious_detection_results.filterFile))
+path_utils.open_file(os.path.dirname(suspicious_detection_results.filterFile),
+                     attempt_to_open_in_wsl_host=True)
 
 #
 # If you ran the previous cell, but then you change your mind and you don't want to do 
@@ -802,7 +791,7 @@ path_utils.open_file(os.path.dirname(suspicious_detection_results.filterFile))
 # previous cell.  If you do that, you're implicitly telling the notebook that you looked 
 # at everything in that folder, and confirmed there were no red boxes on animals.
 #
-# Instead, either change "filtered_api_output_file" below to "combined_api_output_file", 
+# Instead, either change "filtered_output_filename" below to "combined_api_output_file", 
 # or delete *all* the images in the filtering folder.
 #
 
@@ -811,7 +800,8 @@ path_utils.open_file(os.path.dirname(suspicious_detection_results.filterFile))
 
 from api.batch_processing.postprocessing.repeat_detection_elimination import remove_repeat_detections
 
-filtered_output_filename = path_utils.insert_before_extension(combined_api_output_file, 'filtered_{}'.format(rde_string))
+filtered_output_filename = path_utils.insert_before_extension(combined_api_output_file, 
+                                                              'filtered_{}'.format(rde_string))
 
 remove_repeat_detections.remove_repeat_detections(
     inputFile=combined_api_output_file,
@@ -858,7 +848,7 @@ options.output_dir = output_base
 ppresults = process_batch_results(options)
 html_output_file = ppresults.output_html_file
 
-path_utils.open_file(html_output_file)
+path_utils.open_file(html_output_file,attempt_to_open_in_wsl_host=True)
 
 
 #%% Run MegaClassifier (actually, write out a script that runs MegaClassifier)
@@ -868,8 +858,9 @@ final_output_path_mc = None
 final_output_path_ic = None
 
 # If we didn't do RDE
-if filtered_api_output_file is None:
-    filtered_api_output_file = combined_api_output_file
+if filtered_output_filename is None:
+    print("Warning: it looks like you didn't do RDE, using the raw output file")
+    filtered_output_filename = combined_api_output_file
     
 classifier_name_short = 'megaclassifier'
 threshold_str = '0.15' # 0.6
@@ -1928,7 +1919,7 @@ print('Processing {} to {}'.format(base_task_name, output_base))
 options.api_output_file = sequence_smoothed_classification_file
 options.output_dir = output_base
 ppresults = process_batch_results(options)
-path_utils.open_file(ppresults.output_html_file)
+path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True)
 
 
 #% Zip .json files
@@ -1996,7 +1987,7 @@ for i, j in itertools.combinations(list(range(0,len(filenames))),2):
 results = compare_batch_results(options)
 
 from md_utils.path_utils import open_file
-open_file(results.html_output_file)
+open_file(results.html_output_file,attempt_to_open_in_wsl_host=True)
 
 
 #%% Merge in high-confidence detections from another results file
@@ -2050,7 +2041,7 @@ options.output_dir = output_base_large_boxes
 
 ppresults = process_batch_results(options)
 html_output_file = ppresults.output_html_file
-path_utils.open_file(html_output_file)
+path_utils.open_file(html_output_file,attempt_to_open_in_wsl_host=True)
 
 
 #%% .json splitting

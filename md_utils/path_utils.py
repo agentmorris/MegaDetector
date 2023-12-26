@@ -280,7 +280,7 @@ def clean_filename(filename: str, allow_list: str = VALID_FILENAME_CHARS,
     Removes non-ASCII and other invalid filename characters (on any
     reasonable OS) from a filename, then trims to a maximum length.
 
-    Does not allow :\/, use clean_path if you want to preserve those.
+    Does not allow :\/ by default, use clean_path if you want to preserve those.
 
     Adapted from
     https://gist.github.com/wassname/1393c4a57cfcbf03641dbc31886123b8
@@ -325,15 +325,71 @@ def flatten_path(pathname: str, separator_chars: str = SEPARATOR_CHARS) -> str:
 
 #%% Platform-independent way to open files in their associated application
 
-import sys,subprocess
+import sys,subprocess,platform,re
 
-def open_file(filename):
-    if sys.platform == "win32":
+def environment_is_wsl():
+    """
+    Returns True if we're running in WSL
+    """
+    
+    if sys.platform not in ('linux','posix'):
+        return False
+    platform_string = ' '.join(platform.uname()).lower()
+    return 'microsoft' in platform_string and 'wsl' in platform_string
+    
+
+def wsl_path_to_windows_path(filename):
+    """
+    Converts a WSL path to a Windows path, or returns None if that's not possible.  E.g.
+    converts:
+        
+    /mnt/e/a/b/c
+    
+    ...to:
+        
+    e:\a\b\c
+    """
+    
+    result = subprocess.run(['wslpath', '-w', filename], text=True, capture_output=True)
+    if result.returncode != 0:
+        print('Could not convert path {} from WSL to Windows'.format(filename))
+        return None
+    return result.stdout.strip()
+    
+
+def open_file(filename,attempt_to_open_in_wsl_host=False):
+    """
+    Opens [filename] in the native OS file handler.  If attempt_to_open_in_wsl_host
+    is True, and we're in WSL, attempts to open [filename] in Windows.
+    """
+    
+    if sys.platform == 'win32':
+        
         os.startfile(filename)
-    else:
-        opener = "open" if sys.platform == "darwin" else "xdg-open"
-        subprocess.call([opener, filename])
 
+    elif sys.platform == 'darwin':
+      
+        opener = 'open'
+        subprocess.call([opener, filename])
+            
+    elif attempt_to_open_in_wsl_host and environment_is_wsl():
+        
+        windows_path = wsl_path_to_windows_path(filename)
+        
+        # Fall back to xdg-open
+        if windows_path is None:
+            subprocess.call(['xdg-open', filename])
+            
+        if os.path.isdir(filename):            
+            subprocess.run(["explorer.exe", windows_path])
+        else:
+            os.system("cmd.exe /C start %s" % (re.escape(windows_path)))    
+        
+    else:
+        
+        opener = 'xdg-open'        
+        subprocess.call([opener, filename])
+        
 
 #%% File list functions
 

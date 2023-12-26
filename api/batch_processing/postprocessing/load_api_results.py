@@ -45,7 +45,7 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
 
     Returns:
         detection_results: pd.DataFrame, contains at least the columns:
-                ['file', 'detections','failure']            
+                ['file', 'detections','failure']
         other_fields: a dict containing fields in the results other than 'images'
     """
     
