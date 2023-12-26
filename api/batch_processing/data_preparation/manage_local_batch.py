@@ -151,7 +151,7 @@ relative_path_to_location = image_file_to_camera_folder
 
 # This will be the .json results file after RDE; if this is still None when
 # we get to classification stuff, that will indicate that we didn't do RDE.
-filtered_api_output_file = None
+filtered_output_filename = None
 
 # Force forward slashes in the final output file, even on Windows
 force_forward_slashes = True
@@ -803,7 +803,7 @@ path_utils.open_file(os.path.dirname(suspicious_detection_results.filterFile),
 # previous cell.  If you do that, you're implicitly telling the notebook that you looked 
 # at everything in that folder, and confirmed there were no red boxes on animals.
 #
-# Instead, either change "filtered_api_output_file" below to "combined_api_output_file", 
+# Instead, either change "filtered_output_filename" below to "combined_api_output_file", 
 # or delete *all* the images in the filtering folder.
 #
 
@@ -870,8 +870,9 @@ final_output_path_mc = None
 final_output_path_ic = None
 
 # If we didn't do RDE
-if filtered_api_output_file is None:
-    filtered_api_output_file = combined_api_output_file
+if filtered_output_filename is None:
+    print("Warning: it looks like you didn't do RDE, using the raw output file")
+    filtered_output_filename = combined_api_output_file
     
 classifier_name_short = 'megaclassifier'
 threshold_str = '0.15' # 0.6
