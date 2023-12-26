@@ -81,12 +81,12 @@ class RepeatDetectionOptions:
     # are required before we declare it suspicious?
     occurrenceThreshold = 20
     
+    # Ignore "suspicious" detections smaller than some size
+    minSuspiciousDetectionSize = 0.0
+
     # Ignore "suspicious" detections larger than some size; these are often animals
     # taking up the whole image.  This is expressed as a fraction of the image size.
     maxSuspiciousDetectionSize = 0.2
-
-    # Ignore "suspicious" detections smaller than some size
-    minSuspiciousDetectionSize = 0.0
 
     # Ignore folders with more than this many images in them
     maxImagesPerFolder = None
@@ -97,13 +97,14 @@ class RepeatDetectionOptions:
     # For very large sets of results, passing chunks of results to and from workers as 
     # parameters ('memory') can be memory-intensive, so we can serialize to intermediate
     # files instead ('file').
+    #
+    # The use of 'file' here is still experimental.
     pass_detections_to_processes_method = 'memory'
     
     nWorkers = 10
     
+    # Should we use threads or processes for parallelization?
     parallelizationUsesThreads = True
-
-    viz_target_width = 800
 
     # Load detections from a filter file rather than finding them from the detector output
 
@@ -1208,6 +1209,11 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
             assert options.pass_detections_to_processes_method in ('file','memory'), \
                 'Unrecognized IPC mechanism: {}'.format(options.pass_detections_to_processes_method)
                 
+            # ** Experimental **
+            #
+            # Rather than passing detections and results around in memory, write detections and 
+            # results for each worker to intermediate files.  May improve performance for very large
+            # results sets that exceed working memory.
             if options.pass_detections_to_processes_method == 'file':
                 
                 ##%% Convert location names to normalized names we can write to files

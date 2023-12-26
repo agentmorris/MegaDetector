@@ -76,56 +76,76 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('inputFile')
+    
     parser.add_argument('--outputFile', action='store', type=str, default=None,
                         help=".json file to write filtered results to... don't use this " + \
                             "if you're going to do manual review of the repeat detection images")
+        
     parser.add_argument('--imageBase', action='store', type=str, default='',
                         help='Image base dir, relevant if renderHtml is True or if " + \
                             "omitFilteringFolder is not set')
+                            
     parser.add_argument('--outputBase', action='store', type=str, default='',
                         help='HTML or filtering folder output dir')
-    parser.add_argument('--filterFileToLoad', action='store', type=str, default='',  
-                        help='Path to detectionIndex.json, which should be inside a ' + \
-                            'folder of images that are manually verified to _not_ ' + \
-                            'contain valid animals')
-
-    parser.add_argument('--confidenceMax', action='store', type=float,
-                        default=defaultOptions.confidenceMax,
-                        help='Detection confidence threshold; don\'t process anything above this')
+    
     parser.add_argument('--confidenceMin', action='store', type=float,
                         default=defaultOptions.confidenceMin,
                         help='Detection confidence threshold; don\'t process anything below this')
+    
+    parser.add_argument('--confidenceMax', action='store', type=float,
+                        default=defaultOptions.confidenceMax,
+                        help='Detection confidence threshold; don\'t process anything above this')
+    
     parser.add_argument('--iouThreshold', action='store', type=float,
                         default=defaultOptions.iouThreshold,
                         help='Detections with IOUs greater than this are considered ' + \
                             '"the same detection"')
+        
     parser.add_argument('--occurrenceThreshold', action='store', type=int,
                         default=defaultOptions.occurrenceThreshold,
                         help='More than this many near-identical detections in a group ' + \
                             '(e.g. a folder) is considered suspicious')
-    parser.add_argument('--nWorkers', action='store', type=int,
-                        default=defaultOptions.nWorkers,
-                        help='Level of parallelism for rendering and IOU computation')
+        
+    parser.add_argument('--minSuspiciousDetectionSize', action='store', type=float,
+                        default=defaultOptions.minSuspiciousDetectionSize,
+                        help='Detections smaller than this fraction of image area are not ' + \
+                            'considered suspicious')
+
     parser.add_argument('--maxSuspiciousDetectionSize', action='store', type=float,
                         default=defaultOptions.maxSuspiciousDetectionSize,
                         help='Detections larger than this fraction of image area are not ' + \
                             'considered suspicious')
 
-    parser.add_argument('--renderDetectionTiles', action='store_true',
-                        dest='bRenderDetectionTiles', help='Should we render a grid showing every instance for each detection?')
-    parser.add_argument('--renderHtml', action='store_true',
-                        dest='bRenderHtml', help='Should we render HTML output?')
+    parser.add_argument('--maxImagesPerFolder', action='store', type=int,
+                        default=defaultOptions.maxImagesPerFolder,
+                        help='Ignore folders with more than this many images in them')
+    
+    parser.add_argument('--excludeClasses', action='store', nargs='+', type=int,
+                        default=defaultOptions.maxImagesPerFolder,
+                        help='List of integer classes we don\'t want to treat as suspicious, separated by spaces.')
+    
+    parser.add_argument('--pass_detections_to_processes_method', action='store', type=str,
+                        default=defaultOptions.pass_detections_to_processes_method,
+                        help='Pass detections information to/from workers via "memory" (default) or "files"')
+    
+    parser.add_argument('--nWorkers', action='store', type=int,
+                        default=defaultOptions.nWorkers,
+                        help='Level of parallelism for rendering and IOU computation')
+    
+    parser.add_argument('--parallelizationUsesProcesses', action='store_false', 
+                        dest='parallelizationUsesThreads',
+                        help='Parallelize with processes (defaults to threads)')
+    
+    
+    parser.add_argument('--filterFileToLoad', action='store', type=str, default='',  
+                        help='Path to detectionIndex.json, which should be inside a ' + \
+                            'folder of images that are manually verified to _not_ ' + \
+                            'contain valid animals')
+
     parser.add_argument('--omitFilteringFolder', action='store_false',
                         dest='bWriteFilteringFolder',
                         help='Should we create a folder of rendered detections for post-filtering?')
-    parser.add_argument('--excludeClasses', action='store', nargs='+', type=int,
-                        default=defaultOptions.excludeClasses,
-                        help='List of classes (ints) to exclude from analysis, separated by spaces')
-
-    parser.add_argument('--nDirLevelsFromLeaf', default=0, type=int,
-                        help='Number of levels from the leaf folders to use for repeat ' + \
-                            'detection (0 == leaves)')
-
+    
     parser.add_argument('--debugMaxDir', action='store', type=int, default=-1)
     parser.add_argument('--debugMaxRenderDir', action='store', type=int, default=-1)
     parser.add_argument('--debugMaxRenderDetection', action='store', type=int, default=-1)
@@ -135,6 +155,35 @@ def main():
                         dest='bParallelizeComparisons')
     parser.add_argument('--forceSerialRendering', action='store_false',
                         dest='bParallelizeRendering')
+    
+    parser.add_argument('--maxOutputImageWidth', action='store', type=int,
+                        default=defaultOptions.maxOutputImageWidth,
+                        help='Maximum output size for thumbnail images')    
+    
+    parser.add_argument('--lineThickness', action='store', type=int,
+                        default=defaultOptions.lineThickness,
+                        help='Line thickness thumbnail images')    
+    
+    parser.add_argument('--boxExpansion', action='store', type=int,
+                        default=defaultOptions.boxExpansion,
+                        help='Box expansion for thumbnail images')
+        
+    parser.add_argument('--nDirLevelsFromLeaf', type=int,
+                        default=defaultOptions.nDirLevelsFromLeaf,
+                        help='Number of levels from the leaf folders to use for repeat ' + \
+                            'detection (0 == leaves)')
+
+    parser.add_argument('--bRenderOtherDections', action='store_true',
+                        help='Show non-target detections in light gray on each image')
+    
+    parser.add_argument('--bRenderDetectionTiles', action='store_true',
+                        help='Should we render a grid showing every instance for each detection?')
+    
+    parser.add_argument('--detectionTilesPrimaryImageWidth', type=int,
+                        default=defaultOptions.detectionTilesPrimaryImageWidth)                        
+
+    parser.add_argument('--renderHtml', action='store_true',
+                        dest='bRenderHtml', help='Should we render HTML output?')
     
     if len(sys.argv[1:]) == 0:
         parser.print_help()
