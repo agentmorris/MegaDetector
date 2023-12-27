@@ -87,6 +87,12 @@ mamba activate cameratraps-classifier
 
 Subsequent steps will assume your command prompt is in the "classification" folder in this repo.
 
+This environment replicates the training environment, which - all other things being equal - is good practice, but that environment is no longer always compatible with current GPUs.  If you are using an RTX 4090 or newer, you may experience [this issue](https://github.com/pytorch/pytorch/issues/87595) ("nvrtx: invalid value for --gpu-architecture").  Although this has not been extensively tested, if you hit this error, we recommend creating the environment this way instead:
+
+```bash
+mamba env create -f envs/environment-classifier-unpinned.yml
+```
+
 
 ### Running MegaClassifier
 
