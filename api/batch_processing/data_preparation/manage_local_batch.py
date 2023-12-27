@@ -1476,7 +1476,7 @@ else:
 import datetime    
 from data_management.read_exif import parse_exif_datetime_string
 
-min_valid_timestamp_year = 2015
+min_valid_timestamp_year = 2001
 
 now = datetime.datetime.now()
 
