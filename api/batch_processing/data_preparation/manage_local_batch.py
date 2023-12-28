@@ -1500,6 +1500,7 @@ for exif_result in tqdm(exif_results):
         
     im['file_name'] = exif_result['file_name']
     im['id'] = im['file_name']
+    
     if ('exif_tags' not in exif_result) or (exif_result['exif_tags'] is None) or \
         (exif_datetime_tag not in exif_result['exif_tags']): 
         exif_dt = None
@@ -1533,7 +1534,7 @@ for exif_result in tqdm(exif_results):
     
 # ...for each exif image result
 
-print('Parsed EXIF datetime information, unable to parse EXIF data from {} of {} images'.format(
+print('Parsed EXIF datetime information, unable to parse EXIF date from {} of {} images'.format(
     len(images_without_datetime),len(exif_results)))
 
 
