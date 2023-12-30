@@ -23,8 +23,6 @@ opencv-python == 4.5.5.64
 requests == 2.31.0
 pyqtree == 1.0.0
 scikit-learn == 1.2.2
-
-# For running MegaDetector v5
 pandas == 2.0.1
 # Not used directly, but used by YOLOv5 imports
 seaborn == 0.12.2

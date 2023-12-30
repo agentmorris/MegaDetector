@@ -1,37 +1,41 @@
 #
-# Experimental pip install that pins no version numbers... as of 2023.09.20, this appears to work
-# with Python 11, the latest PyTorch (2.0.1), and the latest YOLOv5.  That said, unless you really
-# know what you're doing, ignore this file and follow our mamba-based instructions for environment setup:
+# pip is not the recommended approach for running MegaDetector; if you don't have a specific
+# reason to use this file, we recommend following our mamba-based instructions for environment
+# setup:
 #
 # https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#using-the-model
 #
-
-Pillow
-tqdm
-jsonpickle
-humanfriendly
-
-# Using YOLOv5's val.py from old versions of YOLOv5 requires a version
-# np.int, which was removed as of numpy 1.24.0
+# That said, there isn't anything *wrong* with this requirements.txt file, and if it doesn't 
+# work for you, let us know.
 #
-# numpy == 1.23.5
-numpy
-matplotlib
-opencv-python
-requests
-pyqtree
-scikit-learn
+# Reminder that as of 2023.12.30, current versions of PyTorch don't support Python 3.12.
 
-# For running MegaDetector v5
-pandas
-# Not used directly, but used by YOLOv5 imports
-seaborn
-PyYAML
+Pillow >= 9.5
+tqdm >= 4.64.0
+jsonpickle >= 3.0.2
+humanfriendly >= 10.0
+numpy >= 1.26.0
+matplotlib >= 3.8.0
+opencv-python >= 4.8.0
+requests >= 2.31.0
+pyqtree >= 1.0.0
+scikit-learn >= 1.3.1
+pandas >= 2.1.1
+seaborn >= 0.12.2
+PyYAML >= 6.0.1
 
---extra-index-url https://download.pytorch.org/whl/cu117
+--extra-index-url https://download.pytorch.org/whl/cu118
 torch
 torchvision
 
-# This will also install "ultralytics"
-yolov5
+# "ultralytics-yolov5" is the frozen-in-time YOLOv5:
+#
+# https://pypi.org/project/ultralytics-yolov5/
+#
+# ...which is different than "pip install yolov5", which installs:
+#
+# https://pypi.org/project/yolov5/
+#
+# Make sure this appears *after* the torch installation
+ultralytics-yolov5 == 0.1.1
 
