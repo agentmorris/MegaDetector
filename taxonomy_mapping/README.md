@@ -5,19 +5,26 @@ This folder contains scripts and some reference files used for mapping data on L
 This folder is only for generating and maintaining this mapping If you want to <i>use</i> data from LILA, don't worry about this folder; instead, see the [lila](https://github.com/agentmorris/MegaDetector/tree/main/data_management/lila) folder.
 
 
-## Mapping a new dataset into the standard taxonomy
+## When new datasets come in for inclusion in the harmonized LILA taxonomy...
 
-When a new .json file comes in (usually for a new LILA dataset) and needs to be mapped to scientific names...
+### Update the index file
 
-* Assuming this is a LILA dataset, edit the [LILA metadata file](http://lila.science/wp-content/uploads/2020/03/lila_sas_urls.txt) to include the new .json and dataset name.
+* Edit the [LILA camera trap datasets index file](http://lila.science/wp-content/uploads/2023/06/lila_camera_trap_datasets.csv) to include the new dataset name, metadata URLs, and MD results URLs.  The copy on LILA is the source of truth.
 
-* Assuming this is a LILA dataset, use [get_lila_category_list.py](https://github.com/agentmorris/MegaDetector/blob/main/data_management/lila/get_lila_category_list.py) to download the .json files for every LILA dataset.  This will produced a .json-formatted dictionary mapping each dataset to all of the categories it contains.
 
-* Use [map_new_lila_datasets.py](map_new_lila_datasets.py) to create a .csv file mapping each of those categories to a scientific name and taxonomy.  This will eventually become a subset of rows in the "primary" .csv file.  This is a semi-automated process; it will look up common names against the iNat and GBIF taxonomies, with some heuristics to avoid simple problems (like making sure that "greater_kudu" matches "greater kudu", or that "black backed jackal" matches "black-backed jackal"), but you will need to fill in a few gaps manually.  I do this with three windows open: a .csv editor, Spyder (with the cell called "manual lookup" from this script open), and a browser.  Once you generate this .csv file, it's considered permanent, i.e., the cell that wrote it won't re-write it, so manually edit to your heart's content.
+### Update the taxonomy mapping
 
-* Use [preview_lila_taxonomy.py](preview_lila_taxonomy.py) to produce an HTML file full of images that you can use to make sure that the matches were sensible; be particularly suspicious of anything that doesn't look like a mammal, bird, or reptile.  Go back and fix things in the .csv file.  This script/notebook also does a bunch of other consistency checking.
+* Use [get_lila_annotation_counts.py](https://github.com/agentmorris/MegaDetector/blob/main/data_management/lila/get_lila_annotation_counts.py) to download the .json files for every LILA dataset, and list all the category names prsent in each .json file.  This will produced a .json-formatted dictionary mapping each dataset to all of the categories it contains (lila_dataset_to_categories.json).
 
-* When you are totally satisfied with that .csv file, manually append it to the "primary" .csv file (lila-taxonomy-mapping.csv), which is currently in a private repository.  [preview_lila_taxonomy.py](preview_lila_taxonomy.py) can also be run against the primary file.
+* Use [map_new_lila_datasets.py](map_new_lila_datasets.py) to create a .csv file mapping each category in the datset of interest to a scientific name and taxonomy.  This will eventually become a subset of rows in the "primary" .csv file.  This is a semi-automated process; a first pass will automatically look up common names against the iNat and GBIF taxonomies, with some heuristics to avoid simple problems (like making sure that "greater_kudu" matches "greater kudu", or that "black backed jackal" matches "black-backed jackal"), but you will need to fill in a few gaps manually.  Specifically:
+
+  * Set "datasets_to_map" and "output_file" appropriately
+  * Run the whole script; this will create the .csv file you'll be working with
+  * Open that .csv file, and use the "manual lookup" cell to fix things that matched incorrectly or didn't match at all.  I do this with three windows open: a .csv editor, Spyder (with the cell called "manual lookup" from this script open), and a browser.  Leave all versions of "empty" as empty rows, other than the dataset name and label.
+
+* Use [preview_lila_taxonomy.py](preview_lila_taxonomy.py) to produce an HTML file full of images that you can use to make sure that the matches were sensible; be particularly suspicious of anything that doesn't look like a mammal, bird, or reptile.  Go back and fix things in the .csv file.  This script/notebook also does a bunch of other consistency checking, e.g. making sure that if the "taxonomy_level" column says "species", the "taxonomy_string" column is actually a species.
+
+* When you are satisfied with that .csv file, manually append it to the "primary" .csv file (lila-taxonomy-mapping.csv), which is currently in a private repository.  [preview_lila_taxonomy.py](preview_lila_taxonomy.py) can also be run against the primary file.
 
 * Check for errors (one more time) (this should be redundant with what's now included in [preview_lila_taxonomy.py](preview_lila_taxonomy.py), but it can't hurt) by running:
 
@@ -25,11 +32,23 @@ When a new .json file comes in (usually for a new LILA dataset) and needs to be 
     python taxonomy_mapping/taxonomy_csv_checker.py /path/to/taxonomy.csv
     ```
     
-* Prepare the "release" taxonomy file (which removes a couple columns and removes unused rows) using [prepare_lila_taxonomy_release.py](prepare_lila_taxonomy_release.py) .
+* Prepare the "release" taxonomy file (which removes a couple columns and removes unused rows) using [prepare_lila_taxonomy_release.py](prepare_lila_taxonomy_release.py).  This will create "lila-taxonomy-mapping_release.csv".  Run the taxonomy checker against this file too, just to be safe.
 
-* Use [map_lila_categories.py](map_lila_categories.py) to get a mapping of every LILA data set to the common taxonomy.
+* Upload to <https://lila.science/public/lila-taxonomy-mapping_release.csv>
 
-* The [visualize_taxonomy.ipynb](visualize_taxonomy.ipynb) notebook demonstrates how to visualize the taxonomy hierarchy. It requires the *networkx* and *graphviz* Python packages.
+
+### Test the metadata file, index file, and MD results files
+
+* Use 'test_lila_metadata_urls.py' to verify that the metadata .csv files and MegaDetector results files exist, and that their contents point to base URLs that actually exist.  I.e., make sure that all the metadata URLs and MD results files are programmatically usable.
+
+
+### Update the One True CSV file
+
+* Use 'generate_lila_per_image_labels.py' to generate the main .csv table (lila_image_urls_and_labels.csv).  At the end of this process, you'll have the zipped version as well.
+
+* Upload to <https://lila.science/public/lila_image_urls_and_labels.csv.zip>
+
+* Test the new .csv file by running create_lila_test_set.py and download_lila_subset.py
 
 
 ## Files in this folder

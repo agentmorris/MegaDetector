@@ -15,11 +15,10 @@ from tqdm import tqdm
 import os
 import pandas as pd
 
-# lila_taxonomy_file = r"G:\git\agentmorrisprivate\lila-taxonomy\lila-taxonomy-mapping.csv"
-lila_taxonomy_file = r"G:\temp\lila\lila-taxonomy-mapping_release.22.07.03.1608.csv"
-# lila_taxonomy_file = r"G:\temp\lila\lila_additions_2022.06.29.csv"
+# lila_taxonomy_file = r"c:\git\agentmorrisprivate\lila-taxonomy\lila-taxonomy-mapping.csv"
+lila_taxonomy_file = os.path.expanduser('~/lila/lila_additions_2023.12.29.csv')
 
-preview_base = r'g:\temp\lila\lila_taxonomy_preview'
+preview_base = os.path.expanduser('~/lila/lila_taxonomy_preview')
 os.makedirs(preview_base,exist_ok=True)
 html_output_file = os.path.join(preview_base,'index.html')
 
@@ -172,15 +171,14 @@ for i_row,row in tqdm(df.iterrows(),total=len(df)):
 
 print('\nMade {} taxonomy changes'.format(n_taxonomy_changes))
 
+# Optionally re-write
 if False:
     df.to_csv(lila_taxonomy_file,header=True,index=False)
 
 
 #%% List null mappings
 
-#
-# These should all be things like "unidentified" and "fire"
-#
+# These should all be things like "empty", "unidentified", "fire", "car", etc.
 
 # i_row = 0; row = df.iloc[i_row]
 for i_row,row in df.iterrows():
@@ -393,19 +391,19 @@ remapped_queries = {'papio':'papio+baboon',
 
 import os
 from taxonomy_mapping import retrieve_sample_image
+
 scientific_name_to_paths = {}
 image_base = os.path.join(preview_base,'images')
 images_per_query = 15
 min_valid_images_per_query = 3
 min_valid_image_size = 3000
 
+# TODO: trivially prallelizable
+#
 # i_row = 0; row = df.iloc[i_row]
 for i_row,row in df.iterrows():
     
     s = row['scientific_name']
-    
-    # if s != 'mirafra':
-    #    continue
     
     if (not isinstance(s,str)) or (len(s)==0):
         continue
@@ -416,17 +414,17 @@ for i_row,row in df.iterrows():
         query = remapped_queries[query]
         
     query_folder = os.path.join(image_base,query)
+    os.makedirs(query_folder,exist_ok=True)
     
     # Check whether we already have enough images for this query
-    if os.path.isdir(query_folder):
-        image_files = os.listdir(query_folder)
-        image_fullpaths = [os.path.join(query_folder,fn) for fn in image_files]
-        sizes = [os.path.getsize(p) for p in image_fullpaths]
-        sizes_above_threshold = [x for x in sizes if x > min_valid_image_size]
-        if len(sizes_above_threshold) > min_valid_images_per_query:
-            # print('Skipping query {}, already have {} images'.format(s,len(sizes_above_threshold)))
-            continue
-    
+    image_files = os.listdir(query_folder)
+    image_fullpaths = [os.path.join(query_folder,fn) for fn in image_files]
+    sizes = [os.path.getsize(p) for p in image_fullpaths]
+    sizes_above_threshold = [x for x in sizes if x > min_valid_image_size]
+    if len(sizes_above_threshold) > min_valid_images_per_query:
+        print('Skipping query {}, already have {} images'.format(s,len(sizes_above_threshold)))
+        continue
+
     # Check whether we've already run this query for a previous row
     if query in scientific_name_to_paths:
         continue
@@ -448,13 +446,15 @@ from md_utils import path_utils
 all_images = path_utils.recursive_file_list(image_base,False)
 
 for fn in tqdm(all_images):
-    if fn.endswith('.jpeg'):
+    if fn.lower().endswith('.jpeg'):
         new_fn = fn[0:-5] + '.jpg'
-        # print('Renaming {} to {}'.format(fn,new_fn))
         os.rename(fn, new_fn)
 
 
 #%% Choose representative images for each scientific name
+
+# Specifically, sort by size, and take the largest unique sizes. Very small files tend
+# to be bogus thumbnails, etc.
 
 max_images_per_query = 4
 scientific_name_to_preferred_images = {}
@@ -506,7 +506,7 @@ for images in scientific_name_to_preferred_images.values():
 print('Using a total of {} images'.format(len(used_images)))
 used_images_set = set(used_images)
 
-import path_utils
+from md_utils import path_utils
 all_images = path_utils.recursive_file_list(image_base,False)
 
 unused_images = []
@@ -523,7 +523,7 @@ for fn in tqdm(unused_images):
 
 #%% Produce HTML preview
 
-with open(html_output_file, 'w') as f:
+with open(html_output_file, 'w', encoding='utf-8') as f:
     
     f.write('<html><head></head><body>\n')
 
@@ -555,10 +555,11 @@ with open(html_output_file, 'w') as f:
         f.write('<p class="speciesinfo_p" style="font-weight:bold;font-size:130%">')
 
         if isinstance(row.scientific_name,str):
-            f.write('{}: <b><u>{}</u></b> mapped to {} {} ({}) ({})</p>\n'.format(
+            output_string = '{}: <b><u>{}</u></b> mapped to {} {} ({}) ({})</p>\n'.format(
                 row.dataset_name, row.query, 
                 row.taxonomy_level, row.scientific_name, common_name_string,
-                row.common_name))
+                row.common_name)
+            f.write(output_string)
         else:
             f.write('{}: <b><u>{}</u></b> unmapped'.format(row.dataset_name,row.query))
 
@@ -586,6 +587,5 @@ with open(html_output_file, 'w') as f:
 
 #%% Open HTML preview
 
-from md_utils.path_utils import open_file # from ai4eutils
+from md_utils.path_utils import open_file
 open_file(html_output_file)
-

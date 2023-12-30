@@ -15,12 +15,10 @@ import json
 # Created by get_lila_category_list.py
 input_lila_category_list_file = os.path.expanduser('~/lila/lila_categories_list/lila_dataset_to_categories.json')
 
-output_file = os.path.expanduser('~/lila/lila_additions_2022.08.22.csv')
+output_file = os.path.expanduser('~/lila/lila_additions_2023.12.29.csv')
 
 datasets_to_map = [
-    # 'NACTI'
-    # 'Channel Islands Camera Traps'
-    'ENA24'
+    'Trail Camera Images of New Zealand Animals'
     ]
 
 
@@ -66,29 +64,7 @@ from taxonomy_mapping.species_lookup import (
 # from taxonomy_mapping.species_lookup import (
 #    get_taxonomic_info, print_taxonomy_matche)
 
-initialize_taxonomy_lookup()
-
-
-#%% Manual lookup
-
-if False:
-    
-    #%%
-    
-    # q = 'white-throated monkey'
-    q = 'cingulata'
-    taxonomy_preference = 'inat'
-    m = get_preferred_taxonomic_match(q,taxonomy_preference)
-    
-    if m is None:
-        print('No match')
-    else:
-        if m.source != taxonomy_preference:
-            print('\n*** non-preferred match ***\n')
-            # raise ValueError('')
-        print(m.source)
-        print(m.taxonomy_string)
-        import clipboard; clipboard.copy(m.taxonomy_string)
+initialize_taxonomy_lookup(force_init=False)
 
 
 #%% Match every query against our taxonomies
@@ -96,6 +72,8 @@ if False:
 output_rows = []
 
 taxonomy_preference = 'inat'
+
+allow_non_preferred_matches = True
 
 # mapping_string = category_mappings[1]; print(mapping_string)
 for mapping_string in category_mappings:
@@ -108,7 +86,7 @@ for mapping_string in category_mappings:
 
     taxonomic_match = get_preferred_taxonomic_match(query,taxonomy_preference=taxonomy_preference)
     
-    if taxonomic_match.source == taxonomy_preference:
+    if (taxonomic_match.source == taxonomy_preference) or allow_non_preferred_matches:
     
         output_row = {
             'dataset_name': dataset_name,
@@ -148,3 +126,28 @@ output_df = pd.DataFrame(data=output_rows, columns=[
     'dataset_name', 'query', 'source', 'taxonomy_level',
     'scientific_name', 'common_name', 'taxonomy_string'])
 output_df.to_csv(output_file, index=None, header=True)
+
+
+#%% Manual lookup
+
+if False:
+    
+    #%%
+    
+    # q = 'white-throated monkey'
+    # q = 'cingulata'
+    q = 'Prosthemadera novaeseelandiae'
+    taxonomy_preference = 'inat'
+    m = get_preferred_taxonomic_match(q,taxonomy_preference)
+    # print(m.scientific_name); import clipboard; clipboard.copy(m.scientific_name)
+    
+    if m is None:
+        print('No match')
+    else:
+        if m.source != taxonomy_preference:
+            print('\n*** non-preferred match ***\n')
+            # raise ValueError('')
+        print(m.source)
+        print(m.taxonomy_string)
+        # print(m.scientific_name); import clipboard; clipboard.copy(m.scientific_name)
+        import clipboard; clipboard.copy(m.taxonomy_string)

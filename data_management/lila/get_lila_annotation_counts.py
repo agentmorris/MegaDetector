@@ -34,17 +34,8 @@ os.makedirs(metadata_dir,exist_ok=True)
 
 output_file = os.path.join(output_dir,'lila_dataset_to_categories.json')
 
-# Created by get_lila_category_list.py... contains counts for each category
-category_list_dir = os.path.join(lila_local_base,'lila_categories_list')
-lila_dataset_to_categories_file = os.path.join(category_list_dir,'lila_dataset_to_categories.json')
-
-assert os.path.isfile(lila_dataset_to_categories_file)
-
 
 #%% Load category and taxonomy files
-
-with open(lila_dataset_to_categories_file,'r') as f:
-    lila_dataset_to_categories = json.load(f)
 
 taxonomy_df = read_lila_taxonomy_mapping(metadata_dir)
 
@@ -55,8 +46,12 @@ ds_query_to_scientific_name = {}
 
 unmapped_queries = set()
 
+datasets_with_taxonomy_mapping = set()
+
 # i_row = 1; row = taxonomy_df.iloc[i_row]; row
 for i_row,row in taxonomy_df.iterrows():
+    
+    datasets_with_taxonomy_mapping.add(row['dataset_name'])
     
     ds_query = row['dataset_name'] + ':' + row['query']
     ds_query = ds_query.lower()
@@ -68,13 +63,17 @@ for i_row,row in taxonomy_df.iterrows():
         
     ds_query_to_scientific_name[ds_query] = row['scientific_name']
     
+print('Loaded taxonomy mappings for {} datasets'.format(len(datasets_with_taxonomy_mapping)))
     
+
 #%% Download and parse the metadata file
 
 metadata_table = read_lila_metadata(metadata_dir)
 
+print('Loaded metadata URLs for {} datasets'.format(len(metadata_table)))
 
-#%% Download and extract metadata for the datasets we're interested in
+
+#%% Download and extract metadata for each dataset
 
 for ds_name in metadata_table.keys():    
     metadata_table[ds_name]['json_filename'] = read_metadata_file_for_dataset(ds_name=ds_name,
@@ -91,6 +90,11 @@ dataset_to_categories = {}
 # ds_name = 'NACTI'
 for ds_name in metadata_table.keys():
     
+    taxonomy_mapping_available = (ds_name in datasets_with_taxonomy_mapping)
+    
+    if not taxonomy_mapping_available:
+        print('Warning: taxonomy mapping not available for {}'.format(ds_name))
+        
     print('Finding categories in {}'.format(ds_name))
     
     json_filename = metadata_table[ds_name]['json_filename']
@@ -121,6 +125,8 @@ for ds_name in metadata_table.keys():
        # Don't do taxonomy mapping for bbox data sets, which are sometimes just binary and are
        # always redundant with the class-level data sets.
        if 'bbox' in ds_name:
+           c['scientific_name_from_taxonomy_mapping'] = None
+       elif not taxonomy_mapping_available:
            c['scientific_name_from_taxonomy_mapping'] = None
        else:
            taxonomy_query_string = ds_name.lower().strip() + ':' + c['name'].lower()

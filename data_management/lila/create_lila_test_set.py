@@ -124,6 +124,8 @@ for ds_name in metadata_table.keys():
 
 #%% Download those image files
 
+# TODO: trivially parallelizable
+#
 # ds_name = (list(metadata_table.keys()))[0]
 for ds_name in metadata_table.keys():
 
@@ -147,4 +149,3 @@ for ds_name in metadata_table.keys():
     # ...for each url
     
 # ...for each dataset
-

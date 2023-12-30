@@ -45,7 +45,7 @@ def check_taxonomy_csv(csv_path: str) -> None:
     num_taxon_level_errors = 0
     num_scientific_name_errors = 0
 
-    for i, row in taxonomy_df.iterrows():
+    for i_row, row in taxonomy_df.iterrows():
         
         ds = row['dataset_name']
         ds_label = row['query']
@@ -81,14 +81,14 @@ def check_taxonomy_csv(csv_path: str) -> None:
             node.add_id(id_source, int(taxon_id))  # np.int64 -> int
             if j == 0:
                 if level != taxon_level:
-                    print(f'row: {i}, {ds}, {ds_label}')
+                    print(f'row: {i_row}, {ds}, {ds_label}')
                     print(f'- taxonomy_level column: {level}, '
                           f'level from taxonomy_string: {taxon_level}')
                     print()
                     num_taxon_level_errors += 1
 
                 if scientific_name != taxon_name:
-                    print(f'row: {i}, {ds}, {ds_label}')
+                    print(f'row: {i_row}, {ds}, {ds_label}')
                     print(f'- scientific_name column: {scientific_name}, '
                           f'name from taxonomy_string: {taxon_name}')
                     print()
@@ -97,7 +97,7 @@ def check_taxonomy_csv(csv_path: str) -> None:
             taxon_child = node
     
     # ...for each row in the taxonomy file        
-            
+
     assert nx.is_directed_acyclic_graph(graph)
 
     for node in graph.nodes:
@@ -123,6 +123,8 @@ def check_taxonomy_csv(csv_path: str) -> None:
     except AssertionError as e:
         print(f'At least one node has unresolved ambiguous parents: {e}')
 
+    print('Processed {} rows from {}'.format(len(taxonomy_df),csv_path))
+    
     print('num taxon level errors:', num_taxon_level_errors)
     print('num scientific name errors:', num_scientific_name_errors)
 

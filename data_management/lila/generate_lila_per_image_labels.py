@@ -56,7 +56,7 @@ ds_name_to_annotation_level['NACTI'] = 'unknown'
 
 known_unmapped_labels = set(['WCS Camera Traps:#ref!'])
 
-debug_max_images_per_dataset = 0
+debug_max_images_per_dataset = -1
 if debug_max_images_per_dataset > 0:
     print('Running in debug mode')
     output_file = output_file.replace('.csv','_debug.csv')
@@ -72,7 +72,7 @@ if False:
     metadata_table = {k:metadata_table[k]}
 
 
-#%% Download and extract metadata for the datasets we're interested in
+#%% Download and extract metadata for each dataset
 
 for ds_name in metadata_table.keys():    
     metadata_table[ds_name]['metadata_filename'] = read_metadata_file_for_dataset(ds_name=ds_name,
@@ -122,7 +122,7 @@ def clearnan(v):
     assert isinstance(v,str)
     return v
 
-with open(output_file,'w') as f:
+with open(output_file,'w',encoding='utf-8') as f:
     
     csv_writer = csv.writer(f)
     csv_writer.writerow(header)
@@ -334,6 +334,8 @@ with open(output_file,'w') as f:
 
 # ...with open()
 
+print('Processed {} datsets'.format(len(metadata_table)))
+
 
 #%% Read the .csv back
 
@@ -352,6 +354,8 @@ def isint(v):
 
 valid_annotation_levels = set(['sequence','image','unknown'])
 
+# Collect a list of locations within each dataset; we'll use this
+# in the next cell to look for datasets that only have a single location
 dataset_name_to_locations = defaultdict(set)
 
 def check_row(row):
@@ -385,6 +389,8 @@ else:
 
 
 #%% Check for datasets that have only one location string
+
+# Expected: ENA24, Missouri Camera Traps
 
 for ds_name in dataset_name_to_locations.keys():
     if len(dataset_name_to_locations[ds_name]) == 1:
@@ -442,6 +448,8 @@ print('Selected {} total images'.format(len(images_to_download)))
 
 import urllib.request
 
+# TODO: trivially parallelizable
+#
 # i_image = 10; image = images_to_download[i_image]
 for i_image,image in tqdm(enumerate(images_to_download),total=len(images_to_download)):
     
@@ -450,12 +458,14 @@ for i_image,image in tqdm(enumerate(images_to_download),total=len(images_to_down
     image_file = os.path.join(preview_folder,'image_{}'.format(str(i_image).zfill(4)) + ext)
     relative_file = os.path.relpath(image_file,preview_folder)
     try:
-        download_url(url,output_file,verbose=False)
+        download_url(url,image_file,verbose=False)
         image['relative_file'] = relative_file
     except urllib.error.HTTPError:
         print('Image {} does not exist ({}:{})'.format(
             i_image,image['dataset_name'],image['original_label']))
         image['relative_file'] = None
+
+# ...for each image we need to download
 
 
 #%% Write preview HTML
@@ -475,7 +485,7 @@ for im in images_to_download:
     output_im = {}
     output_im['filename'] = im['relative_file']
     output_im['linkTarget'] = im['url']
-    output_im['title'] = str(im)
+    output_im['title'] = '<b>{}: {}</b><br/><br/>'.format(im['dataset_name'],im['original_label']) + str(im)
     output_im['imageStyle'] = 'width:600px;'
     output_im['textStyle'] = 'font-weight:normal;font-size:100%;'
     html_images.append(output_im)

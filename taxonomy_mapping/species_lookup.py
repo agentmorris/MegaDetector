@@ -36,14 +36,23 @@ taxonomy_urls = {
 }
 
 files_to_unzip = {
-    'GBIF': ['backbone/Taxon.tsv', 'backbone/VernacularName.tsv'],
+    # GBIF used to put everything in a "backbone" folder within the zipfile, but as of
+    # 12.2023, this is no longer the case.
+    # 'GBIF': ['backbone/Taxon.tsv', 'backbone/VernacularName.tsv'],
+    'GBIF': ['Taxon.tsv', 'VernacularName.tsv'],
     'iNaturalist': ['taxa.csv']
 }
 
 # As of 2020.05.12:
 #
 # GBIF: ~777MB zipped, ~1.6GB taxonomy
-# iNat: ~2.2GB zipped, ~51MB taxonomy
+# iNat: ~2.2GB zipped, ~51MB taxonomy (most of the zipfile is observations)
+
+# As of 2023.12.29:
+#
+# GBIF: ~948MB zipped, ~2.2GB taxonomy
+# iNat: ~6.7GB zipped, ~62MB taxonomy (most of the zipfile is observations)
+
 
 os.makedirs(taxonomy_download_dir, exist_ok=True)
 for taxonomy_name in taxonomy_urls:
@@ -99,15 +108,16 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
         gbif_taxon_id_to_scientific,\
         gbif_scientific_to_taxon_id
 
+
     ## Load serialized taxonomy info if we've already saved it
 
     if (not force_init) and (inat_taxonomy is not None):
         print('Skipping taxonomy re-init')
         return
     
-    if os.path.isfile(serialized_structures_file):
+    if (not force_init) and (os.path.isfile(serialized_structures_file)):
 
-        print(f'Reading taxonomy data from {serialized_structures_file}')
+        print(f'De-serializing taxonomy data from {serialized_structures_file}')
 
         with open(serialized_structures_file, 'rb') as f:
             structures_to_serialize = pickle.load(f)
@@ -125,6 +135,7 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
         gbif_vernacular_to_taxon_id,\
         gbif_taxon_id_to_scientific,\
         gbif_scientific_to_taxon_id = structures_to_serialize
+        
         return
 
 
@@ -135,6 +146,9 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
     for taxonomy_name, zip_url in taxonomy_urls.items():
 
         need_to_download = False
+        
+        if force_init:
+            need_to_download = True
 
         # Don't download the zipfile if we've already unzipped what we need
         for fn in files_to_unzip[taxonomy_name]:
@@ -150,11 +164,11 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
         zipfile_path = os.path.join(
             taxonomy_download_dir, zip_url.split('/')[-1])
 
-        # Bypasses download if the file exists already
+        # Bypasses download if the file exists already (unless force_init is set)
         url_utils.download_url(
             zip_url, os.path.join(zipfile_path),
             progress_updater=url_utils.DownloadProgressBar(),
-            verbose=True)
+            verbose=True,force_download=force_init)
 
         # Unzip the files we need
         files_we_need = files_to_unzip[taxonomy_name]
@@ -166,7 +180,7 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
                 target_file = os.path.join(
                     taxonomy_download_dir, taxonomy_name, os.path.basename(fn))
 
-                if os.path.isfile(target_file):
+                if (not force_init) and (os.path.isfile(target_file)):
                     print(f'Bypassing unzip of {target_file}, file exists')
                 else:
                     os.makedirs(os.path.basename(target_file),exist_ok=True)
@@ -185,13 +199,16 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
     # name file
 
     # Load iNat taxonomy
-    inat_taxonomy = pd.read_csv(os.path.join(taxonomy_download_dir, 'iNaturalist', 'taxa.csv'))
+    inat_taxonomy_file = os.path.join(taxonomy_download_dir, 'iNaturalist', 'taxa.csv')
+    print('Loading iNat taxonomy from {}'.format(inat_taxonomy_file))
+    inat_taxonomy = pd.read_csv(inat_taxonomy_file)
     inat_taxonomy['scientificName'] = inat_taxonomy['scientificName'].fillna('').str.strip()
     inat_taxonomy['vernacularName'] = inat_taxonomy['vernacularName'].fillna('').str.strip()
 
     # Load GBIF taxonomy
-    gbif_taxonomy = pd.read_csv(os.path.join(
-        taxonomy_download_dir, 'GBIF', 'Taxon.tsv'), sep='\t')
+    gbif_taxonomy_file = os.path.join(taxonomy_download_dir, 'GBIF', 'Taxon.tsv')
+    print('Loading GBIF taxonomy from {}'.format(gbif_taxonomy_file))
+    gbif_taxonomy = pd.read_csv(gbif_taxonomy_file, sep='\t')
     gbif_taxonomy['scientificName'] = gbif_taxonomy['scientificName'].fillna('').str.strip()
     gbif_taxonomy['canonicalName'] = gbif_taxonomy['canonicalName'].fillna('').str.strip()
 
@@ -249,7 +266,8 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
 
     # Build iNat dictionaries
 
-    # row = inat_taxonomy.iloc[0]
+    print('Building lookup dictionaries for iNat taxonomy')
+    
     for i_row, row in tqdm(inat_taxonomy.iterrows(), total=len(inat_taxonomy)):
 
         taxon_id = row['taxonID']
@@ -267,6 +285,8 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
 
     # Build GBIF dictionaries
 
+    print('Building lookup dictionaries for GBIF taxonomy')
+    
     for i_row, row in tqdm(gbif_taxonomy.iterrows(), total=len(gbif_taxonomy)):
 
         taxon_id = row['taxonID']
@@ -320,13 +340,13 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
         gbif_scientific_to_taxon_id
     ]
 
-    print('Serializing...', end='')
+    print('Serializing to {}...'.format(serialized_structures_file), end='')
     if not os.path.isfile(serialized_structures_file):
         with open(serialized_structures_file, 'wb') as p:
             pickle.dump(structures_to_serialize, p)
     print(' done')
 
-# ...def initialize_taxonomy_lookup()
+# ...def initialize_taxonomy_lookup(...)
 
 
 def get_scientific_name_from_row(r):

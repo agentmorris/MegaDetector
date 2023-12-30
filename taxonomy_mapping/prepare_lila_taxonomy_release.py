@@ -13,8 +13,9 @@ import os
 import json
 import pandas as pd
 
-lila_taxonomy_file = os.path.expanduser('~/git/agentmorrisprivate/lila-taxonomy/lila-taxonomy-mapping.csv')
-release_taxonomy_file = os.path.expanduser('~/lila/lila-taxonomy-mapping_release.22.08.22.0000.csv')
+lila_taxonomy_file = 'c:/git/agentmorrisprivate/lila-taxonomy/lila-taxonomy-mapping.csv'
+release_taxonomy_file = os.path.expanduser('~/lila/lila-taxonomy-mapping_release.csv')
+# import clipboard; clipboard.copy(release_taxonomy_file)
 
 # Created by get_lila_category_list.py... contains counts for each category
 lila_dataset_to_categories_file = os.path.expanduser('~/lila/lila_categories_list/lila_dataset_to_categories.json')

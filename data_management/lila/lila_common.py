@@ -21,7 +21,7 @@ from md_utils.path_utils import unzip_file
 
 # LILA camera trap primary metadata file
 lila_metadata_url = 'http://lila.science/wp-content/uploads/2023/06/lila_camera_trap_datasets.csv'
-lila_taxonomy_mapping_url = 'https://lila.science/wp-content/uploads/2022/07/lila-taxonomy-mapping_release.csv'
+lila_taxonomy_mapping_url = 'https://lila.science/public/lila-taxonomy-mapping_release.csv'
 lila_all_images_url = 'https://lila.science/public/lila_image_urls_and_labels.csv.zip'
 
 wildlife_insights_page_size = 30000
@@ -165,16 +165,18 @@ def read_lila_all_images_file(metadata_dir):
     return df
 
 
-def read_metadata_file_for_dataset(ds_name,metadata_dir,metadata_table=None):
+def read_metadata_file_for_dataset(ds_name,metadata_dir,metadata_table=None,json_url=None):
     """
     Downloads if necessary - then unzips if necessary - the .json file for a specific dataset.
     Returns the .json filename on the local disk.
     """
     
-    if metadata_table is None:
-        metadata_table = read_lila_metadata(metadata_dir)
+    if json_url is None:
         
-    json_url = metadata_table[ds_name]['metadata_url']
+        if metadata_table is None:
+            metadata_table = read_lila_metadata(metadata_dir)
+            
+        json_url = metadata_table[ds_name]['metadata_url']
     
     p = urlparse(json_url)
     json_filename = os.path.join(metadata_dir,os.path.basename(p.path))
@@ -196,25 +198,26 @@ def read_metadata_file_for_dataset(ds_name,metadata_dir,metadata_table=None):
     return json_filename
 
 
-def azure_url_to_gcp_http_url(url):
+def azure_url_to_gcp_http_url(url,error_if_not_azure_url=True):
     """
     Most URLs point to Azure by default, but most files are available on both Azure and GCP.
     This function converts an Azure URL to the corresponding GCP http:// url.
     """
     
-    assert url.startswith(lila_azure_storage_account)
+    if error_if_not_azure_url:
+        assert url.startswith(lila_azure_storage_account)
     gcp_url = url.replace(lila_azure_storage_account,gcp_bucket_api_url,1)
     return gcp_url
 
 
-def azure_url_to_gcp_gs_url(url):
+def azure_url_to_gcp_gs_url(url,error_if_not_azure_url=True):
     """
     Most URLs point to Azure by default, but most files are available on both Azure and GCP.
     This function converts an Azure URL to the corresponding GCP gs:// url.
     """
     
-    return azure_url_to_gcp_http_url(url).replace(gcp_bucket_api_url,
-                                                  gcp_bucket_gs_url,1)
+    return azure_url_to_gcp_http_url(url,error_if_not_azure_url).\
+        replace(gcp_bucket_api_url,gcp_bucket_gs_url,1)
 
 
 #%% Interactive test driver

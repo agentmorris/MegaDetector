@@ -28,7 +28,7 @@ from data_management.lila.lila_common import \
 from md_utils.url_utils import download_url
 
 # If any of these strings appear in the common name of a species, we'll download that image
-species_of_interest = ['grey fox','red fox','leopard cat']
+species_of_interest = ['grey fox','red fox','leopard cat','kiwi']
 
 # We'll write images, metadata downloads, and temporary files here
 lila_local_base = os.path.expanduser('~/lila')
@@ -45,6 +45,9 @@ n_download_threads = 20
 max_images_per_dataset = 10 # None
 
 # This impacts the data download, but not the metadata download
+#
+# "Azure" really means "Azure if available"; recent datasets are only available
+# on GCP.
 image_download_source = 'azure' # 'azure' or 'gcp'
 
 random.seed(0)
@@ -52,13 +55,13 @@ random.seed(0)
 
 #%% Download and open the giant table of image URLs and labels
 
-# Make take 30-60 seconds to download, unzip, and open
+# ~60 seconds to download, unzip, and open
 df = read_lila_all_images_file(metadata_dir)
 
 
 #%% Find all the images we want to download
 
-# Searching over the giant table can take a couple of minutes
+# ~2 minutes
 
 ds_name_to_urls = defaultdict(list)
 
@@ -101,6 +104,11 @@ else:
 
 #%% Download those image files
 
+container_to_url_base = { 
+                         'lilablobssc.blob.core.windows.net':'/',
+                         'storage.googleapis.com':'/public-datasets-lila/'
+                         }
+
 def download_relative_filename(url, output_base, verbose=False, url_base=None, overwrite=False):
     """
     Download a URL to output_base, preserving relative path
@@ -109,7 +117,11 @@ def download_relative_filename(url, output_base, verbose=False, url_base=None, o
     result = {'status':'unknown','url':url,'destination_filename':None}
     
     if url_base is None:
-        url_base = '/'
+        assert url.startswith('https://')
+        container = url.split('/')[2]
+        assert container in container_to_url_base
+        url_base = container_to_url_base[container]
+    
     assert url_base.startswith('/') and url_base.endswith('/')
     
     p = urlparse(url)
@@ -140,12 +152,9 @@ def download_relative_filename(url, output_base, verbose=False, url_base=None, o
 all_urls = list(ds_name_to_urls.values())
 all_urls = [item for sublist in all_urls for item in sublist]
 
-url_base = '/'
-
 # Convert Azure URLs to GCP URLs if necessary
 if image_download_source != 'azure':
     assert image_download_source == 'gcp'
-    url_base = '/public-datasets-lila/'
     all_urls = [azure_url_to_gcp_http_url(url) for url in all_urls]    
 
 print('Downloading {} images on {} workers'.format(len(all_urls),n_download_threads))
@@ -156,11 +165,11 @@ if n_download_threads <= 1:
     
     # url = all_urls[0]
     for url in tqdm(all_urls):        
-        results.append(download_relative_filename(url,output_dir,url_base=url_base))
+        results.append(download_relative_filename(url,output_dir,url_base=None))
     
 else:
 
     pool = ThreadPool(n_download_threads)        
     results = list(tqdm(pool.imap(lambda s: download_relative_filename(
-        s,output_dir,url_base=url_base), 
+        s,output_dir,url_base=None), 
         all_urls), total=len(all_urls)))
