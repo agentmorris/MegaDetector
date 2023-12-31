@@ -104,6 +104,9 @@ default_gpu_number = 0
 quiet_mode = True
 
 # Specify a target image size when running MD... strongly recommended to leave this at "None"
+#
+# When using augmented inference, if you leave this at "None", run_inference_with_yolov5_val.py
+# will use its default size, which is 1280 * 1.3, which is almost always what you want.
 image_size = None
 
 # Only relevant when running on CPU

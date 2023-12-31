@@ -45,7 +45,8 @@ def render_image(entry,
                  output_image_width):
     
     rendering_result = {'failed_image':False,'missing_image':False,
-                        'skipped_image':False,'annotated_image_path':None}
+                        'skipped_image':False,'annotated_image_path':None,
+                        'max_conf':None,'file':entry['file']}
     
     image_id = entry['file']
 
@@ -56,6 +57,8 @@ def render_image(entry,
     assert 'detections' in entry and entry['detections'] is not None
     
     max_conf = get_max_conf(entry)
+    rendering_result['max_conf'] = max_conf
+    
     if (max_conf < confidence_threshold) and render_detections_only:
         rendering_result['skipped_image'] = True
         return rendering_result
@@ -243,9 +246,22 @@ def visualize_detector_output(detector_output_path: str,
                              r['annotated_image_path'] is not None]
     
     if html_output_file is not None:
+        
         html_dir = os.path.dirname(html_output_file)
-        annotated_image_paths_relative = [os.path.relpath(fn,html_dir) for fn in annotated_image_paths]
-        _ = write_html_image_list.write_html_image_list(html_output_file,annotated_image_paths_relative,
+        
+        html_image_info = []
+        
+        for r in rendering_results:
+            d = {}
+            annotated_image_path_relative = os.path.relpath(r['annotated_image_path'],html_dir)
+            d['filename'] = annotated_image_path_relative
+            d['textStyle'] = \
+             'font-family:verdana,arial,calibri;font-size:80%;' + \
+                 'text-align:left;margin-top:20;margin-bottom:5'
+            d['title'] = '{} (max conf: {})'.format(r['file'],r['max_conf'])
+            html_image_info.append(d)
+            
+        _ = write_html_image_list.write_html_image_list(html_output_file,html_image_info,
                                                     options=html_output_options)
         
     return annotated_image_paths

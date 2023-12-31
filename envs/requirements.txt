@@ -9,12 +9,23 @@
 # work for you, let us know.
 #
 # Reminder that as of 2023.12.30, current versions of PyTorch don't support Python 3.12.
+#
+# So, to create a suitable environment:
+#
+# mamba create -n cameratraps-pip python=3.11 pip -y
 
-Pillow >= 9.5
+# ultralytics-yolov5 has a dependency on FreeTypeFont.getsize(), which was
+# removed in Pillow 10.
+Pillow >= 9.1.0, < 10.0
+
 tqdm >= 4.64.0
 jsonpickle >= 3.0.2
 humanfriendly >= 10.0
-numpy >= 1.26.0
+
+# To run ultralytics-yolov5, we need to use an old version of numpy, because
+# of the removal of np.int in numpy 1.24.0
+numpy == 1.23.5
+
 matplotlib >= 3.8.0
 opencv-python >= 4.8.0
 requests >= 2.31.0

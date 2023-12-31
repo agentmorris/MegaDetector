@@ -122,7 +122,7 @@ def clearnan(v):
     assert isinstance(v,str)
     return v
 
-with open(output_file,'w',encoding='utf-8') as f:
+with open(output_file,'w',encoding='utf-8',newline='') as f:
     
     csv_writer = csv.writer(f)
     csv_writer.writerow(header)
