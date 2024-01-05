@@ -17,19 +17,23 @@ import subprocess
 
 os.environ["PYTHONUNBUFFERED"] = "1"
 
-def execute(cmd,encoding=None,errors=None,env=None):
+def execute(cmd,encoding=None,errors=None,env=None,verbose=False):
     """
     Run [cmd] (a single string) in a shell, yielding each line of output to the caller.
     
-    The "encoding" and "errors" parameters are passed directly to subprocess.Popen().
+    The "encoding", "errors", and "env" parameters are passed directly to subprocess.Popen().
+    
+    "verbose" only impacts output about process management, it is not related to printing
+    output from the child process.
     """
- 
-    if encoding is not None:
-        print('Launching child process with non-default encoding {}'.format(encoding))
-    if errors is not None:
-        print('Launching child process with non-default text error handling {}'.format(errors))
-    if env is not None:
-        print('Launching child process with non-default text environment {}'.format(str(env)))
+    
+    if verbose: 
+        if encoding is not None:
+            print('Launching child process with non-default encoding {}'.format(encoding))
+        if errors is not None:
+            print('Launching child process with non-default text error handling {}'.format(errors))
+        if env is not None:
+            print('Launching child process with non-default text environment {}'.format(str(env)))
         
     # https://stackoverflow.com/questions/4417546/constantly-print-subprocess-output-while-process-is-running
     popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -43,18 +47,21 @@ def execute(cmd,encoding=None,errors=None,env=None):
         raise subprocess.CalledProcessError(return_code, cmd)
 
 
-def execute_and_print(cmd,print_output=True,encoding=None,errors=None,env=None):
+def execute_and_print(cmd,print_output=True,encoding=None,errors=None,env=None,verbose=False):
     """
     Run [cmd] (a single string) in a shell, capturing and printing output.  Returns
     a dictionary with fields "status" and "output".
     
-    The "encoding" and "errors" parameters are passed directly to subprocess.Popen().
+    The "encoding", "errors", and "env" parameters are passed directly to subprocess.Popen().
+    
+    "verbose" only impacts output about process management, it is not related to printing
+    output from the child process.
     """
 
     to_return = {'status':'unknown','output':''}
     output=[]
     try:
-        for s in execute(cmd,encoding=encoding,errors=errors,env=env):
+        for s in execute(cmd,encoding=encoding,errors=errors,env=env,verbose=verbose):
             output.append(s)
             if print_output:
                 print(s,end='',flush=True)
