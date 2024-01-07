@@ -22,6 +22,18 @@ datasets_to_map = [
     ]
 
 
+#%% Initialize taxonomic lookup
+
+from taxonomy_mapping.species_lookup import (
+    initialize_taxonomy_lookup,
+    get_preferred_taxonomic_match)
+
+# from taxonomy_mapping.species_lookup import (
+#    get_taxonomic_info, print_taxonomy_matche)
+
+initialize_taxonomy_lookup(force_init=False)
+
+
 #%% Read the list of datasets
 
 with open(input_lila_category_list_file,'r') as f:
@@ -53,18 +65,6 @@ for dataset_name in datasets_to_map:
         category_mappings.append(mapping_name)
         
 print('Need to create {} mappings'.format(len(category_mappings)))
-
-
-#%% Initialize taxonomic lookup
-
-from taxonomy_mapping.species_lookup import (
-    initialize_taxonomy_lookup,
-    get_preferred_taxonomic_match)
-
-# from taxonomy_mapping.species_lookup import (
-#    get_taxonomic_info, print_taxonomy_matche)
-
-initialize_taxonomy_lookup(force_init=False)
 
 
 #%% Match every query against our taxonomies
@@ -136,7 +136,8 @@ if False:
     
     # q = 'white-throated monkey'
     # q = 'cingulata'
-    q = 'Prosthemadera novaeseelandiae'
+    # q = 'notamacropus'
+    q = 'porzana'
     taxonomy_preference = 'inat'
     m = get_preferred_taxonomic_match(q,taxonomy_preference)
     # print(m.scientific_name); import clipboard; clipboard.copy(m.scientific_name)

@@ -130,3 +130,5 @@ for i_row,row in df.iterrows():
 
 df = df.drop('source',axis=1)
 df.to_csv(release_taxonomy_file,header=True,index=False)
+
+print('Wrote final output to {}'.format(release_taxonomy_file))

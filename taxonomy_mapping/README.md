@@ -5,7 +5,7 @@ This folder contains scripts and some reference files used for mapping data on L
 This folder is only for generating and maintaining this mapping If you want to <i>use</i> data from LILA, don't worry about this folder; instead, see the [lila](https://github.com/agentmorris/MegaDetector/tree/main/data_management/lila) folder.
 
 
-## When new datasets come in for inclusion in the harmonized LILA taxonomy...
+## To add a new dataset come to the harmonized LILA taxonomy
 
 ### Update the index file
 
@@ -24,17 +24,20 @@ This folder is only for generating and maintaining this mapping If you want to <
 
 * Use [preview_lila_taxonomy.py](preview_lila_taxonomy.py) to produce an HTML file full of images that you can use to make sure that the matches were sensible; be particularly suspicious of anything that doesn't look like a mammal, bird, or reptile.  Go back and fix things in the .csv file.  This script/notebook also does a bunch of other consistency checking, e.g. making sure that if the "taxonomy_level" column says "species", the "taxonomy_string" column is actually a species.
 
-* When you are satisfied with that .csv file, manually append it to the "primary" .csv file (lila-taxonomy-mapping.csv), which is currently in a private repository.  [preview_lila_taxonomy.py](preview_lila_taxonomy.py) can also be run against the primary file.
+* When you are satisfied with that .csv file, manually append it to the "primary" .csv file (lila-taxonomy-mapping.csv), which is currently in a private repository (note to self: private-repo/lila-taxonomy/lila-taxonomy-mapping.csv).  [preview_lila_taxonomy.py](preview_lila_taxonomy.py) can also be run against the primary file.
+
+
+### Stuff we do once we've updated the source taxonomy file
 
 * Check for errors (one more time) (this should be redundant with what's now included in [preview_lila_taxonomy.py](preview_lila_taxonomy.py), but it can't hurt) by running:
 
     ```bash
-    python taxonomy_mapping/taxonomy_csv_checker.py /path/to/taxonomy.csv
+    python taxonomy_mapping/taxonomy_csv_checker.py private-repo/lila-taxonomy/lila-taxonomy-mapping.csv
     ```
     
-* Prepare the "release" taxonomy file (which removes a couple columns and removes unused rows) using [prepare_lila_taxonomy_release.py](prepare_lila_taxonomy_release.py).  This will create "lila-taxonomy-mapping_release.csv".  Run the taxonomy checker against this file too, just to be safe.
+* Prepare the "release" taxonomy file (which removes a couple columns and removes unused rows) using [prepare_lila_taxonomy_release.py](prepare_lila_taxonomy_release.py).  This will create "lila-taxonomy-mapping_release.csv" in the local LILA base folder.  Run the taxonomy checker against this file too, just to be safe.
 
-* Upload to <https://lila.science/public/lila-taxonomy-mapping_release.csv>
+* Upload to <https://lila.science/public/lila-taxonomy-mapping_release.csv>.  This is a small file that does not get zipped.
 
 
 ### Test the metadata file, index file, and MD results files
@@ -44,11 +47,22 @@ This folder is only for generating and maintaining this mapping If you want to <
 
 ### Update the One True CSV file
 
-* Use 'generate_lila_per_image_labels.py' to generate the main .csv table (lila_image_urls_and_labels.csv).  At the end of this process, you'll have the zipped version as well.
+* Use 'generate_lila_per_image_labels.py' to generate the main .csv table (lila_image_urls_and_labels.csv).  This takes a few hours.  At the end of this process, you'll have the zipped version as well, as "lila_image_urls_and_labels.csv" and "lila_image_urls_and_labels.csv.zip" in the local LILA base folder.
 
 * Upload to <https://lila.science/public/lila_image_urls_and_labels.csv.zip>
 
 * Test the new .csv file by running create_lila_test_set.py and download_lila_subset.py
+
+
+## To make small changes to the taxonomy mapping
+
+* If you're likely to need help from the semi-automated matching tools, open map_new_lila_datasets.py,  run the initialization cells, and head directly to the "manual lookup" cell at the end.
+
+* Open the source taxonomy (private-repo/lila-taxonomy/lila-taxonomy-mapping.csv) in your favorite .csv editor.
+
+* Make your changes.
+
+* Run all the steps in the [stuff we do once we've updated the source taxonomy file](#stuff-we-do-once-weve-updated-the-source-taxonomy-file) section.
 
 
 ## Files in this folder

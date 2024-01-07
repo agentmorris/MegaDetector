@@ -22,7 +22,9 @@ import json
 import pandas as pd
 import numpy as np
 import dateparser
+import csv
 
+import urllib.request
 from collections import defaultdict
 from tqdm import tqdm
 
@@ -30,6 +32,9 @@ from data_management.lila.lila_common import read_lila_metadata, \
     read_metadata_file_for_dataset, \
     read_lila_taxonomy_mapping
 
+from md_utils import write_html_image_list
+from md_utils.path_utils import zip_file
+from md_utils.path_utils import open_file
 from md_utils.url_utils import download_url
 
 # We'll write images, metadata downloads, and temporary files here
@@ -100,8 +105,6 @@ for i_row,row in taxonomy_df.iterrows():
 #%% Process annotations for each dataset
 
 # Takes several hours
-
-import csv
 
 header = ['dataset_name','url','image_id','sequence_id','location_id','frame_num','original_label',\
           'scientific_name','common_name','datetime','annotation_level']
@@ -446,8 +449,6 @@ print('Selected {} total images'.format(len(images_to_download)))
 
 # Expect a few errors for images with human or vehicle labels (or things like "ignore" that *could* be humans)
 
-import urllib.request
-
 # TODO: trivially parallelizable
 #
 # i_image = 10; image = images_to_download[i_image]
@@ -470,8 +471,6 @@ for i_image,image in tqdm(enumerate(images_to_download),total=len(images_to_down
 
 #%% Write preview HTML
 
-from md_utils import write_html_image_list
-
 html_filename = os.path.join(preview_folder,'index.html')
 
 html_images = []
@@ -492,12 +491,9 @@ for im in images_to_download:
     
 write_html_image_list.write_html_image_list(html_filename,html_images)
 
-from md_utils.path_utils import open_file
 open_file(html_filename)
 
 
 #%% Zip output file
-
-from md_utils.path_utils import zip_file
 
 zip_file(output_file,verbose=True)
