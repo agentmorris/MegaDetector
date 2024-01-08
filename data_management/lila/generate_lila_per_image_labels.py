@@ -23,8 +23,9 @@ import pandas as pd
 import numpy as np
 import dateparser
 import csv
-
+import urllib
 import urllib.request
+
 from collections import defaultdict
 from tqdm import tqdm
 
@@ -496,4 +497,6 @@ open_file(html_filename)
 
 #%% Zip output file
 
-zip_file(output_file,verbose=True)
+zipped_output_file = zip_file(output_file,verbose=True)
+
+print('Zipped {} to {}'.format(output_file,zipped_output_file))
