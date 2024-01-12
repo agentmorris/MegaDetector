@@ -61,21 +61,37 @@ from detection.run_detector import CONF_DIGITS, COORD_DIGITS
 
 def read_classes_from_yolo_dataset_file(fn):
     """
-    Read a dictionary mapping integer class IDs to class names from a YOLOv5 dataset.yaml
-    file.
+    Read a dictionary mapping integer class IDs to class names from a YOLOv5/YOLOv8
+    dataset.yaml file or a .json file.  A .json file should contain a dictionary mapping
+    integer category IDs to string category names.
     """
         
-    with open(fn,'r') as f:
-        lines = f.readlines()
-            
-    category_id_to_name = {}
-    pat = '\d+:.+'
-    for s in lines:
-        if re.search(pat,s) is not None:
-            tokens = s.split(':')
-            assert len(tokens) == 2, 'Invalid token in category file {}'.format(fn)
-            category_id_to_name[int(tokens[0].strip())] = tokens[1].strip()
+    if fn.endswith('.yml') or fn.endswith('.yaml'):
         
+        with open(fn,'r') as f:
+            lines = f.readlines()
+                
+        category_id_to_name = {}
+        pat = '\d+:.+'
+        for s in lines:
+            if re.search(pat,s) is not None:
+                tokens = s.split(':')
+                assert len(tokens) == 2, 'Invalid token in category file {}'.format(fn)
+                category_id_to_name[int(tokens[0].strip())] = tokens[1].strip()
+                
+    elif fn.endswith('.json'):
+        
+        with open(fn,'r') as f:
+            d_in = json.load(f)
+            category_id_to_name = {}
+            for k in d_in.keys():
+                category_id_to_name[int(k)] = d_in[k]
+        
+    else:
+        
+        raise ValueError('Unrecognized category file type: {}'.format(fn))
+        
+    assert len(category_id_to_name) > 0, 'Failed to read class mappings from {}'.format(fn)
     return category_id_to_name
     
 
