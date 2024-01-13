@@ -68,10 +68,12 @@ class YoloInferenceOptions:
     
     ## Optional ##
     
-    # Required for YOLOv5 models, not for YOLOv8 models
+    # Required for older YOLOv5 inference, not for newer ulytralytics inference
     yolo_working_folder = None
     
-    model_type = 'yolov5' # currently 'yolov5' and 'yolov8' are supported
+    # Currently 'yolov5' and 'ultralytics' are supported, and really these are proxies for
+    # "the yolov5 repo" and "the ultralytics repo".
+    model_type = 'yolov5' 
 
     image_size = default_image_size_with_augmentation
     conf_thres = '0.001'
@@ -106,7 +108,7 @@ def run_inference_with_yolo_val(options):
     ##%% Path handling
     
     if options.yolo_working_folder is None:
-        assert options.model_type == 'yolov8', \
+        assert options.model_type == 'ultralytics', \
             'A working folder is required to run YOLOv5 val.py'
     else:
         assert os.path.isdir(options.yolo_working_folder), \
@@ -270,7 +272,7 @@ def run_inference_with_yolo_val(options):
         if options.augment:
             cmd += ' --augment'
                 
-    elif options.model_type == 'yolov8':
+    elif options.model_type == 'ultralytics':
         
         if options.augment:
             augment_string = 'augment'
@@ -280,7 +282,7 @@ def run_inference_with_yolo_val(options):
         cmd = 'yolo val {} model="{}" imgsz={} batch={} data="{}" project="{}" name="{}" device="{}"'.\
             format(augment_string,model_filename,image_size_string,options.batch_size,
                    yolo_dataset_file,yolo_results_folder,'yolo_results',options.device_string)
-        cmd += ' save_hybrid save_json exist_ok'
+        cmd += ' save_conf save_json exist_ok'
             
     else:
         
@@ -293,18 +295,21 @@ def run_inference_with_yolo_val(options):
     
     if options.yolo_working_folder is not None:
         current_dir = os.getcwd()
-        os.chdir(options.yolo_working_folder)    
+        os.chdir(options.yolo_working_folder)
     print('Running YOLO inference command:\n{}\n'.format(cmd))
     
     if options.preview_yolo_command_only:
+        
         if options.remove_symlink_folder:
             try:
+                print('Removing YOLO symlink folder {}'.format(symlink_folder))
                 shutil.rmtree(symlink_folder)
             except Exception:
                 print('Warning: error removing symlink folder {}'.format(symlink_folder))
                 pass
         if options.remove_yolo_results_folder:
             try:
+                print('Removing YOLO results folder {}'.format(yolo_results_folder))
                 shutil.rmtree(yolo_results_folder)
             except Exception:
                 print('Warning: error removing YOLO results folder {}'.format(yolo_results_folder))
@@ -318,7 +323,17 @@ def run_inference_with_yolo_val(options):
     
     yolo_read_failures = []
     for line in yolo_console_output:
-        if 'cannot identify image file' in line:
+        # Lines look like:
+        #
+        # val: WARNING ⚠️ /a/b/c/d.jpg: ignoring corrupt image/label: [Errno 13] Permission denied: '/a/b/c/d.jpg' 
+        if 'ignoring corrupt image/label' in line:
+            tokens = line.split('ignoring corrupt image/label')
+            assert '⚠️' in line
+            image_name = tokens[0].split('⚠️')[-1].strip()
+            assert image_name.endswith(':')
+            image_name = image_name[0:-1]
+            yolo_read_failures.append(image_name)
+        elif 'cannot identify image file' in line:            
             tokens = line.split('cannot identify image file')
             image_name = tokens[-1].strip()
             assert image_name[0] == "'" and image_name [-1] == "'"
@@ -435,7 +450,7 @@ def main():
             '(otherwise defaults to MD categories)')
     parser.add_argument(
         '--model_type', default=options.model_type, type=str,
-        help='Model type (yolov5 or yolov8) (default {})'.format(options.model_type))
+        help='Model type (yolov5 or ultralytics) (default {})'.format(options.model_type))
 
     parser.add_argument(
         '--symlink_folder', type=str,

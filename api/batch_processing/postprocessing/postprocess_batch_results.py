@@ -23,7 +23,6 @@ import collections
 import copy
 import errno
 import io
-import itertools
 import os
 import sys
 import time
@@ -535,7 +534,7 @@ def prepare_html_subpages(images_html, output_dir, options=None):
 
 # ...prepare_html_subpages()
 
-# Get unique categories above the threshold for this image
+# Get a sorted list of unique categories (as string IDs) above the threshold for this image
 def get_positive_categories(detections,options):
     positive_categories = set()
     for d in detections:
@@ -1345,43 +1344,55 @@ def process_batch_results(options: PostProcessingOptions
         # Accumulate html image structs (in the format expected by write_html_image_list)
         # for each category
         images_html = collections.defaultdict(list)
+        
+        # For the creation of a "non-detections" category
         images_html['non_detections']
 
         # Add default entries by accessing them for the first time
 
-        # Maps detection categories - e.g. "human" - to result set names, e.g.
-        # "detections_human"
+        # Maps sorted tuples of detection category IDs (string ints) - e.g. ("1"), ("1", "4", "7") - to 
+        # result set names, e.g. "detections_human", "detections_cat_truck".
         detection_categories_to_results_name = {}
         
         # Keep track of which categories are single-class (e.g. "animal") and which are
         # combinations (e.g. "animal_vehicle")
         detection_categories_to_category_count = {}
-        detection_categories_to_category_count['detections'] = 0
-        detection_categories_to_category_count['non_detections'] = 0
-        detection_categories_to_category_count['almost_detections'] = 0
+        
         
         if not options.separate_detections_by_category:
             # For the creation of a "detections" category
             images_html['detections']
+            detection_categories_to_category_count['detections'] = 0
+            detection_categories_to_category_count['non_detections'] = 0
+            detection_categories_to_category_count['almost_detections'] = 0
         else:
             # Add a set of results for each category and combination of categories, e.g.
             # "detections_animal_vehicle".  When we're using this script for non-MegaDetector
             # results, this can generate lots of categories, e.g. detections_bear_bird_cat_dog_pig.
             # We'll keep that huge set of combinations in this map, but we'll only write
             # out links for the ones that are non-empty.            
-            keys = detection_categories.keys()
-            subsets = []
-            for L in range(1, len(keys)+1):
-                for subset in itertools.combinations(keys, L):
-                    subsets.append(subset)
-            for subset in subsets:
-                sorted_subset = tuple(sorted(subset))
+            used_combinations = set()
+            
+            # row = images_to_visualize.iloc[0]
+            for i_row, row in images_to_visualize.iterrows():
+                detections_this_row = row['detections']
+                above_threshold_category_ids_this_row = set()
+                for detection in detections_this_row:
+                    if detection['conf'] >= options.confidence_threshold:
+                        above_threshold_category_ids_this_row.add(detection['category'])
+                if len(above_threshold_category_ids_this_row) == 0:
+                    continue
+                sorted_categories_this_row = tuple(sorted(above_threshold_category_ids_this_row))
+                used_combinations.add(sorted_categories_this_row)
+            
+            for sorted_subset in used_combinations:
+                assert len(sorted_subset) > 0
                 results_name = 'detections'
                 for category_id in sorted_subset:
                     results_name = results_name + '_' + detection_categories[category_id]
                 images_html[results_name]
                 detection_categories_to_results_name[sorted_subset] = results_name
-                detection_categories_to_category_count[results_name] = len(sorted_subset)
+                detection_categories_to_category_count[results_name] = len(sorted_subset)                
 
         if options.include_almost_detections:
             images_html['almost_detections']
@@ -1521,7 +1532,17 @@ def process_batch_results(options: PostProcessingOptions
             friendly_name = friendly_name.capitalize()
             return friendly_name
 
-        for result_set_name in images_html.keys():
+        sorted_result_set_names = sorted(list(images_html.keys()))
+        
+        result_set_name_to_count = {}
+        for result_set_name in sorted_result_set_names:
+            image_count = image_counts[result_set_name]
+            result_set_name_to_count[result_set_name] = image_count
+        sorted_result_set_names = sorted(sorted_result_set_names,
+                                         key=lambda x: result_set_name_to_count[x],
+                                         reverse=True)
+            
+        for result_set_name in sorted_result_set_names:
 
             # Don't print classification classes here; we'll do that later with a slightly
             # different structure
