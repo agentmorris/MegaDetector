@@ -622,7 +622,7 @@ def find_matches_in_directory(dirNameAndRows, options):
             area = h * w
 
             assert area >= 0.0 and area <= 1.0, \
-                'Illegal bounding box area {}'.format(area)
+                'Illegal bounding box area {} in image {}'.format(area,filename)
 
             if area < options.minSuspiciousDetectionSize:                
                 continue
