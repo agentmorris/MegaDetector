@@ -72,7 +72,7 @@ class YoloInferenceOptions:
     yolo_working_folder = None
     
     # Currently 'yolov5' and 'ultralytics' are supported, and really these are proxies for
-    # "the yolov5 repo" and "the ultralytics repo".
+    # "the yolov5 repo" and "the ultralytics repo" (typically YOLOv8).
     model_type = 'yolov5' 
 
     image_size = default_image_size_with_augmentation
@@ -260,6 +260,11 @@ def run_inference_with_yolo_val(options):
     
     image_size_string = str(round(options.image_size))
     
+    if options.model_type == 'yolov8':
+        
+        print('Warning: model type "yolov8" supplied, "ultralytics" is the preferred model type string for YOLOv8 models')
+        options.model_type = 'ultralytics'
+        
     if options.model_type == 'yolov5':
         
         cmd = 'python val.py --task test --data "{}"'.format(yolo_dataset_file)
@@ -272,8 +277,11 @@ def run_inference_with_yolo_val(options):
         if options.augment:
             cmd += ' --augment'
                 
-    elif options.model_type == 'ultralytics':
+        # Sometimes useful for debugging
+        # cmd += ' --save_conf --save_txt'
         
+    elif options.model_type == 'ultralytics':
+                
         if options.augment:
             augment_string = 'augment'
         else:
@@ -282,7 +290,10 @@ def run_inference_with_yolo_val(options):
         cmd = 'yolo val {} model="{}" imgsz={} batch={} data="{}" project="{}" name="{}" device="{}"'.\
             format(augment_string,model_filename,image_size_string,options.batch_size,
                    yolo_dataset_file,yolo_results_folder,'yolo_results',options.device_string)
-        cmd += ' save_conf save_json exist_ok'
+        cmd += ' save_json exist_ok'
+        
+        # Sometimes useful for debugging
+        # cmd += ' save_conf save_txt'
             
     else:
         
@@ -439,7 +450,7 @@ def main():
         help='inference batch size (default {})'.format(options.batch_size))
     parser.add_argument(
         '--device_string', default=options.device_string, type=str,
-        help='CUDA device specifier, e.g. "0" or "cpu" (default {})'.format(options.device_string))
+        help='CUDA device specifier, typically "0" or "1" for CUDA devices, "mps" for M1/M2 devices, or "cpu" (default {})'.format(options.device_string))
     parser.add_argument(
         '--overwrite_handling', default=options.overwrite_handling, type=str,
         help='action to take if the output file exists (skip, error, overwrite) (default {})'.format(

@@ -1345,8 +1345,6 @@ def process_batch_results(options: PostProcessingOptions
         # for each category
         images_html = collections.defaultdict(list)
         
-        # For the creation of a "non-detections" category
-        images_html['non_detections']
 
         # Add default entries by accessing them for the first time
 
@@ -1358,13 +1356,15 @@ def process_batch_results(options: PostProcessingOptions
         # combinations (e.g. "animal_vehicle")
         detection_categories_to_category_count = {}
         
+        # For the creation of a "non-detections" category
+        images_html['non_detections']
+        detection_categories_to_category_count['non_detections'] = 0
+        
         
         if not options.separate_detections_by_category:
             # For the creation of a "detections" category
             images_html['detections']
-            detection_categories_to_category_count['detections'] = 0
-            detection_categories_to_category_count['non_detections'] = 0
-            detection_categories_to_category_count['almost_detections'] = 0
+            detection_categories_to_category_count['detections'] = 0            
         else:
             # Add a set of results for each category and combination of categories, e.g.
             # "detections_animal_vehicle".  When we're using this script for non-MegaDetector
@@ -1396,6 +1396,7 @@ def process_batch_results(options: PostProcessingOptions
 
         if options.include_almost_detections:
             images_html['almost_detections']
+            detection_categories_to_category_count['almost_detections'] = 0
 
         # Create output directories
         for res in images_html.keys():
