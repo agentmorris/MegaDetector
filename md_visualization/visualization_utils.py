@@ -379,7 +379,8 @@ def render_detection_bounding_boxes(detections, image,
             The type of the numerical label (default string) needs to be consistent with the keys in
             label_map; no casting is carried out.  If this is None, no classification labels are shown.
 
-        confidence_threshold: optional, threshold above which the bounding box is rendered.
+        confidence_threshold: optional, threshold above which boxes are rendered.  Can also be a dictionary
+        mapping category IDs to thresholds.
         
         thickness: line thickness in pixels. Default value is 4.
         
@@ -413,9 +414,14 @@ def render_detection_bounding_boxes(detections, image,
 
         score = detection['conf']
         
+        if isinstance(confidence_threshold,float):            
+            rendering_threshold = confidence_threshold            
+        else:
+            rendering_threshold = confidence_threshold[detection['category']]
+            
         # Always render objects with a confidence of "None", this is typically used
         # for ground truth data.        
-        if score is None or score >= confidence_threshold:
+        if score is None or score >= rendering_threshold:
             
             x1, y1, w_box, h_box = detection['bbox']
             display_boxes.append([y1, x1, y1 + h_box, x1 + w_box])

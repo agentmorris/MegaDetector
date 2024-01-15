@@ -70,6 +70,7 @@ from tqdm import tqdm
 
 from md_utils.ct_utils import args_to_object
 from md_utils.ct_utils import get_max_conf
+from md_utils.ct_utils import invert_dictionary
 
 
 #%% Helper classes
@@ -123,9 +124,16 @@ class SubsetJsonDetectorOutputOptions:
     # Should we remove failed images?
     remove_failed_images = False
     
-    # Dictionary mapping categories to thresholds.  Removes non-matching detections,
-    # does not remove images.
+    # Either a list of category IDs (as string-ints) (not names), or a dictionary mapping category *IDs* 
+    # (as string-ints) (not names) to thresholds.  Removes  non-matching detections, does not 
+    # remove images.  Not technically mutually exclusize with category_names_to_keep, but it's an esoteric 
+    # scenario indeed where you would want to specify both.
     categories_to_keep = None
+    
+    # Either a list of category names (not IDs), or a dictionary mapping category *names* (not IDs) to thresholds.  
+    # Removes non-matching detections, does not remove images.  Not technically mutually exclusize with 
+    # category_ids_to_keep, but it's an esoteric scenario indeed where you would want to specify both.
+    category_names_to_keep = None
     
     debug_max_images = -1
     
@@ -224,14 +232,56 @@ def subset_json_detector_output_by_categories(data, options):
     Remove all detections without detections above a threshold for specific categories.
     """
     
+    # If categories_to_keep is supplied as a list, convert to a dict
+    if options.categories_to_keep is not None:
+        if not isinstance(options.categories_to_keep, dict):
+            dict_categories_to_keep = {}
+            for category_id in options.categories_to_keep:
+                # Set unspecified thresholds to a silly negative value
+                dict_categories_to_keep[category_id] = -100000.0
+            options.categories_to_keep = dict_categories_to_keep
+    
+    # If category_names_to_keep is supplied as a list, convert to a dict
+    if options.category_names_to_keep is not None:
+        if not isinstance(options.category_names_to_keep, dict):
+            dict_category_names_to_keep = {}
+            for category_name in options.category_names_to_keep:
+                # Set unspecified thresholds to a silly negative value
+                dict_category_names_to_keep[category_name] = -100000.0
+            options.category_names_to_keep = dict_category_names_to_keep
+            
+    category_name_to_category_id = invert_dictionary(data['detection_categories'])
+    
+    # If some categories are supplied as names, convert all to IDs and add to "categories_to_keep"
+    if options.category_names_to_keep is not None:
+        if options.categories_to_keep is None:
+            options.categories_to_keep = {}
+        for category_name in options.category_names_to_keep:
+            assert category_name in category_name_to_category_id, \
+                'Category {} not in detection categories'.format(category_name)
+            category_id = category_name_to_category_id[category_name]
+            assert category_id not in options.categories_to_keep, \
+                'Category {} ({}) specified as both a name and an ID'.format(
+                    category_name,category_id)
+            options.categories_to_keep[category_id] = options.category_names_to_keep[category_name]
+    
     if options.categories_to_keep is None:
         return data
     
     images_in = data['images']
     images_out = []    
     
-    print('Subsetting by categories (keeping {} categories)'.format(
+    print('Subsetting by categories (keeping {} categories:)'.format(
         len(options.categories_to_keep)))
+    
+    for category_id in sorted(list(options.categories_to_keep.keys())):
+        if category_id not in data['detection_categories']:
+            print('Warning: category ID {} not in category map in this file'.format(category_id))
+        else:
+            print('{} ({}) (threshold {})'.format(
+                category_id,
+                data['detection_categories'][category_id],
+                options.categories_to_keep[category_id]))
     
     n_detections_in = 0
     n_detections_kept = 0
@@ -466,7 +516,7 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
         
         data = subset_json_detector_output_by_confidence(data, options)
         
-    if options.categories_to_keep is not None:
+    if (options.categories_to_keep is not None) or (options.category_names_to_keep is not None):
         
         data = subset_json_detector_output_by_categories(data, options)
         
