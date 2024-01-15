@@ -271,7 +271,7 @@ def subset_json_detector_output_by_categories(data, options):
     images_in = data['images']
     images_out = []    
     
-    print('Subsetting by categories (keeping {} categories:)'.format(
+    print('Subsetting by categories (keeping {} categories):'.format(
         len(options.categories_to_keep)))
     
     for category_id in sorted(list(options.categories_to_keep.keys())):
