@@ -623,7 +623,7 @@ def find_matches_in_directory(dirNameAndRows, options):
 
             if area < 0:
                 print('Warning: negative-area bounding box for file {}'.format(filename))
-                area = abs(area)
+                area = abs(area); h = abs(h); w = abs(h)
                 
             assert area >= 0.0 and area <= 1.0, \
                 'Illegal bounding box area {} in image {}'.format(area,filename)
