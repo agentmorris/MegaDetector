@@ -80,7 +80,8 @@ class YoloInferenceOptions:
     batch_size = 1
     device_string = '0'
     augment = True
-
+    half_precision_enabled = None
+    
     symlink_folder = None
     use_symlinks = True
     
@@ -117,6 +118,11 @@ def run_inference_with_yolo_val(options):
     assert os.path.isdir(options.input_folder) or os.path.isfile(options.input_folder), \
         'Could not find input {}'.format(options.input_folder)
     
+    if options.half_precision_enabled is not None:
+        assert options.half_precision_enabled in (0,1), \
+            'Invalid value {} for --half_precision_enabled (should be 0 or 1)'.format(
+                options.half_precision_enabled)
+            
     # If the model filename is a known model string (e.g. "MDv5A", download the model if necessary)
     model_filename = try_download_known_detector(options.model_filename)
     
@@ -277,6 +283,10 @@ def run_inference_with_yolo_val(options):
         if options.augment:
             cmd += ' --augment'
                 
+        # --half is a store_true argument for YOLOv5's val.py
+        if (options.half_precision_enabled is not None) and (options.half_precision_enabled == 1):
+            cmd += ' --half'
+        
         # Sometimes useful for debugging
         # cmd += ' --save_conf --save_txt'
         
@@ -291,6 +301,13 @@ def run_inference_with_yolo_val(options):
             format(augment_string,model_filename,image_size_string,options.batch_size,
                    yolo_dataset_file,yolo_results_folder,'yolo_results',options.device_string)
         cmd += ' save_json exist_ok'
+        
+        if (options.half_precision_enabled is not None):
+            if options.half_precision_enabled == 1:
+                cmd += ' --half=True'
+            else:
+                assert options.half_precision_enabled == 0
+                cmd += ' --half=False'
         
         # Sometimes useful for debugging
         # cmd += ' save_conf save_txt'
@@ -449,6 +466,9 @@ def main():
         '--batch_size', default=options.batch_size, type=int,
         help='inference batch size (default {})'.format(options.batch_size))
     parser.add_argument(
+        '--half_precision_enabled', default=None, type=int,
+        help='use half-precision-inference (1 or 0) (default is the underlying model\'s default, probably half for YOLOv8 and full for YOLOv8')
+    parser.add_argument(
         '--device_string', default=options.device_string, type=str,
         help='CUDA device specifier, typically "0" or "1" for CUDA devices, "mps" for M1/M2 devices, or "cpu" (default {})'.format(options.device_string))
     parser.add_argument(
@@ -500,14 +520,15 @@ def main():
         
     # If the caller hasn't specified an image size, choose one based on whether augmentation
     # is enabled.
-    if args.image_size is None:
-        assert options.augment in (0,1)
-        if options.augment == 1:
+    if args.image_size is None:        
+        assert args.augment_enabled in (0,1), \
+            'Illegal augment_enabled value {}'.format(args.augment_enabled)
+        if args.augment_enabled == 1:
             args.image_size = default_image_size_with_augmentation
         else:
             args.image_size = default_image_size_with_no_augmentation
         augment_enabled_string = 'enabled'
-        if not options.augment:
+        if not args.augment_enabled:
             augment_enabled_string = 'disabled'
         print('Augmentation is {}, using default image size {}'.format(
             augment_enabled_string,args.image_size))
