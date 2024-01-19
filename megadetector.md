@@ -98,7 +98,9 @@ See <a href="https://github.com/agentmorris/MegaDetector/#who-is-using-megadetec
 
 ## Downloading the model
 
-In this section, we provide download links for lots of MegaDetector versions.  Unless you have a very esoteric scenario, you want MegaDetector v5, and you can ignore all the other MegaDetector versions.  The rest of this section, after the MDv5 download links, is more like a mini-MegaDetector-museum than part of the User Guide.
+In previous versions of these instructions, you had to download MegaDetector to your PC before running it.  The scripts we use to run MegaDetector can now automatically download MegaDetector, so <b>this whole download step is optional now</b>, and if you're going to follow the instructions on this page, you can probably ignore this section and skip to the "[Using the model](#using-the-model)" section.
+
+That said, in this section, we provide download links for lots of MegaDetector versions.  Unless you have a very esoteric scenario, you want MegaDetector v5, and you can ignore all the other MegaDetector versions.  The rest of this section, after the MDv5 download links, is more like a mini-MegaDetector-museum than part of the User Guide.
 
 ### MegaDetector v5.0, 2022.06.15
 
