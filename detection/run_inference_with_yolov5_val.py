@@ -68,17 +68,20 @@ class YoloInferenceOptions:
     
     ## Optional ##
     
-    # Required for YOLOv5 models, not for YOLOv8 models
+    # Required for older YOLOv5 inference, not for newer ulytralytics inference
     yolo_working_folder = None
     
-    model_type = 'yolov5' # currently 'yolov5' and 'yolov8' are supported
+    # Currently 'yolov5' and 'ultralytics' are supported, and really these are proxies for
+    # "the yolov5 repo" and "the ultralytics repo" (typically YOLOv8).
+    model_type = 'yolov5' 
 
     image_size = default_image_size_with_augmentation
     conf_thres = '0.001'
     batch_size = 1
     device_string = '0'
     augment = True
-
+    half_precision_enabled = None
+    
     symlink_folder = None
     use_symlinks = True
     
@@ -106,7 +109,7 @@ def run_inference_with_yolo_val(options):
     ##%% Path handling
     
     if options.yolo_working_folder is None:
-        assert options.model_type == 'yolov8', \
+        assert options.model_type == 'ultralytics', \
             'A working folder is required to run YOLOv5 val.py'
     else:
         assert os.path.isdir(options.yolo_working_folder), \
@@ -115,6 +118,11 @@ def run_inference_with_yolo_val(options):
     assert os.path.isdir(options.input_folder) or os.path.isfile(options.input_folder), \
         'Could not find input {}'.format(options.input_folder)
     
+    if options.half_precision_enabled is not None:
+        assert options.half_precision_enabled in (0,1), \
+            'Invalid value {} for --half_precision_enabled (should be 0 or 1)'.format(
+                options.half_precision_enabled)
+            
     # If the model filename is a known model string (e.g. "MDv5A", download the model if necessary)
     model_filename = try_download_known_detector(options.model_filename)
     
@@ -258,6 +266,11 @@ def run_inference_with_yolo_val(options):
     
     image_size_string = str(round(options.image_size))
     
+    if options.model_type == 'yolov8':
+        
+        print('Warning: model type "yolov8" supplied, "ultralytics" is the preferred model type string for YOLOv8 models')
+        options.model_type = 'ultralytics'
+        
     if options.model_type == 'yolov5':
         
         cmd = 'python val.py --task test --data "{}"'.format(yolo_dataset_file)
@@ -270,8 +283,15 @@ def run_inference_with_yolo_val(options):
         if options.augment:
             cmd += ' --augment'
                 
-    elif options.model_type == 'yolov8':
+        # --half is a store_true argument for YOLOv5's val.py
+        if (options.half_precision_enabled is not None) and (options.half_precision_enabled == 1):
+            cmd += ' --half'
         
+        # Sometimes useful for debugging
+        # cmd += ' --save_conf --save_txt'
+        
+    elif options.model_type == 'ultralytics':
+                
         if options.augment:
             augment_string = 'augment'
         else:
@@ -280,7 +300,17 @@ def run_inference_with_yolo_val(options):
         cmd = 'yolo val {} model="{}" imgsz={} batch={} data="{}" project="{}" name="{}" device="{}"'.\
             format(augment_string,model_filename,image_size_string,options.batch_size,
                    yolo_dataset_file,yolo_results_folder,'yolo_results',options.device_string)
-        cmd += ' save_hybrid save_json exist_ok'
+        cmd += ' save_json exist_ok'
+        
+        if (options.half_precision_enabled is not None):
+            if options.half_precision_enabled == 1:
+                cmd += ' --half=True'
+            else:
+                assert options.half_precision_enabled == 0
+                cmd += ' --half=False'
+        
+        # Sometimes useful for debugging
+        # cmd += ' save_conf save_txt'
             
     else:
         
@@ -293,18 +323,21 @@ def run_inference_with_yolo_val(options):
     
     if options.yolo_working_folder is not None:
         current_dir = os.getcwd()
-        os.chdir(options.yolo_working_folder)    
+        os.chdir(options.yolo_working_folder)
     print('Running YOLO inference command:\n{}\n'.format(cmd))
     
     if options.preview_yolo_command_only:
+        
         if options.remove_symlink_folder:
             try:
+                print('Removing YOLO symlink folder {}'.format(symlink_folder))
                 shutil.rmtree(symlink_folder)
             except Exception:
                 print('Warning: error removing symlink folder {}'.format(symlink_folder))
                 pass
         if options.remove_yolo_results_folder:
             try:
+                print('Removing YOLO results folder {}'.format(yolo_results_folder))
                 shutil.rmtree(yolo_results_folder)
             except Exception:
                 print('Warning: error removing YOLO results folder {}'.format(yolo_results_folder))
@@ -318,7 +351,17 @@ def run_inference_with_yolo_val(options):
     
     yolo_read_failures = []
     for line in yolo_console_output:
-        if 'cannot identify image file' in line:
+        # Lines look like:
+        #
+        # val: WARNING ⚠️ /a/b/c/d.jpg: ignoring corrupt image/label: [Errno 13] Permission denied: '/a/b/c/d.jpg' 
+        if 'ignoring corrupt image/label' in line:
+            tokens = line.split('ignoring corrupt image/label')
+            assert '⚠️' in line
+            image_name = tokens[0].split('⚠️')[-1].strip()
+            assert image_name.endswith(':')
+            image_name = image_name[0:-1]
+            yolo_read_failures.append(image_name)
+        elif 'cannot identify image file' in line:            
             tokens = line.split('cannot identify image file')
             image_name = tokens[-1].strip()
             assert image_name[0] == "'" and image_name [-1] == "'"
@@ -423,8 +466,11 @@ def main():
         '--batch_size', default=options.batch_size, type=int,
         help='inference batch size (default {})'.format(options.batch_size))
     parser.add_argument(
+        '--half_precision_enabled', default=None, type=int,
+        help='use half-precision-inference (1 or 0) (default is the underlying model\'s default, probably half for YOLOv8 and full for YOLOv8')
+    parser.add_argument(
         '--device_string', default=options.device_string, type=str,
-        help='CUDA device specifier, e.g. "0" or "cpu" (default {})'.format(options.device_string))
+        help='CUDA device specifier, typically "0" or "1" for CUDA devices, "mps" for M1/M2 devices, or "cpu" (default {})'.format(options.device_string))
     parser.add_argument(
         '--overwrite_handling', default=options.overwrite_handling, type=str,
         help='action to take if the output file exists (skip, error, overwrite) (default {})'.format(
@@ -435,7 +481,7 @@ def main():
             '(otherwise defaults to MD categories)')
     parser.add_argument(
         '--model_type', default=options.model_type, type=str,
-        help='Model type (yolov5 or yolov8) (default {})'.format(options.model_type))
+        help='Model type (yolov5 or ultralytics) (default {})'.format(options.model_type))
 
     parser.add_argument(
         '--symlink_folder', type=str,
@@ -474,14 +520,15 @@ def main():
         
     # If the caller hasn't specified an image size, choose one based on whether augmentation
     # is enabled.
-    if args.image_size is None:
-        assert options.augment in (0,1)
-        if options.augment == 1:
+    if args.image_size is None:        
+        assert args.augment_enabled in (0,1), \
+            'Illegal augment_enabled value {}'.format(args.augment_enabled)
+        if args.augment_enabled == 1:
             args.image_size = default_image_size_with_augmentation
         else:
             args.image_size = default_image_size_with_no_augmentation
         augment_enabled_string = 'enabled'
-        if not options.augment:
+        if not args.augment_enabled:
             augment_enabled_string = 'disabled'
         print('Augmentation is {}, using default image size {}'.format(
             augment_enabled_string,args.image_size))

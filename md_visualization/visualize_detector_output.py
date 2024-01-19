@@ -158,7 +158,7 @@ def visualize_detector_output(detector_output_path: str,
         print('Using custom label mapping')
         detector_label_map = detector_output['detection_categories']
     else:
-        detector_label_map = DEFAULT_DETECTOR_LABEL_MAP        
+        detector_label_map = DEFAULT_DETECTOR_LABEL_MAP
 
     num_images = len(images)
     print(f'Detector output file contains {num_images} entries.')

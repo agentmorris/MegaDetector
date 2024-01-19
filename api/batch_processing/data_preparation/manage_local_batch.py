@@ -163,7 +163,7 @@ if os.name == 'nt':
 # Should we use YOLOv5's val.py instead of run_detector_batch.py?
 use_yolo_inference_scripts = False
 
-# Directory in which to run val.py.
+# Directory in which to run val.py (relevant for YOLOv5, not for YOLOv8)
 yolo_working_dir = os.path.expanduser('~/git/yolov5')
 
 # Only used for loading the mapping from class indices to names
@@ -171,6 +171,9 @@ yolo_dataset_file = None
 
 # 'yolov5' or 'yolov8'; assumes YOLOv5 if this is None
 yolo_model_type = None
+
+# inference batch size
+yolo_batch_size = 1
 
 # Should we remove intermediate files used for running YOLOv5's val.py?
 #
@@ -188,6 +191,7 @@ augment = False
 input_path = '/drive/organization'
 
 assert not (input_path.endswith('/') or input_path.endswith('\\'))
+assert os.path.isdir(input_path), 'Could not find input folder {}'.format(input_path)
 
 organization_name_short = 'organization'
 job_date = None # '2024-01-01'
@@ -360,6 +364,10 @@ for i_task,task in enumerate(task_info):
         augment_string = ''
         if augment:
             augment_string = '--augment_enabled 1'
+        else:
+            augment_string = '--augment_enabled 0'
+        
+        batch_string = '--batch_size {}'.format(yolo_batch_size)
         
         symlink_folder = os.path.join(filename_base,'symlinks','symlinks_{}'.format(
             str(i_task).zfill(3)))
@@ -393,7 +401,7 @@ for i_task,task in enumerate(task_info):
         cmd += f'{image_size_string} {augment_string} '
         cmd += f'{symlink_folder_string} {yolo_results_folder_string} {remove_yolo_results_string} '
         cmd += f'{remove_symlink_folder_string} {confidence_threshold_string} {device_string} '
-        cmd += f'{overwrite_handling_string}'
+        cmd += f'{overwrite_handling_string} {batch_string}'
                 
         if yolo_working_dir is not None:
             cmd += f' --yolo_working_folder "{yolo_working_dir}"'
@@ -716,6 +724,7 @@ options.output_dir = output_base
 ppresults = process_batch_results(options)
 html_output_file = ppresults.output_html_file
 path_utils.open_file(html_output_file,attempt_to_open_in_wsl_host=True)
+# import clipboard; clipboard.copy(html_output_file)
 
 
 #%% Repeat detection elimination, phase 1
@@ -852,6 +861,7 @@ ppresults = process_batch_results(options)
 html_output_file = ppresults.output_html_file
 
 path_utils.open_file(html_output_file,attempt_to_open_in_wsl_host=True)
+# import clipboard; clipboard.copy(html_output_file)
 
 
 #%% Run MegaClassifier (actually, write out a script that runs MegaClassifier)
@@ -1924,7 +1934,7 @@ options.api_output_file = sequence_smoothed_classification_file
 options.output_dir = output_base
 ppresults = process_batch_results(options)
 path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True)
-
+# import clipboard; clipboard.copy(ppresults.output_html_file)
 
 #% Zip .json files
 

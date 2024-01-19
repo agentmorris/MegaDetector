@@ -23,7 +23,7 @@ If an image could not be opened or an error occurred when applying the model to 
 
 Example output with both detection and classification results:
 
-```json
+```jsonc
 {
     "info": {
         "format_version": "1.3",
@@ -40,11 +40,13 @@ Example output with both detection and classification results:
            "typical_classification_threshold":0.75
         }
     },
+    // Category IDs must be string-formatted ints
     "detection_categories": {
         "1": "animal",
         "2": "person",
         "3": "vehicle"
     },
+    // Category IDs must be string-formatted ints
     "classification_categories": {
         "0": "fox",
         "1": "elk",
@@ -55,11 +57,11 @@ Example output with both detection and classification results:
     "images": [
         {
             "file": "path/from/base/dir/image_with_animal.jpg",
-            "meta": "optional free-text metadata",
             "detections": [
                 {
                     "category": "1",
                     "conf": 0.926,
+                    // See below for more details on bounding box format
                     "bbox": [0.0, 0.2762, 0.1539, 0.2825], 
                     "classifications": [
                         ["3", 0.901],
@@ -75,13 +77,22 @@ Example output with both detection and classification results:
             ]
         },
         {
+            // This file was processed correctly, but had no detections
             "file": "/path/from/base/dir/empty_image.jpg",
-            "meta": "",
             "detections": []
         },
         {
-            "file": "/path/from/base/dir2/corrupted_image.jpg",
+            // This file was not processed.  For backwards compatibility, in these cases,
+            // "detections" may be either absent or None.  "detections" should never be a
+            // valid array for a failed image, i.e. it should never be [].
+            "file": "/path/from/base/dir2/corrupted_image_0.jpg",
             "failure": "Failure image access"
+        }
+        {
+            // This file was also not processed.
+            "file": "/path/from/base/dir2/corrupted_image_1.jpg",
+            "failure": "Failure image access",
+            "detections": None
         }
     ]
 }

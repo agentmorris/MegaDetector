@@ -29,6 +29,7 @@ from tqdm import tqdm
 
 from detection.run_inference_with_yolov5_val import YoloInferenceOptions,run_inference_with_yolo_val
 from detection.run_detector_batch import load_and_run_detector_batch,write_results_to_file
+from detection.run_detector import try_download_known_detector
 
 import torch
 from torchvision import ops
@@ -736,7 +737,8 @@ def main():
 
     args = parser.parse_args()
 
-    assert os.path.exists(args.model_file), \
+    model_file = try_download_known_detector(args.model_file)
+    assert os.path.exists(model_file), \
         'detector file {} does not exist'.format(args.model_file)
     
     if os.path.exists(args.output_file):
@@ -745,7 +747,7 @@ def main():
 
     remove_tiles = (not args.no_remove_tiles)
 
-    run_tiled_inference(args.model_file, args.image_folder, args.tiling_folder, args.output_file,
+    run_tiled_inference(model_file, args.image_folder, args.tiling_folder, args.output_file,
                         tile_size_x=args.tile_size_x, tile_size_y=args.tile_size_y, 
                         tile_overlap=args.tile_overlap,
                         remove_tiles=remove_tiles)

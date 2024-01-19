@@ -23,7 +23,6 @@ import collections
 import copy
 import errno
 import io
-import itertools
 import os
 import sys
 import time
@@ -54,6 +53,7 @@ from md_utils import path_utils
 from data_management.cct_json_utils import (CameraTrapJsonUtils, IndexedJsonDb)
 from api.batch_processing.postprocessing.load_api_results import load_api_results
 from md_utils.ct_utils import args_to_object
+from md_utils.ct_utils import invert_dictionary
 
 from detection.run_detector import get_typical_confidence_threshold_from_results
 
@@ -115,9 +115,17 @@ class PostProcessingOptions:
     rendering_bypass_sets = []
 
     # If this is None, choose a confidence threshold based on the detector version.
+    #
+    # This can either be a float or a dictionary mapping category names (not IDs) to 
+    # thresholds.  The category "default" can be used to specify thresholds for 
+    # other categories.  Currently the use of a dict here is not supported when 
+    # ground truth is supplied.
     confidence_threshold = None
     
     # Confidence threshold to apply to classification (not detection) results
+    #
+    # Only a float is supported here (unlike the "confidence_threshold" parameter, which
+    # can be a dict).    
     classification_confidence_threshold = 0.5
 
     # Used for summary statistics only
@@ -163,6 +171,9 @@ class PostProcessingOptions:
     #
     # Currently only supported when ground truth is unavailable
     include_almost_detections = False
+    
+    # Only a float is supported here (unlike the "confidence_threshold" parameter, which
+    # can be a dict).
     almost_detection_confidence_threshold = None
 
     # Control rendering parallelization
@@ -427,12 +438,25 @@ def render_bounding_boxes(
                 vis_utils.render_db_bounding_boxes(ground_truth_boxes, gt_classes, image,
                                                    original_size=original_size,label_map=label_map,
                                                    thickness=4,expansion=4)
+        
+            # render_detection_bounding_boxes expects either a float or a dict mapping
+            # category IDs to names.
+            if isinstance(options.confidence_threshold,float):
+                rendering_confidence_threshold = options.confidence_threshold
+            else:
+                category_ids = set()
+                for d in detections:
+                    category_ids.add(d['category'])
+                rendering_confidence_threshold = {}
+                for category_id in category_ids:
+                    rendering_confidence_threshold[category_id] = \
+                        get_threshold_for_category_id(category_id, options, detection_categories)
                 
             vis_utils.render_detection_bounding_boxes(
                 detections, image,
                 label_map=detection_categories,
                 classification_label_map=classification_categories,
-                confidence_threshold=options.confidence_threshold,
+                confidence_threshold=rendering_confidence_threshold,
                 thickness=options.line_thickness,
                 expansion=options.box_expansion)
     
@@ -535,14 +559,67 @@ def prepare_html_subpages(images_html, output_dir, options=None):
 
 # ...prepare_html_subpages()
 
-# Get unique categories above the threshold for this image
-def get_positive_categories(detections,options):
+
+# Determine the confidence threshold we should use for a specific category name
+def get_threshold_for_category_name(category_name,options):
+    
+    if isinstance(options.confidence_threshold,float):
+        return options.confidence_threshold
+    else:
+        assert isinstance(options.confidence_threshold,dict), \
+            'confidence_threshold must either be a float or a dict'
+                           
+    if category_name in options.confidence_threshold:
+        
+        return options.confidence_threshold[category_name]
+    
+    else:
+        assert 'default' in options.confidence_threshold, \
+            'category {} not in confidence_threshold dict, and no default supplied'.format(
+                category_name)
+        return options.confidence_threshold['default']
+
+    
+# Determine the confidence threshold we should use for a specific category ID
+#
+# detection_categories is a dict mapping category IDs to names.
+def get_threshold_for_category_id(category_id,options,detection_categories):
+    
+    if isinstance(options.confidence_threshold,float):        
+        return options.confidence_threshold
+    
+    assert category_id in detection_categories, \
+        'Invalid category ID {}'.format(category_id)
+        
+    category_name = detection_categories[category_id]
+    
+    return get_threshold_for_category_name(category_name,options)
+    
+    
+# Get a sorted list of unique categories (as string IDs) above the threshold for this image
+#
+# "detection_categories" is a dict mapping category IDs to names.
+def get_positive_categories(detections,options,detection_categories):
     positive_categories = set()
     for d in detections:
-        if d['conf'] >= options.confidence_threshold:
+        threshold = get_threshold_for_category_id(d['category'], options, detection_categories)
+        if d['conf'] >= threshold:
             positive_categories.add(d['category'])
     return sorted(positive_categories)
 
+
+# Determine whether any positive detections are present in the detection list
+# [detections].
+def has_positive_detection(detections,options,detection_categories):
+    
+    found_positive_detection = False
+    for d in detections:
+        threshold = get_threshold_for_category_id(d['category'], options, detection_categories)
+        if d['conf'] >= threshold:
+            found_positive_detection = True
+            break
+    return found_positive_detection
+        
 
 # Render an image (with no ground truth information)
 #
@@ -573,8 +650,12 @@ def render_image_no_gt(file_info,detection_categories_to_results_name,
     max_conf = file_info[1]
     detections = file_info[2]
 
+    # Determine whether any positive detections are present (using a threshold that
+    # may vary by category)
+    found_positive_detection = has_positive_detection(detections,options,detection_categories)
+        
     detection_status = DetectionStatus.DS_UNASSIGNED
-    if max_conf >= options.confidence_threshold:
+    if found_positive_detection:
         detection_status = DetectionStatus.DS_POSITIVE
     else:
         if options.include_almost_detections:
@@ -587,7 +668,7 @@ def render_image_no_gt(file_info,detection_categories_to_results_name,
 
     if detection_status == DetectionStatus.DS_POSITIVE:
         if options.separate_detections_by_category:
-            positive_categories = tuple(get_positive_categories(detections,options))            
+            positive_categories = tuple(get_positive_categories(detections,options,detection_categories))
             if positive_categories not in detection_categories_to_results_name:
                 raise ValueError('Error: {} not in category mapping (file {})'.format(
                     str(positive_categories),image_relative_path))
@@ -703,7 +784,7 @@ def render_image_with_gt(file_info,ground_truth_indexed_db,
               f'ground truth status (status: {gt_status}, classes: {gt_class_summary})')
         return None
 
-    detected = max_conf > options.confidence_threshold
+    detected = has_positive_detection(detections, options, detection_categories)
 
     if gt_presence and detected:
         if '_classification_accuracy' not in image.keys():
@@ -766,6 +847,10 @@ def process_batch_results(options: PostProcessingOptions
 
     ground_truth_indexed_db = None
 
+    if (options.ground_truth_json_file is not None):
+        assert (options.confidence_threshold is None) or (isinstance(confidence_threshold,float)), \
+            'Variable confidence thresholds are not supported when supplying ground truth'
+            
     if (options.ground_truth_json_file is not None) and (len(options.ground_truth_json_file) > 0):
 
         if options.separate_detections_by_category:
@@ -836,31 +921,24 @@ def process_batch_results(options: PostProcessingOptions
             for k, v in classification_categories.items()
         }
 
-    # Add column 'pred_detection_label' to indicate predicted detection status.
-    #
-    # This column doesn't capture category information, it's just about detections,
-    # non-detections, and almost-detections.    
-    det_status = 'pred_detection_label'
-    if options.include_almost_detections:
-        detections_df[det_status] = DetectionStatus.DS_ALMOST
-        confidences = detections_df['max_detection_conf']
-
-        pos_mask = (confidences >= options.confidence_threshold)
-        detections_df.loc[pos_mask, det_status] = DetectionStatus.DS_POSITIVE
-
-        neg_mask = (confidences < options.almost_detection_confidence_threshold)
-        detections_df.loc[neg_mask, det_status] = DetectionStatus.DS_NEGATIVE
-    else:
-        detections_df[det_status] = np.where(
-            detections_df['max_detection_conf'] >= options.confidence_threshold,
-            DetectionStatus.DS_POSITIVE, DetectionStatus.DS_NEGATIVE)
-
-    n_positives = sum(detections_df[det_status] == DetectionStatus.DS_POSITIVE)
+    # Count detections and almost-detections for reporting purposes
+    n_positives = 0
+    n_almosts = 0
+    
+    for i_row,row in tqdm(detections_df.iterrows(),total=len(detections_df)):
+        
+        detections = row['detections']
+        max_conf = row['max_detection_conf']
+        if has_positive_detection(detections, options, detection_categories):
+            n_positives += 1
+        elif (options.almost_detection_confidence_threshold is not None) and \
+             (max_conf >= options.almost_detection_confidence_threshold):
+            n_almosts += 1        
+        
     print(f'Finished loading and preprocessing {len(detections_df)} rows '
           f'from detector output, predicted {n_positives} positives.')
 
     if options.include_almost_detections:
-        n_almosts = sum(detections_df[det_status] == DetectionStatus.DS_ALMOST)
         print('...and {} almost-positives'.format(n_almosts))
 
 
@@ -1009,7 +1087,7 @@ def process_batch_results(options: PostProcessingOptions
             (precision_at_confidence_threshold + recall_at_confidence_threshold)
 
         print('At a confidence threshold of {:.1%}, precision={:.1%}, recall={:.1%}, f1={:.1%}'.format(
-                options.confidence_threshold, precision_at_confidence_threshold,
+                str(options.confidence_threshold), precision_at_confidence_threshold,
                 recall_at_confidence_threshold, f1))
 
         ##%% Collect classification results, if they exist
@@ -1265,7 +1343,7 @@ def process_batch_results(options: PostProcessingOptions
         </div>
         """.format(
             style_header,job_name_string,model_version_string,
-            image_count, options.confidence_threshold,
+            image_count, str(options.confidence_threshold),
             all_tp_count, all_tp_count/total_count,
             image_counts['tn'], image_counts['tn']/total_count,
             image_counts['fp'], image_counts['fp']/total_count,
@@ -1279,7 +1357,7 @@ def process_batch_results(options: PostProcessingOptions
             <p><strong>Precision/recall summary for all {} images</strong></p><img src="{}"><br/>
             </div>
             """.format(
-                options.confidence_threshold, precision_at_confidence_threshold, recall_at_confidence_threshold,
+                str(options.confidence_threshold), precision_at_confidence_threshold, recall_at_confidence_threshold,
                 len(detections_df), pr_figure_relative_filename
            )
 
@@ -1345,46 +1423,60 @@ def process_batch_results(options: PostProcessingOptions
         # Accumulate html image structs (in the format expected by write_html_image_list)
         # for each category
         images_html = collections.defaultdict(list)
-        images_html['non_detections']
+        
 
         # Add default entries by accessing them for the first time
 
-        # Maps detection categories - e.g. "human" - to result set names, e.g.
-        # "detections_human"
+        # Maps sorted tuples of detection category IDs (string ints) - e.g. ("1"), ("1", "4", "7") - to 
+        # result set names, e.g. "detections_human", "detections_cat_truck".
         detection_categories_to_results_name = {}
         
         # Keep track of which categories are single-class (e.g. "animal") and which are
         # combinations (e.g. "animal_vehicle")
         detection_categories_to_category_count = {}
-        detection_categories_to_category_count['detections'] = 0
+        
+        # For the creation of a "non-detections" category
+        images_html['non_detections']
         detection_categories_to_category_count['non_detections'] = 0
-        detection_categories_to_category_count['almost_detections'] = 0
+        
         
         if not options.separate_detections_by_category:
             # For the creation of a "detections" category
             images_html['detections']
+            detection_categories_to_category_count['detections'] = 0            
         else:
             # Add a set of results for each category and combination of categories, e.g.
             # "detections_animal_vehicle".  When we're using this script for non-MegaDetector
             # results, this can generate lots of categories, e.g. detections_bear_bird_cat_dog_pig.
             # We'll keep that huge set of combinations in this map, but we'll only write
             # out links for the ones that are non-empty.            
-            keys = detection_categories.keys()
-            subsets = []
-            for L in range(1, len(keys)+1):
-                for subset in itertools.combinations(keys, L):
-                    subsets.append(subset)
-            for subset in subsets:
-                sorted_subset = tuple(sorted(subset))
+            used_combinations = set()
+            
+            # row = images_to_visualize.iloc[0]
+            for i_row, row in images_to_visualize.iterrows():
+                detections_this_row = row['detections']
+                above_threshold_category_ids_this_row = set()
+                for detection in detections_this_row:
+                    threshold = get_threshold_for_category_id(detection['category'], options, detection_categories)
+                    if detection['conf'] >= threshold:
+                        above_threshold_category_ids_this_row.add(detection['category'])
+                if len(above_threshold_category_ids_this_row) == 0:
+                    continue
+                sorted_categories_this_row = tuple(sorted(above_threshold_category_ids_this_row))
+                used_combinations.add(sorted_categories_this_row)
+            
+            for sorted_subset in used_combinations:
+                assert len(sorted_subset) > 0
                 results_name = 'detections'
                 for category_id in sorted_subset:
                     results_name = results_name + '_' + detection_categories[category_id]
                 images_html[results_name]
                 detection_categories_to_results_name[sorted_subset] = results_name
-                detection_categories_to_category_count[results_name] = len(sorted_subset)
+                detection_categories_to_category_count[results_name] = len(sorted_subset)                
 
         if options.include_almost_detections:
             images_html['almost_detections']
+            detection_categories_to_category_count['almost_detections'] = 0
 
         # Create output directories
         for res in images_html.keys():
@@ -1495,9 +1587,15 @@ def process_batch_results(options: PostProcessingOptions
             almost_detection_string = ' (&ldquo;almost detection&rdquo; threshold at {:.1%})'.format(
                 options.almost_detection_confidence_threshold)
 
+        confidence_threshold_string = ''
+        if isinstance(options.confidence_threshold,float):
+            confidence_threshold_string = '{:.1%}'.format(options.confidence_threshold)
+        else:
+            confidence_threshold_string = str(options.confidence_threshold)
+            
         index_page = """<html>\n{}\n<body>\n
         <h2>Visualization of results for {}</h2>\n
-        <p>A sample of {} images (of {} total)FAILURE_PLACEHOLDER, annotated with detections above {:.1%} confidence{}.</p>\n
+        <p>A sample of {} images (of {} total)FAILURE_PLACEHOLDER, annotated with detections above confidence {}{}.</p>\n
         
         <div class="contentdiv">
         <p>Model version: {}</p>
@@ -1505,7 +1603,7 @@ def process_batch_results(options: PostProcessingOptions
         
         <h3>Sample images</h3>\n
         <div class="contentdiv">\n""".format(
-            style_header, job_name_string, image_count, len(detections_df), options.confidence_threshold,
+            style_header, job_name_string, image_count, len(detections_df), confidence_threshold_string,
             almost_detection_string, model_version_string)
 
         failure_string = ''
@@ -1521,7 +1619,17 @@ def process_batch_results(options: PostProcessingOptions
             friendly_name = friendly_name.capitalize()
             return friendly_name
 
-        for result_set_name in images_html.keys():
+        sorted_result_set_names = sorted(list(images_html.keys()))
+        
+        result_set_name_to_count = {}
+        for result_set_name in sorted_result_set_names:
+            image_count = image_counts[result_set_name]
+            result_set_name_to_count[result_set_name] = image_count
+        sorted_result_set_names = sorted(sorted_result_set_names,
+                                         key=lambda x: result_set_name_to_count[x],
+                                         reverse=True)
+            
+        for result_set_name in sorted_result_set_names:
 
             # Don't print classification classes here; we'll do that later with a slightly
             # different structure
