@@ -605,7 +605,7 @@ def find_matches_in_directory(dirNameAndRows, options):
                 continue
 
             # Optionally exclude some classes from consideration as suspicious
-            if len(options.excludeClasses) > 0:
+            if (options.excludeClasses is not None) and (len(options.excludeClasses) > 0):
                 iClass = int(detection['category'])
                 if iClass in options.excludeClasses:
                     continue

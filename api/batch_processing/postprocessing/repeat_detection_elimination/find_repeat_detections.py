@@ -121,7 +121,7 @@ def main():
                         help='Ignore folders with more than this many images in them')
     
     parser.add_argument('--excludeClasses', action='store', nargs='+', type=int,
-                        default=defaultOptions.maxImagesPerFolder,
+                        default=None,
                         help='List of integer classes we don\'t want to treat as suspicious, separated by spaces.')
     
     parser.add_argument('--pass_detections_to_processes_method', action='store', type=str,
@@ -134,8 +134,7 @@ def main():
     
     parser.add_argument('--parallelizationUsesProcesses', action='store_false', 
                         dest='parallelizationUsesThreads',
-                        help='Parallelize with processes (defaults to threads)')
-    
+                        help='Parallelize with processes (defaults to threads)')    
     
     parser.add_argument('--filterFileToLoad', action='store', type=str, default='',  
                         help='Path to detectionIndex.json, which should be inside a ' + \
