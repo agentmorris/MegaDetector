@@ -12,7 +12,9 @@ dependencies:
   - tqdm
   - jsonpickle
   - humanfriendly
-  - numpy
+  # We pin numpy because later versions of numpy are incompatible with the
+  # recommended version of YOLOv5.
+  - numpy==1.21.4
   - matplotlib
   - nb_conda_kernels
   - ipykernel
