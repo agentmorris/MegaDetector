@@ -414,10 +414,11 @@ def render_detection_bounding_boxes(detections, image,
 
         score = detection['conf']
         
-        if isinstance(confidence_threshold,float):            
-            rendering_threshold = confidence_threshold            
-        else:
+        if isinstance(confidence_threshold,dict):
             rendering_threshold = confidence_threshold[detection['category']]
+        else:
+            rendering_threshold = confidence_threshold        
+            
             
         # Always render objects with a confidence of "None", this is typically used
         # for ground truth data.        
