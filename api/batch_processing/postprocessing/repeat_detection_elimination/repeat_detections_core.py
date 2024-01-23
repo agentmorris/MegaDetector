@@ -906,12 +906,12 @@ def render_sample_image_for_detection(detection,filteringDir,options):
         
     try:
         
+        im = open_image(inputFullPath)
+        
         # Should we render (typically in a very light color) detections
         # *other* than the one we're highlighting here?
         if options.bRenderOtherDetections:
-                    
-            im = open_image(inputFullPath)
-            
+                                
             # Optionally resize the output image
             if (options.maxOutputImageWidth is not None) and \
                 (im.size[0] > options.maxOutputImageWidth):
@@ -957,6 +957,10 @@ def render_sample_image_for_detection(detection,filteringDir,options):
             render_bounding_box(detection, inputFullPath, outputFullPath,
                 lineWidth=options.lineThickness, expansion=options.boxExpansion)
         
+        # ...if we are/aren't rendering other bounding boxes
+        
+        # If we're rendering detection tiles, we'll re-load and re-write the image we
+        # just wrote to outputFullPath
         if options.bRenderDetectionTiles:
             
             assert not is_sas_url(options.imageBase), "Can't render detection tiles from SAS URLs"
@@ -964,6 +968,8 @@ def render_sample_image_for_detection(detection,filteringDir,options):
             if options.detectionTilesPrimaryImageWidth is not None:
                 primaryImageWidth = options.detectionTilesPrimaryImageWidth
             else:
+                # "im" may be a resized version of the original image, if we've already run
+                # the code to render other bounding boxes.
                 primaryImageWidth = im.size[0]
             
             if options.detectionTilesCroppedGridWidth <= 1.0:
@@ -987,7 +993,8 @@ def render_sample_image_for_detection(detection,filteringDir,options):
                         secondaryImageFilenameList[0:options.detectionTilesMaxCrops]
                     secondaryImageBoundingBoxList = \
                         secondaryImageBoundingBoxList[0:options.detectionTilesMaxCrops]
-                
+            
+            # This will over-write the image we've already written to outputFullPath
             render_images_with_thumbnails.render_images_with_thumbnails(
                 primary_image_filename=outputFullPath,
                 primary_image_width=primaryImageWidth,
@@ -1001,9 +1008,10 @@ def render_sample_image_for_detection(detection,filteringDir,options):
             # bDetectionTilesCroppedGridWidth = 0.6
             # bDetectionTilesPrimaryImageLocation='right'
         
-        # ...if we are/aren't rendering other bounding boxes
+        # ...if we are/aren't rendering detection tiles
     
     except Exception as e:
+        
         stack_trace = traceback.format_exc()
         print('Warning: error rendering bounding box from {} to {}: {} ({})'.format(
             inputFullPath,outputFullPath,e,stack_trace))

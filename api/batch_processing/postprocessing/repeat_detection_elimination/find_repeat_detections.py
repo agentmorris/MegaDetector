@@ -172,7 +172,7 @@ def main():
                         help='Number of levels from the leaf folders to use for repeat ' + \
                             'detection (0 == leaves)')
 
-    parser.add_argument('--bRenderOtherDections', action='store_true',
+    parser.add_argument('--bRenderOtherDetections', action='store_true',
                         help='Show non-target detections in light gray on each image')
     
     parser.add_argument('--bRenderDetectionTiles', action='store_true',
