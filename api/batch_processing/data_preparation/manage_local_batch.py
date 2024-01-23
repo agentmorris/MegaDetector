@@ -192,6 +192,7 @@ input_path = '/drive/organization'
 
 assert not (input_path.endswith('/') or input_path.endswith('\\'))
 assert os.path.isdir(input_path), 'Could not find input folder {}'.format(input_path)
+input_path = input_path.replace('\\','/')
 
 organization_name_short = 'organization'
 job_date = None # '2024-01-01'
@@ -666,16 +667,14 @@ assert len(combined_results['images']) == len(all_images), \
 result_filenames = [im['file'] for im in combined_results['images']]
 assert len(combined_results['images']) == len(set(result_filenames))
 
-# Check for valid path names
+# Convert to relative paths, preserving '/' as the path separator, regardless of OS
 for im in combined_results['images']:
+    assert '\\' not in im['file']
+    assert im['file'].startswith(input_path)
     if input_path.endswith(':'):
-        assert im['file'].startswith(input_path)
         im['file'] = im['file'].replace(input_path,'',1)
     else:
-        assert im['file'].startswith(input_path)
-        im['file'] = im['file'].replace(input_path + os.path.sep,'',1)
-    if force_forward_slashes:
-        im['file'] = im['file'].replace('\\','/')
+        im['file'] = im['file'].replace(input_path + '/','',1)
     
 combined_api_output_file = os.path.join(
     combined_api_output_folder,

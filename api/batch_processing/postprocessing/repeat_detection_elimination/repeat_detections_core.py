@@ -14,6 +14,7 @@ import warnings
 import sklearn.cluster
 import numpy as np
 import jsonpickle
+import traceback
 import pandas as pd
 import json
 import shutil
@@ -1003,8 +1004,9 @@ def render_sample_image_for_detection(detection,filteringDir,options):
         # ...if we are/aren't rendering other bounding boxes
     
     except Exception as e:
-        print('Warning: error rendering bounding box from {} to {}: {}'.format(
-            inputFullPath,outputFullPath,e))                    
+        stack_trace = traceback.format_exc()
+        print('Warning: error rendering bounding box from {} to {}: {} ({})'.format(
+            inputFullPath,outputFullPath,e,stack_trace))
         if options.bFailOnRenderError:
             raise                    
 

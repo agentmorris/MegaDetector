@@ -6,9 +6,9 @@
 # inference behavior, or - when operating in environments other than the training
 # environment - acceptable deviation from the correct results.
 #
-# This module should not depend on anything else in this repo outside of the, 
-# tests themselves, even if it means some duplicated code (e.g. for downloading files), since 
-# much of what it tries to test is, e.g., imports.
+# This module should not depend on anything else in this repo outside of the 
+# tests themselves, even if it means some duplicated code (e.g. for downloading files),
+# since much of what it tries to test is, e.g., imports.
 #
 ########
 
@@ -17,6 +17,7 @@
 ### Only standard imports belong here, not MD-specific imports ###
 
 import os
+import sys
 import json
 import glob
 import tempfile
@@ -240,6 +241,8 @@ def execute_and_print(cmd,print_output=True):
 
 def run_python_tests(options):
 
+    print('\n*** Starting module tests ***\n')
+    
     ## Prepare data
     
     download_test_data(options)
@@ -386,7 +389,11 @@ def run_python_tests(options):
     assert os.path.isfile(rde_results.filterFile),\
         'Could not find RDE output file {}'.format(rde_results.filterFile)
         
-    print('Finished running Python tests')
+    # TODO: add remove_repeat_detections test here
+    #
+    # It's already tested in the CLI tests, so this is not urgent.
+    
+    print('\n*** Finished module tests ***\n')
 
 # ...def run_python_tests(...)
 
@@ -394,6 +401,8 @@ def run_python_tests(options):
 #%% Command-line tests
 
 def run_cli_tests(options):
+    
+    print('\n*** Starting CLI tests ***\n')
     
     ## chdir if necessary
     
@@ -466,6 +475,46 @@ def run_cli_tests(options):
     print('Running: {}'.format(cmd))
     cmd_results = execute_and_print(cmd)
                 
+    
+    ## RDE
+    
+    rde_output_dir = os.path.join(options.scratch_dir,'rde_output_cli')
+    
+    if options.cli_working_dir is None:
+        cmd = 'python -m api.batch_processing.postprocessing.repeat_detection_elimination.find_repeat_detections'
+    else:
+        cmd = 'python  api/batch_processing/postprocessing/repeat_detection_elimination/find_repeat_detections.py'
+    cmd += ' {}'.format(inference_output_file)
+    cmd += ' --imageBase {}'.format(image_folder)
+    cmd += ' --outputBase {}'.format(rde_output_dir)
+    cmd += ' --occurrenceThreshold 1' # Use an absurd number here to make sure we get some suspicious detections
+    print('Running: {}'.format(cmd))
+    cmd_results = execute_and_print(cmd)    
+    
+    # Find the latest filtering folder
+    filtering_output_dir = os.listdir(rde_output_dir)
+    filtering_output_dir = [fn for fn in filtering_output_dir if fn.startswith('filtering_')]
+    filtering_output_dir = [os.path.join(rde_output_dir,fn) for fn in filtering_output_dir]
+    filtering_output_dir = [fn for fn in filtering_output_dir if os.path.isdir(fn)]
+    filtering_output_dir = sorted(filtering_output_dir)[-1]
+    
+    print('Using RDE filtering folder {}'.format(filtering_output_dir))
+    
+    filtered_output_file = inference_output_file.replace('.json','_filtered.json')
+    
+    if options.cli_working_dir is None:
+        cmd = 'python -m api.batch_processing.postprocessing.repeat_detection_elimination.remove_repeat_detections'
+    else:
+        cmd = 'python  api/batch_processing/postprocessing/repeat_detection_elimination/remove_repeat_detections.py'
+    cmd += ' {} {} {}'.format(inference_output_file,filtered_output_file,filtering_output_dir)
+    print('Running: {}'.format(cmd))
+    cmd_results = execute_and_print(cmd)
+    
+    assert os.path.isfile(filtered_output_file), \
+        'Could not find RDE output file {}'.format(filtered_output_file)
+    
+    print('\n*** Finished CLI tests ***\n')
+    
 # ...def run_cli_tests(...)
 
 
@@ -595,10 +644,6 @@ def main():
         type=str,
         default=None,
         help='Working directory for CLI tests')
-        
-    if len(sys.argv[1:]) == 0:
-        parser.print_help()
-        parser.exit()
         
     args = parser.parse_args()
         
