@@ -100,13 +100,23 @@ class YoloInferenceOptions:
     overwrite_handling = 'skip'
     
     preview_yolo_command_only = False
+    
+    treat_copy_failures_as_warnings = False
             
     
 #%% Main function
 
 def run_inference_with_yolo_val(options):
 
-    ##%% Path handling
+    ##%% Input and path handling
+    
+    if options.model_type == 'yolov8':
+        
+        print('Warning: model type "yolov8" supplied, "ultralytics" is the preferred model type string for YOLOv8 models')
+        options.model_type = 'ultralytics'
+        
+    if (options.model_type == 'yolov5') and ('yolov8' in options.model_filename.lower()):
+        print('\n\n*** Warning: model type set as "yolov5", but your model filename contains "yolov8"... did you mean to use --model_type yolov8?" ***\n\n')        
     
     if options.yolo_working_folder is None:
         assert options.model_type == 'ultralytics', \
@@ -226,10 +236,20 @@ def run_inference_with_yolo_val(options):
             else:
                 shutil.copyfile(image_fn,symlink_full_path)
         except Exception as e:
-            image_id_to_error[image_id] = str(e)
-            print('Warning: error copying/creating link for input file {}: {}'.format(
-                image_fn,str(e)))
-            continue
+            error_string = str(e)
+            image_id_to_error[image_id] = error_string
+            # Always break if the user is trying to create symlinks on Windows without
+            # permission, 100% of images will always fail in this case.
+            if ('a required privilege is not held by the client' in error_string.lower()) or \
+               (not options.treat_copy_failures_as_warnings):
+                   print('\nError copying/creating link for input file {}: {}'.format(
+                       image_fn,error_string))
+                   
+                   raise
+            else:
+                print('Warning: error copying/creating link for input file {}: {}'.format(
+                    image_fn,error_string))
+                continue
         
     # ...for each image
 
@@ -266,11 +286,6 @@ def run_inference_with_yolo_val(options):
     
     image_size_string = str(round(options.image_size))
     
-    if options.model_type == 'yolov8':
-        
-        print('Warning: model type "yolov8" supplied, "ultralytics" is the preferred model type string for YOLOv8 models')
-        options.model_type = 'ultralytics'
-        
     if options.model_type == 'yolov5':
         
         cmd = 'python val.py --task test --data "{}"'.format(yolo_dataset_file)
@@ -324,6 +339,7 @@ def run_inference_with_yolo_val(options):
     if options.yolo_working_folder is not None:
         current_dir = os.getcwd()
         os.chdir(options.yolo_working_folder)
+
     print('Running YOLO inference command:\n{}\n'.format(cmd))
     
     if options.preview_yolo_command_only:
@@ -344,8 +360,8 @@ def run_inference_with_yolo_val(options):
                 pass
         
         sys.exit()
-        
-    execution_result = process_utils.execute_and_print(cmd)
+    
+    execution_result = process_utils.execute_and_print(cmd,encoding='utf-8',verbose=True)
     assert execution_result['status'] == 0, 'Error running {}'.format(options.model_type)
     yolo_console_output = execution_result['output']
     
@@ -481,7 +497,7 @@ def main():
             '(otherwise defaults to MD categories)')
     parser.add_argument(
         '--model_type', default=options.model_type, type=str,
-        help='Model type (yolov5 or ultralytics) (default {})'.format(options.model_type))
+        help='Model type ("yolov5" or "ultralytics" ("yolov8" behaves the same as "ultralytics")) (default {})'.format(options.model_type))
 
     parser.add_argument(
         '--symlink_folder', type=str,

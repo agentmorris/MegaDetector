@@ -141,7 +141,8 @@ def yolo_json_output_to_md_output(yolo_json_file, image_folder,
     if image_id_to_error is None:
         image_id_to_error = {}
             
-    print('Converting {} to MD format'.format(yolo_json_file))
+    print('Converting {} to MD format and writing results to {}'.format(
+        yolo_json_file,output_file))
     
     if isinstance(yolo_category_id_to_name,str):
         assert os.path.isfile(yolo_category_id_to_name), \

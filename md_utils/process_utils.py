@@ -33,12 +33,12 @@ def execute(cmd,encoding=None,errors=None,env=None,verbose=False):
         if errors is not None:
             print('Launching child process with non-default text error handling {}'.format(errors))
         if env is not None:
-            print('Launching child process with non-default text environment {}'.format(str(env)))
+            print('Launching child process with non-default environment {}'.format(str(env)))
         
     # https://stackoverflow.com/questions/4417546/constantly-print-subprocess-output-while-process-is-running
     popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              shell=True, universal_newlines=True, encoding=encoding,
-                             errors=errors,env=env)
+                             errors=errors, env=env)
     for stdout_line in iter(popen.stdout.readline, ""):
         yield stdout_line
     popen.stdout.close()
@@ -59,7 +59,7 @@ def execute_and_print(cmd,print_output=True,encoding=None,errors=None,env=None,v
     """
 
     to_return = {'status':'unknown','output':''}
-    output=[]
+    output = []
     try:
         for s in execute(cmd,encoding=encoding,errors=errors,env=env,verbose=verbose):
             output.append(s)
