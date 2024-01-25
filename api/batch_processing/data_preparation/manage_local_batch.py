@@ -2231,14 +2231,23 @@ i_line = 0
 
 header_comment = ''
 
+# Delete a few lines from the top that don't belong in the NB version, e.g. the name 
+# of the .py file
 lines_to_ignore = 7
+expected_first_token = '# This script'
+found_first_token = False
 
 # Everything before the first cell is the header comment
 while(not lines[i_line].startswith('#%%')):
+    
     if i_line < lines_to_ignore:
         i_line += 1
         continue
     
+    if not found_first_token:
+        assert lines[i_line].startswith(expected_first_token)
+        found_first_token = True
+        
     s = lines[i_line].replace('#','').strip()
     if len(s) == 0:
         header_comment += '\n\n'
