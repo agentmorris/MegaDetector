@@ -958,7 +958,7 @@ def main():
     
     assert os.path.exists(args.detector_file), \
         'detector file {} does not exist'.format(args.detector_file)
-    assert 0.0 < args.threshold <= 1.0, 'Confidence threshold needs to be between 0 and 1'
+    assert 0.0 <= args.threshold <= 1.0, 'Confidence threshold needs to be between 0 and 1'
     assert args.output_file.endswith('.json'), 'output_file specified needs to end with .json'
     if args.checkpoint_frequency != -1:
         assert args.checkpoint_frequency > 0, 'Checkpoint_frequency needs to be > 0 or == -1'

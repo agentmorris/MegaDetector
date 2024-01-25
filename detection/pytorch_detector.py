@@ -234,7 +234,7 @@ class PTDetector:
             if self.device == 'mps':
                 # As of v1.13.0.dev20220824, nms is not implemented for MPS.
                 #
-                # Send predication back to the CPU to fix.
+                # Send prediction back to the CPU to fix.
                 pred = non_max_suppression(prediction=pred.cpu(), conf_thres=detection_threshold)
             else: 
                 pred = non_max_suppression(prediction=pred, conf_thres=detection_threshold)

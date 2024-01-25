@@ -144,9 +144,6 @@ relative_path_to_location = image_file_to_camera_folder
 # we get to classification stuff, that will indicate that we didn't do RDE.
 filtered_output_filename = None
 
-# Force forward slashes in the final output file, even on Windows
-force_forward_slashes = True
-
 if os.name == 'nt':
     
     slcc = '^'
