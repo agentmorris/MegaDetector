@@ -36,7 +36,8 @@ CHAR_LIMIT = 255
 #%% General path functions
 
 def recursive_file_list(base_dir, convert_slashes=True, 
-                        return_relative_paths=False, sort_files=True):
+                        return_relative_paths=False, sort_files=True,
+                        recursive=True):
     r"""
     Enumerate files (not directories) in [base_dir], optionally converting
     \ to /
@@ -44,11 +45,16 @@ def recursive_file_list(base_dir, convert_slashes=True,
     
     all_files = []
 
-    for root, _, filenames in os.walk(base_dir):
-        for filename in filenames:
-            full_path = os.path.join(root, filename)
-            all_files.append(full_path)
-
+    if recursive:
+        for root, _, filenames in os.walk(base_dir):
+            for filename in filenames:
+                full_path = os.path.join(root, filename)
+                all_files.append(full_path)
+    else:
+        all_files_relative = os.listdir(base_dir)
+        all_files = [os.path.join(base_dir,fn) for fn in all_files_relative]
+        all_files = [fn for fn in all_files if os.path.isfile(fn)]
+        
     if return_relative_paths:
         all_files = [os.path.relpath(fn,base_dir) for fn in all_files]
 
@@ -59,6 +65,17 @@ def recursive_file_list(base_dir, convert_slashes=True,
         all_files = sorted(all_files)
         
     return all_files
+
+
+def file_list(base_dir, convert_slashes=True, return_relative_paths=False, sort_files=True, 
+              recursive=False):
+    """
+    Trivial wrapper for recursive_file_list, which was a poor function name choice at the time, 
+    it doesn't really make sense to have a "recursive" option in a function called "recursive_file_list".
+    """
+    
+    return recursive_file_list(base_dir,convert_slashes,return_relative_paths,sort_files,
+                               recursive=recursive)
 
 
 def split_path(path: str) -> List[str]:
