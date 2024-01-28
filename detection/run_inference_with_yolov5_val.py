@@ -414,7 +414,7 @@ def run_inference_with_yolo_val(options):
     
     ##%% Convert results to MD format
     
-    json_files = glob.glob(yolo_results_folder+ '/yolo_results/*.json')
+    json_files = glob.glob(yolo_results_folder + '/yolo_results/*.json')
     assert len(json_files) == 1    
     yolo_json_file = json_files[0]
 

@@ -218,7 +218,7 @@ def yolo_json_output_to_md_output(yolo_json_file, image_folder,
         if det['category_id'] < 0:
             assert 'error' in det, 'Negative category ID present with no error string'
             error_string = det['error']
-            print('Runtime error {} for image {}'.format(error_string,det['image_id']))
+            print('Caught inference-time failure {} for image {}'.format(error_string,det['image_id']))
             image_id_to_error[det['image_id']] = error_string
             
     output_images = []
