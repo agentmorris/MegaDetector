@@ -347,7 +347,7 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
     if yolo_inference_options is supplied, it should be an instance of YoloInferenceOptions; in 
     this case the model will be run with run_inference_with_yolov5_val.  This is typically used to 
     run the model with test-time augmentation.          
-    """    
+    """
 
     ##%% Validate arguments
     

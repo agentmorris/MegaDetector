@@ -211,6 +211,16 @@ def yolo_json_output_to_md_output(yolo_json_file, image_folder,
            
     # ...if image IDs are formatted as integers in YOLO output
     
+    # In a modified version of val.py, we use negative category IDs to indicate an error
+    # that happened during inference (typically truncated images with valid headers,
+    # so corruption was not detected during val.py's initial corruption check pass.
+    for det in detections:
+        if det['category_id'] < 0:
+            assert 'error' in det, 'Negative category ID present with no error string'
+            error_string = det['error']
+            print('Runtime error {} for image {}'.format(error_string,det['image_id']))
+            image_id_to_error[det['image_id']] = error_string
+            
     output_images = []
     
     # image_file_relative = image_files_relative[10]
