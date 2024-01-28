@@ -365,25 +365,42 @@ def run_inference_with_yolo_val(options):
     assert execution_result['status'] == 0, 'Error running {}'.format(options.model_type)
     yolo_console_output = execution_result['output']
     
+    # Find errors that occrred during the initial corruption check; these will not be included in the
+    # output.  Errors that occur during inference will be handled separately.
     yolo_read_failures = []
+    
     for line in yolo_console_output:
         # Lines look like:
         #
-        # val: WARNING ⚠️ /a/b/c/d.jpg: ignoring corrupt image/label: [Errno 13] Permission denied: '/a/b/c/d.jpg' 
-        if 'ignoring corrupt image/label' in line:
-            tokens = line.split('ignoring corrupt image/label')
-            assert '⚠️' in line
-            image_name = tokens[0].split('⚠️')[-1].strip()
-            assert image_name.endswith(':')
-            image_name = image_name[0:-1]
-            yolo_read_failures.append(image_name)
-        elif 'cannot identify image file' in line:            
+        # For ultralytics val:
+        #
+        # val: WARNING ⚠️ /a/b/c/d.jpg: ignoring corrupt image/label: [Errno 13] Permission denied: '/a/b/c/d.jpg'
+        # line = "val: WARNING ⚠️ /a/b/c/d.jpg: ignoring corrupt image/label: [Errno 13] Permission denied: '/a/b/c/d.jpg'"
+        #
+        # For yolov5 val.py:
+        #
+        # test: WARNING: a/b/c/d.jpg: ignoring corrupt image/label: cannot identify image file '/a/b/c/d.jpg'
+        # line = "test: WARNING: a/b/c/d.jpg: ignoring corrupt image/label: cannot identify image file '/a/b/c/d.jpg'"
+        if 'cannot identify image file' in line:
             tokens = line.split('cannot identify image file')
             image_name = tokens[-1].strip()
             assert image_name[0] == "'" and image_name [-1] == "'"
             image_name = image_name[1:-1]
             yolo_read_failures.append(image_name)            
-            
+        elif 'ignoring corrupt image/label' in line:
+            assert 'WARNING' in line
+            if '⚠️' in line:
+                assert line.startswith('val')
+                tokens = line.split('ignoring corrupt image/label')
+                image_name = tokens[0].split('⚠️')[-1].strip()
+            else:
+                assert line.startswith('test')
+                tokens = line.split('ignoring corrupt image/label')
+                image_name = tokens[0].split('WARNING:')[-1].strip()
+            assert image_name.endswith(':')
+            image_name = image_name[0:-1]
+            yolo_read_failures.append(image_name)
+                    
     # image_file = yolo_read_failures[0]
     for image_file in yolo_read_failures:
         image_id = os.path.splitext(os.path.basename(image_file))[0]
