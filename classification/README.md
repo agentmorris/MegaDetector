@@ -111,6 +111,8 @@ This section is going to document a bunch of Python scripts required to run Mega
 
 The rest of this section really documents the individual cells in those scripts.
 
+These instructions also assume you are running in a Miniforge/Mambaforge/Anaconda command prompt, and that your current working folder is the "classification" folder within your MegaDetector folder.  If you used the same folders we recommend in the MegaDetector instructions, for example, on Windows, before running these commands, run `cd c:\git\MegaDetector\classification`.
+
 #### Crop images
 
 Run `crop_detections.py` to crop the bounding boxes according to the MegaDetector results.  Unless you have a good reason not to, use the `--square-crops` flag, which crops the tightest square enclosing each bounding box (which may have an arbitrary aspect ratio).
