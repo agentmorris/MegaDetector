@@ -57,3 +57,13 @@ def human_readable_to_bytes(size):
             bytes = 0
             
     return bytes
+
+
+def remove_ansi_codes(s):
+    """
+    Remove ANSI escape codes from a string.
+    
+    https://stackoverflow.com/questions/14693701/how-can-i-remove-the-ansi-escape-sequences-from-a-string-in-python#14693789
+    """
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    return ansi_escape.sub('', s)
