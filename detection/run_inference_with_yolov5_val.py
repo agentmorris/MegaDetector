@@ -104,7 +104,7 @@ class YoloInferenceOptions:
     
     treat_copy_failures_as_warnings = False
     
-    save_yolo_console_output = False
+    save_yolo_debug_output = False
             
     
 #%% Main function
@@ -368,10 +368,15 @@ def run_inference_with_yolo_val(options):
     assert execution_result['status'] == 0, 'Error running {}'.format(options.model_type)
     yolo_console_output = execution_result['output']
       
-    if options.save_yolo_console_output:
+    if options.save_yolo_debug_output:
         with open(os.path.join(yolo_results_folder,'yolo_console_output.txt'),'w') as f:
             for s in yolo_console_output:
-                f.write(s + '\n')            
+                f.write(s + '\n')
+        with open(os.path.join(yolo_results_folder,'image_id_to_file.json'),'w') as f:
+            json.dump(image_id_to_file,f,indent=1)
+        with open(os.path.join(yolo_results_folder,'image_id_to_error.json'),'w') as f:
+            json.dump(image_id_to_error,f,indent=1)
+                
         
     # YOLO console output contains lots of ANSI escape codes, remove them for easier parsing
     yolo_console_output = [string_utils.remove_ansi_codes(s) for s in yolo_console_output]
@@ -545,8 +550,8 @@ def main():
         '--no_remove_yolo_results_folder', action='store_true',
         help='don\'t remove the temporary folder full of YOLO intermediate files')
     parser.add_argument(
-        '--save_yolo_console_output', action='store_true',
-        help='write yolo console output to a text file in the results folder')
+        '--save_yolo_debug_output', action='store_true',
+        help='write yolo console output to a text file in the results folder, along with additional debug files')
     
     parser.add_argument(
         '--preview_yolo_command_only', action='store_true',

@@ -181,7 +181,10 @@ def subset_json_detector_output_by_confidence(data, options):
     # im = images_in[0]
     for i_image, im in tqdm(enumerate(images_in), total=len(images_in)):
         
+        # Always keep failed images; if the caller wants to remove these, they
+        # will use remove_failed_images
         if ('detections' not in im) or (im['detections'] is None):
+            images_out.append(im)
             continue
         
         p_orig = get_max_conf(im)
@@ -289,7 +292,10 @@ def subset_json_detector_output_by_categories(data, options):
     # im = images_in[0]
     for i_image, im in tqdm(enumerate(images_in), total=len(images_in)):
         
+        # Always keep failed images; if the caller wants to remove these, they
+        # will use remove_failed_images        
         if ('detections' not in im) or (im['detections'] is None):
+            images_out.append(im)
             continue
         
         n_detections_in += len(im['detections'])

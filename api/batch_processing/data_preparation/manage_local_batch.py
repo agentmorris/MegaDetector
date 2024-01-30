@@ -178,6 +178,7 @@ yolo_batch_size = 1
 remove_yolo_intermediate_results = True
 remove_yolo_symlink_folder = True
 use_symlinks_for_yolo_inference = True
+write_yolo_debug_output = False
 
 # Should we apply YOLOv5's test-time augmentation?
 augment = False
@@ -379,6 +380,10 @@ for i_task,task in enumerate(task_info):
         if not remove_yolo_symlink_folder:
             remove_symlink_folder_string = '--no_remove_symlink_folder'
         
+        write_yolo_debug_output_string = ''
+        if write_yolo_debug_output:
+            write_yolo_debug_output = '--write_yolo_debug_output'
+            
         remove_yolo_results_string = ''
         if not remove_yolo_intermediate_results:
             remove_yolo_results_string = '--no_remove_yolo_results_folder'
@@ -399,7 +404,7 @@ for i_task,task in enumerate(task_info):
         cmd += f'{image_size_string} {augment_string} '
         cmd += f'{symlink_folder_string} {yolo_results_folder_string} {remove_yolo_results_string} '
         cmd += f'{remove_symlink_folder_string} {confidence_threshold_string} {device_string} '
-        cmd += f'{overwrite_handling_string} {batch_string}'
+        cmd += f'{overwrite_handling_string} {batch_string} {write_yolo_debug_output_string}'
                 
         if yolo_working_dir is not None:
             cmd += f' --yolo_working_folder "{yolo_working_dir}"'
@@ -617,7 +622,8 @@ for i_task,task in tqdm(enumerate(task_info),total=len(task_info)):
     task['results'] = task_results
     
     for fn in task_images:
-        assert fn in filename_to_results
+        assert fn in filename_to_results, \
+            'File {} not found in results for task {}'.format(fn,i_task)
     
     n_total_failures += n_task_failures
 
