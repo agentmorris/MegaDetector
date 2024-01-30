@@ -73,6 +73,8 @@ Mapping of model outputs to class names<br/>
 
 Install Anaconda, Miniforge, or Mambaforge.  The [MegaDetector User Guide](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md) recommends Mambaforge, but if you're reading this classification README, you're likely already pretty Python-savvy and choose your own environment.  We will use "mamba" in these instructions, but if you're using Anaconda, just replace "mamba" with "conda".
 
+These instructions assume you are running in a Miniforge/Mambaforge/Anaconda command prompt, and that your current working folder is the folder where you cloned the MegaDetector repo when you followed the [MegaDetector setup instructions](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#using-the-model).  If you used the same folders we recommend in those instructions, on Windows, before running these commands, run `cd c:\git\MegaDetector`.
+
 Then create the Python environment for classification:
 
 ```bash
@@ -108,6 +110,8 @@ This section is going to document a bunch of Python scripts required to run Mega
 * [Script for generating IDFG classifier commands](https://github.com/agentmorris/MegaDetector/blob/main/classification/prepare_classification_script_mc.py)
 
 The rest of this section really documents the individual cells in those scripts.
+
+These instructions also assume you are running in a Miniforge/Mambaforge/Anaconda command prompt, and that your current working folder is the "classification" folder within your MegaDetector folder.  If you used the same folders we recommend in the MegaDetector instructions, for example, on Windows, before running these commands, run `cd c:\git\MegaDetector\classification`.
 
 #### Crop images
 
