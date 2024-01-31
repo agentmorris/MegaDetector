@@ -347,7 +347,7 @@ for i_task,task in enumerate(task_info):
     
     task['output_file'] = output_fn
     
-    if n_jobs > 1:
+    if n_gpus > 1:
         gpu_number = i_task % n_gpus        
     else:
         gpu_number = default_gpu_number
