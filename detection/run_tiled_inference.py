@@ -235,7 +235,7 @@ def in_place_nms(md_results, iou_thres=0.45, verbose=True):
     # i_image = 18; im = md_results['images'][i_image]
     for i_image,im in tqdm(enumerate(md_results['images']),total=len(md_results['images'])):
         
-        if len(im['detections']) == 0:
+        if (im['detections'] is None) or (len(im['detections']) == 0):
             continue
     
         boxes = []
@@ -283,40 +283,52 @@ def in_place_nms(md_results, iou_thres=0.45, verbose=True):
 
 def _extract_tiles_for_image(fn_relative,image_folder,tiling_folder,patch_size,patch_stride,overwrite):
     """
-    Extract tiles for a single image
+    Private function to extract tiles for a single image.
     
-    Not really a standalone function; isolated from the main function to simplify
-    multiprocessing.
+    Returns a dict with fields 'patches' (see extract_patch_from_image) and 'image_fn'.
+    
+    If there is an error, 'patches' will be None and the 'error' field will contain
+    failure details.  In that case, some tiles may still be generated.
     """
     
     fn_abs = os.path.join(image_folder,fn_relative)
+    error = None
+    patches = []        
     
     image_name = path_utils.clean_filename(fn_relative,char_limit=None,force_lower=True)
     
-    # Open the image
-    im = vis_utils.open_image(fn_abs)
-    image_size = [im.width,im.height]
-            
-    # Generate patch boundaries (a list of [x,y] starting points)
-    patch_boundaries = get_patch_boundaries(image_size,patch_size,patch_stride)        
-    
-    # Extract patches
-    #
-    # patch_xy = patch_boundaries[0]
-    patches = []
-    
-    for patch_xy in patch_boundaries:
+    try:
         
-        patch_info = extract_patch_from_image(im,patch_xy,patch_size,
-                                 patch_folder=tiling_folder,
-                                 image_name=image_name,
-                                 overwrite=overwrite)
-        patch_info['source_fn'] = fn_relative
-        patches.append(patch_info)
+        # Open the image
+        im = vis_utils.open_image(fn_abs)
+        image_size = [im.width,im.height]
+                
+        # Generate patch boundaries (a list of [x,y] starting points)
+        patch_boundaries = get_patch_boundaries(image_size,patch_size,patch_stride)        
+        
+        # Extract patches
+        #
+        # patch_xy = patch_boundaries[0]        
+        for patch_xy in patch_boundaries:
+            
+            patch_info = extract_patch_from_image(im,patch_xy,patch_size,
+                                     patch_folder=tiling_folder,
+                                     image_name=image_name,
+                                     overwrite=overwrite)
+            patch_info['source_fn'] = fn_relative
+            patches.append(patch_info)
+        
+    except Exception as e:
+        
+        s = 'Patch generation error for {}: \n{}'.format(fn_relative,str(e))
+        print(s)
+        # patches = None
+        error = s
         
     image_patch_info = {}
     image_patch_info['patches'] = patches
     image_patch_info['image_fn'] = fn_relative
+    image_patch_info['error'] = error
     
     return image_patch_info
     
@@ -446,7 +458,7 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
                 image_files_relative),total=len(image_files_relative)))
         
     # ...for each image
-        
+    
     # Write tile information to file; this is just a debugging convenience
     folder_name = path_utils.clean_filename(image_folder,force_lower=True)
     if folder_name.startswith('_'):
@@ -456,9 +468,16 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
     with open(tile_cache_file,'w') as f:
         json.dump(all_image_patch_info,f,indent=1)
     
+    # Keep track of patches that failed
+    images_with_patch_errors = {}
+    for patch_info in all_image_patch_info:
+        if patch_info['error'] is not None:
+            images_with_patch_errors[patch_info['image_fn']] = patch_info
+    
     
     ##%% Run inference on tiles
     
+    # When running with run_inference_with_yolov5_val, we'll pass the folder
     if yolo_inference_options is not None:
         
         patch_level_output_file = os.path.join(tiling_folder,folder_name + '_patch_level_results.json')
@@ -476,11 +495,16 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
         run_inference_with_yolo_val(yolo_inference_options)
         with open(patch_level_output_file,'r') as f:
             patch_level_results = json.load(f)
-                    
+    
+    # For standard inference, we'll pass a list of files
     else:
         
         patch_file_names = []
         for im in all_image_patch_info:
+            # If there was a patch generation error, don't run inference 
+            if patch_info['error'] is not None:
+                assert im['image_fn'] in images_with_patch_errors
+                continue
             for patch in im['patches']:
                 patch_file_names.append(patch['patch_fn'])
                 
@@ -513,18 +537,44 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
     image_fn_relative_to_patch_info = { x['image_fn']:x for x in all_image_patch_info }
     
     # i_image = 0; image_fn_relative = image_files_relative[i_image]
-    for i_image,image_fn_relative in tqdm(enumerate(image_files_relative),total=len(image_files_relative)):
+    for i_image,image_fn_relative in tqdm(enumerate(image_files_relative),
+                                          total=len(image_files_relative)):
         
         image_fn_abs = os.path.join(image_folder,image_fn_relative)
         assert os.path.isfile(image_fn_abs)
                 
         output_im = {}
         output_im['file'] = image_fn_relative
-        output_im['detections'] = []
+        
+        # If we had a patch generation error
+        if image_fn_relative in images_with_patch_errors:
             
-        pil_im = vis_utils.open_image(image_fn_abs)        
-        image_w = pil_im.size[0]
-        image_h = pil_im.size[1]
+            patch_info = image_fn_relative_to_patch_info[image_fn_relative]
+            assert patch_info['error'] is not None
+            
+            output_im['detections'] = None
+            output_im['failure'] = 'Patch generation error'
+            output_im['failure_details'] = patch_info['error']
+            image_level_results['images'].append(output_im)
+            continue
+                    
+        try:
+            pil_im = vis_utils.open_image(image_fn_abs)        
+            image_w = pil_im.size[0]
+            image_h = pil_im.size[1]
+        
+        # This would be a very unusual situation; we're reading back an image here that we already
+        # (successfully) read once during patch generation.
+        except Exception as e:
+            print('Warning: image read error after successful patch generation for {}:\n{}'.format(
+                image_fn_relative,str(e)))
+            output_im['detections'] = None
+            output_im['failure'] = 'Patch processing error'
+            output_im['failure_details'] = str(e)
+            image_level_results['images'].append(output_im)
+            continue            
+        
+        output_im['detections'] = []
         
         image_patch_info = image_fn_relative_to_patch_info[image_fn_relative]
         assert image_patch_info['patches'][0]['source_fn'] == image_fn_relative
@@ -551,6 +601,14 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
             patch_h = (patch_info['ymax'] - patch_info['ymin']) + 1
             assert patch_w == patch_size[0]
             assert patch_h == patch_size[1]
+            
+            # If there was an inference failure on one patch, report the image
+            # as an inference failure
+            if 'detections' not in patch_results:
+                assert 'failure' in patch_results
+                output_im['detections'] = None
+                output_im['failure'] = patch_results['failure']
+                break
             
             # det = patch_results['detections'][0]
             for det in patch_results['detections']:

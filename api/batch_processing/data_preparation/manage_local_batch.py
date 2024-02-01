@@ -635,6 +635,23 @@ if run_tasks_in_notebook:
     
 #%% Load results, look for failed or missing images in each task
 
+# Check that all task output files exist
+
+missing_output_files = []
+
+# i_task = 0; task = task_info[i_task]
+for i_task,task in tqdm(enumerate(task_info),total=len(task_info)):    
+    output_file = task['output_file']
+    if not os.path.isfile(output_file):
+        missing_output_files.append(output_file)
+
+if len(missing_output_files) > 0:
+    print('Missing {} output files:'.format(len(missing_output_files)))
+    for s in missing_output_files:
+        print(s)
+    raise Exception('Missing output files')
+
+
 n_total_failures = 0
 
 # i_task = 0; task = task_info[i_task]
@@ -655,6 +672,13 @@ for i_task,task in tqdm(enumerate(task_info),total=len(task_info)):
     
     # im = task_results['images'][0]
     for im in task_results['images']:
+        
+        # Most of the time, inference result files use absolute paths, but it's 
+        # getting annoying to make sure that's *always* true, so handle both here.  
+        # E.g., when using tiled inference, paths will be relative.
+        if not os.path.isabs(im['file']):
+            fn = os.path.join(input_path,im['file']).replace('\\','/')
+            im['file'] = fn
         assert im['file'].startswith(input_path)
         assert im['file'] in task_images_set
         filename_to_results[im['file']] = im
