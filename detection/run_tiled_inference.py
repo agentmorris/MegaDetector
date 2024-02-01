@@ -328,7 +328,8 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
                         checkpoint_path=None, checkpoint_frequency=-1, remove_tiles=False, 
                         yolo_inference_options=None,
                         n_patch_extraction_workers=default_n_patch_extraction_workers,
-                        overwrite_tiles=True):
+                        overwrite_tiles=True,
+                        image_list=None):
     """
     Run inference using [model_file] on the images in [image_folder], fist splitting each image up 
     into tiles of size [tile_size_x] x [tile_size_y], writing those tiles to [tiling_folder],
@@ -338,7 +339,8 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
     [tiling_folder] can be any folder, but this function reserves the right to do whatever it wants
     within that folder, including deleting everything, so it's best if it's a new folder.  
     Conceptually this folder is temporary, it's just helpful in this case to not actually
-    use the system temp folder, because the tile cache may be very large, 
+    use the system temp folder, because the tile cache may be very large, so the caller may 
+    want it to be on a specific drive.
     
     tile_overlap is the fraction of overlap between tiles.
     
@@ -354,18 +356,47 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
     assert tile_overlap < 1 and tile_overlap >= 0, \
         'Illegal tile overlap value {}'.format(tile_overlap)
     
+    if tile_size_x == -1:
+        tile_size_x = default_tile_size[0]
+    if tile_size_y == -1:
+        tile_size_y = default_tile_size[1]
+        
     patch_size = [tile_size_x,tile_size_y]
     patch_stride = (round(patch_size[0]*(1.0-tile_overlap)),
                     round(patch_size[1]*(1.0-tile_overlap)))
     
     os.makedirs(tiling_folder,exist_ok=True)
     
-    
     ##%% List files
     
-    image_files_relative = path_utils.find_images(image_folder, recursive=True, return_relative_paths=True)    
-    assert len(image_files_relative) > 0, 'No images found in folder {}'.format(image_folder)
-    
+    if image_list is None:
+        
+        print('Enumerating images in {}'.format(image_folder))
+        image_files_relative = path_utils.find_images(image_folder, recursive=True, return_relative_paths=True)    
+        assert len(image_files_relative) > 0, 'No images found in folder {}'.format(image_folder)
+        
+    else:
+        
+        print('Loading image list from {}'.format(image_list))
+        with open(image_list,'r') as f:
+            image_files_relative = json.load(f)
+        n_absolute_paths = 0
+        for i_fn,fn in enumerate(image_files_relative):
+            if os.path.isabs(fn):
+                n_absolute_paths += 1
+                try:
+                    fn_relative = os.path.relpath(fn,image_folder)
+                except ValueError:
+                    'Illegal absolute path supplied to run_tiled_inference, {} is outside of {}'.format(
+                        fn,image_folder)
+                    raise
+                assert not fn_relative.startswith('..'), \
+                    'Illegal absolute path supplied to run_tiled_inference, {} is outside of {}'.format(
+                        fn,image_folder)
+                image_files_relative[i_fn] = fn_relative
+        if (n_absolute_paths != 0) and (n_absolute_paths != len(image_files_relative)):
+            raise ValueError('Illegal file list: converted {} of {} paths to relative'.format(
+            n_absolute_paths,len(image_files_relative)))
     
     ##%% Generate tiles
     
@@ -704,7 +735,7 @@ def main():
         help='Path to detector model file (.pb or .pt)')
     parser.add_argument(
         'image_folder',
-        help='Folder containing images for inference (always recursive)')
+        help='Folder containing images for inference (always recursive, unless image_list is supplied)')
     parser.add_argument(
         'tiling_folder',
         help='Temporary folder where tiles and intermediate results will be stored')
@@ -730,6 +761,16 @@ def main():
         type=float,
         default=default_patch_overlap,
         help=('Overlap between tiles [0,1] (defaults to {})'.format(default_patch_overlap)))
+    parser.add_argument(
+        '--overwrite_handling',
+        type=str,
+        default='skip',
+        help=('behavior when the targt file exists (skip/overwrite/error) (default skip)'))
+    parser.add_argument(
+        '--image_list',
+        type=str,
+        default=None,
+        help=('a .json list of relative filenames (or absolute paths contained within image_folder) to include'))
         
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -740,17 +781,26 @@ def main():
     model_file = try_download_known_detector(args.model_file)
     assert os.path.exists(model_file), \
         'detector file {} does not exist'.format(args.model_file)
-    
+        
     if os.path.exists(args.output_file):
-        print('Warning: output_file {} already exists and will be overwritten'.format(
-            args.output_file))
+        if args.overwrite_handling == 'skip':
+            print('Warning: output file {} exists, skipping'.format(args.output_file))
+            return
+        elif args.overwrite_handling == 'overwrite':
+            print('Warning: output file {} exists, overwriting'.format(args.output_file))
+        elif args.overwrite_handling == 'error':
+            raise ValueError('Output file {} exists'.format(args.output_file))
+        else:
+            raise ValueError('Unknown output handling method {}'.format(args.overwrite_handling))
+        
 
     remove_tiles = (not args.no_remove_tiles)
 
     run_tiled_inference(model_file, args.image_folder, args.tiling_folder, args.output_file,
                         tile_size_x=args.tile_size_x, tile_size_y=args.tile_size_y, 
                         tile_overlap=args.tile_overlap,
-                        remove_tiles=remove_tiles)
+                        remove_tiles=remove_tiles,
+                        image_list=args.image_list)
         
 if __name__ == '__main__':
     main()

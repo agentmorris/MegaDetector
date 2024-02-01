@@ -155,6 +155,7 @@ if os.name == 'nt':
     parallelization_defaults_to_threads = True
     default_workers_for_parallel_tasks = 10
 
+
 ## Constants related to using YOLOv5's val.py
 
 # Should we use YOLOv5's val.py instead of run_detector_batch.py?
@@ -182,6 +183,17 @@ write_yolo_debug_output = False
 
 # Should we apply YOLOv5's test-time augmentation?
 augment = False
+
+
+## Constants related to tiled inference
+
+use_tiled_inference = True
+
+# Should we delete tiles after each job?  Only set this to False for debugging;
+# large jobs will take up a lot of space if you keep tiles around after each task.
+remove_tiles = True
+tile_size = (1280,1280)
+tile_overlap = 0.2
 
 
 #%% Constants I set per script
@@ -244,6 +256,14 @@ if augment:
     assert use_yolo_inference_scripts,\
         'Augmentation is only supported when running with the YOLO inference scripts'
 
+if use_tiled_inference:
+    assert not augment, \
+        'Augmentation is not supported when using tiled inference'
+    assert not use_yolo_inference_scripts, \
+        'Using the YOLO inference script is not supported when using tiled inference'
+    assert checkpoint_frequency is None, \
+        'Checkpointing is not supported when using tiled inference'
+        
 filename_base = os.path.join(base_output_folder_name, base_task_name)
 combined_api_output_folder = os.path.join(filename_base, 'combined_api_outputs')
 postprocessing_output_folder = os.path.join(filename_base, 'preview')
@@ -333,8 +353,7 @@ for i_chunk,chunk_list in enumerate(folder_chunks):
 #%% Generate commands
 
 # A list of the scripts tied to each GPU, as absolute paths.  We'll write this out at
-# the end so each GPU's list of commands can be run at once.  Generally only used when 
-# running lots of small batches via YOLOv5's val.py, which doesn't support checkpointing.
+# the end so each GPU's list of commands can be run at once
 gpu_to_scripts = defaultdict(list)
 
 # i_task = 0; task = task_info[i_task]
@@ -417,6 +436,31 @@ for i_task,task in enumerate(task_info):
             cmd += ' --no_use_symlinks'
         
         cmd += '\n'
+    
+    elif use_tiled_inference:
+        
+        tiling_folder = os.path.join(filename_base,'tile_cache','tile_cache_{}'.format(
+            str(i_task).zfill(3)))
+        
+        if os.name == 'nt':
+            cuda_string = f'set CUDA_VISIBLE_DEVICES={gpu_number} & '
+        else:
+            cuda_string = f'CUDA_VISIBLE_DEVICES={gpu_number} '
+                        
+        cmd = f'{cuda_string} python run_tiled_inference.py "{model_file}" "{input_path}" "{tiling_folder}" "{output_fn}"'
+        
+        cmd += f' --image_list "{chunk_file}"'
+        cmd += f' --overwrite_handling {overwrite_handling}'
+        
+        if not remove_tiles:
+            cmd += ' --no_remove_tiles'
+            
+        # If we're using non-default tile sizes
+        if tile_size is not None and (tile_size[0] > 0 or tile_size[1] > 0):            
+            cmd += ' --tile_size_x {} --tile_size_y {}'.format(tile_size[0],tile_size[1])
+            
+        if tile_overlap is not None:
+            cmd += f' --tile_overlap {tile_overlap}'            
         
     else:
         
@@ -755,7 +799,7 @@ options.otherDetectionsThreshold = options.confidenceMin
 
 options.bRenderDetectionTiles = True
 options.maxOutputImageWidth = 2000
-options.detectionTilesMaxCrops = 350
+options.detectionTilesMaxCrops = 300
 
 # options.lineThickness = 5
 # options.boxExpansion = 8
