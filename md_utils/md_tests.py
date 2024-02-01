@@ -17,7 +17,6 @@
 ### Only standard imports belong here, not MD-specific imports ###
 
 import os
-import sys
 import json
 import glob
 import tempfile
@@ -48,6 +47,7 @@ class MDTestOptions:
     max_coord_error = 0.001
     max_conf_error = 0.005
     cli_working_dir = None
+    yolo_working_folder = None
 
 
 #%% Support functions
@@ -113,9 +113,9 @@ def download_test_data(options):
     if download_zipfile:
         print('Downloading test data zipfile')
         urllib.request.urlretrieve(options.test_data_url, local_zipfile)
-        print('Finished download')
+        print('Finished download to {}'.format(local_zipfile))
     else:
-        print('Bypassing test data zipfile download')
+        print('Bypassing test data zipfile download for {}'.format(local_zipfile))
     
     
     ## Unzip data
@@ -158,6 +158,7 @@ def download_test_data(options):
     options.all_test_files = test_files
     options.test_images = [fn for fn in test_files if os.path.splitext(fn.lower())[1] in ('.jpg','.jpeg','.png')]
     options.test_videos = [fn for fn in test_files if os.path.splitext(fn.lower())[1] in ('.mp4','.avi')]    
+    options.test_videos = [fn for fn in options.test_videos if 'rendered' not in fn]
         
 # ...def download_test_data(...)
 
@@ -389,9 +390,82 @@ def run_python_tests(options):
     assert os.path.isfile(rde_results.filterFile),\
         'Could not find RDE output file {}'.format(rde_results.filterFile)
         
+    
     # TODO: add remove_repeat_detections test here
     #
     # It's already tested in the CLI tests, so this is not urgent.
+    
+
+    ## Video test (single video)
+    
+    from detection.process_video import ProcessVideoOptions, process_video
+    
+    video_options = ProcessVideoOptions()
+    video_options.model_file = 'MDV5A'
+    video_options.input_video_file = os.path.join(options.scratch_dir,options.test_videos[0])
+    video_options.output_json_file = os.path.join(options.scratch_dir,'single_video_output.json')
+    video_options.output_video_file = os.path.join(options.scratch_dir,'video_scratch/rendered_video.mp4')
+    video_options.frame_folder = os.path.join(options.scratch_dir,'video_scratch/frame_folder')
+    video_options.frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder')    
+    video_options.render_output_video = True
+    # video_options.keep_rendered_frames = False
+    # video_options.keep_rendered_frames = False
+    video_options.force_extracted_frame_folder_deletion = True
+    video_options.force_rendered_frame_folder_deletion = True
+    # video_options.reuse_results_if_available = False
+    # video_options.reuse_frames_if_available = False
+    video_options.recursive = True
+    video_options.verbose = False
+    video_options.fourcc = 'mp4v'
+    # video_options.rendering_confidence_threshold = None
+    # video_options.json_confidence_threshold = 0.005
+    video_options.frame_sample = 5    
+    video_options.n_cores = 5
+    # video_options.debug_max_frames = -1
+    # video_options.class_mapping_filename = None
+    
+    _ = process_video(video_options)
+
+    assert os.path.isfile(video_options.output_video_file), \
+        'Python video test failed to render output video file'
+    assert os.path.isfile(video_options.output_json_file), \
+        'Python video test failed to render output .json file'
+        
+    
+    ## Video test (folder)
+    
+    from detection.process_video import ProcessVideoOptions, process_video_folder
+    
+    video_options = ProcessVideoOptions()
+    video_options.model_file = 'MDV5A'
+    video_options.input_video_file = os.path.join(options.scratch_dir,
+                                                  os.path.dirname(options.test_videos[0]))
+    video_options.output_json_file = os.path.join(options.scratch_dir,'video_folder_output.json')
+    # video_options.output_video_file = None
+    video_options.frame_folder = os.path.join(options.scratch_dir,'video_scratch/frame_folder')
+    video_options.frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder')    
+    video_options.render_output_video = False
+    # video_options.keep_rendered_frames = False
+    # video_options.keep_rendered_frames = False
+    video_options.force_extracted_frame_folder_deletion = True
+    video_options.force_rendered_frame_folder_deletion = True
+    # video_options.reuse_results_if_available = False
+    # video_options.reuse_frames_if_available = False
+    video_options.recursive = True
+    video_options.verbose = False
+    # video_options.fourcc = None
+    # video_options.rendering_confidence_threshold = None
+    # video_options.json_confidence_threshold = 0.005
+    video_options.frame_sample = 5    
+    video_options.n_cores = 5
+    # video_options.debug_max_frames = -1
+    # video_options.class_mapping_filename = None
+    
+    _ = process_video_folder(video_options)
+
+    assert os.path.isfile(video_options.output_json_file), \
+        'Python video test failed to render output .json file'
+    
     
     print('\n*** Finished module tests ***\n')
 
@@ -513,6 +587,118 @@ def run_cli_tests(options):
     assert os.path.isfile(filtered_output_file), \
         'Could not find RDE output file {}'.format(filtered_output_file)
     
+    
+    ## Run inference on a folder (tiled)
+    
+    image_folder = os.path.join(options.scratch_dir,'md-test-images')
+    tiling_folder = os.path.join(options.scratch_dir,'tiling-folder')
+    inference_output_file_tiled = os.path.join(options.scratch_dir,'folder_inference_output_tiled.json')
+    if options.cli_working_dir is None:
+        cmd = 'python -m detection.run_tiled_inference'
+    else:
+        cmd = 'python detection/run_tiled_inference.py'
+    cmd += ' {} {} {} {}'.format(
+        model_file,image_folder,tiling_folder,inference_output_file_tiled)
+    cmd += ' --overwrite_handling overwrite'
+    print('Running: {}'.format(cmd))
+    cmd_results = execute_and_print(cmd)
+    
+    with open(inference_output_file_tiled,'r') as f:
+        results_from_file = json.load(f) # noqa
+        
+    
+    ## Run inference on a folder (augmented)
+    
+    if options.yolo_working_folder is None:
+        
+        print('Bypassing YOLOv5 val tests, no yolo folder supplied')
+        
+    else:
+    
+        image_folder = os.path.join(options.scratch_dir,'md-test-images')
+        yolo_results_folder = os.path.join(options.scratch_dir,'yolo-output-folder')
+        yolo_symlink_folder = os.path.join(options.scratch_dir,'yolo-symlink_folder')
+        inference_output_file_yolo_val = os.path.join(options.scratch_dir,'folder_inference_output_yolo_val.json')
+        if options.cli_working_dir is None:
+            cmd = 'python -m detection.run_inference_with_yolov5_val'
+        else:
+            cmd = 'python detection/run_inference_with_yolov5_val.py'
+        cmd += ' {} {} {}'.format(
+            model_file,image_folder,inference_output_file_yolo_val)
+        cmd += ' --yolo_working_folder {}'.format(options.yolo_working_folder)
+        cmd += ' --yolo_results_folder {}'.format(yolo_results_folder)
+        cmd += ' --symlink_folder {}'.format(yolo_symlink_folder)
+        cmd += ' --augment_enabled 1'
+        # cmd += ' --no_use_symlinks'
+        cmd += ' --overwrite_handling overwrite'
+        print('Running: {}'.format(cmd))
+        cmd_results = execute_and_print(cmd)
+        
+        with open(inference_output_file_yolo_val,'r') as f:
+            results_from_file = json.load(f) # noqa
+        
+        
+    ## Video test
+    
+    model_file = 'MDV5A'
+    video_inference_output_file = os.path.join(options.scratch_dir,'video_inference_output.json')
+    output_video_file = os.path.join(options.scratch_dir,'video_scratch/cli_rendered_video.mp4')
+    frame_folder = os.path.join(options.scratch_dir,'video_scratch/frame_folder_cli')
+    frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder_cli')        
+    
+    video_fn = os.path.join(options.scratch_dir,options.test_videos[-1])
+    output_dir = os.path.join(options.scratch_dir,'single_video_test_cli')
+    if options.cli_working_dir is None:
+        cmd = 'python -m detection.process_video'
+    else:
+        cmd = 'python detection/process_video.py'
+    cmd += ' {} {}'.format(model_file,video_fn)
+    cmd += ' --frame_folder {} --frame_rendering_folder {} --output_json_file {} --output_video_file {}'.format(
+        frame_folder,frame_rendering_folder,video_inference_output_file,output_video_file)
+    cmd += ' --render_output_video --fourcc mp4v'
+    cmd += ' --force_extracted_frame_folder_deletion --force_rendered_frame_folder_deletion --n_cores 5 --frame_sample 3'
+    print('Running: {}'.format(cmd))
+    cmd_results = execute_and_print(cmd)
+    
+    
+    ## Run inference on a folder (again, so we can do a comparison)
+    
+    image_folder = os.path.join(options.scratch_dir,'md-test-images')
+    model_file = 'MDV5B'
+    inference_output_file_alt = os.path.join(options.scratch_dir,'folder_inference_output_alt.json')
+    if options.cli_working_dir is None:
+        cmd = 'python -m detection.run_detector_batch'
+    else:
+        cmd = 'python detection/run_detector_batch.py'
+    cmd += ' {} {} {} --recursive'.format(
+        model_file,image_folder,inference_output_file_alt)
+    cmd += ' --output_relative_filenames --quiet --include_image_size'
+    cmd += ' --include_image_timestamp --include_exif_data'
+    print('Running: {}'.format(cmd))
+    cmd_results = execute_and_print(cmd)
+    
+    with open(inference_output_file_alt,'r') as f:
+        results_from_file = json.load(f) # noqa
+    
+    
+    ## Compare the two files
+    
+    comparison_output_folder = os.path.join(options.scratch_dir,'results_comparison')
+    image_folder = os.path.join(options.scratch_dir,'md-test-images')
+    results_files_string = '"{}" "{}"'.format(
+        inference_output_file,inference_output_file_alt)
+    if options.cli_working_dir is None:
+        cmd = 'python -m api.batch_processing.postprocessing.compare_batch_results'
+    else:
+        cmd = 'python api/batch_processing/postprocessing/compare_batch_results.py'
+    cmd += ' {} {} {}'.format(comparison_output_folder,image_folder,results_files_string)
+    print('Running: {}'.format(cmd))
+    cmd_results = execute_and_print(cmd)
+    
+    assert cmd_results['status'] == 0, 'Error generating comparison HTML'
+    assert os.path.isfile(os.path.join(comparison_output_folder,'index.html')), \
+        'Failed to generate comparison HTML'
+    
     print('\n*** Finished CLI tests ***\n')
     
 # ...def run_cli_tests(...)
@@ -560,9 +746,19 @@ if False:
     
     options.disable_gpu = False
     options.cpu_execution_is_error = False
-    options.disable_video_tests = False
+    options.skip_video_tests = False
+    options.skip_python_tests = False
+    options.skip_cli_tests = False
     options.scratch_dir = None
+    options.test_data_url = 'https://lila.science/public/md-test-package.zip'
+    options.force_data_download = False
+    options.force_data_unzip = False
+    options.warning_mode = True
+    options.test_image_subdir = 'md-test-images'
+    options.max_coord_error = 0.001
+    options.max_conf_error = 0.005
     options.cli_working_dir = r'c:\git\MegaDetector'
+    options.yolo_working_folder = r'c:\git\yolov5'
 
 
     #%%
