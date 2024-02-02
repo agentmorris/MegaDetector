@@ -49,6 +49,8 @@ def resize_coco_dataset(input_folder,input_filename,
     of the way there, due to what appears to be a slight bias inherent to MD.  If a box extends
     within [right_edge_quantization_threshold] (a small number, from 0 to 1, but probably around 
     0.02) of the right edge of the image, it will be extended to the far right edge.
+    
+    Returns the COCO database with resized images.
     """
     
     # Read input data
@@ -62,7 +64,9 @@ def resize_coco_dataset(input_folder,input_filename,
                                           
     # For each image
     
-    # im = d['images'][1]
+    # TODO: this is trivially parallelizable
+    #
+    # im = d['images'][0]
     for im in tqdm(d['images']):
     
         input_fn_relative = im['file_name']
@@ -143,6 +147,8 @@ def resize_coco_dataset(input_folder,input_filename,
     with open(output_filename,'w') as f:
         json.dump(d,f,indent=1)
     
+    return d
+
 # ...def resize_coco_dataset(...)
     
 
@@ -153,17 +159,13 @@ if False:
     pass
 
     #%% Test resizing
-    
-    # input_filename = os.path.expanduser('~/tmp/labelme_to_coco_test.json')
-    # input_folder = os.path.expanduser('~/data/labelme-json-test')
-    # target_size = (600,-1)
-    
-    input_folder = os.path.expanduser('~/data/usgs-kissel-training')
-    input_filename = os.path.expanduser('~/data/usgs-tegus.json')
+        
+    input_folder = os.path.expanduser('~/data/usgs-tegus/usgs-kissel-training')
+    input_filename = os.path.expanduser('~/data/usgs-tegus/usgs-kissel-training.json')
     target_size = (1600,-1)
     
-    output_filename = insert_before_extension(input_filename,'resized')
-    output_folder = input_folder + '-resized'    
+    output_filename = insert_before_extension(input_filename,'resized-test')
+    output_folder = input_folder + '-resized-test'
     
     correct_size_image_handling = 'rewrite'
     

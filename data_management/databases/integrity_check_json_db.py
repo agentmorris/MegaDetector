@@ -89,6 +89,9 @@ def integrity_check_json_db(jsonFile, options=None):
         
     print(options.__dict__)
     
+    if options.baseDir is None:
+        options.baseDir = ''
+        
     baseDir = options.baseDir
     
     
@@ -116,10 +119,9 @@ def integrity_check_json_db(jsonFile, options=None):
     annotations = data['annotations']
     categories = data['categories']
     # info = data['info']
-    assert 'info' in data
+    assert 'info' in data, 'No info struct in database'
     
-    if len(baseDir) > 0:
-        
+    if len(baseDir) > 0:        
         assert os.path.isdir(baseDir), 'Base directory {} does not exist'.format(baseDir)
         
         
@@ -139,8 +141,8 @@ def integrity_check_json_db(jsonFile, options=None):
         assert 'name' in cat
         assert 'id' in cat
         
-        assert isinstance(cat['id'],int), 'Illegal category ID type'
-        assert isinstance(cat['name'],str), 'Illegal category name type'
+        assert isinstance(cat['id'],int), 'Illegal category ID type: [{}]'.format(str(cat['id']))
+        assert isinstance(cat['name'],str), 'Illegal category name type [{}]'.format(str(cat['name']))
         
         catId = cat['id']
         catName = cat['name']
