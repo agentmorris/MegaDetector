@@ -52,21 +52,21 @@ Also, although I'm just calling this section "MegaClassifier" to keep things sim
 #### Files you need to run MegaClassifier
 
 Model file<br/>
-[megaclassifier/v0.1/v0.1_efficientnet-b3_compiled.pt](https://lilablobssc.blob.core.windows.net/models/camera_traps/megaclassifier/v0.1/v0.1_efficientnet-b3_compiled.pt)
+[megaclassifier/v0.1/megaclassifier_v0.1_efficientnet-b3_compiled.pt](https://lila.science/public/models/megaclassifier/v0.1/megaclassifier_v0.1_efficientnet-b3_compiled.pt)
 
 Mapping of model outputs to class names<br/>
-[megaclassifier/v0.1/v0.1_index_to_name.json](https://lilablobssc.blob.core.windows.net/models/camera_traps/megaclassifier/v0.1/v0.1_index_to_name.json)
+[megaclassifier/v0.1/megaclassifier_v0.1_index_to_name.json](https://lila.science/public/models/megaclassifier/v0.1/megaclassifier_v0.1_index_to_name.json)
 
 Mapping file to get MegaClassifier classes to Idaho-relevant classes<br/>
-[idfg_to_megaclassifier_labels.json](https://lilablobssc.blob.core.windows.net/models/camera_traps/megaclassifier/v0.1/idfg_to_megaclassifier_labels.json)
+[idfg_to_megaclassifier_labels.json](https://lila.science/public/models/megaclassifier/v0.1/idfg_to_megaclassifier_labels.json)
 
 #### Files you need to run the IDFG classifier
 
 Model file<br/>
-[idfg_classifier_ckpt_14_compiled.pt](https://lilablobssc.blob.core.windows.net/models/camera_traps/idfg_classifier/idfg_classifier_20200905_042558/idfg_classifier_ckpt_14_compiled.pt)
+[idfg_classifier_ckpt_14_compiled.pt](https://lila.science/public/models/idfg_classifier/idfg_classifier_20200905_042558/idfg_classifier_ckpt_14_compiled.pt)
 
 Mapping of model outputs to class names<br/>
-[idfg_classifier_20200905_042558/label_index.json](https://lilablobssc.blob.core.windows.net/models/camera_traps/idfg_classifier/idfg_classifier_20200905_042558/label_index.json)
+[idfg_classifier_20200905_042558/label_index.json](https://lila.science/public/models/idfg_classifier/idfg_classifier_20200905_042558/label_index.json)
 
 
 ### Environment setup
@@ -117,15 +117,30 @@ These instructions also assume you are running in a Miniforge/Mambaforge/Anacond
 
 Run `crop_detections.py` to crop the bounding boxes according to the MegaDetector results.  Unless you have a good reason not to, use the `--square-crops` flag, which crops the tightest square enclosing each bounding box (which may have an arbitrary aspect ratio).
 
+Linux-flavored example:
+
 ```bash
 python crop_detections.py \
     detections.json \
     /path/to/crops \
-    --images-dir /path/to/images
-    --threshold 0.8 \
+    --images-dir /path/to/images \
+    --threshold 0.15 \
     --save-full-images --square-crops \
-    --threads 50 \
+    --threads 20 \
     --logdir "."
+```
+
+Windows-flavored example:
+
+```bash
+python crop_detections.py ^
+    "c:\folder\where\you\store\your\results\detections.json" ^
+    "c:\folder\for\storing\cropped\images" ^
+    --images-dir "c:\folder\where\your\images\live" ^
+    --threshold 0.15 ^
+    --save-full-images --square-crops ^
+    --threads 20 ^
+    --logdir "c:\folder\where\you\store\your\results"
 ```
 
 #### Run classifier
@@ -139,19 +154,33 @@ The following script will output a CSV file (optionally gzipped) whose columns a
 
 On a GPU, this should run at ~200 crops per second.
 
+Linux-flavored example:
+
 ```bash
 python run_classifier.py \
-    /path/to/classifier-training/megaclassifier/v0.1_efficientnet-b3_compiled.pt \
+    /path/to/classifier-training/megaclassifier/megaclassifier_v0.1_efficientnet-b3_compiled.pt \
     /path/to/crops \
     classifier_output.csv.gz \
     --detections-json detections.json \
-    --classifier-categories /path/to/classifier-training/megaclassifier/v0.1_index_to_name.json \
+    --classifier-categories /path/to/classifier-training/megaclassifier/megaclassifier_v0.1_index_to_name.json \
+    --image-size 300 --batch-size 64 --num-workers 8
+```
+
+Windows-flavored example:
+
+```bash
+python run_classifier.py ^
+    "c:\folder\where\you\downloaded\megaclassifier\megaclassifier_v0.1_efficientnet-b3_compiled.pt" ^
+    "c:\folder\for\storing\cropped\images" ^
+    "c:\folder\where\you\store\your\results\megclassifier_output.csv.gz" ^
+    --detections-json "c:\folder\where\you\store\your\results\detections.json" ^
+    --classifier-categories "c:\folder\where\you\downloaded\megaclassifier\megaclassifier_v0.1_index_to_name.json" ^
     --image-size 300 --batch-size 64 --num-workers 8
 ```
 
 #### (Optional) Map classifier categories to desired categories
 
-This step is only relevant to MegaClassifier, not the IDFG classifier.
+<i>This part is only relevant to MegaClassifier, not the IDFG classifier.</i>
 
 MegaClassifier outputs 100+ categories, but we usually don't care about all of them. Instead, we can group the classifier labels into desired "target" categories. This process involves three sub-steps:
 
@@ -165,20 +194,26 @@ Use the [label specification syntax](#label-specification-syntax) to specify the
 
 ##### Build a mapping from desired target categories to MegaClassifier labels
 
+<i>This step build a new mapping.  If you are happy running the mapping we provide (to Western-US species), skip this step.</i>
+
 Run the `map_classification_categories.py` script with the target label specification JSON to create a mapping from target categories to MegaClassifier labels. The output file is another JSON file representing a dictionary whose keys are target categories and whose values are lists of MegaClassifier labels. MegaClassifier labels who are not explicitly assigned a target are assigned to a target named "other". Each MegaClassifier label is assigned to exactly one target category.
+
+Linux-flavored example:
 
 ```bash
 python map_classification_categories.py \
     target_label_spec.json \
-    /path/to/classifier-training/megaclassifier/v0.1_label_spec.json \
+    /path/to/classifier-training/megaclassifier/megaclassifier_v0.1_label_spec.json \
     /path/to/camera-traps-private/camera_trap_taxonomy_mapping.csv \
     --output target_to_classifier_labels.json \
-    --classifier-label-index /path/to/classifier-training/megaclassifier/v0.1_index_to_name.json
+    --classifier-label-index /path/to/classifier-training/megaclassifier/megaclassifier_v0.1_index_to_name.json
 ```
 
 ##### Aggregate probabilities from the classifier's outputs according to the mapping
 
 Using the mapping, create a new version of the classifier output CSV with probabilities summed within each target category. Also output a new "index-to-name" JSON file which identifies the sequential order of the target categories.
+
+Linux-flavored example:
 
 ```bash
 python aggregate_classifier_probs.py \
@@ -188,9 +223,21 @@ python aggregate_classifier_probs.py \
     --output-label-index label_index_remapped.json
 ```
 
+Windows-flavored example:
+
+```bash
+python aggregate_classifier_probs.py ^
+    "c:\folder\where\you\store\your\results\megclassifier_output.csv.gz"  ^
+    --target-mapping "c:\folder\where\you\downloaded\megaclassifier\idfg_to_megaclassifier_labels.json" ^
+    --output-csv "c:\folder\where\you\store\your\results\megclassifier_output_remapped.csv.gz"  ^
+    --output-label-index "c:\folder\where\you\store\your\results\megclassifier_label_index_remapped.json"
+```
+
 #### Merge classification results with detection results
 
 Finally, merge the classification results CSV with the original detection JSON file. Use the `--threshold` argument to exclude predicted categories from the JSON file if their confidence is below a certain threshold. The output JSON file path is specified by the `--output-json` argument. If desired, this file can then be opened in Timelapse.
+
+Linux-flavored example:
 
 ```bash
 python merge_classification_detection_output.py \
@@ -202,6 +249,19 @@ python merge_classification_detection_output.py \
     --detection-json detections.json
 ```
 
+Windows-flavored example:
+
+```bash
+python merge_classification_detection_output.py ^
+    "c:\folder\where\you\store\your\results\megclassifier_output_remapped.csv.gz" ^
+    "c:\folder\where\you\store\your\results\megclassifier_label_index_remapped.json" ^
+    --output-json "c:\folder\where\you\store\your\results\detections_with_classifications.json" ^
+    --classifier-name megaclassifier_v0.1_efficientnet-b3 ^
+    --threshold 0.05 ^
+    --detection-json "c:\folder\where\you\store\your\results\detections.json"
+```
+
+
 ### Use MegaClassifier as a feature extractor
 
 To use MegaClassifier to extract features from images, use the following code:
@@ -211,7 +271,7 @@ import efficientnet
 import torch
 
 model = efficientnet.EfficientNet.from_name('efficientnet-b3', num_classes=169)
-ckpt = torch.load('v0.1_efficientnet-b3.pt')
+ckpt = torch.load('megaclassifier_v0.1_efficientnet-b3.pt')
 model.load_state_dict(ckpt['model'])
 
 x = torch.rand((1, 3, 224, 224))  # random image, batch size 1

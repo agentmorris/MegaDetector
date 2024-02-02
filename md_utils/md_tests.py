@@ -160,6 +160,8 @@ def download_test_data(options):
     options.test_videos = [fn for fn in test_files if os.path.splitext(fn.lower())[1] in ('.mp4','.avi')]    
     options.test_videos = [fn for fn in options.test_videos if 'rendered' not in fn]
         
+    print('Finished unzipping and enumerating test data')
+    
 # ...def download_test_data(...)
 
 
