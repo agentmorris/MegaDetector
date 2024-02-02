@@ -155,6 +155,7 @@ if os.name == 'nt':
     parallelization_defaults_to_threads = True
     default_workers_for_parallel_tasks = 10
 
+
 ## Constants related to using YOLOv5's val.py
 
 # Should we use YOLOv5's val.py instead of run_detector_batch.py?
@@ -178,9 +179,21 @@ yolo_batch_size = 1
 remove_yolo_intermediate_results = True
 remove_yolo_symlink_folder = True
 use_symlinks_for_yolo_inference = True
+write_yolo_debug_output = False
 
 # Should we apply YOLOv5's test-time augmentation?
 augment = False
+
+
+## Constants related to tiled inference
+
+use_tiled_inference = True
+
+# Should we delete tiles after each job?  Only set this to False for debugging;
+# large jobs will take up a lot of space if you keep tiles around after each task.
+remove_tiles = True
+tile_size = (1280,1280)
+tile_overlap = 0.2
 
 
 #%% Constants I set per script
@@ -243,6 +256,14 @@ if augment:
     assert use_yolo_inference_scripts,\
         'Augmentation is only supported when running with the YOLO inference scripts'
 
+if use_tiled_inference:
+    assert not augment, \
+        'Augmentation is not supported when using tiled inference'
+    assert not use_yolo_inference_scripts, \
+        'Using the YOLO inference script is not supported when using tiled inference'
+    assert checkpoint_frequency is None, \
+        'Checkpointing is not supported when using tiled inference'
+        
 filename_base = os.path.join(base_output_folder_name, base_task_name)
 combined_api_output_folder = os.path.join(filename_base, 'combined_api_outputs')
 postprocessing_output_folder = os.path.join(filename_base, 'preview')
@@ -332,8 +353,7 @@ for i_chunk,chunk_list in enumerate(folder_chunks):
 #%% Generate commands
 
 # A list of the scripts tied to each GPU, as absolute paths.  We'll write this out at
-# the end so each GPU's list of commands can be run at once.  Generally only used when 
-# running lots of small batches via YOLOv5's val.py, which doesn't support checkpointing.
+# the end so each GPU's list of commands can be run at once
 gpu_to_scripts = defaultdict(list)
 
 # i_task = 0; task = task_info[i_task]
@@ -346,7 +366,7 @@ for i_task,task in enumerate(task_info):
     
     task['output_file'] = output_fn
     
-    if n_jobs > 1:
+    if n_gpus > 1:
         gpu_number = i_task % n_gpus        
     else:
         gpu_number = default_gpu_number
@@ -379,6 +399,10 @@ for i_task,task in enumerate(task_info):
         if not remove_yolo_symlink_folder:
             remove_symlink_folder_string = '--no_remove_symlink_folder'
         
+        write_yolo_debug_output_string = ''
+        if write_yolo_debug_output:
+            write_yolo_debug_output = '--write_yolo_debug_output'
+            
         remove_yolo_results_string = ''
         if not remove_yolo_intermediate_results:
             remove_yolo_results_string = '--no_remove_yolo_results_folder'
@@ -399,7 +423,7 @@ for i_task,task in enumerate(task_info):
         cmd += f'{image_size_string} {augment_string} '
         cmd += f'{symlink_folder_string} {yolo_results_folder_string} {remove_yolo_results_string} '
         cmd += f'{remove_symlink_folder_string} {confidence_threshold_string} {device_string} '
-        cmd += f'{overwrite_handling_string} {batch_string}'
+        cmd += f'{overwrite_handling_string} {batch_string} {write_yolo_debug_output_string}'
                 
         if yolo_working_dir is not None:
             cmd += f' --yolo_working_folder "{yolo_working_dir}"'
@@ -412,6 +436,31 @@ for i_task,task in enumerate(task_info):
             cmd += ' --no_use_symlinks'
         
         cmd += '\n'
+    
+    elif use_tiled_inference:
+        
+        tiling_folder = os.path.join(filename_base,'tile_cache','tile_cache_{}'.format(
+            str(i_task).zfill(3)))
+        
+        if os.name == 'nt':
+            cuda_string = f'set CUDA_VISIBLE_DEVICES={gpu_number} & '
+        else:
+            cuda_string = f'CUDA_VISIBLE_DEVICES={gpu_number} '
+                        
+        cmd = f'{cuda_string} python run_tiled_inference.py "{model_file}" "{input_path}" "{tiling_folder}" "{output_fn}"'
+        
+        cmd += f' --image_list "{chunk_file}"'
+        cmd += f' --overwrite_handling {overwrite_handling}'
+        
+        if not remove_tiles:
+            cmd += ' --no_remove_tiles'
+            
+        # If we're using non-default tile sizes
+        if tile_size is not None and (tile_size[0] > 0 or tile_size[1] > 0):            
+            cmd += ' --tile_size_x {} --tile_size_y {}'.format(tile_size[0],tile_size[1])
+            
+        if tile_overlap is not None:
+            cmd += f' --tile_overlap {tile_overlap}'            
         
     else:
         
@@ -586,6 +635,23 @@ if run_tasks_in_notebook:
     
 #%% Load results, look for failed or missing images in each task
 
+# Check that all task output files exist
+
+missing_output_files = []
+
+# i_task = 0; task = task_info[i_task]
+for i_task,task in tqdm(enumerate(task_info),total=len(task_info)):    
+    output_file = task['output_file']
+    if not os.path.isfile(output_file):
+        missing_output_files.append(output_file)
+
+if len(missing_output_files) > 0:
+    print('Missing {} output files:'.format(len(missing_output_files)))
+    for s in missing_output_files:
+        print(s)
+    raise Exception('Missing output files')
+
+
 n_total_failures = 0
 
 # i_task = 0; task = task_info[i_task]
@@ -606,6 +672,13 @@ for i_task,task in tqdm(enumerate(task_info),total=len(task_info)):
     
     # im = task_results['images'][0]
     for im in task_results['images']:
+        
+        # Most of the time, inference result files use absolute paths, but it's 
+        # getting annoying to make sure that's *always* true, so handle both here.  
+        # E.g., when using tiled inference, paths will be relative.
+        if not os.path.isabs(im['file']):
+            fn = os.path.join(input_path,im['file']).replace('\\','/')
+            im['file'] = fn
         assert im['file'].startswith(input_path)
         assert im['file'] in task_images_set
         filename_to_results[im['file']] = im
@@ -617,7 +690,8 @@ for i_task,task in tqdm(enumerate(task_info),total=len(task_info)):
     task['results'] = task_results
     
     for fn in task_images:
-        assert fn in filename_to_results
+        assert fn in filename_to_results, \
+            'File {} not found in results for task {}'.format(fn,i_task)
     
     n_total_failures += n_task_failures
 
@@ -749,7 +823,7 @@ options.otherDetectionsThreshold = options.confidenceMin
 
 options.bRenderDetectionTiles = True
 options.maxOutputImageWidth = 2000
-options.detectionTilesMaxCrops = 350
+options.detectionTilesMaxCrops = 300
 
 # options.lineThickness = 5
 # options.boxExpansion = 8

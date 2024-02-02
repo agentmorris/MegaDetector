@@ -34,7 +34,7 @@ from detection.video_utils import default_fourcc
 class ProcessVideoOptions:
 
     # Can be a model filename (.pt or .pb) or a model name (e.g. "MDV5A")
-    model_file = ''
+    model_file = 'MDV5A'
     
     # Can be a file or a folder
     input_video_file = ''

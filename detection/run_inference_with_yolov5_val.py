@@ -49,6 +49,7 @@ from tqdm import tqdm
 
 from md_utils import path_utils
 from md_utils import process_utils
+from md_utils import string_utils
 from data_management import yolo_output_to_md_output
 from detection.run_detector import try_download_known_detector
 
@@ -102,6 +103,8 @@ class YoloInferenceOptions:
     preview_yolo_command_only = False
     
     treat_copy_failures_as_warnings = False
+    
+    save_yolo_debug_output = False
             
     
 #%% Main function
@@ -364,6 +367,19 @@ def run_inference_with_yolo_val(options):
     execution_result = process_utils.execute_and_print(cmd,encoding='utf-8',verbose=True)
     assert execution_result['status'] == 0, 'Error running {}'.format(options.model_type)
     yolo_console_output = execution_result['output']
+      
+    if options.save_yolo_debug_output:
+        with open(os.path.join(yolo_results_folder,'yolo_console_output.txt'),'w') as f:
+            for s in yolo_console_output:
+                f.write(s + '\n')
+        with open(os.path.join(yolo_results_folder,'image_id_to_file.json'),'w') as f:
+            json.dump(image_id_to_file,f,indent=1)
+        with open(os.path.join(yolo_results_folder,'image_id_to_error.json'),'w') as f:
+            json.dump(image_id_to_error,f,indent=1)
+                
+        
+    # YOLO console output contains lots of ANSI escape codes, remove them for easier parsing
+    yolo_console_output = [string_utils.remove_ansi_codes(s) for s in yolo_console_output]
     
     # Find errors that occrred during the initial corruption check; these will not be included in the
     # output.  Errors that occur during inference will be handled separately.
@@ -390,11 +406,13 @@ def run_inference_with_yolo_val(options):
         elif 'ignoring corrupt image/label' in line:
             assert 'WARNING' in line
             if '⚠️' in line:
-                assert line.startswith('val')
+                assert line.startswith('val'), \
+                    'Unrecognized line in YOLO output: {}'.format(line)
                 tokens = line.split('ignoring corrupt image/label')
                 image_name = tokens[0].split('⚠️')[-1].strip()
             else:
-                assert line.startswith('test')
+                assert line.startswith('test'), \
+                    'Unrecognized line in YOLO output: {}'.format(line)
                 tokens = line.split('ignoring corrupt image/label')
                 image_name = tokens[0].split('WARNING:')[-1].strip()
             assert image_name.endswith(':')
@@ -531,6 +549,9 @@ def main():
     parser.add_argument(
         '--no_remove_yolo_results_folder', action='store_true',
         help='don\'t remove the temporary folder full of YOLO intermediate files')
+    parser.add_argument(
+        '--save_yolo_debug_output', action='store_true',
+        help='write yolo console output to a text file in the results folder, along with additional debug files')
     
     parser.add_argument(
         '--preview_yolo_command_only', action='store_true',
