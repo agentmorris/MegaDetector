@@ -117,7 +117,7 @@ def open_image(input_file: Union[str, BytesIO]) -> Image:
     return image
 
 
-def exif_preserving_save(pil_image,output_file):
+def exif_preserving_save(pil_image,output_file,quality='keep'):
     """
     Save [pil_image] to [output_file], making a moderate attempt to preserve EXIF
     data and JPEG quality.  Neither is guaranteed.
@@ -127,22 +127,33 @@ def exif_preserving_save(pil_image,output_file):
     https://discuss.dizzycoding.com/determining-jpg-quality-in-python-pil/
      
     ...for more ways to preserve jpeg quality if quality='keep' doesn't do the trick.
+
+    The "quality" parameter should be "keep" (default), or an integer from 0 to 95.
+    Ignored for non-jpeg images, even though PIL supports this for non-jpeg images.
+    "keep" would have to be handled specially in that case, and 99.99% of calls to 
+    this function are for jpeg export, so I'm not going to handle that now.
     """
     
     # Read EXIF metadata
     exif = pil_image.info['exif'] if ('exif' in pil_image.info) else None
     
-    # Write output with EXIF metadata if available, and quality='keep' if this is a JPEG
-    # image.  Unfortunately, neither parameter likes "None", so we get a slightly
-    # icky cascade of if's here.
+    # Check whether we're writing a jpeg file, in which case we will pass the 
+    # "quality" parameter along to PIL.
+    output_format = None
+    if output_file.lower().endswith('jpg') or output_file.lower().endswith('jpeg'):
+        output_format = 'JPEG'
+        
+    # Write output with EXIF metadata if available, and the quality parameter if we're
+    # writing a JPEG image.  Unfortunately, neither parameter likes "None", so we get a 
+    # slightly icky cascade of if's here.
     if exif is not None:
-        if pil_image.format == "JPEG":
-            pil_image.save(output_file, exif=exif, quality='keep')
+        if output_format == "JPEG":
+            pil_image.save(output_file, exif=exif, quality=quality)
         else:
             pil_image.save(output_file, exif=exif)
     else:
-        if pil_image.format == "JPEG":            
-            pil_image.save(output_file, quality='keep')
+        if output_format == "JPEG":            
+            pil_image.save(output_file, quality=quality)
         else:
             pil_image.save(output_file)
             
@@ -167,7 +178,7 @@ def load_image(input_file: Union[str, BytesIO]) -> Image:
 
 
 def resize_image(image, target_width, target_height=-1, output_file=None,
-                 no_enlarge_width=False, verbose=False):
+                 no_enlarge_width=False, verbose=False, quality='keep'):
     """
     Resizes a PIL image object to the specified width and height; does not resize
     in place. If either width or height are -1, resizes with aspect ratio preservation.
@@ -177,10 +188,12 @@ def resize_image(image, target_width, target_height=-1, output_file=None,
     [image] can be a PIL image or a filename.
     
     If target_width and target_height are both -1, does not modify the image, but 
-    will write  to output_file if supplied.
+    will write to output_file if supplied.
     
     If no_enlarge_width is True, and the target width is larger than the original
     image width, does not modify the image, but will write to output_file if supplied.
+    
+    'quality' is passed to exif_preserving_save, see docs there.
     """
 
     if isinstance(image,str):
@@ -231,9 +244,9 @@ def resize_image(image, target_width, target_height=-1, output_file=None,
         if output_file is not None:
             if verbose:
                 print('No resize required for destination image {}'.format(output_file))
-            exif_preserving_save(image,output_file)
+            exif_preserving_save(image,output_file,quality=quality)
         return image
-
+    
     # The antialiasing parameter changed between Pillow versions 9 and 10, and for a bit, 
     # I'd like to support both.
     try:
@@ -242,7 +255,7 @@ def resize_image(image, target_width, target_height=-1, output_file=None,
         resized_image = image.resize((target_width, target_height), Image.Resampling.LANCZOS)
         
     if output_file is not None:
-        exif_preserving_save(resized_image,output_file)
+        exif_preserving_save(resized_image,output_file,quality=quality)
         
     return resized_image
 
