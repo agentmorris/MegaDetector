@@ -166,15 +166,20 @@ def load_image(input_file: Union[str, BytesIO]) -> Image:
     return image
 
 
-def resize_image(image, target_width, target_height=-1, output_file=None):
+def resize_image(image, target_width, target_height=-1, output_file=None, no_enlarge_width=False, verbose=False):
     """
     Resizes a PIL image object to the specified width and height; does not resize
     in place. If either width or height are -1, resizes with aspect ratio preservation.
-    If both are -1, returns the original image (does not copy in this case).
     
     None is equivalent to -1 for target_width and target_height.
     
     [image] can be a PIL image or a filename.
+    
+    If target_width and target_height are both -1, does not modify the image, but will write 
+    to output_file if supplied.
+    
+    If no_enlarge_width is True, and the target width is larger than the original image width,
+    does not modify the image, but will write to output_file if supplied.
     """
 
     if isinstance(image,str):
@@ -185,11 +190,15 @@ def resize_image(image, target_width, target_height=-1, output_file=None):
     
     if target_height is None:
         target_height = -1
+    
+    resize_required = True
         
-    # Null operation
+    # No resize was requested, this is always a no-op
     if target_width == -1 and target_height == -1:
-        return image
-
+        
+        resize_required = False
+    
+    # Does either dimension need to scale according to the other?
     elif target_width == -1 or target_height == -1:
 
         # Aspect ratio as width over height
@@ -202,9 +211,30 @@ def resize_image(image, target_width, target_height=-1, output_file=None):
         else:
             # w = ar * h
             target_width = int(aspect_ratio * target_height)
+    
+    assert target_width > 0 and target_height > 0, \
+        'Invalid image resize target {},{}'.format(target_width,target_height)
+    
+    # If we're not enlarging images and this would be an enlarge operation
+    if (no_enlarge_width) and (target_width > image.size[0]):
+        
+        resize_required = False
+        
+    # If the target size is the same as the original size
+    if target_width == image.size[0] and target_height == image.size[1]:
+        
+        resize_required = False    
+    
+    if not resize_required:
+        
+        if output_file is not None:
+            if verbose:
+                print('No resize required for destination image {}'.format(output_file))
+            exif_preserving_save(image,output_file)
+        return image
 
-    # This parameter changed between Pillow versions 9 and 10, and for a bit, I'd like to
-    # support both.
+    # The antialiasing parameter changed between Pillow versions 9 and 10, and for a bit, 
+    # I'd like to support both.
     try:
         resized_image = image.resize((target_width, target_height), Image.ANTIALIAS)
     except:

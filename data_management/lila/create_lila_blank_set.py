@@ -4,7 +4,11 @@
 #
 # Create a folder of blank images sampled from LILA.  We'll aim for diversity, so less-common
 # locations will be oversampled relative to more common locations.  We'll also run MegaDetector
-# to minimize the chance that incorrectly-labeled non-empty images sneak into our blank set.
+# (with manual review) to remove some incorrectly-labeled, not-actually-empty images from our 
+# blank set.
+#
+# We'll store location information for each image in a .json file, so we can split locations
+# into train/val in downstream tasks.
 #
 ########
 
@@ -44,6 +48,14 @@ os.makedirs(confirmed_blanks_base,exist_ok=True)
 
 md_possible_non_blanks_folder = os.path.join(project_base,'candidate_non_blanks')
 os.makedirs(md_possible_non_blanks_folder,exist_ok=True)
+
+location_to_blank_image_urls_cache_file = os.path.join(project_base,
+                                                       'location_to_blank_image_urls.json')
+
+md_results_file = os.path.join(project_base,'lila_blanks_md_results.json')
+
+all_fn_relative_to_location_file = os.path.join(project_base,'all_fn_relative_to_location.json')
+confirmed_fn_relative_to_location_file = os.path.join(project_base,'confirmed_fn_relative_to_location.json')
 
 preferred_image_download_source = 'gcp'
 
@@ -170,9 +182,6 @@ for s in original_labels_with_nan_common_names:
 
 
 #%% Map locations to blank images
-
-location_to_blank_image_urls_cache_file = os.path.join(project_base,
-                                                       'location_to_blank_image_urls.json')
 
 force_map_locations = False
 
@@ -358,8 +367,6 @@ print('Errors on {} of {} downloads'.format(len(error_urls),len(results)))
 
 #%% Run MegaDetector on the folder
 
-md_results_file = os.path.join(project_base,'lila_blanks_md_results.json')
-
 cmd = 'python run_detector_batch.py MDV5A "{}" "{}"'.format(
     candidate_blanks_base,md_results_file)
 cmd += ' --recursive --output_relative_filenames'
@@ -419,6 +426,7 @@ for i_fn,source_file_relative in tqdm(enumerate(images_to_review_to_detections),
                                           confidence_threshold=min_threshold,
                                           target_size=(1280,-1))
 
+# This is a temporary file I just used during debugging
 with open(os.path.join(project_base,'output_file_to_source_file.json'),'w') as f:
     json.dump(output_file_to_source_file,f,indent=1)
     
@@ -442,33 +450,95 @@ for output_file in tqdm(output_file_to_source_file.keys()):
         source_file_relative = output_file_to_source_file[output_file]
         removed_blank_images_relative.append(source_file_relative)
         
+removed_blank_images_relative_set = set(removed_blank_images_relative)
 assert len(removed_blank_images_relative) + len(remaining_images) == len(output_file_to_source_file)
 
 
-#%% Copy all the confirmed blanks to the confirmed folder
+#%% Copy only the confirmed blanks to the confirmed folder
+
+from md_utils.path_utils import is_image_file
 
 all_candidate_blanks = recursive_file_list(candidate_blanks_base,return_relative_paths=True)
 print('Found {} candidate blanks'.format(len(all_candidate_blanks)))
 
+skipped_images_relative = []
+skipped_non_images = []
+
 for source_fn_relative in tqdm(all_candidate_blanks):
+    
+    # Skip anything we removed from the "candidate non-blanks" folder; these weren't really
+    # blank.
+    if source_fn_relative in removed_blank_images_relative_set:
+        skipped_images_relative.append(source_fn_relative)
+        continue
+    
+    if not is_image_file(source_fn_relative):
+        # Not a typo; "skipped images" really means "skipped files"
+        skipped_images_relative.append(source_fn_relative)
+        skipped_non_images.append(source_fn_relative)
+    
+    
     source_fn_abs = os.path.join(candidate_blanks_base,source_fn_relative)
     assert os.path.isfile(source_fn_abs)
     target_fn_abs = os.path.join(confirmed_blanks_base,source_fn_relative)
     os.makedirs(os.path.dirname(target_fn_abs),exist_ok=True)
-    shutil.copyfile(source_fn_abs,target_fn_abs)
+    # shutil.copyfile(source_fn_abs,target_fn_abs)
+
+print('Skipped {} files ({} non-image files)'.format(len(skipped_images_relative),
+                                                     len(skipped_non_images)))
 
 
-#%% Record location information for each file
+#%% Validate the folder of confirmed blanks
 
-fn_relative_to_location = {}
-for location in location_to_blank_image_urls:
-    urls_this_location = location_to_blank_image_urls[location]
-    for url in urls_this_location:
-        fn_relative = url.split('//')[1]
-        fn_relative_to_location[fn_relative] = location
-        
-all_confirmed_blanks = recursive_file_list(confirmed_blanks_base,return_relative_paths=True)
+from md_utils.path_utils import find_images
+# all_confirmed_blanks = recursive_file_list(confirmed_blanks_base,return_relative_paths=True)
+all_confirmed_blanks = find_images(confirmed_blanks_base,return_relative_paths=True,recursive=True)
+assert len(all_confirmed_blanks) < len(all_candidate_blanks)
 print('Found {} confirmed blanks'.format(len(all_confirmed_blanks)))
 
-for fn_relative in all_confirmed_blanks:
-    assert fn_relative in fn_relative_to_location
+
+#%% Manually review a few of the images we skipped
+
+# ...to make sure they're non-blank
+i_image = random.randint(0, len(skipped_images_relative))
+fn_relative = skipped_images_relative[i_image]
+fn_abs = os.path.join(candidate_blanks_base,fn_relative)
+assert os.path.isfile(fn_abs)
+import clipboard
+clipboard.copy('feh --scale-down "{}"'.format(fn_abs))
+
+
+#%% Record location information for each confirmed file
+
+# Map every URL's path to the corresponding location
+#
+# This is *all empty URLs*, not just the ones we downloaded
+all_fn_relative_to_location = {}
+
+# location = next(iter(location_to_blank_image_urls.keys()))
+for location in tqdm(location_to_blank_image_urls):
+    urls_this_location = location_to_blank_image_urls[location]
+    
+    # url = urls_this_location[0]
+    for url in urls_this_location:
+        # Turn:
+        # 
+        # https://lilablobssc.blob.core.windows.net/caltech-unzipped/cct_images/5968c0f9-23d2-11e8-a6a3-ec086b02610b.jpg'
+        #
+        # ...into:
+        #
+        # caltech-unzipped/cct_images/5968c0f9-23d2-11e8-a6a3-ec086b02610b.jpg'   
+        p = urlparse(url)
+        fn_relative = str(p.path)[1:]
+        all_fn_relative_to_location[fn_relative] = location
+
+# Build a much smaller mapping of just the confirmed blanks
+confirmed_fn_relative_to_location = {}        
+for i_fn,fn_relative in tqdm(enumerate(all_confirmed_blanks),total=len(all_confirmed_blanks)):
+    confirmed_fn_relative_to_location[fn_relative] = all_fn_relative_to_location[fn_relative]
+
+with open(all_fn_relative_to_location_file,'w') as f:
+    json.dump(all_fn_relative_to_location,f,indent=1)
+    
+with open(confirmed_fn_relative_to_location_file,'w') as f:
+    json.dump(confirmed_fn_relative_to_location,f,indent=1)    

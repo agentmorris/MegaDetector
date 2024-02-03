@@ -465,9 +465,9 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
             #
             # https://github.com/ultralytics/yolov5/issues/3218
             #
-            # I think this is also true for images with empty annotation files, but 
-            # I'm using the convention suggested on that issue, i.e. hard negatives 
-            # are expressed as images without .txt files.
+            # I think this is also true for images with empty .txt files, but 
+            # I'm using the convention suggested on that issue, i.e. hard 
+            # negatives are expressed as images without .txt files.
             if len(bboxes) > 0:
                 
                 with open(dest_txt,'w') as f:
