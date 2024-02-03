@@ -1,3 +1,14 @@
+########
+#
+# md-pip-test.py
+#
+# Basic test driver to validate a pip install of the MD PyPI package.  
+#
+# The main test driver - which tests both Python and CLI invocation of
+# most modules - is in md_utils/md_tests.py.
+#
+########
+
 ### Run MegaDetector on one image
 
 from md_utils import url_utils
@@ -28,11 +39,12 @@ from md_utils import path_utils
 import os
 
 # Pick a folder to run MD on recursively, and an output file
-image_folder = os.path.expanduser('~/megadetector_test_images')
+image_folder = '/tmp/md-tests/md-test-images'
 output_file = os.path.expanduser('~/megadetector_output_test.json')
 
 # Recursively find images
 image_file_names = path_utils.find_images(image_folder,recursive=True)
+print('Processing {} images from {}'.format(len(image_file_names),image_folder))
 
 # This will automatically download MDv5a to the system temp folder;
 # you can also specify a filename explicitly, or set the $MDV5A
