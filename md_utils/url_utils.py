@@ -109,7 +109,14 @@ def download_url(url, destination_filename=None, progress_updater=None,
 
 def download_relative_filename(url, output_base, verbose=False):
     """
-    Download a URL to output_base, preserving relative path
+    Download a URL to output_base, preserving relative path.  Path is relative to 
+    the site, so:
+        
+        https://abc.com/xyz/123.txt
+    
+    ...will get downloaded to:
+        
+        output_base/xyz/123.txt        
     """
     
     p = urlparse(url)

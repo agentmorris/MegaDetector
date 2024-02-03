@@ -662,7 +662,7 @@ def get_image_datetime(image):
 
 def write_results_to_file(results, output_file, relative_path_base=None, 
                           detector_file=None, info=None, include_max_conf=False,
-                          custom_metadata=None):
+                          custom_metadata=None, force_forward_slashes=True):
     """
     Writes list of detection results to JSON output file. Format matches:
 
@@ -692,6 +692,14 @@ def write_results_to_file(results, output_file, relative_path_base=None,
             results_relative.append(r_relative)
         results = results_relative
 
+    if force_forward_slashes:
+        results_converted = []
+        for r in results:
+            r_converted = copy.copy(r)
+            r_converted['file'] = r_converted['file'].replace('\\','/')
+            results_converted.append(r_converted)
+        results = results_converted
+            
     # The typical case: we need to build the 'info' struct
     if info is None:
         
