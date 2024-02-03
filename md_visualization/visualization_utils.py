@@ -166,7 +166,8 @@ def load_image(input_file: Union[str, BytesIO]) -> Image:
     return image
 
 
-def resize_image(image, target_width, target_height=-1, output_file=None, no_enlarge_width=False, verbose=False):
+def resize_image(image, target_width, target_height=-1, output_file=None,
+                 no_enlarge_width=False, verbose=False):
     """
     Resizes a PIL image object to the specified width and height; does not resize
     in place. If either width or height are -1, resizes with aspect ratio preservation.
@@ -175,11 +176,11 @@ def resize_image(image, target_width, target_height=-1, output_file=None, no_enl
     
     [image] can be a PIL image or a filename.
     
-    If target_width and target_height are both -1, does not modify the image, but will write 
-    to output_file if supplied.
+    If target_width and target_height are both -1, does not modify the image, but 
+    will write  to output_file if supplied.
     
-    If no_enlarge_width is True, and the target width is larger than the original image width,
-    does not modify the image, but will write to output_file if supplied.
+    If no_enlarge_width is True, and the target width is larger than the original
+    image width, does not modify the image, but will write to output_file if supplied.
     """
 
     if isinstance(image,str):
@@ -221,7 +222,7 @@ def resize_image(image, target_width, target_height=-1, output_file=None, no_enl
         resize_required = False
         
     # If the target size is the same as the original size
-    if target_width == image.size[0] and target_height == image.size[1]:
+    if (target_width == image.size[0]) and (target_height == image.size[1]):
         
         resize_required = False    
     
@@ -245,26 +246,6 @@ def resize_image(image, target_width, target_height=-1, output_file=None, no_enl
         
     return resized_image
 
-
-def show_images_in_a_row(images):
-
-    num = len(images)
-    assert num > 0
-
-    if isinstance(images[0], str):
-        images = [Image.open(img) for img in images]
-
-    fig, axarr = plt.subplots(1, num, squeeze=False)  # number of rows, number of columns
-    fig.set_size_inches((num * 5, 25))  # each image is 2 inches wide
-    for i, img in enumerate(images):
-        axarr[0, i].set_axis_off()
-        axarr[0, i].imshow(img)
-    return fig
-
-
-# The following three functions are modified versions of those at:
-#
-# https://github.com/tensorflow/models/blob/master/research/object_detection/utils/visualization_utils.py
 
 DEFAULT_COLORS = [
     'AliceBlue', 'Red', 'RoyalBlue', 'Gold', 'Chartreuse', 'Aqua', 'Azure',
@@ -606,7 +587,11 @@ def draw_bounding_box_on_image(image,
         use_normalized_coordinates: If True (default), treat coordinates
         ymin, xmin, ymax, xmax as relative to the image.  Otherwise treat
         coordinates as absolute.
-    label_font_size: font size to attempt to load arial.ttf with
+    label_font_size: font size 
+    
+    Adapted from:
+        
+    https://github.com/tensorflow/models/blob/master/research/object_detection/utils/visualization_utils.py
     """
     
     if clss is None:

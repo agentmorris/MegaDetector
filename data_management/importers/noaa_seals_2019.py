@@ -165,7 +165,7 @@ for b in ir_boxes:
                                                    use_normalized_coordinates=False,
                                                    thickness=3)
 
-visualization_utils.show_images_in_a_row([img_rgb,img_ir])
+# visualization_utils.show_images_in_a_row([img_rgb,img_ir])
 
 
 #%% Save images
