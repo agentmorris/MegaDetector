@@ -9,7 +9,7 @@
 # what you want to query for, etc., is very application-specific; this is just meant as a 
 # demo.
 #
-# Can download from either Azure or GCP.
+# Can download from GCP (all dataset), AWS (all datasets), or Azure (most datasets).
 #
 ########
 
@@ -20,12 +20,13 @@ import random
 
 from tqdm import tqdm
 from multiprocessing.pool import ThreadPool
-from urllib.parse import urlparse
 from collections import defaultdict
 
-from data_management.lila.lila_common import \
-    read_lila_all_images_file, is_empty, azure_url_to_gcp_http_url
+from data_management.lila.lila_common import read_lila_all_images_file, is_empty, lila_base_urls
 from md_utils.url_utils import download_url
+
+for s in lila_base_urls.values():
+    assert s.endswith('/')
 
 # If any of these strings appear in the common name of a species, we'll download that image
 species_of_interest = ['grey fox','red fox','leopard cat','kiwi']
@@ -42,15 +43,59 @@ os.makedirs(output_dir,exist_ok=True)
 # Number of concurrent download threads
 n_download_threads = 20
 
+verbose = False
+
 max_images_per_dataset = 10 # None
 
 # This impacts the data download, but not the metadata download
 #
-# "Azure" really means "Azure if available"; recent datasets are only available
-# on GCP.
-image_download_source = 'azure' # 'azure' or 'gcp'
+# Setting this to "Azure" really means "Azure if available"; some datasets are
+# not available on Azure.
+preferred_provider = 'gcp' # 'azure', 'gcp', 'aws'
 
 random.seed(0)
+
+
+#%% Support functions
+
+def download_relative_url(relative_url, output_base, provider='gcp', 
+                          verbose=False, overwrite=False):
+    """
+    Download a URL to output_base, preserving the path relative to the common LILA root.
+    """
+    
+    assert not relative_url.startswith('/')
+    
+    # Not all datasets are available on Azure, fall back in these cases.  The decision
+    # to fall back to GCP rather than AWS is arbitrary.
+    if provider == 'azure':
+        nominal_provider = relative_url_to_nominal_provider[relative_url]
+        if nominal_provider != 'azure':
+            if verbose:
+                print('URL {} not available on Azure, falling back to GCP'.format(
+                    relative_url))
+            provider = 'gcp'
+            
+    url = lila_base_urls[provider] + relative_url
+    
+    result = {'status':'unknown','url':url,'destination_filename':None}
+    
+    destination_filename = os.path.join(output_base,relative_url)
+    result['destination_filename'] = destination_filename
+    
+    if ((os.path.isfile(destination_filename)) and (not overwrite)):
+        result['status'] = 'skipped'
+        return result
+    try:
+        download_url(url, destination_filename, verbose=verbose, force_download=overwrite)
+    except Exception as e:
+        print('Warning: error downloading URL {}: {}'.format(
+            url,str(e)))     
+        result['status'] = 'error: {}'.format(str(e))
+        return result
+    
+    result['status'] = 'success'
+    return result
 
 
 #%% Download and open the giant table of image URLs and labels
@@ -83,6 +128,7 @@ def find_items(row):
 tqdm.pandas()
 _ = df.progress_apply(find_items,axis=1)
 
+# We have a list of URLs for each dataset, flatten them all into a list of URLs
 all_urls = list(ds_name_to_urls.values())
 all_urls = [item for sublist in all_urls for item in sublist]
 print('Found {} matching URLs across {} datasets'.format(len(all_urls),len(ds_name_to_urls)))
@@ -91,7 +137,7 @@ from copy import deepcopy
 ds_name_to_urls_raw = deepcopy(ds_name_to_urls)
 
 
-#%% Trim to a fixed number of URLs per dataset
+#%% Optionally trim to a fixed number of URLs per dataset
 
 if max_images_per_dataset is None:
     pass
@@ -102,74 +148,55 @@ else:
             ds_name_to_urls[ds_name] = random.sample(ds_name_to_urls[ds_name],max_images_per_dataset)
 
 
-#%% Download those image files
+#%% Convert URLs to be relative to the common LILA base 
 
-container_to_url_base = { 
-                         'lilablobssc.blob.core.windows.net':'/',
-                         'storage.googleapis.com':'/public-datasets-lila/'
-                         }
-
-def download_relative_filename(url, output_base, verbose=False, url_base=None, overwrite=False):
-    """
-    Download a URL to output_base, preserving relative path
-    """
-    
-    result = {'status':'unknown','url':url,'destination_filename':None}
-    
-    if url_base is None:
-        assert url.startswith('https://')
-        container = url.split('/')[2]
-        assert container in container_to_url_base
-        url_base = container_to_url_base[container]
-    
-    assert url_base.startswith('/') and url_base.endswith('/')
-    
-    p = urlparse(url)
-    relative_filename = str(p.path)
-    # remove the leading '/'
-    assert relative_filename.startswith(url_base)
-    relative_filename = relative_filename.replace(url_base,'',1)        
-    
-    destination_filename = os.path.join(output_base,relative_filename)
-    result['destination_filename'] = destination_filename
-    
-    if ((os.path.isfile(destination_filename)) and (not overwrite)):
-        result['status'] = 'skipped'
-        return result
-    try:
-        download_url(url, destination_filename, verbose=verbose)
-    except Exception as e:
-        print('Warning: error downloading URL {}: {}'.format(
-            url,str(e)))     
-        result['status'] = 'error: {}'.format(str(e))
-        return result
-    
-    result['status'] = 'success'
-    return result
-
-
-# ds_name_to_urls maps dataset names to lists of URLs; flatten to a single list of URLs
 all_urls = list(ds_name_to_urls.values())
 all_urls = [item for sublist in all_urls for item in sublist]
 
-# Convert Azure URLs to GCP URLs if necessary
-if image_download_source != 'azure':
-    assert image_download_source == 'gcp'
-    all_urls = [azure_url_to_gcp_http_url(url) for url in all_urls]    
+all_urls_relative = []
 
-print('Downloading {} images on {} workers'.format(len(all_urls),n_download_threads))
+# Each file has a nominal URL in the .csv file.  For now, the only thing this tells is
+# is that if the nominal URL isn't an Azure URL, the file isn't on Azure.  All files are on
+# GCP and AWS.
+#
+# Keep track of the nominal provider for each URL.
+relative_url_to_nominal_provider = {}
+
+for url in all_urls:
+    found_base = False
+    for provider in lila_base_urls.keys():
+        base = lila_base_urls[provider]
+        if url.startswith(base):
+            relative_url = url.replace(base,'')
+            all_urls_relative.append(relative_url)
+            relative_url_to_nominal_provider[relative_url] = provider
+            found_base = True
+            break
+    assert found_base
+    
+assert len(all_urls) == len(all_urls_relative)
+
+
+#%% Download image files
+
+print('Downloading {} images on {} workers, preferred provider is {}'.format(
+    len(all_urls),n_download_threads,preferred_provider))
 
 if n_download_threads <= 1:
 
     results = []
     
-    # url = all_urls[0]
-    for url in tqdm(all_urls):        
-        results.append(download_relative_filename(url,output_dir,url_base=None))
+    # url_relative = all_urls_relative[0]
+    for url_relative in tqdm(all_urls_relative):        
+        result = download_relative_url(url_relative,
+                                       output_base=output_dir,
+                                       provider=preferred_provider,
+                                       verbose=verbose)
+        results.append(result)
     
 else:
 
     pool = ThreadPool(n_download_threads)        
-    results = list(tqdm(pool.imap(lambda s: download_relative_filename(
-        s,output_dir,url_base=None), 
-        all_urls), total=len(all_urls)))
+    results = list(tqdm(pool.imap(lambda s: download_relative_url(
+        s,output_base=output_dir,provider=preferred_provider,verbose=verbose),
+        all_urls_relative), total=len(all_urls_relative)))
