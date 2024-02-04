@@ -375,50 +375,35 @@ def wsl_path_to_windows_path(filename):
         return None
     return result.stdout.strip()
     
-
-def open_url_in_chrome(url, fallback_to_default=True):
-    """
-    Opens the specified URL using the likely path to Chrome (based on the OS); if that path is
-    unavailable and fallback_to_default=True, falls back to the system file handler.
     
-    This is hacky, but useful as an alternative to open_file, if you either (a) frequently have 
-    a default browser that doesn't work in, e.g., RDP/VNC or (b) want to open URLs in a consistent
-    browser.
+def open_file(filename, attempt_to_open_in_wsl_host=False, browser_name=None):
+    """
+    Opens [filename] in the default OS file handler for this file type.
+    
+    If attempt_to_open_in_wsl_host is True, and we're in WSL, attempts to open
+    [filename] in the Windows host environment.
+    
+    If browser_name is not None, uses the webbrowser module to open the filename
+    in the specified browser; see https://docs.python.org/3/library/webbrowser.html
+    for supported browsers.  Falls back to the default file handler if webbrowser.open()
+    fails.  In this case, attempt_to_open_in_wsl_host is ignored unless webbrowser.open() fails.
+    
+    If browser_name is 'default', use the system default.  This is different from the 
+    parameter to webbrowser.get(), where None implies the system default.
     """
     
-    chrome_available = True
+    if browser_name is not None:
+        if browser_name == 'chrome':
+            browser_name = 'google-chrome'
+        elif browser_name == 'default':
+            browser_name = None
+        try:
+            result = webbrowser.get(using=browser_name).open(filename)
+        except Exception:
+            result = False
+        if result:
+            return
         
-    if sys.platform == "linux" or sys.platform == "linux2":
-        chrome_path = '/usr/bin/google-chrome'
-        chrome_cmd = chrome_path + ' %s'
-    elif sys.platform == "darwin":
-        chrome_path = '/Applications/Google\ Chrome.app'
-        chrome_cmd = 'open -a ' + chrome_path + ' %s'
-    elif sys.platform == "win32":
-        # forward slashes are required for webbrowser invocation, even on Windows
-        chrome_path = 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'
-        chrome_cmd = chrome_path + ' %s'
-    else:
-        chrome_path = ''
-        chrome_available = False
-        
-    if chrome_available and (not os.path.isfile(chrome_path)):
-        chrome_available = False
-        
-    if chrome_available:
-        webbrowser.get(chrome_cmd).open(url)
-    elif fallback_to_default:        
-        open_file(url)
-    else:
-        raise ValueError('Could not find Chrome binary, and fallback not requested')
-
-    
-def open_file(filename, attempt_to_open_in_wsl_host=False):
-    """
-    Opens [filename] in the native OS file handler.  If attempt_to_open_in_wsl_host
-    is True, and we're in WSL, attempts to open [filename] in Windows.
-    """
-    
     if sys.platform == 'win32':
         
         os.startfile(filename)
