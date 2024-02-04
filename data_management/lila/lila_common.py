@@ -31,9 +31,13 @@ wildlife_insights_taxonomy_local_json_filename = 'wi_taxonomy.json'
 wildlife_insights_taxonomy_local_csv_filename = \
     wildlife_insights_taxonomy_local_json_filename.replace('.json','.csv')
 
-lila_azure_storage_account = 'https://lilablobssc.blob.core.windows.net'
-gcp_bucket_api_url = 'https://storage.googleapis.com/public-datasets-lila'
-gcp_bucket_gs_url = 'gs://public-datasets-lila'
+# Filenames are consistent across clouds relative to these URLs
+lila_base_urls = {
+    'azure':'https://lilablobssc.blob.core.windows.net/',
+    'gcp':'https://storage.googleapis.com/public-datasets-lila/',
+    'aws':'http://us-west-2.opendata.source.coop.s3.amazonaws.com/agentmorris/lila-wildlife/'
+}
+
 
 
 #%% Common functions
@@ -198,28 +202,6 @@ def read_metadata_file_for_dataset(ds_name,metadata_dir,metadata_table=None,json
     return json_filename
 
 
-def azure_url_to_gcp_http_url(url,error_if_not_azure_url=True):
-    """
-    Most URLs point to Azure by default, but most files are available on both Azure and GCP.
-    This function converts an Azure URL to the corresponding GCP http:// url.
-    """
-    
-    if error_if_not_azure_url:
-        assert url.startswith(lila_azure_storage_account)
-    gcp_url = url.replace(lila_azure_storage_account,gcp_bucket_api_url,1)
-    return gcp_url
-
-
-def azure_url_to_gcp_gs_url(url,error_if_not_azure_url=True):
-    """
-    Most URLs point to Azure by default, but most files are available on both Azure and GCP.
-    This function converts an Azure URL to the corresponding GCP gs:// url.
-    """
-    
-    return azure_url_to_gcp_http_url(url,error_if_not_azure_url).\
-        replace(gcp_bucket_api_url,gcp_bucket_gs_url,1)
-
-
 #%% Interactive test driver
 
 if False:
@@ -253,15 +235,3 @@ if False:
             
     status_codes = url_utils.test_urls(urls_to_test)    
     
-    
-    #%% Verify that the GCP versions of all metadata files exist
-    
-    gcp_urls = []
-    
-    # url = urls_to_test[0]
-    for url in urls_to_test:
-        assert url.startswith(lila_azure_storage_account)
-        gcp_url = url.replace(lila_azure_storage_account,gcp_bucket_api_url,1)
-        gcp_urls.append(gcp_url)
-        
-    status_codes = url_utils.test_urls(gcp_urls)

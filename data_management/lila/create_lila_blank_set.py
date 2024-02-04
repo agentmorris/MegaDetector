@@ -18,7 +18,6 @@ import os
 import random
 import math
 import json
-import shutil
 
 import numpy as np
 from tqdm import tqdm
@@ -26,8 +25,7 @@ from multiprocessing.pool import ThreadPool
 from urllib.parse import urlparse
 from collections import defaultdict
 
-from data_management.lila.lila_common import \
-    read_lila_all_images_file, azure_url_to_gcp_http_url
+from data_management.lila.lila_common import read_lila_all_images_file
 from md_utils.url_utils import download_url
 from md_visualization import visualization_utils as vis_utils
 from md_utils.path_utils import recursive_file_list
@@ -284,7 +282,7 @@ print('Max samples per location: {}'.format(max_blanks_per_location))
 
 #%% Download those image files (prep)
 
-container_to_url_base = { 
+container_to_url_base = {
                          'lilablobssc.blob.core.windows.net':'/',
                          'storage.googleapis.com':'/public-datasets-lila/'
                          }
@@ -326,6 +324,21 @@ def download_relative_filename(url, output_base, verbose=False, url_base=None, o
     
     result['status'] = 'success'
     return result
+
+def azure_url_to_gcp_http_url(url,error_if_not_azure_url=True):
+    """
+    Most URLs point to Azure by default, but most files are available on both Azure and GCP.
+    This function converts an Azure URL to the corresponding GCP http:// url.
+    """
+    
+    lila_azure_storage_account = 'https://lilablobssc.blob.core.windows.net'
+    gcp_bucket_api_url = 'https://storage.googleapis.com/public-datasets-lila'
+    error_if_not_azure_url = False
+    
+    if error_if_not_azure_url:
+        assert url.startswith(lila_azure_storage_account)
+    gcp_url = url.replace(lila_azure_storage_account,gcp_bucket_api_url,1)
+    return gcp_url
 
 # Convert Azure URLs to GCP URLs if necessary
 if preferred_image_download_source != 'azure':
