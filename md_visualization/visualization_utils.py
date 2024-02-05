@@ -8,14 +8,20 @@
 
 #%% Constants and imports
 
-from io import BytesIO
-from typing import Union
 import time
-
-import matplotlib.pyplot as plt
 import numpy as np
 import requests
+import os
+
+from io import BytesIO
+from typing import Union
 from PIL import Image, ImageFile, ImageFont, ImageDraw
+from multiprocessing.pool import ThreadPool
+from multiprocessing.pool import Pool
+from tqdm import tqdm
+from functools import partial
+
+from md_utils.path_utils import find_images
 
 from data_management.annotations import annotation_constants
 from data_management.annotations.annotation_constants import (
@@ -117,7 +123,7 @@ def open_image(input_file: Union[str, BytesIO]) -> Image:
     return image
 
 
-def exif_preserving_save(pil_image,output_file,quality='keep'):
+def exif_preserving_save(pil_image,output_file,quality='keep',default_quality=85,verbose=False):
     """
     Save [pil_image] to [output_file], making a moderate attempt to preserve EXIF
     data and JPEG quality.  Neither is guaranteed.
@@ -128,32 +134,42 @@ def exif_preserving_save(pil_image,output_file,quality='keep'):
      
     ...for more ways to preserve jpeg quality if quality='keep' doesn't do the trick.
 
-    The "quality" parameter should be "keep" (default), or an integer from 0 to 95.
-    Ignored for non-jpeg images, even though PIL supports this for non-jpeg images.
-    "keep" would have to be handled specially in that case, and 99.99% of calls to 
-    this function are for jpeg export, so I'm not going to handle that now.
+    The "quality" parameter should be "keep" (default), or an integer from 0 to 100. 
+    This is only used if PIL thinks the the source image is a JPEG.  If you load a JPEG
+    and resize it in memory, for example, it's no longer a JPEG.
+    
+    'default_quality' is used when quality == 'keep' and we are saving a non-JPEG source.
+    'keep' is only supported for JPEG sources.
     """
     
     # Read EXIF metadata
     exif = pil_image.info['exif'] if ('exif' in pil_image.info) else None
     
-    # Check whether we're writing a jpeg file, in which case we will pass the 
-    # "quality" parameter along to PIL.
-    output_format = None
-    if output_file.lower().endswith('jpg') or output_file.lower().endswith('jpeg'):
-        output_format = 'JPEG'
+    # Quality preservation is only supported for JPEG sources.
+    if pil_image.format != "JPEG":
+        if quality == 'keep':
+            if verbose:
+                print('Warning: quality "keep" passed when saving a non-JPEG source (during save to {})'.format(
+                    output_file))
+            quality = default_quality            
+    
+    # Some output formats don't support the quality parameter, so we try once with, 
+    # and once without.  This is a horrible cascade of if's, but it's a consequence of
+    # the fact that "None" is not supported for either "exif" or "quality".
         
-    # Write output with EXIF metadata if available, and the quality parameter if we're
-    # writing a JPEG image.  Unfortunately, neither parameter likes "None", so we get a 
-    # slightly icky cascade of if's here.
-    if exif is not None:
-        if output_format == "JPEG":
+    try:
+        
+        if exif is not None:
             pil_image.save(output_file, exif=exif, quality=quality)
         else:
-            pil_image.save(output_file, exif=exif)
-    else:
-        if output_format == "JPEG":            
             pil_image.save(output_file, quality=quality)
+                
+    except Exception:
+        
+        if verbose:
+            print('Warning: failed to write {}, trying again without quality parameter'.format(output_file))
+        if exif is not None:
+            pil_image.save(output_file, exif=exif)            
         else:
             pil_image.save(output_file)
             
@@ -196,7 +212,9 @@ def resize_image(image, target_width, target_height=-1, output_file=None,
     'quality' is passed to exif_preserving_save, see docs there.
     """
 
+    image_fn = 'in_memory'
     if isinstance(image,str):
+        image_fn = image
         image = load_image(image)
         
     if target_width is None:
@@ -226,12 +244,12 @@ def resize_image(image, target_width, target_height=-1, output_file=None,
             # w = ar * h
             target_width = int(aspect_ratio * target_height)
     
-    assert target_width > 0 and target_height > 0, \
-        'Invalid image resize target {},{}'.format(target_width,target_height)
-    
     # If we're not enlarging images and this would be an enlarge operation
     if (no_enlarge_width) and (target_width > image.size[0]):
         
+        if verbose:
+            print('Bypassing iamge enlarge for {} --> {}'.format(
+                image_fn,str(output_file)))
         resize_required = False
         
     # If the target size is the same as the original size
@@ -243,10 +261,14 @@ def resize_image(image, target_width, target_height=-1, output_file=None,
         
         if output_file is not None:
             if verbose:
-                print('No resize required for destination image {}'.format(output_file))
-            exif_preserving_save(image,output_file,quality=quality)
+                print('No resize required for resize {} --> {}'.format(
+                    image_fn,str(output_file)))
+            exif_preserving_save(image,output_file,quality=quality,verbose=verbose)
         return image
     
+    assert target_width > 0 and target_height > 0, \
+        'Invalid image resize target {},{}'.format(target_width,target_height)
+        
     # The antialiasing parameter changed between Pillow versions 9 and 10, and for a bit, 
     # I'd like to support both.
     try:
@@ -255,7 +277,7 @@ def resize_image(image, target_width, target_height=-1, output_file=None,
         resized_image = image.resize((target_width, target_height), Image.Resampling.LANCZOS)
         
     if output_file is not None:
-        exif_preserving_save(resized_image,output_file,quality=quality)
+        exif_preserving_save(resized_image,output_file,quality=quality,verbose=verbose)
         
     return resized_image
 
@@ -966,3 +988,95 @@ def gray_scale_fraction(image,crop_size=(0.1,0.1)):
                 r, g, b = image.getpixel((i,j))
                 if r == g and r == b and g == b:
                     n_gray_pixels += 1            
+
+
+def _resize_relative_image(fn_relative,
+                          input_folder,output_folder,
+                          target_width,target_height,no_enlarge_width,verbose,quality):
+    
+    input_fn_abs = os.path.join(input_folder,fn_relative)
+    output_fn_abs = os.path.join(output_folder,fn_relative)
+    os.makedirs(os.path.dirname(output_fn_abs),exist_ok=True)
+    _ = resize_image(input_fn_abs, 
+                     output_file=output_fn_abs, 
+                     target_width=target_width, target_height=target_height, 
+                     no_enlarge_width=no_enlarge_width, verbose=verbose, quality=quality)
+    return None
+
+
+def resize_image_folder(input_folder, output_folder=None,
+                        target_width=-1, target_height=-1,
+                        no_enlarge_width=False, verbose=False, quality='keep',
+                        pool_type='process', n_workers=10, recursive=True):
+    """
+    Resize all images in a folder (defaults to recursive)
+    
+    Defaults to in-place resizing (output_folder is optional).
+    
+    Defaults to parallelizing across processes.
+    
+    See resize_image() for parameter information.
+    """
+
+    assert os.path.isdir(input_folder), '{} is not a folder'.format(input_folder)
+    
+    if output_folder is None:
+        output_folder = input_folder
+    else:
+        os.makedirs(output_folder,exist_ok=True)
+        
+    assert pool_type in ('process','thread'), 'Illegal pool type {}'.format(pool_type)
+    
+    image_files_relative = find_images(input_folder,recursive=recursive,return_relative_paths=True)
+    if verbose:
+        print('Found {} images'.format(len(image_files_relative)))
+    
+    if n_workers == 1:    
+        
+        for fn_relative in tqdm(image_files_relative):
+            _resize_relative_image(fn_relative,
+                                  input_folder=input_folder,
+                                  output_folder=output_folder,
+                                  target_width=target_width,
+                                  target_height=target_height,
+                                  no_enlarge_width=no_enlarge_width,
+                                  verbose=verbose,
+                                  quality=quality)
+
+    else:
+        
+        if pool_type == 'thread':
+            pool = ThreadPool(n_workers); poolstring = 'threads'                
+        else:
+            assert pool_type == 'process'
+            pool = Pool(n_workers); poolstring = 'processes'
+        
+        if verbose:
+            print('Starting resizing pool with {} {}'.format(n_workers,poolstring))
+        
+        p = partial(_resize_relative_image,
+                input_folder=input_folder,
+                output_folder=output_folder,
+                target_width=target_width,
+                target_height=target_height,
+                no_enlarge_width=no_enlarge_width,
+                verbose=verbose,
+                quality=quality)
+        
+        _ = list(tqdm(pool.imap(p, image_files_relative)))
+
+
+#%% Test drivers
+
+if False:
+    
+    #%% Recursive resize test
+    
+    from md_visualization.visualization_utils import resize_image_folder
+    
+    input_folder = r"C:\temp\resize-test\in"
+    output_folder = r"C:\temp\resize-test\out"
+    
+    resize_image_folder(input_folder,output_folder,
+                        target_width=1280,verbose=True,quality=85,no_enlarge_width=True,
+                        pool_type='process',n_workers=5)

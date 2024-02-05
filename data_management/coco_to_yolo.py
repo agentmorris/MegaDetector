@@ -56,6 +56,10 @@ def write_yolo_dataset_file(yolo_dataset_file,
         class_lines = [s.strip() for s in class_lines]    
         class_list = [s for s in class_lines if len(s) > 0]
 
+    if not (yolo_dataset_file.endswith('.yml') or yolo_dataset_file.endswith('.yaml')):
+        print('Warning: writing dataset file to a non-yml/yaml extension:\n{}'.format(
+            yolo_dataset_file))
+        
     # Write dataset.yaml
     with open(yolo_dataset_file,'w') as f:
         
@@ -189,7 +193,6 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
     coco_id_to_name = {}
     yolo_id_to_name = {}
     coco_category_ids_to_exclude = set()
-    category_exclusion_warnings_printed = set()
     
     for category in data['categories']:
         coco_id_to_name[category['id']] = category['name']
