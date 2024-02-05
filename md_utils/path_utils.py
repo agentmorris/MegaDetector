@@ -47,6 +47,8 @@ def recursive_file_list(base_dir, convert_slashes=True,
     \ to /
     """
     
+    assert os.path.isdir(base_dir), '{} is not a folder'.format(base_dir)
+    
     all_files = []
 
     if recursive:
@@ -274,6 +276,8 @@ def find_images(dirname: str, recursive: bool = False,
     path separator unless convert_slahes is set, in which case will always
     use '/'.
     """
+    
+    assert os.path.isdir(dirname), '{} is not a folder'.format(dirname)
     
     if recursive:
         strings = glob.glob(os.path.join(dirname, '**', '*.*'), recursive=True)
