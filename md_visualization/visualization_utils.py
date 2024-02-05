@@ -997,11 +997,20 @@ def _resize_relative_image(fn_relative,
     input_fn_abs = os.path.join(input_folder,fn_relative)
     output_fn_abs = os.path.join(output_folder,fn_relative)
     os.makedirs(os.path.dirname(output_fn_abs),exist_ok=True)
-    _ = resize_image(input_fn_abs, 
-                     output_file=output_fn_abs, 
-                     target_width=target_width, target_height=target_height, 
-                     no_enlarge_width=no_enlarge_width, verbose=verbose, quality=quality)
-    return None
+    try:
+        _ = resize_image(input_fn_abs, 
+                         output_file=output_fn_abs, 
+                         target_width=target_width, target_height=target_height, 
+                         no_enlarge_width=no_enlarge_width, verbose=verbose, quality=quality)
+        status = 'success'
+        error = None
+    except Exception as e:
+        if verbose:
+            print('Error resizing {}: {}'.format(fn_relative,str(e)))
+        status = 'error'
+        error = str(e)
+        
+    return {'fn_relative':fn_relative,'status':status,'error':error}
 
 
 def resize_image_folder(input_folder, output_folder=None,
@@ -1033,15 +1042,16 @@ def resize_image_folder(input_folder, output_folder=None,
     
     if n_workers == 1:    
         
+        results = []
         for fn_relative in tqdm(image_files_relative):
-            _resize_relative_image(fn_relative,
+            results.append(resize_relative_image(fn_relative,
                                   input_folder=input_folder,
                                   output_folder=output_folder,
                                   target_width=target_width,
                                   target_height=target_height,
                                   no_enlarge_width=no_enlarge_width,
                                   verbose=verbose,
-                                  quality=quality)
+                                  quality=quality))
 
     else:
         
@@ -1063,7 +1073,9 @@ def resize_image_folder(input_folder, output_folder=None,
                 verbose=verbose,
                 quality=quality)
         
-        _ = list(tqdm(pool.imap(p, image_files_relative),total=len(image_files_relative)))
+        results = list(tqdm(pool.imap(p, image_files_relative),total=len(image_files_relative)))
+
+    return results
 
 
 #%% Test drivers
@@ -1077,6 +1089,6 @@ if False:
     input_folder = r"C:\temp\resize-test\in"
     output_folder = r"C:\temp\resize-test\out"
     
-    resize_image_folder(input_folder,output_folder,
-                        target_width=1280,verbose=True,quality=85,no_enlarge_width=True,
-                        pool_type='process',n_workers=5)
+    resize_results = resize_image_folder(input_folder,output_folder,
+                         target_width=1280,verbose=True,quality=85,no_enlarge_width=True,
+                         pool_type='process',n_workers=5)
