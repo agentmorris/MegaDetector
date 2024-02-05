@@ -1063,7 +1063,7 @@ def resize_image_folder(input_folder, output_folder=None,
                 verbose=verbose,
                 quality=quality)
         
-        _ = list(tqdm(pool.imap(p, image_files_relative)))
+        _ = list(tqdm(pool.imap(p, image_files_relative),total=len(image_files_relative)))
 
 
 #%% Test drivers
