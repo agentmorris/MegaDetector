@@ -1044,7 +1044,7 @@ def resize_image_folder(input_folder, output_folder=None,
         
         results = []
         for fn_relative in tqdm(image_files_relative):
-            results.append(resize_relative_image(fn_relative,
+            results.append(_resize_relative_image(fn_relative,
                                   input_folder=input_folder,
                                   output_folder=output_folder,
                                   target_width=target_width,
@@ -1091,4 +1091,4 @@ if False:
     
     resize_results = resize_image_folder(input_folder,output_folder,
                          target_width=1280,verbose=True,quality=85,no_enlarge_width=True,
-                         pool_type='process',n_workers=5)
+                         pool_type='process',n_workers=10)
