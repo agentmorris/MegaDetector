@@ -9,7 +9,7 @@
 # what you want to query for, etc., is very application-specific; this is just meant as a 
 # demo.
 #
-# Can download from GCP (all dataset), AWS (all datasets), or Azure (most datasets).
+# Can download from GCP (all datasets), AWS (all datasets), or Azure (most datasets).
 #
 ########
 
