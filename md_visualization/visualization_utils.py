@@ -613,8 +613,9 @@ def draw_bounding_box_on_image(image,
     ymin: ymin of bounding box - upper left.
     xmin: xmin of bounding box.
     ymax: ymax of bounding box.
-    xmax: xmax of bounding box.
-    clss: str, the class of the object in this bounding box - will be cast to an int.
+    xmax: xmax of bounding box.    
+    clss: str, the class of the object in this bounding box; should be either an integer
+        or a string-formatted integer.
     thickness: line thickness. Default value is 4.
     expansion: number of pixels to expand bounding boxes on each side.  Default is 0.
     display_str_list: list of strings to display in box
@@ -630,6 +631,7 @@ def draw_bounding_box_on_image(image,
     """
     
     if clss is None:
+        # Default to the MegaDetector animal class ID (1)
         color = colormap[1]
     else:
         color = colormap[int(clss) % len(colormap)]
