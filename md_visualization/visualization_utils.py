@@ -1016,7 +1016,8 @@ def _resize_relative_image(fn_relative,
 def resize_image_folder(input_folder, output_folder=None,
                         target_width=-1, target_height=-1,
                         no_enlarge_width=False, verbose=False, quality='keep',
-                        pool_type='process', n_workers=10, recursive=True):
+                        pool_type='process', n_workers=10, recursive=True,
+                        image_files_relative=None):
     """
     Resize all images in a folder (defaults to recursive)
     
@@ -1036,9 +1037,10 @@ def resize_image_folder(input_folder, output_folder=None,
         
     assert pool_type in ('process','thread'), 'Illegal pool type {}'.format(pool_type)
     
-    image_files_relative = find_images(input_folder,recursive=recursive,return_relative_paths=True)
-    if verbose:
-        print('Found {} images'.format(len(image_files_relative)))
+    if image_files_relative is None:
+        image_files_relative = find_images(input_folder,recursive=recursive,return_relative_paths=True)
+        if verbose:
+            print('Found {} images'.format(len(image_files_relative)))
     
     if n_workers == 1:    
         

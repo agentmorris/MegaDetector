@@ -187,7 +187,7 @@ augment = False
 
 ## Constants related to tiled inference
 
-use_tiled_inference = True
+use_tiled_inference = False
 
 # Should we delete tiles after each job?  Only set this to False for debugging;
 # large jobs will take up a lot of space if you keep tiles around after each task.

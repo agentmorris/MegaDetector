@@ -137,6 +137,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Road Ecology Center](https://roadecology.ucdavis.edu/), University of California, Davis ([Wildlife Observer Network platform](https://wildlifeobserver.net/))
 * [The Nature Conservancy in California](https://www.nature.org/en-us/about-us/where-we-work/united-states/california/) ([Animl platform](https://github.com/tnc-ca-geo/animl-frontend)) ([story](https://www.vision-systems.com/non-factory/environment-agriculture/article/14304433/the-nature-conservancy-brings-cameras-ai-to-invasive-species-prevention))
 * [San Diego Zoo Wildlife Alliance](https://science.sandiegozoo.org/)  ([Animl R package](https://github.com/conservationtechlab/animl))
+* [TerrOïko](https://www.terroiko.fr/) ([OCAPI platform](https://www.terroiko.fr/ocapi))
 
 Also see:
 

@@ -535,6 +535,7 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 * [Zooniverse ML Subject Assistant](https://subject-assistant.zooniverse.org/#/intro)
 * [Dudek Wildlife Camera Trap AI Image Toolkit](https://dudek.com/services/wildlife-camera-trap-ai-image-processing-and-management/)
 * [Zamba Cloud](https://github.com/drivendataorg/zamba)
+* [OCAPI](https://www.terroiko.fr/ocapi/)
 
 
 ### Other ways of running MegaDetector that don't fit easily into one of those categories
