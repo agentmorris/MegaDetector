@@ -338,7 +338,7 @@ with open(output_file,'w',encoding='utf-8',newline='') as f:
 
 # ...with open()
 
-print('Processed {} datsets'.format(len(metadata_table)))
+print('Processed {} datasets'.format(len(metadata_table)))
 
 
 #%% Read the .csv back

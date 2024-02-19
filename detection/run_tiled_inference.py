@@ -823,12 +823,12 @@ def main():
         '--overwrite_handling',
         type=str,
         default='skip',
-        help=('behavior when the targt file exists (skip/overwrite/error) (default skip)'))
+        help=('Behavior when the target file exists (skip/overwrite/error) (default skip)'))
     parser.add_argument(
         '--image_list',
         type=str,
         default=None,
-        help=('a .json list of relative filenames (or absolute paths contained within image_folder) to include'))
+        help=('A .json list of relative filenames (or absolute paths contained within image_folder) to include'))
         
     if len(sys.argv[1:]) == 0:
         parser.print_help()

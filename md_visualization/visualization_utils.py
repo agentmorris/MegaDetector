@@ -248,7 +248,7 @@ def resize_image(image, target_width, target_height=-1, output_file=None,
     if (no_enlarge_width) and (target_width > image.size[0]):
         
         if verbose:
-            print('Bypassing iamge enlarge for {} --> {}'.format(
+            print('Bypassing image enlarge for {} --> {}'.format(
                 image_fn,str(output_file)))
         resize_required = False
         
