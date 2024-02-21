@@ -94,7 +94,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Cross-Cultural Ecology Lab](https://crossculturalecology.net/), Macquarie University
 * [DC Cat Count](https://hub.dccatcount.org/), led by the Humane Rescue Alliance
 * [Department of Fish and Wildlife Sciences](https://www.uidaho.edu/cnr/departments/fish-and-wildlife-sciences), University of Idaho
-* [Department of Society and Conservation](https://www.umt.edu/environment/about/departments/socon/), W.A. Franke College of Forestry and Conservation, University of Montana
+* [Department of Society & Conservation](https://www.umt.edu/environment/about/departments/socon/), W.A. Franke College of Forestry & Conservation, University of Montana
 * [Department of Wildlife Ecology and Conservation](https://wec.ifas.ufl.edu/), University of Florida
 * [Ecology and Conservation of Amazonian Vertebrates Research Group](https://www.researchgate.net/lab/Fernanda-Michalski-Lab-4), Federal University of Amapá
 * [Gola Forest Programma](https://www.rspb.org.uk/our-work/conservation/projects/scientific-support-for-the-gola-forest-programme/), Royal Society for the Protection of Birds (RSPB)
