@@ -56,13 +56,13 @@ def render_image(im,render_image_constants):
     
     assert im['file'] in filename_to_ground_truth_im
     
-    input_file = os.path.join(image_folder,im['file'])
-    assert os.path.isfile(input_file)
-                          
     output_file = image_to_output_file(im,preview_images_folder)
     if os.path.isfile(output_file) and not force_render_images:
         return output_file
     
+    input_file = os.path.join(image_folder,im['file'])
+    assert os.path.isfile(input_file)
+                          
     detections_to_render = []
     
     for det in im['detections']:

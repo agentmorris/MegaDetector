@@ -13,6 +13,7 @@ import glob
 import ntpath
 import os
 import sys
+import platform
 import posixpath
 import string
 import json
@@ -357,7 +358,7 @@ def environment_is_wsl():
     
     if sys.platform not in ('linux','posix'):
         return False
-    platform_string = ' '.join(sys.platform.uname()).lower()
+    platform_string = ' '.join(platform.uname()).lower()
     return 'microsoft' in platform_string and 'wsl' in platform_string
     
 
