@@ -66,6 +66,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [EcoLogic Consultants Ltd.](https://www.consult-ecologic.com/)
 * [Estación Biológica de Doñana](http://www.ebd.csic.es/inicio)
 * [Idaho Department of Fish and Game](https://idfg.idaho.gov/)
+* [Indigenous Desert Alliance](https://www.indigenousdesertalliance.com/)
 * [Island Conservation](https://www.islandconservation.org/)
 * [Myall Lakes Dingo Project](https://carnivorecoexistence.info/myall-lakes-dingo-project/)
 * [Norwegian Institute for Nature Research](https://www.nina.no/english/Home)
