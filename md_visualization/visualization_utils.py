@@ -54,7 +54,7 @@ DEFAULT_LABEL_FONT_SIZE = 16
 
 #%% Functions
 
-def open_image(input_file: Union[str, BytesIO]) -> Image:
+def open_image(input_file: Union[str, BytesIO], ignore_exif_rotation=False) -> Image:
     """
     Opens an image in binary format using PIL.Image and converts to RGB mode.
     
@@ -107,18 +107,19 @@ def open_image(input_file: Union[str, BytesIO]) -> Image:
         # PIL.Image.convert() returns a converted copy of this image
         image = image.convert(mode='RGB')
 
-    # Alter orientation as needed according to EXIF tag 0x112 (274) for Orientation
-    #
-    # https://gist.github.com/dangtrinhnt/a577ece4cbe5364aad28
-    # https://www.media.mit.edu/pia/Research/deepview/exif.html
-    #
-    try:
-        exif = image._getexif()
-        orientation: int = exif.get(274, None)  # 274 is the key for the Orientation field
-        if orientation is not None and orientation in IMAGE_ROTATIONS:
-            image = image.rotate(IMAGE_ROTATIONS[orientation], expand=True)  # returns a rotated copy
-    except Exception:
-        pass
+    if not ignore_exif_rotation:
+        # Alter orientation as needed according to EXIF tag 0x112 (274) for Orientation
+        #
+        # https://gist.github.com/dangtrinhnt/a577ece4cbe5364aad28
+        # https://www.media.mit.edu/pia/Research/deepview/exif.html
+        #
+        try:
+            exif = image._getexif()
+            orientation: int = exif.get(274, None)  # 274 is the key for the Orientation field
+            if orientation is not None and orientation in IMAGE_ROTATIONS:
+                image = image.rotate(IMAGE_ROTATIONS[orientation], expand=True)  # returns a rotated copy
+        except Exception:
+            pass
 
     return image
 
@@ -174,7 +175,7 @@ def exif_preserving_save(pil_image,output_file,quality='keep',default_quality=85
             pil_image.save(output_file)
             
             
-def load_image(input_file: Union[str, BytesIO]) -> Image:
+def load_image(input_file: Union[str, BytesIO], ignore_exif_rotation=False) -> Image:
     """
     Loads the image at input_file as a PIL Image into memory.
 
@@ -188,7 +189,7 @@ def load_image(input_file: Union[str, BytesIO]) -> Image:
     Returns: PIL.Image.Image, in RGB mode
     """
     
-    image = open_image(input_file)
+    image = open_image(input_file, ignore_exif_rotation=ignore_exif_rotation)
     image.load()
     return image
 
@@ -860,7 +861,8 @@ def draw_bounding_boxes_on_file(input_file, output_file, detections, confidence_
                                 thickness=DEFAULT_BOX_THICKNESS, expansion=0,
                                 colormap=DEFAULT_COLORS,
                                 label_font_size=DEFAULT_LABEL_FONT_SIZE,
-                                custom_strings=None,target_size=None):
+                                custom_strings=None,target_size=None,
+                                ignore_exif_rotation=False):
     """
     Render detection bounding boxes on an image loaded from file, writing the results to a
     new image file.
@@ -885,7 +887,7 @@ def draw_bounding_boxes_on_file(input_file, output_file, detections, confidence_
     see resize_image for documentation.  If None or (-1,-1), uses the original image size.
     """
     
-    image = open_image(input_file)
+    image = open_image(input_file, ignore_exif_rotation=ignore_exif_rotation)
     
     if target_size is not None:
         image = resize_image(image,target_size[0],target_size[1])
@@ -900,7 +902,8 @@ def draw_bounding_boxes_on_file(input_file, output_file, detections, confidence_
 
 
 def draw_db_boxes_on_file(input_file, output_file, boxes, classes=None, 
-                          label_map=None, thickness=DEFAULT_BOX_THICKNESS, expansion=0):
+                          label_map=None, thickness=DEFAULT_BOX_THICKNESS, expansion=0,
+                          ignore_exif_rotation=False):
     """
     Render COCO bounding boxes (in absolute coordinates) on an image loaded from file, writing the
     results to a new image file.
@@ -910,7 +913,7 @@ def draw_db_boxes_on_file(input_file, output_file, boxes, classes=None,
     detector_label_map is a dict mapping category IDs to strings.
     """
     
-    image = open_image(input_file)
+    image = open_image(input_file, ignore_exif_rotation=ignore_exif_rotation)
 
     if classes is None:
         classes = [0] * len(boxes)
