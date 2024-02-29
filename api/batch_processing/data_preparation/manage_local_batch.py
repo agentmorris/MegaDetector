@@ -2280,7 +2280,7 @@ import nbformat as nbf
 if os.name == 'nt':
     git_base = r'c:\git'
 else:
-    git_base = os.path.expanduer('~/git')
+    git_base = os.path.expanduser('~/git')
     
 input_py_file = git_base + '/MegaDetector/api/batch_processing/data_preparation/manage_local_batch.py'
 assert os.path.isfile(input_py_file)

@@ -291,7 +291,7 @@ def pairwise_compare_batch_results(options,output_index,pairwise_options):
     filenames_b_set = set([im['file'] for im in images_b])
     
     if len(images_a) != len(images_b):
-        s = 'set A has {} iamges, set B has {}'.format(len(images_a),len(images_b))
+        s = 'set A has {} images, set B has {}'.format(len(images_a),len(images_b))
         if options.error_on_non_matching_lists:
             raise ValueError(s)
         else:

@@ -17,6 +17,7 @@
 ### Only standard imports belong here, not MD-specific imports ###
 
 import os
+import sys
 import json
 import glob
 import tempfile
@@ -842,6 +843,10 @@ def main():
         type=str,
         default=None,
         help='Working directory for CLI tests')
+
+    # token used for linting
+    #
+    # no_arguments_required
         
     args = parser.parse_args()
         

@@ -56,13 +56,13 @@ def render_image(im,render_image_constants):
     
     assert im['file'] in filename_to_ground_truth_im
     
-    input_file = os.path.join(image_folder,im['file'])
-    assert os.path.isfile(input_file)
-                          
     output_file = image_to_output_file(im,preview_images_folder)
     if os.path.isfile(output_file) and not force_render_images:
         return output_file
     
+    input_file = os.path.join(image_folder,im['file'])
+    assert os.path.isfile(input_file)
+                          
     detections_to_render = []
     
     for det in im['detections']:
@@ -82,8 +82,12 @@ def render_image(im,render_image_constants):
 
 #%% Main function
 
-def render_detection_confusion_matrix(ground_truth_file,results_file,image_folder,preview_folder,
-                                      force_render_images=False, confidence_thresholds=None,
+def render_detection_confusion_matrix(ground_truth_file,
+                                      results_file,
+                                      image_folder,
+                                      preview_folder,
+                                      force_render_images=False, 
+                                      confidence_thresholds=None,
                                       rendering_confidence_thresholds=None,
                                       target_image_size=(1280,-1),
                                       parallelize_rendering=True,
@@ -223,7 +227,7 @@ def render_detection_confusion_matrix(ground_truth_file,results_file,image_folde
     filename_to_predicted_categories = defaultdict(set)
     predicted_category_name_to_filenames = defaultdict(set)
     
-    # im = md_results['images'][0]
+    # im = md_formatted_results['images'][0]
     for im in tqdm(md_formatted_results['images']):
         
         assert im['file'] in filename_to_ground_truth_im
@@ -246,9 +250,6 @@ def render_detection_confusion_matrix(ground_truth_file,results_file,image_folde
     #%% Create TP/TN/FP/FN lists
     
     category_name_to_image_lists = {}
-    
-    # These may not be identical; currently the ground truth contains an "unknown" category
-    # results_category_names = sorted(list(results_category_id_to_name.values()))
     
     sub_page_tokens = ['fn','tn','fp','tp']
     
@@ -296,7 +297,7 @@ def render_detection_confusion_matrix(ground_truth_file,results_file,image_folde
                         assignment = 'tn'        
                             
             category_name_to_image_lists[category_name][assignment].append(filename)
-            
+                        
     # ...for each filename
     
     
@@ -333,8 +334,8 @@ def render_detection_confusion_matrix(ground_truth_file,results_file,image_folde
             results_category_name_to_confidence = defaultdict(int)
             for det in results_im['detections']:
                 category_name = results_category_id_to_name[det['category']]
-                detection_threshold = rendering_confidence_thresholds['default']
-                if category_name in rendering_confidence_thresholds:
+                detection_threshold = confidence_thresholds['default']
+                if category_name in confidence_thresholds:
                     detection_threshold = confidence_thresholds[category_name]
                 if det['conf'] > detection_threshold:
                     results_category_name_to_confidence[category_name] = max(
@@ -353,6 +354,8 @@ def render_detection_confusion_matrix(ground_truth_file,results_file,image_folde
         true_predicted_to_file_list[true_predicted_token].append(filename)
         
         confusion_matrix[ground_truth_category_index,predicted_category_index] += 1
+    
+    # ...for each file
     
     plt.ioff()    
     

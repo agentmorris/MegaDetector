@@ -381,7 +381,7 @@ def run_inference_with_yolo_val(options):
     # YOLO console output contains lots of ANSI escape codes, remove them for easier parsing
     yolo_console_output = [string_utils.remove_ansi_codes(s) for s in yolo_console_output]
     
-    # Find errors that occrred during the initial corruption check; these will not be included in the
+    # Find errors that occurred during the initial corruption check; these will not be included in the
     # output.  Errors that occur during inference will be handled separately.
     yolo_read_failures = []
     

@@ -200,3 +200,38 @@ else:
     results = list(tqdm(pool.imap(lambda s: download_relative_url(
         s,output_base=output_dir,provider=preferred_provider,verbose=verbose),
         all_urls_relative), total=len(all_urls_relative)))
+
+
+#%% Scrap
+
+if False:
+    
+    pass
+
+    #%% Find all the reptiles on LILA
+
+    reptile_rows = df.loc[df['class'] == 'reptilia']
+    
+    # i_row = 0; row = reptile_rows.iloc[i_row]
+    
+    common_name_to_count = defaultdict(int)
+    dataset_to_count = defaultdict(int)
+    for i_row,row in reptile_rows.iterrows():
+        common_name_to_count[row['common_name']] += 1
+        dataset_to_count[row['dataset_name']] += 1
+        
+    from md_utils.ct_utils import sort_dictionary_by_value
+    
+    print('Found {} reptiles\n'.format(len(reptile_rows)))
+    
+    common_name_to_count = sort_dictionary_by_value(common_name_to_count,reverse=True)
+    dataset_to_count = sort_dictionary_by_value(dataset_to_count,reverse=True)
+    
+    print('Common names by count:\n')
+    for k in common_name_to_count:
+        print('{} ({})'.format(k,common_name_to_count[k]))
+    
+    print('\nDatasets by count:\n')    
+    for k in dataset_to_count:
+        print('{} ({})'.format(k,dataset_to_count[k]))
+    
