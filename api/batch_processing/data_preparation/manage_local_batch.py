@@ -793,7 +793,7 @@ options.api_output_file = combined_api_output_file
 options.output_dir = output_base
 ppresults = process_batch_results(options)
 html_output_file = ppresults.output_html_file
-path_utils.open_file(html_output_file,attempt_to_open_in_wsl_host=True)
+path_utils.open_file(html_output_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
 # import clipboard; clipboard.copy(html_output_file)
 
 
@@ -930,7 +930,7 @@ options.output_dir = output_base
 ppresults = process_batch_results(options)
 html_output_file = ppresults.output_html_file
 
-path_utils.open_file(html_output_file,attempt_to_open_in_wsl_host=True)
+path_utils.open_file(html_output_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
 # import clipboard; clipboard.copy(html_output_file)
 
 
@@ -2003,7 +2003,7 @@ print('Processing {} to {}'.format(base_task_name, output_base))
 options.api_output_file = sequence_smoothed_classification_file
 options.output_dir = output_base
 ppresults = process_batch_results(options)
-path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True)
+path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
 # import clipboard; clipboard.copy(ppresults.output_html_file)
 
 #% Zip .json files
@@ -2071,7 +2071,7 @@ for i, j in itertools.combinations(list(range(0,len(filenames))),2):
 results = compare_batch_results(options)
 
 from md_utils.path_utils import open_file
-open_file(results.html_output_file,attempt_to_open_in_wsl_host=True)
+open_file(results.html_output_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
 
 
 #%% Merge in high-confidence detections from another results file
@@ -2125,7 +2125,7 @@ options.output_dir = output_base_large_boxes
 
 ppresults = process_batch_results(options)
 html_output_file = ppresults.output_html_file
-path_utils.open_file(html_output_file,attempt_to_open_in_wsl_host=True)
+path_utils.open_file(html_output_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
 
 
 #%% .json splitting
