@@ -67,7 +67,6 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Estación Biológica de Doñana](http://www.ebd.csic.es/inicio)
 * [Idaho Department of Fish and Game](https://idfg.idaho.gov/)
 * [Indigenous Desert Alliance](https://www.indigenousdesertalliance.com/)
-* [Island Conservation](https://www.islandconservation.org/)
 * [Myall Lakes Dingo Project](https://carnivorecoexistence.info/myall-lakes-dingo-project/)
 * [Norwegian Institute for Nature Research](https://www.nina.no/english/Home)
 * [Point No Point Treaty Council](https://pnptc.org/)
@@ -127,7 +126,9 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 
 * [Australian Wildlife Conservancy](https://www.australianwildlife.org/) (blog posts [1](https://www.australianwildlife.org/cutting-edge-technology-delivering-efficiency-gains-in-conservation/), [2](https://www.australianwildlife.org/efficiency-gains-at-the-cutting-edge-of-technology/), [3](https://www.australianwildlife.org/federal-grant-to-fund-ai-supported-wildlife-recognisers))
 * [Bavarian Forest National Park](https://www.nationalpark-bayerischer-wald.bayern.de/english/index.htm) ([story](https://customers.microsoft.com/en-au/story/1667539539271247797-nationalparkbayerischerwald-azure-en))
+* [Environs Kimberley](https://www.environskimberley.org.au) ([blog post](https://www.environskimberley.org.au/ai_megadetector))
 * [Felidae Conservation Fund](https://felidaefund.org/) ([WildePod platform](https://wildepod.org/)) ([blog post](https://abhaykashyap.com/blog/ai-powered-camera-trap-image-annotation-system/))
+* [Island Conservation](https://www.islandconservation.org/) ([blog post](https://www.islandconservation.org/conservation-machine-learning/), [video](https://www.lenovo.com/us/en/case-studies-customer-success-stories/island-conservation))
 * [Alberta Biodiversity Monitoring Institute (ABMI)](https://www.abmi.ca/home.html) ([WildTrax platform](https://www.wildtrax.ca/)) (blog posts [1](https://wildcams.ca/blog/the-abmi-visits-the-zoo/),[2](http://blog.abmi.ca/2023/06/14/making-wildtrax-its-not-a-kind-of-magic-behind-the-screen/))
 * [Shan Shui Conservation Center](http://en.shanshui.org/) ([blog post](https://mp.weixin.qq.com/s/iOIQF3ckj0-rEG4yJgerYw?fbclid=IwAR0alwiWbe3udIcFvqqwm7y5qgr9hZpjr871FZIa-ErGUukZ7yJ3ZhgCevs)) ([translated blog post](https://mp-weixin-qq-com.translate.goog/s/iOIQF3ckj0-rEG4yJgerYw?fbclid=IwAR0alwiWbe3udIcFvqqwm7y5qgr9hZpjr871FZIa-ErGUukZ7yJ3ZhgCevs&_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en&_x_tr_pto=wapp)) ([Web demo](https://cameratrap-ai.hinature.cn/home))
 * [Irvine Ranch Conservancy](http://www.irconservancy.org/) ([story](https://www.ocregister.com/2022/03/30/ai-software-is-helping-researchers-focus-on-learning-about-ocs-wild-animals/))
