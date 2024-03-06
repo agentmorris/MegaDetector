@@ -53,7 +53,6 @@ from md_utils import path_utils
 from data_management.cct_json_utils import (CameraTrapJsonUtils, IndexedJsonDb)
 from api.batch_processing.postprocessing.load_api_results import load_api_results
 from md_utils.ct_utils import args_to_object
-from md_utils.ct_utils import invert_dictionary
 
 from detection.run_detector import get_typical_confidence_threshold_from_results
 
@@ -848,7 +847,7 @@ def process_batch_results(options: PostProcessingOptions
     ground_truth_indexed_db = None
 
     if (options.ground_truth_json_file is not None):
-        assert (options.confidence_threshold is None) or (isinstance(confidence_threshold,float)), \
+        assert (options.confidence_threshold is None) or (isinstance(options.confidence_threshold,float)), \
             'Variable confidence thresholds are not supported when supplying ground truth'
             
     if (options.ground_truth_json_file is not None) and (len(options.ground_truth_json_file) > 0):
@@ -876,7 +875,7 @@ def process_batch_results(options: PostProcessingOptions
     # If the caller hasn't supplied results, load them
     if options.api_detection_results is None:
         detections_df, other_fields = load_api_results(
-            options.api_output_file, normalize_paths=True,
+            options.api_output_file, force_forward_slashes=True,
             filename_replacements=options.api_output_filename_replacements)
         ppresults.api_detection_results = detections_df
         ppresults.api_other_fields = other_fields        
@@ -1087,7 +1086,7 @@ def process_batch_results(options: PostProcessingOptions
             (precision_at_confidence_threshold + recall_at_confidence_threshold)
 
         print('At a confidence threshold of {:.1%}, precision={:.1%}, recall={:.1%}, f1={:.1%}'.format(
-                str(options.confidence_threshold), precision_at_confidence_threshold,
+                options.confidence_threshold, precision_at_confidence_threshold,
                 recall_at_confidence_threshold, f1))
 
         ##%% Collect classification results, if they exist
@@ -1289,7 +1288,8 @@ def process_batch_results(options: PostProcessingOptions
             for file_info in tqdm(files_to_render):
                 rendering_results.append(render_image_with_gt(
                     file_info,ground_truth_indexed_db,
-                    detection_categories,classification_categories))
+                    detection_categories,classification_categories,
+                    options=options))
         elapsed = time.time() - start_time
 
         # Map all the rendering results in the list rendering_results into the
@@ -1319,6 +1319,12 @@ def process_batch_results(options: PostProcessingOptions
             image_counts['tp']
         )
 
+        confidence_threshold_string = ''
+        if isinstance(options.confidence_threshold,float):
+            confidence_threshold_string = '{:.2%}'.format(options.confidence_threshold)
+        else:
+            confidence_threshold_string = str(options.confidence_threshold)
+        
         index_page = """<html>
         {}
         <body>
@@ -1333,7 +1339,7 @@ def process_batch_results(options: PostProcessingOptions
         
         <h3>Sample images</h3>
         <div class="contentdiv">
-        <p>A sample of {} images, annotated with detections above {:.1%} confidence.</p>
+        <p>A sample of {} images, annotated with detections above confidence {}.</p>
         <a href="tp.html">True positives (TP)</a> ({}) ({:0.1%})<br/>
         CLASSIFICATION_PLACEHOLDER_1
         <a href="tn.html">True negatives (TN)</a> ({}) ({:0.1%})<br/>
@@ -1343,7 +1349,7 @@ def process_batch_results(options: PostProcessingOptions
         </div>
         """.format(
             style_header,job_name_string,model_version_string,
-            image_count, str(options.confidence_threshold),
+            image_count, confidence_threshold_string,
             all_tp_count, all_tp_count/total_count,
             image_counts['tn'], image_counts['tn']/total_count,
             image_counts['fp'], image_counts['fp']/total_count,
@@ -1353,11 +1359,11 @@ def process_batch_results(options: PostProcessingOptions
         index_page += """
             <h3>Detection results</h3>
             <div class="contentdiv">
-            <p>At a confidence threshold of {:0.1%}, precision={:0.1%}, recall={:0.1%}</p>
+            <p>At a confidence threshold of {}, precision={:0.1%}, recall={:0.1%}</p>
             <p><strong>Precision/recall summary for all {} images</strong></p><img src="{}"><br/>
             </div>
             """.format(
-                str(options.confidence_threshold), precision_at_confidence_threshold, recall_at_confidence_threshold,
+                confidence_threshold_string, precision_at_confidence_threshold, recall_at_confidence_threshold,
                 len(detections_df), pr_figure_relative_filename
            )
 
@@ -1589,7 +1595,7 @@ def process_batch_results(options: PostProcessingOptions
 
         confidence_threshold_string = ''
         if isinstance(options.confidence_threshold,float):
-            confidence_threshold_string = '{:.1%}'.format(options.confidence_threshold)
+            confidence_threshold_string = '{:.2%}'.format(options.confidence_threshold)
         else:
             confidence_threshold_string = str(options.confidence_threshold)
             

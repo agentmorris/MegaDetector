@@ -62,7 +62,7 @@ def open_image(input_file: Union[str, BytesIO], ignore_exif_rotation=False) -> I
 
     This operation is lazy; image will not be actually loaded until the first
     operation that needs to load it (for example, resizing), so file opening
-    errors can show up later.
+    errors can show up later.  load_image() is the non-lazy version of this function.
 
     Args:
         input_file: str or BytesIO, either a path to an image file (anything

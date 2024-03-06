@@ -41,6 +41,8 @@ class IntegrityCheckOptions:
     bRequireLocation = True
     iMaxNumImages = -1
     nThreads = 10
+    verbose = True
+    
     
 # This is used in a medium-hacky way to share modified options across threads
 defaultOptions = IntegrityCheckOptions()
@@ -86,8 +88,9 @@ def integrity_check_json_db(jsonFile, options=None):
     
     if options.bCheckImageSizes:        
         options.bCheckImageExistence = True
-        
-    print(options.__dict__)
+     
+    if options.verbose:
+        print(options.__dict__)
     
     if options.baseDir is None:
         options.baseDir = ''
@@ -105,8 +108,9 @@ def integrity_check_json_db(jsonFile, options=None):
         
         assert os.path.isfile(jsonFile), '.json file {} does not exist'.format(jsonFile)
     
-        print('Reading .json {} with base dir [{}]...'.format(
-                jsonFile,baseDir))
+        if options.verbose:
+            print('Reading .json {} with base dir [{}]...'.format(
+                    jsonFile,baseDir))
         
         with open(jsonFile,'r') as f:
             data = json.load(f) 
@@ -133,7 +137,8 @@ def integrity_check_json_db(jsonFile, options=None):
     catNameToCat = {}
     imageLocationSet = set()
     
-    print('Checking categories...')
+    if options.verbose:
+        print('Checking categories...')
     
     for cat in tqdm(categories):
         
@@ -157,11 +162,13 @@ def integrity_check_json_db(jsonFile, options=None):
         
     # ...for each category
         
-    print('\nChecking images...')
+    if options.verbose:
+        print('\nChecking images...')
     
     if options.iMaxNumImages > 0 and len(images) > options.iMaxNumImages:
         
-        print('Trimming image list to {}'.format(options.iMaxNumImages))
+        if options.verbose:
+            print('Trimming image list to {}'.format(options.iMaxNumImages))
         images = images[0:options.iMaxNumImages]
         
     imagePathsInJson = set()
@@ -217,7 +224,8 @@ def integrity_check_json_db(jsonFile, options=None):
     # Are we checking for unused images?
     if (len(baseDir) > 0) and options.bFindUnusedImages:    
         
-        print('\nEnumerating images...')
+        if options.verbose:
+            print('\nEnumerating images...')
         
         # Recursively enumerate images
         imagePaths = []
@@ -244,8 +252,9 @@ def integrity_check_json_db(jsonFile, options=None):
         
         if len(baseDir) == 0:
             print('Warning: checking image sizes without a base directory, assuming "."')
-            
-        print('Checking image existence and/or image sizes...')
+         
+        if options.verbose:
+            print('Checking image existence and/or image sizes...')
         
         if options.nThreads is not None and options.nThreads > 1:
             pool = ThreadPool(options.nThreads)
@@ -265,9 +274,9 @@ def integrity_check_json_db(jsonFile, options=None):
                             
     # ...for each image
     
-    print('{} validation errors (of {})'.format(len(validationErrors),len(images)))
-                                                
-    print('Checking annotations...')
+    if options.verbose:
+        print('{} validation errors (of {})'.format(len(validationErrors),len(images)))
+        print('Checking annotations...')
     
     nBoxes = 0
     
@@ -302,58 +311,56 @@ def integrity_check_json_db(jsonFile, options=None):
         catIdToCat[ann['category_id']]['_count'] +=1 
         
     # ...for each annotation
-        
-        
-    ##%% Print statistics
-    
-    # Find un-annotated images and multi-annotation images
-    nUnannotated = 0
-    nMultiAnnotated = 0
-    
-    for image in images:
-        if image['_count'] == 0:
-            nUnannotated += 1
-        elif image['_count'] > 1:
-            nMultiAnnotated += 1
-            
-    print('Found {} unannotated images, {} images with multiple annotations'.format(
-            nUnannotated,nMultiAnnotated))
-    
-    if (len(baseDir) > 0) and options.bFindUnusedImages:
-        print('Found {} unused image files'.format(len(unusedFiles)))
-        
-    nUnusedCategories = 0
-    
-    # Find unused categories
-    for cat in categories:
-        if cat['_count'] == 0:
-            print('Unused category: {}'.format(cat['name']))
-            nUnusedCategories += 1
-    
-    print('Found {} unused categories'.format(nUnusedCategories))
-            
-    sequenceString = 'no sequence info'
-    if len(sequences) > 0:
-        sequenceString = '{} sequences'.format(len(sequences))
-        
-    print('\nDB contains {} images, {} annotations, {} bboxes, {} categories, {}\n'.format(
-            len(images),len(annotations),nBoxes,len(categories),sequenceString))
-
-    if len(imageLocationSet) > 0:
-        print('DB contains images from {} locations\n'.format(len(imageLocationSet)))
-    
-    # Prints a list of categories sorted by count
-    #
-    # https://stackoverflow.com/questions/72899/how-do-i-sort-a-list-of-dictionaries-by-a-value-of-the-dictionary
     
     sortedCategories = sorted(categories, key=itemgetter('_count'), reverse=True)
     
-    print('Categories and annotation (not image) counts:\n')
     
-    for cat in sortedCategories:
-        print('{:6} {}'.format(cat['_count'],cat['name']))
+    ##%% Print statistics
     
-    print('')
+    if options.verbose:
+    
+        # Find un-annotated images and multi-annotation images
+        nUnannotated = 0
+        nMultiAnnotated = 0
+        
+        for image in images:
+            if image['_count'] == 0:
+                nUnannotated += 1
+            elif image['_count'] > 1:
+                nMultiAnnotated += 1
+                
+        print('Found {} unannotated images, {} images with multiple annotations'.format(
+                nUnannotated,nMultiAnnotated))
+        
+        if (len(baseDir) > 0) and options.bFindUnusedImages:
+            print('Found {} unused image files'.format(len(unusedFiles)))
+            
+        nUnusedCategories = 0
+        
+        # Find unused categories
+        for cat in categories:
+            if cat['_count'] == 0:
+                print('Unused category: {}'.format(cat['name']))
+                nUnusedCategories += 1
+        
+        print('Found {} unused categories'.format(nUnusedCategories))
+                
+        sequenceString = 'no sequence info'
+        if len(sequences) > 0:
+            sequenceString = '{} sequences'.format(len(sequences))
+            
+        print('\nDB contains {} images, {} annotations, {} bboxes, {} categories, {}\n'.format(
+                len(images),len(annotations),nBoxes,len(categories),sequenceString))
+    
+        if len(imageLocationSet) > 0:
+            print('DB contains images from {} locations\n'.format(len(imageLocationSet)))
+                
+        print('Categories and annotation (not image) counts:\n')
+        
+        for cat in sortedCategories:
+            print('{:6} {}'.format(cat['_count'],cat['name']))
+        
+        print('')
     
     errorInfo = {}
     errorInfo['unusedFiles'] = unusedFiles

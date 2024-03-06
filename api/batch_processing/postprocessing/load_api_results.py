@@ -64,11 +64,9 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
         if k != 'images':
             other_fields[k] = v
 
-    # Normalize paths to simplify comparisons later
     if normalize_paths:
         for image in detection_results['images']:
-            image['file'] = os.path.normpath(image['file'])
-            # image['file'] = image['file'].replace('\\','/')
+            image['file'] = os.path.normpath(image['file'])            
 
     if force_forward_slashes:
         for image in detection_results['images']:

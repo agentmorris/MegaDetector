@@ -142,7 +142,8 @@ class IndexedJsonDb:
     def __init__(self, json_filename: Union[str, JSONObject],
                  b_normalize_paths: bool = False,
                  filename_replacements: Optional[Mapping[str, str]] = None,
-                 b_convert_classes_to_lower: bool = True):
+                 b_convert_classes_to_lower: bool = True,
+                 b_force_forward_slashes: bool = True):
         """
         json_filename can also be an existing json db
         """
@@ -162,10 +163,14 @@ class IndexedJsonDb:
             for c in self.db['categories']:
                 c['name'] = c['name'].lower()
 
+        # Normalize paths to simplify comparisons later
         if b_normalize_paths:
-            # Normalize paths to simplify comparisons later
             for im in self.db['images']:
                 im['file_name'] = os.path.normpath(im['file_name'])
+
+        if b_force_forward_slashes:
+            for im in self.db['images']:
+                im['file_name'] = im['file_name'].replace('\\','/')
 
         if filename_replacements is not None:
             for s in filename_replacements:
