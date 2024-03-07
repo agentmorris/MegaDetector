@@ -716,12 +716,14 @@ MegaDetector v5b was trained on all MDv4 training data, plus new private data, a
 * [Wellington Camera Traps](https://lila.science/datasets/wellingtoncameratraps)
 * [Several datasets from Snapshot Safari](https://lila.science/category/camera-traps/snapshot-safari/)
 
-MegaDetector v5a was trained on all MDv5b training data, and new public data from:
+The total dataset for MDv5b (including train/val/test) was around ~2.3M boxes on ~2.7M images, all of which are camera trap images.
+
+MegaDetector v5a was trained on all MDv5b training data, and new (non-camera-trap) public data from:
 
 * The [iNaturalist Dataset 2017](https://github.com/visipedia/inat_comp/tree/master/2017)
 * [COCO](https://cocodataset.org/#home)
 
-So if MegaDetector performs really well on those data sets, that's great, but it's a little bit cheating, because we haven't published the set of locations from those data sets that we use during training.
+So if MegaDetector performs really well on any of the above data sets, that's great, but it's a little bit cheating, because we haven't published the set of locations from those data sets that we use during training.
 
 
 ## What if I just want to run non-MD scripts from this repo?
