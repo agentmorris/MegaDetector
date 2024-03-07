@@ -583,15 +583,21 @@ Consequently, when we work with new users, we always start with a "test batch" t
 
 All of those caveats aside, we are aware of some external validation studies... and we'll list them here... but still, try MegaDetector on your images before you assume any performance numbers!
 
+These are not necessarily papers specifically about evaluating MegaDetector, but they at least include a standalone MD evaluation.
+
 ### MDv5 evaluations
 
 * WildEye. [MegaDetector Version 5 evaluation](https://wildeyeconservation.org/megadetector-version-5/).
+* Clarfeld LA, Sirén AP, Mulhall BM, Wilson TL, Bernier E, Farrell J, Lunde G, Hardy N, Gieder KD, Abrams R, Staats S. [Evaluating a tandem human-machine approach to labelling of wildlife in remote camera monitoring](https://www.sciencedirect.com/science/article/pii/S1574954123002868). Ecological Informatics. 2023 Aug 10:102257.
+* Aguirre I, Hood GA, Westbrook CJ. [Short-term dynamics of beaver dam flow states](https://www.sciencedirect.com/science/article/pii/S0048969724009641). Science of The Total Environment. 2024 Feb 9:170825.
 
 ### MDv4 evaluations
 
+* Mitterwallner V, Peters A, Edelhoff H, Mathes G, Nguyen H, Peters W, Heurich M, Steinbauer MJ. [Automated visitor and wildlife monitoring with camera traps and machine learning](https://zslpublications.onlinelibrary.wiley.com/doi/full/10.1002/rse2.367). Remote Sensing in Ecology and Conservation. 2023.
 * Fennell M, Beirne C, Burton AC. [Use of object detection in camera trap image identification: assessing a method to rapidly and accurately classify human and animal detections for research and application in recreation ecology](https://www.sciencedirect.com/science/article/pii/S2351989422001068?via%3Dihub). Global Ecology and Conservation. 2022 Mar 25:e02104.
 * Vélez J, Castiblanco-Camacho PJ, Tabak MA, Chalmers C, Fergus P, Fieberg J.  [Choosing an Appropriate Platform and Workflow for Processing Camera Trap Data using Artificial Intelligence](https://arxiv.org/abs/2202.02283). arXiv. 2022 Feb 4.
 * [github.com/FFI-Vietnam/camtrap-tools](https://github.com/FFI-Vietnam/camtrap-tools) (includes an evaluation of MegaDetector)
+
 
 Bonus... this paper is not a formal review, but includes a thorough case study around MegaDetector:
 
