@@ -274,7 +274,7 @@ def find_images(dirname: str, recursive: bool = False,
     """
     Finds all files in a directory that look like image file names. Returns
     absolute paths unless return_relative_paths is set.  Uses the OS-native
-    path separator unless convert_slahes is set, in which case will always
+    path separator unless convert_slashes is set, in which case will always
     use '/'.
     """
     
