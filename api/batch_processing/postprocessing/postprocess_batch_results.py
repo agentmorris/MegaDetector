@@ -483,7 +483,8 @@ def render_bounding_boxes(
     
     # Optionally add links back to the original images
     if options.link_images_to_originals and (image_full_path is not None):
-        info['linkTarget'] = urllib.parse.quote(image_full_path)
+        link_target = image_full_path.replace('\\','/')
+        info['linkTarget'] = link_target # urllib.parse.quote(image_full_path)
         
     return info
 

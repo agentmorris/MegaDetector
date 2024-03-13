@@ -69,6 +69,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Indigenous Desert Alliance](https://www.indigenousdesertalliance.com/)
 * [Myall Lakes Dingo Project](https://carnivorecoexistence.info/myall-lakes-dingo-project/)
 * [Norwegian Institute for Nature Research](https://www.nina.no/english/Home)
+* [Okala](https://www.okala.io/)
 * [Point No Point Treaty Council](https://pnptc.org/)
 * [Ramat Hanadiv Nature Park](https://www.ramat-hanadiv.org.il/en/)
 * [SPEA (Portuguese Society for the Study of Birds)](https://spea.pt/en/)
