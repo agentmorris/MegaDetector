@@ -39,8 +39,6 @@ def animl_results_to_md_results(input_file,output_file=None):
     If [output_file] is None, '.json' will be appended to the input file.
     """
     
-    #%%
-    
     if output_file is None:
         output_file = input_file + '.json'
 
@@ -111,7 +109,7 @@ def animl_results_to_md_results(input_file,output_file=None):
     with open(output_file,'w') as f:
         json.dump(results,f,indent=1)
         
-# ...zamba_results_to_md_results(...)
+# ...animl_results_to_md_results(...)
         
 
 #%% Interactive driver
