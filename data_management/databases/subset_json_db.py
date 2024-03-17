@@ -65,7 +65,7 @@ def subset_json_db(input_json, query, output_json=None, ignore_case=False):
     # Write the output file if requested
     if output_json is not None:
         print('Writing output .json...')
-        json.dump(output_data,open(output_json,'w'),indent=4)
+        json.dump(output_data,open(output_json,'w'),indent=1)
         
     return output_data
 

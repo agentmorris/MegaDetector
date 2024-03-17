@@ -48,7 +48,7 @@ def combine_api_output_files(input_files: List[str],
         input_files: list of str, paths to JSON detection files
         output_file: optional str, path to write merged JSON
         require_uniqueness: bool, whether to require that the images in
-            each input_dict be unique
+            each list of images be unique
     """
     
     def print_if_verbose(s):
@@ -84,7 +84,7 @@ def combine_api_output_dictionaries(input_dicts: Iterable[Mapping[str, Any]],
         input_dicts: list of dicts, each dict is the JSON of the detections
             output file from the Batch Processing API
         require_uniqueness: bool, whether to require that the images in
-            each input_dict be unique
+            each input dict be unique
 
     Returns: dict, represents the merged JSON
     """

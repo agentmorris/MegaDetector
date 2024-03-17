@@ -246,7 +246,7 @@ def merge_detections(source_files,target_file,output_file,options=None):
     # ...for each source file        
     
     with open(output_file,'w') as f:
-        json.dump(output_data,f,indent=2)
+        json.dump(output_data,f,indent=1)
     
     print('Saved merged results to {}'.format(output_file))
 

@@ -25,11 +25,15 @@ from md_utils.path_utils import find_images
 
 from data_management.annotations import annotation_constants
 from data_management.annotations.annotation_constants import (
-    detector_bbox_category_id_to_name)  # here id is int
+    detector_bbox_category_id_to_name)
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-IMAGE_ROTATIONS = {
+# Maps EXIF standard rotation identifiers to degrees.  The value "1" indicates no
+# rotation; this will be ignored.  The values 2, 4, 5, and 7 are mirrored rotations,
+# which are not supported (we'll assert() on this when we apply rotations).
+EXIF_IMAGE_NO_ROTATION = 1
+EXIF_IMAGE_ROTATIONS = {
     3: 180,
     6: 270,
     8: 90
@@ -38,7 +42,7 @@ IMAGE_ROTATIONS = {
 TEXTALIGN_LEFT = 0
 TEXTALIGN_RIGHT = 1
 
-# convert category ID from int to str
+# Convert category ID from int to str
 DEFAULT_DETECTOR_LABEL_MAP = {
     str(k): v for k, v in detector_bbox_category_id_to_name.items()
 }
@@ -115,9 +119,11 @@ def open_image(input_file: Union[str, BytesIO], ignore_exif_rotation=False) -> I
         #
         try:
             exif = image._getexif()
-            orientation: int = exif.get(274, None)  # 274 is the key for the Orientation field
-            if orientation is not None and orientation in IMAGE_ROTATIONS:
-                image = image.rotate(IMAGE_ROTATIONS[orientation], expand=True)  # returns a rotated copy
+            orientation: int = exif.get(274, None)  
+            if (orientation is not None) and (orientation != EXIF_IMAGE_NO_ROTATION):
+                assert orientation in EXIF_IMAGE_ROTATIONS, \
+                    'Mirrored rotations are not supported'
+                image = image.rotate(EXIF_IMAGE_ROTATIONS[orientation], expand=True)  
         except Exception:
             pass
 
@@ -420,7 +426,8 @@ def render_detection_bounding_boxes(detections, image,
 
         label_map: optional, mapping the numerical label to a string name. The type of the numerical label
             (default string) needs to be consistent with the keys in label_map; no casting is carried out.
-            If this is None, no labels are shown.
+            If this is None, no labels are shown (not even numbers and confidence values).  If you want
+            category numbers and confidence values without class labels, use {}.
 
         classification_label_map: optional, mapping of the string class labels to the actual class names.
             The type of the numerical label (default string) needs to be consistent with the keys in
@@ -877,7 +884,9 @@ def draw_bounding_boxes_on_file(input_file, output_file, detections, confidence_
     
     Normalized, with the origin at the upper-left.
     
-    detector_label_map is a dict mapping category IDs to strings.
+    detector_label_map is a dict mapping category IDs to strings.  If this is None, 
+    no confidence values or identifiers are shown  If this is {}, just category indices and 
+    confidence values are shown.
     
     custom_strings: optional set of strings to append to detection labels, should have the
     same length as [detections].  Appended before classification labels, if classification
@@ -1091,7 +1100,7 @@ if False:
     
     #%% Recursive resize test
     
-    from md_visualization.visualization_utils import resize_image_folder
+    from md_visualization.visualization_utils import resize_image_folder # noqa
     
     input_folder = r"C:\temp\resize-test\in"
     output_folder = r"C:\temp\resize-test\out"
