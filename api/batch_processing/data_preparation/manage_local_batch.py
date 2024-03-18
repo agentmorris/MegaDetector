@@ -234,7 +234,7 @@ checkpoint_frequency = 10000
 approx_images_per_second = estimate_md_images_per_second(model_file) 
     
 # Rough estimate for the inference time cost of augmentation    
-if augment:
+if augment and (approx_images_per_second is not None):
     approx_images_per_second = approx_images_per_second * 0.7
     
 base_task_name = organization_name_short + '-' + job_date + job_description_string + '-' + \
