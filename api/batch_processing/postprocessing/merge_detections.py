@@ -3,8 +3,11 @@
 # merge_detections.py
 #
 # Merge high-confidence detections from one or more results files into another 
-# file.   Typically used to combine results from MDv5b and/or MDv4 into a "primary"
+# file.  Typically used to combine results from MDv5b and/or MDv4 into a "primary"
 # results file from MDv5a.
+#
+# Detection categories must be the same in both files; if you want to first remap
+# one file's category mapping to be the same as another's, see remap_detection_categories.
 #
 # If you want to literally merge two .json files, see combine_api_outputs.py.
 #
@@ -38,7 +41,7 @@ class MergeDetectionsOptions:
         self.target_confidence_threshold = 0.2
         
         # If you want to merge only certain categories, specify one
-        # (but not both) of these.
+        # (but not both) of these.  These are category IDs, not names.
         self.categories_to_include = None
         self.categories_to_exclude = None
 
@@ -47,11 +50,28 @@ class MergeDetectionsOptions:
         self.merge_empty_only = False
         
         self.iou_threshold = 0.65
+        
+        self.overwrite = False
 
 
 #%% Main function
 
 def merge_detections(source_files,target_file,output_file,options=None):
+    """
+    Merge high-confidence detections from one or more results files into another 
+    file.   Typically used to combine results from MDv5b and/or MDv4 into a "primary"
+    results file from MDv5a.
+    
+    [source_files] (a list of files or a single filename) specifies the set of 
+    results files that will be merged into [target_file].  The difference between a 
+    "source file" and the "target file" is that if no merging is necessary, either because
+    two boxes are nearly identical or because merge_only_empty is True and the target
+    file already has above-threshold detection for an image+category, the output file gets
+    the results of the "target" file.  I.e., the "target" file wins all ties.
+    
+    The results are written to [output_file].
+
+    """
     
     if isinstance(source_files,str):
         source_files = [source_files]    
@@ -59,6 +79,10 @@ def merge_detections(source_files,target_file,output_file,options=None):
     if options is None:
         options = MergeDetectionsOptions()    
         
+    if (not options.overwrite) and (os.path.isfile(output_file)):
+        print('File {} exists, bypassing merge'.format(output_file))
+        return
+    
     assert not ((options.categories_to_exclude is not None) and \
                 (options.categories_to_include is not None)), \
                 'categories_to_include and categories_to_exclude are mutually exclusive'
@@ -133,7 +157,8 @@ def merge_detections(source_files,target_file,output_file,options=None):
         output_data['info']['detections_transferred_from'].append(os.path.basename(source_file))
         output_data['info']['detector'] = output_data['info']['detector'] + ' + ' + source_detector_name
         
-        assert source_data['detection_categories'] == output_data['detection_categories']
+        assert source_data['detection_categories'] == output_data['detection_categories'], \
+            'Cannot merge files with different detection category maps'
         
         source_confidence_threshold = options.source_confidence_thresholds[i_source_file]
         
