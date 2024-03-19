@@ -17,7 +17,6 @@
 ### Only standard imports belong here, not MD-specific imports ###
 
 import os
-import sys
 import json
 import glob
 import tempfile
@@ -87,11 +86,14 @@ def get_expected_results_filename(gpu_is_available):
     return 'md-test-results-{}-{}.json'.format(hw_string,pt_string)
     
     
-def download_test_data(options):
+def download_test_data(options=None):
     """
     Download the test zipfile if necessary, unzip if necessary.
     """
-    
+
+    if options is None:
+        options = MDTestOptions()
+        
     if options.scratch_dir is None:        
         tempdir_base = tempfile.gettempdir()
         scratch_dir = os.path.join(tempdir_base,'md-tests')

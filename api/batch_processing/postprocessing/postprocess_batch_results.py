@@ -27,7 +27,6 @@ import os
 import sys
 import time
 import uuid
-import urllib
 import warnings
 import random
 
@@ -483,8 +482,14 @@ def render_bounding_boxes(
     
     # Optionally add links back to the original images
     if options.link_images_to_originals and (image_full_path is not None):
-        link_target = image_full_path.replace('\\','/')
-        info['linkTarget'] = link_target # urllib.parse.quote(image_full_path)
+                
+        # Handling special characters in links has been pushed down into
+        # write_html_image_list
+        #
+        # link_target = image_full_path.replace('\\','/')
+        # link_target  = urllib.parse.quote(link_target)
+        link_target = image_full_path
+        info['linkTarget'] = link_target 
         
     return info
 

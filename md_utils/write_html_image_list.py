@@ -42,6 +42,7 @@ def write_html_image_list(filename=None,images=None,options=None):
         defaultImageStyle
         maxFiguresPerHtmlFile
         urlEncodeFilenames (default True, e.g. '#' will be replaced by '%23')
+        urlEncodeLinkTargets (default True, e.g. '#' will be replaced by '%23')
         
     """
     
@@ -68,7 +69,10 @@ def write_html_image_list(filename=None,images=None,options=None):
     
     if 'urlEncodeFilenames' not in options or options['urlEncodeFilenames'] is None:
         options['urlEncodeFilenames'] = True
-        
+    
+    if 'urlEncodeLinkTargets' not in options or options['urlEncodeLinkTargets'] is None:
+        options['urlEncodeLinkTargets'] = True
+    
     # Possibly split the html output for figures into multiple files; Chrome gets sad with
     # thousands of images in a single tab.        
     if 'maxFiguresPerHtmlFile' not in options or options['maxFiguresPerHtmlFile'] is None:
@@ -176,8 +180,8 @@ def write_html_image_list(filename=None,images=None,options=None):
         title = title.encode('ascii','ignore').decode('ascii')
         filename = filename.encode('ascii','ignore').decode('ascii')
         
-        if options['urlEncodeFilenames']:
-            filename = filename.replace('\\','/')
+        filename = filename.replace('\\','/')
+        if options['urlEncodeFilenames']:            
             filename = urllib.parse.quote(filename)
         
         if len(title) > 0:       
@@ -185,6 +189,11 @@ def write_html_image_list(filename=None,images=None,options=None):
                     '<p style="{}">{}</p>\n'\
                     .format(textStyle,title))            
 
+        linkTarget = linkTarget.replace('\\','/')
+        if options['urlEncodeLinkTargets']:
+            # These are typically absolute paths, so we only want to mess with certain characters
+            linkTarget = urllib.parse.quote(linkTarget,safe=':/')
+            
         if len(linkTarget) > 0:
             fHtml.write('<a href="{}">'.format(linkTarget))
             # imageStyle.append(';border:0px;')
