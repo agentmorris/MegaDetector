@@ -46,9 +46,9 @@ def resize_coco_dataset(input_folder,input_filename,
    
     right_edge_quantization_threshold is an off-by-default hack to adjust large datasets where 
     boxes that really should be running off the right side of the image only extend like 99%
-    of the way there, due to what appears to be a slight bias inherent to MD.  If a box extends
-    within [right_edge_quantization_threshold] (a small number, from 0 to 1, but probably around 
-    0.02) of the right edge of the image, it will be extended to the far right edge.
+    of the way there.  If a box extends within [right_edge_quantization_threshold] (a small number, 
+    from 0 to 1, but probably around 0.02) of the right edge of the image, it will be extended to the 
+    far right edge.
     
     Returns the COCO database with resized images.
     """

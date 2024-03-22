@@ -135,7 +135,7 @@ annotation
 }
 ```
 
-Note that the coordinates in the `bbox` field are absolute here, different from those in the [MegaDetector results format](api/batch_processing/README.md#megadetector-batch-output-format), which are normalized.
+Note that the coordinates in the `bbox` field are absolute here, different from those in the [MegaDetector results format](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/README.md#megadetector-batch-output-format), which are normalized.
 
 Fields listed as "optional" are intended to standardize commonly-used parameters (such as date/time information).  When present, fields should follow the above conventions.  Additional fields may be present for specific data sets.
 

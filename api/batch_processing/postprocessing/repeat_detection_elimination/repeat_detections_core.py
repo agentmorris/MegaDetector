@@ -181,7 +181,7 @@ class RepeatDetectionOptions:
     
     # Optionally show a grid that includes a sample image for the detection, plus
     # the top N additional detections
-    bRenderDetectionTiles = False
+    bRenderDetectionTiles = True
     
     # If this is None, we'll render at the width of the original image
     detectionTilesPrimaryImageWidth = None
@@ -193,7 +193,7 @@ class RepeatDetectionOptions:
     # of luck.
     detectionTilesCroppedGridWidth = 0.6
     detectionTilesPrimaryImageLocation='right'
-    detectionTilesMaxCrops = None
+    detectionTilesMaxCrops = 250
     
     # If bRenderOtherDetections is True, what color should we use to render the
     # (hopefully pretty subtle) non-target detections?

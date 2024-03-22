@@ -29,15 +29,21 @@ default_confidence_threshold = 0.15
 
 #%% Functions
 
-def get_labelme_dict_for_image(im,image_base_name,category_id_to_name,info=None,confidence_threshold=None):
+def get_labelme_dict_for_image(im,image_base_name,category_id_to_name,
+                               info=None,confidence_threshold=None):
     """
     For the given image struct in MD results format, reformat the detections into
     labelme format.  Returns a dict.
+    
+    'height' and 'width' are required in [im].
+    
+    image_base_name is written directly to the 'imagePath' field in the output; it should generally be
+    os.path.basename(your_image_file).
     """
     
     if confidence_threshold is None:        
         confidence_threshold = -1.0
-        
+     
     output_dict = {}
     if info is not None:
         output_dict['detector_info'] = info
@@ -50,6 +56,7 @@ def get_labelme_dict_for_image(im,image_base_name,category_id_to_name,info=None,
     output_dict['imageData'] = None
     output_dict['detections'] = im['detections']
     
+    # det = im['detections'][1]
     for det in im['detections']:
         
         if det['conf'] < confidence_threshold:
@@ -80,16 +87,23 @@ def get_labelme_dict_for_image(im,image_base_name,category_id_to_name,info=None,
 
 
 def md_to_labelme(results_file,image_base,confidence_threshold=None,
-                  overwrite=False):
+                  overwrite=False,extension_prefix=''):
     """
     For all the images in [results_file], write a .json file in labelme format alongside the
     corresponding relative path within image_base.
+    
+    If non-empty, "extension_prefix" will be inserted before the .json extension.
     """
     
+    if extension_prefix is None:
+        extension_prefix = ''
+        
     # Load MD results
     with open(results_file,'r') as f:
         md_results = json.load(f)
         
+    print('Reading image sizes...')
+    
     # Read image sizes
     #
     # TODO: parallelize this loop
@@ -100,6 +114,12 @@ def md_to_labelme(results_file,image_base,confidence_threshold=None,
         # Make sure this file exists
         im_full_path = os.path.join(image_base,im['file'])
         assert os.path.isfile(im_full_path), 'Image file {} does not exist'.format(im_full_path)
+        
+        json_path = os.path.splitext(im_full_path)[0] + extension_prefix + '.json'
+        
+        # Don't even bother reading sizes for files we're not going to generate
+        if (not overwrite) and (os.path.isfile(json_path)):
+            continue
         
         # Load w/h information if necessary
         if 'height' not in im or 'width' not in im:
@@ -118,6 +138,8 @@ def md_to_labelme(results_file,image_base,confidence_threshold=None,
         
     # ...for each image
     
+    print('\nGenerating labelme files...')
+    
     # Write output
     for im in tqdm(md_results['images']):
         
@@ -128,7 +150,7 @@ def md_to_labelme(results_file,image_base,confidence_threshold=None,
             continue
             
         im_full_path = os.path.join(image_base,im['file'])
-        json_path = os.path.splitext(im_full_path)[0] + '.json'
+        json_path = os.path.splitext(im_full_path)[0] + extension_prefix + '.json'
         
         if (not overwrite) and (os.path.isfile(json_path)):
             print('Skipping existing file {}'.format(json_path))

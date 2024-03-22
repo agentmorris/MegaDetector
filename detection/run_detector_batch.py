@@ -245,7 +245,8 @@ def process_images(im_files, detector, confidence_threshold, use_image_queue=Fal
                    quiet=False, image_size=None, checkpoint_queue=None, include_image_size=False,
                    include_image_timestamp=False, include_exif_data=False):
     """
-    Runs MegaDetector over a list of image files.
+    Runs MegaDetector over a list of image files.  As of 3/2024, this entry point is used when the
+    image queue is enabled, but not in the standard inference path (which loops over process_image()).
 
     Args
     - im_files: list of str, paths to image files
@@ -269,7 +270,7 @@ def process_images(im_files, detector, confidence_threshold, use_image_queue=Fal
                                       include_image_size=include_image_size, 
                                       include_image_timestamp=include_image_timestamp,
                                       include_exif_data=include_exif_data)
-    else:
+    else:            
         results = []
         for im_file in im_files:
             result = process_image(im_file, detector, confidence_threshold,

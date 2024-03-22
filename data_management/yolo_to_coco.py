@@ -59,10 +59,10 @@ def yolo_to_coco(input_folder,
     # Read class names
     
     ext = os.path.splitext(class_name_file)[1][1:]
-    assert ext in ('yml','txt','yaml'), 'Unrecognized class name file type {}'.format(
+    assert ext in ('yml','txt','yaml','data'), 'Unrecognized class name file type {}'.format(
         class_name_file)
     
-    if ext == 'txt':
+    if ext in ('txt','data'):
         
         with open(class_name_file,'r') as f:
             lines = f.readlines()

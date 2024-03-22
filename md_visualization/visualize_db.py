@@ -90,6 +90,11 @@ class DbVizOptions:
     # Should we show absolute (vs. relative) paths for each image?
     show_full_paths = False
     
+    # Set to False to skip existing images
+    force_rendering = True
+    
+    verbose = False
+    
 
 #%% Helper functions
 
@@ -341,7 +346,13 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         bboxes = rendering_info['bboxes']
         bboxClasses = rendering_info['boxClasses']
         output_file_name = rendering_info['output_file_name']
+        output_full_path = os.path.join(output_dir, 'rendered_images', output_file_name)
         
+        if (os.path.isfile(output_full_path)) and (not options.force_rendering):
+            if options.verbose:
+                print('Skipping existing image {}'.format(output_full_path))
+            return True
+            
         if not img_path.startswith('http'):
             if not os.path.exists(img_path):
                 print('Image {} cannot be found'.format(img_path))
@@ -356,7 +367,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
                 image = vis_utils.resize_image(original_image, options.viz_size[0],
                                                options.viz_size[1])
         except Exception as e:
-            print('Image {} failed to open. Error: {}'.format(img_path, e))
+            print('Image {} failed to open, error: {}'.format(img_path, e))
             return False
             
         vis_utils.render_db_bounding_boxes(boxes=bboxes, classes=bboxClasses,
@@ -365,7 +376,8 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
                                            thickness=options.box_thickness,
                                            expansion=options.box_expansion)
         
-        image.save(os.path.join(output_dir, 'rendered_images', output_file_name))
+        image.save(output_full_path)
+                
         return True
     
     # ...def render_image_info
