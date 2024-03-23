@@ -492,6 +492,33 @@ def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compressl
     return output_fn
 
 
+def zip_files_into_single_zipfile(input_files, output_fn, arc_name_base,
+                                  overwrite=False, verbose=False, compresslevel=9):
+    """
+    Zip all the files in [input_files] into [output_fn].  Archive names are relative to 
+    arc_name_base.
+    """
+    
+    if not overwrite:
+        if os.path.isfile(output_fn):
+            print('Zip file {} exists, skipping'.format(output_fn))
+            return            
+        
+    if verbose:
+        print('Zipping {} files to {} (compression level {})'.format(
+            len(input_files),output_fn,compresslevel))
+        
+    with ZipFile(output_fn,'w',zipfile.ZIP_DEFLATED) as zipf:
+        for input_fn_abs in tqdm(input_files,disable=(not verbose)):
+            input_fn_relative = os.path.relpath(input_fn_abs,arc_name_base)
+            zipf.write(input_fn_abs,
+                       arcname=input_fn_relative,
+                       compresslevel=compresslevel,
+                       compress_type=zipfile.ZIP_DEFLATED)
+
+    return output_fn
+    
+    
 def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, compresslevel=9):
     """
     Recursively zip everything in [input_folder] into a single zipfile, storing outputs as relative 
@@ -509,7 +536,8 @@ def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, com
             return            
         
     if verbose:
-        print('Zipping {} to {}'.format(input_folder,output_fn))
+        print('Zipping {} to {} (compression level {})'.format(
+            input_folder,output_fn,compresslevel))
     
     relative_filenames = recursive_file_list(input_folder,return_relative_paths=True)
     

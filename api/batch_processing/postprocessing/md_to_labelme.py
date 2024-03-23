@@ -20,6 +20,10 @@ import json
 
 from tqdm import tqdm
 
+from multiprocessing.pool import Pool
+from multiprocessing.pool import ThreadPool
+from functools import partial
+
 from md_visualization.visualization_utils import open_image
 from md_utils.ct_utils import truncate_float
 
@@ -86,8 +90,38 @@ def get_labelme_dict_for_image(im,image_base_name,category_id_to_name,
 # ...def get_labelme_dict_for_image()
 
 
+def _write_output_for_image(im,image_base,extension_prefix,info,
+                            confidence_threshold,category_id_to_name,overwrite):
+    
+    if 'failure' in im and im['failure'] is not None:
+        assert 'detections' not in im
+        print('Warning: skipping labelme file generation for failed image {}'.format(
+            im['file']))
+        return
+        
+    im_full_path = os.path.join(image_base,im['file'])
+    json_path = os.path.splitext(im_full_path)[0] + extension_prefix + '.json'
+    
+    if (not overwrite) and (os.path.isfile(json_path)):
+        print('Skipping existing file {}'.format(json_path))
+        return
+
+    output_dict = get_labelme_dict_for_image(im,
+                                             image_base_name=os.path.basename(im_full_path),
+                                             category_id_to_name=category_id_to_name,
+                                             info=info,
+                                             confidence_threshold=confidence_threshold)
+            
+    with open(json_path,'w') as f:
+        json.dump(output_dict,f,indent=1)
+    
+# ...def write_output_for_image(...)
+
+
+
 def md_to_labelme(results_file,image_base,confidence_threshold=None,
-                  overwrite=False,extension_prefix=''):
+                  overwrite=False,extension_prefix='',n_workers=1,
+                  use_threads=False,bypass_image_size_read=False):
     """
     For all the images in [results_file], write a .json file in labelme format alongside the
     corresponding relative path within image_base.
@@ -98,72 +132,78 @@ def md_to_labelme(results_file,image_base,confidence_threshold=None,
     if extension_prefix is None:
         extension_prefix = ''
         
-    # Load MD results
-    with open(results_file,'r') as f:
-        md_results = json.load(f)
+    # Load MD results if necessary
+    if isinstance(results_file,dict):
+        md_results = results_file
+    else:
+        with open(results_file,'r') as f:
+            md_results = json.load(f)
         
-    print('Reading image sizes...')
+    # Read image sizes if necessary            
+    if bypass_image_size_read:     
+        
+        print('Bypassing image size read')
+        
+    else:
     
-    # Read image sizes
-    #
-    # TODO: parallelize this loop
-    #
-    # im = md_results['images'][0]
-    for im in tqdm(md_results['images']):
-        
-        # Make sure this file exists
-        im_full_path = os.path.join(image_base,im['file'])
-        assert os.path.isfile(im_full_path), 'Image file {} does not exist'.format(im_full_path)
-        
-        json_path = os.path.splitext(im_full_path)[0] + extension_prefix + '.json'
-        
-        # Don't even bother reading sizes for files we're not going to generate
-        if (not overwrite) and (os.path.isfile(json_path)):
-            continue
-        
-        # Load w/h information if necessary
-        if 'height' not in im or 'width' not in im:
+        # TODO: parallelize this loop
+    
+        print('Reading image sizes...')
+                
+        # im = md_results['images'][0]
+        for im in tqdm(md_results['images']):
             
-            try:
-                pil_im = open_image(im_full_path)
-                im['width'] = pil_im.width
-                im['height'] = pil_im.height
-            except Exception:
-                print('Warning: cannot open image {}, treating as a failure during inference'.format(
-                    im_full_path))
-                if 'failure' not in im:
-                    im['failure'] = 'Failure image access'        
-
-        # ...if we need to read w/h information
+            # Make sure this file exists
+            im_full_path = os.path.join(image_base,im['file'])
+            assert os.path.isfile(im_full_path), 'Image file {} does not exist'.format(im_full_path)
+            
+            json_path = os.path.splitext(im_full_path)[0] + extension_prefix + '.json'
+            
+            # Don't even bother reading sizes for files we're not going to generate
+            if (not overwrite) and (os.path.isfile(json_path)):
+                continue
+            
+            # Load w/h information if necessary
+            if 'height' not in im or 'width' not in im:
+                
+                try:
+                    pil_im = open_image(im_full_path)
+                    im['width'] = pil_im.width
+                    im['height'] = pil_im.height
+                except Exception:
+                    print('Warning: cannot open image {}, treating as a failure during inference'.format(
+                        im_full_path))
+                    if 'failure' not in im:
+                        im['failure'] = 'Failure image access'        
+    
+            # ...if we need to read w/h information
+            
+        # ...for each image
         
-    # ...for each image
+    # ...if we're not bypassing image size read        
     
     print('\nGenerating labelme files...')
-    
+        
     # Write output
-    for im in tqdm(md_results['images']):
-        
-        if 'failure' in im and im['failure'] is not None:
-            assert 'detections' not in im
-            print('Warning: skipping labelme file generation for failed image {}'.format(
-                im['file']))
-            continue
-            
-        im_full_path = os.path.join(image_base,im['file'])
-        json_path = os.path.splitext(im_full_path)[0] + extension_prefix + '.json'
-        
-        if (not overwrite) and (os.path.isfile(json_path)):
-            print('Skipping existing file {}'.format(json_path))
-            continue
-    
-        output_dict = get_labelme_dict_for_image(im,
-                                                 image_base_name=os.path.basename(im_full_path),
-                                                 category_id_to_name=md_results['detection_categories'],
-                                                 info=md_results['info'],
-                                                 confidence_threshold=confidence_threshold)
-                
-        with open(json_path,'w') as f:
-            json.dump(output_dict,f,indent=1)
+    if n_workers <= 1:
+        for im in tqdm(md_results['images']):    
+            _write_output_for_image(im,image_base,extension_prefix,md_results['info'],confidence_threshold,
+                                   md_results['detection_categories'],overwrite)
+    else:
+        if use_threads:
+            print('Starting parallel thread pool with {} workers'.format(n_workers))
+            pool = ThreadPool(n_workers)
+        else:
+            print('Starting parallel process pool with {} workers'.format(n_workers))
+            pool = Pool(n_workers)
+        _ = list(tqdm(pool.imap(
+                partial(_write_output_for_image,
+                        image_base=image_base,extension_prefix=extension_prefix,
+                        info=md_results['info'],confidence_threshold=confidence_threshold,
+                        category_id_to_name=md_results['detection_categories'],
+                        overwrite=overwrite),
+                 md_results['images']),
+                 total=len(md_results['images'])))
             
     # ...for each image
     

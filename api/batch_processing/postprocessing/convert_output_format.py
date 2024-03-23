@@ -4,8 +4,8 @@
 #
 # Converts between file formats output by our batch processing API.  Currently
 # supports json <--> csv conversion, but this should be the landing place for any
-# conversion - including between future .json versions - that we support in the 
-# future.
+# conversion - including between hypothetical alternative .json versions - that we support 
+# in the future.
 #
 ########
 
@@ -30,9 +30,12 @@ CONF_DIGITS = 3
 #%% Conversion functions
 
 def convert_json_to_csv(input_path,output_path=None,min_confidence=None,
-                        omit_bounding_boxes=False,output_encoding=None):
+                        omit_bounding_boxes=False,output_encoding=None,
+                        overwrite=True):
     """
     Convert .json to .csv
+    
+    If output_path is None, will convert x.json to x.csv.
     
     TODO: this function should obviously be using Pandas or some other sensible structured
     representation of tabular data.  Even a list of dicts.  This implementation is quite
@@ -42,6 +45,10 @@ def convert_json_to_csv(input_path,output_path=None,min_confidence=None,
     if output_path is None:
         output_path = os.path.splitext(input_path)[0]+'.csv'
         
+    if os.path.isfile(output_path) and (not overwrite):
+        print('File {} exists, skipping json --> csv conversion'.format(output_path))
+        return
+    
     print('Loading json results from {}...'.format(input_path))
     json_output = json.load(open(input_path))
 
@@ -193,12 +200,21 @@ def convert_json_to_csv(input_path,output_path=None,min_confidence=None,
         writer.writerow(header)
         writer.writerows(rows)
 
+# ...def convert_json_to_csv(...)
+
     
-def convert_csv_to_json(input_path,output_path=None):
+def convert_csv_to_json(input_path,output_path=None,overwrite=True):
+    """
+    Convert .csv to .json.  If output_path is None, will convert x.csv to x.json.
+    """
     
     if output_path is None:
         output_path = os.path.splitext(input_path)[0]+'.json'
         
+    if os.path.isfile(output_path) and (not overwrite):
+        print('File {} exists, skipping csv --> json conversion'.format(output_path))
+        return
+            
     # Format spec:
     #
     # https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing
@@ -259,6 +275,8 @@ def convert_csv_to_json(input_path,output_path=None):
     json_out['images'] = images
     
     json.dump(json_out,open(output_path,'w'),indent=1)
+    
+# ...def convert_csv_to_json(...)
 
 
 #%% Interactive driver
