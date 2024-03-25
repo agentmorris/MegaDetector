@@ -17,6 +17,7 @@ import platform
 import posixpath
 import string
 import json
+import shutil
 import unicodedata
 import zipfile
 import webbrowser
@@ -464,6 +465,43 @@ def read_list_from_file(filename: str) -> List[str]:
     for s in file_list:
         assert isinstance(s, str)
     return file_list
+
+
+def _copy_file(input_output_tuple,overwrite=True,verbose=False):
+    assert len(input_output_tuple) == 2
+    source_fn = input_output_tuple[0]
+    target_fn = input_output_tuple[1]
+    if (not overwrite) and (os.path.isfile(target_fn)):
+        if verbose:
+            print('Skipping existing file {}'.format(target_fn))
+        return
+    shutil.copyfile(source_fn,target_fn)
+    
+
+def parallel_copy_files(input_file_to_output_file, max_workers=16, 
+                        use_threads=True, overwrite=False, verbose=False):
+    """
+    Copy files from source to target according to the dict input_file_to_output_file.
+    """
+
+    n_workers = min(max_workers,len(input_file_to_output_file))
+    
+    # Package the dictionary as a set of 2-tuples
+    input_output_tuples = []
+    for input_fn in input_file_to_output_file:
+        input_output_tuples.append((input_fn,input_file_to_output_file[input_fn]))
+
+    if use_threads:
+        pool = ThreadPool(n_workers)
+    else:
+        pool = Pool(n_workers)
+
+    with tqdm(total=len(input_output_tuples)) as pbar:
+        for i,_ in enumerate(pool.imap_unordered(partial(_copy_file,overwrite=overwrite,verbose=verbose),
+                                                 input_output_tuples)):
+            pbar.update()
+
+# ...def parallel_copy_files(...)
 
 
 #%% Zip functions

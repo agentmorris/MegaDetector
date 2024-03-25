@@ -361,6 +361,15 @@ def split_list_into_n_chunks(L, n, chunk_strategy='greedy'):
         raise ValueError('Invalid chunk strategy: {}'.format(chunk_strategy))
 
 
+def sort_dictionary_by_key(d,reverse=False):
+    """
+    Sorts the dictionary [d] by key.
+    """
+    
+    d = dict(sorted(d.items(),reverse=reverse))
+    return d
+    
+
 def sort_dictionary_by_value(d,sort_values=None,reverse=False):
     """
     Sorts the dictionary [d] by value.  If sort_values is None, uses d.values(),
