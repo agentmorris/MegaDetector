@@ -86,6 +86,8 @@ from api.batch_processing.postprocessing.postprocess_batch_results import (
 from detection.run_detector import get_detector_version_from_filename
 from md_utils.ct_utils import image_file_to_camera_folder
 
+## Inference options
+
 # To specify a non-default confidence threshold for including detections in the .json file
 json_threshold = None
 
@@ -108,6 +110,11 @@ quiet_mode = True
 # When using augmented inference, if you leave this at "None", run_inference_with_yolov5_val.py
 # will use its default size, which is 1280 * 1.3, which is almost always what you want.
 image_size = None
+
+# Should we include image size, timestamp, and/or EXIF data in MD output?
+include_image_size = False
+include_image_timestamp = False
+include_exif_data = False
 
 # Only relevant when running on CPU
 ncores = 1
@@ -494,7 +501,14 @@ for i_task,task in enumerate(task_info):
         
         overwrite_handling_string = '--overwrite_handling {}'.format(overwrite_handling)        
         cmd = f'{cuda_string} python run_detector_batch.py "{model_file}" "{chunk_file}" "{output_fn}" {checkpoint_frequency_string} {checkpoint_path_string} {use_image_queue_string} {ncores_string} {quiet_string} {image_size_string} {confidence_threshold_string} {overwrite_handling_string}'
-                
+        
+        if include_image_size:
+            cmd += ' --include_image_size'
+        if include_image_timestamp:
+            cmd += ' --include_image_timestamp'
+        if include_exif_data:
+            cmd += ' --include_exif_data'
+        
     cmd_file = os.path.join(filename_base,'run_chunk_{}_gpu_{}{}'.format(str(i_task).zfill(3),
                             str(gpu_number).zfill(2),script_extension))
     

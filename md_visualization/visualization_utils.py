@@ -129,6 +129,8 @@ def open_image(input_file: Union[str, BytesIO], ignore_exif_rotation=False) -> I
 
     return image
 
+# ...def open_image(...)
+
 
 def exif_preserving_save(pil_image,output_file,quality='keep',default_quality=85,verbose=False):
     """
@@ -180,7 +182,9 @@ def exif_preserving_save(pil_image,output_file,quality='keep',default_quality=85
         else:
             pil_image.save(output_file)
             
-            
+# ...def exif_preserving_save(...)
+
+
 def load_image(input_file: Union[str, BytesIO], ignore_exif_rotation=False) -> Image:
     """
     Loads the image at input_file as a PIL Image into memory.
@@ -287,6 +291,8 @@ def resize_image(image, target_width, target_height=-1, output_file=None,
         exif_preserving_save(resized_image,output_file,quality=quality,verbose=verbose)
         
     return resized_image
+
+# ...def resize_image(...)
 
 
 DEFAULT_COLORS = [
@@ -545,6 +551,8 @@ def render_detection_bounding_boxes(detections, image,
                                  expansion=expansion, colormap=colormap, textalign=textalign,
                                  label_font_size=label_font_size)
 
+# ...render_detection_bounding_boxes(...)
+
 
 def draw_bounding_boxes_on_image(image,
                                  boxes,
@@ -590,6 +598,8 @@ def draw_bounding_boxes_on_image(image,
                                        colormap=colormap,
                                        textalign=textalign,
                                        label_font_size=label_font_size)
+
+# ...draw_bounding_boxes_on_image(...)
 
 
 def draw_bounding_box_on_image(image,
@@ -745,6 +755,8 @@ def draw_bounding_box_on_image(image,
 
         text_bottom -= (text_height + 2 * margin)
 
+# ...def draw_bounding_box_on_image(...)
+
 
 def render_iMerit_boxes(boxes, classes, image,
                         label_map=annotation_constants.annotation_bbox_category_id_to_name):
@@ -818,6 +830,8 @@ def render_megadb_bounding_boxes(boxes_info, image):
     display_boxes = np.array(display_boxes)
     draw_bounding_boxes_on_image(image, display_boxes, classes, display_strs=display_strs)
 
+# ...def render_iMerit_boxes(...)
+
 
 def render_db_bounding_boxes(boxes, classes, image, original_size=None,
                              label_map=None, thickness=DEFAULT_BOX_THICKNESS, expansion=0):
@@ -861,6 +875,8 @@ def render_db_bounding_boxes(boxes, classes, image, original_size=None,
     display_boxes = np.array(display_boxes)
     draw_bounding_boxes_on_image(image, display_boxes, classes, display_strs=display_strs,
                                  thickness=thickness, expansion=expansion)
+
+# ...def render_db_bounding_boxes(...)
 
 
 def draw_bounding_boxes_on_file(input_file, output_file, detections, confidence_threshold=0.0,
@@ -933,6 +949,9 @@ def draw_db_boxes_on_file(input_file, output_file, boxes, classes=None,
     image.save(output_file)
     
 
+# ...def draw_bounding_boxes_on_file(...)
+
+
 def gray_scale_fraction(image,crop_size=(0.1,0.1)):
     """
     Returns the fraction of the pixels in [image] that appear to be grayscale (R==G==B), 
@@ -1004,9 +1023,16 @@ def gray_scale_fraction(image,crop_size=(0.1,0.1)):
                     n_gray_pixels += 1            
 
 
+# ...def gray_scale_fraction(...)
+
+
 def _resize_relative_image(fn_relative,
                           input_folder,output_folder,
                           target_width,target_height,no_enlarge_width,verbose,quality):
+    """
+    Internal function for resizing an image from one folder to another,
+    maintaining relative path.
+    """
     
     input_fn_abs = os.path.join(input_folder,fn_relative)
     output_fn_abs = os.path.join(output_folder,fn_relative)
@@ -1025,6 +1051,99 @@ def _resize_relative_image(fn_relative,
         error = str(e)
         
     return {'fn_relative':fn_relative,'status':status,'error':error}
+
+# ...def _resize_relative_image(...)
+
+
+def _resize_absolute_image(input_output_files,
+                          target_width,target_height,no_enlarge_width,verbose,quality):
+    
+    """
+    Internal wrappter for resize_image used in the context of a batch resize operation.
+    """
+    
+    input_fn_abs = input_output_files[0]
+    output_fn_abs = input_output_files[1]
+    os.makedirs(os.path.dirname(output_fn_abs),exist_ok=True)
+    try:
+        _ = resize_image(input_fn_abs, 
+                         output_file=output_fn_abs, 
+                         target_width=target_width, target_height=target_height, 
+                         no_enlarge_width=no_enlarge_width, verbose=verbose, quality=quality)
+        status = 'success'
+        error = None
+    except Exception as e:
+        if verbose:
+            print('Error resizing {}: {}'.format(input_fn_abs,str(e)))
+        status = 'error'
+        error = str(e)
+        
+    return {'input_fn':input_fn_abs,'output_fn':output_fn_abs,status:'status',
+            'error':error}
+
+# ..._resize_absolute_image(...)
+
+
+def resize_images(input_file_to_output_file,
+                  target_width=-1, target_height=-1,
+                  no_enlarge_width=False, verbose=False, quality='keep',
+                  pool_type='process', n_workers=10):
+    """
+    Resize all images the dictionary [input_file_to_output_file].
+    
+    Defaults to parallelizing across processes.
+    
+    See resize_image() for parameter information.
+    
+    TODO: This is a little more redundant with resize_image_folder than I would like;
+    refactor resize_image_folder to call resize_images.  Not doing that yet because
+    at the time I'm writing this comment, a lot of code depends on resize_image_folder 
+    and I don't want to rock the boat yet.
+    """
+
+    
+    assert pool_type in ('process','thread'), 'Illegal pool type {}'.format(pool_type)
+    
+    input_output_file_pairs = []
+    
+    # Reformat input files as (input,output) tuples
+    for input_fn in input_file_to_output_file:
+        input_output_file_pairs.append((input_fn,input_file_to_output_file[input_fn]))
+    
+    if n_workers == 1:    
+        
+        results = []
+        for i_o_file_pair in tqdm(input_output_file_pairs):
+            results.append(_resize_absolute_image(i_o_file_pair,
+                            target_width=target_width,
+                            target_height=target_height,
+                            no_enlarge_width=no_enlarge_width,
+                            verbose=verbose,
+                            quality=quality))
+
+    else:
+        
+        if pool_type == 'thread':
+            pool = ThreadPool(n_workers); poolstring = 'threads'                
+        else:
+            assert pool_type == 'process'
+            pool = Pool(n_workers); poolstring = 'processes'
+        
+        if verbose:
+            print('Starting resizing pool with {} {}'.format(n_workers,poolstring))
+        
+        p = partial(_resize_absolute_image,
+                target_width=target_width,
+                target_height=target_height,
+                no_enlarge_width=no_enlarge_width,
+                verbose=verbose,
+                quality=quality)
+        
+        results = list(tqdm(pool.imap(p, input_output_file_pairs),total=len(input_output_file_pairs)))
+
+    return results
+
+# ...def resize_images(...)
 
 
 def resize_image_folder(input_folder, output_folder=None,
@@ -1092,6 +1211,8 @@ def resize_image_folder(input_folder, output_folder=None,
         results = list(tqdm(pool.imap(p, image_files_relative),total=len(image_files_relative)))
 
     return results
+
+# ...def resize_image_folder(...)
 
 
 #%% Test drivers
