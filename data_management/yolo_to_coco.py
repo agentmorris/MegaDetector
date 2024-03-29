@@ -298,14 +298,18 @@ def yolo_to_coco(input_folder,
             images.append(im)
             for ann in annotations_this_image:
                 annotations.append(ann)
+                
         # If this image failed to read
         elif im['error'] is not None:
+            
             if error_image_handling == 'skip':
                 pass
             elif error_image_handling == 'no_annotations':
                 images.append(im)            
+                
         # If this image read successfully, but there are no annotations
         else:
+            
             if empty_image_handling == 'skip':
                 pass
             elif empty_image_handling == 'no_annotations':

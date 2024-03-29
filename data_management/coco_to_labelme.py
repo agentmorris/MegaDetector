@@ -80,7 +80,7 @@ def get_labelme_dict_for_image_from_coco_record(im,annotations,categories,info=N
 # ...def get_labelme_dict_for_image()
 
 
-def coco_to_labelme(coco_data,image_base,overwrite=False,bypass_image_size_check=False):
+def coco_to_labelme(coco_data,image_base,overwrite=False,bypass_image_size_check=False,verbose=False):
     """
     For all the images in [coco_data] (a dict or a filename), write a .json file in 
     labelme format alongside the corresponding relative path within image_base.    
@@ -139,6 +139,10 @@ def coco_to_labelme(coco_data,image_base,overwrite=False,bypass_image_size_check
     for ann in coco_data['annotations']:
         image_id_to_annotations[ann['image_id']].append(ann)
         
+    n_json_files_written = 0
+    n_json_files_error = 0
+    n_json_files_exist = 0
+    
     # Write output
     for im in tqdm(coco_data['images']):
         
@@ -148,9 +152,11 @@ def coco_to_labelme(coco_data,image_base,overwrite=False,bypass_image_size_check
         # Errors are represented differently depending on the source
         for error_string in ('failure','error'):
             if (error_string in im) and (im[error_string] is not None):
-                print('Warning: skipping labelme file generation for failed image {}'.format(
-                    im['file_name']))
+                if verbose:
+                    print('Warning: skipping labelme file generation for failed image {}'.format(
+                        im['file_name']))
                 skip_image = True
+                n_json_files_error += 1
                 break
         if skip_image:
             continue
@@ -159,7 +165,9 @@ def coco_to_labelme(coco_data,image_base,overwrite=False,bypass_image_size_check
         json_path = os.path.splitext(im_full_path)[0] + '.json'
         
         if (not overwrite) and (os.path.isfile(json_path)):
-            print('Skipping existing file {}'.format(json_path))
+            if verbose:
+                print('Skipping existing file {}'.format(json_path))
+            n_json_files_exist += 1
             continue
     
         annotations_this_image = image_id_to_annotations[im['id']]
@@ -167,13 +175,17 @@ def coco_to_labelme(coco_data,image_base,overwrite=False,bypass_image_size_check
                                                                   annotations_this_image,
                                                                   coco_data['categories'],
                                                                   info=None)
-                
+        
+        n_json_files_written += 1
         with open(json_path,'w') as f:
             json.dump(output_dict,f,indent=1)
             
     # ...for each image
     
-# ...def md_to_labelme()
+    print('\nWrote {} .json files (skipped {} for errors, {} because they exist'.format(
+        n_json_files_written,n_json_files_error,n_json_files_exist))
+    
+# ...def coco_to_labelme()
 
 
 #%% Interactive driver
