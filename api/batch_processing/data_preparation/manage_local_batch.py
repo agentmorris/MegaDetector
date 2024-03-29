@@ -275,6 +275,10 @@ filename_base = os.path.join(base_output_folder_name, base_task_name)
 combined_api_output_folder = os.path.join(filename_base, 'combined_api_outputs')
 postprocessing_output_folder = os.path.join(filename_base, 'preview')
 
+combined_api_output_file = os.path.join(
+    combined_api_output_folder,
+    '{}_detections.json'.format(base_task_name))
+
 os.makedirs(filename_base, exist_ok=True)
 os.makedirs(combined_api_output_folder, exist_ok=True)
 os.makedirs(postprocessing_output_folder, exist_ok=True)
@@ -761,10 +765,6 @@ for im in combined_results['images']:
     else:
         im['file'] = im['file'].replace(input_path + '/','',1)
     
-combined_api_output_file = os.path.join(
-    combined_api_output_folder,
-    '{}_detections.json'.format(base_task_name))
-
 with open(combined_api_output_file,'w') as f:
     json.dump(combined_results,f,indent=1)
 

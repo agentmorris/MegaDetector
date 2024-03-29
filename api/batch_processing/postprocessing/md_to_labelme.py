@@ -91,19 +91,22 @@ def get_labelme_dict_for_image(im,image_base_name,category_id_to_name,
 
 
 def _write_output_for_image(im,image_base,extension_prefix,info,
-                            confidence_threshold,category_id_to_name,overwrite):
+                            confidence_threshold,category_id_to_name,overwrite,
+                            verbose=False):
     
     if 'failure' in im and im['failure'] is not None:
-        assert 'detections' not in im
-        print('Warning: skipping labelme file generation for failed image {}'.format(
-            im['file']))
+        assert 'detections' not in im or im['detections'] is None
+        if verbose:
+            print('Skipping labelme file generation for failed image {}'.format(
+                im['file']))
         return
         
     im_full_path = os.path.join(image_base,im['file'])
     json_path = os.path.splitext(im_full_path)[0] + extension_prefix + '.json'
     
     if (not overwrite) and (os.path.isfile(json_path)):
-        print('Skipping existing file {}'.format(json_path))
+        if verbose:
+            print('Skipping existing file {}'.format(json_path))
         return
 
     output_dict = get_labelme_dict_for_image(im,
@@ -121,7 +124,8 @@ def _write_output_for_image(im,image_base,extension_prefix,info,
 
 def md_to_labelme(results_file,image_base,confidence_threshold=None,
                   overwrite=False,extension_prefix='',n_workers=1,
-                  use_threads=False,bypass_image_size_read=False):
+                  use_threads=False,bypass_image_size_read=False,
+                  verbose=False):
     """
     For all the images in [results_file], write a .json file in labelme format alongside the
     corresponding relative path within image_base.
@@ -136,6 +140,7 @@ def md_to_labelme(results_file,image_base,confidence_threshold=None,
     if isinstance(results_file,dict):
         md_results = results_file
     else:
+        print('Loading MD results...')
         with open(results_file,'r') as f:
             md_results = json.load(f)
         
@@ -188,7 +193,7 @@ def md_to_labelme(results_file,image_base,confidence_threshold=None,
     if n_workers <= 1:
         for im in tqdm(md_results['images']):    
             _write_output_for_image(im,image_base,extension_prefix,md_results['info'],confidence_threshold,
-                                   md_results['detection_categories'],overwrite)
+                                   md_results['detection_categories'],overwrite,verbose)
     else:
         if use_threads:
             print('Starting parallel thread pool with {} workers'.format(n_workers))
@@ -201,7 +206,7 @@ def md_to_labelme(results_file,image_base,confidence_threshold=None,
                         image_base=image_base,extension_prefix=extension_prefix,
                         info=md_results['info'],confidence_threshold=confidence_threshold,
                         category_id_to_name=md_results['detection_categories'],
-                        overwrite=overwrite),
+                        overwrite=overwrite,verbose=verbose),
                  md_results['images']),
                  total=len(md_results['images'])))
             

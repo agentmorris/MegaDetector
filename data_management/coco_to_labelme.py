@@ -80,7 +80,7 @@ def get_labelme_dict_for_image_from_coco_record(im,annotations,categories,info=N
 # ...def get_labelme_dict_for_image()
 
 
-def coco_to_labelme(coco_data,image_base,overwrite=False):
+def coco_to_labelme(coco_data,image_base,overwrite=False,bypass_image_size_check=False):
     """
     For all the images in [coco_data] (a dict or a filename), write a .json file in 
     labelme format alongside the corresponding relative path within image_base.    
@@ -91,33 +91,49 @@ def coco_to_labelme(coco_data,image_base,overwrite=False):
         with open(coco_data,'r') as f:
             coco_data = json.load(f)
     assert isinstance(coco_data,dict)
+     
+    
+    ## Read image sizes if necessary
+    
+    if bypass_image_size_check:
         
-    # Read image sizes if necessary
-    #
-    # TODO: parallelize this loop
-    #
-    # im = coco_data['images'][0]
-    for im in tqdm(coco_data['images']):
+        print('Bypassing size check')
         
-        # Make sure this file exists
-        im_full_path = os.path.join(image_base,im['file_name'])
-        assert os.path.isfile(im_full_path), 'Image file {} does not exist'.format(im_full_path)
+    else:
+    
+        # TODO: parallelize this loop
         
-        # Load w/h information if necessary
-        if 'height' not in im or 'width' not in im:
+        print('Reading/validating image sizes...')
+        
+        # im = coco_data['images'][0]
+        for im in tqdm(coco_data['images']):
             
-            try:
-                pil_im = open_image(im_full_path)
-                im['width'] = pil_im.width
-                im['height'] = pil_im.height
-            except Exception:
-                print('Warning: cannot open image {}'.format(im_full_path))
-                if 'failure' not in im:
-                    im['failure'] = 'Failure image access'
-
-        # ...if we need to read w/h information
-        
-    # ...for each image
+            # Make sure this file exists
+            im_full_path = os.path.join(image_base,im['file_name'])
+            assert os.path.isfile(im_full_path), 'Image file {} does not exist'.format(im_full_path)
+            
+            # Load w/h information if necessary
+            if 'height' not in im or 'width' not in im:
+                
+                try:
+                    pil_im = open_image(im_full_path)
+                    im['width'] = pil_im.width
+                    im['height'] = pil_im.height
+                except Exception:
+                    print('Warning: cannot open image {}'.format(im_full_path))
+                    if 'failure' not in im:
+                        im['failure'] = 'Failure image access'
+    
+            # ...if we need to read w/h information
+            
+        # ...for each image
+    
+    # ...if we need to load image sizes
+    
+    
+    ## Generate labelme files
+    
+    print('Generating .json files...')
     
     image_id_to_annotations = defaultdict(list)
     for ann in coco_data['annotations']:
@@ -126,11 +142,19 @@ def coco_to_labelme(coco_data,image_base,overwrite=False):
     # Write output
     for im in tqdm(coco_data['images']):
         
-        if 'failure' in im and im['failure'] is not None:
-            print('Warning: skipping labelme file generation for failed image {}'.format(
-                im['file_name']))
+        # Skip this image if it failed to load in whatever system generated this COCO file
+        skip_image = False
+        
+        # Errors are represented differently depending on the source
+        for error_string in ('failure','error'):
+            if (error_string in im) and (im[error_string] is not None):
+                print('Warning: skipping labelme file generation for failed image {}'.format(
+                    im['file_name']))
+                skip_image = True
+                break
+        if skip_image:
             continue
-            
+                    
         im_full_path = os.path.join(image_base,im['file_name'])
         json_path = os.path.splitext(im_full_path)[0] + '.json'
         
