@@ -520,7 +520,7 @@ def main():
         help='inference batch size (default {})'.format(options.batch_size))
     parser.add_argument(
         '--half_precision_enabled', default=None, type=int,
-        help='use half-precision-inference (1 or 0) (default is the underlying model\'s default, probably half for YOLOv8 and full for YOLOv8')
+        help='use half-precision-inference (1 or 0) (default is the underlying model\'s default, probably full for YOLOv8 and half for YOLOv5')
     parser.add_argument(
         '--device_string', default=options.device_string, type=str,
         help='CUDA device specifier, typically "0" or "1" for CUDA devices, "mps" for M1/M2 devices, or "cpu" (default {})'.format(options.device_string))

@@ -17,6 +17,7 @@ import platform
 import posixpath
 import string
 import json
+import shutil
 import unicodedata
 import zipfile
 import webbrowser
@@ -466,6 +467,43 @@ def read_list_from_file(filename: str) -> List[str]:
     return file_list
 
 
+def _copy_file(input_output_tuple,overwrite=True,verbose=False):
+    assert len(input_output_tuple) == 2
+    source_fn = input_output_tuple[0]
+    target_fn = input_output_tuple[1]
+    if (not overwrite) and (os.path.isfile(target_fn)):
+        if verbose:
+            print('Skipping existing file {}'.format(target_fn))
+        return
+    shutil.copyfile(source_fn,target_fn)
+    
+
+def parallel_copy_files(input_file_to_output_file, max_workers=16, 
+                        use_threads=True, overwrite=False, verbose=False):
+    """
+    Copy files from source to target according to the dict input_file_to_output_file.
+    """
+
+    n_workers = min(max_workers,len(input_file_to_output_file))
+    
+    # Package the dictionary as a set of 2-tuples
+    input_output_tuples = []
+    for input_fn in input_file_to_output_file:
+        input_output_tuples.append((input_fn,input_file_to_output_file[input_fn]))
+
+    if use_threads:
+        pool = ThreadPool(n_workers)
+    else:
+        pool = Pool(n_workers)
+
+    with tqdm(total=len(input_output_tuples)) as pbar:
+        for i,_ in enumerate(pool.imap_unordered(partial(_copy_file,overwrite=overwrite,verbose=verbose),
+                                                 input_output_tuples)):
+            pbar.update()
+
+# ...def parallel_copy_files(...)
+
+
 #%% Zip functions
 
 def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compresslevel=9):
@@ -483,7 +521,7 @@ def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compressl
         return
     
     if verbose:
-        print('Zipping {} to {}'.format(input_fn,output_fn))
+        print('Zipping {} to {} with level {}'.format(input_fn,output_fn,compresslevel))
     
     with ZipFile(output_fn,'w',zipfile.ZIP_DEFLATED) as zipf:
         zipf.write(input_fn,arcname=basename,compresslevel=compresslevel,
@@ -492,9 +530,37 @@ def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compressl
     return output_fn
 
 
+def zip_files_into_single_zipfile(input_files, output_fn, arc_name_base,
+                                  overwrite=False, verbose=False, compresslevel=9):
+    """
+    Zip all the files in [input_files] into [output_fn].  Archive names are relative to 
+    arc_name_base.
+    """
+    
+    if not overwrite:
+        if os.path.isfile(output_fn):
+            print('Zip file {} exists, skipping'.format(output_fn))
+            return            
+        
+    if verbose:
+        print('Zipping {} files to {} (compression level {})'.format(
+            len(input_files),output_fn,compresslevel))
+        
+    with ZipFile(output_fn,'w',zipfile.ZIP_DEFLATED) as zipf:
+        for input_fn_abs in tqdm(input_files,disable=(not verbose)):
+            input_fn_relative = os.path.relpath(input_fn_abs,arc_name_base)
+            zipf.write(input_fn_abs,
+                       arcname=input_fn_relative,
+                       compresslevel=compresslevel,
+                       compress_type=zipfile.ZIP_DEFLATED)
+
+    return output_fn
+    
+    
 def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, compresslevel=9):
     """
-    Recursively zip everything in [input_folder], storing outputs as relative paths.
+    Recursively zip everything in [input_folder] into a single zipfile, storing outputs as relative 
+    paths.
     
     Defaults to writing to [input_folder].zip
     """
@@ -503,10 +569,13 @@ def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, com
         output_fn = input_folder + '.zip'
         
     if not overwrite:
-        assert not os.path.isfile(output_fn), 'Zip file {} exists'.format(output_fn)
+        if os.path.isfile(output_fn):
+            print('Zip file {} exists, skipping'.format(output_fn))
+            return            
         
     if verbose:
-        print('Zipping {} to {}'.format(input_folder,output_fn))
+        print('Zipping {} to {} (compression level {})'.format(
+            input_folder,output_fn,compresslevel))
     
     relative_filenames = recursive_file_list(input_folder,return_relative_paths=True)
     
@@ -521,7 +590,8 @@ def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, com
     return output_fn
 
         
-def parallel_zip_files(input_files, max_workers=16, use_threads=True):
+def parallel_zip_files(input_files, max_workers=16, use_threads=True, compresslevel=9, 
+                       overwrite=False, verbose=False):
     """
     Zip one or more files to separate output files in parallel, leaving the 
     original files in place.  Each file is zipped to [filename].zip.
@@ -535,12 +605,14 @@ def parallel_zip_files(input_files, max_workers=16, use_threads=True):
         pool = Pool(n_workers)
 
     with tqdm(total=len(input_files)) as pbar:
-        for i,_ in enumerate(pool.imap_unordered(zip_file,input_files)):
+        for i,_ in enumerate(pool.imap_unordered(partial(zip_file,
+          output_fn=None,overwrite=overwrite,verbose=verbose,compresslevel=compresslevel),
+          input_files)):
             pbar.update()
 
 
 def parallel_zip_folders(input_folders, max_workers=16, use_threads=True,
-                         compresslevel=9, overwrite=False):
+                         compresslevel=9, overwrite=False, verbose=False):
     """
     Zip one or more folders to separate output files in parallel, leaving the 
     original folders in place.  Each folder is zipped to [folder_name].zip.
@@ -555,9 +627,35 @@ def parallel_zip_folders(input_folders, max_workers=16, use_threads=True,
     
     with tqdm(total=len(input_folders)) as pbar:
         for i,_ in enumerate(pool.imap_unordered(
-                partial(zip_folder,overwrite=overwrite,compresslevel=compresslevel),
+                partial(zip_folder,overwrite=overwrite,
+                        compresslevel=compresslevel,verbose=verbose),
                 input_folders)):
             pbar.update()
+
+
+def zip_each_file_in_folder(folder_name,recursive=False,max_workers=16,use_threads=True,
+                            compresslevel=9,overwrite=False,required_token=None,verbose=False,
+                            exclude_zip=True):
+    """
+    Zip each file in [folder_name] to its own zipfile (filename.zip), optionally recursing.  To zip a whole
+    folder into a single zipfile, use zip_folder().
+    
+    If required_token is not None, include only files that contain that token.
+    """
+    
+    assert os.path.isdir(folder_name), '{} is not a folder'.format(folder_name)
+    
+    input_files = recursive_file_list(folder_name,recursive=recursive,return_relative_paths=False)
+    
+    if required_token is not None:
+        input_files = [fn for fn in input_files if required_token in fn]
+    
+    if exclude_zip:
+        input_files = [fn for fn in input_files if (not fn.endswith('.zip'))]
+                                                    
+    parallel_zip_files(input_files=input_files,max_workers=max_workers,
+                       use_threads=use_threads,compresslevel=compresslevel,
+                       overwrite=overwrite,verbose=verbose)
 
 
 def unzip_file(input_file, output_folder=None):

@@ -16,6 +16,7 @@ import requests
 
 from tqdm import tqdm
 from urllib.parse import urlparse
+from multiprocessing.pool import ThreadPool
 
 url_utils_temp_dir = None
 max_path_len = 255
@@ -126,6 +127,63 @@ def download_relative_filename(url, output_base, verbose=False):
     download_url(url, destination_filename, verbose=verbose)
 
 
+def parallel_download_urls(url_to_target_file,verbose=False,overwrite=False,
+                           n_workers=20):
+    """
+    Download a list of URLs to local files.  url_to_target_file should
+    be a dict mapping URLs to output files.  Catches exceptions and reports
+    them in the returned "results" array.    
+    """
+    
+    def _do_parallelized_download(download_info,overwrite=False):
+        url = download_info['url']
+        target_file = download_info['target_file']
+        result = {'status':'unknown','url':url,'target_file':target_file}
+        
+        if ((os.path.isfile(target_file)) and (not overwrite)):
+            result['status'] = 'skipped'
+            return result
+        try:
+            download_url(url=url, 
+                         destination_filename=target_file,
+                         verbose=verbose, force_download=overwrite)
+        except Exception as e:
+            print('Warning: error downloading URL {}: {}'.format(
+                url,str(e)))     
+            result['status'] = 'error: {}'.format(str(e))
+            return result
+        
+        result['status'] = 'success'
+        return result
+
+    all_download_info = []
+    for url in url_to_target_file:
+        download_info = {}
+        download_info['url'] = url
+        download_info['target_file'] = url_to_target_file[url]
+        all_download_info.append(download_info)
+        
+    print('Downloading {} images on {} workers'.format(
+        len(all_download_info),n_workers))
+
+    if n_workers <= 1:
+
+        results = []
+        
+        for download_info in tqdm(all_download_info):        
+            result = _do_parallelized_download(download_info,overwrite=overwrite)
+            results.append(result)
+        
+    else:
+
+        pool = ThreadPool(n_workers)
+        results = list(tqdm(pool.imap(lambda download_info: _do_parallelized_download(
+            download_info,overwrite=overwrite),all_download_info), 
+            total=len(all_download_info)))
+
+    return results
+
+    
 def test_urls(urls, error_on_failure=True):
     """
     Verify that a list of URLs is available (returns status 200).  By default,

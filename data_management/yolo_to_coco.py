@@ -15,6 +15,10 @@
 import json
 import os
 
+from multiprocessing.pool import ThreadPool
+from multiprocessing.pool import Pool
+from functools import partial
+
 from PIL import Image
 from tqdm import tqdm
 
@@ -23,13 +27,121 @@ from md_utils.ct_utils import invert_dictionary
 from data_management.yolo_output_to_md_output import read_classes_from_yolo_dataset_file
 
 
+#%% Support functions
+
+def filename_to_image_id(fn):
+    return fn.replace(' ','_')
+
+def _process_image(fn_abs,input_folder,category_id_to_name):
+    """
+    Internal support function for processing one image's labels.
+    """
+    
+    # Create the image object for this image
+    fn_relative = os.path.relpath(fn_abs,input_folder)
+    image_id = filename_to_image_id(fn_relative)
+    
+    # This is done in a separate loop now
+    #
+    # assert image_id not in image_ids, \
+    #    'Oops, you have hit a very esoteric case where you have the same filename ' + \
+    #    'with both spaces and underscores, this is not currently handled.'
+    # image_ids.add(image_id)
+    
+    im = {}
+    im['file_name'] = fn_relative    
+    im['id'] = image_id
+    
+    annotations_this_image = []
+    
+    try:        
+        pil_im = Image.open(fn_abs)
+        im_width, im_height = pil_im.size    
+        im['width'] = im_width
+        im['height'] = im_height
+        im['error'] = None
+    except Exception as e:
+        print('Warning: error reading {}:\n{}'.format(fn_relative,str(e)))
+        im['width'] = -1
+        im['height'] = -1
+        im['error'] = str(e)
+        return (im,annotations_this_image)
+        
+    # Is there an annotation file for this image?
+    annotation_file = os.path.splitext(fn_abs)[0] + '.txt'
+    if not os.path.isfile(annotation_file):
+        annotation_file = os.path.splitext(fn_abs)[0] + '.TXT'
+    
+    if os.path.isfile(annotation_file):
+        
+        with open(annotation_file,'r') as f:
+            lines = f.readlines()
+        lines = [s.strip() for s in lines]
+        
+        # s = lines[0]
+        annotation_number = 0
+        
+        for s in lines:
+            
+            if len(s.strip()) == 0:
+                continue
+            
+            tokens = s.split()
+            assert len(tokens) == 5
+            category_id = int(tokens[0])
+            assert category_id in category_id_to_name, \
+                'Unrecognized category ID {} in annotation file {}'.format(
+                    category_id,annotation_file)
+            ann = {}
+            ann['id'] = im['id'] + '_' + str(annotation_number)
+            ann['image_id'] = im['id']
+            ann['category_id'] = category_id
+            ann['sequence_level_annotation'] = False
+            
+            # COCO: [x_min, y_min, width, height] in absolute coordinates
+            # YOLO: [class, x_center, y_center, width, height] in normalized coordinates
+            
+            yolo_bbox = [float(x) for x in tokens[1:]]
+            
+            normalized_x_center = yolo_bbox[0]
+            normalized_y_center = yolo_bbox[1]
+            normalized_width = yolo_bbox[2]
+            normalized_height = yolo_bbox[3]
+            
+            absolute_x_center = normalized_x_center * im_width 
+            absolute_y_center = normalized_y_center * im_height
+            absolute_width = normalized_width * im_width
+            absolute_height = normalized_height * im_height
+            absolute_x_min = absolute_x_center - absolute_width / 2
+            absolute_y_min = absolute_y_center - absolute_height / 2
+            
+            coco_bbox = [absolute_x_min, absolute_y_min, absolute_width, absolute_height]
+            
+            ann['bbox'] = coco_bbox
+            annotation_number += 1
+            
+            annotations_this_image.append(ann)                
+            
+        # ...for each annotation 
+        
+    # ...if this image has annotations
+    
+    return (im,annotations_this_image)
+
+# ...def _process_image(...)
+
+
+
 #%% Main conversion function
 
 def yolo_to_coco(input_folder,
                  class_name_file,
                  output_file=None,
                  empty_image_handling='no_annotations',
-                 empty_image_category_name='empty'):
+                 empty_image_category_name='empty',
+                 error_image_handling='no_annotations',
+                 n_workers=1,
+                 pool_type='thread'):
     """
     Convert the YOLO-formatted data in [input_folder] to a COCO-formatted dictionary,
     reading class names from [class_name_file], which can be a flat list with a .txt
@@ -47,7 +159,7 @@ def yolo_to_coco(input_folder,
     Returns a COCO-formatted dictionary.
     """
     
-    # Validate input
+    ## Validate input
     
     assert os.path.isdir(input_folder)
     assert os.path.isfile(class_name_file)
@@ -55,14 +167,15 @@ def yolo_to_coco(input_folder,
     assert empty_image_handling in \
         ('no_annotations','empty_annotations','skip'), \
             'Unrecognized empty image handling spec: {}'.format(empty_image_handling)
+     
             
-    # Read class names
+    ## Read class names
     
     ext = os.path.splitext(class_name_file)[1][1:]
-    assert ext in ('yml','txt','yaml'), 'Unrecognized class name file type {}'.format(
+    assert ext in ('yml','txt','yaml','data'), 'Unrecognized class name file type {}'.format(
         class_name_file)
     
-    if ext == 'txt':
+    if ext in ('txt','data'):
         
         with open(class_name_file,'r') as f:
             lines = f.readlines()
@@ -105,12 +218,12 @@ def yolo_to_coco(input_folder,
             category_id_to_name[empty_category_id] = empty_image_category_name
             
             
-    # Enumerate images
+    ## Enumerate images
     
-    image_files = find_images(input_folder,recursive=False)
+    print('Enumerating images...')
+    
+    image_files_abs = find_images(input_folder,recursive=False)
 
-    images = []
-    annotations = []
     categories = []
     
     for category_id in category_id_to_name:
@@ -122,93 +235,81 @@ def yolo_to_coco(input_folder,
     
     image_ids = set()
     
-    # fn = image_files[0]
-    for fn in tqdm(image_files):
+    
+    ## Initial loop to make sure image IDs will be unique
+    
+    print('Validating image IDs...')
+    
+    for fn_abs in tqdm(image_files_abs):
         
-        im = Image.open(fn)
-        im_width, im_height = im.size
-        
-        # Create the image object for this image
-        im = {}
-        fn_relative = os.path.relpath(fn,input_folder)
-        im['file_name'] = fn_relative
-        image_id = fn_relative.replace(' ','_')
+        fn_relative = os.path.relpath(fn_abs,input_folder)
+        image_id = filename_to_image_id(fn_relative)
         assert image_id not in image_ids, \
             'Oops, you have hit a very esoteric case where you have the same filename ' + \
             'with both spaces and underscores, this is not currently handled.'
         image_ids.add(image_id)
-            
-        im['id'] = image_id
-        im['width'] = im_width
-        im['height'] = im_height
+    
+    
+    ## Main loop to process labels
+    
+    print('Processing labels...')
+    
+    if n_workers <= 1:
         
-        # im['location'] = 'unknown'
-        
-        # Is there an annotation file for this image?
-        annotation_file = os.path.splitext(fn)[0] + '.txt'
-        if not os.path.isfile(annotation_file):
-            annotation_file = os.path.splitext(fn)[0] + '.TXT'
-        
-        has_annotations = False
-        
-        if os.path.isfile(annotation_file):
+        image_results = []        
+        for fn_abs in tqdm(image_files_abs):                
+            image_results.append(_process_image(fn_abs,input_folder,category_id_to_name))
             
-            with open(annotation_file,'r') as f:
-                lines = f.readlines()
-            lines = [s.strip() for s in lines]
-            
-            # s = lines[0]
-            annotation_number = 0
-            
-            for s in lines:
-                
-                if len(s.strip()) == 0:
-                    continue
-                
-                has_annotations = True
-                tokens = s.split()
-                assert len(tokens) == 5
-                category_id = int(tokens[0])
-                assert category_id in category_id_to_name, \
-                    'Unrecognized category ID {} in annotation file {}'.format(
-                        category_id,annotation_file)
-                ann = {}
-                ann['id'] = im['id'] + '_' + str(annotation_number)
-                ann['image_id'] = im['id']
-                ann['category_id'] = category_id
-                ann['sequence_level_annotation'] = False
-                
-                # COCO: [x_min, y_min, width, height] in absolute coordinates
-                # YOLO: [class, x_center, y_center, width, height] in normalized coordinates
-                
-                yolo_bbox = [float(x) for x in tokens[1:]]
-                
-                normalized_x_center = yolo_bbox[0]
-                normalized_y_center = yolo_bbox[1]
-                normalized_width = yolo_bbox[2]
-                normalized_height = yolo_bbox[3]
-                
-                absolute_x_center = normalized_x_center * im_width 
-                absolute_y_center = normalized_y_center * im_height
-                absolute_width = normalized_width * im_width
-                absolute_height = normalized_height * im_height
-                absolute_x_min = absolute_x_center - absolute_width / 2
-                absolute_y_min = absolute_y_center - absolute_height / 2
-                
-                coco_bbox = [absolute_x_min, absolute_y_min, absolute_width, absolute_height]
-                
-                ann['bbox'] = coco_bbox
-                annotation_number += 1
-                
-                annotations.append(ann)                
-                
-            # ...for each annotation 
-            
-        # ...if this image has annotations
+    else:
         
-        if has_annotations:
-            images.append(im)
+        assert pool_type in ('process','thread'), 'Illegal pool type {}'.format(pool_type)
+        
+        if pool_type == 'thread':
+            pool = ThreadPool(n_workers)
         else:
+            pool = Pool(n_workers)
+        
+        print('Starting a {} pool of {} workers'.format(pool_type,n_workers))
+        
+        p = partial(_process_image,input_folder=input_folder,
+                    category_id_to_name=category_id_to_name)
+        image_results = list(tqdm(pool.imap(p, image_files_abs),
+                                  total=len(image_files_abs)))
+                
+    
+    assert len(image_results) == len(image_files_abs)
+    
+    
+    ## Re-assembly of results into a COCO dict
+    
+    print('Assembling labels...')
+    
+    images = []
+    annotations = []
+    
+    for image_result in tqdm(image_results):
+    
+        im = image_result[0]
+        annotations_this_image = image_result[1]
+           
+        # If we have annotations for this image
+        if len(annotations_this_image) > 0:
+            assert im['error'] is None
+            images.append(im)
+            for ann in annotations_this_image:
+                annotations.append(ann)
+                
+        # If this image failed to read
+        elif im['error'] is not None:
+            
+            if error_image_handling == 'skip':
+                pass
+            elif error_image_handling == 'no_annotations':
+                images.append(im)            
+                
+        # If this image read successfully, but there are no annotations
+        else:
+            
             if empty_image_handling == 'skip':
                 pass
             elif empty_image_handling == 'no_annotations':
@@ -224,9 +325,9 @@ def yolo_to_coco(input_folder,
                 # we're adopting.
                 # ann['bbox'] = [0,0,0,0]
                 annotations.append(ann)
-                images.append(im)
-           
-    # ...for each image
+                images.append(im)        
+        
+    # ...for each image result
     
     print('Read {} annotations for {} images'.format(len(annotations),
                                                      len(images)))

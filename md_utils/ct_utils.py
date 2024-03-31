@@ -39,9 +39,13 @@ def truncate_float_array(xs, precision=3):
 
 def truncate_float(x, precision=3):
     """
-    Truncates a floating-point value to a specific number of significant digits.
+    Truncates the fractional portion of a floating-point value to a specific number of 
+    floating-point digits.
     
-    For example: truncate_float(0.0003214884) --> 0.000321
+    For example: 
+        
+        truncate_float(0.0003214884) --> 0.000321
+        truncate_float(1.0003214884) --> 1.000321
     
     This function is primarily used to achieve a certain float representation
     before exporting to JSON.
@@ -58,13 +62,18 @@ def truncate_float(x, precision=3):
         
         return 0
     
+    elif (x > 1):
+        
+        fractional_component = x - 1.0
+        return 1 + truncate_float(fractional_component)
+    
     else:
         
         # Determine the factor, which shifts the decimal point of x
         # just behind the last significant digit.
         factor = math.pow(10, precision - 1 - math.floor(math.log10(abs(x))))
         
-        # Shift decimal point by multiplicatipon with factor, flooring, and
+        # Shift decimal point by multiplication with factor, flooring, and
         # division by factor.
         return math.floor(x * factor)/factor
 
@@ -351,6 +360,15 @@ def split_list_into_n_chunks(L, n, chunk_strategy='greedy'):
     else:
         raise ValueError('Invalid chunk strategy: {}'.format(chunk_strategy))
 
+
+def sort_dictionary_by_key(d,reverse=False):
+    """
+    Sorts the dictionary [d] by key.
+    """
+    
+    d = dict(sorted(d.items(),reverse=reverse))
+    return d
+    
 
 def sort_dictionary_by_value(d,sort_values=None,reverse=False):
     """
