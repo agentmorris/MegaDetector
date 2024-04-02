@@ -29,7 +29,7 @@ for s in lila_base_urls.values():
     assert s.endswith('/')
 
 # If any of these strings appear in the common name of a species, we'll download that image
-species_of_interest = ['grey fox','red fox','leopard cat','kiwi']
+species_of_interest = ['grey fox','gray fox','cape fox','red fox','kit fox']
 
 # We'll write images, metadata downloads, and temporary files here
 lila_local_base = os.path.expanduser('~/lila')
@@ -108,6 +108,8 @@ df = read_lila_all_images_file(metadata_dir)
 
 # ~2 minutes
 
+common_name_to_count = defaultdict(int)
+
 ds_name_to_urls = defaultdict(list)
 
 def find_items(row):
@@ -120,6 +122,7 @@ def find_items(row):
     for species_name in species_of_interest:
         if species_name in row['common_name']:
             match = True
+            common_name_to_count[species_name] += 1
             break
     
     if match:
@@ -133,6 +136,9 @@ all_urls = list(ds_name_to_urls.values())
 all_urls = [item for sublist in all_urls for item in sublist]
 print('Found {} matching URLs across {} datasets'.format(len(all_urls),len(ds_name_to_urls)))
 
+for common_name in common_name_to_count:
+    print('{}: {}'.format(common_name,common_name_to_count[common_name]))
+    
 from copy import deepcopy
 ds_name_to_urls_raw = deepcopy(ds_name_to_urls)
 
