@@ -105,6 +105,8 @@ class YoloInferenceOptions:
     treat_copy_failures_as_warnings = False
     
     save_yolo_debug_output = False
+    
+    recursive = True
             
     
 #%% Main function
@@ -203,7 +205,7 @@ def run_inference_with_yolo_val(options):
     ##%% Enumerate images
     
     if os.path.isdir(options.input_folder):
-        image_files_absolute = path_utils.find_images(options.input_folder,recursive=True)
+        image_files_absolute = path_utils.find_images(options.input_folder,recursive=options.recursive)
     else:
         assert os.path.isfile(options.input_folder)
         with open(options.input_folder,'r') as f:            
@@ -554,6 +556,10 @@ def main():
         help='write yolo console output to a text file in the results folder, along with additional debug files')
     
     parser.add_argument(
+        '--nonrecursive', action='store_true',
+        help='Disable recursive folder processing')
+    
+    parser.add_argument(
         '--preview_yolo_command_only', action='store_true',
         help='don\'t run inference, just preview the YOLO inference command (still creates symlinks)')
     
@@ -592,6 +598,7 @@ def main():
     if args.yolo_dataset_file is not None:
         options.yolo_category_id_to_name = args.yolo_dataset_file
         
+    options.recursive = (not options.nonrecursive)
     options.remove_symlink_folder = (not options.no_remove_symlink_folder)
     options.remove_yolo_results_folder = (not options.no_remove_yolo_results_folder)
     options.use_symlinks = (not options.no_use_symlinks)
