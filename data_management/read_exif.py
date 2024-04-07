@@ -66,12 +66,12 @@ class ReadExifOptions:
 
 #%% Functions
 
-def enumerate_files(input_folder):
+def enumerate_files(input_folder,recursive=True):
     """
     Enumerates all image files in input_folder, returning relative paths
     """
     
-    image_files = find_images(input_folder,recursive=True)
+    image_files = find_images(input_folder,recursive=recursive)
     image_files = [os.path.relpath(s,input_folder) for s in image_files]
     image_files = [s.replace('\\','/') for s in image_files]
     print('Enumerated {} files'.format(len(image_files)))
@@ -350,20 +350,22 @@ def populate_exif_data(im, image_base, options=None):
 # ...populate_exif_data()
 
 
-def create_image_objects(image_files):
+def create_image_objects(image_files,recursive=True):
     """
     Create empty image objects for every image in [image_files], which can be a 
     list of relative paths (which will get stored without processing, so the base 
     path doesn't matter here), or a folder name.
     
     Returns a list of dicts with field 'file_name' (a relative path).
+    
+    "recursive" is ignored if "image_files" is a list.
     """
     
     # Enumerate *relative* paths
     if isinstance(image_files,str):    
         print('Enumerating image files in {}'.format(image_files))
         assert os.path.isdir(image_files), 'Invalid image folder {}'.format(image_files)
-        image_files = enumerate_files(image_files)
+        image_files = enumerate_files(image_files,recursive=recursive)
         
     images = []
     for fn in image_files:
@@ -499,7 +501,7 @@ def is_executable(name):
     return which(name) is not None
 
 
-def read_exif_from_folder(input_folder,output_file=None,options=None,filenames=None):
+def read_exif_from_folder(input_folder,output_file=None,options=None,filenames=None,recursive=True):
     """
     Read EXIF data for all images in input_folder.
     
@@ -542,7 +544,7 @@ def read_exif_from_folder(input_folder,output_file=None,options=None,filenames=N
         assert is_executable(options.exiftool_command_name), 'exiftool not available'
 
     if filenames is None:
-        images = create_image_objects(input_folder)
+        images = create_image_objects(input_folder,recursive=recursive)
     else:
         assert isinstance(filenames,list)
         images = create_image_objects(filenames)

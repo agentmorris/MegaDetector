@@ -80,7 +80,7 @@ def convert_json_to_csv(input_path,output_path=None,min_confidence=None,
 
         n_classification_categories = len(classification_category_ids)
     
-    # There are several fields for which we add columns, other random bespoke fields
+    # There are several .json fields for which we add .csv columns; other random bespoke fields
     # will be ignored.
     optional_fields = ['width','height','datetime','exif_metadata']
     optional_fields_present = set()
@@ -111,7 +111,7 @@ def convert_json_to_csv(input_path,output_path=None,min_confidence=None,
         if 'failure' in im and im['failure'] is not None:
             row = [image_id, 'failure', im['failure']]
             rows.append(row)
-            print('Skipping failed image {} ({})'.format(im['file'],im['failure']))
+            # print('Skipping failed image {} ({})'.format(im['file'],im['failure']))
             continue
 
         max_conf = ct_utils.get_max_conf(im)
