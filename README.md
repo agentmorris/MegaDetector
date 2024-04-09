@@ -66,7 +66,6 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Dudek Camera Trap AI Image Toolkit (AIT)](https://dudek.com/services/wildlife-camera-trap-ai-image-processing-and-management/)
 * [EcoLogic Consultants Ltd.](https://www.consult-ecologic.com/)
 * [Estación Biológica de Doñana](http://www.ebd.csic.es/inicio)
-* [Idaho Department of Fish and Game](https://idfg.idaho.gov/)
 * [Indigenous Desert Alliance](https://www.indigenousdesertalliance.com/)
 * [Myall Lakes Dingo Project](https://carnivorecoexistence.info/myall-lakes-dingo-project/)
 * [Norwegian Institute for Nature Research](https://www.nina.no/english/Home)
@@ -126,6 +125,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [School of Natural Sciences](https://www.utas.edu.au/natural-sciences), University of Tasmania ([story](https://www.utas.edu.au/about/news-and-stories/articles/2022/1204-innovative-camera-network-keeps-close-eye-on-tassie-wildlife))
 * [Kenai National Wildlife Refuge](https://www.fws.gov/refuge/kenai), U.S. Fish & Wildlife Service ([story](https://www.peninsulaclarion.com/sports/refuge-notebook-new-technology-increases-efficiency-of-refuge-cameras/))
 
+* [Idaho Department of Fish and Game](https://idfg.idaho.gov/) ([fancy PBS video](https://www.youtube.com/watch?v=uEsL8EZKpbA&t=261s&ab_channel=OutdoorIdaho))
 * [Australian Wildlife Conservancy](https://www.australianwildlife.org/) (blog posts [1](https://www.australianwildlife.org/cutting-edge-technology-delivering-efficiency-gains-in-conservation/), [2](https://www.australianwildlife.org/efficiency-gains-at-the-cutting-edge-of-technology/), [3](https://www.australianwildlife.org/federal-grant-to-fund-ai-supported-wildlife-recognisers))
 * [Bavarian Forest National Park](https://www.nationalpark-bayerischer-wald.bayern.de/english/index.htm) ([story](https://customers.microsoft.com/en-au/story/1667539539271247797-nationalparkbayerischerwald-azure-en))
 * [Environs Kimberley](https://www.environskimberley.org.au) ([blog post](https://www.environskimberley.org.au/ai_megadetector))
