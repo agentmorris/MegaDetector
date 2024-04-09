@@ -310,7 +310,7 @@ def video_folder_to_frames(input_folder:str, output_folder_base:str,
 
 class FrameToVideoOptions:
     
-    # zero-indexed
+    # One-indexed, i.e. "1" means "use the confidence value from the highest-confidence frame"
     nth_highest_confidence = 1
     
     # 'error' or 'skip_with_warning'
