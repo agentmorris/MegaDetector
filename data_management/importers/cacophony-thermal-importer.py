@@ -1,16 +1,16 @@
-########
-#
-# cacophony-thermal-importer.py
-#
-# Create data and metadata for LILA from the Cacophony thermal dataset.  Takes a folder
-# of HDF files, and produces .json metadata, along with compressed/normalized videos for
-# each HDF file.
-#
-# Source format notes for this dataset:
-#    
-# https://docs.google.com/document/d/12sw5JtwdMf9MiXuNCBcvhvZ04Jwa1TH2Lf6LnJmF8Bk/edit
-#
-########
+"""
+
+ cacophony-thermal-importer.py
+
+ Create data and metadata for LILA from the Cacophony thermal dataset.  Takes a folder
+ of HDF files, and produces .json metadata, along with compressed/normalized videos for
+ each HDF file.
+
+ Source format notes for this dataset:
+    
+ https://docs.google.com/document/d/12sw5JtwdMf9MiXuNCBcvhvZ04Jwa1TH2Lf6LnJmF8Bk/edit
+
+"""
 
 #%% Imports and constants
 

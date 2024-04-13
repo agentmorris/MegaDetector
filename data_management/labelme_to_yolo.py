@@ -1,10 +1,10 @@
-########
-#
-# labelme_to_yolo.py
-#
-# Create YOLO .txt files in a folder containing labelme .json files.
-#
-########
+"""
+
+ labelme_to_yolo.py
+
+ Create YOLO .txt files in a folder containing labelme .json files.
+
+"""
 
 #%% Imports
 

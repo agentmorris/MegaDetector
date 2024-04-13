@@ -1,16 +1,16 @@
-########
-#
-# create_lila_blank_set.py
-#
-# Create a folder of blank images sampled from LILA.  We'll aim for diversity, so less-common
-# locations will be oversampled relative to more common locations.  We'll also run MegaDetector
-# (with manual review) to remove some incorrectly-labeled, not-actually-empty images from our 
-# blank set.
-#
-# We'll store location information for each image in a .json file, so we can split locations
-# into train/val in downstream tasks.
-#
-########
+"""
+
+ create_lila_blank_set.py
+
+ Create a folder of blank images sampled from LILA.  We'll aim for diversity, so less-common
+ locations will be oversampled relative to more common locations.  We'll also run MegaDetector
+ (with manual review) to remove some incorrectly-labeled, not-actually-empty images from our 
+ blank set.
+
+ We'll store location information for each image in a .json file, so we can split locations
+ into train/val in downstream tasks.
+
+"""
 
 #%% Constants and imports
 

@@ -1,11 +1,11 @@
-########
-#
-# get_image_sizes.py
-#
-# Given a json-formatted list of image filenames, retrieve the width and height of 
-# every image, optionally writing the results to a new .json file.
-#
-########
+"""
+
+ get_image_sizes.py
+
+ Given a json-formatted list of image filenames, retrieve the width and height of 
+ every image, optionally writing the results to a new .json file.
+
+"""
 
 #%% Constants and imports
 

@@ -1,11 +1,11 @@
-########
-#
-# auckland_doc_to_json.py
-#
-# Convert Auckland DOC data set to COCO camera traps format.  This was
-# for a training data set where class names were encoded in path names.
-#
-########
+"""
+
+ auckland_doc_to_json.py
+
+ Convert Auckland DOC data set to COCO camera traps format.  This was
+ for a training data set where class names were encoded in path names.
+
+"""
 
 #%% Constants and imports
 

@@ -1,11 +1,11 @@
-########
-#
-# prepare_lila_taxonomy_release.py
-#
-# Given the private intermediate taxonomy mapping (produced by map_new_lila_datasets.py), 
-# prepare the public (release) taxonomy mapping file.
-#
-########
+"""
+
+ prepare_lila_taxonomy_release.py
+
+ Given the private intermediate taxonomy mapping (produced by map_new_lila_datasets.py), 
+ prepare the public (release) taxonomy mapping file.
+
+"""
 
 #%% Imports and constants
 

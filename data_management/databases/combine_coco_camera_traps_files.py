@@ -1,17 +1,17 @@
-########
-#
-# combine_coco_camera_traps_files.py
-# 
-# Merges two or more .json files in COCO Camera Traps format, optionally
-# writing the results to another .json file.
-#
-# - Concatenates image lists, erroring if images are not unique.
-# - Errors on unrecognized fields.
-# - Checks compatibility in info structs, within reason.
-# 
-# combine_coco_camera_traps_files input1.json input2.json ... inputN.json output.json
-#
-########
+"""
+
+ combine_coco_camera_traps_files.py
+ 
+ Merges two or more .json files in COCO Camera Traps format, optionally
+ writing the results to another .json file.
+
+ - Concatenates image lists, erroring if images are not unique.
+ - Errors on unrecognized fields.
+ - Checks compatibility in info structs, within reason.
+ 
+ combine_coco_camera_traps_files input1.json input2.json ... inputN.json output.json
+
+"""
 
 #%% Constants and imports
 

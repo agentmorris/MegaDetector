@@ -1,11 +1,11 @@
-########
-#
-# visualize_db.py
-# 
-# Outputs an HTML page visualizing annotations (class labels and/or bounding boxes)
-# on a sample of images in a database in the COCO Camera Traps format.
-#
-########
+"""
+
+ visualize_db.py
+ 
+ Outputs an HTML page visualizing annotations (class labels and/or bounding boxes)
+ on a sample of images in a database in the COCO Camera Traps format.
+
+"""
 
 #%% Imports
 

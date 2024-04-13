@@ -1,76 +1,75 @@
-########
-#
-# separate_detections_into_folders.py
-#
-### Overview
-#
-# Given a .json file with batch processing results, separate the files in that
-# set of results into folders that contain animals/people/vehicles/nothing, 
-# according to per-class thresholds.
-#
-# Image files are copied, not moved.
-#
-### Output structure
-#
-# Preserves relative paths within each of those folders; cannot be used with .json
-# files that have absolute paths in them.
-#
-# For example, if your .json file has these images:
-#
-# a/b/c/1.jpg
-# a/b/d/2.jpg
-# a/b/e/3.jpg
-# a/b/f/4.jpg
-# a/x/y/5.jpg
-#
-# And let's say:
-#
-# * The results say that the first three images are empty/person/vehicle, respectively
-# * The fourth image is above threshold for "animal" and "person"
-# * The fifth image contains an animal
-#
-# * You specify an output base folder of c:\out
-#
-# You will get the following files:
-#
-# c:\out\empty\a\b\c\1.jpg
-# c:\out\people\a\b\d\2.jpg
-# c:\out\vehicles\a\b\e\3.jpg
-# c:\out\animal_person\a\b\f\4.jpg
-# c:\out\animals\a\x\y\5.jpg
-#
-### Rendering bounding boxes
-#
-# By default, images are just copied to the target output folder.  If you specify --render_boxes,
-# bounding boxes will be rendered on the output images.  Because this is no longer strictly
-# a copy operation, this may result in the loss of metadata.  More accurately, this *may*
-# result in the loss of some EXIF metadata; this *will* result in the loss of IPTC/XMP metadata.
-#
-# Rendering boxes also makes this script a lot slower.
-#
-### Classification-based separation
-#
-# If you have a results file with classification data, you can also specify classes to put
-# in their own folders, within the "animals" folder, like this:
-#
-# --classification_thresholds "deer=0.75,cow=0.75"
-#
-# So, e.g., you might get:
-#
-# c:\out\animals\deer\a\x\y\5.jpg
-#
-# In this scenario, the folders within "animals" will be:
-#
-# deer, cow, multiple, unclassified
-#
-# "multiple" in this case only means "deer and cow"; if an image is classified as containing a 
-# bird and a bear, that would end up in "unclassified", since the folder separation is based only
-# on the categories you provide at the command line.
-#
-# No classification-based separation is done within the animal_person, animal_vehicle, or 
-# animal_person_vehicle folders.
-#
-########
+r"""
+ separate_detections_into_folders.py
+
+## Overview
+
+ Given a .json file with batch processing results, separate the files in that
+ set of results into folders that contain animals/people/vehicles/nothing, 
+ according to per-class thresholds.
+
+ Image files are copied, not moved.
+
+## Output structure
+
+ Preserves relative paths within each of those folders; cannot be used with .json
+ files that have absolute paths in them.
+
+ For example, if your .json file has these images:
+
+ a/b/c/1.jpg
+ a/b/d/2.jpg
+ a/b/e/3.jpg
+ a/b/f/4.jpg
+ a/x/y/5.jpg
+
+ And let's say:
+
+ * The results say that the first three images are empty/person/vehicle, respectively
+ * The fourth image is above threshold for "animal" and "person"
+ * The fifth image contains an animal
+
+ * You specify an output base folder of c:\out
+
+ You will get the following files:
+
+ c:\out\empty\a\b\c\1.jpg
+ c:\out\people\a\b\d\2.jpg
+ c:\out\vehicles\a\b\e\3.jpg
+ c:\out\animal_person\a\b\f\4.jpg
+ c:\out\animals\a\x\y\5.jpg
+
+## Rendering bounding boxes
+
+ By default, images are just copied to the target output folder.  If you specify --render_boxes,
+ bounding boxes will be rendered on the output images.  Because this is no longer strictly
+ a copy operation, this may result in the loss of metadata.  More accurately, this *may*
+ result in the loss of some EXIF metadata; this *will* result in the loss of IPTC/XMP metadata.
+
+ Rendering boxes also makes this script a lot slower.
+
+## Classification-based separation
+
+ If you have a results file with classification data, you can also specify classes to put
+ in their own folders, within the "animals" folder, like this:
+
+ --classification_thresholds "deer=0.75,cow=0.75"
+
+ So, e.g., you might get:
+
+ c:\out\animals\deer\a\x\y\5.jpg
+
+ In this scenario, the folders within "animals" will be:
+
+ deer, cow, multiple, unclassified
+
+ "multiple" in this case only means "deer and cow"; if an image is classified as containing a 
+ bird and a bear, that would end up in "unclassified", since the folder separation is based only
+ on the categories you provide at the command line.
+
+ No classification-based separation is done within the animal_person, animal_vehicle, or 
+ animal_person_vehicle folders.
+
+"""
    
 #%% Constants and imports
 

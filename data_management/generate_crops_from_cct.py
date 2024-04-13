@@ -1,11 +1,11 @@
-########
-#
-# generate_crops_from_cct.py
-#
-# Given a .json file in COCO Camera Traps format, create a cropped image for
-# each bounding box.
-#
-########
+"""
+
+ generate_crops_from_cct.py
+
+ Given a .json file in COCO Camera Traps format, create a cropped image for
+ each bounding box.
+
+"""
 
 #%% Imports and constants
 

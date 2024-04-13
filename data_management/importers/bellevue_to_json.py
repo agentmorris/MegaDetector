@@ -1,18 +1,18 @@
-########
-#
-# bellevue_to_json.py
-#
-# "Bellevue Camera Traps" is the rather unremarkable camera trap data set
-# used by one of the repo's maintainers for testing.  It's organized as:
-#
-# approximate_date/[loose_camera_specifier/]/species    
-#
-# E.g.:
-#    
-# "2018.03.30\coyote\DSCF0091.JPG"
-# "2018.07.18\oldcam\empty\DSCF0001.JPG"
-#
-########
+"""
+
+ bellevue_to_json.py
+
+ "Bellevue Camera Traps" is the rather unremarkable camera trap data set
+ used by one of the repo's maintainers for testing.  It's organized as:
+
+ approximate_date/[loose_camera_specifier/]/species    
+
+ E.g.:
+    
+ "2018.03.30\coyote\DSCF0091.JPG"
+ "2018.07.18\oldcam\empty\DSCF0001.JPG"
+
+"""
 
 #%% Constants and imports
 

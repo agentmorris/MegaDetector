@@ -1,13 +1,13 @@
-########
-#
-# prepare_classification_script.py
-#
-# Notebook-y script used to prepare a series of shell commands to run a classifier
-# (other than MegaClassifier) on a MegaDetector result set.
-#
-# Differs from prepare_classification_script_mc.py only in the final class mapping step.
-#
-########
+"""
+
+ prepare_classification_script.py
+
+ Notebook-y script used to prepare a series of shell commands to run a classifier
+ (other than MegaClassifier) on a MegaDetector result set.
+
+ Differs from prepare_classification_script_mc.py only in the final class mapping step.
+
+"""
 
 #%% Job options
 

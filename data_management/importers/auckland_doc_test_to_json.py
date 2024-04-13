@@ -1,12 +1,12 @@
-########
-#
-# auckland_doc_test_to_json.py
-#
-# Convert Auckland DOC data set to COCO camera traps format.  This was
-# for a testing data set where a .csv file was provided with class
-# information.
-#
-########
+"""
+
+ auckland_doc_test_to_json.py
+
+ Convert Auckland DOC data set to COCO camera traps format.  This was
+ for a testing data set where a .csv file was provided with class
+ information.
+
+"""
 
 #%% Constants and imports
 

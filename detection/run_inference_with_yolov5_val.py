@@ -1,39 +1,39 @@
-########
-# 
-# run_inference_with_yolov5_val.py
-#
-# Runs a folder of images through MegaDetector (or another YOLOv5 model) with YOLOv5's 
-# val.py, converting the output to the standard MD format.  The main goal is to leverage
-# YOLO's test-time augmentation tools.
-#
-# YOLOv5's val.py uses each file's base name as a unique identifier, which doesn't work 
-# when you have typical camera trap images like:
-#
-# a/b/c/RECONYX0001.JPG
-# d/e/f/RECONYX0001.JPG
-#
-# ...so this script jumps through a bunch of hoops to put a symlinks in a flat
-# folder, run YOLOv5 on that folder, and map the results back to the real files.
-#
-# Currently requires the user to supply the path where a working YOLOv5 install lives,
-# and assumes that the current conda environment is all set up for YOLOv5.
-#
-# By default, this script uses symlinks to format the input images in a way that YOLOv5's 
-# val.py likes.  This requires admin privileges on Windows... actually technically this only 
-# requires permissions to create symbolic links, but I've never seen a case where someone has
-# that permission and *doesn't* have admin privileges.  If you are running this script on
-# Windows and you don't have admin privileges, use --no_use_symlinks.
-#
-# TODO:
-#
-# * Multiple GPU support
-#
-# * Checkpointing
-#
-# * Support alternative class names at the command line (currently defaults to MD classes,
-#   though other class names can be supplied programmatically)
-#
-########
+"""
+ 
+ run_inference_with_yolov5_val.py
+
+ Runs a folder of images through MegaDetector (or another YOLOv5 model) with YOLOv5's 
+ val.py, converting the output to the standard MD format.  The main goal is to leverage
+ YOLO's test-time augmentation tools.
+
+ YOLOv5's val.py uses each file's base name as a unique identifier, which doesn't work 
+ when you have typical camera trap images like:
+
+ a/b/c/RECONYX0001.JPG
+ d/e/f/RECONYX0001.JPG
+
+ ...so this script jumps through a bunch of hoops to put a symlinks in a flat
+ folder, run YOLOv5 on that folder, and map the results back to the real files.
+
+ Currently requires the user to supply the path where a working YOLOv5 install lives,
+ and assumes that the current conda environment is all set up for YOLOv5.
+
+ By default, this script uses symlinks to format the input images in a way that YOLOv5's 
+ val.py likes.  This requires admin privileges on Windows... actually technically this only 
+ requires permissions to create symbolic links, but I've never seen a case where someone has
+ that permission and *doesn't* have admin privileges.  If you are running this script on
+ Windows and you don't have admin privileges, use --no_use_symlinks.
+
+ TODO:
+
+ * Multiple GPU support
+
+ * Checkpointing
+
+ * Support alternative class names at the command line (currently defaults to MD classes,
+   though other class names can be supplied programmatically)
+
+"""
 
 #%% Imports
 

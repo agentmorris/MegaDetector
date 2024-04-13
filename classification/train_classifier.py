@@ -1,16 +1,16 @@
-########
-#
-# train_classifier.py
-#
-# Train a EfficientNet or ResNet classifier.
-# 
-# Currently the implementation of multi-label multi-class classification is
-# non-functional.
-#
-# During training, start tensorboard from within the classification/ directory:
-#   tensorboard --logdir run --bind_all --samples_per_plugin scalars=0,images=0
-# 
-########
+"""
+
+ train_classifier.py
+
+ Train a EfficientNet or ResNet classifier.
+ 
+ Currently the implementation of multi-label multi-class classification is
+ non-functional.
+
+ During training, start tensorboard from within the classification/ directory:
+   tensorboard --logdir run --bind_all --samples_per_plugin scalars=0,images=0
+ 
+"""
 
 #%% Example usage
 

@@ -1,12 +1,12 @@
-########
-#
-# add_locations_to_nacti.py
-#
-# As of 10.2023, NACTI metadata only has very coarse location information (e.g. "Florida"),
-# but camera IDs are embedded in filenames.  This script pulls that information from filenames
-# and adds it to metadata.
-#
-########
+"""
+
+ add_locations_to_nacti.py
+
+ As of 10.2023, NACTI metadata only has very coarse location information (e.g. "Florida"),
+ but camera IDs are embedded in filenames.  This script pulls that information from filenames
+ and adds it to metadata.
+
+"""
 
 #%% Imports and constants
 

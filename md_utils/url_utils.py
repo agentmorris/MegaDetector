@@ -1,10 +1,10 @@
-########
-#
-# url_utils.py
-#
-# Frequently-used functions for downloading or manipulating URLs
-#
-########
+"""
+
+ url_utils.py
+
+ Frequently-used functions for downloading or manipulating URLs
+
+"""
 
 #%% Imports and constants
 

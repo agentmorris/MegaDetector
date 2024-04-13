@@ -1,17 +1,17 @@
-########
-#
-# snapshot_serengeti_lila.py
-#
-# Create zipfiles of Snapshot Serengeti S1-S11.
-#
-# Create a metadata file for S1-S10, plus separate metadata files
-# for S1-S11.  At the time this code was written, S11 was under embargo.
-#
-# Create zip archives of each season without humans.
-#
-# Create a human zip archive.
-#
-########
+"""
+
+ snapshot_serengeti_lila.py
+
+ Create zipfiles of Snapshot Serengeti S1-S11.
+
+ Create a metadata file for S1-S10, plus separate metadata files
+ for S1-S11.  At the time this code was written, S11 was under embargo.
+
+ Create zip archives of each season without humans.
+
+ Create a human zip archive.
+
+"""
 
 #%% Constants and imports
 

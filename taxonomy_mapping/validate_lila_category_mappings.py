@@ -1,10 +1,10 @@
-########
-#
-# validate_lila_category_mappings.py
-#
-# Confirm that all category names on LILA have mappings in the taxonomy file.
-#
-########
+"""
+
+ validate_lila_category_mappings.py
+
+ Confirm that all category names on LILA have mappings in the taxonomy file.
+
+"""
 
 #%% Constants and imports
 

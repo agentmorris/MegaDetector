@@ -1,11 +1,11 @@
-########
-#
-# tf_detector.py
-#
-# Module containing the class TFDetector for loading a TensorFlow detection model and
-# running inference.
-# 
-########
+"""
+
+ tf_detector.py
+
+ Module containing the class TFDetector for loading a TensorFlow detection model and
+ running inference.
+ 
+"""
 
 import numpy as np
 

@@ -1,29 +1,29 @@
-########
-#
-# combine_api_outputs.py
-#
-# Merges two or more .json files in batch API output format, optionally
-# writing the results to another .json file.
-#
-# * Concatenates image lists, erroring if images are not unique.
-# * Errors if class lists are conflicting; errors on unrecognized fields.
-# * Checks compatibility in info structs, within reason.
-# 
-# File format:
-# 
-# https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
-# 
-# Command-line use:
-# 
-# combine_api_outputs input1.json input2.json ... inputN.json output.json
-# 
-# Also see combine_api_shard_files() (not exposed via the command line yet) to
-# combine the intermediate files created by the API.
-# 
-# This does no checking for redundancy; if you are looking to ensemble
-# the results of multiple model versions, see merge_detections.py.
-# 
-########
+"""
+
+ combine_api_outputs.py
+
+ Merges two or more .json files in batch API output format, optionally
+ writing the results to another .json file.
+
+ * Concatenates image lists, erroring if images are not unique.
+ * Errors if class lists are conflicting; errors on unrecognized fields.
+ * Checks compatibility in info structs, within reason.
+ 
+ File format:
+ 
+ https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
+ 
+ Command-line use:
+ 
+ combine_api_outputs input1.json input2.json ... inputN.json output.json
+ 
+ Also see combine_api_shard_files() (not exposed via the command line yet) to
+ combine the intermediate files created by the API.
+ 
+ This does no checking for redundancy; if you are looking to ensemble
+ the results of multiple model versions, see merge_detections.py.
+ 
+"""
 
 #%% Constants and imports
 

@@ -1,10 +1,10 @@
-########
-#
-# classifier-doc-testing.py
-#
-# Script to validate the MegaClassifier sample instructions, including URLs.
-#
-########
+"""
+
+ classifier-doc-testing.py
+
+ Script to validate the MegaClassifier sample instructions, including URLs.
+
+"""
 
 #%% Imports and constants
 

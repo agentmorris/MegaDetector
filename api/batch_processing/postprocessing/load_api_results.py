@@ -1,17 +1,17 @@
-########
-#
-# load_api_results.py
-#
-# DEPRECATED
-#
-# As of 2023.12, this module is used in postprocessing and RDE.  Not recommended
-# for new code.
-#
-# Loads the output of the batch processing API (json) into a Pandas dataframe.
-#
-# Includes functions to read/write the (very very old) .csv results format.
-#
-########
+"""
+
+ load_api_results.py
+
+ DEPRECATED
+
+ As of 2023.12, this module is used in postprocessing and RDE.  Not recommended
+ for new code.
+
+ Loads the output of the batch processing API (json) into a Pandas dataframe.
+
+ Includes functions to read/write the (very very old) .csv results format.
+
+"""
 
 #%% Imports
 

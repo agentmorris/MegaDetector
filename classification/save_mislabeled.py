@@ -1,33 +1,33 @@
-########
-#
-# save_mislabeled.py
-#
-# Update the list of known mislabeled images in MegaDB.
-#
-# List of known mislabeled images is stored in Azure Blob Storage.
-# * storage account: cameratrapsc
-# * container: classifier-training
-# * blob: megadb_mislabeled/{dataset}.csv, one file per dataset
-# 
-# Each file megadb_mislabeled/{dataset}.csv has two columns:
-#    
-# * 'file': str, blob name
-#
-# * 'correct_class': optional str, correct dataset class
-#
-#   if empty, indicates that the existing class in MegaDB is inaccurate, but
-#   the correct class is unknown.
-#
-# This script assumes that the classifier-training container is mounted locally.
-# 
-# Takes as input a CSV file (output from Timelapse) with the following columns:
-#
-# * 'File': str, <blob_basename>
-# * 'RelativePath': str, <dataset>\<blob_dirname>
-# * 'mislabeled': str, values in ['true', 'false']
-# * 'correct_class': either empty or str
-#
-########
+"""
+
+ save_mislabeled.py
+
+ Update the list of known mislabeled images in MegaDB.
+
+ List of known mislabeled images is stored in Azure Blob Storage.
+ * storage account: cameratrapsc
+ * container: classifier-training
+ * blob: megadb_mislabeled/{dataset}.csv, one file per dataset
+ 
+ Each file megadb_mislabeled/{dataset}.csv has two columns:
+    
+ * 'file': str, blob name
+
+ * 'correct_class': optional str, correct dataset class
+
+   if empty, indicates that the existing class in MegaDB is inaccurate, but
+   the correct class is unknown.
+
+ This script assumes that the classifier-training container is mounted locally.
+ 
+ Takes as input a CSV file (output from Timelapse) with the following columns:
+
+ * 'File': str, <blob_basename>
+ * 'RelativePath': str, <dataset>\<blob_dirname>
+ * 'mislabeled': str, values in ['true', 'false']
+ * 'correct_class': either empty or str
+
+"""
 
 #%% Imports
 

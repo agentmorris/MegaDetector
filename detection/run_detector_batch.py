@@ -1,38 +1,38 @@
-########
-#
-# run_detector_batch.py
-#
-# Module to run MegaDetector on lots of images, writing the results
-# to a file in the same format produced by our batch API:
-# 
-# https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing
-# 
-# This enables the results to be used in our post-processing pipeline; see
-# api/batch_processing/postprocessing/postprocess_batch_results.py .
-# 
-# This script can save results to checkpoints intermittently, in case disaster
-# strikes. To enable this, set --checkpoint_frequency to n > 0, and results 
-# will be saved as a checkpoint every n images. Checkpoints will be written 
-# to a file in the same directory as the output_file, and after all images
-# are processed and final results file written to output_file, the temporary
-# checkpoint file will be deleted. If you want to resume from a checkpoint, set
-# the checkpoint file's path using --resume_from_checkpoint.
-# 
-# The `threshold` you can provide as an argument is the confidence threshold above
-# which detections will be included in the output file.
-# 
-# Has preliminary multiprocessing support for CPUs only; if a GPU is available, it will
-# use the GPU instead of CPUs, and the --ncores option will be ignored.  Checkpointing
-# is not supported when using a GPU.
-# 
-# Does not have a command-line option to bind the process to a particular GPU, but you can 
-# prepend with "CUDA_VISIBLE_DEVICES=0 ", for example, to bind to GPU 0, e.g.:
-# 
-# CUDA_VISIBLE_DEVICES=0 python detection/run_detector_batch.py md_v4.1.0.pb ~/data ~/mdv4test.json 
-#
-# You can disable GPU processing entirely by setting CUDA_VISIBLE_DEVICES=''.
-#
-########
+"""
+
+ run_detector_batch.py
+
+ Module to run MegaDetector on lots of images, writing the results
+ to a file in the same format produced by our batch API:
+ 
+ https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing
+ 
+ This enables the results to be used in our post-processing pipeline; see
+ api/batch_processing/postprocessing/postprocess_batch_results.py .
+ 
+ This script can save results to checkpoints intermittently, in case disaster
+ strikes. To enable this, set --checkpoint_frequency to n > 0, and results 
+ will be saved as a checkpoint every n images. Checkpoints will be written 
+ to a file in the same directory as the output_file, and after all images
+ are processed and final results file written to output_file, the temporary
+ checkpoint file will be deleted. If you want to resume from a checkpoint, set
+ the checkpoint file's path using --resume_from_checkpoint.
+ 
+ The `threshold` you can provide as an argument is the confidence threshold above
+ which detections will be included in the output file.
+ 
+ Has preliminary multiprocessing support for CPUs only; if a GPU is available, it will
+ use the GPU instead of CPUs, and the --ncores option will be ignored.  Checkpointing
+ is not supported when using a GPU.
+ 
+ Does not have a command-line option to bind the process to a particular GPU, but you can 
+ prepend with "CUDA_VISIBLE_DEVICES=0 ", for example, to bind to GPU 0, e.g.:
+ 
+ CUDA_VISIBLE_DEVICES=0 python detection/run_detector_batch.py md_v4.1.0.pb ~/data ~/mdv4test.json 
+
+ You can disable GPU processing entirely by setting CUDA_VISIBLE_DEVICES=''.
+
+"""
 
 #%% Constants, imports, environment
 

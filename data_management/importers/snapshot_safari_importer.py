@@ -1,29 +1,29 @@
-########
-#
-# Import a Snapshot Safari project (one project, one season)
-#
-# Before running this script:
-#
-# * Mount the blob container where the images live, or copy the 
-#   images to local storage
-#
-# What this script does:
-#
-# * Creates a .json file
-# * Creates zip archives of the season without humans.
-# * Copies animals and humans to separate folders 
-#
-# After running this script:
-#
-# * Create or update LILA page
-# * Push zipfile and unzipped images to LILA
-# * Push unzipped humans to wildlifeblobssc
-# * Delete images from UMN upload storage
-#
-# Snapshot Serengeti is handled specially, because we're dealing with bounding
-# boxes too.  See snapshot_serengeti_lila.py.
-#
-########
+"""
+
+ Import a Snapshot Safari project (one project, one season)
+
+ Before running this script:
+
+ * Mount the blob container where the images live, or copy the 
+   images to local storage
+
+ What this script does:
+
+ * Creates a .json file
+ * Creates zip archives of the season without humans.
+ * Copies animals and humans to separate folders 
+
+ After running this script:
+
+ * Create or update LILA page
+ * Push zipfile and unzipped images to LILA
+ * Push unzipped humans to wildlifeblobssc
+ * Delete images from UMN upload storage
+
+ Snapshot Serengeti is handled specially, because we're dealing with bounding
+ boxes too.  See snapshot_serengeti_lila.py.
+
+"""
 
 #%% Imports
 

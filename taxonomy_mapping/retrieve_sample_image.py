@@ -1,15 +1,15 @@
-########
-#
-# retrieve_sample_image.py
-#
-# Downloader that retrieves images from Google images, used for verifying taxonomy
-# lookups and looking for egregious mismappings (e.g., "snake" being mapped to a fish called
-# "snake").
-#
-# Simple wrapper around simple_image_download, but I've had to swap in and out the underlying
-# downloader a few times.
-#
-########
+"""
+
+ retrieve_sample_image.py
+
+ Downloader that retrieves images from Google images, used for verifying taxonomy
+ lookups and looking for egregious mismappings (e.g., "snake" being mapped to a fish called
+ "snake").
+
+ Simple wrapper around simple_image_download, but I've had to swap in and out the underlying
+ downloader a few times.
+
+"""
 
 #%% Imports and environment
 

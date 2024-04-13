@@ -1,11 +1,11 @@
-########
-#
-# save_the_elephants_survey_B.py
-#
-# Convert the .csv file provided for the Save the Elephants Survey B data set to a 
-# COCO-camera-traps .json file
-#
-########
+"""
+
+ save_the_elephants_survey_B.py
+
+ Convert the .csv file provided for the Save the Elephants Survey B data set to a 
+ COCO-camera-traps .json file
+
+"""
 
 #%% Constants and environment
 

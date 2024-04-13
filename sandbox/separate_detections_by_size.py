@@ -1,11 +1,11 @@
-########
-#
-# separate_detections_by_size
-#
-# Not-super-well-maintained script to break a list of API output files up
-# based on bounding box size.
-#
-########
+"""
+
+ separate_detections_by_size
+
+ Not-super-well-maintained script to break a list of API output files up
+ based on bounding box size.
+
+"""
 
 #%% Imports and constants
 

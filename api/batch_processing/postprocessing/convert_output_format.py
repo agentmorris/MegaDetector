@@ -1,13 +1,13 @@
-########
-#
-# convert_output_format.py
-#
-# Converts between file formats output by our batch processing API.  Currently
-# supports json <--> csv conversion, but this should be the landing place for any
-# conversion - including between hypothetical alternative .json versions - that we support 
-# in the future.
-#
-########
+"""
+
+ convert_output_format.py
+
+ Converts between file formats output by our batch processing API.  Currently
+ supports json <--> csv conversion, but this should be the landing place for any
+ conversion - including between hypothetical alternative .json versions - that we support 
+ in the future.
+
+"""
 
 #%% Constants and imports
 

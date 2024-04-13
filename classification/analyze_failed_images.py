@@ -1,8 +1,8 @@
-########
-#
-# analyze_failed_images.py
-#
-########
+"""
+
+ analyze_failed_images.py
+
+"""
 
 #%% Example usage
 

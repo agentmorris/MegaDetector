@@ -1,10 +1,10 @@
-########
-#
-# ct_utils.py
-#
-# Numeric/geometry utility functions
-#
-########
+"""
+
+ ct_utils.py
+
+ Numeric/geometry utility functions
+
+"""
 
 #%% Imports and constants
 

@@ -1,10 +1,10 @@
-########
-#
-# lila_common.py
-#
-# Common constants and functions related to LILA data management/retrieval.
-#
-########
+"""
+
+ lila_common.py
+
+ Common constants and functions related to LILA data management/retrieval.
+
+"""
 
 #%% Imports and constants
 

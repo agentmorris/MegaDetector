@@ -1,10 +1,10 @@
-########
-#
-# noaa_seals_2019.py
-#
-# Prepare the NOAA Arctic Seals 2019 metadata for LILA.
-#
-########
+"""
+
+ noaa_seals_2019.py
+
+ Prepare the NOAA Arctic Seals 2019 metadata for LILA.
+
+"""
 
 #%% Imports and constants
 

@@ -1,13 +1,13 @@
-########
-#
-# idfg_iwildcam_lila_prep.py
-#
-# Adding class labels (from the private test .csv) to the iWildCam 2019 IDFG 
-# test set, in preparation for release on LILA.
-#
-# This version works with the public iWildCam release images.
-#
-########
+"""
+
+ idfg_iwildcam_lila_prep.py
+
+ Adding class labels (from the private test .csv) to the iWildCam 2019 IDFG 
+ test set, in preparation for release on LILA.
+
+ This version works with the public iWildCam release images.
+
+"""
 
 #%% ############ Take one, from iWildCam .json files ############ 
 

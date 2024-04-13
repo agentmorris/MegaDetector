@@ -1,23 +1,23 @@
-########
-#
-# animl_results_to_md_results.py
-#
-# Convert a .csv file produced by the Animl package:
-#
-# https://github.com/conservationtechlab/animl-py
-#
-# ...to a MD results file suitable for import into Timelapse.
-#
-# Columns are expected to be:
-#
-# file
-# category (MD category identifies: 1==animal, 2==person, 3==vehicle)
-# detection_conf
-# bbox1,bbox2,bbox3,bbox4
-# class
-# classification_conf
-#
-########
+"""
+
+ animl_results_to_md_results.py
+
+ Convert a .csv file produced by the Animl package:
+
+ https://github.com/conservationtechlab/animl-py
+
+ ...to a MD results file suitable for import into Timelapse.
+
+ Columns are expected to be:
+
+ file
+ category (MD category identifies: 1==animal, 2==person, 3==vehicle)
+ detection_conf
+ bbox1,bbox2,bbox3,bbox4
+ class
+ classification_conf
+
+"""
 
 #%% Imports and constants
 

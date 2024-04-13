@@ -1,10 +1,10 @@
-########
-# 
-# visualization_utils.py
-# 
-# Core rendering functions shared across visualization scripts
-#
-########
+"""
+ 
+ visualization_utils.py
+ 
+ Core rendering functions shared across visualization scripts
+
+"""
 
 #%% Constants and imports
 

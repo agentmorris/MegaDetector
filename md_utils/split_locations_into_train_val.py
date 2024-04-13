@@ -1,15 +1,15 @@
-########
-#
-# split_locations_into_train_val.py
-#
-# Split a list of location IDs into training and validation, targeting a specific
-# train/val split for each category, but allowing some categories to be tighter or looser
-# than others.  Does nothing particularly clever, just randomly splits locations into 
-# train/val lots of times using the target val fraction, and picks the one that meets the 
-# specified constraints and minimizes weighted error, where "error" is defined as the
-# sum of each class's absolute divergence from the target val fraction.
-#
-########
+"""
+
+ split_locations_into_train_val.py
+
+ Split a list of location IDs into training and validation, targeting a specific
+ train/val split for each category, but allowing some categories to be tighter or looser
+ than others.  Does nothing particularly clever, just randomly splits locations into 
+ train/val lots of times using the target val fraction, and picks the one that meets the 
+ specified constraints and minimizes weighted error, where "error" is defined as the
+ sum of each class's absolute divergence from the target val fraction.
+
+"""
 
 #%% Imports/constants
 

@@ -1,15 +1,15 @@
-########
-#
-# remove_repeat_detections.py
-#
-# Used after running find_repeat_detections, then manually filtering the results,
-# to create a final filtered output file.
-#
-# If you want to use this script, we recommend that you read the user's guide:
-#
-# https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing/postprocessing/repeat_detection_elimination
-#
-########
+"""
+
+ remove_repeat_detections.py
+
+ Used after running find_repeat_detections, then manually filtering the results,
+ to create a final filtered output file.
+
+ If you want to use this script, we recommend that you read the user's guide:
+
+ https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing/postprocessing/repeat_detection_elimination
+
+"""
 
 #%% Constants and imports
 

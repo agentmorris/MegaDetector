@@ -1,14 +1,14 @@
-########
-#
-# write_html_image_list.py
-#
-# Given a list of image file names, writes an HTML file that
-# shows all those images, with optional one-line headers above each.
-#
-# Each "filename" can also be a dict with elements 'filename','title',
-# 'imageStyle','textStyle', 'linkTarget'
-#
-########
+"""
+
+ write_html_image_list.py
+
+ Given a list of image file names, writes an HTML file that
+ shows all those images, with optional one-line headers above each.
+
+ Each "filename" can also be a dict with elements 'filename','title',
+ 'imageStyle','textStyle', 'linkTarget'
+
+"""
 
 #%% Constants and imports
 

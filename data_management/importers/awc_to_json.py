@@ -1,10 +1,10 @@
-########
-#
-# awc_to_json.py
-#
-# Convert a particular .csv file from Australian Wildlife Conservancy to CCT format.
-#
-########
+"""
+
+ awc_to_json.py
+
+ Convert a particular .csv file from Australian Wildlife Conservancy to CCT format.
+
+"""
 
 #%% Constants and environment
 

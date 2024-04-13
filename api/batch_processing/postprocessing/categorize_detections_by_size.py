@@ -1,11 +1,11 @@
-########
-#
-# categorize_detections_by_size.py
-#
-# Given an API output .json file, creates a separate category for bounding boxes
-# above one or more size thresholds.
-# 
-########
+"""
+
+ categorize_detections_by_size.py
+
+ Given an API output .json file, creates a separate category for bounding boxes
+ above one or more size thresholds.
+ 
+"""
 
 #%% Constants and imports
 

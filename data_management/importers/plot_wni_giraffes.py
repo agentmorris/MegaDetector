@@ -1,10 +1,10 @@
-########
-#
-# plot_wni_giraffes.py
-#
-# Plot keypoints on a random sample of images from the wni-giraffes data set.
-#
-########
+"""
+
+ plot_wni_giraffes.py
+
+ Plot keypoints on a random sample of images from the wni-giraffes data set.
+
+"""
 
 #%% Constants and imports
 

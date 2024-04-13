@@ -1,17 +1,17 @@
-########
-#
-# md_to_labelme.py
-#
-# "Converts" a MegaDetector output .json file to labelme format (one .json per image
-# file).  "Convert" is in quotes because this is an opinionated transformation that 
-# requires a confidence threshold.
-#
-# TODO:
-#    
-# * support variable confidence thresholds across classes
-# * support classification data
-#
-########
+"""
+
+ md_to_labelme.py
+
+ "Converts" a MegaDetector output .json file to labelme format (one .json per image
+ file).  "Convert" is in quotes because this is an opinionated transformation that 
+ requires a confidence threshold.
+
+ TODO:
+    
+ * support variable confidence thresholds across classes
+ * support classification data
+
+"""
 
 #%% Imports and constants
 

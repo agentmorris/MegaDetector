@@ -1,24 +1,24 @@
-########
-#
-# run_tiled_inference.py
-#
-# Run inference on a folder, fist splitting each image up into tiles of size
-# MxN (typically the native inference size of your detector), writing those
-# tiles out to a temporary folder, then de-duplicating the results before merging
-# them back into a set of detections that make sense on the original images.
-#
-# This approach will likely fail to detect very large animals, so if you expect both large 
-# and small animals (in terms of pixel size), this script is best used in 
-# conjunction with a traditional inference pass that looks at whole images.
-#
-# Currently requires temporary storage at least as large as the input data, generally
-# a lot more than that (depending on the overlap between adjacent tiles).  This is 
-# inefficient, but easy to debug.
-#
-# Programmatic invocation supports using YOLOv5's inference scripts (and test-time
-# augmentation); the command-line interface only supports standard inference right now.
-#
-########
+"""
+
+ run_tiled_inference.py
+
+ Run inference on a folder, fist splitting each image up into tiles of size
+ MxN (typically the native inference size of your detector), writing those
+ tiles out to a temporary folder, then de-duplicating the results before merging
+ them back into a set of detections that make sense on the original images.
+
+ This approach will likely fail to detect very large animals, so if you expect both large 
+ and small animals (in terms of pixel size), this script is best used in 
+ conjunction with a traditional inference pass that looks at whole images.
+
+ Currently requires temporary storage at least as large as the input data, generally
+ a lot more than that (depending on the overlap between adjacent tiles).  This is 
+ inefficient, but easy to debug.
+
+ Programmatic invocation supports using YOLOv5's inference scripts (and test-time
+ augmentation); the command-line interface only supports standard inference right now.
+
+"""
 
 #%% Imports and constants
 

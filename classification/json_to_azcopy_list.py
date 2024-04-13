@@ -1,13 +1,13 @@
-########
-#
-# json_to_azcopy_list.py
-#
-# Given a queried_images.json file output from json_validator.py, generates
-# one text file <dataset>_images.txt for every dataset included.
-# 
-# See: https://github.com/Azure/azure-storage-azcopy/wiki/Listing-specific-files-to-transfer
-#
-########
+"""
+
+ json_to_azcopy_list.py
+
+ Given a queried_images.json file output from json_validator.py, generates
+ one text file <dataset>_images.txt for every dataset included.
+ 
+ See: https://github.com/Azure/azure-storage-azcopy/wiki/Listing-specific-files-to-transfer
+
+"""
 
 #%% Imports and constants 
 

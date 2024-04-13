@@ -1,11 +1,11 @@
-########
-#
-# remove_corrupted_images_from_db.py
-#
-# Given a coco-camera-traps .json file, checks all images for corruption
-# and generates a new .json file that only contains the non-corrupted images.
-#
-########
+"""
+
+ remove_corrupted_images_from_db.py
+
+ Given a coco-camera-traps .json file, checks all images for corruption
+ and generates a new .json file that only contains the non-corrupted images.
+
+"""
 
 #%% Imports and constants
 

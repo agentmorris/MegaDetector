@@ -1,64 +1,64 @@
-########
-#
-# create_classification_dataset.py
-# 
-# Creates a classification dataset CSV with a corresponding JSON file determining
-# the train/val/test split.
-# 
-# This script takes as input a "queried images" JSON file whose keys are paths to
-# images and values are dictionaries containing information relevant for training
-# a classifier, including labels and (optionally) ground-truth bounding boxes.
-# The image paths are in the format `<dataset-name>/<blob-name>` where we assume
-# that the dataset name does not contain '/'.
-# 
-# {
-#     "caltech/cct_images/59f79901-23d2-11e8-a6a3-ec086b02610b.jpg": {
-#         "dataset": "caltech",
-#         "location": 13,
-#         "class": "mountain_lion",  # class from dataset
-#         "bbox": [{"category": "animal",
-#                   "bbox": [0, 0.347, 0.237, 0.257]}],   # ground-truth bbox
-#         "label": ["monutain_lion"]  # labels to use in classifier
-#     },
-#     "caltech/cct_images/59f5fe2b-23d2-11e8-a6a3-ec086b02610b.jpg": {
-#         "dataset": "caltech",
-#         "location": 13,
-#         "class": "mountain_lion",  # class from dataset
-#         "label": ["monutain_lion"]  # labels to use in classifier
-#     },
-#     ...
-# }
-# 
-# We assume that the tuple (dataset, location) identifies a unique location. In
-# other words, we assume that no two datasets have overlapping locations. This
-# probably isn't 100% true, but it's pretty much the best we can do in terms of
-# avoiding overlapping locations between the train/val/test splits.
-# 
-# This script outputs 3 files to <output_dir>:
-# 
-# 1) classification_ds.csv, contains columns:
-#    
-#     - 'path': str, path to cropped images
-#     - 'dataset': str, name of dataset
-#     - 'location': str, location that image was taken, as saved in MegaDB
-#     - 'dataset_class': str, original class assigned to image, as saved in MegaDB
-#     - 'confidence': float, confidence that this crop is of an actual animal,
-#         1.0 if the crop is a "ground truth bounding box" (i.e., from MegaDB),
-#         <= 1.0 if the bounding box was detected by MegaDetector
-#     - 'label': str, comma-separated list of label(s) assigned to this crop for
-#         the sake of classification
-# 
-# 2) label_index.json: maps integer to label name
-#
-#     - keys are string representations of Python integers (JSON requires keys to
-#       be strings), numbered from 0 to num_labels-1
-#     - values are strings, label names
-# 
-# 3) splits.json: serialization of a Python dict that maps each split
-#    ['train', 'val', 'test'] to a list of length-2 lists, where each inner list
-#    is [<dataset>, <location>]
-#
-########
+"""
+
+ create_classification_dataset.py
+ 
+ Creates a classification dataset CSV with a corresponding JSON file determining
+ the train/val/test split.
+ 
+ This script takes as input a "queried images" JSON file whose keys are paths to
+ images and values are dictionaries containing information relevant for training
+ a classifier, including labels and (optionally) ground-truth bounding boxes.
+ The image paths are in the format `<dataset-name>/<blob-name>` where we assume
+ that the dataset name does not contain '/'.
+ 
+ {
+     "caltech/cct_images/59f79901-23d2-11e8-a6a3-ec086b02610b.jpg": {
+         "dataset": "caltech",
+         "location": 13,
+         "class": "mountain_lion",  # class from dataset
+         "bbox": [{"category": "animal",
+                   "bbox": [0, 0.347, 0.237, 0.257]}],   # ground-truth bbox
+         "label": ["monutain_lion"]  # labels to use in classifier
+     },
+     "caltech/cct_images/59f5fe2b-23d2-11e8-a6a3-ec086b02610b.jpg": {
+         "dataset": "caltech",
+         "location": 13,
+         "class": "mountain_lion",  # class from dataset
+         "label": ["monutain_lion"]  # labels to use in classifier
+     },
+     ...
+ }
+ 
+ We assume that the tuple (dataset, location) identifies a unique location. In
+ other words, we assume that no two datasets have overlapping locations. This
+ probably isn't 100% true, but it's pretty much the best we can do in terms of
+ avoiding overlapping locations between the train/val/test splits.
+ 
+ This script outputs 3 files to <output_dir>:
+ 
+ 1) classification_ds.csv, contains columns:
+    
+     - 'path': str, path to cropped images
+     - 'dataset': str, name of dataset
+     - 'location': str, location that image was taken, as saved in MegaDB
+     - 'dataset_class': str, original class assigned to image, as saved in MegaDB
+     - 'confidence': float, confidence that this crop is of an actual animal,
+         1.0 if the crop is a "ground truth bounding box" (i.e., from MegaDB),
+         <= 1.0 if the bounding box was detected by MegaDetector
+     - 'label': str, comma-separated list of label(s) assigned to this crop for
+         the sake of classification
+ 
+ 2) label_index.json: maps integer to label name
+
+     - keys are string representations of Python integers (JSON requires keys to
+       be strings), numbered from 0 to num_labels-1
+     - values are strings, label names
+ 
+ 3) splits.json: serialization of a Python dict that maps each split
+    ['train', 'val', 'test'] to a list of length-2 lists, where each inner list
+    is [<dataset>, <location>]
+
+"""
 
 #%% Example usage
 

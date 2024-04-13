@@ -1,12 +1,12 @@
-########
-#
-# rde_debug.py
-#
-# Some useful cells for comparing the outputs of the repeat detection 
-# elimination process, specifically to make sure that after optimizations,
-# results are the same up to ordering.
-#
-########
+"""
+
+ rde_debug.py
+
+ Some useful cells for comparing the outputs of the repeat detection 
+ elimination process, specifically to make sure that after optimizations,
+ results are the same up to ordering.
+
+"""
 
 #%% Compare two RDE files
 

@@ -1,17 +1,17 @@
-########
-#
-# download_lila_subset.py
-#
-# Example of how to download a list of files from LILA, e.g. all the files
-# in a data set corresponding to a particular species.
-#
-# Organizes the downloaded images by dataset.  How you actually want to organize files,
-# what you want to query for, etc., is very application-specific; this is just meant as a 
-# demo.
-#
-# Can download from GCP (all datasets), AWS (all datasets), or Azure (most datasets).
-#
-########
+"""
+
+ download_lila_subset.py
+
+ Example of how to download a list of files from LILA, e.g. all the files
+ in a data set corresponding to a particular species.
+
+ Organizes the downloaded images by dataset.  How you actually want to organize files,
+ what you want to query for, etc., is very application-specific; this is just meant as a 
+ demo.
+
+ Can download from GCP (all datasets), AWS (all datasets), or Azure (most datasets).
+
+"""
 
 #%% Constants and imports
 

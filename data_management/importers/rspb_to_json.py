@@ -1,11 +1,11 @@
-########
-#
-# rspb_to_json.py
-#
-# Convert the .csv file provided for the RSPB data set to a 
-# COCO-camera-traps .json file
-#
-########
+"""
+
+ rspb_to_json.py
+
+ Convert the .csv file provided for the RSPB data set to a 
+ COCO-camera-traps .json file
+
+"""
 
 #%% Constants and environment
 

@@ -1,54 +1,54 @@
-########
-#
-# cache_batchapi_outputs.py
-#
-# Script to cache Batch Detection API outputs.
-# 
-# This script can handle either the Batch Detection API JSON Response or the
-# detections JSON.
-# 
-# Batch Detection API Response format:
-# 
-#     {
-#         "Status": {
-#             "request_status": "completed",
-#             "message": {
-#                 "num_failed_shards": 0,
-#                 "output_file_urls": {
-#                     "detections": "https://url/to/detections.json",
-#                     "failed_images": "https://url/to/failed_images.json",
-#                     "images": https://url/to/images.json",
-#                 }
-#             },
-#         },
-#         "Endpoint": "/v3/camera-trap/detection-batch/request_detections",
-#         "TaskId": "ea26326e-7e0d-4524-a9ea-f57a5799d4ba"
-#     }
-# 
-# Detections JSON format:
-#
-#     {
-#         "info": {...}
-#         "detection_categories": {...}
-#         "classification_categories": {...}
-#         "images": [
-#             {
-#                 "file": "path/from/base/dir/image1.jpg",
-#                 "max_detection_conf": 0.926,
-#                 "detections": [{
-#                         "category": "1",
-#                         "conf": 0.061,
-#                         "bbox": [0.0451, 0.1849, 0.3642, 0.4636]
-#                 }]
-#             }
-#         ]
-#     }
-# 
-# Batch Detection API Output Format:
-#
-# github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#api-outputs
-#
-########
+"""
+
+ cache_batchapi_outputs.py
+
+ Script to cache Batch Detection API outputs.
+ 
+ This script can handle either the Batch Detection API JSON Response or the
+ detections JSON.
+ 
+ Batch Detection API Response format:
+ 
+     {
+         "Status": {
+             "request_status": "completed",
+             "message": {
+                 "num_failed_shards": 0,
+                 "output_file_urls": {
+                     "detections": "https://url/to/detections.json",
+                     "failed_images": "https://url/to/failed_images.json",
+                     "images": https://url/to/images.json",
+                 }
+             },
+         },
+         "Endpoint": "/v3/camera-trap/detection-batch/request_detections",
+         "TaskId": "ea26326e-7e0d-4524-a9ea-f57a5799d4ba"
+     }
+ 
+ Detections JSON format:
+
+     {
+         "info": {...}
+         "detection_categories": {...}
+         "classification_categories": {...}
+         "images": [
+             {
+                 "file": "path/from/base/dir/image1.jpg",
+                 "max_detection_conf": 0.926,
+                 "detections": [{
+                         "category": "1",
+                         "conf": 0.061,
+                         "bbox": [0.0451, 0.1849, 0.3642, 0.4636]
+                 }]
+             }
+         ]
+     }
+ 
+ Batch Detection API Output Format:
+
+ github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#api-outputs
+
+"""
 
 #%% Imports
 

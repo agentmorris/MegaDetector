@@ -1,12 +1,12 @@
-########
-#
-# video_json_to_csv.py
-#
-# Takes a .json file with MD results for an individual video, and converts to a .csv 
-# that includes frame times.  This is very bespoke to animal detection and does not
-# include other classes.
-#
-########
+"""
+
+ video_json_to_csv.py
+
+ Takes a .json file with MD results for an individual video, and converts to a .csv 
+ that includes frame times.  This is very bespoke to animal detection and does not
+ include other classes.
+
+"""
 
 #%% Imports and constants
 

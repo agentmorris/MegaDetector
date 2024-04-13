@@ -1,8 +1,8 @@
-########
-#
-# Prepare a LILA-ready .json file for the NOAA Puget Sound Nearshore Fish dataset.
-#
-########
+"""
+
+ Prepare a LILA-ready .json file for the NOAA Puget Sound Nearshore Fish dataset.
+
+"""
 
 #%% Constants and imports
 

@@ -1,11 +1,11 @@
-########
-#
-# aggregate_video.py
-#
-# Aggregate results and render output video for a video that's already been run 
-# through MD.
-#
-########
+"""
+
+ aggregate_video.py
+
+ Aggregate results and render output video for a video that's already been run 
+ through MD.
+
+"""
 
 #%% Constants
 

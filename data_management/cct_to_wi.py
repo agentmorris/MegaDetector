@@ -1,17 +1,17 @@
-########
-#
-# cct_to_wi.py
-#
-# Converts COCO Camera Traps .json files to the Wildlife Insights
-# batch upload format
-#
-# Also see:
-#
-# https://github.com/ConservationInternational/Wildlife-Insights----Data-Migration
-#
-# https://data.naturalsciences.org/wildlife-insights/taxonomy/search
-#
-########
+"""
+
+ cct_to_wi.py
+
+ Converts COCO Camera Traps .json files to the Wildlife Insights
+ batch upload format
+
+ Also see:
+
+ https://github.com/ConservationInternational/Wildlife-Insights----Data-Migration
+
+ https://data.naturalsciences.org/wildlife-insights/taxonomy/search
+
+"""
 
 #%% Imports
 

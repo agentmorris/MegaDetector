@@ -1,21 +1,21 @@
-########
-#
-# missouri_to_json.py
-#
-# Create .json files from the original source files for the Missouri Camera Traps
-# data set.  Metadata was provided here in two formats:
-#
-# 1) In one subset of the data, folder names indicated species names.  In Set 1,
-#    there are no empty sequences.  Set 1 has a metadata file to indicate image-level
-#    bounding boxes.
-#
-# 2) A subset of the data (overlapping with (1)) was annotated with bounding
-#    boxes, specified in a whitespace-delimited text file.  In set 2, there are
-#    some sequences omitted from the metadata file, which implied emptiness.
-# 
-# In the end, set 2 labels were not reliable enough to publish, so LILA includes only set 1.
-#
-########
+"""
+
+ missouri_to_json.py
+
+ Create .json files from the original source files for the Missouri Camera Traps
+ data set.  Metadata was provided here in two formats:
+
+ 1) In one subset of the data, folder names indicated species names.  In Set 1,
+    there are no empty sequences.  Set 1 has a metadata file to indicate image-level
+    bounding boxes.
+
+ 2) A subset of the data (overlapping with (1)) was annotated with bounding
+    boxes, specified in a whitespace-delimited text file.  In set 2, there are
+    some sequences omitted from the metadata file, which implied emptiness.
+ 
+ In the end, set 2 labels were not reliable enough to publish, so LILA includes only set 1.
+
+"""
 
 #%% Constants and imports
 
