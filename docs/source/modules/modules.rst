@@ -4,4 +4,3 @@ MegaDetector
 .. toctree::
    :maxdepth: 4
 
-   formatter

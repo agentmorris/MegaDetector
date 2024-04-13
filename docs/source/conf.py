@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.abspath(".."))
 
 extensions = [
     "autoapi.extension",
-    "sphinx.ext.autodoc",
+    #"sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinxcontrib.apidoc",
     "sphinx_mdinclude",
@@ -55,7 +55,7 @@ myst_enable_extensions = [
 
 #apidoc opts
 apidoc_module_dir = '../../'
-apidoc_output_dir = 'reference'
+apidoc_output_dir = 'modules'
 apidoc_excluded_paths = ['archive', 'envs', 'images', 'sandbox']
 apidoc_separate_modules = True
 apidocs_module_fist = True
