@@ -16,6 +16,7 @@ import argparse
 import itertools
 import json
 import shutil
+import getpass
 
 from detection import run_detector_batch
 from md_visualization import visualize_detector_output
@@ -107,23 +108,26 @@ def process_video(options):
     tempdir = os.path.join(tempfile.gettempdir(), 'process_camera_trap_video')    
     os.makedirs(tempdir,exist_ok=True)
     
-    # TODO:
-    # 
+    # Generate unique subdirectory name for current user
+    user_subdirectory = f"{getpass.getuser()}_{str(uuid1())}"
+    user_tempdir = os.path.join(tempdir, user_subdirectory)
+    os.makedirs(user_tempdir, exist_ok=True)
+
     # This is a lazy fix to an issue... if multiple users run this script, the
     # "process_camera_trap_video" folder is owned by the first person who creates it, and others
     # can't write to it.  I could create uniquely-named folders, but I philosophically prefer
     # to put all the individual UUID-named folders within a larger folder, so as to be a 
     # good tempdir citizen.  So, the lazy fix is to make this world-writable.
-    try:
-        os.chmod(tempdir,0o777)
-    except Exception:
-        pass
+    # try:
+    #     os.chmod(tempdir,0o777)
+    # except Exception:
+    #     pass
     
     if options.frame_folder is not None:
         frame_output_folder = options.frame_folder
     else:
         frame_output_folder = os.path.join(
-            tempdir, os.path.basename(options.input_video_file) + '_frames_' + str(uuid1()))
+            user_tempdir, os.path.basename(options.input_video_file) + '_frames_' + str(uuid1()))
         
     # TODO: keep track of whether we created this folder, delete if we're deleting the extracted
     # frames and we created the folder, and the output files aren't in the same folder.  For now,
