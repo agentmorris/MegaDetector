@@ -205,7 +205,7 @@ for image_name in tqdm(list(filenames_to_rows.keys())):
         if (isinstance(species,float) or \
             (isinstance(species,str) and (len(species) == 0))):
             category_name = 'empty'
-        elif species.startswith('?')
+        elif species.startswith('?'):
             category_name = 'unknown'
         else:
             category_name = species
