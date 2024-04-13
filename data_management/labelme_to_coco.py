@@ -103,6 +103,8 @@ def labelme_to_coco(input_folder,
     n_edges_quantized = 0
     
     # image_fn_relative = image_filenames_relative[0]
+    #
+    # TODO: parallelize this loop
     for image_fn_relative in tqdm(image_filenames_relative):
         
         if relative_paths_to_include is not None and image_fn_relative not in relative_paths_to_include:
@@ -122,6 +124,7 @@ def labelme_to_coco(input_folder,
             
             # Either skip it...
             if no_json_handling == 'skip':
+                print('Skipping image {} (no .json file)'.format(image_fn_relative))
                 continue
             
             # ...or error
@@ -138,6 +141,9 @@ def labelme_to_coco(input_folder,
                     continue
                 im['width'] = pil_im.width
                 im['height'] = pil_im.height
+                
+                # Just in case we need to differentiate between "no .json file" and "a .json file with no annotations"
+                im['no_labelme_json'] = True
                 shapes = []
             else:
                 raise ValueError('Unrecognized specifier {} for handling images with no .json files'.format(
@@ -156,11 +162,15 @@ def labelme_to_coco(input_folder,
                 try:
                     pil_im = open_image(image_fn_abs)
                 except Exception:
-                    print('Warning: error opening image {}, skipping'.format(image_fn_abs))
-                    continue                
-                assert im['width'] == pil_im.width and im['height'] == pil_im.height, \
-                    'Image size validation error for file {}'.format(image_fn_relative)                
-                
+                    print('Warning: error opening image {} for size validation, skipping'.format(image_fn_abs))
+                    continue
+                if not (im['width'] == pil_im.width and im['height'] == pil_im.height):
+                    print('Warning: image size validation error for file {}'.format(image_fn_relative))
+                    im['width'] = pil_im.width
+                    im['height'] = pil_im.height
+                    im['labelme_width'] = labelme_data['imageWidth']
+                    im['labelme_height'] = labelme_data['imageHeight']
+
             shapes = labelme_data['shapes']
         
         if len(shapes) == 0:
@@ -176,6 +186,7 @@ def labelme_to_coco(input_folder,
         else:
             
             for shape in shapes:
+                
                 if shape['shape_type'] != 'rectangle':
                     print('Only rectangles are supported, skipping an annotation of type {} in {}'.format(
                         shape['shape_type'],image_fn_relative))
@@ -189,8 +200,10 @@ def labelme_to_coco(input_folder,
                 category_id = add_category(category_name)
             
                 points = shape['points']
-                assert len(points) == 2, 'Illegal rectangle with {} points'.format(
-                    len(points))
+                if len(points) != 2:
+                    print('Warning: illegal rectangle with {} points for {}'.format(
+                        len(points),image_fn_relative))
+                    continue
                 
                 p0 = points[0]
                 p1 = points[1]

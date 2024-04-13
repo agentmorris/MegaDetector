@@ -183,6 +183,7 @@ def convert_xywh_to_xyxy(api_bbox):
     Converts an xywh bounding box to an xyxy bounding box.
 
     Note that this is also different from the TensorFlow Object Detection API coords format.
+    
     Args:
         api_bbox: bbox output by the batch processing API [x_min, y_min, width_of_box, height_of_box]
 
