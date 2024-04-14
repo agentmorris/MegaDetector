@@ -147,7 +147,7 @@ def yolo_to_coco(input_folder,
     reading class names from [class_name_file], which can be a flat list with a .txt
     extension or a YOLO dataset.yml file.  Optionally writes the output dataset to [output_file].
     
-    empy_image_handling can be:
+    empty_image_handling can be:
         
     * 'no_annotations': include the image in the image list, with no annotations
     
