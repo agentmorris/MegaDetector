@@ -18,7 +18,148 @@ from md_visualization.visualization_utils import open_image
 from tqdm import tqdm
 
 
-#%% Suuport functions
+#%% Support functions
+
+def _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
+                          no_json_handling,validate_image_sizes,right_edge_quantization_threshold):
+    
+    result = {}
+    result['im'] = None
+    result['annotations_this_image'] = None
+    result['status'] = None
+    
+    image_fn_abs = os.path.join(input_folder,image_fn_relative)
+    json_fn_abs = os.path.splitext(image_fn_abs)[0] + '.json'
+    
+    im = {}
+    im['id'] = image_fn_relative
+    im['file_name'] = image_fn_relative
+    
+    # If there's no .json file for this image...
+    if not os.path.isfile(json_fn_abs):
+        
+        # Either skip it...
+        if no_json_handling == 'skip':
+            print('Skipping image {} (no .json file)'.format(image_fn_relative))
+            result['status'] = 'skipped (no .json file)'
+            return result
+        
+        # ...or error
+        elif no_json_handling == 'error':
+            raise ValueError('Image file {} has no corresponding .json file'.format(
+                image_fn_relative))
+        
+        # ...or treat it as empty.
+        elif no_json_handling == 'empty':
+            try:
+                pil_im = open_image(image_fn_abs)
+            except Exception:
+                print('Warning: error opening image {}, skipping'.format(image_fn_abs))
+                result['status'] = 'image load error'
+                return result
+            im['width'] = pil_im.width
+            im['height'] = pil_im.height
+            
+            # Just in case we need to differentiate between "no .json file" and "a .json file with no annotations"
+            im['no_labelme_json'] = True
+            shapes = []
+        else:
+            raise ValueError('Unrecognized specifier {} for handling images with no .json files'.format(
+                no_json_handling))            
+    
+    # If we found a .json file for this image...
+    else:
+        
+        # Read the .json file
+        with open(json_fn_abs,'r') as f:
+            labelme_data = json.load(f)            
+        im['width'] = labelme_data['imageWidth']
+        im['height'] = labelme_data['imageHeight']
+        
+        if validate_image_sizes:
+            try:
+                pil_im = open_image(image_fn_abs)
+            except Exception:
+                print('Warning: error opening image {} for size validation, skipping'.format(image_fn_abs))
+                result['status'] = 'skipped (size validation error)'
+                return result
+            if not (im['width'] == pil_im.width and im['height'] == pil_im.height):
+                print('Warning: image size validation error for file {}'.format(image_fn_relative))
+                im['width'] = pil_im.width
+                im['height'] = pil_im.height
+                im['labelme_width'] = labelme_data['imageWidth']
+                im['labelme_height'] = labelme_data['imageHeight']
+
+        shapes = labelme_data['shapes']
+
+        if ('flags' in labelme_data) and (len(labelme_data['flags']) > 0):
+            import pdb; pdb.set_trace()
+            im['flags'] = labelme_data['flags']
+
+    annotations_this_image = []
+    
+    if len(shapes) == 0:
+        
+        category_id = add_category('empty')
+        ann = {}
+        ann['id'] = str(uuid.uuid1())
+        ann['image_id'] = im['id']
+        ann['category_id'] = category_id
+        ann['sequence_level_annotation'] = False
+        annotations_this_image.append(ann)
+        
+    else:
+        
+        for shape in shapes:
+            
+            if shape['shape_type'] != 'rectangle':
+                print('Only rectangles are supported, skipping an annotation of type {} in {}'.format(
+                    shape['shape_type'],image_fn_relative))
+                continue
+            
+            if use_folders_as_labels:
+                category_name = os.path.basename(os.path.dirname(image_fn_abs))
+            else:
+                category_name = shape['label']                
+            
+            category_id = add_category(category_name)
+        
+            points = shape['points']
+            if len(points) != 2:
+                print('Warning: illegal rectangle with {} points for {}'.format(
+                    len(points),image_fn_relative))
+                continue
+            
+            p0 = points[0]
+            p1 = points[1]
+            x0 = min(p0[0],p1[0])
+            x1 = max(p0[0],p1[0])
+            y0 = min(p0[1],p1[1])
+            y1 = max(p0[1],p1[1])
+            
+            if right_edge_quantization_threshold is not None:                    
+                x1_rel = x1 / (im['width'] - 1)
+                right_edge_distance = 1.0 - x1_rel
+                if right_edge_distance < right_edge_quantization_threshold:
+                    x1 = im['width'] - 1
+                    
+            bbox = [x0,y0,abs(x1-x0),abs(y1-y0)]
+            ann = {}
+            ann['id'] = str(uuid.uuid1())
+            ann['image_id'] = im['id']
+            ann['category_id'] = category_id
+            ann['sequence_level_annotation'] = False
+            ann['bbox'] = bbox
+            annotations_this_image.append(ann)
+            
+        # ...for each shape
+        
+    result['im'] = im
+    result['annotations_this_image'] = annotations_this_image
+
+    return result
+    
+# ...def _process_labelme_file(...)
 
 
 #%% Main function
@@ -89,6 +230,20 @@ def labelme_to_coco(input_folder,
     image_filenames_relative = path_utils.find_images(input_folder,recursive=recursive,
                                                       return_relative_paths=True)    
     
+    # Remove any images we're supposed to skip
+    if relative_paths_to_include is not None or relative_paths_to_exclude is not None:
+        image_filenames_relative_to_process = []
+        for image_fn_relative in image_filenames_relative:
+            if relative_paths_to_include is not None and image_fn_relative not in relative_paths_to_include:
+                continue
+            if relative_paths_to_exclude is not None and image_fn_relative in relative_paths_to_exclude:
+                continue
+            image_filenames_relative_to_process.append(image_fn_relative)
+        print('Processing {} of {} images'.format(
+            len(image_filenames_relative_to_process),
+            len(image_filenames_relative)))
+        image_filenames_relative = image_filenames_relative_to_process
+    
     def add_category(category_name,candidate_category_id=0):
         if category_name in category_name_to_id:
             return category_name_to_id[category_name]
@@ -110,139 +265,14 @@ def labelme_to_coco(input_folder,
     annotations = []
     
     # image_fn_relative = image_filenames_relative[0]
-    #
-    # TODO: parallelize this loop
     for image_fn_relative in tqdm(image_filenames_relative):
         
-        if relative_paths_to_include is not None and image_fn_relative not in relative_paths_to_include:
-            continue
-        if relative_paths_to_exclude is not None and image_fn_relative in relative_paths_to_exclude:
-            continue
-        
-        image_fn_abs = os.path.join(input_folder,image_fn_relative)
-        json_fn_abs = os.path.splitext(image_fn_abs)[0] + '.json'
-        
-        im = {}
-        im['id'] = image_fn_relative
-        im['file_name'] = image_fn_relative
-        
-        # If there's no .json file for this image...
-        if not os.path.isfile(json_fn_abs):
-            
-            # Either skip it...
-            if no_json_handling == 'skip':
-                print('Skipping image {} (no .json file)'.format(image_fn_relative))
-                continue
-            
-            # ...or error
-            elif no_json_handling == 'error':
-                raise ValueError('Image file {} has no corresponding .json file'.format(
-                    image_fn_relative))
-            
-            # ...or treat it as empty.
-            elif no_json_handling == 'empty':
-                try:
-                    pil_im = open_image(image_fn_abs)
-                except Exception:
-                    print('Warning: error opening image {}, skipping'.format(image_fn_abs))
-                    continue
-                im['width'] = pil_im.width
-                im['height'] = pil_im.height
-                
-                # Just in case we need to differentiate between "no .json file" and "a .json file with no annotations"
-                im['no_labelme_json'] = True
-                shapes = []
-            else:
-                raise ValueError('Unrecognized specifier {} for handling images with no .json files'.format(
-                    no_json_handling))            
-        
-        # If we found a .json file for this image...
-        else:
-            
-            # Read the .json file
-            with open(json_fn_abs,'r') as f:
-                labelme_data = json.load(f)            
-            im['width'] = labelme_data['imageWidth']
-            im['height'] = labelme_data['imageHeight']
-            
-            if validate_image_sizes:
-                try:
-                    pil_im = open_image(image_fn_abs)
-                except Exception:
-                    print('Warning: error opening image {} for size validation, skipping'.format(image_fn_abs))
-                    continue
-                if not (im['width'] == pil_im.width and im['height'] == pil_im.height):
-                    print('Warning: image size validation error for file {}'.format(image_fn_relative))
-                    im['width'] = pil_im.width
-                    im['height'] = pil_im.height
-                    im['labelme_width'] = labelme_data['imageWidth']
-                    im['labelme_height'] = labelme_data['imageHeight']
-
-            shapes = labelme_data['shapes']
-
-            if ('flags' in labelme_data) and (len(labelme_data['flags']) > 0):
-                import pdb; pdb.set_trace()
-                im['flags'] = labelme_data['flags']
-
-        if len(shapes) == 0:
-            
-            category_id = add_category('empty')
-            ann = {}
-            ann['id'] = str(uuid.uuid1())
-            ann['image_id'] = im['id']
-            ann['category_id'] = category_id
-            ann['sequence_level_annotation'] = False
-            annotations.append(ann)
-            
-        else:
-            
-            for shape in shapes:
-                
-                if shape['shape_type'] != 'rectangle':
-                    print('Only rectangles are supported, skipping an annotation of type {} in {}'.format(
-                        shape['shape_type'],image_fn_relative))
-                    continue
-                
-                if use_folders_as_labels:
-                    category_name = os.path.basename(os.path.dirname(image_fn_abs))
-                else:
-                    category_name = shape['label']                
-                
-                category_id = add_category(category_name)
-            
-                points = shape['points']
-                if len(points) != 2:
-                    print('Warning: illegal rectangle with {} points for {}'.format(
-                        len(points),image_fn_relative))
-                    continue
-                
-                p0 = points[0]
-                p1 = points[1]
-                x0 = min(p0[0],p1[0])
-                x1 = max(p0[0],p1[0])
-                y0 = min(p0[1],p1[1])
-                y1 = max(p0[1],p1[1])
-                
-                if right_edge_quantization_threshold is not None:                    
-                    x1_rel = x1 / (im['width'] - 1)
-                    right_edge_distance = 1.0 - x1_rel
-                    if right_edge_distance < right_edge_quantization_threshold:
-                        x1 = im['width'] - 1
-                        
-                bbox = [x0,y0,abs(x1-x0),abs(y1-y0)]
-                ann = {}
-                ann['id'] = str(uuid.uuid1())
-                ann['image_id'] = im['id']
-                ann['category_id'] = category_id
-                ann['sequence_level_annotation'] = False
-                ann['bbox'] = bbox
-                annotations.append(ann)
-                
-            # ...for each shape
-            
+        im,annotations_this_image = _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
+                                  no_json_handling,validate_image_sizes,right_edge_quantization_threshold)
         images.append(im)
-                  
-    # ..for each image                
+        annotations.extend(annotations_this_image)
+                          
+    # ...for each image                
     
     output_dict = {}
     output_dict['images'] = images
