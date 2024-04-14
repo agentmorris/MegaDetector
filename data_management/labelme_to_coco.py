@@ -15,13 +15,34 @@ import uuid
 from md_utils import path_utils
 from md_visualization.visualization_utils import open_image
 
+from multiprocessing.pool import Pool, ThreadPool
+from functools import partial
+
 from tqdm import tqdm
 
 
 #%% Support functions
 
+def add_category(category_name,category_name_to_id,candidate_category_id=0):
+    """
+    Add the category [category_name] to the dict [category_name_to_id], by default
+    using the next available integer index.
+    """
+    
+    if category_name in category_name_to_id:
+        return category_name_to_id[category_name]
+    while candidate_category_id in category_name_to_id.values():
+        candidate_category_id += 1
+    category_name_to_id[category_name] = candidate_category_id
+    return candidate_category_id
+
+
 def _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
-                          no_json_handling,validate_image_sizes,right_edge_quantization_threshold):
+                          no_json_handling,validate_image_sizes,right_edge_quantization_threshold,
+                          category_name_to_id,allow_new_categories=True):
+    """
+    Internal function for processing each image; this support function facilitates parallelization.
+    """
     
     result = {}
     result['im'] = None
@@ -93,14 +114,18 @@ def _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
         shapes = labelme_data['shapes']
 
         if ('flags' in labelme_data) and (len(labelme_data['flags']) > 0):
-            import pdb; pdb.set_trace()
             im['flags'] = labelme_data['flags']
 
     annotations_this_image = []
     
     if len(shapes) == 0:
         
-        category_id = add_category('empty')
+        if allow_new_categories:
+            category_id = add_category('empty',category_name_to_id)
+        else:
+            assert 'empty' in category_name_to_id
+            category_id = category_name_to_id['empty']
+            
         ann = {}
         ann['id'] = str(uuid.uuid1())
         ann['image_id'] = im['id']
@@ -122,8 +147,12 @@ def _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
             else:
                 category_name = shape['label']                
             
-            category_id = add_category(category_name)
-        
+            if allow_new_categories:
+                category_id = add_category(category_name,category_name_to_id)
+            else:
+                assert category_name in category_name_to_id
+                category_id = category_name_to_id[category_name]
+            
             points = shape['points']
             if len(points) != 2:
                 print('Warning: illegal rectangle with {} points for {}'.format(
@@ -176,7 +205,9 @@ def labelme_to_coco(input_folder,
                     recursive=True,
                     no_json_handling='skip',
                     validate_image_sizes=True,
-                    right_edge_quantization_threshold=None):
+                    right_edge_quantization_threshold=None,
+                    max_workers=1, 
+                    use_threads=True):
     """
     Find all images in [input_folder] that have corresponding .json files, and convert
     to a COCO .json file.
@@ -213,25 +244,42 @@ def labelme_to_coco(input_folder,
     extended to the far right edge.    
     """
     
+    if max_workers > 1:
+        assert category_id_to_category_name is not None, \
+            'When parallelizing labelme --> COCO conversion, you must supply a category mapping'
+            
     if category_id_to_category_name is None:
         category_name_to_id = {}
     else:
         category_name_to_id = {v: k for k, v in category_id_to_category_name.items()}
-        
     for category_name in category_name_to_id:
         try:
             category_name_to_id[category_name] = int(category_name_to_id[category_name])
         except ValueError:
             raise ValueError('Category IDs must be ints or string-formatted ints')
-
-    # Enumerate images
-    print('Enumerating images in {}'.format(input_folder))
     
+    # If the user supplied an explicit empty category ID, and the empty category
+    # name is already in category_name_to_id, make sure they match.
+    if empty_category_id is not None:
+        if empty_category_name in category_name_to_id:
+            assert category_name_to_id[empty_category_name] == empty_category_id, \
+                'Ambiguous empty category specification'
+        if empty_category_id in category_id_to_category_name:
+            assert category_id_to_category_name[empty_category_id] == empty_category_name, \
+                'Ambiguous empty category specification'
+    else:
+        if empty_category_name in category_name_to_id:
+            empty_category_id = category_name_to_id[empty_category_name]
+
+    del category_id_to_category_name
+            
+    # Enumerate images
+    print('Enumerating images in {}'.format(input_folder))    
     image_filenames_relative = path_utils.find_images(input_folder,recursive=recursive,
                                                       return_relative_paths=True)    
     
     # Remove any images we're supposed to skip
-    if relative_paths_to_include is not None or relative_paths_to_exclude is not None:
+    if (relative_paths_to_include is not None) or (relative_paths_to_exclude is not None):
         image_filenames_relative_to_process = []
         for image_fn_relative in image_filenames_relative:
             if relative_paths_to_include is not None and image_fn_relative not in relative_paths_to_include:
@@ -244,14 +292,7 @@ def labelme_to_coco(input_folder,
             len(image_filenames_relative)))
         image_filenames_relative = image_filenames_relative_to_process
     
-    def add_category(category_name,candidate_category_id=0):
-        if category_name in category_name_to_id:
-            return category_name_to_id[category_name]
-        while candidate_category_id in category_name_to_id.values():
-            candidate_category_id += 1
-        category_name_to_id[category_name] = candidate_category_id
-        return candidate_category_id
-    
+    # If the user supplied a category ID to use for empty images...
     if empty_category_id is not None:
         try:
             empty_category_id = int(empty_category_id)
@@ -259,21 +300,53 @@ def labelme_to_coco(input_folder,
             raise ValueError('Category IDs must be ints or string-formatted ints')
         
     if empty_category_id is None:
-        empty_category_id = add_category(empty_category_name)
+        empty_category_id = add_category(empty_category_name,category_name_to_id)
+            
+    if max_workers <= 1:
+        
+        image_results = []
+        for image_fn_relative in tqdm(image_filenames_relative):
+            
+            result = _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
+                                      no_json_handling,validate_image_sizes,right_edge_quantization_threshold,
+                                      category_name_to_id,allow_new_categories=True)        
+            image_results.append(result)
+            
+    else:                      
+        
+        n_workers = min(max_workers,len(image_filenames_relative))
+        assert category_name_to_id is not None
+        
+        if use_threads:
+            pool = ThreadPool(n_workers)
+        else:
+            pool = Pool(n_workers)
+        
+        image_results = list(tqdm(pool.imap(
+            partial(_process_labelme_file,
+                input_folder=input_folder,
+                use_folders_as_labels=use_folders_as_labels,
+                no_json_handling=no_json_handling,
+                validate_image_sizes=validate_image_sizes,
+                right_edge_quantization_threshold=right_edge_quantization_threshold,
+                category_name_to_id=category_name_to_id,
+                allow_new_categories=False
+                ),image_filenames_relative), total=len(image_filenames_relative)))
         
     images = []
     annotations = []
     
-    # image_fn_relative = image_filenames_relative[0]
-    for image_fn_relative in tqdm(image_filenames_relative):
+    # Flatten the lists of images and annotations
+    for result in image_results:
+        im = result['im']
+        annotations_this_image = result['annotations_this_image']
         
-        im,annotations_this_image = _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
-                                  no_json_handling,validate_image_sizes,right_edge_quantization_threshold)
-        images.append(im)
-        annotations.extend(annotations_this_image)
-                          
-    # ...for each image                
-    
+        if im is None:
+            assert annotations_this_image is None
+        else:
+            images.append(im)
+            annotations.extend(annotations_this_image)
+            
     output_dict = {}
     output_dict['images'] = images
     output_dict['annotations'] = annotations
