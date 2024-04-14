@@ -40,7 +40,7 @@ class DbVizOptions:
     # Target size for rendering; set either dimension to -1 to preserve aspect ratio
     #
     # If viz_size is None or (-1,-1), the original image size is used.
-    viz_size = (675, -1)
+    viz_size = (800, -1)
     
     # The most relevant option one might want to set here is:
     #
