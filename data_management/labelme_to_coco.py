@@ -181,7 +181,6 @@ def labelme_to_coco(input_folder,
             shapes = labelme_data['shapes']
 
             if ('flags' in labelme_data) and (len(labelme_data['flags']) > 0):
-                import pdb; pdb.set_trace()
                 im['flags'] = labelme_data['flags']
 
         if len(shapes) == 0:
