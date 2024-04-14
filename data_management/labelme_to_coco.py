@@ -18,7 +18,10 @@ from md_visualization.visualization_utils import open_image
 from tqdm import tqdm
 
 
-#%% Functions
+#%% Suuport functions
+
+
+#%% Main function
 
 def labelme_to_coco(input_folder,
                     output_file=None,
@@ -37,7 +40,11 @@ def labelme_to_coco(input_folder,
     Find all images in [input_folder] that have corresponding .json files, and convert
     to a COCO .json file.
     
-    Currently only supports bounding box annotations.
+    Currently only supports bounding box annotations and image-level flags (i.e., does not
+    support point or general polygon annotations).
+    
+    Labelme's image-level flags don't quite fit the COCO annotations format, so they are attached
+    to image objects, rather than annotation objects.
     
     If output_file is None, just returns the resulting dict, does not write to file.    
     
@@ -77,6 +84,8 @@ def labelme_to_coco(input_folder,
             raise ValueError('Category IDs must be ints or string-formatted ints')
 
     # Enumerate images
+    print('Enumerating images in {}'.format(input_folder))
+    
     image_filenames_relative = path_utils.find_images(input_folder,recursive=recursive,
                                                       return_relative_paths=True)    
     
@@ -99,8 +108,6 @@ def labelme_to_coco(input_folder,
         
     images = []
     annotations = []
-    
-    n_edges_quantized = 0
     
     # image_fn_relative = image_filenames_relative[0]
     #
@@ -172,7 +179,11 @@ def labelme_to_coco(input_folder,
                     im['labelme_height'] = labelme_data['imageHeight']
 
             shapes = labelme_data['shapes']
-        
+
+            if ('flags' in labelme_data) and (len(labelme_data['flags']) > 0):
+                import pdb; pdb.set_trace()
+                im['flags'] = labelme_data['flags']
+
         if len(shapes) == 0:
             
             category_id = add_category('empty')
@@ -216,7 +227,6 @@ def labelme_to_coco(input_folder,
                     x1_rel = x1 / (im['width'] - 1)
                     right_edge_distance = 1.0 - x1_rel
                     if right_edge_distance < right_edge_quantization_threshold:
-                        n_edges_quantized += 1
                         x1 = im['width'] - 1
                         
                 bbox = [x0,y0,abs(x1-x0),abs(y1-y0)]
@@ -234,10 +244,6 @@ def labelme_to_coco(input_folder,
                   
     # ..for each image                
     
-    if n_edges_quantized > 0:
-        print('Quantized the right edge in {} of {} images'.format(
-            n_edges_quantized,len(image_filenames_relative)))
-        
     output_dict = {}
     output_dict['images'] = images
     output_dict['annotations'] = annotations

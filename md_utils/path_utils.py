@@ -504,6 +504,40 @@ def parallel_copy_files(input_file_to_output_file, max_workers=16,
 # ...def parallel_copy_files(...)
 
 
+def _get_file_size(filename,verbose=False):
+    try:
+        size = os.path.getsize(filename)
+    except Exception as e:
+        if verbose:
+            print('Error reading file size for {}: {}'.format(filename,str(e)))
+        size = None
+    return (filename,size)
+
+    
+def parallel_get_file_sizes(filenames, max_workers=16, 
+                        use_threads=True, verbose=False):
+    """
+    Return a dictionary mapping every file in [filenames] to the corresponding file size,
+    or None for errors.
+    """
+
+    n_workers = min(max_workers,len(filenames))
+    
+    if use_threads:
+        pool = ThreadPool(n_workers)
+    else:
+        pool = Pool(n_workers)
+
+    resize_results = list(tqdm(pool.imap(
+        partial(_get_file_size,verbose=verbose),filenames), total=len(filenames)))
+    
+    to_return = {}
+    for r in resize_results:
+        to_return[r[0]] = r[1]
+
+    return to_return
+
+
 #%% Zip functions
 
 def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compresslevel=9):
