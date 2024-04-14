@@ -123,15 +123,16 @@ def process_video(options):
     # except Exception:
     #     pass
     
+    # Initialize flag to track if frame_ouput_folder was created by the script
+    frame_output_folder_created = False
+    
     if options.frame_folder is not None:
         frame_output_folder = options.frame_folder
     else:
         frame_output_folder = os.path.join(
             user_tempdir, os.path.basename(options.input_video_file) + '_frames_' + str(uuid1()))
-        
-    # TODO: keep track of whether we created this folder, delete if we're deleting the extracted
-    # frames and we created the folder, and the output files aren't in the same folder.  For now,
-    # we're just deleting the extracted frames and leaving the empty folder around in this case.
+        frame_output_folder_created = True
+   
     os.makedirs(frame_output_folder, exist_ok=True)
 
     frame_filenames, Fs = video_to_frames(
@@ -166,16 +167,17 @@ def process_video(options):
     
     if options.render_output_video:
         
+        # Initialize flag to track if frame_rendering_folder was created by the scipt
+        frame_rendering_folder_created = False
+
         # Render detections to images
         if options.frame_rendering_folder is not None:
             rendering_output_dir = options.frame_rendering_folder
         else:
             rendering_output_dir = os.path.join(
                 tempdir, os.path.basename(options.input_video_file) + '_detections')
+            frame_rendering_folder_created = True
             
-        # TODO: keep track of whether we created this folder, delete if we're deleting the rendered
-        # frames and we created the folder, and the output files aren't in the same folder.  For now,
-        # we're just deleting the rendered frames and leaving the empty folder around in this case.
         os.makedirs(rendering_output_dir,exist_ok=True)
         
         detected_frame_files = visualize_detector_output.visualize_detector_output(
@@ -197,7 +199,7 @@ def process_video(options):
         # Delete the temporary directory we used for detection images
         if not options.keep_rendered_frames:
             try:
-                if options.force_rendered_frame_folder_deletion:
+                if options.force_rendered_frame_folder_deletion or (frame_rendering_folder_created and options.output_video_file != rendering_output_dir):
                     shutil.rmtree(rendering_output_dir)
                 else:
                     for rendered_frame_fn in detected_frame_files:
@@ -215,7 +217,7 @@ def process_video(options):
     if not options.keep_extracted_frames:
         
         try:
-            if options.force_extracted_frame_folder_deletion:
+            if options.force_extracted_frame_folder_deletion or (frame_output_folder_created and options.ouput_json_file != frame_output_folder):
                 print('Recursively deleting frame output folder {}'.format(frame_output_folder))
                 shutil.rmtree(frame_output_folder)
             else:
@@ -258,11 +260,10 @@ def process_video_folder(options):
         tempdir = os.path.join(tempfile.gettempdir(), 'process_camera_trap_video')
         os.makedirs(tempdir,exist_ok=True)
         
-        # TODO: see above; this is a lazy fix to a permissions issue
-        try:
-            os.chmod(tempdir,0o777)
-        except Exception:
-            pass
+        # Generate unique subdirectory name for current user
+        user_subdirectory = f"{getpass.getuser()}_{str(uuid1())}"
+        user_tempdir = os.path.join(tempdir, user_subdirectory)
+        os.makedirs(user_tempdir, exist_ok=True)
 
         frame_output_folder = os.path.join(
             tempdir, os.path.basename(options.input_video_file) + '_frames_' + str(uuid1()))
@@ -323,6 +324,9 @@ def process_video_folder(options):
     ## (Optionally) render output videos
     
     if options.render_output_video:
+        
+        # Initialize flag to track if frame_rendering_folder was created by the script
+        frame_rendering_folder_created = False
 
         # Render detections to images
         if options.frame_rendering_folder is not None:
@@ -330,10 +334,8 @@ def process_video_folder(options):
         else:
             frame_rendering_output_dir = os.path.join(
                 tempdir, os.path.basename(options.input_video_file) + '_detections')
+            frame_rendering_folder_created = True
         
-        # TODO: keep track of whether we created this folder, delete if we're deleting the rendered
-        # frames and we created the folder, and the output files aren't in the same folder.  For now,
-        # we're just deleting the rendered frames and leaving the empty folder around in this case.
         os.makedirs(frame_rendering_output_dir,exist_ok=True)
         
         detected_frame_files = visualize_detector_output.visualize_detector_output(
@@ -404,7 +406,7 @@ def process_video_folder(options):
         # Possibly clean up rendered frames
         if not options.keep_rendered_frames:
             try:
-                if options.force_rendered_frame_folder_deletion:
+                if options.force_rendered_frame_folder_deletion or (frame_rendering_folder_created and frame_rendering_output_dir != video_output_file):
                     shutil.rmtree(frame_rendering_output_dir)
                 else:
                     for rendered_frame_fn in detected_frame_files:
