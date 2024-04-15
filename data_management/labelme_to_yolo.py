@@ -21,20 +21,13 @@ def labelme_file_to_yolo_file(labelme_file,
                               category_name_to_category_id,
                               yolo_file=None,
                               required_token=None,
-                              right_edge_quantization_threshold=None,
                               overwrite_behavior='overwrite'):
     """
     Convert the single .json file labelme_file to yolo format, writing the results to the text
     file yolo_file (defaults to s/json/txt).
     
     If required_token is not None and the labelme_file does not contain the key [required_token],
-    no-ops.
-    
-    right_edge_quantization_threshold is an off-by-default hack to handle cases where 
-    boxes that really should be running off the right side of the image only extend like 99%
-    of the way there.  If a box extends within [right_edge_quantization_threshold] (a small number, 
-    from 0 to 1, but probably around 0.02) of the right edge of the image, it will be extended 
-    to the far right edge.
+    no-ops.    
     """
     
     assert os.path.isfile(labelme_file), 'Could not find labelme .json file {}'.format(labelme_file)
@@ -97,11 +90,6 @@ def labelme_file_to_yolo_file(labelme_file,
         miny_rel = miny_abs / (im_height-1)
         maxy_rel = maxy_abs / (im_height-1)
         
-        if (right_edge_quantization_threshold is not None):
-            right_edge_distance = 1.0 - maxx_rel
-            if right_edge_distance < right_edge_quantization_threshold:
-                maxx_rel = 1.0
-        
         assert maxx_rel >= minx_rel
         assert maxy_rel >= miny_rel
         
@@ -124,7 +112,6 @@ def labelme_file_to_yolo_file(labelme_file,
 def labelme_folder_to_yolo(labelme_folder,
                            category_name_to_category_id=None,
                            required_token=None,
-                           right_edge_quantization_threshold=None,
                            overwrite_behavior='overwrite'):
     """
     Given a folder with images and labelme .json files, convert the .json files
@@ -133,12 +120,6 @@ def labelme_folder_to_yolo(labelme_folder,
     
     If required_token is not None and a labelme_file does not contain the key [required_token],
     it won't be converted.
-    
-    right_edge_quantization_threshold is an off-by-default hack to handle cases where 
-    boxes that really should be running off the right side of the image only extend like 99%
-    of the way there, due to what appears to be a slight bias inherent to MD.  If a box extends
-    within [right_edge_quantization_threshold] (a small number, from 0 to 1, but probably around 
-    0.02) of the right edge of the image, it will be extended to the far right edge.    
     
     returns category_name_to_category_id, whether it was passed in or constructed.
     """
@@ -192,8 +173,6 @@ def labelme_folder_to_yolo(labelme_folder,
                                   category_name_to_category_id,
                                   yolo_file=None,
                                   required_token=required_token,
-                                  right_edge_quantization_threshold=\
-                                      right_edge_quantization_threshold,
                                   overwrite_behavior=overwrite_behavior)
     
     # ...for each file
@@ -216,7 +195,6 @@ if False:
     labelme_file = os.path.expanduser('~/tmp/labels/x.json')
     yolo_file = None
     required_token = 'saved_by_labelme'
-    right_edge_quantization_threshold = 0.015
     category_name_to_category_id = {'animal':0}
 
     #%%

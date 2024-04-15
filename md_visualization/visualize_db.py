@@ -16,18 +16,21 @@ import math
 import os
 import sys
 import time
+
+import pandas as pd
+import numpy as np
+
+import humanfriendly
+
 from itertools import compress
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
-
-import pandas as pd
 from tqdm import tqdm
-import humanfriendly
 
 from md_utils.write_html_image_list import write_html_image_list
+from data_management.cct_json_utils import IndexedJsonDb
 
 import md_visualization.visualization_utils as vis_utils
-from data_management.cct_json_utils import IndexedJsonDb
 
 
 #%% Settings
@@ -277,7 +280,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
             categoryName = label_map[categoryID]
             if options.add_search_links:
                 categoryName = categoryName.replace('"','')
-                categoryName = '<a href="https://www.bing.com/images/search?q={}">{}</a>'.format(
+                categoryName = '<a href="https://www.google.com/search?tbm=isch&q={}">{}</a>'.format(
                     categoryName,categoryName)
             imageCategories.add(categoryName)
             
@@ -322,14 +325,22 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         if options.include_filename_links:
             filename_text = '<a href="{}">{}</a>'.format(img_path,filename_text)
             
+        flagString = ''
+        
+        def isnan(x):
+            return (isinstance(x,float) and np.isnan(x))
+        
+        if ('flags' in img) and (not isnan(img['flags'])):
+            flagString = ', flags: {}'.format(str(img['flags']))
+            
         # We're adding html for an image before we render it, so it's possible this image will
         # fail to render.  For applications where this script is being used to debua a database
         # (the common case?), this is useful behavior, for other applications, this is annoying.
         image_dict = \
         {
             'filename': '{}/{}'.format('rendered_images', file_name),
-            'title': '{}<br/>{}, num boxes: {}, {}class labels: {}{}'.format(
-                filename_text, img_id, len(bboxes), frameString, imageClasses, labelLevelString),
+            'title': '{}<br/>{}, num boxes: {}, {}class labels: {}{}{}'.format(
+                filename_text, img_id, len(bboxes), frameString, imageClasses, labelLevelString, flagString),
             'textStyle': 'font-family:verdana,arial,calibri;font-size:80%;' + \
                 'text-align:left;margin-top:20;margin-bottom:5'
         }

@@ -49,11 +49,13 @@ def get_labelme_dict_for_image_from_coco_record(im,annotations,categories,info=N
     
     category_id_to_name = {c['id']:c['name'] for c in categories}
     
+    if 'flags' in im:
+        output_dict['flags'] = im['flags']
+        
     # ann = annotations[0]
     for ann in annotations:
         
         if 'bbox' not in ann:
-            print('Warning: skipping non-bbox annotation for image {}'.format(ann['image_id']))
             continue
         
         shape = {}

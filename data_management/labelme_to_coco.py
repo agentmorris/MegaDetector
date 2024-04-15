@@ -2,7 +2,7 @@
 #
 # labelme_to_coco.py
 #
-# Converts a folder of labelme-formatted .json files to COCO.
+# Converts a folder of labelme-formatted .json files to COCO format.
 #
 ########
 
@@ -38,7 +38,7 @@ def add_category(category_name,category_name_to_id,candidate_category_id=0):
 
 
 def _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
-                          no_json_handling,validate_image_sizes,right_edge_quantization_threshold,
+                          no_json_handling,validate_image_sizes,
                           category_name_to_id,allow_new_categories=True):
     """
     Internal function for processing each image; this support function facilitates parallelization.
@@ -166,12 +166,6 @@ def _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
             y0 = min(p0[1],p1[1])
             y1 = max(p0[1],p1[1])
             
-            if right_edge_quantization_threshold is not None:                    
-                x1_rel = x1 / (im['width'] - 1)
-                right_edge_distance = 1.0 - x1_rel
-                if right_edge_distance < right_edge_quantization_threshold:
-                    x1 = im['width'] - 1
-                    
             bbox = [x0,y0,abs(x1-x0),abs(y1-y0)]
             ann = {}
             ann['id'] = str(uuid.uuid1())
@@ -205,7 +199,6 @@ def labelme_to_coco(input_folder,
                     recursive=True,
                     no_json_handling='skip',
                     validate_image_sizes=True,
-                    right_edge_quantization_threshold=None,
                     max_workers=1, 
                     use_threads=True):
     """
@@ -235,13 +228,7 @@ def labelme_to_coco(input_folder,
         
     * 'skip': ignore image files with no corresponding .json files
     * 'empty': treat image files with no corresponding .json files as empty
-    * 'error': throw an error when an image file has no corresponding .json file
-    
-    right_edge_quantization_threshold is an off-by-default hack to handle cases where 
-    boxes that really should be running off the right side of the image only extend like 99%
-    of the way there.  If a box extends within [right_edge_quantization_threshold] (a small 
-    number, from 0 to 1, but probably around 0.02) of the right edge of the image, it will be
-    extended to the far right edge.    
+    * 'error': throw an error when an image file has no corresponding .json file    
     """
     
     if max_workers > 1:
@@ -308,7 +295,7 @@ def labelme_to_coco(input_folder,
         for image_fn_relative in tqdm(image_filenames_relative):
             
             result = _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
-                                      no_json_handling,validate_image_sizes,right_edge_quantization_threshold,
+                                      no_json_handling,validate_image_sizes,
                                       category_name_to_id,allow_new_categories=True)        
             image_results.append(result)
             
@@ -328,7 +315,6 @@ def labelme_to_coco(input_folder,
                 use_folders_as_labels=use_folders_as_labels,
                 no_json_handling=no_json_handling,
                 validate_image_sizes=validate_image_sizes,
-                right_edge_quantization_threshold=right_edge_quantization_threshold,
                 category_name_to_id=category_name_to_id,
                 allow_new_categories=False
                 ),image_filenames_relative), total=len(image_filenames_relative)))

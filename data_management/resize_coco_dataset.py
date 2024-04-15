@@ -26,8 +26,7 @@ from md_visualization.visualization_utils import \
 def resize_coco_dataset(input_folder,input_filename,
                         output_folder,output_filename,
                         target_size=(-1,-1),
-                        correct_size_image_handling='copy',
-                        right_edge_quantization_threshold=None):
+                        correct_size_image_handling='copy'):
     """
     Given a COCO-formatted dataset (images in input_folder, data in input_filename), resize 
     all the images to a target size (in output_folder) and scale bounding boxes accordingly
@@ -36,7 +35,7 @@ def resize_coco_dataset(input_folder,input_filename,
     target_size should be a tuple/list of ints, length 2.  If either dimension is -1, aspect ratio
     will be preserved.  If both dimensions are -1, this means "keep the original size".  If 
     both dimensions are -1 and correct_size_image_handling is copy, this function is basically 
-    a no-op, although you might still use it for right_edge_quantization_threshold.
+    a no-op.
     
     correct_size_image_handling can be 'copy' (in which case the original image is just copied 
     to the output folder) or 'rewrite' (in which case the image is opened via PIL and re-written,
@@ -44,12 +43,6 @@ def resize_coco_dataset(input_folder,input_filename,
     you're superstitious about biases coming from images in a training set being written
     by different image encoders.
    
-    right_edge_quantization_threshold is an off-by-default hack to adjust large datasets where 
-    boxes that really should be running off the right side of the image only extend like 99%
-    of the way there.  If a box extends within [right_edge_quantization_threshold] (a small number, 
-    from 0 to 1, but probably around 0.02) of the right edge of the image, it will be extended to the 
-    far right edge.
-    
     Returns the COCO database with resized images.
     """
     
@@ -126,15 +119,6 @@ def resize_coco_dataset(input_folder,input_filename,
                             bbox[2] * width_scale,
                             bbox[3] * height_scale]
                 
-                # Do we need to quantize this box?
-                if right_edge_quantization_threshold is not None and \
-                    right_edge_quantization_threshold > 0:
-                    bbox_right_edge_abs = bbox[0] + bbox[2]
-                    bbox_right_edge_norm = bbox_right_edge_abs / output_w
-                    bbox_right_edge_distance = (1.0 - bbox_right_edge_norm)
-                    if bbox_right_edge_distance < right_edge_quantization_threshold:
-                        bbox[2] = output_w - bbox[0]
-                
                 ann['bbox'] = bbox
             
             # ...if this annotation has a box
@@ -169,13 +153,10 @@ if False:
     
     correct_size_image_handling = 'rewrite'
     
-    right_edge_quantization_threshold = 0.015
-    
     resize_coco_dataset(input_folder,input_filename,
                         output_folder,output_filename,
                         target_size=target_size,
-                        correct_size_image_handling=correct_size_image_handling,
-                        right_edge_quantization_threshold=right_edge_quantization_threshold)
+                        correct_size_image_handling=correct_size_image_handling)
     
     
     #%% Preview

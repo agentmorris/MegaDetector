@@ -141,7 +141,8 @@ def yolo_to_coco(input_folder,
                  empty_image_category_name='empty',
                  error_image_handling='no_annotations',
                  n_workers=1,
-                 pool_type='thread'):
+                 pool_type='thread',
+                 recursive=True):
     """
     Convert the YOLO-formatted data in [input_folder] to a COCO-formatted dictionary,
     reading class names from [class_name_file], which can be a flat list with a .txt
@@ -156,6 +157,14 @@ def yolo_to_coco(input_folder,
       
     * 'skip': don't include the image in the image list
     
+    error_image_handling can be:
+        
+    * 'skip': don't include the image at all
+    
+    * 'no_annotations': include with no annotations
+    
+    All images will be assigned an "error" value, usually None.
+        
     Returns a COCO-formatted dictionary.
     """
     
@@ -222,7 +231,7 @@ def yolo_to_coco(input_folder,
     
     print('Enumerating images...')
     
-    image_files_abs = find_images(input_folder,recursive=False)
+    image_files_abs = find_images(input_folder,recursive=recursive,convert_slashes=True)
 
     categories = []
     
