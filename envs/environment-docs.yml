@@ -6,7 +6,7 @@ channels:
 dependencies:
 
 # Dependencies for building the docs
-- python=3.8
+- python=3.9
 - sphinx
 - sphinx-mdinclude
 - sphinx_rtd_theme
