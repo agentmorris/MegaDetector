@@ -7,9 +7,6 @@ dependencies:
 
 # Dependencies for building the docs
 - python=3.8
-# myst-parser
 - sphinx
-- sphinxcontrib-apidoc
-- sphinx-autoapi
 - sphinx-mdinclude
 - sphinx_rtd_theme
