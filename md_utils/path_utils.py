@@ -227,23 +227,6 @@ def safe_create_link(link_exists,link_new):
         os.symlink(link_exists,link_new)
         
 
-def get_file_sizes(base_dir, convert_slashes=True):
-    """
-    Get sizes recursively for all files in base_dir, returning a dict mapping
-    relative filenames to size.
-    """
-    
-    relative_filenames = recursive_file_list(base_dir, convert_slashes=convert_slashes, 
-                                             return_relative_paths=True)
-    
-    fn_to_size = {}
-    for fn_relative in tqdm(relative_filenames):
-        fn_abs = os.path.join(base_dir,fn_relative)
-        fn_to_size[fn_relative] = os.path.getsize(fn_abs)
-                   
-    return fn_to_size
-        
-
 #%% Image-related path functions
 
 def is_image_file(s: str, img_extensions: Container[str] = IMG_EXTENSIONS
@@ -504,7 +487,32 @@ def parallel_copy_files(input_file_to_output_file, max_workers=16,
 # ...def parallel_copy_files(...)
 
 
+def get_file_sizes(base_dir, convert_slashes=True):
+    """
+    Get sizes recursively for all files in base_dir, returning a dict mapping
+    relative filenames to size.
+    
+    TODO: merge the functionality here with parallel_get_file_sizes, which uses slightly
+    different semantics.
+    """
+    
+    relative_filenames = recursive_file_list(base_dir, convert_slashes=convert_slashes, 
+                                             return_relative_paths=True)
+    
+    fn_to_size = {}
+    for fn_relative in tqdm(relative_filenames):
+        fn_abs = os.path.join(base_dir,fn_relative)
+        fn_to_size[fn_relative] = os.path.getsize(fn_abs)
+                   
+    return fn_to_size
+        
+
 def _get_file_size(filename,verbose=False):
+    """
+    Internal function for safely getting the size of a file.  Returns a (filename,size)
+    tuple, where size is None if there is an error.
+    """
+    
     try:
         size = os.path.getsize(filename)
     except Exception as e:
@@ -515,13 +523,17 @@ def _get_file_size(filename,verbose=False):
 
     
 def parallel_get_file_sizes(filenames, max_workers=16, 
-                        use_threads=True, verbose=False):
+                        use_threads=True, verbose=False,
+                        recursive=True):
     """
     Return a dictionary mapping every file in [filenames] to the corresponding file size,
-    or None for errors.
+    or None for errors.  If [filenames] is a folder, will enumerate the folder (optionally recursively).
     """
 
     n_workers = min(max_workers,len(filenames))
+    
+    if isinstance(filenames,str) and os.path.isdir(filenames):
+        filenames = recursive_file_list(filenames,recursive=recursive,return_relative_paths=False)
     
     if use_threads:
         pool = ThreadPool(n_workers)
