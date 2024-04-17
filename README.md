@@ -95,6 +95,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Seattle Urban Carnivore Project](https://www.zoo.org/seattlecarnivores), Woodland Park Zoo
 * [Serra dos Órgãos National Park](https://www.icmbio.gov.br/parnaserradosorgaos/), ICMBio
 * [Snapshot USA](https://emammal.si.edu/snapshot-usa), Smithsonian
+* [TROPECOLNET project](https://www.anabenitezlopez.com/research/global-change-biology/tropecolnet/), Museo Nacional de Ciencias Naturales
 * [Wildlife Coexistence Lab](https://wildlife.forestry.ubc.ca/), University of British Columbia
 * [Wildlife Research](https://www.dfw.state.or.us/wildlife/research/index.asp), Oregon Department of Fish and Wildlife
 * [Wildlife Division](https://www.michigan.gov/dnr/about/contact/wildlife), Michigan Department of Natural Resources
