@@ -19,11 +19,11 @@ from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
 from functools import partial
 
-from PIL import Image
 from tqdm import tqdm
 
 from md_utils.path_utils import find_images
 from md_utils.ct_utils import invert_dictionary
+from md_visualization.visualization_utils import open_image
 from data_management.yolo_output_to_md_output import read_classes_from_yolo_dataset_file
 
 
@@ -55,8 +55,8 @@ def _process_image(fn_abs,input_folder,category_id_to_name):
     annotations_this_image = []
     
     try:        
-        pil_im = Image.open(fn_abs)
-        im_width, im_height = pil_im.size    
+        pil_im = open_image(fn_abs)
+        im_width, im_height = pil_im.size
         im['width'] = im_width
         im['height'] = im_height
         im['error'] = None
@@ -142,7 +142,9 @@ def yolo_to_coco(input_folder,
                  error_image_handling='no_annotations',
                  n_workers=1,
                  pool_type='thread',
-                 recursive=True):
+                 recursive=True,
+                 exclude_string=None,
+                 include_string=None):
     """
     Convert the YOLO-formatted data in [input_folder] to a COCO-formatted dictionary,
     reading class names from [class_name_file], which can be a flat list with a .txt
@@ -233,6 +235,18 @@ def yolo_to_coco(input_folder,
     
     image_files_abs = find_images(input_folder,recursive=recursive,convert_slashes=True)
 
+    n_files_original = len(image_files_abs)
+    
+    # Optionally include/exclude images matching specific strings
+    if exclude_string is not None:
+        image_files_abs = [fn for fn in image_files_abs if exclude_string not in fn]
+    if include_string is not None:
+        image_files_abs = [fn for fn in image_files_abs if include_string in fn]
+    
+    if len(image_files_abs) != n_files_original or exclude_string is not None or include_string is not None:
+        n_excluded = n_files_original - len(image_files_abs)
+        print('Excluded {} of {} images based on filenames'.format(n_excluded,n_files_original))
+        
     categories = []
     
     for category_id in category_id_to_name:

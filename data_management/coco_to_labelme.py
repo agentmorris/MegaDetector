@@ -184,7 +184,7 @@ def coco_to_labelme(coco_data,image_base,overwrite=False,bypass_image_size_check
             
     # ...for each image
     
-    print('\nWrote {} .json files (skipped {} for errors, {} because they exist'.format(
+    print('\nWrote {} .json files (skipped {} for errors, {} because they exist)'.format(
         n_json_files_written,n_json_files_error,n_json_files_exist))
     
 # ...def coco_to_labelme()

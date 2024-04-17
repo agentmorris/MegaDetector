@@ -48,8 +48,17 @@ class ReadExifOptions:
     #
     # Not relevant if n_workers is 1.
     use_threads = True
-    
+        
+    # "File" and "ExifTool" are tag types used by ExifTool to report data that 
+    # doesn't come from EXIF, rather from the file (e.g. file size).
     tag_types_to_ignore = set(['File','ExifTool'])
+    
+    # Include/exclude specific tags (mutually incompatible)
+    tags_to_include = None
+    tags_to_exclude = None
+    
+    # A useful set of tags one might want to limit queries for
+    # options.tags_to_include = ['DateTime','Model','Make','ExifImageWidth','ExifImageHeight','DateTime','DateTimeOriginal','Orientation']
     
     exiftool_command_name = 'exiftool'
     
@@ -62,7 +71,8 @@ class ReadExifOptions:
     
     # Should we use exiftool or pil?
     processing_library = 'pil' # 'exiftool','pil'
-
+    
+    
 
 #%% Functions
 
@@ -99,7 +109,7 @@ def get_exif_ifd(exif):
 def read_pil_exif(im,options=None):
     """
     Read all the EXIF data we know how to read from [im] (path or PIL Image), whether it's 
-    in the PIL default EXIF data or not.
+    in the PIL default EXIF data or not.  Returns a dict.
     """
     
     if options is None:
@@ -192,6 +202,32 @@ def parse_exif_datetime_string(s,verbose=False):
     return dt
 
 
+def _filter_tags(tags,options):
+    """
+    Internal function used to include/exclude specific tags from the exif_tags
+    dict.
+    """
+    
+    if options is None:
+        return tags
+    if options.tags_to_include is None and options.tags_to_exclude is None:
+        return tags
+    if options.tags_to_include is not None:
+        assert options.tags_to_exclude is None, "tags_to_include and tags_to_exclude are incompatible"
+        tags_to_return = {}
+        for tag_name in tags.keys():
+            if tag_name in options.tags_to_include:
+                tags_to_return[tag_name] = tags[tag_name]
+        return tags_to_return
+    if options.tags_to_exclude is not None:
+        assert options.tags_to_include is None, "tags_to_include and tags_to_exclude are incompatible"
+        tags_to_return = {}
+        for tag_name in tags.keys():
+            if tag_name not in options.tags_to_exclude:
+                tags_to_return[tag_name] = tags[tag_name]
+        return tags_to_return
+
+
 def read_exif_tags_for_image(file_path,options=None):
     """
     Get relevant fields from EXIF data for an image
@@ -227,8 +263,8 @@ def read_exif_tags_for_image(file_path,options=None):
                 result['status'] = 'empty_read'
             else:
                 result['status'] = 'success'
-                result['tags'] = exif_tags
-                
+                result['tags'] = _filter_tags(exif_tags,options)
+                            
         return result
         
     elif options.processing_library == 'exiftool':
@@ -283,9 +319,12 @@ def read_exif_tags_for_image(file_path,options=None):
                     print('Ignoring tag with type {}'.format(field_type))
                 continue        
             
-            field_tag = field_name_type_tokens[1].strip()
-            
-            tag = [field_type,field_tag,field_value]
+            field_name = field_name_type_tokens[1].strip()
+            if options.tags_to_exclude is not None and field_name in options.tags_to_exclude:
+                continue
+            if options.tags_to_include is not None and field_name not in options.tags_to_include:
+                continue
+            tag = [field_type,field_name,field_value]
             
             exif_tags.append(tag)
             
@@ -518,6 +557,12 @@ def read_exif_from_folder(input_folder,output_file=None,options=None,filenames=N
     if options is None:
         options = ReadExifOptions()
     
+    # Validate options
+    if options.tags_to_include is not None:
+        assert options.tags_to_exclude is None, "tags_to_include and tags_to_exclude are incompatible"
+    if options.tags_to_exclude is not None:
+        assert options.tags_to_include is None, "tags_to_include and tags_to_exclude are incompatible"    
+    
     if input_folder is None:
         input_folder = ''
     if len(input_folder) > 0:
@@ -569,14 +614,16 @@ if False:
     
     #%%
     
-    input_folder = os.path.expanduser('~/data/KRU-test')
-    output_file = os.path.expanduser('~/data/test-exif.json')
+    input_folder = r'C:\temp\md-name-testing'
+    output_file = None # r'C:\temp\md-name-testing\exif.json'
     options = ReadExifOptions()
     options.verbose = False
     options.n_workers = 10
     options.use_threads = False
     options.processing_library = 'pil'
     # options.processing_library = 'exiftool'
+    options.tags_to_include = ['DateTime','Model','Make','ExifImageWidth','ExifImageHeight','DateTime','DateTimeOriginal','Orientation']
+    # options.tags_to_exclude = ['MakerNote']
     
     results = read_exif_from_folder(input_folder,output_file,options)
 

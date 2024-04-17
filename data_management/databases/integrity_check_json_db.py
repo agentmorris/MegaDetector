@@ -24,9 +24,9 @@ import sys
 
 from multiprocessing.pool import ThreadPool
 from operator import itemgetter
-from PIL import Image
 from tqdm import tqdm
 
+from md_visualization.visualization_utils import open_image
 from md_utils import ct_utils
 
 
@@ -67,7 +67,9 @@ def check_image_existence_and_size(image,options=None):
             print('Missing image size in {}'.format(filePath))
             return False
 
-        width, height = Image.open(filePath).size
+        # width, height = Image.open(filePath).size
+        pil_im = open_image(filePath)
+        width,height = pil_im.size
         if (not (width == image['width'] and height == image['height'])):
             print('Size mismatch for image {}: {} (reported {},{}, actual {},{})'.format(
                     image['id'], filePath, image['width'], image['height'], width, height))
