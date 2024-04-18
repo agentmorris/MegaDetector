@@ -263,7 +263,8 @@ def labelme_to_coco(input_folder,
     # Enumerate images
     print('Enumerating images in {}'.format(input_folder))    
     image_filenames_relative = path_utils.find_images(input_folder,recursive=recursive,
-                                                      return_relative_paths=True)    
+                                                      return_relative_paths=True,
+                                                      convert_slashes=True)    
     
     # Remove any images we're supposed to skip
     if (relative_paths_to_include is not None) or (relative_paths_to_exclude is not None):

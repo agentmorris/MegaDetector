@@ -458,6 +458,7 @@ def _copy_file(input_output_tuple,overwrite=True,verbose=False):
         if verbose:
             print('Skipping existing file {}'.format(target_fn))
         return
+    os.makedirs(os.path.dirname(target_fn),exist_ok=True)
     shutil.copyfile(source_fn,target_fn)
     
 

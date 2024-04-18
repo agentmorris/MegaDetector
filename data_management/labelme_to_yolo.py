@@ -26,9 +26,13 @@ def labelme_file_to_yolo_file(labelme_file,
     Convert the single .json file labelme_file to yolo format, writing the results to the text
     file yolo_file (defaults to s/json/txt).
     
-    If required_token is not None and the labelme_file does not contain the key [required_token],
-    no-ops.    
+    If required_token is not None and the dict in labelme_file does not contain the key [required_token],
+    this function no-ops (i.e., does not generate a YOLO file).
     """
+    
+    result = {}
+    result['labelme_file'] = labelme_file
+    result['status'] = 'unknown'
     
     assert os.path.isfile(labelme_file), 'Could not find labelme .json file {}'.format(labelme_file)
     assert labelme_file.endswith('.json'), 'Illegal labelme .json file {}'.format(labelme_file)
@@ -38,7 +42,8 @@ def labelme_file_to_yolo_file(labelme_file,
     
     if os.path.isfile(yolo_file):
         if overwrite_behavior == 'skip':
-            return
+            result['status'] = 'skip-exists'
+            return result
         else:
             assert overwrite_behavior == 'overwrite', \
                 'Unrecognized overwrite behavior {}'.format(overwrite_behavior)
@@ -47,7 +52,8 @@ def labelme_file_to_yolo_file(labelme_file,
         labelme_data = json.load(f)
         
     if required_token is not None and required_token not in labelme_data:
-        return
+        result['status'] = 'skip-no-required-token'
+        return result
     
     im_height = labelme_data['imageHeight']
     im_width = labelme_data['imageWidth']
@@ -76,7 +82,7 @@ def labelme_file_to_yolo_file(labelme_file,
         
         if (minx_abs >= (im_width-1)) or (maxx_abs <= 0) or \
             (miny_abs >= (im_height-1)) or (maxy_abs <= 0):
-                print('Skipping invalid shape in {}'.format(labelme_file))
+                print('Skipping invalid shape in {}'.format(labelme_file))                
                 continue
             
         # Clip to [0,1]
@@ -107,25 +113,41 @@ def labelme_file_to_yolo_file(labelme_file,
     with open(yolo_file,'w') as f:
         for s in yolo_lines:
             f.write(s + '\n')
-        
+    
+    result['status'] = 'converted'
+    return result
+
 
 def labelme_folder_to_yolo(labelme_folder,
                            category_name_to_category_id=None,
                            required_token=None,
-                           overwrite_behavior='overwrite'):
+                           overwrite_behavior='overwrite',
+                           relative_filenames_to_convert=None):
     """
     Given a folder with images and labelme .json files, convert the .json files
     to YOLO .txt format.  If category_name_to_category_id is None, first reads
     all the labels in the folder to build a zero-indexed name --> ID mapping.
     
     If required_token is not None and a labelme_file does not contain the key [required_token],
-    it won't be converted.
+    it won't be converted.  Typically used to specify a field that indicates which files have
+    been reviewed.
     
-    returns category_name_to_category_id, whether it was passed in or constructed.
+    If relative_filenames_to_convert is not None, this should be a list of .json (not image)
+    files that should get converted, relative to the base folder.
+    
+    returns a dict with:
+        'category_name_to_category_id', whether it was passed in or constructed
+        'image_results': a list of results for each image (converted, skipped, error)
+        
     """
     
-    labelme_files_relative = recursive_file_list(labelme_folder,return_relative_paths=True)
-    labelme_files_relative = [fn for fn in labelme_files_relative if fn.endswith('.json')]
+    if relative_filenames_to_convert is not None:
+        labelme_files_relative = relative_filenames_to_convert
+        assert all([fn.endswith('.json') for fn in labelme_files_relative]), \
+            'relative_filenames_to_convert contains non-json files'
+    else:
+        labelme_files_relative = recursive_file_list(labelme_folder,return_relative_paths=True)
+        labelme_files_relative = [fn for fn in labelme_files_relative if fn.endswith('.json')]
     
     if required_token is None:
         valid_labelme_files_relative = labelme_files_relative
@@ -144,9 +166,9 @@ def labelme_folder_to_yolo(labelme_folder,
                 
             valid_labelme_files_relative.append(fn_relative)
     
-    print('{} of {} files are valid'.format(len(valid_labelme_files_relative),
-                                           len(labelme_files_relative)))
-    
+        print('{} of {} files are valid'.format(len(valid_labelme_files_relative),
+                                                len(labelme_files_relative)))
+        
     del labelme_files_relative
         
     if category_name_to_category_id is None:
@@ -165,24 +187,32 @@ def labelme_folder_to_yolo(labelme_folder,
         # ...for each file
         
     # ...if we need to build a category mapping
-            
+    
+    image_results = []        
     for fn_relative in tqdm(valid_labelme_files_relative):
         
         fn_abs = os.path.join(labelme_folder,fn_relative)
-        labelme_file_to_yolo_file(fn_abs,
+        image_result = labelme_file_to_yolo_file(fn_abs,
                                   category_name_to_category_id,
                                   yolo_file=None,
                                   required_token=required_token,
                                   overwrite_behavior=overwrite_behavior)
+        image_results.append(image_result)
     
     # ...for each file
     
     print('Converted {} labelme .json files to YOLO'.format(
         len(valid_labelme_files_relative)))
     
-    return category_name_to_category_id
+    labelme_to_yolo_results = {}
+    labelme_to_yolo_results['category_name_to_category_id'] = category_name_to_category_id
+    labelme_to_yolo_results['image_results'] = image_results
     
-        
+    return labelme_to_yolo_results
+    
+# ...def labelme_folder_to_yolo(...)        
+
+
 #%% Interactive driver
 
 if False:
@@ -191,17 +221,19 @@ if False:
 
     #%%
 
-    import os
     labelme_file = os.path.expanduser('~/tmp/labels/x.json')
-    yolo_file = None
     required_token = 'saved_by_labelme'
     category_name_to_category_id = {'animal':0}
+    labelme_folder = os.path.expanduser('~/tmp/labels')
 
     #%%
     
-    labelme_folder = os.path.expanduser('~/tmp/labels')
-
-
+    category_name_to_category_id = \
+        labelme_folder_to_yolo(labelme_folder,
+                               category_name_to_category_id=category_name_to_category_id,
+                               required_token=required_token,
+                               overwrite_behavior='overwrite')
+    
 #%% Command-line driver
 
 # TODO
