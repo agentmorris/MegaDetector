@@ -11,6 +11,9 @@
 import os
 import json
 
+from multiprocessing.pool import Pool, ThreadPool
+from functools import partial
+
 from md_utils.path_utils import recursive_file_list
 from tqdm import tqdm
 
@@ -27,7 +30,9 @@ def labelme_file_to_yolo_file(labelme_file,
     file yolo_file (defaults to s/json/txt).
     
     If required_token is not None and the dict in labelme_file does not contain the key [required_token],
-    this function no-ops (i.e., does not generate a YOLO file).
+    this function no-ops (i.e., does not generate a YOLO file).    
+    
+    overwrite_behavior should be 'skip' or 'overwrite' (default).
     """
     
     result = {}
@@ -122,7 +127,9 @@ def labelme_folder_to_yolo(labelme_folder,
                            category_name_to_category_id=None,
                            required_token=None,
                            overwrite_behavior='overwrite',
-                           relative_filenames_to_convert=None):
+                           relative_filenames_to_convert=None,
+                           n_workers=1,
+                           use_threads=True):
     """
     Given a folder with images and labelme .json files, convert the .json files
     to YOLO .txt format.  If category_name_to_category_id is None, first reads
@@ -134,6 +141,8 @@ def labelme_folder_to_yolo(labelme_folder,
     
     If relative_filenames_to_convert is not None, this should be a list of .json (not image)
     files that should get converted, relative to the base folder.
+    
+    overwrite_behavior should be 'skip' or 'overwrite' (default).
     
     returns a dict with:
         'category_name_to_category_id', whether it was passed in or constructed
@@ -188,18 +197,40 @@ def labelme_folder_to_yolo(labelme_folder,
         
     # ...if we need to build a category mapping
     
-    image_results = []        
-    for fn_relative in tqdm(valid_labelme_files_relative):
-        
-        fn_abs = os.path.join(labelme_folder,fn_relative)
-        image_result = labelme_file_to_yolo_file(fn_abs,
-                                  category_name_to_category_id,
-                                  yolo_file=None,
-                                  required_token=required_token,
-                                  overwrite_behavior=overwrite_behavior)
-        image_results.append(image_result)
+    image_results = []
     
-    # ...for each file
+    n_workers = min(n_workers,len(valid_labelme_files_relative))
+    
+    if n_workers <= 1:
+        for fn_relative in tqdm(valid_labelme_files_relative):
+            
+            fn_abs = os.path.join(labelme_folder,fn_relative)
+            image_result = labelme_file_to_yolo_file(fn_abs,
+                                      category_name_to_category_id,
+                                      yolo_file=None,
+                                      required_token=required_token,
+                                      overwrite_behavior=overwrite_behavior)
+            image_results.append(image_result)
+        # ...for each file
+    else:
+        if use_threads:
+            pool = ThreadPool(n_workers)
+        else:
+            pool = Pool(n_workers)
+
+        valid_labelme_files_abs = [os.path.join(labelme_folder,fn_relative) for \
+                                   fn_relative in valid_labelme_files_relative]
+            
+        image_results = list(tqdm(pool.imap(
+            partial(labelme_file_to_yolo_file,
+                    category_name_to_category_id=category_name_to_category_id,
+                    yolo_file=None,
+                    required_token=required_token,
+                    overwrite_behavior=overwrite_behavior),
+                    valid_labelme_files_abs), 
+                    total=len(valid_labelme_files_abs)))
+
+    assert len(valid_labelme_files_relative) == len(image_results)
     
     print('Converted {} labelme .json files to YOLO'.format(
         len(valid_labelme_files_relative)))
