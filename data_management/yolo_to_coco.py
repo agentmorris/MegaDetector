@@ -2,11 +2,7 @@
 #
 # yolo_to_coco.py
 #
-# Converts a YOLO-formatted dataset to a COCO-formatted dataset. 
-#
-# Currently supports only a single folder (i.e., no recursion).  Treats images without
-# corresponding .txt files as empty (they will be included in the output, but with
-# no annotations).
+# Converts a folder of YOLO-formatted annotation files to a COCO-formatted dataset. 
 #
 ########
 
@@ -140,6 +136,7 @@ def yolo_to_coco(input_folder,
                  empty_image_handling='no_annotations',
                  empty_image_category_name='empty',
                  error_image_handling='no_annotations',
+                 allow_images_without_label_files=True,
                  n_workers=1,
                  pool_type='thread',
                  recursive=True,
@@ -159,6 +156,8 @@ def yolo_to_coco(input_folder,
       
     * 'skip': don't include the image in the image list
     
+    * 'error': there shouldn't be any empty images
+    
     error_image_handling can be:
         
     * 'skip': don't include the image at all
@@ -176,7 +175,7 @@ def yolo_to_coco(input_folder,
     assert os.path.isfile(class_name_file)
     
     assert empty_image_handling in \
-        ('no_annotations','empty_annotations','skip'), \
+        ('no_annotations','empty_annotations','skip','error'), \
             'Unrecognized empty image handling spec: {}'.format(empty_image_handling)
      
             
@@ -257,6 +256,16 @@ def yolo_to_coco(input_folder,
     info['description'] = 'Converted from YOLO format'
     
     image_ids = set()
+    
+    
+    ## If we're expected to have labels for every image, check before we process all the images
+    
+    if not allow_images_without_label_files:
+        print('Verifying that label files exist')
+        for image_file_abs in tqdm(image_files_abs):
+            label_file_abs = os.path.splitext(image_file_abs)[0] + '.txt'
+            assert os.path.isfile(label_file_abs), \
+                'No annotation file for {}'.format(image_file_abs)
     
     
     ## Initial loop to make sure image IDs will be unique

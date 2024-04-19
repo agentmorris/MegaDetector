@@ -22,9 +22,9 @@ Here's a &ldquo;teaser&rdquo; image of what MegaDetector output looks like:
 
 ## How do I get started with MegaDetector?
 
-* If you are looking for a convenient tool to run MegaDetector, you don't need anything from this repo: check out [EcoAssist](https://github.com/PetervanLunteren/EcoAssist?tab=readme-ov-file).
+* If you are looking for a convenient tool to run MegaDetector, you don't need anything from this repository: check out [EcoAssist](https://github.com/PetervanLunteren/EcoAssist?tab=readme-ov-file).
 * If you're just <i>considering</i> the use of AI in your workflow, and you aren't even sure yet whether MegaDetector would be useful to you, we recommend reading the "[getting started with MegaDetector](collaborations.md)" page.
-* If you're already familiar with MegaDetector and you're ready to run it on your data (and you have some familiarity with running Python code), see the [MegaDetector User Guide](megadetector.md) for instructions on downloading and running MegaDetector.
+* If you're already familiar with MegaDetector and you're ready to run it on your data, see the [MegaDetector User Guide](megadetector.md) for instructions on running MegaDetector.
 * If you're a programmer-type looking to use tools from this repo, check out the [Python package](https://pypi.org/project/megadetector/) that provides access to everything in this repo (yes, you guessed it, "pip install megadetector").
 * If you have any questions, or you want to tell us that MegaDetector was amazing/terrible on your images, <a href="mailto:cameratraps@lila.science">email us</a>!
 

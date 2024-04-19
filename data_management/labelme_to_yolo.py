@@ -90,7 +90,9 @@ def labelme_file_to_yolo_file(labelme_file,
                 print('Skipping invalid shape in {}'.format(labelme_file))                
                 continue
             
-        # Clip to [0,1]
+        # Clip to [0,1]... it's not obvious that the YOLO format doesn't allow bounding
+        # boxes to extend outside the image, but YOLOv5 and YOLOv8 get sad about boxes
+        # that extend outside the image.
         maxx_abs = min(maxx_abs,im_width-1)
         maxy_abs = min(maxy_abs,im_height-1)
         minx_abs = max(minx_abs,0.0)
