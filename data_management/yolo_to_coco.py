@@ -263,6 +263,11 @@ def validate_yolo_dataset(input_folder, class_name_file, n_workers=1, pool_type=
         * label_results (list of dicts with field 'filename', 'errors' (list))
     """
     
+    # Validate arguments
+    assert os.path.isdir(input_folder), 'Could not find input folder {}'.format(input_folder)
+    if n_workers > 1:
+        assert pool_type in ('thread','process'), 'Illegal pool type {}'.format(pool_type)
+        
     category_id_to_name = load_yolo_class_list(class_name_file)
     
     print('Enumerating files in {}'.format(input_folder))

@@ -20,6 +20,7 @@ import json
 import shutil
 import unicodedata
 import zipfile
+import tarfile
 import webbrowser
 import subprocess
 import re
@@ -573,6 +574,35 @@ def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compressl
     with ZipFile(output_fn,'w',zipfile.ZIP_DEFLATED) as zipf:
         zipf.write(input_fn,arcname=basename,compresslevel=compresslevel,
                    compress_type=zipfile.ZIP_DEFLATED)
+
+    return output_fn
+
+
+def add_files_to_single_tar_file(input_files, output_fn, arc_name_base,
+                                 overwrite=False, verbose=False, mode='x'):
+    """
+    Add all the files in [input_files] to the tar file [output_fn].  
+    Archive names are relative to arc_name_base.
+    
+    Mode should be 'x' (no compression), 'x:gz', or 'x:bz2'.
+    """
+    
+    if os.path.isfile(output_fn):
+        if not overwrite:
+            print('Tar file {} exists, skipping'.format(output_fn))
+            return
+        else:
+            print('Tar file {} exists, deleting and re-creating'.format(output_fn))
+            os.remove(output_fn)
+                
+    if verbose:
+        print('Adding {} files to {} (mode {})'.format(
+            len(input_files),output_fn,mode))
+        
+    with tarfile.open(output_fn,mode) as tarf:
+        for input_fn_abs in tqdm(input_files,disable=(not verbose)):
+            input_fn_relative = os.path.relpath(input_fn_abs,arc_name_base)
+            tarf.add(input_fn_abs,arcname=input_fn_relative)
 
     return output_fn
 
