@@ -1171,12 +1171,20 @@ def resize_image_folder(input_folder, output_folder=None,
     assert pool_type in ('process','thread'), 'Illegal pool type {}'.format(pool_type)
     
     if image_files_relative is None:
-        image_files_relative = find_images(input_folder,recursive=recursive,return_relative_paths=True)
+        
+        if verbose:
+            print('Enumerating images')
+            
+        image_files_relative = find_images(input_folder,recursive=recursive,
+                                           return_relative_paths=True,convert_slashes=True)
         if verbose:
             print('Found {} images'.format(len(image_files_relative)))
     
     if n_workers == 1:    
         
+        if verbose:
+            print('Resizing images')
+
         results = []
         for fn_relative in tqdm(image_files_relative):
             results.append(_resize_relative_image(fn_relative,
