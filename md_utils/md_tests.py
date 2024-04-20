@@ -401,77 +401,79 @@ def run_python_tests(options):
     # It's already tested in the CLI tests, so this is not urgent.
     
 
-    ## Video test (single video)
-    
-    from detection.process_video import ProcessVideoOptions, process_video
-    
-    video_options = ProcessVideoOptions()
-    video_options.model_file = 'MDV5A'
-    video_options.input_video_file = os.path.join(options.scratch_dir,options.test_videos[0])
-    video_options.output_json_file = os.path.join(options.scratch_dir,'single_video_output.json')
-    video_options.output_video_file = os.path.join(options.scratch_dir,'video_scratch/rendered_video.mp4')
-    video_options.frame_folder = os.path.join(options.scratch_dir,'video_scratch/frame_folder')
-    video_options.frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder')    
-    video_options.render_output_video = True
-    # video_options.keep_rendered_frames = False
-    # video_options.keep_rendered_frames = False
-    video_options.force_extracted_frame_folder_deletion = True
-    video_options.force_rendered_frame_folder_deletion = True
-    # video_options.reuse_results_if_available = False
-    # video_options.reuse_frames_if_available = False
-    video_options.recursive = True
-    video_options.verbose = False
-    video_options.fourcc = 'mp4v'
-    # video_options.rendering_confidence_threshold = None
-    # video_options.json_confidence_threshold = 0.005
-    video_options.frame_sample = 5    
-    video_options.n_cores = 5
-    # video_options.debug_max_frames = -1
-    # video_options.class_mapping_filename = None
-    
-    _ = process_video(video_options)
-
-    assert os.path.isfile(video_options.output_video_file), \
-        'Python video test failed to render output video file'
-    assert os.path.isfile(video_options.output_json_file), \
-        'Python video test failed to render output .json file'
+    if not options.skip_video_tests:
         
+        ## Video test (single video)
+       
+        from detection.process_video import ProcessVideoOptions, process_video
+        
+        video_options = ProcessVideoOptions()
+        video_options.model_file = 'MDV5A'
+        video_options.input_video_file = os.path.join(options.scratch_dir,options.test_videos[0])
+        video_options.output_json_file = os.path.join(options.scratch_dir,'single_video_output.json')
+        video_options.output_video_file = os.path.join(options.scratch_dir,'video_scratch/rendered_video.mp4')
+        video_options.frame_folder = os.path.join(options.scratch_dir,'video_scratch/frame_folder')
+        video_options.frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder')    
+        video_options.render_output_video = True
+        # video_options.keep_rendered_frames = False
+        # video_options.keep_rendered_frames = False
+        video_options.force_extracted_frame_folder_deletion = True
+        video_options.force_rendered_frame_folder_deletion = True
+        # video_options.reuse_results_if_available = False
+        # video_options.reuse_frames_if_available = False
+        video_options.recursive = True
+        video_options.verbose = False
+        video_options.fourcc = 'mp4v'
+        # video_options.rendering_confidence_threshold = None
+        # video_options.json_confidence_threshold = 0.005
+        video_options.frame_sample = 5    
+        video_options.n_cores = 5
+        # video_options.debug_max_frames = -1
+        # video_options.class_mapping_filename = None
+        
+        _ = process_video(video_options)
     
-    ## Video test (folder)
+        assert os.path.isfile(video_options.output_video_file), \
+            'Python video test failed to render output video file'
+        assert os.path.isfile(video_options.output_json_file), \
+            'Python video test failed to render output .json file'
+            
+        
+        ## Video test (folder)
+        
+        from detection.process_video import ProcessVideoOptions, process_video_folder
+        
+        video_options = ProcessVideoOptions()
+        video_options.model_file = 'MDV5A'
+        video_options.input_video_file = os.path.join(options.scratch_dir,
+                                                      os.path.dirname(options.test_videos[0]))
+        video_options.output_json_file = os.path.join(options.scratch_dir,'video_folder_output.json')
+        # video_options.output_video_file = None
+        video_options.frame_folder = os.path.join(options.scratch_dir,'video_scratch/frame_folder')
+        video_options.frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder')    
+        video_options.render_output_video = False
+        # video_options.keep_rendered_frames = False
+        # video_options.keep_rendered_frames = False
+        video_options.force_extracted_frame_folder_deletion = True
+        video_options.force_rendered_frame_folder_deletion = True
+        # video_options.reuse_results_if_available = False
+        # video_options.reuse_frames_if_available = False
+        video_options.recursive = True
+        video_options.verbose = False
+        # video_options.fourcc = None
+        # video_options.rendering_confidence_threshold = None
+        # video_options.json_confidence_threshold = 0.005
+        video_options.frame_sample = 5    
+        video_options.n_cores = 5
+        # video_options.debug_max_frames = -1
+        # video_options.class_mapping_filename = None
+        
+        _ = process_video_folder(video_options)
     
-    from detection.process_video import ProcessVideoOptions, process_video_folder
-    
-    video_options = ProcessVideoOptions()
-    video_options.model_file = 'MDV5A'
-    video_options.input_video_file = os.path.join(options.scratch_dir,
-                                                  os.path.dirname(options.test_videos[0]))
-    video_options.output_json_file = os.path.join(options.scratch_dir,'video_folder_output.json')
-    # video_options.output_video_file = None
-    video_options.frame_folder = os.path.join(options.scratch_dir,'video_scratch/frame_folder')
-    video_options.frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder')    
-    video_options.render_output_video = False
-    # video_options.keep_rendered_frames = False
-    # video_options.keep_rendered_frames = False
-    video_options.force_extracted_frame_folder_deletion = True
-    video_options.force_rendered_frame_folder_deletion = True
-    # video_options.reuse_results_if_available = False
-    # video_options.reuse_frames_if_available = False
-    video_options.recursive = True
-    video_options.verbose = False
-    # video_options.fourcc = None
-    # video_options.rendering_confidence_threshold = None
-    # video_options.json_confidence_threshold = 0.005
-    video_options.frame_sample = 5    
-    video_options.n_cores = 5
-    # video_options.debug_max_frames = -1
-    # video_options.class_mapping_filename = None
-    
-    _ = process_video_folder(video_options)
-
-    assert os.path.isfile(video_options.output_json_file), \
-        'Python video test failed to render output .json file'
-    
-    
+        assert os.path.isfile(video_options.output_json_file), \
+            'Python video test failed to render output .json file'
+        
+        
     print('\n*** Finished module tests ***\n')
 
 # ...def run_python_tests(...)
@@ -643,27 +645,29 @@ def run_cli_tests(options):
             results_from_file = json.load(f) # noqa
         
         
-    ## Video test
-    
-    model_file = 'MDV5A'
-    video_inference_output_file = os.path.join(options.scratch_dir,'video_inference_output.json')
-    output_video_file = os.path.join(options.scratch_dir,'video_scratch/cli_rendered_video.mp4')
-    frame_folder = os.path.join(options.scratch_dir,'video_scratch/frame_folder_cli')
-    frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder_cli')        
-    
-    video_fn = os.path.join(options.scratch_dir,options.test_videos[-1])
-    output_dir = os.path.join(options.scratch_dir,'single_video_test_cli')
-    if options.cli_working_dir is None:
-        cmd = 'python -m detection.process_video'
-    else:
-        cmd = 'python detection/process_video.py'
-    cmd += ' {} {}'.format(model_file,video_fn)
-    cmd += ' --frame_folder {} --frame_rendering_folder {} --output_json_file {} --output_video_file {}'.format(
-        frame_folder,frame_rendering_folder,video_inference_output_file,output_video_file)
-    cmd += ' --render_output_video --fourcc mp4v'
-    cmd += ' --force_extracted_frame_folder_deletion --force_rendered_frame_folder_deletion --n_cores 5 --frame_sample 3'
-    print('Running: {}'.format(cmd))
-    cmd_results = execute_and_print(cmd)
+    if not options.skip_video_tests:
+            
+        ## Video test
+        
+        model_file = 'MDV5A'
+        video_inference_output_file = os.path.join(options.scratch_dir,'video_inference_output.json')
+        output_video_file = os.path.join(options.scratch_dir,'video_scratch/cli_rendered_video.mp4')
+        frame_folder = os.path.join(options.scratch_dir,'video_scratch/frame_folder_cli')
+        frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder_cli')        
+        
+        video_fn = os.path.join(options.scratch_dir,options.test_videos[-1])
+        output_dir = os.path.join(options.scratch_dir,'single_video_test_cli')
+        if options.cli_working_dir is None:
+            cmd = 'python -m detection.process_video'
+        else:
+            cmd = 'python detection/process_video.py'
+        cmd += ' {} {}'.format(model_file,video_fn)
+        cmd += ' --frame_folder {} --frame_rendering_folder {} --output_json_file {} --output_video_file {}'.format(
+            frame_folder,frame_rendering_folder,video_inference_output_file,output_video_file)
+        cmd += ' --render_output_video --fourcc mp4v'
+        cmd += ' --force_extracted_frame_folder_deletion --force_rendered_frame_folder_deletion --n_cores 5 --frame_sample 3'
+        print('Running: {}'.format(cmd))
+        cmd_results = execute_and_print(cmd)
     
     
     ## Run inference on a folder (again, so we can do a comparison)
