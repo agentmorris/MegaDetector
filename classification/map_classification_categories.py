@@ -36,15 +36,6 @@
 
 """
 
-#%% Example usage
-
-"""
-    python map_classification_categories.py \
-        desired_label_spec.json \
-        /path/to/classifier/label_spec.json \
-        $HOME/camera-traps-private/camera_trap_taxonomy_mapping.csv
-"""
-
 #%% Imports
 
 from __future__ import annotations
@@ -63,6 +54,15 @@ from tqdm import tqdm
 
 from taxonomy_mapping.taxonomy_graph import (
     build_taxonomy_graph, dag_to_tree, TaxonNode)
+
+#%% Example usage
+
+"""
+    python map_classification_categories.py \
+        desired_label_spec.json \
+        /path/to/classifier/label_spec.json \
+        $HOME/camera-traps-private/camera_trap_taxonomy_mapping.csv
+"""
 
 
 #%% Main function

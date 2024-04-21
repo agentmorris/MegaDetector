@@ -18,16 +18,6 @@
 
 """
 
-#%% Example usage
-
-"""
-    python run_classifier.py \
-        detections.json \
-        /path/to/crops \
-        /path/to/model.pt \
-        --image-size 224
-"""
-
 #%% Imports
 
 from __future__ import annotations
@@ -48,6 +38,15 @@ from torchvision.datasets.folder import default_loader
 
 from classification import train_classifier
 
+#%% Example usage
+
+"""
+    python run_classifier.py \
+        detections.json \
+        /path/to/crops \
+        /path/to/model.pt \
+        --image-size 224
+"""
 
 #%% Classes
 

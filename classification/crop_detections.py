@@ -40,21 +40,6 @@
  
 """
 
-#%% Example usage
-
-"""
-python crop_detections.py \
-    detections.json \
-    /path/to/crops \
-    --images-dir /path/to/images \
-    --container-url "https://account.blob.core.windows.net/container?sastoken" \
-    --detector-version "4.1" \
-    --threshold 0.8 \
-    --save-full-images --square-crops \
-    --threads 50 \
-    --logdir "."
-"""
-
 #%% Imports
 
 from __future__ import annotations
@@ -72,6 +57,20 @@ from azure.storage.blob import ContainerClient
 from PIL import Image, ImageOps
 from tqdm import tqdm
 
+#%% Example usage
+
+"""
+python crop_detections.py \
+    detections.json \
+    /path/to/crops \
+    --images-dir /path/to/images \
+    --container-url "https://account.blob.core.windows.net/container?sastoken" \
+    --detector-version "4.1" \
+    --threshold 0.8 \
+    --save-full-images --square-crops \
+    --threads 50 \
+    --logdir "."
+"""
 
 #%% Main function
 

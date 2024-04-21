@@ -55,21 +55,6 @@
 
 """
 
-#%% Example usage
-
-"""
-    python merge_classification_detection_output.py \
-        BASE_LOGDIR/LOGDIR/outputs_test.csv.gz \
-        BASE_LOGDIR/label_index.json \
-        BASE_LOGDIR/queried_images.json \
-        --classifier-name "efficientnet-b3-idfg-moredata" \
-        --detector-output-cache-dir $HOME/classifier-training/mdcache \
-        --detector-version "4.1" \
-        --output-json BASE_LOGDIR/LOGDIR/classifier_results.json \
-        --datasets idfg idfg_swwlf_2019
-"""
-
-
 #%% Imports
 
 from __future__ import annotations
@@ -86,6 +71,21 @@ import pandas as pd
 from tqdm import tqdm
 
 from md_utils.ct_utils import truncate_float
+
+
+#%% Example usage
+
+"""
+    python merge_classification_detection_output.py \
+        BASE_LOGDIR/LOGDIR/outputs_test.csv.gz \
+        BASE_LOGDIR/label_index.json \
+        BASE_LOGDIR/queried_images.json \
+        --classifier-name "efficientnet-b3-idfg-moredata" \
+        --detector-output-cache-dir $HOME/classifier-training/mdcache \
+        --detector-version "4.1" \
+        --output-json BASE_LOGDIR/LOGDIR/classifier_results.json \
+        --datasets idfg idfg_swwlf_2019
+"""
 
 
 #%% Support functions

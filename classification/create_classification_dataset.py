@@ -60,16 +60,6 @@
 
 """
 
-#%% Example usage
-
-"""
-    python create_classification_dataset.py \
-        run_idfg2 \
-        --queried-images-json run_idfg2/queried_images.json \
-        --cropped-images-dir /ssd/crops_sq \
-        -d $HOME/classifier-training/mdcache -v "4.1" -t 0.8
-"""
-
 #%% Imports and constants
 
 from __future__ import annotations
@@ -85,6 +75,16 @@ import pandas as pd
 from tqdm import tqdm
 
 from classification import detect_and_crop
+
+#%% Example usage
+
+"""
+    python create_classification_dataset.py \
+        run_idfg2 \
+        --queried-images-json run_idfg2/queried_images.json \
+        --cropped-images-dir /ssd/crops_sq \
+        -d $HOME/classifier-training/mdcache -v "4.1" -t 0.8
+"""
 
 
 DATASET_FILENAME = 'classification_ds.csv'

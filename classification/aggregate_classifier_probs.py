@@ -12,16 +12,6 @@
  
 """
 
-#%%  Example usage
-
-"""
-python aggregate_classifier_probs.py \
-    classifier_output.csv.gz \
-    --target-mapping target_to_classifier_labels.json \
-    --output-csv classifier_output_remapped.csv.gz \
-    --output-label-index label_index_remapped.json
-"""
-
 
 #%% Imports
 
@@ -33,6 +23,15 @@ import json
 import pandas as pd
 from tqdm import tqdm
 
+#%%  Example usage
+
+"""
+python aggregate_classifier_probs.py \
+    classifier_output.csv.gz \
+    --target-mapping target_to_classifier_labels.json \
+    --output-csv classifier_output_remapped.csv.gz \
+    --output-label-index label_index_remapped.json
+"""
 
 #%% Main function
 

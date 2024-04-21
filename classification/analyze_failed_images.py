@@ -4,16 +4,8 @@
 
 """
 
-#%% Example usage
-
-"""
-    python analyze_failed_images.py failed.json \
-        -a ACCOUNT -c CONTAINER -s SAS_TOKEN
-"""
-
 #%% Imports and constants
 
-from __future__ import annotations
 
 import argparse
 from collections.abc import Mapping, Sequence
@@ -30,6 +22,13 @@ from tqdm import tqdm
 from data_management.megadb.megadb_utils import MegadbUtils
 from md_utils import path_utils
 from md_utils import sas_blob_utils
+
+#%% Example usage
+
+"""
+    python analyze_failed_images.py failed.json \
+        -a ACCOUNT -c CONTAINER -s SAS_TOKEN
+"""
 
 ImageFile.LOAD_TRUNCATED_IMAGES = False
 

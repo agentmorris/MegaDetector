@@ -12,17 +12,6 @@
 
 """
 
-#%% Example usage
-
-"""    
-    python train_classifier_tf.py run_idfg /ssd/crops_sq \
-        -m "efficientnet-b0" --pretrained --finetune --label-weighted \
-        --epochs 50 --batch-size 512 --lr 1e-4 \
-        --seed 123 \
-        --logdir run_idfg
-"""
-
-
 #%% Imports and constants
 
 from __future__ import annotations
@@ -46,6 +35,16 @@ from classification.train_utils import (
     HeapItem, recall_from_confusion_matrix, add_to_heap, fig_to_img,
     imgs_with_confidences, load_dataset_csv, prefix_all_keys)
 from md_visualization import plot_utils
+
+#%% Example usage
+
+"""    
+    python train_classifier_tf.py run_idfg /ssd/crops_sq \
+        -m "efficientnet-b0" --pretrained --finetune --label-weighted \
+        --epochs 50 --batch-size 512 --lr 1e-4 \
+        --seed 123 \
+        --logdir run_idfg
+"""
 
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE

@@ -12,16 +12,6 @@
  
 """
 
-#%% Example usage
-
-"""    
-    python train_classifier.py run_idfg /ssd/crops_sq \
-        -m "efficientnet-b0" --pretrained --finetune --label-weighted \
-        --epochs 50 --batch-size 512 --lr 1e-4 \
-        --num-workers 12 --seed 123 \
-        --logdir run_idfg
-"""
-
 #%% Imports and constants
 
 from __future__ import annotations
@@ -49,6 +39,15 @@ from classification.train_utils import (
     imgs_with_confidences, load_dataset_csv, prefix_all_keys)
 from md_visualization import plot_utils
 
+#%% Example usage
+
+"""    
+    python train_classifier.py run_idfg /ssd/crops_sq \
+        -m "efficientnet-b0" --pretrained --finetune --label-weighted \
+        --epochs 50 --batch-size 512 --lr 1e-4 \
+        --num-workers 12 --seed 123 \
+        --logdir run_idfg
+"""
 
 # mean/std values from https://pytorch.org/docs/stable/torchvision/models.html
 MEANS = np.asarray([0.485, 0.456, 0.406])

@@ -93,20 +93,6 @@
  
 """
 
-#%% Example usage
-
-"""
-    python detect_and_crop.py \
-        base_logdir/queried_images.json \
-        base_logdir \
-        --detector-output-cache-dir /path/to/classifier-training/mdcache \
-        --detector-version 4.1 \
-        --run-detector --resume-file base_logdir/resume.json \
-        --cropped-images-dir /path/to/crops --square-crops --threshold 0.9 \
-        --save-full-images --images-dir /path/to/images --threads 50
-"""
-
-
 #%% Imports
 
 from __future__ import annotations
@@ -133,6 +119,18 @@ from data_management.megadb import megadb_utils
 from md_utils import path_utils
 from md_utils import sas_blob_utils
 
+#%% Example usage
+
+"""
+    python detect_and_crop.py \
+        base_logdir/queried_images.json \
+        base_logdir \
+        --detector-output-cache-dir /path/to/classifier-training/mdcache \
+        --detector-version 4.1 \
+        --run-detector --resume-file base_logdir/resume.json \
+        --cropped-images-dir /path/to/crops --square-crops --threshold 0.9 \
+        --save-full-images --images-dir /path/to/images --threads 50
+"""
 
 #%% Main function
 

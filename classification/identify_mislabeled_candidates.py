@@ -42,13 +42,6 @@ zcopy cp "http://<url_of_container>?<sas_token>" "/save/files/here" \
  
 """
 
-#%% Example usage
-
-"""
-    python identify_mislabeled_candidates.py <base_logdir>/<logdir> \
-        --margin 0.5 --splits val test
-"""
-
 #%% Imports
 
 from __future__ import annotations
@@ -62,6 +55,12 @@ import os
 import pandas as pd
 from tqdm import tqdm
 
+#%% Example usage
+
+"""
+    python identify_mislabeled_candidates.py <base_logdir>/<logdir> \
+        --margin 0.5 --splits val test
+"""
 
 #%% Main function
 

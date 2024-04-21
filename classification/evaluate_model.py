@@ -33,17 +33,6 @@
 
 """
 
-#%% Example usage
-
-"""
-    python evaluate_model.py \
-        $BASE_LOGDIR/$LOGDIR/params.json \
-        $BASE_LOGDIR/$LOGDIR/ckpt_XX.pt \
-        --output-dir $BASE_LOGDIR/$LOGDIR \
-        --splits train val test \
-        --batch-size 256
-"""
-
 #%% Imports and constants
 
 from __future__ import annotations
@@ -63,6 +52,17 @@ import torchvision
 import tqdm
 
 from classification import efficientnet, train_classifier
+
+#%% Example usage
+
+"""
+    python evaluate_model.py \
+        $BASE_LOGDIR/$LOGDIR/params.json \
+        $BASE_LOGDIR/$LOGDIR/ckpt_XX.pt \
+        --output-dir $BASE_LOGDIR/$LOGDIR \
+        --splits train val test \
+        --batch-size 256
+"""
 
 SPLITS = ['train', 'val', 'test']
 

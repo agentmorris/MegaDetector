@@ -65,14 +65,6 @@
 
 """
 
-#%% Example usage
-
-"""
-    python json_validator.py label_spec.json \
-        $HOME/camera-traps-private/camera_trap_taxonomy_mapping.csv \
-        --output-dir run --json-indent 2
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -95,6 +87,13 @@ from data_management.megadb import megadb_utils
 from taxonomy_mapping.taxonomy_graph import (
     build_taxonomy_graph, dag_to_tree, TaxonNode)
 
+#%% Example usage
+
+"""
+    python json_validator.py label_spec.json \
+        $HOME/camera-traps-private/camera_trap_taxonomy_mapping.csv \
+        --output-dir run --json-indent 2
+"""
 
 #%% Main function
 
