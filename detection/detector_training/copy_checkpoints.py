@@ -13,31 +13,35 @@ import time
 import os
 import shutil
 
-check_every_n_minutes = 10
+def main():
+    check_every_n_minutes = 10
 
-source_dir = '/datadrive/megadetectorv3/experiments/190425'
-target_dir = '/datadrive/megadetectorv3/experiments/0425_checkpoints'
+    source_dir = '/datadrive/megadetectorv3/experiments/190425'
+    target_dir = '/datadrive/megadetectorv3/experiments/0425_checkpoints'
 
-os.makedirs(target_dir, exist_ok=True)
+    os.makedirs(target_dir, exist_ok=True)
 
 
-#%% Main loop
+    #%% Main loop
 
-num_checks = 0
+    num_checks = 0
 
-while True:
-    
-    num_checks += 1
-    print('Checking round {}.'.format(num_checks))
+    while True:
+        
+        num_checks += 1
+        print('Checking round {}.'.format(num_checks))
 
-    for f in os.listdir(source_dir):
-        # do not copy event or evaluation results
-        if f.startswith('model') or f.startswith('graph'):
-            target_path = os.path.join(target_dir, f)
-            if not os.path.exists(target_path):
-                _ = shutil.copy(os.path.join(source_dir, f), target_path)
-                print('Copied {}.'.format(f))
+        for f in os.listdir(source_dir):
+            # do not copy event or evaluation results
+            if f.startswith('model') or f.startswith('graph'):
+                target_path = os.path.join(target_dir, f)
+                if not os.path.exists(target_path):
+                    _ = shutil.copy(os.path.join(source_dir, f), target_path)
+                    print('Copied {}.'.format(f))
 
-    print('End of round {}.'.format(num_checks))
+        print('End of round {}.'.format(num_checks))
 
-    time.sleep(check_every_n_minutes * 60)
+        time.sleep(check_every_n_minutes * 60)
+
+if __name__ == '__main__':
+    main()
