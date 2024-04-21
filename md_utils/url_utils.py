@@ -138,6 +138,8 @@ def _do_parallelized_download(download_info,overwrite=False,verbose=False):
     result = {'status':'unknown','url':url,'target_file':target_file}
     
     if ((os.path.isfile(target_file)) and (not overwrite)):
+        if verbose:
+            print('Skipping existing file {}'.format(target_file))
         result['status'] = 'skipped'
         return result
     try:
@@ -164,7 +166,9 @@ def parallel_download_urls(url_to_target_file,verbose=False,overwrite=False,
     """
     
     all_download_info = []
-    for url in url_to_target_file:
+    
+    print('Preparing download list')
+    for url in tqdm(url_to_target_file):
         download_info = {}
         download_info['url'] = url
         download_info['target_file'] = url_to_target_file[url]
