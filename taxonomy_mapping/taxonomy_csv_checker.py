@@ -1,21 +1,21 @@
-########
-#
-# taxonomy_csv_checker.py
-#
-# Checks the taxonomy CSV file to make sure that for each row:
-#
-# 1) The 'taxonomy_level' column matches the lowest-level taxon level in the
-#     'taxonomy_string' column.
-#
-# 2) The 'scientific_name' column matches the scientific name from the
-#     lowest-level taxon level in the 'taxonomy_string' column.
-# 
-# Prints out any mismatches.
-# 
-# Also prints out nodes that have 2 ambiguous parents. See "CASE 2" from the
-# module docstring of taxonomy_graph.py.
-#
-########
+"""
+
+taxonomy_csv_checker.py
+
+Checks the taxonomy CSV file to make sure that for each row:
+
+1) The 'taxonomy_level' column matches the lowest-level taxon level in the
+    'taxonomy_string' column.
+
+2) The 'scientific_name' column matches the scientific name from the
+    lowest-level taxon level in the 'taxonomy_string' column.
+
+Prints out any mismatches.
+
+Also prints out nodes that have 2 ambiguous parents. See "CASE 2" from the
+module docstring of taxonomy_graph.py.
+
+"""
 
 #%% Imports
 

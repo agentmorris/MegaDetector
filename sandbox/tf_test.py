@@ -1,11 +1,11 @@
-########
-#
-# tf_test.py
-#
-# Simple script to verify CUDA availability, used to verify a CUDA/TF
-# environment.
-#
-########
+"""
+
+ tf_test.py
+
+ Simple script to verify CUDA availability, used to verify a CUDA/TF
+ environment.
+
+"""
 
 import tensorflow as tf
 

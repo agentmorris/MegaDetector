@@ -1,12 +1,12 @@
-########
-#
-# yolo_output_to_md_output.py
-#
-# Converts the output of YOLOv5's detect.py or val.py to the MD API output format.
-#
-# Command-line driver not done yet, this has only been run interactively.
-#
-########
+"""
+
+yolo_output_to_md_output.py
+
+Converts the output of YOLOv5's detect.py or val.py to the MD API output format.
+
+Command-line driver not done yet, this has only been run interactively.
+
+"""
 
 ### Converting .txt files ###
 

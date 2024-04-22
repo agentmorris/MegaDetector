@@ -1,27 +1,27 @@
-########
-#
-# zamba_results_to_md_results.py
-#
-# Convert a labels.csv file produced by Zamba Cloud to a MD results file suitable
-# for import into Timelapse.
-#
-# Columns are expected to be:
-#
-# video_uuid (not used)
-# original_filename (assumed to be a relative path name)
-# top_k_label,top_k_probability, for k = 1..N
-# [category name 1],[category name 2],...
-# corrected_label
-#
-# Because the MD results file fundamentally stores detections, what we'll
-# actually do is created bogus detections that fill the entire image.  Detection
-# coordinates are not currently used in Timelapse video video anyway.
-#
-# There is no special handling of empty/blank categories; because these results are
-# based on a classifier, rather than a detector (where "blank" would be the absence of
-# all other categories), "blank" can be queried in Timelapse just like any other class.
-#
-########
+"""
+
+ zamba_results_to_md_results.py
+
+ Convert a labels.csv file produced by Zamba Cloud to a MD results file suitable
+ for import into Timelapse.
+
+ Columns are expected to be:
+
+ video_uuid (not used)
+ original_filename (assumed to be a relative path name)
+ top_k_label,top_k_probability, for k = 1..N
+ [category name 1],[category name 2],...
+ corrected_label
+
+ Because the MD results file fundamentally stores detections, what we'll
+ actually do is created bogus detections that fill the entire image.  Detection
+ coordinates are not currently used in Timelapse video video anyway.
+
+ There is no special handling of empty/blank categories; because these results are
+ based on a classifier, rather than a detector (where "blank" would be the absence of
+ all other categories), "blank" can be queried in Timelapse just like any other class.
+
+"""
 
 #%% Imports and constants
 

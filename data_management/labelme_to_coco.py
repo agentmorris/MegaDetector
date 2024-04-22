@@ -1,10 +1,10 @@
-########
-#
-# labelme_to_coco.py
-#
-# Converts a folder of labelme-formatted .json files to COCO format.
-#
-########
+"""
+
+labelme_to_coco.py
+
+Converts a folder of labelme-formatted .json files to COCO.
+
+"""
 
 #%% Constants and imports
 

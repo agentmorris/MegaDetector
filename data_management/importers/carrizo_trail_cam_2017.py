@@ -1,11 +1,11 @@
-########
-#
-# carrizo_trail_cam_2017.py
-#
-# Convert the .csv files provided for the "Trail Cam Carrizo" 2017 data set to 
-# a COCO-camera-traps .json file.
-#
-########
+"""
+
+ carrizo_trail_cam_2017.py
+
+ Convert the .csv files provided for the "Trail Cam Carrizo" 2017 data set to 
+ a COCO-camera-traps .json file.
+
+"""
 
 #%% Constants and environment
 

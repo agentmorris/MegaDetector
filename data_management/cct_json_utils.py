@@ -1,12 +1,12 @@
-########
-#
-# cct_json_utils.py
-#
-# Utilities for working with COCO Camera Traps .json databases
-#
-# https://github.com/agentmorris/MegaDetector/blob/master/data_management/README.md#coco-cameratraps-format
-#
-########
+"""
+
+cct_json_utils.py
+
+Utilities for working with COCO Camera Traps .json databases
+
+https://github.com/agentmorris/MegaDetector/blob/master/data_management/README.md#coco-cameratraps-format
+
+"""
 
 #%% Constants and imports
 

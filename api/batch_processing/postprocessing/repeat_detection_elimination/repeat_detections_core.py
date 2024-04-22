@@ -1,10 +1,10 @@
-########
-#
-# repeat_detections_core.py
-#
-# Core utilities shared by find_repeat_detections and remove_repeat_detections.
-#
-########
+"""
+
+repeat_detections_core.py
+
+Core utilities shared by find_repeat_detections and remove_repeat_detections.
+
+"""
 
 #%% Imports and environment
 

@@ -1,17 +1,17 @@
-########
-#
-# cct_to_md.py
-#
-# "Converts" a COCO Camera Traps file to a MD results file.  Currently ignores
-# non-bounding-box annotations, and gives all annotations a confidence of 1.0.
-#
-# The only reason to do this is if you are going to add information to an existing
-# CCT-formatted dataset, and want to do that in Timelapse.
-#
-# Currently assumes that width and height are present in the input data, does not
-# read them from images.
-#
-########
+"""
+
+cct_to_md.py
+
+"Converts" a COCO Camera Traps file to a MD results file.  Currently ignores
+non-bounding-box annotations, and gives all annotations a confidence of 1.0.
+
+The only reason to do this is if you are going to add information to an existing
+CCT-formatted dataset, and want to do that in Timelapse.
+
+Currently assumes that width and height are present in the input data, does not
+read them from images.
+
+"""
 
 #%% Constants and imports
 

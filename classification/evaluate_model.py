@@ -1,47 +1,36 @@
-########
-# 
-# evaluate_model.py
-#
-# Evaluate a species classifier.
-# 
-# Currently the implementation of multi-label multi-class classification is
-# non-functional.
-# 
-# Outputs the following files:
-# 
-# 1) outputs_{split}.csv, one file per split, contains columns:
-#     - 'path': str, path to cropped image
-#     - 'label': str
-#     - 'weight': float
-#     - [label names]: float, confidence in each label
-# 
-# 2) overall_metrics.csv, contains columns:
-#     - 'split': str
-#     - 'loss': float, mean per-example loss over entire epoch
-#     - 'acc_top{k}': float, accuracy@k over the entire epoch
-#     - 'loss_weighted' and 'acc_weighted_top{k}': float, weighted versions
-# 
-# 3) confusion_matrices.npz
-#     - keys ['train', 'val', 'test']
-#     - values are np.ndarray, confusion matrices
-# 
-# 4) label_stats.csv, per-label statistics, columns
-#     - 'split': str
-#     - 'label': str
-#     - 'precision': float
-#     - 'recall': float
-#
-########
-
-#%% Example usage
-
 """
-    python evaluate_model.py \
-        $BASE_LOGDIR/$LOGDIR/params.json \
-        $BASE_LOGDIR/$LOGDIR/ckpt_XX.pt \
-        --output-dir $BASE_LOGDIR/$LOGDIR \
-        --splits train val test \
-        --batch-size 256
+
+evaluate_model.py
+
+Evaluate a species classifier.
+
+Currently the implementation of multi-label multi-class classification is
+non-functional.
+
+Outputs the following files:
+
+1) outputs_{split}.csv, one file per split, contains columns:
+    - 'path': str, path to cropped image
+    - 'label': str
+    - 'weight': float
+    - [label names]: float, confidence in each label
+
+2) overall_metrics.csv, contains columns:
+    - 'split': str
+    - 'loss': float, mean per-example loss over entire epoch
+    - 'acc_top{k}': float, accuracy@k over the entire epoch
+    - 'loss_weighted' and 'acc_weighted_top{k}': float, weighted versions
+
+3) confusion_matrices.npz
+    - keys ['train', 'val', 'test']
+    - values are np.ndarray, confusion matrices
+
+4) label_stats.csv, per-label statistics, columns
+    - 'split': str
+    - 'label': str
+    - 'precision': float
+    - 'recall': float
+
 """
 
 #%% Imports and constants
@@ -63,6 +52,18 @@ import torchvision
 import tqdm
 
 from classification import efficientnet, train_classifier
+
+
+#%% Example usage
+
+"""
+    python evaluate_model.py \
+        $BASE_LOGDIR/$LOGDIR/params.json \
+        $BASE_LOGDIR/$LOGDIR/ckpt_XX.pt \
+        --output-dir $BASE_LOGDIR/$LOGDIR \
+        --splits train val test \
+        --batch-size 256
+"""
 
 SPLITS = ['train', 'val', 'test']
 

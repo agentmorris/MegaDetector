@@ -1,23 +1,23 @@
-########
-#
-# sas_blob_utils.py
-#
-# This module contains helper functions for dealing with Shared Access Signatures
-# (SAS) tokens for Azure Blob Storage.
-#
-# The default Azure Storage SAS URI format is:
-#
-# https://<account>.blob.core.windows.net/<container>/<blob>?<sas_token>
-#
-# This module assumes azure-storage-blob version 12.5.
-#
-# Documentation for Azure Blob Storage:
-# docs.microsoft.com/en-us/azure/developer/python/sdk/storage/storage-blob-readme
-#
-# Documentation for SAS:
-# docs.microsoft.com/en-us/azure/storage/common/storage-sas-overview
-#
-########
+"""
+
+sas_blob_utils.py
+
+This module contains helper functions for dealing with Shared Access Signatures
+(SAS) tokens for Azure Blob Storage.
+
+The default Azure Storage SAS URI format is:
+
+https://<account>.blob.core.windows.net/<container>/<blob>?<sas_token>
+
+This module assumes azure-storage-blob version 12.5.
+
+Documentation for Azure Blob Storage:
+docs.microsoft.com/en-us/azure/developer/python/sdk/storage/storage-blob-readme
+
+Documentation for SAS:
+docs.microsoft.com/en-us/azure/storage/common/storage-sas-overview
+
+"""
 
 #%% Imports
 

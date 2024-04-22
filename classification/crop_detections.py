@@ -1,58 +1,43 @@
-########
-#
-# crop_detections.py
-#
-# Given a detections JSON file from MegaDetector, crops the bounding boxes above
-# a certain confidence threshold.
-# 
-# This script takes as input a detections JSON file, usually the output of
-# detection/run_tf_detector_batch.py or the output of the Batch API in the
-# "Batch processing API output format".
-# 
-# See https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing.
-# 
-# The script can crop images that are either available locally or that need to be
-# downloaded from an Azure Blob Storage container.
-# 
-# We assume that no image contains over 100 bounding boxes, and we always save
-# crops as RGB .jpg files for consistency. For each image, each bounding box is
-# cropped and saved to a file with a suffix "___cropXX_mdvY.Y.jpg" added to the
-# filename as the original image. "XX" ranges from "00" to "99" and "Y.Y"
-# ndicates the MegaDetector version. Based on the given confidence threshold, we
-# may skip saving certain bounding box crops, but we still increment the bounding
-# box number for skipped boxes.
-# 
-# Example cropped image path (with MegaDetector bbox):
-#
-#   "path/to/image.jpg___crop00_mdv4.1.jpg"
-# 
-# By default, the images are cropped exactly per the given bounding box
-# coordinates. However, if square crops are desired, pass the --square-crops
-# flag. This will always generate a square crop whose size is the larger of the
-# bounding box width or height. In the case that the square crop boundaries exceed
-# the original image size, the crop is padded with 0s.
-# 
-# This script outputs a log file to:
-#    
-#    <output_dir>/crop_detections_log_{timestamp}.json
-#
-# ...which contains images that failed to download and crop properly.
-# 
-########
-
-#%% Example usage
-
 """
-python crop_detections.py \
-    detections.json \
-    /path/to/crops \
-    --images-dir /path/to/images \
-    --container-url "https://account.blob.core.windows.net/container?sastoken" \
-    --detector-version "4.1" \
-    --threshold 0.8 \
-    --save-full-images --square-crops \
-    --threads 50 \
-    --logdir "."
+
+crop_detections.py
+
+Given a detections JSON file from MegaDetector, crops the bounding boxes above
+a certain confidence threshold.
+
+This script takes as input a detections JSON file, usually the output of
+detection/run_tf_detector_batch.py or the output of the Batch API in the
+"Batch processing API output format".
+
+See https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing.
+
+The script can crop images that are either available locally or that need to be
+downloaded from an Azure Blob Storage container.
+
+We assume that no image contains over 100 bounding boxes, and we always save
+crops as RGB .jpg files for consistency. For each image, each bounding box is
+cropped and saved to a file with a suffix "___cropXX_mdvY.Y.jpg" added to the
+filename as the original image. "XX" ranges from "00" to "99" and "Y.Y"
+ndicates the MegaDetector version. Based on the given confidence threshold, we
+may skip saving certain bounding box crops, but we still increment the bounding
+box number for skipped boxes.
+
+Example cropped image path (with MegaDetector bbox):
+
+  "path/to/image.jpg___crop00_mdv4.1.jpg"
+
+By default, the images are cropped exactly per the given bounding box
+coordinates. However, if square crops are desired, pass the --square-crops
+flag. This will always generate a square crop whose size is the larger of the
+bounding box width or height. In the case that the square crop boundaries exceed
+the original image size, the crop is padded with 0s.
+
+This script outputs a log file to:
+   
+   <output_dir>/crop_detections_log_{timestamp}.json
+
+...which contains images that failed to download and crop properly.
+
 """
 
 #%% Imports
@@ -71,6 +56,22 @@ from typing import Any, BinaryIO, Optional
 from azure.storage.blob import ContainerClient
 from PIL import Image, ImageOps
 from tqdm import tqdm
+
+
+#%% Example usage
+
+"""
+python crop_detections.py \
+    detections.json \
+    /path/to/crops \
+    --images-dir /path/to/images \
+    --container-url "https://account.blob.core.windows.net/container?sastoken" \
+    --detector-version "4.1" \
+    --threshold 0.8 \
+    --save-full-images --square-crops \
+    --threads 50 \
+    --logdir "."
+"""
 
 
 #%% Main function

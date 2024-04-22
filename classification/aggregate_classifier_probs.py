@@ -1,27 +1,16 @@
-########
-#
-# aggregate_classifier_probs.py
-#
-# Aggregate probabilities from a classifier's outputs according to a mapping
-# from the desired (target) categories to the classifier's categories.
-#
-# Using the mapping, create a new version of the classifier output CSV with
-# probabilities summed within each target category. Also output a new
-# "index-to-name" JSON file which identifies the sequential order of the target
-# categories.
-# 
-########
-
-#%%  Example usage
-
-"""
-python aggregate_classifier_probs.py \
-    classifier_output.csv.gz \
-    --target-mapping target_to_classifier_labels.json \
-    --output-csv classifier_output_remapped.csv.gz \
-    --output-label-index label_index_remapped.json
 """
 
+aggregate_classifier_probs.py
+
+Aggregate probabilities from a classifier's outputs according to a mapping
+from the desired (target) categories to the classifier's categories.
+
+Using the mapping, create a new version of the classifier output CSV with
+probabilities summed within each target category. Also output a new
+"index-to-name" JSON file which identifies the sequential order of the target
+categories.
+
+"""
 
 #%% Imports
 
@@ -33,6 +22,15 @@ import json
 import pandas as pd
 from tqdm import tqdm
 
+#%%  Example usage
+
+"""
+python aggregate_classifier_probs.py \
+    classifier_output.csv.gz \
+    --target-mapping target_to_classifier_labels.json \
+    --output-csv classifier_output_remapped.csv.gz \
+    --output-label-index label_index_remapped.json
+"""
 
 #%% Main function
 
@@ -46,6 +44,7 @@ def main(classifier_results_csv_path: str,
     Because the output CSV is often very large, we process it in chunks of 1000
     rows at a time.
     """
+    
     chunked_df_iterator = pd.read_csv(
         classifier_results_csv_path, chunksize=1000, float_precision='high',
         index_col='path')
@@ -81,9 +80,7 @@ def main(classifier_results_csv_path: str,
 #%% Command-line driver
 
 def _parse_args() -> argparse.Namespace:
-    """
-    Parses arguments.
-    """
+    
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Aggregate classifier probabilities to target classes.')

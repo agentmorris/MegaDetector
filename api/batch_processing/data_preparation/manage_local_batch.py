@@ -1,64 +1,64 @@
-########
-#
-# manage_local_batch.py
-#    
-# Semi-automated process for managing a local MegaDetector job, including
-# standard postprocessing steps.
-#
-# This script is not intended to be run from top to bottom like a typical Python script,
-# it's a notebook disguised with a .py extension.  It's the Bestest Most Awesome way to
-# run MegaDetector, but it's also pretty subtle; if you want to play with this, you might
-# want to check in with cameratraps@lila.science for some tips.  Otherwise... YMMV.
-#
-# Some general notes on using this script, which I do in Spyder, though everything will be
-# the same if you are reading this in Jupyter Notebook (using the .ipynb version of the 
-# script):
-#
-# * Typically when I have a MegaDetector job to run, I make a copy of this script.  Let's 
-#   say I'm running a job for an organization called "bibblebop"; I have a big folder of
-#   job-specific copies of this script, and I might save a new one called "bibblebop-2023-07-26.py" 
-#   (the filename doesn't matter, it just helps me keep these organized).
-#
-# * There are three variables you need to set in this script before you start running code:
-#   "input_path", "organization_name_short", and "job_date".  You will get a sensible error if you forget 
-#   to set any of these.  In this case I might set those to "/data/bibblebobcamerastuff",
-#   "bibblebop", and "2023-07-26", respectively.
-#
-# * The defaults assume you want to split the job into two tasks (this is the default because I have 
-#   two GPUs).  Nothing bad will happen if you do this on a zero-GPU or single-GPU machine, but if you
-#   want everything to run in one logical task, change "n_gpus" and "n_jobs" to 1 (instead of 2).
-#
-# * After setting the required variables, I run the first few cells - up to and including the one 
-#   called "Generate commands" - which collectively take basically zero seconds.  After you run the
-#   "Generate commands" cell, you will have a folder that looks something like:
-#
-#   ~/postprocessing/bibblebop/bibblebop-2023-07-06-mdv5a/
-#  
-#   On Windows, this means:
-#
-#   ~/postprocessing/bibblebop/bibblebop-2023-07-06-mdv5a/    
-#
-#   Everything related to this job - scripts, outputs, intermediate stuff - will be in this folder.
-#   Specifically, after the "Generate commands" cell, you'll have scripts in that folder called something
-#   like:
-#
-#   run_chunk_000_gpu_00.sh (or .bat on Windows)
-#
-#   Personally, I like to run that script directly in a command prompt (I just leave Spyder open, though 
-#   it's OK if Spyder gets shut down while MD is running).  
-#
-#   At this point, once you get the hang of it, you've invested about zero seconds of human time,
-#   but possibly several days of unattended compute time, depending on the size of your job.
-#   
-# * Then when the jobs are done, back to the interactive environment!  I run the next few cells,
-#   which make sure the job finished OK, and the cell called "Post-processing (pre-RDE)", which 
-#   generates an HTML preview of the results.  You are very plausibly done at this point, and can ignore
-#   all the remaining cells.  If you want to do things like repeat detection elimination, or running 
-#   a classifier, or splitting your results file up in specialized ways, there are cells for all of those
-#   things, but now you're in power-user territory, so I'm going to leave this guide here.  Email
-#   cameratraps@lila.science with questions about the fancy stuff.
-#
-########
+"""
+
+manage_local_batch.py
+   
+Semi-automated process for managing a local MegaDetector job, including
+standard postprocessing steps.
+
+This script is not intended to be run from top to bottom like a typical Python script,
+it's a notebook disguised with a .py extension.  It's the Bestest Most Awesome way to
+run MegaDetector, but it's also pretty subtle; if you want to play with this, you might
+want to check in with cameratraps@lila.science for some tips.  Otherwise... YMMV.
+
+Some general notes on using this script, which I do in Spyder, though everything will be
+the same if you are reading this in Jupyter Notebook (using the .ipynb version of the 
+script):
+
+* Typically when I have a MegaDetector job to run, I make a copy of this script.  Let's 
+  say I'm running a job for an organization called "bibblebop"; I have a big folder of
+  job-specific copies of this script, and I might save a new one called "bibblebop-2023-07-26.py" 
+  (the filename doesn't matter, it just helps me keep these organized).
+
+* There are three variables you need to set in this script before you start running code:
+  "input_path", "organization_name_short", and "job_date".  You will get a sensible error if you forget 
+  to set any of these.  In this case I might set those to "/data/bibblebobcamerastuff",
+  "bibblebop", and "2023-07-26", respectively.
+
+* The defaults assume you want to split the job into two tasks (this is the default because I have 
+  two GPUs).  Nothing bad will happen if you do this on a zero-GPU or single-GPU machine, but if you
+  want everything to run in one logical task, change "n_gpus" and "n_jobs" to 1 (instead of 2).
+
+* After setting the required variables, I run the first few cells - up to and including the one 
+  called "Generate commands" - which collectively take basically zero seconds.  After you run the
+  "Generate commands" cell, you will have a folder that looks something like:
+
+  ~/postprocessing/bibblebop/bibblebop-2023-07-06-mdv5a/
+ 
+  On Windows, this means:
+
+  ~/postprocessing/bibblebop/bibblebop-2023-07-06-mdv5a/    
+
+  Everything related to this job - scripts, outputs, intermediate stuff - will be in this folder.
+  Specifically, after the "Generate commands" cell, you'll have scripts in that folder called something
+  like:
+
+  run_chunk_000_gpu_00.sh (or .bat on Windows)
+
+  Personally, I like to run that script directly in a command prompt (I just leave Spyder open, though 
+  it's OK if Spyder gets shut down while MD is running).  
+
+  At this point, once you get the hang of it, you've invested about zero seconds of human time,
+  but possibly several days of unattended compute time, depending on the size of your job.
+  
+* Then when the jobs are done, back to the interactive environment!  I run the next few cells,
+  which make sure the job finished OK, and the cell called "Post-processing (pre-RDE)", which 
+  generates an HTML preview of the results.  You are very plausibly done at this point, and can ignore
+  all the remaining cells.  If you want to do things like repeat detection elimination, or running 
+  a classifier, or splitting your results file up in specialized ways, there are cells for all of those
+  things, but now you're in power-user territory, so I'm going to leave this guide here.  Email
+  cameratraps@lila.science with questions about the fancy stuff.
+
+"""
 
 #%% Imports and constants
 

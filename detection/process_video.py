@@ -1,11 +1,11 @@
-########
-#
-# process_video.py
-#
-# Split a video (or folder of videos) into frames, run the frames through run_detector_batch.py,
-# and optionally stitch together results into a new video with detection boxes.
-#
-########
+"""
+
+process_video.py
+
+Split a video (or folder of videos) into frames, run the frames through run_detector_batch.py,
+and optionally stitch together results into a new video with detection boxes.
+
+"""
 
 #%% Imports
 

@@ -1,31 +1,21 @@
-########
-#
-# run_classifier.py
-#
-# Run a species classifier.
-#
-# This script is the classifier counterpart to detection/run_tf_detector_batch.py.
-# This script takes as input:
-# 1) a detections JSON file, usually the output of run_tf_detector_batch.py or the
-#     output of the Batch API in the "Batch processing API output format"
-# 2) a path to a directory containing crops of bounding boxes from the detections
-#     JSON file
-# 3) a path to a PyTorch TorchScript compiled model file
-# 4) (if the model is EfficientNet) an image size
-#
-# By default, this script overwrites the detections JSON file, adding in
-# classification results. To output a new JSON file, use the --output argument.
-#
-########
-
-#%% Example usage
-
 """
-    python run_classifier.py \
-        detections.json \
-        /path/to/crops \
-        /path/to/model.pt \
-        --image-size 224
+
+run_classifier.py
+
+Run a species classifier.
+
+This script is the classifier counterpart to detection/run_tf_detector_batch.py.
+This script takes as input:
+1) a detections JSON file, usually the output of run_tf_detector_batch.py or the
+    output of the Batch API in the "Batch processing API output format"
+2) a path to a directory containing crops of bounding boxes from the detections
+    JSON file
+3) a path to a PyTorch TorchScript compiled model file
+4) (if the model is EfficientNet) an image size
+
+By default, this script overwrites the detections JSON file, adding in
+classification results. To output a new JSON file, use the --output argument.
+
 """
 
 #%% Imports
@@ -47,6 +37,17 @@ import torchvision as tv
 from torchvision.datasets.folder import default_loader
 
 from classification import train_classifier
+
+
+#%% Example usage
+
+"""
+    python run_classifier.py \
+        detections.json \
+        /path/to/crops \
+        /path/to/model.pt \
+        --image-size 224
+"""
 
 
 #%% Classes

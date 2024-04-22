@@ -1,10 +1,10 @@
-########
-#
-# umn-pr-analysis.py
-#
-# Precision/recall analysis for UMN data
-#
-########
+"""
+
+ umn-pr-analysis.py
+
+ Precision/recall analysis for UMN data
+
+"""
 
 #%% Imports and constants
 

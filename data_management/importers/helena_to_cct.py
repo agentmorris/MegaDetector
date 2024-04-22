@@ -1,10 +1,10 @@
-########
-#
-# helena_to_cct.py
-#
-# Convert the Helena Detections data set to a COCO-camera-traps .json file
-#
-########
+"""
+
+ helena_to_cct.py
+
+ Convert the Helena Detections data set to a COCO-camera-traps .json file
+
+"""
 
 #%% Constants and environment
 

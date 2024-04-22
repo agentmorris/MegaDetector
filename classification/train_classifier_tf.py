@@ -1,27 +1,16 @@
-########
-# 
-# train_classifier_tf.py
-#
-# Train an EfficientNet classifier.
-#
-# Currently the implementation of multi-label multi-class classification is
-# non-functional.
-#
-# During training, start tensorboard from within the classification/ directory:
-#    tensorboard --logdir run --bind_all --samples_per_plugin scalars=0,images=0
-#
-########
-
-#%% Example usage
-
-"""    
-    python train_classifier_tf.py run_idfg /ssd/crops_sq \
-        -m "efficientnet-b0" --pretrained --finetune --label-weighted \
-        --epochs 50 --batch-size 512 --lr 1e-4 \
-        --seed 123 \
-        --logdir run_idfg
 """
 
+train_classifier_tf.py
+
+Train an EfficientNet classifier.
+
+Currently the implementation of multi-label multi-class classification is
+non-functional.
+
+During training, start tensorboard from within the classification/ directory:
+   tensorboard --logdir run --bind_all --samples_per_plugin scalars=0,images=0
+
+"""
 
 #%% Imports and constants
 
@@ -47,7 +36,6 @@ from classification.train_utils import (
     imgs_with_confidences, load_dataset_csv, prefix_all_keys)
 from md_visualization import plot_utils
 
-
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
 # match pytorch EfficientNet model names
@@ -61,6 +49,17 @@ EFFICIENTNET_MODELS: Mapping[str, Mapping[str, Any]] = {
     'efficientnet-b6': dict(cls='EfficientNetB6', img_size=528, dropout=0.5),
     'efficientnet-b7': dict(cls='EfficientNetB7', img_size=600, dropout=0.5)
 }
+
+
+#%% Example usage
+
+"""    
+    python train_classifier_tf.py run_idfg /ssd/crops_sq \
+        -m "efficientnet-b0" --pretrained --finetune --label-weighted \
+        --epochs 50 --batch-size 512 --lr 1e-4 \
+        --seed 123 \
+        --logdir run_idfg
+"""
 
 
 #%% Support functions

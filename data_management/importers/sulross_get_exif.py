@@ -1,11 +1,11 @@
-########
-#
-# sulross_get_exif.py
-#
-# For the Sul Ross dataset, species informationw was stored in XMP metadata; pull 
-# all that metadata out to .json.
-#
-########
+"""
+
+ sulross_get_exif.py
+
+ For the Sul Ross dataset, species informationw was stored in XMP metadata; pull 
+ all that metadata out to .json.
+
+"""
 
 import os
 import json

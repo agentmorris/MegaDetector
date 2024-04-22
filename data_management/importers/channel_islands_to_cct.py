@@ -1,13 +1,13 @@
-########
-#
-# channel_islands_to_cct.py
-#
-# Convert the Channel Islands data set to a COCO-camera-traps .json file
-#
-# Uses the command-line tool ExifTool (exiftool.org) to pull EXIF tags from images,
-# because every Python package we tried failed to pull the "Maker Notes" field properly.
-#
-########
+"""
+
+ channel_islands_to_cct.py
+
+ Convert the Channel Islands data set to a COCO-camera-traps .json file
+
+ Uses the command-line tool ExifTool (exiftool.org) to pull EXIF tags from images,
+ because every Python package we tried failed to pull the "Maker Notes" field properly.
+
+"""
 
 #%% Imports, constants, paths
 

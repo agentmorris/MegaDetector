@@ -1,13 +1,13 @@
-########
-#
-# nacti_fieldname_adjustments.py
-#
-# NACTI metadata was posted with "filename" in images instead of "file_name", and
-# used string (rather than int) category IDs (in categories, but not in annotations).
-#
-# This script fixes those issues and rev's the version number.
-#
-########
+"""
+
+ nacti_fieldname_adjustments.py
+
+ NACTI metadata was posted with "filename" in images instead of "file_name", and
+ used string (rather than int) category IDs (in categories, but not in annotations).
+
+ This script fixes those issues and rev's the version number.
+
+"""
 
 #%% Constants and environment
 

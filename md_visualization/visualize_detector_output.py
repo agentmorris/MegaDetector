@@ -1,11 +1,11 @@
-########
-#
-# visualize_detector_output.py
-#
-# Render images with bounding boxes annotated on them to a folder, based on a
-# detector output result file (json), optionally writing an HTML index file.
-#
-########
+"""
+
+visualize_detector_output.py
+
+Render images with bounding boxes annotated on them to a folder, based on a
+detector output result file (json), optionally writing an HTML index file.
+
+"""
 
 #%% Imports
 

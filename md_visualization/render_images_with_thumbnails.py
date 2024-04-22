@@ -1,11 +1,11 @@
-########
-# 
-# render_images_with_thumbnails.py
-# 
-# Render an output image with one primary and crops from many secondary images,
-# used to check whether suspicious detections are actually false positives or not.
-#
-########
+"""
+
+render_images_with_thumbnails.py
+
+Render an output image with one primary and crops from many secondary images,
+used to check whether suspicious detections are actually false positives or not.
+
+"""
 
 #%% Constants
 

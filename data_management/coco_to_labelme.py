@@ -1,12 +1,12 @@
-########
-#
-# coco_to_labelme.py
-#
-# Converts a COCO dataset to labelme format (one .json per image file).
-#
-# If you want to convert YOLO data to labelme, use yolo_to_coco, then coco_to_labelme.
-#
-########
+"""
+
+coco_to_labelme.py
+
+Converts a COCO dataset to labelme format (one .json per image file).
+
+If you want to convert YOLO data to labelme, use yolo_to_coco, then coco_to_labelme.
+
+"""
 
 #%% Imports and constants
 

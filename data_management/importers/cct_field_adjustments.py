@@ -1,12 +1,12 @@
-########
-#
-# cct_field_adjustments.py
-#
-# CCT metadata was posted with int locations instead of strings.
-#
-# This script fixes those issues and rev's the version number.
-#
-########
+"""
+
+ cct_field_adjustments.py
+
+ CCT metadata was posted with int locations instead of strings.
+
+ This script fixes those issues and rev's the version number.
+
+"""
 
 #%% Constants and environment
 
