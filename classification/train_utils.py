@@ -1,13 +1,13 @@
-########
-# 
-# train_utils.py
-#
-# Utility functions useful for training a classifier.
-#
-# This script should NOT depend on any other file within this repo. It should
-# especially be agnostic to PyTorch vs. TensorFlow.
-#
-########
+"""
+
+train_utils.py
+
+Utility functions useful for training a classifier.
+
+This script should NOT depend on any other file within this repo. It should
+especially be agnostic to PyTorch vs. TensorFlow.
+
+"""
 
 #%% Imports
 

@@ -1,16 +1,16 @@
-########
-#
-# get_lila_annotation_counts.py
-#
-# Generates a .json-formatted dictionary mapping each LILA dataset to all categories
-# that exist for that dataset, with counts for the number of occurrences of each category 
-# (the number of *annotations* for each category, not the number of *images*).
-#
-# Also loads the taxonomy mapping file, to include scientific names for each category.
-#
-# get_lila_image_counts.py counts the number of *images* for each category in each dataset.
-#
-########
+"""
+
+get_lila_annotation_counts.py
+
+Generates a .json-formatted dictionary mapping each LILA dataset to all categories
+that exist for that dataset, with counts for the number of occurrences of each category 
+(the number of *annotations* for each category, not the number of *images*).
+
+Also loads the taxonomy mapping file, to include scientific names for each category.
+
+get_lila_image_counts.py counts the number of *images* for each category in each dataset.
+
+"""
 
 #%% Constants and imports
 

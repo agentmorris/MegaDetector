@@ -1,16 +1,16 @@
-########
-#
-# md_tests.py
-#
-# A series of tests to validate basic repo functionality and verify either "correct"
-# inference behavior, or - when operating in environments other than the training
-# environment - acceptable deviation from the correct results.
-#
-# This module should not depend on anything else in this repo outside of the 
-# tests themselves, even if it means some duplicated code (e.g. for downloading files),
-# since much of what it tries to test is, e.g., imports.
-#
-########
+"""
+
+md_tests.py
+
+A series of tests to validate basic repo functionality and verify either "correct"
+inference behavior, or - when operating in environments other than the training
+environment - acceptable deviation from the correct results.
+
+This module should not depend on anything else in this repo outside of the 
+tests themselves, even if it means some duplicated code (e.g. for downloading files),
+since much of what it tries to test is, e.g., imports.
+
+"""
 
 #%% Imports and constants
 
@@ -402,7 +402,6 @@ def run_python_tests(options):
     #
     # It's already tested in the CLI tests, so this is not urgent.
     
-
     if not options.skip_video_tests:
         
         ## Video test (single video)
@@ -475,7 +474,8 @@ def run_python_tests(options):
         assert os.path.isfile(video_options.output_json_file), \
             'Python video test failed to render output .json file'
         
-        
+    # ...if we're not skipping video tests
+    
     print('\n*** Finished module tests ***\n')
 
 # ...def run_python_tests(...)
@@ -670,6 +670,8 @@ def run_cli_tests(options):
         cmd += ' --force_extracted_frame_folder_deletion --force_rendered_frame_folder_deletion --n_cores 5 --frame_sample 3'
         print('Running: {}'.format(cmd))
         cmd_results = execute_and_print(cmd)
+
+    # ...if we're not skipping video tests
     
     
     ## Run inference on a folder (again, so we can do a comparison)

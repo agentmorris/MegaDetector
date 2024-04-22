@@ -1,11 +1,11 @@
-########
-#
-# add_nacti_sizes.py
-#
-# NACTI bounding box metadata was posted before we inclduded width and height as semi-standard
-# fields; pull size information from the main metadata file and add to the bbox file.
-#
-########
+"""
+
+ add_nacti_sizes.py
+
+ NACTI bounding box metadata was posted before we inclduded width and height as semi-standard
+ fields; pull size information from the main metadata file and add to the bbox file.
+
+"""
 
 #%% Constants and environment
 

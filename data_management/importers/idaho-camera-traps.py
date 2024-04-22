@@ -1,10 +1,10 @@
-########
-#
-# idaho-camera-traps.py
-#
-# Prepare the Idaho Camera Traps dataset for release on LILA.
-#
-########
+"""
+
+ idaho-camera-traps.py
+
+ Prepare the Idaho Camera Traps dataset for release on LILA.
+
+"""
 
 #%% Imports and constants
 

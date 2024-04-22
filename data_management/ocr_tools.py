@@ -1,33 +1,33 @@
-########
-#
-# ocr_tools.py
-#
-# Use OCR (via the Tesseract package) to pull metadata (particularly times and
-# dates from camera trap images).
-#
-# The general approach is:
-#
-# * Crop a fixed percentage from the top and bottom of an image, slightly larger
-#   than the largest examples we've seen of how much space is used for metadata.
-#
-# * Define the background color as the median pixel value, and find rows that are
-#   mostly that color to refine the crop.
-#
-# * Crop to the refined crop, then run pytesseract to extract text.
-#
-# * Use regular expressions to find time and date.
-#
-# Prior to using this module:
-#
-# * Install Tesseract from https://tesseract-ocr.github.io/tessdoc/Installation.html
-#
-# * pip install pytesseract
-#    
-# Known limitations:
-#
-# * Semi-transparent overlays (which I've only seen on consumer cameras) usually fail.
-#    
-########
+"""
+
+ocr_tools.py
+
+Use OCR (via the Tesseract package) to pull metadata (particularly times and
+dates from camera trap images).
+
+The general approach is:
+
+* Crop a fixed percentage from the top and bottom of an image, slightly larger
+  than the largest examples we've seen of how much space is used for metadata.
+
+* Define the background color as the median pixel value, and find rows that are
+  mostly that color to refine the crop.
+
+* Crop to the refined crop, then run pytesseract to extract text.
+
+* Use regular expressions to find time and date.
+
+Prior to using this module:
+
+* Install Tesseract from https://tesseract-ocr.github.io/tessdoc/Installation.html
+
+* pip install pytesseract
+   
+Known limitations:
+
+* Semi-transparent overlays (which I've only seen on consumer cameras) usually fail.
+   
+"""
 
 #%% Notes to self
 

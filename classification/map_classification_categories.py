@@ -1,48 +1,39 @@
-########
-#
-# map_classification_categories.py
-#
-# Maps a classifier's output categories to desired target categories.
-# 
-# In this file, we use the following terminology:
-# * "category": a category output by the classifier
-# * "target": name of a desired group, comprising >= 1 classifier categories
-# 
-# Takes as input 2 label specification JSON files:
-#
-# 1) desired label specification JSON file
-#    this should not have a target named "other"
-#    
-# 2) label specification JSON file of trained classifier
-#
-# The mapping is accomplished as follows:
-#    
-# 1. For each category in the classifier label spec, find all taxon nodes that
-#     belong to that category.
-#
-# 2. Given a target in the desired label spec, find all taxon nodes that belong
-#     to that target. If there is any classifier category whose nodes are a
-#     subset of the target nodes, then map the classifier category to that target.
-#     Any partial intersection between a target's nodes and a category's nodes
-#     is considered an error.
-#
-# 3. If there are any classifier categories that have not yet been assigned a
-#     target, group them into the "other" target.
-# 
-# This script outputs a JSON file that maps each target to a list of classifier
-# categories.
-# 
-# The taxonomy mapping parts of this script are very similar to json_validator.py.
-#
-########
-
-#%% Example usage
-
 """
-    python map_classification_categories.py \
-        desired_label_spec.json \
-        /path/to/classifier/label_spec.json \
-        $HOME/camera-traps-private/camera_trap_taxonomy_mapping.csv
+
+map_classification_categories.py
+
+Maps a classifier's output categories to desired target categories.
+
+In this file, we use the following terminology:
+* "category": a category output by the classifier
+* "target": name of a desired group, comprising >= 1 classifier categories
+
+Takes as input 2 label specification JSON files:
+
+1) desired label specification JSON file
+   this should not have a target named "other"
+   
+2) label specification JSON file of trained classifier
+
+The mapping is accomplished as follows:
+   
+1. For each category in the classifier label spec, find all taxon nodes that
+    belong to that category.
+
+2. Given a target in the desired label spec, find all taxon nodes that belong
+    to that target. If there is any classifier category whose nodes are a
+    subset of the target nodes, then map the classifier category to that target.
+    Any partial intersection between a target's nodes and a category's nodes
+    is considered an error.
+
+3. If there are any classifier categories that have not yet been assigned a
+    target, group them into the "other" target.
+
+This script outputs a JSON file that maps each target to a list of classifier
+categories.
+
+The taxonomy mapping parts of this script are very similar to json_validator.py.
+
 """
 
 #%% Imports
@@ -63,6 +54,16 @@ from tqdm import tqdm
 
 from taxonomy_mapping.taxonomy_graph import (
     build_taxonomy_graph, dag_to_tree, TaxonNode)
+
+
+#%% Example usage
+
+"""
+    python map_classification_categories.py \
+        desired_label_spec.json \
+        /path/to/classifier/label_spec.json \
+        $HOME/camera-traps-private/camera_trap_taxonomy_mapping.csv
+"""
 
 
 #%% Main function

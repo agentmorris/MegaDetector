@@ -1,19 +1,19 @@
-########
-#
-# generate_lila_per_image_labels.py
-# 
-# Generate a .csv file with one row per annotation, containing full URLs to every
-# camera trap image on LILA, with taxonomically expanded labels.
-#
-# Typically there will be one row per image, though images with multiple annotations
-# will have multiple rows.
-#
-# Some images may not physically exist, particularly images that are labeled as "human".
-# This script does not validate image URLs.
-#
-# Does not include bounding box annotations.
-#
-########
+"""
+
+generate_lila_per_image_labels.py
+
+Generate a .csv file with one row per annotation, containing full URLs to every
+camera trap image on LILA, with taxonomically expanded labels.
+
+Typically there will be one row per image, though images with multiple annotations
+will have multiple rows.
+
+Some images may not physically exist, particularly images that are labeled as "human".
+This script does not validate image URLs.
+
+Does not include bounding box annotations.
+
+"""
 
 #%% Constants and imports
 

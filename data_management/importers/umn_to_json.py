@@ -1,10 +1,10 @@
-########
-#
-# umn_to_json.py
-#
-# Prepare images and metadata for the Orinoquía Camera Traps dataset.
-#
-########
+"""
+
+ umn_to_json.py
+
+ Prepare images and metadata for the Orinoquía Camera Traps dataset.
+
+"""
 
 #%% Imports and constants
 

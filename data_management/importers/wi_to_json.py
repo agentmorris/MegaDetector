@@ -1,12 +1,12 @@
-########
-#
-# wi_to_json
-#
-# Prepares CCT-formatted metadata based on a Wildlife Insights data export.
-# 
-# Mostly assumes you have the images also, for validation/QA.
-#
-########
+"""
+
+ wi_to_json
+
+ Prepares CCT-formatted metadata based on a Wildlife Insights data export.
+ 
+ Mostly assumes you have the images also, for validation/QA.
+
+"""
 
 #%% Imports and constants
 

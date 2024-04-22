@@ -1,12 +1,12 @@
-########
-#
-# add_timestamps_to_icct.py
-#
-# The Island Conservation Camera Traps dataset was originally posted without timestamps
-# in either .json metadata or EXIF metadata.  We pulled timestamps out using ocr_tools.py,
-# this script adds those timestamps into the .json metadata.
-#
-########
+"""
+
+ add_timestamps_to_icct.py
+
+ The Island Conservation Camera Traps dataset was originally posted without timestamps
+ in either .json metadata or EXIF metadata.  We pulled timestamps out using ocr_tools.py,
+ this script adds those timestamps into the .json metadata.
+
+"""
 
 #%% Imports and constants
 

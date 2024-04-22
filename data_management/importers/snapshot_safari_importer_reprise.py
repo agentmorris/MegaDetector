@@ -1,13 +1,13 @@
-########
-#
-# snapshot_safari_importer_reprise.py
-#
-# This is a 2023 update to snapshot_safari_importer.py.  We do a bunch of things now that
-# we didn't do the last time we imported Snapshot data (like updating the big taxonomy)
-# file, and we skip a bunch of things now that we used to do (like generating massive
-# zipfiles).  So, new year, new importer.
-#
-########
+"""
+
+ snapshot_safari_importer_reprise.py
+
+ This is a 2023 update to snapshot_safari_importer.py.  We do a bunch of things now that
+ we didn't do the last time we imported Snapshot data (like updating the big taxonomy)
+ file, and we skip a bunch of things now that we used to do (like generating massive
+ zipfiles).  So, new year, new importer.
+
+"""
 
 #%% Constants and imports
 

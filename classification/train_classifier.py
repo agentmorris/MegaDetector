@@ -1,25 +1,15 @@
-########
-#
-# train_classifier.py
-#
-# Train a EfficientNet or ResNet classifier.
-# 
-# Currently the implementation of multi-label multi-class classification is
-# non-functional.
-#
-# During training, start tensorboard from within the classification/ directory:
-#   tensorboard --logdir run --bind_all --samples_per_plugin scalars=0,images=0
-# 
-########
+"""
 
-#%% Example usage
+train_classifier.py
 
-"""    
-    python train_classifier.py run_idfg /ssd/crops_sq \
-        -m "efficientnet-b0" --pretrained --finetune --label-weighted \
-        --epochs 50 --batch-size 512 --lr 1e-4 \
-        --num-workers 12 --seed 123 \
-        --logdir run_idfg
+Train a EfficientNet or ResNet classifier.
+
+Currently the implementation of multi-label multi-class classification is
+non-functional.
+
+During training, start tensorboard from within the classification/ directory:
+  tensorboard --logdir run --bind_all --samples_per_plugin scalars=0,images=0
+
 """
 
 #%% Imports and constants
@@ -49,6 +39,16 @@ from classification.train_utils import (
     imgs_with_confidences, load_dataset_csv, prefix_all_keys)
 from md_visualization import plot_utils
 
+
+#%% Example usage
+
+"""    
+    python train_classifier.py run_idfg /ssd/crops_sq \
+        -m "efficientnet-b0" --pretrained --finetune --label-weighted \
+        --epochs 50 --batch-size 512 --lr 1e-4 \
+        --num-workers 12 --seed 123 \
+        --logdir run_idfg
+"""
 
 # mean/std values from https://pytorch.org/docs/stable/torchvision/models.html
 MEANS = np.asarray([0.485, 0.456, 0.406])

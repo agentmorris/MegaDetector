@@ -1,74 +1,59 @@
-########
-#
-# merge_classification_detection_output.py
-#
-# Merges classification results with Batch Detection API outputs.
-#
-# This script takes 2 main files as input:
-#
-# 1) Either a "dataset CSV" (output of create_classification_dataset.py) or a
-#     "classification results CSV" (output of evaluate_model.py). The CSV is
-#     expected to have columns listed below. The 'label' and [label names] columns
-#     are optional, but at least one of them must be provided.
-#     * 'path': str, path to cropped image
-#         * if passing in a detections JSON, must match
-#             <img_file>___cropXX_mdvY.Y.jpg
-#         * if passing in a queried images JSON, must match
-#             <dataset>/<img_file>___cropXX_mdvY.Y.jpg or
-#             <dataset>/<img_file>___cropXX.jpg
-#     * 'label': str, label assigned to this crop
-#     * [label names]: float, confidence in each label
-# 
-# 2) Either a "detections JSON" (output of MegaDetector) or a "queried images
-#     JSON" (output of json_validatory.py).
-# 
-# If the CSV contains [label names] columns (e.g., output of evaluate_model.py),
-# then each crop's "classifications" output will have one value per category.
-# Categories are sorted decreasing by confidence.
-#     "classifications": [
-#         ["3", 0.901],
-#         ["1", 0.071],
-#         ["4", 0.025],
-#         ["2", 0.003],
-#    ]
-#
-# If the CSV only contains the 'label' column (e.g., output of
-# create_classification_dataset.py), then each crop's "classifications" output
-# will have only one value, with a confidence of 1.0. The label's classification
-# category ID is always greater than 1,000,000, to distinguish it from a predicted
-# category ID.
-#     "classifications": [
-#         ["1000004", 1.0]
-#     ]
-# 
-# If the CSV contains both [label names] and 'label' columns, then both the
-# predicted categories and label category will be included. By default, the
-# label-category is included last; if the --label-first flag is given, then the
-# label category is placed first in the results.
-#     "classifications": [
-#         ["1000004", 1.0],  # label put first if --label-first flag is given
-#         ["3", 0.901],  # all other results are sorted by confidence
-#         ["1", 0.071],
-#         ["4", 0.025],
-#         ["2", 0.003]
-#     ]
-#
-########
-
-#%% Example usage
-
-"""
-    python merge_classification_detection_output.py \
-        BASE_LOGDIR/LOGDIR/outputs_test.csv.gz \
-        BASE_LOGDIR/label_index.json \
-        BASE_LOGDIR/queried_images.json \
-        --classifier-name "efficientnet-b3-idfg-moredata" \
-        --detector-output-cache-dir $HOME/classifier-training/mdcache \
-        --detector-version "4.1" \
-        --output-json BASE_LOGDIR/LOGDIR/classifier_results.json \
-        --datasets idfg idfg_swwlf_2019
 """
 
+merge_classification_detection_output.py
+
+Merges classification results with Batch Detection API outputs.
+
+This script takes 2 main files as input:
+
+1) Either a "dataset CSV" (output of create_classification_dataset.py) or a
+    "classification results CSV" (output of evaluate_model.py). The CSV is
+    expected to have columns listed below. The 'label' and [label names] columns
+    are optional, but at least one of them must be provided.
+    * 'path': str, path to cropped image
+        * if passing in a detections JSON, must match
+            <img_file>___cropXX_mdvY.Y.jpg
+        * if passing in a queried images JSON, must match
+            <dataset>/<img_file>___cropXX_mdvY.Y.jpg or
+            <dataset>/<img_file>___cropXX.jpg
+    * 'label': str, label assigned to this crop
+    * [label names]: float, confidence in each label
+
+2) Either a "detections JSON" (output of MegaDetector) or a "queried images
+    JSON" (output of json_validatory.py).
+
+If the CSV contains [label names] columns (e.g., output of evaluate_model.py),
+then each crop's "classifications" output will have one value per category.
+Categories are sorted decreasing by confidence.
+    "classifications": [
+        ["3", 0.901],
+        ["1", 0.071],
+        ["4", 0.025],
+        ["2", 0.003],
+   ]
+
+If the CSV only contains the 'label' column (e.g., output of
+create_classification_dataset.py), then each crop's "classifications" output
+will have only one value, with a confidence of 1.0. The label's classification
+category ID is always greater than 1,000,000, to distinguish it from a predicted
+category ID.
+    "classifications": [
+        ["1000004", 1.0]
+    ]
+
+If the CSV contains both [label names] and 'label' columns, then both the
+predicted categories and label category will be included. By default, the
+label-category is included last; if the --label-first flag is given, then the
+label category is placed first in the results.
+    "classifications": [
+        ["1000004", 1.0],  # label put first if --label-first flag is given
+        ["3", 0.901],  # all other results are sorted by confidence
+        ["1", 0.071],
+        ["4", 0.025],
+        ["2", 0.003]
+    ]
+
+"""
 
 #%% Imports
 
@@ -86,6 +71,21 @@ import pandas as pd
 from tqdm import tqdm
 
 from md_utils.ct_utils import truncate_float
+
+
+#%% Example usage
+
+"""
+    python merge_classification_detection_output.py \
+        BASE_LOGDIR/LOGDIR/outputs_test.csv.gz \
+        BASE_LOGDIR/label_index.json \
+        BASE_LOGDIR/queried_images.json \
+        --classifier-name "efficientnet-b3-idfg-moredata" \
+        --detector-output-cache-dir $HOME/classifier-training/mdcache \
+        --detector-version "4.1" \
+        --output-json BASE_LOGDIR/LOGDIR/classifier_results.json \
+        --datasets idfg idfg_swwlf_2019
+"""
 
 
 #%% Support functions

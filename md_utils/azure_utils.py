@@ -1,12 +1,12 @@
-########
-#
-# azure_utils.py
-#
-# Miscellaneous Azure Blob Storage utilities
-#
-# Requires azure-storage-blob>=12.4.0
-#
-########
+"""
+
+azure_utils.py
+
+Miscellaneous Azure Blob Storage utilities
+
+Requires azure-storage-blob>=12.4.0
+
+"""
 
 import json
 from md_utils import path_utils

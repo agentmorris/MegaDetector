@@ -1,14 +1,14 @@
-########
-#
-# timelapse_csv_set_to_json.py
-#
-# Given a directory full of reasonably-consistent Timelapse-exported
-# .csvs, assemble a CCT .json.
-#
-# Assumes that you have a list of all files in the directory tree, including 
-# image and .csv files.
-#
-########
+"""
+
+ timelapse_csv_set_to_json.py
+
+ Given a directory full of reasonably-consistent Timelapse-exported
+ .csvs, assemble a CCT .json.
+
+ Assumes that you have a list of all files in the directory tree, including 
+ image and .csv files.
+
+"""
 
 #%% Constants and imports
 

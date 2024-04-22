@@ -1,16 +1,16 @@
-########
-#
-# ubc_to_json.py
-#
-# Convert the .csv file provided for the UBC data set to a 
-# COCO-camera-traps .json file
-#
-# Images were provided in eight folders, each of which contained a .csv
-# file with annotations.  Those annotations came in two slightly different 
-# formats, the two formats corresponding to folders starting with "SC_" and 
-# otherwise.
-#
-########
+"""
+
+ ubc_to_json.py
+
+ Convert the .csv file provided for the UBC data set to a 
+ COCO-camera-traps .json file
+
+ Images were provided in eight folders, each of which contained a .csv
+ file with annotations.  Those annotations came in two slightly different 
+ formats, the two formats corresponding to folders starting with "SC_" and 
+ otherwise.
+
+"""
 
 #%% Constants and environment
 

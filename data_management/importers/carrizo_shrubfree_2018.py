@@ -1,11 +1,11 @@
-########
-#
-# carrizo_shrubfree_2018.py
-#
-# Convert the .csv file provided for the Carrizo Mojave data set to a 
-# COCO-camera-traps .json file
-#
-########
+"""
+
+ carrizo_shrubfree_2018.py
+
+ Convert the .csv file provided for the Carrizo Mojave data set to a 
+ COCO-camera-traps .json file
+
+"""
 
 #%% Constants and environment
 

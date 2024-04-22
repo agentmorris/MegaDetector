@@ -1,105 +1,101 @@
-########
-#
-# csv_to_json.py
-#
-# Converts CSV to JSON format for label specification.
-# 
-# There are 3 possible values for the 'type' column in the CSV:
-#
-# - "row": this selects a specific rowfrom the master taxonomy CSV
-#     content syntax: <dataset_name>|<dataset_label>
-#
-# - "datasettaxon": this selects all animals in a taxon from a particular dataset
-#     content syntax: <dataset_name>|<taxon_level>|<taxon_name>
-#
-# - <taxon_level>: this selects all animals in a taxon across all datasets
-#     content syntax: <taxon_name>
-# 
-# Example CSV input:
-#
-"""   
-    # comment lines starting with '#' are allowed
-    output_label,type,content
-
-    cervid,row,idfg|deer
-    cervid,row,idfg|elk
-    cervid,row,idfg|prong
-    cervid,row,idfg_swwlf_2019|elk
-    cervid,row,idfg_swwlf_2019|muledeer
-    cervid,row,idfg_swwlf_2019|whitetaileddeer
-    cervid,max_count,50000
-
-    cervid,family,cervidae
-    cervid,datasettaxon,idfg|family|cervidae
-    cervid,datasettaxon,idfg_swwlf_2019|family|cervidae
-
-    bird,row,idfg_swwlf_2019|bird
-    bird,class,aves
-    bird,max_count,50000
-    bird,prioritize,"[['idfg_swwlf_2019'], ['idfg']]"
-
-    !bird,row,idfg_swwlf_2019|turkey
-    !bird,genus,meleagris
 """
-#
-# Example JSON output:
-#
-"""    
-    {
-        "cervid": {
-            "dataset_labels": {
-                "idfg": ["deer", "elk", "prong"],
-                "idfg_swwlf_2019": ["elk", "muledeer", "whitetaileddeer"]
-            },
-            "taxa": [
-                {
-                    "level": "family",
-                    "name": "cervidae"
-                },
-                {
-                    "level": "family",
-                    "name": "cervidae"
-                    "datasets": ["idfg"]
-                },
-                {
-                    "level": "family",
-                    "name": "cervidae"
-                    "datasets": ["idfg_swwlf_2019"]
-                }
-            ],
-            "max_count": 50000
-        },
-        "bird": {
-            "dataset_labels": {
-                "idfg_swwlf_2019": ["bird"]
-            },
-            "taxa": [
-                {
-                    "level": "class",
-                    "name": "aves"
-                }
-            ],
-            "exclude": {
-                "dataset_labels": {
-                    "idfg_swwlf_2019": ["turkey"]
-                },
-                "taxa": [
-                    {
-                        "level": "genus",
-                        "name": "meleagris"
-                    }
-                ]
-            },
-            "max_count": "50000",
-            "prioritize": [
-                ["idfg_swwlf_2019"],
-                ["idfg"]
-            ],
-        }
-    }
+
+csv_to_json.py
+
+Converts CSV to JSON format for label specification.
+
+There are 3 possible values for the 'type' column in the CSV:
+
+- "row": this selects a specific rowfrom the master taxonomy CSV
+    content syntax: <dataset_name>|<dataset_label>
+
+- "datasettaxon": this selects all animals in a taxon from a particular dataset
+    content syntax: <dataset_name>|<taxon_level>|<taxon_name>
+
+- <taxon_level>: this selects all animals in a taxon across all datasets
+    content syntax: <taxon_name>
+
+Example CSV input:
+
+"
+  # comment lines starting with '#' are allowed
+  output_label,type,content
+  cervid,row,idfg|deer
+  cervid,row,idfg|elk
+  cervid,row,idfg|prong
+  cervid,row,idfg_swwlf_2019|elk
+  cervid,row,idfg_swwlf_2019|muledeer
+  cervid,row,idfg_swwlf_2019|whitetaileddeer
+  cervid,max_count,50000
+  cervid,family,cervidae
+  cervid,datasettaxon,idfg|family|cervidae
+  cervid,datasettaxon,idfg_swwlf_2019|family|cervidae
+  bird,row,idfg_swwlf_2019|bird
+  bird,class,aves
+  bird,max_count,50000
+  bird,prioritize,"[['idfg_swwlf_2019'], ['idfg']]"
+  !bird,row,idfg_swwlf_2019|turkey
+  !bird,genus,meleagris
+"
+
+Example JSON output:
+
+"    
+  {
+      "cervid": {
+          "dataset_labels": {
+              "idfg": ["deer", "elk", "prong"],
+              "idfg_swwlf_2019": ["elk", "muledeer", "whitetaileddeer"]
+          },
+          "taxa": [
+              {
+                  "level": "family",
+                  "name": "cervidae"
+              },
+              {
+                  "level": "family",
+                  "name": "cervidae"
+                  "datasets": ["idfg"]
+              },
+              {
+                  "level": "family",
+                  "name": "cervidae"
+                  "datasets": ["idfg_swwlf_2019"]
+              }
+          ],
+          "max_count": 50000
+      },
+      "bird": {
+          "dataset_labels": {
+              "idfg_swwlf_2019": ["bird"]
+          },
+          "taxa": [
+              {
+                  "level": "class",
+                  "name": "aves"
+              }
+          ],
+          "exclude": {
+              "dataset_labels": {
+                  "idfg_swwlf_2019": ["turkey"]
+              },
+              "taxa": [
+                  {
+                      "level": "genus",
+                      "name": "meleagris"
+                  }
+              ]
+          },
+          "max_count": "50000",
+          "prioritize": [
+              ["idfg_swwlf_2019"],
+              ["idfg"]
+          ],
+      }
+  }
+"
+
 """
-#
-########
 
 #%% Imports
 
@@ -125,6 +121,7 @@ def main():
 
 
 #%% Support functions
+
 def parse_csv_row(obj: dict[str, Any], rowtype: str, content: str) -> None:
     """
     Parses a row in the CSV.

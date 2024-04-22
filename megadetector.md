@@ -34,7 +34,7 @@ To this end, this page hosts a model we've trained - called "MegaDetector" - to 
 Before you read the rest of this page...
 
 * If you are looking for a convenient tool to run MegaDetector, you don't need anything from this page: check out [EcoAssist](https://github.com/PetervanLunteren/EcoAssist?tab=readme-ov-file).
-* If you're just <i>considering</i> the use of AI in your workflow, and you aren't even sure yet whether MegaDetector would be useful to you, we recommend reading the much shorter "[getting started with MegaDetector](collaborations.md)" page.
+* If you're just <i>considering</i> the use of AI in your workflow, and you aren't even sure yet whether MegaDetector would be useful to you, we recommend reading the much shorter "[getting started with MegaDetector](getting-started.md)" page.
 * If you're a programmer-type looking to use tools from this repo, check out the [Python package](https://pypi.org/project/megadetector/) that provides access to everything in this repo (yes, you guessed it, "pip install megadetector").
 * If you're already familiar with MegaDetector and you're ready to run it on your data, and you're looking for instructions on running MegaDetector, read on!
 * If you have any questions, or you want to tell us that MegaDetector was amazing/terrible on your images, <a href="mailto:cameratraps@lila.science">email us</a>!
@@ -49,7 +49,7 @@ MegaDetector is free, and it makes us super-happy when people use it, so we put 
 
 ## How fast is MegaDetector, and can I run it on my giant/small computer?
 
-We often run MegaDetector on behalf of users as a free service; see our ["Getting started with MegaDetector"](collaborations.md) page for more information.  But there are many reasons to run MegaDetector on your own; how practical this is will depend in part on how many images you need to process and what kind of computer hardware you have available.  MegaDetector is designed to favor accuracy over speed, and we typically run it on <a href="https://en.wikipedia.org/wiki/Graphics_processing_unit">GPU</a>-enabled computers.  That said, you can run anything on anything if you have enough time, and we're happy to support users who run MegaDetector on their own GPUs (in the cloud or on their own PCs), on their own CPUs, or even on embedded devices.  If you only need to process a few thousand images per week, for example, a typical laptop will be just fine.  If you want to crunch through 20 million images as fast as possible, you'll want at least one GPU.
+We often run MegaDetector on behalf of users as a free service; see our ["Getting started with MegaDetector"](getting-started.md) page for more information.  But there are many reasons to run MegaDetector on your own; how practical this is will depend in part on how many images you need to process and what kind of computer hardware you have available.  MegaDetector is designed to favor accuracy over speed, and we typically run it on <a href="https://en.wikipedia.org/wiki/Graphics_processing_unit">GPU</a>-enabled computers.  That said, you can run anything on anything if you have enough time, and we're happy to support users who run MegaDetector on their own GPUs (in the cloud or on their own PCs), on their own CPUs, or even on embedded devices.  If you only need to process a few thousand images per week, for example, a typical laptop will be just fine.  If you want to crunch through 20 million images as fast as possible, you'll want at least one GPU.
 
 Here are some rules of thumb to help you estimate how fast you can run MegaDetector on different types of hardware.
 
@@ -505,7 +505,7 @@ So, if you find yourself keeping track of lots of steps like this to manage larg
  
 ## Is there a GUI?
 
-Many of our users either use our Python tools to run MegaDetector or have us run MegaDetector for them (see [this page](collaborations.md) for more information about that), then most of those users use [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/) to use their MegaDetector results in an image review workflow.
+Many of our users either use our Python tools to run MegaDetector or have us run MegaDetector for them (see [this page](getting-started.md) for more information about that), then most of those users use [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/) to use their MegaDetector results in an image review workflow.
 
 But we recognize that Python tools can be a bit daunting, so we're excited that a variety of tools allow you to run MegaDetector in a GUI have emerged from the community.  We're interested in users' perspectives on all of these tools, so if you find them useful - or if you know of others - [let us know](mailto:cameratraps@lila.science), and thank those developers!
 
@@ -581,7 +581,7 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 
 ## How do I use the results?
 
-See the ["How do people use MegaDetector results?"](https://github.com/agentmorris/MegaDetector/blob/main/collaborations.md#how-people-use-megadetector-results) section of our "getting started" page.
+See the ["How do people use MegaDetector results?"](https://github.com/agentmorris/MegaDetector/blob/main/getting-started.md#how-people-use-megadetector-results) section of our "getting started" page.
 
 
 ## Have you evaluated MegaDetector's accuracy?

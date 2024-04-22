@@ -1,10 +1,10 @@
-########
-#
-# snapshot-safari-pr-analysis.py
-#
-# Precision/recall analysis for KGA data
-#
-########
+"""
+
+ snapshot-safari-pr-analysis.py
+
+ Precision/recall analysis for KGA data
+
+"""
 
 #%% Imports and constants
 

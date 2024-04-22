@@ -1,22 +1,22 @@
-########
-#
-# directory_listing.py
-#
-# Script for creating HTML directory listings for a local directory and
-# all its subdirectories.  Primarily intended for use on mounted blob
-# containers, so it includes the ability to set the content-type property
-# on the generated html using the blob SDK, so it can be browser-viewable.
-#
-# Also includes a preview of a jpg file (the first in an alphabetical list),
-# if present.
-#
-# Sample invocation:
-#
-# python directory_listing.py /naipout/v002 --basepath /naipout/v002 \
-#   --enable_overwrite \
-#   --sas_url "https://naipblobs.blob.core.windows.net/naip/v002?sv=..."
-#
-########
+"""
+
+directory_listing.py
+
+Script for creating HTML directory listings for a local directory and
+all its subdirectories.  Primarily intended for use on mounted blob
+containers, so it includes the ability to set the content-type property
+on the generated html using the blob SDK, so it can be browser-viewable.
+
+Also includes a preview of a jpg file (the first in an alphabetical list),
+if present.
+
+Sample invocation:
+
+python directory_listing.py /naipout/v002 --basepath /naipout/v002 \
+  --enable_overwrite \
+  --sas_url "https://naipblobs.blob.core.windows.net/naip/v002?sv=..."
+
+"""
 
 #%% Imports
 

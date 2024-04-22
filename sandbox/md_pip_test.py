@@ -1,13 +1,13 @@
-########
-#
-# md-pip-test.py
-#
-# Basic test driver to validate a pip install of the MD PyPI package.  
-#
-# The main test driver - which tests both Python and CLI invocation of
-# most modules - is in md_utils/md_tests.py.
-#
-########
+"""
+
+ md-pip-test.py
+
+ Basic test driver to validate a pip install of the MD PyPI package.  
+
+ The main test driver - which tests both Python and CLI invocation of
+ most modules - is in md_utils/md_tests.py.
+
+"""
 
 ### Run MegaDetector on one image
 

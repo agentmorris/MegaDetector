@@ -1,14 +1,14 @@
-########
-#
-# subset_json_db.py
-#
-# Select a subset of images (and associated annotations) from a .json file
-# in COCO Camera Traps format.
-#
-# To subset the .json files in the MegaDetector output format, see 
-# subset_json_detector_output.py
-#
-########
+"""
+
+subset_json_db.py
+
+Select a subset of images (and associated annotations) from a .json file
+in COCO Camera Traps format.
+
+To subset the .json files in the MegaDetector output format, see 
+subset_json_detector_output.py
+
+"""
     
 #%% Constants and imports
 
