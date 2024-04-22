@@ -1,9 +1,9 @@
 """
 
- separate_detections_by_size
+separate_detections_by_size
 
- Not-super-well-maintained script to break a list of API output files up
- based on bounding box size.
+Not-super-well-maintained script to break a list of API output files up
+based on bounding box size.
 
 """
 
@@ -12,10 +12,14 @@
 import json
 import os
 
-def main():
-    # Folder with one or more .json files in it that we want to split up
-    output_base = r'g:\my_data\combined_api_outputs'
+# Folder with one or more .json files in it that we want to split up
+output_base = r'g:\my_data\combined_api_outputs'
 
+
+#%% Main function
+
+def main():
+    
     # Enumerate .json files
     input_files = os.listdir(output_base)
     input_files = [os.path.join(output_base,fn) for fn in input_files]
@@ -31,7 +35,7 @@ def main():
     empty_files = []
 
 
-    #%% Split by size
+    ##%% Split by size
 
     # For each size threshold...
     for i_size,size_threshold in enumerate(size_thresholds):
@@ -129,6 +133,9 @@ def main():
         # ...for each file
                 
     # ...for each size threshold
+
+
+#%% Command-line driver
 
 if __name__ == '__main__':
     main()

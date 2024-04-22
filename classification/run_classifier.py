@@ -38,6 +38,7 @@ from torchvision.datasets.folder import default_loader
 
 from classification import train_classifier
 
+
 #%% Example usage
 
 """
@@ -47,6 +48,7 @@ from classification import train_classifier
         /path/to/model.pt \
         --image-size 224
 """
+
 
 #%% Classes
 

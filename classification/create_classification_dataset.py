@@ -76,6 +76,7 @@ from tqdm import tqdm
 
 from classification import detect_and_crop
 
+
 #%% Example usage
 
 """

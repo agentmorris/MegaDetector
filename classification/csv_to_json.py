@@ -121,6 +121,7 @@ def main():
 
 
 #%% Support functions
+
 def parse_csv_row(obj: dict[str, Any], rowtype: str, content: str) -> None:
     """
     Parses a row in the CSV.

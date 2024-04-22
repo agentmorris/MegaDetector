@@ -44,6 +44,7 @@ def main(classifier_results_csv_path: str,
     Because the output CSV is often very large, we process it in chunks of 1000
     rows at a time.
     """
+    
     chunked_df_iterator = pd.read_csv(
         classifier_results_csv_path, chunksize=1000, float_precision='high',
         index_col='path')
@@ -79,9 +80,7 @@ def main(classifier_results_csv_path: str,
 #%% Command-line driver
 
 def _parse_args() -> argparse.Namespace:
-    """
-    Parses arguments.
-    """
+    
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Aggregate classifier probabilities to target classes.')

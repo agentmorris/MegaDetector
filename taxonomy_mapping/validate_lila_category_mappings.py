@@ -13,7 +13,13 @@ import os
 
 from data_management.lila.lila_common import read_lila_taxonomy_mapping
 
-def main():
+
+#%% Prevent execution during infrastructural imports
+
+if False:
+        
+    #%% Constants
+    
     lila_local_base = os.path.expanduser('~/lila')
 
     metadata_dir = os.path.join(lila_local_base,'metadata')
@@ -75,6 +81,3 @@ def main():
                 print('Could not find mapping for {}'.format(ds_query))            
             else:
                 scientific_name = ds_query_to_scientific_name[ds_query]
-
-if __name__ == '__main__':
-    main()

@@ -57,6 +57,7 @@ from azure.storage.blob import ContainerClient
 from PIL import Image, ImageOps
 from tqdm import tqdm
 
+
 #%% Example usage
 
 """
@@ -71,6 +72,7 @@ python crop_detections.py \
     --threads 50 \
     --logdir "."
 """
+
 
 #%% Main function
 

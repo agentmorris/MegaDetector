@@ -14,11 +14,11 @@ import json
 import pandas as pd
 
 
-#%% Main block
+#%% Prevent execution during infrastructural imports
 
-def main():
+if False:
     
-    #%%
+    #%% Filenames
     
     lila_taxonomy_file = 'c:/git/agentmorrisprivate/lila-taxonomy/lila-taxonomy-mapping.csv'
     release_taxonomy_file = os.path.expanduser('~/lila/lila-taxonomy-mapping_release.csv')
@@ -140,9 +140,3 @@ def main():
 
     print('Wrote final output to {}'.format(release_taxonomy_file))
 
-
-#%% Command-line driver
-
-if __name__ == '__main__':
-    main()
-    

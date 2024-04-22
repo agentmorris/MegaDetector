@@ -13,7 +13,11 @@ import time
 import os
 import shutil
 
+
+#%% Main function
+
 def main():
+    
     check_every_n_minutes = 10
 
     source_dir = '/datadrive/megadetectorv3/experiments/190425'
@@ -21,8 +25,7 @@ def main():
 
     os.makedirs(target_dir, exist_ok=True)
 
-
-    #%% Main loop
+    # #%% Main loop
 
     num_checks = 0
 

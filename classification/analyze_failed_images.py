@@ -6,7 +6,6 @@ analyze_failed_images.py
 
 #%% Imports and constants
 
-
 import argparse
 from collections.abc import Mapping, Sequence
 from concurrent import futures
@@ -22,6 +21,7 @@ from tqdm import tqdm
 from data_management.megadb.megadb_utils import MegadbUtils
 from md_utils import path_utils
 from md_utils import sas_blob_utils
+
 
 #%% Example usage
 
@@ -190,8 +190,7 @@ def analyze_images(url_or_path: str, json_keys: Optional[Sequence[str]] = None,
 
 #%% Command-line driver
 
-def _parse_args() -> argparse.Namespace:
-    
+def _parse_args() -> argparse.Namespace:    
     
     parser = argparse.ArgumentParser(
         description='Analyze a list of images that failed to download or crop.')

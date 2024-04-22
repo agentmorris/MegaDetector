@@ -5,7 +5,12 @@ remove_exif.py
 Removes all EXIF/IPTC/XMP metadata from a folder of images, without making 
 backup copies, using pyexiv2.
 
+TODO: This is a one-off script waiting to be cleaned up for more general use.
+
 """
+
+input_base = r'f:\images'
+
 
 #%% Imports and constants
 
@@ -13,17 +18,16 @@ import os
 import glob
 
 def main():
-    input_base = r'f:\images'
+
     assert os.path.isdir(input_base)
 
-
-    #%% List files
+    ##%% List files
 
     all_files = [f for f in glob.glob(input_base + "*/**", recursive=True)]
     image_files = [s for s in all_files if (s.lower().endswith('.jpg'))]
         
 
-    #%% Remove EXIF data (support)
+    ##%% Remove EXIF data (support)
 
     import pyexiv2
 
@@ -41,18 +45,7 @@ def main():
             print('EXIF error on {}: {}'.format(fn,str(e)))
         
 
-    #%% Debug
-
-    if False:    
-        #%%
-        fn = image_files[-10001]
-        os.startfile(fn)    
-        #%%
-        remove_exif(fn)
-        os.startfile(fn)
-        
-        
-    #%% Remove EXIF data (execution)
+    ##%% Remove EXIF data (execution)
 
     from joblib import Parallel, delayed
 
@@ -67,7 +60,7 @@ def main():
     else:
         # joblib.Parallel defaults to a process-based backend, but let's be sure
         # results = Parallel(n_jobs=n_exif_threads,verbose=2,prefer='processes')(delayed(remove_exif)(fn) for fn in image_files[0:10])
-        results = Parallel(n_jobs=n_exif_threads,verbose=2,prefer='processes')(delayed(remove_exif)(fn) for fn in image_files)
-
+        _ = Parallel(n_jobs=n_exif_threads,verbose=2,prefer='processes')(delayed(remove_exif)(fn) for fn in image_files)
+            
 if __name__ == '__main__':
     main()

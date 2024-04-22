@@ -18,7 +18,13 @@ from tqdm import tqdm
 from data_management.lila.lila_common import read_lila_taxonomy_mapping, \
     read_wildlife_insights_taxonomy_mapping
 
-def main():
+
+#%% Prevent execution during infrastructural imports
+
+if False:
+    
+    #%%
+    
     lila_local_base = os.path.expanduser('~/lila')
 
     metadata_dir = os.path.join(lila_local_base, 'metadata')
@@ -483,6 +489,3 @@ def main():
         # ...for each dataset    
 
     # ...with open()
-
-if __name__ == '__main__':
-    main()

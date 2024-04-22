@@ -55,6 +55,7 @@ from tqdm import tqdm
 from taxonomy_mapping.taxonomy_graph import (
     build_taxonomy_graph, dag_to_tree, TaxonNode)
 
+
 #%% Example usage
 
 """

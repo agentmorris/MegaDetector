@@ -119,6 +119,7 @@ from data_management.megadb import megadb_utils
 from md_utils import path_utils
 from md_utils import sas_blob_utils
 
+
 #%% Example usage
 
 """
@@ -131,6 +132,7 @@ from md_utils import sas_blob_utils
         --cropped-images-dir /path/to/crops --square-crops --threshold 0.9 \
         --save-full-images --images-dir /path/to/images --threads 50
 """
+
 
 #%% Main function
 
