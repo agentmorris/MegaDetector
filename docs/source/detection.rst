@@ -1,6 +1,14 @@
 detection package
 =================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   detection.detector_training
+
 Submodules
 ----------
 

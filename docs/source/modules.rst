@@ -6,6 +6,7 @@ MegaDetector
 
    api
    classification
+   data_management
    detection
    md_utils
    md_visualization
