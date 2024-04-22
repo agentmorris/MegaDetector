@@ -12,6 +12,7 @@ import time
 import numpy as np
 import requests
 import os
+import cv2
 
 from io import BytesIO
 from typing import Union
@@ -1223,6 +1224,125 @@ def resize_image_folder(input_folder, output_folder=None,
 # ...def resize_image_folder(...)
 
 
+#%% Image integrity checking functions
+
+def check_image_integrity(filename,modes=None):
+    """
+    Check whether we can successfully load an image via OpenCV and/or PIL.
+    
+    "modes" should be a list containing one or more of:
+        
+        'cv'
+        'pil'
+        'skimage'
+        'jpeg_trailer' # check that the binary data ends with ffd9
+        
+    Set to None to use all modes.
+    
+    Returns a dict with a key called 'file', and keys matching [modes].    
+    """
+    
+    if modes is None:
+        modes = ('cv','pil','skimage','jpeg_trailer')
+    else:
+        if isinstance(modes,str):
+            modes = [modes]
+        for mode in modes:
+            assert mode in ('cv','pil','skimage'), 'Unrecognized mode {}'.format(mode)
+        
+    assert os.path.isfile(filename), 'Could not find file {}'.format(filename)
+    
+    result = {}
+    result['file'] = filename
+    
+    for mode in modes:
+        
+        result[mode] = 'unknown'
+        if mode == 'pil':
+            try:
+                pil_im = load_image(filename) # noqa
+                assert pil_im is not None
+                result[mode] = 'success'
+            except Exception as e:
+                result[mode] = 'error: {}'.format(str(e))
+        elif mode == 'cv':
+            try:
+                cv_im = cv2.imread(filename)
+                assert cv_im is not None, 'Unknown opencv read failure'
+                numpy_im = np.asarray(cv_im) # noqa
+                result[mode] = 'success'
+            except Exception as e:
+                result[mode] = 'error: {}'.format(str(e))
+        elif mode == 'skimage':            
+            try:
+                # This is not a standard dependency
+                from skimage import io as skimage_io # noqa
+            except Exception:
+                result[mode] = 'could not import skimage, run pip install scikit-image'
+                return result
+            try:
+                skimage_im = skimage_io.imread(filename) # noqa
+                assert skimage_im is not None
+                result[mode] = 'success'
+            except Exception as e:
+                result[mode] = 'error: {}'.format(str(e))
+        elif mode == 'jpeg_trailer':
+            # https://stackoverflow.com/a/48282863/16644970
+            try:
+                with open(filename, 'rb') as f:
+                    check_chars = f.read()[-2:]
+                if check_chars != b'\xff\xd9':
+                    result[mode] = 'invalid jpeg trailer: {}'.format(str(check_chars))
+                else:
+                    result[mode] = 'success'
+            except Exception as e:
+                result[mode] = 'error: {}'.format(str(e))
+                
+    # ...for each mode            
+    
+    return result
+
+# ...def check_image_integrity(...)
+
+
+def parallel_check_image_integrity(filenames,modes=None, 
+                                   max_workers=16, use_threads=True, recursive=True):
+    """
+    Check whether we can successfully load a list of images via OpenCV and/or PIL.
+    
+    [filenames] can be a list of filenames or a folder.
+    
+    See check_image_integrity for documentation on the "modes" parameter.
+    
+    Returns a list of dicts; see check_image_integrity for documentation.    
+    """
+
+    n_workers = min(max_workers,len(filenames))
+    
+    if isinstance(filenames,str) and os.path.isdir(filenames):
+        filenames = find_images(filenames,recursive=recursive,return_relative_paths=False)
+    
+    print('Checking image integrity for {} filenames'.format(len(filenames)))
+    
+    if n_workers <= 1:
+        
+        results = []
+        for filename in filenames:
+            results.append(check_image_integrity(filename,modes=modes))
+        
+    else:
+        
+        if use_threads:
+            pool = ThreadPool(n_workers)
+        else:
+            pool = Pool(n_workers)
+    
+        results = list(tqdm(pool.imap(
+            partial(check_image_integrity,modes=modes),filenames), total=len(filenames)))
+    
+    return results
+
+
 #%% Test drivers
 
 if False:
@@ -1237,3 +1357,22 @@ if False:
     resize_results = resize_image_folder(input_folder,output_folder,
                          target_width=1280,verbose=True,quality=85,no_enlarge_width=True,
                          pool_type='process',n_workers=10)
+    
+    
+    #%% Integrity checking test
+    
+    from md_utils import md_tests
+    options = md_tests.download_test_data()
+    folder = options.scratch_dir
+    
+    results = parallel_check_image_integrity(folder,max_workers=8)
+    
+    modes = ['cv','pil','skimage','jpeg_trailer']
+    
+    for r in results:
+        for mode in modes:
+            if r[mode] != 'success':
+                s = r[mode]
+                print('Mode {} failed for {}:\n{}\n'.format(mode,r['file'],s))
+    
+    

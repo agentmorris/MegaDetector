@@ -165,6 +165,8 @@ def download_test_data(options=None):
         
     print('Finished unzipping and enumerating test data')
     
+    return options
+
 # ...def download_test_data(...)
 
 
