@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 """
 
  get_image_sizes.py
@@ -7,16 +6,6 @@
  every image, optionally writing the results to a new .json file.
 
 """
-=======
-########
-#
-# get_image_sizes.py
-#
-# Given a json-formatted list of image filenames, retrieve the width and height of 
-# every image, optionally writing the results to a new .json file.
-#
-########
->>>>>>> main
 
 #%% Constants and imports
 
@@ -26,11 +15,6 @@ import os
 from PIL import Image
 import sys
 
-<<<<<<< HEAD
-=======
-from md_utils.path_utils import find_images
-
->>>>>>> main
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
 from functools import partial
@@ -43,15 +27,11 @@ use_threads = False
 
 #%% Processing functions
 
-<<<<<<< HEAD
-def process_image(image_path,image_prefix=None):
-=======
 def _get_image_size(image_path,image_prefix=None):
     """
     Support function to get the size of a single image.  Returns a (path,w,h) tuple.
     w and h will be -1 if the image fails to load.
     """
->>>>>>> main
     
     if image_prefix is not None:
         full_path = os.path.join(image_prefix,image_path)
@@ -73,40 +53,6 @@ def _get_image_size(image_path,image_prefix=None):
         return (image_path,-1,-1)
     
     
-<<<<<<< HEAD
-def process_images(filenames,image_prefix=None,n_threads=default_n_threads):
-    
-    if n_threads <= 1:
-        
-        all_results = []
-        for i_file,fn in tqdm(enumerate(filenames),total=len(filenames)):
-            all_results.append(process_image(fn,image_prefix=image_prefix))
-    
-    else:
-        
-        print('Creating a pool with {} threads'.format(n_threads))
-        if use_threads:
-            pool = ThreadPool(n_threads)        
-        else:
-            pool = Pool(n_threads)
-        # all_results = list(tqdm(pool.imap(process_image, filenames), total=len(filenames)))
-        all_results = list(tqdm(pool.imap(
-            partial(process_image,image_prefix=image_prefix), filenames), total=len(filenames)))
-                
-    return all_results
-
-
-def process_list_file(input_file,output_file=None,image_prefix=None,n_threads=default_n_threads):
-    
-    assert os.path.isdir(os.path.dirname(output_file))
-    assert os.path.isfile(input_file)
-    
-    with open(input_file,'r') as f:        
-        filenames = json.load(f)
-    filenames = [s.strip() for s in filenames]
-    
-    all_results = process_images(filenames,image_prefix=image_prefix,n_threads=n_threads)
-=======
 def get_image_sizes(filenames,image_prefix=None,output_file=None,
                     n_workers=default_n_threads,use_threads=True,
                     recursive=True):
@@ -150,18 +96,13 @@ def get_image_sizes(filenames,image_prefix=None,output_file=None,
         # all_results = list(tqdm(pool.imap(process_image, filenames), total=len(filenames)))
         all_results = list(tqdm(pool.imap(
             partial(_get_image_size,image_prefix=image_prefix), filenames), total=len(filenames)))
->>>>>>> main
     
     if output_file is not None:
         with open(output_file,'w') as f:
             json.dump(all_results,f,indent=1)
-<<<<<<< HEAD
-    
-=======
             
     return all_results
 
->>>>>>> main
     
 #%% Interactive driver
 
@@ -192,12 +133,7 @@ if False:
     
     #%%
     
-<<<<<<< HEAD
-    # process_list_file(image_list_file,image_size_file,image_prefix=base_dir)
-    process_list_file(relative_image_list_file,image_size_file,image_prefix=base_dir,n_threads=4)
-=======
     get_image_sizes(relative_image_list_file,image_size_file,image_prefix=base_dir,n_threads=4)
->>>>>>> main
     
     
 #%% Command-line driver
@@ -216,11 +152,7 @@ def main():
         
     args = parser.parse_args()
     
-<<<<<<< HEAD
-    process_list_file(args.input_file,args.output_file,args.image_prefix,args.n_threads)
-=======
     _ = get_image_sizes(args.input_file,args.output_file,args.image_prefix,args.n_threads)
->>>>>>> main
     
 
 if __name__ == '__main__':
