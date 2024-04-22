@@ -1235,7 +1235,13 @@ def check_image_integrity(filename,modes=None):
         'cv'
         'pil'
         'skimage'
-        'jpeg_trailer' # check that the binary data ends with ffd9
+        'jpeg_trailer' 
+        
+    'jpeg_trailer' checks that the binary data ends with ffd9.  It does not check whether
+    the image is actually a jpeg, and even if it is, there are lots of reasons the image might not
+    end with ffd9.  It's also true the JPEGs that cause "premature end of jpeg segment" issues
+    don't end with ffd9, so this may be a useful diagnostic.  High precision, very low recall
+    for corrupt jpegs.
         
     Set to None to use all modes.
     
