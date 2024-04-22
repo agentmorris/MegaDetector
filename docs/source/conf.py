@@ -20,6 +20,7 @@ author = 'Your friendly neighborhood MegaDetector team'
 sys.path.insert(0, os.path.abspath("../.."))
 
 extensions = [
+    "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
     "sphinx_mdinclude",
