@@ -29,9 +29,14 @@ To install:
 
 MegaDetector model weights aren't downloaded at pip-install time, but they will be (optionally) automatically downloaded the first time you run the model.
 
-### Examples of things you can do with this package
+## Package reference
 
-#### Run MegaDetector on one image and count the number of detections
+See <megadetector.readthedocs.io>.
+
+
+## Examples of things you can do with this package
+
+### Run MegaDetector on one image and count the number of detections
 
 ```
 from md_utils import url_utils
@@ -53,7 +58,7 @@ detections_above_threshold = [d for d in result['detections'] if d['conf'] > 0.2
 print('Found {} detections above threshold'.format(len(detections_above_threshold)))
 ```
 
-#### Run MegaDetector on a folder of images
+### Run MegaDetector on a folder of images
 
 ```
 from detection.run_detector_batch import load_and_run_detector_batch,write_results_to_file
