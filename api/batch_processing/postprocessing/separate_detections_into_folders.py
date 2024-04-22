@@ -2,7 +2,7 @@ r"""
 
  separate_detections_into_folders.py
 
-## Overview
+ ## Overview
 
  Given a .json file with batch processing results, separate the files in that
  set of results into folders that contain animals/people/vehicles/nothing, 
@@ -10,7 +10,7 @@ r"""
 
  Image files are copied, not moved.
 
-## Output structure
+ ## Output structure
 
  Preserves relative paths within each of those folders; cannot be used with .json
  files that have absolute paths in them.
@@ -39,7 +39,7 @@ r"""
  c:\out\animal_person\a\b\f\4.jpg
  c:\out\animals\a\x\y\5.jpg
 
-## Rendering bounding boxes
+ ## Rendering bounding boxes
 
  By default, images are just copied to the target output folder.  If you specify --render_boxes,
  bounding boxes will be rendered on the output images.  Because this is no longer strictly
@@ -48,7 +48,7 @@ r"""
 
  Rendering boxes also makes this script a lot slower.
 
-## Classification-based separation
+ ## Classification-based separation
 
  If you have a results file with classification data, you can also specify classes to put
  in their own folders, within the "animals" folder, like this:

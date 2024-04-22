@@ -18,21 +18,21 @@
  
  To this list of files can then be passed to AzCopy to be downloaded:
 
-""  
-zcopy cp "http://<url_of_container>?<sas_token>" "/save/files/here" \
+ ""  
+ azcopy cp "http://<url_of_container>?<sas_token>" "/save/files/here" \
         --list-of-files "/path/to/mislabeled_candidates_{split}_{dataset}.txt"
-""
+ ""
  
  To save the filename as <dataset_name>/<blob_name> (instead of just <blob_name>
  by default), pass the --include-dataset-in-filename flag. Then, the images can
  be downloaded with:
 
-""
+ ""
    python data_management/megadb/download_images.py txt \
        "/path/to/mislabeled_candidates_{split}_{dataset}.txt" \
        /save/files/here \
        --threads 50
-""
+ ""
 
  Assumes the following directory layout:
      <base_logdir>/

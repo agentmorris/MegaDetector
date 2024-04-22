@@ -17,7 +17,7 @@
  
  Example CSV input:
 
-"
+ "
    # comment lines starting with '#' are allowed
    output_label,type,content
    cervid,row,idfg|deer
@@ -36,11 +36,11 @@
    bird,prioritize,"[['idfg_swwlf_2019'], ['idfg']]"
    !bird,row,idfg_swwlf_2019|turkey
    !bird,genus,meleagris
-"
+ "
 
  Example JSON output:
 
-"    
+ "    
    {
        "cervid": {
            "dataset_labels": {
@@ -93,7 +93,7 @@
            ],
        }
    }
-"
+ "
 
 """
 

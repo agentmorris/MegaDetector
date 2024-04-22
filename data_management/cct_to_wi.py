@@ -21,7 +21,10 @@ import pandas as pd
 from collections import defaultdict 
 
 
+#%% Main wrapper
+
 def main():
+    
     #%% Paths
 
     # A COCO camera traps file with information about this dataset
@@ -29,8 +32,8 @@ def main():
     assert os.path.isfile(input_file)
 
     # A .json dictionary mapping common names in this dataset to dictionaries with the 
-    # WI taxonomy fields: common_name, wi_taxon_id, class, orer, family, genus, species
-    taxonomy_file = r'c:\temp\camera_trap_images_no_people\belleve_camera_traps_to_wi.json'
+    # WI taxonomy fields: common_name, wi_taxon_id, class, order, family, genus, species
+    taxonomy_file = r'c:\temp\camera_trap_images_no_people\bellevue_camera_traps_to_wi.json'
     assert os.path.isfile(taxonomy_file)
 
     templates_dir = r'c:\temp\wi_batch_upload_templates'
@@ -260,6 +263,9 @@ def main():
     df = pd.DataFrame(rows)
 
     df.to_csv(os.path.join(output_base,images_file_name),index=False)
+
+
+#%% Command-line driver
 
 if __name__ == '__main__':
     main()

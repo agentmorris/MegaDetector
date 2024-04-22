@@ -22,7 +22,7 @@
  Can also subset by categories above a threshold (programmatic invocation only, this is
  not supported at the command line yet).
 
-##
+ ##
 
  Sample invocations (splitting into multiple json's):
 
@@ -37,7 +37,7 @@
 
  python subset_json_detector_output.py "d:\temp\idfg\1800_detections_S2.json" "d:\temp\idfg\output_to_folders" --split_folders --make_folder_relative --copy_jsons_to_folders
 
-##
+ ##
 
  Sample invocations (creating a single subset matching a query):
 
@@ -51,7 +51,7 @@
 
  python subset_json_detector_output.py "d:\temp\1800_detections.json" "d:\temp\1800_detections_prefix.json" --replacement "prefix/"
 
-##
+ ##
 
  To subset a COCO Camera Traps .json database, see subset_json_db.py
 
