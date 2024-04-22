@@ -23,7 +23,7 @@ Here's a &ldquo;teaser&rdquo; image of what MegaDetector output looks like:
 ## How do I get started with MegaDetector?
 
 * If you are looking for a convenient tool to run MegaDetector, you don't need anything from this repository: check out [EcoAssist](https://github.com/PetervanLunteren/EcoAssist?tab=readme-ov-file).
-* If you're just <i>considering</i> the use of AI in your workflow, and you aren't even sure yet whether MegaDetector would be useful to you, we recommend reading the "[getting started with MegaDetector](collaborations.md)" page.
+* If you're just <i>considering</i> the use of AI in your workflow, and you aren't even sure yet whether MegaDetector would be useful to you, we recommend reading the "[getting started with MegaDetector](getting-started.md)" page.
 * If you're already familiar with MegaDetector and you're ready to run it on your data, see the [MegaDetector User Guide](megadetector.md) for instructions on running MegaDetector.
 * If you're a programmer-type looking to use tools from this repo, check out the [Python package](https://pypi.org/project/megadetector/) that provides access to everything in this repo (yes, you guessed it, "pip install megadetector").
 * If you have any questions, or you want to tell us that MegaDetector was amazing/terrible on your images, <a href="mailto:cameratraps@lila.science">email us</a>!
@@ -33,7 +33,7 @@ MegaDetector is just one of many tools that aims to make conservation biologists
 
 ## Who is using MegaDetector?
 
-We work with ecologists all over the world to help them spend less time annotating images and more time thinking about conservation.  You can read a little more about how this works on our [getting started with MegaDetector](collaborations.md) page.
+We work with ecologists all over the world to help them spend less time annotating images and more time thinking about conservation.  You can read a little more about how this works on our [getting started with MegaDetector](getting-started.md) page.
 
 Here are a few of the organizations that have used MegaDetector... we're only listing organizations who (a) we know about and (b) have given us permission to refer to them here (or have posted publicly about their use of MegaDetector), so if you're using MegaDetector or other tools from this repo and would like to be added to this list, <a href="mailto:cameratraps@lila.science">email us</a>!
 
@@ -184,7 +184,7 @@ Code for:
 
 ### detection
 
-Code for training, running, and evaluating MegaDetector.
+Code for running models, especially MegaDetector.
 
 
 ### envs
@@ -204,7 +204,7 @@ Small utility functions for string manipulation, filename manipulation, download
 
 ### md_visualization
 
-Shared tools for visualizing images with ground truth and/or predicted annotations.
+Tools for visualizing images with ground truth and/or predicted annotations.
 
 
 ### sandbox

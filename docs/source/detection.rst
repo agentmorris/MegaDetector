@@ -1,6 +1,8 @@
 detection package
 =================
 
+This package contains tool for running ML models, especially MegaDetector.
+
 Subpackages
 -----------
 

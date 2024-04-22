@@ -1,6 +1,17 @@
 data\_management package
 ========================
 
+This package contains tools for:
+
+-  Converting frequently-used metadata formats to `COCO Camera
+   Traps <https://github.com/agentmorris/MegaDetector/blob/main/data_management/README.md#coco-cameratraps-format>`_
+   format
+-  Converting the output of AI models (especially
+   `YOLOv5 <https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/postprocessing/convert_output_format.py>`_)
+   to the format used for AI results throughout this repo
+-  Creating, visualizing, and editing COCO Camera Traps .json databases
+
+
 Subpackages
 -----------
 

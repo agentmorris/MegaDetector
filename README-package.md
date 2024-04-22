@@ -9,7 +9,7 @@ If you want to learn more about what MegaDetector is all about, head over to the
 
 ### If you are an ecologist...
 
-If you are an ecologist looking to use MegaDetector to help you get through your camera trap images, you probably don't want this package.  We recommend starting with our "[Getting started with MegaDetector](https://github.com/agentmorris/MegaDetector/blob/main/collaborations.md)" page, then digging in to the [MegaDetector User Guide](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md), which will walk you through the process of using MegaDetector.  That journey will <i>not</i> involve this Python package.
+If you are an ecologist looking to use MegaDetector to help you get through your camera trap images, you probably don't want this package.  We recommend starting with our "[Getting started with MegaDetector](https://github.com/agentmorris/MegaDetector/blob/main/getting-started.md)" page, then digging in to the [MegaDetector User Guide](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md), which will walk you through the process of using MegaDetector.  That journey will <i>not</i> involve this Python package.
 
 ### If you are a computer-vision-y type...
 

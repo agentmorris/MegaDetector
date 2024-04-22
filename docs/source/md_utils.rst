@@ -1,6 +1,8 @@
 md\_utils package
 =================
 
+This package contains small utility functions for string manipulation, filename manipulation, downloading files from URLs, etc.  Stuff one does when doing camera trap stuff.
+
 Submodules
 ----------
 
