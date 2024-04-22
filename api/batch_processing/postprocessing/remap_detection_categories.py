@@ -1,11 +1,11 @@
 """
 
- remap_detection_categories.py
+remap_detection_categories.py
 
- Given a MegaDetector results file, remap the category IDs according to a specified 
- dictionary, writing the results to a new file.
+Given a MegaDetector results file, remap the category IDs according to a specified 
+dictionary, writing the results to a new file.
 
- Currently only supports remapping detection categories, not classification categories.
+Currently only supports remapping detection categories, not classification categories.
 
 """
 

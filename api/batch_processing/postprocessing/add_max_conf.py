@@ -1,13 +1,13 @@
 """
 
- add_max_conf.py
+add_max_conf.py
 
- The MD output format included a "max_detection_conf" field with each image
- up to and including version 1.2; it was removed as of version 1.3 (it's
- redundant with the individual detection confidence values).
+The MD output format included a "max_detection_conf" field with each image
+up to and including version 1.2; it was removed as of version 1.3 (it's
+redundant with the individual detection confidence values).
 
- Just in case someone took a dependency on that field, this script allows you
- to add it back to an existing .json file.
+Just in case someone took a dependency on that field, this script allows you
+to add it back to an existing .json file.
 
 """
 

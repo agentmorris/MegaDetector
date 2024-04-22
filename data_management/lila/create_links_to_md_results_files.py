@@ -1,8 +1,8 @@
 """
 
- create_links_to_md_results_files.py
+create_links_to_md_results_files.py
 
- One-off script to populate the columns in the camera trap data .csv file that point to MD results.
+One-off script to populate the columns in the camera trap data .csv file that point to MD results.
 
 """
 

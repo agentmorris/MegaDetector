@@ -1,8 +1,8 @@
 """
 
- add_width_and_height_to_db.py
+add_width_and_height_to_db.py
 
- Grabs width and height from actual image files for a .json database that is missing w/h.
+Grabs width and height from actual image files for a .json database that is missing w/h.
 
 """
 

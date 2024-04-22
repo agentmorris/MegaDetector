@@ -1,10 +1,10 @@
 """
 
- coco_to_labelme.py
+coco_to_labelme.py
 
- Converts a COCO dataset to labelme format (one .json per image file).
+Converts a COCO dataset to labelme format (one .json per image file).
 
- If you want to convert YOLO data to labelme, use yolo_to_coco, then coco_to_labelme.
+If you want to convert YOLO data to labelme, use yolo_to_coco, then coco_to_labelme.
 
 """
 

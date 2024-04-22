@@ -1,8 +1,8 @@
 """
 
- string_utils.py
+string_utils.py
 
- Miscellaneous string utilities
+Miscellaneous string utilities
 
 """
 

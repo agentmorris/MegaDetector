@@ -1,12 +1,12 @@
 """
 
- simple_image_download.py
+simple_image_download.py
 
- Web image downloader, used in preview_lila_taxonomy.py
+Web image downloader, used in preview_lila_taxonomy.py
 
- Slightly modified from:
+Slightly modified from:
 
- https://github.com/RiddlerQ/simple_image_download
+https://github.com/RiddlerQ/simple_image_download
 
 """
 

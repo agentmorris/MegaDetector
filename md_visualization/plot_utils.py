@@ -1,13 +1,13 @@
 """
 
- plot_utils.py
- 
- Utility functions for plotting.
+plot_utils.py
 
- NOTE: Do NOT import matplotlib.pyplot here to avoid the interactive backend.
- Thus, the matplotlib.figure.Figure objects returned by the functions here do not
- need to be "closed" with `plt.close(fig)`.
- 
+Utility functions for plotting.
+
+NOTE: Do NOT import matplotlib.pyplot here to avoid the interactive backend.
+Thus, the matplotlib.figure.Figure objects returned by the functions here do not
+need to be "closed" with `plt.close(fig)`.
+
 """
 
 #%% Imports

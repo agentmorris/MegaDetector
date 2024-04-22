@@ -1,11 +1,11 @@
 """
 
- md_to_coco.py
+md_to_coco.py
 
- "Converts" MegaDetector output files to COCO format.  "Converts" is in quotes because
- this is an opinionated transformation that requires a confidence threshold.
+"Converts" MegaDetector output files to COCO format.  "Converts" is in quotes because
+this is an opinionated transformation that requires a confidence threshold.
 
- Does not currently handle classification information.
+Does not currently handle classification information.
 
 """
 

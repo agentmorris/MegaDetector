@@ -1,8 +1,8 @@
 """
 
- validate_lila_category_mappings.py
+validate_lila_category_mappings.py
 
- Confirm that all category names on LILA have mappings in the taxonomy file.
+Confirm that all category names on LILA have mappings in the taxonomy file.
 
 """
 

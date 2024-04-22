@@ -1,18 +1,18 @@
 """
 
- coco_to_yolo.py
+coco_to_yolo.py
 
- Converts a COCO-formatted dataset to a YOLO-formatted dataset, flattening
- the dataset (to a single folder) in the process.
+Converts a COCO-formatted dataset to a YOLO-formatted dataset, flattening
+the dataset (to a single folder) in the process.
 
- If the input and output folders are the same, writes .txt files to the input folder,
- and neither moves nor modifies images.
+If the input and output folders are the same, writes .txt files to the input folder,
+and neither moves nor modifies images.
 
- Currently ignores segmentation masks, and errors if an annotation has a 
- segmentation polygon but no bbox.
- 
- Has only been tested on a handful of COCO Camera Traps data sets; if you
- use it for more general COCO conversion, YMMV.
+Currently ignores segmentation masks, and errors if an annotation has a 
+segmentation polygon but no bbox.
+
+Has only been tested on a handful of COCO Camera Traps data sets; if you
+use it for more general COCO conversion, YMMV.
 
 """
 

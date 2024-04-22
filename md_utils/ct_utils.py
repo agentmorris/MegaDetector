@@ -1,8 +1,8 @@
 """
 
- ct_utils.py
+ct_utils.py
 
- Numeric/geometry utility functions
+Numeric/geometry utility functions
 
 """
 

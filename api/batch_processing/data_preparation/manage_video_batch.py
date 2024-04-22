@@ -1,9 +1,9 @@
 """
 
- manage_video_batch.py
+manage_video_batch.py
 
- Notebook-esque script to manage the process of running a local batch of videos
- through MD.  Defers most of the heavy lifting to manage_local_batch.py .
+Notebook-esque script to manage the process of running a local batch of videos
+through MD.  Defers most of the heavy lifting to manage_local_batch.py .
 
 """
 

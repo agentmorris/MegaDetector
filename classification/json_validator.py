@@ -1,67 +1,67 @@
 """
 
- json_validator.py
+json_validator.py
 
- Validates a classification label specification JSON file and optionally
- queries MegaDB to find matching image files.
- 
- See README.md for an example of a classification label specification JSON file.
- 
- The validation step takes the classification label specification JSON file and
- finds the dataset labels that belong to each classification label. It checks
- that the following conditions hold:
+Validates a classification label specification JSON file and optionally
+queries MegaDB to find matching image files.
+
+See README.md for an example of a classification label specification JSON file.
+
+The validation step takes the classification label specification JSON file and
+finds the dataset labels that belong to each classification label. It checks
+that the following conditions hold:
+   
+1) Each classification label specification matches at least 1 dataset label.
+
+2) If the classification label includes a taxonomical specification, then the
+   taxa is actually a part of our master taxonomy.
+   
+3) If the 'prioritize' key is found for a given label, then the label must
+   also have a 'max_count' key.
+
+4) If --allow-multilabel=False, then no dataset label is included in more than
+   one classification label.
+
+If --output-dir <output_dir> is given, then we query MegaDB for images
+that match the dataset labels identified during the validation step. We filter
+out images that have unaccepted file extensions and images that don't actually
+exist in Azure Blob Storage. In total, we output the following files:
+
+<output_dir>/
+
+- included_dataset_labels.txt
+  lists the original dataset classes included for each classification label
+
+- image_counts_by_label_presample.json
+   number of images for each classification label after filtering bad
+   images, but before sampling
+
+- image_counts_by_label_sampled.json
+  number of images for each classification label in queried_images.json
+
+- json_validator_log_{timestamp}.json
+  log of excluded images / labels
+
+- queried_images.json
+ main output file, ex:
     
- 1) Each classification label specification matches at least 1 dataset label.
-
- 2) If the classification label includes a taxonomical specification, then the
-    taxa is actually a part of our master taxonomy.
-    
- 3) If the 'prioritize' key is found for a given label, then the label must
-    also have a 'max_count' key.
-
- 4) If --allow-multilabel=False, then no dataset label is included in more than
-    one classification label.
-
- If --output-dir <output_dir> is given, then we query MegaDB for images
- that match the dataset labels identified during the validation step. We filter
- out images that have unaccepted file extensions and images that don't actually
- exist in Azure Blob Storage. In total, we output the following files:
- 
- <output_dir>/
-
- - included_dataset_labels.txt
-   lists the original dataset classes included for each classification label
-
- - image_counts_by_label_presample.json
-    number of images for each classification label after filtering bad
-    images, but before sampling
-
- - image_counts_by_label_sampled.json
-   number of images for each classification label in queried_images.json
-
- - json_validator_log_{timestamp}.json
-   log of excluded images / labels
-
- - queried_images.json
-  main output file, ex:
-     
-     {
-         "caltech/cct_images/59f5fe2b-23d2-11e8-a6a3-ec086b02610b.jpg": {
-             "dataset": "caltech",
-             "location": 13,
-             "class": "mountain_lion",  // class from dataset
-             "label": ["monutain_lion"]  // labels to use in classifier
-         },
-         "caltech/cct_images/59f79901-23d2-11e8-a6a3-ec086b02610b.jpg": {
-             "dataset": "caltech",
-             "location": 13,
-             "class": "mountain_lion",  // class from dataset
-             "bbox": [{"category": "animal",
-                     "bbox": [0, 0.347, 0.237, 0.257]}],
-             "label": ["monutain_lion"]  // labels to use in classifier
-         },
-         ...
-     }
+    {
+        "caltech/cct_images/59f5fe2b-23d2-11e8-a6a3-ec086b02610b.jpg": {
+            "dataset": "caltech",
+            "location": 13,
+            "class": "mountain_lion",  // class from dataset
+            "label": ["monutain_lion"]  // labels to use in classifier
+        },
+        "caltech/cct_images/59f79901-23d2-11e8-a6a3-ec086b02610b.jpg": {
+            "dataset": "caltech",
+            "location": 13,
+            "class": "mountain_lion",  // class from dataset
+            "bbox": [{"category": "animal",
+                    "bbox": [0, 0.347, 0.237, 0.257]}],
+            "label": ["monutain_lion"]  // labels to use in classifier
+        },
+        ...
+    }
 
 """
 

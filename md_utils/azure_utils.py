@@ -1,10 +1,10 @@
 """
 
- azure_utils.py
+azure_utils.py
 
- Miscellaneous Azure Blob Storage utilities
+Miscellaneous Azure Blob Storage utilities
 
- Requires azure-storage-blob>=12.4.0
+Requires azure-storage-blob>=12.4.0
 
 """
 

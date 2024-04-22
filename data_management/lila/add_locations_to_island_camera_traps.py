@@ -1,10 +1,10 @@
 """
 
- add_locations_to_island_camera_traps.py
+add_locations_to_island_camera_traps.py
 
- The Island Conservation Camera Traps dataset had unique camera identifiers embedded
- in filenames, but not in the proper metadata fields.  This script copies that information
- to metadata.
+The Island Conservation Camera Traps dataset had unique camera identifiers embedded
+in filenames, but not in the proper metadata fields.  This script copies that information
+to metadata.
 
 """
 

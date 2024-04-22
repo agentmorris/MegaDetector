@@ -1,17 +1,17 @@
 """
 
- camtrap_dp_to_coco.py
- 
- Parse a very limited subset of the Camtrap DP data package format:
+camtrap_dp_to_coco.py
 
- https://camtrap-dp.tdwg.org/
+Parse a very limited subset of the Camtrap DP data package format:
 
- ...and convert to COCO format.  Assumes that all required metadata files have been
- put in the same directory (which is standard).
+https://camtrap-dp.tdwg.org/
 
- Does not currently parse bounding boxes, just attaches species labels to images.
+...and convert to COCO format.  Assumes that all required metadata files have been
+put in the same directory (which is standard).
 
- Currently supports only sequence-level labeling.
+Does not currently parse bounding boxes, just attaches species labels to images.
+
+Currently supports only sequence-level labeling.
 
 """
 

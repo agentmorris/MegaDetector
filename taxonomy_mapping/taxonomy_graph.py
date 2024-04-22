@@ -1,48 +1,48 @@
 """
- 
- taxonomy_graph.py
 
- Methods for transforming taxonomy CSV into a graph structure backed by
- NetworkX.
- 
- We treat each taxon in the taxonomy as a node in a graph, represented by the
- TaxonNode class. We use a NetworkX directed graph (nx.DiGraph) to keep track of
- the edges (parent-child relationships) between the nodes.
- 
- In theory, the true biological taxonomy graph should be a tree, where every
- taxon node has exactly 1 parent. However, because we use both GBIF and INAT
- taxonomies, there are 2 situations where a taxon node ends up with two parents.
- Thus, the graph is actually a "directed acyclic graph" (DAG) instead of a tree.
- 
- The two situations are explained in detail below. This module includes a
- function dag_to_tree() which converts a DAG to a tree by heuristically removing
- edges from the DAG so that each node only has 1 parent.
- 
- CASE 1: INAT and GBIF have different granularity in their taxonomy levels
- ======
- An example is shown below. In dag_to_tree(), the lower parent is kept, while
- the higher-up parent is discarded. In this example, the "sciurini -> sciurus"
- edge would be kept, while "sciuridae -> sciurus" would be removed.
- 
-         "eastern gray squirrel" (inat)     "squirrel" (gbif)
-         ------------------------------     -----------------
-     family:                        sciuridae
-                                   /          \
-     subfamily:          sciurinae             |  # skips subfamily
-                                 |             |
-     tribe:               sciurini             |  # skips tribe
-                                   \          /
-     genus:                          sciurus
- 
- 
- CASE 2: INAT and GBIF have different taxonomies
- ======
- An example is shown below. In dag_to_tree(), the resolution to these
- discrepancies are hard-coded.
- 
-     order:    cathartiformes (inat)     accipitriformes (gbif)
-                            \           /
-     family:                 cathartidae
+taxonomy_graph.py
+
+Methods for transforming taxonomy CSV into a graph structure backed by
+NetworkX.
+
+We treat each taxon in the taxonomy as a node in a graph, represented by the
+TaxonNode class. We use a NetworkX directed graph (nx.DiGraph) to keep track of
+the edges (parent-child relationships) between the nodes.
+
+In theory, the true biological taxonomy graph should be a tree, where every
+taxon node has exactly 1 parent. However, because we use both GBIF and INAT
+taxonomies, there are 2 situations where a taxon node ends up with two parents.
+Thus, the graph is actually a "directed acyclic graph" (DAG) instead of a tree.
+
+The two situations are explained in detail below. This module includes a
+function dag_to_tree() which converts a DAG to a tree by heuristically removing
+edges from the DAG so that each node only has 1 parent.
+
+CASE 1: INAT and GBIF have different granularity in their taxonomy levels
+======
+An example is shown below. In dag_to_tree(), the lower parent is kept, while
+the higher-up parent is discarded. In this example, the "sciurini -> sciurus"
+edge would be kept, while "sciuridae -> sciurus" would be removed.
+
+        "eastern gray squirrel" (inat)     "squirrel" (gbif)
+        ------------------------------     -----------------
+    family:                        sciuridae
+                                  /          \
+    subfamily:          sciurinae             |  # skips subfamily
+                                |             |
+    tribe:               sciurini             |  # skips tribe
+                                  \          /
+    genus:                          sciurus
+
+
+CASE 2: INAT and GBIF have different taxonomies
+======
+An example is shown below. In dag_to_tree(), the resolution to these
+discrepancies are hard-coded.
+
+    order:    cathartiformes (inat)     accipitriformes (gbif)
+                           \           /
+    family:                 cathartidae
 
 """
 

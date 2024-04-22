@@ -1,9 +1,9 @@
 """
 
- resize_coco_dataset.py
+resize_coco_dataset.py
 
- Given a COCO-formatted dataset, resize all the images to a target size,
- scaling bounding boxes accordingly.
+Given a COCO-formatted dataset, resize all the images to a target size,
+scaling bounding boxes accordingly.
 
 """
 

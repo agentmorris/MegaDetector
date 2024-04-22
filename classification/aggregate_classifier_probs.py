@@ -1,15 +1,15 @@
 """
 
- aggregate_classifier_probs.py
+aggregate_classifier_probs.py
 
- Aggregate probabilities from a classifier's outputs according to a mapping
- from the desired (target) categories to the classifier's categories.
+Aggregate probabilities from a classifier's outputs according to a mapping
+from the desired (target) categories to the classifier's categories.
 
- Using the mapping, create a new version of the classifier output CSV with
- probabilities summed within each target category. Also output a new
- "index-to-name" JSON file which identifies the sequential order of the target
- categories.
- 
+Using the mapping, create a new version of the classifier output CSV with
+probabilities summed within each target category. Also output a new
+"index-to-name" JSON file which identifies the sequential order of the target
+categories.
+
 """
 
 #%% Imports

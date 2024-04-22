@@ -1,14 +1,14 @@
 """
 
- md_tests.py
+md_tests.py
 
- A series of tests to validate basic repo functionality and verify either "correct"
- inference behavior, or - when operating in environments other than the training
- environment - acceptable deviation from the correct results.
+A series of tests to validate basic repo functionality and verify either "correct"
+inference behavior, or - when operating in environments other than the training
+environment - acceptable deviation from the correct results.
 
- This module should not depend on anything else in this repo outside of the 
- tests themselves, even if it means some duplicated code (e.g. for downloading files),
- since much of what it tries to test is, e.g., imports.
+This module should not depend on anything else in this repo outside of the 
+tests themselves, even if it means some duplicated code (e.g. for downloading files),
+since much of what it tries to test is, e.g., imports.
 
 """
 

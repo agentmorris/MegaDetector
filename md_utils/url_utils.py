@@ -1,8 +1,8 @@
 """
 
- url_utils.py
+url_utils.py
 
- Frequently-used functions for downloading or manipulating URLs
+Frequently-used functions for downloading or manipulating URLs
 
 """
 

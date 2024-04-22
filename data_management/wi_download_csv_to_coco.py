@@ -1,10 +1,10 @@
 """
 
- wi_download_csv_to_coco.py
+wi_download_csv_to_coco.py
 
- Convert a .csv file from a Wildlife Insights project export to a COCO camera traps .json file.
+Convert a .csv file from a Wildlife Insights project export to a COCO camera traps .json file.
 
- Currently assumes that common names are unique identifiers, which is convenient but unreliable.
+Currently assumes that common names are unique identifiers, which is convenient but unreliable.
 
 """
 

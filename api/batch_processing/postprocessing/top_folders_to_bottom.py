@@ -1,24 +1,24 @@
 """
 
- top_folders_to_bottom.py
+top_folders_to_bottom.py
 
- Given a base folder with files like:
+Given a base folder with files like:
 
- A/1/2/a.jpg
- B/3/4/b.jpg
+A/1/2/a.jpg
+B/3/4/b.jpg
 
- ...moves the top-level folders to the bottom in a new output folder, i.e., creates:
+...moves the top-level folders to the bottom in a new output folder, i.e., creates:
 
- 1/2/A/a.jpg
- 3/4/B/b.jpg
+1/2/A/a.jpg
+3/4/B/b.jpg
 
- In practice, this is used to make this:
- 
- animal/camera01/image01.jpg
+In practice, this is used to make this:
 
- ...look like:
+animal/camera01/image01.jpg
 
- camera01/animal/image01.jpg
+...look like:
+
+camera01/animal/image01.jpg
 
 """
 

@@ -1,17 +1,17 @@
 """
 
- integrity_check_json_db.py
+integrity_check_json_db.py
 
- Does some integrity-checking and computes basic statistics on a db, specifically:
+Does some integrity-checking and computes basic statistics on a db, specifically:
 
- * Verifies that required fields are present and have the right types
- * Verifies that annotations refer to valid images
- * Verifies that annotations refer to valid categories
- * Verifies that image, category, and annotation IDs are unique 
- * Optionally checks file existence
- * Finds un-annotated images
- * Finds unused categories
- * Prints a list of categories sorted by count
+* Verifies that required fields are present and have the right types
+* Verifies that annotations refer to valid images
+* Verifies that annotations refer to valid categories
+* Verifies that image, category, and annotation IDs are unique 
+* Optionally checks file existence
+* Finds un-annotated images
+* Finds unused categories
+* Prints a list of categories sorted by count
 
 """
 

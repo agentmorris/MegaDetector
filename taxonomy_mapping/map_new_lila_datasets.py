@@ -1,9 +1,9 @@
 """
 
- map_new_lila_datasets.py
+map_new_lila_datasets.py
 
- Given a subset of LILA datasets, find all the categories, and start the taxonomy
- mapping process.
+Given a subset of LILA datasets, find all the categories, and start the taxonomy
+mapping process.
 
 """
 

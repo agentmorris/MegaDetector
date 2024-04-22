@@ -1,14 +1,14 @@
 """
 
- annotation_constants.py
+annotation_constants.py
 
- Shared constants used to interpret annotation output
+Shared constants used to interpret annotation output
 
- Categories assigned to bounding boxes.  Used throughout our repo; do not change unless
- you are Dan or Siyu.  In fact, do not change unless you are both Dan *and* Siyu.
- 
- We use integer indices here; this is different than the API output .json file,
- where indices are string integers.
+Categories assigned to bounding boxes.  Used throughout our repo; do not change unless
+you are Dan or Siyu.  In fact, do not change unless you are both Dan *and* Siyu.
+
+We use integer indices here; this is different than the API output .json file,
+where indices are string integers.
 
 """
 

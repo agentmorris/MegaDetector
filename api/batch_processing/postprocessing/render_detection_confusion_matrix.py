@@ -1,10 +1,10 @@
 """
 
- render_detection_confusion_matrix.py
+render_detection_confusion_matrix.py
 
- Given a CCT-formatted ground truth file and a MegaDetector-formatted results file,
- render an HTML confusion matrix.  Typically used for multi-class detectors.  Currently
- assumes a single class per image.
+Given a CCT-formatted ground truth file and a MegaDetector-formatted results file,
+render an HTML confusion matrix.  Typically used for multi-class detectors.  Currently
+assumes a single class per image.
 
 """
 

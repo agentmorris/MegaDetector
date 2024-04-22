@@ -1,8 +1,8 @@
 """
 
- video_utils.py
+video_utils.py
 
- Utilities for splitting, rendering, and assembling videos.
+Utilities for splitting, rendering, and assembling videos.
 
 """
 

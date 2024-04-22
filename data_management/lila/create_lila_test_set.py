@@ -1,9 +1,9 @@
 """
 
- create_lila_test_set.py
+create_lila_test_set.py
 
- Create a test set of camera trap images, containing N empty and N non-empty 
- images from each LILA data set.
+Create a test set of camera trap images, containing N empty and N non-empty 
+images from each LILA data set.
 
 """
 

@@ -1,10 +1,10 @@
 """
 
- preview_lila_taxonomy.py
+preview_lila_taxonomy.py
 
- Does some consistency-checking on the LILA taxonomy file, and generates
- an HTML preview page that we can use to determine whether the mappings
- make sense.
+Does some consistency-checking on the LILA taxonomy file, and generates
+an HTML preview page that we can use to determine whether the mappings
+make sense.
 
 """
 

@@ -1,8 +1,8 @@
 """
 
- repeat_detections_core.py
+repeat_detections_core.py
 
- Core utilities shared by find_repeat_detections and remove_repeat_detections.
+Core utilities shared by find_repeat_detections and remove_repeat_detections.
 
 """
 

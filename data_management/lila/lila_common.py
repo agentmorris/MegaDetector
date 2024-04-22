@@ -1,8 +1,8 @@
 """
 
- lila_common.py
+lila_common.py
 
- Common constants and functions related to LILA data management/retrieval.
+Common constants and functions related to LILA data management/retrieval.
 
 """
 

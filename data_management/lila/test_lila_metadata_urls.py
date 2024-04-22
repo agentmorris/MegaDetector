@@ -1,10 +1,10 @@
 """
 
- test_lila_metadata_urls.py
+test_lila_metadata_urls.py
 
- Test that all the metadata URLs for LILA camera trap datasets are valid, and 
- test that at least one image within each URL is valid, including MegaDetector results
- files.
+Test that all the metadata URLs for LILA camera trap datasets are valid, and 
+test that at least one image within each URL is valid, including MegaDetector results
+files.
 
 """
 

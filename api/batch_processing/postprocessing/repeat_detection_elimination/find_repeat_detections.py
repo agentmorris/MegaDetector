@@ -1,22 +1,22 @@
 """
 
- find_repeat_detections.py
+find_repeat_detections.py
 
- If you want to use this script, we recommend that you read the user's guide:
+If you want to use this script, we recommend that you read the user's guide:
 
- https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing/postprocessing/repeat_detection_elimination
+https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing/postprocessing/repeat_detection_elimination
 
- Really, don't try to run this script without reading the user's guide, you'll think 
- it's more magical than it is. 
+Really, don't try to run this script without reading the user's guide, you'll think 
+it's more magical than it is. 
 
- This script looks through a sequence of detections in the API output json file, and finds 
- candidates that might be "repeated false positives", i.e. that random branch that the 
- detector thinks is an animal/person/vehicle.
+This script looks through a sequence of detections in the API output json file, and finds 
+candidates that might be "repeated false positives", i.e. that random branch that the 
+detector thinks is an animal/person/vehicle.
 
- Typically after running this script, you would do a manual step to remove 
- true positives, then run remove_repeat_detections to produce a final output file.
+Typically after running this script, you would do a manual step to remove 
+true positives, then run remove_repeat_detections to produce a final output file.
 
- There's no way that statement was self-explanatory; see the user's guide.
+There's no way that statement was self-explanatory; see the user's guide.
 
 """
 

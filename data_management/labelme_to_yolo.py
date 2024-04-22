@@ -1,8 +1,8 @@
 """
 
- labelme_to_yolo.py
+labelme_to_yolo.py
 
- Create YOLO .txt files in a folder containing labelme .json files.
+Create YOLO .txt files in a folder containing labelme .json files.
 
 """
 

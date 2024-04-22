@@ -1,11 +1,11 @@
 """
 
- species_lookup.py
+species_lookup.py
 
- Look up species names (common or scientific) in the GBIF and iNaturalist
- taxonomies.
+Look up species names (common or scientific) in the GBIF and iNaturalist
+taxonomies.
 
- Run initialize_taxonomy_lookup() before calling any other function.
+Run initialize_taxonomy_lookup() before calling any other function.
 
 """
 

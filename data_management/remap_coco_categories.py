@@ -1,8 +1,8 @@
 """
 
- remap_coco_categories.py
- 
- Given a COCO-formatted dataset, remap the categories to a new mapping.
+remap_coco_categories.py
+
+Given a COCO-formatted dataset, remap the categories to a new mapping.
 
 """
 

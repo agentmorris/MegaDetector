@@ -1,12 +1,12 @@
 """
 
- yolo_to_coco.py
+yolo_to_coco.py
 
- Converts a folder of YOLO-formatted annotation files to a COCO-formatted dataset. 
+Converts a folder of YOLO-formatted annotation files to a COCO-formatted dataset. 
 
- Currently supports only a single folder (i.e., no recursion).  Treats images without
- corresponding .txt files as empty (they will be included in the output, but with
- no annotations).
+Currently supports only a single folder (i.e., no recursion).  Treats images without
+corresponding .txt files as empty (they will be included in the output, but with
+no annotations).
 
 """
 

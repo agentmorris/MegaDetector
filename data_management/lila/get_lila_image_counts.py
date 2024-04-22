@@ -1,12 +1,12 @@
 """
 
- get_lila_image_counts.py
+get_lila_image_counts.py
 
- Count the number of images and bounding boxes with each label in one or more LILA datasets.
+Count the number of images and bounding boxes with each label in one or more LILA datasets.
 
- This script doesn't write these counts out anywhere other than the console, it's just intended
- as a template for doing operations like this on LILA data.  get_lila_annotation_counts.py writes 
- information out to a .json file, but it counts *annotations*, not *images*, for each category.
+This script doesn't write these counts out anywhere other than the console, it's just intended
+as a template for doing operations like this on LILA data.  get_lila_annotation_counts.py writes 
+information out to a .json file, but it counts *annotations*, not *images*, for each category.
 
 """
 

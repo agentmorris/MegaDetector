@@ -1,18 +1,18 @@
 """
 
- postprocess_batch_results.py
+postprocess_batch_results.py
 
- Given a .json or .csv file representing the output from the batch detection API,
- do one or more of the following:
- 
- * Evaluate detector precision/recall, optionally rendering results (requires
-   ground truth)
- * Sample true/false positives/negatives and render to HTML (requires ground
-   truth)
- * Sample detections/non-detections and render to HTML (when ground truth isn't
-   available)
- 
- Ground truth, if available, must be in the COCO Camera Traps format.
+Given a .json or .csv file representing the output from the batch detection API,
+do one or more of the following:
+
+* Evaluate detector precision/recall, optionally rendering results (requires
+  ground truth)
+* Sample true/false positives/negatives and render to HTML (requires ground
+  truth)
+* Sample detections/non-detections and render to HTML (when ground truth isn't
+  available)
+
+Ground truth, if available, must be in the COCO Camera Traps format.
 
 """
 

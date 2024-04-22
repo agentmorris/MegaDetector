@@ -1,9 +1,9 @@
 """
 
- copy_checkpoints.py
+copy_checkpoints.py
 
- Run this script with specified source_dir and target_dir while the model is training to make a copy
- of every checkpoint (checkpoints are kept once an hour by default and is difficult to adjust)
+Run this script with specified source_dir and target_dir while the model is training to make a copy
+of every checkpoint (checkpoints are kept once an hour by default and is difficult to adjust)
 
 """
 

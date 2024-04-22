@@ -1,13 +1,13 @@
 """
 
- read_exif.py
+read_exif.py
 
- Given a folder of images, read relevant metadata (EXIF/IPTC/XMP) fields from all images, 
- and write them to  a .json or .csv file.  
+Given a folder of images, read relevant metadata (EXIF/IPTC/XMP) fields from all images, 
+and write them to  a .json or .csv file.  
 
- This module can use either PIL (which can only reliably read EXIF data) or exiftool (which
- can read everything).  The latter approach expects that exiftool is available on the system
- path.  No attempt is made to be consistent in format across the two approaches.
+This module can use either PIL (which can only reliably read EXIF data) or exiftool (which
+can read everything).  The latter approach expects that exiftool is available on the system
+path.  No attempt is made to be consistent in format across the two approaches.
 
 """
 

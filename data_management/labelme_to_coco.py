@@ -1,8 +1,8 @@
 """
 
- labelme_to_coco.py
+labelme_to_coco.py
 
- Converts a folder of labelme-formatted .json files to COCO.
+Converts a folder of labelme-formatted .json files to COCO.
 
 """
 
