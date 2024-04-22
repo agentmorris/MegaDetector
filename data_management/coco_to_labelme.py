@@ -49,11 +49,13 @@ def get_labelme_dict_for_image_from_coco_record(im,annotations,categories,info=N
     
     category_id_to_name = {c['id']:c['name'] for c in categories}
     
+    if 'flags' in im:
+        output_dict['flags'] = im['flags']
+        
     # ann = annotations[0]
     for ann in annotations:
         
         if 'bbox' not in ann:
-            print('Warning: skipping non-bbox annotation for image {}'.format(ann['image_id']))
             continue
         
         shape = {}
@@ -182,7 +184,7 @@ def coco_to_labelme(coco_data,image_base,overwrite=False,bypass_image_size_check
             
     # ...for each image
     
-    print('\nWrote {} .json files (skipped {} for errors, {} because they exist'.format(
+    print('\nWrote {} .json files (skipped {} for errors, {} because they exist)'.format(
         n_json_files_written,n_json_files_error,n_json_files_exist))
     
 # ...def coco_to_labelme()

@@ -13,7 +13,13 @@ import os
 import json
 import pandas as pd
 
+
+#%% Main block
+
 def main():
+    
+    #%%
+    
     lila_taxonomy_file = 'c:/git/agentmorrisprivate/lila-taxonomy/lila-taxonomy-mapping.csv'
     release_taxonomy_file = os.path.expanduser('~/lila/lila-taxonomy-mapping_release.csv')
     # import clipboard; clipboard.copy(release_taxonomy_file)
@@ -64,7 +70,7 @@ def main():
 
     assert not os.path.isfile(release_taxonomy_file)
 
-    known_levels = ['stateofmatter',
+    known_levels = ['stateofmatter', #noqa
                         'kingdom',
                         'phylum','subphylum',
                         'superclass','class','subclass','infraclass',
@@ -133,6 +139,9 @@ def main():
     df.to_csv(release_taxonomy_file,header=True,index=False)
 
     print('Wrote final output to {}'.format(release_taxonomy_file))
+
+
+#%% Command-line driver
 
 if __name__ == '__main__':
     main()

@@ -14,9 +14,11 @@ import urllib
 import tempfile
 import requests
 
+from functools import partial
 from tqdm import tqdm
 from urllib.parse import urlparse
 from multiprocessing.pool import ThreadPool
+from multiprocessing.pool import Pool
 
 url_utils_temp_dir = None
 max_path_len = 255
@@ -126,38 +128,47 @@ def download_relative_filename(url, output_base, verbose=False):
     destination_filename = os.path.join(output_base,relative_filename)
     download_url(url, destination_filename, verbose=verbose)
 
+def _do_parallelized_download(download_info,overwrite=False,verbose=False):
+    """
+    Internal function for download parallelization.
+    """
+    
+    url = download_info['url']
+    target_file = download_info['target_file']
+    result = {'status':'unknown','url':url,'target_file':target_file}
+    
+    if ((os.path.isfile(target_file)) and (not overwrite)):
+        if verbose:
+            print('Skipping existing file {}'.format(target_file))
+        result['status'] = 'skipped'
+        return result
+    try:
+        download_url(url=url, 
+                     destination_filename=target_file,
+                     verbose=verbose, 
+                     force_download=overwrite)
+    except Exception as e:
+        print('Warning: error downloading URL {}: {}'.format(
+            url,str(e)))     
+        result['status'] = 'error: {}'.format(str(e))
+        return result
+    
+    result['status'] = 'success'
+    return result
+
 
 def parallel_download_urls(url_to_target_file,verbose=False,overwrite=False,
-                           n_workers=20):
+                           n_workers=20,pool_type='thread'):
     """
     Download a list of URLs to local files.  url_to_target_file should
     be a dict mapping URLs to output files.  Catches exceptions and reports
     them in the returned "results" array.    
     """
     
-    def _do_parallelized_download(download_info,overwrite=False):
-        url = download_info['url']
-        target_file = download_info['target_file']
-        result = {'status':'unknown','url':url,'target_file':target_file}
-        
-        if ((os.path.isfile(target_file)) and (not overwrite)):
-            result['status'] = 'skipped'
-            return result
-        try:
-            download_url(url=url, 
-                         destination_filename=target_file,
-                         verbose=verbose, force_download=overwrite)
-        except Exception as e:
-            print('Warning: error downloading URL {}: {}'.format(
-                url,str(e)))     
-            result['status'] = 'error: {}'.format(str(e))
-            return result
-        
-        result['status'] = 'success'
-        return result
-
     all_download_info = []
-    for url in url_to_target_file:
+    
+    print('Preparing download list')
+    for url in tqdm(url_to_target_file):
         download_info = {}
         download_info['url'] = url
         download_info['target_file'] = url_to_target_file[url]
@@ -171,16 +182,23 @@ def parallel_download_urls(url_to_target_file,verbose=False,overwrite=False,
         results = []
         
         for download_info in tqdm(all_download_info):        
-            result = _do_parallelized_download(download_info,overwrite=overwrite)
+            result = _do_parallelized_download(download_info,overwrite=overwrite,verbose=verbose)
             results.append(result)
         
     else:
 
-        pool = ThreadPool(n_workers)
-        results = list(tqdm(pool.imap(lambda download_info: _do_parallelized_download(
-            download_info,overwrite=overwrite),all_download_info), 
-            total=len(all_download_info)))
-
+        if pool_type == 'thread':
+            pool = ThreadPool(n_workers)
+        else:
+            assert pool_type == 'process', 'Unsupported pool type {}'.format(pool_type)
+            pool = Pool(n_workers)
+        
+        print('Starting a {} pool with {} workers'.format(pool_type,n_workers))
+        
+        results = list(tqdm(pool.imap(
+            partial(_do_parallelized_download,overwrite=overwrite,verbose=verbose),
+            all_download_info), total=len(all_download_info)))
+                
     return results
 
     

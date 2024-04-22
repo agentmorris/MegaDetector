@@ -9,7 +9,7 @@ If you want to learn more about what MegaDetector is all about, head over to the
 
 ### If you are an ecologist...
 
-If you are an ecologist looking to use MegaDetector to help you get through your camera trap images, you probably don't want this package.  We recommend starting with our "[Getting started with MegaDetector](https://github.com/agentmorris/MegaDetector/blob/main/collaborations.md)" page, then digging in to the [MegaDetector User Guide](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md), which will walk you through the process of using MegaDetector.  That journey will <i>not</i> involve this package.
+If you are an ecologist looking to use MegaDetector to help you get through your camera trap images, you probably don't want this package.  We recommend starting with our "[Getting started with MegaDetector](https://github.com/agentmorris/MegaDetector/blob/main/collaborations.md)" page, then digging in to the [MegaDetector User Guide](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md), which will walk you through the process of using MegaDetector.  That journey will <i>not</i> involve this Python package.
 
 ### If you are a computer-vision-y type...
 
@@ -44,15 +44,13 @@ temporary_filename = url_utils.download_url(image_url)
 
 image = vis_utils.load_image(temporary_filename)
 
-# This will automatically download MDv5a to the system temp folder;
-# you can also specify a filename explicitly, or set the $MDV5A
-# environment variable to point to the model file.
+# This will automatically download MDv5a; you can also specify a filename.
 model = run_detector.load_detector('MDV5A')
 
 result = model.generate_detections_one_image(image)
 
 detections_above_threshold = [d for d in result['detections'] if d['conf'] > 0.2]
-print('Found {} detection above threshold'.format(len(detections_above_threshold)))
+print('Found {} detections above threshold'.format(len(detections_above_threshold)))
 ```
 
 #### Run MegaDetector on a folder of images
@@ -69,14 +67,14 @@ output_file = os.path.expanduser('~/megadetector_output_test.json')
 # Recursively find images
 image_file_names = path_utils.find_images(image_folder,recursive=True)
 
-# This will automatically download MDv5a to the system temp folder;
-# you can also specify a filename explicitly, or set the $MDV5A
-# environment variable to point to the model file.
+# This will automatically download MDv5a; you can also specify a filename.
 results = load_and_run_detector_batch('MDV5A', image_file_names)
 
-# Write results as relative filenames, this is what Timelapse
-# and other downstream tools expect.
-write_results_to_file(results,output_file,relative_path_base=image_folder)
+# Write results to a format that Timelapse and other downstream tools like.
+write_results_to_file(results,
+                      output_file,
+                      relative_path_base=image_folder,
+                      detector_file=detector_filename)
 ```
 
 ## Contact

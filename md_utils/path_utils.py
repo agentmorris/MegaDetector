@@ -20,6 +20,7 @@ import json
 import shutil
 import unicodedata
 import zipfile
+import tarfile
 import webbrowser
 import subprocess
 import re
@@ -225,23 +226,6 @@ def safe_create_link(link_exists,link_new):
             os.symlink(link_exists,link_new)
     else:
         os.symlink(link_exists,link_new)
-        
-
-def get_file_sizes(base_dir, convert_slashes=True):
-    """
-    Get sizes recursively for all files in base_dir, returning a dict mapping
-    relative filenames to size.
-    """
-    
-    relative_filenames = recursive_file_list(base_dir, convert_slashes=convert_slashes, 
-                                             return_relative_paths=True)
-    
-    fn_to_size = {}
-    for fn_relative in tqdm(relative_filenames):
-        fn_abs = os.path.join(base_dir,fn_relative)
-        fn_to_size[fn_relative] = os.path.getsize(fn_abs)
-                   
-    return fn_to_size
         
 
 #%% Image-related path functions
@@ -475,6 +459,7 @@ def _copy_file(input_output_tuple,overwrite=True,verbose=False):
         if verbose:
             print('Skipping existing file {}'.format(target_fn))
         return
+    os.makedirs(os.path.dirname(target_fn),exist_ok=True)
     shutil.copyfile(source_fn,target_fn)
     
 
@@ -504,6 +489,69 @@ def parallel_copy_files(input_file_to_output_file, max_workers=16,
 # ...def parallel_copy_files(...)
 
 
+def get_file_sizes(base_dir, convert_slashes=True):
+    """
+    Get sizes recursively for all files in base_dir, returning a dict mapping
+    relative filenames to size.
+    
+    TODO: merge the functionality here with parallel_get_file_sizes, which uses slightly
+    different semantics.
+    """
+    
+    relative_filenames = recursive_file_list(base_dir, convert_slashes=convert_slashes, 
+                                             return_relative_paths=True)
+    
+    fn_to_size = {}
+    for fn_relative in tqdm(relative_filenames):
+        fn_abs = os.path.join(base_dir,fn_relative)
+        fn_to_size[fn_relative] = os.path.getsize(fn_abs)
+                   
+    return fn_to_size
+        
+
+def _get_file_size(filename,verbose=False):
+    """
+    Internal function for safely getting the size of a file.  Returns a (filename,size)
+    tuple, where size is None if there is an error.
+    """
+    
+    try:
+        size = os.path.getsize(filename)
+    except Exception as e:
+        if verbose:
+            print('Error reading file size for {}: {}'.format(filename,str(e)))
+        size = None
+    return (filename,size)
+
+    
+def parallel_get_file_sizes(filenames, max_workers=16, 
+                        use_threads=True, verbose=False,
+                        recursive=True):
+    """
+    Return a dictionary mapping every file in [filenames] to the corresponding file size,
+    or None for errors.  If [filenames] is a folder, will enumerate the folder (optionally recursively).
+    """
+
+    n_workers = min(max_workers,len(filenames))
+    
+    if isinstance(filenames,str) and os.path.isdir(filenames):
+        filenames = recursive_file_list(filenames,recursive=recursive,return_relative_paths=False)
+    
+    if use_threads:
+        pool = ThreadPool(n_workers)
+    else:
+        pool = Pool(n_workers)
+
+    resize_results = list(tqdm(pool.imap(
+        partial(_get_file_size,verbose=verbose),filenames), total=len(filenames)))
+    
+    to_return = {}
+    for r in resize_results:
+        to_return[r[0]] = r[1]
+
+    return to_return
+
+
 #%% Zip functions
 
 def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compresslevel=9):
@@ -526,6 +574,35 @@ def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compressl
     with ZipFile(output_fn,'w',zipfile.ZIP_DEFLATED) as zipf:
         zipf.write(input_fn,arcname=basename,compresslevel=compresslevel,
                    compress_type=zipfile.ZIP_DEFLATED)
+
+    return output_fn
+
+
+def add_files_to_single_tar_file(input_files, output_fn, arc_name_base,
+                                 overwrite=False, verbose=False, mode='x'):
+    """
+    Add all the files in [input_files] to the tar file [output_fn].  
+    Archive names are relative to arc_name_base.
+    
+    Mode should be 'x' (no compression), 'x:gz', or 'x:bz2'.
+    """
+    
+    if os.path.isfile(output_fn):
+        if not overwrite:
+            print('Tar file {} exists, skipping'.format(output_fn))
+            return
+        else:
+            print('Tar file {} exists, deleting and re-creating'.format(output_fn))
+            os.remove(output_fn)
+                
+    if verbose:
+        print('Adding {} files to {} (mode {})'.format(
+            len(input_files),output_fn,mode))
+        
+    with tarfile.open(output_fn,mode) as tarf:
+        for input_fn_abs in tqdm(input_files,disable=(not verbose)):
+            input_fn_relative = os.path.relpath(input_fn_abs,arc_name_base)
+            tarf.add(input_fn_abs,arcname=input_fn_relative)
 
     return output_fn
 

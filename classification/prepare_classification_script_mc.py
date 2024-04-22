@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """
 
  prepare_classification_script_mc.py
@@ -8,6 +9,18 @@
  Differs from prepare_classification_script.py only in the final class mapping step.
 
 """
+=======
+########
+#
+# prepare_classification_script_mc.py
+#
+# Notebook-y script used to prepare a series of shell commands to run MegaClassifier
+# on a MegaDetector result set.
+#
+# Differs from prepare_classification_script.py only in the final class mapping step.
+#
+########
+>>>>>>> main
 
 #%% Job options
 
