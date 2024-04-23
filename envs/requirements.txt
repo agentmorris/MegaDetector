@@ -1,3 +1,6 @@
+########
+#
+# pip environment file for MegaDetector
 #
 # pip is not the recommended approach for running MegaDetector; if you don't have a specific
 # reason to use this file, we recommend following our mamba-based instructions for environment
@@ -13,9 +16,11 @@
 # So, to create a suitable environment:
 #
 # mamba create -n cameratraps-pip python=3.11 pip -y
+#
+########
 
 # ultralytics-yolov5 has a dependency on FreeTypeFont.getsize(), which was
-# removed in Pillow 10.
+# removed in Pillow 10, so we force Pillow < 10.0
 Pillow >= 9.1.0, < 10.0
 
 tqdm >= 4.64.0
