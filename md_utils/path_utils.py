@@ -168,7 +168,7 @@ def insert_before_extension(filename: str, s: str = '', separator='.') -> str:
 
 
 def top_level_folder(p: str, windows: Optional[bool] = None) -> str:
-    """
+    r"""
     Gets the top-level folder from path [p].
 
     This function behaves differently for Windows vs. Unix paths. Set
@@ -176,12 +176,15 @@ def top_level_folder(p: str, windows: Optional[bool] = None) -> str:
     [p] as a native system path.
 
     On Windows, will use the top-level folder that isn't the drive.
-    >>> top_level_folder(r'c:\blah\foo')
-    'c:\blah'
+    
+        >>> top_level_folder(r'c:\blah\foo')
+        'c:\blah'
 
     On Unix, does not include the leaf node.
-    >>> top_level_folder('/blah/foo')
-    '/blah'
+    
+        >>> top_level_folder('/blah/foo')
+        '/blah'
+            
     """
     
     if p == '':

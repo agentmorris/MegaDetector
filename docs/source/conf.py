@@ -14,7 +14,7 @@ extensions = [
     "sphinx_mdinclude",
 ]
 
-autodoc_mock_imports = ["azure", "deepdiff", "magic", "tensorflow"]
+autodoc_mock_imports = ["azure", "deepdiff", "magic", "tensorflow", "pytesseract"]
 
 myst_enable_extensions = [
     "colon_fence",

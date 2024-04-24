@@ -29,9 +29,9 @@ def truncate_float_array(xs, precision=3):
     Vectorized version of truncate_float(...)
 
     Args:
-    xs        (list of float) List of floats to truncate
-    precision (int)           The number of significant digits to preserve, should be
-                              greater or equal 1
+        xs (list of float) List of floats to truncate
+        precision (int) The number of significant digits to preserve, should be
+            greater or equal 1
     """
 
     return [truncate_float(x, precision=precision) for x in xs]
@@ -51,9 +51,9 @@ def truncate_float(x, precision=3):
     before exporting to JSON.
 
     Args:
-    x         (float) Scalar to truncate
-    precision (int)   The number of significant digits to preserve, should be
-                      greater or equal 1
+        x (float) Scalar to truncate
+        precision (int) The number of significant digits to preserve, should be
+            greater or equal 1
     """
 
     assert precision > 0

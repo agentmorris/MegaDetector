@@ -50,7 +50,8 @@ def plot_confusion_matrix(
         y_label: bool, whether to show class names on the y-axis
         fmt: str, format string
 
-    Returns: matplotlib.figure.Figure, a reference to the figure
+    Returns: 
+        matplotlib.figure.Figure, a reference to the figure
     """
     
     num_classes = matrix.shape[0]
@@ -114,7 +115,8 @@ def plot_precision_recall_curve(
             should have same length as *precisions*.
         title: str, plot title
 
-    Returns: matplotlib.figure.Figure, reference to the figure
+    Returns: 
+        matplotlib.figure.Figure, reference to the figure
     """
     
     assert len(precisions) == len(recalls)
@@ -158,7 +160,8 @@ def plot_stacked_bar_chart(data: np.ndarray,
         y_label: str
         log_scale: bool, whether to plot y-axis in log-scale
 
-    Returns: matplotlib.figure.Figure, reference to figure
+    Returns: 
+        matplotlib.figure.Figure, reference to figure
     """
     
     data = np.asarray(data)
@@ -202,13 +205,14 @@ def plot_stacked_bar_chart(data: np.ndarray,
 
 def calibration_ece(true_scores: Sequence[int], pred_scores: Sequence[float],
                     num_bins: int) -> Tuple[np.ndarray, np.ndarray, float]:
-    """
+    r"""
     Expected calibration error (ECE) as defined in equation (3) of
-        Guo et al. "On Calibration of Modern Neural Networks." (2017).
+    Guo et al. "On Calibration of Modern Neural Networks." (2017).
 
     Implementation modified from sklearn.calibration.calibration_curve()
-    in order to implement ECE calculation. See
-        https://github.com/scikit-learn/scikit-learn/issues/18268
+    in order to implement ECE calculation. See:
+    
+    https://github.com/scikit-learn/scikit-learn/issues/18268
 
     Args:
         pred_scores: list of float, length N, pred_scores[i] is the predicted
@@ -218,7 +222,7 @@ def calibration_ece(true_scores: Sequence[int], pred_scores: Sequence[float],
 
     Returns:
         accs: np.ndarray, shape [M], type float64, accuracy in each bin,
-            M <= num_bins because bins with no samples are not returned
+            M <= num_bins because bins with no samples are not returned        
         confs: np.ndarray, shape [M], type float64, mean model confidence in
             each bin
         ece: float, expected calibration error
@@ -254,12 +258,9 @@ def plot_calibration_curve(true_scores: Sequence[int],
     """
     Plot a calibration curve.
 
-    Consider rewriting / removing this function if
-        https://github.com/scikit-learn/scikit-learn/pull/17443
-    is merged into an actual scikit-learn release.
-
+    See calibration_ece() for more information about arguments.
+    
     Args:
-        see calibration_ece() for args
         name: str, label in legend for the calibration curve
         plot_perf: bool, whether to plot y=x line indicating perfect calibration
         plot_hist: bool, whether to plot histogram of counts
@@ -267,7 +268,8 @@ def plot_calibration_curve(true_scores: Sequence[int],
             fig_kwargs are ignored
         fig_kwargs: only used if ax is None
 
-    Returns: matplotlib Figure
+    Returns:
+        matplotlib Figure
     """
     
     accs, confs, ece = calibration_ece(true_scores, pred_scores, num_bins)

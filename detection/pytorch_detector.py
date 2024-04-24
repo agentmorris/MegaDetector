@@ -171,11 +171,10 @@ class PTDetector:
             skip_image_resizing: whether to skip internal image resizing and rely on external resizing
 
         Returns:
-        A dict with the following fields, see the 'images' key in https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
+            A dict with the following fields, see the 'images' key in https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format:
             - 'file' (always present)
             - 'max_detection_conf' (removed from MegaDetector output by default, but generated here)
-            - 'detections', which is a list of detection objects containing keys 'category', 
-              'conf' and 'bbox'
+            - 'detections', which is a list of detection objects containing keys 'category', 'conf' and 'bbox'
             - 'failure'
         """
 

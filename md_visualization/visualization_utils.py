@@ -389,45 +389,50 @@ def render_detection_bounding_boxes(detections, image,
     Boxes are in the format that's output from the batch processing API.
 
     Renders classification labels if present.
+    
+    [image] is modified in place.
 
     Args:
 
         detections: detections on the image, example content:
-            [
-                {
-                    "category": "2",
-                    "conf": 0.996,
-                    "bbox": [
-                        0.0,
-                        0.2762,
-                        0.1234,
-                        0.2458
-                    ]
-                }
-            ]
-
-            ...where the bbox coordinates are [x, y, box_width, box_height].
-
-            (0, 0) is the upper-left.  Coordinates are normalized.
-
-            Supports classification results, if *detections* has the format
-            [
-                {
-                    "category": "2",
-                    "conf": 0.996,
-                    "bbox": [
-                        0.0,
-                        0.2762,
-                        0.1234,
-                        0.2458
-                    ]
-                    "classifications": [
-                        ["3", 0.901],
-                        ["1", 0.071],
-                        ["4", 0.025]
-                    ]
-                }
-            ]
+            
+            .. code-block::none
+            
+                [
+                    {
+                        "category": "2",
+                        "conf": 0.996,
+                        "bbox": [
+                            0.0,
+                            0.2762,
+                            0.1234,
+                            0.2458
+                        ]
+                    }
+                ]
+    
+                ...where the bbox coordinates are [x, y, box_width, box_height].
+    
+                (0, 0) is the upper-left.  Coordinates are normalized.
+    
+                Supports classification results, if *detections* has the format
+                [
+                    {
+                        "category": "2",
+                        "conf": 0.996,
+                        "bbox": [
+                            0.0,
+                            0.2762,
+                            0.1234,
+                            0.2458
+                        ]
+                        "classifications": [
+                            ["3", 0.901],
+                            ["1", 0.071],
+                            ["4", 0.025]
+                        ]
+                    }
+                ]
 
         image: PIL.Image object
 
@@ -453,9 +458,7 @@ def render_detection_bounding_boxes(detections, image,
         
         custom_strings: optional set of strings to append to detection labels, should have the
         same length as [detections].  Appended before classification labels, if classification
-        data is provided.
-
-    image is modified in place.
+        data is provided.    
     """
 
     if custom_strings is not None:
@@ -627,26 +630,27 @@ def draw_bounding_box_on_image(image,
     If the top of the bounding box extends to the edge of the image, the strings
     are displayed below the bounding box.
 
-    Args:
-    image: a PIL.Image object.
-    ymin: ymin of bounding box - upper left.
-    xmin: xmin of bounding box.
-    ymax: ymax of bounding box.
-    xmax: xmax of bounding box.    
-    clss: str, the class of the object in this bounding box; should be either an integer
-        or a string-formatted integer.
-    thickness: line thickness. Default value is 4.
-    expansion: number of pixels to expand bounding boxes on each side.  Default is 0.
-    display_str_list: list of strings to display in box
-        (each to be shown on its own line).
-        use_normalized_coordinates: If True (default), treat coordinates
-        ymin, xmin, ymax, xmax as relative to the image.  Otherwise treat
-        coordinates as absolute.
-    label_font_size: font size 
-    
     Adapted from:
         
     https://github.com/tensorflow/models/blob/master/research/object_detection/utils/visualization_utils.py
+    
+    Args:
+        image: a PIL.Image object.
+        ymin: ymin of bounding box - upper left.
+        xmin: xmin of bounding box.
+        ymax: ymax of bounding box.
+        xmax: xmax of bounding box.    
+        clss: str, the class of the object in this bounding box; should be either an integer
+            or a string-formatted integer.
+        thickness: line thickness. Default value is 4.
+        expansion: number of pixels to expand bounding boxes on each side.  Default is 0.
+        display_str_list: list of strings to display in box
+            (each to be shown on its own line).
+            use_normalized_coordinates: If True (default), treat coordinates
+            ymin, xmin, ymax, xmax as relative to the image.  Otherwise treat
+            coordinates as absolute.
+        label_font_size: font size 
+    
     """
     
     if clss is None:
@@ -801,17 +805,23 @@ def render_iMerit_boxes(boxes, classes, image,
 
 def render_megadb_bounding_boxes(boxes_info, image):
     """
+    Render bounding boxes to an image, where those boxes are in the mostly-deprecated
+    MegaDB format, which looks like:
+    
+    .. code-block::none
+        
+        {
+            "category": "animal",
+            "bbox": [
+                0.739,
+                0.448,
+                0.187,
+                0.198
+            ]
+        }        
+        
     Args:
-        boxes_info: list of dict, each dict represents a single detection
-            {
-                "category": "animal",
-                "bbox": [
-                    0.739,
-                    0.448,
-                    0.187,
-                    0.198
-                ]
-            }
+        boxes_info: list of dicts, each dict represents a single detection
             where bbox coordinates are normalized [x_min, y_min, width, height]
         image: PIL.Image.Image, opened image
     """

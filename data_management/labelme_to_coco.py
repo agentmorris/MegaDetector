@@ -366,12 +366,14 @@ def find_empty_labelme_files(input_folder,recursive=True):
     Returns a list of all image files in in [input_folder] associated with .json files that have 
     no boxes in them.  Also returns a list of images with no associated .json files.  Specifically,
     returns a dict:
-        
-    {
-       'images_with_empty_json_files':[list],
-       'images_with_no_json_files':[list],
-       'images_with_non_empty_json_files':[list]
-    }    
+    
+    .. code-block: none
+    
+        {
+            'images_with_empty_json_files':[list],
+            'images_with_no_json_files':[list],
+            'images_with_non_empty_json_files':[list]
+        }    
     """
     image_filenames_relative = path_utils.find_images(input_folder,recursive=True,
                                                       return_relative_paths=True)

@@ -40,8 +40,10 @@ def remap_detection_categories(input_file,
     that are not present in the target mapping.
     
     'error' == Error in this case.
+    
     'drop_if_unused' == Don't include these in the output file's category mappings if they are unused,
-       error if they are.
+     error if they are.
+     
     'remap' == Remap to unused category IDs.  This is reserved for future use, not currently implemented.
     
     """

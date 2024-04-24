@@ -248,14 +248,14 @@ def process_images(im_files, detector, confidence_threshold, use_image_queue=Fal
     Runs MegaDetector over a list of image files.  As of 3/2024, this entry point is used when the
     image queue is enabled, but not in the standard inference path (which loops over process_image()).
 
-    Args
-    - im_files: list of str, paths to image files
-    - detector: loaded model or str (path to .pb/.pt model file)
-    - confidence_threshold: float, only detections above this threshold are returned
+    Args:
+        im_files: list of str, paths to image files
+        detector: loaded model or str (path to .pb/.pt model file)
+        confidence_threshold: float, only detections above this threshold are returned
 
-    Returns
-    - results: list of dict, each dict represents detections on one image
-        see the 'images' key in https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
+    Returns:
+        results: list of dict, each dict represents detections on one image,
+            see the 'images' key in https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
     """
     
     if isinstance(detector, str):
@@ -295,17 +295,17 @@ def process_image(im_file, detector, confidence_threshold, image=None,
     """
     Runs MegaDetector on a single image file.
 
-    Args
-    - im_file: str, path to image file
-    - detector: loaded model
-    - confidence_threshold: float, only detections above this threshold are returned
-    - image: previously-loaded image, if available
-    - skip_image_resizing: whether to skip internal image resizing and rely on external resizing
+    Args:
+        im_file: str, path to image file
+        detector: loaded model
+        confidence_threshold: float, only detections above this threshold are returned
+        image: previously-loaded image, if available
+        skip_image_resizing: whether to skip internal image resizing and rely on external resizing
 
     Returns:
-    - result: dict representing detections on one image
-        see the 'images' key in 
-        https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
+        result: dict representing detections on one image,
+            see the 'images' key in 
+            https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
     """
     
     if not quiet:
@@ -389,21 +389,24 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
                                 class_mapping_filename=None, include_image_size=False, 
                                 include_image_timestamp=False, include_exif_data=False):
     """
-    Args
-    - model_file: path to model file, or supported model string (e.g. "MDV5A")
-    - image_file_names: list of strings (image filenames), a single image filename, 
-                        a folder to recursively search for images in, or a .json or .txt file
-                        containing a list of images.
-    - checkpoint_path: str, path to JSON checkpoint file
-    - confidence_threshold: float, only detections above this threshold are returned
-    - checkpoint_frequency: int, write results to JSON checkpoint file every N images
-    - results: list of dict, existing results loaded from checkpoint
-    - n_cores: int, # of CPU cores to use
-    - class_mapping_filename: str, use a non-default class mapping supplied in a .json file
-      or YOLOv5 dataset.yaml file.
+    Load a model file and run it on a list of images.
+    
+    Args:
+        
+        model_file: path to model file, or supported model string (e.g. "MDV5A")
+        image_file_names: list of strings (image filenames), a single image filename, 
+            a folder to recursively search for images in, or a .json or .txt file
+            containing a list of images.
+        checkpoint_path: str, path to JSON checkpoint file
+        confidence_threshold: float, only detections above this threshold are returned
+        checkpoint_frequency: int, write results to JSON checkpoint file every N images
+        results: list of dict, existing results loaded from checkpoint
+        n_cores: int, # of CPU cores to use
+        class_mapping_filename: str, use a non-default class mapping supplied in a .json file
+            or YOLOv5 dataset.yaml file.
 
-    Returns
-    - results: list of dicts; each dict represents detections on one image
+    Returns:
+        results: list of dicts; each dict represents detections on one image
     """
     
     if n_cores is None:
@@ -669,20 +672,21 @@ def write_results_to_file(results, output_file, relative_path_base=None,
 
     https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
 
-    Args
-    - results: list of dict, each dict represents detections on one image
-    - output_file: str, path to JSON output file, should end in '.json'
-    - relative_path_base: str, path to a directory as the base for relative paths
-    - detector_file: filename of the detector used to generate these results, only
-        used to pull out a version number for the "info" field
-    - info: dictionary to use instead of the default "info" field
-    - include_max_conf: old files (version 1.2 and earlier) included a "max_conf" field
-        in each image; this was removed in version 1.3.  Set this flag to force the inclusion
-        of this field.
-    - custom_metadata: additional data to include as info['custom_metadata'].  Typically
-        a dictionary, but no format checks are performed.
+    Args:
+        results: list of dict, each dict represents detections on one image
+        output_file: str, path to JSON output file, should end in '.json'
+        relative_path_base: str, path to a directory as the base for relative paths
+        detector_file: filename of the detector used to generate these results, only
+            used to pull out a version number for the "info" field
+        info: dictionary to use instead of the default "info" field
+        include_max_conf: old files (version 1.2 and earlier) included a "max_conf" field
+            in each image; this was removed in version 1.3.  Set this flag to force the inclusion
+            of this field.
+        custom_metadata: additional data to include as info['custom_metadata'].  Typically
+            a dictionary, but no format checks are performed.
         
-    Returns the complete output dictionary that was written to the output file.
+    Returns:
+        The complete output dictionary that was written to the output file.
     """
     
     if relative_path_base is not None:

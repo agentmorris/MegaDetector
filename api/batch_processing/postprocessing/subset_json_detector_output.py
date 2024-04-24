@@ -1,4 +1,4 @@
-"""
+r"""
 
 subset_json_detector_output.py
 
@@ -417,14 +417,14 @@ def subset_json_detector_output_by_query(data, options):
 
 
 def split_path(path, maxdepth=100):
-    """
+    r"""
     Splits [path] into all its constituent tokens, e.g.:
     
     c:\blah\boo\goo.txt
     
     ...becomes:
         
-    ['c:\\', 'blah', 'boo', 'goo.txt']
+    ['c:\', 'blah', 'boo', 'goo.txt']
     
     http://nicks-liquid-soapbox.blogspot.com/2011/03/splitting-path-to-list-in-python.html
     """
@@ -438,10 +438,10 @@ def split_path(path, maxdepth=100):
 
     
 def top_level_folder(p):
-    """
+    r"""
     Gets the top-level folder from the path *p*; on Windows, will use the top-level folder
-    that isn't the drive.  E.g., top_level_folder(r"c:\blah\foo") returns "c:\blah".  Does not
-    include the leaf node, i.e. top_level_folder('/blah/foo') returns '/blah'.
+    that isn't the drive.  E.g., top_level_folder(r"c:\blah\foo") returns "c:\blah".  Does 
+    not include the leaf node, i.e. top_level_folder('/blah/foo') returns '/blah'.
     """
     
     if p == '':
@@ -480,7 +480,7 @@ if False:
     
 def subset_json_detector_output(input_filename, output_filename, options, data=None):
     """
-    Main internal entry point
+    Main internal entry point.
         
     Makes a copy of [data] before modifying if a data dictionary is supplied.
     """

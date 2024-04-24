@@ -31,7 +31,7 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
                      filename_replacements: Optional[Mapping[str, str]] = None,
                      force_forward_slashes: bool = True
                      ) -> Tuple[pd.DataFrame, Dict]:
-    """
+    r"""
     Loads json-formatted MegaDetector results to a Pandas DataFrame.
 
     Args:
@@ -44,8 +44,8 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
             in filenames
 
     Returns:
-        detection_results: pd.DataFrame, contains at least the columns:
-                ['file', 'detections','failure']
+        detection_results: pd.DataFrame, contains at least the columns
+            ['file', 'detections','failure']
         other_fields: a dict containing fields in the results other than 'images'
     """
     
