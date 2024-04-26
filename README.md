@@ -85,6 +85,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Hamaarag](https://hamaarag.org.il/), The Steinhardt Museum of Natural History, Tel Aviv University
 * [Institut des Science de la Forêt Tempérée](https://isfort.uqo.ca/) (ISFORT), Université du Québec en Outaouais
 * [Lab of Dr. Bilal Habib](https://bhlab.in/about), the Wildlife Institute of India
+* [Landscape Ecology Lab](https://www.concordia.ca/artsci/geography-planning-environment/research/labs/lel.html), Concordia University
 * [Mammal Spatial Ecology and Conservation Lab](https://labs.wsu.edu/dthornton/), Washington State University
 * [McLoughlin Lab in Population Ecology](http://mcloughlinlab.ca/lab/), University of Saskatchewan
 * [National Wildlife Refuge System, Southwest Region](https://www.fws.gov/about/region/southwest), U.S. Fish & Wildlife Service
