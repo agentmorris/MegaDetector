@@ -38,6 +38,12 @@ lila_base_urls = {
     'aws':'http://us-west-2.opendata.source.coop.s3.amazonaws.com/agentmorris/lila-wildlife/'
 }
 
+lila_cloud_urls = {
+    'azure':'https://lilawildlife.blob.core.windows.net/lila-wildlife/',
+    'gcp':'gs://public-datasets-lila/',
+    'aws':'s3://us-west-2.opendata.source.coop/agentmorris/lila-wildlife/'
+}
+
 for url in lila_base_urls.values():
     assert url.endswith('/')
 
