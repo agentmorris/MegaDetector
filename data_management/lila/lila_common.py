@@ -33,11 +33,13 @@ wildlife_insights_taxonomy_local_csv_filename = \
 
 # Filenames are consistent across clouds relative to these URLs
 lila_base_urls = {
-    'azure':'https://lilablobssc.blob.core.windows.net/',
+    'azure':'https://lilawildlife.blob.core.windows.net/lila-wildlife/',
     'gcp':'https://storage.googleapis.com/public-datasets-lila/',
     'aws':'http://us-west-2.opendata.source.coop.s3.amazonaws.com/agentmorris/lila-wildlife/'
 }
 
+for url in lila_base_urls.values():
+    assert url.endswith('/')
 
 
 #%% Common functions
@@ -169,18 +171,20 @@ def read_lila_all_images_file(metadata_dir):
     return df
 
 
-def read_metadata_file_for_dataset(ds_name,metadata_dir,metadata_table=None,json_url=None):
+def read_metadata_file_for_dataset(ds_name,metadata_dir,metadata_table=None,json_url=None,preferred_cloud='gcp'):
     """
     Downloads if necessary - then unzips if necessary - the .json file for a specific dataset.
     Returns the .json filename on the local disk.
     """
+    
+    assert preferred_cloud in lila_base_urls.keys()
     
     if json_url is None:
         
         if metadata_table is None:
             metadata_table = read_lila_metadata(metadata_dir)
             
-        json_url = metadata_table[ds_name]['metadata_url']
+        json_url = metadata_table[ds_name]['metadata_url_' + preferred_cloud]
     
     p = urlparse(json_url)
     json_filename = os.path.join(metadata_dir,os.path.basename(p.path))
@@ -215,7 +219,8 @@ if False:
     
     from md_utils import url_utils
     
-    status_codes = url_utils.test_urls(urls)
+    status_codes = url_utils.test_urls(urls,timeout=2.0)
+    assert all([code == 200 for code in status_codes])
     
     
     #%% Verify that the metadata URLs exist for individual datasets
@@ -225,13 +230,20 @@ if False:
     dataset_metadata = read_lila_metadata(metadata_dir)
     
     urls_to_test = []
+    
     # ds_name = next(iter(dataset_metadata.keys()))
     for ds_name in dataset_metadata.keys():
         
         ds_info = dataset_metadata[ds_name]
-        urls_to_test.append(ds_info['metadata_url'])
-        if ds_info['bbox_url'] != None:
-            urls_to_test.append(ds_info['bbox_url'])
+        for cloud_name in lila_base_urls.keys():
+            urls_to_test.append(ds_info['metadata_url_' + cloud_name])
+            if ds_info['bbox_url_relative'] != None:
+                urls_to_test.append(ds_info['bbox_url_' + cloud_name])
             
-    status_codes = url_utils.test_urls(urls_to_test)    
+    status_codes = url_utils.test_urls(urls_to_test,
+                                       error_on_failure=True,
+                                       n_workers=10,
+                                       pool_type='process',
+                                       timeout=2.0)
+    assert all([code == 200 for code in status_codes])
     

@@ -23,8 +23,6 @@ import pandas as pd
 import numpy as np
 import dateparser
 import csv
-import urllib
-import urllib.request
 
 from collections import defaultdict
 from tqdm import tqdm
@@ -36,7 +34,6 @@ from data_management.lila.lila_common import read_lila_metadata, \
 from md_utils import write_html_image_list
 from md_utils.path_utils import zip_file
 from md_utils.path_utils import open_file
-from md_utils.url_utils import download_url
 
 # We'll write images, metadata downloads, and temporary files here
 lila_local_base = os.path.expanduser('~/lila')
@@ -107,12 +104,15 @@ for i_row,row in taxonomy_df.iterrows():
 
 # Takes several hours
 
-header = ['dataset_name','url','image_id','sequence_id','location_id','frame_num','original_label',\
-          'scientific_name','common_name','datetime','annotation_level']
+# The order of these headers needs to match the order in which fields are added later in this cell;
+# don't mess with this order.
+header = ['dataset_name','url_gcp','url_aws','url_azure',
+          'image_id','sequence_id','location_id','frame_num',
+          'original_label','scientific_name','common_name','datetime','annotation_level']
 
 taxonomy_levels_to_include = \
     ['kingdom','phylum','subphylum','superclass','class','subclass','infraclass','superorder','order',
-     'suborder','infraorder','superfamily','family','subfamily','tribe','genus','species','subspecies',\
+     'suborder','infraorder','superfamily','family','subfamily','tribe','genus','species','subspecies',
      'variety']
     
 header.extend(taxonomy_levels_to_include)
@@ -179,10 +179,17 @@ with open(output_file,'w',encoding='utf-8',newline='') as f:
                 break
             
             file_name = im['file_name'].replace('\\','/')
-            base_url = metadata_table[ds_name]['image_base_url']
-            assert not base_url.endswith('/')
-            url = base_url + '/' + file_name
+            base_url_gcp = metadata_table[ds_name]['image_base_url_gcp']
+            base_url_aws = metadata_table[ds_name]['image_base_url_aws']
+            base_url_azure = metadata_table[ds_name]['image_base_url_azure']
+            assert not base_url_gcp.endswith('/')
+            assert not base_url_aws.endswith('/')
+            assert not base_url_azure.endswith('/')
             
+            url_gcp = base_url_gcp + '/' + file_name
+            url_aws = base_url_aws + '/' + file_name
+            url_azure = base_url_azure + '/' + file_name
+                        
             for k in im.keys():
                 if ('date' in k or 'time' in k) and (k not in ['datetime','date_captured']):
                     raise ValueError('Unrecognized datetime field')
@@ -297,7 +304,9 @@ with open(output_file,'w',encoding='utf-8',newline='') as f:
                 
                 row = []
                 row.append(ds_name)
-                row.append(url)
+                row.append(url_gcp)
+                row.append(url_aws)
+                row.append(url_azure)
                 row.append(image_id)
                 row.append(sequence_id)
                 row.append(location_id)
@@ -365,7 +374,8 @@ dataset_name_to_locations = defaultdict(set)
 def check_row(row):
     
     assert row['dataset_name'] in metadata_table.keys()
-    assert row['url'].startswith('https://')
+    for url_column in ['url_gcp','url_aws','url_azure']:
+        assert row[url_column].startswith('https://') or row[url_column].startswith('http://')
     assert ' : ' in row['image_id']
     assert 'seq' not in row['location_id'].lower()
     assert row['annotation_level'] in valid_annotation_levels
@@ -446,28 +456,31 @@ for ds_name in metadata_table.keys():
 print('Selected {} total images'.format(len(images_to_download)))
 
 
-#%% Download images
+#%% Download images (prep)
 
 # Expect a few errors for images with human or vehicle labels (or things like "ignore" that *could* be humans)
 
-# TODO: trivially parallelizable
-#
+preferred_cloud = 'aws'
+
+url_to_target_file = {}
+
 # i_image = 10; image = images_to_download[i_image]
 for i_image,image in tqdm(enumerate(images_to_download),total=len(images_to_download)):
     
-    url = image['url']
+    url = image['url_' + preferred_cloud]
     ext = os.path.splitext(url)[1]
-    image_file = os.path.join(preview_folder,'image_{}'.format(str(i_image).zfill(4)) + ext)
-    relative_file = os.path.relpath(image_file,preview_folder)
-    try:
-        download_url(url,image_file,verbose=False)
-        image['relative_file'] = relative_file
-    except urllib.error.HTTPError:
-        print('Image {} does not exist ({}:{})'.format(
-            i_image,image['dataset_name'],image['original_label']))
-        image['relative_file'] = None
+    fn_relative = 'image_{}'.format(str(i_image).zfill(4)) + ext
+    fn_abs = os.path.join(preview_folder,fn_relative)
+    image['relative_file'] = fn_relative
+    image['url'] = url
+    url_to_target_file[url] = fn_abs
+    
 
-# ...for each image we need to download
+#%% Download images (execution)
+
+from md_utils.url_utils import parallel_download_urls
+download_results = parallel_download_urls(url_to_target_file,verbose=False,overwrite=True,
+                                          n_workers=20,pool_type='thread')
 
 
 #%% Write preview HTML
