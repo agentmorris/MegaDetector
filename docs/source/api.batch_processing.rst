@@ -7,7 +7,6 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   api.batch_processing.data_preparation
    api.batch_processing.postprocessing
 
 Module contents

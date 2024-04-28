@@ -4,14 +4,6 @@ api.batch\_processing.postprocessing package
 Submodules
 ----------
 
-api.batch\_processing.postprocessing.add\_max\_conf module
-----------------------------------------------------------
-
-.. automodule:: api.batch_processing.postprocessing.add_max_conf
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 api.batch\_processing.postprocessing.categorize\_detections\_by\_size module
 ----------------------------------------------------------------------------
 

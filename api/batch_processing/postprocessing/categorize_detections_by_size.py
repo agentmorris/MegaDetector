@@ -19,16 +19,19 @@ from tqdm import tqdm
 
 class SizeCategorizationOptions:
 
-    # Should be sorted from smallest to largest
+    #: Thresholds to use for separation, as a fraction of the image size.
+    #:
+    #: Should be sorted from smallest to largest.
     size_thresholds = [0.95]
     
-    # List of category numbers to use in separation; uses all categories if None
+    #: List of category numbers to use in separation; uses all categories if None
     categories_to_separate = None
     
-    # Can be "size", "width", or "height"
+    #: Dimension to use for thresholding; can be "size", "width", or "height"
     measurement = 'size'
     
-    # Should have the same length as "size_thresholds"
+    #: Categories to assign to thresholded ranges; should have the same length as
+    #: "size_thresholds".
     size_category_names = ['large_detection']
     
                                                  

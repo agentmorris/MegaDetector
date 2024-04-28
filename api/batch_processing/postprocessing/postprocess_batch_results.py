@@ -852,7 +852,7 @@ def process_batch_results(options: PostProcessingOptions
 
     ground_truth_indexed_db = None
 
-    if (options.ground_truth_json_file is not None):
+    if (options.ground_truth_json_file is not None) and (len(options.ground_truth_json_file) > 0):
         assert (options.confidence_threshold is None) or (isinstance(options.confidence_threshold,float)), \
             'Variable confidence thresholds are not supported when supplying ground truth'
             
@@ -900,7 +900,10 @@ def process_batch_results(options: PostProcessingOptions
         print('Choosing default confidence threshold of {} based on MD version'.format(
             options.confidence_threshold))    
             
-    if options.almost_detection_confidence_threshold is None:
+    if options.almost_detection_confidence_threshold is None and options.include_almost_detections:
+        assert isinstance(options.confidence_threshold,float), \
+            'If you are using a dictionary of confidence thresholds and almost-detections are enabled, ' + \
+            'you need to supply a threshold for almost detections.'
         options.almost_detection_confidence_threshold = options.confidence_threshold - 0.05
         if options.almost_detection_confidence_threshold < 0:
             options.almost_detection_confidence_threshold = 0
@@ -1723,18 +1726,17 @@ if False:
 
     #%%
 
-    base_dir = r'G:\temp\md'
+    base_dir = r'G:\temp'
     options = PostProcessingOptions()
     options.image_base_dir = base_dir
-    options.output_dir = os.path.join(base_dir, 'postprocessing')
-    options.api_output_filename_replacements = {} # {'20190430cameratraps\\':''}
-    options.ground_truth_filename_replacements = {} # {'\\data\\blob\\':''}
+    options.output_dir = os.path.join(base_dir, 'preview')
     options.api_output_file = os.path.join(base_dir, 'results.json')
-    options.ground_truth_json_file = os.path.join(base_dir, 'gt.json')
-    # options.unlabeled_classes = ['human']
+    options.confidence_threshold = {'person':0.5,'animal':0.5,'vehicle':0.01}
+    options.include_almost_detections = True
+    options.almost_detection_confidence_threshold = 0.001
 
     ppresults = process_batch_results(options)
-    # os.start(ppresults.output_html_file)
+    # from md_utils.path_utils import open_file; open_file(ppresults.output_html_file)
 
 
 #%% Command-line driver

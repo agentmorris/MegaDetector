@@ -27,7 +27,7 @@ If no output directory is specified, writes detections for c:\foo\bar.jpg to
 c:\foo\bar_detections.jpg.
 
 This script will only consider detections with > 0.005 confidence at all times.
-The `threshold` you provide is only for rendering the results. If you need to
+The threshold you provide is only for rendering the results. If you need to
 see lower-confidence detections, you can change
 DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD.
 
