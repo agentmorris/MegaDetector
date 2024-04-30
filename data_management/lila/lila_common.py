@@ -122,27 +122,27 @@ def read_lila_metadata(metadata_dir):
     Returns a dict mapping dataset names (e.g. "Caltech Camera Traps") to dicts
     with keys corresponding to the headers in the .csv file, currently:
         
-    name,
-    short_name,
-    continent,
-    country,
-    region,
-    image_base_url_relative,
-    metadata_url_relative,
-    bbox_url_relative,
-    image_base_url_gcp,
-    metadata_url_gcp,
-    bbox_url_gcp,
-    image_base_url_aws,
-    metadata_url_aws,
-    bbox_url_aws,
-    image_base_url_azure,
-    metadata_url_azure,
-    box_url_azure,
-    mdv4_results_raw,
-    mdv5b_results_raw,
-    md_results_with_rde,
-    json_filename
+    - name
+    - short_name
+    - continent
+    - country
+    - region
+    - image_base_url_relative
+    - metadata_url_relative
+    - bbox_url_relative
+    - image_base_url_gcp
+    - metadata_url_gcp
+    - bbox_url_gcp
+    - image_base_url_aws
+    - metadata_url_aws
+    - bbox_url_aws
+    - image_base_url_azure
+    - metadata_url_azure
+    - box_url_azure
+    - mdv4_results_raw
+    - mdv5b_results_raw
+    - md_results_with_rde
+    - json_filename
     """
     
     # Put the master metadata file in the same folder where we're putting images

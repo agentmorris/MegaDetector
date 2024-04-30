@@ -20,7 +20,7 @@ import os
 from data_management.lila.lila_common import read_lila_metadata,\
     read_metadata_file_for_dataset, read_lila_taxonomy_mapping
 
-# preferred cloud provider. Options are 'gcp', 'azure', or 'aws'
+# cloud provider to use for downloading images; options are 'gcp', 'azure', or 'aws'
 preferred_cloud = 'gcp'
 
 # array to fill for output

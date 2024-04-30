@@ -20,6 +20,7 @@ Subpackages
 
    data_management.annotations
    data_management.databases
+   data_management.lila
 
 Submodules
 ----------
