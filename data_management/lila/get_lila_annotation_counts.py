@@ -20,6 +20,9 @@ import os
 from data_management.lila.lila_common import read_lila_metadata,\
     read_metadata_file_for_dataset, read_lila_taxonomy_mapping
 
+# preferred cloud provider. Options are 'gcp', 'azure', or 'aws'
+preferred_cloud = 'gcp'
+
 # array to fill for output
 category_list = []
 
@@ -96,9 +99,9 @@ for ds_name in metadata_table.keys():
         print('Warning: taxonomy mapping not available for {}'.format(ds_name))
         
     print('Finding categories in {}'.format(ds_name))
-    
+
     json_filename = metadata_table[ds_name]['json_filename']
-    base_url = metadata_table[ds_name]['image_base_url']
+    base_url = metadata_table[ds_name]['image_base_url_' + preferred_cloud]
     assert not base_url.endswith('/')
     
     # Open the metadata file    
