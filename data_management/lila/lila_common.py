@@ -54,7 +54,11 @@ def read_wildlife_insights_taxonomy_mapping(metadata_dir):
     """
     Reads the WI taxonomy mapping file, downloading the .json data (and writing to .csv) if necessary.
     
-    Returns a Pandas dataframe.
+    Args:
+        metadata_dir (str): folder to use for temporary LILA metadata files
+        
+    Returns:
+        pd.dataframe: A DataFrame with taxonomy information
     """
     
     wi_taxonomy_csv_path = os.path.join(metadata_dir,wildlife_insights_taxonomy_local_csv_filename)
@@ -93,7 +97,11 @@ def read_lila_taxonomy_mapping(metadata_dir):
     """
     Reads the LILA taxonomy mapping file, downloading the .csv file if necessary.
     
-    Returns a Pandas dataframe, with one row per identification.
+    Args:
+        metadata_dir (str): folder to use for temporary LILA metadata files
+        
+    Returns:
+        pd.DataFrame: a DataFrame with one row per identification
     """
     
     p = urlparse(lila_taxonomy_mapping_url)
@@ -109,30 +117,34 @@ def read_lila_metadata(metadata_dir):
     """
     Reads LILA metadata (URLs to each dataset), downloading the .csv file if necessary.
     
-    Returns a dict mapping dataset names (e.g. "Caltech Camera Traps") to dicts
-    with keys corresponding to the headers in the .csv file, currently:
+    Args:
+        metadata_dir (str): folder to use for temporary LILA metadata files
         
-    - name
-    - short_name
-    - continent
-    - country
-    - region
-    - image_base_url_relative
-    - metadata_url_relative
-    - bbox_url_relative
-    - image_base_url_gcp
-    - metadata_url_gcp
-    - bbox_url_gcp
-    - image_base_url_aws
-    - metadata_url_aws
-    - bbox_url_aws
-    - image_base_url_azure
-    - metadata_url_azure
-    - box_url_azure
-    - mdv4_results_raw
-    - mdv5b_results_raw
-    - md_results_with_rde
-    - json_filename
+    Returns:
+        dict: a dict mapping dataset names (e.g. "Caltech Camera Traps") to dicts
+        with keys corresponding to the headers in the .csv file, currently:
+        
+        - name
+        - short_name
+        - continent
+        - country
+        - region
+        - image_base_url_relative
+        - metadata_url_relative
+        - bbox_url_relative
+        - image_base_url_gcp
+        - metadata_url_gcp
+        - bbox_url_gcp
+        - image_base_url_aws
+        - metadata_url_aws
+        - bbox_url_aws
+        - image_base_url_azure
+        - metadata_url_azure
+        - box_url_azure
+        - mdv4_results_raw
+        - mdv5b_results_raw
+        - md_results_with_rde
+        - json_filename
     """
     
     # Put the master metadata file in the same folder where we're putting images
@@ -166,6 +178,12 @@ def read_lila_all_images_file(metadata_dir):
     """
     Downloads if necessary - then unzips if necessary - the .csv file with label mappings for
     all LILA files, and opens the resulting .csv file as a Pandas DataFrame.
+    
+    Args:
+        metadata_dir (str): folder to use for temporary LILA metadata files
+        
+    Returns:
+        pd.DataFrame: a DataFrame containing one row per identification in a LILA camera trap image
     """
         
     p = urlparse(lila_all_images_url)
@@ -187,10 +205,27 @@ def read_lila_all_images_file(metadata_dir):
     return df
 
 
-def read_metadata_file_for_dataset(ds_name,metadata_dir,metadata_table=None,json_url=None,preferred_cloud='gcp'):
+def read_metadata_file_for_dataset(ds_name,
+                                   metadata_dir,
+                                   metadata_table=None,
+                                   json_url=None,
+                                   preferred_cloud='gcp'):
     """
     Downloads if necessary - then unzips if necessary - the .json file for a specific dataset.
-    Returns the .json filename on the local disk.
+    
+    Args:
+        ds_name (str): the name of the dataset for which you want to retrieve metadata (e.g.
+            "Caltech Camera Traps")        
+        metadata_dir (str): folder to use for temporary LILA metadata files
+        metadata_table (dict, optional): an optional dictionary already loaded via
+            read_lila_metadata()
+        json_url (str, optional): the URL of the metadata file, if None will be retrieved
+            via read_lila_metadata()
+        preferred_cloud (str, optional): 'gcp' (default), 'azure', or 'aws'
+        
+    Returns:
+        str: the .json filename on the local disk
+    
     """
     
     assert preferred_cloud in lila_base_urls.keys()
