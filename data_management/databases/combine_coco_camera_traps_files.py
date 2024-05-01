@@ -9,6 +9,8 @@ writing the results to another .json file.
 - Errors on unrecognized fields.
 - Checks compatibility in info structs, within reason.
 
+*Example command-line invocation*
+    
 combine_coco_camera_traps_files input1.json input2.json ... inputN.json output.json
 
 """
@@ -19,26 +21,25 @@ import argparse
 import json
 import sys
 
-from typing import Any, Dict, Iterable, Mapping, List, Optional
-
 
 #%% Merge functions
 
-def combine_cct_files(input_files: List[str],
-                             output_file: Optional[str] = None,
-                             require_uniqueness: Optional[bool] = True,
-                             filename_prefixes: Optional[dict] = None
-                             ) -> Dict[str, Any]:
+def combine_cct_files(input_files, output_file=None, require_uniqueness=True,
+                      filename_prefixes=None):                             
     """
-    Merges list of COCO Camera Traps files *input_files* into a single
-    dictionary, optionally writing the result to *output_file*.
+    Merges the list of COCO Camera Traps files [input_files] into a single
+    dictionary, optionally writing the result to [output_file].
 
     Args:
-        input_files: list of str, paths to JSON detection files
-        output_file: optional str, path to write merged JSON
-        require_uniqueness: bool, whether to require that the images in
+        input_files (list): paths to CCT .json files
+        output_file (str, optional): path to write merged .json file
+        require_uniqueness (bool): whether to require that the images in
             each input_dict be unique
+    
+    Returns:
+        dict: the merged COCO-formatted .json dict
     """
+    
     input_dicts = []
     print('Loading input files')
     for fn in input_files:
@@ -61,11 +62,9 @@ def combine_cct_files(input_files: List[str],
     return merged_dict
 
 
-def combine_cct_dictionaries(input_dicts: Iterable[Mapping[str, Any]],
-                                    require_uniqueness: Optional[bool] = True                                    
-                                    ) -> Dict[str, Any]:
+def combine_cct_dictionaries(input_dicts, require_uniqueness=True):                                    
     """
-    Merges the list of COCO Camera Traps dictionaries *input_dicts*.  See header
+    Merges the list of COCO Camera Traps dictionaries [input_dicts].  See module header
     comment for details on merge rules.
 
     Args:
@@ -73,7 +72,8 @@ def combine_cct_dictionaries(input_dicts: Iterable[Mapping[str, Any]],
         require_uniqueness: bool, whether to require that the images in
             each input_dict be unique
 
-    Returns: dict, represents the merged JSON
+    Returns: 
+        dict: the merged COCO-formatted .json dict
     """
     
     filename_to_image = {}
@@ -177,12 +177,16 @@ def combine_cct_dictionaries(input_dicts: Iterable[Mapping[str, Any]],
                    'categories': all_categories,
                    'images': sorted_images,
                    'annotations': all_annotations}
+    
     return merged_dict
+
+# ...combine_cct_dictionaries(...)
 
 
 #%% Command-line driver
 
 def main():
+    
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'input_paths', nargs='+',

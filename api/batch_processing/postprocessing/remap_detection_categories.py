@@ -27,29 +27,35 @@ def remap_detection_categories(input_file,
                                extra_category_handling='error',
                                overwrite=False):
     """
-    Given a MD results file [input_file], remap the category IDs according to the dictionary
+    Given a MegaDetector results file [input_file], remap the category IDs according to the dictionary
     [target_category_map], writing the results to [output_file].  The remapped dictionary needs to have 
     the same category names as the input file's detection_categories dictionary.
     
+    Typically used to map, e.g., a variety of species to the class "mammal" or the class "animal".
+    
     Currently only supports remapping detection categories, not classification categories.
     
-    target_category_map can also be a MD results file, in which case we'll use that file's
-    detection_categories dictionary.
-    
-    [extra_category_handling] specifies what we should do if categories are present in the source file 
-    that are not present in the target mapping.
-    
-    'error' == Error in this case.
-    
-    'drop_if_unused' == Don't include these in the output file's category mappings if they are unused,
-     error if they are.
-     
-    'remap' == Remap to unused category IDs.  This is reserved for future use, not currently implemented.
-    
+    Args:
+        input_file (str): the MD .json results file to remap
+        output_file (str): the remapped .json file to write
+        target_category_map (dict): the category mapping that should be used in the output file.
+            This can also be a MD results file, in which case we'll use that file's
+            detection_categories dictionary.
+        extra_category_handling (str, optional): specifies what we should do if categories are present
+            in the source file that are not present in the target mapping:
+            
+            * 'error' == Error in this case.
+            * 'drop_if_unused' == Don't include these in the output file's category mappings if they are 
+              unused, error if they are.
+            * 'remap' == Remap to unused category IDs.  This is reserved for future use, not currently
+              implemented.
+        overwrite (bool, optional): whether to overwrite [output_file] if it exists; if this is True and
+            [output_file] exists, this function is a no-op
+               
     """
     
     if os.path.exists(output_file) and (not overwrite):
-        print('File {} exists, bypassing remapping'.format(output_file))
+        print('File {} exists, bypassing remapping'.format(output_file))        
         return
     
     assert os.path.isfile(input_file), \
@@ -132,7 +138,7 @@ def remap_detection_categories(input_file,
     
     
     print('Saved remapped results to {}'.format(output_file))
-
+    
 
 #%% Interactive driver
 
@@ -162,4 +168,3 @@ if False:
 #%% Command-line driver
 
 # TODO
-

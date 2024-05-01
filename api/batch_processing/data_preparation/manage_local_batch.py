@@ -803,7 +803,7 @@ if render_animals_only:
 os.makedirs(output_base, exist_ok=True)
 print('Processing to {}'.format(output_base))
 
-options.api_output_file = combined_api_output_file
+options.md_results_file = combined_api_output_file
 options.output_dir = output_base
 ppresults = process_batch_results(options)
 html_output_file = ppresults.output_html_file
@@ -939,7 +939,7 @@ os.makedirs(output_base, exist_ok=True)
 
 print('Processing post-RDE to {}'.format(output_base))
 
-options.api_output_file = filtered_output_filename
+options.md_results_file = filtered_output_filename
 options.output_dir = output_base
 ppresults = process_batch_results(options)
 html_output_file = ppresults.output_html_file
@@ -2014,7 +2014,7 @@ output_base = os.path.join(postprocessing_output_folder, folder_token + \
 os.makedirs(output_base, exist_ok=True)
 print('Processing {} to {}'.format(base_task_name, output_base))
 
-options.api_output_file = sequence_smoothed_classification_file
+options.md_results_file = sequence_smoothed_classification_file
 options.output_dir = output_base
 ppresults = process_batch_results(options)
 path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
@@ -2134,7 +2134,7 @@ output_base_large_boxes = os.path.join(postprocessing_output_folder,
 os.makedirs(output_base_large_boxes, exist_ok=True)
 print('Processing post-RDE, post-size-separation to {}'.format(output_base_large_boxes))
 
-options.api_output_file = size_separated_file
+options.md_results_file = size_separated_file
 options.output_dir = output_base_large_boxes
 
 ppresults = process_batch_results(options)

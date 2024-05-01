@@ -2,11 +2,11 @@
 
 subset_json_db.py
 
-Select a subset of images (and associated annotations) from a .json file
-in COCO Camera Traps format.
+Select a subset of images (and associated annotations) from a .json file in COCO 
+Camera Traps format based on a string query.
 
-To subset the .json files in the MegaDetector output format, see 
-subset_json_detector_output.py
+To subset .json files in the MegaDetector output format, see
+subset_json_detector_output.py.
 
 """
     
@@ -26,6 +26,16 @@ def subset_json_db(input_json, query, output_json=None, ignore_case=False):
     Given a json file (or dictionary already loaded from a json file), produce a new 
     database containing only the images whose filenames contain the string 'query', 
     optionally writing that DB output to a new json file.
+    
+    Args:
+        input_json (str): COCO Camera Traps .json file to load, or an already-loaded dict
+        query (str): string to query for, only include images in the output whose filenames 
+            contain this string.
+        output_json (str, optional): file to write the resulting .json file to
+        ignore_case (bool, optional): whether to perform a case-insensitive search for [query]
+        
+    Returns:
+        dict: possibly-modified CCT dictionary
     """
     
     if ignore_case:
@@ -76,8 +86,8 @@ if False:
     
     #%%
     
-    input_json = r"E:\Statewide_wolf_container\idfg_20190409.json"
-    output_json = r"E:\Statewide_wolf_container\idfg_20190409_clearcreek.json"
+    input_json = r"e:\Statewide_wolf_container\idfg_20190409.json"
+    output_json = r"e:\Statewide_wolf_container\idfg_20190409_clearcreek.json"
     query = 'clearcreek'
     ignore_case = True
     db = subset_json_db(input_json, query, output_json, ignore_case)

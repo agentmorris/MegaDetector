@@ -7,6 +7,8 @@ supports json <--> csv conversion, but this should be the landing place for any
 conversion - including between hypothetical alternative .json versions - that we support 
 in the future.
 
+The .csv format is largely obsolete, don't use it unless you're super-duper sure you need it.
+
 """
 
 #%% Constants and imports
@@ -33,13 +35,27 @@ def convert_json_to_csv(input_path,output_path=None,min_confidence=None,
                         omit_bounding_boxes=False,output_encoding=None,
                         overwrite=True):
     """
-    Convert .json to .csv
+    Converts a MD results .json file to a totally non-standard .csv format.
     
-    If output_path is None, will convert x.json to x.csv.
+    If [output_path] is None, will convert x.json to x.csv.
     
     TODO: this function should obviously be using Pandas or some other sensible structured
     representation of tabular data.  Even a list of dicts.  This implementation is quite
     brittle and depends on adding fields to every row in exactly the right order.
+    
+    Args:
+        input_path (str): the input .json file to convert
+        output_path (str, optional): the output .csv file to generate; if this is None, uses 
+            [input_path].csv
+        min_confidence (float, optional): the minimum-confidence detection we should include 
+            in the "detections" column; has no impact on the other columns
+        omit_bounding_boxes (bool): whether to leave out the json-formatted bounding boxes
+            that make up the "detections" column, which are not generally useful for someone who
+            wants to consume this data as a .csv file
+        output_encoding (str, optional): encoding to use for the .csv file
+        overwrite (bool): whether to overwrite an existing .csv file; if this is False and the
+            output file exists, no-ops and returns
+           
     """
     
     if output_path is None:
@@ -58,11 +74,12 @@ def convert_json_to_csv(input_path,output_path=None,min_confidence=None,
     
     # We add an output column for each class other than 'empty', 
     # containing the maximum probability of  that class for each image
-    n_non_empty_detection_categories = len(annotation_constants.annotation_bbox_categories) - 1
+    # n_non_empty_detection_categories = len(annotation_constants.annotation_bbox_categories) - 1
+    n_non_empty_detection_categories = annotation_constants.NUM_DETECTOR_CATEGORIES
     detection_category_column_names = []
-    assert annotation_constants.annotation_bbox_category_id_to_name[0] == 'empty'
+    assert annotation_constants.detector_bbox_categories[0] == 'empty'
     for cat_id in range(1,n_non_empty_detection_categories+1):
-        cat_name = annotation_constants.annotation_bbox_category_id_to_name[cat_id]
+        cat_name = annotation_constants.detector_bbox_categories[cat_id]
         detection_category_column_names.append('max_conf_' + cat_name)
     
     n_classification_categories = 0
@@ -206,6 +223,14 @@ def convert_json_to_csv(input_path,output_path=None,min_confidence=None,
 def convert_csv_to_json(input_path,output_path=None,overwrite=True):
     """
     Convert .csv to .json.  If output_path is None, will convert x.csv to x.json.
+    
+    Args:
+        input_path (str): .csv filename to convert to .json
+        output_path (str, optional): the output .json file to generate; if this is None, uses 
+            [input_path].json
+        overwrite (bool): whether to overwrite an existing .json file; if this is False and the
+            output file exists, no-ops and returns    
+        
     """
     
     if output_path is None:
@@ -231,7 +256,7 @@ def convert_csv_to_json(input_path,output_path=None,overwrite=True):
     }
     
     classification_categories = {}
-    detection_categories = annotation_constants.annotation_bbox_category_id_to_name
+    detection_categories = annotation_constants.detector_bbox_categories
 
     images = []
     

@@ -2,7 +2,7 @@ r"""
 
 separate_detections_into_folders.py
 
-## Overview
+**Overview**
 
 Given a .json file with batch processing results, separate the files in that
 set of results into folders that contain animals/people/vehicles/nothing, 
@@ -10,18 +10,18 @@ according to per-class thresholds.
 
 Image files are copied, not moved.
 
-## Output structure
+**Output structure**
 
 Preserves relative paths within each of those folders; cannot be used with .json
 files that have absolute paths in them.
 
 For example, if your .json file has these images:
 
-a/b/c/1.jpg
-a/b/d/2.jpg
-a/b/e/3.jpg
-a/b/f/4.jpg
-a/x/y/5.jpg
+* a/b/c/1.jpg
+* a/b/d/2.jpg
+* a/b/e/3.jpg
+* a/b/f/4.jpg
+* a/x/y/5.jpg
 
 And let's say:
 
@@ -29,17 +29,17 @@ And let's say:
 * The fourth image is above threshold for "animal" and "person"
 * The fifth image contains an animal
 
-* You specify an output base folder of c:\out
+* You specify an output base folder of c:/out
 
 You will get the following files:
 
-c:\out\empty\a\b\c\1.jpg
-c:\out\people\a\b\d\2.jpg
-c:\out\vehicles\a\b\e\3.jpg
-c:\out\animal_person\a\b\f\4.jpg
-c:\out\animals\a\x\y\5.jpg
+* c:/out/empty/a/b/c/1.jpg
+* c:/out/people/a/b/d/2.jpg
+* c:/out/vehicles/a/b/e/3.jpg
+* c:/out/animal_person/a/b/f/4.jpg
+* c:/out/animals/a/x/y/5.jpg
 
-## Rendering bounding boxes
+**Rendering bounding boxes**
 
 By default, images are just copied to the target output folder.  If you specify --render_boxes,
 bounding boxes will be rendered on the output images.  Because this is no longer strictly
@@ -48,16 +48,16 @@ result in the loss of some EXIF metadata; this *will* result in the loss of IPTC
 
 Rendering boxes also makes this script a lot slower.
 
-## Classification-based separation
+**Classification-based separation**
 
 If you have a results file with classification data, you can also specify classes to put
 in their own folders, within the "animals" folder, like this:
 
---classification_thresholds "deer=0.75,cow=0.75"
+``--classification_thresholds "deer=0.75,cow=0.75"``
 
 So, e.g., you might get:
 
-c:\out\animals\deer\a\x\y\5.jpg
+c:/out/animals/deer/a/x/y/5.jpg
 
 In this scenario, the folders within "animals" will be:
 
@@ -85,7 +85,7 @@ from multiprocessing.pool import ThreadPool
 from functools import partial
 from tqdm import tqdm
 
-from md_utils.ct_utils import args_to_object
+from md_utils.ct_utils import args_to_object, is_float
 from detection.run_detector import get_typical_confidence_threshold_from_results
 
 import md_visualization.visualization_utils as vis_utils
@@ -104,46 +104,90 @@ default_box_expansion = 3
 #%% Options class
 
 class SeparateDetectionsIntoFoldersOptions:
-
+    """
+    Options used to parameterize separate_detections_into_folders()
+    """
+    
     def __init__(self,threshold=None):
         
+        #: Default threshold for categories not specified in category_name_to_threshold
         self.threshold = None
         
+        #: Dict mapping category names to thresholds; for example, an image with only a detection of class 
+        #: "animal" whose confidence is greater than or equal to category_name_to_threshold['animal']
+        #: will be put in the "animal" folder.
         self.category_name_to_threshold = {
             'animal': self.threshold,
             'person': self.threshold,
             'vehicle': self.threshold
         }
         
+        #: Number of workers to use, set to <= 1 to disable parallelization
         self.n_threads = 1
         
+        #: By default, this function errors if you try to output to an existing folder
         self.allow_existing_directory = False
+        
+        #: By default, this function errors if any of the images specified in the results file don't
+        #: exist in the source folder.
         self.allow_missing_files = False
+        
+        #: Whether to overwrite images that already exist in the target folder; only relevant if
+        #: [allow_existing_directory] is True
         self.overwrite = True
+        
+        #: Whether to skip empty images; if this is False, empty images (i.e., images with no detections
+        #: above the corresponding threshold) will be copied to an "empty" folder.
         self.skip_empty_images = False
         
+        #: The MD results .json file to process
         self.results_file = None
+        
+        #: The folder containing source images; filenames in [results_file] should be relative to this
+        #: folder.
         self.base_input_folder = None
+        
+        #: The folder to which we should write output images; see the module header comment for information
+        #: about how that foler will be structured.
         self.base_output_folder = None
                   
-        # Dictionary mapping categories (plus combinations of categories, and 'empty') to output folders
-        self.category_name_to_folder = None
-        self.category_id_to_category_name = None
-        self.debug_max_images = None
-        
-        # Populated only when using classification results
-        self.classification_category_id_to_name = None
-        self.classification_categories = None
-                
-        self.render_boxes = False
-        self.line_thickness = default_line_thickness
-        self.box_expansion = default_box_expansion
-        
-        # Should we move rather than copy?
+        #: Should we move rather than copy?
         self.move_images = False
         
-        # Originally specified as a string, converted to a dict mapping name:threshold
+        #: Should we render boxes on the output images?  Makes everything a lot slower.
+        self.render_boxes = False
+        
+        #: Line thickness in pixels; only relevant if [render_boxes] is True
+        self.line_thickness = default_line_thickness
+        
+        #: Box expansion in pixels; only relevant if [render_boxes] is True
+        self.box_expansion = default_box_expansion
+        
+        #: Originally specified as a string that looks like this:
+        #:
+        #: deer=0.75,cow=0.75
+        #:
+        #: Converted internally to a dict mapping name:threshold 
         self.classification_thresholds = None
+        
+        ## Debug or internal attributes
+        
+        #: Do not set explicitly; populated from data when using classification results
+        self.classification_category_id_to_name = None
+        
+        #: Do not set explicitly; populated from data when using classification results
+        self.classification_categories = None
+                
+        #: Used to test this script; sets a limit on the number of images to process.
+        self.debug_max_images = None
+        
+        #: Do not set explicitly; this gets created based on [results_file]
+        #:
+        #:Dictionary mapping categories (plus combinations of categories, and 'empty') to output folders
+        self.category_name_to_folder = None
+        
+        #: Do not set explicitly; this gets loaded from [results_file]
+        self.category_id_to_category_name = None
         
     # ...__init__()
     
@@ -152,21 +196,11 @@ class SeparateDetectionsIntoFoldersOptions:
     
 #%% Support functions
     
-def path_is_abs(p): return (len(p) > 1) and (p[0] == '/' or p[1] == ':')
-
-def is_float(v):
-    """
-    Determines whether v is either a float or a string representation of a float.
-    """
-    try:
-        _ = float(v)
-        return True
-    except ValueError:
-        return False
+def _path_is_abs(p): return (len(p) > 1) and (p[0] == '/' or p[1] == ':')
 
 printed_missing_file_warning = False
     
-def process_detections(im,options):
+def _process_detections(im,options):
     """
     Process all detections for a single image
     
@@ -393,13 +427,24 @@ def process_detections(im,options):
         
     # ...if we don't/do need to render boxes
     
-# ...def process_detections()
+# ...def _process_detections()
     
     
 #%% Main function
 
 def separate_detections_into_folders(options):
-
+    """
+    Given a .json file with batch processing results, separate the files in that
+    set of results into folders that contain animals/people/vehicles/nothing, 
+    according to per-class thresholds.  See the header comment of this module for 
+    more details about the output folder structure.
+    
+    Args:
+        options (SeparateDetectionsIntoFoldersOptions): parameters guiding image
+        separation, see the SeparateDetectionsIntoFoldersOptions documentation for specific
+        options.
+    """
+    
     # Input validation
     
     # Currently we don't support moving (instead of copying) when we're also rendering
@@ -424,7 +469,7 @@ def separate_detections_into_folders(options):
     
     for im in images:
         fn = im['file']
-        assert not path_is_abs(fn), 'Cannot process results with absolute image paths'
+        assert not _path_is_abs(fn), 'Cannot process results with absolute image paths'
         
     print('Processing detections for {} images'.format(len(images)))
     
@@ -532,15 +577,15 @@ def separate_detections_into_folders(options):
         for i_image,im in enumerate(tqdm(images)):
             if options.debug_max_images is not None and i_image > options.debug_max_images:
                 break
-            process_detections(im,options)
+            _process_detections(im,options)
         # ...for each image
         
     else:
         
         print('Starting a pool with {} threads'.format(options.n_threads))
         pool = ThreadPool(options.n_threads)
-        process_detections_with_options = partial(process_detections, options=options)
-        results = list(tqdm(pool.imap(process_detections_with_options, images), total=len(images)))
+        process_detections_with_options = partial(_process_detections, options=options)
+        _ = list(tqdm(pool.imap(process_detections_with_options, images), total=len(images)))
         
 #  ...def separate_detections_into_folders
 
@@ -595,7 +640,7 @@ if False:
     python separate_detections_into_folders.py ~/data/ena24-2022-06-15-v5a.0.0_megaclassifier.json ~/data/ENA24/images ~/data/ENA24-separated --threshold 0.17 --animal_threshold 0.2 --n_threads 10 --allow_existing_directory --classification_thresholds "deer=0.75,cow=0.75,bird=0.75"
     """    
     
-#%% Command-line driver   
+#%% Command-line driver
 
 def main():
     
@@ -683,4 +728,3 @@ def main():
 if __name__ == '__main__':
     
     main()
-    

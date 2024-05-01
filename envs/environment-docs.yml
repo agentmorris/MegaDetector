@@ -10,6 +10,7 @@ dependencies:
 - sphinx
 - sphinx-mdinclude
 - sphinx_rtd_theme
+- sphinx-argparse-cli
 
 - Pillow
 - tqdm

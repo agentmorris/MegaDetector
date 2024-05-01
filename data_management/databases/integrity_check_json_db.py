@@ -2,7 +2,7 @@
 
 integrity_check_json_db.py
 
-Does some integrity-checking and computes basic statistics on a db, specifically:
+Does some integrity-checking and computes basic statistics on a COCO Camera Traps .json file, specifically:
 
 * Verifies that required fields are present and have the right types
 * Verifies that annotations refer to valid images
@@ -33,14 +33,32 @@ from md_utils import ct_utils
 #%% Classes and environment
 
 class IntegrityCheckOptions:
+    """
+    Options for integrity_check_json_db()
+    """
     
+    #: Image path; the filenames in the .json file should be relative to this folder
     baseDir = ''
+    
+    #: Should we validate the image sizes?
     bCheckImageSizes = False
+    
+    #: Should we check that all the images in the .json file exist on disk?
     bCheckImageExistence = False
+    
+    #: Should we search [baseDir] for images that are not used in the .json file?
     bFindUnusedImages = False
+    
+    #: Should we require that all images in the .json file have a 'location' field?
     bRequireLocation = True
+    
+    #: For debugging, limit the number of images we'll process
     iMaxNumImages = -1
+    
+    #: Number of threads to use for parallelization, set to <= 1 to disable parallelization
     nThreads = 10
+    
+    #: Enable additional debug output
     verbose = True
     
     
@@ -50,7 +68,21 @@ defaultOptions = IntegrityCheckOptions()
 
 #%% Functions
 
-def check_image_existence_and_size(image,options=None):
+def _check_image_existence_and_size(image,options=None):
+    """
+    Validate the image represented in the CCT image dict [image], which should have fields:
+    
+    * file_name
+    * width
+    * height
+
+    Args:
+        image (dict): image to validate
+        options (IntegrityCheckOptions): parameters impacting validation
+    
+    Returns:
+        bool: whether this image passes validation
+    """
 
     if options is None:        
         options = defaultOptions
@@ -80,9 +112,17 @@ def check_image_existence_and_size(image,options=None):
   
 def integrity_check_json_db(jsonFile, options=None):
     """
-    jsonFile can be a filename or an already-loaded json database
+    Does some integrity-checking and computes basic statistics on a COCO Camera Traps .json file; see
+    module header comment for a list of the validation steps.
     
-    return sortedCategories, data, errorInfo
+    Args:
+        jsonFile (str): filename to validate, or an already-loaded dict
+    
+    Returns:
+        tuple: tuple containing:
+            - sortedCategories (dict): list of categories used in [jsonFile], sorted by frequency
+            - data (dict): the data loaded from [jsonFile]
+            - errorInfo (dict): specific validation errors
     """
     
     if options is None:       
@@ -264,11 +304,11 @@ def integrity_check_json_db(jsonFile, options=None):
             defaultOptions.baseDir = options.baseDir
             defaultOptions.bCheckImageSizes = options.bCheckImageSizes
             defaultOptions.bCheckImageExistence = options.bCheckImageExistence
-            results = tqdm(pool.imap(check_image_existence_and_size, images), total=len(images))
+            results = tqdm(pool.imap(_check_image_existence_and_size, images), total=len(images))
         else:
             results = []
             for im in tqdm(images):
-                results.append(check_image_existence_and_size(im,options))
+                results.append(_check_image_existence_and_size(im,options))
                 
         for iImage,r in enumerate(results):
             if not r:            

@@ -12,12 +12,12 @@ import os
 import json
 import zipfile
 import pandas as pd
-import numpy as np
 
 from urllib.parse import urlparse
 
 from md_utils.url_utils import download_url
 from md_utils.path_utils import unzip_file
+from md_utils.ct_utils import is_empty
 
 # LILA camera trap primary metadata file
 lila_metadata_url = 'http://lila.science/wp-content/uploads/2023/06/lila_camera_trap_datasets.csv'
@@ -105,19 +105,9 @@ def read_lila_taxonomy_mapping(metadata_dir):
     return df
 
    
-def is_empty(v):
-    if v is None:
-        return True
-    if isinstance(v,str) and v == '':
-        return True
-    if isinstance(v,float) and np.isnan(v):
-        return True
-    return False
-
-
 def read_lila_metadata(metadata_dir):
     """
-    Reads LILA metadata (URLs to each dataset), downloading the txt file if necessary.
+    Reads LILA metadata (URLs to each dataset), downloading the .csv file if necessary.
     
     Returns a dict mapping dataset names (e.g. "Caltech Camera Traps") to dicts
     with keys corresponding to the headers in the .csv file, currently:

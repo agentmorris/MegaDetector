@@ -763,46 +763,6 @@ def draw_bounding_box_on_image(image,
 # ...def draw_bounding_box_on_image(...)
 
 
-def render_iMerit_boxes(boxes, classes, image,
-                        label_map=annotation_constants.annotation_bbox_category_id_to_name):
-    """
-    Renders bounding boxes and their category labels on a PIL image.
-
-    Args:
-        boxes: bounding box annotations from iMerit, format is:
-            [x_rel, y_rel, w_rel, h_rel] (rel = relative coords)
-        classes: the class IDs of the predicted class of each box/object
-        image: PIL.Image object to annotate on
-        label_map: optional dict mapping classes to a string for display
-
-    Returns:
-        image will be altered in place
-    """
-
-    display_boxes = []
-    
-    # list of lists, one list of strings for each bounding box (to accommodate multiple labels)
-    display_strs = []  
-    
-    for box, clss in zip(boxes, classes):
-        if len(box) == 0:
-            assert clss == 5
-            continue
-        x_rel, y_rel, w_rel, h_rel = box
-        ymin, xmin = y_rel, x_rel
-        ymax = ymin + h_rel
-        xmax = xmin + w_rel
-
-        display_boxes.append([ymin, xmin, ymax, xmax])
-
-        if label_map:
-            clss = label_map[int(clss)]
-        display_strs.append([clss])
-
-    display_boxes = np.array(display_boxes)
-    draw_bounding_boxes_on_image(image, display_boxes, classes, display_strs=display_strs)
-
-
 def render_megadb_bounding_boxes(boxes_info, image):
     """
     Render bounding boxes to an image, where those boxes are in the mostly-deprecated
@@ -1321,7 +1281,7 @@ def check_image_integrity(filename,modes=None):
 # ...def check_image_integrity(...)
 
 
-def parallel_check_image_integrity(filenames,modes=None, 
+def parallel_check_image_integrity(filenames, modes=None, 
                                    max_workers=16, use_threads=True, recursive=True):
     """
     Check whether we can successfully load a list of images via OpenCV and/or PIL.

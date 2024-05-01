@@ -30,25 +30,27 @@ the results of multiple model versions, see merge_detections.py.
 import argparse
 import sys
 import json
-from typing import Any, Dict, Iterable, Mapping, List, Optional
 
 
 #%% Merge functions
 
-def combine_api_output_files(input_files: List[str],
-                             output_file: Optional[str] = None,
-                             require_uniqueness: bool = True,
-                             verbose: bool = True
-                             ) -> Dict[str, Any]:
+def combine_api_output_files(input_files,
+                             output_file=None,
+                             require_uniqueness=True,
+                             verbose=True):
     """
-    Merges list of JSON API detection files *input_files* into a single
-    dictionary, optionally writing the result to *output_file*.
+    Merges the list of MD results files [input_files] into a single
+    dictionary, optionally writing the result to [output_file].
 
     Args:
-        input_files: list of str, paths to JSON detection files
-        output_file: optional str, path to write merged JSON
-        require_uniqueness: bool, whether to require that the images in
+        input_files (list of str): paths to JSON detection files
+        output_file (str, optional): path to write merged JSON
+        require_uniqueness (bool): whether to require that the images in
             each list of images be unique
+            
+    Returns:
+        dict: merged dictionaries loaded from [input_files], identical to what's 
+        written to [output_file] if [output_file] is not None
     """
     
     def print_if_verbose(s):
@@ -73,27 +75,27 @@ def combine_api_output_files(input_files: List[str],
     return merged_dict
 
 
-def combine_api_output_dictionaries(input_dicts: Iterable[Mapping[str, Any]],
-                                    require_uniqueness: bool = True
-                                    ) -> Dict[str, Any]:
+def combine_api_output_dictionaries(input_dicts, require_uniqueness=True):
     """
-    Merges the list of API detection dictionaries *input_dicts*.  See header
-    comment for details on merge rules.
+    Merges the list of MD results dictionaries [input_dicts] into a single dict.
+    See module header comment for details on merge rules.
 
     Args:
-        input_dicts: list of dicts, each dict is the JSON of the detections
-            output file from the Batch Processing API
-        require_uniqueness: bool, whether to require that the images in
-            each input dict be unique
+        input_dicts (list of dicts): list of dicts in which each dict represents the 
+            contents of a MD output file
+        require_uniqueness (bool): whether to require that the images in
+            each input dict be unique; if this is True and image filenames are
+            not unique, an error is raised.
 
-    Returns: dict, represents the merged JSON
+    Returns
+        dict: merged MD results
     """
     
     # Map image filenames to detections, we'll convert to a list later
     images = {}
-    info: Dict[str, str] = {}
-    detection_categories: Dict[str, str] = {}
-    classification_categories: Dict[str, str] = {}
+    info = {}
+    detection_categories = {}
+    classification_categories = {}
     n_redundant_images = 0
     n_images = 0
 
@@ -182,8 +184,20 @@ def combine_api_output_dictionaries(input_dicts: Iterable[Mapping[str, Any]],
 
 def combine_api_shard_files(input_files, output_file=None):
     """
-    Merges the list of .json-formatted API shard files *input_files* into a single
-    list of dictionaries, optionally writing the result to *output_file*.
+    Merges the list of .json-formatted API shard files [input_files] into a single
+    list of dictionaries, optionally writing the result to [output_file].
+    
+    This operates on mostly-deprecated API shard files, not MegaDetector results files.
+    If you don't know what an API shard file is, you don't want this function.
+    
+    Args:
+        input_files (list of str): files to merge
+        output_file (str, optiona): file to which we should write merged results
+        
+    Returns:
+        dict: merged results
+        
+    :meta private:
     """
 
     input_lists = []
@@ -215,6 +229,7 @@ def combine_api_shard_files(input_files, output_file=None):
 #%% Command-line driver
 
 def main():
+    
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'input_paths', nargs='+',

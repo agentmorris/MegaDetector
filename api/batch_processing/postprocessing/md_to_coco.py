@@ -38,18 +38,28 @@ def md_to_coco(md_results_file,
     
     A folder of images is required if width and height information are not available 
     in the MD results file.
+
+    Args:
+        md_results_file (str): MD results .json file to convert to COCO format
+        coco_output_file (str, optional): COCO .json file to write; if this is None, we'll return 
+            a COCO-formatted dict, but won't write it to disk
+        image_folder (str, optional): folder of images, required if 'width' and 'height' are not
+            present in the MD results file (they are not required by the format)
+        confidence_threshold (float, optional): boxes below this confidence threshold will not be
+            included in the output data
+        validate_image_sizes (bool, optional): if this is True, we'll check the image sizes 
+            regardless of whether "width" and "height" are present in the MD results file.
+        info (dict, optional): arbitrary metadata to include in an "info" field in the COCO-formatted
+            output
+        preserve_nonstandard_metadata (bool, optional): if this is True, confidence will be preserved in a 
+            non-standard "conf" field in each annotation, and any random fields present in each image's data
+            (e.g. EXIF metadata) will be propagated to COCO output    
+        include_failed_images (boo, optional): if this is True, failed images will be propagated to COCO output 
+            with a non-empty "failure" field and no other fields, otherwise failed images will be skipped.
     
-    If validate_image_sizes is True, we'll check the image sizes regardless of whether width
-    and height are present in the MD results file.
-    
-    If preserve_nonstandard_metadata is True, confidence will be preserved in a non-standard 
-    "conf" field in each annotation, and any random fields present in each image's data (e.g.
-    EXIF metadata) will be propagated to COCO output.
-    
-    If include_failed_images is True, failed images will be propagated to COCO output with
-    a non-empty "failure" field and no other fields, otherwise failed images will be skipped.
-    
-    Returns the COCO json dict.
+    Returns:
+        dict: the COCO data dict, identical to what's written to [coco_output_file] if [coco_output_file]
+        is not None.
     """
 
     with open(md_results_file,'r') as f:    

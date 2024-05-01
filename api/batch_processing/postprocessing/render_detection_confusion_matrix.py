@@ -33,7 +33,10 @@ from multiprocessing.pool import Pool
 
 #%% Support functions
 
-def image_to_output_file(im,preview_images_folder):
+def _image_to_output_file(im,preview_images_folder):
+    """
+    Produces a clean filename from im (if [im] is a str) or im['file'] (if [im] is a dict).
+    """
     
     if isinstance(im,str):
         filename_relative = im
@@ -44,7 +47,10 @@ def image_to_output_file(im,preview_images_folder):
     return os.path.join(preview_images_folder,fn_clean)
 
 
-def render_image(im,render_image_constants):
+def _render_image(im,render_image_constants):
+    """
+    Internal function for rendering a single image to the confusion matrix preview folder.
+    """
     
     filename_to_ground_truth_im = render_image_constants['filename_to_ground_truth_im']
     image_folder = render_image_constants['image_folder']
@@ -56,7 +62,7 @@ def render_image(im,render_image_constants):
     
     assert im['file'] in filename_to_ground_truth_im
     
-    output_file = image_to_output_file(im,preview_images_folder)
+    output_file = _image_to_output_file(im,preview_images_folder)
     if os.path.isfile(output_file) and not force_render_images:
         return output_file
     
@@ -105,9 +111,36 @@ def render_detection_confusion_matrix(ground_truth_file,
     confidence_thresholds and rendering_confidence_thresholds are dictionaries mapping
     class names to thresholds.  "default" is a special token that will be used for all
     classes not otherwise assigned thresholds.
+    
+    Args:
+        ground_truth_file (str): the CCT-formatted .json file with ground truth information
+        results_file (str): the MegaDetector results .json file
+        image_folder (str): the folder where images live; filenames in [ground_truth_file] and
+            [results_file] should be relative to this folder.
+        preview_folder (str): the output folder, i.e. the folder in which we'll create our nifty
+            HTML stuff.
+        force_rendering_images (bool, optional): if False, skips images that already exist
+        confidence_thresholds (dict, optional): a dictionary mapping class names to thresholds;
+            all classes not explicitly named here will use the threshold for the "default" category.
+        rendering_thresholds (dict, optional): a dictionary mapping class names to thresholds;
+            all classes not explicitly named here will use the threshold for the "default" category.
+        target_image_size (tuple, optional): output image size, as a pair of ints (width,height).  If one 
+            value is -1 and the other is not, aspect ratio is preserved.  If both are -1, the original image
+            sizes are preserved.
+        parallelize_rendering (bool, optional): enable (default) or disable parallelization when rendering
+        parallelize_rendering_n_core (int, optional): number of threads or processes to use for rendering, only
+            used if parallelize_rendering is True
+        parallelize_rendering_with_threads: whether to use threads (True) or processes (False) when rendering,
+            only used if parallelize_rendering is True
+        job_name (str, optional): job name to include in big letters in the output file
+        model_file (str, optional) model filename to incldue in HTML output
+        empty_category_name (str, optional): special category name that we should treat as empty, typically
+            "empty"
+        html_image_list_options (dict, optional): options listed passed along to write_html_image_list; 
+            see write_html_image_list for documentation.            
     """
     
-    #%% Argument and path handling
+    ##%% Argument and path handling
     
     preview_images_folder = os.path.join(preview_folder,'images')
     os.makedirs(preview_images_folder,exist_ok=True)
@@ -118,7 +151,7 @@ def render_detection_confusion_matrix(ground_truth_file,
         rendering_confidence_thresholds = {'default':0.4}
     
 
-    #%% Load ground truth 
+    ##%% Load ground truth 
         
     with open(ground_truth_file,'r') as f:
         ground_truth_data_cct = json.load(f)
@@ -129,14 +162,14 @@ def render_detection_confusion_matrix(ground_truth_file,
         filename_to_ground_truth_im[im['file_name']] = im
     
     
-    #%% Confirm that the ground truth images are present in the image folder
+    ##%% Confirm that the ground truth images are present in the image folder
     
     ground_truth_images = find_images(image_folder,return_relative_paths=True,recursive=True)
     assert len(ground_truth_images) == len(ground_truth_data_cct['images'])
     del ground_truth_images
     
     
-    #%% Map images to categories
+    ##%% Map images to categories
     
     # gt_image_id_to_image = {im['id']:im for im in ground_truth_data_cct['images']}
     gt_image_id_to_annotations = defaultdict(list)
@@ -175,7 +208,7 @@ def render_detection_confusion_matrix(ground_truth_file,
             'No ground truth category assigned to {}'.format(filename)
     
         
-    #%% Load results
+    ##%% Load results
     
     with open(results_file,'r') as f:
         md_formatted_results = json.load(f)
@@ -183,7 +216,7 @@ def render_detection_confusion_matrix(ground_truth_file,
     results_category_id_to_name = md_formatted_results['detection_categories']
     
     
-    #%% Render images with detections    
+    ##%% Render images with detections    
     
     render_image_constants = {}
     render_image_constants['filename_to_ground_truth_im'] = filename_to_ground_truth_im
@@ -211,7 +244,7 @@ def render_detection_confusion_matrix(ground_truth_file,
             print('Rendering images with {} {}'.format(parallelize_rendering_n_cores,
                                                        worker_string))
             
-        _ = list(tqdm(pool.imap(partial(render_image,render_image_constants=render_image_constants),
+        _ = list(tqdm(pool.imap(partial(_render_image,render_image_constants=render_image_constants),
                                 md_formatted_results['images']),
                                 total=len(md_formatted_results['images'])))        
     
@@ -219,10 +252,10 @@ def render_detection_confusion_matrix(ground_truth_file,
         
         # im = md_formatted_results['images'][0]
         for im in tqdm(md_formatted_results['images']):    
-            render_image(im,render_image_constants)
+            _render_image(im,render_image_constants)
     
     
-    #%% Map images to predicted categories, and vice-versa
+    ##%% Map images to predicted categories, and vice-versa
     
     filename_to_predicted_categories = defaultdict(set)
     predicted_category_name_to_filenames = defaultdict(set)
@@ -247,7 +280,7 @@ def render_detection_confusion_matrix(ground_truth_file,
     # ...for each image
     
     
-    #%% Create TP/TN/FP/FN lists
+    ##%% Create TP/TN/FP/FN lists
     
     category_name_to_image_lists = {}
     
@@ -301,7 +334,7 @@ def render_detection_confusion_matrix(ground_truth_file,
     # ...for each filename
     
     
-    #%% Create confusion matrix
+    ##%% Create confusion matrix
     
     gt_category_name_to_category_index = {}
     
@@ -383,7 +416,7 @@ def render_detection_confusion_matrix(ground_truth_file,
     # open_file(cm_figure_fn_abs)
     
     
-    #%% Create HTML confusion matrix
+    ##%% Create HTML confusion matrix
     
     html_confusion_matrix = '<table class="result-table">\n'
     html_confusion_matrix += '<tr>\n'
@@ -423,7 +456,7 @@ def render_detection_confusion_matrix(ground_truth_file,
                     title = '<b>Image</b>: {}, <b>Max conf</b>: {:0.3f}'.format(
                         image_filename_relative, max_conf)
                     image_link = 'images/' + os.path.basename(
-                        image_to_output_file(image_filename_relative,preview_images_folder))
+                        _image_to_output_file(image_filename_relative,preview_images_folder))
                     html_image_info = {
                         'filename': image_link,
                         'title': title,
@@ -527,7 +560,7 @@ def render_detection_confusion_matrix(ground_truth_file,
                     title = '<b>Image</b>: {}, <b>Max conf</b>: {:0.3f}'.format(
                         image_filename_relative, max_conf)
                     image_link = 'images/' + os.path.basename(
-                        image_to_output_file(image_filename_relative,preview_images_folder))
+                        _image_to_output_file(image_filename_relative,preview_images_folder))
                     html_image_info = {
                         'filename': image_link,
                         'title': title,
@@ -618,7 +651,7 @@ def render_detection_confusion_matrix(ground_truth_file,
         f.write(html)
     
     
-    #%% Prepare return data
+    ##%% Prepare return data
     
     confusion_matrix_info = {}
     confusion_matrix_info['html_file'] = target_html_file

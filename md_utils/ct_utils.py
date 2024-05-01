@@ -2,13 +2,12 @@
 
 ct_utils.py
 
-Numeric/geometry utility functions
+Numeric/geometry utility functions.
 
 """
 
 #%% Imports and constants
 
-import argparse
 import inspect
 import json
 import math
@@ -26,12 +25,15 @@ image_extensions = ['.jpg', '.jpeg', '.gif', '.png']
 
 def truncate_float_array(xs, precision=3):
     """
-    Vectorized version of truncate_float(...)
+    Vectorized version of truncate_float(...), truncates the fractional portion of each
+    floating-point value to a specific number of floating-point digits.
 
     Args:
-        xs (list of float) List of floats to truncate
-        precision (int) The number of significant digits to preserve, should be
-            greater or equal 1
+        xs (list of float): list of floats to truncate
+        precision (int): the number of significant digits to preserve, should be >= 1            
+            
+    Returns:
+        list: list of truncated floats
     """
 
     return [truncate_float(x, precision=precision) for x in xs]
@@ -51,9 +53,11 @@ def truncate_float(x, precision=3):
     before exporting to JSON.
 
     Args:
-        x (float) Scalar to truncate
-        precision (int) The number of significant digits to preserve, should be
-            greater or equal 1
+        x (float): scalar to truncate
+        precision (int): the number of significant digits to preserve, should be >= 1
+        
+    Returns:
+        float: truncated version of [x]
     """
 
     assert precision > 0
@@ -78,30 +82,42 @@ def truncate_float(x, precision=3):
         return math.floor(x * factor)/factor
 
 
-def args_to_object(args: argparse.Namespace, obj: object) -> None:
+def args_to_object(args, obj):
     """
     Copies all fields from a Namespace (typically the output from parse_args) to an
     object. Skips fields starting with _. Does not check existence in the target
     object.
 
     Args:
-        args: argparse.Namespace
-        obj: class or object whose whose attributes will be updated
+        args (argparse.Namespace): the namespace to convert to an object
+        obj (object): object whose whose attributes will be updated
+        
+    Returns:
+        object: the modified object (modified in place, but also returned)
     """
     
     for n, v in inspect.getmembers(args):
         if not n.startswith('_'):
             setattr(obj, n, v)
 
+    return obj
+
 
 def pretty_print_object(obj, b_print=True):
     """
-    Prints an arbitrary object as .json
+    Converts an arbitrary object to .json, optionally printing the .json representation.
+    
+    Args:
+        obj (object): object to print
+        b_print (bool): whether to print the object
+        
+    Returns:
+        str: .json reprepresentation of [obj]
     """
 
     # _ = pretty_print_object(obj)
 
-    # Sloppy that I'm making a module-wide change here...
+    # TODO: it's sloppy that I'm making a module-wide change here.
     jsonpickle.set_encoder_options('json', sort_keys=True, indent=2)
     a = jsonpickle.encode(obj)
     s = '{}'.format(a)
@@ -110,12 +126,19 @@ def pretty_print_object(obj, b_print=True):
     return s
 
 
-def is_list_sorted(L,reverse=False):
+def is_list_sorted(L, reverse=False):
     """
-    Returns true if the list L appears to be sorted, otherwise False.
+    Returns True if the list L appears to be sorted, otherwise False.
     
     Calling is_list_sorted(L,reverse=True) is the same as calling
     is_list_sorted(L.reverse(),reverse=False).
+    
+    Args:
+        L (list): list to evaluate
+        reverse (bool): whether to reverse the list before evaluating sort status 
+    
+    Returns:
+        bool: True if the list L appears to be sorted, otherwise False
     """
     
     if reverse:
@@ -126,21 +149,16 @@ def is_list_sorted(L,reverse=False):
 
 def write_json(path, content, indent=1):
     """
-    Standardized wrapper for json.dump
+    Standardized wrapper for json.dump().
+    
+    Args:
+        path (str): filename to write to
+        content (object): object to dump
+        indent (int): indentation depth
     """
     
     with open(path, 'w') as f:
         json.dump(content, f, indent=indent)
-
-
-def is_image_file(s):
-    """
-    Checks a file's extension against a hard-coded set of image file extensions; 
-    return True if it appears to be an image.
-    """
-
-    ext = os.path.splitext(s)[1]
-    return ext.lower() in image_extensions
 
 
 def convert_yolo_to_xywh(yolo_box):
@@ -148,10 +166,10 @@ def convert_yolo_to_xywh(yolo_box):
     Converts a YOLO format bounding box to [x_min, y_min, width_of_box, height_of_box].
 
     Args:
-        yolo_box: bounding box of format [x_center, y_center, width_of_box, height_of_box].
+        yolo_box (list): bounding box of format [x_center, y_center, width_of_box, height_of_box]
 
     Returns:
-        bbox with coordinates represented as [x_min, y_min, width_of_box, height_of_box].
+        list: bbox with coordinates represented as [x_min, y_min, width_of_box, height_of_box]
     """
     
     x_center, y_center, width_of_box, height_of_box = yolo_box
@@ -162,14 +180,14 @@ def convert_yolo_to_xywh(yolo_box):
 
 def convert_xywh_to_tf(api_box):
     """
-    Converts an xywh bounding box to an [y_min, x_min, y_max, x_max] box that the TensorFlow
-    Object Detection API uses
+    Converts an xywh bounding box (the format used in MD output) to the [y_min, x_min, y_max, x_max] 
+    format that the TensorFlow Object Detection API uses.
 
     Args:
         api_box: bbox output by the batch processing API [x_min, y_min, width_of_box, height_of_box]
 
     Returns:
-        bbox with coordinates represented as [y_min, x_min, y_max, x_max]
+        list: bbox with coordinates represented as [y_min, x_min, y_max, x_max]
     """
     
     x_min, y_min, width_of_box, height_of_box = api_box
@@ -180,15 +198,13 @@ def convert_xywh_to_tf(api_box):
 
 def convert_xywh_to_xyxy(api_bbox):
     """
-    Converts an xywh bounding box to an xyxy bounding box.
+    Converts an xywh bounding box (the MD output format) to an xyxy bounding box.
 
-    Note that this is also different from the TensorFlow Object Detection API coords format.
-    
     Args:
-        api_bbox: bbox output by the batch processing API [x_min, y_min, width_of_box, height_of_box]
+        api_bbox (list): bbox formatted as [x_min, y_min, width_of_box, height_of_box]
 
     Returns:
-        bbox with coordinates represented as [x_min, y_min, x_max, y_max]
+        list: bbox formatted as [x_min, y_min, x_max, y_max]
     """
 
     x_min, y_min, width_of_box, height_of_box = api_bbox
@@ -198,18 +214,18 @@ def convert_xywh_to_xyxy(api_bbox):
 
 def get_iou(bb1, bb2):
     """
-    Calculates the Intersection over Union (IoU) of two bounding boxes.
+    Calculates the intersection over union (IoU) of two bounding boxes.
 
     Adapted from:
         
     https://stackoverflow.com/questions/25349178/calculating-percentage-of-bounding-box-overlap-for-image-detector-evaluation
 
     Args:
-        bb1: [x_min, y_min, width_of_box, height_of_box]
-        bb2: [x_min, y_min, width_of_box, height_of_box]
+        bb1 (list): [x_min, y_min, width_of_box, height_of_box]
+        bb2 (list): [x_min, y_min, width_of_box, height_of_box]
 
     Returns:
-        intersection_over_union, a float in [0, 1]
+        float: intersection_over_union, a float in [0, 1]
     """
 
     bb1 = convert_xywh_to_xyxy(bb1)
@@ -261,9 +277,14 @@ def _get_max_conf_from_detections(detections):
 
 def get_max_conf(im):
     """
-    Given an image dict in the format used by the batch API, compute the maximum detection
-    confidence for any class.  Returns 0.0 (not None) if there was a failure and 'detections'
-    isn't present.
+    Given an image dict in the MD output format, computes the maximum detection confidence for any 
+    class.  Returns 0.0 (rather than None) if there was a failure or 'detections' isn't present.
+    
+    Args:
+        im (dict): image dictionary in the MD output format (with a 'detections' field)
+        
+    Returns:
+        float: the maximum detection confidence across all classes
     """
     
     max_conf = 0.0
@@ -274,7 +295,14 @@ def get_max_conf(im):
 
 def point_dist(p1,p2):
     """
-    Distance between two points, represented as length-two tuples.
+    Computes the distance between two points, represented as length-two tuples.
+    
+    Args:
+        p1: point, formatted as (x,y)
+        p2: point, formatted as (x,y)
+        
+    Returns:
+        float: the Euclidean distance betwen p1 and p2
     """
     
     return math.sqrt( ((p1[0]-p2[0])**2) + ((p1[1]-p2[1])**2) )
@@ -282,13 +310,21 @@ def point_dist(p1,p2):
 
 def rect_distance(r1, r2, format='x0y0x1y1'):
     """
-    Minimum distance between two axis-aligned rectangles, each represented as 
+    Computes the minimum distance between two axis-aligned rectangles, each represented as 
     (x0,y0,x1,y1) by default.
     
-    Can also specify "format" as x0y0wh for MD-style bbox formatting (x0,y0,w,h).    
+    Can also specify "format" as x0y0wh for MD-style bbox formatting (x0,y0,w,h).
+    
+    Args:
+        r1: rectangle, formatted as (x0,y0,x1,y1) or (x0,y0,xy,y1)
+        r2: rectangle, formatted as (x0,y0,x1,y1) or (x0,y0,xy,y1)
+        format (str): whether the boxes are formatted as 'x0y0x1y1' (default) or 'x0y0wh'
+        
+    Returns:
+        float: the minimum distance between r1 and r2
     """
     
-    assert format in ('x0y0x1y1','x0y0wh')
+    assert format in ('x0y0x1y1','x0y0wh'), 'Illegal rectangle format {}'.format(format)
     
     if format == 'x0y0wh':
         # Convert to x0y0x1y1 without modifying the original rectangles
@@ -322,18 +358,17 @@ def rect_distance(r1, r2, format='x0y0x1y1'):
         return 0.0
 
 
-def list_is_sorted(l):
-    """
-    Returns True if the list [l] is sorted, else False.
-    """
-    
-    return all(l[i] <= l[i+1] for i in range(len(l)-1))
-
-
 def split_list_into_fixed_size_chunks(L,n):
     """
     Split the list or tuple L into chunks of size n (allowing chunks of size n-1 if necessary,
-    i.e. len(L) does not have to be a multiple of n.
+    i.e. len(L) does not have to be a multiple of n).
+    
+    Args:
+        L (list): list to split into chunks
+        n (int): preferred chunk size
+        
+    Returns:
+        list: list of chunks, where each chunk is a list of length n or n-1
     """
     
     return [L[i * n:(i + 1) * n] for i in range((len(L) + n - 1) // n )]
@@ -342,11 +377,19 @@ def split_list_into_fixed_size_chunks(L,n):
 def split_list_into_n_chunks(L, n, chunk_strategy='greedy'):
     """
     Splits the list or tuple L into n equally-sized chunks (some chunks may be one 
-    element smaller than others, i.e. len(L) does not have to be a multiple of n.
+    element smaller than others, i.e. len(L) does not have to be a multiple of n).
     
     chunk_strategy can be "greedy" (default, if there are k samples per chunk, the first
     k go into the first chunk) or "balanced" (alternate between chunks when pulling
     items from the list).
+                                              
+    Args:
+        L (list): list to split into chunks
+        n (int): number of chunks
+        chunk_strategy (str): "greedy" or "balanced"
+        
+    Returns:
+        list: list of chunks, each of which is a list
     """
     
     if chunk_strategy == 'greedy':
@@ -365,6 +408,13 @@ def split_list_into_n_chunks(L, n, chunk_strategy='greedy'):
 def sort_dictionary_by_key(d,reverse=False):
     """
     Sorts the dictionary [d] by key.
+    
+    Args:
+        d (dict): dictionary to sort
+        reverse (bool): whether to sort in reverse (descending) order
+        
+    Returns:
+        dict: sorted copy of [d]
     """
     
     d = dict(sorted(d.items(),reverse=reverse))
@@ -375,6 +425,14 @@ def sort_dictionary_by_value(d,sort_values=None,reverse=False):
     """
     Sorts the dictionary [d] by value.  If sort_values is None, uses d.values(),
     otherwise uses the dictionary sort_values as the sorting criterion.
+    
+    Args:
+        d (dict): dictionary to sort
+        sort_values (dict): dicionary mapping keys in [d] to sort values (defaults to None, uses [d])
+        reverse (bool): whether to sort in reverse (descending) order
+    
+    Returns:
+        dict: sorted copy of [d]
     """
     
     if sort_values is None:
@@ -386,16 +444,22 @@ def sort_dictionary_by_value(d,sort_values=None,reverse=False):
 
 def invert_dictionary(d):
     """
-    Create a new dictionary that maps d.values() to d.keys().  Does not check
-    uniqueness.    
+    Creates a new dictionary that maps d.values() to d.keys().  Does not check
+    uniqueness.
+    
+    Args:
+        d (dict): dictionary to invert
+    
+    Returns:
+        dict: inverted copy of [d]
     """
     
     return {v: k for k, v in d.items()}
 
 
 def image_file_to_camera_folder(image_fn):
-    """
-    Remove common overflow folders (e.g. RECNX101, RECNX102) from paths, i.e. turn:
+    r"""
+    Removes common overflow folders (e.g. RECNX101, RECNX102) from paths, i.e. turn:
         
     a\b\c\RECNX101\image001.jpg
     
@@ -407,6 +471,12 @@ def image_file_to_camera_folder(image_fn):
     present.
 
     Always converts backslashes to slashes.
+    
+    Args:
+        image_fn (str): the image filename from which we should remove overflow folders
+        
+    Returns:
+        str: a version of [image_fn] from which camera overflow folders have been removed
     """
     
     import re
@@ -424,6 +494,60 @@ def image_file_to_camera_folder(image_fn):
     
     return camera_folder
     
+
+def is_float(v):
+    """
+    Determines whether v is either a float or a string representation of a float.
+    
+    Args:
+        v (object): object to evalute
+        
+    Returns:
+        bool: True if [v] is a float or a string representation of a float, otherwise False
+    """
+    
+    try:
+        _ = float(v)
+        return True
+    except ValueError:
+        return False
+
+
+def is_empty(v):
+    """
+    A common definition of "empty" used throughout the repo, particularly when loading
+    data from .csv files.  "empty" includes None, '', and NaN.
+    
+    Args:
+        v: the object to evaluate for emptiness
+        
+    Returns:
+        bool: True if [v] is None, '', or NaN, otherwise False
+    """
+    if v is None:
+        return True
+    if isinstance(v,str) and v == '':
+        return True
+    if isinstance(v,float) and np.isnan(v):
+        return True
+    return False
+
+
+def sets_overlap(set1, set2):
+    """
+    Determines whether two sets overlap.
+    
+    Args:
+        set1 (set): the first set to compare (converted to a set if it's not already)
+        set2 (set): the second set to compare (converted to a set if it's not already)
+        
+    Returns:
+        bool: True if any elements are shared between set1 and set2
+    """
+    
+    return not set(set1).isdisjoint(set(set2))
+
+
 
 #%% Test drivers
 

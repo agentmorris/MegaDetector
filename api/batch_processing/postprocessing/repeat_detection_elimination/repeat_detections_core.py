@@ -548,7 +548,7 @@ def find_matches_in_directory(dirNameAndRows, options):
 
         i_iteration += 1
         filename = row['file']
-        if not ct_utils.is_image_file(filename):
+        if not path_utils.is_image_file(filename):
             continue
 
         if 'max_detection_conf' not in row or 'detections' not in row or \

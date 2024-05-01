@@ -18,7 +18,6 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   data_management.annotations
    data_management.databases
    data_management.lila
 

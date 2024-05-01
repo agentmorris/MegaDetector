@@ -27,7 +27,6 @@ import re
 
 from zipfile import ZipFile
 from datetime import datetime
-from typing import Container, Iterable, List, Optional, Tuple, Sequence
 from multiprocessing.pool import Pool, ThreadPool
 from functools import partial
 from tqdm import tqdm
@@ -87,37 +86,7 @@ def file_list(base_dir, convert_slashes=True, return_relative_paths=False, sort_
                                recursive=recursive)
 
 
-def split_path(path: str) -> List[str]:
-    r"""
-    Splits [path] into all its constituent tokens.
-
-    Non-recursive version of:
-    http://nicks-liquid-soapbox.blogspot.com/2011/03/splitting-path-to-list-in-python.html
-
-    Examples
-    >>> split_path(r'c:\dir\subdir\file.txt')
-    ['c:\\', 'dir', 'subdir', 'file.txt']
-    >>> split_path('/dir/subdir/file.jpg')
-    ['/', 'dir', 'subdir', 'file.jpg']
-    >>> split_path('c:\\')
-    ['c:\\']
-    >>> split_path('/')
-    ['/']
-    """
-    
-    parts = []
-    while True:
-        # ntpath seems to do the right thing for both Windows and Unix paths
-        head, tail = ntpath.split(path)
-        if head == '' or head == path:
-            break
-        parts.append(tail)
-        path = head
-    parts.append(head or tail)
-    return parts[::-1]  # reverse
-
-
-def fileparts(path: str) -> Tuple[str, str, str]:
+def fileparts(path):
     r"""
     Breaks down a path into the directory path, filename, and extension.
 
@@ -167,49 +136,99 @@ def insert_before_extension(filename: str, s: str = '', separator='.') -> str:
     return f'{name}{separator}{s}{ext}'
 
 
-def top_level_folder(p: str, windows: Optional[bool] = None) -> str:
+def split_path(path):
     r"""
-    Gets the top-level folder from path [p].
+    Splits [path] into all its constituent tokens.
 
-    This function behaves differently for Windows vs. Unix paths. Set
-    windows=True if [p] is a Windows path. Set windows=None (default) to treat
-    [p] as a native system path.
+    Non-recursive version of:
+    http://nicks-liquid-soapbox.blogspot.com/2011/03/splitting-path-to-list-in-python.html
 
-    On Windows, will use the top-level folder that isn't the drive.
+    Examples
+    >>> split_path(r'c:\dir\subdir\file.txt')
+    ['c:\\', 'dir', 'subdir', 'file.txt']
+    >>> split_path('/dir/subdir/file.jpg')
+    ['/', 'dir', 'subdir', 'file.jpg']
+    >>> split_path('c:\\')
+    ['c:\\']
+    >>> split_path('/')
+    ['/']
+    """
     
-        >>> top_level_folder(r'c:\blah\foo')
-        'c:\blah'
+    parts = []
+    while True:
+        # ntpath seems to do the right thing for both Windows and Unix paths
+        head, tail = ntpath.split(path)
+        if head == '' or head == path:
+            break
+        parts.append(tail)
+        path = head
+    parts.append(head or tail)
+    return parts[::-1]  # reverse
 
-    On Unix, does not include the leaf node.
+
+def path_is_abs(p):
+    """
+    Determines whether [p] is an absolute path.
+    """
     
-        >>> top_level_folder('/blah/foo')
-        '/blah'
-            
+    return (len(p) > 1) and (p[0] == '/' or p[1] == ':' or p[0] == '\\')
+
+
+def top_level_folder(p):
+    r"""
+    Gets the top-level folder from the path *p*.
+    
+    On UNIX, this is straightforward:
+        
+    /blah/foo 
+    
+    ...returns '/blah'
+    
+    On Windows, we define this as the top-level folder that isn't the drive, so:
+        
+    c:\blah\foo
+    
+    ...returns 'c:\blah'.
     """
     
     if p == '':
         return ''
-
-    default_lib = os.path  # save default os.path
-    if windows is not None:
-        os.path = ntpath if windows else posixpath
-
-    # Path('/blah').parts is ('/', 'blah')
+    
+    # Path('/blah').parts is ('/','blah')
     parts = split_path(p)
+    
+    if len(parts) == 1:
+        return parts[0]
 
+    # Handle paths like:
+    #
+    # /, \, /stuff, c:, c:\stuff
     drive = os.path.splitdrive(p)[0]
-    if len(parts) > 1 and (
-            parts[0] == drive
-            or parts[0] == drive + '/'
-            or parts[0] == drive + '\\'
-            or parts[0] in ['\\', '/']):
-        result = os.path.join(parts[0], parts[1])
+    if parts[0] == drive or parts[0] == drive + '/' or parts[0] == drive + '\\' or parts[0] in ['\\', '/']:
+        return os.path.join(parts[0], parts[1])
     else:
-        result = parts[0]
+        return parts[0]
 
-    os.path = default_lib  # restore default os.path
-    return result
+# ...top_level_folder()
 
+
+#%% Test driver for top_level_folder
+
+if False:  
+
+    #%%
+    
+    p = 'blah/foo/bar'; s = top_level_folder(p); print(s); assert s == 'blah'
+    p = '/blah/foo/bar'; s = top_level_folder(p); print(s); assert s == '/blah'
+    p = 'bar'; s = top_level_folder(p); print(s); assert s == 'bar'
+    p = ''; s = top_level_folder(p); print(s); assert s == ''
+    p = 'c:\\'; s = top_level_folder(p); print(s); assert s == 'c:\\'
+    p = r'c:\blah'; s = top_level_folder(p); print(s); assert s == 'c:\\blah'
+    p = r'c:\foo'; s = top_level_folder(p); print(s); assert s == 'c:\\foo'
+    p = r'c:/foo'; s = top_level_folder(p); print(s); assert s == 'c:/foo'
+    p = r'c:\foo/bar'; s = top_level_folder(p); print(s); assert s == 'c:\\foo'
+        
+    #%%
 
 def safe_create_link(link_exists,link_new):
     """
@@ -233,8 +252,7 @@ def safe_create_link(link_exists,link_new):
 
 #%% Image-related path functions
 
-def is_image_file(s: str, img_extensions: Container[str] = IMG_EXTENSIONS
-                  ) -> bool:
+def is_image_file(s, img_extensions=IMG_EXTENSIONS):
     """
     Checks a file's extension against a hard-coded set of image file
     extensions.
@@ -247,7 +265,7 @@ def is_image_file(s: str, img_extensions: Container[str] = IMG_EXTENSIONS
     return ext.lower() in img_extensions
 
 
-def find_image_strings(strings: Iterable[str]) -> List[str]:
+def find_image_strings(strings):
     """
     Given a list of strings that are potentially image file names, looks for
     strings that actually look like image file names (based on extension).
@@ -256,9 +274,10 @@ def find_image_strings(strings: Iterable[str]) -> List[str]:
     return [s for s in strings if is_image_file(s)]
 
 
-def find_images(dirname: str, recursive: bool = False, 
-                return_relative_paths: bool = False, 
-                convert_slashes: bool = False) -> List[str]:
+def find_images(dirname, 
+                recursive=False, 
+                return_relative_paths=False, 
+                convert_slashes=False):
     """
     Finds all files in a directory that look like image file names. Returns
     absolute paths unless return_relative_paths is set.  Uses the OS-native
@@ -288,8 +307,10 @@ def find_images(dirname: str, recursive: bool = False,
 
 #%% Filename cleaning functions
 
-def clean_filename(filename: str, allow_list: str = VALID_FILENAME_CHARS,
-                   char_limit: int = CHAR_LIMIT, force_lower: bool = False) -> str:
+def clean_filename(filename, 
+                   allow_list=VALID_FILENAME_CHARS,
+                   char_limit=CHAR_LIMIT,
+                   force_lower= False):
     r"""
     Removes non-ASCII and other invalid filename characters (on any
     reasonable OS) from a filename, then trims to a maximum length.
@@ -313,8 +334,10 @@ def clean_filename(filename: str, allow_list: str = VALID_FILENAME_CHARS,
     return cleaned_filename
 
 
-def clean_path(pathname: str, allow_list: str = VALID_PATH_CHARS,
-               char_limit: int = CHAR_LIMIT, force_lower: bool = False) -> str:
+def clean_path(pathname, 
+               allow_list=VALID_PATH_CHARS,
+               char_limit=CHAR_LIMIT,
+               force_lower=False):
     """
     Removes non-ASCII and other invalid path characters (on any reasonable
     OS) from a path, then trims to a maximum length.
@@ -324,7 +347,7 @@ def clean_path(pathname: str, allow_list: str = VALID_PATH_CHARS,
                           char_limit=char_limit, force_lower=force_lower)
 
 
-def flatten_path(pathname: str, separator_chars: str = SEPARATOR_CHARS) -> str:
+def flatten_path(pathname,separator_chars=SEPARATOR_CHARS):
     """
     Removes non-ASCII and other invalid path characters (on any reasonable
     OS) from a path, then trims to a maximum length. Replaces all valid
@@ -427,7 +450,7 @@ def open_file(filename, attempt_to_open_in_wsl_host=False, browser_name=None):
 
 #%% File list functions
 
-def write_list_to_file(output_file: str, strings: Sequence[str]) -> None:
+def write_list_to_file(output_file,strings):
     """
     Writes a list of strings to either a JSON file or text file,
     depending on extension of the given file name.
@@ -440,7 +463,7 @@ def write_list_to_file(output_file: str, strings: Sequence[str]) -> None:
             f.write('\n'.join(strings))
 
 
-def read_list_from_file(filename: str) -> List[str]:
+def read_list_from_file(filename):
     """
     Reads a json-formatted list of strings from a file.
     """

@@ -4,13 +4,13 @@ top_folders_to_bottom.py
 
 Given a base folder with files like:
 
-A/1/2/a.jpg
-B/3/4/b.jpg
+* A/1/2/a.jpg
+* B/3/4/b.jpg
 
 ...moves the top-level folders to the bottom in a new output folder, i.e., creates:
 
-1/2/A/a.jpg
-3/4/B/b.jpg
+* 1/2/A/a.jpg
+* 3/4/B/b.jpg
 
 In practice, this is used to make this:
 
@@ -35,31 +35,46 @@ from tqdm import tqdm
 from functools import partial
 from multiprocessing.pool import ThreadPool
 
+from md_utils.path_utils import path_is_abs
+
+
+#%% Classes
+
 class TopFoldersToBottomOptions:
+    """
+    Options used to parameterize top_folders_to_bottom()
+    """
     
     def __init__(self,input_folder,output_folder,copy=True,n_threads=1):
+        
+        #: Whether to copy (True) vs. move (False) false when re-organizing
         self.copy = copy
+        
+        #: Number of worker threads to use, or <1 to disable parallelization
         self.n_threads = n_threads
+        
+        #: Input folder
         self.input_folder = input_folder
+        
+        #: Output folder
         self.output_folder = output_folder
+        
+        #: If this is False and an output file exists, throw an error
         self.overwrite = False
         
-        
-#%% Support functions
-
-def path_is_abs(p): return (len(p) > 1) and (p[0] == '/' or p[1] == ':')
-
 
 #%% Main functions
 
-def process_file(relative_filename,options,execute=True):
+def _process_file(relative_filename,options,execute=True):
     
-    assert ('/' in relative_filename) and ('\\' not in relative_filename) and (not path_is_abs(relative_filename))
+    assert ('/' in relative_filename) and \
+        ('\\' not in relative_filename) and \
+        (not path_is_abs(relative_filename))
     
     # Find top-level folder
     tokens = relative_filename.split('/')
-    top_level_folder = tokens.pop(0)
-    tokens.insert(len(tokens)-1,top_level_folder)
+    topmost_folder = tokens.pop(0)
+    tokens.insert(len(tokens)-1,topmost_folder)
     
     # Find file/folder names
     output_relative_path = '/'.join(tokens)
@@ -86,11 +101,35 @@ def process_file(relative_filename,options,execute=True):
 
     return output_absolute_path
     
-# ...def process_file()
+# ...def _process_file()
 
 
 def top_folders_to_bottom(options):
-    
+    """
+    top_folders_to_bottom.py
+
+    Given a base folder with files like:
+
+    * A/1/2/a.jpg
+    * B/3/4/b.jpg
+
+    ...moves the top-level folders to the bottom in a new output folder, i.e., creates:
+
+    * 1/2/A/a.jpg
+    * 3/4/B/b.jpg
+
+    In practice, this is used to make this:
+
+    animal/camera01/image01.jpg
+
+    ...look like:
+
+    camera01/animal/image01.jpg
+
+    Args:
+        options (TopFoldersToBottomOptions): See TopFoldersToBottomOptions for parameter details.
+
+    """
     os.makedirs(options.output_folder,exist_ok=True)
     
     # Enumerate input folder
@@ -112,7 +151,7 @@ def top_folders_to_bottom(options):
         relative_files = [s for s in relative_files if '/' in s]
     
     # Make sure each input file maps to a unique output file
-    absolute_output_files = [process_file(s, options, execute=False) for s in relative_files]
+    absolute_output_files = [_process_file(s, options, execute=False) for s in relative_files]
     assert len(absolute_output_files) == len(set(absolute_output_files)),\
         "Error: input filenames don't map to unique output filenames"
         
@@ -122,13 +161,13 @@ def top_folders_to_bottom(options):
     if options.n_threads <= 1:
         
         for relative_filename in tqdm(relative_files):
-            process_file(relative_filename,options)
+            _process_file(relative_filename,options)
     
     else:
         
         print('Starting a pool with {} threads'.format(options.n_threads))
         pool = ThreadPool(options.n_threads)
-        process_file_with_options = partial(process_file, options=options)
+        process_file_with_options = partial(_process_file, options=options)
         _ = list(tqdm(pool.imap(process_file_with_options, relative_files), total=len(relative_files)))
 
 # ...def top_folders_to_bottom()        

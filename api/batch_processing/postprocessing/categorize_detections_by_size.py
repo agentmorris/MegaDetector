@@ -2,7 +2,7 @@
 
 categorize_detections_by_size.py
 
-Given an API output .json file, creates a separate category for bounding boxes
+Given a MegaDetector .json file, creates a separate category for bounding boxes
 above one or more size thresholds.
 
 """
@@ -18,7 +18,10 @@ from tqdm import tqdm
 #%% Support classes
 
 class SizeCategorizationOptions:
-
+    """
+    Options used to parameterize categorize_detections_by_size().
+    """
+    
     #: Thresholds to use for separation, as a fraction of the image size.
     #:
     #: Should be sorted from smallest to largest.
@@ -38,7 +41,19 @@ class SizeCategorizationOptions:
 #%% Main functions
     
 def categorize_detections_by_size(input_file,output_file=None,options=None):
+    """
+    Given a MegaDetector .json file, creates a separate category for bounding boxes
+    above one or more size thresholds, optionally writing results to [output_file].
     
+    Args:
+        input_file (str): file to process
+        output_file (str, optional): optional output file
+        options (SizeCategorizationOptions): categorization parameters
+        
+    Returns:
+        dict: data loaded from [input_file], with the new size-based categories.        
+        Identical to what's written to [output_file], if [output_file] is not None.
+    """
     if options is None:
         options = SizeCategorizationOptions()
     

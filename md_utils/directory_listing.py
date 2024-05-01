@@ -27,25 +27,10 @@ import re
 
 import azure.common
 from azure.storage.blob import BlobServiceClient, ContentSettings
+from md_utils.path_utils import is_image_file
 
 
 #%% Directory enumeration functions
-
-def is_image_file(path):
-    """
-    Checks whether the provided file path points to an image by checking the
-    file extension. The following file extensions are considered images: jpg,
-    jpeg.  The check is case-insensitive.
-
-    Args:
-        path: string, path to image file or just the file name
-
-    Returns:
-        boolean, True if the file is an image
-    """
-
-    return os.path.splitext(path)[1].lower()[1:] in ['jpg', 'jpeg'] #, 'gif', 'tiff', 'tif', 'png']
-
 
 def create_plain_index(root, dirs, files, dirname=None):
     """

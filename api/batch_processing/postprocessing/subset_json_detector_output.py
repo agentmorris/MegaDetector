@@ -2,7 +2,7 @@ r"""
 
 subset_json_detector_output.py
 
-Creates one or more subsets of a detector API output file (.json), doing either
+Creates one or more subsets of a detector results file (.json), doing either
 or both of the following (if both are requested, they happen in this order):
 
 1) Retrieve all elements where filenames contain a specified query string, 
@@ -14,7 +14,7 @@ or both of the following (if both are requested, they happen in this order):
 
 2) Create separate .jsons for each unique path, optionally making the filenames 
    in those .json's relative paths.  In this case, you specify an output directory, 
-   rather than an output path.  All images in the folder blah\foo\bar will end up 
+   rather than an output path.  All images in the folder blah/foo/bar will end up 
    in a .json file called blah_foo_bar.json.
 
 Can also apply a confidence threshold.
@@ -22,38 +22,32 @@ Can also apply a confidence threshold.
 Can also subset by categories above a threshold (programmatic invocation only, this is
 not supported at the command line yet).
 
-##
+To subset a COCO Camera Traps .json database, see subset_json_db.py
 
-Sample invocations (splitting into multiple json's):
+**Sample invocation (splitting into multiple json's)**
 
 Read from "1800_idfg_statewide_wolf_detections_w_classifications.json", split up into 
-individual .jsons in 'd:\temp\idfg\output', making filenames relative to their individual
+individual .jsons in 'd:/temp/idfg/output', making filenames relative to their individual
 folders:
 
-python subset_json_detector_output.py "d:\temp\idfg\1800_idfg_statewide_wolf_detections_w_classifications.json" "d:\temp\idfg\output" --split_folders --make_folder_relative
+python subset_json_detector_output.py "d:/temp/idfg/1800_idfg_statewide_wolf_detections_w_classifications.json" "d:/temp/idfg/output" --split_folders --make_folder_relative
 
-Now do the same thing, but instead of writing .json's to d:\temp\idfg\output, write them to *subfolders*
+Now do the same thing, but instead of writing .json's to d:/temp/idfg/output, write them to *subfolders*
 corresponding to the subfolders for each .json file.
 
-python subset_json_detector_output.py "d:\temp\idfg\1800_detections_S2.json" "d:\temp\idfg\output_to_folders" --split_folders --make_folder_relative --copy_jsons_to_folders
+python subset_json_detector_output.py "d:/temp/idfg/1800_detections_S2.json" "d:/temp/idfg/output_to_folders" --split_folders --make_folder_relative --copy_jsons_to_folders
 
-##
-
-Sample invocations (creating a single subset matching a query):
+**Sample invocation (creating a single subset matching a query)**
 
 Read from "1800_detections.json", write to "1800_detections_2017.json"
 
 Include only images matching "2017", and change "2017" to "blah"
 
-python subset_json_detector_output.py "d:\temp\1800_detections.json" "d:\temp\1800_detections_2017_blah.json" --query 2017 --replacement blah
+python subset_json_detector_output.py "d:/temp/1800_detections.json" "d:/temp/1800_detections_2017_blah.json" --query 2017 --replacement blah
 
 Include all images, prepend with "prefix/"
 
-python subset_json_detector_output.py "d:\temp\1800_detections.json" "d:\temp\1800_detections_prefix.json" --replacement "prefix/"
-
-##
-
-To subset a COCO Camera Traps .json database, see subset_json_db.py
+python subset_json_detector_output.py "d:/temp/1800_detections.json" "d:/temp/1800_detections_prefix.json" --replacement "prefix/"
 
 """
 
@@ -68,81 +62,85 @@ import re
 
 from tqdm import tqdm
 
-from md_utils.ct_utils import args_to_object
-from md_utils.ct_utils import get_max_conf
-from md_utils.ct_utils import invert_dictionary
+from md_utils.ct_utils import args_to_object, get_max_conf, invert_dictionary
+from md_utils.path_utils import top_level_folder
 
 
 #%% Helper classes
 
 class SubsetJsonDetectorOutputOptions:
+    """
+    Options used to parameterize subset_json_detector_output()
+    """
     
-    # Only process files containing the token 'query'
+    #: Only process files containing the token 'query'
     query = None
     
-    # Replace 'query' with 'replacement' if 'replacement' is not None.  If 'query' is None,
-    # prepend 'replacement'
+    #: Replace 'query' with 'replacement' if 'replacement' is not None.  If 'query' is None,
+    #: prepend 'replacement'
     replacement = None
     
-    # Should we split output into individual .json files for each folder?
+    #: Should we split output into individual .json files for each folder?
     split_folders = False
     
-    # Folder level to use for splitting ['bottom','top','n_from_bottom','n_from_top','dict']
-    #
-    # 'dict' requires 'split_folder_param' to be a dictionary mapping each filename
-    # to a token.
+    #: Folder level to use for splitting ['bottom','top','n_from_bottom','n_from_top','dict']
+    #:
+    #: 'dict' requires 'split_folder_param' to be a dictionary mapping each filename
+    #: to a token.
     split_folder_mode = 'bottom'  # 'top'
     
-    # When using the 'n_from_bottom' parameter to define folder splitting, this
-    # defines the number of directories from the bottom.  'n_from_bottom' with
-    # a parameter of zero is the same as 'bottom'.
-    #
-    # Same story with 'n_from_top'.
-    #
-    # When 'split_folder_mode' is 'dict', this should be a dictionary mapping each filename
-    # to a token.
+    #: When using the 'n_from_bottom' parameter to define folder splitting, this
+    #: defines the number of directories from the bottom.  'n_from_bottom' with
+    #: a parameter of zero is the same as 'bottom'.
+    #:
+    #: Same story with 'n_from_top'.
+    #:
+    #: When 'split_folder_mode' is 'dict', this should be a dictionary mapping each filename
+    #: to a token.
     split_folder_param = 0
     
-    # Only meaningful if split_folders is True: should we convert pathnames to be relative
-    # the folder for each .json file?
+    #: Only meaningful if split_folders is True: should we convert pathnames to be relative
+    #: the folder for each .json file?
     make_folder_relative = False
     
-    # Only meaningful if split_folders and make_folder_relative are True: if not None, 
-    # will copy .json files to their corresponding output directories, relative to 
-    # output_filename
+    #: Only meaningful if split_folders and make_folder_relative are True: if not None, 
+    #: will copy .json files to their corresponding output directories, relative to 
+    #: output_filename
     copy_jsons_to_folders = False
     
-    # Should we over-write .json files?
+    #: Should we over-write .json files?
     overwrite_json_files = False
     
-    # If copy_jsons_to_folders is true, do we require that directories already exist?
+    #: If copy_jsons_to_folders is true, do we require that directories already exist?
     copy_jsons_to_folders_directories_must_exist = True
     
-    # Threshold on confidence
+    #: Optional confidence threshold; if not None, detections below this confidence won't be
+    #: included in the output.
     confidence_threshold = None
     
-    # Should we remove failed images?
+    #: Should we remove failed images?
     remove_failed_images = False
     
-    # Either a list of category IDs (as string-ints) (not names), or a dictionary mapping category *IDs* 
-    # (as string-ints) (not names) to thresholds.  Removes  non-matching detections, does not 
-    # remove images.  Not technically mutually exclusize with category_names_to_keep, but it's an esoteric 
-    # scenario indeed where you would want to specify both.
+    #: Either a list of category IDs (as string-ints) (not names), or a dictionary mapping category *IDs* 
+    #: (as string-ints) (not names) to thresholds.  Removes  non-matching detections, does not 
+    #: remove images.  Not technically mutually exclusize with category_names_to_keep, but it's an esoteric 
+    #: scenario indeed where you would want to specify both.
     categories_to_keep = None
     
-    # Either a list of category names (not IDs), or a dictionary mapping category *names* (not IDs) to thresholds.  
-    # Removes non-matching detections, does not remove images.  Not technically mutually exclusize with 
-    # category_ids_to_keep, but it's an esoteric scenario indeed where you would want to specify both.
+    #: Either a list of category names (not IDs), or a dictionary mapping category *names* (not IDs) to thresholds.  
+    #: Removes non-matching detections, does not remove images.  Not technically mutually exclusize with 
+    #: category_ids_to_keep, but it's an esoteric scenario indeed where you would want to specify both.
     category_names_to_keep = None
     
+    #: Set to >0 during testing to limit the number of images that get processed.
     debug_max_images = -1
     
     
 #%% Main function
 
-def write_detection_results(data, output_filename, options):
+def _write_detection_results(data, output_filename, options):
     """
-    Write the detector-output-formatted dict *data* to *output_filename*.
+    Writes the detector-output-formatted dict *data* to *output_filename*.
     """
     
     if (not options.overwrite_json_files) and os.path.isfile(output_filename):
@@ -160,12 +158,19 @@ def write_detection_results(data, output_filename, options):
     with open(output_filename, 'w') as f:
         json.dump(data,f,indent=1)
 
-# ...write_detection_results()
+# ..._write_detection_results()
 
 
 def subset_json_detector_output_by_confidence(data, options):
     """
-    Remove all detections below options.confidence_threshold, update max confidences accordingly.
+    Removes all detections below options.confidence_threshold.
+    
+    Args:
+        data (dict): data loaded from a MD results file
+        options (SubsetJsonDetectorOutputOptions): parameters for subsetting
+    
+    Returns:
+        dict: Possibly-modified version of data (also modifies in place)
     """
     
     if options.confidence_threshold is None:
@@ -232,7 +237,14 @@ def subset_json_detector_output_by_confidence(data, options):
 
 def subset_json_detector_output_by_categories(data, options):
     """
-    Remove all detections without detections above a threshold for specific categories.
+    Removes all detections without detections above a threshold for specific categories.
+    
+    Args:
+        data (dict): data loaded from a MD results file
+        options (SubsetJsonDetectorOutputOptions): parameters for subsetting
+    
+    Returns:
+        dict: Possibly-modified version of data (also modifies in place)
     """
     
     # If categories_to_keep is supplied as a list, convert to a dict
@@ -334,6 +346,13 @@ def subset_json_detector_output_by_categories(data, options):
 def remove_failed_images(data,options):
     """
     Removed failed images from [data]
+    
+    Args:
+        data (dict): data loaded from a MD results file
+        options (SubsetJsonDetectorOutputOptions): parameters for subsetting
+    
+    Returns:
+        dict: Possibly-modified version of data (also modifies in place)
     """
     
     images_in = data['images']
@@ -365,8 +384,15 @@ def remove_failed_images(data,options):
 
 def subset_json_detector_output_by_query(data, options):
     """
-    Subset to images whose filename matches options.query; replace all instances of 
-    options.query with options.replacement.
+    Subsets to images whose filename matches options.query; replace all instances of 
+    options.query with options.replacement.  No-op if options.query_string is None or ''.
+    
+    Args:
+        data (dict): data loaded from a MD results file
+        options (SubsetJsonDetectorOutputOptions): parameters for subsetting
+    
+    Returns:
+        dict: Possibly-modified version of data (also modifies in place)
     """
     
     images_in = data['images']
@@ -415,74 +441,27 @@ def subset_json_detector_output_by_query(data, options):
 
 # ...subset_json_detector_output_by_query()
 
-
-def split_path(path, maxdepth=100):
-    r"""
-    Splits [path] into all its constituent tokens, e.g.:
-    
-    c:\blah\boo\goo.txt
-    
-    ...becomes:
-        
-    ['c:\', 'blah', 'boo', 'goo.txt']
-    
-    http://nicks-liquid-soapbox.blogspot.com/2011/03/splitting-path-to-list-in-python.html
-    """
-    
-    (head, tail) = os.path.split(path)
-    return split_path(head, maxdepth - 1) + [tail] \
-        if maxdepth and head and head != path \
-        else [head or tail]
-
-# ...split_path()
-
-    
-def top_level_folder(p):
-    r"""
-    Gets the top-level folder from the path *p*; on Windows, will use the top-level folder
-    that isn't the drive.  E.g., top_level_folder(r"c:\blah\foo") returns "c:\blah".  Does 
-    not include the leaf node, i.e. top_level_folder('/blah/foo') returns '/blah'.
-    """
-    
-    if p == '':
-        return ''
-    
-    # Path('/blah').parts is ('/','blah')
-    parts = split_path(p)
-    
-    if len(parts) == 1:
-        return parts[0]
-
-    # Handle paths like:
-    #
-    # /, \, /stuff, c:, c:\stuff
-    drive = os.path.splitdrive(p)[0]
-    if parts[0] == drive or parts[0] == drive + '/' or parts[0] == drive + '\\' or parts[0] in ['\\', '/']:
-        return os.path.join(parts[0], parts[1])
-    else:
-        return parts[0]
-
-# ...top_level_folder()
-
-    
-if False:  
-      
-    p = 'blah/foo/bar'; s = top_level_folder(p); print(s); assert s == 'blah'
-    p = '/blah/foo/bar'; s = top_level_folder(p); print(s); assert s == '/blah'
-    p = 'bar'; s = top_level_folder(p); print(s); assert s == 'bar'
-    p = ''; s = top_level_folder(p); print(s); assert s == ''
-    p = 'c:\\'; s = top_level_folder(p); print(s); assert s == 'c:\\'
-    p = r'c:\blah'; s = top_level_folder(p); print(s); assert s == 'c:\\blah'
-    p = r'c:\foo'; s = top_level_folder(p); print(s); assert s == 'c:\\foo'
-    p = r'c:/foo'; s = top_level_folder(p); print(s); assert s == 'c:/foo'
-    p = r'c:\foo/bar'; s = top_level_folder(p); print(s); assert s == 'c:\\foo'
-    
     
 def subset_json_detector_output(input_filename, output_filename, options, data=None):
     """
-    Main internal entry point.
+    Main entry point; creates one or more subsets of a detector results file.  See the 
+    module header comment for more information about the available subsetting approaches.
         
     Makes a copy of [data] before modifying if a data dictionary is supplied.
+    
+    Args:
+        input_filename (str): filename to load and subset; can be None if [data] is supplied
+        output_filename (str): file or folder name (depending on [options]) to which we sould
+            write subset results.
+        options (SubsetJsonDetectorOutputOptions): parameters for .json splitting/subsetting;
+            see SubsetJsonDetectorOutputOptions for details.
+        data (dict, optional): data loaded from a .json file; if this is not None, [input_filename]
+            will be ignored.  If supplied, this will be copied before it's modified.
+    
+    Returns:
+        dict: Results that are either loaded from [input_filename] and processed, or copied
+            from [data] and processed.
+    
     """
     
     if options is None:    
@@ -528,7 +507,7 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
         
     if not options.split_folders:
         
-        write_detection_results(data, output_filename, options)
+        _write_detection_results(data, output_filename, options)
         return data
     
     else:
@@ -558,7 +537,7 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
                 # Split string into folders, keeping delimiters
                 
                 # Don't use this, it removes delimiters
-                # tokens = split_path(fn)
+                # tokens = _split_path(fn)
                 tokens = re.split(r'([\\/])',fn)
                 
                 n_tokens_to_keep = ((options.split_folder_param + 1) * 2) - 1;
@@ -621,7 +600,7 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
             # forward-compatible in that I don't take dependencies on the other fields
             dir_data = data
             dir_data['images'] = folders_to_images[dirname]
-            write_detection_results(dir_data, json_fn, options)
+            _write_detection_results(dir_data, json_fn, options)
             print('Wrote {} images to {}'.format(len(dir_data['images']), json_fn))
             
         # ...for each directory

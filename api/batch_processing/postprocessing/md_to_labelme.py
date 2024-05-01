@@ -26,6 +26,7 @@ from functools import partial
 
 from md_visualization.visualization_utils import open_image
 from md_utils.ct_utils import truncate_float
+from detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP
 
 output_precision = 3
 default_confidence_threshold = 0.15
@@ -33,18 +34,33 @@ default_confidence_threshold = 0.15
 
 #%% Functions
 
-def get_labelme_dict_for_image(im,image_base_name,category_id_to_name,
+def get_labelme_dict_for_image(im,image_base_name=None,category_id_to_name=None,
                                info=None,confidence_threshold=None):
     """
     For the given image struct in MD results format, reformat the detections into
-    labelme format.  Returns a dict.
+    labelme format.
     
-    'height' and 'width' are required in [im].
+    Args:
+        im (dict): MegaDetector-formatted results dict, must include 'height' and 'width' fields
+        image_base_name (str, optional): written directly to the 'imagePath' field in the output; 
+            defaults to os.path.basename(im['file']).
+        category_id_to_name (dict, optional): maps string-int category IDs to category names, defaults
+            to the standard MD categories
+        info (dict, optional): arbitrary metadata to write to the "detector_info" field in the output
+            dict
+        confidence_threshold (float, optional): only detections at or above this confidence threshold
+            will be included in the output dict
     
-    image_base_name is written directly to the 'imagePath' field in the output; it should generally be
-    os.path.basename(your_image_file).
+    Return:
+        dict: labelme-formatted dictionary, suitable for writing directly to a labelme-formatted .json file
     """
     
+    if image_base_name is None:
+        image_base_name = os.path.basename(im['file'])
+        
+    if category_id_to_name:
+        category_id_to_name = DEFAULT_DETECTOR_LABEL_MAP
+        
     if confidence_threshold is None:        
         confidence_threshold = -1.0
      
@@ -130,7 +146,22 @@ def md_to_labelme(results_file,image_base,confidence_threshold=None,
     For all the images in [results_file], write a .json file in labelme format alongside the
     corresponding relative path within image_base.
     
-    If non-empty, "extension_prefix" will be inserted before the .json extension.
+    Args:
+        results_file (str): MD results .json file to convert to LabelMe format
+        image_base (str): folder of images; filenames in [results_file] should be relative to
+            this folder
+        confidence_threshold (float, optional): only detections at or above this confidence threshold
+            will be included in the output dict
+        overwrite (bool, optional): whether to overwrite existing output files; if this is False
+            and the output file for an image exists, we'll skip that image
+        extension_prefix (str, optional): if non-empty, "extension_prefix" will be inserted before the .json 
+            extension
+        n_workers (int, optional): enables multiprocessing if > 1
+        use_threads (bool, optional): if [n_workers] > 1, determines whether we parallelize via threads (True)
+            or processes (False)
+        bypass_image_size_read (bool, optional): if True, skips reading image sizes and trusts whatever is in
+            the MD results file (don't set this to "True" if your MD results file doesn't contain image sizes)
+        verbose (bool, optional): enables additionald ebug output    
     """
     
     if extension_prefix is None:
