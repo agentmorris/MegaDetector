@@ -4,10 +4,6 @@ yolo_to_coco.py
 
 Converts a folder of YOLO-formatted annotation files to a COCO-formatted dataset. 
 
-Currently supports only a single folder (i.e., no recursion).  Treats images without
-corresponding .txt files as empty (they will be included in the output, but with
-no annotations).
-
 """
 
 #%% Imports and constants
@@ -31,8 +27,12 @@ from data_management.yolo_output_to_md_output import read_classes_from_yolo_data
 
 #%% Support functions
 
-def filename_to_image_id(fn):
+def _filename_to_image_id(fn):
+    """
+    Image IDs can't have spaces in them, replae spaces with underscores
+    """
     return fn.replace(' ','_')
+
 
 def _process_image(fn_abs,input_folder,category_id_to_name):
     """
@@ -41,7 +41,7 @@ def _process_image(fn_abs,input_folder,category_id_to_name):
     
     # Create the image object for this image
     fn_relative = os.path.relpath(fn_abs,input_folder)
-    image_id = filename_to_image_id(fn_relative)
+    image_id = _filename_to_image_id(fn_relative)
     
     # This is done in a separate loop now
     #
@@ -132,10 +132,20 @@ def _process_image(fn_abs,input_folder,category_id_to_name):
 
 # ...def _process_image(...)
 
+
 def load_yolo_class_list(class_name_file):
     """
-    Load a dictionary mapping zero-indexed IDs to class names from the text/yaml file
+    Loads a dictionary mapping zero-indexed IDs to class names from the text/yaml file
     [class_name_file].    
+    
+    Args:
+        class_name_file (str or list): this can be:
+            - a .yaml or .yaml file in YOLO's dataset.yaml format
+            - a .txt or .data file containing a flat list of class names
+            - a list of class names
+            
+    Returns:
+        dict: A dict mapping zero-indexed integer IDs to class names
     """
     
     # class_name_file can also be a list of class names
@@ -183,7 +193,18 @@ def load_yolo_class_list(class_name_file):
 
 def validate_label_file(label_file,category_id_to_name=None,verbose=False):
     """"
-    Verify that [label_file] is a valid YOLO label file.  Does not check the extension.
+    Verifies that [label_file] is a valid YOLO label file.  Does not check the extension.
+    
+    Args:
+        label_file (str): the .txt file to validate
+        category_id_to_name (dict, optional): a dict mapping integer category IDs to names;
+            if this is not None, this function errors if the file uses a category that's not
+            in this dict
+        verbose (bool, optional): enable additional debug console output
+    
+    Returns:
+        dict: a dict with keys 'file' (the same as [label_file]) and 'errors' (a list of 
+        errors (if any) that we found in this file)
     """
     
     label_result = {}
@@ -249,9 +270,7 @@ def validate_label_file(label_file,category_id_to_name=None,verbose=False):
     
 def validate_yolo_dataset(input_folder, class_name_file, n_workers=1, pool_type='thread', verbose=False):
     """
-    Verify all the labels in the YOLO dataset folder [input_folder].  class_name_file 
-    can be a list of classes, a flat text file, or a yolo dataset.yml file.  If it's
-    a dataset.yml file, it should point to input_folder as the base folder.
+    Verifies all the labels in a YOLO dataset folder.  
     
     Looks for:
         
@@ -260,11 +279,23 @@ def validate_yolo_dataset(input_folder, class_name_file, n_workers=1, pool_type=
     * Illegal classes in label files
     * Invalid boxes in label files
 
-    Returns a dict with fields:
+    Args:
+        input_folder (str): the YOLO dataset folder to validate
+        class_name_file (str or list): a list of classes, a flat text file, or a yolo 
+            dataset.yml/.yaml file.  If it's a dataset.yml file, that file should point to 
+            input_folder as the base folder, though this is not explicitly checked.
+        n_workers (int, optional): number of concurrent workers, set to <= 1 to disable
+            parallelization
+        pool_type (str, optional): 'thread' or 'process', worker type to use for parallelization;
+            not used if [n_workers] <= 1
+        verbose (bool, optional): enable additional debug console output
+    
+    Returns:
+        dict: validation results, as a dict with fields:        
         
-        * image_files_without_label_files (list)
-        * label_files_without_image_files (list)
-        * label_results (list of dicts with field 'filename', 'errors' (list))
+        - image_files_without_label_files (list)
+        - label_files_without_image_files (list)
+        - label_results (list of dicts with field 'filename', 'errors') (list)
     """
     
     # Validate arguments
@@ -364,30 +395,41 @@ def yolo_to_coco(input_folder,
                  exclude_string=None,
                  include_string=None):
     """
-    Convert the YOLO-formatted data in [input_folder] to a COCO-formatted dictionary,
-    reading class names from [class_name_file], which can be a flat list with a .txt
-    extension or a YOLO dataset.yml file.  Optionally writes the output dataset to [output_file].
+    Converts a YOLO-formatted dataset to a COCO-formatted dataset.
     
-    empty_image_handling can be:
-        
-    * 'no_annotations': include the image in the image list, with no annotations
+    All images will be assigned an "error" value, usually None.    
     
-    * 'empty_annotations': include the image in the image list, and add an annotation without
-      any bounding boxes, using a category called [empty_image_category_name].
-      
-    * 'skip': don't include the image in the image list
+    Args:
+        input_folder (str): the YOLO dataset folder to validate
+        class_name_file (str or list): a list of classes, a flat text file, or a yolo 
+            dataset.yml/.yaml file.  If it's a dataset.yml file, that file should point to 
+            input_folder as the base folder, though this is not explicitly checked.
+        output_file (str, optional): .json file to which we should write COCO .json data
+        empty_image_handling (str, optional): how to handle images with no boxes; whether
+            this includes images with no .txt files depending on the value of 
+            [allow_images_without_label_files].  Can be:
+                
+            - 'no_annotations': include the image in the image list, with no annotations
+            - 'empty_annotations': include the image in the image list, and add an annotation without
+              any bounding boxes, using a category called [empty_image_category_name].
+            - 'skip': don't include the image in the image list
+            - 'error': there shouldn't be any empty images            
+        error_image_handling (str, optional): how to handle images that don't load properly; can
+            be:
+            
+            - 'skip': don't include the image at all
+            - 'no_annotations': include with no annotations
+            
+        n_workers (int, optional): number of concurrent workers, set to <= 1 to disable
+            parallelization
+        pool_type (str, optional): 'thread' or 'process', worker type to use for parallelization;
+            not used if [n_workers] <= 1
+        recursive (bool, optional): whether to recurse into [input_folder]
+        exclude_string (str, optional): exclude any images whose filename contains a string
+        include_string (str, optional): include only images whose filename contains a string
     
-    * 'error': there shouldn't be any empty images
-    
-    error_image_handling can be:
-        
-    * 'skip': don't include the image at all
-    
-    * 'no_annotations': include with no annotations
-    
-    All images will be assigned an "error" value, usually None.
-        
-    Returns a COCO-formatted dictionary.
+    Returns:
+        dict: COCO-formatted data, the same as what's written to [output_file]
     """
     
     ## Validate input
@@ -468,7 +510,7 @@ def yolo_to_coco(input_folder,
     for fn_abs in tqdm(image_files_abs):
         
         fn_relative = os.path.relpath(fn_abs,input_folder)
-        image_id = filename_to_image_id(fn_relative)
+        image_id = _filename_to_image_id(fn_relative)
         assert image_id not in image_ids, \
             'Oops, you have hit a very esoteric case where you have the same filename ' + \
             'with both spaces and underscores, this is not currently handled.'
@@ -627,3 +669,8 @@ if False:
     
     from md_utils.path_utils import open_file
     open_file(html_output_file)
+
+
+#%% Command-line driver
+
+# TODO

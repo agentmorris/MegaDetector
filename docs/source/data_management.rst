@@ -24,26 +24,10 @@ Subpackages
 Submodules
 ----------
 
-data\_management.cct\_json\_to\_filename\_json module
------------------------------------------------------
-
-.. automodule:: data_management.cct_json_to_filename_json
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 data\_management.cct\_json\_utils module
 ----------------------------------------
 
 .. automodule:: data_management.cct_json_utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-data\_management.cct\_to\_csv module
-------------------------------------
-
-.. automodule:: data_management.cct_to_csv
    :members:
    :undoc-members:
    :show-inheritance:
@@ -71,6 +55,14 @@ data\_management.coco\_to\_labelme module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: data_management.coco_to_labelme
+   :func: main
+   :hook:
+   :prog: coco_to_labelme
+   :no_default_values:
 
 data\_management.coco\_to\_yolo module
 --------------------------------------
@@ -79,6 +71,14 @@ data\_management.coco\_to\_yolo module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: data_management.coco_to_yolo
+   :func: main
+   :hook:
+   :prog: coco_to_yolo
+   :no_default_values:
 
 data\_management.generate\_crops\_from\_cct module
 --------------------------------------------------
@@ -95,6 +95,14 @@ data\_management.get\_image\_sizes module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: data_management.get_image_sizes
+   :func: main
+   :hook:
+   :prog: get_image_sizes
+   :no_default_values:
 
 data\_management.labelme\_to\_coco module
 -----------------------------------------
@@ -103,6 +111,14 @@ data\_management.labelme\_to\_coco module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: data_management.labelme_to_coco
+   :func: main
+   :hook:
+   :prog: labelme_to_coco
+   :no_default_values:
 
 data\_management.labelme\_to\_yolo module
 -----------------------------------------
@@ -127,14 +143,15 @@ data\_management.read\_exif module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: main
 
-data\_management.remove\_exif module
-------------------------------------
+.. sphinx_argparse_cli::
+   :module: data_management.read_exif
+   :func: main
+   :hook:
+   :prog: read_exif
+   :no_default_values:
 
-.. automodule:: data_management.remove_exif
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 data\_management.resize\_coco\_dataset module
 ---------------------------------------------

@@ -2,7 +2,7 @@
 
 get_image_sizes.py
 
-Given a json-formatted list of image filenames, retrieve the width and height of 
+Given a json-formatted list of image filenames, retrieves the width and height of 
 every image, optionally writing the results to a new .json file.
 
 """
@@ -19,6 +19,8 @@ from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
 from functools import partial
 from tqdm import tqdm
+
+from md_utils.path_utils import find_images
 
 image_base = ''
 default_n_threads = 1
@@ -57,13 +59,31 @@ def get_image_sizes(filenames,image_prefix=None,output_file=None,
                     n_workers=default_n_threads,use_threads=True,
                     recursive=True):
     """
-    Get the width and height of all images in [filenames], which can be:
+    Gets the width and height of all images in [filenames], which can be:
         
-    * A .json-formatted file 
+    * A .json-formatted file containing list of strings
     * A folder
     * A list of files
 
     ...returning a list of (path,w,h) tuples, and optionally writing the results to [output_file].
+    
+    Args:
+        filenames (str or list): the image filenames for which we should retrieve sizes, 
+            can be the name of a .json-formatted file containing list of strings, a folder 
+            in which we should enumerate images, or a list of files.
+        image_prefix (str, optional): optional prefix to add to images to get to full paths;
+            useful when [filenames] contains relative files, in which case [image_prefix] is the 
+            base folder for the source images.
+        output_file (str, optional): a .json file to write the imgae sizes
+        n_workers (int, optional): number of parallel workers to use, set to <=1 to
+            disable parallelization
+        use_threads (bool, optional): whether to use threads (True) or processes (False)
+            for parallelization; not relevant if [n_workers] <= 1
+        recursive (bool, optional): only relevant if [filenames] is actually a folder,
+            determines whether image enumeration within that folder will be recursive
+        
+    Returns:
+        list: list of (path,w,h) tuples
     """        
     
     if output_file is not None:
@@ -141,10 +161,16 @@ if False:
 def main():
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('input_file',type=str)
-    parser.add_argument('output_file',type=str)
-    parser.add_argument('--image_prefix', type=str, default=None)
-    parser.add_argument('--n_threads', type=int, default=default_n_threads)
+    parser.add_argument('filenames',type=str,
+                        help='Folder from which we should fetch image sizes, or .json file with a list of filenames')
+    parser.add_argument('output_file',type=str,
+                        help='Output file (.json) to which we should write image size information')
+    parser.add_argument('--image_prefix', type=str, default=None,
+                        help='Prefix to append to image filenames, only relevant if [filenames] points to a list of ' + \
+                             'relative paths')        
+    parser.add_argument('--n_threads', type=int, default=default_n_threads,
+                        help='Number of concurrent workers, set to <=1 to disable parallelization (default {})'.format(
+                            default_n_threads))
                         
     if len(sys.argv[1:])==0:
         parser.print_help()
@@ -152,9 +178,11 @@ def main():
         
     args = parser.parse_args()
     
-    _ = get_image_sizes(args.input_file,args.output_file,args.image_prefix,args.n_threads)
-    
-
+    _ = get_image_sizes(filenames=args.filenames,
+                        output_file=args.output_file,
+                        image_prefix=args.image_prefix,
+                        n_workers=args.n_threads)
+        
 if __name__ == '__main__':
     
     main()

@@ -23,10 +23,10 @@ from tqdm import tqdm
 
 #%% Support functions
 
-def add_category(category_name,category_name_to_id,candidate_category_id=0):
+def _add_category(category_name,category_name_to_id,candidate_category_id=0):
     """
-    Add the category [category_name] to the dict [category_name_to_id], by default
-    using the next available integer index.
+    Adds the category [category_name] to the dict [category_name_to_id], by default
+    using the next available integer index.    
     """
     
     if category_name in category_name_to_id:
@@ -121,7 +121,7 @@ def _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
     if len(shapes) == 0:
         
         if allow_new_categories:
-            category_id = add_category('empty',category_name_to_id)
+            category_id = _add_category('empty',category_name_to_id)
         else:
             assert 'empty' in category_name_to_id
             category_id = category_name_to_id['empty']
@@ -148,7 +148,7 @@ def _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
                 category_name = shape['label']                
             
             if allow_new_categories:
-                category_id = add_category(category_name,category_name_to_id)
+                category_id = _add_category(category_name,category_name_to_id)
             else:
                 assert category_name in category_name_to_id
                 category_id = category_name_to_id[category_name]
@@ -202,7 +202,7 @@ def labelme_to_coco(input_folder,
                     max_workers=1, 
                     use_threads=True):
     """
-    Find all images in [input_folder] that have corresponding .json files, and convert
+    Finds all images in [input_folder] that have corresponding .json files, and converts
     to a COCO .json file.
     
     Currently only supports bounding box annotations and image-level flags (i.e., does not
@@ -224,11 +224,38 @@ def labelme_to_coco(input_folder,
     file.  Empty images in the "lion" folder will still be given the label "empty" (or 
     [empty_category_name]).
     
-    no_json_handling can be:
+    Args:
+        input_folder (str): input folder to search for images and Labelme .json files
+        output_file (str, optional): output file to which we should write COCO-formatted data; if None
+            this function just returns the COCO-formatted dict
+        category_id_to_category_name (dict, optional): dict mapping category IDs to category names;
+            really used to map Labelme category names to COCO category IDs.  IDs will be auto-generated
+            if this is None.
+        empty_category_id (int, optional): category ID to use for the not-very-COCO-like "empty" category;
+            also see the no_json_handling parameter.
+        info_struct (dict, optional): dict to stash in the "info" field of the resulting COCO dict
+        relative_paths_to_include (list, optional): allowlist of relative paths to include in the COCO
+            dict; there's no reason to specify this along with relative_paths_to_exclude.
+        relative_paths_to_exclude (list, optional): blocklist of relative paths to exclude from the COCO
+            dict; there's no reason to specify this along with relative_paths_to_include.
+        use_folders_as_labels (bool, optional): if this is True, class names will be pulled from folder names,
+            useful if you have images like a/b/cat/image001.jpg, a/b/dog/image002.jpg, etc.
+        recursive (bool, optional): whether to recurse into [input_folder]
+        no_json_handling (str, optional): how to deal with image files that have no corresponding .json files, 
+            can be:
+                
+                - 'skip': ignore image files with no corresponding .json files
+                - 'empty': treat image files with no corresponding .json files as empty
+                - 'error': throw an error when an image file has no corresponding .json file
+        validate_image_sizes (bool, optional): whether to load images to verify that the sizes specified
+            in the labelme files are correct
+        max_workers (int, optional): number of workers to use for parallelization, set to <=1 to disable
+            parallelization
+        use_threads (bool, optional): whether to use threads (True) or processes (False) for parallelization,
+            not relevant if max_workers <= 1
         
-    * 'skip': ignore image files with no corresponding .json files
-    * 'empty': treat image files with no corresponding .json files as empty
-    * 'error': throw an error when an image file has no corresponding .json file    
+    Returns:
+        dict: a COCO-formatted dictionary, identical to what's written to [output_file] if [output_file] is not None.
     """
     
     if max_workers > 1:
@@ -288,7 +315,7 @@ def labelme_to_coco(input_folder,
             raise ValueError('Category IDs must be ints or string-formatted ints')
         
     if empty_category_id is None:
-        empty_category_id = add_category(empty_category_name,category_name_to_id)
+        empty_category_id = _add_category(empty_category_name,category_name_to_id)
             
     if max_workers <= 1:
         
@@ -373,7 +400,19 @@ def find_empty_labelme_files(input_folder,recursive=True):
             'images_with_empty_json_files':[list],
             'images_with_no_json_files':[list],
             'images_with_non_empty_json_files':[list]
-        }    
+        }
+    
+    Args:
+        input_folder (str): the folder to search for empty (i.e., box-less) Labelme .json files
+        recursive (bool, optional): whether to recurse into [input_folder]
+    
+    Returns:
+        dict: a dict with fields:
+            - images_with_empty_json_files: a list of all image files in [input_folder] associated with 
+              .json files that have no boxes in them
+            - images_with_no_json_files: a list of images in [input_folder] with no associated .json files
+            - images_with_non_empty_json_files: a list of images in [input_folder] associated with .json
+              files that have at least one box        
     """
     image_filenames_relative = path_utils.find_images(input_folder,recursive=True,
                                                       return_relative_paths=True)

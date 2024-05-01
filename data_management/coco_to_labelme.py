@@ -4,7 +4,8 @@ coco_to_labelme.py
 
 Converts a COCO dataset to labelme format (one .json per image file).
 
-If you want to convert YOLO data to labelme, use yolo_to_coco, then coco_to_labelme.
+If you want to convert YOLO-formatted data to labelme format, use yolo_to_coco, then 
+coco_to_labelme.
 
 """
 
@@ -23,12 +24,18 @@ from md_visualization.visualization_utils import open_image
 
 def get_labelme_dict_for_image_from_coco_record(im,annotations,categories,info=None):
     """
-    For the given image struct in COCO format and associated list of annotations, reformat the detections 
-    into labelme format.  Returns a dict.  All annotations in this list should point to this image.
+    For the given image struct in COCO format and associated list of annotations, reformats the 
+    detections into labelme format.  
     
-    "categories" is in the standard COCO format.
-    
-    'height' and 'width' are required in [im].    
+    Args:
+        im (dict): image dict, as loaded from a COCO .json file; 'height' and 'width' are required
+        annotations (list): a list of annotations that refer to this image (this function errors if 
+            that's not the case)
+        categories (list): a list of category in dicts in COCO format ({'id':x,'name':'s'})
+        info (dict, optional): a dict to store in a non-standard "custom_info"  field in the output
+        
+    Returns:
+        dict: a dict in labelme format, suitable for writing to a labelme .json file
     """
     
     image_base_name = os.path.basename(im['file_name'])
@@ -54,6 +61,9 @@ def get_labelme_dict_for_image_from_coco_record(im,annotations,categories,info=N
         
     # ann = annotations[0]
     for ann in annotations:
+        
+        assert ann['image_id'] == im['id'], 'Annotation {} does not refer to image {}'.format(
+            ann['id'],im['id'])
         
         if 'bbox' not in ann:
             continue
@@ -257,7 +267,6 @@ def main():
     args = parser.parse_args()
 
     coco_to_labelme(coco_data=args.coco_file,image_base=args.image_base,overwrite=args.overwrite)    
-    
-    
+
 if __name__ == '__main__':
     main()

@@ -4,40 +4,35 @@ yolo_output_to_md_output.py
 
 Converts the output of YOLOv5's detect.py or val.py to the MD API output format.
 
-Command-line driver not done yet, this has only been run interactively.
+**Converting .txt files**
+
+detect.py writes a .txt file per image, in YOLO training format.  Converting from this
+format does not currently support recursive results, since detect.py doesn't save filenames
+in a way that allows easy inference of folder names.  Requires access to the input
+images, because the YOLO format uses the *absence* of a results file to indicate that
+no detections are present.
+
+YOLOv5 output has one text file per image, like so:
+
+0 0.0141693 0.469758 0.0283385 0.131552 0.761428 
+
+That's [class, x_center, y_center, width_of_box, height_of_box, confidence]
+
+val.py can write in this format as well, using the --save-txt argument.
+
+In both cases, a confidence value is only written to each line if you include the --save-conf
+argument.  Confidence values are required by this conversion script.
+
+
+**Converting .json files**
+
+val.py can also write a .json file in COCO-ish format.  It's "COCO-ish" because it's
+just the "images" portion of a COCO .json file.
+
+Converting from this format also requires access to the original images, since the format
+written by YOLOv5 uses absolute coordinates, but MD results are in relative coordinates.
 
 """
-
-### Converting .txt files ###
-
-#
-# detect.py writes a .txt file per image, in YOLO training format.  Converting from this
-# format does not currently support recursive results, since detect.py doesn't save filenames
-# in a way that allows easy inference of folder names.  Requires access to the input
-# images, because the YOLO format uses the *absence* of a results file to indicate that
-# no detections are present.
-#
-# YOLOv5 output has one text file per image, like so:
-#
-# 0 0.0141693 0.469758 0.0283385 0.131552 0.761428 
-#
-# That's [class, x_center, y_center, width_of_box, height_of_box, confidence]
-#
-# val.py can write in this format as well, using the --save-txt argument.
-#
-# In both cases, a confidence value is only written to each line if you include the --save-conf
-# argument.  Confidence values are required by this conversion script.
-#
-
-### Converting .json files ###
-
-#
-# val.py can also write a .json file in COCO-ish format.  It's "COCO-ish" because it's
-# just the "images" portion of a COCO .json file.
-#
-# Converting from this format also requires access to the original images, since the format
-# written by YOLOv5 uses absolute coordinates, but MD results are in relative coordinates.
-#
 
 #%% Imports and constants
 
@@ -51,9 +46,7 @@ from tqdm import tqdm
 
 from md_utils import path_utils
 from md_utils import ct_utils
-
 from md_visualization import visualization_utils as vis_utils
-
 from detection.run_detector import CONF_DIGITS, COORD_DIGITS
 
 
@@ -61,9 +54,16 @@ from detection.run_detector import CONF_DIGITS, COORD_DIGITS
 
 def read_classes_from_yolo_dataset_file(fn):
     """
-    Read a dictionary mapping integer class IDs to class names from a YOLOv5/YOLOv8
+    Reads a dictionary mapping integer class IDs to class names from a YOLOv5/YOLOv8
     dataset.yaml file or a .json file.  A .json file should contain a dictionary mapping
     integer category IDs to string category names.
+    
+    Args:
+        fn (str): YOLOv5/YOLOv8 dataset file with a .yml or .yaml extension, or a .json file 
+            mapping integer category IDs to category names.
+            
+    Returns:
+        dict: a mapping from integer category IDs to category names
     """
         
     if fn.endswith('.yml') or fn.endswith('.yaml'):
@@ -92,45 +92,42 @@ def read_classes_from_yolo_dataset_file(fn):
         raise ValueError('Unrecognized category file type: {}'.format(fn))
         
     assert len(category_id_to_name) > 0, 'Failed to read class mappings from {}'.format(fn)
+    
     return category_id_to_name
     
 
-def yolo_json_output_to_md_output(yolo_json_file, image_folder,
-                                  output_file, yolo_category_id_to_name,                              
+def yolo_json_output_to_md_output(yolo_json_file, 
+                                  image_folder,
+                                  output_file, 
+                                  yolo_category_id_to_name,                              
                                   detector_name='unknown',
                                   image_id_to_relative_path=None,
                                   offset_yolo_class_ids=True,
                                   truncate_to_standard_md_precision=True,
                                   image_id_to_error=None):
     """
-    Convert a YOLOv5 .json file to MD .json format.
+    Converts a YOLOv5/YOLOv8 .json file to MD .json format.
     
     Args:
         
-    - yolo_json_file: the .json file to convert from YOLOv5 format to MD output format.
-    
-    - image_folder: the .json file contains relative path names, this is the path base.
-    
-    - yolo_category_id_to_name: the .json file contains only numeric identifiers for
-      categories, but we want names and numbers for the output format; this is a 
-      dict mapping numbers to names.  Can also be a YOLOv5 dataset.yaml file.
-    
-    - detector_name: a string that gets put in the output file, not otherwise used within
-      this function.
-    
-    - image_id_to_relative_path: YOLOv5 .json uses only basenames (e.g. abc1234.JPG);
-      by default these will be appended to the input path to create pathnames, so if you
-      have a flat folder, this is fine.  If you want to map base names to relative paths, use
-      this dict.
-    
-    - offset_yolo_class_ids: YOLOv5 class IDs always start at zero; if you want to make the 
-      output classes start at 1, set offset_yolo_class_ids to True.
-    
-    - truncate_to_standard_md_precision: YOLOv5 .json includes lots of (not-super-meaningful)
-      precision, set this to truncate to COORD_DIGITS and CONF_DIGITS.
-    
-    - image_id_to_error: if you want to include image IDs in the output file for which you couldn't
-      prepare the input file in the first place due to errors, include them here.
+        yolo_json_file (str): the .json file to convert from YOLOv5 format to MD output format
+        image_folder (str): the .json file contains relative path names, this is the path base
+        yolo_category_id_to_name (str or dict): the .json results file contains only numeric 
+            identifiers for categories, but we want names and numbers for the output format; 
+            yolo_category_id_to_name provides that mapping either as a dict or as a YOLOv5 
+            dataset.yaml file.
+        detector_name (str, optional): a string that gets put in the output file, not otherwise 
+            used within this function
+        image_id_to_relative_path (dict, optional): YOLOv5 .json uses only basenames (e.g. 
+            abc1234.JPG); by default these will be appended to the input path to create pathnames.
+            If you have a flat folder, this is fine.  If you want to map base names to relative paths in
+            a more complicated way, use this parameter.   
+        offset_yolo_class_ids (bool, optional): YOLOv5 class IDs always start at zero; if you want to 
+            make the output classes start at 1, set offset_yolo_class_ids to True.    
+        truncate_to_standard_md_precision (bool, optional): YOLOv5 .json includes lots of 
+            (not-super-meaningful) precision, set this to truncate to COORD_DIGITS and CONF_DIGITS.
+        image_id_to_error (dict, optional): if you want to include image IDs in the output file for which 
+            you couldn't prepare the input file in the first place due to errors, include them here.
     """    
         
     assert os.path.isfile(yolo_json_file), \
@@ -314,14 +311,25 @@ def yolo_json_output_to_md_output(yolo_json_file, image_folder,
 # ...def yolo_json_output_to_md_output(...)
     
 
-def yolo_txt_output_to_md_output(input_results_folder, image_folder,
-                                 output_file, detector_tag=None):
+def yolo_txt_output_to_md_output(input_results_folder, 
+                                 image_folder,
+                                 output_file, 
+                                 detector_tag=None):
     """
-    Converts a folder of YOLO-outptu .txt files to MD .json format.
+    Converts a folder of YOLO-output .txt files to MD .json format.
     
     Less finished than the .json conversion function; this .txt conversion assumes 
     a hard-coded mapping representing the standard MD categories (in MD indexing, 
     1/2/3=animal/person/vehicle; in YOLO indexing, 0/1/2=animal/person/vehicle).
+    
+    Args:
+        input_results_folder (str): the folder containing YOLO-output .txt files
+        image_folder (str): the folder where images live, may be the same as
+            [input_results_folder]
+        output_file (str): the MD-formatted .json file to which we should write
+            results
+        detector_tag (str, optional): string to put in the 'detector' field in the
+            output file            
     """
     
     assert os.path.isdir(input_results_folder)
@@ -426,3 +434,8 @@ if False:
     image_folder = os.path.expanduser('~/data/KRU-test')
     output_file = os.path.expanduser('~/data/mdv5a-yolo-pt-kru.json')    
     yolo_txt_output_to_md_output(input_results_folder,image_folder,output_file)
+
+
+#%% Command-line driver
+
+# TODO

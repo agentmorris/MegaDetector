@@ -513,6 +513,24 @@ def is_float(v):
         return False
 
 
+def is_iterable(x):
+    """
+    Uses duck typing to assess whether [x] is iterable (list, set, dict, etc.).
+    
+    Args:
+        x (object): the object to test
+    
+    Returns:
+        bool: True if [x] appears to be iterable, otherwise False
+    """
+    
+    try:
+        _ = iter(x)
+    except:
+       return False
+    return True
+
+
 def is_empty(v):
     """
     A common definition of "empty" used throughout the repo, particularly when loading
@@ -531,6 +549,23 @@ def is_empty(v):
     if isinstance(v,float) and np.isnan(v):
         return True
     return False
+
+
+def isnan(v):
+    """
+    Returns True if v is a nan-valued float, otherwise returns False.
+    
+    Args:
+        v: the object to evaluate for nan-ness
+    
+    Returns:
+        bool: True if v is a nan-valued float, otherwise False
+    """
+    
+    try:        
+        return np.isnan(v)
+    except Exception:
+        return False
 
 
 def sets_overlap(set1, set2):

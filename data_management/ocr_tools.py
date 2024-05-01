@@ -55,9 +55,10 @@ from PIL import Image, ImageFilter
 from tqdm import tqdm
 
 from md_utils.path_utils import find_images
-from md_visualization import visualization_utils as vis_utils
-from md_utils import write_html_image_list        
 from md_utils.path_utils import open_file
+from md_utils import write_html_image_list        
+from md_utils.ct_utils import is_iterable
+from md_visualization import visualization_utils as vis_utils
 
 # pip install pytesseract
 #
@@ -69,58 +70,64 @@ import pytesseract
 #%% Extraction options
 
 class DatetimeExtractionOptions:
-            
+    """
+    Options used to parameterize datetime extraction in most functions in this module.
+    """
+    
     def __init__(self):
         
-        # Using a semi-arbitrary metric of how much it feels like we found the 
-        # text-containing region, discard regions that appear to be extraction failures
+        #: Using a semi-arbitrary metric of how much it feels like we found the 
+        #: text-containing region, discard regions that appear to be extraction failures
         self.p_crop_success_threshold = 0.5
         
-        # Pad each crop with a few pixels to make tesseract happy
+        #: Pad each crop with a few pixels to make tesseract happy
         self.crop_padding = 10        
         
-        # Discard short text, typically text from the top of the image
+        #: Discard short text, typically text from the top of the image
         self.min_text_length = 4
         
-        # When we're looking for pixels that match the background color, allow some 
-        # tolerance around the dominant color
+        #: When we're looking for pixels that match the background color, allow some 
+        #: tolerance around the dominant color
         self.background_tolerance = 2
             
-        # We need to see a consistent color in at least this fraction of pixels in our rough 
-        # crop to believe that we actually found a candidate metadata region.
+        #: We need to see a consistent color in at least this fraction of pixels in our rough 
+        #: crop to believe that we actually found a candidate metadata region.
         self.min_background_fraction = 0.3
         
-        # What fraction of the [top,bottom] of the image should we use for our rough crop?
+        #: What fraction of the [top,bottom] of the image should we use for our rough crop?
         self.image_crop_fraction = [0.045 , 0.045]
         # self.image_crop_fraction = [0.08 , 0.08]
         
-        # Within that rough crop, how much should we use for determining the background color?
+        #: Within that rough crop, how much should we use for determining the background color?
         self.background_crop_fraction_of_rough_crop = 0.5
         
-        # A row is considered a probable metadata row if it contains at least this fraction
-        # of the background color.  This is used only to find the top and bottom of the crop area, 
-        # so it's not that *every* row needs to hit this criteria, only the rows that are generally
-        # above and below the text.
+        #: A row is considered a probable metadata row if it contains at least this fraction
+        #: of the background color.  This is used only to find the top and bottom of the crop area, 
+        #: so it's not that *every* row needs to hit this criteria, only the rows that are generally
+        #: above and below the text.
         self.min_background_fraction_for_background_row = 0.5
         
-        # psm 6: "assume a single uniform block of text"
-        # psm 13: raw line
-        # oem: 0 == legacy, 1 == lstm
-        # tesseract_config_string = '--oem 0 --psm 6'
-        #
-        # Try these configuration strings in order until we find a valid datetime
+        #: psm 6: "assume a single uniform block of text"
+        #: psm 13: raw line
+        #: oem: 0 == legacy, 1 == lstm
+        #: tesseract_config_string = '--oem 0 --psm 6'
+        #:
+        #: Try these configuration strings in order until we find a valid datetime
         self.tesseract_config_strings = ['--oem 1 --psm 13','--oem 0 --psm 13',
                                          '--oem 1 --psm 6','--oem 0 --psm 6']
         
+        #: If this is False, and one set of options appears to succeed for an image, we'll
+        #: stop there.  If this is True, we always run all option sets on every image.
         self.force_all_ocr_options = False
         
+        #: Whether to apply PIL's ImageFilter.SHARPEN prior to OCR
         self.apply_sharpening_filter = True
         
-        # Tesseract should be on your system path, but you can also specify the
-        # path explicitly.
-        #
-        # os.environ['PATH'] += r';C:\Program Files\Tesseract-OCR'
-        # self.tesseract_cmd = 'r"C:\Program Files\Tesseract-OCR\tesseract.exe"'
+        #: Tesseract should be on your system path, but you can also specify the
+        #: path explicitly, e.g. you can do either of these:
+        #:
+        #: * os.environ['PATH'] += r';C:\Program Files\Tesseract-OCR'
+        #: * self.tesseract_cmd = 'r"C:\Program Files\Tesseract-OCR\tesseract.exe"'
         self.tesseract_cmd = 'tesseract.exe'
 
 
@@ -128,10 +135,14 @@ class DatetimeExtractionOptions:
 
 def make_rough_crops(image,options=None):
     """
-    Crops the top and bottom regions out of an image, returns a dict with fields
-    'top' and 'bottom', each pointing to a PIL image.
+    Crops the top and bottom regions out of an image.
     
-    [image] can be a PIL image or a file name.
+    Args:
+        image (Image or str): a PIL Image or file name
+        options (DatetimeExtractionOptions, optional): OCR parameters
+        
+    Returns:
+        dict: a dict with fields 'top' and 'bottom', each pointing to a new PIL Image        
     """
     
     if options is None:
@@ -158,10 +169,8 @@ def make_rough_crops(image,options=None):
 
 def crop_to_solid_region(rough_crop,crop_location,options=None):
     """       
-    Given a rough crop from the top or bottom of an imaeg, find the background color
-    and crop to the metadata region.
-    
-    rough_crop should be PIL Image, crop_location should be 'top' or 'bottom'.
+    Given a rough crop from the top or bottom of an image, finds the background color
+    and crops to the metadata region.
     
     Within a region of an image (typically a crop from the top-ish or bottom-ish part of 
     an image), tightly crop to the solid portion (typically a region with a black background).
@@ -169,7 +178,13 @@ def crop_to_solid_region(rough_crop,crop_location,options=None):
     The success metric is just a binary indicator right now: 1.0 if we found a region we believe
     contains a solid background, 0.0 otherwise.
     
-    Returns cropped_image,p_success,padded_image
+    Args:
+        rough_crop (Image): the PIL Image to crop
+        crop_location (str): 'top' or 'bottom'
+        options (DatetimeExtractionOptions, optional): OCR parameters
+        
+    Returns:
+        tuple: a tuple containing (a cropped_image (Image), p_success (float), padded_image (Image))
     """
     
     if options is None:
@@ -283,8 +298,17 @@ def crop_to_solid_region(rough_crop,crop_location,options=None):
 
 def find_text_in_crops(rough_crops,options=None,tesseract_config_string=None):
     """
-    Find all text in each Image in the dict [rough_crops]; those images should be pretty small 
+    Finds all text in each Image in the dict [rough_crops]; those images should be pretty small 
     regions by the time they get to this function, roughly the top or bottom 20% of an image.
+    
+    Args:
+        rough_crops (list): list of Image objects that have been cropped close to text
+        options (DatetimeExtractionOptions, optional): OCR parameters
+        tesseract_config_string (str, optional): optional CLI argument to pass to tesseract.exe
+        
+    Returns:
+        dict: a dict with keys "top" and "bottom", where each value is a dict with keys
+        'text' (text found, if any) and 'crop_to_solid_region_results' (metadata about the OCR pass)
     """
     
     if options is None:
@@ -338,7 +362,7 @@ def find_text_in_crops(rough_crops,options=None,tesseract_config_string=None):
 # ...def find_text_in_crops(...)
     
 
-def datetime_string_to_datetime(matched_string):
+def _datetime_string_to_datetime(matched_string):
     """
     Takes an OCR-matched datetime string, does a little cleanup, and parses a date
     from it.
@@ -358,7 +382,7 @@ def datetime_string_to_datetime(matched_string):
     return extracted_datetime
 
 
-def get_datetime_from_strings(strings,options=None):
+def _get_datetime_from_strings(strings,options=None):
     """
     Given a string or list of strings, search for exactly one datetime in those strings.
     using a series of regular expressions.
@@ -381,72 +405,76 @@ def get_datetime_from_strings(strings,options=None):
     # 2013-10-02 11:40:50 AM
     m = re.search('(\d\d\d\d)\s?-\s?(\d\d)\s?-\s?(\d\d)\s+(\d+)\s?:?\s?(\d\d)\s?:\s?(\d\d)\s*([a|p]m)',s)
     if m is not None:        
-        return datetime_string_to_datetime(m.group(0))        
+        return _datetime_string_to_datetime(m.group(0))        
     
     # 04/01/2017 08:54:00AM
     m = re.search('(\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d\d\d)\s+(\d+)\s?:\s?(\d\d)\s?:\s?(\d\d)\s*([a|p]m)',s)
     if m is not None:        
-        return datetime_string_to_datetime(m.group(0))    
+        return _datetime_string_to_datetime(m.group(0))    
     
     # 2017/04/01 08:54:00AM
     m = re.search('(\d\d\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d)\s+(\d+)\s?:\s?(\d\d)\s?:\s?(\d\d)\s*([a|p]m)',s)
     if m is not None:        
-        return datetime_string_to_datetime(m.group(0))        
+        return _datetime_string_to_datetime(m.group(0))        
     
     # 04/01/2017 08:54AM
     m = re.search('(\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d\d\d)\s+(\d+)\s?:\s?(\d\d)\s*([a|p]m)',s)
     if m is not None:        
-        return datetime_string_to_datetime(m.group(0))    
+        return _datetime_string_to_datetime(m.group(0))    
     
     # 2017/04/01 08:54AM
     m = re.search('(\d\d\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d)\s+(\d+)\s?:\s?(\d\d)\s*([a|p]m)',s)
     if m is not None:        
-        return datetime_string_to_datetime(m.group(0))        
+        return _datetime_string_to_datetime(m.group(0))        
     
     ### No AM/PM
     
     # 2013-07-27 04:56:35
     m = re.search('(\d\d\d\d)\s?-\s?(\d\d)\s?-\s?(\d\d)\s*(\d\d)\s?:\s?(\d\d)\s?:\s?(\d\d)',s)
     if m is not None:        
-        return datetime_string_to_datetime(m.group(0))        
+        return _datetime_string_to_datetime(m.group(0))        
     
     # 07-27-2013 04:56:35
     m = re.search('(\d\d)\s?-\s?(\d\d)\s?-\s?(\d\d\d\d)\s*(\d\d)\s?:\s?(\d\d)\s?:\s?(\d\d)',s)
     if m is not None:        
-        return datetime_string_to_datetime(m.group(0))        
+        return _datetime_string_to_datetime(m.group(0))        
     
     # 2013/07/27 04:56:35
     m = re.search('(\d\d\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d)\s*(\d\d)\s?:\s?(\d\d)\s?:\s?(\d\d)',s)
     if m is not None:        
-        return datetime_string_to_datetime(m.group(0))        
+        return _datetime_string_to_datetime(m.group(0))        
     
     # 07/27/2013 04:56:35
     m = re.search('(\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d\d\d)\s*(\d\d)\s?:\s?(\d\d)\s?:\s?(\d\d)',s)
     if m is not None:        
-        return datetime_string_to_datetime(m.group(0))        
+        return _datetime_string_to_datetime(m.group(0))        
     
     return None
     
-# ...def get_datetime_from_strings(...)
+# ...def _get_datetime_from_strings(...)
 
 
 def get_datetime_from_image(image,include_crops=True,options=None):
     """
-    Find the datetime string (if present) in [image], which can be a PIL image or a 
-    filename.  Returns a dict:
-        
-    datetime: Python datetime object, or None
+    Tries to find the datetime string (if present) in an image.
     
-    text_results: length-2 list of strings
+    Args:
+        image (Image or str): the PIL Image object or image filename in which we should look for
+            datetime information.
+        include_crops (bool, optional): whether to include cropped images in the return dict (set
+            this to False if you're worried about size and you're processing a zillion images)
+        options (DatetimeExtractionOptions or list, optional): OCR parameters, either one 
+            DatetimeExtractionOptions object or a list of options to try
     
-    all_extracted_datetimes: if we ran multiple option sets, this will contain the 
-    datetimes extracted for each option set
-    
-    ocr_results: detailed results from the OCR process, including crops as PIL images;
-    only included if include_crops is True.
-        
-    [options] can be None, a DatetimeExtractionOptions object, or a list of 
-    DatetimeExtractionOptions objects to try for each image.    
+    Returns:
+        dict: a dict with fields:
+            
+            - datetime: Python datetime object, or None
+            - text_results: length-2 list of strings
+            - all_extracted_datetimes: if we ran multiple option sets, this will contain the 
+              datetimes extracted for each option set
+            - ocr_results: detailed results from the OCR process, including crops as PIL images;
+              only included if include_crops is True
     """
     
     if options is None:
@@ -478,7 +506,7 @@ def get_datetime_from_image(image,include_crops=True,options=None):
         all_text_results.append(text_results)
             
         # Find datetime
-        extracted_datetime_this_option_set = get_datetime_from_strings(text_results,options)
+        extracted_datetime_this_option_set = _get_datetime_from_strings(text_results,options)
         assert isinstance(extracted_datetime_this_option_set,datetime.datetime) or \
             (extracted_datetime_this_option_set is None)
         
@@ -512,18 +540,27 @@ def get_datetime_from_image(image,include_crops=True,options=None):
 # ...def get_datetime_from_image(...)
 
 
-def is_iterable(x):
-    try:
-        _ = iter(x)
-    except:
-       return False
-    return True
-
-
 def try_get_datetime_from_image(filename,include_crops=False,options=None):
     """
     Try/catch wrapper for get_datetime_from_image, optionally trying multiple option sets
     until we find a datetime.
+    
+    Args:
+        image (Image or str): the PIL Image object or image filename in which we should look for
+            datetime information.
+        include_crops (bool, optional): whether to include cropped images in the return dict (set
+            this to False if you're worried about size and you're processing a zillion images)
+        options (DatetimeExtractionOptions or list, optional): OCR parameters, either one 
+            DatetimeExtractionOptions object or a list of options to try
+    
+    Returns:
+        dict: A dict with fields:
+            - datetime: Python datetime object, or None
+            - text_results: length-2 list of strings
+            - all_extracted_datetimes: if we ran multiple option sets, this will contain the 
+              datetimes extracted for each option set
+            - ocr_results: detailed results from the OCR process, including crops as PIL images;
+              only included if include_crops is True
     """
     
     if options is None:
@@ -547,16 +584,28 @@ def try_get_datetime_from_image(filename,include_crops=False,options=None):
     return result
 
 
-def get_datetimes_for_folder(folder_name,output_file=None,n_to_sample=-1,options=None):
+def get_datetimes_for_folder(folder_name,output_file=None,n_to_sample=-1,options=None,
+                             n_workers=16,use_threads=False):
     """
-    Retrieve metadata from every image in [folder_name], and 
-    write the results to the .json file [output_file].
+    The main entry point for this module.  Tries to retrieve metadata from pixels for every 
+    image in [folder_name], optionally the results to the .json file [output_file].
     
-    [options] can be None, a DatetimeExtractionOptions object, or a list of 
-    DatetimeExtractionOptions objects to try for each image.
-    
-    Returns a dict mapping filenames to datetime extraction results.  Optionally writes
-    results to the .json file [output_file].
+    Args:
+        folder_name (str): the folder of images to process recursively
+        output_file (str, optional): the .json file to which we should write results; if None,
+            just returns the results
+        n_to_sample (int, optional): for debugging only, used to limit the number of images
+            we process
+        options (DatetimeExtractionOptions or list, optional): OCR parameters, either one 
+            DatetimeExtractionOptions object or a list of options to try for each image
+        n_workers (int, optional): the number of parallel workers to use; set to <= 1 to disable
+            parallelization
+        use_threads (bool, optional): whether to use threads (True) or processes (False) for
+            parallelization; not relevant if n_workers <= 1
+            
+    Returns:
+        dict: a dict mapping filenames to datetime extraction results, see try_get_datetime_from_images
+        for the format of each value in the dict.
     """
     
     if options is None:
@@ -570,11 +619,8 @@ def get_datetimes_for_folder(folder_name,output_file=None,n_to_sample=-1,options
         import random
         random.seed(0)
         image_file_names = random.sample(image_file_names,n_to_sample)
-        
-    n_cores = 16
-    use_threads = False
-    
-    if n_cores <= 1:
+            
+    if n_workers <= 1:
         
         all_results = []
         for fn_abs in tqdm(image_file_names):
@@ -583,19 +629,19 @@ def get_datetimes_for_folder(folder_name,output_file=None,n_to_sample=-1,options
     else:    
         
         # Don't spawn more than one worker per image
-        if n_cores > len(image_file_names):
-            n_cores = len(image_file_names)
+        if n_workers > len(image_file_names):
+            n_workers = len(image_file_names)
             
         if use_threads:
             from multiprocessing.pool import ThreadPool
-            pool = ThreadPool(n_cores)
+            pool = ThreadPool(n_workers)
             worker_string = 'threads'        
         else:
             from multiprocessing.pool import Pool
-            pool = Pool(n_cores)
+            pool = Pool(n_workers)
             worker_string = 'processes'
             
-        print('Starting a pool of {} {}'.format(n_cores,worker_string))
+        print('Starting a pool of {} {}'.format(n_workers,worker_string))
         
         all_results = list(tqdm(pool.imap(
             partial(try_get_datetime_from_image,options=options),image_file_names),
@@ -621,7 +667,6 @@ if False:
     #%% Process images
     
     folder_name = r'g:\temp\island_conservation_camera_traps'
-    # folder_name = r'g:\camera_traps\camera_trap_images'
     output_file = r'g:\temp\ocr_results.json'
     from md_utils.path_utils import insert_before_extension
     output_file = insert_before_extension(output_file)
@@ -650,11 +695,6 @@ if False:
     #%% Scrap cell
     
     fn = 'g:/camera_traps/camera_trap_images/2018.07.02/newcam/people/DSCF0273.JPG'
-    # fn = r'g:\camera_traps\camera_trap_images\2022.01.29\cam0\coyote\DSCF0057.JPG'
-    # fn = 'g:/temp/island_conservation_camera_traps/chile/frances01/frances012013/chile_frances012013_02012013105658.jpg'
-    # fn = 'g:/temp/island_conservation_camera_traps/dominicanrepublic/camara06/cam0618junio2016/dominicanrepublic_cam0618junio2016_20160614_114115_img_0013.jpg'
-    # fn = os.path.join(folder_name,r'dominicanrepublic\camara22\cam228noviembre2015\dominicanrepublic_cam228noviembre2015_20151105_071226_img_0132.jpg')
-    # fn = 'g:/camera_traps/camera_trap_images/2021.06.06/camera01/empty/DSCF0873.JPG'
     include_crops = False
     options_a = DatetimeExtractionOptions()
     options_b = DatetimeExtractionOptions()
@@ -827,3 +867,8 @@ if False:
         
     if extracted_datetime is not None:        
         assert extracted_datetime.year <= 2023 and extracted_datetime.year >= 1990
+
+
+#%% Command-line driver
+
+# TODO

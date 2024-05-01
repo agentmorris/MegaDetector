@@ -15,9 +15,6 @@ import os
 
 from tqdm import tqdm
 from collections import defaultdict, OrderedDict
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
-
-JSONObject = Mapping[str, Any]
 
 
 #%% Classes
@@ -31,18 +28,32 @@ class CameraTrapJsonUtils:
     def annotations_to_string(annotations, cat_id_to_name):
         """
         Given a list of annotations and a mapping from class IDs to names, produces
-        a concatenated class list, always sorting alphabetically.
+        a comma-delimited string containing a list of class names, sorted alphabetically.
+        
+        Args:
+            annotations (list): a list of annotation dicts
+            cat_id_to_name (dict): a dict mapping category IDs to category names
+            
+        Returns:
+            str: a comma-delimited list of class names
         """
         
-        class_names = CameraTrapJsonUtils.annotationsToClassnames(annotations, cat_id_to_name)
+        class_names = CameraTrapJsonUtils.annotations_to_class_names(annotations, cat_id_to_name)
         return ','.join(class_names)
 
 
     @staticmethod
-    def annotations_to_classnames(annotations, cat_id_to_name):
+    def annotations_to_class_names(annotations, cat_id_to_name):
         """
         Given a list of annotations and a mapping from class IDs to names, produces
-        a list of class names, always sorting alphabetically.
+        a list of class names, sorted alphabetically.
+        
+        Args:
+            annotations (list): a list of annotation dicts
+            cat_id_to_name (dict): a dict mapping category IDs to category names
+            
+        Returns:
+            list: a list of class names present in [annotations]
         """
         
         # Collect all names
@@ -53,18 +64,19 @@ class CameraTrapJsonUtils:
 
 
     @staticmethod
-    def order_db_keys(db: JSONObject) -> OrderedDict:
+    def order_db_keys(db):
         """
         Given a dict representing a JSON database in the COCO Camera Trap
-        format, return an OrderedDict with keys in the order of 'info',
+        format, returns an OrderedDict with keys in the order of 'info',
         'categories', 'annotations' and 'images'. When this OrderedDict is
         serialized with json.dump(), the order of the keys are preserved.
 
         Args:
-            db: dict representing a JSON database in the COCO Camera Trap format
+            db (dict): a JSON database in the COCO Camera Trap format
 
         Returns:
-            the same db but as an OrderedDict with keys ordered for readability
+            dict: the same content as [db] but as an OrderedDict with keys ordered for 
+                readability
         """
         
         ordered = OrderedDict([
@@ -76,10 +88,20 @@ class CameraTrapJsonUtils:
 
 
     @staticmethod
-    def annotations_groupby_image_field(db_indexed, image_field='seq_id'):
+    def group_annotations_by_image_field(db_indexed, image_field='seq_id'):
         """
         Given an instance of IndexedJsonDb, group annotation entries by a field in the
-        image entry.
+        image entry.  Typically used to find all the annotations associated with a sequence.
+        
+        Args:
+            db_indexed (IndexedJsonDb): an initialized IndexedJsonDb, typically loaded from a 
+                COCO Camera Traps .json file
+            image_field (str, optional): a field by which to group annotations (defaults
+                to 'seq_id')
+        
+        Returns:
+            dict: a dict mapping objects (typically strings, in fact typically sequence IDs) to
+                lists of annotations
         """
         
         image_id_to_image_field = {}
@@ -95,27 +117,24 @@ class CameraTrapJsonUtils:
 
 
     @staticmethod
-    def get_entries_from_locations(db: JSONObject, locations: Iterable[str]
-                                   ) -> Dict[str, Any]:
+    def get_entries_for_locations(db, locations):
         """
-        Given a dict representing a JSON database in the COCO Camera Trap format, return a dict
+        Given a dict representing a JSON database in the COCO Camera Trap format, returns a dict
         with the 'images' and 'annotations' fields in the CCT format, each is an array that only
-        includes entries in the original `db` that are in the `locations` set.
+        includes entries in the original [db] that are in the [locations] set.
+        
         Args:
-            db: a dict representing a JSON database in the COCO Camera Trap format
-            locations: a set or list of locations to include; each item is a string
+            db (dict): a dict representing a JSON database in the COCO Camera Trap format
+            locations (set): a set or list of locations to include; each item is a string
 
         Returns:
-            a dict with the 'images' and 'annotations' fields in the CCT format
+            dict: a dict with the 'images' and 'annotations' fields in the CCT format
         """
         
         locations = set(locations)
         print('Original DB has {} image and {} annotation entries.'.format(
             len(db['images']), len(db['annotations'])))
-        new_db: Dict[str, Any] = {
-            'images': [],
-            'annotations': []
-        }
+        new_db = { 'images': [], 'annotations': [] }
         new_images = set()
         for i in db['images']:
             # cast location to string as the entries in locations are strings
@@ -139,13 +158,26 @@ class IndexedJsonDb:
     a .json database.
     """
 
-    def __init__(self, json_filename: Union[str, JSONObject],
-                 b_normalize_paths: bool = False,
-                 filename_replacements: Optional[Mapping[str, str]] = None,
-                 b_convert_classes_to_lower: bool = True,
-                 b_force_forward_slashes: bool = True):
+    def __init__(self, 
+                 json_filename,
+                 b_normalize_paths=False,
+                 filename_replacements=None,
+                 b_convert_classes_to_lower=True,
+                 b_force_forward_slashes=True):
         """
-        json_filename can also be an existing json db
+        Constructor for IndexedJsonDb that loads from a .json file or CCT-formatted dict.
+        
+        Args:
+            json_filename (str): filename to load, or an already-loaded dict
+            b_normalize_paths (bool, optional): whether to invoke os.path.normpath on 
+                all filenames.  Not relevant if b_force_forward_slashes is True.
+            filename_replacements (dict, optional): a set of string --> string mappings
+                that will trigger replacements in all filenames, typically used to remove
+                leading folders
+            b_convert_classes_to_lower (bool, optional): whether to convert all class
+                names to lowercase
+            b_force_forward_slashes (bool, optional): whether to convert backslashes to
+                forward slashes in all path names            
         """
         
         if isinstance(json_filename, str):
@@ -197,7 +229,7 @@ class IndexedJsonDb:
 
         # Image ID --> annotations
         # Each image can potentially multiple annotations, hence using lists
-        self.image_id_to_annotations: Dict[str, List[Dict[str, Any]]]
+        self.image_id_to_annotations = {}
         self.image_id_to_annotations = defaultdict(list)
         for ann in self.db['annotations']:
             self.image_id_to_annotations[ann['image_id']].append(ann)
@@ -205,12 +237,17 @@ class IndexedJsonDb:
     # ...__init__
 
 
-    def get_annotations_for_image(self, image: JSONObject
-                                  ) -> Optional[List[Dict[str, Any]]]:
+    def get_annotations_for_image(self, image):
         """
-        Returns: list of annotations associated with an image,
-            None if the db has not been loaded,
-            [] if no annotations are available
+        Finds all the annnotations associated with the image dict [image].
+        
+        Args:
+            image (dict): an image dict loaded from a CCT .json file.  Only the 'id' field
+                is used.
+            
+        Returns:
+            list: list of annotations associated with this image.  Returns None if the db 
+                has not been loaded, or [] if no annotations are available for this image.
         """
         
         if self.db is None:
@@ -223,11 +260,17 @@ class IndexedJsonDb:
         return image_annotations
 
 
-    def get_classes_for_image(self, image: JSONObject) -> Optional[List[str]]:
+    def get_classes_for_image(self, image):
         """
-        Returns a list of class names associated with [image]
+        Returns a list of class names associated with [image].
 
-        Returns None is the db has not been loaded, [] if no annotations are available
+        Args:
+            image (dict): an image dict loaded from a CCT .json file.  Only the 'id' field
+                is used.
+            
+        Returns:
+            list: list of class names associated with this image.  Returns None if the db 
+                has not been loaded, or [] if no annotations are available for this image.
         """
         
         if self.db is None:
@@ -247,27 +290,27 @@ class IndexedJsonDb:
 
 # ...class IndexedJsonDb
 
-
-#%% Functions
-
 class SequenceOptions:
+    """
+    Options parameterizing the grouping of images into sequences by time.
+    """
     
+    #: Images separated by <= this duration will be grouped into the same sequence.
     episode_interval_seconds = 60.0
 
     
+#%% Functions
+
 def create_sequences(image_info,options=None):
     """
-    Synthesize episodes/sequences/bursts for the images in [image_info].  [image_info]
-    should be a list of dicts in CCT format, i.e. with fields 'file_name','datetime','location'.
-    
-    'filename' should be a string.
-    
-    'datetime' should be a Python datetime object
-    
-    'location' should be a string.
+    Synthesizes episodes/sequences/bursts for the images in [image_info].
     
     Modifies [image_info], populating the 'seq_id', 'seq_num_frames', and 'frame_num' fields
     for each image.
+    
+    Args:
+        image_info (dict): a list of dicts in CCT format, i.e. with fields 'file_name' (str),
+            'datetime' (datetime), and 'location' (str).    
     """
     
     if options is None:

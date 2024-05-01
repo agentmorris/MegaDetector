@@ -37,16 +37,16 @@ def write_yolo_dataset_file(yolo_dataset_file,
                             val_folder_relative=None,
                             test_folder_relative=None):
     """
-    Write a YOLOv5 dataset.yaml file to the absolute path yolo_dataset_file (should
+    Write a YOLOv5 dataset.yaml file to the absolute path [yolo_dataset_file] (should
     have a .yaml extension, though it's only a warning if it doesn't).  
-
-    [dataset_base_dir] should be the absolute path of the dataset root.
     
-    yolo_dataset_file does not have to be within dataset_base_dir.
-
-    [class_list] can be an ordered list of class names (the first item will be class 0, 
-    etc.), or the name of a text file containing an ordered list of class names (one per 
-    line, starting from class zero).
+    Args:
+        yolo_dataset_file (str): the file, typically ending in .yaml or .yml, to write.  
+            Does not have to be within dataset_base_dir.
+        dataset_base_dir (str): the absolute base path of the YOLO dataset
+        class_list (list or str): an ordered list of class names (the first item will be class 0, 
+            etc.), or the name of a text file containing an ordered list of class names (one per 
+            line, starting from class zero).
     """
     
     # Read class names
@@ -82,7 +82,9 @@ def write_yolo_dataset_file(yolo_dataset_file,
 # ...def write_yolo_dataset_file(...)
 
             
-def coco_to_yolo(input_image_folder,output_folder,input_file,
+def coco_to_yolo(input_image_folder,
+                 output_folder,
+                 input_file,
                  source_format='coco',
                  overwrite_images=False,
                  create_image_and_label_folders=False,
@@ -97,7 +99,7 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
                  write_output=True,
                  flatten_paths=True):
     """
-    Convert a COCO-formatted dataset to a YOLO-formatted dataset, optionally flattening the 
+    Converts a COCO-formatted dataset to a YOLO-formatted dataset, optionally flattening the 
     dataset to a single folder in the process.
     
     If the input and output folders are the same, writes .txt files to the input folder,
@@ -106,32 +108,51 @@ def coco_to_yolo(input_image_folder,output_folder,input_file,
     Currently ignores segmentation masks, and errors if an annotation has a 
     segmentation polygon but no bbox.
     
-    source_format can be 'coco' (default) or 'coco_camera_traps'.  The only difference
-    is that when source_format is 'coco_camera_traps', we treat an image with a non-bbox
-    annotation with a category id of 0 as a special case, i.e. that's how an empty image
-    is indicated.  The original COCO standard is a little ambiguous on this issue.  If
-    source_format is 'coco', we either treat images as empty or error, depending on the value
-    of allow_empty_annotations.  allow_empty_annotations has no effect if source_format is
-    'coco_camera_traps'.
+    Args:
+        input_image_folder (str): the folder where images live; filenames in the COCO .json
+            file [input_file] should be relative to this folder
+        output_folder (str): the base folder for the YOLO dataset
+        input_file (str): a .json file in COCO format; can be the same as [input_image_folder], in which case
+            images are left alone.
+        source_format (str, optional): can be 'coco' (default) or 'coco_camera_traps'.  The only difference
+            is that when source_format is 'coco_camera_traps', we treat an image with a non-bbox
+            annotation with a category id of 0 as a special case, i.e. that's how an empty image
+            is indicated.  The original COCO standard is a little ambiguous on this issue.  If
+            source_format is 'coco', we either treat images as empty or error, depending on the value
+            of [allow_empty_annotations].  [allow_empty_annotations] has no effect if source_format is
+            'coco_camera_traps'.
+        create_image_and_label_folder (bool, optional): whether to create separate folders called 'images' and
+            'labels' in the YOLO output folder.  If create_image_and_label_folders is False, 
+            a/b/c/image001.jpg will become a#b#c#image001.jpg, and the corresponding text file will 
+            be a#b#c#image001.txt.  If create_image_and_label_folders is True, a/b/c/image001.jpg will become 
+            images/a#b#c#image001.jpg, and the corresponding text file will be 
+            labels/a#b#c#image001.txt.    
+        clip_boxes (bool, optional): whether to clip bounding box coordinates to the range [0,1] before
+            converting to YOLO xywh format
+        image_id_to_output_image_json_file (str, optional): an optional *output* file, to which we will write
+            a mapping from image IDs to output file names
+        images_to_exclude (list, optional): a list of image files (relative paths in the input folder) that we 
+            should ignore
+        path_replacement_char (str, optional): only relevant if [flatten_paths] is True; this is used to replace
+            path separators, e.g. if [path_replacement_char] is '#' and [flatten_paths] is True, a/b/c/d.jpg
+            becomes a#b#c#d.jpg
+        category_names_to_exclude (str, optional): category names that should not be represented in the
+            YOLO output; only impacts annotations, does not prevent copying images.  There's almost no reason
+            you would want to specify this and [category_names_to_include]. 
+        category_names_to_include (str, optional): allow-list of category names that should be represented in the
+            YOLO output; only impacts annotations, does not prevent copying images.  There's almost no reason
+            you would want to specify this and [category_names_to_exclude]. 
+        write_output (bool, optional): determines whether we actually copy images and write annotations;
+            setting this to False mostly puts this function in "dry run" "mode.  The class list
+            file is written regardless of the value of write_output.
     
-    If create_image_and_label_folders is false, a/b/c/image001.jpg will become a#b#c#image001.jpg, 
-    and the corresponding text file will be a#b#c#image001.txt.  
-    
-    If create_image_and_label_folders is true, a/b/c/image001.jpg will become 
-    images/a#b#c#image001.jpg, and the corresponding text file will be 
-    labels/a#b#c#image001.txt.  Some tools still use this variant of the YOLO standard.
-    
-    If clip_boxes is True, bounding boxes coordinates will be clipped to [0,1].
-    
-    image_id_to_output_image_json_file is an optional *output* file, to which we will write
-    a mapping from image IDs to output file names.
-    
-    images_to_exclude is a list of image files (relative paths in the input folder) that we 
-    should ignore.
-    
-    write_output determines whether we actually copy images and write annotations;
-    setting this to False basically puts this function in "test mode".  The class list
-    file is written regardless of the value of write_output.
+    Returns:
+        dict: information about the coco --> yolo mapping, containing at least the fields:
+        
+        - class_list_filename: the filename to which we wrote the flat list of class names required 
+          by the YOLO format.
+        - source_image_to_dest_image: a dict mapping source images to destination images
+        - coco_id_to_yolo_id: a dict mapping COCO category IDs to YOLO category IDs        
     """
         
     ## Validate input
@@ -500,12 +521,12 @@ def create_yolo_symlinks(source_folder,images_folder,labels_folder,
                          class_list_output_name='object.data',
                          force_lowercase_image_extension=False):
     """
-    Given a YOLO-formatted folder of images and .txt files, create a folder
+    Given a YOLO-formatted folder of images and .txt files, creates a folder
     of symlinks to all the images, and a folder of symlinks to all the labels. 
-    Used to support preview/editing tools (like BoundingBoxEditor) that assume
-    images and labels are in separate folders.
+    Used to support preview/editing tools that assume images and labels are in separate 
+    folders.
     
-    images_folder and labels_folder are absolute paths.
+    :meta private:
     """    
     
     assert source_folder != images_folder and source_folder != labels_folder
@@ -619,7 +640,7 @@ def main():
     parser.add_argument(
         '--create_bounding_box_editor_symlinks',
         action='store_true',
-        help='Prepare symlinks so the whole folder is BoundingBoxEditor-friendly')        
+        help='Prepare symlinks so the whole folder appears to contain "images" and "labels" folderss')        
     
     if len(sys.argv[1:]) == 0:
         parser.print_help()

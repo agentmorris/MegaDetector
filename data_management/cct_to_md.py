@@ -6,7 +6,7 @@ cct_to_md.py
 non-bounding-box annotations, and gives all annotations a confidence of 1.0.
 
 The only reason to do this is if you are going to add information to an existing
-CCT-formatted dataset, and want to do that in Timelapse.
+CCT-formatted dataset, and you want to do that in Timelapse.
 
 Currently assumes that width and height are present in the input data, does not
 read them from images.
@@ -25,6 +25,24 @@ from tqdm import tqdm
 #%% Functions
 
 def cct_to_md(input_filename,output_filename=None):
+    """
+    "Converts" a COCO Camera Traps file to a MD results file.  Currently ignores
+    non-bounding-box annotations, and gives all annotations a confidence of 1.0.
+
+    The only reason to do this is if you are going to add information to an existing
+    CCT-formatted dataset, and you want to do that in Timelapse.
+
+    Currently assumes that width and height are present in the input data, does not
+    read them from images.
+    
+    Args:
+        input_filename (str): the COCO Camera Traps .json file to read
+        output_filename (str, optional): the .json file to write in MD results format
+        
+    Returns:
+        dict: MD-formatted results, identical to the content of [output_filename] if
+        [output_filename] is not None
+    """
     
     ## Validate input
     
@@ -151,7 +169,7 @@ if False:
     visualize_detector_output.visualize_detector_output(
                               detector_output_path=output_filename,
                               out_dir=r'g:\temp\fish_output',
-                              images_dir=r'G:\temp\noaa_estuary_fish-images\JPEGImages',
+                              images_dir=r'g:\temp\noaa_estuary_fish-images\JPEGImages',
                               output_image_width=-1,
                               sample=100,
                               render_detections_only=True)

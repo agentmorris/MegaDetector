@@ -147,7 +147,7 @@ def md_to_labelme(results_file,image_base,confidence_threshold=None,
     corresponding relative path within image_base.
     
     Args:
-        results_file (str): MD results .json file to convert to LabelMe format
+        results_file (str): MD results .json file to convert to Labelme format
         image_base (str): folder of images; filenames in [results_file] should be relative to
             this folder
         confidence_threshold (float, optional): only detections at or above this confidence threshold

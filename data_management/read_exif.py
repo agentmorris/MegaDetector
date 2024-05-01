@@ -2,8 +2,8 @@
 
 read_exif.py
 
-Given a folder of images, read relevant metadata (EXIF/IPTC/XMP) fields from all images, 
-and write them to  a .json or .csv file.  
+Given a folder of images, reads relevant metadata (EXIF/IPTC/XMP) fields from all images, 
+and writes them to  a .json or .csv file.  
 
 This module can use either PIL (which can only reliably read EXIF data) or exiftool (which
 can read everything).  The latter approach expects that exiftool is available on the system
@@ -24,7 +24,7 @@ from multiprocessing.pool import Pool as Pool
 from tqdm import tqdm
 from PIL import Image, ExifTags
 
-from md_utils.path_utils import find_images
+from md_utils.path_utils import find_images, is_executable
 from md_utils.ct_utils import args_to_object
 
 debug_max_images = None
@@ -33,64 +33,61 @@ debug_max_images = None
 #%% Options
 
 class ReadExifOptions:
+    """
+    Parameters controlling metadata extraction.
+    """
     
+    #: Enable additional debug console output
     verbose = False
     
-    # If this is True and an output file is specified for read_exif_from_folder,
-    # and we encounter a serialization issue, we'll return the results but won't
-    # error.    
+    #: If this is True and an output file is specified for read_exif_from_folder,
+    #: and we encounter a serialization issue, we'll return the results but won't
+    #: error.    
     allow_write_error = False
     
-    # Number of concurrent workers
+    #: Number of concurrent workers, set to <= 1 to disable parallelization
     n_workers = 1
     
-    # Should we use threads (vs. processes) for parallelization?
-    #
-    # Not relevant if n_workers is 1.
+    #: Should we use threads (vs. processes) for parallelization?
+    #:
+    #: Not relevant if n_workers is <= 1.
     use_threads = True
         
-    # "File" and "ExifTool" are tag types used by ExifTool to report data that 
-    # doesn't come from EXIF, rather from the file (e.g. file size).
+    #: "File" and "ExifTool" are tag types used by ExifTool to report data that 
+    #: doesn't come from EXIF, rather from the file (e.g. file size).
     tag_types_to_ignore = set(['File','ExifTool'])
     
-    # Include/exclude specific tags (mutually incompatible)
+    #: Include/exclude specific tags (tags_to_include and tags_to_exclude are mutually incompatible)
+    #:
+    #: A useful set of tags one might want to limit queries for:
+    #:
+    #: options.tags_to_include = ['DateTime','Model','Make','ExifImageWidth','ExifImageHeight','DateTime',
+    #: 'DateTimeOriginal','Orientation']    
     tags_to_include = None
+    
+    #: Include/exclude specific tags (tags_to_include and tags_to_exclude are mutually incompatible)
     tags_to_exclude = None
     
-    # A useful set of tags one might want to limit queries for
-    # options.tags_to_include = ['DateTime','Model','Make','ExifImageWidth','ExifImageHeight','DateTime','DateTimeOriginal','Orientation']
-    
+    #: The command line to invoke if using exiftool, can be an absolute path to exiftool.exe, or
+    #: can be just "exiftool", in which case it should be on your system path.
     exiftool_command_name = 'exiftool'
     
-    # How should we handle byte-formatted EXIF tags?
-    #
-    # 'convert_to_string': convert to a Python string
-    # 'delete': don't include at all
-    # 'raw': include as a byte string
+    #: How should we handle byte-formatted EXIF tags?
+    #:
+    #: 'convert_to_string': convert to a Python string
+    #: 'delete': don't include at all
+    #: 'raw': include as a byte string
     byte_handling = 'convert_to_string' # 'convert_to_string','delete','raw'
     
-    # Should we use exiftool or pil?
+    #: Should we use exiftool or PIL?
     processing_library = 'pil' # 'exiftool','pil'
-    
-    
+        
 
 #%% Functions
 
-def enumerate_files(input_folder,recursive=True):
+def _get_exif_ifd(exif):
     """
-    Enumerates all image files in input_folder, returning relative paths
-    """
-    
-    image_files = find_images(input_folder,recursive=recursive)
-    image_files = [os.path.relpath(s,input_folder) for s in image_files]
-    image_files = [s.replace('\\','/') for s in image_files]
-    print('Enumerated {} files'.format(len(image_files)))
-    return image_files
-
-
-def get_exif_ifd(exif):
-    """
-    Read EXIF data by finding the EXIF offset and reading tags directly
+    Read EXIF data from by finding the EXIF offset and reading tags directly
     
     https://github.com/python-pillow/Pillow/issues/5863
     """
@@ -106,10 +103,10 @@ def get_exif_ifd(exif):
     }
 
 
-def read_pil_exif(im,options=None):
+def _read_pil_exif(im,options=None):
     """
-    Read all the EXIF data we know how to read from [im] (path or PIL Image), whether it's 
-    in the PIL default EXIF data or not.  Returns a dict.
+    Read all the EXIF data we know how to read from [im] (path or PIL Image), using PIL, whether 
+    it's in the PIL default EXIF data or not.  Returns a dict.
     """
     
     if options is None:
@@ -138,10 +135,10 @@ def read_pil_exif(im,options=None):
             # print('Warning: unrecognized EXIF tag: {}'.format(k))
             exif_tags[k] = str(v)
     
-    exif_idf_tags = get_exif_ifd(exif_info)
+    exif_ifd_tags = _get_exif_ifd(exif_info)
     
-    for k in exif_idf_tags.keys():
-        v = exif_idf_tags[k]
+    for k in exif_ifd_tags.keys():
+        v = exif_ifd_tags[k]
         if k in exif_tags:
             if options.verbose:
                 print('Warning: redundant EXIF values for {} in {}:\n{}\n{}'.format(
@@ -172,13 +169,13 @@ def read_pil_exif(im,options=None):
             
     return exif_tags
 
-# ...read_pil_exif()
+# ..._read_pil_exif()
 
 
 def format_datetime_as_exif_datetime_string(dt):
     """
-    Returns a Python datetime object rendered using the standard Exif datetime
-    string format
+    Returns a Python datetime object rendered using the standard EXIF datetime
+    string format ('%Y:%m:%d %H:%M:%S')
     """
     
     return datetime.strftime(dt, '%Y:%m:%d %H:%M:%S')
@@ -190,7 +187,14 @@ def parse_exif_datetime_string(s,verbose=False):
         
     %Y:%m:%d %H:%M:%S
     
-    Parse one of those strings into a Python datetime object.
+    Parses one of those strings into a Python datetime object.
+    
+    Args:
+        s (str): datetime string to parse, should be in standard EXIF datetime format
+        verbose (bool, optional): enable additional debug output
+    
+    Returns:
+        datetime: the datetime object created from [s]
     """
     
     dt = None
@@ -232,13 +236,13 @@ def read_exif_tags_for_image(file_path,options=None):
     """
     Get relevant fields from EXIF data for an image
     
-    Returns a dict with fields 'status' (str) and 'tags'
-    
-    The exact format of 'tags' depends on options.processing_library
-    
-    For exiftool, 'tags' is a list of lists, where each element is (type/tag/value)
-    
-    For pil, 'tags' is a dict (str:str)
+    Returns:
+        dict: a dict with fields 'status' (str) and 'tags'. The exact format of 'tags' depends on 
+        options (ReadExifOptions, optional): parameters controlling metadata extraction
+        options.processing_library:
+            
+            - For exiftool, 'tags' is a list of lists, where each element is (type/tag/value)
+            - For PIL, 'tags' is a dict (str:str)
     """
     
     if options is None:
@@ -249,7 +253,7 @@ def read_exif_tags_for_image(file_path,options=None):
     if options.processing_library == 'pil':
         
         try:
-            exif_tags = read_pil_exif(file_path,options)
+            exif_tags = _read_pil_exif(file_path,options)
 
         except Exception as e:
             if options.verbose:
@@ -344,7 +348,7 @@ def read_exif_tags_for_image(file_path,options=None):
 # ...read_exif_tags_for_image()
 
 
-def populate_exif_data(im, image_base, options=None):
+def _populate_exif_data(im, image_base, options=None):
     """
     Populate EXIF data into the 'exif_tags' field in the image object [im].
     
@@ -386,10 +390,10 @@ def populate_exif_data(im, image_base, options=None):
     
     return im
 
-# ...populate_exif_data()
+# ..._populate_exif_data()
 
 
-def create_image_objects(image_files,recursive=True):
+def _create_image_objects(image_files,recursive=True):
     """
     Create empty image objects for every image in [image_files], which can be a 
     list of relative paths (which will get stored without processing, so the base 
@@ -404,7 +408,10 @@ def create_image_objects(image_files,recursive=True):
     if isinstance(image_files,str):    
         print('Enumerating image files in {}'.format(image_files))
         assert os.path.isdir(image_files), 'Invalid image folder {}'.format(image_files)
-        image_files = enumerate_files(image_files,recursive=recursive)
+        image_files = find_images(image_files,
+                                  recursive=recursive,
+                                  return_relative_paths=True,
+                                  convert_slashes=True)
         
     images = []
     for fn in image_files:
@@ -419,7 +426,7 @@ def create_image_objects(image_files,recursive=True):
     return images
 
 
-def populate_exif_for_images(image_base,images,options=None):
+def _populate_exif_for_images(image_base,images,options=None):
     """
     Main worker loop: read EXIF data for each image object in [images] and 
     populate the image objects.
@@ -435,7 +442,7 @@ def populate_exif_for_images(image_base,images,options=None):
       
         results = []
         for im in tqdm(images):
-            results.append(populate_exif_data(im,image_base,options))
+            results.append(_populate_exif_data(im,image_base,options))
         
     else:
         
@@ -447,13 +454,13 @@ def populate_exif_for_images(image_base,images,options=None):
             print('Starting parallel process pool with {} workers'.format(options.n_workers))
             pool = Pool(options.n_workers)
     
-        results = list(tqdm(pool.imap(partial(populate_exif_data,image_base=image_base,
+        results = list(tqdm(pool.imap(partial(_populate_exif_data,image_base=image_base,
                                         options=options),images),total=len(images)))
 
     return results
 
 
-def write_exif_results(results,output_file):
+def _write_exif_results(results,output_file):
     """
     Write EXIF information to [output_file].
     
@@ -530,28 +537,24 @@ def write_exif_results(results,output_file):
     print('Wrote results to {}'.format(output_file))
 
 
-def is_executable(name):
-    
-    """Check whether `name` is on PATH and marked as executable."""
-    
-    # https://stackoverflow.com/questions/11210104/check-if-a-program-exists-from-a-python-script
-
-    from shutil import which
-    return which(name) is not None
-
-
 def read_exif_from_folder(input_folder,output_file=None,options=None,filenames=None,recursive=True):
     """
-    Read EXIF data for all images in input_folder.
+    Read EXIF data for a folder of images.
     
-    If filenames is not None, it should be a list of relative filenames; only those files will 
-    be processed.
-    
-    input_folder can be None or '', in which case filenames should be a list of absolute paths.
-    
-    if output_file is not None, results will be written to the specified .json file.
-    
-    returns a dictionary mapping relative filenames to EXIF data.
+    Args:
+        input_folder (str): folder to process; if this is None, [filenames] should be a list of absolute
+            paths
+        output_file (str, optional): .json file to which we should write results; if this is None, results
+            are returned but not written to disk
+        options (ReadExifOptions, optional): parameters controlling metadata extraction
+        filenames (list, optional): allowlist of relative filenames (if [input_folder] is not None) or
+            a list of absolute filenames (if [input_folder] is None)
+        recursive (bool, optional): whether to recurse into [input_folder], not relevant if [input_folder]
+            is None.
+            
+    Returns:
+        dict: a dictionary mapping relative filenames to EXIF data, whose format depends on whether 
+        we're using PIL or exiftool.
     """
     
     if options is None:
@@ -589,16 +592,16 @@ def read_exif_from_folder(input_folder,output_file=None,options=None,filenames=N
         assert is_executable(options.exiftool_command_name), 'exiftool not available'
 
     if filenames is None:
-        images = create_image_objects(input_folder,recursive=recursive)
+        images = _create_image_objects(input_folder,recursive=recursive)
     else:
         assert isinstance(filenames,list)
-        images = create_image_objects(filenames)
+        images = _create_image_objects(filenames)
         
-    results = populate_exif_for_images(input_folder,images,options)
+    results = _populate_exif_for_images(input_folder,images,options)
     
     if output_file is not None:
         try:
-            write_exif_results(results,output_file)
+            _write_exif_results(results,output_file)
         except Exception as e:
             if not options.allow_write_error:
                 raise
@@ -645,8 +648,10 @@ def main():
     parser = argparse.ArgumentParser(description=('Read EXIF information from all images in' + \
                                                   ' a folder, and write the results to .csv or .json'))
 
-    parser.add_argument('input_folder', type=str)
-    parser.add_argument('output_file', type=str)
+    parser.add_argument('input_folder', type=str, 
+                        help='Folder of images from which we should read EXIF information')
+    parser.add_argument('output_file', type=str,
+                        help='Output file (.json) to which we should write EXIF information')
     parser.add_argument('--n_workers', type=int, default=1,
                         help='Number of concurrent workers to use (defaults to 1)')
     parser.add_argument('--use_threads', action='store_true',

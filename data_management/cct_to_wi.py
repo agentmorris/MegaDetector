@@ -3,13 +3,18 @@
 cct_to_wi.py
 
 Converts COCO Camera Traps .json files to the Wildlife Insights
-batch upload format
+batch upload format.
+
+**This is very much just a demo script; all the relevant constants are hard-coded 
+at the top of main().**
+
+But given that caveat, it works.  You need to set up all the paths in the "paths" cell
+at the top of main().
 
 Also see:
 
-https://github.com/ConservationInternational/Wildlife-Insights----Data-Migration
-
-https://data.naturalsciences.org/wildlife-insights/taxonomy/search
+* https://github.com/ConservationInternational/Wildlife-Insights----Data-Migration
+* https://data.naturalsciences.org/wildlife-insights/taxonomy/search
 
 """
 
@@ -24,22 +29,33 @@ from collections import defaultdict
 #%% Main wrapper
 
 def main():
+    """
+    Converts COCO Camera Traps .json files to the Wildlife Insights
+    batch upload format; to use this, you need to modify all the paths in the "Paths"    
+    cell.
+    """
     
     #%% Paths
 
     # A COCO camera traps file with information about this dataset
     input_file = r'c:\temp\camera_trap_images_no_people\bellevue_camera_traps.2020-12-26.json'
-    assert os.path.isfile(input_file)
-
+    
     # A .json dictionary mapping common names in this dataset to dictionaries with the 
     # WI taxonomy fields: common_name, wi_taxon_id, class, order, family, genus, species
     taxonomy_file = r'c:\temp\camera_trap_images_no_people\bellevue_camera_traps_to_wi.json'
-    assert os.path.isfile(taxonomy_file)
 
+    # The folder where the .csv template files live
     templates_dir = r'c:\temp\wi_batch_upload_templates'
-    assert os.path.isdir(templates_dir)
-
+    
+    # The folder to which you want to write WI-formatted .csv files
     output_base = r'c:\temp\wi_output'
+    
+    
+    #%% Path validation
+    
+    assert os.path.isfile(input_file)
+    assert os.path.isfile(taxonomy_file)
+    assert os.path.isdir(templates_dir)
     os.makedirs(output_base,exist_ok = True)
 
         
@@ -263,6 +279,8 @@ def main():
     df = pd.DataFrame(rows)
 
     df.to_csv(os.path.join(output_base,images_file_name),index=False)
+
+# ...main()
 
 
 #%% Command-line driver

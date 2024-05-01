@@ -20,6 +20,7 @@ data\_management.databases.combine\_coco\_camera\_traps\_files module
    :func: main
    :hook:
    :prog: combine_coco_camera_traps_files
+   :no_default_values:
 
 data\_management.databases.integrity\_check\_json\_db module
 ------------------------------------------------------------
@@ -35,6 +36,7 @@ data\_management.databases.integrity\_check\_json\_db module
    :func: main
    :hook:
    :prog: integrity_check_json_db
+   :no_default_values:
 
 data\_management.databases.subset\_json\_db module
 --------------------------------------------------
@@ -51,6 +53,7 @@ data\_management.databases.subset\_json\_db module
    :func: main
    :hook:
    :prog: subset_json_db
+   :no_default_values:
 
 Module contents
 ---------------

@@ -14,7 +14,6 @@ import ntpath
 import os
 import sys
 import platform
-import posixpath
 import string
 import json
 import shutil
@@ -29,6 +28,7 @@ from zipfile import ZipFile
 from datetime import datetime
 from multiprocessing.pool import Pool, ThreadPool
 from functools import partial
+from shutil import which
 from tqdm import tqdm
 
 IMG_EXTENSIONS = ('.jpg', '.jpeg', '.gif', '.png', '.tif', '.tiff', '.bmp')
@@ -358,6 +358,22 @@ def flatten_path(pathname,separator_chars=SEPARATOR_CHARS):
     for c in separator_chars:
         s = s.replace(c, '~')
     return s
+
+
+def is_executable(filename):    
+    """
+    Checks whether [filename] is on the system path and marked as executable.
+    
+    Args:
+        filename (str): filename to check for executable status
+    
+    Returns:
+        bool: True if [filename] is on the system path and marked as executable, otherwise False
+    """
+    
+    # https://stackoverflow.com/questions/11210104/check-if-a-program-exists-from-a-python-script
+
+    return which(filename) is not None
 
 
 #%% Platform-independent way to open files in their associated application

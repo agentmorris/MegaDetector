@@ -829,7 +829,7 @@ def _render_image_with_gt(file_info,ground_truth_indexed_db,
 
     gt_presence = bool(gt_status)
 
-    gt_classes = CameraTrapJsonUtils.annotations_to_classnames(
+    gt_classes = CameraTrapJsonUtils.annotations_to_class_names(
         annotations, ground_truth_indexed_db.cat_id_to_name)
     gt_class_summary = ','.join(gt_classes)
 

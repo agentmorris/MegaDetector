@@ -77,7 +77,7 @@ def labelme_file_to_yolo_file(labelme_file,
         p0 = shape['points'][0]
         p1 = shape['points'][1]
         
-        # LabelMe: [[x0,y0],[x1,y1]] (arbitrarily sorted) (absolute coordinates)
+        # Labelme: [[x0,y0],[x1,y1]] (arbitrarily sorted) (absolute coordinates)
         #
         # YOLO: [class, x_center, y_center, width, height] (normalized coordinates)
         minx_abs = min(p0[0],p1[0])

@@ -2,7 +2,7 @@
 
 wi_download_csv_to_coco.py
 
-Convert a .csv file from a Wildlife Insights project export to a COCO camera traps .json file.
+Converts a .csv file from a Wildlife Insights project export to a COCO camera traps .json file.
 
 Currently assumes that common names are unique identifiers, which is convenient but unreliable.
 
@@ -13,12 +13,12 @@ Currently assumes that common names are unique identifiers, which is convenient 
 import os
 import json
 import pandas as pd
-import numpy as np
 
 from tqdm import tqdm
 from collections import defaultdict
 
 from md_visualization import visualization_utils as vis_utils
+from md_utils.ct_utils import isnan
 
 wi_extra_annotation_columns = \
     ('is_blank','identified_by','wi_taxon_id','class','order','family','genus','species','uncertainty',
@@ -27,14 +27,8 @@ wi_extra_annotation_columns = \
 
 wi_extra_image_columns = ('project_id','deployment_id')
 
-def make_location_id(project_id,deployment_id):    
+def _make_location_id(project_id,deployment_id):    
     return 'project_' + str(project_id) + '_deployment_' + deployment_id
-        
-def isnan(v):
-    try:
-        return np.isnan(v)
-    except Exception:
-        return False
 
 default_category_remappings = {
     'Homo Species':'Human',
@@ -43,7 +37,7 @@ default_category_remappings = {
 }
 
 
-#%% 
+#%% Main function
 
 def wi_download_csv_to_coco(csv_file_in,
                             coco_file_out=None,
@@ -53,25 +47,36 @@ def wi_download_csv_to_coco(csv_file_in,
                             verbose=True,
                             category_remappings=default_category_remappings):
     """
-    Convert a .csv file from a Wildlife Insights project export to a COCO 
-    camera traps .json file.
+    Converts a .csv file from a Wildlife Insights project export to a COCO 
+    Camera Traps .json file.
     
-    If [coco_file_out] is None, uses [csv_file_in].json
+    Args:
+        csv_file_in (str): the downloaded .csv file we should convert to COCO
+        coco_file_out (str, optional): the .json file we should write; if [coco_file_out] is None, 
+            uses [csv_file_in].json
+        image_folder (str, optional): the folder where images live, only relevant if 
+            [validate_images] is True
+        validate_images (bool, optional): whether to check images for corruption and load
+            image sizes; if this is True, [image_folder] must be a valid folder
+        gs_prefix (str, optional): a string to remove from GS URLs to convert to path names... 
+            for example, if your gs:// URLs look like:
     
-    gs_prefix is a string to remove from GS URLs to convert to path names... for example, if
-    your gs:// URLs look like:
+            `gs://11234134_xyz/deployment/55554/dfadfasdfs.jpg`
+    
+            ...and you specify gs_prefix='11234134_xyz/deployment/', the filenames in
+            the .json file will look like:
         
-    gs://11234134_xyz/deployment/55554/dfadfasdfs.jpg
-    
-    ...and you specify gs_prefix='11234134_xyz/deployment/', the filenames in
-    the .json file will look like:
-        
-    55554/dfadfasdfs.jpg
-    
-    exclude_re discards matching images; typically use to omit thumbnail images.
+            `55554/dfadfasdfs.jpg`
+        verbose (bool, optional): enable additional debug console output
+        category_remappings (dict, optional): str --> str dict that maps any number of
+            WI category names to output category names; for example defaults to mapping
+            "Homo Species" to "Human", but leaves 99.99% of categories unchanged.        
+            
+    Returns: 
+        dict: COCO-formatted data, identical to what's written to [coco_file_out]
     """
     
-    #%% Create COCO dictionaries
+    ##%% Create COCO dictionaries
     
     category_name_to_id = {}
     category_name_to_id['empty'] = 0
@@ -102,7 +107,7 @@ def wi_download_csv_to_coco(csv_file_in,
             if gs_prefix is not None:
                 file_name = file_name.replace(gs_prefix,'')
                 
-            location_id = make_location_id(row['project_id'],row['deployment_id'])
+            location_id = _make_location_id(row['project_id'],row['deployment_id'])
             im['file_name'] = file_name
             im['location'] = location_id
             im['datetime'] = row['timestamp']
@@ -115,7 +120,7 @@ def wi_download_csv_to_coco(csv_file_in,
             
             im = image_id_to_image[image_id]
             assert im['datetime'] == row['timestamp']
-            location_id = make_location_id(row['project_id'],row['deployment_id'])
+            location_id = _make_location_id(row['project_id'],row['deployment_id'])
             assert im['location'] == location_id
             
         category_name = row['common_name']
@@ -198,12 +203,11 @@ def wi_download_csv_to_coco(csv_file_in,
     
     ##%% Write output json
         
-    if coco_file_out is None:
-        
+    if coco_file_out is None:        
         coco_file_out = csv_file_in + '.json'
         
-        with open(coco_file_out,'w') as f:
-            json.dump(coco_data,f,indent=1)
+    with open(coco_file_out,'w') as f:
+        json.dump(coco_data,f,indent=1)
 
 
     ##%% Validate output
@@ -216,8 +220,11 @@ def wi_download_csv_to_coco(csv_file_in,
     options.verbose = verbose
     _ = integrity_check_json_db(coco_file_out,options)
     
+    return coco_data
 
-    
+# ...def wi_download_csv_to_coco(...)    
+
+
 #%% Interactive driver
 
 if False:

@@ -2,7 +2,7 @@
 
 generate_crops_from_cct.py
 
-Given a .json file in COCO Camera Traps format, create a cropped image for
+Given a .json file in COCO Camera Traps format, creates a cropped image for
 each bounding box.
 
 """
@@ -19,6 +19,23 @@ from PIL import Image
 #%% Functions
 
 def generate_crops_from_cct(cct_file,image_dir,output_dir,padding=0,flat_output=True):
+    """
+    Given a .json file in COCO Camera Traps format, creates a cropped image for
+    each bounding box.
+    
+    Args:
+        cct_file (str): the COCO .json file from which we should load data
+        image_dir (str): the folder where the images live; filenames in the .json
+            file should be relative to this folder
+        output_dir (str): the folder where we should write cropped images
+        padding (float, optional): number of pixels we should expand each box before
+            cropping
+        flat_output (bool, optional): if False, folder structure will be preserved
+            in the output, e.g. the image a/b/c/d.jpg will result in image files 
+            in the output folder called, e.g., a/b/c/d_crop_000_id_12345.jpg.  If
+            [flat_output] is True, the corresponding output image will be 
+            a_b_c_d_crop_000_id_12345.jpg.            
+    """
     
     ## Read and validate input
     
@@ -123,45 +140,10 @@ if False:
     flat_output = True
     output_dir = '/home/user/tmp/noaa-fish-crops'
     
-    #%%
-    
     generate_crops_from_cct(cct_file,image_dir,output_dir,padding,flat_output=True)
     files = os.listdir(output_dir)
     
-    #%%
     
-    import random
-    fn = os.path.join(output_dir,random.choice(files))
-    
-    from md_utils.path_utils import open_file
-    open_file(fn)
+#%% Command-line driver
 
-
-#%% Scrap
-
-if False:
-    
-    pass
-
-    #%%
-    
-    from md_visualization.visualize_db import DbVizOptions,visualize_db
-    
-    db_path = cct_file
-    output_dir = os.path.expanduser('~/tmp/noaa-fish-preview')
-    image_base_dir = image_dir
-    
-    options = DbVizOptions()
-    options.num_to_visualize = None
-    
-    options.parallelize_rendering_n_cores = 5
-    options.parallelize_rendering = True    
-    
-    options.viz_size = (-1, -1)
-    options.trim_to_images_with_bboxes = True
-    
-    options.box_thickness = 4
-    options.box_expansion = 25
-    
-    htmlOutputFile,db = visualize_db(db_path,output_dir,image_base_dir,options)
-    
+# TODO
