@@ -111,6 +111,5 @@ def main():
     
     subset_json_db(args.input_json,args.query,args.output_json,args.ignore_case)
 
-if __name__ == '__main__':
-    
+if __name__ == '__main__':    
     main()

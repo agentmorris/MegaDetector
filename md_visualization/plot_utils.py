@@ -2,11 +2,8 @@
 
 plot_utils.py
 
-Utility functions for plotting.
-
-NOTE: Do NOT import matplotlib.pyplot here to avoid the interactive backend.
-Thus, the matplotlib.figure.Figure objects returned by the functions here do not
-need to be "closed" with `plt.close(fig)`.
+Utility functions for plotting, particularly for plotting confusion matrices
+and precision-recall curves.
 
 """
 
@@ -15,7 +12,9 @@ need to be "closed" with `plt.close(fig)`.
 from typing import Any, Optional, Sequence, Tuple, Union
 
 import numpy as np
-import matplotlib.figure  # this also imports mpl.{cm, axes, colors}
+
+# This also imports mpl.{cm, axes, colors}
+import matplotlib.figure
 
 
 #%% Plotting functions
@@ -31,9 +30,9 @@ def plot_confusion_matrix(
         y_label: bool = True,        
         fmt: str = '{:.0f}',
         fig=None
-        ) -> matplotlib.figure.Figure:
+        ):
     """
-    Plot a confusion matrix. By default, assumes values in the given matrix
+    Plots a confusion matrix. By default, assumes values in the given matrix
     are percentages. If the matrix contains counts, normalization can be applied
     by setting `normalize=True`.
 
@@ -51,7 +50,7 @@ def plot_confusion_matrix(
         fmt: str, format string
 
     Returns: 
-        matplotlib.figure.Figure, a reference to the figure
+        matplotlib.figure.Figure: a reference to the figure
     """
     
     num_classes = matrix.shape[0]
@@ -256,20 +255,19 @@ def plot_calibration_curve(true_scores: Sequence[int],
                            **fig_kwargs: Any
                            ) -> matplotlib.figure.Figure:
     """
-    Plot a calibration curve.
+    Plots a calibration curve.
 
     See calibration_ece() for more information about arguments.
     
     Args:
-        name: str, label in legend for the calibration curve
-        plot_perf: bool, whether to plot y=x line indicating perfect calibration
-        plot_hist: bool, whether to plot histogram of counts
-        ax: optional matplotlib Axes, if given then no legend is drawn, and
-            fig_kwargs are ignored
-        fig_kwargs: only used if ax is None
+        name (str): label in legend for the calibration curve
+        plot_perf (bool): whether to plot y=x line indicating perfect calibration
+        plot_hist (bool): whether to plot histogram of counts
+        ax (Axes, optional), if given then no legend is drawn, and fig_kwargs are ignored
+        fig_kwargs (dict, optional): only used if [ax] is None
 
     Returns:
-        matplotlib Figure
+        matplitlib.figure.Figure
     """
     
     accs, confs, ece = calibration_ece(true_scores, pred_scores, num_bins)

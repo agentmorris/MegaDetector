@@ -2,10 +2,12 @@
 
 run_tiled_inference.py
 
-Run inference on a folder, fist splitting each image up into tiles of size
+**This script is experimental, YMMV.**
+
+Runs inference on a folder, fist splitting each image up into tiles of size
 MxN (typically the native inference size of your detector), writing those
-tiles out to a temporary folder, then de-duplicating the results before merging
-them back into a set of detections that make sense on the original images.
+tiles out to a temporary folder, then de-duplicating the resulting detections before 
+merging them back into a set of detections that make sense on the original images.
 
 This approach will likely fail to detect very large animals, so if you expect both large 
 and small animals (in terms of pixel size), this script is best used in 
@@ -54,17 +56,24 @@ parallelization_uses_threads = False
 
 def get_patch_boundaries(image_size,patch_size,patch_stride=None):
     """
-    Get a list of patch starting coordinates (x,y) given an image size (w,h)
-    and a stride (x,y).  Stride defaults to half the patch size.
+    Computes a list of patch starting coordinates (x,y) given an image size (w,h)
+    and a stride (x,y)
     
-    patch_stride can also be a single float, in which case that is interpreted 
-    as the stride relative to the patch size (0.1 == 10% stride).
-    
-    Patch size is guaranteed, stride may deviate to make sure all pixels are covered.
+    Patch size is guaranteed, but the stride may deviate to make sure all pixels are covered.
     I.e., we move by regular strides until the current patch walks off the right/bottom,
     at which point it backs up to one patch from the end.  So if your image is 15
     pixels wide and you have a stride of 10 pixels, you will get starting positions 
     of 0 (from 0 to 9) and 5 (from 5 to 14).
+    
+    Args:
+        image_size (tuple): size of the image you want to divide into patches, as a length-2 tuple (w,h)
+        patch_size (tuple): patch size into which you want to divide an image, as a length-2 tuple (w,h)
+        patch_stride (tuple or float, optional): stride between patches, as a length-2 tuple (x,y), or a 
+            float; if this is a float, it's interpreted as the stride relative to the patch size 
+            (0.1 == 10% stride).  Defaults to half the patch size.
+
+    Returns:
+        list: list of length-2 tuples, each representing the x/y start position of a patch        
     """
     
     if patch_stride is None:
@@ -163,23 +172,50 @@ def get_patch_boundaries(image_size,patch_size,patch_stride=None):
 
 
 def patch_info_to_patch_name(image_name,patch_x_min,patch_y_min):
+    """
+    Gives a unique string name to an x/y coordinate, e.g. turns ("a.jpg",10,20) into
+    "a.jpg_0010_0020".
     
+    Args:
+        image_name (str): image identifier
+        patch_x_min (int): x coordinate
+        patch_y_min (int): y coordinate
+    
+    Returns:
+        str: name for this patch, e.g. "a.jpg_0010_0020"
+    """
     patch_name = image_name + '_' + \
         str(patch_x_min).zfill(4) + '_' + str(patch_y_min).zfill(4)
     return patch_name
 
 
-def extract_patch_from_image(im,patch_xy,patch_size,
-                             patch_image_fn=None,patch_folder=None,image_name=None,overwrite=True):
+def extract_patch_from_image(im,
+                             patch_xy,
+                             patch_size,
+                             patch_image_fn=None,
+                             patch_folder=None,
+                             image_name=None,
+                             overwrite=True):
     """
-    Extracts a patch from the provided image, writing the patch out to patch_image_fn.
-    [im] can be a string or a PIL image.
+    Extracts a patch from the provided image, and writes that patch out to a new file.
     
-    patch_xy is a length-2 tuple specifying the upper-left corner of the patch.
+    Args:
+        im (str or Image): image from which we should extract a patch, can be a filename or
+            a PIL Image object.
+        patch_xy (tuple): length-2 tuple of ints (x,y) representing the upper-left corner 
+            of the patch to extract
+        patch_size (tuple): length-2 tuple of ints (w,h) representing the size of the 
+            patch to extract
+        patch_image_fn (str, optional): image filename to write the patch to; if this is None
+            the filename will be generated from [image_name] and the patch coordinates
+        patch_folder (str, optional): folder in which the image lives; only used to generate
+            a patch filename, so only required if [patch_image_fn] is None
+        image_name (str, optional): the identifier of the source image; only used to generate
+            a patch filename, so only required if [patch_image_fn] is None
+        overwrite (bool, optional): whether to overwrite an existing patch image
     
-    image_name and patch_folder are only required if patch_image_fn is None.
-    
-    Returns a dictionary with fields xmin,xmax,ymin,ymax,patch_fn.
+    Returns:
+        dict: a dictionary with fields xmin,xmax,ymin,ymax,patch_fn
     """
     
     if isinstance(im,str):
@@ -223,10 +259,20 @@ def extract_patch_from_image(im,patch_xy,patch_size,
     
     return patch_info
 
+# ...def extract_patch_from_image(...)
+
 
 def in_place_nms(md_results, iou_thres=0.45, verbose=True):
     """
-    Run torch.ops.nms in-place on MD-formatted detection results    
+    Run torch.ops.nms in-place on MD-formatted detection results.
+    
+    Args:
+        md_results (dict): detection results for a list of images, in MD results format (i.e., 
+            containing a list of image dicts with the key 'images', each of which has a list
+            of detections with the key 'detections')
+        iou_thres (float, optional): IoU threshold above which we will treat two detections as
+            redundant
+        verbose (bool, optional): enable additional debug console output
     """
     
     n_detections_before = 0
@@ -343,7 +389,7 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
                         overwrite_tiles=True,
                         image_list=None):
     """
-    Run inference using [model_file] on the images in [image_folder], fist splitting each image up 
+    Runs inference using [model_file] on the images in [image_folder], fist splitting each image up 
     into tiles of size [tile_size_x] x [tile_size_y], writing those tiles to [tiling_folder],
     then de-duplicating the results before merging them back into a set of detections that make 
     sense on the original images and writing those results to [output_file].  
@@ -360,7 +406,32 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
     
     if yolo_inference_options is supplied, it should be an instance of YoloInferenceOptions; in 
     this case the model will be run with run_inference_with_yolov5_val.  This is typically used to 
-    run the model with test-time augmentation.          
+    run the model with test-time augmentation.
+    
+    Args:
+        model_file (str): model filename (ending in .pt), or a well-known model name (e.g. "MDV5A")
+        image_folder (str): the folder of images to proess (always recursive)
+        tiling_folder (str): folder for temporary tile storage; see caveats above
+        output_file (str): .json file to which we should write MD-formatted results
+        tile_size_x (int, optional): tile width
+        tile_size_y (int, optional): tile height
+        tile_overlap (float, optional): overlap between adjacenet tiles, as a fraction of the
+            tile size
+        checkpoint_path (str, optional): checkpoint path; passed directly to run_detector_batch; see
+            run_detector_batch for details
+        checkpoint_frequency (int, optional): checkpoint frequency; passed directly to run_detector_batch; see
+            run_detector_batch for details
+        remove_tiles (bool, optional): whether to delete the tiles when we're done
+        yolo_inference_options (YoloInferenceOptions, optional): if not None, will run inference with
+            run_inference_with_yolov5_val.py, rather than with run_detector_batch.py, using these options
+        n_patch_extraction_workers (int, optional): number of workers to use for patch extraction;
+            set to <= 1 to disable parallelization
+        image_list (list, optional): .json file containing a list of specific images to process.  If 
+            this is supplied, and the paths are absolute, [image_folder] will be ignored. If this is supplied,
+            and the paths are relative, they should be relative to [image_folder].
+    
+    Returns:
+        dict: MD-formatted results dictionary, identical to what's written to [output_file]
     """
 
     ##%% Validate arguments

@@ -2,7 +2,7 @@
 
 path_utils.py
 
-Miscellaneous useful utils for path manipulation, things that could *almost*
+Miscellaneous useful utils for path manipulation, i.e. things that could *almost*
 be in os.path, but aren't.
 
 """
@@ -31,6 +31,7 @@ from functools import partial
 from shutil import which
 from tqdm import tqdm
 
+# Should all be lower-case
 IMG_EXTENSIONS = ('.jpg', '.jpeg', '.gif', '.png', '.tif', '.tiff', '.bmp')
 
 VALID_FILENAME_CHARS = f"~-_.() {string.ascii_letters}{string.digits}"
@@ -41,12 +42,27 @@ CHAR_LIMIT = 255
 
 #%% General path functions
 
-def recursive_file_list(base_dir, convert_slashes=True, 
-                        return_relative_paths=False, sort_files=True,
+def recursive_file_list(base_dir, 
+                        convert_slashes=True, 
+                        return_relative_paths=False, 
+                        sort_files=True,
                         recursive=True):
     r"""
-    Enumerate files (not directories) in [base_dir], optionally converting
-    \ to /
+    Enumerates files (not directories) in [base_dir], optionally converting
+    backslahes to slashes
+    
+    Args:
+        base_dir (str): folder to enumerate
+        convert_slashes (bool, optional): force forward slashes; if this is False, will use
+            the native path separator
+        return_relative_paths (bool, optional): return paths that are relative to [base_dir],
+            rather than absolute paths
+        sort_files (bool, optional): force files to be sorted, otherwise uses the sorting
+            provided by os.walk()
+        recursive (bool, optional): enumerate recursively
+        
+    Returns:
+        list: list of filenames
     """
     
     assert os.path.isdir(base_dir), '{} is not a folder'.format(base_dir)
@@ -79,7 +95,21 @@ def file_list(base_dir, convert_slashes=True, return_relative_paths=False, sort_
               recursive=False):
     """
     Trivial wrapper for recursive_file_list, which was a poor function name choice at the time, 
-    it doesn't really make sense to have a "recursive" option in a function called "recursive_file_list".
+    since it doesn't really make sense to have a "recursive" option in a function called 
+    "recursive_file_list".
+    
+    Args:
+        base_dir (str): folder to enumerate
+        convert_slashes (bool, optional): force forward slashes; if this is False, will use
+            the native path separator
+        return_relative_paths (bool, optional): return paths that are relative to [base_dir],
+            rather than absolute paths
+        sort_files (bool, optional): force files to be sorted, otherwise uses the sorting
+            provided by os.walk()
+        recursive (bool, optional): enumerate recursively
+        
+    Returns:
+        list: list of filenames    
     """
     
     return recursive_file_list(base_dir,convert_slashes,return_relative_paths,sort_files,
@@ -92,18 +122,24 @@ def fileparts(path):
 
     Note that the '.' lives with the extension, and separators are removed.
 
-    Examples
-    >>> fileparts('file')
-    ('', 'file', '')
-    >>> fileparts(r'c:\dir\file.jpg')
-    ('c:\\dir', 'file', '.jpg')
-    >>> fileparts('/dir/subdir/file.jpg')
-    ('/dir/subdir', 'file', '.jpg')
+    Examples:
+        
+    .. code-block:: none
 
+        >>> fileparts('file')    
+        ('', 'file', '')
+        >>> fileparts(r'c:/dir/file.jpg')
+        ('c:/dir', 'file', '.jpg')
+        >>> fileparts('/dir/subdir/file.jpg')
+        ('/dir/subdir', 'file', '.jpg')        
+
+    Args:
+        path (str): path name to separate into parts
     Returns:
-        p: str, directory path
-        n: str, filename without extension
-        e: str, extension including the '.'
+        tuple: tuple containing (p,n,e):        
+            - p: str, directory path
+            - n: str, filename without extension
+            - e: str, extension including the '.'
     """
     
     # ntpath seems to do the right thing for both Windows and Unix paths
@@ -113,24 +149,37 @@ def fileparts(path):
     return p, n, e
 
 
-def insert_before_extension(filename: str, s: str = '', separator='.') -> str:
+def insert_before_extension(filename, s=None, separator='.'):
     """
     Insert string [s] before the extension in [filename], separated with [separator].
 
     If [s] is empty, generates a date/timestamp. If [filename] has no extension,
     appends [s].
 
-    Examples
-    >>> insert_before_extension('/dir/subdir/file.ext', 'insert')
-    '/dir/subdir/file.insert.ext'
-    >>> insert_before_extension('/dir/subdir/file', 'insert')
-    '/dir/subdir/file.insert'
-    >>> insert_before_extension('/dir/subdir/file')
-    '/dir/subdir/file.2020.07.20.10.54.38'
+    Examples:
+        
+    .. code-block:: none
+    
+        >>> insert_before_extension('/dir/subdir/file.ext', 'insert')
+        '/dir/subdir/file.insert.ext'
+        >>> insert_before_extension('/dir/subdir/file', 'insert')
+        '/dir/subdir/file.insert'
+        >>> insert_before_extension('/dir/subdir/file')
+        '/dir/subdir/file.2020.07.20.10.54.38'
+        
+    Args:
+        filename (str): filename to manipulate
+        s (str, optional): string to insert before the extension in [filename], or
+            None to insert a datestamp
+        separator (str, optional): separator to place between the filename base
+            and the inserted string
+            
+    Returns:
+        str: modified string
     """
     
     assert len(filename) > 0
-    if len(s) == 0:
+    if s is None or len(s) == 0:
         s = datetime.now().strftime('%Y.%m.%d.%H.%M.%S')
     name, ext = os.path.splitext(filename)
     return f'{name}{separator}{s}{ext}'
@@ -138,20 +187,26 @@ def insert_before_extension(filename: str, s: str = '', separator='.') -> str:
 
 def split_path(path):
     r"""
-    Splits [path] into all its constituent tokens.
+    Splits [path] into all its constituent file/folder tokens.
 
-    Non-recursive version of:
-    http://nicks-liquid-soapbox.blogspot.com/2011/03/splitting-path-to-list-in-python.html
-
-    Examples
-    >>> split_path(r'c:\dir\subdir\file.txt')
-    ['c:\\', 'dir', 'subdir', 'file.txt']
-    >>> split_path('/dir/subdir/file.jpg')
-    ['/', 'dir', 'subdir', 'file.jpg']
-    >>> split_path('c:\\')
-    ['c:\\']
-    >>> split_path('/')
-    ['/']
+    Examples:
+        
+    .. code-block:: none
+    
+        >>> split_path(r'c:\dir\subdir\file.txt')
+        ['c:\\', 'dir', 'subdir', 'file.txt']
+        >>> split_path('/dir/subdir/file.jpg')
+        ['/', 'dir', 'subdir', 'file.jpg']
+        >>> split_path('c:\\')
+        ['c:\\']
+        >>> split_path('/')
+        ['/']
+        
+    Args:
+        path (str): path to split into tokens
+    
+    Returns:
+        list: list of path tokens
     """
     
     parts = []
@@ -163,12 +218,19 @@ def split_path(path):
         parts.append(tail)
         path = head
     parts.append(head or tail)
-    return parts[::-1]  # reverse
+    return parts[::-1] # reverse
 
 
 def path_is_abs(p):
     """
-    Determines whether [p] is an absolute path.
+    Determines whether [p] is an absolute path.  An absolute path is defined as
+    one that starts with slash, backslash, or a letter followed by a colon.
+    
+    Args:
+        p (str): path to evaluate
+        
+    Returns:
+        bool: True if [p] is an absolute path, else False
     """
     
     return (len(p) > 1) and (p[0] == '/' or p[1] == ':' or p[0] == '\\')
@@ -189,6 +251,12 @@ def top_level_folder(p):
     c:\blah\foo
     
     ...returns 'c:\blah'.
+    
+    Args:
+        p (str): filename to evaluate
+        
+    Returns:
+        str: the top-level folder in [p], see above for details on how this is defined
     """
     
     if p == '':
@@ -232,13 +300,17 @@ if False:
 
 def safe_create_link(link_exists,link_new):
     """
-    Create a symlink at link_new pointing to link_exists.
+    Creates a symlink at [link_new] pointing to [link_exists].
     
-    If link_new already exists, make sure it's a link (not a file),
-    and if it has a different target than link_exists, remove and re-create
+    If [link_new] already exists, make sure it's a link (not a file),
+    and if it has a different target than [link_exists], removes and re-creates
     it.
     
-    Errors if link_new already exists but it's not a link.
+    Errors if [link_new] already exists but it's not a link.
+    
+    Args:
+        link_exists (str): the source of the (possibly-new) symlink
+        link_new (str): the target of the (possibly-new) symlink
     """
     
     if os.path.exists(link_new) or os.path.islink(link_new):
@@ -255,10 +327,17 @@ def safe_create_link(link_exists,link_new):
 def is_image_file(s, img_extensions=IMG_EXTENSIONS):
     """
     Checks a file's extension against a hard-coded set of image file
-    extensions.
+    extensions.  Uses case-insensitive comparison.
     
     Does not check whether the file exists, only determines whether the filename
     implies it's an image file.
+    
+    Args:
+        s (str): filename to evaluate for image-ness
+        img_extensions (list, optional): list of known image file extensions
+        
+    Returns:
+        bool: True if [s] appears to be an image file, else False
     """
     
     ext = os.path.splitext(s)[1]
@@ -269,6 +348,12 @@ def find_image_strings(strings):
     """
     Given a list of strings that are potentially image file names, looks for
     strings that actually look like image file names (based on extension).
+    
+    Args:
+        strings (list): list of filenames to check for image-ness
+        
+    Returns:
+        list: the subset of [strings] that appear to be image filenames
     """
     
     return [s for s in strings if is_image_file(s)]
@@ -277,12 +362,22 @@ def find_image_strings(strings):
 def find_images(dirname, 
                 recursive=False, 
                 return_relative_paths=False, 
-                convert_slashes=False):
+                convert_slashes=True):
     """
     Finds all files in a directory that look like image file names. Returns
     absolute paths unless return_relative_paths is set.  Uses the OS-native
     path separator unless convert_slashes is set, in which case will always
     use '/'.
+    
+    Args:
+        dirname (str): the folder to search for images
+        recursive (bool, optional): whether to search recursively
+        return_relative_paths (str, optional): return paths that are relative
+            to [dirname], rather than absolute paths
+        convert_slashes (bool, optional): force forward slashes in return values
+
+    Returns:
+        list: list of image filenames found in [dirname]
     """
     
     assert os.path.isdir(dirname), '{} is not a folder'.format(dirname)
@@ -313,12 +408,22 @@ def clean_filename(filename,
                    force_lower= False):
     r"""
     Removes non-ASCII and other invalid filename characters (on any
-    reasonable OS) from a filename, then trims to a maximum length.
+    reasonable OS) from a filename, then optionally trims to a maximum length.
 
     Does not allow :\/ by default, use clean_path if you want to preserve those.
 
     Adapted from
     https://gist.github.com/wassname/1393c4a57cfcbf03641dbc31886123b8
+    
+    Args:
+        filename (str): filename to clean
+        allow_list (str, optional): string containing all allowable filename characters
+        char_limit (int, optional): maximum allowable filename length, if None will skip this
+            step
+        force_lower (bool, optional): convert the resulting filename to lowercase
+    
+    returns:
+        str: cleaned version of [filename]            
     """
     
     # keep only valid ascii chars
@@ -340,23 +445,42 @@ def clean_path(pathname,
                force_lower=False):
     """
     Removes non-ASCII and other invalid path characters (on any reasonable
-    OS) from a path, then trims to a maximum length.
+    OS) from a path, then optionally trims to a maximum length.
+    
+    Args:
+        pathname (str): path name to clean
+        allow_list (str, optional): string containing all allowable filename characters
+        char_limit (int, optional): maximum allowable filename length, if None will skip this
+            step
+        force_lower (bool, optional): convert the resulting filename to lowercase
+    
+    returns:
+        str: cleaned version of [filename]            
     """
     
     return clean_filename(pathname, allow_list=allow_list, 
                           char_limit=char_limit, force_lower=force_lower)
 
 
-def flatten_path(pathname,separator_chars=SEPARATOR_CHARS):
-    """
+def flatten_path(pathname,separator_chars=SEPARATOR_CHARS,separator_char_replacement='~'):
+    r"""
     Removes non-ASCII and other invalid path characters (on any reasonable
     OS) from a path, then trims to a maximum length. Replaces all valid
-    separators with '~'.
+    separators with [separator_char_replacement.]
+    
+    Args:
+        pathname (str): path name to flatten
+        separator_chars (str, optional): string containing all known path separators
+        separator_char_replacement (str, optional): string to insert in place of 
+            path separators.
+            
+    Returns:
+        str: flattened version of [pathname]
     """
     
     s = clean_path(pathname)
     for c in separator_chars:
-        s = s.replace(c, '~')
+        s = s.replace(c, separator_char_replacement)
     return s
 
 
@@ -380,7 +504,10 @@ def is_executable(filename):
 
 def environment_is_wsl():
     """
-    Returns True if we're running in WSL
+    Determins whether we're running in WSL.
+    
+    Returns:
+        True if we're running in WSL.        
     """
     
     if sys.platform not in ('linux','posix'):
@@ -390,7 +517,7 @@ def environment_is_wsl():
     
 
 def wsl_path_to_windows_path(filename):
-    """
+    r"""
     Converts a WSL path to a Windows path, or returns None if that's not possible.  E.g.
     converts:
         
@@ -399,6 +526,12 @@ def wsl_path_to_windows_path(filename):
     ...to:
         
     e:\a\b\c
+    
+    Args:
+        filename (str): filename to convert
+    
+    Returns:
+        str: Windows equivalent to the WSL path [filename]
     """
     
     result = subprocess.run(['wslpath', '-w', filename], text=True, capture_output=True)
@@ -412,16 +545,19 @@ def open_file(filename, attempt_to_open_in_wsl_host=False, browser_name=None):
     """
     Opens [filename] in the default OS file handler for this file type.
     
-    If attempt_to_open_in_wsl_host is True, and we're in WSL, attempts to open
-    [filename] in the Windows host environment.
-    
     If browser_name is not None, uses the webbrowser module to open the filename
     in the specified browser; see https://docs.python.org/3/library/webbrowser.html
     for supported browsers.  Falls back to the default file handler if webbrowser.open()
     fails.  In this case, attempt_to_open_in_wsl_host is ignored unless webbrowser.open() fails.
     
-    If browser_name is 'default', use the system default.  This is different from the 
+    If browser_name is 'default', uses the system default.  This is different from the 
     parameter to webbrowser.get(), where None implies the system default.
+    
+    Args:
+        filename (str): file to open
+        attempt_to_open_in_wsl_host: if this is True, and we're in WSL, attempts to open
+            [filename] in the Windows host environment
+        browser_name: see above
     """
     
     if browser_name is not None:
@@ -470,6 +606,10 @@ def write_list_to_file(output_file,strings):
     """
     Writes a list of strings to either a JSON file or text file,
     depending on extension of the given file name.
+    
+    Args:
+        output_file (str): file to write
+        strings (list): list of strings to write to [output_file]
     """
     
     with open(output_file, 'w') as f:
@@ -482,6 +622,12 @@ def write_list_to_file(output_file,strings):
 def read_list_from_file(filename):
     """
     Reads a json-formatted list of strings from a file.
+    
+    Args:
+        filename (str): .json filename to read
+    
+    Returns:
+        list: list of strings read from [filename]
     """
     
     assert filename.endswith('.json')
@@ -494,6 +640,10 @@ def read_list_from_file(filename):
 
 
 def _copy_file(input_output_tuple,overwrite=True,verbose=False):
+    """
+    Internal function for copying files from within parallel_copy_files.
+    """
+    
     assert len(input_output_tuple) == 2
     source_fn = input_output_tuple[0]
     target_fn = input_output_tuple[1]
@@ -508,7 +658,16 @@ def _copy_file(input_output_tuple,overwrite=True,verbose=False):
 def parallel_copy_files(input_file_to_output_file, max_workers=16, 
                         use_threads=True, overwrite=False, verbose=False):
     """
-    Copy files from source to target according to the dict input_file_to_output_file.
+    Copies files from source to target according to the dict input_file_to_output_file.
+    
+    Args:
+        input_file_to_output_file (dict): dictionary mapping source files to the target files
+            to which they should be copied
+        max_workers (int, optional): number of concurrent workers; set to <=1 to disable parallelism
+        use_threads (bool, optional): whether to use threads (True) or processes (False) for
+            parallel copying; ignored if max_workers <= 1
+        overwrite (bool, optional): whether to overwrite existing destination files
+        verbose (bool, optional): enable additionald debug output
     """
 
     n_workers = min(max_workers,len(input_file_to_output_file))
@@ -533,11 +692,19 @@ def parallel_copy_files(input_file_to_output_file, max_workers=16,
 
 def get_file_sizes(base_dir, convert_slashes=True):
     """
-    Get sizes recursively for all files in base_dir, returning a dict mapping
+    Gets sizes recursively for all files in base_dir, returning a dict mapping
     relative filenames to size.
     
     TODO: merge the functionality here with parallel_get_file_sizes, which uses slightly
     different semantics.
+    
+    Args:
+        base_dir (str): folder within which we want all file sizes
+        convert_slashes (bool, optional): force forward slashes in return strings,
+            otherwise uses the native path separator
+            
+    Returns:
+        dict: dictionary mapping filenames to file sizes in bytes
     """
     
     relative_filenames = recursive_file_list(base_dir, convert_slashes=convert_slashes, 
@@ -570,8 +737,19 @@ def parallel_get_file_sizes(filenames, max_workers=16,
                         use_threads=True, verbose=False,
                         recursive=True):
     """
-    Return a dictionary mapping every file in [filenames] to the corresponding file size,
+    Returns a dictionary mapping every file in [filenames] to the corresponding file size,
     or None for errors.  If [filenames] is a folder, will enumerate the folder (optionally recursively).
+        
+    Args:
+        filenames (list or str): list of filenames for which we should read sizes, or a folder
+            within which we should read all file sizes recursively
+        max_workers (int, optional): number of concurrent workers; set to <=1 to disable parallelism
+        use_threads (bool, optional): whether to use threads (True) or processes (False) for
+            parallel copying; ignored if max_workers <= 1
+        verbose (bool, optional): enable additionald debug output
+        
+    Returns:
+        dict: dictionary mapping filenames to file sizes in bytes
     """
 
     n_workers = min(max_workers,len(filenames))
@@ -598,7 +776,18 @@ def parallel_get_file_sizes(filenames, max_workers=16,
 
 def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compresslevel=9):
     """
-    Zip a single file, by default writing to a new file called [input_fn].zip
+    Zips a single file.
+    
+    Args:
+        input_fn (str): file to zip
+        output_fn (str, optional): target zipfile; if this is None, we'll use
+            [input_fn].zip
+        overwrite (bool, optional): whether to overwrite an existing target file
+        verbose (bool, optional): enable existing debug console output
+        compresslevel (int, optional): compression level to use, between 0 and 9
+        
+    Returns:
+        str: the output zipfile, whether we created it or determined that it already exists
     """
     
     basename = os.path.basename(input_fn)
@@ -608,7 +797,7 @@ def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compressl
         
     if (not overwrite) and (os.path.isfile(output_fn)):
         print('Skipping existing file {}'.format(output_fn))
-        return
+        return output_fn
     
     if verbose:
         print('Zipping {} to {} with level {}'.format(input_fn,output_fn,compresslevel))
@@ -623,16 +812,27 @@ def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compressl
 def add_files_to_single_tar_file(input_files, output_fn, arc_name_base,
                                  overwrite=False, verbose=False, mode='x'):
     """
-    Add all the files in [input_files] to the tar file [output_fn].  
+    Adds all the files in [input_files] to the tar file [output_fn].  
     Archive names are relative to arc_name_base.
     
-    Mode should be 'x' (no compression), 'x:gz', or 'x:bz2'.
+    Args:
+        input_files (list): list of absolute filenames to include in the .tar file
+        output_fn (str): .tar file to create
+        arc_name_base (str): absolute folder from which relative paths should be determined;
+            behavior is undefined if there are files in [input_files] that don't live within
+            [arc_name_base]
+        overwrite (bool, optional): whether to overwrite an existing .tar file
+        verbose (bool, optional): enable additional debug console output
+        mode (str, optional): compression type, can be 'x' (no compression), 'x:gz', or 'x:bz2'.
+        
+    Returns:
+        str: the output tar file, whether we created it or determined that it already exists
     """
     
     if os.path.isfile(output_fn):
         if not overwrite:
             print('Tar file {} exists, skipping'.format(output_fn))
-            return
+            return output_fn
         else:
             print('Tar file {} exists, deleting and re-creating'.format(output_fn))
             os.remove(output_fn)
@@ -654,12 +854,25 @@ def zip_files_into_single_zipfile(input_files, output_fn, arc_name_base,
     """
     Zip all the files in [input_files] into [output_fn].  Archive names are relative to 
     arc_name_base.
+    
+    Args:
+        input_files (list): list of absolute filenames to include in the .tar file
+        output_fn (str): .tar file to create
+        arc_name_base (str): absolute folder from which relative paths should be determined;
+            behavior is undefined if there are files in [input_files] that don't live within
+            [arc_name_base]
+        overwrite (bool, optional): whether to overwrite an existing .tar file
+        verbose (bool, optional): enable additional debug console output
+        compresslevel (int, optional): compression level to use, between 0 and 9
+        
+    Returns:
+        str: the output zipfile, whether we created it or determined that it already exists
     """
     
     if not overwrite:
         if os.path.isfile(output_fn):
             print('Zip file {} exists, skipping'.format(output_fn))
-            return            
+            return output_fn
         
     if verbose:
         print('Zipping {} files to {} (compression level {})'.format(
@@ -681,7 +894,15 @@ def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, com
     Recursively zip everything in [input_folder] into a single zipfile, storing outputs as relative 
     paths.
     
-    Defaults to writing to [input_folder].zip
+    Args: 
+        input_folder (str): folder to zip
+        output_fn (str, optional): output filename; if this is None, we'll write to [input_folder].zip
+        overwrite (bool, optional): whether to overwrite an existing .tar file
+        verbose (bool, optional): enable additional debug console output
+        compresslevel (int, optional): compression level to use, between 0 and 9
+        
+    Returns:
+        str: the output zipfile, whether we created it or determined that it already exists    
     """
     
     if output_fn is None:
@@ -712,8 +933,17 @@ def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, com
 def parallel_zip_files(input_files, max_workers=16, use_threads=True, compresslevel=9, 
                        overwrite=False, verbose=False):
     """
-    Zip one or more files to separate output files in parallel, leaving the 
+    Zips one or more files to separate output files in parallel, leaving the 
     original files in place.  Each file is zipped to [filename].zip.
+    
+    Args:
+        input_file (str): list of files to zip
+        max_workers (int, optional): number of concurrent workers, set to <= 1 to disable parallelism
+        use_threads (bool, optional): whether to use threads (True) or processes (False); ignored if
+            max_workers <= 1
+        compresslevel (int, optional): zip compression level between 0 and 9
+        overwrite (bool, optional): whether to overwrite an existing .tar file
+        verbose (bool, optional): enable additional debug console output
     """
 
     n_workers = min(max_workers,len(input_files))
@@ -733,8 +963,17 @@ def parallel_zip_files(input_files, max_workers=16, use_threads=True, compressle
 def parallel_zip_folders(input_folders, max_workers=16, use_threads=True,
                          compresslevel=9, overwrite=False, verbose=False):
     """
-    Zip one or more folders to separate output files in parallel, leaving the 
+    Zips one or more folders to separate output files in parallel, leaving the 
     original folders in place.  Each folder is zipped to [folder_name].zip.
+    
+    Args:
+        input_folder (list): list of folders to zip
+        max_workers (int, optional): number of concurrent workers, set to <= 1 to disable parallelism
+        use_threads (bool, optional): whether to use threads (True) or processes (False); ignored if
+            max_workers <= 1
+        compresslevel (int, optional): zip compression level between 0 and 9
+        overwrite (bool, optional): whether to overwrite an existing .tar file
+        verbose (bool, optional): enable additional debug console output
     """
 
     n_workers = min(max_workers,len(input_folders))
@@ -756,10 +995,20 @@ def zip_each_file_in_folder(folder_name,recursive=False,max_workers=16,use_threa
                             compresslevel=9,overwrite=False,required_token=None,verbose=False,
                             exclude_zip=True):
     """
-    Zip each file in [folder_name] to its own zipfile (filename.zip), optionally recursing.  To zip a whole
-    folder into a single zipfile, use zip_folder().
+    Zips each file in [folder_name] to its own zipfile (filename.zip), optionally recursing.  To 
+    zip a whole folder into a single zipfile, use zip_folder().
     
-    If required_token is not None, include only files that contain that token.
+    Args:
+        folder_name (str): the folder within which we should zip files
+        recursive (bool, optional): whether to recurse within [folder_name]
+        max_workers (int, optional): number of concurrent workers, set to <= 1 to disable parallelism
+        use_threads (bool, optional): whether to use threads (True) or processes (False); ignored if
+            max_workers <= 1
+        compresslevel (int, optional): zip compression level between 0 and 9
+        overwrite (bool, optional): whether to overwrite an existing .tar file
+        required_token (str, optional): only zip files whose names contain this string
+        verbose (bool, optional): enable additional debug console output
+        exclude_zip (bool, optional): skip files ending in .zip        
     """
     
     assert os.path.isdir(folder_name), '{} is not a folder'.format(folder_name)
@@ -779,8 +1028,13 @@ def zip_each_file_in_folder(folder_name,recursive=False,max_workers=16,use_threa
 
 def unzip_file(input_file, output_folder=None):
     """
-    Unzip a zipfile to the specified output folder, defaulting to the same location as
-    the input file    
+    Unzips a zipfile to the specified output folder, defaulting to the same location as
+    the input file.
+    
+    Args:
+        input_file (str): zipfile to unzip
+        output_folder (str, optional): folder to which we should unzip [input_file], defaults
+            to unzipping to the folder where [input_file] lives
     """
     
     if output_folder is None:

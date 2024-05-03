@@ -13,8 +13,10 @@ import math
 import os
 import random
 
-from md_visualization import visualization_utils as vis_utils
 from PIL import Image
+
+from md_visualization import visualization_utils as vis_utils
+from md_utils import path_utils
 
 
 #%% Support functions
@@ -223,11 +225,7 @@ if False:
 #%% Command-line driver
 
 def main():
-    
-    #%%
-    
-    from md_utils import path_utils
-    
+        
     # Load images from a test directory.
     #
     # Make the first image in the directory the primary image, 
@@ -268,8 +266,6 @@ def main():
     
     from md_utils import path_utils
     path_utils.open_file(output_image_filename)
-    
-    #%%
-    
+        
 if __name__ == '__main__':
     main()

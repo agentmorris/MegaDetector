@@ -61,6 +61,5 @@ def get_metadata():
         json.dump(image_id_to_metadata, f, indent=1)
     print('Results saved. Done!')
 
-
 if __name__ == '__main__':
     get_metadata()

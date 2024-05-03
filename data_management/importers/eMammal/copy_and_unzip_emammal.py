@@ -155,6 +155,7 @@ def download_from_container(dest_folder: str,
 #%% Command-line driver
         
 if __name__ == '__main__':
+    
     if origin == 'cloud':
         container = 'wpz'
         desired_blob_prefix = 'emammal/0Robert Long/'

@@ -25,6 +25,16 @@ def execute(cmd,encoding=None,errors=None,env=None,verbose=False):
     
     "verbose" only impacts output about process management, it is not related to printing
     output from the child process.
+    
+    Args:
+        cmd (str): command to run
+        encoding (str, optional): stdout encoding, see Popen() documentation
+        errors (str, optional): error handling, see Popen() documentation
+        env (dict, optional): environment variables, see Popen() documentation
+        verbose (bool, optional): enable additional debug console output
+    
+    Returns:
+        int: the command's return code, always zero, otherwise a CalledProcessError is raised    
     """
     
     if verbose: 
@@ -45,6 +55,8 @@ def execute(cmd,encoding=None,errors=None,env=None,verbose=False):
     return_code = popen.wait()
     if return_code:
         raise subprocess.CalledProcessError(return_code, cmd)
+        
+    return return_code
 
 
 def execute_and_print(cmd,print_output=True,encoding=None,errors=None,env=None,verbose=False):
@@ -56,6 +68,18 @@ def execute_and_print(cmd,print_output=True,encoding=None,errors=None,env=None,v
     
     "verbose" only impacts output about process management, it is not related to printing
     output from the child process.
+    
+    Args:
+        cmd (str): command to run
+        print_output (bool, optional): whether to print output from [cmd]
+        encoding (str, optional): stdout encoding, see Popen() documentation
+        errors (str, optional): error handling, see Popen() documentation
+        env (dict, optional): environment variables, see Popen() documentation
+        verbose (bool, optional): enable additional debug console output
+    
+    Returns:
+        dict: a dictionary with fields "status" (the process return code) and "output"
+        (the content of stdout)    
     """
 
     to_return = {'status':'unknown','output':''}

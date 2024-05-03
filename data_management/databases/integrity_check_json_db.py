@@ -447,9 +447,7 @@ def main():
     ct_utils.args_to_object(args, options)
     integrity_check_json_db(args.jsonFile,options)
 
-
-if __name__ == '__main__':
-    
+if __name__ == '__main__':    
     main()
 
 

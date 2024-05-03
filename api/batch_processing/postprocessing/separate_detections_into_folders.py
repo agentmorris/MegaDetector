@@ -665,27 +665,29 @@ def main():
     
     parser.add_argument('--n_threads', type=int, default=1,
                         help='Number of threads to use for parallel operation (default=1)')
+    
     parser.add_argument('--allow_existing_directory', action='store_true', 
                         help='Proceed even if the target directory exists and is not empty')
     parser.add_argument('--no_overwrite', action='store_true', 
                         help='Skip images that already exist in the target folder, must also ' + \
                              'specify --allow_existing_directory')    
     parser.add_argument('--skip_empty_images', action='store_true',
-                        help='Don\'t copy empty images to the output folder')
+                        help='Do not copy empty images to the output folder')
     parser.add_argument('--move_images', action='store_true',
-                        help='Move images (rather than coping) (we don\'t recommend this if you haven\'t ' + \
+                        help='Move images (rather than copying) (not recommended this if you have not ' + \
                              'backed up your data!)')
+    
     parser.add_argument('--render_boxes', action='store_true',
                         help='Render bounding boxes on output images; may result in some ' + \
                              'metadata not being transferred')
     parser.add_argument('--line_thickness', type=int, default=default_line_thickness,
                         help='Line thickness (in pixels) for rendering, only meaningful if ' + \
                              'using render_boxes (defaults to {})'.format(
-                            default_line_thickness))
+                             default_line_thickness))
     parser.add_argument('--box_expansion', type=int, default=default_line_thickness,
                         help='Box expansion (in pixels) for rendering, only meaningful if ' + \
-                              'using render_boxes (defaults to {})'.format(
-                              default_box_expansion))
+                             'using render_boxes (defaults to {})'.format(
+                             default_box_expansion))
         
     if len(sys.argv[1:])==0:
         parser.print_help()
@@ -725,6 +727,5 @@ def main():
         
     separate_detections_into_folders(options)
     
-if __name__ == '__main__':
-    
+if __name__ == '__main__':    
     main()

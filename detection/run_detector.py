@@ -2,37 +2,23 @@
 
 run_detector.py
 
-Module to run an animal detection model on images.
+Module to run an animal detection model on images.  The main function in this script also renders 
+the predicted bounding boxes on images and saves the resulting images (with bounding boxes).
 
-The main function in this script also renders the predicted
-bounding boxes on images and saves the resulting images (with bounding boxes).
+**This script is not a good way to process lots of images**.  It does not produce a useful
+output format, and it does not facilitate checkpointing the results so if it crashes you
+would have to start from scratch. **If you want to run a detector on lots of images, you should 
+check out run_detector_batch.py**.
 
-This script is not a good way to process lots of images (tens of thousands,
-say). It does not facilitate checkpointing the results so if it crashes you
-would have to start from scratch. If you want to run a detector (e.g., ours)
-on lots of images, you should check out run_detector_batch.py.
-
-To run this script, we recommend you set up a conda virtual environment
-following instructions in the Installation section on the main README, using
-`environment-detector.yml` as the environment file where asked.
-
-This is a good way to test our detector on a handful of images and get
-super-satisfying, graphical results.  It's also a good way to see how fast a
-detector model will run on a particular machine.
+That said, this script (run_detector.py) is a good way to test our detector on a handful of images 
+and get super-satisfying, graphical results.
 
 If you would like to *not* use the GPU on the machine, set the environment
 variable CUDA_VISIBLE_DEVICES to "-1".
 
-If no output directory is specified, writes detections for c:\foo\bar.jpg to
-c:\foo\bar_detections.jpg.
-
 This script will only consider detections with > 0.005 confidence at all times.
 The threshold you provide is only for rendering the results. If you need to
-see lower-confidence detections, you can change
-DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD.
-
-Reference:
-https://github.com/tensorflow/models/blob/master/research/object_detection/inference/detection_inference.py
+see lower-confidence detections, you can change DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD.
 
 """
 
@@ -163,9 +149,15 @@ device_token_to_mdv5_inference_speed = {
 
 def convert_to_tf_coords(array):
     """
-    From [x1, y1, width, height] to [y1, x1, y2, x2], where x1 is x_min, x2 is x_max
-
-    This is only used to keep the interface of the synchronous API.
+    Converts a bounding box from [x1, y1, width, height] to [y1, x1, y2, x2].  This 
+    is mostly not helpful, this function only exists to maintain backwards compatibility
+    in the synchronous API, which possibly zero people in the world are using.
+    
+    Args:
+        array (list): a bounding box in [x,y,w,h] format
+        
+    Returns:
+        list: a bounding box in [y1,x1,y2,x2] format
     """
     
     x1 = array[0]
@@ -174,13 +166,21 @@ def convert_to_tf_coords(array):
     height = array[3]
     x2 = x1 + width
     y2 = y1 + height
+    
     return [y1, x1, y2, x2]
 
 
 def get_detector_metadata_from_version_string(detector_version):
     """
-    Given a MegaDetector version string (e.g. "v4.1.0"), return the metadata for
+    Given a MegaDetector version string (e.g. "v4.1.0"), returns the metadata for
     the model.  Used for writing standard defaults to batch output files.
+    
+    Args:
+        detector_version (str): a detection version string, e.g. "v4.1.0", which you
+            can extract from a filename using get_detector_version_from_filename()
+    
+    Returns:
+        dict: metadata for this model, suitable for writing to a MD output file
     """
     
     if detector_version not in DETECTOR_METADATA:
@@ -196,20 +196,26 @@ def get_detector_metadata_from_version_string(detector_version):
 
 
 def get_detector_version_from_filename(detector_filename):
-    """
-    Get the version number component of the detector from the model filename.  
+    r"""
+    Gets the version number component of the detector from the model filename.  
     
-    *detector_filename* will almost always end with one of the following:
+    [detector_filename] will almost always end with one of the following:
         
-    megadetector_v2.pb
-    megadetector_v3.pb
-    megadetector_v4.1 (not produed by run_detector_batch.py, only found in Azure Batch API output files)
-    md_v4.1.0.pb
-    md_v5a.0.0.pt
-    md_v5b.0.0.pt
+    * megadetector_v2.pb
+    * megadetector_v3.pb
+    * megadetector_v4.1 (not produed by run_detector_batch.py, only found in output files from the deprecated Azure Batch API)
+    * md_v4.1.0.pb
+    * md_v5a.0.0.pt
+    * md_v5b.0.0.pt
     
-    ...for which we identify the version number as "v2.0.0", "v3.0.0", "v4.1.0", 
+    This function identifies the version number as "v2.0.0", "v3.0.0", "v4.1.0", 
     "v4.1.0", "v5a.0.0", and "v5b.0.0", respectively.
+    
+    Args:
+        detector_filename (str): model filename, e.g. c:/x/z/md_v5a.0.0.pt
+    
+    Returns:
+        str: a detector version string, e.g. "v5a.0.0", or "multiple" if I'm confused
     """
     
     fn = os.path.basename(detector_filename).lower()
@@ -228,10 +234,20 @@ def get_detector_version_from_filename(detector_filename):
     
 
 def estimate_md_images_per_second(model_file, device_name=None):
-    """
-    Estimate how fast MegaDetector will run based on benchmarks.  Defaults to querying
+    r"""
+    Estimates how fast MegaDetector will run, based on benchmarks.  Defaults to querying
     the current device.  Returns None if no data is available for the current card/model.
-    Estimates only available for a small handful of GPUs.
+    Estimates only available for a small handful of GPUs.  Uses an absurdly simple lookup
+    approach, e.g. if the string "4090" appears in the device name, congratulations,
+    you have an RTX 4090.
+    
+    Args:
+        model_file (str): model filename, e.g. c:/x/z/md_v5a.0.0.pt
+        device_name (str, optional): device name, e.g. blah-blah-4090-blah-blah
+    
+    Returns:
+        float: the approximate number of images this model version can process on this
+        device per second
     """
     
     if device_name is None:
@@ -271,8 +287,14 @@ def estimate_md_images_per_second(model_file, device_name=None):
     
 def get_typical_confidence_threshold_from_results(results):
     """
-    Given the .json data loaded from a MD results file, determine a typical confidence
+    Given the .json data loaded from a MD results file, returns a typical confidence
     threshold based on the detector version.
+    
+    Args:
+        results (dict): a dict of MD results, as it would be loaded from a MD results .json file
+    
+    Returns:
+        float: a sensible default threshold for this model
     """
     
     if 'detector_metadata' in results['info'] and \
@@ -293,10 +315,16 @@ def get_typical_confidence_threshold_from_results(results):
 
     
 def is_gpu_available(model_file):
-    """
-    Decide whether a GPU is available, importing PyTorch or TF depending on the extension
+    r"""
+    Determines whether a GPU is available, importing PyTorch or TF depending on the extension
     of model_file.  Does not actually load model_file, just uses that to determine how to check 
-    for GPU availability.
+    for GPU availability (PT vs. TF).
+    
+    Args:
+        model_file (str): model filename, e.g. c:/x/z/md_v5a.0.0.pt
+    
+    Returns:
+        bool: whether a GPU is available
     """
     
     if model_file.endswith('.pb'):
@@ -323,8 +351,14 @@ def is_gpu_available(model_file):
 
 
 def load_detector(model_file, force_cpu=False):
-    """
-    Load a TF or PT detector, depending on the extension of model_file.
+    r"""
+    Loads a TF or PT detector, depending on the extension of model_file.
+    
+    Args:
+        model_file (str): model filename, e.g. c:/x/z/md_v5a.0.0.pt
+    
+    Returns:
+        object: loaded detector object
     """
     
     # Possibly automatically download the model
@@ -344,19 +378,41 @@ def load_detector(model_file, force_cpu=False):
         raise ValueError('Unrecognized model format: {}'.format(model_file))
     elapsed = time.time() - start_time
     print('Loaded model in {}'.format(humanfriendly.format_timespan(elapsed)))
+    
     return detector
 
 
 #%% Main function
 
-def load_and_run_detector(model_file, image_file_names, output_dir,
+def load_and_run_detector(model_file, 
+                          image_file_names,
+                          output_dir,
                           render_confidence_threshold=DEFAULT_RENDERING_CONFIDENCE_THRESHOLD,
-                          crop_images=False, box_thickness=DEFAULT_BOX_THICKNESS, 
-                          box_expansion=DEFAULT_BOX_EXPANSION, image_size=None,
+                          crop_images=False, 
+                          box_thickness=DEFAULT_BOX_THICKNESS, 
+                          box_expansion=DEFAULT_BOX_EXPANSION,
+                          image_size=None,
                           label_font_size=DEFAULT_LABEL_FONT_SIZE                          
                           ):
-    """
-    Load and run detector on target images, and visualize the results.
+    r"""
+    Loads and runs a detector on target images, and visualizes the results.
+    
+    Args:
+        model_file (str): model filename, e.g. c:/x/z/md_v5a.0.0.pt, or a known model
+            string, e.g. "MDV5A"
+        image_file_names (list): list of absolute paths to process
+        output_dir (str): folder to write visualized images to
+        render_confidence_threshold (float, optional): only render boxes for detections
+            above this threshold
+        crop_images (bool, optional): whether to crop detected objects to individual images
+            (default is to render images with boxes, rather than cropping)
+        box_thickness (float, optional): thickness in pixels for box rendering
+        box_expansion (float, optional): box expansion in pixels
+        image_size (tuple, optional): image size to use for inference, only mess with this
+            if (a) you're using a model other than MegaDetector or (b) you know what you're
+            doing
+        label_font_size (float, optional): font size to use for displaying class names
+            and confidence values in the rendered images        
     """
     
     if len(image_file_names) == 0:
@@ -507,7 +563,12 @@ def load_and_run_detector(model_file, image_file_names, output_dir,
 
 def download_model(model_name,force_download=False):
     """
-    Download one of the known models to local temp space if it hasn't already been downloaded
+    Downloads one of the known models to local temp space if it hasn't already been downloaded.
+    
+    Args:
+        model_name (str): a known model string, e.g. "MDV5A"
+        force_download (bool, optional): whether download the model even if the local target 
+            file already exists
     """
     
     import tempfile
@@ -536,9 +597,17 @@ def download_model(model_name,force_download=False):
 
 def try_download_known_detector(detector_file):
     """
-    Check whether detector_file is really the name of a known model, in which case we will
+    Checks whether detector_file is really the name of a known model, in which case we will
     either read the actual filename from the corresponding environment variable or download
     (if necessary) to local temp space.  Otherwise just returns the input string.
+    
+    Args:
+        detector_file (str): a known model string (e.g. "MDV5A"), or any other string (in which
+            case this function is a no-op)
+    
+    Returns:
+        str: the local filename to which the model was downloaded, or the same string that
+        was passed in, if it's not recognized as a well-known model name
     """
     
     if detector_file in downloadable_models:
@@ -687,7 +756,6 @@ def main():
                           crop_images=args.crop,
                           image_size=args.image_size,
                           label_font_size=args.label_font_size)
-
 
 if __name__ == '__main__':
     main()

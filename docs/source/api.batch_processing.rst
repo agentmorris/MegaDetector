@@ -1,6 +1,8 @@
 api.batch\_processing package
 =============================
 
+This package contains subpackages for working with MegaDetector batch processing results.
+
 Subpackages
 -----------
 
@@ -9,10 +11,3 @@ Subpackages
 
    api.batch_processing.postprocessing
 
-Module contents
----------------
-
-.. automodule:: api.batch_processing
-   :members:
-   :undoc-members:
-   :show-inheritance:

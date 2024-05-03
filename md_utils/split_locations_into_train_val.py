@@ -2,7 +2,7 @@
 
 split_locations_into_train_val.py
 
-Split a list of location IDs into training and validation, targeting a specific
+Splits a list of location IDs into training and validation, targeting a specific
 train/val split for each category, but allowing some categories to be tighter or looser
 than others.  Does nothing particularly clever, just randomly splits locations into 
 train/val lots of times using the target val fraction, and picks the one that meets the 
@@ -30,31 +30,44 @@ def split_locations_into_train_val(location_to_category_counts,
                                    category_to_error_weight=None,
                                    default_max_allowable_error=0.1):
     """
-    Split a list of location IDs into training and validation, targeting a specific
+    Splits a list of location IDs into training and validation, targeting a specific
     train/val split for each category, but allowing some categories to be tighter or looser
     than others.  Does nothing particularly clever, just randomly splits locations into 
     train/val lots of times using the target val fraction, and picks the one that meets the 
     specified constraints and minimizes weighted error, where "error" is defined as the
     sum of each class's absolute divergence from the target val fraction.    
     
-    location_to_category_counts should be a dict mapping location IDs to dicts,
-    with each dict mapping a category name to a count.  Any categories not present in a 
-    particular dict are assumed to have a count of zero for that location.
+    Args:
+        location_to_category_counts (dict): a dict mapping location IDs to dicts,
+            with each dict mapping a category name to a count.  Any categories not present 
+            in a particular dict are assumed to have a count of zero for that location.
+            
+            For example:
+                
+            .. code-block:: none
+
+                {'location-000': {'bear':4,'wolf':10},
+                 'location-001': {'bear':12,'elk':20}}
     
-    If not None, category_to_max_allowable_error should be a dict mapping category names
-    to maximum allowable errors.  These are hard constraints, but you can specify a subset
-    of categories.  Categories not included here have a maximum error of Inf.
+        n_random_seeds (int, optional): number of random seeds to try, always starting from zero
+        target_val_fraction (float, optional): fraction of images containing each species we'd
+            like to put in the val split
+        category_to_max_allowable_error (dict, optional): a dict mapping category names
+            to maximum allowable errors.  These are hard constraints (i.e., we will error
+            if we can't meet them).  Does not need to inclue all categories; categories not 
+            included will be assigned a maximum error according to [default_max_allowable_error].
+            If this is None, no hard constraints are applied.
+        category_to_error_weight (dict, optional): a dict mapping category names to
+            error weights.  You can specify a subset of categories; categories not included here
+            have a weight of 1.0.  If None, all categories have the same weight.
+        default_max_allowable_error (float, optional): the maximum allowable error for categories not 
+            present in [category_to_max_allowable_error].  Set to None (or >= 1.0) to disable hard 
+            constraints for categories not present in [category_to_max_allowable_erro]r
     
-    If not None, category_to_error_weight should be a dict mapping category names to
-    error weights.  You can specify a subset of categories.  Categories not included here
-    have a weight of 1.0.
-    
-    default_max_allowable_error is the maximum allowable error for categories not present in
-    category_to_max_allowable_error.  Set to None (or >= 1.0) to disable hard constraints for 
-    categories not present in category_to_max_allowable_error
-    
-    returns val_locations,category_to_val_fraction
-    
+    Returns:
+        tuple: A two-element tuple:
+            - list of location IDs in the val split
+            - a dict mapping category names to the fraction of images in the val split                
     """
     
     location_ids = list(location_to_category_counts.keys())
@@ -84,7 +97,7 @@ def split_locations_into_train_val(location_to_category_counts,
     # random_seed = 0
     def compute_seed_errors(random_seed):
         """
-        Compute the per-category error for a specific random seed.
+        Computes the per-category error for a specific random seed.
         
         returns weighted_average_error,category_to_val_fraction
         """

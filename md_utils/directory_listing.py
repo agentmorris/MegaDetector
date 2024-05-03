@@ -2,19 +2,11 @@
 
 directory_listing.py
 
-Script for creating HTML directory listings for a local directory and
-all its subdirectories.  Primarily intended for use on mounted blob
-containers, so it includes the ability to set the content-type property
-on the generated html using the blob SDK, so it can be browser-viewable.
+Script for creating Apache-style HTML directory listings for a local directory 
+and all its subdirectories.
 
 Also includes a preview of a jpg file (the first in an alphabetical list),
 if present.
-
-Sample invocation:
-
-python directory_listing.py /naipout/v002 --basepath /naipout/v002 \
-  --enable_overwrite \
-  --sas_url "https://naipblobs.blob.core.windows.net/naip/v002?sv=..."
 
 """
 
@@ -27,6 +19,7 @@ import re
 
 import azure.common
 from azure.storage.blob import BlobServiceClient, ContentSettings
+
 from md_utils.path_utils import is_image_file
 
 
@@ -34,18 +27,19 @@ from md_utils.path_utils import is_image_file
 
 def create_plain_index(root, dirs, files, dirname=None):
     """
-    Creates the fairly plain HTML folder index
-    including a preview of a single image file, if any is present.
-    Returns the HTML source as string.
+    Creates the fairly plain HTML folder index including a preview of a single image file, 
+    if any is present.
 
     Args:
-        root: string, path to the root directory, all paths in *dirs* and
-            *files* are relative to this one
-        dirs: list of strings, the directories in *root*
-        files: list of string, the files in *root*
-        dirname: name to print in the html, which may be different than *root*
+        root (str): path to the root directory, all paths in [dirs] and
+            [files] are relative to this root folder
+        dirs (list): list of strings, the directories in [root]
+        files (list): list of strings, the files in [root]
+        dirname (str, optional): name to print in the html, 
+            which may be different than [root]
 
-    Returns: HTML source of the directory listing
+    Returns: 
+        str: HTML source of the directory listing
     """
 
     if dirname is None:
@@ -113,25 +107,31 @@ def create_plain_index(root, dirs, files, dirname=None):
     html += "</body></html>\n"
     return html
 
+# ...def create_plain_index(...)
+
 
 def traverse_and_create_index(dir, sas_url=None, overwrite_files=False,
                               template_fun=create_plain_index, basepath=None):
     """
-    Recursively traverses the local directory *dir* and generates a index
-    file for each folder using *template_fun* to generate the HTML output.
+    Recursively traverses the local directory [dir] and generates a index
+    file for each folder using [template_fun] to generate the HTML output.
     Excludes hidden files.
 
     Args:
-        dir: string, path to directory
-        template_fun: function taking three arguments (string, list of string, list of string)
-            representing the current root, the list of folders, and the list of files.
-            Should return the HTML source of the index file
-
-    Return:
-        None
+        dir (str): directory to process
+        sas_url (str, optional): write-capable SAS URL that points to the same place as 
+            [dir], used for the very esoteric scenario where [dir] is really a mounted
+            blob container, and we want to set the content-type on each file so the resulting
+            index can be viewed in a browser
+        overwrite_files (bool, optional): whether to over-write existing index file
+        template_fun (func, optional): function taking three arguments (string, 
+            list of string, list of string) representing the current root, the list of folders, 
+            and the list of files.  Should return the HTML source of the index file.
+        basepath (str, optional): if not None, the name used for each subfolder in [dir]
+            in the output files will be relative to [basepath]
     """
 
-    print("Traversing {}".format(dir))
+    print('Traversing {}'.format(dir))
 
     # Make sure we remove the trailing /
     dir = os.path.normpath(dir)
@@ -207,12 +207,15 @@ def traverse_and_create_index(dir, sas_url=None, overwrite_files=False,
                 print('ERROR: It seems the SAS URL is incorrect or does not allow setting properties.')
                 return
 
+# ...def traverse_and_create_index(...)
+
 
 #%% Command-line driver
 
-if __name__ == '__main__':
-
+def main():
+    
     parser = argparse.ArgumentParser()
+    
     parser.add_argument("directory", type=str, help='Path to directory which should be traversed.')
     parser.add_argument("--basepath", type=str, help='Folder names will be printed relative to basepath, if specified', default=None)
     parser.add_argument("--sas_url", type=str, help='Blobfuse does not set the content-type property ' + \
@@ -234,3 +237,6 @@ if __name__ == '__main__':
         "match the format https://accname.blob.core.windows.net/bname/path/to/folder?..."
 
     traverse_and_create_index(args.directory, overwrite_files=args.enable_overwrite, sas_url=args.sas_url, basepath=args.basepath)
+
+if __name__ == '__main__':
+    main()

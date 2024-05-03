@@ -2,7 +2,7 @@
 
 ct_utils.py
 
-Numeric/geometry utility functions.
+Numeric/geometry/array utility functions.
 
 """
 
@@ -29,8 +29,8 @@ def truncate_float_array(xs, precision=3):
     floating-point value to a specific number of floating-point digits.
 
     Args:
-        xs (list of float): list of floats to truncate
-        precision (int): the number of significant digits to preserve, should be >= 1            
+        xs (list): list of floats to truncate
+        precision (int, optional): the number of significant digits to preserve, should be >= 1            
             
     Returns:
         list: list of truncated floats
@@ -54,7 +54,7 @@ def truncate_float(x, precision=3):
 
     Args:
         x (float): scalar to truncate
-        precision (int): the number of significant digits to preserve, should be >= 1
+        precision (int, optional): the number of significant digits to preserve, should be >= 1
         
     Returns:
         float: truncated version of [x]
@@ -109,7 +109,7 @@ def pretty_print_object(obj, b_print=True):
     
     Args:
         obj (object): object to print
-        b_print (bool): whether to print the object
+        b_print (bool, optional): whether to print the object
         
     Returns:
         str: .json reprepresentation of [obj]
@@ -135,7 +135,7 @@ def is_list_sorted(L, reverse=False):
     
     Args:
         L (list): list to evaluate
-        reverse (bool): whether to reverse the list before evaluating sort status 
+        reverse (bool, optional): whether to reverse the list before evaluating sort status 
     
     Returns:
         bool: True if the list L appears to be sorted, otherwise False
@@ -154,7 +154,7 @@ def write_json(path, content, indent=1):
     Args:
         path (str): filename to write to
         content (object): object to dump
-        indent (int): indentation depth
+        indent (int, optional): indentation depth passed to json.dump
     """
     
     with open(path, 'w') as f:
@@ -318,7 +318,7 @@ def rect_distance(r1, r2, format='x0y0x1y1'):
     Args:
         r1: rectangle, formatted as (x0,y0,x1,y1) or (x0,y0,xy,y1)
         r2: rectangle, formatted as (x0,y0,x1,y1) or (x0,y0,xy,y1)
-        format (str): whether the boxes are formatted as 'x0y0x1y1' (default) or 'x0y0wh'
+        format (str, optional): whether the boxes are formatted as 'x0y0x1y1' (default) or 'x0y0wh'
         
     Returns:
         float: the minimum distance between r1 and r2
@@ -386,7 +386,7 @@ def split_list_into_n_chunks(L, n, chunk_strategy='greedy'):
     Args:
         L (list): list to split into chunks
         n (int): number of chunks
-        chunk_strategy (str): "greedy" or "balanced"
+        chunk_strategy (str, optiopnal): "greedy" or "balanced"; see above
         
     Returns:
         list: list of chunks, each of which is a list
@@ -411,7 +411,7 @@ def sort_dictionary_by_key(d,reverse=False):
     
     Args:
         d (dict): dictionary to sort
-        reverse (bool): whether to sort in reverse (descending) order
+        reverse (bool, optional): whether to sort in reverse (descending) order
         
     Returns:
         dict: sorted copy of [d]
@@ -428,8 +428,9 @@ def sort_dictionary_by_value(d,sort_values=None,reverse=False):
     
     Args:
         d (dict): dictionary to sort
-        sort_values (dict): dicionary mapping keys in [d] to sort values (defaults to None, uses [d])
-        reverse (bool): whether to sort in reverse (descending) order
+        sort_values (dict, optional): dicionary mapping keys in [d] to sort values (defaults 
+            to None, uses [d] itself for sorting)
+        reverse (bool, optional): whether to sort in reverse (descending) order
     
     Returns:
         dict: sorted copy of [d]

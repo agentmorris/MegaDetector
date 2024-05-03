@@ -30,24 +30,60 @@ import argparse
 #%% Classes
 
 class MDTestOptions:
-        
+    """
+    Options controlling test behavior.
+    """
+    
     ## Required ##
     
+    #: Force CPU execution
     disable_gpu = False
+    
+    #: If GPU execution is requsted, but a GPU is not available, should we error?
     cpu_execution_is_error = False
+    
+    #: Skip tests related to video processing
     skip_video_tests = False
+    
+    #: Skip tests launched via Python functions (as opposed to CLIs)
     skip_python_tests = False
+    
+    #: Skip CLI tests
     skip_cli_tests = False
+    
+    #: Force a specific folder for temporary input/output
     scratch_dir = None
+    
+    #: Where does the test data live?
     test_data_url = 'https://lila.science/public/md-test-package.zip'
+    
+    #: Download test data even if it appears to have already been downloaded
     force_data_download = False
+    
+    #: Unzip test data even if it appears to have already been unzipped
     force_data_unzip = False
+    
+    #: By default, any unexpected behavior is an error; this forces most errors to
+    #: be treated as warnings.
     warning_mode = False
-    test_image_subdir = 'md-test-images'
+    
+    #: How much deviation from the expected detection coordinates should we allow before
+    #: a disrepancy becomes an error?
     max_coord_error = 0.001
+    
+    #: How much deviation from the expected confidence values should we allow before
+    #: a disrepancy becomes an error?    
     max_conf_error = 0.005
+    
+    #: Current working directory when running CLI tests
     cli_working_dir = None
+    
+    #: YOLOv5 installation, only relevant if we're testing run_inference_with_yolov5_val. 
+    #:
+    #: If this is None, we'll skip that test.
     yolo_working_folder = None
+
+# ...class MDTestOptions()
 
 
 #%% Support functions
@@ -57,6 +93,16 @@ def get_expected_results_filename(gpu_is_available):
     Expected results vary just a little across inference environments, particularly
     between PT 1.x and 2.x, so when making sure things are working acceptably, we 
     compare to a reference file that matches the current environment.
+    
+    This function gets the correct filename to compare to current results, depending
+    on whether a GPU is available.
+    
+    Args:
+        gpu_is_available (bool): whether a GPU is available
+        
+    Returns:
+        str: relative filename of the results file we should use (within the test
+        data zipfile)
     """
     
     if gpu_is_available:
@@ -88,7 +134,14 @@ def get_expected_results_filename(gpu_is_available):
     
 def download_test_data(options=None):
     """
-    Download the test zipfile if necessary, unzip if necessary.
+    Downloads the test zipfile if necessary, unzips if necessary.
+    
+    Args:
+        options (MDTestOptions, optional): see MDTestOptions for details
+        
+    Returns:
+        MDTestOptions: the same object passed in as input, or the options that
+        were used if [options] was supplied as None
     """
 
     if options is None:
@@ -172,7 +225,13 @@ def download_test_data(options=None):
 
 def is_gpu_available(verbose=True):
     """
-    Check whether a GPU (including M1/M2 MPS) is available.
+    Checks whether a GPU (including M1/M2 MPS) is available.
+    
+    Args:
+        verbose (bool, optional): enable additional debug console output
+    
+    Returns:
+        bool: whether a GPU is available
     """
     
     # Import torch inside this function, so we have a chance to set CUDA_VISIBLE_DEVICES
@@ -209,7 +268,13 @@ os.environ["PYTHONUNBUFFERED"] = "1"
 
 def execute(cmd):
     """
-    Run [cmd] (a single string) in a shell, yielding each line of output to the caller.
+    Runs [cmd] (a single string) in a shell, yielding each line of output to the caller.
+    
+    Args:
+        cmd (str): command to run
+    
+    Returns:
+        int: the command's return code, always zero, otherwise a CalledProcessError is raised
     """
  
     # https://stackoverflow.com/questions/4417546/constantly-print-subprocess-output-while-process-is-running
@@ -221,12 +286,20 @@ def execute(cmd):
     return_code = popen.wait()
     if return_code:
         raise subprocess.CalledProcessError(return_code, cmd)
+    return return_code
 
 
 def execute_and_print(cmd,print_output=True):
     """
-    Run [cmd] (a single string) in a shell, capturing and printing output.  Returns
-    a dictionary with fields "status" and "output".
+    Runs [cmd] (a single string) in a shell, capturing (and optionally printing) output.
+    
+    Args:
+        cmd (str): command to run
+        print_output (bool, optional): whether to print output from [cmd]
+    
+    Returns:
+        dict: a dictionary with fields "status" (the process return code) and "output"
+        (the content of stdout)
     """
 
     to_return = {'status':'unknown','output':''}
@@ -248,7 +321,13 @@ def execute_and_print(cmd,print_output=True):
 #%% Python tests
 
 def run_python_tests(options):
-
+    """
+    Runs Python-based (as opposed to CLI-based) package tests.
+    
+    Args:
+        options (MDTestOptions): see MDTestOptions for details
+    """
+    
     print('\n*** Starting module tests ***\n')
     
     ## Prepare data
@@ -484,6 +563,12 @@ def run_python_tests(options):
 #%% Command-line tests
 
 def run_cli_tests(options):
+    """
+    Runs CLI (as opposed to Python-based) package tests.
+    
+    Args:
+        options (MDTestOptions): see MDTestOptions for details
+    """
     
     print('\n*** Starting CLI tests ***\n')
     
@@ -720,6 +805,12 @@ def run_cli_tests(options):
 #%% Main test wrapper
 
 def run_tests(options):
+    """
+    Runs Python-based and/or CLI-based package tests.
+    
+    Args:
+        options (MDTestOptions): see MDTestOptions for details
+    """
     
     # Prepare data folder
     download_test_data(options)    
@@ -767,7 +858,6 @@ if False:
     options.force_data_download = False
     options.force_data_unzip = False
     options.warning_mode = True
-    options.test_image_subdir = 'md-test-images'
     options.max_coord_error = 0.001
     options.max_conf_error = 0.005
     options.cli_working_dir = r'c:\git\MegaDetector'
@@ -873,7 +963,6 @@ def main():
     options.cli_working_dir = args.cli_working_dir
 
     run_tests(options)
-    
     
 if __name__ == '__main__':
     main()

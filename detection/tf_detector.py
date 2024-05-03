@@ -2,10 +2,11 @@
 
 tf_detector.py
 
-Module containing the class TFDetector for loading a TensorFlow detection model and
-running inference.
+Module containing the class TFDetector, for loading and running a TensorFlow detection model.
 
 """
+
+#%% Imports and constants
 
 import numpy as np
 
@@ -18,35 +19,40 @@ print('TensorFlow version:', tf.__version__)
 print('Is GPU available? tf.test.is_gpu_available:', tf.test.is_gpu_available())
 
 
+#%% Classes
+
 class TFDetector:
     """
     A detector model loaded at the time of initialization. It is intended to be used with
-    the MegaDetector (TF). The inference batch size is set to 1; code needs to be modified
-    to support larger batch sizes, including resizing appropriately.
+    TensorFlow-based versions of MegaDetector (v2, v3, or v4).  If someone can find v1, I 
+    suppose you could use this class for v1 also.
     """
     
-    # MegaDetector was trained with batch size of 1, and the resizing function is a part
-    # of the inference graph
+    #: TF versions of MD were trained with batch size of 1, and the resizing function is a 
+    #: part of the inference graph, so this is fixed.
+    #:
+    #: :meta private:  
     BATCH_SIZE = 1
 
 
     def __init__(self, model_path):
         """
-        Loads model from model_path and starts a tf.Session with this graph. Obtains
+        Loads a model from [model_path] and starts a tf.Session with this graph. Obtains
         input and output tensor handles.
         """
         
         detection_graph = TFDetector.__load_model(model_path)
         self.tf_session = tf.Session(graph=detection_graph)
-
         self.image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
         self.box_tensor = detection_graph.get_tensor_by_name('detection_boxes:0')
         self.score_tensor = detection_graph.get_tensor_by_name('detection_scores:0')
         self.class_tensor = detection_graph.get_tensor_by_name('detection_classes:0')
 
+
     @staticmethod
-    def round_and_make_float(d, precision=4):
+    def __round_and_make_float(d, precision=4):
         return truncate_float(float(d), precision=precision)
+
 
     @staticmethod
     def __convert_coords(tf_coords):
@@ -70,8 +76,9 @@ class TFDetector:
 
         # convert numpy floats to Python floats
         for i, d in enumerate(new):
-            new[i] = TFDetector.round_and_make_float(d, precision=COORD_DIGITS)
+            new[i] = TFDetector.__round_and_make_float(d, precision=COORD_DIGITS)
         return new
+
 
     @staticmethod
     def __load_model(model_path):
@@ -96,7 +103,12 @@ class TFDetector:
 
         return detection_graph
 
+
     def _generate_detections_one_image(self, image):
+        """
+        Runs the detector on a single image.
+        """
+        
         np_im = np.asarray(image, np.uint8)
         im_w_batch_dim = np.expand_dims(np_im, axis=0)
 
@@ -111,30 +123,36 @@ class TFDetector:
 
         return box_tensor_out, score_tensor_out, class_tensor_out
 
+
     def generate_detections_one_image(self, image, image_id, detection_threshold, image_size=None,
                                       skip_image_resizing=False):
         """
-        Apply the detector to an image.
+        Runs the detector on an image.
 
         Args:
-            image: the PIL Image object
-            image_id: a path to identify the image; will be in the "file" field of the output object
-            detection_threshold: confidence above which to include the detection proposal
+            image (Image): the PIL Image object on which we should run the detector
+            image_id (str): a path to identify the image; will be in the "file" field of the output object            
+            detection_threshold (float): only detections above this threshold will be included in the return
+                value
+            image_size (tuple, optional): image size to use for inference, only mess with this
+                if (a) you're using a model other than MegaDetector or (b) you know what you're
+                doing
+            skip_image_resizing (bool, optional): whether to skip internal image resizing (and rely on external 
+                resizing)... not currently supported, but included here for compatibility with PTDetector.
 
         Returns:
-            A dict with the following fields, see the 'images' key in:
-            https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
-            - 'file' (always present)
-            - 'max_detection_conf'
-            - 'detections', which is a list of detection objects containing keys 'category', 'conf' and 'bbox'
-            - 'failure'
+            dict: a dictionary with the following fields:
+                - 'file' (filename, always present)
+                - 'max_detection_conf' (removed from MegaDetector output files by default, but generated here)
+                - 'detections' (a list of detection objects containing keys 'category', 'conf', and 'bbox')
+                - 'failure' (a failure string, or None if everything went fine)
         """
         
         assert image_size is None, 'Image sizing not supported for TF detectors'
         assert not skip_image_resizing, 'Image sizing not supported for TF detectors'
-        result = {
-            'file': image_id
-        }
+        
+        result = { 'file': image_id }
+        
         try:
             b_box, b_score, b_class = self._generate_detections_one_image(image)
 
@@ -164,3 +182,7 @@ class TFDetector:
             print('TFDetector: image {} failed during inference: {}'.format(image_id, str(e)))
 
         return result
+
+    # ...def generate_detections_one_image(...)
+    
+# ...class TFDetector

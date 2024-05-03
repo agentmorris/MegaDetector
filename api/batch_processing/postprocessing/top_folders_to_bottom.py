@@ -219,10 +219,5 @@ def main():
     
     top_folders_to_bottom(options)
     
-    
-if __name__ == '__main__':
-    
+if __name__ == '__main__':    
     main()
-    
-
-    

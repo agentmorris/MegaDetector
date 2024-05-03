@@ -2,8 +2,17 @@
 
 process_video.py
 
-Split a video (or folder of videos) into frames, run the frames through run_detector_batch.py,
-and optionally stitch together results into a new video with detection boxes.
+Splits a video (or folder of videos) into frames, runs the frames through run_detector_batch.py,
+and optionally stitches together results into a new video with detection boxes.
+
+Operates by separating the video into frames, typically sampling every Nth frame, and writing
+those frames to disk, before running MD.  This approach clearly has a downside: it requires
+a bunch more disk space, compared to extracting frames and running MD on them without ever
+writing them to disk.  The upside, though, is that this approach allows you to run repeat
+detection elimination after running MegaDetector, and it allows allows more efficient re-use
+of frames if you end up running MD more than once, or running multiple versions of MD.
+
+TODO: optionally skip writing frames to disk, and process frames in memory.
 
 """
 
@@ -29,73 +38,113 @@ from uuid import uuid1
 from detection.video_utils import default_fourcc
 
 
-#%% Options classes
+#%% Classes
 
 class ProcessVideoOptions:
-
-    # Can be a model filename (.pt or .pb) or a model name (e.g. "MDV5A")
+    """
+    Options controlling the behavior of process_video()
+    """
+    
+    #: Can be a model filename (.pt or .pb) or a model name (e.g. "MDV5A")
     model_file = 'MDV5A'
     
-    # Can be a file or a folder
+    #: Video (of folder of videos) to process
     input_video_file = ''
 
+    #: .json file to which we should write results
     output_json_file = None
     
-    # Only relevant if render_output_video is True
+    #: File to which we should write a video with boxes, only relevant if 
+    #: render_output_video is True
     output_video_file = None
     
-    # Folder to use for extracted frames
+    #: Folder to use for extracted frames; will use a folder in system temp space
+    #: if this is None
     frame_folder = None
     
-    # Folder to use for rendered frames (if rendering output video)
+    # Folder to use for rendered frames (if rendering output video); will use a folder 
+    #: in system temp space if this is None
     frame_rendering_folder = None
     
-    # Should we render a video with detection boxes?
-    #
-    # Only supported when processing a single video, not a folder.
+    #: Should we render a video with detection boxes?
+    #:
+    #: Only supported when processing a single video, not a folder.
     render_output_video = False
     
-    # If we are rendering boxes to a new video, should we keep the temporary
-    # rendered frames?
+    #: If we are rendering boxes to a new video, should we keep the temporary
+    #: rendered frames?
     keep_rendered_frames = False
     
-    # Should we keep the extracted frames?
+    #: Should we keep the extracted frames?
     keep_extracted_frames = False
     
-    # Should we delete the entire folder the extracted frames are written to?
-    #
-    # By default, we delete the frame files but leave the (probably-empty) folder in place.
+    #: Should we delete the entire folder the extracted frames are written to?
+    #:
+    #: By default, we delete the frame files but leave the (probably-empty) folder in place, 
+    #: for no reason other than being paranoid about deleting folders.
     force_extracted_frame_folder_deletion = False
     
-    # Should we delete the entire folder the rendered frames are written to?
-    #
-    # By default, we delete the frame files but leave the (probably-empty) folder in place.
+    #: Should we delete the entire folder the rendered frames are written to?
+    #:
+    #: By default, we delete the frame files but leave the (probably-empty) folder in place,
+    #: for no reason other than being paranoid about deleting folders.
     force_rendered_frame_folder_deletion = False
-        
+     
+    #: If we've already run MegaDetector on this video or folder of videos, i.e. if we 
+    #: find a corresponding MD results file, should we re-use it?  Defaults to reprocessing.
     reuse_results_if_available = False
+    
+    #: If we've already split this video or folder of videos into frames, should we 
+    #: we re-use those extracted frames?  Defaults to reprocessing.
     reuse_frames_if_available = False
     
+    #: If [input_video_file] is a folder, should we search for videos recursively?
     recursive = False 
+    
+    #: Enable additional debug console output
     verbose = False
     
+    #: fourcc code to use for writing videos; only relevant if render_output_video is True
     fourcc = None
 
+    #: Confidence threshold to use for writing videos with boxes, only relevant if
+    #: if render_output_video is True.  Defaults to choosing a reasonable threshold
+    #: based on the model version.
     rendering_confidence_threshold = None
+    
+    #: Detections below this threshold will not be included in the output file.
     json_confidence_threshold = 0.005
+    
+    #: Sample every Nth frame; set to None (default) or 1 to sample every frame.  Typically
+    #: we sample down to around 3 fps, so for typical 30 fps videos, frame_sample=10 is a 
+    #: typical value.
     frame_sample = None
     
+    #: Number of workers to use for parallelization; set to <= 1 to disable parallelization
     n_cores = 1
 
+    #: For debugging only, stop processing after a certain number of frames.
     debug_max_frames = -1
     
+    #: File containing non-standard categories, typically only used if you're running a non-MD
+    #: detector.
     class_mapping_filename = None
+
+# ...class ProcessVideoOptions
 
 
 #%% Functions
 
 def process_video(options):
     """
-    Process a single video
+    Process a single video through MD, optionally writing a new video with boxes
+    
+    Args: 
+        options (ProcessVideoOptions): all the parameters used to control this process,
+            including filenames; see ProcessVideoOptions for details
+            
+    Returns:
+        dict: frame-level MegaDetector results, identical to what's in the output .json file
     """
 
     if options.output_json_file is None:
@@ -229,7 +278,11 @@ def process_video(options):
 
 def process_video_folder(options):
     """
-    Process a folder of videos    
+    Process a folder of videos through MD
+    
+    Args: 
+        options (ProcessVideoOptions): all the parameters used to control this process,
+            including filenames; see ProcessVideoOptions for details            
     """
     
     ## Validate options
@@ -428,8 +481,7 @@ def process_video_folder(options):
             print('Warning: error deleting frames from folder {}:\n{}'.format(
                 frame_output_folder,str(e)))
             pass
-        
-    
+
 # ...process_video_folder()
 
 
@@ -547,7 +599,7 @@ def main():
     default_options = ProcessVideoOptions()
     
     parser = argparse.ArgumentParser(description=(
-        'Run MegaDetector on each frame in a video (or every Nth frame), optionally '\
+        'Run MegaDetector on each frame (or every Nth frame) in a video (or folder of videos), optionally '\
         'producing a new video with detections annotated'))
 
     parser.add_argument('model_file', type=str,

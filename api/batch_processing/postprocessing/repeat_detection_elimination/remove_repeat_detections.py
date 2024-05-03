@@ -5,7 +5,7 @@ remove_repeat_detections.py
 Used after running find_repeat_detections, then manually filtering the results,
 to create a final filtered output file.
 
-If you want to use this script, we recommend that you read the user's guide:
+If you want to use this script, we recommend that you read the RDE user's guide:
 
 https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing/postprocessing/repeat_detection_elimination
 
@@ -21,7 +21,19 @@ from api.batch_processing.postprocessing.repeat_detection_elimination import rep
 #%% Main function
 
 def remove_repeat_detections(inputFile,outputFile,filteringDir):
-
+    """
+    Given an index file that was produced in a first pass through find_repeat_detections,
+    and a folder of images (from which the user has deleted images they don't want removed),
+    remove the identified repeat detections from a set of MD results and write to a new file.
+    
+    Args:
+        inputFile (str): .json file of MD results, from which we should remove repeat detections
+        outputFile (str): output .json file to which we should write MD results (with repeat 
+            detections removed)
+        filteringDir (str): the folder produced by find_repeat_detections, containing a 
+            detectionIndex.json file        
+    """
+    
     assert os.path.isfile(inputFile), "Can't find file {}".format(inputFile)
     assert os.path.isdir(filteringDir), "Can't find folder {}".format(filteringDir)
     options = repeat_detections_core.RepeatDetectionOptions()
@@ -65,7 +77,6 @@ def main():
 
     args = parser.parse_args()
     remove_repeat_detections(args.inputFile, args.outputFile, args.filteringDir)
-
 
 if __name__ == '__main__':
     main()

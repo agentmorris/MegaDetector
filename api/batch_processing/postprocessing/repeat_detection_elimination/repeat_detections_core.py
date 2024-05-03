@@ -4,6 +4,11 @@ repeat_detections_core.py
 
 Core utilities shared by find_repeat_detections and remove_repeat_detections.
 
+Nothing in this file (in fact nothing in this subpackage) will make sense until you read
+the RDE user's guide:
+    
+https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing/postprocessing/repeat_detection_elimination
+
 """
 
 #%% Imports and environment
@@ -62,161 +67,214 @@ class RepeatDetectionOptions:
     Options that control the behavior of repeat detection elimination
     """
     
-    # Relevant for rendering the folder of images for filtering
-    #
-    # imageBase can also be a SAS URL, in which case some error-checking is
-    # disabled.
+    #: Folder where images live; filenames in the MD results .json file should
+    #: be relative to this folder.
+    #:
+    #: imageBase can also be a SAS URL, in which case some error-checking is
+    #: disabled.
     imageBase = ''
+    
+    #: Folder where we should write temporary output.
     outputBase = ''
 
-    # Don't consider detections with confidence lower than this as suspicious
+    #: Don't consider detections with confidence lower than this as suspicious
     confidenceMin = 0.1
 
-    # Don't consider detections with confidence higher than this as suspicious
+    #: Don't consider detections with confidence higher than this as suspicious
     confidenceMax = 1.0
 
-    # What's the IOU threshold for considering two boxes the same?
+    #: What's the IOU threshold for considering two boxes the same?
     iouThreshold = 0.9
 
-    # How many occurrences of a single location (as defined by the IOU threshold)
-    # are required before we declare it suspicious?
+    #: How many occurrences of a single location (as defined by the IOU threshold)
+    #: are required before we declare it suspicious?
     occurrenceThreshold = 20
     
-    # Ignore "suspicious" detections smaller than some size
+    #: Ignore "suspicious" detections smaller than some size
     minSuspiciousDetectionSize = 0.0
 
-    # Ignore "suspicious" detections larger than some size; these are often animals
-    # taking up the whole image.  This is expressed as a fraction of the image size.
+    #: Ignore "suspicious" detections larger than some size; these are often animals
+    #: taking up the whole image.  This is expressed as a fraction of the image size.
     maxSuspiciousDetectionSize = 0.2
 
-    # Ignore folders with more than this many images in them
+    #: Ignore folders with more than this many images in them
     maxImagesPerFolder = None
     
-    # A list of classes we don't want to treat as suspicious. Each element is an int.
-    excludeClasses = []  # [annotation_constants.detector_bbox_category_name_to_id['person']]
+    #: A list of category IDs (ints) that we don't want consider as candidate repeat detections.
+    #:
+    #: Typically used to say, e.g., "don't bother analyzing people or vehicles for repeat 
+    #: detections", which you could do by saying excludeClasses = [2,3].
+    excludeClasses = []
 
-    # For very large sets of results, passing chunks of results to and from workers as 
-    # parameters ('memory') can be memory-intensive, so we can serialize to intermediate
-    # files instead ('file').
-    #
-    # The use of 'file' here is still experimental.
+    #: For very large sets of results, passing chunks of results to and from workers as 
+    #: parameters ('memory') can be memory-intensive, so we can serialize to intermediate
+    #: files instead ('file').
+    #:
+    #: The use of 'file' here is still experimental.
     pass_detections_to_processes_method = 'memory'
     
+    #: Number of workers to use for parallel operations
     nWorkers = 10
     
-    # Should we use threads or processes for parallelization?
+    #: Should we use threads (True) or processes (False) for parallelization?
+    #:
+    #: Not relevant if nWorkers <= 1, or if bParallelizeComparisons and 
+    #: bParallelizeRendering are both False.
     parallelizationUsesThreads = True
 
-    # Load detections from a filter file rather than finding them from the detector output
-
-    # .json file containing detections, generally this is the detectionIndex.json file in 
-    # the filtering_* folder produced in the first pass
+    #: If this is not empty, we'll load detections from a filter file rather than finding them 
+    #: from the detector output.  This should be a .json file containing detections, generally this 
+    #: is the detectionIndex.json file in the filtering_* folder produced by find_repeat_detections().
     filterFileToLoad = ''
 
-    # (optional) List of filenames remaining after deletion of identified 
-    # repeated detections that are actually animals.  This should be a flat
-    # text file, one relative filename per line.  See enumerate_images().
-    #
-    # This is a pretty esoteric code path and a candidate for removal.
-    #
-    # The scenario where I see it being most useful is the very hypothetical one
-    # where we use an external tool for image handling that allows us to do something
-    # smarter and less destructive than deleting images to mark them as non-false-positives.
+    #: (optional) List of filenames remaining after deletion of identified 
+    #: repeated detections that are actually animals.  This should be a flat
+    #: text file, one relative filename per line.
+    #:
+    #: This is a pretty esoteric code path and a candidate for removal.
+    #:
+    #: The scenario where I see it being most useful is the very hypothetical one
+    #: where we use an external tool for image handling that allows us to do something
+    #: smarter and less destructive than deleting images to mark them as non-false-positives.
     filteredFileListToLoad = None
 
-    # Turn on/off optional outputs
+    #: Should we write the folder of images used to manually review repeat detections?
     bWriteFilteringFolder = True
 
+    #: For debugging: limit comparisons to a specific number of folders
     debugMaxDir = -1
+    
+    #: For debugging: limit rendering to a specific number of folders
     debugMaxRenderDir = -1
+    
+    #: For debugging: limit comparisons to a specific number of detections
     debugMaxRenderDetection = -1
+    
+    #: For debugging: limit comparisons to a specific number of instances
     debugMaxRenderInstance = -1
+    
+    #: Should we parallelize (across cameras) comparisons to find repeat detections?
     bParallelizeComparisons = True
+    
+    #: Should we parallelize image rendering?
     bParallelizeRendering = True
     
-    # If this is False (default), a detection from class A is not considered to be "the same"
-    # as a detection from class B, even if they're at the same location.
+    #: If this is False (default), a detection from class A is *not* considered to be "the same"
+    #: as a detection from class B, even if they're at the same location.
     categoryAgnosticComparisons = False
     
-    # Determines whether bounding-box rendering errors (typically network errors) should
-    # be treated as failures    
+    #: Determines whether bounding-box rendering errors (typically network errors) should
+    #: be treated as failures    
     bFailOnRenderError = False
     
+    #: Should we print a warning if images referred to in the MD results file are missing?
     bPrintMissingImageWarnings = True
+    
+    #: If bPrintMissingImageWarnings is True, should we print a warning about missing images
+    #: just once ('once') or every time ('all')?
     missingImageWarningType = 'once'  # 'all'
 
-    # This does *not* include the tile image grid
+    #: Image width for rendered images (it's called "max" because we don't resize smaller images).
+    #:
+    #: Original size is preserved if this is None.
+    #:
+    #: This does *not* include the tile image grid.
     maxOutputImageWidth = None
     
-    # Box rendering options
+    #: Line thickness (in pixels) for box rendering
     lineThickness = 10
+    
+    #: Box expansion (in pixels)
     boxExpansion = 2
     
-    # State variables
+    #: Progress bar used during comparisons and rendering.  Do not set externally.
+    #:
+    #: :meta private:
     pbar = None
 
-    # Replace filename tokens after reading, useful when the directory structure
-    # has changed relative to the structure the detector saw
+    #: Replace filename tokens after reading, useful when the directory structure
+    #: has changed relative to the structure the detector saw.
     filenameReplacements = {}
 
-    # How many folders up from the leaf nodes should we be going to aggregate images?
+    #: How many folders up from the leaf nodes should we be going to aggregate images into 
+    #: cameras?
+    #:
+    #: If this is zero, each leaf folder is treated as a camera.
     nDirLevelsFromLeaf = 0
     
-    # An optional function that takes a string (an image file name) and returns
-    # a string (the corresponding  folder ID), typically used when multiple folders
-    # actually correspond to the same camera in a manufacturer-specific way (e.g.
-    # a/b/c/RECONYX100 and a/b/c/RECONYX101 may really be the same camera).
+    #: An optional function that takes a string (an image file name) and returns
+    #: a string (the corresponding  folder ID), typically used when multiple folders
+    #: actually correspond to the same camera in a manufacturer-specific way (e.g.
+    #: a/b/c/RECONYX100 and a/b/c/RECONYX101 may really be the same camera).
+    #:
+    #: See ct_utils for a common replacement function that handles most common
+    #: manufacturer folder names.
     customDirNameFunction = None
     
-    # Include/exclude specific folders... only one of these may be
-    # specified; "including" folders includes *only* those folders.
+    #: Include only specific folders, mutually exclusive with [excludeFolders]
     includeFolders = None
+    
+    #: Exclude specific folders, mutually exclusive with [includeFolders]
     excludeFolders = None
 
-    # Optionally show *other* detections (i.e., detections other than the
-    # one the user is evaluating) in a light gray
+    #: Optionally show *other* detections (i.e., detections other than the
+    #: one the user is evaluating), typically in a light gray.
     bRenderOtherDetections = False
+    
+    #: Threshold to use for *other* detections
     otherDetectionsThreshold = 0.2    
+    
+    #: Line width (in pixels) for *other* detections
     otherDetectionsLineWidth = 1
     
-    # Optionally show a grid that includes a sample image for the detection, plus
-    # the top N additional detections
+    #: Optionally show a grid that includes a sample image for the detection, plus
+    #: the top N additional detections
     bRenderDetectionTiles = True
     
-    # If this is None, we'll render at the width of the original image
+    #: Width of the original image (within the larger output image) when bRenderDetectionTiles
+    #: is True.
+    #:
+    #: If this is None, we'll render the original image in the detection tile image
+    #: at its original width.
     detectionTilesPrimaryImageWidth = None
     
-    # Can be a width in pixels, or a number from 0 to 1 representing a fraction
-    # of the primary image width.
-    #
-    # If you want to render the grid at exactly 1 pixel wide, I guess you're out
-    # of luck.
+    #: Width to use for the grid of detection instances.
+    #:
+    #: Can be a width in pixels, or a number from 0 to 1 representing a fraction
+    #: of the primary image width.
+    #:
+    #: If you want to render the grid at exactly 1 pixel wide, I guess you're out
+    #: of luck.    
     detectionTilesCroppedGridWidth = 0.6
-    detectionTilesPrimaryImageLocation='right'
+    
+    #: Location of the primary image within the mosaic ('right' or 'left)
+    detectionTilesPrimaryImageLocation = 'right'
+    
+    #: Maximum number of individual detection instances to include in the mosaic
     detectionTilesMaxCrops = 250
     
-    # If bRenderOtherDetections is True, what color should we use to render the
-    # (hopefully pretty subtle) non-target detections?
-    # 
-    # In theory I'd like these "other detection" rectangles to be partially 
-    # transparent, but this is not straightforward, and the alpha is ignored
-    # here.  But maybe if I leave it here and wish hard enough, someday it 
-    # will work.
-    #
-    # otherDetectionsColors = ['dimgray']
+    #: If bRenderOtherDetections is True, what color should we use to render the
+    #: (hopefully pretty subtle) non-target detections?
+    #: 
+    #: In theory I'd like these "other detection" rectangles to be partially 
+    #: transparent, but this is not straightforward, and the alpha is ignored
+    #: here.  But maybe if I leave it here and wish hard enough, someday it 
+    #: will work.
+    #:
+    #: otherDetectionsColors = ['dimgray']
     otherDetectionsColors = [(105,105,105,100)]
     
-    # Sort detections within a directory so nearby detections are adjacent
-    # in the list, for faster review.
-    #
-    # Can be None, 'xsort', or 'clustersort'
-    #
-    # * None sorts detections chronologically by first occurrence
-    # * 'xsort' sorts detections from left to right
-    # * 'clustersort' clusters detections and sorts by cluster
+    #: Sort detections within a directory so nearby detections are adjacent
+    #: in the list, for faster review.
+    #:
+    #: Can be None, 'xsort', or 'clustersort'
+    #:
+    #: * None sorts detections chronologically by first occurrence
+    #: * 'xsort' sorts detections from left to right
+    #: * 'clustersort' clusters detections and sorts by cluster
     smartSort = 'xsort'
     
-    # Only relevant if smartSort == 'clustersort'
+    #: Only relevant if smartSort == 'clustersort'
     smartSortDistanceThreshold = 0.1
     
     
@@ -225,26 +283,28 @@ class RepeatDetectionResults:
     The results of an entire repeat detection analysis
     """
 
-    # The data table (Pandas DataFrame), as loaded from the input json file via 
-    # load_api_results().  Has columns ['file', 'detections','failure'].
+    #: The data table (Pandas DataFrame), as loaded from the input json file via 
+    #: load_api_results().  Has columns ['file', 'detections','failure'].
     detectionResults = None
 
-    # The other fields in the input json file, loaded via load_api_results()
+    #: The other fields in the input json file, loaded via load_api_results()
     otherFields = None
 
-    # The data table after modification
+    #: The data table after modification
     detectionResultsFiltered = None
 
-    # dict mapping folder names to whole rows from the data table
+    #: dict mapping folder names to whole rows from the data table
     rowsByDirectory = None
 
-    # dict mapping filenames to rows in the master table
+    #: dict mapping filenames to rows in the master table
     filenameToRow = None
 
-    # An array of length nDirs, where each element is a list of DetectionLocation 
-    # objects for that directory that have been flagged as suspicious
+    #: An array of length nDirs, where each element is a list of DetectionLocation 
+    #: objects for that directory that have been flagged as suspicious
     suspiciousDetections = None
 
+    #: The location of the .json file written with information about the RDE
+    #: review images (typically detectionIndex.json)
     filterFile = None
 
 
@@ -254,21 +314,25 @@ class IndexedDetection:
     """
 
     def __init__(self, iDetection=-1, filename='', bbox=[], confidence=-1, category='unknown'):
-        """
-        Args:
-            iDetection: order in API output file
-            filename: path to the image of this detection
-            bbox: [x_min, y_min, width_of_box, height_of_box]
-        """
+        
         assert isinstance(iDetection,int)
         assert isinstance(filename,str)
         assert isinstance(bbox,list)
         assert isinstance(category,str)
         
+        #: index of this detection within all detections for this filename
         self.iDetection = iDetection
+        
+        #: path to the image corresponding to this detection
         self.filename = filename
+        
+        #: [x_min, y_min, width_of_box, height_of_box]
         self.bbox = bbox
+        
+        #: confidence value of this detection
         self.confidence = confidence
+        
+        #: category ID (not name) of this detection            
         self.category = category
 
     def __repr__(self):
@@ -280,7 +344,7 @@ class DetectionLocation:
     """
     A unique-ish detection location, meaningful in the context of one
     directory.  All detections within an IoU threshold of self.bbox
-    will be stored in "instances".
+    will be stored in IndexedDetection objects.
     """
 
     def __init__(self, instance, detection, relativeDir, category, id=None):
@@ -290,15 +354,28 @@ class DetectionLocation:
         assert isinstance(relativeDir,str)
         assert isinstance(category,str)
         
-        self.instances = [instance]  # list of IndexedDetections
+        #: list of IndexedDetections that match this detection
+        self.instances = [instance]
+        
+        #: category ID (not name) for this detection
         self.category = category
+        
+        #: bbox as x,y,w,h
         self.bbox = detection['bbox']
+        
+        #: relative folder (i.e., camera name) in which this detectin was found
         self.relativeDir = relativeDir
+        
+        #: relative path to the canonical image representing this detection
         self.sampleImageRelativeFileName = ''        
+        
+        #: list of detections on that canonical image that match this detection
         self.sampleImageDetections = None
         
-        # This ID is only guaranteed to be unique within a directory
+        #: ID for this detection; this ID is only guaranteed to be unique within a directory
         self.id = id
+        
+        #: only used when doing cluster-based sorting
         self.clusterLabel = None
 
     def __repr__(self):
@@ -307,8 +384,11 @@ class DetectionLocation:
     
     def to_api_detection(self):
         """
-        Converts to a 'detection' dictionary, making the semi-arbitrary assumption that
-        the first instance is representative of confidence.
+        Converts this detection to a 'detection' dictionary, making the semi-arbitrary 
+        assumption that the first instance is representative of confidence.
+        
+        Returns:
+            dict: dictionary in the format used to store detections in MD results
         """
         
         # This is a bit of a hack right now, but for future-proofing, I don't want to call this
@@ -328,29 +408,12 @@ class DetectionLocation:
 
 #%% Support functions
 
-def enumerate_images(dirName,outputFileName=None):
-    """
-    Non-recursively enumerates all image files in *dirName* to the text file 
-    *outputFileName*, as relative paths.  This is used to produce a file list
-    after removing true positives from the image directory.
-    
-    Not used directly in this module, but provides a consistent way to enumerate
-    files in the format expected by this module.
-    """
-    
-    imageList = path_utils.find_images(dirName)
-    imageList = [os.path.basename(fn) for fn in imageList]
-    
-    if outputFileName is not None:
-        with open(outputFileName,'w') as f:
-            for s in imageList:
-                f.write(s + '\n')
-            
-    return imageList
-    
-
-def render_bounding_box(detection, inputFileName, outputFileName, lineWidth=5, 
+def _render_bounding_box(detection, inputFileName, outputFileName, lineWidth=5, 
                         expansion=0):
+    """
+    Rendering the detection [detection] on the image [inputFileName], writing the result
+    to [outputFileName].
+    """
     
     im = open_image(inputFileName)
     d = detection.to_api_detection()
@@ -359,8 +422,12 @@ def render_bounding_box(detection, inputFileName, outputFileName, lineWidth=5,
     im.save(outputFileName)
 
 
-def detection_rect_to_rtree_rect(detection_rect):
-    # We store detections as x/y/w/h, rtree and pyqtree use l/b/r/t
+def _detection_rect_to_rtree_rect(detection_rect):
+    """
+    We store detections as x/y/w/h, rtree and pyqtree use l/b/r/t.  Convert from
+    our representation to rtree's.
+    """
+    
     l = detection_rect[0]
     b = detection_rect[1]
     r = detection_rect[0] + detection_rect[2]
@@ -368,8 +435,12 @@ def detection_rect_to_rtree_rect(detection_rect):
     return (l,b,r,t)
 
 
-def rtree_rect_to_detection_rect(rtree_rect):
-    # We store detections as x/y/w/h, rtree and pyqtree use l/b/r/t
+def _rtree_rect_to_detection_rect(rtree_rect):
+    """
+    We store detections as x/y/w/h, rtree and pyqtree use l/b/r/t.  Convert from
+    rtree's representation to ours.
+    """
+    
     x = rtree_rect[0]
     y = rtree_rect[1]
     w = rtree_rect[2] - rtree_rect[0]
@@ -377,7 +448,7 @@ def rtree_rect_to_detection_rect(rtree_rect):
     return (x,y,w,h)
     
 
-def sort_detections_for_directory(candidateDetections,options):
+def _sort_detections_for_directory(candidateDetections,options):
     """
     candidateDetections is a list of DetectionLocation objects.  Sorts them to
     put nearby detections next to each other, for easier visual review.  Returns
@@ -474,14 +545,15 @@ def sort_detections_for_directory(candidateDetections,options):
         raise ValueError('Unrecognized sort method {}'.format(
             options.smartSort))
         
-# ...def sort_detections_for_directory(...)
+# ...def _sort_detections_for_directory(...)
 
 
-def find_matches_in_directory(dirNameAndRows, options):
+def _find_matches_in_directory(dirNameAndRows, options):
     """
     dirNameAndRows is a tuple of (name,rows).
     
-    "name" is a location name, typically a folder name.
+    "name" is a location name, typically a folder name, though this may be an arbitrary
+    location identifier.
     
     "rows" is a Pandas dataframe with one row per image in this location, with columns:
         
@@ -643,7 +715,7 @@ def find_matches_in_directory(dirNameAndRows, options):
 
             bFoundSimilarDetection = False
 
-            rtree_rect = detection_rect_to_rtree_rect(bbox)
+            rtree_rect = _detection_rect_to_rtree_rect(bbox)
             
             # This will return candidates of all classes
             overlappingCandidateDetections =\
@@ -723,10 +795,10 @@ def find_matches_in_directory(dirNameAndRows, options):
     else:
         return candidateDetections
 
-# ...def find_matches_in_directory(...)
+# ...def _find_matches_in_directory(...)
 
 
-def update_detection_table(repeatDetectionResults, options, outputFilename=None):
+def _update_detection_table(repeatDetectionResults, options, outputFilename=None):
     """
     Changes confidence values in repeatDetectionResults.detectionResults so that detections
     deemed to be possible false positives are given negative confidence values.
@@ -870,10 +942,10 @@ def update_detection_table(repeatDetectionResults, options, outputFilename=None)
 
     return detectionResults
 
-# ...def update_detection_table(...)
+# ...def _update_detection_table(...)
 
 
-def render_sample_image_for_detection(detection,filteringDir,options):
+def _render_sample_image_for_detection(detection,filteringDir,options):
     """
     Render a sample image for one unique detection, possibly containing lightly-colored
     high-confidence detections from elsewhere in the sample image.            
@@ -954,7 +1026,7 @@ def render_sample_image_for_detection(detection,filteringDir,options):
             
         else:
             
-            render_bounding_box(detection, inputFullPath, outputFullPath,
+            _render_bounding_box(detection, inputFullPath, outputFullPath,
                 lineWidth=options.lineThickness, expansion=options.boxExpansion)
         
         # ...if we are/aren't rendering other bounding boxes
@@ -1003,11 +1075,7 @@ def render_sample_image_for_detection(detection,filteringDir,options):
                 cropped_grid_width=croppedGridWidth,
                 output_image_filename=outputFullPath,
                 primary_image_location=options.detectionTilesPrimaryImageLocation)
-        
-            # bDetectionTilesPrimaryImageWidth = None
-            # bDetectionTilesCroppedGridWidth = 0.6
-            # bDetectionTilesPrimaryImageLocation='right'
-        
+                    
         # ...if we are/aren't rendering detection tiles
     
     except Exception as e:
@@ -1018,12 +1086,28 @@ def render_sample_image_for_detection(detection,filteringDir,options):
         if options.bFailOnRenderError:
             raise                    
 
-# ...def render_sample_image_for_detection(...)
+# ...def _render_sample_image_for_detection(...)
 
 
 #%% Main entry point
 
 def find_repeat_detections(inputFilename, outputFilename=None, options=None):
+    """
+    Find detections in a MD results file that occur repeatedly and are likely to be 
+    rocks/sticks.
+    
+    Args:
+        inputFilename (str): the MD results .json file to analyze
+        outputFilename (str, optional): the filename to which we should write results 
+            with repeat detections removed, typically set to None during the first
+            part of the RDE process.
+        options (RepeatDetectionOptions): all the interesting options controlling this
+            process; see RepeatDetectionOptions for details.
+    
+    Returns:
+        RepeatDetectionResults: results of the RDE process; see RepeatDetectionResults
+        for details.
+    """
     
     ##%% Input handling
 
@@ -1203,7 +1287,7 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
                 assert dirNameAndRow[0] == dirName
                 print('Processing dir {} of {}: {}'.format(iDir,len(dirsToSearch),dirName))
                 allCandidateDetections[iDir] = \
-                    find_matches_in_directory(dirNameAndRow, options)
+                    _find_matches_in_directory(dirNameAndRow, options)
 
         else:            
             
@@ -1271,7 +1355,7 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
                               
                 options.pbar = None                
                 allCandidateDetectionFiles = list(pool.imap(
-                    partial(find_matches_in_directory,options=options), dirNameAndIntermediateFile))
+                    partial(_find_matches_in_directory,options=options), dirNameAndIntermediateFile))
             
                 
                 ##%% Load into a combined list of candidate detections
@@ -1298,11 +1382,11 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
                 if options.parallelizationUsesThreads:
                     options.pbar = tqdm(total=len(dirNameAndRows))
                     allCandidateDetections = list(pool.imap(
-                        partial(find_matches_in_directory,options=options), dirNameAndRows))
+                        partial(_find_matches_in_directory,options=options), dirNameAndRows))
                 else:
                     options.pbar = None                
                     allCandidateDetections = list(tqdm(pool.imap(
-                        partial(find_matches_in_directory,options=options), dirNameAndRows)))
+                        partial(_find_matches_in_directory,options=options), dirNameAndRows)))
 
         print('\nFinished looking for similar detections')
 
@@ -1342,7 +1426,7 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
 
             # Sort the above-threshold detections for easier review
             if options.smartSort is not None:
-                suspiciousDetections[iDir] = sort_detections_for_directory(
+                suspiciousDetections[iDir] = _sort_detections_for_directory(
                     suspiciousDetections[iDir],options)
                 
             print('Found {} suspicious detections in directory {} ({})'.format(
@@ -1427,7 +1511,7 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
 
     toReturn.suspiciousDetections = suspiciousDetections
 
-    toReturn.allRowsFiltered = update_detection_table(toReturn, options, outputFilename)
+    toReturn.allRowsFiltered = _update_detection_table(toReturn, options, outputFilename)
     
     
     ##%% Create filtering directory
@@ -1501,19 +1585,19 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
             if options.parallelizationUsesThreads:
                 options.pbar = tqdm(total=len(allSuspiciousDetections))
                 allCandidateDetections = list(pool.imap(
-                    partial(render_sample_image_for_detection,filteringDir=filteringDir,
+                    partial(_render_sample_image_for_detection,filteringDir=filteringDir,
                             options=options), allSuspiciousDetections))
             else:
                 options.pbar = None                
                 allCandidateDetections = list(tqdm(pool.imap(
-                    partial(render_sample_image_for_detection,filteringDir=filteringDir,
+                    partial(_render_sample_image_for_detection,filteringDir=filteringDir,
                             options=options), allSuspiciousDetections)))
                 
         else:
             
             # Serial loop over detections
             for detection in allSuspiciousDetections:
-                render_sample_image_for_detection(detection,filteringDir,options)
+                _render_sample_image_for_detection(detection,filteringDir,options)
             
         # Delete (large) temporary data from the list of suspicious detections
         for detection in allSuspiciousDetections:

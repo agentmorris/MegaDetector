@@ -42,6 +42,5 @@ def main():
     output_file_urls_str = json.dumps(output_file_urls)
     print(output_file_urls_str)
 
-
 if __name__ == '__main__':
     main()

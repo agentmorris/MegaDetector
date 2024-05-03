@@ -500,9 +500,7 @@ def main():
         
     visualize_db(options.db_path,options.output_dir,options.image_base_dir,options) 
 
-
-if __name__ == '__main__':
-    
+if __name__ == '__main__':    
     main()
 
 

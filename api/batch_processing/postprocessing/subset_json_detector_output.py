@@ -692,7 +692,5 @@ def main():
     
     subset_json_detector_output(args.input_file, args.output_file, options)
     
-
-if __name__ == '__main__':
-    
+if __name__ == '__main__':    
     main()

@@ -6,7 +6,7 @@ Module to run MegaDetector v5, a PyTorch YOLOv5 animal detection model.
 
 """
 
-#%% Imports
+#%% Imports and constants
 
 import torch
 import numpy as np
@@ -104,12 +104,19 @@ print(f'Using PyTorch version {torch.__version__}')
 
 class PTDetector:
 
-    IMAGE_SIZE = 1280  # image size used in training
+    #: Image size passed to YOLOv5's letterbox() function; 1280 means "1280 on the long side, preserving 
+    #: aspect ratio"
+    #:
+    #: :meta private:
+    IMAGE_SIZE = 1280
+    
+    #: Stride size passed to YOLOv5's letterbox() function
+    #:
+    #: :meta private:
     STRIDE = 64
 
-    def __init__(self, model_path: str, 
-                 force_cpu: bool = False,
-                 use_model_native_classes: bool = False):
+    def __init__(self, model_path, force_cpu=False, use_model_native_classes= False):
+        
         self.device = 'cpu'
         if not force_cpu:
             if torch.cuda.is_available():
@@ -162,20 +169,26 @@ class PTDetector:
                                       detection_threshold=0.00001, image_size=None,
                                       skip_image_resizing=False):
         """
-        Apply the detector to an image.
+        Applies the detector to an image.
 
         Args:
-            img_original: the PIL Image object with EXIF rotation taken into account
-            image_id: a path to identify the image; will be in the "file" field of the output object
-            detection_threshold: confidence above which to include the detection proposal
-            skip_image_resizing: whether to skip internal image resizing and rely on external resizing
+            img_original (Image): the PIL Image object with EXIF rotation taken into account
+            image_id (str, optional): a path to identify the image; will be in the "file" field 
+                of the output object
+            detection_threshold (float, optional): only detections above this confidence threshold 
+                will be included in the return value
+            image_size (tuple, optional): image size to use for inference, only mess with this
+                if (a) you're using a model other than MegaDetector or (b) you know what you're
+                doing
+            skip_image_resizing (bool, optional): whether to skip internal image resizing (and rely on external 
+                resizing)
 
         Returns:
-            A dict with the following fields, see the 'images' key in https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format:
-            - 'file' (always present)
-            - 'max_detection_conf' (removed from MegaDetector output by default, but generated here)
-            - 'detections', which is a list of detection objects containing keys 'category', 'conf' and 'bbox'
-            - 'failure'
+            dict: a dictionary with the following fields:
+                - 'file' (filename, always present)
+                - 'max_detection_conf' (removed from MegaDetector output files by default, but generated here)
+                - 'detections' (a list of detection objects containing keys 'category', 'conf', and 'bbox')
+                - 'failure' (a failure string, or None if everything went fine)
         """
 
         result = {
@@ -296,13 +309,19 @@ class PTDetector:
 
         return result
 
+    # ...def generate_detections_one_image(...)
+
+# ...class PTDetector
+
 
 #%% Command-line driver
 
-if __name__ == '__main__':
-    
-    # For testing only... you don't really want to run this module directly
+# For testing only... you don't really want to run this module directly.
 
+if __name__ == '__main__':
+
+    pass
+    
     #%%
     
     import md_visualization.visualization_utils as vis_utils

@@ -26,7 +26,7 @@ min_box_size = 0.03
 results_file = results_file_raw.replace('.json','_animals_only.json')
 
 
-#%% Main function
+#%% Command-line driver
 
 def main():    
 
@@ -117,9 +117,6 @@ def main():
 
     Fs = 20
     frames_to_video(detected_frame_files, Fs, options.output_video_file)
-
-
-#%% Command-line driver
 
 if __name__ == '__main__':
     main()

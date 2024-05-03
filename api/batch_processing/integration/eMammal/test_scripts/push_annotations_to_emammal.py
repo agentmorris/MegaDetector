@@ -121,7 +121,6 @@ def main():
             update_data(sql)
             mysql_connection.commit()
 
-
 if __name__ == '__main__':
     main()
 

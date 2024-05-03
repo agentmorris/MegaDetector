@@ -43,11 +43,3 @@ md\_visualization.visualize\_detector\_output module
    :members:
    :undoc-members:
    :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: md_visualization
-   :members:
-   :undoc-members:
-   :show-inheritance:

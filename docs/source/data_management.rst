@@ -184,11 +184,3 @@ data\_management.yolo\_to\_coco module
    :members:
    :undoc-members:
    :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: data_management
-   :members:
-   :undoc-members:
-   :show-inheritance:

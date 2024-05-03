@@ -435,6 +435,5 @@ def main():
     with open(task_output_path, 'w', encoding='utf-8') as f:
         json.dump(detections, f, ensure_ascii=False)
 
-
 if __name__ == '__main__':
     main()

@@ -148,6 +148,5 @@ class TestJobStatusTable(unittest.TestCase):
         item_read = table.read_job_status(job_id)
         self.assertIsNone(item_read)
 
-
 if __name__ == '__main__':
     unittest.main()

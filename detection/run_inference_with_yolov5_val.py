@@ -1,37 +1,45 @@
 """
- 
- run_inference_with_yolov5_val.py
 
- Runs a folder of images through MegaDetector (or another YOLOv5 model) with YOLOv5's 
- val.py, converting the output to the standard MD format.  The main goal is to leverage
- YOLO's test-time augmentation tools.
+run_inference_with_yolov5_val.py
 
- YOLOv5's val.py uses each file's base name as a unique identifier, which doesn't work 
- when you have typical camera trap images like:
+Runs a folder of images through MegaDetector (or another YOLOv5/YOLOv8 model) with YOLO's
+val.py, converting the output to the standard MD format.  The reasons this script exists,
+as an alternative to the standard run_detector_batch.py are:
+    
+* This script provides access to YOLO's test-time augmentation tools.
+* This script serves a reference implementation: by any reasonable definition, YOLOv5's
+  val.py produces the "correct" result for any image, since it matches what was used in 
+  training.
+* This script works for any Ultralytics detection model, including YOLOv8 models  
 
- a/b/c/RECONYX0001.JPG
- d/e/f/RECONYX0001.JPG
+YOLOv5's val.py uses each file's base name as a unique identifier, which doesn't work 
+when you have typical camera trap images like:
 
- ...so this script jumps through a bunch of hoops to put a symlinks in a flat
- folder, run YOLOv5 on that folder, and map the results back to the real files.
+* a/b/c/RECONYX0001.JPG
+* d/e/f/RECONYX0001.JPG
 
- Currently requires the user to supply the path where a working YOLOv5 install lives,
- and assumes that the current conda environment is all set up for YOLOv5.
+...both of which would just be "RECONYX0001.JPG".  So this script jumps through a bunch of 
+hoops to put a symlinks in a flat folder, run YOLOv5 on that folder, and map the results back 
+to the real files.
 
- By default, this script uses symlinks to format the input images in a way that YOLOv5's 
- val.py likes.  This requires admin privileges on Windows... actually technically this only 
- requires permissions to create symbolic links, but I've never seen a case where someone has
- that permission and *doesn't* have admin privileges.  If you are running this script on
- Windows and you don't have admin privileges, use --no_use_symlinks.
+If you are running a YOLOv5 model, this script currently requires the caller to supply the path
+where a working YOLOv5 install lives, and assumes that the current conda environment is all set up for 
+YOLOv5.  If you are running a YOLOv8 model, the folder doesn't matter, but it assumes that ultralytics
+tools are available in the current environment.
 
- TODO:
+By default, this script uses symlinks to format the input images in a way that YOLO's 
+val.py likes, as per above.  This requires admin privileges on Windows... actually technically this 
+only requires permissions to create symbolic links, but I've never seen a case where someone has
+that permission and *doesn't* have admin privileges.  If you are running this script on
+Windows and you don't have admin privileges, use --no_use_symlinks, which will make copies of images,
+rather than using symlinks.
 
- * Multiple GPU support
+TODO:
 
- * Checkpointing
-
- * Support alternative class names at the command line (currently defaults to MD classes,
-   though other class names can be supplied programmatically)
+* Multiple GPU support
+* Checkpointing
+* Support alternative class names at the command line (currently defaults to MD classes,
+  though other class names can be supplied programmatically)
 
 """
 
@@ -60,59 +68,112 @@ default_image_size_with_no_augmentation = 1280
 #%% Options class
 
 class YoloInferenceOptions:
-        
+    """
+    Parameters that control the behavior of run_inference_with_yolov5_val(), including 
+    the input/output filenames.
+    """
+    
     ## Required ##
     
+    #: Folder of images to process
     input_folder = None
+    
+    #: Model filename (ending in .pt), or a well-known model name (e.g. "MDV5A")
     model_filename = None
+    
+    #: .json output file, in MD results format
     output_file = None
+    
     
     ## Optional ##
     
-    # Required for older YOLOv5 inference, not for newer ulytralytics inference
+    #: Required for older YOLOv5 inference, not for newer ulytralytics/YOLOv8 inference
     yolo_working_folder = None
     
-    # Currently 'yolov5' and 'ultralytics' are supported, and really these are proxies for
-    # "the yolov5 repo" and "the ultralytics repo" (typically YOLOv8).
+    #: Currently 'yolov5' and 'ultralytics' are supported, and really these are proxies for
+    #: "the yolov5 repo" and "the ultralytics repo".
     model_type = 'yolov5' 
 
+    #: Image size to use; this is a single int, which in ultralytics's terminology means
+    #: "scale the long side of the image to this size, and preserve aspect ratio".
     image_size = default_image_size_with_augmentation
+    
+    #: Detections below this threshold will not be included in the output file
     conf_thres = '0.001'
+    
+    #: Batch size... has no impact on results, but may create memory issues if you set
+    #: this to large values
     batch_size = 1
+    
+    #: Device string: typically '0' for GPU 0, '1' for GPU 1, etc., or 'cpu'
     device_string = '0'
+    
+    #: Should we enable test-time augmentation?
     augment = True
+    
+    #: Should we enable half-precision inference?
     half_precision_enabled = None
     
+    #: Where should we stash the temporary symlinks used to give unique identifiers to image files?
+    #:
+    #: If this is None, we'll create a folder in system temp space.
     symlink_folder = None
+    
+    #: Should we use symlinks to give unique identifiers to image files (vs. copies)?
     use_symlinks = True
     
+    #: Temporary folder to stash intermediate YOLO results.
+    #:
+    #: If this is None, we'll create a folder in system temp space.    
     yolo_results_folder = None
     
+    #: Should we remove the symlink folder when we're done?
     remove_symlink_folder = True
+    
+    #: Should we remove the intermediate results folder when we're done?
     remove_yolo_results_folder = True
     
-    # These are deliberately offset from the standard MD categories; YOLOv5
-    # needs categories IDs to start at 0.
-    #
-    # This can also be a string that points to a YOLOv5 dataset.yaml file.
+    #: These are deliberately offset from the standard MD categories; YOLOv5
+    #: needs categories IDs to start at 0.
+    #:
+    #: This can also be a string that points to a YOLO dataset.yaml file.
     yolo_category_id_to_name = {0:'animal',1:'person',2:'vehicle'}
     
-    # 'error','skip','overwrite'
+    #: What should we do if the output file already exists?
+    #:
+    #: Can be 'error', 'skip', or 'overwrite'.
     overwrite_handling = 'skip'
     
+    #: If True, we'll do a dry run that lets you preview the YOLO val command, without
+    #: actually running it.
     preview_yolo_command_only = False
     
+    #: By default, if any errors occur while we're copying images or creating symlinks, it's
+    #: game over.  If this is True, those errors become warnings, and we plow ahead.
     treat_copy_failures_as_warnings = False
     
+    #: Save YOLO console output
     save_yolo_debug_output = False
     
+    #: Whether to search for images recursively within [input_folder]
     recursive = True
             
+    
+# ...YoloInferenceOptions()
+
     
 #%% Main function
 
 def run_inference_with_yolo_val(options):
-
+    """
+    Runs a folder of images through MegaDetector (or another YOLOv5/YOLOv8 model) with YOLO's
+    val.py, converting the output to the standard MD format.
+    
+    Args: 
+        options (YoloInferenceOptions): all the parameters used to control this process,
+            including filenames; see YoloInferenceOptions for details            
+    """
+    
     ##%% Input and path handling
     
     if options.model_type == 'yolov8':
@@ -606,8 +667,7 @@ def main():
             
     print(options.__dict__)
     
-    run_inference_with_yolo_val(options)
-    
+    run_inference_with_yolo_val(options)    
 
 if __name__ == '__main__':
     main()

@@ -1,6 +1,16 @@
 api.batch\_processing.postprocessing package
 ============================================
 
+This package contains subpackages for working with MegaDetector batch processing results.
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 3
+
+   api.batch_processing.postprocessing.repeat_detection_elimination
+
 Submodules
 ----------
 
@@ -27,8 +37,7 @@ api.batch\_processing.postprocessing.combine\_api\_outputs module
    :hook:
    :prog: combine_api_outputs
    :no_default_values:
-   
-   
+    
 api.batch\_processing.postprocessing.compare\_batch\_results module
 -------------------------------------------------------------------
 
@@ -44,7 +53,6 @@ api.batch\_processing.postprocessing.compare\_batch\_results module
    :hook:
    :prog: compare_batch_results
    :no_default_values:
-
 
 api.batch\_processing.postprocessing.convert\_output\_format module
 -------------------------------------------------------------------
@@ -176,10 +184,3 @@ api.batch\_processing.postprocessing.top\_folders\_to\_bottom module
    :undoc-members:
    :show-inheritance:
 
-Module contents
----------------
-
-.. automodule:: api.batch_processing.postprocessing
-   :members:
-   :undoc-members:
-   :show-inheritance:

@@ -17,11 +17,9 @@ from collections import defaultdict
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
 from tqdm import tqdm
-from typing import Container,Iterable,List
 from functools import partial
 
-from md_utils import path_utils
-    
+from md_utils import path_utils    
 from md_visualization import visualization_utils as vis_utils
 
 default_fourcc = 'h264'
@@ -31,33 +29,56 @@ default_fourcc = 'h264'
 
 VIDEO_EXTENSIONS = ('.mp4','.avi','.mpeg','.mpg')
 
-def is_video_file(s: str, video_extensions: Container[str] = VIDEO_EXTENSIONS
-                  ) -> bool:
+def is_video_file(s,video_extensions=VIDEO_EXTENSIONS):
     """
-    Checks a file's extension against a hard-coded set of video file
-    extensions.
+    Checks a file's extension against a set of known video file
+    extensions to determine whether it's a video file.  Performs a
+    case-insentive comparison.
+    
+    Args:
+        s (str): filename to check for probable video-ness
+        video_extensions (list, optional): list of video file extensions
+    
+    Returns:
+        bool: True if this looks like a video file, else False
     """
     
     ext = os.path.splitext(s)[1]
     return ext.lower() in video_extensions
 
 
-def find_video_strings(strings: Iterable[str]) -> List[str]:
+def find_video_strings(strings):
     """
     Given a list of strings that are potentially video file names, looks for
     strings that actually look like video file names (based on extension).
+    
+    Args:
+        strings (list): list of strings to check for video-ness
+    
+    Returns:
+        list: a subset of [strings] that looks like they are video filenames
     """
     
     return [s for s in strings if is_video_file(s.lower())]
 
 
-def find_videos(dirname: str, recursive: bool = False,
-                convert_slashes: bool=False,
-                return_relative_paths: bool=False) -> List[str]:
+def find_videos(dirname, 
+                recursive=False,
+                convert_slashes=True,
+                return_relative_paths=False):
     """
-    Finds all files in a directory that look like video file names. Returns
-    absolute paths unless return_relative_paths is set.  Uses the native
-    path separator unless convert_slashes is set.
+    Finds all files in a directory that look like video file names.
+    
+    Args:
+        dirname (str): folder to search for video files
+        recursive (bool, optional): whether to search [dirname] recursively
+        convert_slashes (bool, optional): forces forward slashes in the returned files,
+            otherwise uses the native path separator
+        return_relative_paths (bool, optional): forces the returned filenames to be 
+            relative to [dirname], otherwise returns absolute paths
+    
+    Returns:
+        A list of filenames within [dirname] that appear to be videos
     """
     
     if recursive:
@@ -80,11 +101,17 @@ def find_videos(dirname: str, recursive: bool = False,
 
 def frames_to_video(images, Fs, output_file_name, codec_spec=default_fourcc):
     """
-    Given a list of image files and a sample rate, concatenate those images into
-    a video and write to [output_file_name].
+    Given a list of image files and a sample rate, concatenates those images into
+    a video and writes to a new video file.
     
-    Note to self: h264 is a sensible default and generally works on Windows, but when this
-    fails (which is around 50% of the time on Linux), I fall back to mp4v.
+    Args:
+        images (list): a list of frame file names to concatenate into a video
+        Fs (float): the frame rate in fps
+        output_file_name (str): the output video file, no checking is performed to make
+            sure the extension is compatible with the codec
+        codec_spec (str, optional):  codec to use for encoding; h264 is a sensible default 
+            and generally works on Windows, but when this fails (which is around 50% of the time 
+            on Linux), mp4v is a good second choice
     """
     
     if codec_spec is None:
@@ -112,7 +139,13 @@ def frames_to_video(images, Fs, output_file_name, codec_spec=default_fourcc):
 
 def get_video_fs(input_video_file):
     """
-    Get the frame rate of [input_video_file]
+    Retrieves the frame rate of [input_video_file].
+    
+    Args:
+        input_video_file (str): video file for which we want the frame rate
+        
+    Returns:
+        float: the frame rate of [input_video_file]
     """
     
     assert os.path.isfile(input_video_file), 'File {} not found'.format(input_video_file)    
@@ -122,18 +155,33 @@ def get_video_fs(input_video_file):
     return Fs
 
 
-def frame_number_to_filename(frame_number):
+def _frame_number_to_filename(frame_number):
+    """
+    Ensures that frame images are given consistent filenames.
+    """
+    
     return 'frame{:06d}.jpg'.format(frame_number)
 
 
 def video_to_frames(input_video_file, output_folder, overwrite=True, 
                     every_n_frames=None, verbose=False):
     """
-    Render every frame of [input_video_file] to a .jpg in [output_folder]
+    Renders frames from [input_video_file] to a .jpg in [output_folder].
     
     With help from:
         
     https://stackoverflow.com/questions/33311153/python-extracting-and-saving-video-frames
+    
+    Args:
+        input_video_file (str): video file to split into frames
+        output_folder (str): folder to put frame images in
+        overwrite (bool, optional): whether to overwrite existing frame images
+        every_n_frames (int, optional): sample every Nth frame starting from the first frame;
+            if this is None or 1, every frame is extracted
+        verbose (bool, optional): enable additional debug console output
+    
+    Returns:
+        tuple: length-2 tuple containing (list of frame filenames,frame rate)
     """
     
     assert os.path.isfile(input_video_file), 'File {} not found'.format(input_video_file)
@@ -154,7 +202,7 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
                 if frame_number % every_n_frames != 0:
                     continue
             
-            frame_filename = frame_number_to_filename(frame_number)
+            frame_filename = _frame_number_to_filename(frame_number)
             frame_filename = os.path.join(output_folder,frame_filename)
             frame_filenames.append(frame_filename)
             if os.path.isfile(frame_filename):
@@ -198,7 +246,7 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
             if frame_number % every_n_frames != 0:
                 continue
             
-        frame_filename = frame_number_to_filename(frame_number)
+        frame_filename = _frame_number_to_filename(frame_number)
         frame_filename = os.path.join(output_folder,frame_filename)
         frame_filenames.append(frame_filename)
         
@@ -226,6 +274,8 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
     vidcap.release()    
     return frame_filenames,Fs
 
+# ...def video_to_frames(...)
+
 
 def _video_to_frames_for_folder(relative_fn,input_folder,output_folder_base,every_n_frames,overwrite,verbose):
     """
@@ -250,15 +300,34 @@ def _video_to_frames_for_folder(relative_fn,input_folder,output_folder_base,ever
     return frame_filenames,fs
 
 
-def video_folder_to_frames(input_folder:str, output_folder_base:str, 
-                           recursive:bool=True, overwrite:bool=True,
-                           n_threads:int=1, every_n_frames:int=None,
+def video_folder_to_frames(input_folder, output_folder_base, 
+                           recursive=True, overwrite=True,
+                           n_threads=1, every_n_frames=None,
                            verbose=False, parallelization_uses_threads=True):
     """
-    For every video file in input_folder, create a folder within output_folder_base, and 
-    render every frame of the video to .jpg in that folder.
+    For every video file in input_folder, creates a folder within output_folder_base, and 
+    renders frame of that video to images in that folder.
     
-    return frame_filenames_by_video,fs_by_video,input_files_full_paths
+    Args:
+        input_folder (str): folder to process
+        output_folder_base (str): root folder for output images; subfolders will be
+            created for each input video
+        recursive (bool, optional): whether to recursively process videos in [input_folder]
+        overwrite (bool, optional): whether to overwrite existing frame images
+        n_threads (int, optional): number of concurrent workers to use; set to <= 1 to disable
+            parallelism
+        every_n_frames (int, optional): sample every Nth frame starting from the first frame;
+            if this is None or 1, every frame is extracted
+        verbose (bool, optional): enable additional debug console output
+        parallelization_uses_threads (bool, optional): whether to use threads (True) or
+            processes (False) for parallelization; ignored if n_threads <= 1
+            
+    Returns:
+        tuple: a length-3 tuple containing:
+            - list of lists of frame filenames; the Nth list of frame filenames corresponds to 
+              the Nth video
+            - list of video frame rates; the Nth value corresponds to the Nth video
+            - list of video filenames    
     """
     
     # Recursively enumerate video files
@@ -307,23 +376,37 @@ def video_folder_to_frames(input_folder:str, output_folder_base:str,
         
     return frame_filenames_by_video,fs_by_video,input_files_full_paths
   
+# ...def video_folder_to_frames(...)
+
 
 class FrameToVideoOptions:
+    """
+    Options controlling the conversion of frame-level results to video-level results via
+    frame_results_to_video_results()    
+    """
     
-    # One-indexed, i.e. "1" means "use the confidence value from the highest-confidence frame"
+    #: One-indexed indicator of which frame-level confidence value to use to determine detection confidence
+    #: for the whole video, i.e. "1" means "use the confidence value from the highest-confidence frame"
     nth_highest_confidence = 1
     
-    # 'error' or 'skip_with_warning'
+    #: What to do if a file referred to in a .json results file appears not to be a 
+    #: video; can be 'error' or 'skip_with_warning'
     non_video_behavior = 'error'
     
     
-def frame_results_to_video_results(input_file,output_file,options:FrameToVideoOptions = None):
+def frame_results_to_video_results(input_file,output_file,options=None):
     """
-    Given an API output file produced at the *frame* level, corresponding to a directory 
-    created with video_folder_to_frames, map those frame-level results back to the 
+    Given an MD results file produced at the *frame* level, corresponding to a directory 
+    created with video_folder_to_frames, maps those frame-level results back to the 
     video level for use in Timelapse.
     
     Preserves everything in the input .json file other than the images.
+    
+    Args:
+        input_file (str): the frame-level MD results file to convert to video-level results
+        output_file (str): the .json file to which we should write video-levle results
+        options (FrameToVideoOptions, optional): parameters for converting frame-level results
+            to video-level results, see FrameToVideoOptions for details            
     """
 
     if options is None:
@@ -416,7 +499,9 @@ def frame_results_to_video_results(input_file,output_file,options:FrameToVideoOp
     with open(output_file,'w') as f:
         f.write(s)
     
-        
+# ...def frame_results_to_video_results(...)
+
+
 #%% Test driver
 
 if False:

@@ -410,7 +410,7 @@ Don't forget to change "some_image_file.jpg" to point to a real image on your co
 
 #### run_detector_batch.py
 
-To apply this model to larger image sets on a single machine, we recommend a different script, [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_detector_batch.py).  This outputs data in the same format as our [batch processing API](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing), so you can leverage all of our post-processing tools.  The format that this script produces is also compatible with [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/).
+To apply this model to larger image sets on a single machine, we recommend a different script, [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_detector_batch.py).  This outputs data in the [MegaDetector results format](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing#megadetector-batch-output-format), so you can work with the results in tools like [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/).
 
 To use run_detector_batch.py on Windows, when you open a new Mambaforge prompt, don't forget to do this:
 

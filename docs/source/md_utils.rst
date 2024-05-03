@@ -1,18 +1,10 @@
 md\_utils package
 =================
 
-This package contains small utility functions for string manipulation, filename manipulation, downloading files from URLs, etc.  Stuff one does when doing camera trap stuff.
+This package contains utility functions for string manipulation, filename manipulation, downloading files from URLs, etc.  Stuff one does when doing camera trap stuff that isn't directly related to MegaDetector.
 
 Submodules
 ----------
-
-md\_utils.azure\_utils module
------------------------------
-
-.. automodule:: md_utils.azure_utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 md\_utils.ct\_utils module
 --------------------------
@@ -29,6 +21,14 @@ md\_utils.directory\_listing module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: md_utils.directory_listing
+   :func: main
+   :hook:
+   :prog: directory_listing
+   :no_default_values:
 
 md\_utils.md\_tests module
 --------------------------
@@ -37,6 +37,14 @@ md\_utils.md\_tests module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: md_utils.md_tests
+   :func: main
+   :hook:
+   :prog: md_tests
+   :no_default_values:
 
 md\_utils.path\_utils module
 ----------------------------
@@ -50,14 +58,6 @@ md\_utils.process\_utils module
 -------------------------------
 
 .. automodule:: md_utils.process_utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-md\_utils.sas\_blob\_utils module
----------------------------------
-
-.. automodule:: md_utils.sas_blob_utils
    :members:
    :undoc-members:
    :show-inheritance:
@@ -90,14 +90,6 @@ md\_utils.write\_html\_image\_list module
 -----------------------------------------
 
 .. automodule:: md_utils.write_html_image_list
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: md_utils
    :members:
    :undoc-members:
    :show-inheritance:

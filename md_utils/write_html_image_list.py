@@ -23,27 +23,34 @@ from md_utils import path_utils
 
 def write_html_image_list(filename=None,images=None,options=None):
     """
-    filename: the output file
-    
-    image: a list of image filenames or dictionaries with one or more of the following fields:
-        
-        filename
-        imageStyle
-        textStyle
-        title
-        linkTarget
-        
-    options: a dict with one or more of the following fields:
-        
-        fHtml
-        headerHtml
-        trailerHtml
-        defaultTextStyle
-        defaultImageStyle
-        maxFiguresPerHtmlFile
-        urlEncodeFilenames (default True, e.g. '#' will be replaced by '%23')
-        urlEncodeLinkTargets (default True, e.g. '#' will be replaced by '%23')
-        
+    Given a list of image file names, writes an HTML file that shows all those images, 
+    with optional one-line headers above each.
+
+    Args:
+        filename (str, optional): the .html output file; if None, just returns a valid 
+            options dict
+        images (list, optional): the images to write to the .html file; if None, just returns 
+            a valid options dict.  This can be a flat list of image filenames, or this can
+            be a list of dictionaries with one or more of the following fields:
+                
+            - filename (image filename) (required, all other fields are optional)
+            - imageStyle (css style for this image)
+            - textStyle (css style for the title associated with this image)
+            - title (text label for this image)
+            - linkTarget (URL to which this image should link on click)
+            
+        options (dict, optional): a dict with one or more of the following fields:        
+            
+            - fHtml (file pointer to write to, used for splitting write operations over multiple calls)
+            - headerHtml (html text to include before the image list)
+            - trailerHtml (html text to include after the image list)
+            - defaultImageStyle (default css style for images)
+            - defaultTextStyle (default css style for image titles)
+            - maxFiguresPerHtmlFile (max figures for a single HTML file; overflow will be handled by creating
+              multiple files and a TOC with links)
+            - urlEncodeFilenames (default True, e.g. '#' will be replaced by '%23')
+            - urlEncodeLinkTargets (default True, e.g. '#' will be replaced by '%23')
+            
     """
     
     # returns an options struct
@@ -78,7 +85,7 @@ def write_html_image_list(filename=None,images=None,options=None):
     if 'maxFiguresPerHtmlFile' not in options or options['maxFiguresPerHtmlFile'] is None:
         options['maxFiguresPerHtmlFile'] = math.inf    
     
-    if filename is None:
+    if filename is None or images is None:
         return options
     
     # images may be a list of images or a list of image/style/title dictionaries, 

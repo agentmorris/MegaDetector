@@ -3,9 +3,9 @@
 run_detector_batch.py
 
 Module to run MegaDetector on lots of images, writing the results
-to a file in the same format produced by our batch API:
+to a file in the MegaDetector results format.
 
-https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing
+https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing#megadetector-batch-output-format
 
 This enables the results to be used in our post-processing pipeline; see
 api/batch_processing/postprocessing/postprocess_batch_results.py .
@@ -21,9 +21,14 @@ the checkpoint file's path using --resume_from_checkpoint.
 The `threshold` you can provide as an argument is the confidence threshold above
 which detections will be included in the output file.
 
-Has preliminary multiprocessing support for CPUs only; if a GPU is available, it will
+Has multiprocessing support for CPUs only; if a GPU is available, it will
 use the GPU instead of CPUs, and the --ncores option will be ignored.  Checkpointing
 is not supported when using a GPU.
+
+The lack of GPU multiprocessing support might sound annoying, but in practice we
+run a gazillion MegaDetector images on multiple GPUs using this script, we just only use
+one GPU *per invocation of this script*.  Dividing a big batch of images into one chunk
+per GPU happens outside of this script.
 
 Does not have a command-line option to bind the process to a particular GPU, but you can 
 prepend with "CUDA_VISIBLE_DEVICES=0 ", for example, to bind to GPU 0, e.g.:
@@ -91,7 +96,7 @@ exif_options.byte_handling = 'convert_to_string'
 
 #%% Support functions for multiprocessing
 
-def producer_func(q,image_files):
+def _producer_func(q,image_files):
     """ 
     Producer function; only used when using the (optional) image queue.
     
@@ -120,7 +125,7 @@ def producer_func(q,image_files):
     print('Finished image loading'); sys.stdout.flush()
     
     
-def consumer_func(q,return_queue,model_file,confidence_threshold,image_size=None):
+def _consumer_func(q,return_queue,model_file,confidence_threshold,image_size=None):
     """ 
     Consumer function; only used when using the (optional) image queue.
     
@@ -177,15 +182,28 @@ def run_detector_with_image_queue(image_files,model_file,confidence_threshold,
     when --use_image_queue is specified.  Starts a reader process to read images from disk, but 
     processes images in the  process from which this function is called (i.e., does not currently
     spawn a separate consumer process).
+    
+    Args:
+        image_files (str): list of absolute paths to images
+        model_file (str): filename or model identifier (e.g. "MDV5A")
+        confidence_threshold (float): minimum confidence detection to include in
+            output
+        quiet (bool, optional): suppress per-image console printouts
+        image_size (tuple, optional): image size to use for inference, only mess with this
+            if (a) you're using a model other than MegaDetector or (b) you know what you're
+            doing
+            
+    Returns:
+        list: list of dicts in the format returned by process_image()
     """
     
     q = multiprocessing.JoinableQueue(max_queue_size)
     return_queue = multiprocessing.Queue(1)
     
     if use_threads_for_queue:
-        producer = Thread(target=producer_func,args=(q,image_files,))
+        producer = Thread(target=_producer_func,args=(q,image_files,))
     else:
-        producer = Process(target=producer_func,args=(q,image_files,))
+        producer = Process(target=_producer_func,args=(q,image_files,))
     producer.daemon = False
     producer.start()
  
@@ -199,15 +217,15 @@ def run_detector_with_image_queue(image_files,model_file,confidence_threshold,
 
     if run_separate_consumer_process:
         if use_threads_for_queue:
-            consumer = Thread(target=consumer_func,args=(q,return_queue,model_file,
+            consumer = Thread(target=_consumer_func,args=(q,return_queue,model_file,
                                                          confidence_threshold,image_size,))
         else:
-            consumer = Process(target=consumer_func,args=(q,return_queue,model_file,
+            consumer = Process(target=_consumer_func,args=(q,return_queue,model_file,
                                                           confidence_threshold,image_size,))
         consumer.daemon = True
         consumer.start()
     else:
-        consumer_func(q,return_queue,model_file,confidence_threshold,image_size)
+        _consumer_func(q,return_queue,model_file,confidence_threshold,image_size)
 
     producer.join()
     print('Producer finished')
@@ -226,13 +244,15 @@ def run_detector_with_image_queue(image_files,model_file,confidence_threshold,
 
 #%% Other support functions
 
-def chunks_by_number_of_chunks(ls, n):
+def _chunks_by_number_of_chunks(ls, n):
     """
     Splits a list into n even chunks.
+    
+    External callers should use ct_utils.split_list_into_n_chunks().
 
-    Args
-    - ls: list
-    - n: int, # of chunks
+    Args:
+        ls (list): list to break up into chunks
+        n (int): number of chunks
     """
     
     for i in range(0, n):
@@ -242,20 +262,32 @@ def chunks_by_number_of_chunks(ls, n):
 #%% Image processing functions
 
 def process_images(im_files, detector, confidence_threshold, use_image_queue=False, 
-                   quiet=False, image_size=None, checkpoint_queue=None, include_image_size=False,
-                   include_image_timestamp=False, include_exif_data=False):
+                   quiet=False, image_size=None, checkpoint_queue=None, 
+                   include_image_size=False, include_image_timestamp=False, 
+                   include_exif_data=False):
     """
-    Runs MegaDetector over a list of image files.  As of 3/2024, this entry point is used when the
-    image queue is enabled, but not in the standard inference path (which loops over process_image()).
+    Runs a detector (typically MegaDetector) over a list of image files.  
+    As of 3/2024, this entry point is used when the image queue is enabled, but not in the 
+    standard inference path (which instead loops over process_image()).
 
     Args:
-        im_files: list of str, paths to image files
-        detector: loaded model or str (path to .pb/.pt model file)
-        confidence_threshold: float, only detections above this threshold are returned
+        im_files (list: paths to image files                                   
+        detector (str or detector object): loaded model or str; if this is a string, it can be a
+            path to a .pb/.pt model file or a known model identifier (e.g. "MDV5A")
+        confidence_threshold (float): only detections above this threshold are returned
+        use_image_queue (bool, optional): separate image loading onto a dedicated worker process
+        quiet (bool, optional): suppress per-image printouts
+        image_size (tuple, optional): image size to use for inference, only mess with this
+            if (a) you're using a model other than MegaDetector or (b) you know what you're
+            doing
+        checkpoint_queue (Queue, optional): internal parameter used to pass image queues around
+        include_image_size (bool, optional): should we include image size in the output for each image?
+        include_image_timestamp (bool, optional): should we include image timestamps in the output for each image?
+        include_exif_data (bool, optional): should we include EXIF data in the output for each image?        
 
     Returns:
-        results: list of dict, each dict represents detections on one image,
-            see the 'images' key in https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
+        list: list of dicts, in which each dict represents detections on one image,
+        see the 'images' key in https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
     """
     
     if isinstance(detector, str):
@@ -293,19 +325,28 @@ def process_image(im_file, detector, confidence_threshold, image=None,
                   include_image_timestamp=False, include_exif_data=False,
                   skip_image_resizing=False):
     """
-    Runs MegaDetector on a single image file.
+    Runs a detector (typically MegaDetector) on a single image file.
 
     Args:
-        im_file: str, path to image file
-        detector: loaded model
-        confidence_threshold: float, only detections above this threshold are returned
-        image: previously-loaded image, if available
-        skip_image_resizing: whether to skip internal image resizing and rely on external resizing
+        im_file (str): path to image file
+        detector (detector object): loaded model, this can no longer be a string by the time 
+            you get this far down the pipeline
+        confidence_threshold (float): only detections above this threshold are returned
+        image (Image, optional): previously-loaded image, if available, used when a worker
+            thread is handling image loads
+        quiet (bool, optional): suppress per-image printouts
+        image_size (tuple, optional): image size to use for inference, only mess with this
+            if (a) you're using a model other than MegaDetector or (b) you know what you're
+            doing        
+        include_image_size (bool, optional): should we include image size in the output for each image?
+        include_image_timestamp (bool, optional): should we include image timestamps in the output for each image?
+        include_exif_data (bool, optional): should we include EXIF data in the output for each image?                
+        skip_image_resizing (bool, optional): whether to skip internal image resizing and rely on external resizing
 
     Returns:
-        result: dict representing detections on one image,
-            see the 'images' key in 
-            https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
+        dict: dict representing detections on one image,
+        see the 'images' key in 
+        https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
     """
     
     if not quiet:
@@ -351,7 +392,7 @@ def process_image(im_file, detector, confidence_threshold, image=None,
 # ...def process_image(...)
 
 
-def load_custom_class_mapping(class_mapping_filename):
+def _load_custom_class_mapping(class_mapping_filename):
     """
     This is an experimental hack to allow the use of non-MD YOLOv5 models through
     the same infrastructure; it disables the code that enforces MDv5-like class lists.
@@ -393,33 +434,46 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
     
     Args:
         
-        model_file: path to model file, or supported model string (e.g. "MDV5A")
-        image_file_names: list of strings (image filenames), a single image filename, 
-            a folder to recursively search for images in, or a .json or .txt file
-            containing a list of images.
-        checkpoint_path: str, path to JSON checkpoint file
-        confidence_threshold: float, only detections above this threshold are returned
-        checkpoint_frequency: int, write results to JSON checkpoint file every N images
-        results: list of dict, existing results loaded from checkpoint
-        n_cores: int, # of CPU cores to use
-        class_mapping_filename: str, use a non-default class mapping supplied in a .json file
-            or YOLOv5 dataset.yaml file.
-
+        model_file (str): path to model file, or supported model string (e.g. "MDV5A")
+        image_file_names (list or str): list of strings (image filenames), a single image filename, 
+            a folder to recursively search for images in, or a .json or .txt file containing a list 
+            of images.
+        checkpoint_path (str, optional), path to use for checkpoints (if None, checkpointing
+            is disabled)
+        confidence_threshold (float, optional): only detections above this threshold are returned
+        checkpoint_frequency (int, optional): int, write results to JSON checkpoint file every N 
+            images, -1 disabled checkpointing
+        results (list, optional): list of dicts, existing results loaded from checkpoint; generally 
+            not useful if you're using this function outside of the CLI
+        n_cores (int, optional): number of parallel worker to use, ignored if we're running on a GPU
+        use_image_queue (bool, optional): use a dedicated worker for image loading
+        quiet (bool, optional): disable per-image console output
+        image_size (tuple, optional): image size to use for inference, only mess with this
+            if (a) you're using a model other than MegaDetector or (b) you know what you're
+            doing
+        class_mapping_filename (str, optional), use a non-default class mapping supplied in a .json 
+            file or YOLOv5 dataset.yaml file
+        include_image_size (bool, optional): should we include image size in the output for each image?
+        include_image_timestamp (bool, optional): should we include image timestamps in the output for each image?
+        include_exif_data (bool, optional): should we include EXIF data in the output for each image?        
+        
     Returns:
         results: list of dicts; each dict represents detections on one image
     """
     
+    # Validate input arguments
     if n_cores is None:
         n_cores = 1
     
     if confidence_threshold is None:
         confidence_threshold=run_detector.DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
-        
-    if checkpoint_frequency is None:
+    
+    # Disable checkpointing if checkpoint_path is None
+    if checkpoint_frequency is None or checkpoint_path is None:
         checkpoint_frequency = -1
 
     if class_mapping_filename is not None:
-        load_custom_class_mapping(class_mapping_filename)
+        _load_custom_class_mapping(class_mapping_filename)
         
     # Handle the case where image_file_names is not yet actually a list
     if isinstance(image_file_names,str):
@@ -454,7 +508,8 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
                         list_file))
         else:            
             raise ValueError(
-                '{} supplied as [image_file_names] argument, but it does not appear to be a file or folder')
+                '{} supplied as [image_file_names] argument, but it does not appear to be a file or folder'.format(
+                    image_file_names))
             
     if results is None:
         results = []
@@ -518,12 +573,12 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
             results.append(result)
 
             # Write a checkpoint if necessary
-            if checkpoint_frequency != -1 and count % checkpoint_frequency == 0:
+            if (checkpoint_frequency != -1) and ((count % checkpoint_frequency) == 0):
                 
                 print('Writing a new checkpoint after having processed {} images since '
                       'last restart'.format(count))
                 
-                write_checkpoint(checkpoint_path, results)
+                _write_checkpoint(checkpoint_path, results)
             
     else:
         
@@ -543,7 +598,7 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
                 len(already_processed),n_images_all))
         
         # Divide images into chunks; we'll send one chunk to each worker process   
-        image_batches = list(chunks_by_number_of_chunks(image_file_names, n_cores))
+        image_batches = list(_chunks_by_number_of_chunks(image_file_names, n_cores))
                 
         pool = workerpool(n_cores)
 
@@ -556,7 +611,7 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
             # Pass the "results" array (which may already contain images loaded from an existing
             # checkpoint) to the checkpoint queue handler function, which will append results to 
             # the list as they become available.
-            checkpoint_thread = Thread(target=checkpoint_queue_handler, 
+            checkpoint_thread = Thread(target=_checkpoint_queue_handler, 
                                        args=(checkpoint_path, checkpoint_frequency,
                                              checkpoint_queue, results), daemon=True)
             checkpoint_thread.start()
@@ -600,7 +655,7 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
 # ...def load_and_run_detector_batch(...)
 
 
-def checkpoint_queue_handler(checkpoint_path, checkpoint_frequency, checkpoint_queue, results):
+def _checkpoint_queue_handler(checkpoint_path, checkpoint_frequency, checkpoint_queue, results):
     """
     Thread function to accumulate results and write checkpoints when checkpointing and
     multiprocessing are both enabled.
@@ -620,15 +675,15 @@ def checkpoint_queue_handler(checkpoint_path, checkpoint_frequency, checkpoint_q
             print('Writing a new checkpoint after having processed {} images since '
                     'last restart'.format(result_count))
             
-            write_checkpoint(checkpoint_path, results)
+            _write_checkpoint(checkpoint_path, results)
 
 
-def write_checkpoint(checkpoint_path, results):
+def _write_checkpoint(checkpoint_path, results):
     """
     Writes the 'images' field in the dict 'results' to a json checkpoint file.
     """
     
-    assert checkpoint_path is not None              
+    assert checkpoint_path is not None             
             
     # Back up any previous checkpoints, to protect against crashes while we're writing
     # the checkpoint file.
@@ -648,9 +703,14 @@ def write_checkpoint(checkpoint_path, results):
 
 def get_image_datetime(image):
     """
-    Returns the EXIF datetime from [image] (a PIL Image object), if available, as a string.
+    Reads EXIF datetime from a PIL Image object.
     
-    [im_file] is used only for error reporting.
+    Args:
+        image (Image): the PIL Image object from which we should read datetime information
+        
+    Returns:
+        str: the EXIF datetime from [image] (a PIL Image object), if available, as a string;
+        returns None if EXIF datetime is not available.
     """
     
     exif_tags = read_exif.read_pil_exif(image,exif_options)
@@ -673,20 +733,23 @@ def write_results_to_file(results, output_file, relative_path_base=None,
     https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
 
     Args:
-        results: list of dict, each dict represents detections on one image
-        output_file: str, path to JSON output file, should end in '.json'
-        relative_path_base: str, path to a directory as the base for relative paths
-        detector_file: filename of the detector used to generate these results, only
+        results (list):  list of dict, each dict represents detections on one image
+        output_file (str): path to JSON output file, should end in '.json'
+        relative_path_base (str, optional): path to a directory as the base for relative paths, can
+            be None if the paths in [results] are absolute
+        detector_file (str, optional): filename of the detector used to generate these results, only
             used to pull out a version number for the "info" field
-        info: dictionary to use instead of the default "info" field
-        include_max_conf: old files (version 1.2 and earlier) included a "max_conf" field
+        info (dict, optional): dictionary to put in the results file instead of the default "info" field
+        include_max_conf (bool, optional): old files (version 1.2 and earlier) included a "max_conf" field
             in each image; this was removed in version 1.3.  Set this flag to force the inclusion
             of this field.
-        custom_metadata: additional data to include as info['custom_metadata'].  Typically
-            a dictionary, but no format checks are performed.
-        
+        custom_metadata (object, optional): additional data to include as info['custom_metadata']; typically
+            a dictionary, but no type/format checks are performed
+        force_forward_slashes (bool, optional): convert all slashes in filenames within [results] to
+            forward slashes
+                    
     Returns:
-        The complete output dictionary that was written to the output file.
+        dict: the MD-formatted dictionary that was written to [output_file]
     """
     
     if relative_path_base is not None:
@@ -1001,7 +1064,7 @@ def main():
     assert not os.path.isdir(args.output_file), 'Specified output file is a directory'
     
     if args.class_mapping_filename is not None:
-        load_custom_class_mapping(args.class_mapping_filename)
+        _load_custom_class_mapping(args.class_mapping_filename)
     
     # Load the checkpoint if available
     #
@@ -1150,8 +1213,7 @@ def main():
         os.remove(checkpoint_path)
         print('Deleted checkpoint file {}'.format(checkpoint_path))
 
-    print('Done!')
-
+    print('Done, thanks for MegaDetect\'ing!')
 
 if __name__ == '__main__':
     main()

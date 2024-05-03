@@ -28,6 +28,8 @@ max_path_len = 255
 
 class DownloadProgressBar():
     """
+    Progress updater based on the progressbar2 package.
+    
     https://stackoverflow.com/questions/37748105/how-to-use-progressbar-module-with-urlretrieve
     """
     
@@ -51,7 +53,15 @@ class DownloadProgressBar():
             
 
 def get_temp_folder(preferred_name='url_utils'):
-
+    """
+    Gets a temporary folder for use within this module.
+    
+    Args:
+        preferred_name (str, optional): subfolder to use within the system temp folder
+        
+    Returns:
+        str: the full path to the temporary subfolder
+    """
     global url_utils_temp_dir
     
     if url_utils_temp_dir is None:
@@ -61,15 +71,31 @@ def get_temp_folder(preferred_name='url_utils'):
     return url_utils_temp_dir
     
            
-def download_url(url, destination_filename=None, progress_updater=None, 
-                 force_download=False, verbose=True):
+def download_url(url, 
+                 destination_filename=None, 
+                 progress_updater=None, 
+                 force_download=False, 
+                 verbose=True):
     """
-    Download a URL to a file.  If no file is specified, creates a temporary file, 
-    with a semi-best-effort to avoid filename collisions.
+    Downloads a URL to a file.  If no file is specified, creates a temporary file, 
+    making a best effort to avoid filename collisions.
     
     Prints some diagnostic information and makes sure to omit SAS tokens from printouts.
     
-    progress_updater can be "None", "True", or a specific callback.
+    Args:
+        url (str): the URL to download
+        destination_filename (str, optional): the target filename; if None, will create
+            a file in system temp space        
+        progress_updater (object or bool, optional): can be "None", "False", "True", or a 
+            specific callable object.  If None or False, no progress updated will be 
+            displayed.  If True, a default progress bar will be created.
+        force_download (bool, optional): download this file even if [destination_filename]
+            exists.
+        verbose (bool, optional): enable additonal debug console output
+        
+    Returns:
+        str: the filename to which [url] was downloaded, the same as [destination_filename]
+        if [destination_filename] was not None
     """
     
     if progress_updater is not None and isinstance(progress_updater,bool):
@@ -120,13 +146,21 @@ def download_relative_filename(url, output_base, verbose=False):
     ...will get downloaded to:
         
         output_base/xyz/123.txt        
+        
+    Args:
+        url (str): the URL to download
+        output_base (str): the base folder to which we should download this file
+        verbose (bool, optional): enable additonal debug console output
+        
+    Returns:
+        str: the local destination filename
     """
     
     p = urlparse(url)
     # remove the leading '/'
     assert p.path.startswith('/'); relative_filename = p.path[1:]
     destination_filename = os.path.join(output_base,relative_filename)
-    download_url(url, destination_filename, verbose=verbose)
+    return download_url(url, destination_filename, verbose=verbose)
 
 
 def _do_parallelized_download(download_info,overwrite=False,verbose=False):
@@ -161,9 +195,24 @@ def _do_parallelized_download(download_info,overwrite=False,verbose=False):
 def parallel_download_urls(url_to_target_file,verbose=False,overwrite=False,
                            n_workers=20,pool_type='thread'):
     """
-    Download a list of URLs to local files.  url_to_target_file should
-    be a dict mapping URLs to output files.  Catches exceptions and reports
-    them in the returned "results" array.    
+    Downloads a list of URLs to local files.
+    
+    Catches exceptions and reports them in the returned "results" array.    
+    
+    Args:
+        url_to_target_file: a dict mapping URLs to local filenames.
+        verbose (bool, optional): enable additonal debug console output
+        overwrite (bool, optional): whether to overwrite existing local files
+        n_workers (int, optional): number of concurrent workers, set to <=1 to disable
+            parallelization
+        pool_type (str, optional): worker type to use; should be 'thread' or 'process'
+        
+    Returns:
+        list: list of dicts with keys:
+            - 'url': the url this item refers to
+            - 'status': 'skipped', 'success', or a string starting with 'error'
+            - 'target_file': the local filename to which we downloaded (or tried to 
+              download) this URL            
     """
     
     all_download_info = []
@@ -205,7 +254,17 @@ def parallel_download_urls(url_to_target_file,verbose=False,overwrite=False,
     
 def test_url(url, error_on_failure=True, timeout=None):
     """
-    Test the availability of [url], returning an http status code.
+    Tests the availability of [url], returning an http status code.
+    
+    Args:
+        url (str): URL to test
+        error_on_failure (bool, optional): whether to error (vs. just returning an
+            error code) if accessing this URL fails
+        timeout (int, optional): timeout in seconds to wait before considering this 
+            access attempt to be a failure; see requests.head() for precise documentation
+    
+    Returns:
+        int: http status code (200 for success)
     """
     
     # r = requests.get(url, stream=True, verify=True, timeout=timeout)
@@ -218,9 +277,21 @@ def test_url(url, error_on_failure=True, timeout=None):
 
 def test_urls(urls, error_on_failure=True, n_workers=1, pool_type='thread', timeout=None):
     """
-    Verify that a list of URLs is available (returns status 200).  By default,
-    errors if any URL is unavailable.  If error_on_failure is False, returns
-    status codes for each URL.
+    Verify that URLs are available (i.e., returns status 200).  By default,
+    errors if any URL is unavailable.  
+    
+    Args:
+        urls (list): list of URLs to test
+        error_on_failure (bool, optional): whether to error (vs. just returning an
+            error code) if accessing this URL fails
+        n_workers (int, optional): number of concurrent workers, set to <=1 to disable
+            parallelization
+        pool_type (str, optional): worker type to use; should be 'thread' or 'process'
+        timeout (int, optional): timeout in seconds to wait before considering this 
+            access attempt to be a failure; see requests.head() for precise documentation
+    
+    Returns:
+        list: a list of http status codes, the same length and order as [urls]
     """
         
     if n_workers <= 1:

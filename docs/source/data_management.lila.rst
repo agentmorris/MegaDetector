@@ -21,11 +21,3 @@ data\_management.lila.lila\_common module
    :members:
    :undoc-members:
    :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: data_management.lila
-   :members:
-   :undoc-members:
-   :show-inheritance:

@@ -54,11 +54,3 @@ data\_management.databases.subset\_json\_db module
    :hook:
    :prog: subset_json_db
    :no_default_values:
-
-Module contents
----------------
-
-.. automodule:: data_management.databases
-   :members:
-   :undoc-members:
-   :show-inheritance:

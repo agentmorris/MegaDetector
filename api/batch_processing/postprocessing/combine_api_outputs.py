@@ -245,6 +245,5 @@ def main():
     args = parser.parse_args()
     combine_api_output_files(args.input_paths, args.output_path)
 
-
 if __name__ == '__main__':
     main()

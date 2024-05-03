@@ -325,7 +325,6 @@ def main():
     args = parser.parse_args()
 
     md_to_labelme(args.results_file,args.image_base,args.confidence_threshold,args.overwrite)
-    
-    
+
 if __name__ == '__main__':
     main()
