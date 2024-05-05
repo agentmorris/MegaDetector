@@ -20,7 +20,7 @@ import os
 from PIL import Image
 from tqdm import tqdm
 
-from md_utils import path_utils
+from megadetector.utils import path_utils
 
 
 #%% Main function

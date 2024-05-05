@@ -198,12 +198,12 @@ Environment files... specifically .yml files for mamba/conda environments (these
 Media used in documentation.
 
 
-### md_utils
+### utils
 
 Small utility functions for string manipulation, filename manipulation, downloading files from URLs, etc.  Mostly adapted from the [ai4eutils](https://github.com/microsoft/ai4eutils) repo.
 
 
-### md_visualization
+### visualization
 
 Tools for visualizing images with ground truth and/or predicted annotations.
 

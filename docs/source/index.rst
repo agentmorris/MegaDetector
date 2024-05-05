@@ -25,8 +25,8 @@ Run MegaDetector on one image
 
 ::
 
-  from md_utils import url_utils
-  from md_visualization import visualization_utils as vis_utils
+  from utils import url_utils
+  from visualization import visualization_utils as vis_utils
   from detection import run_detector
 
   # This is the image at the bottom of this page, it has one animal in it
@@ -50,7 +50,7 @@ Run MegaDetector on a folder of images
 ::
 
   from detection.run_detector_batch import load_and_run_detector_batch,write_results_to_file
-  from md_utils import path_utils
+  from utils import path_utils
   import os
 
   # Pick a folder to run MD on recursively, and an output file

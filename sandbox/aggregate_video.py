@@ -13,9 +13,10 @@ TODO: This is a one-offf script waiting to be cleaned up for more general use.
 
 import os
 import json
-from detection.process_video import ProcessVideoOptions
-from detection.video_utils import frames_to_video, video_to_frames
-from md_visualization import visualize_detector_output
+
+from megadetector.detection.process_video import ProcessVideoOptions
+from megadetector.detection.video_utils import frames_to_video, video_to_frames
+from megadetector.visualization import visualize_detector_output
 
 video_file = os.path.expanduser('~/1_fps_20211216_101100.mp4')
 results_file_raw = os.path.expanduser('~/1_fps_20211216_101100.mp4.json')

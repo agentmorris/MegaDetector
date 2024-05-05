@@ -5,15 +5,15 @@
  Basic test driver to validate a pip install of the MD PyPI package.  
 
  The main test driver - which tests both Python and CLI invocation of
- most modules - is in md_utils/md_tests.py.
+ most modules - is in utils/md_tests.py.
 
 """
 
 ### Run MegaDetector on one image
 
-from md_utils import url_utils
-from md_visualization import visualization_utils as vis_utils
-from detection import run_detector
+from megadetector.utils import url_utils
+from megadetector.visualization import visualization_utils as vis_utils
+from megadetector.detection import run_detector
 
 # This is the image at the bottom of this page, it has one animal in it.
 image_url = 'https://github.com/agentmorris/MegaDetector/raw/main/images/orinoquia-thumb-web.jpg'
@@ -32,13 +32,16 @@ print('Found {} detections above threshold'.format(len(detections_above_threshol
 
 ### Run MegaDetector on a folder of images
 
-from detection.run_detector_batch import load_and_run_detector_batch,write_results_to_file
-from md_utils import path_utils
+from megadetector.utils.md_tests import download_test_data
+from megadetector.detection.run_detector_batch import \
+    load_and_run_detector_batch,write_results_to_file
+from megadetector.utils import path_utils
 import os
 
 # Pick a folder to run MD on recursively, and an output file
-image_folder = '/tmp/md-tests/md-test-images'
-output_file = os.path.expanduser('~/megadetector_output_test.json')
+options = download_test_data()
+image_folder = os.path.join(options.scratch_dir)
+output_file = os.path.join(options.scratch_dir,'md_pip_test_output.json')
 
 # Recursively find images
 image_file_names = path_utils.find_images(image_folder,recursive=True)

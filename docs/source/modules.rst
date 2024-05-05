@@ -7,6 +7,6 @@ MegaDetector
    api
    data_management
    detection
-   md_utils
-   md_visualization
+   utils
+   visualization
    

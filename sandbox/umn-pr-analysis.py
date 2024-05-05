@@ -15,12 +15,13 @@ import shutil
 
 from tqdm import tqdm
 from pathlib import Path
-
 from sklearn.metrics import precision_recall_curve, confusion_matrix
 from IPython.core.display import display
-import md_visualization.plot_utils as plot_utils
+
 import numpy as np
 import matplotlib.pyplot as plt
+
+from megadetector.visualization import plot_utils
 
 analysis_base = "f:\\"
 image_base = os.path.join(analysis_base,'2021.11.24-images\jan2020')
@@ -472,7 +473,7 @@ if False:
     
     #%%
     
-    from api.batch_processing.postprocessing import convert_output_format
+    from megadetector.postprocessing import convert_output_format
     
     output_path = results_file.replace('.json','.csv')
     

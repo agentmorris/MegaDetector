@@ -7,7 +7,7 @@ Submodules
 md\_visualization.plot\_utils module
 ------------------------------------
 
-.. automodule:: md_visualization.plot_utils
+.. automodule:: visualization.plot_utils
    :members:
    :undoc-members:
    :show-inheritance:
@@ -15,7 +15,7 @@ md\_visualization.plot\_utils module
 md\_visualization.render\_images\_with\_thumbnails module
 ---------------------------------------------------------
 
-.. automodule:: md_visualization.render_images_with_thumbnails
+.. automodule:: visualization.render_images_with_thumbnails
    :members:
    :undoc-members:
    :show-inheritance:
@@ -24,7 +24,7 @@ md\_visualization.render\_images\_with\_thumbnails module
 md\_visualization.visualization\_utils module
 ---------------------------------------------
 
-.. automodule:: md_visualization.visualization_utils
+.. automodule:: visualization.visualization_utils
    :members:
    :undoc-members:
    :show-inheritance:
@@ -32,14 +32,14 @@ md\_visualization.visualization\_utils module
 md\_visualization.visualize\_db module
 --------------------------------------
 
-.. automodule:: md_visualization.visualize_db
+.. automodule:: visualization.visualize_db
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: md_visualization.visualize_db
+   :module: visualization.visualize_db
    :func: main
    :hook:
    :prog: visualize_db
@@ -48,14 +48,14 @@ md\_visualization.visualize\_db module
 md\_visualization.visualize\_detector\_output module
 ----------------------------------------------------
 
-.. automodule:: md_visualization.visualize_detector_output
+.. automodule:: visualization.visualize_detector_output
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: md_visualization.visualize_detector_output
+   :module: visualization.visualize_detector_output
    :func: main
    :hook:
    :prog: visualize_detector_output

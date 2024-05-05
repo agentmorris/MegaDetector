@@ -9,7 +9,7 @@ Submodules
 md\_utils.ct\_utils module
 --------------------------
 
-.. automodule:: md_utils.ct_utils
+.. automodule:: utils.ct_utils
    :members:
    :undoc-members:
    :show-inheritance:
@@ -17,14 +17,14 @@ md\_utils.ct\_utils module
 md\_utils.directory\_listing module
 -----------------------------------
 
-.. automodule:: md_utils.directory_listing
+.. automodule:: utils.directory_listing
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: md_utils.directory_listing
+   :module: utils.directory_listing
    :func: main
    :hook:
    :prog: directory_listing
@@ -33,14 +33,14 @@ md\_utils.directory\_listing module
 md\_utils.md\_tests module
 --------------------------
 
-.. automodule:: md_utils.md_tests
+.. automodule:: utils.md_tests
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: md_utils.md_tests
+   :module: utils.md_tests
    :func: main
    :hook:
    :prog: md_tests
@@ -49,7 +49,7 @@ md\_utils.md\_tests module
 md\_utils.path\_utils module
 ----------------------------
 
-.. automodule:: md_utils.path_utils
+.. automodule:: utils.path_utils
    :members:
    :undoc-members:
    :show-inheritance:
@@ -57,7 +57,7 @@ md\_utils.path\_utils module
 md\_utils.process\_utils module
 -------------------------------
 
-.. automodule:: md_utils.process_utils
+.. automodule:: utils.process_utils
    :members:
    :undoc-members:
    :show-inheritance:
@@ -65,7 +65,7 @@ md\_utils.process\_utils module
 md\_utils.split\_locations\_into\_train\_val module
 ---------------------------------------------------
 
-.. automodule:: md_utils.split_locations_into_train_val
+.. automodule:: utils.split_locations_into_train_val
    :members:
    :undoc-members:
    :show-inheritance:
@@ -73,7 +73,7 @@ md\_utils.split\_locations\_into\_train\_val module
 md\_utils.string\_utils module
 ------------------------------
 
-.. automodule:: md_utils.string_utils
+.. automodule:: utils.string_utils
    :members:
    :undoc-members:
    :show-inheritance:
@@ -81,7 +81,7 @@ md\_utils.string\_utils module
 md\_utils.url\_utils module
 ---------------------------
 
-.. automodule:: md_utils.url_utils
+.. automodule:: utils.url_utils
    :members:
    :undoc-members:
    :show-inheritance:
@@ -89,7 +89,7 @@ md\_utils.url\_utils module
 md\_utils.write\_html\_image\_list module
 -----------------------------------------
 
-.. automodule:: md_utils.write_html_image_list
+.. automodule:: utils.write_html_image_list
    :members:
    :undoc-members:
    :show-inheritance:

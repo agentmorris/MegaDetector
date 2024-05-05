@@ -4,7 +4,7 @@ This directory contains a set of scripts for:
 
 - Detecting animals in camera trap images with image-level annotations
 - Cropping the detected animals, associating the image-level annotation with the crop
-- Collecting all the cropped images as a [COCO Camera Traps](https://github.com/agentmorris/MegaDetector/blob/main/data_management/README.md#coco-cameratraps-format) dataset or as TFRecords
+- Collecting all the cropped images as a [COCO Camera Traps](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/data_management/README.md#coco-cameratraps-format) dataset or as TFRecords
 - Training an image classifier on the collected data using TensorFlow's slim library
 
 
