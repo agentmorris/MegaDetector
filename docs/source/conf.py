@@ -22,6 +22,13 @@ myst_enable_extensions = [
 ]
 
 html_theme = 'sphinx_rtd_theme'
+
+# collapse_navigation doesn't actually work
+html_theme_options = {'navigation_depth': 2, 'collapse_navigation': False}
+
+# html_theme = 'sphinx_book_theme'
+# html_theme_options['show_navbar_depth'] = 2
+
 # html_static_path = ['_static']
 
 # Hide "bases: object" from all classes that don't define a base class

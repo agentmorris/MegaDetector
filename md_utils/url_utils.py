@@ -91,7 +91,7 @@ def download_url(url,
             displayed.  If True, a default progress bar will be created.
         force_download (bool, optional): download this file even if [destination_filename]
             exists.
-        verbose (bool, optional): enable additonal debug console output
+        verbose (bool, optional): enable additional debug console output
         
     Returns:
         str: the filename to which [url] was downloaded, the same as [destination_filename]
@@ -150,7 +150,7 @@ def download_relative_filename(url, output_base, verbose=False):
     Args:
         url (str): the URL to download
         output_base (str): the base folder to which we should download this file
-        verbose (bool, optional): enable additonal debug console output
+        verbose (bool, optional): enable additional debug console output
         
     Returns:
         str: the local destination filename
@@ -201,7 +201,7 @@ def parallel_download_urls(url_to_target_file,verbose=False,overwrite=False,
     
     Args:
         url_to_target_file: a dict mapping URLs to local filenames.
-        verbose (bool, optional): enable additonal debug console output
+        verbose (bool, optional): enable additional debug console output
         overwrite (bool, optional): whether to overwrite existing local files
         n_workers (int, optional): number of concurrent workers, set to <=1 to disable
             parallelization

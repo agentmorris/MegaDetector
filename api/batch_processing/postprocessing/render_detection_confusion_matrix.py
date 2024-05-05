@@ -133,7 +133,7 @@ def render_detection_confusion_matrix(ground_truth_file,
         parallelize_rendering_with_threads: whether to use threads (True) or processes (False) when rendering,
             only used if parallelize_rendering is True
         job_name (str, optional): job name to include in big letters in the output file
-        model_file (str, optional) model filename to incldue in HTML output
+        model_file (str, optional) model filename to include in HTML output
         empty_category_name (str, optional): special category name that we should treat as empty, typically
             "empty"
         html_image_list_options (dict, optional): options listed passed along to write_html_image_list; 

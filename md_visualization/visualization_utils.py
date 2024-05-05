@@ -2,7 +2,7 @@
 
 visualization_utils.py
 
-Core rendering functions shared across visualization scripts
+Rendering functions shared across visualization scripts
 
 """
 
@@ -15,7 +15,6 @@ import os
 import cv2
 
 from io import BytesIO
-from typing import Union
 from PIL import Image, ImageFile, ImageFont, ImageDraw
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
@@ -48,18 +47,49 @@ DEFAULT_DETECTOR_LABEL_MAP = {
     str(k): v for k, v in detector_bbox_category_id_to_name.items()
 }
 
-# Retry on blob storage read failures
+# Constants controlling retry behavior when fetching images from URLs
 n_retries = 10
 retry_sleep_time = 0.01
+
+# If we try to open an image from a URL, and we encounter any error in this list,
+# we'll retry, otherwise it's just an error.
 error_names_for_retry = ['ConnectionError']
 
 DEFAULT_BOX_THICKNESS = 4
 DEFAULT_LABEL_FONT_SIZE = 16
 
+# Default color map for mapping integer category IDs to colors when rendering bounding
+# boxes
+DEFAULT_COLORS = [
+    'AliceBlue', 'Red', 'RoyalBlue', 'Gold', 'Chartreuse', 'Aqua', 'Azure',
+    'Beige', 'Bisque', 'BlanchedAlmond', 'BlueViolet', 'BurlyWood', 'CadetBlue',
+    'AntiqueWhite', 'Chocolate', 'Coral', 'CornflowerBlue', 'Cornsilk', 'Crimson',
+    'Cyan', 'DarkCyan', 'DarkGoldenRod', 'DarkGrey', 'DarkKhaki', 'DarkOrange',
+    'DarkOrchid', 'DarkSalmon', 'DarkSeaGreen', 'DarkTurquoise', 'DarkViolet',
+    'DeepPink', 'DeepSkyBlue', 'DodgerBlue', 'FireBrick', 'FloralWhite',
+    'ForestGreen', 'Fuchsia', 'Gainsboro', 'GhostWhite', 'GoldenRod',
+    'Salmon', 'Tan', 'HoneyDew', 'HotPink', 'IndianRed', 'Ivory', 'Khaki',
+    'Lavender', 'LavenderBlush', 'LawnGreen', 'LemonChiffon', 'LightBlue',
+    'LightCoral', 'LightCyan', 'LightGoldenRodYellow', 'LightGray', 'LightGrey',
+    'LightGreen', 'LightPink', 'LightSalmon', 'LightSeaGreen', 'LightSkyBlue',
+    'LightSlateGray', 'LightSlateGrey', 'LightSteelBlue', 'LightYellow', 'Lime',
+    'LimeGreen', 'Linen', 'Magenta', 'MediumAquaMarine', 'MediumOrchid',
+    'MediumPurple', 'MediumSeaGreen', 'MediumSlateBlue', 'MediumSpringGreen',
+    'MediumTurquoise', 'MediumVioletRed', 'MintCream', 'MistyRose', 'Moccasin',
+    'NavajoWhite', 'OldLace', 'Olive', 'OliveDrab', 'Orange', 'OrangeRed',
+    'Orchid', 'PaleGoldenRod', 'PaleGreen', 'PaleTurquoise', 'PaleVioletRed',
+    'PapayaWhip', 'PeachPuff', 'Peru', 'Pink', 'Plum', 'PowderBlue', 'Purple',
+    'RosyBrown', 'Aquamarine', 'SaddleBrown', 'Green', 'SandyBrown',
+    'SeaGreen', 'SeaShell', 'Sienna', 'Silver', 'SkyBlue', 'SlateBlue',
+    'SlateGray', 'SlateGrey', 'Snow', 'SpringGreen', 'SteelBlue', 'GreenYellow',
+    'Teal', 'Thistle', 'Tomato', 'Turquoise', 'Violet', 'Wheat', 'White',
+    'WhiteSmoke', 'Yellow', 'YellowGreen'
+]
+
 
 #%% Functions
 
-def open_image(input_file: Union[str, BytesIO], ignore_exif_rotation=False) -> Image:
+def open_image(input_file, ignore_exif_rotation=False):
     """
     Opens an image in binary format using PIL.Image and converts to RGB mode.
     
@@ -70,11 +100,13 @@ def open_image(input_file: Union[str, BytesIO], ignore_exif_rotation=False) -> I
     errors can show up later.  load_image() is the non-lazy version of this function.
 
     Args:
-        input_file: str or BytesIO, either a path to an image file (anything
-            that PIL can open), or an image as a stream of bytes
+        input_file (str or BytesIO): can be a path to an image file (anything
+            that PIL can open), a URL, or an image as a stream of bytes
+        ignore_exif_rotation (bool, optional): don't rotate the loaded pixels,
+            even if we are loading a JPEG and that JPEG says it should be rotated
 
     Returns:
-        A PIL image object in RGB mode
+        PIL.Image.Image: A PIL Image object in RGB mode
     """
     
     if (isinstance(input_file, str)
@@ -105,6 +137,8 @@ def open_image(input_file: Union[str, BytesIO], ignore_exif_rotation=False) -> I
 
     else:
         image = Image.open(input_file)
+    
+    # Convert to RGB if necessary
     if image.mode not in ('RGBA', 'RGB', 'L', 'I;16'):
         raise AttributeError(
             f'Image {input_file} uses unsupported mode {image.mode}')
@@ -135,7 +169,7 @@ def open_image(input_file: Union[str, BytesIO], ignore_exif_rotation=False) -> I
 
 def exif_preserving_save(pil_image,output_file,quality='keep',default_quality=85,verbose=False):
     """
-    Save [pil_image] to [output_file], making a moderate attempt to preserve EXIF
+    Saves [pil_image] to [output_file], making a moderate attempt to preserve EXIF
     data and JPEG quality.  Neither is guaranteed.
     
     Also see:
@@ -144,12 +178,15 @@ def exif_preserving_save(pil_image,output_file,quality='keep',default_quality=85
      
     ...for more ways to preserve jpeg quality if quality='keep' doesn't do the trick.
 
-    The "quality" parameter should be "keep" (default), or an integer from 0 to 100. 
-    This is only used if PIL thinks the the source image is a JPEG.  If you load a JPEG
-    and resize it in memory, for example, it's no longer a JPEG.
-    
-    'default_quality' is used when quality == 'keep' and we are saving a non-JPEG source.
-    'keep' is only supported for JPEG sources.
+    Args:
+        pil_image (Image): the PIL Image objct to save
+        output_file (str): the destination file
+        quality (str or int, optional): can be "keep" (default), or an integer from 0 to 100. 
+            This is only used if PIL thinks the the source image is a JPEG.  If you load a JPEG
+            and resize it in memory, for example, it's no longer a JPEG.
+        default_quality (int, optional): determines output quality when quality == 'keep' and we are 
+            saving a non-JPEG source to a JPEG file
+        verbose (bool, optional): enable additional debug console output
     """
     
     # Read EXIF metadata
@@ -186,18 +223,19 @@ def exif_preserving_save(pil_image,output_file,quality='keep',default_quality=85
 # ...def exif_preserving_save(...)
 
 
-def load_image(input_file: Union[str, BytesIO], ignore_exif_rotation=False) -> Image:
+def load_image(input_file, ignore_exif_rotation=False):
     """
-    Loads the image at input_file as a PIL Image into memory.
-
-    Image.open() used in open_image() is lazy and errors will occur downstream
-    if not explicitly loaded.
-
+    Loads an image file.  This is the non-lazy version of open_file(); i.e., 
+    it forces image decoding before returning.
+    
     Args:
-        input_file: str or BytesIO, either a path to an image file (anything
-            that PIL can open), or an image as a stream of bytes
+        input_file (str or BytesIO): can be a path to an image file (anything
+            that PIL can open), a URL, or an image as a stream of bytes
+        ignore_exif_rotation (bool, optional): don't rotate the loaded pixels,
+            even if we are loading a JPEG and that JPEG says it should be rotated
 
-    Returns: PIL.Image.Image, in RGB mode
+    Returns: 
+        PIL.Image.Image: a PIL Image object in RGB mode
     """
     
     image = open_image(input_file, ignore_exif_rotation=ignore_exif_rotation)
@@ -205,23 +243,35 @@ def load_image(input_file: Union[str, BytesIO], ignore_exif_rotation=False) -> I
     return image
 
 
-def resize_image(image, target_width, target_height=-1, output_file=None,
+def resize_image(image, target_width=-1, target_height=-1, output_file=None,
                  no_enlarge_width=False, verbose=False, quality='keep'):
     """
-    Resizes a PIL image object to the specified width and height; does not resize
+    Resizes a PIL Image object to the specified width and height; does not resize
     in place. If either width or height are -1, resizes with aspect ratio preservation.
-    
-    None is equivalent to -1 for target_width and target_height.
-    
-    [image] can be a PIL image or a filename.
     
     If target_width and target_height are both -1, does not modify the image, but 
     will write to output_file if supplied.
     
-    If no_enlarge_width is True, and the target width is larger than the original
-    image width, does not modify the image, but will write to output_file if supplied.
+    If no resizing is required, and an Image object is supplied, returns the original Image 
+    object (i.e., does not copy).
     
-    'quality' is passed to exif_preserving_save, see docs there.
+    Args:
+        image (Image or str): PIL Image object or a filename (local file or URL)
+        target_width (int, optional): width to which we should resize this image, or -1
+            to let target_height determine the size
+        target_height (int, optional): height to which we should resize this image, or -1
+            to let target_width determine the size
+        output_file (str, optional): file to which we should save this image; if None,
+            just returns the image without saving
+        no_enlarge_width (bool, optional): if [no_enlarge_width] is True, and 
+            [target width] is larger than the original image width, does not modify the image, 
+            but will write to output_file if supplied
+        verbose (bool, optional): enable additional debug output
+        quality (str or int, optional): passed to exif_preserving_save, see docs for more detail
+        
+    returns:
+        PIL.Image.Image: the resized image, which may be the original image if no resizing is 
+            required
     """
 
     image_fn = 'in_memory'
@@ -296,42 +346,22 @@ def resize_image(image, target_width, target_height=-1, output_file=None,
 # ...def resize_image(...)
 
 
-DEFAULT_COLORS = [
-    'AliceBlue', 'Red', 'RoyalBlue', 'Gold', 'Chartreuse', 'Aqua', 'Azure',
-    'Beige', 'Bisque', 'BlanchedAlmond', 'BlueViolet', 'BurlyWood', 'CadetBlue',
-    'AntiqueWhite', 'Chocolate', 'Coral', 'CornflowerBlue', 'Cornsilk', 'Crimson',
-    'Cyan', 'DarkCyan', 'DarkGoldenRod', 'DarkGrey', 'DarkKhaki', 'DarkOrange',
-    'DarkOrchid', 'DarkSalmon', 'DarkSeaGreen', 'DarkTurquoise', 'DarkViolet',
-    'DeepPink', 'DeepSkyBlue', 'DodgerBlue', 'FireBrick', 'FloralWhite',
-    'ForestGreen', 'Fuchsia', 'Gainsboro', 'GhostWhite', 'GoldenRod',
-    'Salmon', 'Tan', 'HoneyDew', 'HotPink', 'IndianRed', 'Ivory', 'Khaki',
-    'Lavender', 'LavenderBlush', 'LawnGreen', 'LemonChiffon', 'LightBlue',
-    'LightCoral', 'LightCyan', 'LightGoldenRodYellow', 'LightGray', 'LightGrey',
-    'LightGreen', 'LightPink', 'LightSalmon', 'LightSeaGreen', 'LightSkyBlue',
-    'LightSlateGray', 'LightSlateGrey', 'LightSteelBlue', 'LightYellow', 'Lime',
-    'LimeGreen', 'Linen', 'Magenta', 'MediumAquaMarine', 'MediumOrchid',
-    'MediumPurple', 'MediumSeaGreen', 'MediumSlateBlue', 'MediumSpringGreen',
-    'MediumTurquoise', 'MediumVioletRed', 'MintCream', 'MistyRose', 'Moccasin',
-    'NavajoWhite', 'OldLace', 'Olive', 'OliveDrab', 'Orange', 'OrangeRed',
-    'Orchid', 'PaleGoldenRod', 'PaleGreen', 'PaleTurquoise', 'PaleVioletRed',
-    'PapayaWhip', 'PeachPuff', 'Peru', 'Pink', 'Plum', 'PowderBlue', 'Purple',
-    'RosyBrown', 'Aquamarine', 'SaddleBrown', 'Green', 'SandyBrown',
-    'SeaGreen', 'SeaShell', 'Sienna', 'Silver', 'SkyBlue', 'SlateBlue',
-    'SlateGray', 'SlateGrey', 'Snow', 'SpringGreen', 'SteelBlue', 'GreenYellow',
-    'Teal', 'Thistle', 'Tomato', 'Turquoise', 'Violet', 'Wheat', 'White',
-    'WhiteSmoke', 'Yellow', 'YellowGreen'
-]
-
-
 def crop_image(detections, image, confidence_threshold=0.15, expansion=0):
     """
-    Crops detections above *confidence_threshold* from the PIL image *image*,
-    returning a list of PIL images.
+    Crops detections above [confidence_threshold] from the PIL image [image],
+    returning a list of PIL Images.
 
-    *detections* should be a list of dictionaries with keys 'conf' and 'bbox';
-    see bbox format description below.  Normalized, [x,y,w,h], upper-left-origin.
-
-    *expansion* specifies a number of pixels to include on each side of the box.
+    Args:
+        detections (list): a list of dictionaries with keys 'conf' and 'bbox';
+            boxes are length-four arrays formatted as [x,y,w,h], normalized, 
+            upper-left origin (this is the standard MD detection format)
+        image (Image): the PIL Image object from which we should crop detections
+        confidence_threshold (float, optional): only crop detections above this threshold
+        expansion (int, optional): a number of pixels to include on each side of a cropped
+            detection
+        
+    Returns:
+        list: a possibly-empty list of PIL Image objects    
     """
 
     ret_images = []
@@ -373,28 +403,30 @@ def crop_image(detections, image, confidence_threshold=0.15, expansion=0):
     return ret_images
 
 
-def render_detection_bounding_boxes(detections, image,
-                                    label_map={}, 
+def render_detection_bounding_boxes(detections, 
+                                    image,
+                                    label_map='show_categories',
                                     classification_label_map=None, 
-                                    confidence_threshold=0.15, thickness=DEFAULT_BOX_THICKNESS, expansion=0,
+                                    confidence_threshold=0.15, 
+                                    thickness=DEFAULT_BOX_THICKNESS, 
+                                    expansion=0,
                                     classification_confidence_threshold=0.3,
                                     max_classifications=3,
-                                    colormap=DEFAULT_COLORS,
+                                    colormap=None,
                                     textalign=TEXTALIGN_LEFT,
                                     label_font_size=DEFAULT_LABEL_FONT_SIZE,
                                     custom_strings=None):
     """
-    Renders bounding boxes, label, and confidence on an image if confidence is above the threshold.
-
-    Boxes are in the format that's output from the batch processing API.
-
+    Renders bounding boxes (with labels and confidence values) on an image for all
+    detections above a threshold.
+    
     Renders classification labels if present.
     
     [image] is modified in place.
 
     Args:
 
-        detections: detections on the image, example content:
+        detections (list): list of detections in the MD output format, for example:
             
             .. code-block::none
             
@@ -415,7 +447,10 @@ def render_detection_bounding_boxes(detections, image,
     
                 (0, 0) is the upper-left.  Coordinates are normalized.
     
-                Supports classification results, if *detections* has the format
+            Supports classification results, in the standard format:
+            
+            .. code-block::none
+            
                 [
                     {
                         "category": "2",
@@ -434,33 +469,46 @@ def render_detection_bounding_boxes(detections, image,
                     }
                 ]
 
-        image: PIL.Image object
+        image (PIL.Image.Image): image on which we should render detections
 
-        label_map: optional, mapping the numerical label to a string name. The type of the numerical label
-            (default string) needs to be consistent with the keys in label_map; no casting is carried out.
-            If this is None, no labels are shown (not even numbers and confidence values).  If you want
-            category numbers and confidence values without class labels, use {}.
+        label_map (dict, optional): optional, mapping the numeric label to a string name. The type of the 
+            numeric label (typically strings) needs to be consistent with the keys in label_map; no casting is 
+            carried out. If [label_map] is None, no labels are shown (not even numbers and confidence values).  
+            If you want category numbers and confidence values without class labels, use the default value, 
+            the string 'show_categories'.
 
-        classification_label_map: optional, mapping of the string class labels to the actual class names.
-            The type of the numerical label (default string) needs to be consistent with the keys in
-            label_map; no casting is carried out.  If this is None, no classification labels are shown.
+        classification_label_map (dict, optional): optional, mapping of the string class labels to the actual 
+            class names. The type of the numeric label (typically strings) needs to be consistent with the keys 
+            in label_map; no casting is  carried out. If [label_map] is None, no labels are shown (not even numbers 
+            and confidence values).
 
-        confidence_threshold: optional, threshold above which boxes are rendered.  Can also be a dictionary
-        mapping category IDs to thresholds.
+        confidence_threshold (float or dict, optional), threshold above which boxes are rendered.  Can also be a 
+            dictionary mapping category IDs to thresholds.
         
-        thickness: line thickness in pixels. Default value is 4.
+        thickness (int, optional): line thickness in pixels
         
-        expansion: number of pixels to expand bounding boxes on each side.  Default is 0.
+        expansion (int, optional): number of pixels to expand bounding boxes on each side
         
-        classification_confidence_threshold: confidence above which classification result is retained.
+        classification_confidence_threshold (float, optional): confidence above which classification results 
+            are displayed
         
-        max_classifications: maximum number of classification results retained for one image.
+        max_classifications (int, optional): maximum number of classification results rendered for one image
+        
+        colormap (list, optional): list of color names, used to choose colors for categories by
+            indexing with the values in [classes]; defaults to a reasonable set of colors
+        
+        textalign (int, optional): TEXTALIGN_LEFT or TEXTALIGN_RIGHT
+        
+        label_font_size (float, optional): font size for labels
         
         custom_strings: optional set of strings to append to detection labels, should have the
-        same length as [detections].  Appended before classification labels, if classification
-        data is provided.    
+            same length as [detections].  Appended before any classification labels.
     """
 
+    # Input validation
+    if (label_map is not None) and (isinstance(label_map,str)) and (label_map == 'show_categories'):
+        label_map = {}
+        
     if custom_strings is not None:
         assert len(custom_strings) == len(detections), \
             '{} custom strings provided for {} detections'.format(
@@ -481,8 +529,7 @@ def render_detection_bounding_boxes(detections, image,
         if isinstance(confidence_threshold,dict):
             rendering_threshold = confidence_threshold[detection['category']]
         else:
-            rendering_threshold = confidence_threshold        
-            
+            rendering_threshold = confidence_threshold            
             
         # Always render objects with a confidence of "None", this is typically used
         # for ground truth data.        
@@ -493,7 +540,7 @@ def render_detection_bounding_boxes(detections, image,
             clss = detection['category']
             
             # {} is the default, which means "show labels with no mapping", so don't use "if label_map" here
-            # if label_map:
+            # if label_map:                
             if label_map is not None:
                 label = label_map[clss] if clss in label_map else clss
                 if score is not None:
@@ -564,25 +611,30 @@ def draw_bounding_boxes_on_image(image,
                                  thickness=DEFAULT_BOX_THICKNESS,
                                  expansion=0,
                                  display_strs=None,
-                                 colormap=DEFAULT_COLORS,
+                                 colormap=None,
                                  textalign=TEXTALIGN_LEFT,
                                  label_font_size=DEFAULT_LABEL_FONT_SIZE):
     """
-    Draws bounding boxes on an image.
+    Draws bounding boxes on an image.  Modifies the image in place.
 
     Args:
-      image: a PIL.Image object.
-      boxes: a 2 dimensional numpy array of [N, 4]: (ymin, xmin, ymax, xmax).
-             The coordinates are in normalized format between [0, 1].
-      classes: a list of ints or strings (that can be cast to ints) corresponding to the
-               class labels of the boxes. This is only used for color selection.
-      thickness: line thickness in pixels. Default value is 4.
-      expansion: number of pixels to expand bounding boxes on each side.  Default is 0.
-      display_strs: list of list of strings.
-                             a list of strings for each bounding box.
-                             The reason to pass a list of strings for a
-                             bounding box is that it might contain
-                             multiple labels.
+        
+        image (PIL.Image): the image on which we should draw boxes
+        boxes (np.array): a two-dimensional numpy array of size [N, 4], where N is the 
+            number of boxes, and each row is (ymin, xmin, ymax, xmax).  Coordinates should be
+            normalized to image height/width.
+        classes (list): a list of ints or string-formatted ints corresponding to the
+             class labels of the boxes. This is only used for color selection.  Should have the same 
+             length as [boxes].
+        thickness (int, optional): line thickness in pixels
+        expansion (int, optional): number of pixels to expand bounding boxes on each side
+        display_strs (list, optional): list of list of strings (the outer list should have the
+            same length as [boxes]).  Typically this is used to show (possibly multiple) detection
+            or classification categories and/or confidence values.
+        colormap (list, optional): list of color names, used to choose colors for categories by
+            indexing with the values in [classes]; defaults to a reasonable set of colors
+        textalign (int, optional): TEXTALIGN_LEFT or TEXTALIGN_RIGHT
+        label_font_size (float, optional): font size for labels
     """
 
     boxes_shape = boxes.shape
@@ -614,13 +666,13 @@ def draw_bounding_box_on_image(image,
                                clss=None,
                                thickness=DEFAULT_BOX_THICKNESS,
                                expansion=0,
-                               display_str_list=(),
+                               display_str_list=None,
                                use_normalized_coordinates=True,
                                label_font_size=DEFAULT_LABEL_FONT_SIZE,
-                               colormap=DEFAULT_COLORS,
+                               colormap=None,
                                textalign=TEXTALIGN_LEFT):
     """
-    Adds a bounding box to an image.
+    Adds a bounding box to an image.  Modifies the image in place.
 
     Bounding box coordinates can be specified in either absolute (pixel) or
     normalized coordinates by setting the use_normalized_coordinates argument.
@@ -635,24 +687,31 @@ def draw_bounding_box_on_image(image,
     https://github.com/tensorflow/models/blob/master/research/object_detection/utils/visualization_utils.py
     
     Args:
-        image: a PIL.Image object.
-        ymin: ymin of bounding box - upper left.
-        xmin: xmin of bounding box.
-        ymax: ymax of bounding box.
-        xmax: xmax of bounding box.    
-        clss: str, the class of the object in this bounding box; should be either an integer
-            or a string-formatted integer.
-        thickness: line thickness. Default value is 4.
-        expansion: number of pixels to expand bounding boxes on each side.  Default is 0.
-        display_str_list: list of strings to display in box
-            (each to be shown on its own line).
-            use_normalized_coordinates: If True (default), treat coordinates
-            ymin, xmin, ymax, xmax as relative to the image.  Otherwise treat
-            coordinates as absolute.
-        label_font_size: font size 
-    
+        image (PIL.Image.Image): the image on which we should draw a box
+        ymin (float): ymin of bounding box
+        xmin (float): xmin of bounding box
+        ymax (float): ymax of bounding box
+        xmax (float): xmax of bounding box
+        clss (int, optional): the class index of the object in this bounding box, used for choosing
+            a color; should be either an integer or a string-formatted integer
+        thickness (int, optional): line thickness in pixels
+        expansion (int, optional): number of pixels to expand bounding boxes on each side
+        display_str_list (list, optional): list of strings to display above the box (each to be shown on its 
+            own line)
+        use_normalized_coordinates (bool, optional): if True (default), treat coordinates 
+            ymin, xmin, ymax, xmax as relative to the image, otherwise coordinates as absolute pixel values
+        label_font_size (float, optional): font size 
+        colormap (list, optional): list of color names, used to choose colors for categories by
+            indexing with the values in [classes]; defaults to a reasonable set of colors
+        textalign (int, optional): TEXTALIGN_LEFT or TEXTALIGN_RIGHT        
     """
     
+    if colormap is None:
+        colormap = DEFAULT_COLORS
+        
+    if display_str_list is None:
+        display_str_list = []
+        
     if clss is None:
         # Default to the MegaDetector animal class ID (1)
         color = colormap[1]
@@ -781,9 +840,11 @@ def render_megadb_bounding_boxes(boxes_info, image):
         }        
         
     Args:
-        boxes_info: list of dicts, each dict represents a single detection
+        boxes_info (list): list of dicts, each dict represents a single detection
             where bbox coordinates are normalized [x_min, y_min, width, height]
-        image: PIL.Image.Image, opened image
+        image (PIL.Image.Image): image to modify
+    
+    :meta private:
     """
     
     display_boxes = []
@@ -804,15 +865,34 @@ def render_megadb_bounding_boxes(boxes_info, image):
 # ...def render_iMerit_boxes(...)
 
 
-def render_db_bounding_boxes(boxes, classes, image, original_size=None,
-                             label_map=None, thickness=DEFAULT_BOX_THICKNESS, expansion=0):
+def render_db_bounding_boxes(boxes,
+                             classes, 
+                             image, 
+                             original_size=None,
+                             label_map=None, 
+                             thickness=DEFAULT_BOX_THICKNESS, 
+                             expansion=0):
     """
-    Render bounding boxes (with class labels) on [image].  This is a wrapper for
+    Render bounding boxes (with class labels) on an image.  This is a wrapper for
     draw_bounding_boxes_on_image, allowing the caller to operate on a resized image
-    by providing the original size of the image; bboxes will be scaled accordingly.
+    by providing the original size of the image; boxes will be scaled accordingly.
     
-    This function assumes that bounding boxes are in the COCO camera traps format,
-    with absolute coordinates.
+    This function assumes that bounding boxes are in absolute coordinates, typically
+    because they come from COCO camera traps .json files.
+    
+    Args:
+        boxes (list): list of length-4 tuples, foramtted as (x,y,w,h) (in pixels)
+        classes (list): list of ints (or string-formatted ints), used to choose labels (either
+            by literally rendering the class labels, or by indexing into [label_map])
+        image (PIL.Image.Image): image object to modify
+        original_size (tuple, optional): if this is not None, and the size is different than 
+            the size of [image], we assume that [boxes] refer to the original size, and we scale
+            them accordingly before rendering
+        label_map (dict, optional): int --> str dictionary, typically mapping category IDs to
+            species labels; if None, category labels are rendered verbatim (typically as numbers)
+        thickness (int, optional): line width
+        expansion (int, optional): a number of pixels to include on each side of a cropped
+            detection
     """
 
     display_boxes = []
@@ -844,43 +924,56 @@ def render_db_bounding_boxes(boxes, classes, image, original_size=None,
         display_strs.append([str(clss)])  
 
     display_boxes = np.array(display_boxes)
-    draw_bounding_boxes_on_image(image, display_boxes, classes, display_strs=display_strs,
-                                 thickness=thickness, expansion=expansion)
+    
+    draw_bounding_boxes_on_image(image, 
+                                 display_boxes, 
+                                 classes, 
+                                 display_strs=display_strs,
+                                 thickness=thickness, 
+                                 expansion=expansion)
 
 # ...def render_db_bounding_boxes(...)
 
 
-def draw_bounding_boxes_on_file(input_file, output_file, detections, confidence_threshold=0.0,
+def draw_bounding_boxes_on_file(input_file, 
+                                output_file, 
+                                detections, 
+                                confidence_threshold=0.0,
                                 detector_label_map=DEFAULT_DETECTOR_LABEL_MAP,
-                                thickness=DEFAULT_BOX_THICKNESS, expansion=0,
-                                colormap=DEFAULT_COLORS,
+                                thickness=DEFAULT_BOX_THICKNESS, 
+                                expansion=0,
+                                colormap=None,
                                 label_font_size=DEFAULT_LABEL_FONT_SIZE,
-                                custom_strings=None,target_size=None,
+                                custom_strings=None,
+                                target_size=None,
                                 ignore_exif_rotation=False):
     """
-    Render detection bounding boxes on an image loaded from file, writing the results to a
-    new image file.
+    Renders detection bounding boxes on an image loaded from file, optionally writing the results to 
+    a new image file.
     
-    "detections" is in the API results format:
-        
-    [{"category": "2","conf": 0.996,"bbox": [0.0,0.2762,0.1234,0.2458]}]
-    
-    ...where the bbox is:
-        
-    [x_min, y_min, width_of_box, height_of_box]
-    
-    Normalized, with the origin at the upper-left.
-    
-    detector_label_map is a dict mapping category IDs to strings.  If this is None, 
-    no confidence values or identifiers are shown  If this is {}, just category indices and 
-    confidence values are shown.
-    
-    custom_strings: optional set of strings to append to detection labels, should have the
-    same length as [detections].  Appended before classification labels, if classification
-    data is provided.
-    
-    target_size: tuple of (target_width,target_height).  Either or both can be -1,
-    see resize_image for documentation.  If None or (-1,-1), uses the original image size.
+    Args:
+        input_file (str): filename or URL to load
+        output_file (str, optional): filename to which we should write the rendered image
+        detections (list): a list of dictionaries with keys 'conf' and 'bbox';
+            boxes are length-four arrays formatted as [x,y,w,h], normalized, 
+            upper-left origin (this is the standard MD detection format)
+        detector_label_map (dict, optional): a dict mapping category IDs to strings.  If this 
+            is None, no confidence values or identifiers are shown  If this is {}, just category 
+            indices and confidence values are shown.
+        thickness (int, optional): line width in pixels for box rendering
+        expansion (int, optional): box expansion in pixels
+        colormap (list, optional): list of color names, used to choose colors for categories by
+            indexing with the values in [classes]; defaults to a reasonable set of colors
+        label_font_size (float, optional): label font size
+        custom_strings (list, optional): set of strings to append to detection labels, should have the
+            same length as [detections].  Appended before any classification labels.
+        target_size (tuple, optional): tuple of (target_width,target_height).  Either or both can be -1,
+            see resize_image() for documentation.  If None or (-1,-1), uses the original image size.
+        ignore_exif_rotation (bool, optional): don't rotate the loaded pixels,
+            even if we are loading a JPEG and that JPEG says it should be rotated.
+            
+    Returns:
+        PIL.Image.Image: loaded and modified image
     """
     
     image = open_image(input_file, ignore_exif_rotation=ignore_exif_rotation)
@@ -894,19 +987,40 @@ def draw_bounding_boxes_on_file(input_file, output_file, detections, confidence_
             thickness=thickness,expansion=expansion,colormap=colormap,
             custom_strings=custom_strings,label_font_size=label_font_size)
 
-    image.save(output_file)
+    if output_file is not None:
+        image.save(output_file)
+    
+    return image
 
 
-def draw_db_boxes_on_file(input_file, output_file, boxes, classes=None, 
-                          label_map=None, thickness=DEFAULT_BOX_THICKNESS, expansion=0,
+def draw_db_boxes_on_file(input_file, 
+                          output_file, 
+                          boxes, 
+                          classes=None, 
+                          label_map=None, 
+                          thickness=DEFAULT_BOX_THICKNESS, 
+                          expansion=0,
                           ignore_exif_rotation=False):
     """
-    Render COCO bounding boxes (in absolute coordinates) on an image loaded from file, writing the
-    results to a new image file.
+    Render COCO-formatted bounding boxes (in absolute coordinates) on an image loaded from file, 
+    writing the results to a new image file.
 
-    classes is a list of integer category IDs.
+    Args:
+        input_file (str): image file to read
+        output_file (str): image file to write
+        boxes (list): list of length-4 tuples, foramtted as (x,y,w,h) (in pixels)
+        classes (list, optional): list of ints (or string-formatted ints), used to choose 
+            labels (either by literally rendering the class labels, or by indexing into [label_map])
+        label_map (dict, optional): int --> str dictionary, typically mapping category IDs to
+            species labels; if None, category labels are rendered verbatim (typically as numbers)
+        thickness (int, optional): line width
+        expansion (int, optional): a number of pixels to include on each side of a cropped
+            detection
+        ignore_exif_rotation (bool, optional): don't rotate the loaded pixels,
+            even if we are loading a JPEG and that JPEG says it should be rotated
     
-    detector_label_map is a dict mapping category IDs to strings.
+    Returns:
+        PIL.Image.Image: the loaded and modified image
     """
     
     image = open_image(input_file, ignore_exif_rotation=ignore_exif_rotation)
@@ -916,25 +1030,29 @@ def draw_db_boxes_on_file(input_file, output_file, boxes, classes=None,
         
     render_db_bounding_boxes(boxes, classes, image, original_size=None,
                                  label_map=label_map, thickness=thickness, expansion=expansion)
-
+    
     image.save(output_file)
     
-
+    return image
+    
 # ...def draw_bounding_boxes_on_file(...)
 
 
 def gray_scale_fraction(image,crop_size=(0.1,0.1)):
     """
-    Returns the fraction of the pixels in [image] that appear to be grayscale (R==G==B), 
+    Computes the fraction of the pixels in [image] that appear to be grayscale (R==G==B), 
     useful for approximating whether this is a night-time image when flash information is not
     available in EXIF data (or for video frames, where this information is often not available
     in structured metadata at all).
     
-    [image] can be a PIL image or a file name.
-    
-    crop_size should be a 2-element list/tuple, representing the fraction of the image 
-    to crop at the top and bottom, respectively, before analyzing (to minimize the possibility
-    of including color elements in the image chrome).
+    Args:
+        image (str or PIL.Image.Image): Image, filename, or URL to analyze
+        crop_size (optional): a 2-element list/tuple, representing the fraction of the 
+            image to crop at the top and bottom, respectively, before analyzing (to minimize 
+            the possibility of including color elements in the image overlay)
+            
+    Returns:
+        float: the fraction of pixels in [image] that appear to be grayscale (R==G==B)
     """
     
     if isinstance(image,str):
@@ -1030,7 +1148,7 @@ def _resize_absolute_image(input_output_files,
                           target_width,target_height,no_enlarge_width,verbose,quality):
     
     """
-    Internal wrappter for resize_image used in the context of a batch resize operation.
+    Internal wrapper for resize_image used in the context of a batch resize operation.
     """
     
     input_fn_abs = input_output_files[0]
@@ -1056,22 +1174,43 @@ def _resize_absolute_image(input_output_files,
 
 
 def resize_images(input_file_to_output_file,
-                  target_width=-1, target_height=-1,
-                  no_enlarge_width=False, verbose=False, quality='keep',
-                  pool_type='process', n_workers=10):
+                  target_width=-1, 
+                  target_height=-1,
+                  no_enlarge_width=False, 
+                  verbose=False, 
+                  quality='keep',
+                  pool_type='process', 
+                  n_workers=10):
     """
-    Resize all images the dictionary [input_file_to_output_file].
-    
-    Defaults to parallelizing across processes.
-    
-    See resize_image() for parameter information.
-    
+    Resizes all images the dictionary [input_file_to_output_file].
+
     TODO: This is a little more redundant with resize_image_folder than I would like;
     refactor resize_image_folder to call resize_images.  Not doing that yet because
     at the time I'm writing this comment, a lot of code depends on resize_image_folder 
     and I don't want to rock the boat yet.
-    """
+    
+    Args:
+        input_file_to_output_file (dict): dict mapping images that exist to the locations
+            where the resized versions should be written
+        target_width (int, optional): width to which we should resize this image, or -1
+            to let target_height determine the size
+        target_height (int, optional): height to which we should resize this image, or -1
+            to let target_width determine the size
+        no_enlarge_width (bool, optional): if [no_enlarge_width] is True, and 
+            [target width] is larger than the original image width, does not modify the image, 
+            but will write to output_file if supplied
+        verbose (bool, optional): enable additional debug output
+        quality (str or int, optional): passed to exif_preserving_save, see docs for more detail
+        pool_type (str, optional): whether use use processes ('process') or threads ('thread') for
+            parallelization; ignored if n_workers <= 1
+        n_workers (int, optional): number of workers to use for parallel resizing; set to <=1
+            to disable parallelization
 
+    Returns:
+        list: a list of dicts with keys 'input_fn', 'output_fn', 'status', and 'error'.
+        'status' will be 'success' or 'error'; 'error' will be None for successful cases, 
+        otherwise will contain the image-specific error.
+    """
     
     assert pool_type in ('process','thread'), 'Illegal pool type {}'.format(pool_type)
     
@@ -1117,19 +1256,48 @@ def resize_images(input_file_to_output_file,
 # ...def resize_images(...)
 
 
-def resize_image_folder(input_folder, output_folder=None,
-                        target_width=-1, target_height=-1,
-                        no_enlarge_width=False, verbose=False, quality='keep',
-                        pool_type='process', n_workers=10, recursive=True,
+def resize_image_folder(input_folder, 
+                        output_folder=None,
+                        target_width=-1, 
+                        target_height=-1,
+                        no_enlarge_width=False, 
+                        verbose=False, 
+                        quality='keep',
+                        pool_type='process', 
+                        n_workers=10, 
+                        recursive=True,
                         image_files_relative=None):
     """
-    Resize all images in a folder (defaults to recursive)
+    Resize all images in a folder (defaults to recursive).
     
     Defaults to in-place resizing (output_folder is optional).
     
-    Defaults to parallelizing across processes.
-    
-    See resize_image() for parameter information.
+    Args:
+        input_folder (str): folder in which we should find images to resize
+        output_folder (str, optional): folder in which we should write resized images.  If
+            None, resizes images in place.  Otherwise, maintains relative paths in the target
+            folder.
+        target_width (int, optional): width to which we should resize this image, or -1
+            to let target_height determine the size
+        target_height (int, optional): height to which we should resize this image, or -1
+            to let target_width determine the size
+        no_enlarge_width (bool, optional): if [no_enlarge_width] is True, and 
+            [target width] is larger than the original image width, does not modify the image, 
+            but will write to output_file if supplied
+        verbose (bool, optional): enable additional debug output
+        quality (str or int, optional): passed to exif_preserving_save, see docs for more detail
+        pool_type (str, optional): whether use use processes ('process') or threads ('thread') for
+            parallelization; ignored if n_workers <= 1
+        n_workers (int, optional): number of workers to use for parallel resizing; set to <=1
+            to disable parallelization
+        recursive (bool, optional): whether to search [input_folder] recursively for images.
+        image_files_relative (list, optional): if not None, skips any relative paths not
+            in this list.
+            
+    Returns:
+        list: a list of dicts with keys 'input_fn', 'output_fn', 'status', and 'error'.
+        'status' will be 'success' or 'error'; 'error' will be None for successful cases, 
+        otherwise will contain the image-specific error.
     """
 
     assert os.path.isdir(input_folder), '{} is not a folder'.format(input_folder)
@@ -1200,22 +1368,27 @@ def check_image_integrity(filename,modes=None):
     """
     Check whether we can successfully load an image via OpenCV and/or PIL.
     
-    "modes" should be a list containing one or more of:
+    Args: 
+        filename (str): the filename to evaluate
+        modes (list, optional): a list containing one or more of:
         
-        'cv'
-        'pil'
-        'skimage'
-        'jpeg_trailer' 
-        
-    'jpeg_trailer' checks that the binary data ends with ffd9.  It does not check whether
-    the image is actually a jpeg, and even if it is, there are lots of reasons the image might not
-    end with ffd9.  It's also true the JPEGs that cause "premature end of jpeg segment" issues
-    don't end with ffd9, so this may be a useful diagnostic.  High precision, very low recall
-    for corrupt jpegs.
-        
-    Set to None to use all modes.
+            - 'cv'
+            - 'pil'
+            - 'skimage'
+            - 'jpeg_trailer' 
+                
+            'jpeg_trailer' checks that the binary data ends with ffd9.  It does not check whether
+            the image is actually a jpeg, and even if it is, there are lots of reasons the image might not
+            end with ffd9.  It's also true the JPEGs that cause "premature end of jpeg segment" issues
+            don't end with ffd9, so this may be a useful diagnostic.  High precision, very low recall
+            for corrupt jpegs.
+                
+            Set to None to use all modes.
     
-    Returns a dict with a key called 'file', and keys matching [modes].    
+    Returns:
+        dict: a dict with a key called 'file' (the value of [filename]), one key for each string in
+        [modes] (a success indicator for that mode, specifically a string starting with either
+        'success' or 'error').
     """
     
     if modes is None:
@@ -1281,16 +1454,28 @@ def check_image_integrity(filename,modes=None):
 # ...def check_image_integrity(...)
 
 
-def parallel_check_image_integrity(filenames, modes=None, 
-                                   max_workers=16, use_threads=True, recursive=True):
+def parallel_check_image_integrity(filenames,
+                                   modes=None, 
+                                   max_workers=16, 
+                                   use_threads=True, 
+                                   recursive=True):
     """
     Check whether we can successfully load a list of images via OpenCV and/or PIL.
     
-    [filenames] can be a list of filenames or a folder.
-    
-    See check_image_integrity for documentation on the "modes" parameter.
-    
-    Returns a list of dicts; see check_image_integrity for documentation.    
+    Args:
+        filenames (list or str): a list of image filenames or a folder
+        mode (list): see check_image_integrity() for documentation on the [modes] parameter
+        max_workers (int, optional): the number of parallel workers to use; set to <=1 to disable
+            parallelization
+        use_threads (bool, optional): whether to use threads (True) or processes (False) for
+            parallelization
+        recursive (bool, optional): if [filenames] is a folder, whether to search recursively for images.
+            Ignored if [filenames] is a list.
+            
+    Returns:
+        list: a list of dicts, each with a key called 'file' (the value of [filename]), one key for 
+        each string in [modes] (a success indicator for that mode, specifically a string starting 
+        with either 'success' or 'error').
     """
 
     n_workers = min(max_workers,len(filenames))
@@ -1350,5 +1535,3 @@ if False:
             if r[mode] != 'success':
                 s = r[mode]
                 print('Mode {} failed for {}:\n{}\n'.format(mode,r['file'],s))
-    
-    

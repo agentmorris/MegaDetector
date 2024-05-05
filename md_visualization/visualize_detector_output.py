@@ -3,7 +3,7 @@
 visualize_detector_output.py
 
 Render images with bounding boxes annotated on them to a folder, based on a
-detector output result file (json), optionally writing an HTML index file.
+detector output result file (.json), optionally writing an HTML index file.
 
 """
 
@@ -38,11 +38,14 @@ DEFAULT_DETECTOR_LABEL_MAP = {
 
 #%% Support functions
 
-def render_image(entry,
+def _render_image(entry,
                  detector_label_map,classification_label_map,
                  confidence_threshold,classification_confidence_threshold,
                  render_detections_only,preserve_path_structure,out_dir,images_dir,
                  output_image_width):
+    """
+    Internal function for rendering a single image.
+    """
     
     rendering_result = {'failed_image':False,'missing_image':False,
                         'skipped_image':False,'annotated_image_path':None,
@@ -97,38 +100,55 @@ def render_image(entry,
 
 #%% Main function
 
-def visualize_detector_output(detector_output_path: str,
-                              out_dir: str,
-                              images_dir: str,
-                              confidence_threshold: float = 0.15,
-                              sample: int = -1,
-                              output_image_width: int = 700,
-                              random_seed: int = None,
-                              render_detections_only: bool = False,
-                              classification_confidence_threshold = 0.1,
-                              html_output_file = None,
-                              html_output_options = None,
-                              preserve_path_structure = False,
-                              parallelize_rendering = False,
-                              parallelize_rendering_n_cores = 10,
-                              parallelize_rendering_with_threads = True) -> List[str]:
+def visualize_detector_output(detector_output_path,
+                              out_dir,
+                              images_dir,
+                              confidence_threshold=0.15,
+                              sample=-1,
+                              output_image_width=700,
+                              random_seed=None,
+                              render_detections_only=False,
+                              classification_confidence_threshold=0.1,
+                              html_output_file=None,
+                              html_output_options=None,
+                              preserve_path_structure=False,
+                              parallelize_rendering=False,
+                              parallelize_rendering_n_cores=10,
+                              parallelize_rendering_with_threads=True):
     
     """
-    Draw bounding boxes on images given the output of a detector.
+    Draws bounding boxes on images given the output of a detector.
 
     Args:
-        detector_output_path: str, path to detector output json file
-        out_dir: str, path to directory for saving annotated images
-        images_dir: str, path to images dir
-        confidence: float, threshold above which annotations will be rendered
-        sample: int, maximum number of images to annotate, -1 for all
-        random_seed: seed for sampling (not relevant if sample == -1)
-        output_image_width: int, width in pixels to resize images for display,
-            set to -1 to use original image width
-        random_seed: int, for deterministic image sampling when sample != -1
-        render_detections_only: bool, only render images with above-threshold detections
+        detector_output_path (str): path to detector output .json file
+        out_dir (str): path to directory for saving annotated images
+        images_dir (str): folder where the images live; filenames in 
+            [detector_output_path] should be relative to [image_dir]
+        confidence_threshold (float, optional): threshold above which detections will be rendered
+        sample (int, optional): maximum number of images to render, -1 for all
+        output_image_width (int, optional): width in pixels to resize images for display,
+            preserving aspect ration; set to -1 to use original image width
+        random_seed (int, optional): seed to use for choosing images when sample != -1
+        render_detections_only (bool): only render images with above-threshold detections
+        classification_confidence_threshold (float, optional): only show classifications
+            above this threshold; does not impact whether images are rendered, only whether
+            classification labels (not detection categories) are displayed
+        html_output_file (str, optional): output path for an HTML index file (not written
+            if None)
+        html_output_options (dict, optional): HTML formatting options; see write_html_image_list 
+            for details
+        preserve_path_structure (bool, optional): if False (default), writes images to unique
+            names in a flat structure in the output folder; if True, preserves relative paths
+            within the output folder
+        parallelize_rendering (bool, optional): whether to use concurrent workers for rendering
+        parallelize_rendering_n_cores (int, optional): number of concurrent workers to use 
+            (ignored if parallelize_rendering is False)
+        parallelize_rendering_with_threads (bool, optional): determines whether we use
+            threads (True) or processes (False) for parallelization (ignored if parallelize_rendering 
+            is False)
 
-    Returns: list of str, paths to annotated images
+    Returns:
+        list: list of paths to annotated images
     """
     
     assert os.path.exists(detector_output_path), \
@@ -209,7 +229,7 @@ def visualize_detector_output(detector_output_path: str,
             print('Rendering images with {} {}'.format(parallelize_rendering_n_cores,
                                                        worker_string))            
         rendering_results = list(tqdm(pool.imap(
-                                 partial(render_image,detector_label_map=detector_label_map,
+                                 partial(_render_image,detector_label_map=detector_label_map,
                                          classification_label_map=classification_label_map,
                                          confidence_threshold=confidence_threshold,
                                          classification_confidence_threshold=classification_confidence_threshold,
@@ -224,7 +244,7 @@ def visualize_detector_output(detector_output_path: str,
                 
         for entry in tqdm(images):
             
-            rendering_result = render_image(entry,detector_label_map,classification_label_map,
+            rendering_result = _render_image(entry,detector_label_map,classification_label_map,
                                             confidence_threshold,classification_confidence_threshold,
                                             render_detections_only,preserve_path_structure,out_dir,
                                             images_dir,output_image_width)
@@ -269,9 +289,8 @@ def visualize_detector_output(detector_output_path: str,
 
 #%% Command-line driver
 
-def main() -> None:
-    """Main function."""
-
+def main():
+    
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Annotate the bounding boxes predicted by a detector above '

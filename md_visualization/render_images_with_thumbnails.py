@@ -2,12 +2,12 @@
 
 render_images_with_thumbnails.py
 
-Render an output image with one primary and crops from many secondary images,
-used to check whether suspicious detections are actually false positives or not.
+Renders an output image with one primary image and crops from many secondary images,
+used primarily to check whether candidate repeat detections are actually false positives or not.
 
 """
 
-#%% Constants
+#%% Imports
 
 import math
 import os
@@ -26,10 +26,13 @@ def crop_image_with_normalized_coordinates(
         bounding_box):
     """
     Args:
-        image: image to crop
-        bounding_box: tuple formatted as (x,y,w,h), where (0,0) is the
-        upper-left of the image, and coordinates are normalized
-        (so (0,0,1,1) is a box containing the entire image).
+        image (PIL.Image): image to crop
+        bounding_box (tuple): tuple formatted as (x,y,w,h), where (0,0) is the
+            upper-left of the image, and coordinates are normalized
+            (so (0,0,1,1) is a box containing the entire image).
+            
+    Returns:
+        PIL.Image: cropped image
     """
     
     im_width, im_height = image.size
@@ -39,7 +42,6 @@ def crop_image_with_normalized_coordinates(
                     w_norm * im_width,
                     h_norm * im_height)
     return image.crop((x, y, x+w, y+h))
-
 
 
 #%% Main function
@@ -66,20 +68,19 @@ def render_images_with_thumbnails(
     ratio of the primary image. 
     
     Args:
-        primary_image_filename: filename of the primary image to load as str
-        primary_image_width: width at which to render the primary image; if this is 
-            None, will render at the original image width.
-        secondary_image_filename_list: list of strs that are the filenames of
-            the secondary images.
-        secondary_image_bounding_box_list: list of tuples, one per secondary
+        primary_image_filename (str): filename of the primary image to load as str
+        primary_image_width (int): width at which to render the primary image; if this is 
+            None, will render at the original image width
+        secondary_image_filename_list (list): list of filenames of the secondary images
+        secondary_image_bounding_box_list (list): list of tuples, one per secondary
             image. Each tuple is a bounding box of the secondary image,
             formatted as (x,y,w,h), where (0,0) is the upper-left of the image,
             and coordinates are normalized (so (0,0,1,1) is a box containing
             the entire image.
-        cropped_grid_width: width of all the cropped images
-        output_image_filename: str of the filename to write the output image        
-        primary_image_location: 'right' or left'; reserving 'top', 'bottom', etc.
-            for future use.
+        cropped_grid_width (int): width of the cropped-image area
+        output_image_filename (str): filename to write the output image        
+        primary_image_location (str, optional): 'right' or left'; reserving 'top', 'bottom', etc.
+            for future use
     """
 
     # Check to make sure the arguments are reasonable
@@ -185,6 +186,8 @@ def render_images_with_thumbnails(
     # Write output image to disk
     output_image.save(output_image_filename)    
 
+# ...def render_images_with_thumbnails(...)
+
 
 #%% Interactive driver
 
@@ -218,11 +221,12 @@ if False:
             output_image_filename,
             primary_image_location='right')    
 
-    from md_utils import path_utils
     path_utils.open_file(output_image_filename)
     
     
 #%% Command-line driver
+
+# This is just a test driver, this module is not meant to be run from the command line.
 
 def main():
         

@@ -33,7 +33,7 @@ def is_video_file(s,video_extensions=VIDEO_EXTENSIONS):
     """
     Checks a file's extension against a set of known video file
     extensions to determine whether it's a video file.  Performs a
-    case-insentive comparison.
+    case-insensitive comparison.
     
     Args:
         s (str): filename to check for probable video-ness
@@ -404,7 +404,7 @@ def frame_results_to_video_results(input_file,output_file,options=None):
     
     Args:
         input_file (str): the frame-level MD results file to convert to video-level results
-        output_file (str): the .json file to which we should write video-levle results
+        output_file (str): the .json file to which we should write video-level results
         options (FrameToVideoOptions, optional): parameters for converting frame-level results
             to video-level results, see FrameToVideoOptions for details            
     """

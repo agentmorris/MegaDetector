@@ -216,13 +216,17 @@ def main():
     
     parser = argparse.ArgumentParser()
     
-    parser.add_argument("directory", type=str, help='Path to directory which should be traversed.')
-    parser.add_argument("--basepath", type=str, help='Folder names will be printed relative to basepath, if specified', default=None)
-    parser.add_argument("--sas_url", type=str, help='Blobfuse does not set the content-type property ' + \
-        'properly and hence index.html won\'t be accessible in the browser. If you want to set the ' + \
-        'content-type in the corresponding blob storage, provide the SAS URL that corresponds to the ' + \
-        "directory, e.g. if *directory* is /mountpoint/path/to/folder, then *--sas_url* looks like " + \
-        "'https://accname.blob.core.windows.net/bname/path/to/folder?st=...&se=...&sp=...&...'")
+    parser.add_argument("directory", type=str, 
+                        help='Path to directory which should be traversed.')
+    parser.add_argument("--basepath", type=str, 
+                        help='Folder names will be printed relative to basepath, if specified', 
+                        default=None)
+    parser.add_argument("--sas_url", type=str, 
+                        help='Blobfuse does not set the content-type property ' + \
+                             'properly and hence index.html won\'t be accessible in the browser. If you want to set the ' + \
+                              'content-type in the corresponding blob storage, provide the SAS URL that corresponds to the ' + \
+                              'directory, e.g. if *directory* is /mountpoint/path/to/folder, then *--sas_url* looks like ' + \
+                              '"https://accname.blob.core.windows.net/bname/path/to/folder?st=...&se=...&sp=...&..."')
     parser.add_argument("--enable_overwrite", action='store_true', default=False,
                         help='If set, the script will overwrite existing index.html files.')
 

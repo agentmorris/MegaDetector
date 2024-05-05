@@ -504,7 +504,7 @@ def is_executable(filename):
 
 def environment_is_wsl():
     """
-    Determins whether we're running in WSL.
+    Determines whether we're running in WSL.
     
     Returns:
         True if we're running in WSL.        

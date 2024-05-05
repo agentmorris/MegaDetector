@@ -39,7 +39,7 @@ class MDTestOptions:
     #: Force CPU execution
     disable_gpu = False
     
-    #: If GPU execution is requsted, but a GPU is not available, should we error?
+    #: If GPU execution is requested, but a GPU is not available, should we error?
     cpu_execution_is_error = False
     
     #: Skip tests related to video processing

@@ -103,10 +103,18 @@ def _get_exif_ifd(exif):
     }
 
 
-def _read_pil_exif(im,options=None):
+def read_pil_exif(im,options=None):
     """
-    Read all the EXIF data we know how to read from [im] (path or PIL Image), using PIL, whether 
-    it's in the PIL default EXIF data or not.  Returns a dict.
+    Read all the EXIF data we know how to read from an image, using PIL.  This is primarily
+    an internal function; the main entry point for single-image EXIF information is 
+    read_exif_tags_for_image().
+    
+    Args:
+        im (str or PIL.Image.Image): image (as a filename or an Image object) from which 
+            we should read EXIF data.
+    
+    Returns:
+        dict: a dictionary mapping EXIF tag names to their values
     """
     
     if options is None:
@@ -169,7 +177,7 @@ def _read_pil_exif(im,options=None):
             
     return exif_tags
 
-# ..._read_pil_exif()
+# ...read_pil_exif()
 
 
 def format_datetime_as_exif_datetime_string(dt):
@@ -253,7 +261,7 @@ def read_exif_tags_for_image(file_path,options=None):
     if options.processing_library == 'pil':
         
         try:
-            exif_tags = _read_pil_exif(file_path,options)
+            exif_tags = read_pil_exif(file_path,options)
 
         except Exception as e:
             if options.verbose:

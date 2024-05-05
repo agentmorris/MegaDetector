@@ -9,8 +9,6 @@ and precision-recall curves.
 
 #%% Imports
 
-from typing import Any, Optional, Sequence, Tuple, Union
-
 import numpy as np
 
 # This also imports mpl.{cm, axes, colors}
@@ -19,38 +17,37 @@ import matplotlib.figure
 
 #%% Plotting functions
 
-def plot_confusion_matrix(
-        matrix: np.ndarray,
-        classes: Sequence[str],
-        normalize: bool = False,
-        title: str = 'Confusion matrix',
-        cmap: Union[str, matplotlib.colors.Colormap] = matplotlib.cm.Blues,
-        vmax: Optional[float] = None,
-        use_colorbar: bool = True,
-        y_label: bool = True,        
-        fmt: str = '{:.0f}',
-        fig=None
-        ):
+def plot_confusion_matrix(matrix,
+                          classes,
+                          normalize=False,
+                          title='Confusion matrix',
+                          cmap=matplotlib.cm.Blues,
+                          vmax=None,
+                          use_colorbar=True,
+                          y_label=True,
+                          fmt= '{:.0f}',
+                          fig=None):
     """
-    Plots a confusion matrix. By default, assumes values in the given matrix
-    are percentages. If the matrix contains counts, normalization can be applied
-    by setting `normalize=True`.
+    Plots a confusion matrix.
 
     Args:
-        matrix: np.ndarray, shape [num_classes, num_classes], confusion matrix
-            where rows are ground-truth classes and cols are predicted classes.
-        classes: list of str, class names for each row/column
-        normalize: bool, whether to perform row-wise normalization to sum 1
-        title: str, figure title
-        cmap: colormap, default: matplotlib.cm.Blues
-        vmax: float, value corresponding s to the largest value of the colormap.
-            If None, the maximum value in *matrix* will be used. Default: None
-        use_colorbar: bool, whether to show colorbar
-        y_label: bool, whether to show class names on the y-axis
-        fmt: str, format string
-
+        matrix (np.ndarray): shape [num_classes, num_classes], confusion matrix
+            where rows are ground-truth classes and columns are predicted classes
+        classes (list of str): class names for each row/column
+        normalize (bool, optional): whether to perform row-wise normalization; 
+            by default, assumes values in the confusion matrix are percentages
+        title (str, optional): figure title
+        cmap (matplotlib.colors.colormap): colormap for cell backgrounds
+        vmax (float, optional), value corresponding to the largest value of the colormap;
+            if None, the maximum value in [matrix] will be used
+        use_colorbar (bool, optional): whether to show colorbar
+        y_label (bool, optional): whether to show class names on the y axis
+        fmt (str): format string for rendering numeric values
+        fig (Figure): existing figure to which we should render, otherwise creates
+            a new figure
+        
     Returns: 
-        matplotlib.figure.Figure: a reference to the figure
+        matplotlib.figure.Figure: the figure we rendered to or created
     """
     
     num_classes = matrix.shape[0]
@@ -97,25 +94,29 @@ def plot_confusion_matrix(
 
     return fig
 
+# ...def plot_confusion_matrix(...)
 
-def plot_precision_recall_curve(
-        precisions: Sequence[float], recalls: Sequence[float],
-        title: str = 'Precision/recall curve',
-        xlim=(0.0,1.05),ylim=(0.0,1.05)
-        ) -> matplotlib.figure.Figure:
+
+def plot_precision_recall_curve(precisions, 
+                                recalls, 
+                                title='Precision/recall curve',
+                                xlim=(0.0,1.05),
+                                ylim=(0.0,1.05)):
     """
-    Plots the precision recall curve given lists of (ordered) precision
+    Plots a precision/recall curve given lists of (ordered) precision
     and recall values.
 
     Args:
-        precisions: list of float, precision for corresponding recall values,
-            should have same length as *recalls*.
-        recalls: list of float, recall for corresponding precision values,
-            should have same length as *precisions*.
-        title: str, plot title
+        precisions (list of float): precision for corresponding recall values,
+            should have same length as [recalls].
+        recalls (list of float): recall for corresponding precision values,
+            should have same length as [precisions].
+        title (str, optional): plot title
+        xlim (tuple, optional): x-axis limits as a length-2 tuple
+        ylim (tuple, optional): y-axis limits as a length-2 tuple
 
     Returns: 
-        matplotlib.figure.Figure, reference to the figure
+        matplotlib.figure.Figure: the (new) figure
     """
     
     assert len(precisions) == len(recalls)
@@ -139,28 +140,24 @@ def plot_precision_recall_curve(
     return fig
 
 
-def plot_stacked_bar_chart(data: np.ndarray,
-                           series_labels: Sequence[str],
-                           col_labels: Optional[Sequence[str]] = None,
-                           x_label: Optional[str] = None,
-                           y_label: Optional[str] = None,
-                           log_scale: bool = False
-                           ) -> matplotlib.figure.Figure:
+def plot_stacked_bar_chart(data, series_labels=None, col_labels=None,
+                           x_label=None, y_label=None, log_scale=False):
     """
-    For plotting e.g. species distribution across locations.
+    Plot a stacked bar chart, for plotting e.g. species distribution across locations.
+    
     Reference: https://stackoverflow.com/q/44309507
 
     Args:
-        data: 2-D np.ndarray or nested list, rows (series) are species, columns
+        data (np.ndarray or list of list): data to plot; rows (series) are species, columns
             are locations
-        series_labels: list of str, e.g., species names
-        col_labels: list of str, e.g., location names
-        x_label: str
-        y_label: str
-        log_scale: bool, whether to plot y-axis in log-scale
+        series_labels (list of str, optional): series labels, typically species names
+        col_labels (list of str, optional): column labels, typically location names
+        x_label (str, optional): x-axis label
+        y_label (str, optional): y-axis label
+        log_scale (bool, optional) whether to plot the y axis in log-scale
 
     Returns: 
-        matplotlib.figure.Figure, reference to figure
+        matplotlib.figure.Figure: the (new) figure
     """
     
     data = np.asarray(data)
@@ -202,8 +199,7 @@ def plot_stacked_bar_chart(data: np.ndarray,
     return fig
 
 
-def calibration_ece(true_scores: Sequence[int], pred_scores: Sequence[float],
-                    num_bins: int) -> Tuple[np.ndarray, np.ndarray, float]:
+def calibration_ece(true_scores, pred_scores, num_bins):
     r"""
     Expected calibration error (ECE) as defined in equation (3) of
     Guo et al. "On Calibration of Modern Neural Networks." (2017).
@@ -214,17 +210,18 @@ def calibration_ece(true_scores: Sequence[int], pred_scores: Sequence[float],
     https://github.com/scikit-learn/scikit-learn/issues/18268
 
     Args:
-        pred_scores: list of float, length N, pred_scores[i] is the predicted
-            confidence that example i is positive
-        true_scores: list of int, length N, binary-valued (0 = neg, 1 = pos)
-        num_bins: int, number of bins to use (`M` in eq. (3) of Guo 2017)
+        true_scores (list of int): true values, length N, binary-valued (0 = neg, 1 = pos)
+        pred_scores (list of float): predicted confidence values, length N, pred_scores[i] is the 
+            predicted confidence that example i is positive
+        num_bins (int): number of bins to use (`M` in eq. (3) of Guo 2017)
 
     Returns:
-        accs: np.ndarray, shape [M], type float64, accuracy in each bin,
-            M <= num_bins because bins with no samples are not returned        
-        confs: np.ndarray, shape [M], type float64, mean model confidence in
-            each bin
-        ece: float, expected calibration error
+        tuple: a length-three tuple containing:
+            - accs: np.ndarray, shape [M], type float64, accuracy in each bin,
+              M <= num_bins because bins with no samples are not returned        
+            - confs: np.ndarray, shape [M], type float64, mean model confidence in
+              each bin
+            - ece: float, expected calibration error
     """
     
     assert len(true_scores) == len(pred_scores)
@@ -245,29 +242,25 @@ def calibration_ece(true_scores: Sequence[int], pred_scores: Sequence[float],
     return accs, confs, ece
 
 
-def plot_calibration_curve(true_scores: Sequence[int],
-                           pred_scores: Sequence[float],
-                           num_bins: int,
-                           name: str = 'calibration',
-                           plot_perf: bool = True,
-                           plot_hist: bool = True,
-                           ax: Optional[matplotlib.axes.Axes] = None,
-                           **fig_kwargs: Any
-                           ) -> matplotlib.figure.Figure:
+def plot_calibration_curve(true_scores, pred_scores, num_bins,
+                           name='calibration', plot_perf=True, plot_hist=True,
+                           ax=None, **fig_kwargs):
     """
     Plots a calibration curve.
 
-    See calibration_ece() for more information about arguments.
-    
     Args:
-        name (str): label in legend for the calibration curve
-        plot_perf (bool): whether to plot y=x line indicating perfect calibration
-        plot_hist (bool): whether to plot histogram of counts
-        ax (Axes, optional), if given then no legend is drawn, and fig_kwargs are ignored
+        true_scores (list of int): true values, length N, binary-valued (0 = neg, 1 = pos)
+        pred_scores (list of float): predicted confidence values, length N, pred_scores[i] is the 
+            predicted confidence that example i is positive
+        num_bins (int): number of bins to use (`M` in eq. (3) of Guo 2017)
+        name (str, optional): label in legend for the calibration curve
+        plot_perf (bool, optional): whether to plot y=x line indicating perfect calibration
+        plot_hist (bool, optional): whether to plot histogram of counts
+        ax (Axes, optional): if given then no legend is drawn, and fig_kwargs are ignored
         fig_kwargs (dict, optional): only used if [ax] is None
 
     Returns:
-        matplitlib.figure.Figure
+        matplotlib.figure.Figure: the (new) figure
     """
     
     accs, confs, ece = calibration_ece(true_scores, pred_scores, num_bins)

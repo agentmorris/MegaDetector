@@ -54,7 +54,7 @@ def split_locations_into_train_val(location_to_category_counts,
             like to put in the val split
         category_to_max_allowable_error (dict, optional): a dict mapping category names
             to maximum allowable errors.  These are hard constraints (i.e., we will error
-            if we can't meet them).  Does not need to inclue all categories; categories not 
+            if we can't meet them).  Does not need to include all categories; categories not 
             included will be assigned a maximum error according to [default_max_allowable_error].
             If this is None, no hard constraints are applied.
         category_to_error_weight (dict, optional): a dict mapping category names to
@@ -62,7 +62,7 @@ def split_locations_into_train_val(location_to_category_counts,
             have a weight of 1.0.  If None, all categories have the same weight.
         default_max_allowable_error (float, optional): the maximum allowable error for categories not 
             present in [category_to_max_allowable_error].  Set to None (or >= 1.0) to disable hard 
-            constraints for categories not present in [category_to_max_allowable_erro]r
+            constraints for categories not present in [category_to_max_allowable_error]
     
     Returns:
         tuple: A two-element tuple:

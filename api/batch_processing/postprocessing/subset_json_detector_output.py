@@ -451,7 +451,7 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
     
     Args:
         input_filename (str): filename to load and subset; can be None if [data] is supplied
-        output_filename (str): file or folder name (depending on [options]) to which we sould
+        output_filename (str): file or folder name (depending on [options]) to which we should
             write subset results.
         options (SubsetJsonDetectorOutputOptions): parameters for .json splitting/subsetting;
             see SubsetJsonDetectorOutputOptions for details.

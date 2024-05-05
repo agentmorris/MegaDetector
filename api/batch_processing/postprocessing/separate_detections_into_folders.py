@@ -148,7 +148,7 @@ class SeparateDetectionsIntoFoldersOptions:
         self.base_input_folder = None
         
         #: The folder to which we should write output images; see the module header comment for information
-        #: about how that foler will be structured.
+        #: about how that folder will be structured.
         self.base_output_folder = None
                   
         #: Should we move rather than copy?

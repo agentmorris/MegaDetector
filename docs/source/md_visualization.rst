@@ -19,6 +19,7 @@ md\_visualization.render\_images\_with\_thumbnails module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: main
 
 md\_visualization.visualization\_utils module
 ---------------------------------------------
@@ -35,6 +36,14 @@ md\_visualization.visualize\_db module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: md_visualization.visualize_db
+   :func: main
+   :hook:
+   :prog: visualize_db
+   :no_default_values:
 
 md\_visualization.visualize\_detector\_output module
 ----------------------------------------------------
@@ -43,3 +52,11 @@ md\_visualization.visualize\_detector\_output module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: md_visualization.visualize_detector_output
+   :func: main
+   :hook:
+   :prog: visualize_detector_output
+   :no_default_values:

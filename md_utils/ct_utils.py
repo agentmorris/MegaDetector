@@ -302,7 +302,7 @@ def point_dist(p1,p2):
         p2: point, formatted as (x,y)
         
     Returns:
-        float: the Euclidean distance betwen p1 and p2
+        float: the Euclidean distance between p1 and p2
     """
     
     return math.sqrt( ((p1[0]-p2[0])**2) + ((p1[1]-p2[1])**2) )
@@ -428,7 +428,7 @@ def sort_dictionary_by_value(d,sort_values=None,reverse=False):
     
     Args:
         d (dict): dictionary to sort
-        sort_values (dict, optional): dicionary mapping keys in [d] to sort values (defaults 
+        sort_values (dict, optional): dictionary mapping keys in [d] to sort values (defaults 
             to None, uses [d] itself for sorting)
         reverse (bool, optional): whether to sort in reverse (descending) order
     
@@ -501,7 +501,7 @@ def is_float(v):
     Determines whether v is either a float or a string representation of a float.
     
     Args:
-        v (object): object to evalute
+        v (object): object to evaluate
         
     Returns:
         bool: True if [v] is a float or a string representation of a float, otherwise False

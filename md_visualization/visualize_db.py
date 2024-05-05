@@ -11,6 +11,7 @@ on a sample of images in a database in the COCO Camera Traps format.
 
 import argparse
 import inspect
+import random
 import json
 import math
 import os
@@ -36,74 +37,99 @@ import md_visualization.visualization_utils as vis_utils
 #%% Settings
 
 class DbVizOptions:
+    """
+    Parameters controlling the behavior of visualize_db().
+    """
     
-    # Set to None to visualize all images
+    #: Number of images to sample from the database, or None to visualize all images
     num_to_visualize = None
     
-    # Target size for rendering; set either dimension to -1 to preserve aspect ratio
-    #
-    # If viz_size is None or (-1,-1), the original image size is used.
+    #: Target size for rendering; set either dimension to -1 to preserve aspect ratio.
+    #:
+    #: If viz_size is None or (-1,-1), the original image size is used.
     viz_size = (800, -1)
     
-    # The most relevant option one might want to set here is:
-    #
-    # htmlOptions['maxFiguresPerHtmlFile']
-    #
-    # ...which can be used to paginate previews to a number of images that will load well
-    # in a browser (5000 is a reasonable limit).
+    #: HTML rendering options; see write_html_image_list for details
+    #:
+    #:The most relevant option one might want to set here is:
+    #:
+    #: htmlOptions['maxFiguresPerHtmlFile']
+    #:
+    #: ...which can be used to paginate previews to a number of images that will load well
+    #: in a browser (5000 is a reasonable limit).
     htmlOptions = write_html_image_list()
     
+    #: Whether to sort images by filename (True) or randomly (False)
     sort_by_filename = True
+    
+    #: Only show images that contain bounding boxes
     trim_to_images_with_bboxes = False
     
-    random_seed = 0 # None
+    #: Random seed to use for sampling images
+    random_seed = 0
     
-    # Should we include Web search links for each category name?    
+    #: Should we include Web search links for each category name?    
     add_search_links = False
     
-    # Should each thumbnail image link back to the original image?
+    #: Should each thumbnail image link back to the original image?
     include_image_links = False
     
-    # Should there be a text link back to each original image?
+    #: Should there be a text link back to each original image?
     include_filename_links = False
     
+    #: Line width in pixels
     box_thickness = 4
+    
+    #: Number of pixels to expand each bounding box
     box_expansion = 0
     
-    # These are mutually exclusive; both are category names, not IDs
-    classes_to_exclude = None
+    #: Only include images that contain annotations with these class names (not IDs)
+    #:
+    #: Mutually exclusive with classes_to_exclude
     classes_to_include = None
     
-    # Special tag used to say "show me all images with multiple categories"
+    #: Exclude images that contain annotations with these class names (not IDs)
+    #:
+    #: Mutually exclusive with classes_to_include
+    classes_to_exclude = None
+    
+    #: Special tag used to say "show me all images with multiple categories"
+    #:
+    #: :meta private:
     multiple_categories_tag = '*multiple*'
 
-    # We sometimes flatten image directories by replacing a path separator with 
-    # another character.  Leave blank for the typical case where this isn't necessary.
+    #: We sometimes flatten image directories by replacing a path separator with 
+    #: another character.  Leave blank for the typical case where this isn't necessary.
     pathsep_replacement = '' # '~'
 
-    # Control rendering parallelization
-    parallelize_rendering_n_cores = 25
-    
-    # Process-based parallelization in this function is currently unsupported
-    # due to pickling issues I didn't care to look at, but I'm going to just
-    # flip this with a warning, since I intend to support it in the future.
-    parallelize_rendering_with_threads = True
+    #: Parallelize rendering across multiple workers
     parallelize_rendering = False
     
-    # Should we show absolute (vs. relative) paths for each image?
+    #: In theory, whether to parallelize with threads (True) or processes (False), but
+    #: process-based parallelization in this function is currently unsupported
+    parallelize_rendering_with_threads = True
+    
+    #: Number of workers to use for parallelization; ignored if parallelize_rendering
+    #: is False
+    parallelize_rendering_n_cores = 25
+        
+    #: Should we show absolute (True) or relative (False) paths for each image?
     show_full_paths = False
     
-    # Set to False to skip existing images
+    #: Set to False to skip existing images
     force_rendering = True
     
+    #: Enable additionald debug console output
     verbose = False
     
 
 #%% Helper functions
 
-# Translate the file name in an image entry in the json database to a path, possibly doing
-# some manipulation of path separators
-def image_filename_to_path(image_file_name, image_base_dir, pathsep_replacement=''):
+def _image_filename_to_path(image_file_name, image_base_dir, pathsep_replacement=''):
+    """
+    Translates the file name in an image entry in the json database to a path, possibly doing
+    some manipulation of path separators.
+    """
     
     if len(pathsep_replacement) > 0:
         image_file_name = os.path.normpath(image_file_name).replace(os.pathsep,pathsep_replacement)        
@@ -114,14 +140,16 @@ def image_filename_to_path(image_file_name, image_base_dir, pathsep_replacement=
 
 def visualize_db(db_path, output_dir, image_base_dir, options=None):
     """
-    Writes images and html to output_dir to visualize the annotations in the json file
-    db_path.
+    Writes images and html to output_dir to visualize the annotations in a .json file.
     
-    db_path can also be a previously-loaded database.
+    Args:
+        db_path (str or dict): the .json filename to load, or a previously-loaded database
+        image_base_dir (str): the folder where the images live; filenames in [db_path] should
+            be relative to this folder.
+        options (DbVizOptions, optional): See DbVizOptions for details
     
-    Returns the html filename and the database:
-        
-    return htmlOutputFile,image_db
+    Returns:
+        tuple: A length-two tuple containing (the html filename) and (the loaded database).        
     """    
     
     if options is None:
@@ -249,7 +277,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
             img_path = image_base_dir + img_relative_path
         else:
             img_path = os.path.join(image_base_dir, 
-                                    image_filename_to_path(img_relative_path, image_base_dir))
+                                    _image_filename_to_path(img_relative_path, image_base_dir))
     
         annos_i = df_anno.loc[df_anno['image_id'] == img_id, :] # all annotations on this image
     
@@ -431,6 +459,8 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         
     if options.sort_by_filename:    
         images_html = sorted(images_html, key=lambda x: x['filename'])
+    else:
+        random.shuffle(images_html)
         
     htmlOutputFile = os.path.join(output_dir, 'index.html')
     
