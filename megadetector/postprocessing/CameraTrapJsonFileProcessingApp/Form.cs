@@ -482,7 +482,7 @@ namespace CameraTrapJsonManagerApp
 
         private void ButtonHelp_Click(object sender, EventArgs e)
         {
-            System.Diagnostics.Process.Start("https://github.com/agentmorris/MegaDetector/blob/master/api/batch_processing/postprocessing/CameraTrapJsonManagerApp.md");
+            System.Diagnostics.Process.Start("https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/CameraTrapJsonManagerApp.md");
         }
 
         private void buttonBrowseFolder_Click(object sender, EventArgs e)

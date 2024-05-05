@@ -24,7 +24,7 @@ This document shows you how to run these scripts.
 The instructions on this page assume that:
 
 1. You've followed the [MegaDetector environment setup instructions], and that you're at your Mambaforge prompt, in the root folder of the MegaDetector repo.
-2. You have a .json file that was produced by [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_detector_batch.py). 
+2. You have a .json file that was produced by [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector_batch.py). 
 3. Your images are organized such that all the images from the same camera are in the same folder. For example, if you have images in `c:\my_images\2019\B1`, everything in `B1` comes from the same caemra.  This matters because we won't even compare images in this folder to images in `c:\my_images\2019\A1`.
 
 It's OK if a "camera" folder is some distance away from the bottom of your folder hierarchy.  So, for example, if the folders `c:\my_images\2019\B1\RECNYX100` and `c:\my_images\2019\B1\RECNYX101` are from the same camera, that's OK.  If you do nothing special about this, nothing bad will happen, though you will lose some opportunity to find repeat detections that span those two folders.  We won't get into this in detail on this page, but in this case, you can use the `--nDirLevelsFromLeaf` option to tell the scripts that you want to call the `B1` folder a camera in this case (one folder level up from the bottom), rather than the lowest-level folders.
@@ -32,7 +32,7 @@ It's OK if a "camera" folder is some distance away from the bottom of your folde
 
 # Finding suspicious detections
 
-The first step is to find all the detections that are suspicious, i.e. cases where the same detection is repeated a bunch of times.  For this step, you will use [find_repeat_detections.py](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/postprocessing/repeat_detection_elimination/find_repeat_detections.py)
+The first step is to find all the detections that are suspicious, i.e. cases where the same detection is repeated a bunch of times.  For this step, you will use [find_repeat_detections.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/repeat_detection_elimination/find_repeat_detections.py)
 
 This script is going to generate a bunch of temporary images that you will look at to quickly identify which are actually false positives.
 
@@ -45,7 +45,7 @@ So let's assume that:
 
 You would run:
 
-`python api/batch_processing/postprocessing/find_repeat_detections.py "c:\my_results.json" --imageBase "c:\my_images" --outputBase "c:\repeat_detection_stuff"`
+`python megadetector/postprocessing/find_repeat_detections.py "c:\my_results.json" --imageBase "c:\my_images" --outputBase "c:\repeat_detection_stuff"`
 
 This script can take a while!  Possibly hours if you have millions of images, typically just a few minutes if you only have tens of thousands of images.  If you want to test it on just a couple folders first, you can use the `--debugMaxDir` option, to tell the script to only process a certain number of cameras.
 
@@ -86,7 +86,7 @@ Sometimes it's actually distracting when an obvious animal like the one in the a
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/gray_box.jpg" width="500"><br/>
 
-You may not even be able to see the gray box if you're viewing this on GitHub, but if you [open the image directly](https://raw.githubusercontent.com/agentmorris/MegaDetector/main/api/batch_processing/postprocessing/images/gray_box.jpg), you'll see a thin gray line around the elk.  The thick red box is the one we're interested in, so the elk doesn't matter here.
+You may not even be able to see the gray box if you're viewing this on GitHub, but if you [open the image directly](https://raw.githubusercontent.com/agentmorris/MegaDetector/main/megadetector/postprocessing/images/gray_box.jpg), you'll see a thin gray line around the elk.  The thick red box is the one we're interested in, so the elk doesn't matter here.
 
 <b>You don't need to delete the above image; just leave it in the folder.</b>
 
@@ -106,7 +106,7 @@ Remember that in the next step, we'll be marking any detections left in this fol
 
 # Producing the final "filtered" output file
 
-When that directory contains only false positives, you're ready to remove those - and the many many images of the same detections that you never had to look at - from your results.  To do this, you'll use [remove_repeat_detections.py](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/postprocessing/repeat_detection_elimination/remove_repeat_detections.py)
+When that directory contains only false positives, you're ready to remove those - and the many many images of the same detections that you never had to look at - from your results.  To do this, you'll use [remove_repeat_detections.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/repeat_detection_elimination/remove_repeat_detections.py)
 
 The syntax is:
 
@@ -114,18 +114,18 @@ The syntax is:
 
 So specifically, in our running example, to take the original `my_results.json` file and produce a new `my_results_filtered.json` file with the repeat detections removed, you would run:
 
-`python api/batch_processing/postprocessing/remove_repeat_detections.py "c:\my_results.json" "c:\my_results_filtered.json" "c:\repeat_detection_stuff\filtering_something_something"`
+`python megadetector/postprocessing/remove_repeat_detections.py "c:\my_results.json" "c:\my_results_filtered.json" "c:\repeat_detection_stuff\filtering_something_something"`
 
 The "something_something" part at the end refers to the exact folder name, which includes some date and time information, so this might actually look like:
 
-`python api/batch_processing/postprocessing/remove_repeat_detections.py "c:\my_results.json" "c:\my_results_filtered.json" "c:\repeat_detection_stuff\filtering_2019.10.24.16.52.54"`
+`python megadetector/postprocessing/remove_repeat_detections.py "c:\my_results.json" "c:\my_results_filtered.json" "c:\repeat_detection_stuff\filtering_2019.10.24.16.52.54"`
 
 This script takes your original .json file and removes detections corresponding to the stuff you left in the folder in the previous step.  Actually, it doesn't technically remove them; rather, it sets their probabilities to be negative numbers.  So it's possible in downstream processing tools to figure out which things were "removed" by this process.
 
 
 # What next?
 
-After running this process, you still have a .json file in the standard MegaDetector resultsformat, just with (hopefully) many fewer false positives that are above your confidence threshold.  At this point, you can proceed with whatever workflow you would normally use to work with our API output, e.g. our <a href="https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/integration/timelapse.md">integration with Timelapse</a>.
+After running this process, you still have a .json file in the standard MegaDetector resultsformat, just with (hopefully) many fewer false positives that are above your confidence threshold.  At this point, you can proceed with whatever workflow you would normally use to work with our API output, e.g. our <a href="https://github.com/agentmorris/MegaDetector/blob/main/megadetector/api/batch_processing/integration/timelapse.md">integration with Timelapse</a>.
 
 
 # Visualizing the stuff you're throwing away
@@ -137,28 +137,28 @@ Ergo, we've recently added a neat new feature (thanks, [Doantam](https://www.lin
 Here's an example where you can see in just a glance that all 99 instances of this detection are exactly the same bush:
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/rde_tiles_all_fps.jpg" width="500"><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a href="https://raw.githubusercontent.com/agentmorris/MegaDetector/main/api/batch_processing/postprocessing/images/rde_tiles_all_fps.jpg">direct image link</a>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a href="https://raw.githubusercontent.com/agentmorris/MegaDetector/main/megadetector/postprocessing/images/rde_tiles_all_fps.jpg">direct image link</a>)
 
 This one is more interesting: the red box is on an animal (the back of an elk), but we can see that the other 123 detections at the same location are all the same bush.  Also note the "bonus elk", with the usual light gray box.  It's not a coincidence that the first one is the only real animal; for exactly this reason, the "primary" image (the one you would see in all the examples earlier on this page) is always the one with the highest-confidence detection at the boxed location.
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/rde_tiles_primary_tp.jpg" width="500"><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a href="https://raw.githubusercontent.com/agentmorris/MegaDetector/main/api/batch_processing/postprocessing/images/rde_tiles_primary_tp.jpg">direct image link</a>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a href="https://raw.githubusercontent.com/agentmorris/MegaDetector/main/megadetector/postprocessing/images/rde_tiles_primary_tp.jpg">direct image link</a>)
 
 You can see right away that this one is an elk that just sat in one spot for long time, and was detected in 146 images:
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/rde_tiles_sleeping_elk.jpg" width="500"><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a href="https://raw.githubusercontent.com/agentmorris/MegaDetector/main/api/batch_processing/postprocessing/images/rde_tiles_sleeping_elk.jpg">direct image link</a>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a href="https://raw.githubusercontent.com/agentmorris/MegaDetector/main/megadetector/postprocessing/images/rde_tiles_sleeping_elk.jpg">direct image link</a>)
 
 This is the pathological case we're looking for... the sample image for this detection has a red box on a rock, so if you weren't seeing the grid, you would treat this as a false detection.  And most of the detections at this location are the same rock, but one image has an elk at exactly that location.  If it makes you feel better, though, it took me <i>forever</i> to find an image that illustrated this case (seriously, forever), and I had to use parameters I probably wouldn't have used in a real RDE pass to force the issue.  But it's a real risk!
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/rde_tiles_hidden_tp.jpg" width="500"><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a href="https://raw.githubusercontent.com/agentmorris/MegaDetector/main/api/batch_processing/postprocessing/images/rde_tiles_hidden_tp.jpg">direct image link</a>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a href="https://raw.githubusercontent.com/agentmorris/MegaDetector/main/megadetector/postprocessing/images/rde_tiles_hidden_tp.jpg">direct image link</a>)
 
 
 This one isn't illustrating anything at all, it just looks cool:
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="../images/rde_tiles_cool_image.jpg" width="500"><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a href="https://raw.githubusercontent.com/agentmorris/MegaDetector/main/api/batch_processing/postprocessing/images/rde_tiles_cool_image.jpg">direct image link</a>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a href="https://raw.githubusercontent.com/agentmorris/MegaDetector/main/megadetector/postprocessing/images/rde_tiles_cool_image.jpg">direct image link</a>)
 
 All of these sample images (for the tiling feature) came from the <a href="https://lila.science/datasets/idaho-camera-traps/">Idaho Camera Traps</a> dataset.
 
@@ -168,7 +168,7 @@ There are a few magic numbers involved in identifying "suspicious" detections.  
 
 You can run:
 
-`python api/batch_processing/postprocessing/find_repeat_detections.py`
+`python megadetector/postprocessing/find_repeat_detections.py`
 
 ...for a full list of options and documentation for each, but some specific options of interest.
 
@@ -186,5 +186,5 @@ These options are a little more for power users (which is saying something, sinc
 
 # Another way to do all of this
 
-Breaking the fourth wall for a minute, and speaking as <a href="http://dmorris.net">Dan</a>, rather than "we".  I have run this process seventy-zillion times, but I've never actually run it with the command line tools I talk about here.  I always run this process as part of the [manage_local_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/data_preparation/manage_local_batch.py) workflow ([notebook version](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/data_preparation/manage_local_batch.ipynb)), where I'm carrying my data set through a bunch of steps, one of which is RDE (repeat detection elimination), so I actually invoke all these scripts from Python.  If you're enough of a MegaDetector power user to be reading this far down this page, I can't recommend this workflow enough: you don't want to be running every step in your workflow at the command line.  You can read a little more about this workflow [here](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#ok-but-is-that-how-the-md-devs-run-the-model), and you can always [email me](mailto:cameratraps@lila.science) with questions.
+Breaking the fourth wall for a minute, and speaking as <a href="http://dmorris.net">Dan</a>, rather than "we".  I have run this process seventy-zillion times, but I've never actually run it with the command line tools I talk about here.  I always run this process as part of the [manage_local_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/manage_local_batch.py) workflow ([notebook version](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/manage_local_batch.ipynb)), where I'm carrying my data set through a bunch of steps, one of which is RDE (repeat detection elimination), so I actually invoke all these scripts from Python.  If you're enough of a MegaDetector power user to be reading this far down this page, I can't recommend this workflow enough: you don't want to be running every step in your workflow at the command line.  You can read a little more about this workflow [here](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#ok-but-is-that-how-the-md-devs-run-the-model), and you can always [email me](mailto:cameratraps@lila.science) with questions.
 

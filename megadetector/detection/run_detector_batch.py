@@ -5,10 +5,9 @@ run_detector_batch.py
 Module to run MegaDetector on lots of images, writing the results
 to a file in the MegaDetector results format.
 
-https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing#megadetector-batch-output-format
+https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#megadetector-batch-output-format
 
-This enables the results to be used in our post-processing pipeline; see
-api/batch_processing/postprocessing/postprocess_batch_results.py .
+This enables the results to be used in our post-processing pipeline; see postprocess_batch_results.py.
 
 This script can save results to checkpoints intermittently, in case disaster
 strikes. To enable this, set --checkpoint_frequency to n > 0, and results 
@@ -289,7 +288,7 @@ def process_images(im_files, detector, confidence_threshold, use_image_queue=Fal
 
     Returns:
         list: list of dicts, in which each dict represents detections on one image,
-        see the 'images' key in https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
+        see the 'images' key in https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#batch-processing-api-output-format
     """
     
     if isinstance(detector, str):
@@ -348,7 +347,7 @@ def process_image(im_file, detector, confidence_threshold, image=None,
     Returns:
         dict: dict representing detections on one image,
         see the 'images' key in 
-        https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
+        https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#batch-processing-api-output-format
     """
     
     if not quiet:
@@ -731,7 +730,7 @@ def write_results_to_file(results, output_file, relative_path_base=None,
     """
     Writes list of detection results to JSON output file. Format matches:
 
-    https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
+    https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#batch-processing-api-output-format
 
     Args:
         results (list):  list of dict, each dict represents detections on one image

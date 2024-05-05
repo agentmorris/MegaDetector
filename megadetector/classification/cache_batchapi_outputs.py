@@ -46,7 +46,7 @@ Detections JSON format:
 
 Batch Detection API Output Format:
 
-github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#api-outputs
+github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#api-outputs
 
 """
 

@@ -17,7 +17,7 @@ If you are a computer-vision-y person looking to run or fine-tune MegaDetector p
 
 ## Reasons you might want to use this package
 
-If you want to programmatically interact with the postprocessing tools from the MegaDetector repo, or programmatically run MegaDetector in a way that produces [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse)-friendly output (i.e., output in the standard [MegaDetector output format](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing#megadetector-batch-output-format)), this package might be for you.
+If you want to programmatically interact with the postprocessing tools from the MegaDetector repo, or programmatically run MegaDetector in a way that produces [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse)-friendly output (i.e., output in the standard [MegaDetector output format](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#megadetector-batch-output-format)), this package might be for you.
 
 Although even if that describes you, you <i>still</i> might be better off cloning the MegaDetector repo.  Pip-installability requires that some dependencies be newer than what was available at the time MDv5 was trained, so results are <i>very slightly</i> different than results produced in the "official" environment.  These differences <i>probably</i> don't matter much, but they have not been formally characterized.
 
@@ -31,7 +31,7 @@ MegaDetector model weights aren't downloaded at pip-install time, but they will 
 
 ## Package reference
 
-See <megadetector.readthedocs.io>.
+See [megadetector.readthedocs.io](https://megadetector.readthedocs.io).
 
 
 ## Examples of things you can do with this package

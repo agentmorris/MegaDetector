@@ -1,7 +1,7 @@
 data\_management.databases package
 ==================================
 
-This package contains tools for working with .json files in `COCO Camera Traps <https://github.com/agentmorris/MegaDetector/blob/main/data_management/README.md#coco-cameratraps-format>`_ format.
+This package contains tools for working with .json files in `COCO Camera Traps <https://github.com/agentmorris/MegaDetector/blob/main/megadetector/data_management/README.md#coco-cameratraps-format>`_ format.
 
 Submodules
 ----------

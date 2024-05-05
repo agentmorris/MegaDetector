@@ -11,7 +11,7 @@ writing the results to another .json file.
 
 File format:
 
-https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing#batch-processing-api-output-format
+https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#batch-processing-api-output-format
 
 Command-line use:
 

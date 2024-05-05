@@ -7,7 +7,7 @@ to create a final filtered output file.
 
 If you want to use this script, we recommend that you read the RDE user's guide:
 
-https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing/postprocessing/repeat_detection_elimination
+https://github.com/agentmorris/MegaDetector/tree/main/megadetector/postprocessing/repeat_detection_elimination
 
 """
 

@@ -241,7 +241,7 @@ def convert_csv_to_json(input_path,output_path=None,overwrite=True):
             
     # Format spec:
     #
-    # https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing
+    # https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing
     
     print('Loading csv results...')
     df = load_api_results_csv(input_path)

@@ -37,10 +37,10 @@ demo/static/results
 .webassets-cache/
 
 # CameraTrapJsonFileProcessingApp
-api/batch_processing/postprocessing/CameraTrapJsonFileProcessingApp/.vs/
-api/batch_processing/postprocessing/CameraTrapJsonFileProcessingApp/bin/
-api/batch_processing/postprocessing/CameraTrapJsonFileProcessingApp/obj/
-api/batch_processing/postprocessing/CameraTrapJsonFileProcessingApp/packages/
+megadetector/postprocessing/CameraTrapJsonFileProcessingApp/.vs/
+megadetector/postprocessing/CameraTrapJsonFileProcessingApp/bin/
+megadetector/postprocessing/CameraTrapJsonFileProcessingApp/obj/
+megadetector/postprocessing/CameraTrapJsonFileProcessingApp/packages/
 
 # TF and PyTorch model files
 *.pb
@@ -57,7 +57,7 @@ debug.log
 
 # Things created when building the sync API
 yolov5
-api/synchronous/api_core/animal_detection_api/detection
+megadetector/api/synchronous/api_core/animal_detection_api/detection
 
-#sphinx things
+# Sphinx things
 docs/build/

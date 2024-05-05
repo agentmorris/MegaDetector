@@ -147,25 +147,40 @@ The core functionality provided is:
 - Training and running [MegaDetector](megadetector.md).
 - Training and running some [species classifiers](classification) that are used in conjunction with MegaDetector.
 - Tools to [convert](data_management) frequently-used camera trap metadata formats into a common format.
-- A [batch processing API](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing) that runs MegaDetector on large image collections, to accelerate population surveys.
-- A [real-time API](https://github.com/agentmorris/MegaDetector/tree/main/api/synchronous) that runs MegaDetector (and some species classifiers) synchronously, primarily to support biosecurity applications.
+- A [batch processing API](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing) that runs MegaDetector on large image collections, to accelerate population surveys.
+- A [real-time API](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/synchronous) that runs MegaDetector (and some species classifiers) synchronously, primarily to support biosecurity applications.
 
 This repo does not host the data used to train MegaDetector, but we work with our collaborators to make data and annotations available whenever possible on [lila.science](http://lila.science).  See the [MegaDetector training data](megadetector.md#can-you-share-the-training-data) section to learn more about the data used to train MegaDetector.
 
 MegaDetector was initially developed by the [Microsoft AI for Earth program](https://www.microsoft.com/en-us/ai/ai-for-earth); this repo was forked from the microsoft/cameratraps repo and is maintained by the original MegaDetector developers (who are no longer at Microsoft, but are absolutely fantastically eternally grateful to Microsoft for the investment and commitment that made MegaDetector happen).
 
 
-### api
+### megadetector/detection
 
-Code for hosting our models as an API, either for synchronous operation (i.e., for real-time inference) or as a batch process (for large biodiversity surveys).  Common operations one might do after running MegaDetector &ndash; e.g. [generating preview pages to summarize your results](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/postprocessing/postprocess_batch_results.py), [separating images into different folders based on AI results](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/postprocessing/separate_detections_into_folders.py), or [converting results to a different format](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/postprocessing/convert_output_format.py) &ndash; also live in this folder, within the [api/batch_processing/postprocessing](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing/postprocessing) folder.
-
-
-### archive
-
-Old code that we didn't <i>quite</i> want to delete, but is basically obsolete.
+Code for running models, especially MegaDetector.
 
 
-### classification
+### megadetector/postprocessing
+
+Code for common operations one might do after running MegaDetector, e.g. [generating preview pages to summarize your results](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/postprocess_batch_results.py), [separating images into different folders based on AI results](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/separate_detections_into_folders.py), or [converting results to a different format](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/convert_output_format.py).
+
+
+### megadetector/utils
+
+Small utility functions for string manipulation, filename manipulation, downloading files from URLs, etc.  Mostly adapted from the [ai4eutils](https://github.com/microsoft/ai4eutils) repo.
+
+
+### megadetector/visualization
+
+Tools for visualizing images with ground truth and/or predicted annotations.
+
+
+### megadetector/api
+
+Code for hosting our models as an API, either for synchronous operation (i.e., for real-time inference) or as a batch process (for large biodiversity surveys).
+
+
+### megadetector/classification
 
 Experimental code for training species classifiers on new data sets, generally trained on MegaDetector crops.  Currently the main pipeline described in this folder relies on a large database of labeled images that is not publicly available; therefore, this folder is not yet set up to facilitate training of your own classifiers.  However, it is useful for <i>users</i> of the classifiers that we train, and contains some useful starting points if you are going to take a "DIY" approach to training classifiers on cropped images.  
 
@@ -174,18 +189,18 @@ All that said, here's another "teaser image" of what you get at the end of train
 <img src="images/warthog_classifications.jpg" width="700"><br/>Image credit University of Minnesota, from the Snapshot Safari program.
 
 
-### data_management
+### megadetector/taxonomy_mapping
+
+Code to facilitate mapping data-set-specific category names (e.g. "lion", which means very different things in Idaho vs. South Africa) to a standard taxonomy.
+
+
+### megadetector/data_management
 
 Code for:
 
-* Converting frequently-used metadata formats to [COCO Camera Traps](https://github.com/agentmorris/MegaDetector/blob/main/data_management/README.md#coco-cameratraps-format) format
-* Converting the output of AI models (especially [YOLOv5](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/postprocessing/convert_output_format.py)) to the format used for AI results throughout this repo
+* Converting frequently-used metadata formats to [COCO Camera Traps](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/data_management/README.md#coco-cameratraps-format) format
+* Converting the output of AI models (especially YOLOv5) to the format used for AI results throughout this repo
 * Creating, visualizing, and  editing COCO Camera Traps .json databases
-
-
-### detection
-
-Code for running models, especially MegaDetector.
 
 
 ### envs
@@ -198,24 +213,14 @@ Environment files... specifically .yml files for mamba/conda environments (these
 Media used in documentation.
 
 
-### utils
+### archive
 
-Small utility functions for string manipulation, filename manipulation, downloading files from URLs, etc.  Mostly adapted from the [ai4eutils](https://github.com/microsoft/ai4eutils) repo.
-
-
-### visualization
-
-Tools for visualizing images with ground truth and/or predicted annotations.
+Old code that we didn't <i>quite</i> want to delete, but is basically obsolete.
 
 
 ### sandbox
 
 Random things that don't fit in any other directory, but aren't quite deprecated.  Mostly postprocessing scripts that were built for a single use case but could potentially be useful in the future.
-
-
-### taxonomy_mapping
-
-Code to facilitate mapping data-set-specific category names (e.g. "lion", which means very different things in Idaho vs. South Africa) to a standard taxonomy.
 
 
 ### test_images

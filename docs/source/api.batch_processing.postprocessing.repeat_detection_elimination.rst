@@ -1,7 +1,7 @@
 api.batch\_processing.postprocessing.repeat\_detection\_elimination package
 ===========================================================================
 
-This package contains tools for running MegaDetector's `repeat detection elimination <https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing/postprocessing/repeat_detection_elimination>`_ (RDE) process, for quickly getting rid of false positives that are frequently detected as objects of interest.  The `RDE page on GitHub <https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing/postprocessing/repeat_detection_elimination>`_ provides documentation about how to run that process.
+This package contains tools for running MegaDetector's `repeat detection elimination <https://github.com/agentmorris/MegaDetector/tree/main/megadetector/postprocessing/repeat_detection_elimination>`_ (RDE) process, for quickly getting rid of false positives that are frequently detected as objects of interest.  The `RDE page on GitHub <https://github.com/agentmorris/MegaDetector/tree/main/megadetector/postprocessing/repeat_detection_elimination>`_ provides documentation about how to run that process.
 
 Submodules
 ----------

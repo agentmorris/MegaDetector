@@ -6,7 +6,7 @@ We have also worked with a number of eMammal users to use MegaDetector in a some
 
 # Downloading the eMammal integration app
 
-Download from <a href="https://lilablobssc.blob.core.windows.net/models/apps/megadetector-eMammal-integration-app.1.00.zip">here</a>.
+Download from <a href="https://lilawildlife.blob.core.windows.net/lila-wildlife/models/apps/megadetector-eMammal-integration-app.1.00.zip">here</a>.
 
 # Downloading the eMammal desktop app
 

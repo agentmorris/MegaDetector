@@ -283,7 +283,7 @@ print('Max samples per location: {}'.format(max_blanks_per_location))
 #%% Download those image files (prep)
 
 container_to_url_base = {
-                         'lilablobssc.blob.core.windows.net':'/',
+                         'lilawildlife.blob.core.windows.net':'/lila-wildlide/',
                          'storage.googleapis.com':'/public-datasets-lila/'
                          }
 
@@ -325,13 +325,14 @@ def download_relative_filename(url, output_base, verbose=False, url_base=None, o
     result['status'] = 'success'
     return result
 
+
 def azure_url_to_gcp_http_url(url,error_if_not_azure_url=True):
     """
     Most URLs point to Azure by default, but most files are available on both Azure and GCP.
     This function converts an Azure URL to the corresponding GCP http:// url.
     """
     
-    lila_azure_storage_account = 'https://lilablobssc.blob.core.windows.net'
+    lila_azure_storage_account = 'https://lilawildlife.blob.core.windows.net'
     gcp_bucket_api_url = 'https://storage.googleapis.com/public-datasets-lila'
     error_if_not_azure_url = False
     

@@ -2,9 +2,9 @@
 
 cct_json_utils.py
 
-Utilities for working with COCO Camera Traps .json databases
+Utilities for working with COCO Camera Traps .json databases:
 
-https://github.com/agentmorris/MegaDetector/blob/master/data_management/README.md#coco-cameratraps-format
+https://github.com/agentmorris/MegaDetector/blob/main/megadetector/data_management/README.md#coco-cameratraps-format
 
 """
 

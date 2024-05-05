@@ -710,7 +710,7 @@ s = 'This data set contains {} sequences of camera trap images, totaling {} imag
     n_sequences,n_images,project_friendly_name,n_categories,
     top_categories[0],top_categories[1],top_categories[2],
     percent_empty,
-    'https://lilablobssc.blob.core.windows.net/snapshot-safari/{}/{}_{}_v{}.species_list.csv'.format(
+    'https://lilawildlife.blob.core.windows.net/lila-wildlife/snapshot-safari/{}/{}_{}_v{}.species_list.csv'.format(
         project_name,project_friendly_name.replace(' ',''),season_name,json_version))
 print(s)
 

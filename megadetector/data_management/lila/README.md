@@ -1,6 +1,6 @@
 ## Overview
 
-This folder contains scripts for preparing data for upload to [LILA](https://lila.science), and working with LILA index files.  Note to self: if you are adding new LILA camera trap datasets, you are probably looking for the [taxonomy_mapping](https://github.com/agentmorris/MegaDetector/tree/main/taxonomy_mapping) folder.
+This folder contains scripts for preparing data for upload to [LILA](https://lila.science), and working with LILA index files.  Note to self: if you are adding new LILA camera trap datasets, you are probably looking for the [taxonomy_mapping](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/taxonomy_mapping) folder.
 
 ## Files in this folder
 

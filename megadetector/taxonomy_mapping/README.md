@@ -2,7 +2,7 @@
 
 This folder contains scripts and some reference files used for mapping data on LILA to the iNaturalist taxonomy.  The results of this process are published [here](https://lila.science/taxonomy-mapping-for-camera-trap-data-sets/).
 
-This folder is only for generating and maintaining this mapping If you want to <i>use</i> data from LILA, don't worry about this folder; instead, see the [lila](https://github.com/agentmorris/MegaDetector/tree/main/data_management/lila) folder.
+This folder is only for generating and maintaining this mapping If you want to <i>use</i> data from LILA, don't worry about this folder; instead, see the [lila](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/data_management/lila) folder.
 
 
 ## To add a new dataset come to the harmonized LILA taxonomy
@@ -14,7 +14,7 @@ This folder is only for generating and maintaining this mapping If you want to <
 
 ### Update the taxonomy mapping
 
-* Use [get_lila_annotation_counts.py](https://github.com/agentmorris/MegaDetector/blob/main/data_management/lila/get_lila_annotation_counts.py) to download the .json files for every LILA dataset, and list all the category names prsent in each .json file.  This will produced a .json-formatted dictionary mapping each dataset to all of the categories it contains (lila_dataset_to_categories.json).
+* Use [get_lila_annotation_counts.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/data_management/lila/get_lila_annotation_counts.py) to download the .json files for every LILA dataset, and list all the category names prsent in each .json file.  This will produced a .json-formatted dictionary mapping each dataset to all of the categories it contains (lila_dataset_to_categories.json).
 
 * Use [map_new_lila_datasets.py](map_new_lila_datasets.py) to create a .csv file mapping each category in the dataset of interest to a scientific name and taxonomy.  This will eventually become a subset of rows in the "primary" .csv file.  This is a semi-automated process; a first pass will automatically look up common names against the iNat and GBIF taxonomies, with some heuristics to avoid simple problems (like making sure that "greater_kudu" matches "greater kudu", or that "black backed jackal" matches "black-backed jackal"), but you will need to fill in a few gaps manually.  Specifically:
 

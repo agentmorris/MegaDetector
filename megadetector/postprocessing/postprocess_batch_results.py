@@ -13,7 +13,7 @@ Given a .json or .csv file containing MD results, do one or more of the followin
 
 Ground truth, if available, must be in COCO Camera Traps format:
     
-https://github.com/agentmorris/MegaDetector/blob/main/data_management/README.md#coco-camera-traps-format
+https://github.com/agentmorris/MegaDetector/blob/main/megadetector/data_management/README.md#coco-camera-traps-format
 
 """
 
@@ -894,7 +894,7 @@ def process_batch_results(options):
 
     Ground truth, if available, must be in COCO Camera Traps format:
         
-    https://github.com/agentmorris/MegaDetector/blob/main/data_management/README.md#coco-camera-traps-format
+    https://github.com/agentmorris/MegaDetector/blob/main/megadetector/data_management/README.md#coco-camera-traps-format
 
     Args:
         options (PostProcessingOptions): everything we need to render a preview/analysis for

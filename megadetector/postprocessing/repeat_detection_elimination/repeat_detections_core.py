@@ -7,7 +7,7 @@ Core utilities shared by find_repeat_detections and remove_repeat_detections.
 Nothing in this file (in fact nothing in this subpackage) will make sense until you read
 the RDE user's guide:
     
-https://github.com/agentmorris/MegaDetector/tree/master/api/batch_processing/postprocessing/repeat_detection_elimination
+https://github.com/agentmorris/MegaDetector/tree/main/megadetector/postprocessing/repeat_detection_elimination
 
 """
 

@@ -10,7 +10,7 @@ This directory contains a set of scripts for:
 
 ## Preparing datasets
 
-The scripts need a data set with image-level class annotations in [COCO Camera Traps](https://github.com/agentmorris/MegaDetector/blob/main/data_management/README.md#coco-cameratraps-format) format. We do not need or use bounding box annotations as the
+The scripts need a data set with image-level class annotations in [COCO Camera Traps](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/data_management/README.md#coco-cameratraps-format) format. We do not need or use bounding box annotations as the
 purpose of the scripts is to locate the animals using a detector. [This library](https://patrickwasp.com/create-your-own-coco-style-dataset/)
 facilitates the creation of COCO-style data sets.
 
