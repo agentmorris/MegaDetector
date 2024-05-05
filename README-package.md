@@ -1,6 +1,6 @@
 # MegaDetector
 
-This package is a pip-installable version of the support/inference code for [MegaDetector](https://github.com/agentmorris/MegaDetector), an object detection model that helps conservation biologists spend less time doing boring things with camera trap images.  Complete documentation for this Python package is available at <megadetector.readthedocs.io>.
+This package is a pip-installable version of the support/inference code for [MegaDetector](https://github.com/agentmorris/MegaDetector), an object detection model that helps conservation biologists spend less time doing boring things with camera trap images.  Complete documentation for this Python package is available at [megadetector.readthedocs.io](https://megadetector.readthedocs.io).
 
 If you aren't looking for the Python package specificaly, and you just want to learn more about what MegaDetector is all about, head over to the [MegaDetector repo](https://github.com/agentmorris/MegaDetector).
 
