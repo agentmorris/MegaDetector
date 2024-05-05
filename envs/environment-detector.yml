@@ -6,6 +6,10 @@ channels:
 
 dependencies:
   - python=3.8.15
+  # Not imported directly, but we force this version to avoid this issue:
+  #
+  # https://github.com/pytorch/pytorch/issues/123097
+  - mkl=2024.0
   - Pillow=9.1.0 
   - tqdm=4.65.0
   - jsonpickle=3.0.0
