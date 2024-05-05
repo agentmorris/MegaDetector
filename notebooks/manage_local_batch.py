@@ -10,7 +10,7 @@ it's a notebook disguised with a .py extension.  It's the Bestest Most Awesome w
 run MegaDetector, but it's also pretty subtle; if you want to play with this, you might
 want to check in with cameratraps@lila.science for some tips.  Otherwise... YMMV.
 
-Some general notes on using this script, which I do in Spyder, though everything will be
+Some general notes on using this script, which I run in Spyder, though everything will be
 the same if you are reading this in Jupyter Notebook (using the .ipynb version of the 
 script):
 
@@ -32,11 +32,11 @@ script):
   called "Generate commands" - which collectively take basically zero seconds.  After you run the
   "Generate commands" cell, you will have a folder that looks something like:
 
-  ~/postprocessing/bibblebop/bibblebop-2023-07-06-mdv5a/
- 
+    ~/postprocessing/bibblebop/bibblebop-2023-07-06-mdv5a/
+
   On Windows, this means:
 
-  ~/postprocessing/bibblebop/bibblebop-2023-07-06-mdv5a/    
+    ~/postprocessing/bibblebop/bibblebop-2023-07-06-mdv5a/
 
   Everything related to this job - scripts, outputs, intermediate stuff - will be in this folder.
   Specifically, after the "Generate commands" cell, you'll have scripts in that folder called something
@@ -45,8 +45,8 @@ script):
   run_chunk_000_gpu_00.sh (or .bat on Windows)
 
   Personally, I like to run that script directly in a command prompt (I just leave Spyder open, though 
-  it's OK if Spyder gets shut down while MD is running).  
-
+  it's OK if Spyder gets shut down while MD is running).
+  
   At this point, once you get the hang of it, you've invested about zero seconds of human time,
   but possibly several days of unattended compute time, depending on the size of your job.
   
@@ -2315,32 +2315,30 @@ This notebook is auto-generated from manage_local_batch.py (a cell-delimited .py
 with open(input_py_file,'r') as f:
     lines = f.readlines()
 
-i_line = 0
-
 header_comment = ''
 
-# Delete a few lines from the top that don't belong in the NB version, e.g. the name 
-# of the .py file
-lines_to_ignore = 7
-expected_first_token = '# This script'
-found_first_token = False
+assert lines[0].strip() == '"""'
+assert lines[1].strip() == ''
+assert lines[2].strip() == 'manage_local_batch.py'
+assert lines[3].strip() == ''
+
+i_line = 4
 
 # Everything before the first cell is the header comment
 while(not lines[i_line].startswith('#%%')):
     
-    if i_line < lines_to_ignore:
+    s_raw = lines[i_line]
+    s_trimmed = s_raw.strip()
+    
+    # Ignore the closing quotes at the end of the header
+    if (s_trimmed == '"""'):
         i_line += 1
         continue
     
-    if not found_first_token:
-        assert lines[i_line].startswith(expected_first_token)
-        found_first_token = True
-        
-    s = lines[i_line].replace('#','').strip()
-    if len(s) == 0:
+    if len(s_trimmed) == 0:
         header_comment += '\n\n'
     else:
-        header_comment += ' ' + s
+        header_comment += ' ' + s_raw
     i_line += 1
 
 nb_header += header_comment

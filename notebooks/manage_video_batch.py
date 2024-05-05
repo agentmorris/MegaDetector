@@ -273,6 +273,11 @@ This notebook is auto-generated from manage_video_batch.py (a cell-delimited .py
 with open(input_py_file,'r') as f:
     lines = f.readlines()
 
+assert lines[0].strip() == '"""'
+assert lines[1].strip() == ''
+assert lines[2].strip() == 'manage_video_batch.py'
+assert lines[3].strip() == ''
+
 nb = nbf.v4.new_notebook()
 nb['cells'].append(nbf.v4.new_markdown_cell(nb_header))
 
