@@ -130,7 +130,13 @@ class ProcessVideoOptions:
     #: File containing non-standard categories, typically only used if you're running a non-MD
     #: detector.
     class_mapping_filename = None
-
+    
+    #: JPEG quality for frame output, from 0-100.  Defaults to the opencv default (typically 95)
+    quality = 90
+    
+    #: Resize frames so they're at most this wide
+    max_width = 1600
+    
 # ...class ProcessVideoOptions
 
 
@@ -182,7 +188,8 @@ def process_video(options):
 
     frame_filenames, Fs = video_to_frames(
         options.input_video_file, frame_output_folder, 
-        every_n_frames=options.frame_sample, overwrite=(not options.reuse_frames_if_available))
+        every_n_frames=options.frame_sample, overwrite=(not options.reuse_frames_if_available),
+        quality=options.quality, max_width=options.max_width)
 
     image_file_names = frame_filenames
     if options.debug_max_frames > 0:
@@ -326,7 +333,9 @@ def process_video_folder(options):
                                recursive=options.recursive, 
                                overwrite=(not options.reuse_frames_if_available),
                                n_threads=options.n_cores,every_n_frames=options.frame_sample,
-                               verbose=options.verbose)
+                               verbose=options.verbose,
+                               quality=options.quality,
+                               max_width=options.max_width)
     
     image_file_names = list(itertools.chain.from_iterable(frame_filenames))
     
@@ -640,7 +649,8 @@ def main():
                         help='enable video output rendering (not rendered by default)')
 
     parser.add_argument('--fourcc', default=default_fourcc,
-                        help='fourcc code to use for video encoding (default {}), only used if render_output_video is True'.format(default_fourcc))
+                        help='fourcc code to use for video encoding (default {}), only used if render_output_video is True'.format(
+                            default_fourcc))
     
     parser.add_argument('--keep_rendered_frames',
                        action='store_true', help='Disable the deletion of rendered (w/boxes) frames')
@@ -673,6 +683,16 @@ def main():
 
     parser.add_argument('--frame_sample', type=int,
                         default=None, help='process every Nth frame (defaults to every frame)')
+
+    parser.add_argument('--quality', type=int,
+                        default=default_options.quality, 
+                        help='JPEG quality for extracted frames (defaults to {})'.format(
+                            default_options.quality))
+
+    parser.add_argument('--max_width', type=int,
+                        default=default_options.max_width, 
+                        help='Resize frames larger than this before writing (defaults to {})'.format(
+                            default_options.max_width))
 
     parser.add_argument('--debug_max_frames', type=int,
                         default=-1, help='trim to N frames for debugging (impacts model execution, '\

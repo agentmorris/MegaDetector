@@ -164,7 +164,8 @@ def _frame_number_to_filename(frame_number):
 
 
 def video_to_frames(input_video_file, output_folder, overwrite=True, 
-                    every_n_frames=None, verbose=False):
+                    every_n_frames=None, verbose=False, quality=None,
+                    max_width=None):
     """
     Renders frames from [input_video_file] to a .jpg in [output_folder].
     
@@ -179,6 +180,9 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
         every_n_frames (int, optional): sample every Nth frame starting from the first frame;
             if this is None or 1, every frame is extracted
         verbose (bool, optional): enable additional debug console output
+        quality (int, optional): JPEG quality for frame output, from 0-100.  Defaults
+            to the opencv default (typically 95).
+        max_width (int, optional): resize frames to be no wider than [max_width]
     
     Returns:
         tuple: length-2 tuple containing (list of frame filenames,frame rate)
@@ -246,6 +250,25 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
             if frame_number % every_n_frames != 0:
                 continue
             
+        # Has resizing been requested?
+        if max_width is not None:
+        
+            # image.shape is h/w/dims            
+            input_shape = image.shape
+            assert input_shape[2] == 3
+            input_width = input_shape[1]
+            
+            # Is resizing necessary?
+            if input_width > max_width:
+                
+                scale = max_width / input_width
+                assert scale <= 1.0
+                
+                # INTER_AREA is recommended for size reduction
+                image = cv2.resize(image, (0,0), fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+        
+        # ...if we need to deal with resizing
+        
         frame_filename = _frame_number_to_filename(frame_number)
         frame_filename = os.path.join(output_folder,frame_filename)
         frame_filenames.append(frame_filename)
@@ -256,9 +279,17 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
         else:
             try:
                 if frame_filename.isascii():
-                    cv2.imwrite(os.path.normpath(frame_filename),image)
+                    if quality is None:
+                        cv2.imwrite(os.path.normpath(frame_filename),image)
+                    else:
+                        cv2.imwrite(os.path.normpath(frame_filename),image,
+                                    [int(cv2.IMWRITE_JPEG_QUALITY), quality])
                 else:
-                    is_success, im_buf_arr = cv2.imencode('.jpg', image)
+                    if quality is None:                        
+                        is_success, im_buf_arr = cv2.imencode('.jpg', image)
+                    else:
+                        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), quality]
+                        is_success, im_buf_arr = cv2.imencode('.jpg', image, encode_param)
                     im_buf_arr.tofile(frame_filename)
                 assert os.path.isfile(frame_filename), \
                     'Output frame {} unavailable'.format(frame_filename)
@@ -277,7 +308,8 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
 # ...def video_to_frames(...)
 
 
-def _video_to_frames_for_folder(relative_fn,input_folder,output_folder_base,every_n_frames,overwrite,verbose):
+def _video_to_frames_for_folder(relative_fn,input_folder,output_folder_base,
+                                every_n_frames,overwrite,verbose,quality,max_width):
     """
     Internal function to call video_to_frames in the context of video_folder_to_frames; 
     makes sure the right output folder exists, then calls video_to_frames.
@@ -295,7 +327,7 @@ def _video_to_frames_for_folder(relative_fn,input_folder,output_folder_base,ever
     # input_video_file = input_fn_absolute; output_folder = output_folder_video
     frame_filenames,fs = video_to_frames(input_fn_absolute,output_folder_video,
                                          overwrite=overwrite,every_n_frames=every_n_frames,
-                                         verbose=verbose)
+                                         verbose=verbose,quality=quality,max_width=max_width)
     
     return frame_filenames,fs
 
@@ -303,7 +335,8 @@ def _video_to_frames_for_folder(relative_fn,input_folder,output_folder_base,ever
 def video_folder_to_frames(input_folder, output_folder_base, 
                            recursive=True, overwrite=True,
                            n_threads=1, every_n_frames=None,
-                           verbose=False, parallelization_uses_threads=True):
+                           verbose=False, parallelization_uses_threads=True,
+                           quality=None, max_width=None):
     """
     For every video file in input_folder, creates a folder within output_folder_base, and 
     renders frame of that video to images in that folder.
@@ -321,7 +354,10 @@ def video_folder_to_frames(input_folder, output_folder_base,
         verbose (bool, optional): enable additional debug console output
         parallelization_uses_threads (bool, optional): whether to use threads (True) or
             processes (False) for parallelization; ignored if n_threads <= 1
-            
+        quality (int, optional): JPEG quality for frame output, from 0-100.  Defaults
+            to the opencv default (typically 95).
+        max_width (int, optional): resize frames to be no wider than [max_width]
+        
     Returns:
         tuple: a length-3 tuple containing:
             - list of lists of frame filenames; the Nth list of frame filenames corresponds to 
@@ -352,7 +388,7 @@ def video_folder_to_frames(input_folder, output_folder_base,
         
             frame_filenames,fs = \
                 _video_to_frames_for_folder(input_fn_relative,input_folder,output_folder_base,
-                                            every_n_frames,overwrite,verbose)
+                                            every_n_frames,overwrite,verbose,quality,max_width)
             frame_filenames_by_video.append(frame_filenames)
             fs_by_video.append(fs)
     else:
@@ -367,7 +403,9 @@ def video_folder_to_frames(input_folder, output_folder_base,
                                              output_folder_base=output_folder_base,
                                              every_n_frames=every_n_frames,
                                              overwrite=overwrite,
-                                             verbose=verbose)
+                                             verbose=verbose,
+                                             quality=quality,
+                                             max_width=max_width)
         results = list(tqdm(pool.imap(
             partial(process_video_with_options),input_files_relative_paths), 
                             total=len(input_files_relative_paths)))

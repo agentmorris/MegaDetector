@@ -20,25 +20,30 @@ output_folder_base = '/datadrive/frames'
 assert os.path.isdir(input_folder)
 os.makedirs(output_folder_base,exist_ok=True)
 
+quality = 90
+max_width = 1600
+every_n_frames = 10
+n_threads = 4
+recursive = True
+overwrite = True
+
 
 #%% Split videos into frames
 
 assert os.path.isdir(input_folder)
 os.makedirs(output_folder_base,exist_ok=True)
 
-recursive = True
-overwrite = True
-n_threads = 4
-every_n_frames = 10
 
 frame_filenames_by_video,fs_by_video,video_filenames = \
     video_utils.video_folder_to_frames(input_folder=input_folder,
-                                                              output_folder_base=output_folder_base,
-                                                              recursive=recursive,
-                                                              overwrite=overwrite,
-                                                              n_threads=n_threads,
-                                                              every_n_frames=every_n_frames,
-                                                              parallelization_uses_threads=False)
+                                       output_folder_base=output_folder_base,
+                                       recursive=recursive,
+                                       overwrite=overwrite,
+                                       n_threads=n_threads,
+                                       every_n_frames=every_n_frames,
+                                       parallelization_uses_threads=False,
+                                       quality=quality,
+                                       max_width=max_width)
 
 
 #%% List frame files, break into folders
@@ -243,6 +248,57 @@ if False:
     input_folder = '/datadrive/tmp/organization/data'
     video_filenames = video_utils.find_videos(input_folder,recursive=True)
 
+
+    #%% Estimate the extracted size of a folder by sampling a few videos
+
+    n_videos_to_sample = 5
+    
+    video_filenames = video_utils.find_videos(input_folder,recursive=True)    
+    import random 
+    random.seed(0)
+    sampled_videos = random.sample(video_filenames,n_videos_to_sample)
+    assert len(sampled_videos) == n_videos_to_sample
+    
+    size_test_frame_folder = os.path.join(output_folder_base,'size-test')
+    if quality is not None:
+        size_test_frame_folder += '_' + str(quality)
+    os.makedirs(size_test_frame_folder,exist_ok=True)
+    
+    total_input_size = 0
+    total_output_size = 0
+    
+    # i_video = 0; video_fn = sampled_videos[i_video]
+    for i_video,video_fn in enumerate(sampled_videos):
+        
+        print('Processing video {}'.format(video_fn))
+        frame_output_folder_this_video = os.path.join(size_test_frame_folder,
+                                                      'video_{}'.format(str(i_video).zfill(4)))
+        os.makedirs(frame_output_folder_this_video,exist_ok=True)
+        video_utils.video_to_frames(video_fn, 
+                                    frame_output_folder_this_video, 
+                                    verbose=True, 
+                                    every_n_frames=every_n_frames,
+                                    quality=quality,
+                                    max_width=max_width)
+        
+        from megadetector.utils.path_utils import _get_file_size,get_file_sizes
+        video_size =_get_file_size(video_fn)[1]
+        assert video_size > 0
+        total_input_size += video_size
+        
+        frame_size = get_file_sizes(frame_output_folder_this_video)
+        frame_size = sum(frame_size.values())
+        assert frame_size > 0
+        total_output_size += frame_size
+        
+    import shutil # noqa
+    # shutil.rmtree(size_test_frame_folder)
+    import humanfriendly
+    print('')
+    print('Video size: {}'.format(humanfriendly.format_size(total_input_size)))
+    print('Frame size: {}'.format(humanfriendly.format_size(total_output_size)))
+    print('Ratio: {}'.format(total_output_size/total_input_size))
+    
 
 #%% End notebook: turn this script into a notebook (how meta!)
 
