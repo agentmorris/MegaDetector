@@ -6,6 +6,7 @@ channels:
 
 dependencies:
   - python=3.8.15
+
   # Not imported directly, but we force this version to avoid this issue:
   #
   # https://github.com/pytorch/pytorch/issues/123097
@@ -14,6 +15,7 @@ dependencies:
   - tqdm=4.65.0
   - jsonpickle=3.0.0
   - humanfriendly=10.0
+  
   # Using yolov5's val.py (which is still experimental) for MDv5.0 requires a version
   # of YOLOv5 that uses np.int, which was removed as of numpy 1.24.0
   - numpy=1.23.5
@@ -29,6 +31,7 @@ dependencies:
   
   # For running MegaDetector v5
   - pandas=2.0.1
+  
   # Not used directly, but used by YOLOv5 imports
   - seaborn=0.12.2
   - PyYAML=6.0

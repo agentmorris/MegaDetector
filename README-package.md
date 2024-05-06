@@ -1,8 +1,8 @@
 # MegaDetector
 
-This package is a pip-installable version of the support/inference code for [MegaDetector](https://github.com/agentmorris/MegaDetector), an object detection model that helps conservation biologists spend less time doing boring things with camera trap images.  Complete documentation for this Python package is available at [megadetector.readthedocs.io](https://megadetector.readthedocs.io).
+This package is a pip-installable version of the support/inference code for [MegaDetector](https://github.com/agentmorris/MegaDetector/?tab=readme-ov-file#megadetector), an object detection model that helps conservation biologists spend less time doing boring things with camera trap images.  Complete documentation for this Python package is available at [megadetector.readthedocs.io](https://megadetector.readthedocs.io).
 
-If you aren't looking for the Python package specificaly, and you just want to learn more about what MegaDetector is all about, head over to the [MegaDetector repo](https://github.com/agentmorris/MegaDetector).
+If you aren't looking for the Python package specificaly, and you just want to learn more about what MegaDetector is all about, head over to the [MegaDetector repo](https://github.com/agentmorris/MegaDetector/?tab=readme-ov-file#megadetector).
 
 
 ## Reasons you probably aren't looking for this package
@@ -17,7 +17,7 @@ If you are a computer-vision-y person looking to run or fine-tune MegaDetector p
 
 ## Reasons you might want to use this package
 
-If you want to programmatically interact with the postprocessing tools from the MegaDetector repo, or programmatically run MegaDetector in a way that produces [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse)-friendly output (i.e., output in the standard [MegaDetector output format](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing#megadetector-batch-output-format)), this package might be for you.
+If you want to programmatically interact with the postprocessing tools from the MegaDetector repo, or programmatically run MegaDetector in a way that produces [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse)-friendly output (i.e., output in the standard [MegaDetector output format](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#megadetector-batch-output-format)), this package might be for you.
 
 Although even if that describes you, you <i>still</i> might be better off cloning the MegaDetector repo.  Pip-installability requires that some dependencies be newer than what was available at the time MDv5 was trained, so results are <i>very slightly</i> different than results produced in the "official" environment.  These differences <i>probably</i> don't matter much, but they have not been formally characterized.
 
@@ -31,7 +31,7 @@ MegaDetector model weights aren't downloaded at pip-install time, but they will 
 
 ## Package reference
 
-See <megadetector.readthedocs.io>.
+See [megadetector.readthedocs.io](https://megadetector.readthedocs.io).
 
 
 ## Examples of things you can do with this package
@@ -39,9 +39,9 @@ See <megadetector.readthedocs.io>.
 ### Run MegaDetector on one image and count the number of detections
 
 ```
-from md_utils import url_utils
-from md_visualization import visualization_utils as vis_utils
-from detection import run_detector
+from megadetector.utils import url_utils
+from megadetector.visualization import visualization_utils as vis_utils
+from megadetector.detection import run_detector
 
 # This is the image at the bottom of this page, it has one animal in it
 image_url = 'https://github.com/agentmorris/MegaDetector/raw/main/images/orinoquia-thumb-web.jpg'
@@ -61,8 +61,9 @@ print('Found {} detections above threshold'.format(len(detections_above_threshol
 ### Run MegaDetector on a folder of images
 
 ```
-from detection.run_detector_batch import load_and_run_detector_batch,write_results_to_file
-from md_utils import path_utils
+from megadetector.detection.run_detector_batch import \
+    load_and_run_detector_batch,write_results_to_file
+from megadetector.utils import path_utils
 import os
 
 # Pick a folder to run MD on recursively, and an output file

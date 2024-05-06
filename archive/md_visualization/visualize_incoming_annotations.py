@@ -20,11 +20,11 @@ from random import sample
 
 from tqdm import tqdm
 
-from md_utils.write_html_image_list import write_html_image_list
+from utils.write_html_image_list import write_html_image_list
 from data_management.megadb.megadb_utils import MegadbUtils
 from data_management.annotations.add_bounding_boxes_to_megadb import file_name_to_parts
 from data_management.cct_json_utils import IndexedJsonDb
-from md_visualization import visualization_utils as vis_utils
+from visualization import visualization_utils as vis_utils
 
 
 def get_image_rel_path(dataset_seq_images, dataset_name, seq_id, frame_num):

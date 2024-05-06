@@ -10,14 +10,14 @@ Submodules
 detection.run\_detector\_batch module
 -------------------------------------
 
-.. automodule:: detection.run_detector_batch
+.. automodule:: megadetector.detection.run_detector_batch
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: detection.run_detector_batch
+   :module: megadetector.detection.run_detector_batch
    :func: main
    :hook:
    :prog: run_detector_batch
@@ -26,14 +26,14 @@ detection.run\_detector\_batch module
 detection.run\_detector module
 ------------------------------
 
-.. automodule:: detection.run_detector
+.. automodule:: megadetector.detection.run_detector
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: detection.run_detector
+   :module: megadetector.detection.run_detector
    :func: main
    :hook:
    :prog: run_detector
@@ -42,7 +42,7 @@ detection.run\_detector module
 detection.pytorch\_detector module
 ----------------------------------
 
-.. automodule:: detection.pytorch_detector
+.. automodule:: megadetector.detection.pytorch_detector
    :members:
    :undoc-members:
    :show-inheritance:
@@ -50,7 +50,7 @@ detection.pytorch\_detector module
 detection.tf\_detector module
 -----------------------------
 
-.. automodule:: detection.tf_detector
+.. automodule:: megadetector.detection.tf_detector
    :members:
    :undoc-members:
    :show-inheritance:
@@ -58,14 +58,14 @@ detection.tf\_detector module
 detection.process\_video module
 -------------------------------
 
-.. automodule:: detection.process_video
+.. automodule:: megadetector.detection.process_video
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: detection.process_video
+   :module: megadetector.detection.process_video
    :func: main
    :hook:
    :prog: process_video
@@ -74,14 +74,14 @@ detection.process\_video module
 detection.run\_inference\_with\_yolov5\_val module
 --------------------------------------------------
 
-.. automodule:: detection.run_inference_with_yolov5_val
+.. automodule:: megadetector.detection.run_inference_with_yolov5_val
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: detection.run_inference_with_yolov5_val
+   :module: megadetector.detection.run_inference_with_yolov5_val
    :func: main
    :hook:
    :prog: run_inference_with_yolov5_val
@@ -90,14 +90,14 @@ detection.run\_inference\_with\_yolov5\_val module
 detection.run\_tiled\_inference module
 --------------------------------------
 
-.. automodule:: detection.run_tiled_inference
+.. automodule:: megadetector.detection.run_tiled_inference
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: detection.run_tiled_inference
+   :module: megadetector.detection.run_tiled_inference
    :func: main
    :hook:
    :prog: run_tiled_inference
@@ -106,7 +106,7 @@ detection.run\_tiled\_inference module
 detection.video\_utils module
 -----------------------------
 
-.. automodule:: detection.video_utils
+.. automodule:: megadetector.detection.video_utils
    :members:
    :undoc-members:
    :show-inheritance:

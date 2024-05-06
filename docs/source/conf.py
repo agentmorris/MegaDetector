@@ -7,6 +7,9 @@ author = 'Your friendly neighborhood MegaDetector team'
 
 sys.path.insert(0, os.path.abspath("../.."))
 
+import builtins
+builtins.__sphinx_build__ = True
+
 extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",

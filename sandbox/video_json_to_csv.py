@@ -11,7 +11,7 @@
 #%% Imports and constants
 
 import json
-from detection import video_utils
+from megadetector.detection import video_utils
 
 # Only necessary if you want to extract the sample rate from the video
 video_file = r"G:\temp\wpz\1_fps_20211216_101100.mp4"
