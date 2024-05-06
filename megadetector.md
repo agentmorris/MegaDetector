@@ -258,13 +258,6 @@ mamba activate cameratraps-detector
 set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
 ```
 
-If you want to use MDv4 (which you probably don't, unless you have a really good reason to), there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
-
-```batch
-mamba activate cameratraps-detector
-pip install "tensorflow<=2.10"
-```
-
 <a name="windows-new-shell"></a>
 Your environment is set up now!  In the future, when you open your Mambaforge prompt, you only need to run:
 
