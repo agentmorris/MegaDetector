@@ -50,7 +50,7 @@ Run MegaDetector on a folder of images
 ::
 
   from megadetector.detection.run_detector_batch import \
-    load_and_run_detector_batch,write_results_to_file
+    load_and_run_detector_batch, write_results_to_file
   from megadetector.utils import path_utils
   import os
 
