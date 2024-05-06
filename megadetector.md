@@ -6,7 +6,7 @@
 2. [Our ask to MegaDetector users](#our-ask-to-megadetector-users)
 3. [Who is using MegaDetector?](#who-is-using-megadetector)
 4. [How fast is MegaDetector, and can I run it on my giant/small computer?](#how-fast-is-megadetector-and-can-i-run-it-on-my-giantsmall-computer)
-5. [Downloading the model](#downloading-the-model)
+5. [Downloading the model (optional)](#downloading-the-model-optional)
 6. [Using the model](#using-the-model)
 7. [OK, but is that how the MD devs run the model?](#ok-but-is-that-how-the-md-devs-run-the-model)
 8. [Is there a GUI?](#is-there-a-gui)
@@ -105,9 +105,9 @@ Speed can vary widely based on image size, hard drive speed, etc., and in these 
 See <a href="https://github.com/agentmorris/MegaDetector/#who-is-using-megadetector">this list</a> on the repo's main page.
 
 
-## Downloading the model
+## Downloading the model (optional)
 
-In previous versions of these instructions, you had to download MegaDetector to your PC before running it.  The scripts we use to run MegaDetector can now automatically download MegaDetector, so <b>this whole download step is optional now</b>, and if you're going to follow the instructions on this page, you can probably ignore this section and skip to the "[Using the model](#using-the-model)" section.
+In previous versions of these instructions, you had to download MegaDetector to your PC before running it.  The scripts we use to run MegaDetector can now automatically download MegaDetector, so <b>this whole download step is optional now</b>, and if you're going to follow the instructions on this page, <b>you can probably ignore this section and skip to the "[Using the model](#using-the-model)" section</a>.
 
 That said, in this section, we provide download links for lots of MegaDetector versions.  Unless you have a very esoteric scenario, you want MegaDetector v5, and you can ignore all the other MegaDetector versions.  The rest of this section, after the MDv5 download links, is more like a mini-MegaDetector-museum than part of the User Guide.
 
@@ -233,7 +233,7 @@ If you have a deep-learning-friendly GPU, you will also need to have a recent [N
 
 ### 2. Download the MegaDetector model(s) (optional)
 
-This step is optional; when you run MegaDetector, you can tell it to automatically download a MegaDetector model file, in which case it will get put in a temporary directory on your computer.
+<b>This step is optional</b>; when you run MegaDetector, you can tell it to automatically download a MegaDetector model file, in which case it will get put in a temporary directory on your computer.
 
 If you want to save MegaDetector to a particular folder, download one or more MegaDetector model files ([MDv5a](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt), [MDv5b](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.0.pt), and/or [MDv4](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb)) to your computer.  These instructions will assume that you have downloaded MegaDetector to a folder called "c:\megadetector" (on Windows) or to a folder called "megadetector" within your home folder (on Linux/Mac), but if you put it somewhere else, that's fine, just be sure to change it in the steps below that point to a model file.  If you don't care where it goes, and you don't know yet which version you want to use, you'll have an easier time working through these instructions if you download [MDv5a](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt) to those folders, i.e. if the model file lives at "c:\megadetector\md_v5a.0.0.pt" (on Windows) or "/Users/your-user-name/megadetector/md_v5a.0.0pt" (on Mac).
 
@@ -364,7 +364,7 @@ set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
 Then you can run the script like this:
 
 ```batch
-python detection\run_detector.py MDV5A --image_file "some_image_file.jpg" --threshold 0.1
+python megadetector\detection\run_detector.py MDV5A --image_file "some_image_file.jpg" --threshold 0.1
 ```
 
 "MDV5A" tells this script to automatically download MegaDetector v5a; if you already downloaded it, you can replace this with the full path to your MegaDetector model file (e.g. "c:\megadetector\md_v5a.0.0.pt").
@@ -389,7 +389,7 @@ If you have an Nvidia GPU and you see "GPU available: False", your GPU environme
 You can see all the options for this script by running:
 
 ```batch
-python detection\run_detector.py
+python megadetector\detection\run_detector.py
 ```
 
 To use this script on Linux/Mac, when you open a new Mambaforge prompt, don't forget to do this:
