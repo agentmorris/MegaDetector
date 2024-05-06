@@ -27,6 +27,9 @@ from detection.video_utils import frame_results_to_video_results
 from detection.video_utils import video_folder_to_frames
 from uuid import uuid1
 
+from functools import partial
+from multiprocessing import Pool
+
 from detection.video_utils import default_fourcc
 
 
@@ -113,15 +116,6 @@ def process_video(options):
     user_tempdir = os.path.join(tempdir, user_subdirectory)
     os.makedirs(user_tempdir, exist_ok=True)
 
-    # This is a lazy fix to an issue... if multiple users run this script, the
-    # "process_camera_trap_video" folder is owned by the first person who creates it, and others
-    # can't write to it.  I could create uniquely-named folders, but I philosophically prefer
-    # to put all the individual UUID-named folders within a larger folder, so as to be a 
-    # good tempdir citizen.  So, the lazy fix is to make this world-writable.
-    # try:
-    #     os.chmod(tempdir,0o777)
-    # except Exception:
-    #     pass
     
     # Initialize flag to track if frame_ouput_folder was created by the script
     frame_output_folder_created = False
@@ -361,79 +355,83 @@ def process_video_folder(options):
             output_folder_is_input_folder = True
             output_video_folder = options.input_video_file
                                 
-        # For each video
-        #
-        # TODO: parallelize this loop
-        #
-        # i_video=0; input_video_file_abs = video_filenames[i_video]
-        for i_video,input_video_file_abs in enumerate(video_filenames):
-            
-            video_fs = Fs[i_video]
-            
-            if options.frame_sample is None:                
-                rendering_fs = video_fs
-            else:
-                rendering_fs = video_fs / options.frame_sample
-            
-            input_video_file_relative = os.path.relpath(input_video_file_abs,options.input_video_file)
-            video_frame_output_folder = os.path.join(frame_rendering_output_dir,input_video_file_relative)
-            assert os.path.isdir(video_frame_output_folder), \
-                'Could not find frame folder for video {}'.format(input_video_file_relative)
-            
-            # Find the corresponding rendered frame folder
-            video_frame_files = [fn for fn in detected_frame_files if \
+       
+        
+def process_single_video(video_file, options, frame_rendering_output_dir, detected_frame_files, output_folder_is_input_folder, output_video_folder, Fs, frame_sample):
+    video_fs = Fs[video_filenames.index(video_file)]
+    if frame_sample is None:
+        rendering_fs = video_fs
+    else:
+        rendering_fs = video_fs / frame_sample
+        
+    input_video_file_relative = os.path.relpath(video_file, options.input_video_file)
+    video_frame_output_folder = os.path.join(frame_rendering_output_dir, input_video_file_relative)
+    assert os.path.isdir(video_frame_output_folder), \
+        'Could not find frame folder for video {}'.format(input_video_file_relative)
+        
+    # Find the corresponding rendered frame folder
+    video_frame_files = [fn for fn in detected_frame_files if \
                                  fn.startswith(video_frame_output_folder)]
-            assert len(video_frame_files) > 0, 'Could not find rendered frames for video {}'.format(
+    assert len(video_frame_files) > 0, 'Could not find rendered frames for video {}'.format(
                 input_video_file_relative)
             
-            from md_utils.path_utils import insert_before_extension
+    from md_utils.path_utils import insert_before_extension
             
-            # Select the output filename for the rendered video
-            if output_folder_is_input_folder:
-                video_output_file = insert_before_extension(input_video_file_abs,'annotated','_')
-            else:
-                video_output_file = os.path.join(output_video_folder,input_video_file_relative)
+    # Select the output filename for the rendered video
+    if output_folder_is_input_folder:
+        video_output_file = insert_before_extension(input_video_file_abs,'annotated','_')
+    else:
+        video_output_file = os.path.join(output_video_folder,input_video_file_relative)
             
-            os.makedirs(os.path.dirname(video_output_file),exist_ok=True)
+    os.makedirs(os.path.dirname(video_output_file),exist_ok=True)
             
-            # Create the output video            
-            print('Rendering detections for video {} to {} at {} fps (original video {} fps)'.format(
-                input_video_file_relative,video_output_file,rendering_fs,video_fs))
-            frames_to_video(video_frame_files, rendering_fs, video_output_file, codec_spec=options.fourcc)
-                
-        # ...for each video
+    # Create the output video            
+    print('Rendering detections for video {} to {} at {} fps (original video {} fps)'.format(
+        input_video_file_relative,video_output_file,rendering_fs,video_fs))
+    frames_to_video(video_frame_files, rendering_fs, video_output_file, codec_spec=options.fourcc)
+
+# Parallelize this loop
+pool = Pool(processes = options.n_cores)
+pool.map(partial(process_single_video, options=options, frame_rendering_output_dir=frame_rendering_output_dir,
+                 detected_frame_files=detected_frame_files, output_folder_is_input_folder=output_folder_is_input_folder,
+                 output_video_folder=output_video_folder, Fs=Fs, frame_sample=options.frame_sample), video_filenames)
+
+pool.close()
+pool.join()        
+   
+# ...for each video
         
-        # Possibly clean up rendered frames
-        if not options.keep_rendered_frames:
-            try:
-                if options.force_rendered_frame_folder_deletion or (frame_rendering_folder_created and frame_rendering_output_dir != video_output_file):
+# Possibly clean up rendered frames
+if not options.keep_rendered_frames:
+    try:
+        if options.force_rendered_frame_folder_deletion or (frame_rendering_folder_created and frame_rendering_output_dir != video_output_file):
                     shutil.rmtree(frame_rendering_output_dir)
-                else:
-                    for rendered_frame_fn in detected_frame_files:
-                        os.remove(rendered_frame_fn)
-            except Exception as e:
-                print('Warning: error deleting rendered frames from folder {}:\n{}'.format(
-                    frame_rendering_output_dir,str(e)))
-                pass
+        else:
+            for rendered_frame_fn in detected_frame_files:
+                os.remove(rendered_frame_fn)
+    except Exception as e:
+        print('Warning: error deleting rendered frames from folder {}:\n{}'.format(
+            frame_rendering_output_dir,str(e)))
+        pass
         
     # ...if we're rendering video
     
     
     ## (Optionally) delete the extracted frames
     
-    if not options.keep_extracted_frames:
-        try:
-            print('Deleting frame cache')
-            if options.force_extracted_frame_folder_deletion:
+if not options.keep_extracted_frames:
+    try:
+        print('Deleting frame cache')
+        if options.force_extracted_frame_folder_deletion:
                 print('Recursively deleting frame output folder {}'.format(frame_output_folder))
                 shutil.rmtree(frame_output_folder)
-            else:
-                for frame_fn in image_file_names:
-                    os.remove(frame_fn)
-        except Exception as e:
-            print('Warning: error deleting frames from folder {}:\n{}'.format(
-                frame_output_folder,str(e)))
-            pass
+        else:
+            for frame_fn in image_file_names:
+                os.remove(frame_fn)
+    except Exception as e:
+        print('Warning: error deleting frames from folder {}:\n{}'.format(
+            frame_output_folder,str(e)))
+        pass
         
     
 # ...process_video_folder()
