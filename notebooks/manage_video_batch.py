@@ -25,11 +25,9 @@ max_width = 1600
 every_n_frames = 10
 recursive = True
 overwrite = True
-
-# I generally find that parallelization of this process works better with threads on Windows,
-# processes on Linux
 parallelization_uses_threads = True
-n_workers = 4
+n_workers = 8
+
 
 #%% Split videos into frames
 
