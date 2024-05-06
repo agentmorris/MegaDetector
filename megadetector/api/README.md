@@ -15,6 +15,6 @@ This API runs MegaDetector on lots of images (typically millions) and distribute
 
 ### Gratuitous camera trap picture
 
-![cat in camera trap](../images/orinoquia-thumb-web.jpg)<br/>Image credit University of Minnesota, from the [Orinoquía Camera Traps](http://lila.science/datasets/orinoquia-camera-traps/) data set.
+![cat in camera trap](../../images/orinoquia-thumb-web.jpg)<br/>Image credit University of Minnesota, from the [Orinoquía Camera Traps](http://lila.science/datasets/orinoquia-camera-traps/) data set.
 
 

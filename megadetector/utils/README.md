@@ -4,4 +4,4 @@ This folder contains miscellaneous utility modules for things like URL manipulat
 
 # Gratuitous camera trap picture
 
-![fox in camera trap](../images/channel-islands-thumb.jpg)<br/>Image credit Nature Conservancy, from the [Channel Islands Camera Traps](https://lila.science/datasets/channel-islands-camera-traps/) data set.
+![fox in camera trap](../../images/channel-islands-thumb.jpg)<br/>Image credit Nature Conservancy, from the [Channel Islands Camera Traps](https://lila.science/datasets/channel-islands-camera-traps/) data set.

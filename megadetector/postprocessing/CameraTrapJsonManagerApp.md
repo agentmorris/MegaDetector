@@ -5,7 +5,7 @@ The MegaDetector Output Manager is a Windows desktop application for making Mega
 - Retrieves all result entries where the image file path matches a specified query string. It optionally replaces that query string with a replacement token. If the query string is blank, it can be used to prepend a token to all image file paths. A "result entry" corresponds to one image, containing all detections on that image.
 
 - Splits the output JSON file into smaller files each containing only results corresponding to a subfolder of images. 
-    - This could be useful for distributing the subsequent manual labeling and verification effort, or loading only the relevant results into a [Timelapse](../integration/timelapse.md) project.
+    - This could be useful for distributing the subsequent manual labeling and verification effort, or loading only the relevant results into a [Timelapse](../../api/batch_processing/integration/timelapse.md) project.
     - All images in the subfolder `blah\foo\bar` will end up in a JSON file called `blah_foo_bar.json`.
 
 The app is functionally the same as the Python script [subset_json_detector_output.py](./subset_json_detector_output.py).

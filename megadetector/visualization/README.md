@@ -11,4 +11,4 @@ This directory contains utilities for visualizing ground truth annotations and M
 
 # Gratuitous camera trap picture
 
-![mountain lion in camera trap](../images/idaho-camera-traps.jpg)<br/>Image credit Idaho Department of Fish and Game, from the [Idaho Camera Traps](https://lila.science/datasets/idaho-camera-traps/) data set.
+![mountain lion in camera trap](../../images/idaho-camera-traps.jpg)<br/>Image credit Idaho Department of Fish and Game, from the [Idaho Camera Traps](https://lila.science/datasets/idaho-camera-traps/) data set.

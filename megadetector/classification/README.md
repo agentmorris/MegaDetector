@@ -1,7 +1,7 @@
 # Table of Contents
 
 [Overview](#overview)  
-[Training classifiers](#training-classifiers-that-play-nicely-with-MegaDetector)  
+[Training classifiers](#training-classifiers-that-play-nicely-with-megadetector)  
 [Running MegaClassifier](#running-megaclassifier)  
 &nbsp;&nbsp;&nbsp;&nbsp;[MegaClassifier overview](#megaclassifier-overview-and-caveats)  
 &nbsp;&nbsp;&nbsp;&nbsp;[MegaClassifier instructions](#megaclassifier-instructions)  

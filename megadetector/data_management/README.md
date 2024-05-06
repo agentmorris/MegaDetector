@@ -141,5 +141,5 @@ Fields listed as "optional" are intended to standardize commonly-used parameters
 
 # Gratuitous animal picture
 
-![pheasant in camera trap](../images/pheasant_web_detections.jpg)<br/>Image credit Saola Working Group, from the [SWG Camera Traps](https://lila.science/datasets/swg-camera-traps/) data set.
+![pheasant in camera trap](../../images/pheasant_web_detections.jpg)<br/>Image credit Saola Working Group, from the [SWG Camera Traps](https://lila.science/datasets/swg-camera-traps/) data set.
 
