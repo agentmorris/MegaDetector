@@ -17,7 +17,7 @@ Submodules
 data\_management.lila.lila\_common module
 -----------------------------------------
 
-.. automodule:: data_management.lila.lila_common
+.. automodule:: megadetector.data_management.lila.lila_common
    :members:
    :undoc-members:
    :show-inheritance:

@@ -451,7 +451,7 @@ def run_python_tests(options):
         PostProcessingOptions,process_batch_results
     postprocessing_options = PostProcessingOptions()
     
-    postprocessing_options.api_output_file = inference_output_file
+    postprocessing_options.md_results_file = inference_output_file
     postprocessing_options.output_dir = os.path.join(options.scratch_dir,'postprocessing_output')
     postprocessing_options.image_base_dir = image_folder
     

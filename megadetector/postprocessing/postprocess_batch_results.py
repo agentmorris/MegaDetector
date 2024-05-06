@@ -949,7 +949,7 @@ def process_batch_results(options):
     # If the caller hasn't supplied results, load them
     if options.api_detection_results is None:
         detections_df, other_fields = load_api_results(
-            options.api_output_file, force_forward_slashes=True,
+            options.md_results_file, force_forward_slashes=True,
             filename_replacements=options.api_output_filename_replacements)
         ppresults.api_detection_results = detections_df
         ppresults.api_other_fields = other_fields        
@@ -1024,11 +1024,11 @@ def process_batch_results(options):
         job_name_string = options.job_name_string
     else:
         # This is rare; it only happens during debugging when the caller
-        # is supplying already-loaded API results.
-        if options.api_output_file is None:
+        # is supplying already-loaded MD results.
+        if options.md_results_file is None:
             job_name_string = 'unknown'
         else:
-            job_name_string = os.path.basename(options.api_output_file)
+            job_name_string = os.path.basename(options.md_results_file)
     
     if options.model_version_string is not None:
         model_version_string = options.model_version_string
@@ -1798,7 +1798,7 @@ if False:
     options = PostProcessingOptions()
     options.image_base_dir = base_dir
     options.output_dir = os.path.join(base_dir, 'preview')
-    options.api_output_file = os.path.join(base_dir, 'results.json')
+    options.md_results_file = os.path.join(base_dir, 'results.json')
     options.confidence_threshold = {'person':0.5,'animal':0.5,'vehicle':0.01}
     options.include_almost_detections = True
     options.almost_detection_confidence_threshold = 0.001
@@ -1815,8 +1815,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'api_output_file',
-        help='path to .json file produced by the batch inference API')
+        'md_results_file',
+        help='path to .json file containing MegaDetector results')
     parser.add_argument(
         'output_dir',
         help='base directory for output')

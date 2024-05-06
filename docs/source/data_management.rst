@@ -27,7 +27,7 @@ Submodules
 data\_management.cct\_json\_utils module
 ----------------------------------------
 
-.. automodule:: data_management.cct_json_utils
+.. automodule:: megadetector.data_management.cct_json_utils
    :members:
    :undoc-members:
    :show-inheritance:
@@ -35,7 +35,7 @@ data\_management.cct\_json\_utils module
 data\_management.cct\_to\_md module
 -----------------------------------
 
-.. automodule:: data_management.cct_to_md
+.. automodule:: megadetector.data_management.cct_to_md
    :members:
    :undoc-members:
    :show-inheritance:
@@ -43,7 +43,7 @@ data\_management.cct\_to\_md module
 data\_management.cct\_to\_wi module
 -----------------------------------
 
-.. automodule:: data_management.cct_to_wi
+.. automodule:: megadetector.data_management.cct_to_wi
    :members:
    :undoc-members:
    :show-inheritance:
@@ -51,14 +51,14 @@ data\_management.cct\_to\_wi module
 data\_management.coco\_to\_labelme module
 -----------------------------------------
 
-.. automodule:: data_management.coco_to_labelme
+.. automodule:: megadetector.data_management.coco_to_labelme
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: data_management.coco_to_labelme
+   :module: megadetector.data_management.coco_to_labelme
    :func: main
    :hook:
    :prog: coco_to_labelme
@@ -67,14 +67,14 @@ data\_management.coco\_to\_labelme module
 data\_management.coco\_to\_yolo module
 --------------------------------------
 
-.. automodule:: data_management.coco_to_yolo
+.. automodule:: megadetector.data_management.coco_to_yolo
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: data_management.coco_to_yolo
+   :module: megadetector.data_management.coco_to_yolo
    :func: main
    :hook:
    :prog: coco_to_yolo
@@ -83,7 +83,7 @@ data\_management.coco\_to\_yolo module
 data\_management.generate\_crops\_from\_cct module
 --------------------------------------------------
 
-.. automodule:: data_management.generate_crops_from_cct
+.. automodule:: megadetector.data_management.generate_crops_from_cct
    :members:
    :undoc-members:
    :show-inheritance:
@@ -91,14 +91,14 @@ data\_management.generate\_crops\_from\_cct module
 data\_management.get\_image\_sizes module
 -----------------------------------------
 
-.. automodule:: data_management.get_image_sizes
+.. automodule:: megadetector.data_management.get_image_sizes
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: data_management.get_image_sizes
+   :module: megadetector.data_management.get_image_sizes
    :func: main
    :hook:
    :prog: get_image_sizes
@@ -107,14 +107,14 @@ data\_management.get\_image\_sizes module
 data\_management.labelme\_to\_coco module
 -----------------------------------------
 
-.. automodule:: data_management.labelme_to_coco
+.. automodule:: megadetector.data_management.labelme_to_coco
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: data_management.labelme_to_coco
+   :module: megadetector.data_management.labelme_to_coco
    :func: main
    :hook:
    :prog: labelme_to_coco
@@ -123,7 +123,7 @@ data\_management.labelme\_to\_coco module
 data\_management.labelme\_to\_yolo module
 -----------------------------------------
 
-.. automodule:: data_management.labelme_to_yolo
+.. automodule:: megadetector.data_management.labelme_to_yolo
    :members:
    :undoc-members:
    :show-inheritance:
@@ -131,7 +131,7 @@ data\_management.labelme\_to\_yolo module
 data\_management.ocr\_tools module
 ----------------------------------
 
-.. automodule:: data_management.ocr_tools
+.. automodule:: megadetector.data_management.ocr_tools
    :members:
    :undoc-members:
    :show-inheritance:
@@ -139,14 +139,14 @@ data\_management.ocr\_tools module
 data\_management.read\_exif module
 ----------------------------------
 
-.. automodule:: data_management.read_exif
+.. automodule:: megadetector.data_management.read_exif
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: data_management.read_exif
+   :module: megadetector.data_management.read_exif
    :func: main
    :hook:
    :prog: read_exif
@@ -156,7 +156,7 @@ data\_management.read\_exif module
 data\_management.resize\_coco\_dataset module
 ---------------------------------------------
 
-.. automodule:: data_management.resize_coco_dataset
+.. automodule:: megadetector.data_management.resize_coco_dataset
    :members:
    :undoc-members:
    :show-inheritance:
@@ -164,7 +164,7 @@ data\_management.resize\_coco\_dataset module
 data\_management.wi\_download\_csv\_to\_coco module
 ---------------------------------------------------
 
-.. automodule:: data_management.wi_download_csv_to_coco
+.. automodule:: megadetector.data_management.wi_download_csv_to_coco
    :members:
    :undoc-members:
    :show-inheritance:
@@ -172,7 +172,7 @@ data\_management.wi\_download\_csv\_to\_coco module
 data\_management.yolo\_output\_to\_md\_output module
 ----------------------------------------------------
 
-.. automodule:: data_management.yolo_output_to_md_output
+.. automodule:: megadetector.data_management.yolo_output_to_md_output
    :members:
    :undoc-members:
    :show-inheritance:
@@ -180,7 +180,7 @@ data\_management.yolo\_output\_to\_md\_output module
 data\_management.yolo\_to\_coco module
 --------------------------------------
 
-.. automodule:: data_management.yolo_to_coco
+.. automodule:: megadetector.data_management.yolo_to_coco
    :members:
    :undoc-members:
    :show-inheritance:

@@ -842,7 +842,7 @@ if False:
 
     print('Processing post-RDE to {}'.format(preview_base))
 
-    options.api_output_file = output_file
+    options.md_results_file = output_file
     options.output_dir = preview_base
     ppresults = process_batch_results(options)
     html_output_file = ppresults.output_html_file

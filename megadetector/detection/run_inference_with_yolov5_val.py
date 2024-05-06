@@ -839,7 +839,7 @@ if False:
     os.makedirs(output_base, exist_ok=True)
     print('Processing to {}'.format(output_base))
     
-    pp_options.api_output_file = md_json_file
+    pp_options.md_results_file = md_json_file
     pp_options.output_dir = output_base
     ppresults = process_batch_results(pp_options)
     html_output_file = ppresults.output_html_file

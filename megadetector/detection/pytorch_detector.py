@@ -8,9 +8,11 @@ Module to run MegaDetector v5, a PyTorch YOLOv5 animal detection model.
 
 #%% Imports and constants
 
+import sys
 import torch
 import numpy as np
 import traceback
+import builtins
 
 from megadetector.detection.run_detector import CONF_DIGITS, COORD_DIGITS, FAILURE_INFER
 from megadetector.utils import ct_utils
@@ -44,7 +46,8 @@ try_yolov5_import = True
 # to use more recent YOLOv5 namespace conventions.
 try_ultralytics_import = False
 
-# First try importing from the yolov5 package
+# First try importing from the yolov5 package; this is how the pip
+# package finds YOLOv5 utilities.
 if try_yolov5_import and not utils_imported:
     
     try:
@@ -77,7 +80,7 @@ if try_ultralytics_import and not utils_imported:
         # print('Ultralytics module import failed, falling back to yolov5 import')
         pass
 
-# If we haven't succeeded yet, import from the YOLOv5 repo
+# If we haven't succeeded yet, assume the YOLOv5 repo is on our PYTHONPATH.
 if not utils_imported:
     
     try:
@@ -92,8 +95,9 @@ if not utils_imported:
             from utils.general import scale_boxes as scale_coords
         utils_imported = True
         print('Imported YOLOv5 as utils.*')
-    except ModuleNotFoundError:
-        raise ModuleNotFoundError('Could not import YOLOv5 functions.')
+                
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError('Could not import YOLOv5 functions:\n{}'.format(str(e)))
 
 assert utils_imported, 'YOLOv5 import error'
 
@@ -327,7 +331,7 @@ if __name__ == '__main__':
     import os
     from megadetector.visualization import visualization_utils as vis_utils
     
-    model_file = 'MDV5A'
+    model_file = os.environ['MDV5A']
     im_file = os.path.expanduser('~/git/MegaDetector/images/nacti.jpg')
 
     detector = PTDetector(model_file)

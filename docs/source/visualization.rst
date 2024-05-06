@@ -1,61 +1,61 @@
-md\_visualization package
-=========================
+visualization package
+=====================
 
 Submodules
 ----------
 
-md\_visualization.plot\_utils module
+visualization.plot\_utils module
 ------------------------------------
 
-.. automodule:: visualization.plot_utils
+.. automodule:: megadetector.visualization.plot_utils
    :members:
    :undoc-members:
    :show-inheritance:
 
-md\_visualization.render\_images\_with\_thumbnails module
+visualization.render\_images\_with\_thumbnails module
 ---------------------------------------------------------
 
-.. automodule:: visualization.render_images_with_thumbnails
+.. automodule:: megadetector.visualization.render_images_with_thumbnails
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
-md\_visualization.visualization\_utils module
+visualization.visualization\_utils module
 ---------------------------------------------
 
-.. automodule:: visualization.visualization_utils
+.. automodule:: megadetector.visualization.visualization_utils
    :members:
    :undoc-members:
    :show-inheritance:
 
-md\_visualization.visualize\_db module
+visualization.visualize\_db module
 --------------------------------------
 
-.. automodule:: visualization.visualize_db
+.. automodule:: megadetector.visualization.visualize_db
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: visualization.visualize_db
+   :module: megadetector.visualization.visualize_db
    :func: main
    :hook:
    :prog: visualize_db
    :no_default_values:
 
-md\_visualization.visualize\_detector\_output module
+visualization.visualize\_detector\_output module
 ----------------------------------------------------
 
-.. automodule:: visualization.visualize_detector_output
+.. automodule:: megadetector.visualization.visualize_detector_output
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: visualization.visualize_detector_output
+   :module: megadetector.visualization.visualize_detector_output
    :func: main
    :hook:
    :prog: visualize_detector_output

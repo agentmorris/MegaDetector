@@ -9,14 +9,14 @@ Submodules
 data\_management.databases.combine\_coco\_camera\_traps\_files module
 ---------------------------------------------------------------------
 
-.. automodule:: data_management.databases.combine_coco_camera_traps_files
+.. automodule:: megadetector.data_management.databases.combine_coco_camera_traps_files
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: data_management.databases.combine_coco_camera_traps_files
+   :module: megadetector.data_management.databases.combine_coco_camera_traps_files
    :func: main
    :hook:
    :prog: combine_coco_camera_traps_files
@@ -25,14 +25,14 @@ data\_management.databases.combine\_coco\_camera\_traps\_files module
 data\_management.databases.integrity\_check\_json\_db module
 ------------------------------------------------------------
 
-.. automodule:: data_management.databases.integrity_check_json_db
+.. automodule:: megadetector.data_management.databases.integrity_check_json_db
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: data_management.databases.integrity_check_json_db
+   :module: megadetector.data_management.databases.integrity_check_json_db
    :func: main
    :hook:
    :prog: integrity_check_json_db
@@ -41,7 +41,7 @@ data\_management.databases.integrity\_check\_json\_db module
 data\_management.databases.subset\_json\_db module
 --------------------------------------------------
 
-.. automodule:: data_management.databases.subset_json_db
+.. automodule:: megadetector.data_management.databases.subset_json_db
    :members:
    :undoc-members:
    :show-inheritance:
@@ -49,7 +49,7 @@ data\_management.databases.subset\_json\_db module
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: data_management.databases.subset_json_db
+   :module: megadetector.data_management.databases.subset_json_db
    :func: main
    :hook:
    :prog: subset_json_db
