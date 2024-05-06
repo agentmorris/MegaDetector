@@ -245,7 +245,8 @@ def process_video(options):
             
         print('Rendering video to {} at {} fps (original video {} fps)'.format(
             options.output_video_file,rendering_fs,Fs))
-        frames_to_video(detected_frame_files, rendering_fs, options.output_video_file, codec_spec=options.fourcc)
+        frames_to_video(detected_frame_files, rendering_fs, options.output_video_file, 
+                        codec_spec=options.fourcc)
         
         # Delete the temporary directory we used for detection images
         if not options.keep_rendered_frames:
@@ -332,7 +333,8 @@ def process_video_folder(options):
                                output_folder_base=frame_output_folder, 
                                recursive=options.recursive, 
                                overwrite=(not options.reuse_frames_if_available),
-                               n_threads=options.n_cores,every_n_frames=options.frame_sample,
+                               n_threads=options.n_cores,
+                               every_n_frames=options.frame_sample,
                                verbose=options.verbose,
                                quality=options.quality,
                                max_width=options.max_width)
@@ -355,7 +357,7 @@ def process_video_folder(options):
     
     if options.reuse_results_if_available and \
         os.path.isfile(frames_json):
-            print('Loading results from {}'.format(frames_json))
+            print('Bypassing inference, loading results from {}'.format(frames_json))
             results = None
     else:
         print('Running MegaDetector')
@@ -402,6 +404,7 @@ def process_video_folder(options):
             confidence_threshold=options.rendering_confidence_threshold,
             preserve_path_structure=True,
             output_image_width=-1)
+        detected_frame_files = [s.replace('\\','/') for s in detected_frame_files]
         
         # Choose an output folder
         output_folder_is_input_folder = False
@@ -434,6 +437,8 @@ def process_video_folder(options):
             
             input_video_file_relative = os.path.relpath(input_video_file_abs,options.input_video_file)
             video_frame_output_folder = os.path.join(frame_rendering_output_dir,input_video_file_relative)
+            
+            video_frame_output_folder = video_frame_output_folder.replace('\\','/')
             assert os.path.isdir(video_frame_output_folder), \
                 'Could not find frame folder for video {}'.format(input_video_file_relative)
             
@@ -494,7 +499,17 @@ def process_video_folder(options):
 
 
 def options_to_command(options):
+    """
+    Convert a ProcessVideoOptions obejct to a corresponding command line.
     
+    Args:
+        options (ProcessVideoOptions): the options set to render as a command line
+        
+    Returns:
+        str: the command line coresponding to [options]
+        
+    :meta private:
+    """
     cmd = 'python process_video.py'
     cmd += ' "' + options.model_file + '"'
     cmd += ' "' + options.input_video_file + '"'
@@ -533,6 +548,12 @@ def options_to_command(options):
         cmd += ' --class_mapping_filename ' + str(options.class_mapping_filename)
     if options.fourcc is not None:
         cmd += ' --fourcc ' + options.fourcc
+    if options.quality is not None:
+        cmd += ' --quality ' + str(options.quality)
+    if options.max_width is not None:
+        cmd += ' --max_width ' + str(options.max_width)
+    if options.verbose:
+        cmd += ' --verbose'
 
     return cmd
 
@@ -544,7 +565,7 @@ if False:
     #%% Process a folder of videos
     
     model_file = 'MDV5A'
-    input_dir = r'c:\git\MegaDetector\test_images\test_images'    
+    input_dir = r'g:\temp\test-videos'
     frame_folder = r'g:\temp\video_test\frames'
     rendering_folder = r'g:\temp\video_test\rendered-frames'
     output_json_file = r'g:\temp\video_test\video-test.json'
@@ -565,12 +586,18 @@ if False:
     options.recursive = True
     options.reuse_frames_if_available = True
     options.reuse_results_if_available = True
-    # options.confidence_threshold = 0.15
-    # options.fourcc = 'mp4v'        
+    options.quality = 90
+    options.frame_sample = 10
+    options.max_width = 1280
+    options.n_cores = 5
+    options.verbose = False
     
-    cmd = options_to_command(options)
-    print(cmd)
-    # import clipboard; clipboard.copy(cmd)
+    # options.confidence_threshold = 0.15
+    options.fourcc = 'mp4v'        
+    
+    cmd = options_to_command(options); print(cmd)
+        
+    import clipboard; clipboard.copy(cmd)
     
     if False:
         process_video_folder(options)
@@ -676,7 +703,7 @@ def main():
                                 default_options.json_confidence_threshold))
 
     parser.add_argument('--n_cores', type=int,
-                        default=1, help='number of cores to use for frame separation and detection. '\
+                        default=1, help='Number of cores to use for frame separation and detection. '\
                             'If using a GPU, this option will be respected for frame separation but '\
                             'ignored for detection.  Only relevant to frame separation when processing '\
                             'a folder.')
@@ -695,7 +722,7 @@ def main():
                             default_options.max_width))
 
     parser.add_argument('--debug_max_frames', type=int,
-                        default=-1, help='trim to N frames for debugging (impacts model execution, '\
+                        default=-1, help='Trim to N frames for debugging (impacts model execution, '\
                             'not frame rendering)')
     
     parser.add_argument('--class_mapping_filename',
@@ -705,6 +732,10 @@ def main():
                             'the addition of "1" to all category IDs, so your class mapping should start '\
                             'at zero.')
 
+    parser.add_argument('--verbose', action='store_true',
+                        help='Enable additional debug output')
+    
+        
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()

@@ -23,10 +23,13 @@ os.makedirs(output_folder_base,exist_ok=True)
 quality = 90
 max_width = 1600
 every_n_frames = 10
-n_threads = 4
 recursive = True
 overwrite = True
 
+# I generally find that parallelization of this process works better with threads on Windows,
+# processes on Linux
+parallelization_uses_threads = True
+n_workers = 4
 
 #%% Split videos into frames
 
@@ -39,9 +42,9 @@ frame_filenames_by_video,fs_by_video,video_filenames = \
                                        output_folder_base=output_folder_base,
                                        recursive=recursive,
                                        overwrite=overwrite,
-                                       n_threads=n_threads,
+                                       n_threads=n_workers,
                                        every_n_frames=every_n_frames,
-                                       parallelization_uses_threads=False,
+                                       parallelization_uses_threads=parallelization_uses_threads,
                                        quality=quality,
                                        max_width=max_width)
 

@@ -198,36 +198,58 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
     if overwrite == False:
         
         missing_frame_number = None
+        missing_frame_filename = None
         frame_filenames = []
+        found_existing_frame = False
         
         for frame_number in range(0,n_frames):
             
             if every_n_frames is not None:
-                if frame_number % every_n_frames != 0:
+                if (frame_number % every_n_frames) != 0:
                     continue
             
             frame_filename = _frame_number_to_filename(frame_number)
             frame_filename = os.path.join(output_folder,frame_filename)
             frame_filenames.append(frame_filename)
             if os.path.isfile(frame_filename):
+                found_existing_frame = True
                 continue
             else:
                 missing_frame_number = frame_number
+                missing_frame_filename = frame_filename
                 break
     
+        if verbose and missing_frame_number is not None:
+            print('Missing frame {} ({}) for video {}'.format(
+                missing_frame_number,
+                missing_frame_filename,
+                input_video_file))
+            
         # OpenCV seems to over-report the number of frames by 1 in some cases, or fails
         # to read the last frame; either way, I'm allowing one missing frame.
         allow_last_frame_missing = True
         
-        if missing_frame_number is None or \
-            (allow_last_frame_missing and (missing_frame_number == n_frames-1)):
+        # This doesn't have to mean literally the last frame number, it just means that if
+        # we find this frame or later, we consider the video done
+        last_expected_frame_number = n_frames-1
+        if every_n_frames is not None:
+            last_expected_frame_number -= (every_n_frames*2)
+            
+        # If no frames are missing, or only frames very close to the end of the video are "missing",
+        # skip this video
+        if (missing_frame_number is None) or \
+            (allow_last_frame_missing and (missing_frame_number >= last_expected_frame_number)):
             if verbose:
                 print('Skipping video {}, all output frames exist'.format(input_video_file))
             return frame_filenames,Fs
         else:
-            pass
-            # print("Rendering video {}, couldn't find frame {}".format(
-            #    input_video_file,missing_frame_number))
+            # If we found some frames, but not all, print a message
+            if verbose and found_existing_frame:
+                print("Rendering video {}, couldn't find frame {} ({}) of {}".format(
+                    input_video_file,
+                    missing_frame_number,
+                    missing_frame_filename,
+                    last_expected_frame_number))
     
     # ...if we need to check whether to skip this video entirely
         
@@ -459,7 +481,7 @@ def frame_results_to_video_results(input_file,output_file,options=None):
     
     ## Break into videos
     
-    video_to_frames = defaultdict(list) 
+    video_to_frame_info = defaultdict(list) 
     
     # im = images[0]
     for im in tqdm(images):
@@ -475,19 +497,19 @@ def frame_results_to_video_results(input_file,output_file,options=None):
             else:
                 raise ValueError('Unrecognized non-video handling behavior: {}'.format(
                     options.non_video_behavior))
-        video_to_frames[video_name].append(im)
+        video_to_frame_info[video_name].append(im)
     
     print('Found {} unique videos in {} frame-level results'.format(
-        len(video_to_frames),len(images)))
+        len(video_to_frame_info),len(images)))
     
     output_images = []
     
     ## For each video...
     
-    # video_name = list(video_to_frames.keys())[0]
-    for video_name in tqdm(video_to_frames):
+    # video_name = list(video_to_frame_info.keys())[0]
+    for video_name in tqdm(video_to_frame_info):
         
-        frames = video_to_frames[video_name]
+        frames = video_to_frame_info[video_name]
         
         all_detections_this_video = []
         
