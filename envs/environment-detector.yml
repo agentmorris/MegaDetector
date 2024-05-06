@@ -6,7 +6,7 @@ channels:
 
 dependencies:
   - python=3.8.15
-  
+
   # Not imported directly, but we force this version to avoid this issue:
   #
   # https://github.com/pytorch/pytorch/issues/123097
