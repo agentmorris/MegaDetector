@@ -49,6 +49,8 @@ frame_filenames_by_video,fs_by_video,video_filenames = \
 
 #%% List frame files, break into folders
 
+# Each leaf-node folder *should* correspond to a video; we're going to verify that below.
+
 from collections import defaultdict
 
 frame_files = path_utils.find_images(output_folder_base,True)
@@ -74,7 +76,12 @@ video_filenames = [os.path.relpath(fn,input_folder) for fn in video_filenames]
 print('Input folder contains {} videos'.format(len(video_filenames)))
 
 
-#%% Check for videos that are missing entirely
+#%% Check for videos that don't have corresponding frame folder
+
+# These are almost always corrupt videos; if you have a million camera trap videos, 
+# you will inevitably have a few corrupt videos.  If *all* of your videos failed to
+# convert to frames, something is up, but if it's a small percentage, move right
+# along.
 
 # list(folder_to_frame_files.keys())[0]
 # video_filenames[0]
