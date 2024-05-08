@@ -34,11 +34,7 @@ If you have a more "DIY" use case where EcoAssist doesn't fit, MegaDetector is a
 
 All of that said, it requires significant processing power to run MegaDetector on millions of images.  So many of our users - particularly high-volume users - send us images (anywhere from tens of thousands to millions), which we run through MegaDetector, then we send back a results file.
 
-Whether you're going to run MegaDetector on your own or work with us, usually the first step with a new user is just running our model on a few thousand images and seeing what happens, so if you're interested in trying this on your images, we can work out a way to transfer a set of example images, just email us at <a href="mailto:cameratraps@lila.science">cameratraps@lila.science</a>.After that, we'll typically send back a page of sample results, like this one:
-
-<https://lila.science/private/snapshot-safari-public/snapshot-safari-2022-02-07_rde_0.60_0.85_10_0.20_0.800>
-
-That page isn't <i>quite</i> what a real results page would look like: rather than just "detections" and "non-detections", a real results page would have images broken out into separate links for empty/people/vehicle/animal.  But we can't use a data set with people in it for a public demo, so the samples above are simplified to just include images that have animals or are empty (that page is based on public data from the <a href="https://www.zooniverse.org/organizations/meredithspalmer/snapshot-safari">Snapshot Safari</a> project.
+Whether you're going to run MegaDetector on your own or work with us, usually the first step with a new user is just running our model on a few thousand images and seeing what happens, so if you're interested in trying this on your images, we can work out a way to transfer a set of example images, just email us at <a href="mailto:cameratraps@lila.science">cameratraps@lila.science</a>.  After that, we'll typically send back a page of sample results, like [this one](https://lila.science/public/snapshot_safari_public/snapshot-safari-kar-2022-00-00-v5a.0.0_0.200/), which helps us quickly scan a sample of images to see whether MegaDetector appears to be missing anything.
 
 
 ## How people use MegaDetector results
