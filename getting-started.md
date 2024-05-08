@@ -92,5 +92,5 @@ The remaining questions are only relevant to questions about training a custom m
 ## Learn more
 
 * Ready to get started with MegaDetector?  Head over to the [MegaDetector User Guide](megadetector.md).
-* We maintain a literature survey on "[everything we know about machine learning for camera traps](https://github.com/agentmorris/camera-trap-ml-survey)".
+* We maintain a literature survey on "[everything we know about machine learning for camera traps](https://agentmorris.github.io/camera-trap-ml-survey/)".
 * We maintain a repository of public, labeled camera trap data to facilitate training new models (the largest such repository that we're aware of) at [lila.science](http://lila.science/datasets).
