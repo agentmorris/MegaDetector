@@ -79,8 +79,8 @@ print('Input folder contains {} videos'.format(len(video_filenames)))
 #%% Check for videos that don't have corresponding frame folder
 
 # These are almost always corrupt videos; if you have a million camera trap videos, 
-# you will inevitably have a few corrupt videos.  If *all* of your videos failed to
-# convert to frames, something is up, but if it's a small percentage, move right
+# you will inevitably have a few videos that completely failed to open.  If *all* of 
+# your videos failed to open, something is up, but if it's a small percentage, move right
 # along.
 
 # list(folder_to_frame_files.keys())[0]
@@ -98,6 +98,11 @@ print('{} of {} folders are missing frames entirely'.format(len(missing_videos),
 
 
 #%% Check for videos with very few frames
+
+# Same as above; if you have a million camera trap videos, a few will inevitably be 
+# corrupted after a few frames.  This cell checks for videos that have some frames,
+# but not *all* the frames.  It should be a small number, but if you have a huge
+# dataset, it won't be zero.  If you can live with this number, move right along.
 
 min_frames_for_valid_video = 10
 
