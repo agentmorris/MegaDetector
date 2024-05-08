@@ -21,7 +21,7 @@ This page summarizes what we do with that model to help our collaborators, typic
 
 Basically this page is the response we give when someone emails us and says "I have too many camera trap images!  Can you help me?!?!".  If you're an ecologist reading this page, and that sounds familiar, feel free to answer the questions below in an email to <a href="mailto:cameratraps@lila.science">cameratraps@lila.science</a>.
 
-You can see a list of some of the organizations who have used our tools [here](https://github.com/agentmorris/MegaDetector/#who-is-using-megadetector).
+You can see a list of some of the organizations who have used our tools [here](https://github.com/agentmorris/MegaDetector/?tab=readme-ov-file#who-is-using-megadetector).
 
 If you are looking for a more technical description of the MegaDetector model, see the [MegaDetector User Guide](megadetector.md).
 
