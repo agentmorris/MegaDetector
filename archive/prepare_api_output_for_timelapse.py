@@ -195,6 +195,5 @@ def main():
     
     prepare_api_output_for_timelapse(args.inputFile,args.outputFile,args.query,options)
 
-if __name__ == '__main__':
-    
+if __name__ == '__main__':    
     main()

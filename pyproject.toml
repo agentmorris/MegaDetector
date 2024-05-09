@@ -5,13 +5,13 @@ requires = [
 
 [project]
 name = "megadetector"
-version = "5.0.7"
+version = "5.0.12"
 description = "MegaDetector is an AI model that helps conservation folks spend less time doing boring things with camera trap images."
 readme = "README-package.md"
 # As of 2023.10.10, PyTorch isn't installable on Python 3.12
 requires-python = ">=3.9,<3.12"
 license = {file = "LICENSE"}
-keywords = ["camera traps", "conservation", "wildlife", "ai"]
+keywords = ["camera traps", "conservation", "wildlife", "ai", "megadetector"]
 authors = [
   {name = "Your friendly neighborhood MegaDetector team", email = "cameratraps@lila.science" }
 ]
@@ -47,14 +47,10 @@ dependencies = [
 
 [project.urls]
 "Homepage" = "https://github.com/agentmorris/MegaDetector"
+"Documentation" = "https://megadetector.readthedocs.io"
 "Bug Reports" = "https://github.com/agentmorris/MegaDetector/issues"
 "Source" = "https://github.com/agentmorris/MegaDetector"
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["*"]
-exclude = [
-  "archive*", "images*", "envs*","dist*","megadetector.egg-info*",
-  "sandbox*","test-images*","__pycache__*"
-]
+include = ["megadetector*"]
 

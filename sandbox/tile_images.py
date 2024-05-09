@@ -1,17 +1,17 @@
-########
-#
-# tile_images.py
-#
-# Split a folder of images into tiles with a specified number of rows and columns.
-# Preserves relative folder structure in a new output folder, with a/b/c/d.jpg becoming,
-# e.g.:
-# 
-# a/b/c/d_row_0_col_0.jpg    
-# a/b/c/d_row_0_col_1.jpg
-#
-# This script is largely obsolete, and has been replaced by run_tiled_inference.py
-#
-########
+"""
+
+ tile_images.py
+
+ Split a folder of images into tiles with a specified number of rows and columns.
+ Preserves relative folder structure in a new output folder, with a/b/c/d.jpg becoming,
+ e.g.:
+ 
+ a/b/c/d_row_0_col_0.jpg    
+ a/b/c/d_row_0_col_1.jpg
+
+ This script is largely obsolete, and has been replaced by run_tiled_inference.py
+
+"""
 
 #%% Imports and constants
 
@@ -20,7 +20,7 @@ import os
 from PIL import Image
 from tqdm import tqdm
 
-from md_utils import path_utils
+from megadetector.utils import path_utils
 
 
 #%% Main function

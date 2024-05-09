@@ -1,10 +1,10 @@
-########
-#
-# snapshot-safari-pr-analysis.py
-#
-# Precision/recall analysis for KGA data
-#
-########
+"""
+
+ snapshot-safari-pr-analysis.py
+
+ Precision/recall analysis for KGA data
+
+"""
 
 #%% Imports and constants
 
@@ -303,8 +303,9 @@ for seq_id in sequence_id_to_images:
 #%% Precision/recall analysis
 
 import numpy as np
-import md_visualization.plot_utils as plot_utils
 import matplotlib.pyplot as plt
+
+from megadetector.visualization import plot_utils
 
 from sklearn.metrics import precision_recall_curve, confusion_matrix
 from IPython.core.display import display
@@ -446,8 +447,8 @@ if False:
             opener = "open" if sys.platform == "darwin" else "xdg-open"
             subprocess.call([opener, filename])
 
-    from api.batch_processing.postprocessing.postprocess_batch_results import (
-        PostProcessingOptions, process_batch_results)
+    from megadetector.postprocessing.postprocess_batch_results import \
+        PostProcessingOptions, process_batch_results
 
     input_base = '/media/user/lila-01/lila/snapshot-safari/MTZ/MTZ_public'
     

@@ -20,8 +20,8 @@ import io
 from tqdm import tqdm
 
 from data_management.megadb.megadb_utils import MegadbUtils
-from md_utils.write_html_image_list import write_html_image_list
-from md_visualization import visualization_utils as vis_utils
+from utils.write_html_image_list import write_html_image_list
+from visualization import visualization_utils as vis_utils
 
 
 #%% Support functions

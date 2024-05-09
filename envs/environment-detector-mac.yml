@@ -6,6 +6,10 @@ channels:
 
 dependencies:
   - python=3.8
+  # Not imported directly, but we force this version to avoid this issue:
+  #
+  # https://github.com/pytorch/pytorch/issues/123097
+  - mkl=2024.0
   # We pin Pillow to make it as likely as possible that images are loaded via a loader 
   # that's identical to the training environment
   - Pillow=9.1.0

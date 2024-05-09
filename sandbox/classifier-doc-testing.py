@@ -1,14 +1,14 @@
-########
-#
-# classifier-doc-testing.py
-#
-# Script to validate the MegaClassifier sample instructions, including URLs.
-#
-########
+"""
+
+ classifier-doc-testing.py
+
+ Script to validate the MegaClassifier sample instructions, including URLs.
+
+"""
 
 #%% Imports and constants
 
-from md_utils.url_utils import download_url
+from megadetector.utils.url_utils import download_url
 import os
 
 # That's right, I want these paths to literally work
@@ -57,22 +57,22 @@ for url in urls:
 
 #%% Download test images
 
-from md_utils.md_tests import MDTestOptions, download_test_data
+from megadetector.utils.md_tests import MDTestOptions, download_test_data
 options = MDTestOptions()
 options.scratch_dir = image_folder
 download_test_data(options)
 
-from md_utils.path_utils import find_images
+from megadetector.utils.path_utils import find_images
 image_file_names = find_images(image_folder, recursive=True, return_relative_paths=False)
 
 
 #%% Run MegaDetector
 
-from detection.run_detector_batch import load_and_run_detector_batch
+from megadetector.detection.run_detector_batch import load_and_run_detector_batch
 md_results = load_and_run_detector_batch('MDV5A', image_file_names)
 
 # Save results as relative filenames
-from detection.run_detector_batch import write_results_to_file
+from megadetector.detection.run_detector_batch import write_results_to_file
 _ = write_results_to_file(md_results, detections_file, relative_path_base=image_folder, 
                           detector_file='MDV5A')
 

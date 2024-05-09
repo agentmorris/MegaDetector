@@ -1,0 +1,27 @@
+name: cameratraps-docs
+
+channels:
+- conda-forge
+- pytorch
+
+dependencies:
+- python=3.9
+- sphinx
+- sphinx-mdinclude
+- sphinx_rtd_theme
+- Pillow
+- tqdm
+- jsonpickle
+- humanfriendly
+- numpy
+- matplotlib
+- opencv
+- requests
+- pyqtree
+- scikit-learn
+- pandas
+- pytorch::pytorch
+- pytorch::torchvision
+- pip
+- pip:
+  - sphinx-argparse-cli

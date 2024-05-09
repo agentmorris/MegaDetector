@@ -6,7 +6,7 @@
 2. [Our ask to MegaDetector users](#our-ask-to-megadetector-users)
 3. [Who is using MegaDetector?](#who-is-using-megadetector)
 4. [How fast is MegaDetector, and can I run it on my giant/small computer?](#how-fast-is-megadetector-and-can-i-run-it-on-my-giantsmall-computer)
-5. [Downloading the model](#downloading-the-model)
+5. [Downloading the model (optional)](#downloading-the-model-optional)
 6. [Using the model](#using-the-model)
 7. [OK, but is that how the MD devs run the model?](#ok-but-is-that-how-the-md-devs-run-the-model)
 8. [Is there a GUI?](#is-there-a-gui)
@@ -31,7 +31,15 @@ Conservation biologists invest a huge amount of time reviewing camera trap image
 
 To this end, this page hosts a model we've trained - called "MegaDetector" - to detect animals, people, and vehicles in camera trap images.  It does not identify animals to the species level, it just finds them.  
 
-This page guides you through the process of working with MegaDetector; if you are an ecologist looking to learn more about MegaDetector before diving in, you may prefer to start at our ["Getting started with MegaDetector"](collaborations.md) page.
+Before you read the rest of this page...
+
+* If you are looking for a convenient tool to run MegaDetector, you don't need anything from this page: check out [EcoAssist](https://github.com/PetervanLunteren/EcoAssist?tab=readme-ov-file).
+* If you're just <i>considering</i> the use of AI in your workflow, and you aren't even sure yet whether MegaDetector would be useful to you, we recommend reading the much shorter "[getting started with MegaDetector](getting-started.md)" page.
+* If you're a programmer-type looking to use tools from this repo, check out the [Python package](https://pypi.org/project/megadetector/) that provides access to everything in this repo (yes, you guessed it, "pip install megadetector").
+* If you're already familiar with MegaDetector and you're ready to run it on your data, and you're looking for instructions on running MegaDetector, read on!
+* If you have any questions, or you want to tell us that MegaDetector was amazing/terrible on your images, <a href="mailto:cameratraps@lila.science">email us</a>!
+
+MegaDetector is just one of many tools that aims to make conservation biologists more efficient with AI.  If you want to learn about other ways to use AI to accelerate camera trap workflows, check out our of the field, affectionately titled &ldquo;[Everything I know about machine learning and camera traps](https://agentmorris.github.io/camera-trap-ml-survey/)&rdquo;.
 
 
 ## Our ask to MegaDetector users
@@ -41,7 +49,7 @@ MegaDetector is free, and it makes us super-happy when people use it, so we put 
 
 ## How fast is MegaDetector, and can I run it on my giant/small computer?
 
-We often run MegaDetector on behalf of users as a free service; see our ["Getting started with MegaDetector"](collaborations.md) page for more information.  But there are many reasons to run MegaDetector on your own; how practical this is will depend in part on how many images you need to process and what kind of computer hardware you have available.  MegaDetector is designed to favor accuracy over speed, and we typically run it on <a href="https://en.wikipedia.org/wiki/Graphics_processing_unit">GPU</a>-enabled computers.  That said, you can run anything on anything if you have enough time, and we're happy to support users who run MegaDetector on their own GPUs (in the cloud or on their own PCs), on their own CPUs, or even on embedded devices.  If you only need to process a few thousand images per week, for example, a typical laptop will be just fine.  If you want to crunch through 20 million images as fast as possible, you'll want at least one GPU.
+We often run MegaDetector on behalf of users as a free service; see our ["Getting started with MegaDetector"](getting-started.md) page for more information.  But there are many reasons to run MegaDetector on your own; how practical this is will depend in part on how many images you need to process and what kind of computer hardware you have available.  MegaDetector is designed to favor accuracy over speed, and we typically run it on <a href="https://en.wikipedia.org/wiki/Graphics_processing_unit">GPU</a>-enabled computers.  That said, you can run anything on anything if you have enough time, and we're happy to support users who run MegaDetector on their own GPUs (in the cloud or on their own PCs), on their own CPUs, or even on embedded devices.  If you only need to process a few thousand images per week, for example, a typical laptop will be just fine.  If you want to crunch through 20 million images as fast as possible, you'll want at least one GPU.
 
 Here are some rules of thumb to help you estimate how fast you can run MegaDetector on different types of hardware.
 
@@ -97,9 +105,9 @@ Speed can vary widely based on image size, hard drive speed, etc., and in these 
 See <a href="https://github.com/agentmorris/MegaDetector/#who-is-using-megadetector">this list</a> on the repo's main page.
 
 
-## Downloading the model
+## Downloading the model (optional)
 
-In previous versions of these instructions, you had to download MegaDetector to your PC before running it.  The scripts we use to run MegaDetector can now automatically download MegaDetector, so <b>this whole download step is optional now</b>, and if you're going to follow the instructions on this page, you can probably ignore this section and skip to the "[Using the model](#using-the-model)" section.
+In previous versions of these instructions, you had to download MegaDetector to your PC before running it.  The scripts we use to run MegaDetector can now automatically download MegaDetector, so <b>this whole download step is optional now</b>, and if you're going to follow the instructions on this page, <b>you can probably ignore this section and skip to the "[Using the model](#using-the-model)" section</b>.
 
 That said, in this section, we provide download links for lots of MegaDetector versions.  Unless you have a very esoteric scenario, you want MegaDetector v5, and you can ignore all the other MegaDetector versions.  The rest of this section, after the MDv5 download links, is more like a mini-MegaDetector-museum than part of the User Guide.
 
@@ -134,10 +142,10 @@ This release incorporates additional training data from Borneo, Australia and th
 
 #### Download links
 
-* [Frozen model (.pb)](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb)
-* [TFODAPI config file](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.config)
-* [Last checkpoint (for resuming training)](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0_checkpoint.zip)
-* [TensorFlow SavedModel for TFServing](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0_saved_model.zip) (inputs in uint8 format, `serving_default` output signature)
+* [Frozen model (.pb)](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb)
+* [TFODAPI config file](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.config)
+* [Last checkpoint (for resuming training)](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0_checkpoint.zip)
+* [TensorFlow SavedModel for TFServing](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0_saved_model.zip) (inputs in uint8 format, `serving_default` output signature)
 
 If you're not sure which format to use, you want the "frozen model" file (the first link).
 
@@ -150,11 +158,11 @@ In addition to incorporating additional data, this release adds a preliminary "h
 
 #### Download links
 
-- [Frozen model (.pb)](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/megadetector_v3.pb)
-- [TFODAPI config file](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/megadetector_v3.config)
-- [Last checkpoint (for resuming training)](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/megadetector_v3_checkpoint.zip)
-- [TensorFlow SavedModel](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/saved_model_normalized_megadetector_v3_tf19.tar.gz) (inputs in TF [common image format](https://www.tensorflow.org/hub/common_signatures/images#image_input), `default` output signature)
-- [TensorFlow SavedModel for TFServing](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/saved_model_megadetector_v3_tf19.zip) (inputs in uint8 format, `serving_default` output signature)
+- [Frozen model (.pb)](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/megadetector_v3.pb)
+- [TFODAPI config file](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/megadetector_v3.config)
+- [Last checkpoint (for resuming training)](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/megadetector_v3_checkpoint.zip)
+- [TensorFlow SavedModel](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/saved_model_normalized_megadetector_v3_tf19.tar.gz) (inputs in TF [common image format](https://www.tensorflow.org/hub/common_signatures/images#image_input), `default` output signature)
+- [TensorFlow SavedModel for TFServing](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/saved_model_megadetector_v3_tf19.zip) (inputs in uint8 format, `serving_default` output signature)
 
 
 ### MegaDetector v2, 2018
@@ -165,9 +173,9 @@ First MegaDetector release!  Yes, that's right, v2 was the first release.  If th
 
 #### Download links
 
-- [Frozen model (.pb)](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/megadetector_v2.pb)
-- [TFODAPI config file](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/megadetector_v2.config)
-- [Last checkpoint (for resuming training)](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/megadetector_v2_checkpoint.zip)
+- [Frozen model (.pb)](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/megadetector_v2.pb)
+- [TFODAPI config file](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/megadetector_v2.config)
+- [Last checkpoint (for resuming training)](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/megadetector_v2_checkpoint.zip)
 
 
 ## Using the model
@@ -176,9 +184,9 @@ First MegaDetector release!  Yes, that's right, v2 was the first release.  If th
 
 We provide two ways to run MegaDetector on your images:
 
-1. A simple test script that makes neat pictures with bounding boxes, but doesn't produce a useful output file ([run_detector.py](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_detector.py))
+1. A simple test script that makes neat pictures with bounding boxes, but doesn't produce a useful output file ([run_detector.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector.py))
 
-2. A script for running large batches of images on a local GPU ([run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_detector_batch.py))
+2. A script for running large batches of images on a local GPU ([run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector_batch.py))
 
 Also see the <a href="#is-there-a-gui">&ldquo;Is there a GUI?&rdquo;</a> section for graphical options and other ways of running MD, including real-time APIs, Docker environments, and other goodies.
 
@@ -225,9 +233,9 @@ If you have a deep-learning-friendly GPU, you will also need to have a recent [N
 
 ### 2. Download the MegaDetector model(s) (optional)
 
-This step is optional; when you run MegaDetector, you can tell it to automatically download a MegaDetector model file, in which case it will get put in a temporary directory on your computer.
+<b>This step is optional</b>; when you run MegaDetector, you can tell it to automatically download a MegaDetector model file, in which case it will get put in a temporary directory on your computer.
 
-If you want to save MegaDetector to a particular folder, download one or more MegaDetector model files ([MDv5a](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt), [MDv5b](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.0.pt), and/or [MDv4](https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb)) to your computer.  These instructions will assume that you have downloaded MegaDetector to a folder called "c:\megadetector" (on Windows) or to a folder called "megadetector" within your home folder (on Linux/Mac), but if you put it somewhere else, that's fine, just be sure to change it in the steps below that point to a model file.  If you don't care where it goes, and you don't know yet which version you want to use, you'll have an easier time working through these instructions if you download [MDv5a](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt) to those folders, i.e. if the model file lives at "c:\megadetector\md_v5a.0.0.pt" (on Windows) or "/Users/your-user-name/megadetector/md_v5a.0.0pt" (on Mac).
+If you want to save MegaDetector to a particular folder, download one or more MegaDetector model files ([MDv5a](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt), [MDv5b](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.0.pt), and/or [MDv4](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb)) to your computer.  These instructions will assume that you have downloaded MegaDetector to a folder called "c:\megadetector" (on Windows) or to a folder called "megadetector" within your home folder (on Linux/Mac), but if you put it somewhere else, that's fine, just be sure to change it in the steps below that point to a model file.  If you don't care where it goes, and you don't know yet which version you want to use, you'll have an easier time working through these instructions if you download [MDv5a](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt) to those folders, i.e. if the model file lives at "c:\megadetector\md_v5a.0.0.pt" (on Windows) or "/Users/your-user-name/megadetector/md_v5a.0.0pt" (on Mac).
 
 
 ### 3. Clone the relevant git repos and add them to your path, and set up your Python environment
@@ -248,13 +256,6 @@ cd c:\git\MegaDetector
 mamba env create --file envs\environment-detector.yml
 mamba activate cameratraps-detector
 set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
-```
-
-If you want to use MDv4 (which you probably don't, unless you have a really good reason to), there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
-
-```batch
-mamba activate cameratraps-detector
-pip install "tensorflow<=2.10"
 ```
 
 <a name="windows-new-shell"></a>
@@ -341,7 +342,7 @@ Pro tip: rather than updating your PYTHONPATH every time you start a new shell, 
 
 #### run_detector.py
 
-To test MegaDetector out on small sets of images and get super-satisfying visual output, we provide [run_detector.py](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_detector.py), an example script for invoking this detector on new images.  This isn't how we recommend running lots of images through MegaDetector (see [run_detector_batch.py](#2-run_detector_batchpy) below for "real" usage), but it's a quick way to test things out.  [Let us know](mailto:cameratraps@lila.science) how it works on your images!
+To test MegaDetector out on small sets of images and get super-satisfying visual output, we provide [run_detector.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector.py), an example script for invoking this detector on new images.  This isn't how we recommend running lots of images through MegaDetector (see [run_detector_batch.py](#2-run_detector_batchpy) below for "real" usage), but it's a quick way to test things out.  [Let us know](mailto:cameratraps@lila.science) how it works on your images!
 
 The following examples assume you have your Mambaforge prompt open, and have put things in the same directories we put things in the above instructions.  If you put things in different places, adjust these examples to match your folders, and most importantly, adjust these examples to point to your images.
 
@@ -356,7 +357,7 @@ set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
 Then you can run the script like this:
 
 ```batch
-python detection\run_detector.py MDV5A --image_file "some_image_file.jpg" --threshold 0.1
+python megadetector\detection\run_detector.py MDV5A --image_file "some_image_file.jpg" --threshold 0.1
 ```
 
 "MDV5A" tells this script to automatically download MegaDetector v5a; if you already downloaded it, you can replace this with the full path to your MegaDetector model file (e.g. "c:\megadetector\md_v5a.0.0.pt").
@@ -381,7 +382,7 @@ If you have an Nvidia GPU and you see "GPU available: False", your GPU environme
 You can see all the options for this script by running:
 
 ```batch
-python detection\run_detector.py
+python megadetector\detection\run_detector.py
 ```
 
 To use this script on Linux/Mac, when you open a new Mambaforge prompt, don't forget to do this:
@@ -395,14 +396,14 @@ export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 Then you can run the script like this:
 
 ```batch
-python detection/run_detector.py MDV5A --image_file "some_image_file.jpg" --threshold 0.1
+python megadetector/detection/run_detector.py MDV5A --image_file "some_image_file.jpg" --threshold 0.1
 ```
 
 Don't forget to change "some_image_file.jpg" to point to a real image on your computer.
 
 #### run_detector_batch.py
 
-To apply this model to larger image sets on a single machine, we recommend a different script, [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_detector_batch.py).  This outputs data in the same format as our [batch processing API](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing), so you can leverage all of our post-processing tools.  The format that this script produces is also compatible with [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/).
+To apply this model to larger image sets on a single machine, we recommend a different script, [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector_batch.py).  This outputs data in the [MegaDetector results format](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#megadetector-batch-output-format), so you can work with the results in tools like [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/).
 
 To use run_detector_batch.py on Windows, when you open a new Mambaforge prompt, don't forget to do this:
 
@@ -415,19 +416,19 @@ set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
 Then you can run the script like this:
 
 ```batch
-python detection\run_detector_batch.py MDV5A "c:\some_image_folder" "c:\megadetector\test_output.json" --output_relative_filenames --recursive --checkpoint_frequency 10000 --quiet
+python megadetector\detection\run_detector_batch.py MDV5A "c:\some_image_folder" "c:\megadetector\test_output.json" --output_relative_filenames --recursive --checkpoint_frequency 10000 --quiet
 ```
 
 "MDV5A" tells this script to automatically download MegaDetector v5a; if you already downloaded it, you can replace this with the full path to your MegaDetector model file (e.g. "c:\megadetector\md_v5a.0.0.pt").
 
 Change "c:\some_image_folder" to point to the real folder on your computer where your images live.
 
-This will produce a file called "c:\megadetector\test_output.json", which - if everything worked right - contains information about where objects of interest are in your images.  You can use that file with any of our [postprocessing](api/batch_processing/postprocessing) scripts, but most users will read this file into [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/).
+This will produce a file called "c:\megadetector\test_output.json", which - if everything worked right - contains information about where objects of interest are in your images.  You can use that file with any of our [postprocessing](megadetector/postprocessing) scripts, but most users will read this file into [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/).
 
 You can see all the options for this script by running:
 
 ```batch
-python detection\run_detector_batch.py
+python megadetector\detection\run_detector_batch.py
 ```
 
 #### Saving and restoring run_detector_batch.py checkpoints
@@ -439,7 +440,7 @@ If you are running very large batches, we strongly recommend adding the `--check
 The default checkpoint file will be in the same folder as your output file; in this case, because we told the script to write the final output to c:\megadetector\test_output.json, the checkpoint will be written in the c:\megadetector folder.  If everything goes smoothly, the checkpoint file will be deleted when the script finishes.  If your computer crashes/reboots/etc. while the script is running, you can pick up where you left off by running exactly the same command you ran the first time, but adding the "--resume_from_checkpoint" option, with the checkpoint file you want to resume from, or you can just say "auto" to use the most recent checkpoint.  So, in this case, you would run:
 
 ```batch
-python detection\run_detector_batch.py MDV5A "c:\some_image_folder" "c:\megadetector\test_output.json" --output_relative_filenames --recursive --checkpoint_frequency 10000 --quiet --resume_from_checkpoint auto
+python megadetector\detection\run_detector_batch.py MDV5A "c:\some_image_folder" "c:\megadetector\test_output.json" --output_relative_filenames --recursive --checkpoint_frequency 10000 --quiet --resume_from_checkpoint auto
 ```
 
 You will see something like this at the beginning of the output:
@@ -470,7 +471,7 @@ export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 Then you can run the script like this:
 
 ```batch
-python detection/run_detector_batch.py MDV5A "/some/image/folder" "$HOME/megadetector/test_output.json" --output_relative_filenames --recursive --checkpoint_frequency 10000
+python megadetector/detection/run_detector_batch.py MDV5A "/some/image/folder" "$HOME/megadetector/test_output.json" --output_relative_filenames --recursive --checkpoint_frequency 10000
 ```
 
 
@@ -480,8 +481,8 @@ Almost... we run a lot of MegaDetector on a lot of images, and in addition to ru
 
 * Dividing images into chunks for running on multiple GPUs
 * Making sure that the number of failed/corrupted images was reasonable
-* Eliminating frequent false detections using the [repeat detection elimination](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing/postprocessing/repeat_detection_elimination) process
-* Visualizing the results using [postprocess_batch_results.py](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/postprocessing/postprocess_batch_results.py) to make "results preview" pages like [this one](https://lila.science/public/snapshot_safari_public/snapshot-safari-kar-2022-00-00-v5a.0.0_0.200/)
+* Eliminating frequent false detections using the [repeat detection elimination](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/postprocessing/repeat_detection_elimination) process
+* Visualizing the results using [postprocess_batch_results.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/postprocess_batch_results.py) to make "results preview" pages like [this one](https://lila.science/public/snapshot_safari_public/snapshot-safari-kar-2022-00-00-v5a.0.0_0.200/)
 
 ...and, less frequently:
 
@@ -490,14 +491,14 @@ Almost... we run a lot of MegaDetector on a lot of images, and in addition to ru
 * Various manipulation of the output files, e.g. splitting .json files into smaller .json files for subfolders
 * Running and comparing multiple versions of MegaDetector
 
-There are separate scripts to do all of these things, but things would get chaotic if we ran each of these steps separately.  So in practice we almost always run MegaDetector using [manage_local_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/data_preparation/manage_local_batch.py), a script broken into cells for each of those steps.  We run this in an interactive console in [Spyder](https://github.com/spyder-ide/spyder), but we also periodically export this script to a [notebook](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/data_preparation/manage_local_batch.ipynb) that does exactly the same thing.
+There are separate scripts to do all of these things, but things would get chaotic if we ran each of these steps separately.  So in practice we almost always run MegaDetector using [manage_local_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/manage_local_batch.py), a script broken into cells for each of those steps.  We run this in an interactive console in [Spyder](https://github.com/spyder-ide/spyder), but we also periodically export this script to a [notebook](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/manage_local_batch.ipynb) that does exactly the same thing.
 
 So, if you find yourself keeping track of lots of steps like this to manage large MD jobs, try the notebook out!  And let us know if it's useful/broken/wonderful/terrible.
 
  
 ## Is there a GUI?
 
-Many of our users either use our Python tools to run MegaDetector or have us run MegaDetector for them (see [this page](collaborations.md) for more information about that), then most of those users use [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/) to use their MegaDetector results in an image review workflow.
+Many of our users either use our Python tools to run MegaDetector or have us run MegaDetector for them (see [this page](getting-started.md) for more information about that), then most of those users use [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/) to use their MegaDetector results in an image review workflow.
 
 But we recognize that Python tools can be a bit daunting, so we're excited that a variety of tools allow you to run MegaDetector in a GUI have emerged from the community.  We're interested in users' perspectives on all of these tools, so if you find them useful - or if you know of others - [let us know](mailto:cameratraps@lila.science), and thank those developers!
 
@@ -566,14 +567,14 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 
 #### Maintained within this repo
 
-* [Colab notebook](https://github.com/agentmorris/MegaDetector/blob/main/detection/megadetector_colab.ipynb) ([open in Colab](https://colab.research.google.com/github/agentmorris/MegaDetector/blob/main/detection/megadetector_colab.ipynb)) for running MDv5 on images stored in Google Drive.
-* [Real-time MegaDetector API using Flask](https://github.com/agentmorris/MegaDetector/tree/main/api/synchronous).  This is deployed via Docker, so the Dockerfile provided for the real-time API may be a good starting point for other Docker-based MegaDetector deployments as well.
-* [Batch processing API](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing) that runs images on many GPUs at once on Azure.  There is no public instance of this API, but the code allows you to stand up your own endpoint.
+* [Colab notebook](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/megadetector_colab.ipynb) ([open in Colab](https://colab.research.google.com/github/agentmorris/MegaDetector/blob/main/detection/megadetector_colab.ipynb)) for running MDv5 on images stored in Google Drive.
+* [Real-time MegaDetector API using Flask](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/synchronous).  This is deployed via Docker, so the Dockerfile provided for the real-time API may be a good starting point for other Docker-based MegaDetector deployments as well.
+* [Batch processing API](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing) that runs images on many GPUs at once on Azure.  There is no public instance of this API, but the code allows you to stand up your own endpoint.
  
 
 ## How do I use the results?
 
-See the ["How do people use MegaDetector results?"](https://github.com/agentmorris/MegaDetector/blob/main/collaborations.md#how-people-use-megadetector-results) section of our "getting started" page.
+See the ["How do people use MegaDetector results?"](https://github.com/agentmorris/MegaDetector/blob/main/getting-started.md#how-people-use-megadetector-results) section of our "getting started" page.
 
 
 ## Have you evaluated MegaDetector's accuracy?
@@ -628,16 +629,16 @@ As per the [training data](#can-you-share-the-training-data) section, MDv5 is ac
 
 1. The first thing we always run is MDv5a... <b>95% of the time, the flowchart stops here</b>.  That's in bold because we want to stress that this whole section is about the unusual case, not the typical case.  There are enough complicated things in life, don't make choosing MegaDetector versions more complicated than it needs to be.<br/></br>Though FWIW, we're not usually trying to squeeze every bit of precision out of a particular dataset, we're almost always focused on recall (i.e., not missing animals).  So if MDv5a is finding all the animals and the number of false positives is "fine", we don't usually run MDv5b, for example, just to see whether it would slightly further reduce the number of false positives.
 
-2. If things are working great, but you're going to be using MegaDetector a lot and you want to add a step to your process that has a bit of a learning curve, but can eliminate a bunch of false positives once you get used to it, consider the [repeat detection elimination](https://github.com/agentmorris/MegaDetector/tree/main/api/batch_processing/postprocessing/repeat_detection_elimination) process.
+2. If things are working great, but you're going to be using MegaDetector a lot and you want to add a step to your process that has a bit of a learning curve, but can eliminate a bunch of false positives once you get used to it, consider the [repeat detection elimination](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/postprocessing/repeat_detection_elimination) process.
 
 3. If anything looks off, specifically if you're missing animals that you think MegaDetector should be getting, or if you just want to see if you can squeeze a little more precision out, try MDv5b.  Usually, we've found that 
 MDv5a works at least as well as MDv5b, but every dataset is different.<br/><br/>For example, [WildEye](https://wildeyeconservation.org/) did a thorough [MegaDetector v5 evaluation](https://wildeyeconservation.org/megadetector-version-5/) and found slightly better precision with MDv5b.  MDv5a is trained on everything MDv5b was trained on, plus some non-camera-trap data, so as a general rule, MDv5a may do <i>slightly</i> better on reptiles, birds, and distant vehicles.  MDv5b may do <i>slightly</i> better on very dark or low-contrast images.
 
-4. If you're still missing animals, but one or both models look close, try again using YOLOv5's [test-time augmentation tools](https://docs.ultralytics.com/yolov5/tutorials/test_time_augmentation/) via this [alternative MegaDetector inference script](https://github.com/agentmorris/MegaDetector/blob/main/detection/run_inference_with_yolov5_val.py), which produces output in the same format as the standard inference script, but uses YOLOv5's native inference tools.  It will run a little more slowly, and still lacks some of the bells and whistles of the standard inference script, but sometimes augmentation helps.
+4. If you're still missing animals, but one or both models look close, try again using YOLOv5's [test-time augmentation tools](https://docs.ultralytics.com/yolov5/tutorials/test_time_augmentation/) via this [alternative MegaDetector inference script](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_inference_with_yolov5_val.py), which produces output in the same format as the standard inference script, but uses YOLOv5's native inference tools.  It will run a little more slowly, and still lacks some of the bells and whistles of the standard inference script, but sometimes augmentation helps.
 
 5. If something still looks off, try MDv4.
 
-6. If none of the above are quite working well enough, but two or three of the above are close, try using [merge_detections.py](https://github.com/agentmorris/MegaDetector/blob/main/api/batch_processing/postprocessing/merge_detections.py) to get the best of both worlds, i.e. to take the high-confidence detections from multiple MegaDetector results files.
+6. If none of the above are quite working well enough, but two or three of the above are close, try using [merge_detections.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/merge_detections.py) to get the best of both worlds, i.e. to take the high-confidence detections from multiple MegaDetector results files.
 
 7. If things are still not good enough, we have a case where MD just seems not to work; that's what the [MegaDetector challenges](megadetector-challenges.md) page is all about.  Now we're in DIY territory.
 
@@ -826,7 +827,7 @@ If you're feeling even more experimental, this also works:
 mamba create -n cameratraps-detector-pip pip -y
 mamba activate cameratraps-detector-pip
 pip install megadetector --upgrade
-python -m detection.run_detector_batch --help
+python -m megadetector.detection.run_detector_batch --help
 ```
 
 This comes with the same caveats as above: this will not produce results that are literally identical to the training environment, so, YMMV.  If you use this route, make sure the MegaDetector and YOLOv5 folders are <i>not</i> on your PYTHONPATH.
