@@ -118,8 +118,11 @@ def frames_to_video(images, Fs, output_file_name, codec_spec=default_fourcc):
         codec_spec = 'h264'
         
     if len(images) == 0:
+        print('Warning: no frames to render')
         return
 
+    os.makedirs(os.path.dirname(output_file_name),exist_ok=True)
+    
     # Determine the width and height from the first image
     frame = cv2.imread(images[0])
     cv2.imshow('video',frame)
@@ -322,7 +325,8 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
                 print('Error on frame {} of {}: {}'.format(frame_number,n_frames,str(e)))
 
     if verbose:
-        print('\nExtracted {} of {} frames'.format(len(frame_filenames),n_frames))
+        print('\nExtracted {} of {} frames for {}'.format(
+            len(frame_filenames),n_frames,input_video_file))
 
     vidcap.release()    
     return frame_filenames,Fs
@@ -515,7 +519,7 @@ def frame_results_to_video_results(input_file,output_file,options=None):
         
         # frame = frames[0]
         for frame in frames:
-            if frame['detections'] is not None:
+            if ('detections' in frame) and (frame['detections'] is not None):
                 all_detections_this_video.extend(frame['detections'])
             
         # At most one detection for each category for the whole video

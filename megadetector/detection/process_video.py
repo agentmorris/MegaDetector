@@ -32,7 +32,7 @@ from uuid import uuid1
 from megadetector.detection import run_detector_batch
 from megadetector.visualization import visualize_detector_output
 from megadetector.utils.ct_utils import args_to_object
-from megadetector.utils.path_utils import insert_before_extension
+from megadetector.utils.path_utils import insert_before_extension, clean_path
 from megadetector.detection.video_utils import video_to_frames
 from megadetector.detection.video_utils import frames_to_video
 from megadetector.detection.video_utils import frame_results_to_video_results
@@ -143,6 +143,137 @@ class ProcessVideoOptions:
 
 #%% Functions
 
+def _select_temporary_output_folders(options):
+    """
+    Choose folders in system temp space for writing temporary frames.  Does not create folders,
+    just defines them.
+    """
+    
+    tempdir = os.path.join(tempfile.gettempdir(), 'process_camera_trap_video')
+    
+    # If we create a folder like "process_camera_trap_video" in the system temp dir, it may
+    # be the case that no one else can write to it, even to create user-specific subfolders.
+    # If we create a uuid-named folder in the system temp dir, we make a mess.  
+    #
+    # Compromise with "process_camera_trap_video-[user]".
+    user_tempdir = tempdir + '-' + getpass.getuser()
+    
+    # I don't know whether it's possible for a username to contain characters that are
+    # not valid filename characters, but just to be sure...
+    user_tempdir = clean_path(user_tempdir)
+    
+    frame_output_folder = os.path.join(
+        user_tempdir, os.path.basename(options.input_video_file) + '_frames_' + str(uuid1()))
+    
+    rendering_output_folder = os.path.join(
+        tempdir, os.path.basename(options.input_video_file) + '_detections_' + str(uuid1()))
+        
+    temporary_folder_info = \
+    {
+        'temp_folder_base':user_tempdir,
+        'frame_output_folder':frame_output_folder,
+        'rendering_output_folder':rendering_output_folder
+    }
+    
+    return temporary_folder_info
+
+# ...def _create_frame_output_folders(...)
+
+
+def _clean_up_rendered_frames(options,rendering_output_folder,detected_frame_files):
+    """
+    If necessary, delete rendered frames and/or the entire rendering output folder.
+    """
+    
+    caller_provided_rendering_output_folder = (options.frame_rendering_folder is not None)
+    
+    # (Optionally) delete the temporary directory we used for rendered detection images
+    if not options.keep_rendered_frames:
+        
+        try:
+            
+            # If (a) we're supposed to delete the temporary rendering folder no
+            # matter where it is and (b) we created it in temp space, delete the 
+            # whole tree
+            if options.force_rendered_frame_folder_deletion and \
+               (not caller_provided_rendering_output_folder):
+                   
+                if options.verbose:
+                    print('Recursively deleting rendered frame folder {}'.format(
+                        rendering_output_folder))
+                    
+                shutil.rmtree(rendering_output_folder)
+                
+            # ...otherwise just delete the frames, but leave the folder in place
+            else:
+                
+                if options.force_rendered_frame_folder_deletion:
+                    assert caller_provided_rendering_output_folder
+                    print('Warning: force_rendered_frame_folder_deletion supplied with a ' + \
+                          'user-provided folder, only removing frames')
+                        
+                for rendered_frame_fn in detected_frame_files:
+                    os.remove(rendered_frame_fn)
+                    
+        except Exception as e:
+            print('Warning: error deleting rendered frames from folder {}:\n{}'.format(
+                rendering_output_folder,str(e)))
+            pass
+
+    elif options.force_rendered_frame_folder_deletion:
+        
+        print('Warning: keep_rendered_frames and force_rendered_frame_folder_deletion both ' + \
+              'specified, not deleting')
+            
+# ...def _clean_up_rendered_frames(...)
+
+
+def _clean_up_extracted_frames(options,frame_output_folder,frame_filenames):
+    """
+    If necessary, delete extracted frames and/or the entire temporary frame folder.
+    """
+    
+    caller_provided_frame_output_folder = (options.frame_folder is not None)
+                                           
+    if not options.keep_extracted_frames:
+        
+        try:
+            
+            # If (a) we're supposed to delete the temporary frame folder no
+            # matter where it is and (b) we created it in temp space, delete the 
+            # whole tree.
+            if options.force_extracted_frame_folder_deletion and \
+               (not caller_provided_frame_output_folder):
+                   
+                if options.verbose:
+                    print('Recursively deleting frame output folder {}'.format(frame_output_folder))
+                    
+                shutil.rmtree(frame_output_folder)
+                
+            # ...otherwise just delete the frames, but leave the folder in place
+            else:
+                
+                if options.force_extracted_frame_folder_deletion:
+                    assert caller_provided_frame_output_folder
+                    print('Warning: force_extracted_frame_folder_deletion supplied with a ' + \
+                          'user-provided folder, only removing frames')
+                    
+                for extracted_frame_fn in frame_filenames:
+                    os.remove(extracted_frame_fn)
+                    
+        except Exception as e:
+            print('Warning: error removing extracted frames from folder {}:\n{}'.format(
+                frame_output_folder,str(e)))
+            pass
+    
+    elif options.force_extracted_frame_folder_deletion:
+        
+        print('Warning: keep_extracted_frames and force_extracted_frame_folder_deletion both ' + \
+              'specified, not deleting')
+
+# ...def _clean_up_extracted_frames
+
+
 def process_video(options):
     """
     Process a single video through MD, optionally writing a new video with boxes
@@ -161,40 +292,25 @@ def process_video(options):
     if options.render_output_video and (options.output_video_file is None):
         options.output_video_file = options.input_video_file + '.detections.mp4'
 
-    tempdir = os.path.join(tempfile.gettempdir(), 'process_camera_trap_video')    
-    os.makedirs(tempdir,exist_ok=True)
+    # Track whether frame and rendering folders were created by this script
+    caller_provided_frame_output_folder = (options.frame_folder is not None)
+    caller_provided_rendering_output_folder = (options.frame_rendering_folder is not None)
     
-    # Generate unique subdirectory name for current user
-    user_subdirectory = f"{getpass.getuser()}_{str(uuid1())}"
-    user_tempdir = os.path.join(tempdir, user_subdirectory)
-    os.makedirs(user_tempdir, exist_ok=True)
-
-    # This is a lazy fix to an issue... if multiple users run this script, the
-    # "process_camera_trap_video" folder is owned by the first person who creates it, and others
-    # can't write to it.  I could create uniquely-named folders, but I philosophically prefer
-    # to put all the individual UUID-named folders within a larger folder, so as to be a 
-    # good tempdir citizen.  So, the lazy fix is to make this world-writable.
-    # try:
-    #     os.chmod(tempdir,0o777)
-    # except Exception:
-    #     pass
-    
-    # Initialize flag to track if frame_ouput_folder was created by the script
-    frame_output_folder_created = False
-    
-    if options.frame_folder is not None:
+    # This does not create any folders, just defines temporary folder names in 
+    # case we need them.
+    temporary_folder_info = _select_temporary_output_folders(options)
+        
+    if (caller_provided_frame_output_folder):
         frame_output_folder = options.frame_folder
     else:
-        frame_output_folder = os.path.join(
-            user_tempdir, os.path.basename(options.input_video_file) + '_frames_' + str(uuid1()))
-        frame_output_folder_created = True
+        frame_output_folder = temporary_folder_info['frame_output_folder']
    
     os.makedirs(frame_output_folder, exist_ok=True)
 
     frame_filenames, Fs = video_to_frames(
         options.input_video_file, frame_output_folder, 
         every_n_frames=options.frame_sample, overwrite=(not options.reuse_frames_if_available),
-        quality=options.quality, max_width=options.max_width)
+        quality=options.quality, max_width=options.max_width, verbose=options.verbose)
 
     image_file_names = frame_filenames
     if options.debug_max_frames > 0:
@@ -210,8 +326,8 @@ def process_video(options):
             options.model_file, image_file_names,
             confidence_threshold=options.json_confidence_threshold,
             n_cores=options.n_cores,
-            quiet=(not options.verbose),
-            class_mapping_filename=options.class_mapping_filename)
+            class_mapping_filename=options.class_mapping_filename,
+            quiet=True)
     
         run_detector_batch.write_results_to_file(
             results, options.output_json_file,
@@ -224,16 +340,11 @@ def process_video(options):
     
     if options.render_output_video:
         
-        # Initialize flag to track if frame_rendering_folder was created by the scipt
-        frame_rendering_folder_created = False
-
         # Render detections to images
-        if options.frame_rendering_folder is not None:
+        if (caller_provided_rendering_output_folder):
             rendering_output_dir = options.frame_rendering_folder
         else:
-            rendering_output_dir = os.path.join(
-                tempdir, os.path.basename(options.input_video_file) + '_detections')
-            frame_rendering_folder_created = True
+            rendering_output_dir = temporary_folder_info['rendering_output_folder']
             
         os.makedirs(rendering_output_dir,exist_ok=True)
         
@@ -249,45 +360,20 @@ def process_video(options):
         else:
             rendering_fs = Fs / options.frame_sample
             
-        print('Rendering video to {} at {} fps (original video {} fps)'.format(
-            options.output_video_file,rendering_fs,Fs))
+        print('Rendering {} frames to {} at {} fps (original video {} fps)'.format(
+            len(detected_frame_files), options.output_video_file,rendering_fs,Fs))
         frames_to_video(detected_frame_files, rendering_fs, options.output_video_file, 
                         codec_spec=options.fourcc)
         
-        # Delete the temporary directory we used for detection images
-        if not options.keep_rendered_frames:
-            try:
-                if options.force_rendered_frame_folder_deletion or (frame_rendering_folder_created and options.output_video_file != rendering_output_dir):
-                    shutil.rmtree(rendering_output_dir)
-                else:
-                    for rendered_frame_fn in detected_frame_files:
-                        os.remove(rendered_frame_fn)
-            except Exception as e:
-                print('Warning: error deleting rendered frames from folder {}:\n{}'.format(
-                    rendering_output_dir,str(e)))
-                pass
+        # Possibly clean up rendered frames
+        _clean_up_rendered_frames(options,rendering_output_dir,detected_frame_files)
     
     # ...if we're rendering video
     
     
     ## (Optionally) delete the extracted frames
+    _clean_up_extracted_frames(options, frame_output_folder, frame_filenames)
     
-    if not options.keep_extracted_frames:
-        
-        try:
-            if options.force_extracted_frame_folder_deletion or (frame_output_folder_created and options.ouput_json_file != frame_output_folder):
-                print('Recursively deleting frame output folder {}'.format(frame_output_folder))
-                shutil.rmtree(frame_output_folder)
-            else:
-                for extracted_frame_fn in frame_filenames:
-                    os.remove(extracted_frame_fn)
-        except Exception as e:
-            print('Warning: error removing extracted frames from folder {}:\n{}'.format(
-                frame_output_folder,str(e)))
-            pass
-        
-    return results
-
 # ...process_video()
 
 
@@ -313,23 +399,22 @@ def process_video_folder(options):
     frames_json = options.output_json_file.replace('.json','.frames.json')
     os.makedirs(os.path.dirname(video_json),exist_ok=True)
     
+    # Track whether frame and rendering folders were created by this script
+    caller_provided_frame_output_folder = (options.frame_folder is not None)
+    caller_provided_rendering_output_folder = (options.frame_rendering_folder is not None)
+    
+    # This does not create any folders, just defines temporary folder names in 
+    # case we need them.
+    temporary_folder_info = _select_temporary_output_folders(options)
+    
     
     ## Split every video into frames
     
-    if options.frame_folder is not None:
+    if caller_provided_frame_output_folder:
         frame_output_folder = options.frame_folder
     else:
-        tempdir = os.path.join(tempfile.gettempdir(), 'process_camera_trap_video')
-        os.makedirs(tempdir,exist_ok=True)
+        frame_output_folder = temporary_folder_info['frame_output_folder']
         
-        # Generate unique subdirectory name for current user
-        user_subdirectory = f"{getpass.getuser()}_{str(uuid1())}"
-        user_tempdir = os.path.join(tempdir, user_subdirectory)
-        os.makedirs(user_tempdir, exist_ok=True)
-
-        frame_output_folder = os.path.join(
-            tempdir, os.path.basename(options.input_video_file) + '_frames_' + str(uuid1()))
-
     os.makedirs(frame_output_folder, exist_ok=True)
 
     print('Extracting frames')
@@ -370,8 +455,8 @@ def process_video_folder(options):
             options.model_file, image_file_names,
             confidence_threshold=options.json_confidence_threshold,
             n_cores=options.n_cores,
-            quiet=(not options.verbose),
-            class_mapping_filename=options.class_mapping_filename)
+            class_mapping_filename=options.class_mapping_filename,
+            quiet=True)
     
         run_detector_batch.write_results_to_file(
             results, frames_json,
@@ -389,23 +474,18 @@ def process_video_folder(options):
     ## (Optionally) render output videos
     
     if options.render_output_video:
-        
-        # Initialize flag to track if frame_rendering_folder was created by the script
-        frame_rendering_folder_created = False
-
+                
         # Render detections to images
-        if options.frame_rendering_folder is not None:
-            frame_rendering_output_dir = options.frame_rendering_folder
+        if (caller_provided_rendering_output_folder):
+            rendering_output_dir = options.frame_rendering_folder
         else:
-            frame_rendering_output_dir = os.path.join(
-                tempdir, os.path.basename(options.input_video_file) + '_detections')
-            frame_rendering_folder_created = True
-        
-        os.makedirs(frame_rendering_output_dir,exist_ok=True)
+            rendering_output_dir = temporary_folder_info['rendering_output_folder']
+            
+        os.makedirs(rendering_output_dir,exist_ok=True)
         
         detected_frame_files = visualize_detector_output.visualize_detector_output(
             detector_output_path=frames_json,
-            out_dir=frame_rendering_output_dir,
+            out_dir=rendering_output_dir,
             images_dir=frame_output_folder,
             confidence_threshold=options.rendering_confidence_threshold,
             preserve_path_structure=True,
@@ -442,7 +522,7 @@ def process_video_folder(options):
                 rendering_fs = video_fs / options.frame_sample
             
             input_video_file_relative = os.path.relpath(input_video_file_abs,options.input_video_file)
-            video_frame_output_folder = os.path.join(frame_rendering_output_dir,input_video_file_relative)
+            video_frame_output_folder = os.path.join(rendering_output_dir,input_video_file_relative)
             
             video_frame_output_folder = video_frame_output_folder.replace('\\','/')
             assert os.path.isdir(video_frame_output_folder), \
@@ -470,36 +550,13 @@ def process_video_folder(options):
         # ...for each video
         
         # Possibly clean up rendered frames
-        if not options.keep_rendered_frames:
-            try:
-                if options.force_rendered_frame_folder_deletion or (frame_rendering_folder_created and frame_rendering_output_dir != video_output_file):
-                    shutil.rmtree(frame_rendering_output_dir)
-                else:
-                    for rendered_frame_fn in detected_frame_files:
-                        os.remove(rendered_frame_fn)
-            except Exception as e:
-                print('Warning: error deleting rendered frames from folder {}:\n{}'.format(
-                    frame_rendering_output_dir,str(e)))
-                pass
+        _clean_up_rendered_frames(options,rendering_output_dir,detected_frame_files)          
         
     # ...if we're rendering video
     
     
     ## (Optionally) delete the extracted frames
-    
-    if not options.keep_extracted_frames:
-        try:
-            print('Deleting frame cache')
-            if options.force_extracted_frame_folder_deletion:
-                print('Recursively deleting frame output folder {}'.format(frame_output_folder))
-                shutil.rmtree(frame_output_folder)
-            else:
-                for frame_fn in image_file_names:
-                    os.remove(frame_fn)
-        except Exception as e:
-            print('Warning: error deleting frames from folder {}:\n{}'.format(
-                frame_output_folder,str(e)))
-            pass
+    _clean_up_extracted_frames(options, frame_output_folder, image_file_names)
 
 # ...process_video_folder()
 
@@ -560,6 +617,10 @@ def options_to_command(options):
         cmd += ' --max_width ' + str(options.max_width)
     if options.verbose:
         cmd += ' --verbose'
+    if options.force_extracted_frame_folder_deletion:
+        cmd += ' --force_extracted_frame_folder_deletion'
+    if options.force_rendered_frame_folder_deletion:
+        cmd += ' --force_rendered_frame_folder_deletion'
 
     return cmd
 
@@ -572,10 +633,11 @@ if False:
     
     model_file = 'MDV5A'
     input_dir = r'g:\temp\test-videos'
-    frame_folder = r'g:\temp\video_test\frames'
-    rendering_folder = r'g:\temp\video_test\rendered-frames'
-    output_json_file = r'g:\temp\video_test\video-test.json'
-    output_video_folder = r'g:\temp\video_test\output_videos'    
+    output_base = r'g:\temp\video_test'
+    frame_folder = os.path.join(output_base,'frames')
+    rendering_folder = os.path.join(output_base,'rendered-frames')
+    output_json_file = os.path.join(output_base,'video-test.json')
+    output_video_folder = os.path.join(output_base,'output_videos')
     
     print('Processing folder {}'.format(input_dir))
     
@@ -583,23 +645,27 @@ if False:
     options.model_file = model_file
     options.input_video_file = input_dir
     options.output_video_file = output_video_folder
-    options.frame_folder = frame_folder
     options.output_json_file = output_json_file
-    options.frame_rendering_folder = rendering_folder
-    options.render_output_video = True
-    options.keep_extracted_frames = True
-    options.keep_rendered_frames = True
     options.recursive = True
-    options.reuse_frames_if_available = True
-    options.reuse_results_if_available = True
+    options.reuse_frames_if_available = False
+    options.reuse_results_if_available = False
     options.quality = 90
     options.frame_sample = 10
     options.max_width = 1280
     options.n_cores = 5
-    options.verbose = False
+    options.verbose = True
+    options.render_output_video = True
+    
+    options.frame_folder = None # frame_folder
+    options.frame_rendering_folder = None # rendering_folder
+    
+    options.keep_extracted_frames = False
+    options.keep_rendered_frames = False
+    options.force_extracted_frame_folder_deletion = True
+    options.force_rendered_frame_folder_deletion = True
     
     # options.confidence_threshold = 0.15
-    options.fourcc = 'mp4v'        
+    options.fourcc = 'mp4v'
     
     cmd = options_to_command(options); print(cmd)
         
@@ -611,23 +677,42 @@ if False:
     
     #%% Process a single video
 
-    fn = os.path.expanduser('~/tmp/video-test/test-video.mp4')
+    fn = r'g:\temp\test-videos\person_and_dog\DSCF0056.AVI'
     model_file = 'MDV5A'
     input_video_file = fn
-    frame_folder = os.path.expanduser('~/tmp/video-test/frames')
-    rendering_folder = os.path.expanduser('~/tmp/video-test/rendered-frames')
+    
+    output_base = r'g:\temp\video_test'
+    frame_folder = os.path.join(output_base,'frames')
+    rendering_folder = os.path.join(output_base,'rendered-frames')
+    output_json_file = os.path.join(output_base,'video-test.json')
+    output_video_file = os.path.join(output_base,'output_videos.mp4')
     
     options = ProcessVideoOptions()
     options.model_file = model_file
     options.input_video_file = input_video_file
-    options.frame_folder = frame_folder
-    options.frame_rendering_folder = rendering_folder
     options.render_output_video = True
-    options.output_video_file = os.path.expanduser('~/tmp/video-test/detections.mp4')
+    options.output_video_file = output_video_file
     
-    cmd = options_to_command(options)
-    print(cmd)
-    # import clipboard; clipboard.copy(cmd)
+    options.verbose = True
+    
+    options.quality = 75
+    options.frame_sample = None # 10
+    options.max_width = 600
+    
+    options.frame_folder = None # frame_folder
+    options.frame_rendering_folder = None # rendering_folder
+    
+    options.keep_extracted_frames = False
+    options.keep_rendered_frames = False
+    options.force_extracted_frame_folder_deletion = True
+    options.force_rendered_frame_folder_deletion = True
+    
+    # options.confidence_threshold = 0.15
+    options.fourcc = 'mp4v'
+    
+    cmd = options_to_command(options); print(cmd)
+    
+    import clipboard; clipboard.copy(cmd)
     
     if False:        
         process_video(options)    
