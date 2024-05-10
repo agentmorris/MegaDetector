@@ -82,6 +82,9 @@ class MDTestOptions:
     #:
     #: If this is None, we'll skip that test.
     yolo_working_folder = None
+    
+    #: fourcc code to use for video tests that involve rendering video
+    video_fourcc = 'mp4v'    
 
 # ...class MDTestOptions()
 
@@ -215,6 +218,8 @@ def download_test_data(options=None):
     options.test_images = [fn for fn in test_files if os.path.splitext(fn.lower())[1] in ('.jpg','.jpeg','.png')]
     options.test_videos = [fn for fn in test_files if os.path.splitext(fn.lower())[1] in ('.mp4','.avi')]    
     options.test_videos = [fn for fn in options.test_videos if 'rendered' not in fn]
+    options.test_videos = [fn for fn in options.test_videos if \
+                           os.path.isfile(os.path.join(scratch_dir,fn))]
         
     print('Finished unzipping and enumerating test data')
     
@@ -503,7 +508,7 @@ def run_python_tests(options):
         # video_options.reuse_frames_if_available = False
         video_options.recursive = True
         video_options.verbose = False
-        video_options.fourcc = 'mp4v'
+        video_options.fourcc = options.video_fourcc
         # video_options.rendering_confidence_threshold = None
         # video_options.json_confidence_threshold = 0.005
         video_options.frame_sample = 5    
@@ -539,8 +544,8 @@ def run_python_tests(options):
         # video_options.reuse_results_if_available = False
         # video_options.reuse_frames_if_available = False
         video_options.recursive = True
-        video_options.verbose = False
-        # video_options.fourcc = None
+        video_options.verbose = True
+        video_options.fourcc = options.video_fourcc
         # video_options.rendering_confidence_threshold = None
         # video_options.json_confidence_threshold = 0.005
         video_options.frame_sample = 5    
@@ -742,7 +747,9 @@ def run_cli_tests(options):
         frame_folder = os.path.join(options.scratch_dir,'video_scratch/frame_folder_cli')
         frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder_cli')        
         
-        video_fn = os.path.join(options.scratch_dir,options.test_videos[-1])
+        video_fn = os.path.join(options.scratch_dir,options.test_videos[-1])        
+        assert os.path.isfile(video_fn), 'Could not find video file {}'.format(video_fn)
+        
         output_dir = os.path.join(options.scratch_dir,'single_video_test_cli')
         if options.cli_working_dir is None:
             cmd = 'python -m megadetector.detection.process_video'
@@ -751,8 +758,9 @@ def run_cli_tests(options):
         cmd += ' {} {}'.format(model_file,video_fn)
         cmd += ' --frame_folder {} --frame_rendering_folder {} --output_json_file {} --output_video_file {}'.format(
             frame_folder,frame_rendering_folder,video_inference_output_file,output_video_file)
-        cmd += ' --render_output_video --fourcc mp4v'
+        cmd += ' --render_output_video --fourcc {}'.format(options.video_fourcc)
         cmd += ' --force_extracted_frame_folder_deletion --force_rendered_frame_folder_deletion --n_cores 5 --frame_sample 3'
+        cmd += ' --verbose'
         print('Running: {}'.format(cmd))
         cmd_results = execute_and_print(cmd)
 
@@ -813,7 +821,7 @@ def run_tests(options):
     """
     
     # Prepare data folder
-    download_test_data(options)    
+    download_test_data(options)
     
     if options.disable_gpu:
         os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
