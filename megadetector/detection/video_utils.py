@@ -18,6 +18,7 @@ from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
 from tqdm import tqdm
 from functools import partial
+from inspect import signature
 
 from megadetector.utils import path_utils    
 from megadetector.visualization import visualization_utils as vis_utils
@@ -91,6 +92,8 @@ def find_videos(dirname,
 
     if convert_slashes:
         files = [fn.replace('\\', '/') for fn in files]
+    
+    files = [fn for fn in files if os.path.isfile(fn)]
     
     return find_video_strings(files)
 
@@ -261,6 +264,28 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
 
     frame_filenames = []
 
+    # YOLOv5 does some totally bananas monkey-patching of opencv,
+    # which causes problems if we try to supply a third parameter to
+    # imwrite (to specify JPEG quality).  Detect this case, and ignore the quality 
+    # parameter if it looks like imwrite has been messed with.
+    imwrite_patched = False
+    n_imwrite_parameters = None
+    
+    try:
+        # calling signature() on the native cv2.imwrite function will
+        # fail, so an exception here is a good thing.  In fact I don't think
+        # there's a case where this *succeeds* and the number of parameters
+        # is wrong.
+        sig = signature(cv2.imwrite)
+        n_imwrite_parameters = len(sig.parameters)
+    except Exception:
+        pass
+    
+    if (n_imwrite_parameters is not None) and (n_imwrite_parameters < 3):
+        imwrite_patched = True
+        if verbose and (quality is not None):
+            print('Warning: quality value supplied, but YOLOv5 has mucked with cv2.imwrite, ignoring quality')
+            
     # for frame_number in tqdm(range(0,n_frames)):
     for frame_number in range(0,n_frames):
 
@@ -304,13 +329,14 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
         else:
             try:
                 if frame_filename.isascii():
-                    if quality is None:
+                    
+                    if quality is None or imwrite_patched:
                         cv2.imwrite(os.path.normpath(frame_filename),image)
-                    else:
+                    else:                        
                         cv2.imwrite(os.path.normpath(frame_filename),image,
                                     [int(cv2.IMWRITE_JPEG_QUALITY), quality])
                 else:
-                    if quality is None:                        
+                    if quality is None:
                         is_success, im_buf_arr = cv2.imencode('.jpg', image)
                     else:
                         encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), quality]
