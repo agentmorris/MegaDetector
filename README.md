@@ -72,6 +72,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Blumstein Lab](https://blumsteinlab.eeb.ucla.edu/), UCLA
 * [Borderlands Research Institute](https://bri.sulross.edu/), Sul Ross State University
 * [Capitol Reef National Park](https://www.nps.gov/care/index.htm) / Utah Valley University
+* [Canyon Critters Project](https://www.zooniverse.org/projects/arw36/canyon-critters), University of Georgia
 * [Center for Biodiversity and Conservation](https://www.amnh.org/research/center-for-biodiversity-conservation), American Museum of Natural History
 * [Centre for Ecosystem Science](https://www.unsw.edu.au/research/), UNSW Sydney
 * [Cross-Cultural Ecology Lab](https://crossculturalecology.net/), Macquarie University
