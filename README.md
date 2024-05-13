@@ -81,7 +81,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Department of Society & Conservation](https://www.umt.edu/environment/about/departments/socon/), W.A. Franke College of Forestry & Conservation, University of Montana
 * [Department of Wildlife Ecology and Conservation](https://wec.ifas.ufl.edu/), University of Florida
 * [Ecology and Conservation of Amazonian Vertebrates Research Group](https://www.researchgate.net/lab/Fernanda-Michalski-Lab-4), Federal University of Amapá
-* [Gola Forest Programma](https://www.rspb.org.uk/our-work/conservation/projects/scientific-support-for-the-gola-forest-programme/), Royal Society for the Protection of Birds (RSPB)
+* [Gola Forest Programme](https://www.rspb.org.uk/our-work/conservation/projects/scientific-support-for-the-gola-forest-programme/), Royal Society for the Protection of Birds (RSPB)
 * [Graeme Shannon's Research Group](https://wildliferesearch.co.uk/group-1), Bangor University 
 * [Grizzly Bear Recovery Program](https://www.fws.gov/office/grizzly-bear-recovery-program), U.S. Fish & Wildlife Service
 * [Hamaarag](https://hamaarag.org.il/), The Steinhardt Museum of Natural History, Tel Aviv University
