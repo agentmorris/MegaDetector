@@ -1000,11 +1000,12 @@ logdir = filename_base
 # on how the classification scripts run.
 typical_classification_threshold_str = '0.75'
 
+
 ##%% Set up environment
 
 commands = []
-# commands.append('cd MegaDetector/classification\n')
-# commands.append('conda activate cameratraps-classifier\n')
+# commands.append('cd MegaDetector/megadetector/classification\n')
+# commands.append('mamba activate cameratraps-classifier\n')
 
 ##%% Crop images
 

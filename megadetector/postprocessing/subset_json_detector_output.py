@@ -466,6 +466,8 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
     
     if options is None:    
         options = SubsetJsonDetectorOutputOptions()
+    else:
+        options = copy.deepcopy(options)
             
     # Input validation        
     if options.copy_jsons_to_folders:

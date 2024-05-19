@@ -201,6 +201,9 @@ class PTDetector:
         detections = []
         max_conf = 0.0
 
+        if detection_threshold is None:
+            detection_threshold = 0
+            
         try:
             
             img_original = np.asarray(img_original)
