@@ -305,16 +305,24 @@ def create_sequences(image_info,options=None):
     """
     Synthesizes episodes/sequences/bursts for the images in [image_info].
     
-    Modifies [image_info], populating the 'seq_id', 'seq_num_frames', and 'frame_num' fields
-    for each image.
+    Modifies [image_info] in place, populating the 'seq_id', 'seq_num_frames', and 'frame_num' 
+    fields for each image.
     
     Args:
-        image_info (dict): a list of dicts in CCT format, i.e. with fields 'file_name' (str),
-            'datetime' (datetime), and 'location' (str).    
+        image_info (str, dict, or list): a dict in CCT format, a CCT .json file, or just the 'images' component
+            of a CCT dataset (a list of dicts with  fields 'file_name' (str), 'datetime' (datetime), and
+            'location' (str)).
     """
     
     if options is None:
         options = SequenceOptions()
+    
+    if isinstance(image_info,str):
+        with open(image_info,'r') as f:
+            image_info = json.load(f)
+        
+    if isinstance(image_info,dict):
+        image_info = image_info['images']
         
     # Find all unique locations
     locations = set()

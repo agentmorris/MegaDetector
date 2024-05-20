@@ -74,7 +74,6 @@ from tqdm import tqdm
 from collections import defaultdict
 
 from megadetector.utils import path_utils
-from megadetector.utils.ct_utils import is_list_sorted
 from megadetector.utils.ct_utils import split_list_into_n_chunks
 from megadetector.utils.ct_utils import image_file_to_camera_folder
 from megadetector.detection.run_detector_batch import \
@@ -137,10 +136,6 @@ parallelization_defaults_to_threads = False
 default_workers_for_parallel_tasks = 30
 
 overwrite_handling = 'skip' # 'skip', 'error', or 'overwrite'
-
-# Only relevant to repeat detection elimination; try to identify EK113/RCNX101-style
-# overflow folders and treat them as the same camera
-overflow_folder_handling_enabled = True
 
 # The function used to get camera names from image paths; can also replace this
 # with a custom function.
@@ -1313,51 +1308,21 @@ os.chmod(output_file, st.st_mode | stat.S_IEXEC)
 # are ready to upload.
 
 
-#%% Within-image classification smoothing
+##%% Do All The Rest of The Stuff
 
-#
-# Only count detections with a classification confidence threshold above
-# *classification_confidence_threshold*, which in practice means we're only
-# looking at one category per detection.
-#
-# If an image has at least *min_detections_above_threshold* such detections
-# in the most common category, and no more than *max_detections_secondary_class*
-# in the second-most-common category, flip all detections to the most common
-# category.
-#
-# Optionally treat some classes as particularly unreliable, typically used to overwrite an 
-# "other" class.
-#
-# This cell also removes everything but the non-dominant classification for each detection.
-#
+# The remaining cells require no human intervention, so although a few conceptually-unrelated things 
+# happen (e.g., sequence-level smoothing, preview generation, and zipping all the .json files), I group these 
+# all into one super-cell.  Every click counts.
 
-# How many detections do we need above the classification threshold to determine a dominant category
-# for an image?
-min_detections_above_threshold = 4
 
-# Even if we have a dominant class, if a non-dominant class has at least this many classifications
-# in an image, leave them alone.
-max_detections_secondary_class = 3
-
-# If the dominant class has at least this many classifications, overwrite "other" classifications
-min_detections_to_overwrite_other = 2
-other_category_names = ['other']
-
-# What confidence threshold should we use for assessing the dominant category in an image?
-classification_confidence_threshold = 0.6
-
-# Which classifications should we even bother over-writing?
-classification_overwrite_threshold = 0.3
-
-# Detection confidence threshold for things we count when determining a dominant class
-detection_confidence_threshold = 0.2
-
-# Which detections should we even bother over-writing?
-detection_overwrite_threshold = 0.05
+##%% Within-image classification smoothing
 
 classification_detection_files = []
 
-# Did we run MegaClassifier
+from megadetector.postprocessing.classification_postprocessing import \
+    smooth_classification_results_image_level
+
+# Did we run MegaClassifier?
 if final_output_path_mc is not None:
     classification_detection_files.append(final_output_path_mc)
     
@@ -1373,179 +1338,16 @@ for final_output_path in classification_detection_files:
 
     classifier_output_path = final_output_path
     classifier_output_path_within_image_smoothing = classifier_output_path.replace(
-        '.json','_within_image_smoothing.json')
-    
-    with open(classifier_output_path,'r') as f:
-        d = json.load(f)
-        
-    category_name_to_id = {d['classification_categories'][k]:k for k in d['classification_categories']}
-    other_category_ids = []
-    for s in other_category_names:
-        if s in category_name_to_id:
-            other_category_ids.append(category_name_to_id[s])
-        else:
-            print('Warning: "other" category {} not present in file {}'.format(
-                s,classifier_output_path))
-    
-    n_other_classifications_changed = 0
-    n_other_images_changed = 0
-    
-    n_detections_flipped = 0
-    n_images_changed = 0
-    
-    # Before we do anything else, get rid of everything but the top classification
-    # for each detection.
-    for im in tqdm(d['images']):
-        
-        if 'detections' not in im or im['detections'] is None or len(im['detections']) == 0:
-            continue
-        
-        detections = im['detections']
-        
-        for det in detections:
-            
-            if 'classifications' not in det or len(det['classifications']) == 0:
-                continue
-            
-            classification_confidence_values = [c[1] for c in det['classifications']]
-            assert is_list_sorted(classification_confidence_values,reverse=True)
-            det['classifications'] = [det['classifications'][0]]
-    
-        # ...for each detection in this image
-        
-    # ...for each image
-    
-    # im = d['images'][0]    
-    for im in tqdm(d['images']):
-        
-        if 'detections' not in im or im['detections'] is None or len(im['detections']) == 0:
-            continue
-        
-        detections = im['detections']
-    
-        category_to_count = defaultdict(int)
-        for det in detections:
-            if ('classifications' in det) and (det['conf'] >= detection_confidence_threshold):
-                for c in det['classifications']:
-                    if c[1] >= classification_confidence_threshold:
-                        category_to_count[c[0]] += 1
-                # ...for each classification
-            # ...if there are classifications for this detection
-        # ...for each detection
-                        
-        if len(category_to_count) <= 1:
-            continue
-        
-        category_to_count = {k: v for k, v in sorted(category_to_count.items(),
-                                                     key=lambda item: item[1], 
-                                                     reverse=True)}
-        
-        keys = list(category_to_count.keys())
-        
-        # Handle a quirky special case: if the most common category is "other" and 
-        # it's "tied" with the second-most-common category, swap them
-        if (len(keys) > 1) and \
-            (keys[0] in other_category_ids) and \
-            (keys[1] not in other_category_ids) and \
-            (category_to_count[keys[0]] == category_to_count[keys[1]]):
-                keys[1], keys[0] = keys[0], keys[1]
-        
-        max_count = category_to_count[keys[0]]
-        # secondary_count = category_to_count[keys[1]]
-        # The 'secondary count' is the most common non-other class
-        secondary_count = 0
-        for i_key in range(1,len(keys)):
-            if keys[i_key] not in other_category_ids:
-                secondary_count = category_to_count[keys[i_key]]
-                break
-
-        most_common_category = keys[0]
-        
-        assert max_count >= secondary_count
-        
-        # If we have at least *min_detections_to_overwrite_other* in a category that isn't
-        # "other", change all "other" classifications to that category
-        if max_count >= min_detections_to_overwrite_other and \
-            most_common_category not in other_category_ids:
-            
-            other_change_made = False
-            
-            for det in detections:
-                
-                if ('classifications' in det) and (det['conf'] >= detection_overwrite_threshold): 
-                    
-                    for c in det['classifications']:                
-                        
-                        if c[1] >= classification_overwrite_threshold and \
-                            c[0] in other_category_ids:
-                                
-                            n_other_classifications_changed += 1
-                            other_change_made = True
-                            c[0] = most_common_category
-                            
-                    # ...for each classification
-                    
-                # ...if there are classifications for this detection
-                
-            # ...for each detection
-            
-            if other_change_made:
-                n_other_images_changed += 1
-            
-        # ...if we should overwrite all "other" classifications
-    
-        if max_count < min_detections_above_threshold:
-            continue
-        
-        if secondary_count >= max_detections_secondary_class:
-            continue
-        
-        # At this point, we know we have a dominant category; change all other above-threshold
-        # classifications to that category.  That category may have been "other", in which
-        # case we may have already made the relevant changes.
-        
-        n_detections_flipped_this_image = 0
-        
-        # det = detections[0]
-        for det in detections:
-            
-            if ('classifications' in det) and (det['conf'] >= detection_overwrite_threshold):
-                
-                for c in det['classifications']:
-                    if c[1] >= classification_overwrite_threshold and \
-                        c[0] != most_common_category:
-                            
-                        c[0] = most_common_category
-                        n_detections_flipped += 1
-                        n_detections_flipped_this_image += 1
-                
-                # ...for each classification
-                
-            # ...if there are classifications for this detection
-            
-        # ...for each detection
-        
-        if n_detections_flipped_this_image > 0:
-            n_images_changed += 1
-    
-    # ...for each image    
-    
-    print('Classification smoothing: changed {} detections on {} images'.format(
-        n_detections_flipped,n_images_changed))
-    
-    print('"Other" smoothing: changed {} detections on {} images'.format(
-          n_other_classifications_changed,n_other_images_changed))
-    
-    with open(classifier_output_path_within_image_smoothing,'w') as f:
-        json.dump(d,f,indent=1)
-        
-    print('Wrote results to:\n{}'.format(classifier_output_path_within_image_smoothing))
+        '.json','_within_image_smoothing.json')    
     smoothed_classification_files.append(classifier_output_path_within_image_smoothing)
+    smooth_classification_results_image_level(input_file=classifier_output_path,
+                                              output_file=classifier_output_path_within_image_smoothing,
+                                              options=None)
 
 # ...for each file we want to smooth
 
 
-#% Read EXIF data from all images
+##%% Read EXIF data from all images
 
 from megadetector.data_management import read_exif
 exif_options = read_exif.ReadExifOptions()
@@ -1568,427 +1370,45 @@ else:
                                                    options=exif_options)
 
 
-#% Prepare COCO-camera-traps-compatible image objects for EXIF results
+##%% Prepare COCO-camera-traps-compatible image objects for EXIF results
 
-import datetime    
-from megadetector.data_management.read_exif import parse_exif_datetime_string
+# ...and add location/datetime info based on filenames and EXIF information.
 
-min_valid_timestamp_year = 2001
+from megadetector.data_management.read_exif import exif_results_to_cct
 
-now = datetime.datetime.now()
-
-image_info = []
-
-images_without_datetime = []
-images_with_invalid_datetime = []
-
-exif_datetime_tag = 'DateTimeOriginal'
-
-# exif_result = exif_results[0]
-for exif_result in tqdm(exif_results):
-    
-    im = {}
-    
-    # By default we assume that each leaf-node folder is a location
-    if overflow_folder_handling_enabled:
-        im['location'] = relative_path_to_location(os.path.dirname(exif_result['file_name']))
-    else:
-        im['location'] = os.path.dirname(exif_result['file_name'])
-        
-    im['file_name'] = exif_result['file_name']
-    im['id'] = im['file_name']
-    
-    if ('exif_tags' not in exif_result) or (exif_result['exif_tags'] is None) or \
-        (exif_datetime_tag not in exif_result['exif_tags']): 
-        exif_dt = None
-    else:
-        exif_dt = exif_result['exif_tags'][exif_datetime_tag]
-        exif_dt = parse_exif_datetime_string(exif_dt)
-    if exif_dt is None:
-        im['datetime'] = None
-        images_without_datetime.append(im['file_name'])
-    else:
-        dt = exif_dt
-        
-        # An image from the future (or within the last 24 hours) is invalid
-        if (now - dt).total_seconds() <= 1*24*60*60:
-            print('Warning: datetime for {} is {}'.format(
-                im['file_name'],dt))
-            im['datetime'] = None            
-            images_with_invalid_datetime.append(im['file_name'])
-        
-        # An image from before the dawn of time is also invalid
-        elif dt.year < min_valid_timestamp_year:
-            print('Warning: datetime for {} is {}'.format(
-                im['file_name'],dt))
-            im['datetime'] = None
-            images_with_invalid_datetime.append(im['file_name'])
-        
-        else:
-            im['datetime'] = dt
-
-    image_info.append(im)
-    
-# ...for each exif image result
-
-print('Parsed EXIF datetime information, unable to parse EXIF date from {} of {} images'.format(
-    len(images_without_datetime),len(exif_results)))
+cct_dict = exif_results_to_cct(exif_results=exif_results,
+                               cct_output_file=None,
+                               options=None)
 
 
-#% Assemble into sequences
+##%% Assemble images into sequences
 
-from collections import defaultdict
 from megadetector.data_management import cct_json_utils
 
 print('Assembling images into sequences')
-
-cct_json_utils.create_sequences(image_info)
-
-# Make a list of images appearing at each location
-sequence_to_images = defaultdict(list)
-
-# im = image_info[0]
-for im in tqdm(image_info):
-    sequence_to_images[im['seq_id']].append(im)
-
-all_sequences = list(sorted(sequence_to_images.keys()))
+cct_json_utils.create_sequences(cct_dict)
 
 
-#% Load classification results
+##%% Sequence-level smoothing
+
+from megadetector.postprocessing.classification_postprocessing import \
+    ClassificationSmoothingOptionsSequenceLevel, smooth_classification_results_sequence_level
+
+options = ClassificationSmoothingOptionsSequenceLevel()
+options.category_names_to_smooth_to = set(['deer','elk','cow','canid','cat','bird','bear'])
+options.min_dominant_class_ratio_for_secondary_override_table = {'cow':2,None:3}
 
 sequence_level_smoothing_input_file = smoothed_classification_files[0]
-
-with open(sequence_level_smoothing_input_file,'r') as f:
-    d = json.load(f)
-
-# Map each filename to classification results for that file
-filename_to_results = {}
-
-for im in tqdm(d['images']):
-    filename_to_results[im['file'].replace('\\','/')] = im
-
-
-#% Smooth classification results over sequences (prep)
-
-from megadetector.utils.ct_utils import is_list_sorted
-
-classification_category_id_to_name = d['classification_categories']
-classification_category_name_to_id = {v: k for k, v in classification_category_id_to_name.items()}
-
-class_names = list(classification_category_id_to_name.values())
-
-animal_detection_category = '1'
-assert(d['detection_categories'][animal_detection_category] == 'animal')
-
-other_category_names = set(['other'])
-other_category_ids = set([classification_category_name_to_id[s] for s in other_category_names])
-
-# These are the only classes to which we're going to switch other classifications
-category_names_to_smooth_to = set(['deer','elk','cow','canid','cat','bird','bear'])
-category_ids_to_smooth_to = set([classification_category_name_to_id[s] for s in category_names_to_smooth_to])
-assert all([s in class_names for s in category_names_to_smooth_to])    
-
-# Only switch classifications to the dominant class if we see the dominant class at least
-# this many times
-min_dominant_class_classifications_above_threshold_for_class_smoothing = 5 # 2
-
-# If we see more than this many of a class that are above threshold, don't switch those
-# classifications to the dominant class.
-max_secondary_class_classifications_above_threshold_for_class_smoothing = 5
-
-# If the ratio between a dominant class and a secondary class count is greater than this, 
-# regardless of the secondary class count, switch those classifications (i.e., ignore
-# max_secondary_class_classifications_above_threshold_for_class_smoothing).
-#
-# This may be different for different dominant classes, e.g. if we see lots of cows, they really
-# tend to be cows.  Less so for canids, so we set a higher "override ratio" for canids.
-min_dominant_class_ratio_for_secondary_override_table = {classification_category_name_to_id['cow']:2,None:3}
-
-# If there are at least this many classifications for the dominant class in a sequence,
-# regardless of what that class is, convert all 'other' classifications (regardless of 
-# confidence) to that class.
-min_dominant_class_classifications_above_threshold_for_other_smoothing = 3 # 2
-
-# If there are at least this many classifications for the dominant class in a sequence,
-# regardless of what that class is, classify all previously-unclassified detections
-# as that class.
-min_dominant_class_classifications_above_threshold_for_unclassified_smoothing = 3 # 2
-
-# Only count classifications above this confidence level when determining the dominant
-# class, and when deciding whether to switch other classifications.
-classification_confidence_threshold = 0.6
-
-# Confidence values to use when we change a detection's classification (the
-# original confidence value is irrelevant at that point)
-flipped_other_confidence_value = 0.6
-flipped_class_confidence_value = 0.6
-flipped_unclassified_confidence_value = 0.6
-
-min_detection_confidence_for_unclassified_flipping = 0.15
-
-
-#% Smooth classification results over sequences (supporting functions)
-    
-def results_for_sequence(images_this_sequence):
-    """
-    Fetch MD results for every image in this sequence, based on the 'file_name' field
-    """
-    
-    results_this_sequence = []
-    for im in images_this_sequence:
-        fn = im['file_name']
-        results_this_image = filename_to_results[fn]
-        assert isinstance(results_this_image,dict)
-        results_this_sequence.append(results_this_image)
-        
-    return results_this_sequence
-            
-    
-def top_classifications_for_sequence(images_this_sequence):
-    """
-    Return all top-1 animal classifications for every detection in this 
-    sequence, regardless of  confidence
-
-    May modify [images_this_sequence] (removing non-top-1 classifications)
-    """
-    
-    classifications_this_sequence = []
-
-    # im = images_this_sequence[0]
-    for im in images_this_sequence:
-        
-        fn = im['file_name']
-        results_this_image = filename_to_results[fn]
-        
-        if results_this_image['detections'] is None:
-            continue
-        
-        # det = results_this_image['detections'][0]
-        for det in results_this_image['detections']:
-            
-            # Only process animal detections
-            if det['category'] != animal_detection_category:
-                continue
-            
-            # Only process detections with classification information
-            if 'classifications' not in det:
-                continue
-            
-            # We only care about top-1 classifications, remove everything else
-            if len(det['classifications']) > 1:
-                
-                # Make sure the list of classifications is already sorted by confidence
-                classification_confidence_values = [c[1] for c in det['classifications']]
-                assert is_list_sorted(classification_confidence_values,reverse=True)
-                
-                # ...and just keep the first one
-                det['classifications'] = [det['classifications'][0]]
-                
-            # Confidence values should be sorted within a detection; verify this, and ignore 
-            top_classification = det['classifications'][0]
-            
-            classifications_this_sequence.append(top_classification)
-    
-        # ...for each detection in this image
-        
-    # ...for each image in this sequence
-
-    return classifications_this_sequence
-
-# ...top_classifications_for_sequence()
-
-
-def count_above_threshold_classifications(classifications_this_sequence):    
-    """
-    Given a list of classification objects (tuples), return a dict mapping
-    category IDs to the count of above-threshold classifications.
-    
-    This dict's keys will be sorted in descending order by frequency.
-    """
-    
-    # Count above-threshold classifications in this sequence
-    category_to_count = defaultdict(int)
-    for c in classifications_this_sequence:
-        if c[1] >= classification_confidence_threshold:
-            category_to_count[c[0]] += 1
-    
-    # Sort the dictionary in descending order by count
-    category_to_count = {k: v for k, v in sorted(category_to_count.items(),
-                                                 key=lambda item: item[1], 
-                                                 reverse=True)}
-    
-    keys_sorted_by_frequency = list(category_to_count.keys())
-        
-    # Handle a quirky special case: if the most common category is "other" and 
-    # it's "tied" with the second-most-common category, swap them.
-    if len(other_category_names) > 0:
-        if (len(keys_sorted_by_frequency) > 1) and \
-            (keys_sorted_by_frequency[0] in other_category_names) and \
-            (keys_sorted_by_frequency[1] not in other_category_names) and \
-            (category_to_count[keys_sorted_by_frequency[0]] == \
-             category_to_count[keys_sorted_by_frequency[1]]):
-                keys_sorted_by_frequency[1], keys_sorted_by_frequency[0] = \
-                    keys_sorted_by_frequency[0], keys_sorted_by_frequency[1]
-
-    sorted_category_to_count = {}    
-    for k in keys_sorted_by_frequency:
-        sorted_category_to_count[k] = category_to_count[k]
-        
-    return sorted_category_to_count
-
-# ...def count_above_threshold_classifications()
-    
-def sort_images_by_time(images):
-    """
-    Returns a copy of [images], sorted by the 'datetime' field (ascending).
-    """
-    return sorted(images, key = lambda im: im['datetime'])        
-    
-
-def get_first_key_from_sorted_dictionary(di):
-    if len(di) == 0:
-        return None
-    return next(iter(di.items()))[0]
-
-
-def get_first_value_from_sorted_dictionary(di):
-    if len(di) == 0:
-        return None
-    return next(iter(di.items()))[1]
-
-
-#% Smooth classifications at the sequence level (main loop)
-
-n_other_flips = 0
-n_classification_flips = 0
-n_unclassified_flips = 0
-
-# Break if this token is contained in a filename (set to None for normal operation)
-debug_fn = None
-
-# i_sequence = 0; seq_id = all_sequences[i_sequence]
-for i_sequence,seq_id in tqdm(enumerate(all_sequences),total=len(all_sequences)):
-    
-    images_this_sequence = sequence_to_images[seq_id]
-    
-    # Count top-1 classifications in this sequence (regardless of confidence)
-    classifications_this_sequence = top_classifications_for_sequence(images_this_sequence)
-    
-    # Handy debugging code for looking at the numbers for a particular sequence
-    for im in images_this_sequence:
-        if debug_fn is not None and debug_fn in im['file_name']:
-            raise ValueError('')
-             
-    if len(classifications_this_sequence) == 0:
-        continue
-    
-    # Count above-threshold classifications for each category
-    sorted_category_to_count = count_above_threshold_classifications(classifications_this_sequence)
-    
-    if len(sorted_category_to_count) == 0:
-        continue
-    
-    max_count = get_first_value_from_sorted_dictionary(sorted_category_to_count)    
-    dominant_category_id = get_first_key_from_sorted_dictionary(sorted_category_to_count)
-    
-    # If our dominant category ID isn't something we want to smooth to, don't mess around with this sequence
-    if dominant_category_id not in category_ids_to_smooth_to:
-        continue
-        
-    
-    ## Smooth "other" classifications ##
-    
-    if max_count >= min_dominant_class_classifications_above_threshold_for_other_smoothing:        
-        for c in classifications_this_sequence:           
-            if c[0] in other_category_ids:
-                n_other_flips += 1
-                c[0] = dominant_category_id
-                c[1] = flipped_other_confidence_value
-
-
-    # By not re-computing "max_count" here, we are making a decision that the count used
-    # to decide whether a class should overwrite another class does not include any "other"
-    # classifications we changed to be the dominant class.  If we wanted to include those...
-    # 
-    # sorted_category_to_count = count_above_threshold_classifications(classifications_this_sequence)
-    # max_count = get_first_value_from_sorted_dictionary(sorted_category_to_count)    
-    # assert dominant_category_id == get_first_key_from_sorted_dictionary(sorted_category_to_count)
-    
-    
-    ## Smooth non-dominant classes ##
-    
-    if max_count >= min_dominant_class_classifications_above_threshold_for_class_smoothing:
-        
-        # Don't flip classes to the dominant class if they have a large number of classifications
-        category_ids_not_to_flip = set()
-        
-        for category_id in sorted_category_to_count.keys():
-            secondary_class_count = sorted_category_to_count[category_id]
-            dominant_to_secondary_ratio = max_count / secondary_class_count
-            
-            # Don't smooth over this class if there are a bunch of them, and the ratio
-            # if primary to secondary class count isn't too large
-            
-            # Default ratio
-            ratio_for_override = min_dominant_class_ratio_for_secondary_override_table[None]
-            
-            # Does this dominant class have a custom ratio?
-            if dominant_category_id in min_dominant_class_ratio_for_secondary_override_table:
-                ratio_for_override = \
-                    min_dominant_class_ratio_for_secondary_override_table[dominant_category_id]
-                    
-            if (dominant_to_secondary_ratio < ratio_for_override) and \
-                (secondary_class_count > \
-                 max_secondary_class_classifications_above_threshold_for_class_smoothing):
-                category_ids_not_to_flip.add(category_id)
-                
-        for c in classifications_this_sequence:
-            if c[0] not in category_ids_not_to_flip and c[0] != dominant_category_id:
-                c[0] = dominant_category_id
-                c[1] = flipped_class_confidence_value
-                n_classification_flips += 1
-        
-        
-    ## Smooth unclassified detections ##
-        
-    if max_count >= min_dominant_class_classifications_above_threshold_for_unclassified_smoothing:
-        
-        results_this_sequence = results_for_sequence(images_this_sequence)
-        detections_this_sequence = []
-        for r in results_this_sequence:
-            if r['detections'] is not None:
-                detections_this_sequence.extend(r['detections'])
-        for det in detections_this_sequence:
-            if 'classifications' in det and len(det['classifications']) > 0:
-                continue
-            if det['category'] != animal_detection_category:
-                continue
-            if det['conf'] < min_detection_confidence_for_unclassified_flipping:
-                continue
-            det['classifications'] = [[dominant_category_id,flipped_unclassified_confidence_value]]
-            n_unclassified_flips += 1
-                            
-# ...for each sequence    
-    
-print('\Finished sequence smoothing\n')
-print('Flipped {} "other" classifications'.format(n_other_flips))
-print('Flipped {} species classifications'.format(n_classification_flips))
-print('Flipped {} unclassified detections'.format(n_unclassified_flips))
-    
-
-#% Write smoothed classification results
-
 sequence_smoothed_classification_file = sequence_level_smoothing_input_file.replace(
     '.json','_seqsmoothing.json')
 
-print('Writing sequence-smoothed classification results to {}'.format(
-    sequence_smoothed_classification_file))
+_ = smooth_classification_results_sequence_level(md_results=sequence_level_smoothing_input_file,
+                                             cct_sequence_information=cct_dict,
+                                             output_file=sequence_smoothed_classification_file,
+                                             options=options)
 
-with open(sequence_smoothed_classification_file,'w') as f:
-    json.dump(d,f,indent=1)
 
-
-#% Post-processing (post-classification, post-within-image-and-within-sequence-smoothing)
+##%% Post-processing (post-classification, post-within-image-and-within-sequence-smoothing)
 
 options = PostProcessingOptions()
 options.image_base_dir = input_path
@@ -2020,7 +1440,8 @@ ppresults = process_batch_results(options)
 path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
 # import clipboard; clipboard.copy(ppresults.output_html_file)
 
-#% Zip .json files
+
+##%% Zip .json files
 
 from megadetector.utils.path_utils import parallel_zip_files
 
@@ -2289,7 +1710,7 @@ for s in location_names:
 
 #%% End notebook: turn this script into a notebook (how meta!)
 
-import os
+import os # noqa
 import nbformat as nbf
 
 if os.name == 'nt':
