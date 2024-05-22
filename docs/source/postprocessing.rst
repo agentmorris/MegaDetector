@@ -15,15 +15,23 @@ Submodules
 ----------
 
 postprocessing.categorize\_detections\_by\_size module
-----------------------------------------------------------------------------
+------------------------------------------------------
 
 .. automodule:: megadetector.postprocessing.categorize_detections_by_size
    :members:
    :undoc-members:
    :show-inheritance:
 
+postprocessing.classification\_postprocessing module
+----------------------------------------------------
+
+.. automodule:: megadetector.postprocessing.classification_postprocessing
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 postprocessing.combine\_api\_outputs module
------------------------------------------------------------------
+-------------------------------------------
 
 .. automodule:: megadetector.postprocessing.combine_api_outputs
    :members:
@@ -39,7 +47,7 @@ postprocessing.combine\_api\_outputs module
    :no_default_values:
     
 postprocessing.compare\_batch\_results module
--------------------------------------------------------------------
+---------------------------------------------
 
 .. automodule:: megadetector.postprocessing.compare_batch_results
    :members:
@@ -55,7 +63,7 @@ postprocessing.compare\_batch\_results module
    :no_default_values:
 
 postprocessing.convert\_output\_format module
--------------------------------------------------------------------
+---------------------------------------------
 
 .. automodule:: megadetector.postprocessing.convert_output_format
    :members:
@@ -71,7 +79,7 @@ postprocessing.convert\_output\_format module
    :no_default_values:
 
 postprocessing.md\_to\_coco module
---------------------------------------------------------
+----------------------------------
 
 .. automodule:: megadetector.postprocessing.md_to_coco
    :members:
@@ -104,7 +112,7 @@ postprocessing.md\_to\_labelme module
    :no_default_values:
 
 postprocessing.merge\_detections module
--------------------------------------------------------------
+---------------------------------------
 
 .. automodule:: megadetector.postprocessing.merge_detections
    :members:
@@ -112,7 +120,7 @@ postprocessing.merge\_detections module
    :show-inheritance:
 
 postprocessing.postprocess\_batch\_results module
------------------------------------------------------------------------
+-------------------------------------------------
 
 .. automodule:: megadetector.postprocessing.postprocess_batch_results
    :members:
@@ -129,7 +137,7 @@ postprocessing.postprocess\_batch\_results module
    :no_default_values:
 
 postprocessing.remap\_detection\_categories module
-------------------------------------------------------------------------
+--------------------------------------------------
 
 .. automodule:: megadetector.postprocessing.remap_detection_categories
    :members:
@@ -137,7 +145,7 @@ postprocessing.remap\_detection\_categories module
    :show-inheritance:
 
 postprocessing.render\_detection\_confusion\_matrix module
---------------------------------------------------------------------------------
+----------------------------------------------------------
 
 .. automodule:: megadetector.postprocessing.render_detection_confusion_matrix
    :members:
@@ -145,7 +153,7 @@ postprocessing.render\_detection\_confusion\_matrix module
    :show-inheritance:
 
 postprocessing.separate\_detections\_into\_folders module
--------------------------------------------------------------------------------
+---------------------------------------------------------
 
 .. automodule:: megadetector.postprocessing.separate_detections_into_folders
    :members:
@@ -161,7 +169,7 @@ postprocessing.separate\_detections\_into\_folders module
    :no_default_values:
 
 postprocessing.subset\_json\_detector\_output module
---------------------------------------------------------------------------
+----------------------------------------------------
 
 .. automodule:: megadetector.postprocessing.subset_json_detector_output
    :members:
@@ -177,9 +185,10 @@ postprocessing.subset\_json\_detector\_output module
    :no_default_values:
 
 postprocessing.top\_folders\_to\_bottom module
---------------------------------------------------------------------
+----------------------------------------------
 
 .. automodule:: megadetector.postprocessing.top_folders_to_bottom
    :members:
    :undoc-members:
    :show-inheritance:
+

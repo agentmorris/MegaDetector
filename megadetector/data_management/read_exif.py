@@ -26,6 +26,7 @@ from PIL import Image, ExifTags
 
 from megadetector.utils.path_utils import find_images, is_executable
 from megadetector.utils.ct_utils import args_to_object
+from megadetector.utils.ct_utils import image_file_to_camera_folder
 
 debug_max_images = None
 
@@ -82,6 +83,27 @@ class ReadExifOptions:
     #: Should we use exiftool or PIL?
     processing_library = 'pil' # 'exiftool','pil'
         
+
+class ExifResultsToCCTOptions:
+    """
+    Options controlling the behavior of exif_results_to_cct() (which reformats the datetime information)
+    extracted by read_exif_from_folder().
+    """
+    
+    def __init__(self):
+        
+        #: Timestamps older than this are assumed to be junk; lots of cameras use a
+        #: default time in 2000.
+        self.min_valid_timestamp_year = 2001
+    
+        #: The EXIF tag from which to pull datetime information
+        self.exif_datetime_tag = 'DateTimeOriginal'
+    
+        #: Function for extracting location information, should take a string
+        #: and return a string.  Defaults to ct_utils.image_file_to_camera_folder.  If
+        #: this is None, uses folder names as locations.
+        self.filename_to_location_function = image_file_to_camera_folder
+    
 
 #%% Functions
 
@@ -437,7 +459,7 @@ def _create_image_objects(image_files,recursive=True):
 def _populate_exif_for_images(image_base,images,options=None):
     """
     Main worker loop: read EXIF data for each image object in [images] and 
-    populate the image objects.
+    populate the image objects in place.
     
     'images' should be a list of dicts with the field 'file_name' containing
     a relative path (relative to 'image_base').    
@@ -544,6 +566,8 @@ def _write_exif_results(results,output_file):
     
     print('Wrote results to {}'.format(output_file))
 
+# ..._write_exif_results(...)
+
 
 def read_exif_from_folder(input_folder,output_file=None,options=None,filenames=None,recursive=True):
     """
@@ -561,8 +585,9 @@ def read_exif_from_folder(input_folder,output_file=None,options=None,filenames=N
             is None.
             
     Returns:
-        dict: a dictionary mapping relative filenames to EXIF data, whose format depends on whether 
-        we're using PIL or exiftool.
+        list: list of dicts, each of which contains EXIF information for one images.  Fields include at least:
+            * 'file_name': the relative path to the image
+            * 'exif_tags': a dict of EXIF tags whose exact format depends on [options.processing_library].            
     """
     
     if options is None:
@@ -617,6 +642,106 @@ def read_exif_from_folder(input_folder,output_file=None,options=None,filenames=N
                 print('Warning: error serializing EXIF data: {}'.format(str(e)))                
         
     return results
+
+# ...read_exif_from_folder(...)
+
+
+def exif_results_to_cct(exif_results,cct_output_file=None,options=None):
+    """
+    Given the EXIF results for a folder of images read via read_exif_from_folder,
+    create a COCO Camera Traps .json file that has no annotations, but 
+    attaches image filenames to locations and datetimes.
+    
+    Args:
+        exif_results (str or list): the filename (or loaded list) containing the results
+          from read_exif_from_folder
+        cct_file (str,optional): the filename to which we should write COCO-Camera-Traps-formatted
+          data
+          
+    Returns:
+        dict: a COCO Camera Traps dict (with no annotations).
+    """
+    
+    if options is None:
+        options = ExifResultsToCCTOptions()
+        
+    if isinstance(exif_results,str):
+        print('Reading EXIF results from {}'.format(exif_results))
+        with open(exif_results,'r') as f:
+            exif_results = json.load(f)
+    else:
+        assert isinstance(exif_results,list)
+            
+    now = datetime.now()
+
+    image_info = []
+
+    images_without_datetime = []
+    images_with_invalid_datetime = []
+    
+    # exif_result = exif_results[0]
+    for exif_result in tqdm(exif_results):
+        
+        im = {}
+        
+        # By default we assume that each leaf-node folder is a location
+        if options.filename_to_location_function is None:
+            im['location'] = os.path.dirname(exif_result['file_name'])
+        else:
+            im['location'] = options.filename_to_location_function(exif_result['file_name'])            
+            
+        im['file_name'] = exif_result['file_name']
+        im['id'] = im['file_name']
+        
+        if ('exif_tags' not in exif_result) or (exif_result['exif_tags'] is None) or \
+            (options.exif_datetime_tag not in exif_result['exif_tags']): 
+            exif_dt = None
+        else:
+            exif_dt = exif_result['exif_tags'][options.exif_datetime_tag]
+            exif_dt = parse_exif_datetime_string(exif_dt)
+        if exif_dt is None:
+            im['datetime'] = None
+            images_without_datetime.append(im['file_name'])
+        else:
+            dt = exif_dt
+            
+            # An image from the future (or within the last 24 hours) is invalid
+            if (now - dt).total_seconds() <= 1*24*60*60:
+                print('Warning: datetime for {} is {}'.format(
+                    im['file_name'],dt))
+                im['datetime'] = None            
+                images_with_invalid_datetime.append(im['file_name'])
+            
+            # An image from before the dawn of time is also invalid
+            elif dt.year < options.min_valid_timestamp_year:
+                print('Warning: datetime for {} is {}'.format(
+                    im['file_name'],dt))
+                im['datetime'] = None
+                images_with_invalid_datetime.append(im['file_name'])
+            
+            else:
+                im['datetime'] = dt
+
+        image_info.append(im)
+        
+    # ...for each exif image result
+
+    print('Parsed EXIF datetime information, unable to parse EXIF date from {} of {} images'.format(
+        len(images_without_datetime),len(exif_results)))
+
+    d = {}
+    d['info'] = {}
+    d['images'] = image_info
+    d['annotations'] = []
+    d['categories'] = []
+    
+    if cct_output_file is not None:
+        with open(cct_output_file,'w') as f:
+            json.dump(d,indent=1)
+    
+    return d
+
+# ...exif_results_to_cct(...)
 
     
 #%% Interactive driver

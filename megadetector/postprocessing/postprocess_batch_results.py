@@ -901,8 +901,8 @@ def process_batch_results(options):
             this set of results; see the PostProcessingOptions class for details.
            
     Returns:
-        PostProcessingResults: information about the results/preview, most importantly the HTML filename
-            of the output.  See the PostProcessingResults class for details.
+        PostProcessingResults: information about the results/preview, most importantly the 
+        HTML filename of the output.  See the PostProcessingResults class for details.
     """
     ppresults = PostProcessingResults()
 
