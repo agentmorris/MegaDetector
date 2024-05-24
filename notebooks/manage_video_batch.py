@@ -15,10 +15,10 @@ from megadetector.utils import path_utils
 from megadetector.detection import video_utils
 
 input_folder = '/datadrive/data'
-output_folder_base = '/datadrive/frames'
+frame_folder_base = '/datadrive/frames'
 
 assert os.path.isdir(input_folder)
-os.makedirs(output_folder_base,exist_ok=True)
+os.makedirs(frame_folder_base,exist_ok=True)
 
 quality = 90
 max_width = 1600
@@ -32,12 +32,12 @@ n_workers = 8
 #%% Split videos into frames
 
 assert os.path.isdir(input_folder)
-os.makedirs(output_folder_base,exist_ok=True)
+os.makedirs(frame_folder_base,exist_ok=True)
 
 
 frame_filenames_by_video,fs_by_video,video_filenames = \
     video_utils.video_folder_to_frames(input_folder=input_folder,
-                                       output_folder_base=output_folder_base,
+                                       output_folder_base=frame_folder_base,
                                        recursive=recursive,
                                        overwrite=overwrite,
                                        n_threads=n_workers,
@@ -53,7 +53,7 @@ frame_filenames_by_video,fs_by_video,video_filenames = \
 
 from collections import defaultdict
 
-frame_files = path_utils.find_images(output_folder_base,True)
+frame_files = path_utils.find_images(frame_folder_base,True)
 frame_files = [s.replace('\\','/') for s in frame_files]
 print('Enumerated {} total frames'.format(len(frame_files)))
 
@@ -63,7 +63,7 @@ folder_to_frame_files = defaultdict(list)
 # fn = frame_files[0]
 for fn in frame_files:
     folder_name = os.path.dirname(fn)
-    folder_name = os.path.relpath(folder_name,output_folder_base)
+    folder_name = os.path.relpath(folder_name,frame_folder_base)
     folder_to_frame_files[folder_name].append(fn)
 
 print('Found {} folders for {} files'.format(len(folder_to_frame_files),len(frame_files)))
@@ -230,7 +230,7 @@ if False:
     detected_frame_files = visualize_detector_output.visualize_detector_output(
         detector_output_path=frames_json,
         out_dir=rendered_detections_folder,
-        images_dir=output_folder_base,
+        images_dir=frame_folder_base,
         confidence_threshold=confidence_threshold,
         preserve_path_structure=True,
         output_image_width=-1)
@@ -240,7 +240,7 @@ if False:
     
     frames_to_video(detected_frame_files, output_fs, output_video, codec_spec='h264')
     
-    # from utils.path_utils import open_file; open_file(output_video)
+    # from megadetector.utils.path_utils import open_file; open_file(output_video)
 
 
     #%% Test a possibly-broken video
@@ -272,7 +272,7 @@ if False:
     sampled_videos = random.sample(video_filenames,n_videos_to_sample)
     assert len(sampled_videos) == n_videos_to_sample
     
-    size_test_frame_folder = os.path.join(output_folder_base,'size-test')
+    size_test_frame_folder = os.path.join(frame_folder_base,'size-test')
     if quality is not None:
         size_test_frame_folder += '_' + str(quality)
     os.makedirs(size_test_frame_folder,exist_ok=True)
@@ -321,7 +321,7 @@ import nbformat as nbf
 if os.name == 'nt':
     git_base = r'c:\git'
 else:
-    git_base = os.path.expanduer('~/git')
+    git_base = os.path.expanduser('~/git')
 
 input_py_file = git_base + '/MegaDetector/notebooks/manage_video_batch.py'
 assert os.path.isfile(input_py_file)

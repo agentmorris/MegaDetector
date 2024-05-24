@@ -152,6 +152,9 @@ class TFDetector:
         assert image_size is None, 'Image sizing not supported for TF detectors'
         assert not skip_image_resizing, 'Image sizing not supported for TF detectors'
         
+        if detection_threshold is None:
+            detection_threshold = 0
+            
         result = { 'file': image_id }
         
         try:
