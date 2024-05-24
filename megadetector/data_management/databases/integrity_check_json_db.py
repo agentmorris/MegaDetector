@@ -61,6 +61,9 @@ class IntegrityCheckOptions:
     #: Enable additional debug output
     verbose = True
     
+    #: Allow integer-valued image and annotation IDs (COCO uses this, CCT files use strings)
+    allowIntIDs = False
+    
     
 # This is used in a medium-hacky way to share modified options across threads
 defaultOptions = IntegrityCheckOptions()
@@ -231,7 +234,12 @@ def integrity_check_json_db(jsonFile, options=None):
         imagePathsInJson.add(image['file_name'])
         
         assert isinstance(image['file_name'],str), 'Illegal image filename type'
-        assert isinstance(image['id'],str), 'Illegal image ID type'
+        
+        if options.allowIntIDs:
+            assert isinstance(image['id'],str) or isinstance(image['id'],int), \
+                'Illegal image ID type'
+        else:
+            assert isinstance(image['id'],str), 'Illegal image ID type'
         
         imageId = image['id']        
         
@@ -329,9 +337,16 @@ def integrity_check_json_db(jsonFile, options=None):
         assert 'id' in ann
         assert 'category_id' in ann
         
-        assert isinstance(ann['id'],str), 'Illegal annotation ID type'
+        if options.allowIntIDs:
+            assert isinstance(ann['id'],str) or isinstance(ann['id'],int), \
+                'Illegal annotation ID type'
+            assert isinstance(ann['image_id'],str) or isinstance(ann['image_id'],int), \
+                'Illegal annotation image ID type'
+        else:
+            assert isinstance(ann['id'],str), 'Illegal annotation ID type'
+            assert isinstance(ann['image_id'],str), 'Illegal annotation image ID type'
+        
         assert isinstance(ann['category_id'],int), 'Illegal annotation category ID type'
-        assert isinstance(ann['image_id'],str), 'Illegal annotation image ID type'
         
         if 'bbox' in ann:
             nBoxes += 1
