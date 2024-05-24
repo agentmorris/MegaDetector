@@ -397,8 +397,6 @@ images_per_query = 15
 min_valid_images_per_query = 3
 min_valid_image_size = 3000
 
-# TODO: trivially prallelizable
-#
 # i_row = 0; row = df.iloc[i_row]
 for i_row,row in df.iterrows():
     

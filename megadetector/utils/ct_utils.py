@@ -117,7 +117,8 @@ def pretty_print_object(obj, b_print=True):
 
     # _ = pretty_print_object(obj)
 
-    # TODO: it's sloppy that I'm making a module-wide change here.
+    # TODO: it's sloppy that I'm making a module-wide change here, consider at least
+    # recording these operations and re-setting them at the end of this function.
     jsonpickle.set_encoder_options('json', sort_keys=True, indent=2)
     a = jsonpickle.encode(obj)
     s = '{}'.format(a)

@@ -105,7 +105,7 @@ def request_detections():
     model_version = post_body.get('model_version', '')
     if model_version != '':
         model_version = str(model_version)  # in case user used an int
-        if model_version not in api_config.MD_VERSIONS_TO_REL_PATH:  # TODO use AppConfig to store model version info
+        if model_version not in api_config.MD_VERSIONS_TO_REL_PATH:
             return make_error(400, f'model_version {model_version} is not supported.')
 
     # check request_name has only allowed characters

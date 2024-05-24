@@ -315,7 +315,7 @@ def process_file(fn_relative,verbose=False):
             bottom = float(position[3])
             frame_number = int(position[4])
             
-            # TODO: I'm being lazy about the fact that these don't reflect the
+            # I'm being lazy about the fact that these don't reflect the
             # pixels cropped out of the border.  IMO this is OK because for this dataset,
             # this is just an approximate set of coordinates used to disambiguate simultaneous 
             # areas of movement when multiple different labels are present in the same video.
@@ -488,7 +488,6 @@ def process_file(fn_relative,verbose=False):
             if tag['confidence'] >= confidence_threshold:
                 valid_tags.append(tag)
             else:
-                # TODO
                 print('Zero-confidence tag in {}'.format(fn_relative))                
                 
         track_info['tags'] = valid_tags
@@ -497,13 +496,11 @@ def process_file(fn_relative,verbose=False):
         if len(valid_tags) > 0:
             valid_tracks.append(track_info)
         else:
-            # TODO
             print('Invalid track in {}'.format(fn_relative))
         
     # ...for each track
     
     if (len(clip_metadata['tracks']) > 0) and (len(valid_tracks) == 0):
-        # TODO
         print('Removed all tracks from {}'.format(fn_relative))
         
     clip_metadata['tracks'] = valid_tracks

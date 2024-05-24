@@ -180,11 +180,12 @@ def wi_download_csv_to_coco(csv_file_in,
     if validate_images:
         
         print('Validating images')
-        # TODO: trivially parallelizable
         
         assert os.path.isdir(image_folder), \
             'Must specify a valid image folder if you specify validate_images=True'
-            
+        
+        # TODO: trivially parallelizable
+        #    
         # im = images[0]
         for im in tqdm(images):
             file_name_relative = im['file_name']

@@ -90,9 +90,6 @@ def round_filters(filters, global_params):
     multiplier = global_params.width_coefficient
     if not multiplier:
         return filters
-    # TODO: modify the params names.
-    #       maybe the names (width_divisor,min_width)
-    #       are more suitable than (depth_divisor,min_depth).
     divisor = global_params.depth_divisor
     min_depth = global_params.min_depth
     filters *= multiplier
