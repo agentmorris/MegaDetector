@@ -72,7 +72,6 @@ def main():
    
     print(deployment_id)
 
-    # TODO: check project ID ?
     sql = ''' SELECT emammal_project_taxa_id FROM wild_id.emammal_project_taxa
             where species in ("No Animal", "Unknown Animal", "Homo sapiens", "Vehicle") '''
 

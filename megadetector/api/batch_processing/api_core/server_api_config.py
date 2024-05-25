@@ -47,7 +47,6 @@ MAX_BATCH_ACCOUNT_ACTIVE_JOBS = 300
 DETECTION_CONF_THRESHOLD = 0.1
 
 # relative to the `megadetector_copies` folder in the container `models`
-# TODO add MD versions info to AppConfig
 MD_VERSIONS_TO_REL_PATH = {
     '4.1': 'megadetector_v4_1/md_v4.1.0.pb',
     '3': 'megadetector_v3/megadetector_v3_tf19.pb',

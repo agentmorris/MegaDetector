@@ -868,7 +868,3 @@ if False:
     if extracted_datetime is not None:        
         assert extracted_datetime.year <= 2023 and extracted_datetime.year >= 1990
 
-
-#%% Command-line driver
-
-# TODO

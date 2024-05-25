@@ -147,8 +147,6 @@ def detect_sync():
         
         try:
             # Write images to temporary files
-            #
-            # TODO: read from memory rather than using intermediate files
             os.makedirs(temp_direc,exist_ok=True)
             for name, file in request.files.items():
                 if file.content_type in config.IMAGE_CONTENT_TYPES:
@@ -166,7 +164,6 @@ def detect_sync():
         
         while True:
             
-            # TODO: convert to a blocking read and eliminate the sleep() statement in this loop
             result = db.get(redis_id)
             
             if result:

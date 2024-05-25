@@ -67,9 +67,6 @@ class JobStatusTable:
         assert 'request_status' in status and 'message' in status
         assert status['request_status'] in JobStatusTable.allowed_statuses
 
-        # TODO do not read the entry first to get the call_params when the Cosmos SDK add a
-        # patching functionality:
-        # https://feedback.azure.com/forums/263030-azure-cosmos-db/suggestions/6693091-be-able-to-do-partial-updates-on-document
         item_old = self.read_job_status(job_id)
         if item_old is None:
             raise ValueError

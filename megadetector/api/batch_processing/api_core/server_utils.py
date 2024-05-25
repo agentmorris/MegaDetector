@@ -19,7 +19,6 @@ log = logging.getLogger(os.environ['FLASK_APP'])
 #%% helper classes and functions
 
 def make_error(error_code: int, error_message: str) -> Tuple[dict, int]:
-    # TODO log exception when we have more telemetry
     log.error(f'Error {error_code} - {error_message}')
     return {'error': error_message}, error_code
 
@@ -28,8 +27,6 @@ def check_data_container_sas(input_container_sas: str) -> Optional[Tuple[int, st
     """
     Returns a tuple (error_code, msg) if not a usable SAS URL, else returns None
     """
-    # TODO check that the expiry date of input_container_sas is at least a month
-    # into the future
     permissions = sas_blob_utils.get_permissions_from_uri(input_container_sas)
     data = sas_blob_utils.get_all_query_parts(input_container_sas)
 
@@ -38,7 +35,6 @@ def check_data_container_sas(input_container_sas: str) -> Optional[Tuple[int, st
     if 'read' not in permissions or 'list' not in permissions:
         if 'si' in data:
             # if no permission specified explicitly but has an access policy, assumes okay
-            # TODO - check based on access policy as well
             return None
 
         return 400, msg
