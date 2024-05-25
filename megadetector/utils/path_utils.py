@@ -747,6 +747,7 @@ def parallel_get_file_sizes(filenames, max_workers=16,
         use_threads (bool, optional): whether to use threads (True) or processes (False) for
             parallel copying; ignored if max_workers <= 1
         verbose (bool, optional): enable additionald debug output
+        recursive (bool, optional): enumerate recursively, only relevant if [filenames] is a folder.
         
     Returns:
         dict: dictionary mapping filenames to file sizes in bytes
