@@ -95,7 +95,18 @@ def get_labelme_dict_for_image_from_coco_record(im,annotations,categories,info=N
 def coco_to_labelme(coco_data,image_base,overwrite=False,bypass_image_size_check=False,verbose=False):
     """
     For all the images in [coco_data] (a dict or a filename), write a .json file in 
-    labelme format alongside the corresponding relative path within image_base.    
+    labelme format alongside the corresponding relative path within image_base.
+    
+    Args:
+        coco_data (dict or str): path to a COCO-formatted .json file, or an already-loaded
+            COCO-formatted dict
+        image_base (str): path where images live (filenames in [coco_data] should be relative to
+            [image_base]); this is also where labelme files will be written
+        overwrite (bool, optional): overwrite existing .json files
+        bypass_image_size_check (bool, optional): if you're sure that the COCO data already has
+            correct 'width' and 'height' fields, this bypasses the somewhat-slow loading of 
+            each image to fetch image sizes
+        verbose (bool, optional): enable additional debug output
     """
     
     # Load COCO data if necessary
