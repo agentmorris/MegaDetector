@@ -198,7 +198,9 @@ def run_inference_with_yolo_val(options):
         assert options.half_precision_enabled in (0,1), \
             'Invalid value {} for --half_precision_enabled (should be 0 or 1)'.format(
                 options.half_precision_enabled)
-            
+        
+    options.input_folder = options.input_folder.replace('\\','/')
+    
     # If the model filename is a known model string (e.g. "MDv5A", download the model if necessary)
     model_filename = try_download_known_detector(options.model_filename)
     
@@ -503,7 +505,8 @@ def run_inference_with_yolo_val(options):
     for image_id in image_id_to_file:
         fn = image_id_to_file[image_id]
         if os.path.isdir(options.input_folder):
-            assert options.input_folder in fn
+            assert options.input_folder in fn, 'Folder {} not in file {}'.format(
+                options.input_folder,fn)
             relative_path = os.path.relpath(fn,options.input_folder)
         else:
             assert os.path.isfile(options.input_folder)

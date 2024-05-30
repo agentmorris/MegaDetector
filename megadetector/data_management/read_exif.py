@@ -583,11 +583,12 @@ def read_exif_from_folder(input_folder,output_file=None,options=None,filenames=N
             a list of absolute filenames (if [input_folder] is None)
         recursive (bool, optional): whether to recurse into [input_folder], not relevant if [input_folder]
             is None.
+        verbose (bool, optional): enable additional debug output
             
     Returns:
         list: list of dicts, each of which contains EXIF information for one images.  Fields include at least:
             * 'file_name': the relative path to the image
-            * 'exif_tags': a dict of EXIF tags whose exact format depends on [options.processing_library].            
+            * 'exif_tags': a dict of EXIF tags whose exact format depends on [options.processing_library].
     """
     
     if options is None:

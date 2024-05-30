@@ -128,6 +128,21 @@ data\_management.labelme\_to\_yolo module
    :undoc-members:
    :show-inheritance:
 
+data\_management.rename\_images module
+-----------------------------------------
+
+.. automodule:: megadetector.data_management.rename_images
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. sphinx_argparse_cli::
+   :module: megadetector.data_management.rename_images
+   :func: main
+   :hook:
+   :prog: rename_images
+   :no_default_values:
+
 data\_management.ocr\_tools module
 ----------------------------------
 
