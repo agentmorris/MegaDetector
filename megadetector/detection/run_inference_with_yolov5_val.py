@@ -73,91 +73,105 @@ class YoloInferenceOptions:
     the input/output filenames.
     """
     
-    ## Required ##
+    def __init__(self):
+        
+        ## Required ##
+        
+        #: Folder of images to process
+        self.input_folder = None
+        
+        #: Model filename (ending in .pt), or a well-known model name (e.g. "MDV5A")
+        self.model_filename = None
+        
+        #: .json output file, in MD results format
+        self.output_file = None
+        
+        
+        ## Optional ##
+        
+        #: Required for older YOLOv5 inference, not for newer ulytralytics/YOLOv8 inference
+        self.yolo_working_folder = None
+        
+        #: Currently 'yolov5' and 'ultralytics' are supported, and really these are proxies for
+        #: "the yolov5 repo" and "the ultralytics repo".
+        self.model_type = 'yolov5' 
     
-    #: Folder of images to process
-    input_folder = None
-    
-    #: Model filename (ending in .pt), or a well-known model name (e.g. "MDV5A")
-    model_filename = None
-    
-    #: .json output file, in MD results format
-    output_file = None
-    
-    
-    ## Optional ##
-    
-    #: Required for older YOLOv5 inference, not for newer ulytralytics/YOLOv8 inference
-    yolo_working_folder = None
-    
-    #: Currently 'yolov5' and 'ultralytics' are supported, and really these are proxies for
-    #: "the yolov5 repo" and "the ultralytics repo".
-    model_type = 'yolov5' 
-
-    #: Image size to use; this is a single int, which in ultralytics's terminology means
-    #: "scale the long side of the image to this size, and preserve aspect ratio".
-    image_size = default_image_size_with_augmentation
-    
-    #: Detections below this threshold will not be included in the output file
-    conf_thres = '0.001'
-    
-    #: Batch size... has no impact on results, but may create memory issues if you set
-    #: this to large values
-    batch_size = 1
-    
-    #: Device string: typically '0' for GPU 0, '1' for GPU 1, etc., or 'cpu'
-    device_string = '0'
-    
-    #: Should we enable test-time augmentation?
-    augment = True
-    
-    #: Should we enable half-precision inference?
-    half_precision_enabled = None
-    
-    #: Where should we stash the temporary symlinks used to give unique identifiers to image files?
-    #:
-    #: If this is None, we'll create a folder in system temp space.
-    symlink_folder = None
-    
-    #: Should we use symlinks to give unique identifiers to image files (vs. copies)?
-    use_symlinks = True
-    
-    #: Temporary folder to stash intermediate YOLO results.
-    #:
-    #: If this is None, we'll create a folder in system temp space.    
-    yolo_results_folder = None
-    
-    #: Should we remove the symlink folder when we're done?
-    remove_symlink_folder = True
-    
-    #: Should we remove the intermediate results folder when we're done?
-    remove_yolo_results_folder = True
-    
-    #: These are deliberately offset from the standard MD categories; YOLOv5
-    #: needs categories IDs to start at 0.
-    #:
-    #: This can also be a string that points to a YOLO dataset.yaml file.
-    yolo_category_id_to_name = {0:'animal',1:'person',2:'vehicle'}
-    
-    #: What should we do if the output file already exists?
-    #:
-    #: Can be 'error', 'skip', or 'overwrite'.
-    overwrite_handling = 'skip'
-    
-    #: If True, we'll do a dry run that lets you preview the YOLO val command, without
-    #: actually running it.
-    preview_yolo_command_only = False
-    
-    #: By default, if any errors occur while we're copying images or creating symlinks, it's
-    #: game over.  If this is True, those errors become warnings, and we plow ahead.
-    treat_copy_failures_as_warnings = False
-    
-    #: Save YOLO console output
-    save_yolo_debug_output = False
-    
-    #: Whether to search for images recursively within [input_folder]
-    recursive = True
-            
+        #: Image size to use; this is a single int, which in ultralytics's terminology means
+        #: "scale the long side of the image to this size, and preserve aspect ratio".
+        self.image_size = default_image_size_with_augmentation
+        
+        #: Detections below this threshold will not be included in the output file
+        self.conf_thres = '0.001'
+        
+        #: Batch size... has no impact on results, but may create memory issues if you set
+        #: this to large values
+        self.batch_size = 1
+        
+        #: Device string: typically '0' for GPU 0, '1' for GPU 1, etc., or 'cpu'
+        self.device_string = '0'
+        
+        #: Should we enable test-time augmentation?
+        self.augment = True
+        
+        #: Should we enable half-precision inference?
+        self.half_precision_enabled = None
+        
+        #: Where should we stash the temporary symlinks (or copies) used to give unique identifiers to image 
+        # files?
+        #:
+        #: If this is None, we'll create a folder in system temp space.
+        self.symlink_folder = None
+        
+        #: Should we use symlinks to give unique identifiers to image files (vs. copies)?
+        self.use_symlinks = True
+        
+        #: How should we guarantee that YOLO IDs (base filenames) are unique?  Choices are:
+        #:
+        #: * 'verify': assume image IDs are unique, but verify and error if they're not
+        #: * 'links': create symlinks (or copies, depending on use_symlinks) to enforce uniqueness
+        #: * 'auto': check whether IDs are unique, create links if necessary
+        self.unique_id_strategy = 'links'
+        
+        #: Temporary folder to stash intermediate YOLO results.
+        #:
+        #: If this is None, we'll create a folder in system temp space.    
+        self.yolo_results_folder = None
+        
+        #: Should we remove the symlink folder when we're done?
+        self.remove_symlink_folder = True
+        
+        #: Should we remove the intermediate results folder when we're done?
+        self.remove_yolo_results_folder = True
+        
+        #: These are deliberately offset from the standard MD categories; YOLOv5
+        #: needs categories IDs to start at 0.
+        #:
+        #: This can also be a string that points to a YOLO dataset.yaml file.
+        self.yolo_category_id_to_name = {0:'animal',1:'person',2:'vehicle'}
+        
+        #: What should we do if the output file already exists?
+        #:
+        #: Can be 'error', 'skip', or 'overwrite'.
+        self.overwrite_handling = 'skip'
+        
+        #: If True, we'll do a dry run that lets you preview the YOLO val command, without
+        #: actually running it.
+        self.preview_yolo_command_only = False
+        
+        #: By default, if any errors occur while we're copying images or creating symlinks, it's
+        #: game over.  If this is True, those errors become warnings, and we plow ahead.
+        self.treat_copy_failures_as_warnings = False
+        
+        #: Save YOLO console output
+        self.save_yolo_debug_output = False
+        
+        #: Whether to search for images recursively within [input_folder]
+        self.recursive = True
+        
+        #: Maximum number of images to run in a single chunk
+        self.chunk_size = None
+        
+    # ...def __init__()
     
 # ...YoloInferenceOptions()
 
@@ -173,7 +187,7 @@ def run_inference_with_yolo_val(options):
         options (YoloInferenceOptions): all the parameters used to control this process,
             including filenames; see YoloInferenceOptions for details            
     """
-    
+        
     ##%% Input and path handling
     
     if options.model_type == 'yolov8':
@@ -221,6 +235,8 @@ def run_inference_with_yolo_val(options):
     os.makedirs(os.path.dirname(options.output_file),exist_ok=True)
     
     
+    #%%
+    
     ##%% Other input handling
     
     if isinstance(options.yolo_category_id_to_name,str):
@@ -265,12 +281,20 @@ def run_inference_with_yolo_val(options):
     os.makedirs(yolo_results_folder,exist_ok=True)
     
 
+    #%%
+    
     ##%% Enumerate images
     
+    # If the caller provided a folder
     if os.path.isdir(options.input_folder):
         image_files_absolute = path_utils.find_images(options.input_folder,recursive=options.recursive)
     else:
+        # The caller provided a list of files, in which case we *have* to create a new folder
+        # for inference.
         assert os.path.isfile(options.input_folder)
+        assert options.unique_id_strategy == 'links', \
+            "If you supply a list of files, I need to create a temporary folder for inference, but you specified {}".format(
+                options.unique_id_strategy)
         with open(options.input_folder,'r') as f:            
             image_files_absolute = json.load(f)
             assert isinstance(image_files_absolute,list)
@@ -278,49 +302,121 @@ def run_inference_with_yolo_val(options):
                 assert os.path.isfile(fn), 'Could not find image file {}'.format(fn)
     
     
-    ##%% Create symlinks to give a unique ID to each image
+    ##%% Create symlinks (or copy images) to give a unique ID to each image
     
+    # Maps YOLO image IDs (base filename without extension as it will appear in YOLO .json output)
+    # to the *original full path* for each image (not the symlink path).
     image_id_to_file = {}  
+    
+    # Maps YOLO image IDs (base filename without extension as it will appear in YOLO .json output)
+    # to errors, including errors that happen before we run the model at all (e.g. file access errors).
     image_id_to_error = {}
     
-    if options.use_symlinks:
-        print('Creating {} symlinks in {}'.format(len(image_files_absolute),symlink_folder_inner))
+    create_links = True
+    
+    if options.unique_id_strategy == 'links':
+        
+        create_links = True
+        
     else:
-        print('Symlinks disabled, copying {} images to {}'.format(len(image_files_absolute),symlink_folder_inner))
         
-    # i_image = 0; image_fn = image_files_absolute[i_image]
-    for i_image,image_fn in tqdm(enumerate(image_files_absolute),total=len(image_files_absolute)):
+        assert options.unique_id_strategy in ('auto','verify'), \
+            'Unknown unique ID strategy {}'.format(options.unique_id_strategy)
+            
+        image_ids_are_unique = True
         
-        ext = os.path.splitext(image_fn)[1]
+        for i_image,image_fn in tqdm(enumerate(image_files_absolute),total=len(image_files_absolute)):        
+            
+            image_id = os.path.splitext(os.path.basename(image_fn))[0]
+            
+            # Is this image ID unique?
+            if image_id in image_id_to_file:
+                if options.unique_id_strategy == 'verify':
+                    raise ValueError('"verify" specified for image uniqueness, but ' +
+                                     'image ID {} occurs more than once:\n\n{}\n\n{}'.format(
+                                         image_id,image_fn,image_id_to_file[image_id]))
+                else:
+                    assert options.unique_id_strategy == 'auto'
+                    image_ids_are_unique = False
+                    image_id_to_file = {}
+                    break
+                
+            image_id_to_file[image_id] = image_fn
         
-        image_id = str(i_image).zfill(10)
-        image_id_to_file[image_id] = image_fn
-        symlink_name = image_id + ext
-        symlink_full_path = os.path.join(symlink_folder_inner,symlink_name)
+        # ...for each image
         
-        try:
+        if image_ids_are_unique:
+            
+            print('"{}" specified for image uniqueness and images are unique, skipping links'.format(
+                options.unique_id_strategy))
+            assert len(image_id_to_file) == len(image_files_absolute)
+            create_links = False
+            
+        else:
+            
+            assert options.unique_id_strategy == 'auto'
+            create_links = True
+            link_type = 'copies'
             if options.use_symlinks:
-                path_utils.safe_create_link(image_fn,symlink_full_path)
-            else:
-                shutil.copyfile(image_fn,symlink_full_path)
-        except Exception as e:
-            error_string = str(e)
-            image_id_to_error[image_id] = error_string
-            # Always break if the user is trying to create symlinks on Windows without
-            # permission, 100% of images will always fail in this case.
-            if ('a required privilege is not held by the client' in error_string.lower()) or \
-               (not options.treat_copy_failures_as_warnings):
-                   print('\nError copying/creating link for input file {}: {}'.format(
-                       image_fn,error_string))
-                   
-                   raise
-            else:
-                print('Warning: error copying/creating link for input file {}: {}'.format(
-                    image_fn,error_string))
-                continue
+                link_type = 'links'
+            print('"auto" specified for image uniqueness and images are not unique, defaulting to {}'.format(
+                link_type))
+            
+    # ...which unique ID strategy?
+    
+    if create_links:
         
-    # ...for each image
+        if options.use_symlinks:
+            print('Creating {} symlinks in {}'.format(len(image_files_absolute),symlink_folder_inner))
+        else:
+            print('Symlinks disabled, copying {} images to {}'.format(len(image_files_absolute),symlink_folder_inner))
+            
+        # i_image = 0; image_fn = image_files_absolute[i_image]
+        for i_image,image_fn in tqdm(enumerate(image_files_absolute),total=len(image_files_absolute)):
+            
+            ext = os.path.splitext(image_fn)[1]
+            
+            # YOLO .json output identifies images by the base filename without the extension
+            image_id = str(i_image).zfill(10)
+            image_id_to_file[image_id] = image_fn
+            symlink_name = image_id + ext
+            symlink_full_path = os.path.join(symlink_folder_inner,symlink_name)
+            
+            try:
+                
+                if options.use_symlinks:
+                    path_utils.safe_create_link(image_fn,symlink_full_path)
+                else:
+                    shutil.copyfile(image_fn,symlink_full_path)
+                    
+            except Exception as e:
+                
+                error_string = str(e)
+                image_id_to_error[image_id] = error_string
+                
+                # Always break if the user is trying to create symlinks on Windows without
+                # permission, 100% of images will always fail in this case.
+                if ('a required privilege is not held by the client' in error_string.lower()) or \
+                   (not options.treat_copy_failures_as_warnings):
+                       
+                       print('\nError copying/creating link for input file {}: {}'.format(
+                           image_fn,error_string))
+                       
+                       raise
+                       
+                else:
+                    
+                    print('Warning: error copying/creating link for input file {}: {}'.format(
+                        image_fn,error_string))
+                    continue
+            
+            # ...except
+            
+        # ...for each image
+                
+    # ...if we need to create links/copies
 
+    #%%
 
     ##%% Create the dataset file if necessary
     
@@ -680,6 +776,72 @@ if __name__ == '__main__':
 
 if False:
 
+
+    #%% Test driver (tinkering with chunkd inference)    
+    
+    project_name = 'KRU-test-corrupted'
+    input_folder = r'i:\data\usgs-kissel-training-yolo-1600\val-mini'
+    model_filename = r'g:\temp\usgs-tegus-yolov5x-231003-b8-img1280-e3002-best.pt'
+    output_folder = r'g:\temp\tegu-scratch'
+    yolo_working_folder = r'c:\git\yolov5-tegus'
+    dataset_file = r'g:\temp\dataset.yaml'
+    
+    model_name = os.path.splitext(os.path.basename(model_filename))[0]
+    
+    symlink_folder = os.path.join(output_folder,'symlinks')
+    yolo_results_folder = os.path.join(output_folder,'yolo_results')
+    
+    output_file = os.path.join(output_folder,'{}_{}-md_format.json'.format(
+        project_name,model_name))
+    
+    options = YoloInferenceOptions()
+    
+    options.yolo_working_folder = yolo_working_folder
+    
+    options.output_file = output_file
+    
+    options.yolo_category_id_to_name = dataset_file
+    options.augment = False
+    options.conf_thres = '0.001'
+    options.batch_size = 1
+    options.device_string = '0'
+    options.unique_id_strategy = 'verify'
+
+    if options.augment:
+        options.image_size = round(1280 * 1.3)
+    else:
+        options.image_size = 1280
+    
+    options.input_folder = input_folder
+    options.model_filename = model_filename
+    
+    options.yolo_results_folder = yolo_results_folder # os.path.join(output_folder + 'yolo_results')        
+    options.symlink_folder = symlink_folder # os.path.join(output_folder,'symlinks')
+    options.use_symlinks = False
+    
+    options.remove_temporary_symlink_folder = False
+    options.remove_yolo_results_file = False
+    
+    cmd = f'python run_inference_with_yolov5_val.py {model_filename} {input_folder} ' + \
+          f'{output_file} --yolo_working_folder {yolo_working_folder} ' + \
+          f' --image_size {options.image_size} --conf_thres {options.conf_thres} ' + \
+          f' --batch_size {options.batch_size} ' + \
+          f' --symlink_folder {options.symlink_folder} --yolo_results_folder {options.yolo_results_folder} ' + \
+          f' --no_remove_symlink_folder --no_remove_yolo_results_folder --yolo_dataset_file {options.yolo_category_id_to_name}'
+      
+    if not options.use_symlinks:
+        cmd += ' --no_use_symlinks'
+    if not options.augment:
+        cmd += ' --augment_enabled 0'
+        
+    print(cmd)
+    execute_in_python = False
+    if execute_in_python:
+        run_inference_with_yolo_val(options)
+    else:
+        import clipboard; clipboard.copy(cmd)
+    
+    
     #%% Test driver (folder)
     
     project_name = 'KRU-test-corrupted'
