@@ -72,135 +72,139 @@ class PostProcessingOptions:
     Options used to parameterize process_batch_results().
     """
     
-    ### Required inputs
-
-    #: MD results .json file to process
-    md_results_file = ''
+    def __init__(self):
+        
+        ### Required inputs
     
-    #: Folder to which we should write HTML output
-    output_dir = ''
-
-    ### Options
-
-    #: Folder where images live (filenames in [md_results_file] should be relative to this folder)
-    image_base_dir = '.'
-
-    ## These apply only when we're doing ground-truth comparisons
+        #: MD results .json file to process
+        self.md_results_file = ''
+        
+        #: Folder to which we should write HTML output
+        self.output_dir = ''
     
-    #: Optional .json file containing ground truth information
-    ground_truth_json_file = ''
-
-    #: Classes we'll treat as negative
-    #:
-    #: Include the token "#NO_LABELS#" to indicate that an image with no annotations
-    #: should be considered empty.
-    negative_classes = DEFAULT_NEGATIVE_CLASSES
+        ### Options
     
-    #: Classes we'll treat as neither positive nor negative
-    unlabeled_classes = DEFAULT_UNKNOWN_CLASSES
-
-    #: A list of output sets that we should count, but not render images for.
-    #:
-    #: Typically used to preview sets with lots of empties, where you don't want to
-    #: subset but also don't want to render 100,000 empty images.
-    #:
-    #: detections, non_detections
-    #: detections_animal, detections_person, detections_vehicle
-    rendering_bypass_sets = []
-
-    #: If this is None, choose a confidence threshold based on the detector version.
-    #:
-    #: This can either be a float or a dictionary mapping category names (not IDs) to 
-    #: thresholds.  The category "default" can be used to specify thresholds for 
-    #: other categories.  Currently the use of a dict here is not supported when 
-    #: ground truth is supplied.
-    confidence_threshold = None
+        #: Folder where images live (filenames in [md_results_file] should be relative to this folder)
+        self.image_base_dir = '.'
     
-    #: Confidence threshold to apply to classification (not detection) results
-    #:
-    #: Only a float is supported here (unlike the "confidence_threshold" parameter, which
-    #: can be a dict).    
-    classification_confidence_threshold = 0.5
+        ## These apply only when we're doing ground-truth comparisons
+        
+        #: Optional .json file containing ground truth information
+        self.ground_truth_json_file = ''
+    
+        #: Classes we'll treat as negative
+        #:
+        #: Include the token "#NO_LABELS#" to indicate that an image with no annotations
+        #: should be considered empty.
+        self.negative_classes = DEFAULT_NEGATIVE_CLASSES
+        
+        #: Classes we'll treat as neither positive nor negative
+        self.unlabeled_classes = DEFAULT_UNKNOWN_CLASSES
+    
+        #: A list of output sets that we should count, but not render images for.
+        #:
+        #: Typically used to preview sets with lots of empties, where you don't want to
+        #: subset but also don't want to render 100,000 empty images.
+        #:
+        #: detections, non_detections
+        #: detections_animal, detections_person, detections_vehicle
+        self.rendering_bypass_sets = []
+    
+        #: If this is None, choose a confidence threshold based on the detector version.
+        #:
+        #: This can either be a float or a dictionary mapping category names (not IDs) to 
+        #: thresholds.  The category "default" can be used to specify thresholds for 
+        #: other categories.  Currently the use of a dict here is not supported when 
+        #: ground truth is supplied.
+        self.confidence_threshold = None
+        
+        #: Confidence threshold to apply to classification (not detection) results
+        #:
+        #: Only a float is supported here (unlike the "confidence_threshold" parameter, which
+        #: can be a dict).    
+        self.classification_confidence_threshold = 0.5
+    
+        #: Used for summary statistics only
+        self.target_recall = 0.9
+    
+        #: Number of images to sample, -1 for "all images"
+        self.num_images_to_sample = 500
+    
+        #: Random seed for sampling, or None
+        self.sample_seed = 0 # None
+    
+        #: Image width for images in the HTML output
+        self.viz_target_width = 800
+    
+        #: Line width (in pixels) for rendering detections
+        self.line_thickness = 4
+        
+        #: Box expansion (in pixels) for rendering detections
+        self.box_expansion = 0
+    
+        #: Job name to include in big letters in the output HTML
+        self.job_name_string = None
+        
+        #: Model version string to include in the output HTML
+        self.model_version_string = None
+        
+        #: Sort order for the output, should be one of "filename", "confidence", or "random"
+        self.html_sort_order = 'filename'
+       
+        #: If True, images in the output HTML will be links back to the original images
+        self.link_images_to_originals = True
+        
+        #: Optionally separate detections into categories (animal/vehicle/human)
+        #: 
+        #: Currently only supported when ground truth is unavailable
+        self.separate_detections_by_category = True
+    
+        #: Optionally replace one or more strings in filenames with other strings;
+        #: useful for taking a set of results generated for one folder structure
+        #: and applying them to a slightly different folder structure.
+        self.api_output_filename_replacements = {}
+        
+        #: Optionally replace one or more strings in filenames with other strings;
+        #: useful for taking a set of results generated for one folder structure
+        #: and applying them to a slightly different folder structure.
+        self.ground_truth_filename_replacements = {}
+    
+        #: Allow bypassing API output loading when operating on previously-loaded
+        #: results.  If present, this is a Pandas DataFrame.  Almost never useful.
+        self.api_detection_results = None
+        
+        #: Allow bypassing API output loading when operating on previously-loaded
+        #: results.  If present, this is a str --> obj dict.  Almost never useful.
+        self.api_other_fields = None
+    
+        #: Should we also split out a separate report about the detections that were
+        #: just below our main confidence threshold?
+        #:
+        #: Currently only supported when ground truth is unavailable.
+        self.include_almost_detections = False
+        
+        #: Only a float is supported here (unlike the "confidence_threshold" parameter, which
+        #: can be a dict).
+        self.almost_detection_confidence_threshold = None
+    
+        #: Enable/disable rendering parallelization    
+        self.parallelize_rendering = False
+        
+        #: Number of threads/processes to use for rendering parallelization
+        self.parallelize_rendering_n_cores = 25
+        
+        #: Whether to use threads (True) or processes (False) for rendering parallelization
+        self.parallelize_rendering_with_threads = True
+        
+        #: When classification results are present, should be sort alphabetically by class name (False)
+        #: or in descending order by frequency (True)?
+        self.sort_classification_results_by_count = False    
+        
+        #: Should we split individual pages up into smaller pages if there are more than
+        #: N images?
+        self.max_figures_per_html_file = None
 
-    #: Used for summary statistics only
-    target_recall = 0.9
-
-    #: Number of images to sample, -1 for "all images"
-    num_images_to_sample = 500
-
-    #: Random seed for sampling, or None
-    sample_seed = 0 # None
-
-    #: Image width for images in the HTML output
-    viz_target_width = 800
-
-    #: Line width (in pixels) for rendering detections
-    line_thickness = 4
-    
-    #: Box expansion (in pixels) for rendering detections
-    box_expansion = 0
-
-    #: Job name to include in big letters in the output HTML
-    job_name_string = None
-    
-    #: Model version string to include in the output HTML
-    model_version_string = None
-    
-    #: Sort order for the output, should be one of "filename", "confidence", or "random"
-    html_sort_order = 'filename'
-   
-    #: If True, images in the output HTML will be links back to the original images
-    link_images_to_originals = True
-    
-    #: Optionally separate detections into categories (animal/vehicle/human)
-    #: 
-    #: Currently only supported when ground truth is unavailable
-    separate_detections_by_category = True
-
-    #: Optionally replace one or more strings in filenames with other strings;
-    #: useful for taking a set of results generated for one folder structure
-    #: and applying them to a slightly different folder structure.
-    api_output_filename_replacements = {}
-    
-    #: Optionally replace one or more strings in filenames with other strings;
-    #: useful for taking a set of results generated for one folder structure
-    #: and applying them to a slightly different folder structure.
-    ground_truth_filename_replacements = {}
-
-    #: Allow bypassing API output loading when operating on previously-loaded
-    #: results.  If present, this is a Pandas DataFrame.  Almost never useful.
-    api_detection_results = None
-    
-    #: Allow bypassing API output loading when operating on previously-loaded
-    #: results.  If present, this is a str --> obj dict.  Almost never useful.
-    api_other_fields = None
-
-    #: Should we also split out a separate report about the detections that were
-    #: just below our main confidence threshold?
-    #:
-    #: Currently only supported when ground truth is unavailable.
-    include_almost_detections = False
-    
-    #: Only a float is supported here (unlike the "confidence_threshold" parameter, which
-    #: can be a dict).
-    almost_detection_confidence_threshold = None
-
-    #: Enable/disable rendering parallelization    
-    parallelize_rendering = False
-    
-    #: Number of threads/processes to use for rendering parallelization
-    parallelize_rendering_n_cores = 25
-    
-    #: Whether to use threads (True) or processes (False) for rendering parallelization
-    parallelize_rendering_with_threads = True
-    
-    #: When classification results are present, should be sort alphabetically by class name (False)
-    #: or in descending order by frequency (True)?
-    sort_classification_results_by_count = False    
-    
-    #: Should we split individual pages up into smaller pages if there are more than
-    #: N images?
-    max_figures_per_html_file = None
+    # ...__init__()
     
 # ...PostProcessingOptions
 
@@ -210,14 +214,16 @@ class PostProcessingResults:
     Return format from process_batch_results
     """
     
-    #: HTML file to which preview information was written
-    output_html_file = ''
-    
-    #: Pandas Dataframe containing detection results
-    api_detection_results = None
-    
-    #: str --> obj dictionary containing other information loaded from the results file
-    api_other_fields = None
+    def __init__(self):
+        
+        #: HTML file to which preview information was written
+        self.output_html_file = ''
+        
+        #: Pandas Dataframe containing detection results
+        self.api_detection_results = None
+        
+        #: str --> obj dictionary containing other information loaded from the results file
+        self.api_other_fields = None
 
 
 ##%% Helper classes and functions

@@ -58,6 +58,9 @@ from tqdm import tqdm
 from megadetector.utils import path_utils
 from megadetector.utils import process_utils
 from megadetector.utils import string_utils
+
+from megadetector.utils.ct_utils import is_iterable
+from megadetector.utils.path_utils import path_is_abs
 from megadetector.data_management import yolo_output_to_md_output
 from megadetector.detection.run_detector import try_download_known_detector
 
@@ -75,10 +78,20 @@ class YoloInferenceOptions:
     
     def __init__(self):
         
-        ## Required ##
+        ## Required-ish ##
         
-        #: Folder of images to process
+        #: Folder of images to process (can be None if image_filename_list contains absolute paths)
         self.input_folder = None
+        
+        #: If this is None, [input_folder] can't be None, we'll process all images in [input_folder].
+        #:            
+        #: If this is not None, and [input_folder] is not None, this should be a list of relative image 
+        #: paths within [input_folder] to process, or a .txt or .json file containing a list of 
+        #: relative image paths.
+        #:
+        #: If this is not None, and [input_folder] is None, this should be a list of absolute image
+        #: paths, or a .txt or .json file containing a list of absolute image paths.            
+        self.image_filename_list = None
         
         #: Model filename (ending in .pt), or a well-known model name (e.g. "MDV5A")
         self.model_filename = None
@@ -205,21 +218,23 @@ def run_inference_with_yolo_val(options):
         assert os.path.isdir(options.yolo_working_folder), \
             'Could not find working folder {}'.format(options.yolo_working_folder)
                 
-    assert os.path.isdir(options.input_folder) or os.path.isfile(options.input_folder), \
-        'Could not find input {}'.format(options.input_folder)
-    
     if options.half_precision_enabled is not None:
         assert options.half_precision_enabled in (0,1), \
             'Invalid value {} for --half_precision_enabled (should be 0 or 1)'.format(
                 options.half_precision_enabled)
-        
-    options.input_folder = options.input_folder.replace('\\','/')
     
     # If the model filename is a known model string (e.g. "MDv5A", download the model if necessary)
     model_filename = try_download_known_detector(options.model_filename)
     
     assert os.path.isfile(model_filename), \
         'Could not find model file {}'.format(model_filename)
+    
+    assert (options.input_folder is not None) or (options.image_filename_list is not None), \
+        'You must specify a folder and/or a file list'
+        
+    if options.input_folder is not None:
+        assert os.path.isdir(options.input_folder), 'Could not find input folder {}'.format(
+            options.input_folder)
     
     if os.path.exists(options.output_file):
         if options.overwrite_handling == 'skip':
@@ -231,12 +246,13 @@ def run_inference_with_yolo_val(options):
             raise ValueError('Output file {} exists'.format(options.output_file))
         else:
             raise ValueError('Unknown output handling method {}'.format(options.overwrite_handling))
-            
+    
     os.makedirs(os.path.dirname(options.output_file),exist_ok=True)
     
-    
-    #%%
-    
+    if options.input_folder is not None:
+        options.input_folder = options.input_folder.replace('\\','/')
+        
+
     ##%% Other input handling
     
     if isinstance(options.yolo_category_id_to_name,str):
@@ -281,25 +297,63 @@ def run_inference_with_yolo_val(options):
     os.makedirs(yolo_results_folder,exist_ok=True)
     
 
-    #%%
-    
     ##%% Enumerate images
     
-    # If the caller provided a folder
-    if os.path.isdir(options.input_folder):
-        image_files_absolute = path_utils.find_images(options.input_folder,recursive=options.recursive)
+    image_files_relative = None
+    image_files_absolute = None
+    
+    if options.image_filename_list is None:
+        assert options.input_folder is not None and os.path.isdir(options.input_folder), \
+            'Could not find input folder {}'.format(options.input_folder)
+        image_files_relative = path_utils.find_images(options.input_folder,
+                                                      recursive=options.recursive,
+                                                      return_relative_paths=True,
+                                                      convert_slashes=True)
+        image_files_absolute = [os.path.join(options.input_folder,fn) for \
+                                fn in image_files_relative]
     else:
-        # The caller provided a list of files, in which case we *have* to create a new folder
-        # for inference.
-        assert os.path.isfile(options.input_folder)
-        assert options.unique_id_strategy == 'links', \
-            "If you supply a list of files, I need to create a temporary folder for inference, but you specified {}".format(
-                options.unique_id_strategy)
-        with open(options.input_folder,'r') as f:            
-            image_files_absolute = json.load(f)
-            assert isinstance(image_files_absolute,list)
-            for fn in image_files_absolute:
-                assert os.path.isfile(fn), 'Could not find image file {}'.format(fn)
+        
+        if is_iterable(options.image_filename_list):
+            
+            image_files_relative = options.image_filename_list
+            
+        else:
+            assert isinstance(options.image_filename_list,str), \
+                'Unrecognized image filename list object type: {}'.format(options.image_filename_list)
+            assert os.path.isfile(options.image_filename_list), \
+                'Could not find image filename list file: {}'.format(options.image_filename_list)
+            ext = os.path.splitext(options.image_filename_list).lower()
+            assert ext in ('.json','.txt'), \
+                'Unrecognized image filename list file extension: {}'.format(options.image_filename_list)
+            if ext == '.json':
+                with open(options.image_filename_list,'r') as f:
+                    image_files_relative = json.load(f)
+                    assert is_iterable(image_files_relative)
+            else:
+                assert ext == '.txt'
+                with open(options.image_filename_list,'r') as f:
+                    image_files_relative = f.readlines()
+                    image_files_relative = [s.strip() for s in image_files_relative]
+        
+        # ...whether the image filename list was supplied as list vs. a filename
+        
+        if options.input_folder is None:
+            image_files_absolute = image_files_relative
+        else:
+            # The list should be relative filenames
+            for fn in image_files_relative:
+                assert not path_is_abs(fn), \
+                    'When providing a folder and a list, paths in the list should be relative'
+                
+            image_files_absolute = \
+                [os.path.join(options.input_folder,fn) for fn in image_files_relative]
+        for fn in image_files_absolute:
+            assert os.path.isfile(fn), 'Could not find image file {}'.format(fn)
+    
+    # ...whether the caller supplied a list of filenames
+    
+    image_files_absolute = [fn.replace('\\','/') for fn in image_files_absolute]
+    del image_files_relative
     
     
     ##%% Create symlinks (or copy images) to give a unique ID to each image
@@ -416,8 +470,7 @@ def run_inference_with_yolo_val(options):
                 
     # ...if we need to create links/copies
 
-    #%%
-
+    
     ##%% Create the dataset file if necessary
     
     # This may have been passed in as a string, but at this point, we should have
@@ -428,14 +481,38 @@ def run_inference_with_yolo_val(options):
     category_ids = sorted(list(options.yolo_category_id_to_name.keys()))
     assert category_ids[0] == 0
     assert len(category_ids) == 1 + category_ids[-1]
-    
+        
     yolo_dataset_file = os.path.join(yolo_results_folder,'dataset.yaml')
+    yolo_image_list_file = os.path.join(yolo_results_folder,'images.txt')
     
+    
+    with open(yolo_image_list_file,'w') as f:
+        for fn_abs in image_files_absolute:
+            if options.input_folder is not None:
+                assert options.input_folder in fn_abs, \
+                    'Internal error: image filename {} is outside the specified input folder {}'.format(
+                        fn_abs,options.input_folder)
+            # At least in YOLOv5 val (need to verify for YOLOv8 val), filenames in this 
+            # text file are treated as relative to the text file itself if they start with
+            # "./", otherwise they're treated as absolute paths.  Since we don't want to put this
+            # text file in the image folder, we'll use absolute paths.
+            # fn_relative = os.path.relpath(fn_abs,options.input_folder)
+            # f.write(fn_relative + '\n')
+            f.write(fn_abs + '\n')
+    
+    if create_links:
+        inference_folder = symlink_folder_inner
+    else:
+        # This doesn't matter, but it has to be a valid path
+        inference_folder = options.yolo_results_folder
+        
     with open(yolo_dataset_file,'w') as f:
-        f.write('path: {}\n'.format(symlink_folder_inner))
+        
+        f.write('path: {}\n'.format(inference_folder))        
+        # These need to be valid paths, even if you're not using them, and "." is always safe
         f.write('train: .\n')
         f.write('val: .\n')
-        f.write('test: .\n')
+        f.write('test: {}\n'.format(yolo_image_list_file))
         f.write('\n')
         f.write('nc: {}\n'.format(len(options.yolo_category_id_to_name)))
         f.write('\n')
@@ -597,24 +674,27 @@ def run_inference_with_yolo_val(options):
     assert len(json_files) == 1    
     yolo_json_file = json_files[0]
 
+    # Map YOLO image IDs to paths
     image_id_to_relative_path = {}
     for image_id in image_id_to_file:
-        fn = image_id_to_file[image_id]
-        if os.path.isdir(options.input_folder):
-            assert options.input_folder in fn, 'Folder {} not in file {}'.format(
+        fn = image_id_to_file[image_id].replace('\\','/')
+        assert path_is_abs(fn)
+        if options.input_folder is not None:
+            assert os.path.isdir(options.input_folder)
+            assert options.input_folder in fn, 'Internal error: base folder {} not in file {}'.format(
                 options.input_folder,fn)
             relative_path = os.path.relpath(fn,options.input_folder)
         else:
-            assert os.path.isfile(options.input_folder)
             # We'll use the absolute path as a relative path, and pass '/'
             # as the base path in this case.
             relative_path = fn
         image_id_to_relative_path[image_id] = relative_path
         
-    if os.path.isdir(options.input_folder):
+    # Are we working with a base folder?
+    if options.input_folder is not None:
+        assert os.path.isdir(options.input_folder)
         image_base = options.input_folder
     else:
-        assert os.path.isfile(options.input_folder)
         image_base = '/'
         
     yolo_output_to_md_output.yolo_json_output_to_md_output(
@@ -659,11 +739,14 @@ def main():
         help='model file name')
     parser.add_argument(
         'input_folder',type=str,
-        help='folder on which to recursively run the model, or a .json list of filenames')
+        help='folder on which to recursively run the model')
     parser.add_argument(
         'output_file',type=str,
         help='.json file where output will be written')
     
+    parser.add_argument(
+        '--image_filename_list',type=str,default=None,
+        help='.json or .txt file containing a list of relative image filenames within [input_folder]')
     parser.add_argument(
         '--yolo_working_folder',type=str,default=None,
         help='folder in which to execute val.py (not necessary for YOLOv8 inference)')
@@ -777,10 +860,10 @@ if __name__ == '__main__':
 if False:
 
 
-    #%% Test driver (tinkering with chunkd inference)    
+    #%% Test driver (tinkering with chunked inference)    
     
-    project_name = 'KRU-test-corrupted'
-    input_folder = r'i:\data\usgs-kissel-training-yolo-1600\val-mini'
+    project_name = 'tegu-chunk-test'
+    input_folder = r'g:\temp\tegu-val-mini'.replace('\\','/')
     model_filename = r'g:\temp\usgs-tegus-yolov5x-231003-b8-img1280-e3002-best.pt'
     output_folder = r'g:\temp\tegu-scratch'
     yolo_working_folder = r'c:\git\yolov5-tegus'
@@ -797,22 +880,35 @@ if False:
     options = YoloInferenceOptions()
     
     options.yolo_working_folder = yolo_working_folder
-    
+    options.input_folder = input_folder
     options.output_file = output_file
     
+    pass_relative_paths = True
+    if pass_relative_paths:
+        options.image_filename_list =  [
+            r"val#american_cardinal#american_cardinal#CaCa#31W.01_C83#2017-2019#C90 and C83_31W.01#(05) 18AUG17 - 05SEP17 FTC AEG#MFDC1949_000065.JPG",
+            r"val#american_cardinal#american_cardinal#CaCa#31W.01_C83#2017-2019#C90 and C83_31W.01#(04) 27JUL17 - 18AUG17 FTC AEG#MFDC1902_000064.JPG"
+        ]   
+    else:
+        options.image_filename_list =  [
+            r"g:/temp/tegu-val-mini/val#american_cardinal#american_cardinal#CaCa#31W.01_C83#2017-2019#C90 and C83_31W.01#(05) 18AUG17 - 05SEP17 FTC AEG#MFDC1949_000065.JPG",
+            r"g:/temp/tegu-val-mini/val#american_cardinal#american_cardinal#CaCa#31W.01_C83#2017-2019#C90 and C83_31W.01#(04) 27JUL17 - 18AUG17 FTC AEG#MFDC1902_000064.JPG"
+        ]
+    options.image_filename_list = None
+    
     options.yolo_category_id_to_name = dataset_file
-    options.augment = False
+    options.augment = True
     options.conf_thres = '0.001'
     options.batch_size = 1
     options.device_string = '0'
-    options.unique_id_strategy = 'verify'
+    options.unique_id_strategy = 'auto'
+    options.overwrite_handling = 'overwrite'
 
     if options.augment:
         options.image_size = round(1280 * 1.3)
     else:
         options.image_size = 1280
     
-    options.input_folder = input_folder
     options.model_filename = model_filename
     
     options.yolo_results_folder = yolo_results_folder # os.path.join(output_folder + 'yolo_results')        
@@ -835,7 +931,7 @@ if False:
         cmd += ' --augment_enabled 0'
         
     print(cmd)
-    execute_in_python = False
+    execute_in_python = True
     if execute_in_python:
         run_inference_with_yolo_val(options)
     else:
