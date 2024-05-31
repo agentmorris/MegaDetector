@@ -361,9 +361,9 @@ def rect_distance(r1, r2, format='x0y0x1y1'):
 
 def split_list_into_fixed_size_chunks(L,n):
     """
-    Split the list or tuple L into chunks of size n (allowing chunks of size n-1 if necessary,
-    i.e. len(L) does not have to be a multiple of n).
-    
+    Split the list or tuple L into chunks of size n (allowing at most one chunk with size 
+    less than N, i.e. len(L) does not have to be a multiple of n).
+        
     Args:
         L (list): list to split into chunks
         n (int): preferred chunk size

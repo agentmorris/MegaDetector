@@ -52,6 +52,7 @@ import glob
 import tempfile
 import shutil
 import json
+import copy
 
 from tqdm import tqdm
 
@@ -59,10 +60,11 @@ from megadetector.utils import path_utils
 from megadetector.utils import process_utils
 from megadetector.utils import string_utils
 
-from megadetector.utils.ct_utils import is_iterable
+from megadetector.utils.ct_utils import is_iterable, split_list_into_fixed_size_chunks
 from megadetector.utils.path_utils import path_is_abs
 from megadetector.data_management import yolo_output_to_md_output
 from megadetector.detection.run_detector import try_download_known_detector
+from megadetector.postprocessing.combine_api_outputs import combine_api_output_files
 
 default_image_size_with_augmentation = int(1280 * 1.3)
 default_image_size_with_no_augmentation = 1280
@@ -190,6 +192,26 @@ class YoloInferenceOptions:
     
 # ...YoloInferenceOptions()
 
+
+#%% Support functions
+
+def _clean_up_temporary_folders(options,symlink_folder_is_temp_folder,yolo_folder_is_temp_folder):
+    """
+    Remove temporary symlink/results folders, unless the caller requested that we leave them in place.
+    """
+    
+    if options.remove_symlink_folder:
+        shutil.rmtree(symlink_folder)
+    elif symlink_folder_is_temp_folder:
+        print('Warning: using temporary symlink folder {}, but not removing it'.format(
+            symlink_folder))
+        
+    if options.remove_yolo_results_folder:
+        shutil.rmtree(yolo_results_folder)
+    elif yolo_folder_is_temp_folder:
+        print('Warning: using temporary YOLO results folder {}, but not removing it'.format(
+            yolo_results_folder))
+
     
 #%% Main function
 
@@ -205,9 +227,12 @@ def run_inference_with_yolo_val(options):
         
     ##%% Input and path handling
     
-    if options.chunk_size is not None:
-        raise NotImplementedError('Chunking in progress')
-        
+    default_options = YoloInferenceOptions()
+    
+    for k in options.__dict__.keys():
+        if k not in default_options.__dict__:
+            print('Warning: unexpected variable {} in options object'.format(k))
+            
     if options.model_type == 'yolov8':
         
         print('Warning: model type "yolov8" supplied, "ultralytics" is the preferred model type string for YOLOv8 models')
@@ -359,6 +384,65 @@ def run_inference_with_yolo_val(options):
     
     image_files_absolute = [fn.replace('\\','/') for fn in image_files_absolute]
     del image_files_relative
+    
+    
+    ##%% Recurse if necessary to handle chunks
+    
+    if options.chunk_size is not None and options.chunk_size > 0:
+        
+        chunks = split_list_into_fixed_size_chunks(image_files_absolute,options.chunk_size)
+        
+        chunk_output_files = []
+        
+        # i_chunk = 0; chunk_files_abs = chunks[i_chunk]
+        for i_chunk,chunk_files_abs in enumerate(chunks):
+            
+            print('Processing {} images from chunk {} of {}'.format(
+                len(chunk_files_abs),i_chunk,len(chunks)))
+    
+            chunk_options = copy.deepcopy(options)
+            chunk_options.chunk_size = None
+            
+            if options.input_folder is not None:
+                chunk_files_relative = \
+                    [os.path.relpath(fn,options.input_folder) for fn in chunk_files_abs]
+                chunk_options.image_filename_list = chunk_files_relative
+            else:
+                chunk_options.image_filename_list = chunk_files_abs
+                
+            chunk_string = 'chunk_{}'.format(str(i_chunk).zfill(5))
+            chunk_options.yolo_results_folder = yolo_results_folder + '_' + chunk_string
+            chunk_options.symlink_folder = symlink_folder + '_' + chunk_string
+            
+            # Put the output file in the parent job's scratch folder
+            chunk_output_file = os.path.join(yolo_results_folder,chunk_string + '_results_md_format.json')
+            chunk_output_files.append(chunk_output_file)
+            chunk_options.output_file = chunk_output_file
+            
+            run_inference_with_yolo_val(chunk_options)
+            assert os.path.isfile(chunk_options.output_file)
+            
+        # ...for each chunk
+    
+        # Merge
+        _ = combine_api_output_files(input_files=chunk_output_files,
+                                 output_file=options.output_file,
+                                 require_uniqueness=True,
+                                 verbose=True)
+        
+        # Validate
+        with open(options.output_file,'r') as f:
+            combined_results = json.load(f)
+        assert len(combined_results['images']) == len(image_files_absolute), \
+            'Expected {} images in merged output file, found {}'.format(
+                len(image_files_absolute),len(combined_results['images']))
+        
+        # Clean up
+        _clean_up_temporary_folders(options,symlink_folder_is_temp_folder,yolo_folder_is_temp_folder)
+        
+        return
+    
+    # ...if we need to make recursive calls for file chunks
     
     
     ##%% Create symlinks (or copy images) to give a unique ID to each image
@@ -714,18 +798,8 @@ def run_inference_with_yolo_val(options):
 
     ##%% Clean up
     
-    if options.remove_symlink_folder:
-        shutil.rmtree(symlink_folder)
-    elif symlink_folder_is_temp_folder:
-        print('Warning: using temporary symlink folder {}, but not removing it'.format(
-            symlink_folder))
+    _clean_up_temporary_folders(options,symlink_folder_is_temp_folder,yolo_folder_is_temp_folder)
         
-    if options.remove_yolo_results_folder:
-        shutil.rmtree(yolo_results_folder)
-    elif yolo_folder_is_temp_folder:
-        print('Warning: using temporary YOLO results folder {}, but not removing it'.format(
-            yolo_results_folder))
-            
 # ...def run_inference_with_yolo_val()
 
 
@@ -771,24 +845,30 @@ def main():
         help='use half-precision-inference (1 or 0) (default is the underlying model\'s default, probably full for YOLOv8 and half for YOLOv5')
     parser.add_argument(
         '--device_string', default=options.device_string, type=str,
-        help='CUDA device specifier, typically "0" or "1" for CUDA devices, "mps" for M1/M2 devices, or "cpu" (default {})'.format(options.device_string))
+        help='CUDA device specifier, typically "0" or "1" for CUDA devices, "mps" for M1/M2 devices, or "cpu" (default {})'.format(
+            options.device_string))
     parser.add_argument(
         '--overwrite_handling', default=options.overwrite_handling, type=str,
         help='action to take if the output file exists (skip, error, overwrite) (default {})'.format(
             options.overwrite_handling))
     parser.add_argument(
         '--yolo_dataset_file', default=None, type=str,
-        help='YOLOv5 dataset.yml file from which we should load category information ' + \
+        help='YOLOv5 dataset.yaml file from which we should load category information ' + \
             '(otherwise defaults to MD categories)')
     parser.add_argument(
         '--model_type', default=options.model_type, type=str,
-        help='Model type ("yolov5" or "ultralytics" ("yolov8" behaves the same as "ultralytics")) (default {})'.format(options.model_type))
+        help='model type ("yolov5" or "ultralytics" ("yolov8" behaves the same as "ultralytics")) (default {})'.format(
+            options.model_type))
 
+    parser.add_argument('--unique_id_strategy', default=options.unique_id_strategy, type=str,
+        help='how should we ensure that unique filenames are passed to the YOLO val script, ' + \
+             'can be "verify", "auto", or "links", see options class docs for details (default {})'.format(
+                 options.unique_id_strategy))
     parser.add_argument(
-        '--symlink_folder', type=str,
+        '--symlink_folder', default=None, type=str,
         help='temporary folder for symlinks (defaults to a folder in the system temp dir)')
     parser.add_argument(
-        '--yolo_results_folder', type=str,
+        '--yolo_results_folder', default=None, type=str,
         help='temporary folder for YOLO intermediate output (defaults to a folder in the system temp dir)')
     parser.add_argument(
         '--no_use_symlinks', action='store_true',
@@ -802,6 +882,10 @@ def main():
     parser.add_argument(
         '--save_yolo_debug_output', action='store_true',
         help='write yolo console output to a text file in the results folder, along with additional debug files')
+    parser.add_argument(
+        '--chunk_size', default=options.chunk_size, type=int,
+        help='break the job into chunks with no more than this many images (default {})'.format(
+            options.chunk_size))    
     
     parser.add_argument(
         '--nonrecursive', action='store_true',
@@ -845,13 +929,20 @@ def main():
     
     if args.yolo_dataset_file is not None:
         options.yolo_category_id_to_name = args.yolo_dataset_file
+        del options.yolo_dataset_file
         
     options.recursive = (not options.nonrecursive)
     options.remove_symlink_folder = (not options.no_remove_symlink_folder)
     options.remove_yolo_results_folder = (not options.no_remove_yolo_results_folder)
     options.use_symlinks = (not options.no_use_symlinks)
     options.augment = (options.augment_enabled > 0)        
-            
+    
+    del options.nonrecursive
+    del options.no_remove_symlink_folder
+    del options.no_remove_yolo_results_folder
+    del options.no_use_symlinks
+    del options.augment_enabled
+        
     print(options.__dict__)
     
     run_inference_with_yolo_val(options)    
@@ -864,8 +955,7 @@ if __name__ == '__main__':
 
 if False:
 
-
-    #%% Test driver (tinkering with chunked inference)    
+    #%% Test driver (chunked inference)    
     
     project_name = 'tegu-chunk-test'
     input_folder = r'g:\temp\tegu-val-mini'.replace('\\','/')
@@ -888,18 +978,22 @@ if False:
     options.input_folder = input_folder
     options.output_file = output_file
     
+    pass_image_filename_list = False    
     pass_relative_paths = True
-    if pass_relative_paths:
-        options.image_filename_list =  [
-            r"val#american_cardinal#american_cardinal#CaCa#31W.01_C83#2017-2019#C90 and C83_31W.01#(05) 18AUG17 - 05SEP17 FTC AEG#MFDC1949_000065.JPG",
-            r"val#american_cardinal#american_cardinal#CaCa#31W.01_C83#2017-2019#C90 and C83_31W.01#(04) 27JUL17 - 18AUG17 FTC AEG#MFDC1902_000064.JPG"
-        ]   
+    
+    if pass_image_filename_list:
+        if pass_relative_paths:
+            options.image_filename_list =  [
+                r"val#american_cardinal#american_cardinal#CaCa#31W.01_C83#2017-2019#C90 and C83_31W.01#(05) 18AUG17 - 05SEP17 FTC AEG#MFDC1949_000065.JPG",
+                r"val#american_cardinal#american_cardinal#CaCa#31W.01_C83#2017-2019#C90 and C83_31W.01#(04) 27JUL17 - 18AUG17 FTC AEG#MFDC1902_000064.JPG"
+            ]   
+        else:
+            options.image_filename_list =  [
+                r"g:/temp/tegu-val-mini/val#american_cardinal#american_cardinal#CaCa#31W.01_C83#2017-2019#C90 and C83_31W.01#(05) 18AUG17 - 05SEP17 FTC AEG#MFDC1949_000065.JPG",
+                r"g:/temp/tegu-val-mini/val#american_cardinal#american_cardinal#CaCa#31W.01_C83#2017-2019#C90 and C83_31W.01#(04) 27JUL17 - 18AUG17 FTC AEG#MFDC1902_000064.JPG"
+            ]
     else:
-        options.image_filename_list =  [
-            r"g:/temp/tegu-val-mini/val#american_cardinal#american_cardinal#CaCa#31W.01_C83#2017-2019#C90 and C83_31W.01#(05) 18AUG17 - 05SEP17 FTC AEG#MFDC1949_000065.JPG",
-            r"g:/temp/tegu-val-mini/val#american_cardinal#american_cardinal#CaCa#31W.01_C83#2017-2019#C90 and C83_31W.01#(04) 27JUL17 - 18AUG17 FTC AEG#MFDC1902_000064.JPG"
-        ]
-    options.image_filename_list = None
+        options.image_filename_list = None    
     
     options.yolo_category_id_to_name = dataset_file
     options.augment = False
@@ -920,24 +1014,28 @@ if False:
     options.symlink_folder = symlink_folder # os.path.join(output_folder,'symlinks')
     options.use_symlinks = False
     
-    options.remove_temporary_symlink_folder = False
-    options.remove_yolo_results_file = False
-    options.chunk_size = 1
+    options.remove_symlink_folder = True
+    options.remove_yolo_results_folder = True
+    
+    options.chunk_size = 5
     
     cmd = f'python run_inference_with_yolov5_val.py {model_filename} {input_folder} ' + \
           f'{output_file} --yolo_working_folder {yolo_working_folder} ' + \
           f' --image_size {options.image_size} --conf_thres {options.conf_thres} ' + \
           f' --batch_size {options.batch_size} ' + \
           f' --symlink_folder {options.symlink_folder} --yolo_results_folder {options.yolo_results_folder} ' + \
-          f' --no_remove_symlink_folder --no_remove_yolo_results_folder --yolo_dataset_file {options.yolo_category_id_to_name}'
+          f' --no_remove_symlink_folder --no_remove_yolo_results_folder --yolo_dataset_file {options.yolo_category_id_to_name} ' + \
+          f' --unique_id_strategy {options.unique_id_strategy}'          
       
+    if options.chunk_size is not None:
+        cmd += f' --chunk_size {options.chunk_size}'
     if not options.use_symlinks:
         cmd += ' --no_use_symlinks'
     if not options.augment:
         cmd += ' --augment_enabled 0'
         
     print(cmd)
-    execute_in_python = True
+    execute_in_python = False
     if execute_in_python:
         run_inference_with_yolo_val(options)
     else:
@@ -982,8 +1080,8 @@ if False:
     options.symlink_folder = symlink_folder # os.path.join(output_folder,'symlinks')
     options.use_symlinks = False
     
-    options.remove_temporary_symlink_folder = False
-    options.remove_yolo_results_file = False
+    options.remove_symlink_folder = False
+    options.remove_yolo_results_folder = False    
     
     cmd = f'python run_inference_with_yolov5_val.py {model_filename} {input_folder} ' + \
           f'{output_file} --yolo_working_folder {yolo_working_folder} ' + \
@@ -1049,8 +1147,8 @@ if False:
     options.symlink_folder = symlink_folder
     options.use_symlinks = False
     
-    options.remove_temporary_symlink_folder = False
-    options.remove_yolo_results_file = False
+    options.remove_symlink_folder = False
+    options.remove_yolo_results_folder = False    
     
     cmd = f'python run_inference_with_yolov5_val.py {model_filename} ' + \
           f'{input_folder} {output_file}' + \
