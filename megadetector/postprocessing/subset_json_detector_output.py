@@ -72,68 +72,70 @@ class SubsetJsonDetectorOutputOptions:
     """
     Options used to parameterize subset_json_detector_output()
     """
-    
-    #: Only process files containing the token 'query'
-    query = None
-    
-    #: Replace 'query' with 'replacement' if 'replacement' is not None.  If 'query' is None,
-    #: prepend 'replacement'
-    replacement = None
-    
-    #: Should we split output into individual .json files for each folder?
-    split_folders = False
-    
-    #: Folder level to use for splitting ['bottom','top','n_from_bottom','n_from_top','dict']
-    #:
-    #: 'dict' requires 'split_folder_param' to be a dictionary mapping each filename
-    #: to a token.
-    split_folder_mode = 'bottom'  # 'top'
-    
-    #: When using the 'n_from_bottom' parameter to define folder splitting, this
-    #: defines the number of directories from the bottom.  'n_from_bottom' with
-    #: a parameter of zero is the same as 'bottom'.
-    #:
-    #: Same story with 'n_from_top'.
-    #:
-    #: When 'split_folder_mode' is 'dict', this should be a dictionary mapping each filename
-    #: to a token.
-    split_folder_param = 0
-    
-    #: Only meaningful if split_folders is True: should we convert pathnames to be relative
-    #: the folder for each .json file?
-    make_folder_relative = False
-    
-    #: Only meaningful if split_folders and make_folder_relative are True: if not None, 
-    #: will copy .json files to their corresponding output directories, relative to 
-    #: output_filename
-    copy_jsons_to_folders = False
-    
-    #: Should we over-write .json files?
-    overwrite_json_files = False
-    
-    #: If copy_jsons_to_folders is true, do we require that directories already exist?
-    copy_jsons_to_folders_directories_must_exist = True
-    
-    #: Optional confidence threshold; if not None, detections below this confidence won't be
-    #: included in the output.
-    confidence_threshold = None
-    
-    #: Should we remove failed images?
-    remove_failed_images = False
-    
-    #: Either a list of category IDs (as string-ints) (not names), or a dictionary mapping category *IDs* 
-    #: (as string-ints) (not names) to thresholds.  Removes  non-matching detections, does not 
-    #: remove images.  Not technically mutually exclusize with category_names_to_keep, but it's an esoteric 
-    #: scenario indeed where you would want to specify both.
-    categories_to_keep = None
-    
-    #: Either a list of category names (not IDs), or a dictionary mapping category *names* (not IDs) to thresholds.  
-    #: Removes non-matching detections, does not remove images.  Not technically mutually exclusize with 
-    #: category_ids_to_keep, but it's an esoteric scenario indeed where you would want to specify both.
-    category_names_to_keep = None
-    
-    #: Set to >0 during testing to limit the number of images that get processed.
-    debug_max_images = -1
+
+    def __init__(self):
+            
+        #: Only process files containing the token 'query'
+        self.query = None
+        
+        #: Replace 'query' with 'replacement' if 'replacement' is not None.  If 'query' is None,
+        #: prepend 'replacement'
+        self.replacement = None
+        
+        #: Should we split output into individual .json files for each folder?
+        self.split_folders = False
+        
+        #: Folder level to use for splitting ['bottom','top','n_from_bottom','n_from_top','dict']
+        #:
+        #: 'dict' requires 'split_folder_param' to be a dictionary mapping each filename
+        #: to a token.
+        self.split_folder_mode = 'bottom'  # 'top'
+        
+        #: When using the 'n_from_bottom' parameter to define folder splitting, this
+        #: defines the number of directories from the bottom.  'n_from_bottom' with
+        #: a parameter of zero is the same as 'bottom'.
+        #:
+        #: Same story with 'n_from_top'.
+        #:
+        #: When 'split_folder_mode' is 'dict', this should be a dictionary mapping each filename
+        #: to a token.
+        self.split_folder_param = 0
+        
+        #: Only meaningful if split_folders is True: should we convert pathnames to be relative
+        #: the folder for each .json file?
+        self.make_folder_relative = False
+        
+        #: Only meaningful if split_folders and make_folder_relative are True: if not None, 
+        #: will copy .json files to their corresponding output directories, relative to 
+        #: output_filename
+        self.copy_jsons_to_folders = False
+        
+        #: Should we over-write .json files?
+        self.overwrite_json_files = False
+        
+        #: If copy_jsons_to_folders is true, do we require that directories already exist?
+        self.copy_jsons_to_folders_directories_must_exist = True
+        
+        #: Optional confidence threshold; if not None, detections below this confidence won't be
+        #: included in the output.
+        self.confidence_threshold = None
+        
+        #: Should we remove failed images?
+        self.remove_failed_images = False
+        
+        #: Either a list of category IDs (as string-ints) (not names), or a dictionary mapping category *IDs* 
+        #: (as string-ints) (not names) to thresholds.  Removes  non-matching detections, does not 
+        #: remove images.  Not technically mutually exclusize with category_names_to_keep, but it's an esoteric 
+        #: scenario indeed where you would want to specify both.
+        self.categories_to_keep = None
+        
+        #: Either a list of category names (not IDs), or a dictionary mapping category *names* (not IDs) to thresholds.  
+        #: Removes non-matching detections, does not remove images.  Not technically mutually exclusize with 
+        #: category_ids_to_keep, but it's an esoteric scenario indeed where you would want to specify both.
+        self.category_names_to_keep = None
+        
+        #: Set to >0 during testing to limit the number of images that get processed.
+        self.debug_max_images = -1
     
     
 #%% Main function

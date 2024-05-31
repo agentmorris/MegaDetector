@@ -34,57 +34,59 @@ class MDTestOptions:
     Options controlling test behavior.
     """
     
-    ## Required ##
+    def __init__(self):
     
-    #: Force CPU execution
-    disable_gpu = False
+        ## Required ##
     
-    #: If GPU execution is requested, but a GPU is not available, should we error?
-    cpu_execution_is_error = False
-    
-    #: Skip tests related to video processing
-    skip_video_tests = False
-    
-    #: Skip tests launched via Python functions (as opposed to CLIs)
-    skip_python_tests = False
-    
-    #: Skip CLI tests
-    skip_cli_tests = False
-    
-    #: Force a specific folder for temporary input/output
-    scratch_dir = None
-    
-    #: Where does the test data live?
-    test_data_url = 'https://lila.science/public/md-test-package.zip'
-    
-    #: Download test data even if it appears to have already been downloaded
-    force_data_download = False
-    
-    #: Unzip test data even if it appears to have already been unzipped
-    force_data_unzip = False
-    
-    #: By default, any unexpected behavior is an error; this forces most errors to
-    #: be treated as warnings.
-    warning_mode = False
-    
-    #: How much deviation from the expected detection coordinates should we allow before
-    #: a disrepancy becomes an error?
-    max_coord_error = 0.001
-    
-    #: How much deviation from the expected confidence values should we allow before
-    #: a disrepancy becomes an error?    
-    max_conf_error = 0.005
-    
-    #: Current working directory when running CLI tests
-    cli_working_dir = None
-    
-    #: YOLOv5 installation, only relevant if we're testing run_inference_with_yolov5_val. 
-    #:
-    #: If this is None, we'll skip that test.
-    yolo_working_folder = None
-    
-    #: fourcc code to use for video tests that involve rendering video
-    video_fourcc = 'mp4v'    
+        #: Force CPU execution
+        self.disable_gpu = False
+        
+        #: If GPU execution is requested, but a GPU is not available, should we error?
+        self.cpu_execution_is_error = False
+        
+        #: Skip tests related to video processing
+        self.skip_video_tests = False
+        
+        #: Skip tests launched via Python functions (as opposed to CLIs)
+        self.skip_python_tests = False
+        
+        #: Skip CLI tests
+        self.skip_cli_tests = False
+        
+        #: Force a specific folder for temporary input/output
+        self.scratch_dir = None
+        
+        #: Where does the test data live?
+        self.test_data_url = 'https://lila.science/public/md-test-package.zip'
+        
+        #: Download test data even if it appears to have already been downloaded
+        self.force_data_download = False
+        
+        #: Unzip test data even if it appears to have already been unzipped
+        self.force_data_unzip = False
+        
+        #: By default, any unexpected behavior is an error; this forces most errors to
+        #: be treated as warnings.
+        self.warning_mode = False
+        
+        #: How much deviation from the expected detection coordinates should we allow before
+        #: a disrepancy becomes an error?
+        self.max_coord_error = 0.001
+        
+        #: How much deviation from the expected confidence values should we allow before
+        #: a disrepancy becomes an error?    
+        self.max_conf_error = 0.005
+        
+        #: Current working directory when running CLI tests
+        self.cli_working_dir = None
+        
+        #: YOLOv5 installation, only relevant if we're testing run_inference_with_yolov5_val. 
+        #:
+        #: If this is None, we'll skip that test.
+        self.yolo_working_folder = None
+        
+        #: fourcc code to use for video tests that involve rendering video
+        self.video_fourcc = 'mp4v'    
 
 # ...class MDTestOptions()
 

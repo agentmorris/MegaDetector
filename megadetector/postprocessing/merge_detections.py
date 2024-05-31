@@ -31,26 +31,37 @@ class MergeDetectionsOptions:
     
     def __init__(self):
         
+        #: Maximum detection size to include in the merged output
         self.max_detection_size = 1.01
+        
+        #: Minimum detection size to include in the merged output
         self.min_detection_size = 0
+        
+        #: Exclude detections whose confidence in the source file(s) is less
+        #: than this.  Should have the same length as the number of source files.
         self.source_confidence_thresholds = [0.05]
         
-        # Don't bother merging into target images if there is a similar detection
-        # above this threshold (or if there is *any* detection above this threshold,
-        # and merge_empty_only is True)
+        #: Don't bother merging into target images if there is a similar detection
+        #: above this threshold (or if there is *any* detection above this threshold,
+        #: and merge_empty_only is True)
         self.target_confidence_threshold = 0.2
         
-        # If you want to merge only certain categories, specify one
-        # (but not both) of these.  These are category IDs, not names.
+        #: If you want to merge only certain categories, specify one
+        #: (but not both) of these.  These are category IDs, not names.
         self.categories_to_include = None
+        
+        #: If you want to merge only certain categories, specify one
+        #: (but not both) of these.  These are category IDs, not names.
         self.categories_to_exclude = None
 
-        # Only merge detections into images that have *no* detections in the 
-        # target results file.
+        #: Only merge detections into images that have *no* detections in the 
+        #: target results file.
         self.merge_empty_only = False
         
+        #: IoU threshold above which two detections are considered the same
         self.iou_threshold = 0.65
         
+        #: Error if this is False and the output file exists
         self.overwrite = False
 
 

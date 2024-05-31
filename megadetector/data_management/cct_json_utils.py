@@ -295,8 +295,9 @@ class SequenceOptions:
     Options parameterizing the grouping of images into sequences by time.
     """
     
-    #: Images separated by <= this duration will be grouped into the same sequence.
-    episode_interval_seconds = 60.0
+    def __init__(self):
+        #: Images separated by <= this duration will be grouped into the same sequence.
+        self.episode_interval_seconds = 60.0
 
     
 #%% Functions

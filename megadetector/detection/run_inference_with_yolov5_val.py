@@ -179,6 +179,8 @@ class YoloInferenceOptions:
         self.save_yolo_debug_output = False
         
         #: Whether to search for images recursively within [input_folder]
+        #:
+        #: Ignored if a list of files is provided.
         self.recursive = True
         
         #: Maximum number of images to run in a single chunk
@@ -203,6 +205,9 @@ def run_inference_with_yolo_val(options):
         
     ##%% Input and path handling
     
+    if options.chunk_size is not None:
+        raise NotImplementedError('Chunking in progress')
+        
     if options.model_type == 'yolov8':
         
         print('Warning: model type "yolov8" supplied, "ultralytics" is the preferred model type string for YOLOv8 models')
@@ -897,7 +902,7 @@ if False:
     options.image_filename_list = None
     
     options.yolo_category_id_to_name = dataset_file
-    options.augment = True
+    options.augment = False
     options.conf_thres = '0.001'
     options.batch_size = 1
     options.device_string = '0'
@@ -917,6 +922,7 @@ if False:
     
     options.remove_temporary_symlink_folder = False
     options.remove_yolo_results_file = False
+    options.chunk_size = 1
     
     cmd = f'python run_inference_with_yolov5_val.py {model_filename} {input_folder} ' + \
           f'{output_file} --yolo_working_folder {yolo_working_folder} ' + \

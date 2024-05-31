@@ -66,247 +66,251 @@ class RepeatDetectionOptions:
     """
     Options that control the behavior of repeat detection elimination
     """
-    
-    #: Folder where images live; filenames in the MD results .json file should
-    #: be relative to this folder.
-    #:
-    #: imageBase can also be a SAS URL, in which case some error-checking is
-    #: disabled.
-    imageBase = ''
-    
-    #: Folder where we should write temporary output.
-    outputBase = ''
 
-    #: Don't consider detections with confidence lower than this as suspicious
-    confidenceMin = 0.1
-
-    #: Don't consider detections with confidence higher than this as suspicious
-    confidenceMax = 1.0
-
-    #: What's the IOU threshold for considering two boxes the same?
-    iouThreshold = 0.9
-
-    #: How many occurrences of a single location (as defined by the IOU threshold)
-    #: are required before we declare it suspicious?
-    occurrenceThreshold = 20
+    def __init__(self):
+        
+        #: Folder where images live; filenames in the MD results .json file should
+        #: be relative to this folder.
+        #:
+        #: imageBase can also be a SAS URL, in which case some error-checking is
+        #: disabled.
+        self.imageBase = ''
+        
+        #: Folder where we should write temporary output.
+        self.outputBase = ''
     
-    #: Ignore "suspicious" detections smaller than some size
-    minSuspiciousDetectionSize = 0.0
-
-    #: Ignore "suspicious" detections larger than some size; these are often animals
-    #: taking up the whole image.  This is expressed as a fraction of the image size.
-    maxSuspiciousDetectionSize = 0.2
-
-    #: Ignore folders with more than this many images in them
-    maxImagesPerFolder = None
+        #: Don't consider detections with confidence lower than this as suspicious
+        self.confidenceMin = 0.1
     
-    #: A list of category IDs (ints) that we don't want consider as candidate repeat detections.
-    #:
-    #: Typically used to say, e.g., "don't bother analyzing people or vehicles for repeat 
-    #: detections", which you could do by saying excludeClasses = [2,3].
-    excludeClasses = []
-
-    #: For very large sets of results, passing chunks of results to and from workers as 
-    #: parameters ('memory') can be memory-intensive, so we can serialize to intermediate
-    #: files instead ('file').
-    #:
-    #: The use of 'file' here is still experimental.
-    pass_detections_to_processes_method = 'memory'
+        #: Don't consider detections with confidence higher than this as suspicious
+        self.confidenceMax = 1.0
     
-    #: Number of workers to use for parallel operations
-    nWorkers = 10
+        #: What's the IOU threshold for considering two boxes the same?
+        self.iouThreshold = 0.9
     
-    #: Should we use threads (True) or processes (False) for parallelization?
-    #:
-    #: Not relevant if nWorkers <= 1, or if bParallelizeComparisons and 
-    #: bParallelizeRendering are both False.
-    parallelizationUsesThreads = True
-
-    #: If this is not empty, we'll load detections from a filter file rather than finding them 
-    #: from the detector output.  This should be a .json file containing detections, generally this 
-    #: is the detectionIndex.json file in the filtering_* folder produced by find_repeat_detections().
-    filterFileToLoad = ''
-
-    #: (optional) List of filenames remaining after deletion of identified 
-    #: repeated detections that are actually animals.  This should be a flat
-    #: text file, one relative filename per line.
-    #:
-    #: This is a pretty esoteric code path and a candidate for removal.
-    #:
-    #: The scenario where I see it being most useful is the very hypothetical one
-    #: where we use an external tool for image handling that allows us to do something
-    #: smarter and less destructive than deleting images to mark them as non-false-positives.
-    filteredFileListToLoad = None
-
-    #: Should we write the folder of images used to manually review repeat detections?
-    bWriteFilteringFolder = True
-
-    #: For debugging: limit comparisons to a specific number of folders
-    debugMaxDir = -1
+        #: How many occurrences of a single location (as defined by the IOU threshold)
+        #: are required before we declare it suspicious?
+        self.occurrenceThreshold = 20
+        
+        #: Ignore "suspicious" detections smaller than some size
+        self.minSuspiciousDetectionSize = 0.0
     
-    #: For debugging: limit rendering to a specific number of folders
-    debugMaxRenderDir = -1
+        #: Ignore "suspicious" detections larger than some size; these are often animals
+        #: taking up the whole image.  This is expressed as a fraction of the image size.
+        self.maxSuspiciousDetectionSize = 0.2
     
-    #: For debugging: limit comparisons to a specific number of detections
-    debugMaxRenderDetection = -1
+        #: Ignore folders with more than this many images in them
+        self.maxImagesPerFolder = None
+        
+        #: A list of category IDs (ints) that we don't want consider as candidate repeat detections.
+        #:
+        #: Typically used to say, e.g., "don't bother analyzing people or vehicles for repeat 
+        #: detections", which you could do by saying excludeClasses = [2,3].
+        self.excludeClasses = []
     
-    #: For debugging: limit comparisons to a specific number of instances
-    debugMaxRenderInstance = -1
+        #: For very large sets of results, passing chunks of results to and from workers as 
+        #: parameters ('memory') can be memory-intensive, so we can serialize to intermediate
+        #: files instead ('file').
+        #:
+        #: The use of 'file' here is still experimental.
+        self.pass_detections_to_processes_method = 'memory'
+        
+        #: Number of workers to use for parallel operations
+        self.nWorkers = 10
+        
+        #: Should we use threads (True) or processes (False) for parallelization?
+        #:
+        #: Not relevant if nWorkers <= 1, or if bParallelizeComparisons and 
+        #: bParallelizeRendering are both False.
+        self.parallelizationUsesThreads = True
     
-    #: Should we parallelize (across cameras) comparisons to find repeat detections?
-    bParallelizeComparisons = True
+        #: If this is not empty, we'll load detections from a filter file rather than finding them 
+        #: from the detector output.  This should be a .json file containing detections, generally this 
+        #: is the detectionIndex.json file in the filtering_* folder produced by find_repeat_detections().
+        self.filterFileToLoad = ''
     
-    #: Should we parallelize image rendering?
-    bParallelizeRendering = True
+        #: (optional) List of filenames remaining after deletion of identified 
+        #: repeated detections that are actually animals.  This should be a flat
+        #: text file, one relative filename per line.
+        #:
+        #: This is a pretty esoteric code path and a candidate for removal.
+        #:
+        #: The scenario where I see it being most useful is the very hypothetical one
+        #: where we use an external tool for image handling that allows us to do something
+        #: smarter and less destructive than deleting images to mark them as non-false-positives.
+        self.filteredFileListToLoad = None
     
-    #: If this is False (default), a detection from class A is *not* considered to be "the same"
-    #: as a detection from class B, even if they're at the same location.
-    categoryAgnosticComparisons = False
+        #: Should we write the folder of images used to manually review repeat detections?
+        self.bWriteFilteringFolder = True
     
-    #: Determines whether bounding-box rendering errors (typically network errors) should
-    #: be treated as failures    
-    bFailOnRenderError = False
+        #: For debugging: limit comparisons to a specific number of folders
+        self.debugMaxDir = -1
+        
+        #: For debugging: limit rendering to a specific number of folders
+        self.debugMaxRenderDir = -1
+        
+        #: For debugging: limit comparisons to a specific number of detections
+        self.debugMaxRenderDetection = -1
+        
+        #: For debugging: limit comparisons to a specific number of instances
+        self.debugMaxRenderInstance = -1
+        
+        #: Should we parallelize (across cameras) comparisons to find repeat detections?
+        self.bParallelizeComparisons = True
+        
+        #: Should we parallelize image rendering?
+        self.bParallelizeRendering = True
+        
+        #: If this is False (default), a detection from class A is *not* considered to be "the same"
+        #: as a detection from class B, even if they're at the same location.
+        self.categoryAgnosticComparisons = False
+        
+        #: Determines whether bounding-box rendering errors (typically network errors) should
+        #: be treated as failures    
+        self.bFailOnRenderError = False
+        
+        #: Should we print a warning if images referred to in the MD results file are missing?
+        self.bPrintMissingImageWarnings = True
+        
+        #: If bPrintMissingImageWarnings is True, should we print a warning about missing images
+        #: just once ('once') or every time ('all')?
+        self.missingImageWarningType = 'once'  # 'all'
     
-    #: Should we print a warning if images referred to in the MD results file are missing?
-    bPrintMissingImageWarnings = True
+        #: Image width for rendered images (it's called "max" because we don't resize smaller images).
+        #:
+        #: Original size is preserved if this is None.
+        #:
+        #: This does *not* include the tile image grid.
+        self.maxOutputImageWidth = None
+        
+        #: Line thickness (in pixels) for box rendering
+        self.lineThickness = 10
+        
+        #: Box expansion (in pixels)
+        self.boxExpansion = 2
+        
+        #: Progress bar used during comparisons and rendering.  Do not set externally.
+        #:
+        #: :meta private:
+        self.pbar = None
     
-    #: If bPrintMissingImageWarnings is True, should we print a warning about missing images
-    #: just once ('once') or every time ('all')?
-    missingImageWarningType = 'once'  # 'all'
-
-    #: Image width for rendered images (it's called "max" because we don't resize smaller images).
-    #:
-    #: Original size is preserved if this is None.
-    #:
-    #: This does *not* include the tile image grid.
-    maxOutputImageWidth = None
+        #: Replace filename tokens after reading, useful when the directory structure
+        #: has changed relative to the structure the detector saw.
+        self.filenameReplacements = {}
     
-    #: Line thickness (in pixels) for box rendering
-    lineThickness = 10
+        #: How many folders up from the leaf nodes should we be going to aggregate images into 
+        #: cameras?
+        #:
+        #: If this is zero, each leaf folder is treated as a camera.
+        self.nDirLevelsFromLeaf = 0
+        
+        #: An optional function that takes a string (an image file name) and returns
+        #: a string (the corresponding  folder ID), typically used when multiple folders
+        #: actually correspond to the same camera in a manufacturer-specific way (e.g.
+        #: a/b/c/RECONYX100 and a/b/c/RECONYX101 may really be the same camera).
+        #:
+        #: See ct_utils for a common replacement function that handles most common
+        #: manufacturer folder names.
+        self.customDirNameFunction = None
+        
+        #: Include only specific folders, mutually exclusive with [excludeFolders]
+        self.includeFolders = None
+        
+        #: Exclude specific folders, mutually exclusive with [includeFolders]
+        self.excludeFolders = None
     
-    #: Box expansion (in pixels)
-    boxExpansion = 2
-    
-    #: Progress bar used during comparisons and rendering.  Do not set externally.
-    #:
-    #: :meta private:
-    pbar = None
-
-    #: Replace filename tokens after reading, useful when the directory structure
-    #: has changed relative to the structure the detector saw.
-    filenameReplacements = {}
-
-    #: How many folders up from the leaf nodes should we be going to aggregate images into 
-    #: cameras?
-    #:
-    #: If this is zero, each leaf folder is treated as a camera.
-    nDirLevelsFromLeaf = 0
-    
-    #: An optional function that takes a string (an image file name) and returns
-    #: a string (the corresponding  folder ID), typically used when multiple folders
-    #: actually correspond to the same camera in a manufacturer-specific way (e.g.
-    #: a/b/c/RECONYX100 and a/b/c/RECONYX101 may really be the same camera).
-    #:
-    #: See ct_utils for a common replacement function that handles most common
-    #: manufacturer folder names.
-    customDirNameFunction = None
-    
-    #: Include only specific folders, mutually exclusive with [excludeFolders]
-    includeFolders = None
-    
-    #: Exclude specific folders, mutually exclusive with [includeFolders]
-    excludeFolders = None
-
-    #: Optionally show *other* detections (i.e., detections other than the
-    #: one the user is evaluating), typically in a light gray.
-    bRenderOtherDetections = False
-    
-    #: Threshold to use for *other* detections
-    otherDetectionsThreshold = 0.2    
-    
-    #: Line width (in pixels) for *other* detections
-    otherDetectionsLineWidth = 1
-    
-    #: Optionally show a grid that includes a sample image for the detection, plus
-    #: the top N additional detections
-    bRenderDetectionTiles = True
-    
-    #: Width of the original image (within the larger output image) when bRenderDetectionTiles
-    #: is True.
-    #:
-    #: If this is None, we'll render the original image in the detection tile image
-    #: at its original width.
-    detectionTilesPrimaryImageWidth = None
-    
-    #: Width to use for the grid of detection instances.
-    #:
-    #: Can be a width in pixels, or a number from 0 to 1 representing a fraction
-    #: of the primary image width.
-    #:
-    #: If you want to render the grid at exactly 1 pixel wide, I guess you're out
-    #: of luck.    
-    detectionTilesCroppedGridWidth = 0.6
-    
-    #: Location of the primary image within the mosaic ('right' or 'left)
-    detectionTilesPrimaryImageLocation = 'right'
-    
-    #: Maximum number of individual detection instances to include in the mosaic
-    detectionTilesMaxCrops = 250
-    
-    #: If bRenderOtherDetections is True, what color should we use to render the
-    #: (hopefully pretty subtle) non-target detections?
-    #: 
-    #: In theory I'd like these "other detection" rectangles to be partially 
-    #: transparent, but this is not straightforward, and the alpha is ignored
-    #: here.  But maybe if I leave it here and wish hard enough, someday it 
-    #: will work.
-    #:
-    #: otherDetectionsColors = ['dimgray']
-    otherDetectionsColors = [(105,105,105,100)]
-    
-    #: Sort detections within a directory so nearby detections are adjacent
-    #: in the list, for faster review.
-    #:
-    #: Can be None, 'xsort', or 'clustersort'
-    #:
-    #: * None sorts detections chronologically by first occurrence
-    #: * 'xsort' sorts detections from left to right
-    #: * 'clustersort' clusters detections and sorts by cluster
-    smartSort = 'xsort'
-    
-    #: Only relevant if smartSort == 'clustersort'
-    smartSortDistanceThreshold = 0.1
-    
+        #: Optionally show *other* detections (i.e., detections other than the
+        #: one the user is evaluating), typically in a light gray.
+        self.bRenderOtherDetections = False
+        
+        #: Threshold to use for *other* detections
+        self.otherDetectionsThreshold = 0.2    
+        
+        #: Line width (in pixels) for *other* detections
+        self.otherDetectionsLineWidth = 1
+        
+        #: Optionally show a grid that includes a sample image for the detection, plus
+        #: the top N additional detections
+        self.bRenderDetectionTiles = True
+        
+        #: Width of the original image (within the larger output image) when bRenderDetectionTiles
+        #: is True.
+        #:
+        #: If this is None, we'll render the original image in the detection tile image
+        #: at its original width.
+        self.detectionTilesPrimaryImageWidth = None
+        
+        #: Width to use for the grid of detection instances.
+        #:
+        #: Can be a width in pixels, or a number from 0 to 1 representing a fraction
+        #: of the primary image width.
+        #:
+        #: If you want to render the grid at exactly 1 pixel wide, I guess you're out
+        #: of luck.    
+        self.detectionTilesCroppedGridWidth = 0.6
+        
+        #: Location of the primary image within the mosaic ('right' or 'left)
+        self.detectionTilesPrimaryImageLocation = 'right'
+        
+        #: Maximum number of individual detection instances to include in the mosaic
+        self.detectionTilesMaxCrops = 250
+        
+        #: If bRenderOtherDetections is True, what color should we use to render the
+        #: (hopefully pretty subtle) non-target detections?
+        #: 
+        #: In theory I'd like these "other detection" rectangles to be partially 
+        #: transparent, but this is not straightforward, and the alpha is ignored
+        #: here.  But maybe if I leave it here and wish hard enough, someday it 
+        #: will work.
+        #:
+        #: otherDetectionsColors = ['dimgray']
+        self.otherDetectionsColors = [(105,105,105,100)]
+        
+        #: Sort detections within a directory so nearby detections are adjacent
+        #: in the list, for faster review.
+        #:
+        #: Can be None, 'xsort', or 'clustersort'
+        #:
+        #: * None sorts detections chronologically by first occurrence
+        #: * 'xsort' sorts detections from left to right
+        #: * 'clustersort' clusters detections and sorts by cluster
+        self.smartSort = 'xsort'
+        
+        #: Only relevant if smartSort == 'clustersort'
+        self.smartSortDistanceThreshold = 0.1
+        
     
 class RepeatDetectionResults:
     """
     The results of an entire repeat detection analysis
     """
 
-    #: The data table (Pandas DataFrame), as loaded from the input json file via 
-    #: load_api_results().  Has columns ['file', 'detections','failure'].
-    detectionResults = None
-
-    #: The other fields in the input json file, loaded via load_api_results()
-    otherFields = None
-
-    #: The data table after modification
-    detectionResultsFiltered = None
-
-    #: dict mapping folder names to whole rows from the data table
-    rowsByDirectory = None
-
-    #: dict mapping filenames to rows in the master table
-    filenameToRow = None
-
-    #: An array of length nDirs, where each element is a list of DetectionLocation 
-    #: objects for that directory that have been flagged as suspicious
-    suspiciousDetections = None
-
-    #: The location of the .json file written with information about the RDE
-    #: review images (typically detectionIndex.json)
-    filterFile = None
-
+    def __init__(self):
+        
+        #: The data table (Pandas DataFrame), as loaded from the input json file via 
+        #: load_api_results().  Has columns ['file', 'detections','failure'].
+        self.detectionResults = None
+    
+        #: The other fields in the input json file, loaded via load_api_results()
+        self.otherFields = None
+    
+        #: The data table after modification
+        self.detectionResultsFiltered = None
+    
+        #: dict mapping folder names to whole rows from the data table
+        self.rowsByDirectory = None
+    
+        #: dict mapping filenames to rows in the master table
+        self.filenameToRow = None
+    
+        #: An array of length nDirs, where each element is a list of DetectionLocation 
+        #: objects for that directory that have been flagged as suspicious
+        self.suspiciousDetections = None
+    
+        #: The location of the .json file written with information about the RDE
+        #: review images (typically detectionIndex.json)
+        self.filterFile = None
+    
 
 class IndexedDetection:
     """

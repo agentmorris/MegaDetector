@@ -38,50 +38,52 @@ class ReadExifOptions:
     Parameters controlling metadata extraction.
     """
     
-    #: Enable additional debug console output
-    verbose = False
-    
-    #: If this is True and an output file is specified for read_exif_from_folder,
-    #: and we encounter a serialization issue, we'll return the results but won't
-    #: error.    
-    allow_write_error = False
-    
-    #: Number of concurrent workers, set to <= 1 to disable parallelization
-    n_workers = 1
-    
-    #: Should we use threads (vs. processes) for parallelization?
-    #:
-    #: Not relevant if n_workers is <= 1.
-    use_threads = True
+    def __init__(self):
         
-    #: "File" and "ExifTool" are tag types used by ExifTool to report data that 
-    #: doesn't come from EXIF, rather from the file (e.g. file size).
-    tag_types_to_ignore = set(['File','ExifTool'])
-    
-    #: Include/exclude specific tags (tags_to_include and tags_to_exclude are mutually incompatible)
-    #:
-    #: A useful set of tags one might want to limit queries for:
-    #:
-    #: options.tags_to_include = ['DateTime','Model','Make','ExifImageWidth','ExifImageHeight','DateTime',
-    #: 'DateTimeOriginal','Orientation']    
-    tags_to_include = None
-    
-    #: Include/exclude specific tags (tags_to_include and tags_to_exclude are mutually incompatible)
-    tags_to_exclude = None
-    
-    #: The command line to invoke if using exiftool, can be an absolute path to exiftool.exe, or
-    #: can be just "exiftool", in which case it should be on your system path.
-    exiftool_command_name = 'exiftool'
-    
-    #: How should we handle byte-formatted EXIF tags?
-    #:
-    #: 'convert_to_string': convert to a Python string
-    #: 'delete': don't include at all
-    #: 'raw': include as a byte string
-    byte_handling = 'convert_to_string' # 'convert_to_string','delete','raw'
-    
-    #: Should we use exiftool or PIL?
-    processing_library = 'pil' # 'exiftool','pil'
+        #: Enable additional debug console output
+        self.verbose = False
+        
+        #: If this is True and an output file is specified for read_exif_from_folder,
+        #: and we encounter a serialization issue, we'll return the results but won't
+        #: error.    
+        self.allow_write_error = False
+        
+        #: Number of concurrent workers, set to <= 1 to disable parallelization
+        self.n_workers = 1
+        
+        #: Should we use threads (vs. processes) for parallelization?
+        #:
+        #: Not relevant if n_workers is <= 1.
+        self.use_threads = True
+            
+        #: "File" and "ExifTool" are tag types used by ExifTool to report data that 
+        #: doesn't come from EXIF, rather from the file (e.g. file size).
+        self.tag_types_to_ignore = set(['File','ExifTool'])
+        
+        #: Include/exclude specific tags (tags_to_include and tags_to_exclude are mutually incompatible)
+        #:
+        #: A useful set of tags one might want to limit queries for:
+        #:
+        #: options.tags_to_include = ['DateTime','Model','Make','ExifImageWidth','ExifImageHeight','DateTime',
+        #: 'DateTimeOriginal','Orientation']    
+        self.tags_to_include = None
+        
+        #: Include/exclude specific tags (tags_to_include and tags_to_exclude are mutually incompatible)
+        self.tags_to_exclude = None
+        
+        #: The command line to invoke if using exiftool, can be an absolute path to exiftool.exe, or
+        #: can be just "exiftool", in which case it should be on your system path.
+        self.exiftool_command_name = 'exiftool'
+        
+        #: How should we handle byte-formatted EXIF tags?
+        #:
+        #: 'convert_to_string': convert to a Python string
+        #: 'delete': don't include at all
+        #: 'raw': include as a byte string
+        self.byte_handling = 'convert_to_string' # 'convert_to_string','delete','raw'
+        
+        #: Should we use exiftool or PIL?
+        self.processing_library = 'pil' # 'exiftool','pil'
         
 
 class ExifResultsToCCTOptions:

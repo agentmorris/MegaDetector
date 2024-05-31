@@ -40,86 +40,88 @@ class DbVizOptions:
     Parameters controlling the behavior of visualize_db().
     """
     
-    #: Number of images to sample from the database, or None to visualize all images
-    num_to_visualize = None
-    
-    #: Target size for rendering; set either dimension to -1 to preserve aspect ratio.
-    #:
-    #: If viz_size is None or (-1,-1), the original image size is used.
-    viz_size = (800, -1)
-    
-    #: HTML rendering options; see write_html_image_list for details
-    #:
-    #:The most relevant option one might want to set here is:
-    #:
-    #: htmlOptions['maxFiguresPerHtmlFile']
-    #:
-    #: ...which can be used to paginate previews to a number of images that will load well
-    #: in a browser (5000 is a reasonable limit).
-    htmlOptions = write_html_image_list()
-    
-    #: Whether to sort images by filename (True) or randomly (False)
-    sort_by_filename = True
-    
-    #: Only show images that contain bounding boxes
-    trim_to_images_with_bboxes = False
-    
-    #: Random seed to use for sampling images
-    random_seed = 0
-    
-    #: Should we include Web search links for each category name?    
-    add_search_links = False
-    
-    #: Should each thumbnail image link back to the original image?
-    include_image_links = False
-    
-    #: Should there be a text link back to each original image?
-    include_filename_links = False
-    
-    #: Line width in pixels
-    box_thickness = 4
-    
-    #: Number of pixels to expand each bounding box
-    box_expansion = 0
-    
-    #: Only include images that contain annotations with these class names (not IDs)
-    #:
-    #: Mutually exclusive with classes_to_exclude
-    classes_to_include = None
-    
-    #: Exclude images that contain annotations with these class names (not IDs)
-    #:
-    #: Mutually exclusive with classes_to_include
-    classes_to_exclude = None
-    
-    #: Special tag used to say "show me all images with multiple categories"
-    #:
-    #: :meta private:
-    multiple_categories_tag = '*multiple*'
-
-    #: We sometimes flatten image directories by replacing a path separator with 
-    #: another character.  Leave blank for the typical case where this isn't necessary.
-    pathsep_replacement = '' # '~'
-
-    #: Parallelize rendering across multiple workers
-    parallelize_rendering = False
-    
-    #: In theory, whether to parallelize with threads (True) or processes (False), but
-    #: process-based parallelization in this function is currently unsupported
-    parallelize_rendering_with_threads = True
-    
-    #: Number of workers to use for parallelization; ignored if parallelize_rendering
-    #: is False
-    parallelize_rendering_n_cores = 25
+    def __init__(self):
         
-    #: Should we show absolute (True) or relative (False) paths for each image?
-    show_full_paths = False
+        #: Number of images to sample from the database, or None to visualize all images
+        self.num_to_visualize = None
+        
+        #: Target size for rendering; set either dimension to -1 to preserve aspect ratio.
+        #:
+        #: If viz_size is None or (-1,-1), the original image size is used.
+        self.viz_size = (800, -1)
+        
+        #: HTML rendering options; see write_html_image_list for details
+        #:
+        #:The most relevant option one might want to set here is:
+        #:
+        #: htmlOptions['maxFiguresPerHtmlFile']
+        #:
+        #: ...which can be used to paginate previews to a number of images that will load well
+        #: in a browser (5000 is a reasonable limit).
+        self.htmlOptions = write_html_image_list()
+        
+        #: Whether to sort images by filename (True) or randomly (False)
+        self.sort_by_filename = True
+        
+        #: Only show images that contain bounding boxes
+        self.trim_to_images_with_bboxes = False
+        
+        #: Random seed to use for sampling images
+        self.random_seed = 0
+        
+        #: Should we include Web search links for each category name?    
+        self.add_search_links = False
+        
+        #: Should each thumbnail image link back to the original image?
+        self.include_image_links = False
+        
+        #: Should there be a text link back to each original image?
+        self.include_filename_links = False
+        
+        #: Line width in pixels
+        self.box_thickness = 4
+        
+        #: Number of pixels to expand each bounding box
+        self.box_expansion = 0
+        
+        #: Only include images that contain annotations with these class names (not IDs)
+        #:
+        #: Mutually exclusive with classes_to_exclude
+        self.classes_to_include = None
+        
+        #: Exclude images that contain annotations with these class names (not IDs)
+        #:
+        #: Mutually exclusive with classes_to_include
+        self.classes_to_exclude = None
+        
+        #: Special tag used to say "show me all images with multiple categories"
+        #:
+        #: :meta private:
+        self.multiple_categories_tag = '*multiple*'
     
-    #: Set to False to skip existing images
-    force_rendering = True
+        #: We sometimes flatten image directories by replacing a path separator with 
+        #: another character.  Leave blank for the typical case where this isn't necessary.
+        self.pathsep_replacement = '' # '~'
     
-    #: Enable additionald debug console output
-    verbose = False
+        #: Parallelize rendering across multiple workers
+        self.parallelize_rendering = False
+        
+        #: In theory, whether to parallelize with threads (True) or processes (False), but
+        #: process-based parallelization in this function is currently unsupported
+        self.parallelize_rendering_with_threads = True
+        
+        #: Number of workers to use for parallelization; ignored if parallelize_rendering
+        #: is False
+        self.parallelize_rendering_n_cores = 25
+            
+        #: Should we show absolute (True) or relative (False) paths for each image?
+        self.show_full_paths = False
+        
+        #: Set to False to skip existing images
+        self.force_rendering = True
+        
+        #: Enable additionald debug console output
+        self.verbose = False
     
 
 #%% Helper functions

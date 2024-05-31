@@ -37,33 +37,34 @@ class IntegrityCheckOptions:
     Options for integrity_check_json_db()
     """
     
-    #: Image path; the filenames in the .json file should be relative to this folder
-    baseDir = ''
-    
-    #: Should we validate the image sizes?
-    bCheckImageSizes = False
-    
-    #: Should we check that all the images in the .json file exist on disk?
-    bCheckImageExistence = False
-    
-    #: Should we search [baseDir] for images that are not used in the .json file?
-    bFindUnusedImages = False
-    
-    #: Should we require that all images in the .json file have a 'location' field?
-    bRequireLocation = True
-    
-    #: For debugging, limit the number of images we'll process
-    iMaxNumImages = -1
-    
-    #: Number of threads to use for parallelization, set to <= 1 to disable parallelization
-    nThreads = 10
-    
-    #: Enable additional debug output
-    verbose = True
-    
-    #: Allow integer-valued image and annotation IDs (COCO uses this, CCT files use strings)
-    allowIntIDs = False
-    
+    def __init__(self):
+        
+        #: Image path; the filenames in the .json file should be relative to this folder
+        self.baseDir = ''
+        
+        #: Should we validate the image sizes?
+        self.bCheckImageSizes = False
+        
+        #: Should we check that all the images in the .json file exist on disk?
+        self.bCheckImageExistence = False
+        
+        #: Should we search [baseDir] for images that are not used in the .json file?
+        self.bFindUnusedImages = False
+        
+        #: Should we require that all images in the .json file have a 'location' field?
+        self.bRequireLocation = True
+        
+        #: For debugging, limit the number of images we'll process
+        self.iMaxNumImages = -1
+        
+        #: Number of threads to use for parallelization, set to <= 1 to disable parallelization
+        self.nThreads = 10
+        
+        #: Enable additional debug output
+        self.verbose = True
+        
+        #: Allow integer-valued image and annotation IDs (COCO uses this, CCT files use strings)
+        self.allowIntIDs = False
     
 # This is used in a medium-hacky way to share modified options across threads
 defaultOptions = IntegrityCheckOptions()

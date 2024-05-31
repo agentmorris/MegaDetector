@@ -43,29 +43,31 @@ class PairwiseBatchComparisonOptions:
     pairwise options sets is stored in the BatchComparisonsOptions class.
     """
     
-    #: First filename to compare
-    results_filename_a = None
+    def __init__(self):
+        
+        #: First filename to compare
+        self.results_filename_a = None
+        
+        #: Second filename to compare
+        self.results_filename_b = None
+        
+        #: Description to use in the output HTML for filename A
+        self.results_description_a = None
+        
+        #: Description to use in the output HTML for filename B
+        self.results_description_b = None
+        
+        #: Per-class detection thresholds to use for filename A (including a 'default' threshold)
+        self.detection_thresholds_a = {'animal':0.15,'person':0.15,'vehicle':0.15,'default':0.15}
+        
+        #: Per-class detection thresholds to use for filename B (including a 'default' threshold)
+        self.detection_thresholds_b = {'animal':0.15,'person':0.15,'vehicle':0.15,'default':0.15}
     
-    #: Second filename to compare
-    results_filename_b = None
-    
-    #: Description to use in the output HTML for filename A
-    results_description_a = None
-    
-    #: Description to use in the output HTML for filename B
-    results_description_b = None
-    
-    #: Per-class detection thresholds to use for filename A (including a 'default' threshold)
-    detection_thresholds_a = {'animal':0.15,'person':0.15,'vehicle':0.15,'default':0.15}
-    
-    #: Per-class detection thresholds to use for filename B (including a 'default' threshold)
-    detection_thresholds_b = {'animal':0.15,'person':0.15,'vehicle':0.15,'default':0.15}
-
-    #: Rendering threshold to use for all categories for filename A
-    rendering_confidence_threshold_a = 0.1
-    
-    #: Rendering threshold to use for all categories for filename B
-    rendering_confidence_threshold_b = 0.1
+        #: Rendering threshold to use for all categories for filename A
+        self.rendering_confidence_threshold_a = 0.1
+        
+        #: Rendering threshold to use for all categories for filename B
+        self.rendering_confidence_threshold_b = 0.1
 
 # ...class PairwiseBatchComparisonOptions
 
@@ -75,58 +77,60 @@ class BatchComparisonOptions:
     Defines the options for a set of (possibly many) pairwise comparisons.
     """
     
-    #: Folder to which we should write HTML output
-    output_folder = None
+    def __init__(self):
+        
+        #: Folder to which we should write HTML output
+        self.output_folder = None
+        
+        #: Base folder for images (which are specified as relative files)
+        self.image_folder = None
+        
+        #: Job name to use in the HTML output file
+        self.job_name = ''
+        
+        #: Maximum number of images to render for each category, where a "category" here is
+        #: "detections_a_only", "detections_b_only", etc., or None to render all images.
+        self.max_images_per_category = 1000
+        
+        #: Maximum number of images per HTML page (paginates if a category page goes beyond this),
+        #: or None to disable pagination.
+        self.max_images_per_page = None
+        
+        #: Colormap to use for detections in file A (maps detection categories to colors)
+        self.colormap_a = ['Red']
+        
+        #: Colormap to use for detections in file B (maps detection categories to colors)
+        self.colormap_b = ['RoyalBlue']
     
-    #: Base folder for images (which are specified as relative files)
-    image_folder = None
-    
-    #: Job name to use in the HTML output file
-    job_name = ''
-    
-    #: Maximum number of images to render for each category, where a "category" here is
-    #: "detections_a_only", "detections_b_only", etc., or None to render all images.
-    max_images_per_category = 1000
-    
-    #: Maximum number of images per HTML page (paginates if a category page goes beyond this),
-    #: or None to disable pagination.
-    max_images_per_page = None
-    
-    #: Colormap to use for detections in file A (maps detection categories to colors)
-    colormap_a = ['Red']
-    
-    #: Colormap to use for detections in file B (maps detection categories to colors)
-    colormap_b = ['RoyalBlue']
-
-    #: Process-based parallelization isn't supported yet; this must be "True"
-    parallelize_rendering_with_threads = True
-    
-    #: List of filenames to include in the comparison, or None to use all files
-    filenames_to_include = None
-    
-    #: Compare only detections/non-detections, ignore categories (still renders categories)
-    class_agnostic_comparison = False
-    
-    #: Width of images to render in the output HTML
-    target_width = 800
-    
-    #: Number of workers to use for rendering, or <=1 to disable parallelization
-    n_rendering_workers = 20
-    
-    #: Random seed for image sampling (not used if max_images_per_category is None)
-    random_seed = 0
-    
-    #: Whether to sort results by confidence; if this is False, sorts by filename
-    sort_by_confidence = False
-    
-    #: The expectation is that all results sets being compared will refer to the same images; if this
-    #: is True (default), we'll error if that's not the case, otherwise non-matching lists will just be
-    #: a warning.
-    error_on_non_matching_lists = True
-    
-    #: List of PairwiseBatchComparisonOptions that defines the comparisons we'll render.
-    pairwise_options = []
-    
+        #: Process-based parallelization isn't supported yet; this must be "True"
+        self.parallelize_rendering_with_threads = True
+        
+        #: List of filenames to include in the comparison, or None to use all files
+        self.filenames_to_include = None
+        
+        #: Compare only detections/non-detections, ignore categories (still renders categories)
+        self.class_agnostic_comparison = False
+        
+        #: Width of images to render in the output HTML
+        self.target_width = 800
+        
+        #: Number of workers to use for rendering, or <=1 to disable parallelization
+        self.n_rendering_workers = 20
+        
+        #: Random seed for image sampling (not used if max_images_per_category is None)
+        self.random_seed = 0
+        
+        #: Whether to sort results by confidence; if this is False, sorts by filename
+        self.sort_by_confidence = False
+        
+        #: The expectation is that all results sets being compared will refer to the same images; if this
+        #: is True (default), we'll error if that's not the case, otherwise non-matching lists will just be
+        #: a warning.
+        self.error_on_non_matching_lists = True
+        
+        #: List of PairwiseBatchComparisonOptions that defines the comparisons we'll render.
+        self.pairwise_options = []
+        
 # ...class BatchComparisonOptions
     
 
@@ -135,22 +139,24 @@ class PairwiseBatchComparisonResults:
     The results from a single pairwise comparison.
     """
     
-    #: String of HTML content suitable for rendering to an HTML file
-    html_content = None
+    def __init__(self):
     
-    #: Possibly-modified version of the PairwiseBatchComparisonOptions supplied as input.
-    pairwise_options = None
-    
-    #: A dictionary with keys including:
-    #:
-    #: common_detections
-    #: common_non_detections
-    #: detections_a_only
-    #: detections_b_only
-    #: class_transitions
-    #
-    #: Each of these maps a filename to a two-element list (the image in set A, the image in set B).
-    categories_to_image_pairs = None
+        #: String of HTML content suitable for rendering to an HTML file
+        self.html_content = None
+        
+        #: Possibly-modified version of the PairwiseBatchComparisonOptions supplied as input.
+        self.pairwise_options = None
+        
+        #: A dictionary with keys including:
+        #:
+        #: common_detections
+        #: common_non_detections
+        #: detections_a_only
+        #: detections_b_only
+        #: class_transitions
+        #
+        #: Each of these maps a filename to a two-element list (the image in set A, the image in set B).
+        self.categories_to_image_pairs = None
 
 # ...class PairwiseBatchComparisonResults
     
@@ -160,11 +166,13 @@ class BatchComparisonResults:
     The results from a set of pairwise comparisons
     """
     
-    #: Filename containing HTML output
-    html_output_file = None
-    
-    #: A list of PairwiseBatchComparisonResults
-    pairwise_results = None
+    def __init__(self):
+        
+        #: Filename containing HTML output
+        self.html_output_file = None
+        
+        #: A list of PairwiseBatchComparisonResults
+        self.pairwise_results = None
     
 # ...class BatchComparisonResults    
 

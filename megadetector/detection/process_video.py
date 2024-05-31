@@ -47,96 +47,98 @@ class ProcessVideoOptions:
     Options controlling the behavior of process_video()
     """
     
-    #: Can be a model filename (.pt or .pb) or a model name (e.g. "MDV5A")
-    model_file = 'MDV5A'
+    def __init__(self):
+        
+        #: Can be a model filename (.pt or .pb) or a model name (e.g. "MDV5A")
+        self.model_file = 'MDV5A'
+        
+        #: Video (of folder of videos) to process
+        self.input_video_file = ''
     
-    #: Video (of folder of videos) to process
-    input_video_file = ''
-
-    #: .json file to which we should write results
-    output_json_file = None
+        #: .json file to which we should write results
+        self.output_json_file = None
+        
+        #: File to which we should write a video with boxes, only relevant if 
+        #: render_output_video is True
+        self.output_video_file = None
+        
+        #: Folder to use for extracted frames; will use a folder in system temp space
+        #: if this is None
+        self.frame_folder = None
+        
+        # Folder to use for rendered frames (if rendering output video); will use a folder 
+        #: in system temp space if this is None
+        self.frame_rendering_folder = None
+        
+        #: Should we render a video with detection boxes?
+        #:
+        #: Only supported when processing a single video, not a folder.
+        self.render_output_video = False
+        
+        #: If we are rendering boxes to a new video, should we keep the temporary
+        #: rendered frames?
+        self.keep_rendered_frames = False
+        
+        #: Should we keep the extracted frames?
+        self.keep_extracted_frames = False
+        
+        #: Should we delete the entire folder the extracted frames are written to?
+        #:
+        #: By default, we delete the frame files but leave the (probably-empty) folder in place, 
+        #: for no reason other than being paranoid about deleting folders.
+        self.force_extracted_frame_folder_deletion = False
+        
+        #: Should we delete the entire folder the rendered frames are written to?
+        #:
+        #: By default, we delete the frame files but leave the (probably-empty) folder in place,
+        #: for no reason other than being paranoid about deleting folders.
+        self.force_rendered_frame_folder_deletion = False
+         
+        #: If we've already run MegaDetector on this video or folder of videos, i.e. if we 
+        #: find a corresponding MD results file, should we re-use it?  Defaults to reprocessing.
+        self.reuse_results_if_available = False
+        
+        #: If we've already split this video or folder of videos into frames, should we 
+        #: we re-use those extracted frames?  Defaults to reprocessing.
+        self.reuse_frames_if_available = False
+        
+        #: If [input_video_file] is a folder, should we search for videos recursively?
+        self.recursive = False 
+        
+        #: Enable additional debug console output
+        self.verbose = False
+        
+        #: fourcc code to use for writing videos; only relevant if render_output_video is True
+        self.fourcc = None
     
-    #: File to which we should write a video with boxes, only relevant if 
-    #: render_output_video is True
-    output_video_file = None
+        #: Confidence threshold to use for writing videos with boxes, only relevant if
+        #: if render_output_video is True.  Defaults to choosing a reasonable threshold
+        #: based on the model version.
+        self.rendering_confidence_threshold = None
+        
+        #: Detections below this threshold will not be included in the output file.
+        self.json_confidence_threshold = 0.005
+        
+        #: Sample every Nth frame; set to None (default) or 1 to sample every frame.  Typically
+        #: we sample down to around 3 fps, so for typical 30 fps videos, frame_sample=10 is a 
+        #: typical value.
+        self.frame_sample = None
+        
+        #: Number of workers to use for parallelization; set to <= 1 to disable parallelization
+        self.n_cores = 1
     
-    #: Folder to use for extracted frames; will use a folder in system temp space
-    #: if this is None
-    frame_folder = None
-    
-    # Folder to use for rendered frames (if rendering output video); will use a folder 
-    #: in system temp space if this is None
-    frame_rendering_folder = None
-    
-    #: Should we render a video with detection boxes?
-    #:
-    #: Only supported when processing a single video, not a folder.
-    render_output_video = False
-    
-    #: If we are rendering boxes to a new video, should we keep the temporary
-    #: rendered frames?
-    keep_rendered_frames = False
-    
-    #: Should we keep the extracted frames?
-    keep_extracted_frames = False
-    
-    #: Should we delete the entire folder the extracted frames are written to?
-    #:
-    #: By default, we delete the frame files but leave the (probably-empty) folder in place, 
-    #: for no reason other than being paranoid about deleting folders.
-    force_extracted_frame_folder_deletion = False
-    
-    #: Should we delete the entire folder the rendered frames are written to?
-    #:
-    #: By default, we delete the frame files but leave the (probably-empty) folder in place,
-    #: for no reason other than being paranoid about deleting folders.
-    force_rendered_frame_folder_deletion = False
-     
-    #: If we've already run MegaDetector on this video or folder of videos, i.e. if we 
-    #: find a corresponding MD results file, should we re-use it?  Defaults to reprocessing.
-    reuse_results_if_available = False
-    
-    #: If we've already split this video or folder of videos into frames, should we 
-    #: we re-use those extracted frames?  Defaults to reprocessing.
-    reuse_frames_if_available = False
-    
-    #: If [input_video_file] is a folder, should we search for videos recursively?
-    recursive = False 
-    
-    #: Enable additional debug console output
-    verbose = False
-    
-    #: fourcc code to use for writing videos; only relevant if render_output_video is True
-    fourcc = None
-
-    #: Confidence threshold to use for writing videos with boxes, only relevant if
-    #: if render_output_video is True.  Defaults to choosing a reasonable threshold
-    #: based on the model version.
-    rendering_confidence_threshold = None
-    
-    #: Detections below this threshold will not be included in the output file.
-    json_confidence_threshold = 0.005
-    
-    #: Sample every Nth frame; set to None (default) or 1 to sample every frame.  Typically
-    #: we sample down to around 3 fps, so for typical 30 fps videos, frame_sample=10 is a 
-    #: typical value.
-    frame_sample = None
-    
-    #: Number of workers to use for parallelization; set to <= 1 to disable parallelization
-    n_cores = 1
-
-    #: For debugging only, stop processing after a certain number of frames.
-    debug_max_frames = -1
-    
-    #: File containing non-standard categories, typically only used if you're running a non-MD
-    #: detector.
-    class_mapping_filename = None
-    
-    #: JPEG quality for frame output, from 0-100.  Defaults to the opencv default (typically 95)
-    quality = 90
-    
-    #: Resize frames so they're at most this wide
-    max_width = 1600
+        #: For debugging only, stop processing after a certain number of frames.
+        self.debug_max_frames = -1
+        
+        #: File containing non-standard categories, typically only used if you're running a non-MD
+        #: detector.
+        self.class_mapping_filename = None
+        
+        #: JPEG quality for frame output, from 0-100.  Defaults to the opencv default (typically 95)
+        self.quality = 90
+        
+        #: Resize frames so they're at most this wide
+        self.max_width = 1600
     
 # ...class ProcessVideoOptions
 

@@ -22,20 +22,22 @@ class SizeCategorizationOptions:
     Options used to parameterize categorize_detections_by_size().
     """
     
-    #: Thresholds to use for separation, as a fraction of the image size.
-    #:
-    #: Should be sorted from smallest to largest.
-    size_thresholds = [0.95]
-    
-    #: List of category numbers to use in separation; uses all categories if None
-    categories_to_separate = None
-    
-    #: Dimension to use for thresholding; can be "size", "width", or "height"
-    measurement = 'size'
-    
-    #: Categories to assign to thresholded ranges; should have the same length as
-    #: "size_thresholds".
-    size_category_names = ['large_detection']
+    def __init__(self):
+        
+        #: Thresholds to use for separation, as a fraction of the image size.
+        #:
+        #: Should be sorted from smallest to largest.
+        self.size_thresholds = [0.95]
+        
+        #: List of category numbers to use in separation; uses all categories if None
+        self.categories_to_separate = None
+        
+        #: Dimension to use for thresholding; can be "size", "width", or "height"
+        self.measurement = 'size'
+        
+        #: Categories to assign to thresholded ranges; should have the same length as
+        #: "size_thresholds".
+        self.size_category_names = ['large_detection']
     
                                                  
 #%% Main functions

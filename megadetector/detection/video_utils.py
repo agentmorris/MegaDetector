@@ -475,13 +475,15 @@ class FrameToVideoOptions:
     frame_results_to_video_results()    
     """
     
-    #: One-indexed indicator of which frame-level confidence value to use to determine detection confidence
-    #: for the whole video, i.e. "1" means "use the confidence value from the highest-confidence frame"
-    nth_highest_confidence = 1
-    
-    #: What to do if a file referred to in a .json results file appears not to be a 
-    #: video; can be 'error' or 'skip_with_warning'
-    non_video_behavior = 'error'
+    def __init__(self):
+            
+        #: One-indexed indicator of which frame-level confidence value to use to determine detection confidence
+        #: for the whole video, i.e. "1" means "use the confidence value from the highest-confidence frame"
+        self.nth_highest_confidence = 1
+        
+        #: What to do if a file referred to in a .json results file appears not to be a 
+        #: video; can be 'error' or 'skip_with_warning'
+        self.non_video_behavior = 'error'
     
     
 def frame_results_to_video_results(input_file,output_file,options=None):
