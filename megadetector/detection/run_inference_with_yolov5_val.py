@@ -34,13 +34,6 @@ that permission and *doesn't* have admin privileges.  If you are running this sc
 Windows and you don't have admin privileges, use --no_use_symlinks, which will make copies of images,
 rather than using symlinks.
 
-TODO:
-
-* Multiple GPU support
-* Checkpointing
-* Support alternative class names at the command line (currently defaults to MD classes,
-  though other class names can be supplied programmatically)
-
 """
 
 #%% Imports
@@ -186,7 +179,7 @@ class YoloInferenceOptions:
         self.recursive = True
         
         #: Maximum number of images to run in a single chunk
-        self.chunk_size = None
+        self.checkpoint_frequency = None
         
     # ...def __init__()
     
@@ -195,7 +188,9 @@ class YoloInferenceOptions:
 
 #%% Support functions
 
-def _clean_up_temporary_folders(options,symlink_folder_is_temp_folder,yolo_folder_is_temp_folder):
+def _clean_up_temporary_folders(options,
+                                symlink_folder,yolo_results_folder,
+                                symlink_folder_is_temp_folder,yolo_folder_is_temp_folder):
     """
     Remove temporary symlink/results folders, unless the caller requested that we leave them in place.
     """
@@ -286,6 +281,7 @@ def run_inference_with_yolo_val(options):
     ##%% Other input handling
     
     if isinstance(options.yolo_category_id_to_name,str):
+        
         assert os.path.isfile(options.yolo_category_id_to_name)
         yolo_dataset_file = options.yolo_category_id_to_name
         options.yolo_category_id_to_name = \
@@ -386,11 +382,11 @@ def run_inference_with_yolo_val(options):
     del image_files_relative
     
     
-    ##%% Recurse if necessary to handle chunks
+    ##%% Recurse if necessary to handle checkpoints
     
-    if options.chunk_size is not None and options.chunk_size > 0:
+    if options.checkpoint_frequency is not None and options.checkpoint_frequency > 0:
         
-        chunks = split_list_into_fixed_size_chunks(image_files_absolute,options.chunk_size)
+        chunks = split_list_into_fixed_size_chunks(image_files_absolute,options.checkpoint_frequency)
         
         chunk_output_files = []
         
@@ -401,7 +397,9 @@ def run_inference_with_yolo_val(options):
                 len(chunk_files_abs),i_chunk,len(chunks)))
     
             chunk_options = copy.deepcopy(options)
-            chunk_options.chunk_size = None
+            
+            # Run each chunk without checkpointing
+            chunk_options.checkpoint_frequency = None
             
             if options.input_folder is not None:
                 chunk_files_relative = \
@@ -409,6 +407,9 @@ def run_inference_with_yolo_val(options):
                 chunk_options.image_filename_list = chunk_files_relative
             else:
                 chunk_options.image_filename_list = chunk_files_abs
+                
+            chunk_options.image_filename_list = \
+                [fn.replace('\\','/') for fn in chunk_options.image_filename_list]
                 
             chunk_string = 'chunk_{}'.format(str(i_chunk).zfill(5))
             chunk_options.yolo_results_folder = yolo_results_folder + '_' + chunk_string
@@ -419,7 +420,33 @@ def run_inference_with_yolo_val(options):
             chunk_output_files.append(chunk_output_file)
             chunk_options.output_file = chunk_output_file
             
-            run_inference_with_yolo_val(chunk_options)
+            if os.path.isfile(chunk_output_file):
+                
+                print('Chunk output file {} exists, checking completeness'.format(chunk_output_file))
+                
+                with open(chunk_output_file,'r') as f:
+                    chunk_results = json.load(f)
+                images_in_this_chunk_results_file = [im['file'] for im in chunk_results['images']]                    
+                assert len(images_in_this_chunk_results_file) == len(chunk_options.image_filename_list), \
+                    'Expected {} images in chunk results file {}, found {}, possibly this is left over from a previous job?'.format(
+                        len(chunk_options.image_filename_list),chunk_output_file,
+                        len(images_in_this_chunk_results_file))
+                for fn in images_in_this_chunk_results_file:
+                    assert fn in chunk_options.image_filename_list, \
+                        'Unexpected image {} in chunk results file {}, possibly this is left over from a previous job?'.format(
+                            fn,chunk_output_file)
+                
+                print('Chunk output file {} exists and is complete, skipping this chunk'.format(
+                    chunk_output_file))
+                
+            # ...if the outptut file exists
+            
+            else:
+                
+                run_inference_with_yolo_val(chunk_options)
+                
+            # ...if we do/don't have to run this chunk
+            
             assert os.path.isfile(chunk_options.output_file)
             
         # ...for each chunk
@@ -438,7 +465,9 @@ def run_inference_with_yolo_val(options):
                 len(image_files_absolute),len(combined_results['images']))
         
         # Clean up
-        _clean_up_temporary_folders(options,symlink_folder_is_temp_folder,yolo_folder_is_temp_folder)
+        _clean_up_temporary_folders(options,
+                                    symlink_folder,yolo_results_folder,
+                                    symlink_folder_is_temp_folder,yolo_folder_is_temp_folder)
         
         return
     
@@ -514,6 +543,8 @@ def run_inference_with_yolo_val(options):
         else:
             print('Symlinks disabled, copying {} images to {}'.format(len(image_files_absolute),symlink_folder_inner))
             
+        link_full_paths = []
+        
         # i_image = 0; image_fn = image_files_absolute[i_image]
         for i_image,image_fn in tqdm(enumerate(image_files_absolute),total=len(image_files_absolute)):
             
@@ -524,6 +555,7 @@ def run_inference_with_yolo_val(options):
             image_id_to_file[image_id] = image_fn
             symlink_name = image_id + ext
             symlink_full_path = os.path.join(symlink_folder_inner,symlink_name)
+            link_full_paths.append(symlink_full_path)
             
             try:
                 
@@ -576,11 +608,13 @@ def run_inference_with_yolo_val(options):
     
     
     with open(yolo_image_list_file,'w') as f:
-        for fn_abs in image_files_absolute:
-            if options.input_folder is not None:
-                assert options.input_folder in fn_abs, \
-                    'Internal error: image filename {} is outside the specified input folder {}'.format(
-                        fn_abs,options.input_folder)
+        
+        if create_links:
+            image_files_to_write = link_full_paths
+        else:
+            image_files_to_write = image_files_absolute
+            
+        for fn_abs in image_files_to_write:
             # At least in YOLOv5 val (need to verify for YOLOv8 val), filenames in this 
             # text file are treated as relative to the text file itself if they start with
             # "./", otherwise they're treated as absolute paths.  Since we don't want to put this
@@ -689,13 +723,15 @@ def run_inference_with_yolo_val(options):
                 print('Warning: error removing YOLO results folder {}'.format(yolo_results_folder))
                 pass
         
-        sys.exit()
+        # sys.exit()
+        return
     
     execution_result = process_utils.execute_and_print(cmd,encoding='utf-8',verbose=True)
     assert execution_result['status'] == 0, 'Error running {}'.format(options.model_type)
     yolo_console_output = execution_result['output']
       
     if options.save_yolo_debug_output:
+        
         with open(os.path.join(yolo_results_folder,'yolo_console_output.txt'),'w') as f:
             for s in yolo_console_output:
                 f.write(s + '\n')
@@ -749,7 +785,7 @@ def run_inference_with_yolo_val(options):
     # image_file = yolo_read_failures[0]
     for image_file in yolo_read_failures:
         image_id = os.path.splitext(os.path.basename(image_file))[0]
-        assert image_id in image_id_to_file
+        assert image_id in image_id_to_file, 'Unexpected image ID {}'.format(image_id)
         if image_id not in image_id_to_error:
             image_id_to_error[image_id] = 'YOLO read failure'
     
@@ -798,7 +834,9 @@ def run_inference_with_yolo_val(options):
 
     ##%% Clean up
     
-    _clean_up_temporary_folders(options,symlink_folder_is_temp_folder,yolo_folder_is_temp_folder)
+    _clean_up_temporary_folders(options,
+                                symlink_folder,yolo_results_folder,
+                                symlink_folder_is_temp_folder,yolo_folder_is_temp_folder)
         
 # ...def run_inference_with_yolo_val()
 
@@ -883,9 +921,9 @@ def main():
         '--save_yolo_debug_output', action='store_true',
         help='write yolo console output to a text file in the results folder, along with additional debug files')
     parser.add_argument(
-        '--chunk_size', default=options.chunk_size, type=int,
+        '--checkpoint_frequency', default=options.checkpoint_frequency, type=int,
         help='break the job into chunks with no more than this many images (default {})'.format(
-            options.chunk_size))    
+            options.checkpoint_frequency))    
     
     parser.add_argument(
         '--nonrecursive', action='store_true',
@@ -951,18 +989,20 @@ if __name__ == '__main__':
     main()
 
 
-#%% Scrap
+#%% Interactive driver
 
 if False:
 
-    #%% Test driver (chunked inference)    
+    #%% Run inference on a folder
     
-    project_name = 'tegu-chunk-test'
     input_folder = r'g:\temp\tegu-val-mini'.replace('\\','/')
     model_filename = r'g:\temp\usgs-tegus-yolov5x-231003-b8-img1280-e3002-best.pt'
     output_folder = r'g:\temp\tegu-scratch'
     yolo_working_folder = r'c:\git\yolov5-tegus'
     dataset_file = r'g:\temp\dataset.yaml'
+    
+    # This only impacts the output file name, it's not passed to the inference functio
+    job_name = 'yolo-inference-test'
     
     model_name = os.path.splitext(os.path.basename(model_filename))[0]
     
@@ -970,7 +1010,7 @@ if False:
     yolo_results_folder = os.path.join(output_folder,'yolo_results')
     
     output_file = os.path.join(output_folder,'{}_{}-md_format.json'.format(
-        project_name,model_name))
+        job_name,model_name))
     
     options = YoloInferenceOptions()
     
@@ -1017,18 +1057,22 @@ if False:
     options.remove_symlink_folder = True
     options.remove_yolo_results_folder = True
     
-    options.chunk_size = 5
+    options.checkpoint_frequency = 5
     
     cmd = f'python run_inference_with_yolov5_val.py {model_filename} {input_folder} ' + \
           f'{output_file} --yolo_working_folder {yolo_working_folder} ' + \
           f' --image_size {options.image_size} --conf_thres {options.conf_thres} ' + \
           f' --batch_size {options.batch_size} ' + \
           f' --symlink_folder {options.symlink_folder} --yolo_results_folder {options.yolo_results_folder} ' + \
-          f' --no_remove_symlink_folder --no_remove_yolo_results_folder --yolo_dataset_file {options.yolo_category_id_to_name} ' + \
-          f' --unique_id_strategy {options.unique_id_strategy}'          
+          f' --yolo_dataset_file {options.yolo_category_id_to_name} ' + \
+          f' --unique_id_strategy {options.unique_id_strategy} --overwrite_handling {options.overwrite_handling}'
       
-    if options.chunk_size is not None:
-        cmd += f' --chunk_size {options.chunk_size}'
+    if not options.remove_symlink_folder:
+        cmd += ' --no_remove_symlink_folder'
+    if not options.remove_yolo_results_folder: 
+        cmd += ' --no_remove_yolo_results_folder'
+    if options.checkpoint_frequency is not None:
+        cmd += f' --checkpoint_frequency {options.checkpoint_frequency}'
     if not options.use_symlinks:
         cmd += ' --no_use_symlinks'
     if not options.augment:
@@ -1040,243 +1084,4 @@ if False:
         run_inference_with_yolo_val(options)
     else:
         import clipboard; clipboard.copy(cmd)
-    
-    
-    #%% Test driver (folder)
-    
-    project_name = 'KRU-test-corrupted'
-    input_folder = os.path.expanduser(f'~/data/{project_name}')
-    output_folder = os.path.expanduser(f'~/tmp/{project_name}')
-    model_filename = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')
-    yolo_working_folder = os.path.expanduser('~/git/yolov5')
-    model_name = os.path.splitext(os.path.basename(model_filename))[0]
-    
-    symlink_folder = os.path.join(output_folder,'symlinks')
-    yolo_results_folder = os.path.join(output_folder,'yolo_results')
-    
-    output_file = os.path.join(output_folder,'{}_{}-md_format.json'.format(
-        project_name,model_name))
-    
-    options = YoloInferenceOptions()
-    
-    options.yolo_working_folder = yolo_working_folder
-    
-    options.output_file = output_file
-    
-    options.augment = False
-    options.conf_thres = '0.001'
-    options.batch_size = 1
-    options.device_string = '0'
 
-    if options.augment:
-        options.image_size = round(1280 * 1.3)
-    else:
-        options.image_size = 1280
-    
-    options.input_folder = input_folder
-    options.model_filename = model_filename
-    
-    options.yolo_results_folder = yolo_results_folder # os.path.join(output_folder + 'yolo_results')        
-    options.symlink_folder = symlink_folder # os.path.join(output_folder,'symlinks')
-    options.use_symlinks = False
-    
-    options.remove_symlink_folder = False
-    options.remove_yolo_results_folder = False    
-    
-    cmd = f'python run_inference_with_yolov5_val.py {model_filename} {input_folder} ' + \
-          f'{output_file} --yolo_working_folder {yolo_working_folder} ' + \
-          f' --image_size {options.image_size} --conf_thres {options.conf_thres} ' + \
-          f' --batch_size {options.batch_size} ' + \
-          f' --symlink_folder {options.symlink_folder} --yolo_results_folder {options.yolo_results_folder} ' + \
-          ' --no_remove_symlink_folder --no_remove_yolo_results_folder'
-      
-    if not options.use_symlinks:
-        cmd += ' --no_use_symlinks'
-    if not options.augment:
-        cmd += ' --augment_enabled 0'
-        
-    print(cmd)
-    execute_in_python = False
-    if execute_in_python:
-        run_inference_with_yolo_val(options)
-    else:
-        import clipboard; clipboard.copy(cmd)
-    
-    
-    #%% Test driver (folder) (YOLOv8 model)
-    
-    project_name = 'yolov8-inference-test'
-    input_folder = os.path.expanduser('~/data/usgs-kissel-training-resized/val')
-    dataset_file = os.path.expanduser('~/data/usgs-kissel-training-yolo/dataset.yaml')
-    output_folder = os.path.expanduser(f'~/tmp/{project_name}')
-    model_filename = os.path.expanduser(
-        '~/models/usgs-tegus/usgs-tegus-yolov8x-2023.10.25-b-1-img640-e200-best.pt')
-    model_name = os.path.splitext(os.path.basename(model_filename))[0]
-    
-    assert os.path.isdir(input_folder)
-    assert os.path.isfile(dataset_file)
-    assert os.path.isfile(model_filename)    
-    
-    symlink_folder = os.path.join(output_folder,'symlinks')
-    yolo_results_folder = os.path.join(output_folder,'yolo_results')
-    
-    output_file = os.path.join(output_folder,'{}_{}-md_format.json'.format(
-        project_name,model_name))
-    
-    options = YoloInferenceOptions()
-    
-    options.model_type = 'yolov8'    
-    options.yolo_category_id_to_name = dataset_file    
-    options.yolo_working_folder = None    
-    options.output_file = output_file
-    
-    options.augment = False
-    options.conf_thres = '0.001'
-    options.batch_size = 1
-    options.device_string = '0'
-
-    if options.augment:
-        options.image_size = round(640 * 1.3)
-    else:
-        options.image_size = 640
-    
-    options.input_folder = input_folder
-    options.model_filename = model_filename
-    
-    options.yolo_results_folder = yolo_results_folder 
-    options.symlink_folder = symlink_folder
-    options.use_symlinks = False
-    
-    options.remove_symlink_folder = False
-    options.remove_yolo_results_folder = False    
-    
-    cmd = f'python run_inference_with_yolov5_val.py {model_filename} ' + \
-          f'{input_folder} {output_file}' + \
-          f' --image_size {options.image_size} --conf_thres {options.conf_thres} ' + \
-          f' --batch_size {options.batch_size} --symlink_folder {options.symlink_folder} ' + \
-          f'--yolo_results_folder {options.yolo_results_folder} --model_type {options.model_type}' + \
-          f' --yolo_dataset_file {options.yolo_category_id_to_name}' + \
-          ' --no_remove_symlink_folder --no_remove_yolo_results_folder'
-      
-    if not options.use_symlinks:
-        cmd += ' --no_use_symlinks'
-    if not options.augment:
-        cmd += ' --augment_enabled 0'
-        
-    print(cmd)
-    execute_in_python = False
-    if execute_in_python:
-        run_inference_with_yolo_val(options)
-    else:
-        import clipboard; clipboard.copy(cmd)
-    
-    
-    #%% Preview results
-    
-    postprocessing_output_folder = os.path.join(output_folder,'yolo-val-preview')
-    md_json_file = options.output_file
-    
-    from megadetector.postprocessing.postprocess_batch_results import \
-        PostProcessingOptions, process_batch_results
-    
-    with open(md_json_file,'r') as f:
-        d = json.load(f)
-    
-    base_task_name = os.path.basename(md_json_file)
-    
-    pp_options = PostProcessingOptions()
-    pp_options.image_base_dir = input_folder
-    pp_options.include_almost_detections = True
-    pp_options.num_images_to_sample = None
-    pp_options.confidence_threshold = 0.1
-    pp_options.almost_detection_confidence_threshold = pp_options.confidence_threshold - 0.025
-    pp_options.ground_truth_json_file = None
-    pp_options.separate_detections_by_category = True
-    # pp_options.sample_seed = 0
-    
-    pp_options.parallelize_rendering = True
-    pp_options.parallelize_rendering_n_cores = 16
-    pp_options.parallelize_rendering_with_threads = False
-    
-    output_base = os.path.join(postprocessing_output_folder,
-        base_task_name + '_{:.3f}'.format(pp_options.confidence_threshold))
-    
-    os.makedirs(output_base, exist_ok=True)
-    print('Processing to {}'.format(output_base))
-    
-    pp_options.md_results_file = md_json_file
-    pp_options.output_dir = output_base
-    ppresults = process_batch_results(pp_options)
-    html_output_file = ppresults.output_html_file
-    
-    path_utils.open_file(html_output_file)
-    
-    # ...for each prediction file
-    
-    
-    #%% Compare results
-    
-    import itertools
-    
-    from megadetector.postprocessing.compare_batch_results import \
-        BatchComparisonOptions,PairwiseBatchComparisonOptions,compare_batch_results
-    
-    options = BatchComparisonOptions()
-    
-    organization_name = ''
-    project_name = ''
-    
-    options.job_name = f'{organization_name}-comparison'
-    options.output_folder = os.path.join(output_folder,'model_comparison')
-    options.image_folder = input_folder
-    
-    options.pairwise_options = []
-    
-    filenames = [
-        f'/home/user/tmp/{project_name}/{project_name}_md_v5a.0.0-md_format.json',
-        f'/home/user/postprocessing/{organization_name}/{organization_name}-2023-04-06-v5a.0.0/combined_api_outputs/{organization_name}-2023-04-06-v5a.0.0_detections.json',
-        f'/home/user/postprocessing/{organization_name}/{organization_name}-2023-04-06-v5b.0.0/combined_api_outputs/{organization_name}-2023-04-06-v5b.0.0_detections.json'
-        ]
-    
-    descriptions = ['YOLO w/augment','MDv5a','MDv5b']
-    
-    if False:
-        results = []
-        
-        for fn in filenames:
-            with open(fn,'r') as f:
-                d = json.load(f)
-            results.append(d)
-        
-    detection_thresholds = [0.1,0.1,0.1]
-    
-    assert len(detection_thresholds) == len(filenames)
-    
-    rendering_thresholds = [(x*0.6666) for x in detection_thresholds]
-    
-    # Choose all pairwise combinations of the files in [filenames]
-    for i, j in itertools.combinations(list(range(0,len(filenames))),2):
-            
-        pairwise_options = PairwiseBatchComparisonOptions()
-        
-        pairwise_options.results_filename_a = filenames[i]
-        pairwise_options.results_filename_b = filenames[j]
-        
-        pairwise_options.results_description_a = descriptions[i]
-        pairwise_options.results_description_b = descriptions[j]
-        
-        pairwise_options.rendering_confidence_threshold_a = rendering_thresholds[i]
-        pairwise_options.rendering_confidence_threshold_b = rendering_thresholds[j]
-        
-        pairwise_options.detection_thresholds_a = {'animal':detection_thresholds[i],
-                                                   'person':detection_thresholds[i],
-                                                   'vehicle':detection_thresholds[i]}
-        pairwise_options.detection_thresholds_b = {'animal':detection_thresholds[j],
-                                                   'person':detection_thresholds[j],
-                                                   'vehicle':detection_thresholds[j]}
-        options.pairwise_options.append(pairwise_options)
-    
-    results = compare_batch_results(options)
-    
-    from megadetector.utils.path_utils import open_file
-    open_file(results.html_output_file)

@@ -104,7 +104,8 @@ def yolo_json_output_to_md_output(yolo_json_file,
                                   image_id_to_relative_path=None,
                                   offset_yolo_class_ids=True,
                                   truncate_to_standard_md_precision=True,
-                                  image_id_to_error=None):
+                                  image_id_to_error=None,
+                                  convert_slashes=True):
     """
     Converts a YOLOv5/YOLOv8 .json file to MD .json format.
     
@@ -128,6 +129,7 @@ def yolo_json_output_to_md_output(yolo_json_file,
             (not-super-meaningful) precision, set this to truncate to COORD_DIGITS and CONF_DIGITS.
         image_id_to_error (dict, optional): if you want to include image IDs in the output file for which 
             you couldn't prepare the input file in the first place due to errors, include them here.
+        convert_slashes (bool, optional): force all slashes to be forward slashes in the output file
     """    
         
     assert os.path.isfile(yolo_json_file), \
@@ -225,6 +227,9 @@ def yolo_json_output_to_md_output(yolo_json_file,
         
         im = {}
         im['file'] = image_file_relative
+        if convert_slashes:
+            im['file'] = im['file'].replace('\\','/')
+        
         image_id = image_file_relative_to_image_id[image_file_relative]
         if int_formatted_image_ids:
             image_id = int(image_id)
@@ -289,7 +294,7 @@ def yolo_json_output_to_md_output(yolo_json_file,
             im['detections'].append(output_det)
             
         # ...for each detection            
-        
+                
         output_images.append(im)
         
     # ...for each image file

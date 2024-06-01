@@ -8,11 +8,9 @@ Module to run MegaDetector v5, a PyTorch YOLOv5 animal detection model.
 
 #%% Imports and constants
 
-import sys
 import torch
 import numpy as np
 import traceback
-import builtins
 
 from megadetector.detection.run_detector import CONF_DIGITS, COORD_DIGITS, FAILURE_INFER
 from megadetector.utils import ct_utils
@@ -130,7 +128,20 @@ class PTDetector:
                     self.device = 'mps'
             except AttributeError:
                 pass
-        self.model = PTDetector._load_model(model_path, self.device)
+        try:
+            self.model = PTDetector._load_model(model_path, self.device)
+        except Exception as e:
+            # In a very estoeric scenario where an old version of YOLOv5 is used to run
+            # newer models, we run into an issue because the "Model" class became
+            # "DetectionModel".  New YOLOv5 code handles this case by just setting them
+            # to be the same, so doing that via monkey-patch doesn't seem *that* rude.
+            if "Can't get attribute 'DetectionModel'" in str(e):
+                print('Forward-compatibility issue detected, patching')
+                from models import yolo
+                yolo.DetectionModel = yolo.Model                
+                self.model = PTDetector._load_model(model_path, self.device)                
+            else:
+                raise
         if (self.device != 'cpu'):
             print('Sending model to GPU')
             self.model.to(self.device)

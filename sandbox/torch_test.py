@@ -8,6 +8,9 @@
 """
 
 import torch
+
+print('torch version: {}'.format(str(torch.__version__)))
+
 print('CUDA available: {}'.format(torch.cuda.is_available()))
 
 device_ids = list(range(torch.cuda.device_count()))

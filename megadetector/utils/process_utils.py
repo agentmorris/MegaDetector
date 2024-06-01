@@ -15,8 +15,6 @@ Includes handy example code for doing this on multiple processes/threads.
 import os
 import subprocess
 
-os.environ["PYTHONUNBUFFERED"] = "1"
-
 def execute(cmd,encoding=None,errors=None,env=None,verbose=False):
     """
     Run [cmd] (a single string) in a shell, yielding each line of output to the caller.
@@ -36,6 +34,8 @@ def execute(cmd,encoding=None,errors=None,env=None,verbose=False):
     Returns:
         int: the command's return code, always zero, otherwise a CalledProcessError is raised    
     """
+    
+    os.environ["PYTHONUNBUFFERED"] = "1"
     
     if verbose: 
         if encoding is not None:
@@ -59,7 +59,8 @@ def execute(cmd,encoding=None,errors=None,env=None,verbose=False):
     return return_code
 
 
-def execute_and_print(cmd,print_output=True,encoding=None,errors=None,env=None,verbose=False):
+def execute_and_print(cmd,print_output=True,encoding=None,errors=None,
+                      env=None,verbose=False,catch_exceptions=True):
     """
     Run [cmd] (a single string) in a shell, capturing and printing output.  Returns
     a dictionary with fields "status" and "output".
@@ -91,6 +92,8 @@ def execute_and_print(cmd,print_output=True,encoding=None,errors=None,env=None,v
                 print(s,end='',flush=True)
         to_return['status'] = 0
     except subprocess.CalledProcessError as cpe:
+        if not catch_exceptions:
+            raise
         print('execute_and_print caught error: {} ({})'.format(cpe.output,str(cpe)))
         to_return['status'] = cpe.returncode
     to_return['output'] = output
