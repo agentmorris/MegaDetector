@@ -75,10 +75,12 @@ class MDTestOptions:
         self.max_coord_error = 0.001
         
         #: How much deviation from the expected confidence values should we allow before
-        #: a disrepancy becomes an error?    
+        #: a disrepancy becomes an error?
         self.max_conf_error = 0.005
         
         #: Current working directory when running CLI tests
+        #:
+        #: If this is None, we won't mess with the inherited working directory.
         self.cli_working_dir = None
         
         #: YOLOv5 installation, only relevant if we're testing run_inference_with_yolov5_val. 
@@ -92,7 +94,7 @@ class MDTestOptions:
         #: Default model to use for testing (filename, URL, or well-known model string)
         self.default_model = 'MDV5A'
 
-        #: For comparison tests, use a model that produces slightly different output        
+        #: For comparison tests, use a model that produces slightly different output
         self.alt_model = 'MDV5B'
         
         #: PYTHONPATH to set for CLI tests; if None, inherits from the parent process.  Only
@@ -140,7 +142,7 @@ def get_expected_results_filename(gpu_is_available):
         import torch
         m1_inference = torch.backends.mps.is_built and torch.backends.mps.is_available()
         if m1_inference:
-            print('I appear to be running on M1/M2 hardware')
+            print('I appear to be running on M1/M2 hardware, using pt1/cpu as the reference results')
             hw_string = 'cpu'
             pt_string = 'pt1.10.1'
     except Exception:

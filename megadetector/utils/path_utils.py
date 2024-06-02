@@ -733,9 +733,13 @@ def _get_file_size(filename,verbose=False):
     return (filename,size)
 
     
-def parallel_get_file_sizes(filenames, max_workers=16, 
-                        use_threads=True, verbose=False,
-                        recursive=True):
+def parallel_get_file_sizes(filenames, 
+                            max_workers=16, 
+                            use_threads=True, 
+                            verbose=False,
+                            recursive=True, 
+                            convert_slashes=True,
+                            return_relative_paths=False):
     """
     Returns a dictionary mapping every file in [filenames] to the corresponding file size,
     or None for errors.  If [filenames] is a folder, will enumerate the folder (optionally recursively).
@@ -748,6 +752,9 @@ def parallel_get_file_sizes(filenames, max_workers=16,
             parallel copying; ignored if max_workers <= 1
         verbose (bool, optional): enable additionald debug output
         recursive (bool, optional): enumerate recursively, only relevant if [filenames] is a folder.
+        convert_slashes (bool, optional): convert backslashes to forward slashes
+        return_relative_paths (bool, optional): return relative paths; only relevant if [filenames]
+            is a folder.
         
     Returns:
         dict: dictionary mapping filenames to file sizes in bytes
@@ -755,7 +762,9 @@ def parallel_get_file_sizes(filenames, max_workers=16,
 
     n_workers = min(max_workers,len(filenames))
     
+    folder_name = None
     if isinstance(filenames,str) and os.path.isdir(filenames):
+        folder_name = filenames
         filenames = recursive_file_list(filenames,recursive=recursive,return_relative_paths=False)
     
     if use_threads:
@@ -763,12 +772,19 @@ def parallel_get_file_sizes(filenames, max_workers=16,
     else:
         pool = Pool(n_workers)
 
-    resize_results = list(tqdm(pool.imap(
+    # This returns (filename,size) tuples
+    get_size_results = list(tqdm(pool.imap(
         partial(_get_file_size,verbose=verbose),filenames), total=len(filenames)))
     
     to_return = {}
-    for r in resize_results:
-        to_return[r[0]] = r[1]
+    for r in get_size_results:
+        fn = r[0]
+        if return_relative_paths and (folder_name is not None):
+            fn = os.path.relpath(fn,folder_name)
+        if convert_slashes:
+            fn = fn.replace('\\','/')
+        size = r[1]
+        to_return[fn] = size
 
     return to_return
 
