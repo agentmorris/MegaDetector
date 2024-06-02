@@ -60,7 +60,8 @@ def execute(cmd,encoding=None,errors=None,env=None,verbose=False):
 
 
 def execute_and_print(cmd,print_output=True,encoding=None,errors=None,
-                      env=None,verbose=False,catch_exceptions=True):
+                      env=None,verbose=False,catch_exceptions=True,
+                      echo_command=False):
     """
     Run [cmd] (a single string) in a shell, capturing and printing output.  Returns
     a dictionary with fields "status" and "output".
@@ -77,12 +78,17 @@ def execute_and_print(cmd,print_output=True,encoding=None,errors=None,
         errors (str, optional): error handling, see Popen() documentation
         env (dict, optional): environment variables, see Popen() documentation
         verbose (bool, optional): enable additional debug console output
-    
+        catch_exceptions (bool, optional): catch exceptions and include in the output, otherwise raise
+        echo_command (bool, optional): print the command before executing
+        
     Returns:
         dict: a dictionary with fields "status" (the process return code) and "output"
         (the content of stdout)    
     """
 
+    if echo_command:
+        print('Running command:\n{}\n'.format(cmd))
+        
     to_return = {'status':'unknown','output':''}
     output = []
     try:

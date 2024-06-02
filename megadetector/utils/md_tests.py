@@ -312,18 +312,19 @@ def output_files_are_identical(fn1,fn2,verbose=False):
                 len(fn2_results['images']),fn2))
         return False
     
+    # i_image = 0; fn1_image = fn1_results['images'][i_image]
     for i_image,fn1_image in enumerate(fn1_results['images']):
         
         fn2_image = fn2_results['images'][i_image]
         
         if fn1_image['file'] != fn2_image['file']:
             if verbose:
-                print('Filename difference: {} vs {} '.format(fn1_image['file'],fn1_image['file']))
+                print('Filename difference at {}: {} vs {} '.format(i_image,fn1_image['file'],fn1_image['file']))
             return False
             
         if fn1_image != fn2_image:
             if verbose:
-                print('Image-level difference in image {}'.format(fn1_image['file']))
+                print('Image-level difference in image {}: {}'.format(i_image,fn1_image['file']))
             return False
         
     return True
@@ -382,7 +383,7 @@ def execute(cmd):
     return return_code
 
 
-def execute_and_print(cmd,print_output=True,catch_exceptions=False):
+def execute_and_print(cmd,print_output=True,catch_exceptions=False,echo_command=True):
     """
     Runs [cmd] (a single string) in a shell, capturing (and optionally printing) output.
     
@@ -395,8 +396,11 @@ def execute_and_print(cmd,print_output=True,catch_exceptions=False):
         (the content of stdout)
     """
 
+    if echo_command:
+        print('Running command:\n{}\n'.format(cmd))
+        
     to_return = {'status':'unknown','output':''}
-    output=[]
+    output = []
     try:
         for s in execute(cmd):
             output.append(s)
@@ -754,7 +758,6 @@ def run_cli_tests(options):
         cmd = 'python megadetector/detection/run_detector.py'
     cmd += ' "{}" --image_file "{}" --output_dir "{}"'.format(
         options.default_model,image_fn,output_dir)
-    print('Running: {}'.format(cmd))
     cmd_results = execute_and_print(cmd)
     
     if options.cpu_execution_is_error:
@@ -769,6 +772,7 @@ def run_cli_tests(options):
     
     ## Run inference on a folder
     
+    
     image_folder = os.path.join(options.scratch_dir,'md-test-images')
     assert os.path.isdir(image_folder), 'Test image folder {} is not available'.format(image_folder)
     inference_output_file = os.path.join(options.scratch_dir,'folder_inference_output.json')
@@ -780,22 +784,73 @@ def run_cli_tests(options):
         options.default_model,image_folder,inference_output_file)
     cmd += ' --output_relative_filenames --quiet --include_image_size'
     cmd += ' --include_image_timestamp --include_exif_data'
-    print('Running: {}'.format(cmd))
     cmd_results = execute_and_print(cmd)
+    
+    base_cmd = cmd
     
     
     ## Run again with checkpointing enabled, make sure the results are the same
     
-    cmd += ' --checkpoint_frequency 5'
     from megadetector.utils.path_utils import insert_before_extension
+        
+    checkpoint_string = ' --checkpoint_frequency 5'
+    cmd = base_cmd + checkpoint_string
     inference_output_file_checkpoint = insert_before_extension(inference_output_file,'_checkpoint')
-    assert inference_output_file_checkpoint != inference_output_file
     cmd = cmd.replace(inference_output_file,inference_output_file_checkpoint)
-    print('Running: {}'.format(cmd))
     cmd_results = execute_and_print(cmd)
     
     assert output_files_are_identical(fn1=inference_output_file, 
                                       fn2=inference_output_file_checkpoint,verbose=True)
+    
+    
+    ## Run again with the image queue enabled, make sure the results are the same
+    
+    cmd = base_cmd + ' --use_image_queue'
+    from megadetector.utils.path_utils import insert_before_extension
+    inference_output_file_queue = insert_before_extension(inference_output_file,'_queue')
+    cmd = cmd.replace(inference_output_file,inference_output_file_queue)
+    cmd_results = execute_and_print(cmd)
+    
+    assert output_files_are_identical(fn1=inference_output_file, 
+                                      fn2=inference_output_file_queue,verbose=True)
+    
+    
+    ## Run again on multiple cores, make sure the results are the same
+    
+    # First run again on the CPU on a single thread if necessary, so we get a file that 
+    # *should* be identical to the multicore version.
+    
+    gpu_available = is_gpu_available(verbose=False)
+    
+    cuda_visible_devices = None
+    if 'CUDA_VISIBLE_DEVICES' in os.environ:
+        cuda_visible_devices = os.environ['CUDA_VISIBLE_DEVICES']
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'    
+    
+    # If we already ran on the CPU, no need to run again
+    if not gpu_available:
+        inference_output_file_cpu = inference_output_file
+    else:
+        inference_output_file_cpu = insert_before_extension(inference_output_file,'cpu')    
+        cmd = base_cmd
+        cmd = cmd.replace(inference_output_file,inference_output_file_cpu)    
+        cmd_results = execute_and_print(cmd)
+        
+    cpu_string = ' --ncores 4'
+    cmd = base_cmd + cpu_string
+    from megadetector.utils.path_utils import insert_before_extension
+    inference_output_file_cpu_multicore = insert_before_extension(inference_output_file,'multicore')
+    cmd = cmd.replace(inference_output_file,inference_output_file_cpu_multicore)
+    cmd_results = execute_and_print(cmd)
+    
+    if cuda_visible_devices is not None:
+        print('Restoring CUDA_VISIBLE_DEVICES')
+        os.environ['CUDA_VISIBLE_DEVICES'] = cuda_visible_devices
+    else:
+        del os.environ['CUDA_VISIBLE_DEVICES']
+        
+    assert output_files_are_identical(fn1=inference_output_file_cpu, 
+                                      fn2=inference_output_file_cpu_multicore,verbose=True)
     
     
     ## Postprocessing
@@ -809,7 +864,6 @@ def run_cli_tests(options):
     cmd += ' "{}" "{}"'.format(
         inference_output_file,postprocessing_output_dir)
     cmd += ' --image_base_dir "{}"'.format(image_folder)
-    print('Running: {}'.format(cmd))
     cmd_results = execute_and_print(cmd)
                 
     
@@ -825,7 +879,6 @@ def run_cli_tests(options):
     cmd += ' --imageBase "{}"'.format(image_folder)
     cmd += ' --outputBase "{}"'.format(rde_output_dir)
     cmd += ' --occurrenceThreshold 1' # Use an absurd number here to make sure we get some suspicious detections
-    print('Running: {}'.format(cmd))
     cmd_results = execute_and_print(cmd)    
     
     # Find the latest filtering folder
@@ -844,7 +897,6 @@ def run_cli_tests(options):
     else:
         cmd = 'python  megadetector/postprocessing/repeat_detection_elimination/remove_repeat_detections.py'
     cmd += ' "{}" "{}" "{}"'.format(inference_output_file,filtered_output_file,filtering_output_dir)
-    print('Running: {}'.format(cmd))
     cmd_results = execute_and_print(cmd)
     
     assert os.path.isfile(filtered_output_file), \
@@ -863,7 +915,6 @@ def run_cli_tests(options):
     cmd += ' "{}" "{}" "{}" "{}"'.format(
         options.default_model,image_folder,tiling_folder,inference_output_file_tiled)
     cmd += ' --overwrite_handling overwrite'
-    print('Running: {}'.format(cmd))
     cmd_results = execute_and_print(cmd)
     
     with open(inference_output_file_tiled,'r') as f:
@@ -894,7 +945,6 @@ def run_cli_tests(options):
         cmd += ' --augment_enabled 1'
         # cmd += ' --no_use_symlinks'
         cmd += ' --overwrite_handling overwrite'
-        print('Running: {}'.format(cmd))
         cmd_results = execute_and_print(cmd)
         
         # Run again with checkpointing, make sure the output are identical
@@ -931,7 +981,6 @@ def run_cli_tests(options):
         cmd += ' --render_output_video --fourcc {}'.format(options.video_fourcc)
         cmd += ' --force_extracted_frame_folder_deletion --force_rendered_frame_folder_deletion --n_cores 5 --frame_sample 3'
         cmd += ' --verbose'
-        print('Running: {}'.format(cmd))
         cmd_results = execute_and_print(cmd)
 
     # ...if we're not skipping video tests
@@ -949,7 +998,6 @@ def run_cli_tests(options):
         options.alt_model,image_folder,inference_output_file_alt)
     cmd += ' --output_relative_filenames --quiet --include_image_size'
     cmd += ' --include_image_timestamp --include_exif_data'
-    print('Running: {}'.format(cmd))
     cmd_results = execute_and_print(cmd)
     
     with open(inference_output_file_alt,'r') as f:
@@ -967,7 +1015,6 @@ def run_cli_tests(options):
     else:
         cmd = 'python megadetector/postprocessing/compare_batch_results.py'
     cmd += ' "{}" "{}" {}'.format(comparison_output_folder,image_folder,results_files_string)
-    print('Running: {}'.format(cmd))
     cmd_results = execute_and_print(cmd)
     
     assert cmd_results['status'] == 0, 'Error generating comparison HTML'
@@ -1040,6 +1087,10 @@ if False:
     options.cli_working_dir = r'c:\git\MegaDetector'
     options.yolo_working_dir = r'c:\git\yolov5-md'
 
+    import os
+    
+    if 'PYTHONPATH' not in os.environ or options.yolo_working_dir not in os.environ['PYTHONPATH']:
+        os.environ['PYTHONPATH'] += ';' + options.yolo_working_dir
 
     #%%
     
@@ -1150,13 +1201,15 @@ if __name__ == '__main__':
 
 #%% Sample invocations
 
-"""
+r"""
 # Windows
 set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5-md
+cd c:\git\MegaDetector\megadetector\utils
 python md_tests.py --cli_working_dir "c:\git\MegaDetector" --yolo_working_dir "c:\git\yolov5-md" --cli_test_pythonpath "c:\git\MegaDetector;c:\git\yolov5-md"
 
 # Linux
 export PYTHONPATH=/mnt/c/git/MegaDetector:/mnt/c/git/yolov5-md
+cd /mnt/c/git/MegaDetector/megadetector/utils
 python md_tests.py --cli_working_dir "/mnt/c/git/MegaDetector" --yolo_working_dir "/mnt/c/git/yolov5-md" --cli_test_pythonpath "/mnt/c/git/MegaDetector:/mnt/c/git/yolov5-md"
 
 python -c "import md_tests; print(md_tests.get_expected_results_filename(True))"

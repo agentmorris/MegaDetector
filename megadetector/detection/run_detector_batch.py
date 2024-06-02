@@ -126,7 +126,14 @@ def _producer_func(q,image_files):
     print('Finished image loading'); sys.stdout.flush()
     
     
-def _consumer_func(q,return_queue,model_file,confidence_threshold,image_size=None):
+def _consumer_func(q,
+                   return_queue,
+                   model_file,
+                   confidence_threshold,
+                   image_size=None,
+                   include_image_size=False,
+                   include_image_timestamp=False, 
+                   include_exif_data=False):
     """ 
     Consumer function; only used when using the (optional) image queue.
     
@@ -168,16 +175,25 @@ def _consumer_func(q,return_queue,model_file,confidence_threshold,image_size=Non
             results.append({'file': im_file,
                             'failure': image})
         else:
-            results.append(process_image(im_file=im_file,detector=detector,
+            results.append(process_image(im_file=im_file,
+                                         detector=detector,
                                          confidence_threshold=confidence_threshold,
-                                         image=image,quiet=True,image_size=image_size))
+                                         image=image,
+                                         quiet=True,
+                                         image_size=image_size,
+                                         include_image_size=include_image_size,
+                                         include_image_timestamp=include_image_timestamp, 
+                                         include_exif_data=include_exif_data))
         if verbose:
             print('Processed image {}'.format(im_file)); sys.stdout.flush()
         q.task_done()
             
 
 def run_detector_with_image_queue(image_files,model_file,confidence_threshold,
-                                  quiet=False,image_size=None):
+                                  quiet=False,image_size=None,
+                                  include_image_size=False, 
+                                  include_image_timestamp=False,
+                                  include_exif_data=False):
     """
     Driver function for the (optional) multiprocessing-based image queue; only used 
     when --use_image_queue is specified.  Starts a reader process to read images from disk, but 
@@ -218,15 +234,34 @@ def run_detector_with_image_queue(image_files,model_file,confidence_threshold,
 
     if run_separate_consumer_process:
         if use_threads_for_queue:
-            consumer = Thread(target=_consumer_func,args=(q,return_queue,model_file,
-                                                         confidence_threshold,image_size,))
+            consumer = Thread(target=_consumer_func,args=(q,
+                                                          return_queue,
+                                                          model_file,
+                                                          confidence_threshold,
+                                                          image_size,
+                                                          include_image_size,
+                                                          include_image_timestamp, 
+                                                          include_exif_data))
         else:
-            consumer = Process(target=_consumer_func,args=(q,return_queue,model_file,
-                                                          confidence_threshold,image_size,))
+            consumer = Process(target=_consumer_func,args=(q,
+                                                           return_queue,
+                                                           model_file,
+                                                           confidence_threshold,
+                                                           image_size,
+                                                           include_image_size,
+                                                           include_image_timestamp, 
+                                                           include_exif_data))
         consumer.daemon = True
         consumer.start()
     else:
-        _consumer_func(q,return_queue,model_file,confidence_threshold,image_size)
+        _consumer_func(q,
+                       return_queue,
+                       model_file,
+                       confidence_threshold,
+                       image_size,
+                       include_image_size,
+                       include_image_timestamp, 
+                       include_exif_data)
 
     producer.join()
     print('Producer finished')
@@ -267,10 +302,8 @@ def process_images(im_files, detector, confidence_threshold, use_image_queue=Fal
                    include_image_size=False, include_image_timestamp=False, 
                    include_exif_data=False):
     """
-    Runs a detector (typically MegaDetector) over a list of image files.  
-    As of 3/2024, this entry point is used when the image queue is enabled, but not in the 
-    standard inference path (which instead loops over process_image()).
-
+    Runs a detector (typically MegaDetector) over a list of image files on a single thread.
+    
     Args:
         im_files (list: paths to image files                                   
         detector (str or detector object): loaded model or str; if this is a string, it can be a
@@ -292,25 +325,35 @@ def process_images(im_files, detector, confidence_threshold, use_image_queue=Fal
     """
     
     if isinstance(detector, str):
+        
         start_time = time.time()
         detector = load_detector(detector)
         elapsed = time.time() - start_time
         print('Loaded model (batch level) in {}'.format(humanfriendly.format_timespan(elapsed)))
 
     if use_image_queue:
-        run_detector_with_image_queue(im_files, detector, confidence_threshold, 
-                                      quiet=quiet, image_size=image_size,
+        
+        run_detector_with_image_queue(im_files, 
+                                      detector, 
+                                      confidence_threshold, 
+                                      quiet=quiet, 
+                                      image_size=image_size,
                                       include_image_size=include_image_size, 
                                       include_image_timestamp=include_image_timestamp,
                                       include_exif_data=include_exif_data)
+        
     else:            
+        
         results = []
         for im_file in im_files:
-            result = process_image(im_file, detector, confidence_threshold,
-                                         quiet=quiet, image_size=image_size, 
-                                         include_image_size=include_image_size, 
-                                         include_image_timestamp=include_image_timestamp,
-                                         include_exif_data=include_exif_data)
+            result = process_image(im_file, 
+                                   detector, 
+                                   confidence_threshold,
+                                   quiet=quiet, 
+                                   image_size=image_size, 
+                                   include_image_size=include_image_size, 
+                                   include_image_timestamp=include_image_timestamp,
+                                   include_exif_data=include_exif_data)
 
             if checkpoint_queue is not None:
                 checkpoint_queue.put(result)
@@ -541,7 +584,10 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
         assert n_cores <= 1
         results = run_detector_with_image_queue(image_file_names, model_file, 
                                                 confidence_threshold, quiet, 
-                                                image_size=image_size)
+                                                image_size=image_size,
+                                                include_image_size=include_image_size,
+                                                include_image_timestamp=include_image_timestamp,
+                                                include_exif_data=include_exif_data)
         
     elif n_cores <= 1:
 
@@ -565,9 +611,12 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
 
             count += 1
 
-            result = process_image(im_file, detector, 
-                                   confidence_threshold, quiet=quiet, 
-                                   image_size=image_size, include_image_size=include_image_size,
+            result = process_image(im_file, 
+                                   detector, 
+                                   confidence_threshold, 
+                                   quiet=quiet, 
+                                   image_size=image_size, 
+                                   include_image_size=include_image_size,
                                    include_image_timestamp=include_image_timestamp,
                                    include_exif_data=include_exif_data)
             results.append(result)
@@ -616,14 +665,15 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
                                              checkpoint_queue, results), daemon=True)
             checkpoint_thread.start()
 
-            pool.map(partial(process_images, detector=detector,
-                                    confidence_threshold=confidence_threshold,
-                                    image_size=image_size, 
-                                    include_image_size=include_image_size,
-                                    include_image_timestamp=include_image_timestamp,
-                                    include_exif_data=include_exif_data,
-                                    checkpoint_queue=checkpoint_queue), 
-                                    image_batches)
+            pool.map(partial(process_images, 
+                             detector=detector,
+                             confidence_threshold=confidence_threshold,
+                             image_size=image_size, 
+                             include_image_size=include_image_size,
+                             include_image_timestamp=include_image_timestamp,
+                             include_exif_data=include_exif_data,
+                             checkpoint_queue=checkpoint_queue), 
+                             image_batches)
 
             checkpoint_queue.put(None)
 
@@ -631,12 +681,14 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
             
             # Multprocessing is enabled, but checkpointing is not
             
-            new_results = pool.map(partial(process_images, detector=detector,
-                                   confidence_threshold=confidence_threshold,image_size=image_size,
-                                   include_image_size=include_image_size,
-                                   include_image_timestamp=include_image_timestamp,
-                                   include_exif_data=include_exif_data), 
-                                   image_batches)
+            new_results = pool.map(partial(process_images, 
+                                           detector=detector,
+                                           confidence_threshold=confidence_threshold,
+                                           image_size=image_size,
+                                           include_image_size=include_image_size,
+                                           include_image_timestamp=include_image_timestamp,
+                                           include_exif_data=include_exif_data), 
+                                           image_batches)
 
             new_results = list(itertools.chain.from_iterable(new_results))
             
