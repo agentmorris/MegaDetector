@@ -580,15 +580,15 @@ c:\users\[username]\postprocessing\[organization]\[job_name]\run_chunk_001_gpu_0
 Those batch files expect to be run from the "detection" folder of the MegaDetector repo,
 typically:
     
-c:\git\MegaDetector\detection
+c:\git\MegaDetector\megadetector\detection
 
 All of that said, you don't *have* to do this at the command line.  The following cell 
-runs these scripts programmatically, so if you just run the "run the tasks (commented out)"
-cell, you should be running MegaDetector.
+runs these scripts programmatically, so if you set "run_tasks_in_notebook" to "True"
+and run this cell, you can run MegaDetector without leaving this notebook.
 
 One downside of the programmatic approach is that this cell doesn't yet parallelize over
-multiple processes, so the tasks will run serially.  This only matters if you have multiple
-GPUs.
+multiple processes, so the tasks will run serially.  This only matters if you have 
+multiple GPUs.
 """
 
 run_tasks_in_notebook = False
