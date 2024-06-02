@@ -5,7 +5,7 @@ requires = [
 
 [project]
 name = "megadetector"
-version = "5.0.12"
+version = "5.0.13"
 description = "MegaDetector is an AI model that helps conservation folks spend less time doing boring things with camera trap images."
 readme = "README-package.md"
 # As of 2023.10.10, PyTorch isn't installable on Python 3.12
