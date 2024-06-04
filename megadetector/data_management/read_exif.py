@@ -64,7 +64,7 @@ class ReadExifOptions:
         #:
         #: A useful set of tags one might want to limit queries for:
         #:
-        #: options.tags_to_include = ['DateTime','Model','Make','ExifImageWidth','ExifImageHeight','DateTime',
+        #: options.tags_to_include = ['DateTime','Model','Make','ExifImageWidth','ExifImageHeight',
         #: 'DateTimeOriginal','Orientation']    
         self.tags_to_include = None
         
