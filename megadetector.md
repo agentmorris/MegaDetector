@@ -180,6 +180,12 @@ First MegaDetector release!  Yes, that's right, v2 was the first release.  If th
 
 ## Using the model
 
+### If you already know about how Python environments work...
+
+You may want to skip the rest of this page and use the [MegaDetector Python package](https://pypi.org/project/megadetector/) (pip install megadetector).  There are examples on the package home page, and the package is documented [here](https://megadetector.readthedocs.io/).
+
+If you are new to Python, you are in the right place, read on...
+
 ### Overview
 
 We provide two ways to run MegaDetector on your images:
@@ -192,22 +198,22 @@ Also see the <a href="#is-there-a-gui">&ldquo;Is there a GUI?&rdquo;</a> section
 
 The remainder of this section provides instructions for running our "official" scripts, including installing all the necessary Python dependencies.
 
-### 1. Install prerequisites: Mambaforge, Git, and NVIDIA stuff
+### 1. Install prerequisites: Miniforge, Git, and NVIDIA stuff
 
-#### Install Mambaforge
+#### Install Miniforge
 
-All of the instructions that follow assume you have installed [Mambaforge](https://github.com/conda-forge/miniforge#mambaforge).  Mambaforge is an environment for installing and running Python stuff.  For purposes of this documentation, "Miniforge" and "Mambaforge" are the same thing.
+All of the instructions that follow assume you have installed [Miniforge](https://github.com/conda-forge/miniforge).  Miniforge is an environment for installing and running Python stuff.
 
-If you know what you're doing, or you already have Anaconda installed, you can use either Anaconda or Mambaforge; the environment files work with both.  But our experiences have been best with Mambaforge, so, if you just want to get up and running, start by installing Mambaforge.  If you're using Anaconda and you're staring at a "solving environment" prompt that's been running for like a day, consider switching to Mambaforge.
+If you know what you're doing, or you already have Anaconda installed, you can use either Anaconda or Miniforge; the environment files work with both.  But our experiences have been best with Miniforge, so, if you just want to get up and running, start by installing Miniforge.  If you're using Anaconda and you're staring at a "solving environment" prompt that's been running for like a day, consider switching to Miniforge.
 
 
-##### Install Mambaforge on Windows
+##### Install Miniforge on Windows
 
-To install Mambaforge on Windows, just download and run the [Mambaforge installer](https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Windows-x86_64.exe).  If you get a "Windows protected your PC" warning, you might have to click "More info" and "run anyway". You can leave everything at the default value during installation.
+To install Miniforge on Windows, just download and run the [Miniforge installer](https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Windows-x86_64.exe).  If you get a "Windows protected your PC" warning, you might have to click "More info" and "run anyway". You can leave everything at the default value during installation.
 
-All the instructions below will assume you are running at the Mambaforge command prompt, which is basically just like a regular command prompt, but it has access to all the Python stuff.  On Windows, once you've installed Mambaforge, you can start your Mamba command prompt by launching the shortcut called "Miniforge prompt" (I know, it's confusing that you installed "Mambaforge", and the prompt is called "Miniforge prompt", but I promise they're the same thing).
+All the instructions below will assume you are running at the Miniforge command prompt, which is basically just like a regular command prompt, but it has access to all the Python stuff.  On Windows, once you've installed Miniforge, you can start your Miniforge command prompt by launching the shortcut called "Miniforge prompt".
 
-You will know you are at a Mambaforge prompt (as opposed to run-of-the-mill command prompt) if you see an environment name in parentheses before your current directory, like this:
+You will know you are at a Miniforge prompt (as opposed to run-of-the-mill command prompt) if you see an environment name in parentheses before your current directory, like this:
 
 <img src="images/anaconda-prompt-base.jpg" style="margin-left:25px;">
 
@@ -216,9 +222,9 @@ You will know you are at a Mambaforge prompt (as opposed to run-of-the-mill comm
 <img src="images/anaconda-prompt-ct.jpg" style="margin-left:25px;">
 
 
-##### Install Mambaforge on Linux/Mac
+##### Install Miniforge on Linux/Mac
 
-The [list of Mambaforge installers](https://github.com/conda-forge/miniforge#mambaforge) has links for Linux and OSX.  If you're installing on a Mac, be sure to download the right installer: "x86_64" if you are on an Intel Mac, "arm64 (Apple Silicon)" if you are on an M1/M2 Mac with Apple silicon.  In all of these cases, you will be downloading a .sh file; after you run it to install Mambaforge, you should see an environment name in parentheses just like in the images above.
+The [list of Miniforge installers](https://github.com/conda-forge/miniforge?tab=readme-ov-file#miniforge3) has links for Linux and OSX.  If you're installing on a Mac, be sure to download the right installer: "x86_64" if you are on an Intel Mac, "arm64 (Apple Silicon)" if you are on an M1/M2 Mac with Apple silicon.  In all of these cases, you will be downloading a .sh file; after you run it to install Miniforge, you should see an environment name in parentheses just like in the images above.
 
 
 #### Install git (if you're on Windows, otherwise you probably already have it)
@@ -231,11 +237,13 @@ The instructions will also assume you have git installed.  If you're not familia
 If you have a deep-learning-friendly GPU, you will also need to have a recent [NVIDIA driver](https://www.nvidia.com/download/index.aspx) installed.  If you don't have an Nvidia GPU, it's OK,  you can still run MegaDetector on your CPU, and you don't need to install any special drivers.
 
 
-### 2. Download the MegaDetector model(s) (optional)
+### 2. Optional: download the MegaDetector model(s)
 
-<b>This step is optional</b>; when you run MegaDetector, you can tell it to automatically download a MegaDetector model file, in which case it will get put in a temporary directory on your computer.
+<b>This step is optional; in fact, the only reason to run this step is if you will not have an Internet connection later when you need to run MegaDetector</b>.
 
-If you want to save MegaDetector to a particular folder, download one or more MegaDetector model files ([MDv5a](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt), [MDv5b](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.0.pt), and/or [MDv4](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb)) to your computer.  These instructions will assume that you have downloaded MegaDetector to a folder called "c:\megadetector" (on Windows) or to a folder called "megadetector" within your home folder (on Linux/Mac), but if you put it somewhere else, that's fine, just be sure to change it in the steps below that point to a model file.  If you don't care where it goes, and you don't know yet which version you want to use, you'll have an easier time working through these instructions if you download [MDv5a](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt) to those folders, i.e. if the model file lives at "c:\megadetector\md_v5a.0.0.pt" (on Windows) or "/Users/your-user-name/megadetector/md_v5a.0.0pt" (on Mac).
+Otherwise, when you run MegaDetector later in these instructions, the model file will get downloaded automatically.
+
+That said, if you want to save MegaDetector to a particular folder, download one or more MegaDetector model files (typically [MDv5a](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt), but you can also download [MDv5b](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.0.pt) and/or [MDv4](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb)) to your computer.  You can put them anywhere, later in these instructions you'll tell the relevant scripts where to find the model file.
 
 
 ### 3. Clone the relevant git repos and add them to your path, and set up your Python environment
@@ -245,7 +253,7 @@ You will need the contents of two git repos to make everything work: this repo a
 
 #### Windows instructions for git/Python stuff
 
-The first time you set all of this up, open your Mambaforge prompt, and run:
+The first time you set all of this up, open your Miniforge prompt, and run:
 
 ```batch
 mkdir c:\git
@@ -259,7 +267,7 @@ set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
 ```
 
 <a name="windows-new-shell"></a>
-Your environment is set up now!  In the future, when you open your Mambaforge prompt, you only need to run:
+Your environment is set up now!  In the future, when you open your Miniforge prompt, you only need to run:
 
 ```batch
 cd c:\git\MegaDetector
@@ -272,7 +280,7 @@ Pro tip: if you have administrative access to your machine, rather than using th
 
 #### Linux instructions for git/Python stuff
 
-If you have installed Mambaforge on Linux, you are probably always at an Mambaforge prompt; i.e., you should see "(base)" at your command prompt.  Assuming you see that, the first time you set all of this up, and run:
+If you have installed Miniforge on Linux, you are probably always at an Miniforge prompt; i.e., you should see "(base)" at your command prompt.  Assuming you see that, the first time you set all of this up, and run:
 
 ```batch
 mkdir ~/git
@@ -306,7 +314,7 @@ Pro tip: rather than updating your PYTHONPATH every time you start a new shell, 
 
 #### Mac instructions for git/Python stuff
 
-If you have installed Mambaforge on Mac, you are probably always at an Mambaforge prompt; i.e., you should see "(base)" at your command prompt.  Assuming you see that, the first time you set all of this up, and run:
+If you have installed Miniforge on Mac, you are probably always at an Miniforge prompt; i.e., you should see "(base)" at your command prompt.  Assuming you see that, the first time you set all of this up, and run:
 
 ```batch
 mkdir ~/git
@@ -344,9 +352,9 @@ Pro tip: rather than updating your PYTHONPATH every time you start a new shell, 
 
 To test MegaDetector out on small sets of images and get super-satisfying visual output, we provide [run_detector.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector.py), an example script for invoking this detector on new images.  This isn't how we recommend running lots of images through MegaDetector (see [run_detector_batch.py](#2-run_detector_batchpy) below for "real" usage), but it's a quick way to test things out.  [Let us know](mailto:cameratraps@lila.science) how it works on your images!
 
-The following examples assume you have your Mambaforge prompt open, and have put things in the same directories we put things in the above instructions.  If you put things in different places, adjust these examples to match your folders, and most importantly, adjust these examples to point to your images.
+The following examples assume you have your Miniforge prompt open, and have put things in the same directories we put things in the above instructions.  If you put things in different places, adjust these examples to match your folders, and most importantly, adjust these examples to point to your images.
 
-To use run_detector.py on Windows, when you open a new Mambaforge prompt, don't forget to do this:
+To use run_detector.py on Windows, when you open a new Miniforge prompt, don't forget to do this:
 
 ```batch
 cd c:\git\MegaDetector
@@ -385,7 +393,7 @@ You can see all the options for this script by running:
 python megadetector\detection\run_detector.py
 ```
 
-To use this script on Linux/Mac, when you open a new Mambaforge prompt, don't forget to do this:
+To use this script on Linux/Mac, when you open a new Miniforge prompt, don't forget to do this:
  
 ```batch
 cd ~/git/MegaDetector
@@ -405,7 +413,7 @@ Don't forget to change "some_image_file.jpg" to point to a real image on your co
 
 To apply this model to larger image sets on a single machine, we recommend a different script, [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector_batch.py).  This outputs data in the [MegaDetector results format](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#megadetector-batch-output-format), so you can work with the results in tools like [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/).
 
-To use run_detector_batch.py on Windows, when you open a new Mambaforge prompt, don't forget to do this:
+To use run_detector_batch.py on Windows, when you open a new Miniforge prompt, don't forget to do this:
 
 ```batch
 cd c:\git\MegaDetector
@@ -460,7 +468,7 @@ If you have an Nvidia GPU and you see "GPU available: False", your GPU environme
 
 #### Slightly modified run_detector_batch.py instructions for Linux/Mac
 
-To use this script on Linux/Mac, when you open a new Mambaforge prompt, don't forget to do this:
+To use this script on Linux/Mac, when you open a new Miniforge prompt, don't forget to do this:
  
 ```batch
 cd ~/git/MegaDetector
@@ -734,11 +742,11 @@ So if MegaDetector performs really well on any of the above data sets, that's gr
 
 If you want to run scripts from this repo, but you won't actually be running MegaDetector, you can install a lighter-weight version of the same environment by doing the following:
 
-1. Install [Mambaforge](https://github.com/conda-forge/miniforge#mambaforge), an environment for installing and running Python stuff.  If you already have Anaconda installed, you can use that instead.
+1. Install [Miniforge](https://github.com/conda-forge/miniforge), an environment for installing and running Python stuff.  If you already have Anaconda installed, you can use that instead.
 
 2. Install git. If you're not familiar with git, we recommend installing git from git-scm ([Windows link](https://git-scm.com/download/win)) ([Mac link](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)).
 
-The remaining steps will assume you are running at a Mambaforge prompt.  You will know you are at a Mambaforge prompt (as opposed to run-of-the-mill command prompt) if you see an environment name in parentheses before your current directory, like this:
+The remaining steps will assume you are running at a Miniforge prompt.  You will know you are at a Miniforge prompt (as opposed to run-of-the-mill command prompt) if you see an environment name in parentheses before your current directory, like this:
 
 <img src="images/anaconda-prompt-base.jpg" style="margin-left:25px;">
 
@@ -746,7 +754,7 @@ The remaining steps will assume you are running at a Mambaforge prompt.  You wil
 
 <img src="images/anaconda-prompt-ct.jpg" style="margin-left:25px;">
 
-3. In your Mambaforge prompt, run the following to create your environment (on Windows):
+3. In your Miniforge prompt, run the following to create your environment (on Windows):
 
 ```batch
 mkdir c:\git
