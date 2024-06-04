@@ -50,6 +50,11 @@ class ProcessVideoOptions:
     def __init__(self):
         
         #: Can be a model filename (.pt or .pb) or a model name (e.g. "MDV5A")
+        #: 
+        #: Use the string "no_detection" to indicate that you only want to extract frames,
+        #: not run a model.  If you do this, you almost definitely want to set 
+        #: keep_extracted_frames to "True", otherwise everything in this module is a no-op.
+        #: I.e., there's no reason to extract frames, do nothing with them, then delete them.
         self.model_file = 'MDV5A'
         
         #: Video (of folder of videos) to process
@@ -121,8 +126,12 @@ class ProcessVideoOptions:
         
         #: Sample every Nth frame; set to None (default) or 1 to sample every frame.  Typically
         #: we sample down to around 3 fps, so for typical 30 fps videos, frame_sample=10 is a 
-        #: typical value.
+        #: typical value.  Mutually exclusive with [frames_to_extract].
         self.frame_sample = None
+        
+        #: Extract a specific set of frames (list of ints, or a single int).  Mutually exclusive with
+        #: [frame_sample].
+        self.frames_to_extract = None
         
         #: Number of workers to use for parallelization; set to <= 1 to disable parallelization
         self.n_cores = 1
@@ -138,7 +147,7 @@ class ProcessVideoOptions:
         self.quality = 90
         
         #: Resize frames so they're at most this wide
-        self.max_width = 1600
+        self.max_width = None
     
 # ...class ProcessVideoOptions
 
@@ -278,7 +287,8 @@ def _clean_up_extracted_frames(options,frame_output_folder,frame_filenames):
 
 def process_video(options):
     """
-    Process a single video through MD, optionally writing a new video with boxes
+    Process a single video through MD, optionally writing a new video with boxes.
+    Can also be used just to split a video into frames, without running a model.
     
     Args: 
         options (ProcessVideoOptions): all the parameters used to control this process,
@@ -294,6 +304,10 @@ def process_video(options):
     if options.render_output_video and (options.output_video_file is None):
         options.output_video_file = options.input_video_file + '.detections.mp4'
 
+    if options.model_file == 'no_detection' and not options.keep_extracted_frames:
+        print('Warning: you asked for no detection, but did not specify keep_extracted_frames, this is a no-op')
+        return
+    
     # Track whether frame and rendering folders were created by this script
     caller_provided_frame_output_folder = (options.frame_folder is not None)
     caller_provided_rendering_output_folder = (options.frame_rendering_folder is not None)
@@ -309,15 +323,31 @@ def process_video(options):
    
     os.makedirs(frame_output_folder, exist_ok=True)
 
+
+    ## Extract frames
+    
     frame_filenames, Fs = video_to_frames(
-        options.input_video_file, frame_output_folder, 
-        every_n_frames=options.frame_sample, overwrite=(not options.reuse_frames_if_available),
-        quality=options.quality, max_width=options.max_width, verbose=options.verbose)
+                            options.input_video_file, 
+                            frame_output_folder, 
+                            every_n_frames=options.frame_sample, 
+                            overwrite=(not options.reuse_frames_if_available),
+                            quality=options.quality, 
+                            max_width=options.max_width, 
+                            verbose=options.verbose,
+                            frames_to_extract=options.frames_to_extract)
 
     image_file_names = frame_filenames
     if options.debug_max_frames > 0:
         image_file_names = image_file_names[0:options.debug_max_frames]
-
+    
+    if options.model_file == 'no_detection':
+        assert options.keep_extracted_frames, \
+            'Internal error: keep_extracted_frames not set, but no model specified'
+        return
+    
+    
+    ## Run MegaDetector
+    
     if options.reuse_results_if_available and \
         os.path.isfile(options.output_json_file):
             print('Loading results from {}'.format(options.output_json_file))
@@ -381,7 +411,8 @@ def process_video(options):
 
 def process_video_folder(options):
     """
-    Process a folder of videos through MD
+    Process a folder of videos through MD. Can also be used just to split a folder of
+    videos into frames, without running a model.
     
     Args: 
         options (ProcessVideoOptions): all the parameters used to control this process,
@@ -393,13 +424,17 @@ def process_video_folder(options):
     assert os.path.isdir(options.input_video_file), \
         '{} is not a folder'.format(options.input_video_file)
            
-    assert options.output_json_file is not None, \
-        'When processing a folder, you must specify an output .json file'
-                         
-    assert options.output_json_file.endswith('.json')
-    video_json = options.output_json_file
-    frames_json = options.output_json_file.replace('.json','.frames.json')
-    os.makedirs(os.path.dirname(video_json),exist_ok=True)
+    if options.model_file == 'no_detection' and not options.keep_extracted_frames:
+        print('Warning: you asked for no detection, but did not specify keep_extracted_frames, this is a no-op')
+        return
+    
+    if options.model_file != 'no_detection':
+        assert options.output_json_file is not None, \
+            'When processing a folder, you must specify an output .json file'      
+        assert options.output_json_file.endswith('.json')
+        video_json = options.output_json_file
+        frames_json = options.output_json_file.replace('.json','.frames.json')
+        os.makedirs(os.path.dirname(video_json),exist_ok=True)
     
     # Track whether frame and rendering folders were created by this script
     caller_provided_frame_output_folder = (options.frame_folder is not None)
@@ -429,7 +464,8 @@ def process_video_folder(options):
                                every_n_frames=options.frame_sample,
                                verbose=options.verbose,
                                quality=options.quality,
-                               max_width=options.max_width)
+                               max_width=options.max_width,
+                               frames_to_extract=options.frames_to_extract)
     
     image_file_names = list(itertools.chain.from_iterable(frame_filenames))
     
@@ -443,6 +479,11 @@ def process_video_folder(options):
 
     if options.debug_max_frames is not None and options.debug_max_frames > 0:
         image_file_names = image_file_names[0:options.debug_max_frames]
+        
+    if options.model_file == 'no_detection':
+        assert options.keep_extracted_frames, \
+            'Internal error: keep_extracted_frames not set, but no model specified'
+        return
     
     
     ## Run MegaDetector on the extracted frames
@@ -607,6 +648,14 @@ def options_to_command(options):
         cmd += ' --n_cores ' + str(options.n_cores)
     if options.frame_sample is not None:
         cmd += ' --frame_sample ' + str(options.frame_sample)
+    if options.frames_to_extract is not None:
+        cmd += ' --frames_to_extract '
+        if isinstance(options.frames_to_extract,int):
+            frames_to_extract = [options.frames_to_extract]
+        else:
+            frames_to_extract = options.frames_to_extract
+        for frame_number in frames_to_extract:
+            cmd += ' {}'.format(frame_number)
     if options.debug_max_frames is not None:
         cmd += ' --debug_max_frames ' + str(options.debug_max_frames)
     if options.class_mapping_filename is not None:
@@ -720,6 +769,67 @@ if False:
         process_video(options)    
             
     
+    #%% Extract specific frames from a single video, no detection
+
+    fn = r'g:\temp\test-videos\person_and_dog\DSCF0064.AVI'
+    assert os.path.isfile(fn)
+    model_file = 'no_detection'
+    input_video_file = fn
+    
+    output_base = r'g:\temp\video_test'
+    frame_folder = os.path.join(output_base,'frames')
+    output_video_file = os.path.join(output_base,'output_videos.mp4')
+    
+    options = ProcessVideoOptions()
+    options.model_file = model_file
+    options.input_video_file = input_video_file    
+    options.verbose = True    
+    options.quality = 90
+    options.frame_sample = None
+    options.frames_to_extract = [0,100]
+    options.max_width = None
+    
+    options.frame_folder = frame_folder
+    options.keep_extracted_frames = True
+    
+    cmd = options_to_command(options); print(cmd)
+    
+    import clipboard; clipboard.copy(cmd)
+    
+    if False:        
+        process_video(options)    
+        
+        
+    #%% Extract specific frames from a folder, no detection
+
+    fn = r'g:\temp\test-videos\person_and_dog'
+    assert os.path.isdir(fn)
+    model_file = 'no_detection'
+    input_video_file = fn
+    
+    output_base = r'g:\temp\video_test'
+    frame_folder = os.path.join(output_base,'frames')
+    output_video_file = os.path.join(output_base,'output_videos.mp4')
+    
+    options = ProcessVideoOptions()
+    options.model_file = model_file
+    options.input_video_file = input_video_file    
+    options.verbose = True    
+    options.quality = 90
+    options.frame_sample = None
+    options.frames_to_extract = [0,100]
+    options.max_width = None
+    
+    options.frame_folder = frame_folder
+    options.keep_extracted_frames = True
+    
+    cmd = options_to_command(options); print(cmd)
+    
+    import clipboard; clipboard.copy(cmd)
+    
+    if False:        
+        process_video(options)    
+        
 #%% Command-line driver
 
 def main():
@@ -731,7 +841,8 @@ def main():
         'producing a new video with detections annotated'))
 
     parser.add_argument('model_file', type=str,
-                        help='MegaDetector model file (.pt or .pb) or model name (e.g. "MDV5A")')
+                        help='MegaDetector model file (.pt or .pb) or model name (e.g. "MDV5A"), '\
+                             'or the string "no_detection" to run just frame extraction')
 
     parser.add_argument('input_video_file', type=str,
                         help='video file (or folder) to process')
@@ -803,6 +914,9 @@ def main():
 
     parser.add_argument('--frame_sample', type=int,
                         default=None, help='process every Nth frame (defaults to every frame)')
+
+    parser.add_argument('--frames_to_extract', nargs='+', type=int,
+                        default=None, help='extract specific frames (one or more ints)')
 
     parser.add_argument('--quality', type=int,
                         default=default_options.quality, 

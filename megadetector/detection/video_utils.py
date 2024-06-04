@@ -98,7 +98,7 @@ def find_videos(dirname,
     return find_video_strings(files)
 
 
-#%% Function for rendering frames to video and vice-versa
+#%% Functions for rendering frames to video and vice-versa
 
 # http://tsaith.github.io/combine-images-into-a-video-with-python-3-and-opencv-3.html
 
@@ -171,7 +171,7 @@ def _frame_number_to_filename(frame_number):
 
 def video_to_frames(input_video_file, output_folder, overwrite=True, 
                     every_n_frames=None, verbose=False, quality=None,
-                    max_width=None):
+                    max_width=None, frames_to_extract=None):
     """
     Renders frames from [input_video_file] to a .jpg in [output_folder].
     
@@ -184,17 +184,30 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
         output_folder (str): folder to put frame images in
         overwrite (bool, optional): whether to overwrite existing frame images
         every_n_frames (int, optional): sample every Nth frame starting from the first frame;
-            if this is None or 1, every frame is extracted
+            if this is None or 1, every frame is extracted. Mutually exclusive with
+            frames_to_extract.
         verbose (bool, optional): enable additional debug console output
         quality (int, optional): JPEG quality for frame output, from 0-100.  Defaults
             to the opencv default (typically 95).
         max_width (int, optional): resize frames to be no wider than [max_width]
+        frames_to_extract (list of int, optional): extract this specific set of frames;
+            mutually exclusive with every_n_frames.  If all values are beyond the length
+            of the video, no frames are extracted.  Can also be a single int, specifying
+            a single frame number.
     
     Returns:
         tuple: length-2 tuple containing (list of frame filenames,frame rate)
     """
     
     assert os.path.isfile(input_video_file), 'File {} not found'.format(input_video_file)
+    
+    if isinstance(frames_to_extract,int):
+        frames_to_extract = [frames_to_extract]
+        
+    if (frames_to_extract is not None) and (every_n_frames is not None):
+        raise ValueError('frames_to_extract and every_n_frames are mutually exclusive')
+    
+    os.makedirs(output_folder,exist_ok=True)
     
     vidcap = cv2.VideoCapture(input_video_file)
     n_frames = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -211,9 +224,17 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
         for frame_number in range(0,n_frames):
             
             if every_n_frames is not None:
+                assert frames_to_extract is None, \
+                    'Internal error: frames_to_extract and every_n_frames are exclusive'
                 if (frame_number % every_n_frames) != 0:
                     continue
             
+            if frames_to_extract is not None:
+                assert every_n_frames is None, \
+                    'Internal error: frames_to_extract and every_n_frames are exclusive'
+                if frame_number not in frames_to_extract:
+                    continue
+                
             frame_filename = _frame_number_to_filename(frame_number)
             frame_filename = os.path.join(output_folder,frame_filename)
             frame_filenames.append(frame_filename)
@@ -240,15 +261,23 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
         last_expected_frame_number = n_frames-1
         if every_n_frames is not None:
             last_expected_frame_number -= (every_n_frames*2)
+          
+        # When specific frames are requested, if anything is missing, reprocess the video
+        if (frames_to_extract is not None) and (missing_frame_number is not None):
             
+            pass
+        
         # If no frames are missing, or only frames very close to the end of the video are "missing",
         # skip this video
-        if (missing_frame_number is None) or \
+        elif (missing_frame_number is None) or \
             (allow_last_frame_missing and (missing_frame_number >= last_expected_frame_number)):
+                
             if verbose:
                 print('Skipping video {}, all output frames exist'.format(input_video_file))
             return frame_filenames,Fs
+        
         else:
+            
             # If we found some frames, but not all, print a message
             if verbose and found_existing_frame:
                 print("Rendering video {}, couldn't find frame {} ({}) of {}".format(
@@ -264,10 +293,10 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
 
     frame_filenames = []
 
-    # YOLOv5 does some totally bananas monkey-patching of opencv,
-    # which causes problems if we try to supply a third parameter to
-    # imwrite (to specify JPEG quality).  Detect this case, and ignore the quality 
-    # parameter if it looks like imwrite has been messed with.
+    # YOLOv5 does some totally bananas monkey-patching of opencv, which causes 
+    # problems  if we try to supply a third parameter to imwrite (to specify JPEG 
+    # quality).  Detect  this case, and ignore the quality  parameter if it looks 
+    # like imwrite has been messed with.
     imwrite_patched = False
     n_imwrite_parameters = None
     
@@ -298,6 +327,12 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
 
         if every_n_frames is not None:
             if frame_number % every_n_frames != 0:
+                continue
+
+        if frames_to_extract is not None:
+            if frame_number > max(frames_to_extract):
+                break
+            if frame_number not in frames_to_extract:
                 continue
             
         # Has resizing been requested?
@@ -361,7 +396,8 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
 
 
 def _video_to_frames_for_folder(relative_fn,input_folder,output_folder_base,
-                                every_n_frames,overwrite,verbose,quality,max_width):
+                                every_n_frames,overwrite,verbose,quality,max_width,
+                                frames_to_extract):
     """
     Internal function to call video_to_frames in the context of video_folder_to_frames; 
     makes sure the right output folder exists, then calls video_to_frames.
@@ -379,7 +415,8 @@ def _video_to_frames_for_folder(relative_fn,input_folder,output_folder_base,
     # input_video_file = input_fn_absolute; output_folder = output_folder_video
     frame_filenames,fs = video_to_frames(input_fn_absolute,output_folder_video,
                                          overwrite=overwrite,every_n_frames=every_n_frames,
-                                         verbose=verbose,quality=quality,max_width=max_width)
+                                         verbose=verbose,quality=quality,max_width=max_width,
+                                         frames_to_extract=frames_to_extract)
     
     return frame_filenames,fs
 
@@ -388,7 +425,8 @@ def video_folder_to_frames(input_folder, output_folder_base,
                            recursive=True, overwrite=True,
                            n_threads=1, every_n_frames=None,
                            verbose=False, parallelization_uses_threads=True,
-                           quality=None, max_width=None):
+                           quality=None, max_width=None, 
+                           frames_to_extract=None):
     """
     For every video file in input_folder, creates a folder within output_folder_base, and 
     renders frame of that video to images in that folder.
@@ -402,13 +440,18 @@ def video_folder_to_frames(input_folder, output_folder_base,
         n_threads (int, optional): number of concurrent workers to use; set to <= 1 to disable
             parallelism
         every_n_frames (int, optional): sample every Nth frame starting from the first frame;
-            if this is None or 1, every frame is extracted
+            if this is None or 1, every frame is extracted. Mutually exclusive with 
+            frames_to_extract.
         verbose (bool, optional): enable additional debug console output
         parallelization_uses_threads (bool, optional): whether to use threads (True) or
             processes (False) for parallelization; ignored if n_threads <= 1
         quality (int, optional): JPEG quality for frame output, from 0-100.  Defaults
             to the opencv default (typically 95).
         max_width (int, optional): resize frames to be no wider than [max_width]
+        frames_to_extract (list of int, optional): extract this specific set of frames from
+            each video; mutually exclusive with every_n_frames.  If all values are beyond 
+            the length of a video, no frames are extracted. Can also be a single int, 
+            specifying a single frame number.
         
     Returns:
         tuple: a length-3 tuple containing:
@@ -440,7 +483,8 @@ def video_folder_to_frames(input_folder, output_folder_base,
         
             frame_filenames,fs = \
                 _video_to_frames_for_folder(input_fn_relative,input_folder,output_folder_base,
-                                            every_n_frames,overwrite,verbose,quality,max_width)
+                                            every_n_frames,overwrite,verbose,quality,max_width,
+                                            frames_to_extract)
             frame_filenames_by_video.append(frame_filenames)
             fs_by_video.append(fs)
     else:
@@ -457,7 +501,8 @@ def video_folder_to_frames(input_folder, output_folder_base,
                                              overwrite=overwrite,
                                              verbose=verbose,
                                              quality=quality,
-                                             max_width=max_width)
+                                             max_width=max_width,
+                                             frames_to_extract=frames_to_extract)
         results = list(tqdm(pool.imap(
             partial(process_video_with_options),input_files_relative_paths), 
                             total=len(input_files_relative_paths)))
@@ -594,47 +639,45 @@ def frame_results_to_video_results(input_file,output_file,options=None):
 # ...def frame_results_to_video_results(...)
 
 
-#%% Test driver
+#%% Test drivers
 
 if False:
 
+    pass
+
     #%% Constants
     
-    Fs = 30.01
-    confidence_threshold = 0.75
-    input_folder = 'z:\\'
-    frame_folder_base = r'e:\video_test\frames'
-    detected_frame_folder_base = r'e:\video_test\detected_frames'
-    rendered_videos_folder_base = r'e:\video_test\rendered_videos'
-    
-    results_file = r'results.json'
-    os.makedirs(detected_frame_folder_base,exist_ok=True)
-    os.makedirs(rendered_videos_folder_base,exist_ok=True)
-    
+    input_folder = r'G:\temp\usu-long\data'
+    frame_folder_base = r'g:\temp\usu-long-single-frames'
+    assert os.path.isdir(input_folder)
+        
     
     #%% Split videos into frames
         
     frame_filenames_by_video,fs_by_video,video_filenames = \
-        video_folder_to_frames(input_folder,frame_folder_base,recursive=True)
+        video_folder_to_frames(input_folder,
+                               frame_folder_base,
+                               recursive=True,
+                               overwrite=True,
+                               n_threads=10, 
+                               every_n_frames=None,
+                               verbose=True, 
+                               parallelization_uses_threads=True,
+                               quality=None, 
+                               max_width=None, 
+                               frames_to_extract=150)
     
     
-    #%% List image files, break into folders
+    #%% Constants for detection tests
     
-    frame_files = path_utils.find_images(frame_folder_base,True)
-    frame_files = [s.replace('\\','/') for s in frame_files]
-    print('Enumerated {} total frames'.format(len(frame_files)))
-    
-    Fs = 30.01
-    # Find unique folders
-    folders = set()
-    # fn = frame_files[0]
-    for fn in frame_files:
-        folders.add(os.path.dirname(fn))
-    folders = [s.replace('\\','/') for s in folders]
-    print('Found {} folders for {} files'.format(len(folders),len(frame_files)))
-    
+    detected_frame_folder_base = r'e:\video_test\detected_frames'
+    rendered_videos_folder_base = r'e:\video_test\rendered_videos'
+    os.makedirs(detected_frame_folder_base,exist_ok=True)
+    os.makedirs(rendered_videos_folder_base,exist_ok=True)
+    results_file = r'results.json'
+    confidence_threshold = 0.75
         
-    #%% Load detector output
+    #%% Load detector output    
     
     with open(results_file,'r') as f:
         detection_results = json.load(f)
@@ -644,6 +687,21 @@ if False:
         d['file'] = d['file'].replace('\\','/').replace('video_frames/','')
 
 
+    #%% List image files, break into folders
+    
+    frame_files = path_utils.find_images(frame_folder_base,True)
+    frame_files = [s.replace('\\','/') for s in frame_files]
+    print('Enumerated {} total frames'.format(len(frame_files)))
+    
+    # Find unique folders
+    folders = set()
+    # fn = frame_files[0]
+    for fn in frame_files:
+        folders.add(os.path.dirname(fn))
+    folders = [s.replace('\\','/') for s in folders]
+    print('Found {} folders for {} files'.format(len(folders),len(frame_files)))
+    
+        
     #%% Render detector frames
     
     # folder = list(folders)[0]
