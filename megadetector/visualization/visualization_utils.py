@@ -1457,7 +1457,8 @@ def parallel_check_image_integrity(filenames,
                                    modes=None, 
                                    max_workers=16, 
                                    use_threads=True, 
-                                   recursive=True):
+                                   recursive=True,
+                                   verbose=False):
     """
     Check whether we can successfully load a list of images via OpenCV and/or PIL.
     
@@ -1470,6 +1471,7 @@ def parallel_check_image_integrity(filenames,
             parallelization
         recursive (bool, optional): if [filenames] is a folder, whether to search recursively for images.
             Ignored if [filenames] is a list.
+        verbose (bool, optional): enable additional debug output
             
     Returns:
         list: a list of dicts, each with a key called 'file' (the value of [filename]), one key for 
@@ -1480,9 +1482,12 @@ def parallel_check_image_integrity(filenames,
     n_workers = min(max_workers,len(filenames))
     
     if isinstance(filenames,str) and os.path.isdir(filenames):
+        if verbose:
+            print('Enumerating images in {}'.format(filenames))
         filenames = find_images(filenames,recursive=recursive,return_relative_paths=False)
     
-    print('Checking image integrity for {} filenames'.format(len(filenames)))
+    if verbose:
+        print('Checking image integrity for {} filenames'.format(len(filenames)))
     
     if n_workers <= 1:
         

@@ -1347,7 +1347,7 @@ for final_output_path in classification_detection_files:
 # ...for each file we want to smooth
 
 
-##%% Read EXIF data from all images
+##%% Read EXIF date and time from all images
 
 from megadetector.data_management import read_exif
 exif_options = read_exif.ReadExifOptions()
@@ -1357,6 +1357,7 @@ exif_options.n_workers = default_workers_for_parallel_tasks
 exif_options.use_threads = parallelization_defaults_to_threads
 exif_options.processing_library = 'pil'
 exif_options.byte_handling = 'delete'
+exif_options.tags_to_include = ['DateTime','DateTimeOriginal']
 
 exif_results_file = os.path.join(filename_base,'exif_data.json')
 

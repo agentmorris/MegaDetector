@@ -763,15 +763,31 @@ def parallel_get_file_sizes(filenames,
     n_workers = min(max_workers,len(filenames))
     
     folder_name = None
+    
+    if verbose:
+        print('Enumerating files')
+        
     if isinstance(filenames,str) and os.path.isdir(filenames):
+        
         folder_name = filenames
+        
+        # Enumerate absolute paths here, we'll convert to relative later if requested
         filenames = recursive_file_list(filenames,recursive=recursive,return_relative_paths=False)
+
+    if verbose:
+        print('Creating worker pool')
     
     if use_threads:
+        pool_string = 'thread'
         pool = ThreadPool(n_workers)
     else:
+        pool_string = 'process'
         pool = Pool(n_workers)
 
+    if verbose:
+        print('Created a {} pool of {} workers'.format(
+            pool_string,n_workers))
+        
     # This returns (filename,size) tuples
     get_size_results = list(tqdm(pool.imap(
         partial(_get_file_size,verbose=verbose),filenames), total=len(filenames)))
