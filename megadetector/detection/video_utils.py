@@ -9,6 +9,7 @@ Utilities for splitting, rendering, and assembling videos.
 #%% Constants, imports, environment
 
 import os
+import re
 import cv2
 import glob
 import json
@@ -530,6 +531,15 @@ class FrameToVideoOptions:
         #: video; can be 'error' or 'skip_with_warning'
         self.non_video_behavior = 'error'
     
+# Use a regular expression to extract the frame number from path # ADJUSTMENT PETER
+def extract_frame_number(input_string):
+    try:
+        match = re.search(r'frame(\d+)\.jpg', input_string)
+        if match:
+            frame_number = int(match.group(1))
+            return str(frame_number)
+    except:
+        return "Unable to retrieve frame number"
     
 def frame_results_to_video_results(input_file,output_file,options=None):
     """
@@ -574,6 +584,12 @@ def frame_results_to_video_results(input_file,output_file,options=None):
             else:
                 raise ValueError('Unrecognized non-video handling behavior: {}'.format(
                     options.non_video_behavior))
+            
+        # add frame number to detections ADJUSTMENT PETER
+        frame_number = extract_frame_number(fn)
+        for detection in im['detections']: 
+            detection['frame_number'] = frame_number
+        
         video_to_frame_info[video_name].append(im)
     
     print('Found {} unique videos in {} frame-level results'.format(
