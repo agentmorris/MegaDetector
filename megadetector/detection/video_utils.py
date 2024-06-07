@@ -170,6 +170,46 @@ def _frame_number_to_filename(frame_number):
     return 'frame{:06d}.jpg'.format(frame_number)
 
 
+def _filename_to_frame_number(filename):
+    """
+    Extract the frame number from a filename that was created using 
+    _frame_number_to_filename.
+    
+    Args:
+        filename (str): a filename created with _frame_number_to_filename.
+    Returns:
+        int: the frame number extracted from [filename]
+    """
+    
+    filename = os.path.basename(filename)
+    match = re.search(r'frame(\d+)\.jpg', filename)
+    if match is None:
+        raise ValueError('{} does not appear to be a frame file'.format(filename))
+    frame_number = match.group(1)
+    try:
+        frame_number = int(frame_number)
+    except:
+        raise ValueError('Filename {} does contain a valid frame number'.format(filename))
+        
+    return frame_number
+
+
+def _add_frame_numbers_to_results(results):
+    """
+    Given the 'images' list from a set of MD results that was generated on video frames,
+    add a 'frame_number' field to each image.
+    
+    Args:
+        results (list): list of image dicts        
+    """
+    
+    # Add video-specific fields to the results
+    for im in results:
+        fn = im['file']
+        frame_number = _filename_to_frame_number(fn)
+        im['frame_number'] = frame_number
+    
+
 def video_to_frames(input_video_file, output_folder, overwrite=True, 
                     every_n_frames=None, verbose=False, quality=None,
                     max_width=None, frames_to_extract=None):
@@ -298,6 +338,10 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
     # problems  if we try to supply a third parameter to imwrite (to specify JPEG 
     # quality).  Detect  this case, and ignore the quality  parameter if it looks 
     # like imwrite has been messed with.
+    #
+    # See:
+    #
+    # https://github.com/ultralytics/yolov5/issues/7285
     imwrite_patched = False
     n_imwrite_parameters = None
     
@@ -531,16 +575,7 @@ class FrameToVideoOptions:
         #: video; can be 'error' or 'skip_with_warning'
         self.non_video_behavior = 'error'
     
-# Use a regular expression to extract the frame number from path # ADJUSTMENT PETER
-def extract_frame_number(input_string):
-    try:
-        match = re.search(r'frame(\d+)\.jpg', input_string)
-        if match:
-            frame_number = int(match.group(1))
-            return str(frame_number)
-    except:
-        return "Unable to retrieve frame number"
-    
+
 def frame_results_to_video_results(input_file,output_file,options=None):
     """
     Given an MD results file produced at the *frame* level, corresponding to a directory 
@@ -566,6 +601,7 @@ def frame_results_to_video_results(input_file,output_file,options=None):
     images = input_data['images']
     detection_categories = input_data['detection_categories']
     
+    
     ## Break into videos
     
     video_to_frame_info = defaultdict(list) 
@@ -575,7 +611,9 @@ def frame_results_to_video_results(input_file,output_file,options=None):
         
         fn = im['file']
         video_name = os.path.dirname(fn)
+        
         if not is_video_file(video_name):
+            
             if options.non_video_behavior == 'error':
                 raise ValueError('{} is not a video file'.format(video_name))
             elif options.non_video_behavior == 'skip_with_warning':
@@ -584,18 +622,24 @@ def frame_results_to_video_results(input_file,output_file,options=None):
             else:
                 raise ValueError('Unrecognized non-video handling behavior: {}'.format(
                     options.non_video_behavior))
-            
-        # add frame number to detections ADJUSTMENT PETER
-        frame_number = extract_frame_number(fn)
+        
+        # Attach video-specific fields to the output, specifically attach the frame
+        # number to both the video and each detection.  Only the frame number for the 
+        # canonical detection will end up in the video-level output file.
+        frame_number = _filename_to_frame_number(fn)
+        im['frame_number'] = frame_number
         for detection in im['detections']: 
             detection['frame_number'] = frame_number
         
         video_to_frame_info[video_name].append(im)
     
+    # ...for each frame referred to in the results file
+    
     print('Found {} unique videos in {} frame-level results'.format(
         len(video_to_frame_info),len(images)))
     
     output_images = []
+    
     
     ## For each video...
     

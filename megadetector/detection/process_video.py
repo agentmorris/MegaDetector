@@ -36,6 +36,7 @@ from megadetector.utils.path_utils import insert_before_extension, clean_path
 from megadetector.detection.video_utils import video_to_frames
 from megadetector.detection.video_utils import frames_to_video
 from megadetector.detection.video_utils import frame_results_to_video_results
+from megadetector.detection.video_utils import _add_frame_numbers_to_results
 from megadetector.detection.video_utils import video_folder_to_frames
 from megadetector.detection.video_utils import default_fourcc
 
@@ -360,7 +361,9 @@ def process_video(options):
             n_cores=options.n_cores,
             class_mapping_filename=options.class_mapping_filename,
             quiet=True)
-    
+        
+        _add_frame_numbers_to_results(results)
+        
         run_detector_batch.write_results_to_file(
             results, options.output_json_file,
             relative_path_base=frame_output_folder,
@@ -413,6 +416,11 @@ def process_video_folder(options):
     """
     Process a folder of videos through MD. Can also be used just to split a folder of
     videos into frames, without running a model.
+    
+    When this function is used to run MD, two .json files will get written, one with 
+    an entry for each *frame* (identical to what's created by process_video()), and
+    one with an entry for each *video* (which is more suitable for, e.g., reading into
+    Timelapse).
     
     Args: 
         options (ProcessVideoOptions): all the parameters used to control this process,
@@ -501,6 +509,8 @@ def process_video_folder(options):
             class_mapping_filename=options.class_mapping_filename,
             quiet=True)
     
+        _add_frame_numbers_to_results(results)
+        
         run_detector_batch.write_results_to_file(
             results, frames_json,
             relative_path_base=frame_output_folder,
@@ -680,6 +690,8 @@ def options_to_command(options):
 
 if False:    
         
+    pass
+
     #%% Process a folder of videos
     
     model_file = 'MDV5A'
@@ -705,30 +717,26 @@ if False:
     options.max_width = 1280
     options.n_cores = 5
     options.verbose = True
-    options.render_output_video = True
-    
-    options.frame_folder = None # frame_folder
-    options.frame_rendering_folder = None # rendering_folder
-    
-    options.keep_extracted_frames = False
-    options.keep_rendered_frames = False
-    options.force_extracted_frame_folder_deletion = True
-    options.force_rendered_frame_folder_deletion = True
-    
-    # options.confidence_threshold = 0.15
+    options.render_output_video = True    
+    options.frame_folder = frame_folder
+    options.frame_rendering_folder = rendering_folder    
+    options.keep_extracted_frames = True
+    options.keep_rendered_frames = True
+    options.force_extracted_frame_folder_deletion = False
+    options.force_rendered_frame_folder_deletion = False
     options.fourcc = 'mp4v'
+    # options.confidence_threshold = 0.15
     
     cmd = options_to_command(options); print(cmd)
         
-    import clipboard; clipboard.copy(cmd)
-    
-    if False:
-        process_video_folder(options)
+    # import clipboard; clipboard.copy(cmd)
+    process_video_folder(options)
         
     
     #%% Process a single video
 
     fn = r'g:\temp\test-videos\person_and_dog\DSCF0056.AVI'
+    assert os.path.isfile(fn)
     model_file = 'MDV5A'
     input_video_file = fn
     
@@ -736,37 +744,31 @@ if False:
     frame_folder = os.path.join(output_base,'frames')
     rendering_folder = os.path.join(output_base,'rendered-frames')
     output_json_file = os.path.join(output_base,'video-test.json')
-    output_video_file = os.path.join(output_base,'output_videos.mp4')
+    output_video_file = os.path.join(output_base,'output_video.mp4')
     
     options = ProcessVideoOptions()
     options.model_file = model_file
     options.input_video_file = input_video_file
     options.render_output_video = True
     options.output_video_file = output_video_file
-    
-    options.verbose = True
-    
+    options.output_json_file = output_json_file    
+    options.verbose = True    
     options.quality = 75
-    options.frame_sample = None # 10
-    options.max_width = 600
-    
-    options.frame_folder = None # frame_folder
-    options.frame_rendering_folder = None # rendering_folder
-    
+    options.frame_sample = 10
+    options.max_width = 1600    
+    options.frame_folder = frame_folder
+    options.frame_rendering_folder = rendering_folder    
     options.keep_extracted_frames = False
     options.keep_rendered_frames = False
     options.force_extracted_frame_folder_deletion = True
-    options.force_rendered_frame_folder_deletion = True
-    
-    # options.confidence_threshold = 0.15
+    options.force_rendered_frame_folder_deletion = True    
     options.fourcc = 'mp4v'
+    # options.confidence_threshold = 0.15
     
     cmd = options_to_command(options); print(cmd)
     
-    import clipboard; clipboard.copy(cmd)
-    
-    if False:        
-        process_video(options)    
+    # import clipboard; clipboard.copy(cmd)    
+    process_video(options)
             
     
     #%% Extract specific frames from a single video, no detection
@@ -787,17 +789,14 @@ if False:
     options.quality = 90
     options.frame_sample = None
     options.frames_to_extract = [0,100]
-    options.max_width = None
-    
+    options.max_width = None    
     options.frame_folder = frame_folder
     options.keep_extracted_frames = True
     
     cmd = options_to_command(options); print(cmd)
     
-    import clipboard; clipboard.copy(cmd)
-    
-    if False:        
-        process_video(options)    
+    # import clipboard; clipboard.copy(cmd)
+    process_video(options)    
         
         
     #%% Extract specific frames from a folder, no detection
@@ -818,17 +817,15 @@ if False:
     options.quality = 90
     options.frame_sample = None
     options.frames_to_extract = [0,100]
-    options.max_width = None
-    
+    options.max_width = None    
     options.frame_folder = frame_folder
     options.keep_extracted_frames = True
     
     cmd = options_to_command(options); print(cmd)
     
-    import clipboard; clipboard.copy(cmd)
-    
-    if False:        
-        process_video(options)    
+    # import clipboard; clipboard.copy(cmd)
+    process_video(options)    
+
         
 #%% Command-line driver
 
