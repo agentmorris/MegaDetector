@@ -133,7 +133,8 @@ def _consumer_func(q,
                    image_size=None,
                    include_image_size=False,
                    include_image_timestamp=False, 
-                   include_exif_data=False):
+                   include_exif_data=False,
+                   augment=False):
     """ 
     Consumer function; only used when using the (optional) image queue.
     
@@ -183,17 +184,22 @@ def _consumer_func(q,
                                          image_size=image_size,
                                          include_image_size=include_image_size,
                                          include_image_timestamp=include_image_timestamp, 
-                                         include_exif_data=include_exif_data))
+                                         include_exif_data=include_exif_data,
+                                         augment=augment))
         if verbose:
             print('Processed image {}'.format(im_file)); sys.stdout.flush()
         q.task_done()
             
 
-def run_detector_with_image_queue(image_files,model_file,confidence_threshold,
-                                  quiet=False,image_size=None,
+def run_detector_with_image_queue(image_files,
+                                  model_file,
+                                  confidence_threshold,
+                                  quiet=False,
+                                  image_size=None,
                                   include_image_size=False, 
                                   include_image_timestamp=False,
-                                  include_exif_data=False):
+                                  include_exif_data=False,
+                                  augment=False):
     """
     Driver function for the (optional) multiprocessing-based image queue; only used 
     when --use_image_queue is specified.  Starts a reader process to read images from disk, but 
@@ -241,7 +247,8 @@ def run_detector_with_image_queue(image_files,model_file,confidence_threshold,
                                                           image_size,
                                                           include_image_size,
                                                           include_image_timestamp, 
-                                                          include_exif_data))
+                                                          include_exif_data,
+                                                          augment))
         else:
             consumer = Process(target=_consumer_func,args=(q,
                                                            return_queue,
@@ -250,7 +257,8 @@ def run_detector_with_image_queue(image_files,model_file,confidence_threshold,
                                                            image_size,
                                                            include_image_size,
                                                            include_image_timestamp, 
-                                                           include_exif_data))
+                                                           include_exif_data,
+                                                           augment))
         consumer.daemon = True
         consumer.start()
     else:
@@ -261,7 +269,8 @@ def run_detector_with_image_queue(image_files,model_file,confidence_threshold,
                        image_size,
                        include_image_size,
                        include_image_timestamp, 
-                       include_exif_data)
+                       include_exif_data,
+                       augment)
 
     producer.join()
     print('Producer finished')
@@ -297,10 +306,17 @@ def _chunks_by_number_of_chunks(ls, n):
 
 #%% Image processing functions
 
-def process_images(im_files, detector, confidence_threshold, use_image_queue=False, 
-                   quiet=False, image_size=None, checkpoint_queue=None, 
-                   include_image_size=False, include_image_timestamp=False, 
-                   include_exif_data=False):
+def process_images(im_files, 
+                   detector, 
+                   confidence_threshold, 
+                   use_image_queue=False, 
+                   quiet=False, 
+                   image_size=None, 
+                   checkpoint_queue=None, 
+                   include_image_size=False, 
+                   include_image_timestamp=False, 
+                   include_exif_data=False,
+                   augment=False):
     """
     Runs a detector (typically MegaDetector) over a list of image files on a single thread.
     
@@ -317,7 +333,8 @@ def process_images(im_files, detector, confidence_threshold, use_image_queue=Fal
         checkpoint_queue (Queue, optional): internal parameter used to pass image queues around
         include_image_size (bool, optional): should we include image size in the output for each image?
         include_image_timestamp (bool, optional): should we include image timestamps in the output for each image?
-        include_exif_data (bool, optional): should we include EXIF data in the output for each image?        
+        include_exif_data (bool, optional): should we include EXIF data in the output for each image?
+        augment (bool, optional): enable image augmentation
 
     Returns:
         list: list of dicts, in which each dict represents detections on one image,
@@ -340,7 +357,8 @@ def process_images(im_files, detector, confidence_threshold, use_image_queue=Fal
                                       image_size=image_size,
                                       include_image_size=include_image_size, 
                                       include_image_timestamp=include_image_timestamp,
-                                      include_exif_data=include_exif_data)
+                                      include_exif_data=include_exif_data,
+                                      augment=augment)
         
     else:            
         
@@ -353,7 +371,8 @@ def process_images(im_files, detector, confidence_threshold, use_image_queue=Fal
                                    image_size=image_size, 
                                    include_image_size=include_image_size, 
                                    include_image_timestamp=include_image_timestamp,
-                                   include_exif_data=include_exif_data)
+                                   include_exif_data=include_exif_data,
+                                   augment=augment)
 
             if checkpoint_queue is not None:
                 checkpoint_queue.put(result)
@@ -364,10 +383,16 @@ def process_images(im_files, detector, confidence_threshold, use_image_queue=Fal
 # ...def process_images(...)
 
 
-def process_image(im_file, detector, confidence_threshold, image=None, 
-                  quiet=False, image_size=None, include_image_size=False,
-                  include_image_timestamp=False, include_exif_data=False,
-                  skip_image_resizing=False):
+def process_image(im_file, detector, 
+                  confidence_threshold, 
+                  image=None, 
+                  quiet=False, 
+                  image_size=None, 
+                  include_image_size=False,
+                  include_image_timestamp=False, 
+                  include_exif_data=False,
+                  skip_image_resizing=False,
+                  augment=False):
     """
     Runs a detector (typically MegaDetector) on a single image file.
 
@@ -386,6 +411,7 @@ def process_image(im_file, detector, confidence_threshold, image=None,
         include_image_timestamp (bool, optional): should we include image timestamps in the output for each image?
         include_exif_data (bool, optional): should we include EXIF data in the output for each image?                
         skip_image_resizing (bool, optional): whether to skip internal image resizing and rely on external resizing
+        augment (bool, optional): enable image augmentation
 
     Returns:
         dict: dict representing detections on one image,
@@ -410,8 +436,12 @@ def process_image(im_file, detector, confidence_threshold, image=None,
 
     try:
         result = detector.generate_detections_one_image(
-            image, im_file, detection_threshold=confidence_threshold, image_size=image_size,
-            skip_image_resizing=skip_image_resizing)
+                    image, 
+                    im_file, 
+                    detection_threshold=confidence_threshold, 
+                    image_size=image_size,
+                    skip_image_resizing=skip_image_resizing,
+                    augment=augment)
     except Exception as e:
         if not quiet:
             print('Image {} cannot be processed. Exception: {}'.format(im_file, e))
@@ -466,12 +496,21 @@ def _load_custom_class_mapping(class_mapping_filename):
     
 #%% Main function
 
-def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=None,
+def load_and_run_detector_batch(model_file, 
+                                image_file_names, 
+                                checkpoint_path=None,
                                 confidence_threshold=run_detector.DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD,
-                                checkpoint_frequency=-1, results=None, n_cores=1,
-                                use_image_queue=False, quiet=False, image_size=None, 
-                                class_mapping_filename=None, include_image_size=False, 
-                                include_image_timestamp=False, include_exif_data=False):
+                                checkpoint_frequency=-1, 
+                                results=None, 
+                                n_cores=1,
+                                use_image_queue=False, 
+                                quiet=False, 
+                                image_size=None, 
+                                class_mapping_filename=None, 
+                                include_image_size=False, 
+                                include_image_timestamp=False, 
+                                include_exif_data=False,
+                                augment=False):
     """
     Load a model file and run it on a list of images.
     
@@ -498,7 +537,8 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
             file or YOLOv5 dataset.yaml file
         include_image_size (bool, optional): should we include image size in the output for each image?
         include_image_timestamp (bool, optional): should we include image timestamps in the output for each image?
-        include_exif_data (bool, optional): should we include EXIF data in the output for each image?        
+        include_exif_data (bool, optional): should we include EXIF data in the output for each image?
+        augment (bool, optional): enable image augmentation
         
     Returns:
         results: list of dicts; each dict represents detections on one image
@@ -582,12 +622,15 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
         assert len(results) == 0, \
             'Using an image queue with results loaded from a checkpoint is not currently supported'
         assert n_cores <= 1
-        results = run_detector_with_image_queue(image_file_names, model_file, 
-                                                confidence_threshold, quiet, 
+        results = run_detector_with_image_queue(image_file_names, 
+                                                model_file, 
+                                                confidence_threshold, 
+                                                quiet, 
                                                 image_size=image_size,
                                                 include_image_size=include_image_size,
                                                 include_image_timestamp=include_image_timestamp,
-                                                include_exif_data=include_exif_data)
+                                                include_exif_data=include_exif_data,
+                                                augment=augment)
         
     elif n_cores <= 1:
 
@@ -618,7 +661,8 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
                                    image_size=image_size, 
                                    include_image_size=include_image_size,
                                    include_image_timestamp=include_image_timestamp,
-                                   include_exif_data=include_exif_data)
+                                   include_exif_data=include_exif_data,
+                                   augment=augment)
             results.append(result)
 
             # Write a checkpoint if necessary
@@ -668,11 +712,14 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
             pool.map(partial(process_images, 
                              detector=detector,
                              confidence_threshold=confidence_threshold,
+                             use_image_queue=False,
+                             quiet=quiet,
                              image_size=image_size, 
+                             checkpoint_queue=checkpoint_queue,
                              include_image_size=include_image_size,
                              include_image_timestamp=include_image_timestamp,
                              include_exif_data=include_exif_data,
-                             checkpoint_queue=checkpoint_queue), 
+                             augment=augment), 
                              image_batches)
 
             checkpoint_queue.put(None)
@@ -684,10 +731,14 @@ def load_and_run_detector_batch(model_file, image_file_names, checkpoint_path=No
             new_results = pool.map(partial(process_images, 
                                            detector=detector,
                                            confidence_threshold=confidence_threshold,
+                                           use_image_queue=False,
+                                           quiet=quiet,
+                                           checkpoint_queue=None,
                                            image_size=image_size,
                                            include_image_size=include_image_size,
                                            include_image_timestamp=include_image_timestamp,
-                                           include_exif_data=include_exif_data), 
+                                           include_exif_data=include_exif_data,
+                                           augment=augment), 
                                            image_batches)
 
             new_results = list(itertools.chain.from_iterable(new_results))
@@ -776,9 +827,14 @@ def get_image_datetime(image):
         return None        
 
 
-def write_results_to_file(results, output_file, relative_path_base=None, 
-                          detector_file=None, info=None, include_max_conf=False,
-                          custom_metadata=None, force_forward_slashes=True):
+def write_results_to_file(results, 
+                          output_file, 
+                          relative_path_base=None, 
+                          detector_file=None, 
+                          info=None, 
+                          include_max_conf=False,
+                          custom_metadata=None, 
+                          force_forward_slashes=True):
     """
     Writes list of detection results to JSON output file. Format matches:
 
@@ -1003,7 +1059,12 @@ def main():
         '--image_size',
         type=int,
         default=None,
-        help=('Force image resizing to a (square) integer size (not recommended to change this)'))    
+        help=('Force image resizing to a specific integer size on the long axis (not recommended to change this)'))    
+    parser.add_argument(
+        '--augment',
+        action='store_true',
+        help='Enable image augmentation'
+    )
     parser.add_argument(
         '--use_image_queue',
         action='store_true',
@@ -1248,7 +1309,8 @@ def main():
                                           class_mapping_filename=args.class_mapping_filename,
                                           include_image_size=args.include_image_size,
                                           include_image_timestamp=args.include_image_timestamp,
-                                          include_exif_data=args.include_exif_data)
+                                          include_exif_data=args.include_exif_data,
+                                          augment=args.augment)
 
     elapsed = time.time() - start_time
     images_per_second = len(results) / elapsed

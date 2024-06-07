@@ -174,7 +174,6 @@ def visualize_detector_output(detector_output_path,
         f'Confidence threshold {confidence_threshold} is invalid, must be in (0, 1).')
     
     if 'detection_categories' in detector_output:
-        print('Using custom label mapping')
         detector_label_map = detector_output['detection_categories']
     else:
         detector_label_map = DEFAULT_DETECTOR_LABEL_MAP

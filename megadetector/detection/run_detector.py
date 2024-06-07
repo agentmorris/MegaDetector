@@ -394,7 +394,8 @@ def load_and_run_detector(model_file,
                           box_thickness=DEFAULT_BOX_THICKNESS, 
                           box_expansion=DEFAULT_BOX_EXPANSION,
                           image_size=None,
-                          label_font_size=DEFAULT_LABEL_FONT_SIZE                          
+                          label_font_size=DEFAULT_LABEL_FONT_SIZE,
+                          augment=False
                           ):
     r"""
     Loads and runs a detector on target images, and visualizes the results.
@@ -415,6 +416,7 @@ def load_and_run_detector(model_file,
             doing
         label_font_size (float, optional): font size to use for displaying class names
             and confidence values in the rendered images        
+        augment (bool, optional): enable (implementation-specific) image augmentation
     """
     
     if len(image_file_names) == 0:
@@ -506,9 +508,12 @@ def load_and_run_detector(model_file,
         try:
             start_time = time.time()
 
-            result = detector.generate_detections_one_image(image, im_file,
-                       detection_threshold=DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD,
-                       image_size=image_size)
+            result = detector.generate_detections_one_image(
+                image, 
+                im_file,
+                detection_threshold=DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD,
+                image_size=image_size,
+                augment=augment)
             detection_results.append(result)
 
             elapsed = time.time() - start_time
@@ -680,6 +685,12 @@ def main():
               'rather than adding bounding boxes to the original image'))
     
     parser.add_argument(
+        '--augment',
+        default=False,
+        action='store_true',
+        help=('Enable image augmentation'))
+    
+    parser.add_argument(
         '--box_thickness',
         type=int,
         default=DEFAULT_BOX_THICKNESS,
@@ -755,7 +766,8 @@ def main():
                           box_expansion=args.box_expansion,                          
                           crop_images=args.crop,
                           image_size=args.image_size,
-                          label_font_size=args.label_font_size)
+                          label_font_size=args.label_font_size,
+                          augment=args.augment)
 
 if __name__ == '__main__':
     main()
