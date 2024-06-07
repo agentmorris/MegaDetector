@@ -125,8 +125,13 @@ class TFDetector:
         return box_tensor_out, score_tensor_out, class_tensor_out
 
 
-    def generate_detections_one_image(self, image, image_id, detection_threshold, image_size=None,
-                                      skip_image_resizing=False):
+    def generate_detections_one_image(self, 
+                                      image, 
+                                      image_id, 
+                                      detection_threshold, 
+                                      image_size=None,
+                                      skip_image_resizing=False,
+                                      augment=False):
         """
         Runs the detector on an image.
 
@@ -139,7 +144,9 @@ class TFDetector:
                 if (a) you're using a model other than MegaDetector or (b) you know what you're
                 doing
             skip_image_resizing (bool, optional): whether to skip internal image resizing (and rely on external 
-                resizing)... not currently supported, but included here for compatibility with PTDetector.
+                resizing).  Not currently supported, but included here for compatibility with PTDetector.
+            augment (bool, optional): enable image augmentation.  Not currently  supported, but included 
+                here for compatibility with PTDetector.
 
         Returns:
             dict: a dictionary with the following fields:
@@ -151,6 +158,7 @@ class TFDetector:
         
         assert image_size is None, 'Image sizing not supported for TF detectors'
         assert not skip_image_resizing, 'Image sizing not supported for TF detectors'
+        assert not augment, 'Image augmentation is not supported for TF detectors'
         
         if detection_threshold is None:
             detection_threshold = 0
