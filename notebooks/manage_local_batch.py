@@ -147,7 +147,7 @@ scc = '#'
 script_extension = '.sh'
 
 # Stuff we stick into scripts to ensure early termination if there's an error
-script_header = '#!/bin/bash\n\nset -e'
+script_header = '#!/bin/bash\n\nset -e\n'
 
 # Include this after each command in a .sh/.bat file
 command_suffix = ''
@@ -521,7 +521,7 @@ for i_task,task in enumerate(task_info):
                             str(gpu_number).zfill(2),script_extension))
     
     with open(cmd_file,'w') as f:
-        if len(script_header) > 0:
+        if script_header is not None and len(script_header) > 0:
             f.write(script_header + '\n')
         f.write(cmd + '\n')
     
@@ -545,7 +545,7 @@ for i_task,task in enumerate(task_info):
                                        str(gpu_number).zfill(2),script_extension))
         
         with open(resume_cmd_file,'w') as f:
-            if len(script_header) > 0:
+            if script_header is not None and len(script_header) > 0:
                 f.write(script_header + '\n')
             f.write(resume_cmd + '\n')
         
@@ -565,6 +565,8 @@ for gpu_number in gpu_to_scripts:
     gpu_script_file = os.path.join(filename_base,'run_all_for_gpu_{}{}'.format(
         str(gpu_number).zfill(2),script_extension))
     with open(gpu_script_file,'w') as f:
+        if script_header is not None and len(script_header) > 0:
+            f.write(script_header + '\n')
         for script_name in gpu_to_scripts[gpu_number]:
             s = script_name
             # When calling a series of batch files on Windows from within a batch file, you need to
@@ -1016,7 +1018,7 @@ commands = []
 # commands.append('cd MegaDetector/megadetector/classification\n')
 # commands.append('mamba activate cameratraps-classifier\n')
 
-if len(script_header) > 0:
+if script_header is not None and len(script_header) > 0:
     commands.append(script_header)
 
 
@@ -1030,7 +1032,7 @@ for fn in input_files:
     input_file_path = fn
     crop_cmd = ''
     
-    crop_comment = '\n' + scc + ' Cropping {}\n'.format(fn)
+    crop_comment = '\n' + scc + ' Cropping {}\n\n'.format(fn)
     crop_cmd += crop_comment
     
     crop_cmd += "python crop_detections.py " + slcc + "\n" + \
@@ -1061,7 +1063,7 @@ for fn in input_files:
     
     classify_cmd = ''
     
-    classify_comment = '\n' + scc + ' Classifying {}\n'.format(fn)
+    classify_comment = '\n' + scc + ' Classifying {}\n\n'.format(fn)
     classify_cmd += classify_comment
     
     classify_cmd += "python run_classifier.py " + slcc + "\n" + \
@@ -1103,7 +1105,7 @@ for fn in input_files:
                                        
     remap_cmd = ''
     
-    remap_comment = '\n' + scc + ' Remapping {}\n'.format(fn)
+    remap_comment = '\n' + scc + ' Remapping {}\n\n'.format(fn)
     remap_cmd += remap_comment
     
     remap_cmd += "python aggregate_classifier_probs.py " + slcc + "\n" + \
@@ -1122,7 +1124,7 @@ for fn in input_files:
 
 ##%% Merge classification and detection outputs
 
-commands.append('\n' + scc + ' Merging ' + scc + '\n')
+commands.append('\n\n' + scc + ' Merging ' + scc + '\n')
 
 # fn = input_files[0]
 for fn in input_files:
@@ -1146,7 +1148,7 @@ for fn in input_files:
     
     merge_cmd = ''
     
-    merge_comment = '\n' + scc + ' Merging {}\n'.format(fn)
+    merge_comment = '\n' + scc + ' Merging {}\n\n'.format(fn)
     merge_cmd += merge_comment
     
     merge_cmd += "python merge_classification_detection_output.py " + slcc + "\n" + \
@@ -1221,7 +1223,7 @@ typical_classification_threshold_str = '0.75'
 ##%% Set up environment
 
 commands = []
-if len(script_header) > 0:
+if script_header is not None and len(script_header) > 0:
     commands.append(script_header)
 
 

@@ -6,6 +6,10 @@ channels:
 
 dependencies:
 - python>=3.7
+# Not imported directly, but we force this version to avoid this issue:
+#
+# https://github.com/pytorch/pytorch/issues/123097
+- mkl=2024.0
 - pytorch::pytorch=1.10.1
 - pytorch::torchvision=0.11.2
 - conda-forge::cudatoolkit=11.3.1
