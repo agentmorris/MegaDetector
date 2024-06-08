@@ -103,7 +103,7 @@ class ExifResultsToCCTOptions:
     
         #: Function for extracting location information, should take a string
         #: and return a string.  Defaults to ct_utils.image_file_to_camera_folder.  If
-        #: this is None, uses folder names as locations.
+        #: this is None, location is written as "unknown".
         self.filename_to_location_function = image_file_to_camera_folder
     
 
@@ -689,7 +689,7 @@ def exif_results_to_cct(exif_results,cct_output_file=None,options=None):
         
         # By default we assume that each leaf-node folder is a location
         if options.filename_to_location_function is None:
-            im['location'] = os.path.dirname(exif_result['file_name'])
+            im['location'] = 'unknown'
         else:
             im['location'] = options.filename_to_location_function(exif_result['file_name'])            
             
