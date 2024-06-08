@@ -117,15 +117,6 @@ include_exif_data = False
 # Only relevant when running on CPU
 ncores = 1
 
-# OS-specific script line continuation character (modified later if we're running on Windows)
-slcc = '\\'
-
-# OS-specific script comment character (modified later if we're running on Windows)
-scc = '#' 
-
-# # OS-specific script extension (modified later if we're running on Windows)
-script_extension = '.sh'
-
 # If False, we'll load chunk files with file lists if they exist
 force_enumeration = False
 
@@ -145,11 +136,30 @@ relative_path_to_location = image_file_to_camera_folder
 # we get to classification stuff, that will indicate that we didn't do RDE.
 filtered_output_filename = None
 
+
+# OS-specific script line continuation character (modified later if we're running on Windows)
+slcc = '\\'
+
+# OS-specific script comment character (modified later if we're running on Windows)
+scc = '#' 
+
+# # OS-specific script extension (modified later if we're running on Windows)
+script_extension = '.sh'
+
+# Stuff we stick into scripts to ensure early termination if there's an error
+script_header = '#!/bin/bash\n\nset -e'
+
+# Include this after each command in a .sh/.bat file
+command_suffix = ''
+
 if os.name == 'nt':
     
+    script_header = ''
     slcc = '^'
     scc = 'REM'
     script_extension = '.bat'
+
+    command_suffix = 'if %errorlevel% neq 0 exit /b %errorlevel%\n'
     
     # My experience has been that Python multiprocessing is flaky on Windows, so 
     # default to threads on Windows
@@ -511,6 +521,8 @@ for i_task,task in enumerate(task_info):
                             str(gpu_number).zfill(2),script_extension))
     
     with open(cmd_file,'w') as f:
+        if len(script_header) > 0:
+            f.write(script_header + '\n')
         f.write(cmd + '\n')
     
     st = os.stat(cmd_file)
@@ -533,6 +545,8 @@ for i_task,task in enumerate(task_info):
                                        str(gpu_number).zfill(2),script_extension))
         
         with open(resume_cmd_file,'w') as f:
+            if len(script_header) > 0:
+                f.write(script_header + '\n')
             f.write(resume_cmd + '\n')
         
         st = os.stat(resume_cmd_file)
@@ -1002,6 +1016,10 @@ commands = []
 # commands.append('cd MegaDetector/megadetector/classification\n')
 # commands.append('mamba activate cameratraps-classifier\n')
 
+if len(script_header) > 0:
+    commands.append(script_header)
+
+
 ##%% Crop images
 
 commands.append('\n' + scc + ' Cropping ' + scc + '\n')
@@ -1027,7 +1045,10 @@ for fn in input_files:
     crop_cmd = '{}'.format(crop_cmd)
     commands.append(crop_cmd)
 
-
+    if len(command_suffix) > 0:
+        commands.append(command_suffix)
+    
+    
 ##%% Run classifier
 
 commands.append('\n' + scc + ' Classifying ' + scc + '\n')
@@ -1059,7 +1080,10 @@ for fn in input_files:
     classify_cmd += '\n\n'        
     classify_cmd = '{}'.format(classify_cmd)
     commands.append(classify_cmd)
-		
+    
+    if len(command_suffix) > 0:
+        commands.append(command_suffix)
+
 
 ##%% Remap classifier outputs
 
@@ -1092,6 +1116,9 @@ for fn in input_files:
     remap_cmd = '{}'.format(remap_cmd)
     commands.append(remap_cmd)
     
+    if len(command_suffix) > 0:
+        commands.append(command_suffix)
+
 
 ##%% Merge classification and detection outputs
 
@@ -1134,8 +1161,11 @@ for fn in input_files:
     merge_cmd = '{}'.format(merge_cmd)
     commands.append(merge_cmd)
 
+    if len(command_suffix) > 0:
+        commands.append(command_suffix)
 
-##%% Write  out classification script
+
+##%% Write out classification script
 
 with open(output_file,'w') as f:
     for s in commands:
@@ -1191,6 +1221,8 @@ typical_classification_threshold_str = '0.75'
 ##%% Set up environment
 
 commands = []
+if len(script_header) > 0:
+    commands.append(script_header)
 
 
 ##%% Crop images
@@ -1217,6 +1249,9 @@ for fn in input_files:
          '\n'
     crop_cmd = '{}'.format(crop_cmd)
     commands.append(crop_cmd)
+
+    if len(command_suffix) > 0:
+        commands.append(command_suffix)
 
 
 ##%% Run classifier
@@ -1251,6 +1286,9 @@ for fn in input_files:
     classify_cmd = '{}'.format(classify_cmd)
     commands.append(classify_cmd)
 		
+    if len(command_suffix) > 0:
+        commands.append(command_suffix)
+
 
 ##%% Merge classification and detection outputs
 
@@ -1285,6 +1323,9 @@ for fn in input_files:
          '\n'
     merge_cmd = '{}'.format(merge_cmd)
     commands.append(merge_cmd)
+
+    if len(command_suffix) > 0:
+        commands.append(command_suffix)
 
 
 ##%% Write everything out
