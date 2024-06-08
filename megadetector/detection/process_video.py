@@ -12,8 +12,6 @@ writing them to disk.  The upside, though, is that this approach allows you to r
 detection elimination after running MegaDetector, and it allows allows more efficient re-use
 of frames if you end up running MD more than once, or running multiple versions of MD.
 
-TODO: optionally skip writing frames to disk, and process frames in memory.
-
 """
 
 #%% Imports
@@ -36,6 +34,7 @@ from megadetector.utils.path_utils import insert_before_extension, clean_path
 from megadetector.detection.video_utils import video_to_frames
 from megadetector.detection.video_utils import frames_to_video
 from megadetector.detection.video_utils import frame_results_to_video_results
+from megadetector.detection.video_utils import _add_frame_numbers_to_results
 from megadetector.detection.video_utils import video_folder_to_frames
 from megadetector.detection.video_utils import default_fourcc
 
@@ -71,7 +70,7 @@ class ProcessVideoOptions:
         #: if this is None
         self.frame_folder = None
         
-        # Folder to use for rendered frames (if rendering output video); will use a folder 
+        #: Folder to use for rendered frames (if rendering output video); will use a folder 
         #: in system temp space if this is None
         self.frame_rendering_folder = None
         
@@ -116,6 +115,10 @@ class ProcessVideoOptions:
         #: fourcc code to use for writing videos; only relevant if render_output_video is True
         self.fourcc = None
     
+        #: force a specific frame rate for output videos; only relevant if render_output_video 
+        #: is True
+        self.rendering_fs = None
+        
         #: Confidence threshold to use for writing videos with boxes, only relevant if
         #: if render_output_video is True.  Defaults to choosing a reasonable threshold
         #: based on the model version.
@@ -148,6 +151,13 @@ class ProcessVideoOptions:
         
         #: Resize frames so they're at most this wide
         self.max_width = None
+        
+        #: Run the model at this image size (don't mess with this unless you know what you're
+        #: getting into)
+        self.image_size = None
+        
+        #: Enable image augmentation
+        self.augment = False
     
 # ...class ProcessVideoOptions
 
@@ -355,12 +365,17 @@ def process_video(options):
                 results = json.load(f)
     else:
         results = run_detector_batch.load_and_run_detector_batch(
-            options.model_file, image_file_names,
+            options.model_file, 
+            image_file_names,
             confidence_threshold=options.json_confidence_threshold,
             n_cores=options.n_cores,
             class_mapping_filename=options.class_mapping_filename,
-            quiet=True)
-    
+            quiet=True,
+            augment=options.augment,
+            image_size=options.image_size)
+        
+        _add_frame_numbers_to_results(results)
+        
         run_detector_batch.write_results_to_file(
             results, options.output_json_file,
             relative_path_base=frame_output_folder,
@@ -387,14 +402,20 @@ def process_video(options):
             confidence_threshold=options.rendering_confidence_threshold)
 
         # Combine into a video
-        if options.frame_sample is None:
+        if options.rendering_fs is not None:
+            rendering_fs = options.rendering_fs
+        elif options.frame_sample is None:
             rendering_fs = Fs
         else:
+            # If the original video was 30fps and we sampled every 10th frame, 
+            # render at 3fps
             rendering_fs = Fs / options.frame_sample
             
         print('Rendering {} frames to {} at {} fps (original video {} fps)'.format(
             len(detected_frame_files), options.output_video_file,rendering_fs,Fs))
-        frames_to_video(detected_frame_files, rendering_fs, options.output_video_file, 
+        frames_to_video(detected_frame_files, 
+                        rendering_fs, 
+                        options.output_video_file, 
                         codec_spec=options.fourcc)
         
         # Possibly clean up rendered frames
@@ -413,6 +434,11 @@ def process_video_folder(options):
     """
     Process a folder of videos through MD. Can also be used just to split a folder of
     videos into frames, without running a model.
+    
+    When this function is used to run MD, two .json files will get written, one with 
+    an entry for each *frame* (identical to what's created by process_video()), and
+    one with an entry for each *video* (which is more suitable for, e.g., reading into
+    Timelapse).
     
     Args: 
         options (ProcessVideoOptions): all the parameters used to control this process,
@@ -495,12 +521,17 @@ def process_video_folder(options):
     else:
         print('Running MegaDetector')
         results = run_detector_batch.load_and_run_detector_batch(
-            options.model_file, image_file_names,
+            options.model_file, 
+            image_file_names,
             confidence_threshold=options.json_confidence_threshold,
             n_cores=options.n_cores,
             class_mapping_filename=options.class_mapping_filename,
-            quiet=True)
+            quiet=True,
+            augment=options.augment,
+            image_size=options.image_size)
     
+        _add_frame_numbers_to_results(results)
+        
         run_detector_batch.write_results_to_file(
             results, frames_json,
             relative_path_base=frame_output_folder,
@@ -559,9 +590,13 @@ def process_video_folder(options):
             
             video_fs = Fs[i_video]
             
-            if options.frame_sample is None:                
+            if options.rendering_fs is not None:
+                rendering_fs = options.rendering_fs
+            elif options.frame_sample is None:                
                 rendering_fs = video_fs
             else:
+                # If the original video was 30fps and we sampled every 10th frame, 
+                # render at 3fps                
                 rendering_fs = video_fs / options.frame_sample
             
             input_video_file_relative = os.path.relpath(input_video_file_abs,options.input_video_file)
@@ -588,7 +623,10 @@ def process_video_folder(options):
             # Create the output video            
             print('Rendering detections for video {} to {} at {} fps (original video {} fps)'.format(
                 input_video_file_relative,video_output_file,rendering_fs,video_fs))
-            frames_to_video(video_frame_files, rendering_fs, video_output_file, codec_spec=options.fourcc)
+            frames_to_video(video_frame_files, 
+                            rendering_fs, 
+                            video_output_file, 
+                            codec_spec=options.fourcc)
                 
         # ...for each video
         
@@ -680,6 +718,8 @@ def options_to_command(options):
 
 if False:    
         
+    pass
+
     #%% Process a folder of videos
     
     model_file = 'MDV5A'
@@ -705,30 +745,26 @@ if False:
     options.max_width = 1280
     options.n_cores = 5
     options.verbose = True
-    options.render_output_video = True
-    
-    options.frame_folder = None # frame_folder
-    options.frame_rendering_folder = None # rendering_folder
-    
-    options.keep_extracted_frames = False
-    options.keep_rendered_frames = False
-    options.force_extracted_frame_folder_deletion = True
-    options.force_rendered_frame_folder_deletion = True
-    
-    # options.confidence_threshold = 0.15
+    options.render_output_video = True    
+    options.frame_folder = frame_folder
+    options.frame_rendering_folder = rendering_folder    
+    options.keep_extracted_frames = True
+    options.keep_rendered_frames = True
+    options.force_extracted_frame_folder_deletion = False
+    options.force_rendered_frame_folder_deletion = False
     options.fourcc = 'mp4v'
+    # options.rendering_confidence_threshold = 0.15
     
     cmd = options_to_command(options); print(cmd)
         
-    import clipboard; clipboard.copy(cmd)
-    
-    if False:
-        process_video_folder(options)
+    # import clipboard; clipboard.copy(cmd)
+    process_video_folder(options)
         
     
     #%% Process a single video
 
     fn = r'g:\temp\test-videos\person_and_dog\DSCF0056.AVI'
+    assert os.path.isfile(fn)
     model_file = 'MDV5A'
     input_video_file = fn
     
@@ -736,37 +772,31 @@ if False:
     frame_folder = os.path.join(output_base,'frames')
     rendering_folder = os.path.join(output_base,'rendered-frames')
     output_json_file = os.path.join(output_base,'video-test.json')
-    output_video_file = os.path.join(output_base,'output_videos.mp4')
+    output_video_file = os.path.join(output_base,'output_video.mp4')
     
     options = ProcessVideoOptions()
     options.model_file = model_file
     options.input_video_file = input_video_file
     options.render_output_video = True
     options.output_video_file = output_video_file
-    
-    options.verbose = True
-    
+    options.output_json_file = output_json_file    
+    options.verbose = True    
     options.quality = 75
-    options.frame_sample = None # 10
-    options.max_width = 600
-    
-    options.frame_folder = None # frame_folder
-    options.frame_rendering_folder = None # rendering_folder
-    
+    options.frame_sample = 10
+    options.max_width = 1600    
+    options.frame_folder = frame_folder
+    options.frame_rendering_folder = rendering_folder    
     options.keep_extracted_frames = False
     options.keep_rendered_frames = False
     options.force_extracted_frame_folder_deletion = True
-    options.force_rendered_frame_folder_deletion = True
-    
-    # options.confidence_threshold = 0.15
+    options.force_rendered_frame_folder_deletion = True    
     options.fourcc = 'mp4v'
+    # options.rendering_confidence_threshold = 0.15
     
     cmd = options_to_command(options); print(cmd)
     
-    import clipboard; clipboard.copy(cmd)
-    
-    if False:        
-        process_video(options)    
+    # import clipboard; clipboard.copy(cmd)    
+    process_video(options)
             
     
     #%% Extract specific frames from a single video, no detection
@@ -787,17 +817,14 @@ if False:
     options.quality = 90
     options.frame_sample = None
     options.frames_to_extract = [0,100]
-    options.max_width = None
-    
+    options.max_width = None    
     options.frame_folder = frame_folder
     options.keep_extracted_frames = True
     
     cmd = options_to_command(options); print(cmd)
     
-    import clipboard; clipboard.copy(cmd)
-    
-    if False:        
-        process_video(options)    
+    # import clipboard; clipboard.copy(cmd)
+    process_video(options)    
         
         
     #%% Extract specific frames from a folder, no detection
@@ -818,17 +845,15 @@ if False:
     options.quality = 90
     options.frame_sample = None
     options.frames_to_extract = [0,100]
-    options.max_width = None
-    
+    options.max_width = None    
     options.frame_folder = frame_folder
     options.keep_extracted_frames = True
     
     cmd = options_to_command(options); print(cmd)
     
-    import clipboard; clipboard.copy(cmd)
-    
-    if False:        
-        process_video(options)    
+    # import clipboard; clipboard.copy(cmd)
+    process_video(options)    
+
         
 #%% Command-line driver
 
@@ -899,7 +924,13 @@ def main():
                            'whether other files were present in the folder.')
         
     parser.add_argument('--rendering_confidence_threshold', type=float,
-                        default=None, help="don't render boxes with confidence below this threshold (defaults to choosing based on the MD version)")
+                        default=None, 
+                        help="don't render boxes with confidence below this threshold (defaults to choosing based on the MD version)")
+
+    parser.add_argument('--rendering_fs', type=float,
+                        default=None, 
+                        help='force a specific frame rate for output videos (only relevant when using '\
+                             '--render_output_video) (defaults to the original frame rate)')
 
     parser.add_argument('--json_confidence_threshold', type=float,
                         default=0.0, help="don't include boxes in the .json file with confidence "\
@@ -942,7 +973,16 @@ def main():
     parser.add_argument('--verbose', action='store_true',
                         help='Enable additional debug output')
     
-        
+    parser.add_argument('--image_size',
+                        type=int,
+                        default=None,
+                        help=('Force image resizing to a specific integer size on the long '\
+                              'axis (not recommended to change this)'))    
+    
+    parser.add_argument('--augment',
+                        action='store_true',
+                        help='Enable image augmentation')
+            
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()

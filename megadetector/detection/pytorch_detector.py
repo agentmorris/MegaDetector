@@ -180,9 +180,12 @@ class PTDetector:
             
         return model
 
-    def generate_detections_one_image(self, img_original, image_id='unknown', 
-                                      detection_threshold=0.00001, image_size=None,
-                                      skip_image_resizing=False):
+    def generate_detections_one_image(self, img_original, 
+                                      image_id='unknown', 
+                                      detection_threshold=0.00001, 
+                                      image_size=None,
+                                      skip_image_resizing=False,
+                                      augment=False):
         """
         Applies the detector to an image.
 
@@ -192,11 +195,11 @@ class PTDetector:
                 of the output object
             detection_threshold (float, optional): only detections above this confidence threshold 
                 will be included in the return value
-            image_size (tuple, optional): image size to use for inference, only mess with this
-                if (a) you're using a model other than MegaDetector or (b) you know what you're
-                doing
-            skip_image_resizing (bool, optional): whether to skip internal image resizing (and rely on external 
-                resizing)
+            image_size (tuple, optional): image size to use for inference, only mess with this if 
+                (a) you're using a model other than MegaDetector or (b) you know what you're getting into
+            skip_image_resizing (bool, optional): whether to skip internal image resizing (and rely on 
+                external resizing)
+            augment (bool, optional): enable (implementation-specific) image augmentation
 
         Returns:
             dict: a dictionary with the following fields:
@@ -242,8 +245,10 @@ class PTDetector:
             if skip_image_resizing:
                 img = img_original
             else:
-                letterbox_result = letterbox(img_original, new_shape=target_size,
-                                stride=PTDetector.STRIDE, auto=True)
+                letterbox_result = letterbox(img_original, 
+                                             new_shape=target_size,
+                                             stride=PTDetector.STRIDE, 
+                                             auto=True)
                 img = letterbox_result[0]                
             
             # HWC to CHW; PIL Image is RGB already
@@ -258,7 +263,7 @@ class PTDetector:
             if len(img.shape) == 3:  
                 img = torch.unsqueeze(img, 0)
 
-            pred: list = self.model(img)[0]
+            pred = self.model(img,augment=augment)[0]
 
             # NMS
             if self.device == 'mps':
