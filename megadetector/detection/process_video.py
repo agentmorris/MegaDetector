@@ -70,7 +70,7 @@ class ProcessVideoOptions:
         #: if this is None
         self.frame_folder = None
         
-        # Folder to use for rendered frames (if rendering output video); will use a folder 
+        #: Folder to use for rendered frames (if rendering output video); will use a folder 
         #: in system temp space if this is None
         self.frame_rendering_folder = None
         
