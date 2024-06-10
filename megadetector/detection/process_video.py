@@ -933,12 +933,14 @@ def main():
                              '--render_output_video) (defaults to the original frame rate)')
 
     parser.add_argument('--json_confidence_threshold', type=float,
-                        default=0.0, help="don't include boxes in the .json file with confidence "\
+                        default=default_options.json_confidence_threshold, 
+                        help="don't include boxes in the .json file with confidence "\
                             'below this threshold (default {})'.format(
                                 default_options.json_confidence_threshold))
 
     parser.add_argument('--n_cores', type=int,
-                        default=1, help='Number of cores to use for frame separation and detection. '\
+                        default=default_options.n_cores,
+                        help='Number of cores to use for frame separation and detection. '\
                             'If using a GPU, this option will be respected for frame separation but '\
                             'ignored for detection.  Only relevant to frame separation when processing '\
                             'a folder.')

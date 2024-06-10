@@ -30,8 +30,11 @@ CONF_DIGITS = 3
 
 #%% Conversion functions
 
-def convert_json_to_csv(input_path,output_path=None,min_confidence=None,
-                        omit_bounding_boxes=False,output_encoding=None,
+def convert_json_to_csv(input_path,
+                        output_path=None,
+                        min_confidence=None,
+                        omit_bounding_boxes=False,
+                        output_encoding=None,
                         overwrite=True):
     """
     Converts a MD results .json file to a totally non-standard .csv format.
@@ -76,9 +79,9 @@ def convert_json_to_csv(input_path,output_path=None,min_confidence=None,
     # n_non_empty_detection_categories = len(annotation_constants.annotation_bbox_categories) - 1
     n_non_empty_detection_categories = annotation_constants.NUM_DETECTOR_CATEGORIES
     detection_category_column_names = []
-    assert annotation_constants.detector_bbox_categories[0] == 'empty'
+    assert annotation_constants.detector_bbox_category_id_to_name[0] == 'empty'
     for cat_id in range(1,n_non_empty_detection_categories+1):
-        cat_name = annotation_constants.detector_bbox_categories[cat_id]
+        cat_name = annotation_constants.detector_bbox_category_id_to_name[cat_id]
         detection_category_column_names.append('max_conf_' + cat_name)
     
     n_classification_categories = 0
@@ -370,6 +373,8 @@ def main():
     parser.add_argument('--output_path',type=str,default=None,
                         help='Output filename ending in .json or .csv (defaults to ' + \
                              'input file, with .json/.csv replaced by .csv/.json)')
+    parser.add_argument('--omit_bounding_boxes',action='store_true',
+                        help='Output bounding box text from .csv output (large and usually not useful)')        
     
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -386,9 +391,11 @@ def main():
             raise ValueError('Illegal input file extension')    
     
     if args.input_path.endswith('.csv') and args.output_path.endswith('.json'):
+        assert not args.omit_bounding_boxes, \
+            '--omit_bounding_boxes does not apply to csv --> json conversion'
         convert_csv_to_json(args.input_path,args.output_path)
     elif args.input_path.endswith('.json') and args.output_path.endswith('.csv'):
-        convert_json_to_csv(args.input_path,args.output_path)
+        convert_json_to_csv(args.input_path,args.output_path,omit_bounding_boxes=args.omit_bounding_boxes)
     else:
         raise ValueError('Illegal format combination')            
 
