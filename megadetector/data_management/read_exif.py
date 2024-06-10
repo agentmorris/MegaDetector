@@ -16,7 +16,7 @@ path.  No attempt is made to be consistent in format across the two approaches.
 import os
 import subprocess
 import json
-from datetime import datetime
+from datetime import date, datetime
 
 from multiprocessing.pool import ThreadPool as ThreadPool
 from multiprocessing.pool import Pool as Pool
@@ -738,9 +738,15 @@ def exif_results_to_cct(exif_results,cct_output_file=None,options=None):
     d['annotations'] = []
     d['categories'] = []
     
+    def json_serialize_datetime(obj):
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        raise TypeError('Object {} (type {}) not serializable'.format(
+            str(obj),type(obj)))
+        
     if cct_output_file is not None:
         with open(cct_output_file,'w') as f:
-            json.dump(d,indent=1)
+            json.dump(d,f,indent=1,default=json_serialize_datetime)
     
     return d
 
