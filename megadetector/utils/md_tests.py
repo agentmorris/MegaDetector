@@ -10,6 +10,8 @@ This module should not depend on anything else in this repo outside of the
 tests themselves, even if it means some duplicated code (e.g. for downloading files),
 since much of what it tries to test is, e.g., imports.
 
+"Correctness" is determined by agreement with a file that this script fetches from lila.science.
+
 """
 
 #%% Imports and constants
@@ -108,7 +110,9 @@ class MDTestOptions:
 
 def get_expected_results_filename(gpu_is_available,
                                   model_string='mdv5a',
-                                  test_type='images'):
+                                  test_type='image',
+                                  augment=False,
+                                  options=None):
     """
     Expected results vary just a little across inference environments, particularly
     between PT 1.x and 2.x, so when making sure things are working acceptably, we 
@@ -150,7 +154,21 @@ def get_expected_results_filename(gpu_is_available,
     except Exception:
         pass
     
-    return '{}-{}-results-{}-{}.json'.format(model_string,test_type,hw_string,pt_string)
+    aug_string = ''
+    if augment:
+        aug_string = 'augment-'
+        
+    fn = '{}-{}{}-{}-{}.json'.format(model_string,aug_string,test_type,hw_string,pt_string)
+    
+    from megadetector.utils.path_utils import insert_before_extension
+    
+    if test_type == 'video':
+        fn = insert_before_extension(fn,'frames')
+    
+    if options is not None and options.scratch_dir is not None:
+        fn = os.path.join(options.scratch_dir,fn)
+        
+    return fn
     
     
 def download_test_data(options=None):
@@ -220,7 +238,12 @@ def download_test_data(options=None):
             
     # ...for each file in the zipfile
     
-    # Warn if file are present that aren't expected
+    try:
+        zipf.close()
+    except Exception as e:
+        print('Warning: error closing zipfile:\n{}'.format(str(e)))
+        
+    # Warn if files are present that aren't expected
     test_files = glob.glob(os.path.join(scratch_dir,'**/*'), recursive=True)
     test_files = [os.path.relpath(fn,scratch_dir).replace('\\','/') for fn in test_files]
     test_files_set = set(test_files)
@@ -336,6 +359,100 @@ def output_files_are_identical(fn1,fn2,verbose=False):
 # ...def output_files_are_identical(...)
    
 
+def compare_results(inference_output_file,expected_results_file,options):
+    """
+    Compare two MD-formatted output files that should be nearly identical, allowing small
+    changes (e.g. rounding differences).  Generally used to compare a new results file to 
+    an expected results file.
+    
+    Args:
+        inference_output_file (str): the first results file to compare
+        expected_results_file (str): the second results file to compare
+        options (MDTestOptions): options that determine tolerable differences between files
+    """
+    
+    # Read results
+    with open(inference_output_file,'r') as f:
+        results_from_file = json.load(f) # noqa
+    
+    with open(os.path.join(options.scratch_dir,expected_results_file),'r') as f:
+        expected_results = json.load(f)
+            
+    filename_to_results = {im['file'].replace('\\','/'):im for im in results_from_file['images']}
+    filename_to_results_expected = {im['file'].replace('\\','/'):im for im in expected_results['images']}
+    
+    assert len(filename_to_results) == len(filename_to_results_expected), \
+        'Error: expected {} files in results, found {}'.format(
+            len(filename_to_results_expected),
+            len(filename_to_results))
+    
+    max_coord_error = 0
+    max_conf_error = 0
+    
+    # fn = next(iter(filename_to_results.keys()))
+    for fn in filename_to_results.keys():
+                
+        actual_image_results = filename_to_results[fn]
+        expected_image_results = filename_to_results_expected[fn]
+        
+        if 'failure' in actual_image_results:
+            assert 'failure' in expected_image_results and \
+                'detections' not in actual_image_results and \
+                'detections' not in expected_image_results
+            continue
+        assert 'failure' not in expected_image_results
+        
+        actual_detections = actual_image_results['detections']
+        expected_detections = expected_image_results['detections']
+        
+        s = 'expected {} detections for file {}, found {}'.format(
+            len(expected_detections),fn,len(actual_detections))
+        s += '\nExpected results file: {}\nActual results file: {}'.format(
+            expected_results_file,inference_output_file)
+        
+        if options.warning_mode:
+            if len(actual_detections) != len(expected_detections):
+                print('Warning: {}'.format(s))
+            continue
+        assert len(actual_detections) == len(expected_detections), \
+            'Error: {}'.format(s)
+        
+        # i_det = 0
+        for i_det in range(0,len(actual_detections)):
+            actual_det = actual_detections[i_det]
+            expected_det = expected_detections[i_det]
+            assert actual_det['category'] == expected_det['category']
+            conf_err = abs(actual_det['conf'] - expected_det['conf'])
+            coord_differences = []
+            for i_coord in range(0,4):
+                coord_differences.append(abs(actual_det['bbox'][i_coord]-expected_det['bbox'][i_coord]))
+            coord_err = max(coord_differences)
+            
+            if conf_err > max_conf_error:
+                max_conf_error = conf_err
+            if coord_err > max_coord_error:
+                max_coord_error = coord_err
+        
+        # ...for each detection
+        
+    # ...for each image
+    
+    if not options.warning_mode:
+        
+        assert max_conf_error <= options.max_conf_error, \
+            'Confidence error {} is greater than allowable ({})'.format(
+                max_conf_error,options.max_conf_error)
+        
+        assert max_coord_error <= options.max_coord_error, \
+            'Coord error {} is greater than allowable ({})'.format(
+                max_coord_error,options.max_coord_error)
+        
+    print('Max conf error: {}'.format(max_conf_error))
+    print('Max coord error: {}'.format(max_coord_error))
+    
+# ...def compare_results(...)
+
+
 def _args_to_object(args, obj):
     """
     Copies all fields from a Namespace (typically the output from parse_args) to an
@@ -449,6 +566,8 @@ def run_python_tests(options):
 
     
     ## Run inference on a folder
+
+    print('\n** Running MD on images **\n')
     
     from megadetector.detection.run_detector_batch import load_and_run_detector_batch,write_results_to_file
     from megadetector.utils import path_utils
@@ -458,95 +577,38 @@ def run_python_tests(options):
     inference_output_file = os.path.join(options.scratch_dir,'folder_inference_output.json')
     image_file_names = path_utils.find_images(image_folder,recursive=True)
     results = load_and_run_detector_batch(options.default_model, image_file_names, quiet=True)
-    _ = write_results_to_file(results,inference_output_file,
-                              relative_path_base=image_folder,detector_file=options.default_model)
+    _ = write_results_to_file(results,
+                              inference_output_file,
+                              relative_path_base=image_folder,
+                              detector_file=options.default_model)
 
-    # Read results
-    with open(inference_output_file,'r') as f:
-        results_from_file = json.load(f) # noqa
     
-
     ## Verify results
 
-    # Read expected results
-    expected_results_filename = get_expected_results_filename(is_gpu_available(verbose=False))
-    
-    with open(os.path.join(options.scratch_dir,expected_results_filename),'r') as f:
-        expected_results = json.load(f)
-            
-    filename_to_results = {im['file'].replace('\\','/'):im for im in results_from_file['images']}
-    filename_to_results_expected = {im['file'].replace('\\','/'):im for im in expected_results['images']}
-    
-    assert len(filename_to_results) == len(filename_to_results_expected), \
-        'Error: expected {} files in results, found {}'.format(
-            len(filename_to_results_expected),
-            len(filename_to_results))
-    
-    max_coord_error = 0
-    max_conf_error = 0
-    
-    # fn = next(iter(filename_to_results.keys()))
-    for fn in filename_to_results.keys():
-                
-        actual_image_results = filename_to_results[fn]
-        expected_image_results = filename_to_results_expected[fn]
+    expected_results_file = get_expected_results_filename(is_gpu_available(verbose=False),
+                                                          options=options)
+    compare_results(inference_output_file,expected_results_file,options)
         
-        if 'failure' in actual_image_results:
-            assert 'failure' in expected_image_results and \
-                'detections' not in actual_image_results and \
-                'detections' not in expected_image_results
-            continue
-        assert 'failure' not in expected_image_results
-        
-        actual_detections = actual_image_results['detections']
-        expected_detections = expected_image_results['detections']
-        
-        s = 'expected {} detections for file {}, found {}'.format(
-            len(expected_detections),fn,len(actual_detections))
-        s += '\nExpected results file: {}\nActual results file: {}'.format(
-            expected_results_filename,inference_output_file)
-        
-        if options.warning_mode:
-            if len(actual_detections) != len(expected_detections):
-                print('Warning: {}'.format(s))
-            continue
-        assert len(actual_detections) == len(expected_detections), \
-            'Error: {}'.format(s)
-        
-        # i_det = 0
-        for i_det in range(0,len(actual_detections)):
-            actual_det = actual_detections[i_det]
-            expected_det = expected_detections[i_det]
-            assert actual_det['category'] == expected_det['category']
-            conf_err = abs(actual_det['conf'] - expected_det['conf'])
-            coord_differences = []
-            for i_coord in range(0,4):
-                coord_differences.append(abs(actual_det['bbox'][i_coord]-expected_det['bbox'][i_coord]))
-            coord_err = max(coord_differences)
-            
-            if conf_err > max_conf_error:
-                max_conf_error = conf_err
-            if coord_err > max_coord_error:
-                max_coord_error = coord_err
-        
-        # ...for each detection
-        
-    # ...for each image
-    
-    if not options.warning_mode:
-        
-        assert max_conf_error <= options.max_conf_error, \
-            'Confidence error {} is greater than allowable ({})'.format(
-                max_conf_error,options.max_conf_error)
-        
-        assert max_coord_error <= options.max_coord_error, \
-            'Coord error {} is greater than allowable ({})'.format(
-                max_coord_error,options.max_coord_error)
-        
-    print('Max conf error: {}'.format(max_conf_error))
-    print('Max coord error: {}'.format(max_coord_error))
 
+    ## Run and verify again with augmentation enabled
+    
+    print('\n** Running MD on images with augmentation **\n')
+    
+    from megadetector.utils.path_utils import insert_before_extension
+    
+    inference_output_file_augmented = insert_before_extension(inference_output_file,'augmented')
+    results = load_and_run_detector_batch(options.default_model, image_file_names, quiet=True, augment=True)
+    _ = write_results_to_file(results,
+                              inference_output_file_augmented,
+                              relative_path_base=image_folder,
+                              detector_file=options.default_model)
 
+    expected_results_file_augmented = \
+        get_expected_results_filename(is_gpu_available(verbose=False),
+                                      augment=True,options=options)
+    compare_results(inference_output_file_augmented,expected_results_file_augmented,options)
+        
+    
     ## Postprocess results
     
     from megadetector.postprocessing.postprocess_batch_results import \
@@ -647,6 +709,8 @@ def run_python_tests(options):
         
         ## Video test (single video)
        
+        print('\n** Running MD on a single video **\n')
+        
         from megadetector.detection.process_video import ProcessVideoOptions, process_video
         
         video_options = ProcessVideoOptions()
@@ -668,7 +732,7 @@ def run_python_tests(options):
         video_options.fourcc = options.video_fourcc
         # video_options.rendering_confidence_threshold = None
         # video_options.json_confidence_threshold = 0.005
-        video_options.frame_sample = 5    
+        video_options.frame_sample = 10
         video_options.n_cores = 5
         # video_options.debug_max_frames = -1
         # video_options.class_mapping_filename = None
@@ -682,6 +746,8 @@ def run_python_tests(options):
             
         
         ## Video test (folder)
+        
+        print('\n** Running MD on a folder of videos **\n')
         
         from megadetector.detection.process_video import ProcessVideoOptions, process_video_folder
         
@@ -705,15 +771,30 @@ def run_python_tests(options):
         video_options.fourcc = options.video_fourcc
         # video_options.rendering_confidence_threshold = None
         # video_options.json_confidence_threshold = 0.005
-        video_options.frame_sample = 5    
-        video_options.n_cores = 5
+        video_options.frame_sample = 10  
+        video_options.n_cores = 5        
         # video_options.debug_max_frames = -1
         # video_options.class_mapping_filename = None
+        
+        # Use quality == None, because we can't control whether YOLOv5 has patched cm2.imread,
+        # and therefore can't rely on using the quality parameter
+        video_options.quality = None        
         
         _ = process_video_folder(video_options)
     
         assert os.path.isfile(video_options.output_json_file), \
             'Python video test failed to render output .json file'
+            
+        frame_output_file = insert_before_extension(video_options.output_json_file,'frames')
+        assert os.path.isfile(frame_output_file)
+        
+        
+        ## Verify results
+        
+        expected_results_file = \
+            get_expected_results_filename(is_gpu_available(verbose=False),test_type='video',options=options)
+        assert os.path.isfile(expected_results_file)
+        compare_results(frame_output_file,expected_results_file,options)
         
     # ...if we're not skipping video tests
     
@@ -925,7 +1006,7 @@ def run_cli_tests(options):
         results_from_file = json.load(f) # noqa
         
     
-    ## Run inference on a folder (augmented)
+    ## Run inference on a folder (augmented, w/YOLOv5 val script)
     
     if options.yolo_working_dir is None:
         
@@ -1218,3 +1299,37 @@ python md_tests.py --cli_working_dir "/mnt/c/git/MegaDetector" --yolo_working_di
 
 python -c "import md_tests; print(md_tests.get_expected_results_filename(True))"
 """
+
+
+#%% Scrap
+
+if False:
+
+    pass
+
+    #%%
+    
+    import sys; sys.path.append(r'c:\git\yolov5-md')
+    
+    #%%
+    
+    fn1 = r"G:\temp\md-test-package\mdv5a-video-cpu-pt1.10.1.frames.json"
+    fn2 = r"G:\temp\md-test-package\mdv5a-video-gpu-pt1.10.1.frames.json"
+    fn3 = r"G:\temp\md-test-package\mdv5a-video-cpu-pt2.x.frames.json"
+    fn4 = r"G:\temp\md-test-package\mdv5a-video-gpu-pt2.x.frames.json"
+    
+    assert all([os.path.isfile(fn) for fn in [fn1,fn2,fn3,fn4]])
+    print(output_files_are_identical(fn1,fn1,verbose=False))
+    print(output_files_are_identical(fn1,fn2,verbose=False))
+    print(output_files_are_identical(fn1,fn3,verbose=False))
+    
+    #%%
+    
+    fn1 = r"G:\temp\md-test-package\mdv5a-image-gpu-pt1.10.1.json"
+    fn2 = r"G:\temp\md-test-package\mdv5a-augment-image-gpu-pt1.10.1.json"
+    print(output_files_are_identical(fn1,fn2,verbose=True))
+    
+    fn1 = r"G:\temp\md-test-package\mdv5a-image-cpu-pt1.10.1.json"
+    fn2 = r"G:\temp\md-test-package\mdv5a-augment-image-cpu-pt1.10.1.json"
+    print(output_files_are_identical(fn1,fn2,verbose=True))
+    

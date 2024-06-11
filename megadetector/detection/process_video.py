@@ -146,7 +146,7 @@ class ProcessVideoOptions:
         #: detector.
         self.class_mapping_filename = None
         
-        #: JPEG quality for frame output, from 0-100.  Defaults to the opencv default (typically 95)
+        #: JPEG quality for frame output, from 0-100.  Use None or -1 to let opencv decide.
         self.quality = 90
         
         #: Resize frames so they're at most this wide
@@ -957,7 +957,7 @@ def main():
 
     parser.add_argument('--quality', type=int,
                         default=default_options.quality, 
-                        help='JPEG quality for extracted frames (defaults to {})'.format(
+                        help='JPEG quality for extracted frames (defaults to {}), use -1 to force no quality setting'.format(
                             default_options.quality))
 
     parser.add_argument('--max_width', type=int,

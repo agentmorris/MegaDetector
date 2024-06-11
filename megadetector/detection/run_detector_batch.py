@@ -748,8 +748,13 @@ def load_and_run_detector_batch(model_file,
             results += new_results
 
         # ...if checkpointing is/isn't enabled
-        
-    # ...if we're running (1) with image queue, (2) on one core, (3) on multiple cores
+    
+        try:
+            pool.close()
+        except Exception as e:
+            print('Warning: error closing multiprocessing pool:\n{}'.format(str(e)))
+                
+    # ...if we're running (1) with image queue, (2) on one core, or (3) on multiple cores
     
     # 'results' may have been modified in place, but we also return it for
     # backwards-compatibility.

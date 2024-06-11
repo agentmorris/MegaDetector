@@ -250,6 +250,9 @@ def video_to_frames(input_video_file,
     
     assert os.path.isfile(input_video_file), 'File {} not found'.format(input_video_file)
     
+    if quality is not None and quality < 0:
+        quality = None
+        
     if isinstance(frames_to_extract,int):
         frames_to_extract = [frames_to_extract]
         
