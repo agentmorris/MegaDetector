@@ -106,7 +106,9 @@ class MDTestOptions:
 
 #%% Support functions
 
-def get_expected_results_filename(gpu_is_available):
+def get_expected_results_filename(gpu_is_available,
+                                  model_string='mdv5a',
+                                  test_type='images'):
     """
     Expected results vary just a little across inference environments, particularly
     between PT 1.x and 2.x, so when making sure things are working acceptably, we 
@@ -148,7 +150,7 @@ def get_expected_results_filename(gpu_is_available):
     except Exception:
         pass
     
-    return 'md-test-results-{}-{}.json'.format(hw_string,pt_string)
+    return '{}-{}-results-{}-{}.json'.format(model_string,test_type,hw_string,pt_string)
     
     
 def download_test_data(options=None):
@@ -1216,4 +1218,3 @@ python md_tests.py --cli_working_dir "/mnt/c/git/MegaDetector" --yolo_working_di
 
 python -c "import md_tests; print(md_tests.get_expected_results_filename(True))"
 """
-

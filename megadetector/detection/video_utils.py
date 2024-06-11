@@ -210,9 +210,15 @@ def _add_frame_numbers_to_results(results):
         im['frame_number'] = frame_number
     
 
-def video_to_frames(input_video_file, output_folder, overwrite=True, 
-                    every_n_frames=None, verbose=False, quality=None,
-                    max_width=None, frames_to_extract=None):
+def video_to_frames(input_video_file, 
+                    output_folder, 
+                    overwrite=True, 
+                    every_n_frames=None, 
+                    verbose=False, 
+                    quality=None,
+                    max_width=None, 
+                    frames_to_extract=None,
+                    allow_empty_videos=False):
     """
     Renders frames from [input_video_file] to a .jpg in [output_folder].
     
@@ -235,6 +241,8 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
             mutually exclusive with every_n_frames.  If all values are beyond the length
             of the video, no frames are extracted.  Can also be a single int, specifying
             a single frame number.
+        allow_empty_videos (bool, optional): Just print a warning if a video appears to have no
+            frames (by default, this is an error).
     
     Returns:
         tuple: length-2 tuple containing (list of frame filenames,frame rate)
@@ -430,6 +438,10 @@ def video_to_frames(input_video_file, output_folder, overwrite=True,
             except Exception as e:
                 print('Error on frame {} of {}: {}'.format(frame_number,n_frames,str(e)))
 
+    if len(frame_filenames) == 0:
+        raise Exception('Error: found no frames in file {}'.format(
+            input_video_file))
+        
     if verbose:
         print('\nExtracted {} of {} frames for {}'.format(
             len(frame_filenames),n_frames,input_video_file))
@@ -444,8 +456,9 @@ def _video_to_frames_for_folder(relative_fn,input_folder,output_folder_base,
                                 every_n_frames,overwrite,verbose,quality,max_width,
                                 frames_to_extract):
     """
-    Internal function to call video_to_frames in the context of video_folder_to_frames; 
-    makes sure the right output folder exists, then calls video_to_frames.
+    Internal function to call video_to_frames for a single video in the context of 
+    video_folder_to_frames;  makes sure the right output folder exists, then calls 
+    video_to_frames.
     """    
     
     input_fn_absolute = os.path.join(input_folder,relative_fn)

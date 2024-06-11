@@ -481,6 +481,7 @@ def process_video_folder(options):
     os.makedirs(frame_output_folder, exist_ok=True)
 
     print('Extracting frames')
+    
     frame_filenames, Fs, video_filenames = \
         video_folder_to_frames(input_folder=options.input_video_file,
                                output_folder_base=frame_output_folder, 
@@ -493,6 +494,7 @@ def process_video_folder(options):
                                max_width=options.max_width,
                                frames_to_extract=options.frames_to_extract)
     
+    print('Extracted frames for {} videos'.format(len(set(video_filenames))))
     image_file_names = list(itertools.chain.from_iterable(frame_filenames))
     
     if len(image_file_names) == 0:
@@ -723,12 +725,14 @@ if False:
     #%% Process a folder of videos
     
     model_file = 'MDV5A'
-    input_dir = r'g:\temp\test-videos'
+    # input_dir = r'g:\temp\test-videos'
+    input_dir = r'G:\temp\md-test-package\md-test-images\video-samples'
     output_base = r'g:\temp\video_test'
     frame_folder = os.path.join(output_base,'frames')
     rendering_folder = os.path.join(output_base,'rendered-frames')
     output_json_file = os.path.join(output_base,'video-test.json')
     output_video_folder = os.path.join(output_base,'output_videos')
+    
     
     print('Processing folder {}'.format(input_dir))
     
@@ -743,7 +747,7 @@ if False:
     options.quality = 90
     options.frame_sample = 10
     options.max_width = 1280
-    options.n_cores = 5
+    options.n_cores = 4
     options.verbose = True
     options.render_output_video = True    
     options.frame_folder = frame_folder
@@ -758,7 +762,7 @@ if False:
     cmd = options_to_command(options); print(cmd)
         
     # import clipboard; clipboard.copy(cmd)
-    process_video_folder(options)
+    # process_video_folder(options)
         
     
     #%% Process a single video
@@ -943,7 +947,7 @@ def main():
                         help='Number of cores to use for frame separation and detection. '\
                             'If using a GPU, this option will be respected for frame separation but '\
                             'ignored for detection.  Only relevant to frame separation when processing '\
-                            'a folder.')
+                            'a folder.  Default {}.'.format(default_options.n_cores))
 
     parser.add_argument('--frame_sample', type=int,
                         default=None, help='process every Nth frame (defaults to every frame)')
