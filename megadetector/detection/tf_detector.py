@@ -110,7 +110,10 @@ class TFDetector:
         Runs the detector on a single image.
         """
         
-        np_im = np.asarray(image, np.uint8)
+        if isinstance(image,np.ndarray):
+            np_im = image
+        else:
+            np_im = np.asarray(image, np.uint8)
         im_w_batch_dim = np.expand_dims(np_im, axis=0)
 
         # need to change the above line to the following if supporting a batch size > 1 and resizing to the same size
@@ -136,7 +139,8 @@ class TFDetector:
         Runs the detector on an image.
 
         Args:
-            image (Image): the PIL Image object on which we should run the detector
+            image (Image): the PIL Image object (or numpy array) on which we should run the detector, with
+                EXIF rotation already handled.
             image_id (str): a path to identify the image; will be in the "file" field of the output object            
             detection_threshold (float): only detections above this threshold will be included in the return
                 value
@@ -166,6 +170,7 @@ class TFDetector:
         result = { 'file': image_id }
         
         try:
+            
             b_box, b_score, b_class = self._generate_detections_one_image(image)
 
             # our batch size is 1; need to loop the batch dim if supporting batch size > 1
@@ -190,6 +195,7 @@ class TFDetector:
             result['detections'] = detections_cur_image
 
         except Exception as e:
+            
             result['failure'] = FAILURE_INFER
             print('TFDetector: image {} failed during inference: {}'.format(image_id, str(e)))
 
