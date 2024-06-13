@@ -386,8 +386,15 @@ def compare_results(inference_output_file,expected_results_file,options):
             len(filename_to_results_expected),
             len(filename_to_results))
     
-    max_coord_error = 0
     max_conf_error = 0
+    max_conf_error_expected_det = None
+    max_conf_error_actual_det = None
+    max_conf_error_file = None
+    
+    max_coord_error = 0
+    max_coord_error_expected_det = None
+    max_coord_error_actual_det = None
+    max_coord_error_file = None    
     
     # fn = next(iter(filename_to_results.keys()))
     for fn in filename_to_results.keys():
@@ -405,35 +412,102 @@ def compare_results(inference_output_file,expected_results_file,options):
         actual_detections = actual_image_results['detections']
         expected_detections = expected_image_results['detections']
         
-        s = 'expected {} detections for file {}, found {}'.format(
-            len(expected_detections),fn,len(actual_detections))
-        s += '\nExpected results file: {}\nActual results file: {}'.format(
-            expected_results_file,inference_output_file)
+        from megadetector.utils.ct_utils import get_iou
         
-        if options.warning_mode:
-            if len(actual_detections) != len(expected_detections):
-                print('Warning: {}'.format(s))
-            continue
-        assert len(actual_detections) == len(expected_detections), \
-            'Error: {}'.format(s)
-        
-        # i_det = 0
-        for i_det in range(0,len(actual_detections)):
-            actual_det = actual_detections[i_det]
-            expected_det = expected_detections[i_det]
-            assert actual_det['category'] == expected_det['category']
-            conf_err = abs(actual_det['conf'] - expected_det['conf'])
+        # i_actual_det = 0
+        for i_actual_det in range(0,len(actual_detections)):
+            
+            actual_det = actual_detections[i_actual_det]
+            
+            # Don't process very-low-confidence boxes
+            if actual_det['conf'] < options.max_conf_error:
+                continue
+            
+            matching_expected_det = None
+            highest_iou = -1
+            
+            # Find the closest match in the expected detections list
+            
+            # i_expected_det = 0
+            for i_expected_det in range(0,len(expected_detections)):
+                
+                expected_det = expected_detections[i_expected_det]
+                if expected_det['category'] != actual_det['category']:
+                    continue
+                
+                iou = get_iou(actual_det['bbox'],expected_det['bbox'])
+                if iou > highest_iou:
+                    matching_expected_det = expected_det
+                    highest_iou = iou
+                    
+            assert matching_expected_det is not None
+            assert actual_det['category'] == matching_expected_det['category']
+            conf_err = abs(actual_det['conf'] - matching_expected_det['conf'])
             coord_differences = []
             for i_coord in range(0,4):
-                coord_differences.append(abs(actual_det['bbox'][i_coord]-expected_det['bbox'][i_coord]))
+                coord_differences.append(abs(actual_det['bbox'][i_coord]-\
+                                             matching_expected_det['bbox'][i_coord]))
             coord_err = max(coord_differences)
             
-            if conf_err > max_conf_error:
+            if conf_err >= max_conf_error:
                 max_conf_error = conf_err
-            if coord_err > max_coord_error:
+                max_conf_error_file = fn
+                max_conf_error_expected_det = matching_expected_det # noqa
+                max_conf_error_actual_det = actual_det # noqa
+            if coord_err >= max_coord_error:
                 max_coord_error = coord_err
+                max_coord_error_file = fn
+                max_coord_error_expected_det = matching_expected_det # noqa
+                max_coord_error_actual_det = actual_det # noqa
         
-        # ...for each detection
+        # ...for each actual detection
+        
+        # i_expected_det = 0
+        for i_expected_det in range(0,len(expected_detections)):
+            
+            expected_det = expected_detections[i_expected_det]
+            
+            # Don't process very-low-confidence boxes
+            if expected_det['conf'] < options.max_conf_error:
+                continue
+            
+            matching_actual_det = None
+            highest_iou = -1
+            
+            # Find the closest match in the actual detections list
+            
+            # i_actual_det = 0
+            for i_actual_det in range(0,len(actual_detections)):
+                
+                actual_det = actual_detections[i_actual_det]
+                if actual_det['category'] != expected_det['category']:
+                    continue
+                
+                iou = get_iou(expected_det['bbox'],actual_det['bbox'])
+                if iou > highest_iou:
+                    matching_actual_det = actual_det
+                    highest_iou = iou
+                    
+            assert expected_det['category'] == matching_actual_det['category']
+            conf_err = abs(expected_det['conf'] - matching_actual_det['conf'])
+            coord_differences = []
+            for i_coord in range(0,4):
+                coord_differences.append(abs(expected_det['bbox'][i_coord]-\
+                                             matching_actual_det['bbox'][i_coord]))
+            coord_err = max(coord_differences)
+            
+            if conf_err >= max_conf_error:
+                max_conf_error = conf_err
+                max_conf_error_file = fn
+                max_conf_error_expected_det = matching_expected_det # noqa
+                max_conf_error_actual_det = actual_det # noqa
+            if coord_err >= max_coord_error:
+                max_coord_error = coord_err
+                max_coord_error_file = fn
+                max_coord_error_expected_det = matching_expected_det # noqa
+                max_coord_error_actual_det = actual_det # noqa
+        
+        # ...for each expected detection
         
     # ...for each image
     
@@ -447,9 +521,11 @@ def compare_results(inference_output_file,expected_results_file,options):
             'Coord error {} is greater than allowable ({})'.format(
                 max_coord_error,options.max_coord_error)
         
-    print('Max conf error: {}'.format(max_conf_error))
-    print('Max coord error: {}'.format(max_coord_error))
-    
+    print('Max conf error: {} (file {})'.format(
+        max_conf_error,max_conf_error_file))
+    print('Max coord error: {} (file {})'.format(
+        max_coord_error,max_coord_error_file))
+            
 # ...def compare_results(...)
 
 
@@ -756,16 +832,16 @@ def run_python_tests(options):
         video_options.input_video_file = os.path.join(options.scratch_dir,
                                                       os.path.dirname(options.test_videos[0]))
         video_options.output_json_file = os.path.join(options.scratch_dir,'video_folder_output.json')
-        # video_options.output_video_file = None
+        video_options.output_video_file = None
         video_options.frame_folder = os.path.join(options.scratch_dir,'video_scratch/frame_folder')
         video_options.frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder')    
         video_options.render_output_video = False
-        # video_options.keep_rendered_frames = False
-        # video_options.keep_rendered_frames = False
+        video_options.keep_rendered_frames = False
+        video_options.keep_rendered_frames = False
         video_options.force_extracted_frame_folder_deletion = True
         video_options.force_rendered_frame_folder_deletion = True
-        # video_options.reuse_results_if_available = False
-        # video_options.reuse_frames_if_available = False
+        video_options.reuse_results_if_available = False
+        video_options.reuse_frames_if_available = False
         video_options.recursive = True
         video_options.verbose = True
         video_options.fourcc = options.video_fourcc
@@ -773,12 +849,16 @@ def run_python_tests(options):
         # video_options.json_confidence_threshold = 0.005
         video_options.frame_sample = 10  
         video_options.n_cores = 5        
+        
+        # Force frame extraction to disk, since that's how we generated our expected results file
+        video_options.force_on_disk_frame_extraction = True
         # video_options.debug_max_frames = -1
         # video_options.class_mapping_filename = None
         
         # Use quality == None, because we can't control whether YOLOv5 has patched cm2.imread,
         # and therefore can't rely on using the quality parameter
-        video_options.quality = None        
+        video_options.quality = None
+        video_options.max_width = None
         
         _ = process_video_folder(video_options)
     
@@ -796,6 +876,27 @@ def run_python_tests(options):
         assert os.path.isfile(expected_results_file)
         compare_results(frame_output_file,expected_results_file,options)
         
+        
+        ## Run again, this time in memory, and make sure the results are *almost* the same
+        
+        print('\n** Running MD on a folder of videos (in memory) **\n')
+        
+        video_options.output_json_file = insert_before_extension(video_options.output_json_file,'in-memory')
+        video_options.force_on_disk_frame_extraction = False
+        _ = process_video_folder(video_options)
+                
+        frame_output_file_in_memory = insert_before_extension(video_options.output_json_file,'frames')
+        assert os.path.isfile(frame_output_file_in_memory)
+        
+        from copy import deepcopy
+        options_loose = deepcopy(options)
+        options_loose.max_conf_error = 0.05
+        options_loose.max_coord_error = 0.01
+        
+        compare_results(inference_output_file=frame_output_file,
+                        expected_results_file=frame_output_file_in_memory,
+                        options=options_loose)
+                
     # ...if we're not skipping video tests
     
     print('\n*** Finished module tests ***\n')
@@ -1165,19 +1266,21 @@ if False:
     options.cpu_execution_is_error = False
     options.skip_video_tests = False
     options.skip_python_tests = False
-    options.skip_cli_tests = False
+    options.skip_cli_tests = True
     options.scratch_dir = None
     options.test_data_url = 'https://lila.science/public/md-test-package.zip'
     options.force_data_download = False
     options.force_data_unzip = False
-    options.warning_mode = True
+    options.warning_mode = False
     options.max_coord_error = 0.001
     options.max_conf_error = 0.005
     options.cli_working_dir = r'c:\git\MegaDetector'
-    options.yolo_working_dir = r'c:\git\yolov5-md'
+    options.yolo_working_dir = None # r'c:\git\yolov5-md'
 
-    import os
     
+    #%%
+    
+    import os
     if 'PYTHONPATH' not in os.environ or options.yolo_working_dir not in os.environ['PYTHONPATH']:
         os.environ['PYTHONPATH'] += ';' + options.yolo_working_dir
 

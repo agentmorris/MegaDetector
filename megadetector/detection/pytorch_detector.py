@@ -180,7 +180,8 @@ class PTDetector:
             
         return model
 
-    def generate_detections_one_image(self, img_original, 
+    def generate_detections_one_image(self, 
+                                      img_original, 
                                       image_id='unknown', 
                                       detection_threshold=0.00001, 
                                       image_size=None,
@@ -190,7 +191,8 @@ class PTDetector:
         Applies the detector to an image.
 
         Args:
-            img_original (Image): the PIL Image object with EXIF rotation taken into account
+            img_original (Image): the PIL Image object (or numpy array) on which we should run the 
+                detector, with EXIF rotation already handled.
             image_id (str, optional): a path to identify the image; will be in the "file" field 
                 of the output object
             detection_threshold (float, optional): only detections above this confidence threshold 
@@ -209,20 +211,20 @@ class PTDetector:
                 - 'failure' (a failure string, or None if everything went fine)
         """
 
-        result = {
-            'file': image_id
-        }
+        result = {'file': image_id }
         detections = []
         max_conf = 0.0
 
         if detection_threshold is None:
+            
             detection_threshold = 0
             
         try:
             
-            img_original = np.asarray(img_original)
+            if not isinstance(img_original,np.ndarray):                
+                img_original = np.asarray(img_original)
 
-            # padded resize
+            # Padded resize
             target_size = PTDetector.IMAGE_SIZE
             
             # Image size can be an int (which translates to a square target size) or (h,w)
@@ -267,9 +269,9 @@ class PTDetector:
 
             # NMS
             if self.device == 'mps':
-                # As of v1.13.0.dev20220824, nms is not implemented for MPS.
+                # As of PyTorch 1.13.0.dev20220824, nms is not implemented for MPS.
                 #
-                # Send prediction back to the CPU to fix.
+                # Send predictions back to the CPU for NMS.
                 pred = non_max_suppression(prediction=pred.cpu(), conf_thres=detection_threshold)
             else: 
                 pred = non_max_suppression(prediction=pred, conf_thres=detection_threshold)

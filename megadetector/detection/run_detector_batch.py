@@ -923,6 +923,7 @@ def write_results_to_file(results,
         'info': info
     }
     
+    os.makedirs(os.path.dirname(output_file),exist_ok=True)
     with open(output_file, 'w') as f:
         json.dump(final_output, f, indent=1, default=str)
     print('Output file saved at {}'.format(output_file))

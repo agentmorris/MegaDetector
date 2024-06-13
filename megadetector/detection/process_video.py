@@ -32,11 +32,14 @@ from megadetector.visualization import visualize_detector_output
 from megadetector.utils.ct_utils import args_to_object
 from megadetector.utils.path_utils import insert_before_extension, clean_path
 from megadetector.detection.video_utils import video_to_frames
+from megadetector.detection.video_utils import run_callback_on_frames
+from megadetector.detection.video_utils import run_callback_on_frames_for_folder
 from megadetector.detection.video_utils import frames_to_video
 from megadetector.detection.video_utils import frame_results_to_video_results
 from megadetector.detection.video_utils import _add_frame_numbers_to_results
 from megadetector.detection.video_utils import video_folder_to_frames
 from megadetector.detection.video_utils import default_fourcc
+from megadetector.detection.run_detector import load_detector
 
 
 #%% Classes
@@ -142,6 +145,10 @@ class ProcessVideoOptions:
         #: For debugging only, stop processing after a certain number of frames.
         self.debug_max_frames = -1
         
+        #: For debugging only, force on-disk frame extraction, even if it wouldn't otherwise be
+        #: necessary
+        self.force_on_disk_frame_extraction = False
+        
         #: File containing non-standard categories, typically only used if you're running a non-MD
         #: detector.
         self.class_mapping_filename = None
@@ -206,6 +213,9 @@ def _clean_up_rendered_frames(options,rendering_output_folder,detected_frame_fil
     If necessary, delete rendered frames and/or the entire rendering output folder.
     """
     
+    if rendering_output_folder is None:
+        return
+    
     caller_provided_rendering_output_folder = (options.frame_rendering_folder is not None)
     
     # (Optionally) delete the temporary directory we used for rendered detection images
@@ -254,6 +264,9 @@ def _clean_up_extracted_frames(options,frame_output_folder,frame_filenames):
     If necessary, delete extracted frames and/or the entire temporary frame folder.
     """
     
+    if frame_output_folder is None:
+        return
+    
     caller_provided_frame_output_folder = (options.frame_folder is not None)
                                            
     if not options.keep_extracted_frames:
@@ -273,6 +286,9 @@ def _clean_up_extracted_frames(options,frame_output_folder,frame_filenames):
                 
             # ...otherwise just delete the frames, but leave the folder in place
             else:
+                
+                if frame_filenames is None:
+                    return
                 
                 if options.force_extracted_frame_folder_deletion:
                     assert caller_provided_frame_output_folder
@@ -322,48 +338,93 @@ def process_video(options):
     caller_provided_frame_output_folder = (options.frame_folder is not None)
     caller_provided_rendering_output_folder = (options.frame_rendering_folder is not None)
     
-    # This does not create any folders, just defines temporary folder names in 
-    # case we need them.
-    temporary_folder_info = _select_temporary_output_folders(options)
+    frame_output_folder = None
         
-    if (caller_provided_frame_output_folder):
-        frame_output_folder = options.frame_folder
-    else:
-        frame_output_folder = temporary_folder_info['frame_output_folder']
-   
-    os.makedirs(frame_output_folder, exist_ok=True)
-
-
-    ## Extract frames
-    
-    frame_filenames, Fs = video_to_frames(
-                            options.input_video_file, 
-                            frame_output_folder, 
-                            every_n_frames=options.frame_sample, 
-                            overwrite=(not options.reuse_frames_if_available),
-                            quality=options.quality, 
-                            max_width=options.max_width, 
-                            verbose=options.verbose,
-                            frames_to_extract=options.frames_to_extract)
-
-    image_file_names = frame_filenames
-    if options.debug_max_frames > 0:
-        image_file_names = image_file_names[0:options.debug_max_frames]
-    
-    if options.model_file == 'no_detection':
-        assert options.keep_extracted_frames, \
-            'Internal error: keep_extracted_frames not set, but no model specified'
-        return
-    
-    
-    ## Run MegaDetector
-    
-    if options.reuse_results_if_available and \
-        os.path.isfile(options.output_json_file):
+    # If we should re-use existing results, and the output file exists, don't bother running MD
+    if (options.reuse_results_if_available and os.path.isfile(options.output_json_file)):
+            
             print('Loading results from {}'.format(options.output_json_file))
             with open(options.output_json_file,'r') as f:
                 results = json.load(f)
+    
+    # Run MD in memory if we don't need to generate frames
+    #
+    # Currently if we're generating an output video, we need to generate frames on disk first.
+    elif (not options.keep_extracted_frames and \
+          not options.render_output_video and \
+          not options.force_on_disk_frame_extraction):
+        
+        # Run MegaDetector in memory
+        
+        if options.verbose:
+            print('Running MegaDetector in memory for {}'.format(options.input_video_file))
+            
+        if options.frame_folder is not None:
+            print('Warning: frame_folder specified, but keep_extracted_frames is ' + \
+                  'not; no raw frames will be written')
+        
+        detector = load_detector(options.model_file)
+        
+        def frame_callback(image_np,image_id):
+            return detector.generate_detections_one_image(image_np,
+                                                          image_id,
+                                                          detection_threshold=options.json_confidence_threshold,
+                                                          augment=options.augment)
+        
+        frame_results = run_callback_on_frames(options.input_video_file, 
+                                               frame_callback,
+                                               every_n_frames=options.frame_sample, 
+                                               verbose=options.verbose, 
+                                               frames_to_process=options.frames_to_extract)
+        
+        _add_frame_numbers_to_results(frame_results['results'])
+        
+        run_detector_batch.write_results_to_file(
+            frame_results['results'], 
+            options.output_json_file,
+            relative_path_base=None,
+            detector_file=options.model_file,
+            custom_metadata={'video_frame_rate':frame_results['frame_rate']})
+
+    # Extract frames and run MegaDetector    
     else:
+                
+        if options.model_file == 'no_detection':
+            raise ValueError('Internal error: keep_extracted_frames not set, but no model specified')            
+            
+        if options.verbose:
+            print('Running MegaDetector on extracted frame images for {}'.format(options.input_video_file))
+            
+        # This does not create any folders, just defines temporary folder names in 
+        # case we need them.
+        temporary_folder_info = _select_temporary_output_folders(options)
+            
+        if (caller_provided_frame_output_folder):
+            frame_output_folder = options.frame_folder
+        else:
+            frame_output_folder = temporary_folder_info['frame_output_folder']
+       
+        os.makedirs(frame_output_folder, exist_ok=True)
+    
+    
+        ## Extract frames
+        
+        frame_filenames, Fs = video_to_frames(
+                                options.input_video_file, 
+                                frame_output_folder, 
+                                every_n_frames=options.frame_sample, 
+                                overwrite=(not options.reuse_frames_if_available),
+                                quality=options.quality, 
+                                max_width=options.max_width, 
+                                verbose=options.verbose,
+                                frames_to_extract=options.frames_to_extract)
+    
+        image_file_names = frame_filenames
+        if options.debug_max_frames > 0:
+            image_file_names = image_file_names[0:options.debug_max_frames]
+                
+        ## Run MegaDetector on those frames
+        
         results = run_detector_batch.load_and_run_detector_batch(
             options.model_file, 
             image_file_names,
@@ -373,15 +434,18 @@ def process_video(options):
             quiet=True,
             augment=options.augment,
             image_size=options.image_size)
-        
+    
         _add_frame_numbers_to_results(results)
-        
+    
         run_detector_batch.write_results_to_file(
-            results, options.output_json_file,
+            results, 
+            options.output_json_file,
             relative_path_base=frame_output_folder,
             detector_file=options.model_file,
             custom_metadata={'video_frame_rate':Fs})
-
+            
+    # ...if we are/aren't keeping raw frames on disk
+        
     
     ## (Optionally) render output video
     
@@ -470,76 +534,125 @@ def process_video_folder(options):
     # case we need them.
     temporary_folder_info = _select_temporary_output_folders(options)
     
+    frame_output_folder = None
+    image_file_names = None
     
-    ## Split every video into frames
-    
-    if caller_provided_frame_output_folder:
-        frame_output_folder = options.frame_folder
-    else:
-        frame_output_folder = temporary_folder_info['frame_output_folder']
+    # Run MD in memory if we don't need to generate frames
+    #
+    # Currently if we're generating an output video, we need to generate frames on disk first.
+    if (not options.keep_extracted_frames and \
+        not options.render_output_video and \
+        not options.force_on_disk_frame_extraction):
+                
+        if options.verbose:
+            print('Running MegaDetector in memory for folder {}'.format(options.input_video_file))
+            
+        if options.frame_folder is not None:
+            print('Warning: frame_folder specified, but keep_extracted_frames is ' + \
+                  'not; no raw frames will be written')
         
-    os.makedirs(frame_output_folder, exist_ok=True)
-
-    print('Extracting frames')
-    
-    frame_filenames, Fs, video_filenames = \
-        video_folder_to_frames(input_folder=options.input_video_file,
-                               output_folder_base=frame_output_folder, 
-                               recursive=options.recursive, 
-                               overwrite=(not options.reuse_frames_if_available),
-                               n_threads=options.n_cores,
-                               every_n_frames=options.frame_sample,
-                               verbose=options.verbose,
-                               quality=options.quality,
-                               max_width=options.max_width,
-                               frames_to_extract=options.frames_to_extract)
-    
-    print('Extracted frames for {} videos'.format(len(set(video_filenames))))
-    image_file_names = list(itertools.chain.from_iterable(frame_filenames))
-    
-    if len(image_file_names) == 0:
-        if len(video_filenames) == 0:
-            print('No videos found in folder {}'.format(options.input_video_file))
-        else:
-            print('No frames extracted from folder {}, this may be due to an '\
-                  'unsupported video codec'.format(options.input_video_file))
-        return
-
-    if options.debug_max_frames is not None and options.debug_max_frames > 0:
-        image_file_names = image_file_names[0:options.debug_max_frames]
+        detector = load_detector(options.model_file)
         
-    if options.model_file == 'no_detection':
-        assert options.keep_extracted_frames, \
-            'Internal error: keep_extracted_frames not set, but no model specified'
-        return
-    
-    
-    ## Run MegaDetector on the extracted frames
-    
-    if options.reuse_results_if_available and \
-        os.path.isfile(frames_json):
-            print('Bypassing inference, loading results from {}'.format(frames_json))
-            results = None
-    else:
-        print('Running MegaDetector')
-        results = run_detector_batch.load_and_run_detector_batch(
-            options.model_file, 
-            image_file_names,
-            confidence_threshold=options.json_confidence_threshold,
-            n_cores=options.n_cores,
-            class_mapping_filename=options.class_mapping_filename,
-            quiet=True,
-            augment=options.augment,
-            image_size=options.image_size)
-    
-        _add_frame_numbers_to_results(results)
+        def frame_callback(image_np,image_id):
+            return detector.generate_detections_one_image(image_np,
+                                                          image_id,
+                                                          detection_threshold=options.json_confidence_threshold,
+                                                          augment=options.augment)
+        
+        md_results = run_callback_on_frames_for_folder(input_video_folder=options.input_video_file, 
+                                                          frame_callback=frame_callback,
+                                                          every_n_frames=options.frame_sample, 
+                                                          verbose=options.verbose)
+        
+        video_results = md_results['results']
+        
+        all_frame_results = []
+        
+        # r = video_results[0]
+        for frame_results in video_results:
+            _add_frame_numbers_to_results(frame_results)
+            all_frame_results.extend(frame_results)
         
         run_detector_batch.write_results_to_file(
-            results, frames_json,
-            relative_path_base=frame_output_folder,
+            all_frame_results, 
+            frames_json,
+            relative_path_base=None,
             detector_file=options.model_file,
-            custom_metadata={'video_frame_rate':Fs})
+            custom_metadata={'video_frame_rate':md_results['frame_rates']})
     
+    else:
+        
+        ## Split every video into frames
+        
+        if caller_provided_frame_output_folder:
+            frame_output_folder = options.frame_folder
+        else:
+            frame_output_folder = temporary_folder_info['frame_output_folder']
+            
+        os.makedirs(frame_output_folder, exist_ok=True)
+    
+        print('Extracting frames')
+        
+        frame_filenames, Fs, video_filenames = \
+            video_folder_to_frames(input_folder=options.input_video_file,
+                                   output_folder_base=frame_output_folder, 
+                                   recursive=options.recursive, 
+                                   overwrite=(not options.reuse_frames_if_available),
+                                   n_threads=options.n_cores,
+                                   every_n_frames=options.frame_sample,
+                                   verbose=options.verbose,
+                                   quality=options.quality,
+                                   max_width=options.max_width,
+                                   frames_to_extract=options.frames_to_extract)
+        
+        print('Extracted frames for {} videos'.format(len(set(video_filenames))))
+        image_file_names = list(itertools.chain.from_iterable(frame_filenames))
+        
+        if len(image_file_names) == 0:
+            if len(video_filenames) == 0:
+                print('No videos found in folder {}'.format(options.input_video_file))
+            else:
+                print('No frames extracted from folder {}, this may be due to an '\
+                      'unsupported video codec'.format(options.input_video_file))
+            return
+    
+        if options.debug_max_frames is not None and options.debug_max_frames > 0:
+            image_file_names = image_file_names[0:options.debug_max_frames]
+            
+        if options.model_file == 'no_detection':
+            assert options.keep_extracted_frames, \
+                'Internal error: keep_extracted_frames not set, but no model specified'
+            return
+        
+        
+        ## Run MegaDetector on the extracted frames
+        
+        if options.reuse_results_if_available and \
+            os.path.isfile(frames_json):
+                print('Bypassing inference, loading results from {}'.format(frames_json))
+                results = None
+        else:
+            print('Running MegaDetector')
+            results = run_detector_batch.load_and_run_detector_batch(
+                options.model_file, 
+                image_file_names,
+                confidence_threshold=options.json_confidence_threshold,
+                n_cores=options.n_cores,
+                class_mapping_filename=options.class_mapping_filename,
+                quiet=True,
+                augment=options.augment,
+                image_size=options.image_size)
+        
+            _add_frame_numbers_to_results(results)
+            
+            run_detector_batch.write_results_to_file(
+                results, 
+                frames_json,
+                relative_path_base=frame_output_folder,
+                detector_file=options.model_file,
+                custom_metadata={'video_frame_rate':Fs})
+        
+    # ...if we're running MD on in-memory frames vs. extracting frames to disk
     
     ## Convert frame-level results to video-level results
 
@@ -725,8 +838,8 @@ if False:
     #%% Process a folder of videos
     
     model_file = 'MDV5A'
-    # input_dir = r'g:\temp\test-videos'
-    input_dir = r'G:\temp\md-test-package\md-test-images\video-samples'
+    input_dir = r'g:\temp\test-videos'
+    # input_dir = r'G:\temp\md-test-package\md-test-images\video-samples'
     output_base = r'g:\temp\video_test'
     frame_folder = os.path.join(output_base,'frames')
     rendering_folder = os.path.join(output_base,'rendered-frames')
@@ -744,25 +857,26 @@ if False:
     options.recursive = True
     options.reuse_frames_if_available = False
     options.reuse_results_if_available = False
-    options.quality = 90
+    options.quality = None # 90
     options.frame_sample = 10
-    options.max_width = 1280
+    options.max_width = None # 1280
     options.n_cores = 4
     options.verbose = True
-    options.render_output_video = True    
+    options.render_output_video = False  
     options.frame_folder = frame_folder
     options.frame_rendering_folder = rendering_folder    
-    options.keep_extracted_frames = True
-    options.keep_rendered_frames = True
+    options.keep_extracted_frames = False
+    options.keep_rendered_frames = False
     options.force_extracted_frame_folder_deletion = False
     options.force_rendered_frame_folder_deletion = False
     options.fourcc = 'mp4v'
+    options.force_on_disk_frame_extraction = True
     # options.rendering_confidence_threshold = 0.15
     
     cmd = options_to_command(options); print(cmd)
         
     # import clipboard; clipboard.copy(cmd)
-    # process_video_folder(options)
+    process_video_folder(options)
         
     
     #%% Process a single video
