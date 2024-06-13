@@ -885,7 +885,8 @@ def run_cli_tests(options):
     cmd_results = execute_and_print(cmd)
     
     assert output_files_are_identical(fn1=inference_output_file, 
-                                      fn2=inference_output_file_checkpoint,verbose=True)
+                                      fn2=inference_output_file_checkpoint,
+                                      verbose=True)
     
     
     ## Run again with the image queue enabled, make sure the results are the same
@@ -897,7 +898,8 @@ def run_cli_tests(options):
     cmd_results = execute_and_print(cmd)
     
     assert output_files_are_identical(fn1=inference_output_file, 
-                                      fn2=inference_output_file_queue,verbose=True)
+                                      fn2=inference_output_file_queue,
+                                      verbose=True)
     
     
     ## Run again on multiple cores, make sure the results are the same
@@ -935,7 +937,8 @@ def run_cli_tests(options):
         del os.environ['CUDA_VISIBLE_DEVICES']
         
     assert output_files_are_identical(fn1=inference_output_file_cpu, 
-                                      fn2=inference_output_file_cpu_multicore,verbose=True)
+                                      fn2=inference_output_file_cpu_multicore,
+                                      verbose=True)
     
     
     ## Postprocessing
@@ -1041,7 +1044,8 @@ def run_cli_tests(options):
         cmd_results = execute_and_print(cmd)
         
         assert output_files_are_identical(fn1=inference_output_file_yolo_val,
-                                          fn2=inference_output_file_yolo_val_checkpoint)
+                                          fn2=inference_output_file_yolo_val_checkpoint,
+                                          verbose=True)
         
     if not options.skip_video_tests:
             
@@ -1332,4 +1336,3 @@ if False:
     fn1 = r"G:\temp\md-test-package\mdv5a-image-cpu-pt1.10.1.json"
     fn2 = r"G:\temp\md-test-package\mdv5a-augment-image-cpu-pt1.10.1.json"
     print(output_files_are_identical(fn1,fn2,verbose=True))
-    

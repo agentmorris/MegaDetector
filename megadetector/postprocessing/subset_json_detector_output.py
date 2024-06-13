@@ -517,7 +517,7 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
     else:
         
         # Map images to unique folders
-        print('Finding unique folders')    
+        print('Finding unique folders')
         
         folders_to_images = {}
         
@@ -670,16 +670,26 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file', type=str, help='Input .json filename')
     parser.add_argument('output_file', type=str, help='Output .json filename')
-    parser.add_argument('--query', type=str, default=None, help='Query string to search for (omitting this matches all)')
-    parser.add_argument('--replacement', type=str, default=None, help='Replace [query] with this')
-    parser.add_argument('--confidence_threshold', type=float, default=None, help='Remove detections below this confidence level')
-    parser.add_argument('--split_folders', action='store_true', help='Split .json files by leaf-node folder')
-    parser.add_argument('--split_folder_param', type=int, help='Directory level count for n_from_bottom and n_from_top splitting')
-    parser.add_argument('--split_folder_mode', type=str, help='Folder level to use for splitting ("top" or "bottom")')
-    parser.add_argument('--make_folder_relative', action='store_true', help='Make image paths relative to their containing folder (only meaningful with split_folders)')
-    parser.add_argument('--overwrite_json_files', action='store_true', help='Overwrite output files')
-    parser.add_argument('--copy_jsons_to_folders', action='store_true', help='When using split_folders and make_folder_relative, copy jsons to their corresponding folders (relative to output_file)')
-    parser.add_argument('--create_folders', action='store_true', help='When using copy_jsons_to_folders, create folders that don''t exist')    
+    parser.add_argument('--query', type=str, default=None, 
+                        help='Query string to search for (omitting this matches all)')
+    parser.add_argument('--replacement', type=str, default=None, 
+                        help='Replace [query] with this')
+    parser.add_argument('--confidence_threshold', type=float, default=None, 
+                        help='Remove detections below this confidence level')
+    parser.add_argument('--split_folders', action='store_true', 
+                        help='Split .json files by leaf-node folder')
+    parser.add_argument('--split_folder_param', type=int,
+                        help='Directory level count for n_from_bottom and n_from_top splitting')
+    parser.add_argument('--split_folder_mode', type=str,
+                        help='Folder level to use for splitting ("top" or "bottom")')
+    parser.add_argument('--make_folder_relative', action='store_true', 
+                        help='Make image paths relative to their containing folder (only meaningful with split_folders)')
+    parser.add_argument('--overwrite_json_files', action='store_true', 
+                        help='Overwrite output files')
+    parser.add_argument('--copy_jsons_to_folders', action='store_true', 
+                        help='When using split_folders and make_folder_relative, copy jsons to their corresponding folders (relative to output_file)')
+    parser.add_argument('--create_folders', action='store_true',
+                        help='When using copy_jsons_to_folders, create folders that don''t exist')    
     
     if len(sys.argv[1:]) == 0:
         parser.print_help()
