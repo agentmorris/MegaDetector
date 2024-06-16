@@ -36,6 +36,11 @@ def md_to_coco(md_results_file,
     "Converts" MegaDetector output files to COCO format.  "Converts" is in quotes because
     this is an opinionated transformation that requires a confidence threshold.
     
+    The default confidence threshold is not 0; the assumption is that by default, you are 
+    going to treat the resulting COCO file as a set of labels.  If you are using the resulting COCO
+    file to evaluate a detector, you likely want a default confidence threshold of 0.  Confidence
+    values will be written to the semi-standard "score" field for each image
+    
     A folder of images is required if width and height information are not available 
     in the MD results file.
 
@@ -67,6 +72,8 @@ def md_to_coco(md_results_file,
         
     coco_images = []
     coco_annotations = []
+        
+    print('Converting MD results to COCO...')
     
     # im = md_results['images'][0]
     for im in tqdm(md_results['images']):
@@ -148,7 +155,9 @@ def md_to_coco(md_results_file,
                 print('Warning: empty category annotation in file {}'.format(im['file']))
                       
             if preserve_nonstandard_metadata:
-                ann['conf'] = detection['conf']
+                # "Score" is a semi-standard string here, recognized by at least pycocotools
+                # ann['conf'] = detection['conf']
+                ann['score'] = detection['conf']
                 
             coco_annotations.append(ann)            
         
@@ -176,6 +185,8 @@ def md_to_coco(md_results_file,
                          'name':md_results['detection_categories'][md_category_id]}
         output_dict['categories'].append(coco_category)
         
+    print('Writing COCO output file...')
+    
     if coco_output_file is not None:
         with open(coco_output_file,'w') as f:
             json.dump(output_dict,f,indent=1)

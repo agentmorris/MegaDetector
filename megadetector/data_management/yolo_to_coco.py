@@ -29,9 +29,9 @@ from megadetector.data_management.yolo_output_to_md_output import read_classes_f
 
 def _filename_to_image_id(fn):
     """
-    Image IDs can't have spaces in them, replae spaces with underscores
+    Image IDs can't have spaces in them, replace spaces with underscores
     """
-    return fn.replace(' ','_')
+    return fn.replace(' ','_').replace('\\','/')
 
 
 def _process_image(fn_abs,input_folder,category_id_to_name):
@@ -40,7 +40,9 @@ def _process_image(fn_abs,input_folder,category_id_to_name):
     """
     
     # Create the image object for this image
-    fn_relative = os.path.relpath(fn_abs,input_folder)
+    #
+    # Always use forward slashes in image filenames and IDs
+    fn_relative = os.path.relpath(fn_abs,input_folder).replace('\\','/')
     image_id = _filename_to_image_id(fn_relative)
     
     # This is done in a separate loop now
@@ -51,7 +53,7 @@ def _process_image(fn_abs,input_folder,category_id_to_name):
     # image_ids.add(image_id)
     
     im = {}
-    im['file_name'] = fn_relative    
+    im['file_name'] = fn_relative
     im['id'] = image_id
     
     annotations_this_image = []
@@ -393,7 +395,8 @@ def yolo_to_coco(input_folder,
                  pool_type='thread',
                  recursive=True,
                  exclude_string=None,
-                 include_string=None):
+                 include_string=None,
+                 overwrite_handling='overwrite'):
     """
     Converts a YOLO-formatted dataset to a COCO-formatted dataset.
     
@@ -427,6 +430,8 @@ def yolo_to_coco(input_folder,
         recursive (bool, optional): whether to recurse into [input_folder]
         exclude_string (str, optional): exclude any images whose filename contains a string
         include_string (str, optional): include only images whose filename contains a string
+        overwrite_handling (bool, optional): behavior if output_file exists ('load', 'overwrite', or 
+            'error')
     
     Returns:
         dict: COCO-formatted data, the same as what's written to [output_file]
@@ -441,7 +446,21 @@ def yolo_to_coco(input_folder,
         ('no_annotations','empty_annotations','skip','error'), \
             'Unrecognized empty image handling spec: {}'.format(empty_image_handling)
      
-            
+    if (output_file is not None) and os.path.isfile(output_file):
+        
+            if overwrite_handling == 'overwrite':
+                print('Warning: output file {} exists, over-writing'.format(output_file))
+            elif overwrite_handling == 'load':
+                print('Output file {} exists, loading and returning'.format(output_file))
+                with open(output_file,'r') as f:
+                    d = json.load(f)
+                return d
+            elif overwrite_handling == 'error':
+                raise ValueError('Output file {} exists'.format(output_file))
+            else:
+                raise ValueError('Unrecognized overwrite_handling value: {}'.format(overwrite_handling))
+                
+                
     ## Read class names
     
     category_id_to_name = load_yolo_class_list(class_name_file)

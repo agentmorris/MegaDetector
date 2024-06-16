@@ -106,7 +106,9 @@ class YoloInferenceOptions:
     
         #: Image size to use; this is a single int, which in ultralytics's terminology means
         #: "scale the long side of the image to this size, and preserve aspect ratio".
-        self.image_size = default_image_size_with_augmentation
+        #:
+        #: If None, will choose based on whether augmentation is enabled.
+        self.image_size = None
         
         #: Detections below this threshold will not be included in the output file
         self.conf_thres = '0.001'
@@ -276,10 +278,10 @@ def run_inference_with_yolo_val(options):
     
     if options.input_folder is not None:
         options.input_folder = options.input_folder.replace('\\','/')
+                
         
-
     ##%% Other input handling
-    
+        
     if isinstance(options.yolo_category_id_to_name,str):
         
         assert os.path.isfile(options.yolo_category_id_to_name)
@@ -549,6 +551,7 @@ def run_inference_with_yolo_val(options):
         for i_image,image_fn in tqdm(enumerate(image_files_absolute),total=len(image_files_absolute)):
             
             ext = os.path.splitext(image_fn)[1]
+            image_fn_without_extension = os.path.splitext(image_fn)[0]
             
             # YOLO .json output identifies images by the base filename without the extension
             image_id = str(i_image).zfill(10)
@@ -557,12 +560,25 @@ def run_inference_with_yolo_val(options):
             symlink_full_path = os.path.join(symlink_folder_inner,symlink_name)
             link_full_paths.append(symlink_full_path)
             
+            # If annotation files exist, link those too; only useful if we're reading the computed
+            # mAP value, but it doesn't hurt.
+            annotation_fn = image_fn_without_extension + '.txt'
+            annotation_file_exists = False
+            if os.path.isfile(annotation_fn):
+                annotation_file_exists = True
+                annotation_symlink_name = image_id + '.txt'
+                annotation_symlink_full_path = os.path.join(symlink_folder_inner,annotation_symlink_name)                
+            
             try:
                 
                 if options.use_symlinks:
                     path_utils.safe_create_link(image_fn,symlink_full_path)
+                    if annotation_file_exists:
+                        path_utils.safe_create_link(annotation_fn,annotation_symlink_full_path)
                 else:
                     shutil.copyfile(image_fn,symlink_full_path)
+                    if annotation_file_exists:
+                        shutil.copyfile(annotation_fn,annotation_symlink_full_path)
                     
             except Exception as e:
                 
@@ -648,7 +664,15 @@ def run_inference_with_yolo_val(options):
 
     ##%% Prepare Python command or YOLO CLI command
     
-    image_size_string = str(round(options.image_size))
+    if options.image_size is None:
+        if options.augment:
+            image_size = default_image_size_with_augmentation
+        else:
+            image_size = default_image_size_with_no_augmentation
+    else:
+        image_size = options.image_size
+    
+    image_size_string = str(round(image_size))
     
     if options.model_type == 'yolov5':
         
@@ -658,6 +682,9 @@ def run_inference_with_yolo_val(options):
             options.batch_size,image_size_string,options.conf_thres)
         cmd += ' --device "{}" --save-json'.format(options.device_string)
         cmd += ' --project "{}" --name "{}" --exist-ok'.format(yolo_results_folder,'yolo_results')
+        
+        # This is the NMS IoU threshold
+        # cmd += ' --iou-thres 0.6'
         
         if options.augment:
             cmd += ' --augment'
@@ -837,7 +864,7 @@ def run_inference_with_yolo_val(options):
     _clean_up_temporary_folders(options,
                                 symlink_folder,yolo_results_folder,
                                 symlink_folder_is_temp_folder,yolo_folder_is_temp_folder)
-        
+    
 # ...def run_inference_with_yolo_val()
 
 

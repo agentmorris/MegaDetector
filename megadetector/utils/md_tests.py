@@ -29,6 +29,10 @@ import subprocess
 import argparse
 import inspect
 
+#: IoU threshold used to determine whether boxes in two detection files likely correspond
+#: to the same box.
+iou_threshold_for_file_comparison = 0.9
+
 
 #%% Classes
 
@@ -359,6 +363,100 @@ def output_files_are_identical(fn1,fn2,verbose=False):
 # ...def output_files_are_identical(...)
    
 
+def compare_detection_lists(detections_a,detections_b,options,bidirectional_comparison=True):
+    """
+    Compare two lists of MD-formatted detections, matching detections across lists using IoU
+    criteria.  Generally used to compare detections for the same image when two sets of results 
+    are expected to be more or less the same.
+    
+    Args:
+        detections_a (list): the first set of detection dicts
+        detections_b (list): the second set of detection dicts
+        options (MDTestOptions): options that determine tolerable differences between files    
+        bidirectional_comparison (bool, optional): reverse the arguments and make a recursive
+            call.
+            
+    Returns:
+        dict: a dictionary with keys 'max_conf_error' and 'max_coord_error'.
+    """
+    from megadetector.utils.ct_utils import get_iou
+    
+    max_conf_error = 0
+    max_coord_error = 0
+        
+    # i_det_a = 0
+    for i_det_a in range(0,len(detections_a)):
+        
+        det_a = detections_a[i_det_a]
+        
+        # Don't process very-low-confidence boxes
+        if det_a['conf'] < options.max_conf_error:
+            continue
+        
+        matching_det_b = None
+        highest_iou = -1
+        
+        # Find the closest match in the detections_b list
+        
+        # i_det_b = 0
+        for i_det_b in range(0,len(detections_b)):
+            
+            b_det = detections_b[i_det_b]
+            
+            if b_det['category'] != det_a['category']:
+                continue
+            
+            iou = get_iou(det_a['bbox'],b_det['bbox'])
+            
+            # Is this likely the same detection as det_a?
+            if iou >= iou_threshold_for_file_comparison and iou > highest_iou:
+                matching_det_b = b_det
+                highest_iou = iou
+                
+        # If there are no detections in this category in detections_b
+        if matching_det_b is None:
+            if det_a['conf'] > max_conf_error:
+                max_conf_error = det_a['conf']
+            # max_coord_error = 1.0
+            continue
+        
+        assert det_a['category'] == matching_det_b['category']
+        conf_err = abs(det_a['conf'] - matching_det_b['conf'])
+        coord_differences = []
+        for i_coord in range(0,4):
+            coord_differences.append(abs(det_a['bbox'][i_coord]-\
+                                         matching_det_b['bbox'][i_coord]))
+        coord_err = max(coord_differences)
+        
+        if conf_err >= max_conf_error:
+            max_conf_error = conf_err
+            
+        if coord_err >= max_coord_error:
+            max_coord_error = coord_err            
+    
+    # ...for each detection in detections_a
+    
+    if bidirectional_comparison:
+        
+        reverse_comparison_results = compare_detection_lists(detections_b,
+                                                             detections_a, 
+                                                             options, 
+                                                             bidirectional_comparison=False)
+        
+        if reverse_comparison_results['max_conf_error'] > max_conf_error:
+            max_conf_error = reverse_comparison_results['max_conf_error']
+        if reverse_comparison_results['max_coord_error'] > max_coord_error:
+            max_coord_error = reverse_comparison_results['max_coord_error']
+    
+    list_comparison_results = {}
+    list_comparison_results['max_coord_error'] = max_coord_error
+    list_comparison_results['max_conf_error'] = max_conf_error
+    
+    return list_comparison_results
+
+# ...def compare_detection_lists(...)
+
+
 def compare_results(inference_output_file,expected_results_file,options):
     """
     Compare two MD-formatted output files that should be nearly identical, allowing small
@@ -369,6 +467,9 @@ def compare_results(inference_output_file,expected_results_file,options):
         inference_output_file (str): the first results file to compare
         expected_results_file (str): the second results file to compare
         options (MDTestOptions): options that determine tolerable differences between files
+        
+    Returns:
+        dict: dictionary with keys 'max_coord_error' and 'max_conf_error'
     """
     
     # Read results
@@ -387,13 +488,9 @@ def compare_results(inference_output_file,expected_results_file,options):
             len(filename_to_results))
     
     max_conf_error = 0
-    max_conf_error_expected_det = None
-    max_conf_error_actual_det = None
     max_conf_error_file = None
     
     max_coord_error = 0
-    max_coord_error_expected_det = None
-    max_coord_error_actual_det = None
     max_coord_error_file = None    
     
     # fn = next(iter(filename_to_results.keys()))
@@ -412,103 +509,20 @@ def compare_results(inference_output_file,expected_results_file,options):
         actual_detections = actual_image_results['detections']
         expected_detections = expected_image_results['detections']
         
-        from megadetector.utils.ct_utils import get_iou
+        comparison_results_this_image = compare_detection_lists(
+            detections_a=actual_detections,
+            detections_b=expected_detections,
+            options=options,
+            bidirectional_comparison=True)
         
-        # i_actual_det = 0
-        for i_actual_det in range(0,len(actual_detections)):
+        if comparison_results_this_image['max_conf_error'] > max_conf_error:
+            max_conf_error = comparison_results_this_image['max_conf_error']
+            max_conf_error_file = fn
             
-            actual_det = actual_detections[i_actual_det]
-            
-            # Don't process very-low-confidence boxes
-            if actual_det['conf'] < options.max_conf_error:
-                continue
-            
-            matching_expected_det = None
-            highest_iou = -1
-            
-            # Find the closest match in the expected detections list
-            
-            # i_expected_det = 0
-            for i_expected_det in range(0,len(expected_detections)):
+        if comparison_results_this_image['max_coord_error'] > max_coord_error:
+            max_coord_error = comparison_results_this_image['max_coord_error']
+            max_coord_error_file = fn
                 
-                expected_det = expected_detections[i_expected_det]
-                if expected_det['category'] != actual_det['category']:
-                    continue
-                
-                iou = get_iou(actual_det['bbox'],expected_det['bbox'])
-                if iou > highest_iou:
-                    matching_expected_det = expected_det
-                    highest_iou = iou
-                    
-            assert matching_expected_det is not None
-            assert actual_det['category'] == matching_expected_det['category']
-            conf_err = abs(actual_det['conf'] - matching_expected_det['conf'])
-            coord_differences = []
-            for i_coord in range(0,4):
-                coord_differences.append(abs(actual_det['bbox'][i_coord]-\
-                                             matching_expected_det['bbox'][i_coord]))
-            coord_err = max(coord_differences)
-            
-            if conf_err >= max_conf_error:
-                max_conf_error = conf_err
-                max_conf_error_file = fn
-                max_conf_error_expected_det = matching_expected_det # noqa
-                max_conf_error_actual_det = actual_det # noqa
-            if coord_err >= max_coord_error:
-                max_coord_error = coord_err
-                max_coord_error_file = fn
-                max_coord_error_expected_det = matching_expected_det # noqa
-                max_coord_error_actual_det = actual_det # noqa
-        
-        # ...for each actual detection
-        
-        # i_expected_det = 0
-        for i_expected_det in range(0,len(expected_detections)):
-            
-            expected_det = expected_detections[i_expected_det]
-            
-            # Don't process very-low-confidence boxes
-            if expected_det['conf'] < options.max_conf_error:
-                continue
-            
-            matching_actual_det = None
-            highest_iou = -1
-            
-            # Find the closest match in the actual detections list
-            
-            # i_actual_det = 0
-            for i_actual_det in range(0,len(actual_detections)):
-                
-                actual_det = actual_detections[i_actual_det]
-                if actual_det['category'] != expected_det['category']:
-                    continue
-                
-                iou = get_iou(expected_det['bbox'],actual_det['bbox'])
-                if iou > highest_iou:
-                    matching_actual_det = actual_det
-                    highest_iou = iou
-                    
-            assert expected_det['category'] == matching_actual_det['category']
-            conf_err = abs(expected_det['conf'] - matching_actual_det['conf'])
-            coord_differences = []
-            for i_coord in range(0,4):
-                coord_differences.append(abs(expected_det['bbox'][i_coord]-\
-                                             matching_actual_det['bbox'][i_coord]))
-            coord_err = max(coord_differences)
-            
-            if conf_err >= max_conf_error:
-                max_conf_error = conf_err
-                max_conf_error_file = fn
-                max_conf_error_expected_det = matching_expected_det # noqa
-                max_conf_error_actual_det = actual_det # noqa
-            if coord_err >= max_coord_error:
-                max_coord_error = coord_err
-                max_coord_error_file = fn
-                max_coord_error_expected_det = matching_expected_det # noqa
-                max_coord_error_actual_det = actual_det # noqa
-        
-        # ...for each expected detection
-        
     # ...for each image
     
     if not options.warning_mode:
@@ -525,7 +539,13 @@ def compare_results(inference_output_file,expected_results_file,options):
         max_conf_error,max_conf_error_file))
     print('Max coord error: {} (file {})'.format(
         max_coord_error,max_coord_error_file))
-            
+    
+    comparison_results = {}
+    comparison_results['max_conf_error'] = max_conf_error
+    comparison_results['max_coord_error'] = max_coord_error
+
+    return comparison_results
+
 # ...def compare_results(...)
 
 
@@ -633,6 +653,8 @@ def run_python_tests(options):
     
     ## Run inference on an image
     
+    print('\n** Running MD on a single image **\n')
+    
     from megadetector.detection import run_detector
     from megadetector.visualization import visualization_utils as vis_utils
     image_fn = os.path.join(options.scratch_dir,options.test_images[0])
@@ -643,7 +665,7 @@ def run_python_tests(options):
     
     ## Run inference on a folder
 
-    print('\n** Running MD on images **\n')
+    print('\n** Running MD on a folder of images **\n')
     
     from megadetector.detection.run_detector_batch import load_and_run_detector_batch,write_results_to_file
     from megadetector.utils import path_utils
@@ -660,12 +682,15 @@ def run_python_tests(options):
 
     
     ## Verify results
-
+    
     expected_results_file = get_expected_results_filename(is_gpu_available(verbose=False),
                                                           options=options)
     compare_results(inference_output_file,expected_results_file,options)
         
-
+    # Make note of this filename, we will use it again later
+    inference_output_file_standard_inference = inference_output_file
+    
+    
     ## Run and verify again with augmentation enabled
     
     print('\n** Running MD on images with augmentation **\n')
@@ -727,6 +752,7 @@ def run_python_tests(options):
             
         from megadetector.detection.run_inference_with_yolov5_val import \
             YoloInferenceOptions, run_inference_with_yolo_val
+        from megadetector.utils.path_utils import insert_before_extension
         
         inference_output_file_yolo_val = os.path.join(options.scratch_dir,'folder_inference_output_yolo_val.json')
         
@@ -737,12 +763,23 @@ def run_python_tests(options):
         yolo_inference_options.model_filename = options.default_model
         yolo_inference_options.augment = False
         yolo_inference_options.overwrite_handling = 'overwrite'
+        from megadetector.detection.run_detector import DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
+        yolo_inference_options.conf_thres = DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
         
         run_inference_with_yolo_val(yolo_inference_options)
         
+        ## Confirm this matches the standard inference path
+        
+        if False:
+            # TODO: compare_resluts() isn't quite ready for this yet
+            compare_results(inference_output_file=inference_output_file_yolo_val, 
+                            expected_results_file=inference_output_file_standard_inference, 
+                            options=options)
+        
+        
+        
         # Run again, without symlinks this time
         
-        from megadetector.utils.path_utils import insert_before_extension
         inference_output_file_yolo_val_no_links = insert_before_extension(inference_output_file_yolo_val,
                                                                           'no-links')
         yolo_inference_options.output_file = inference_output_file_yolo_val_no_links
@@ -788,6 +825,7 @@ def run_python_tests(options):
         print('\n** Running MD on a single video **\n')
         
         from megadetector.detection.process_video import ProcessVideoOptions, process_video
+        from megadetector.utils.path_utils import insert_before_extension
         
         video_options = ProcessVideoOptions()
         video_options.model_file = options.default_model
@@ -826,6 +864,7 @@ def run_python_tests(options):
         print('\n** Running MD on a folder of videos **\n')
         
         from megadetector.detection.process_video import ProcessVideoOptions, process_video_folder
+        from megadetector.utils.path_utils import insert_before_extension
         
         video_options = ProcessVideoOptions()
         video_options.model_file = options.default_model
@@ -878,6 +917,8 @@ def run_python_tests(options):
         
         
         ## Run again, this time in memory, and make sure the results are *almost* the same
+        
+        # They won't be quite the same, because the on-disk path goes through a jpeg intermediate
         
         print('\n** Running MD on a folder of videos (in memory) **\n')
         
@@ -1275,7 +1316,7 @@ if False:
     options.max_coord_error = 0.001
     options.max_conf_error = 0.005
     options.cli_working_dir = r'c:\git\MegaDetector'
-    options.yolo_working_dir = None # r'c:\git\yolov5-md'
+    options.yolo_working_dir = r'c:\git\yolov5-md'
 
     
     #%%
