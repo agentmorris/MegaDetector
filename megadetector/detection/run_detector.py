@@ -114,6 +114,8 @@ DETECTION_FILENAME_INSERT = '_detections'
 # automatic model download to the system temp folder, or they will use the paths specified in the 
 # $MDV4, $MDV5A, or $MDV5B environment variables if they exist.
 downloadable_models = {
+    'MDV2':'https://lila.science/public/models/megadetector/megadetector_v2.pb',
+    'MDV3':'https://lila.science/public/models/megadetector/megadetector_v3.pb',
     'MDV4':'https://github.com/agentmorris/MegaDetector/releases/download/v4.1/md_v4.1.0.pb',
     'MDV5A':'https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt',
     'MDV5B':'https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.0.pt'
@@ -197,7 +199,7 @@ def get_detector_metadata_from_version_string(detector_version):
         return DETECTOR_METADATA[detector_version]
 
 
-def get_detector_version_from_filename(detector_filename):
+def get_detector_version_from_filename(detector_filename,accept_first_match=True):
     r"""
     Gets the version number component of the detector from the model filename.  
     
@@ -215,6 +217,8 @@ def get_detector_version_from_filename(detector_filename):
     
     Args:
         detector_filename (str): model filename, e.g. c:/x/z/md_v5a.0.0.pt
+        accept_first_match (bool, optional): if multiple candidates match the filename, choose the 
+            first one, otherwise returns the string "multiple"
     
     Returns:
         str: a detector version string, e.g. "v5a.0.0", or "multiple" if I'm confused
@@ -230,7 +234,10 @@ def get_detector_version_from_filename(detector_filename):
         return 'unknown'
     elif len(matches) > 1:
         print('Warning: multiple MegaDetector versions for model file {}'.format(detector_filename))
-        return 'multiple'
+        if accept_first_match:
+            return model_string_to_model_version[matches[0]]
+        else:
+            return 'multiple'
     else:
         return model_string_to_model_version[matches[0]]
     
