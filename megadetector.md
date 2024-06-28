@@ -569,8 +569,8 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 * BayDetect (GUI and automation pipeline for running MD) ([github.com/enguy-hub/BayDetect](https://github.com/enguy-hub/BayDetect))
 * Automated Camera Trapping Identification and Organization Network (ACTION) ([github.com/humphrem/action](https://github.com/humphrem/action))
 * TigerVid (animal frame/clip extraction from videos) ([github.com/sheneman/tigervid](https://github.com/sheneman/tigervid))
-* Trapper AI (AI backend for the TRAPPER platform) [gitlab.com/trapper-project/trapper-ai](https://gitlab.com/trapper-project/trapper-ai)
-* video-processor (MD workflow for security camera footage) [github.com/evz/video-processor](https://github.com/evz/video-processor)
+* Trapper AI (AI backend for the TRAPPER platform) ([gitlab.com/trapper-project/trapper-ai](https://gitlab.com/trapper-project/trapper-ai))
+* video-processor (MD workflow for security camera footage) ([github.com/evz/video-processor](https://github.com/evz/video-processor))
 
 #### Third-party things that aren't repos
 
