@@ -124,7 +124,7 @@ class SubsetJsonDetectorOutputOptions:
         self.remove_failed_images = False
         
         #: Either a list of category IDs (as string-ints) (not names), or a dictionary mapping category *IDs* 
-        #: (as string-ints) (not names) to thresholds.  Removes  non-matching detections, does not 
+        #: (as string-ints) (not names) to thresholds.  Removes non-matching detections, does not 
         #: remove images.  Not technically mutually exclusize with category_names_to_keep, but it's an esoteric 
         #: scenario indeed where you would want to specify both.
         self.categories_to_keep = None
