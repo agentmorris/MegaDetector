@@ -67,6 +67,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [The Land Banking Group](https://thelandbankinggroup.com/)
 * [New Zealand Department of Conservation](https://www.doc.govt.nz)
 * [Habitat NZ](https://habitatnz.co.nz/)
+* [Research Institute of Organic Agriculture](https://www.fibl.org/en/) (FiBL)
 
 * [Applied Conservation Macro Ecology Lab](http://www.acmelab.ca/), University of Victoria
 * [Banff National Park Resource Conservation](https://www.pc.gc.ca/en/pn-np/ab/banff/nature/conservation), Parks Canada
