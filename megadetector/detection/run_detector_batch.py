@@ -923,7 +923,13 @@ def write_results_to_file(results,
         'info': info
     }
     
-    os.makedirs(os.path.dirname(output_file),exist_ok=True)
+    # Create the folder where the output file belongs; this will fail if
+    # this is a relative path with no folder component
+    try:
+        os.makedirs(os.path.dirname(output_file),exist_ok=True)
+    except Exception:
+        pass
+    
     with open(output_file, 'w') as f:
         json.dump(final_output, f, indent=1, default=str)
     print('Output file saved at {}'.format(output_file))
