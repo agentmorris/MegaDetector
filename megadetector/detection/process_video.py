@@ -79,7 +79,8 @@ class ProcessVideoOptions:
         
         #: Should we render a video with detection boxes?
         #:
-        #: Only supported when processing a single video, not a folder.
+        #: If processing a folder, this renders each input video to a separate
+        #: video with detection boxes.
         self.render_output_video = False
         
         #: If we are rendering boxes to a new video, should we keep the temporary
