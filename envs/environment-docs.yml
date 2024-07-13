@@ -1,4 +1,4 @@
-name: cameratraps-docs
+name: megadetector-docs
 
 channels:
 - conda-forge

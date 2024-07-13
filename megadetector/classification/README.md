@@ -84,7 +84,7 @@ mamba env create -f envs/environment-classifier.yml
 ...and activate this environment:
 
 ```bash
-mamba activate cameratraps-classifier
+mamba activate megaclassifier
 ```
 
 Subsequent steps will assume your command prompt is in the "classification" folder in this repo.

@@ -15,7 +15,7 @@
 #
 # So, to create a suitable environment:
 #
-# mamba create -n cameratraps-pip python=3.11 pip -y
+# mamba create -n megadetector-pip python=3.11 pip -y
 #
 ########
 

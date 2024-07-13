@@ -259,10 +259,10 @@ The first time you set all of this up, open your Miniforge prompt, and run:
 mkdir c:\git
 cd c:\git
 git clone https://github.com/agentmorris/MegaDetector
-git clone https://github.com/ecologize/yolov5/
+git clone https://github.com/ecologize/yolov5
 cd c:\git\MegaDetector
 mamba env create --file envs\environment-detector.yml
-mamba activate cameratraps-detector
+mamba activate megadetector
 set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
 ```
 
@@ -271,7 +271,7 @@ Your environment is set up now!  In the future, when you open your Miniforge pro
 
 ```batch
 cd c:\git\MegaDetector
-mamba activate cameratraps-detector
+mamba activate megadetector
 set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
 ```
 
@@ -285,18 +285,18 @@ If you have installed Miniforge on Linux, you are probably always at an Miniforg
 ```batch
 mkdir ~/git
 cd ~/git
-git clone https://github.com/ecologize/yolov5/
+git clone https://github.com/ecologize/yolov5
 git clone https://github.com/agentmorris/MegaDetector
 cd ~/git/MegaDetector
 mamba env create --file envs/environment-detector.yml
-mamba activate cameratraps-detector
+mamba activate megadetector
 export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
 If you want to use MDv4 (which you probably don't, unless you have a really good reason to), there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
 
 ```batch
-mamba activate cameratraps-detector
+mamba activate megadetector
 pip install tensorflow
 ```
 
@@ -305,7 +305,7 @@ Your environment is set up now!  In the future, whenever you start a new shell, 
 
 ```batch
 cd ~/git/MegaDetector
-mamba activate cameratraps-detector
+mamba activate megadetector
 export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
@@ -319,18 +319,18 @@ If you have installed Miniforge on Mac, you are probably always at an Miniforge 
 ```batch
 mkdir ~/git
 cd ~/git
-git clone https://github.com/ecologize/yolov5/
+git clone https://github.com/ecologize/yolov5
 git clone https://github.com/agentmorris/MegaDetector
 cd ~/git/MegaDetector
 ./envs/md-mac-env-setup.sh
-mamba activate cameratraps-detector
+mamba activate megadetector
 export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
 If you want to use MDv4 (which you probably don't, unless you have a really good reason to), there's one extra setup step (this will not break your MDv5 setup, you can run both in the same environment):
 
 ```batch
-mamba activate cameratraps-detector
+mamba activate megadetector
 pip install tensorflow
 ```
 
@@ -339,7 +339,7 @@ Your environment is set up now!  In the future, whenever you start a new shell, 
 
 ```batch
 cd ~/git/MegaDetector
-mamba activate cameratraps-detector
+mamba activate megadetector
 export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
@@ -358,7 +358,7 @@ To use run_detector.py on Windows, when you open a new Miniforge prompt, don't f
 
 ```batch
 cd c:\git\MegaDetector
-mamba activate cameratraps-detector
+mamba activate megadetector
 set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
 ```
 
@@ -397,7 +397,7 @@ To use this script on Linux/Mac, when you open a new Miniforge prompt, don't for
  
 ```batch
 cd ~/git/MegaDetector
-mamba activate cameratraps-detector
+mamba activate megadetector
 export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
@@ -417,7 +417,7 @@ To use run_detector_batch.py on Windows, when you open a new Miniforge prompt, d
 
 ```batch
 cd c:\git\MegaDetector
-mamba activate cameratraps-detector
+mamba activate megadetector
 set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5
 ```
 
@@ -472,7 +472,7 @@ To use this script on Linux/Mac, when you open a new Miniforge prompt, don't for
  
 ```batch
 cd ~/git/MegaDetector
-mamba activate cameratraps-detector
+mamba activate megadetector
 export PYTHONPATH="$HOME/git/MegaDetector:$HOME/git/yolov5"
 ```
 
@@ -811,8 +811,8 @@ mkdir c:\git
 cd c:\git
 git clone https://github.com/agentmorris/MegaDetector
 cd c:\git\MegaDetector
-mamba create -n cameratraps-detector pip -y
-mamba activate cameratraps-detector
+mamba create -n megadetector-pip pip -y
+mamba activate megadetector-pip
 pip install -r envs\requirements.txt
 set PYTHONPATH=c:\git\MegaDetector
 ```
@@ -824,8 +824,8 @@ mkdir ~/git
 cd ~git
 git clone https://github.com/agentmorris/MegaDetector
 cd ~/git/MegaDetector
-mamba create -n cameratraps-detector pip -y
-mamba activate cameratraps-detector
+mamba create -n megadetector-pip pip -y
+mamba activate megadetector-pip
 pip install -r envs/requirements.txt
 export PYTHONPATH="$HOME/git/MegaDetector"
 ```
@@ -835,8 +835,8 @@ YMMV.
 If you're feeling even more experimental, this also works:
 
 ```batch
-mamba create -n cameratraps-detector-pip pip -y
-mamba activate cameratraps-detector-pip
+mamba create -n megadetector-pip pip -y
+mamba activate megadetector-pip
 pip install megadetector --upgrade
 python -m megadetector.detection.run_detector_batch --help
 ```

@@ -1,4 +1,4 @@
-name: cameratraps-classifier
+name: megaclassifier
 
 channels:
 - pytorch
