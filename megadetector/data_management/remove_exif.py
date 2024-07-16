@@ -3,64 +3,89 @@
 remove_exif.py
 
 Removes all EXIF/IPTC/XMP metadata from a folder of images, without making 
-backup copies, using pyexiv2.
+backup copies, using pyexiv2.  Ignores non-jpeg images.
 
-TODO: This is a one-off script waiting to be cleaned up for more general use.
+This module is rarely used, and pyexiv2 is not thread-safe, so pyexiv2 is not
+included in package-level dependency lists.  YMMV.
 
 """
-
-input_base = r'f:\images'
-
 
 #%% Imports and constants
 
 import os
 import glob
 
-def main():
+from multiprocessing.pool import Pool as Pool
+from tqdm import tqdm
 
-    assert os.path.isdir(input_base)
 
-    ##%% List files
+#%% Support functions
 
-    all_files = [f for f in glob.glob(input_base + "*/**", recursive=True)]
-    image_files = [s for s in all_files if (s.lower().endswith('.jpg'))]
-        
-
-    ##%% Remove EXIF data (support)
+# Pyexif2 is not thread safe, do not call this function in parallel within a process
+#
+# Parallelizing across processes is fine.
+def remove_exif_from_image(fn):
 
     import pyexiv2
+    
+    try:
+        img = pyexiv2.Image(fn)
+        img.clear_exif()
+        img.clear_iptc()
+        img.clear_xmp()
+        img.close()        
+    except Exception as e:
+        print('EXIF error on {}: {}'.format(fn,str(e)))
+    
+    return True
 
-    # PYEXIV2 IS NOT THREAD SAFE; DO NOT CALL THIS IN PARALLEL FROM A SINGLE PROCESS
-    def remove_exif(fn):
+
+#%% Remove EXIF data
+
+def remove_exif(image_base_folder,recursive=True,n_processes=1):
+    """
+    Removes all EXIF/IPTC/XMP metadata from a folder of images, without making 
+    backup copies, using pyexiv2.  Ignores non-jpeg images.
+    
+    Args:
+        image_base_folder (str): the folder from which we should remove EXIF data
+        recursive (bool, optional): whether to process [image_base_folder] recursively
+        n_processes (int, optional): number of concurrent workers.  Because pyexiv2 is not
+            thread-safe, only process-based parallelism is supported.        
+    """
+    try:
+        import pyexiv2 #noqa
+    except:
+        print('pyexiv2 not available; try "pip install pyexiv2"')
+        raise
+
         
-        try:
-            img = pyexiv2.Image(fn)
-            # data = img.read_exif(); print(data)
-            img.clear_exif()
-            img.clear_iptc()
-            img.clear_xmp()
-            img.close()        
-        except Exception as e:
-            print('EXIF error on {}: {}'.format(fn,str(e)))
+    ##%% List files
+
+    assert os.path.isdir(image_base_folder), \
+        'Could not find folder {}'.format(image_base_folder)
+    all_files = [f for f in glob.glob(image_base_folder+ "*/**", recursive=recursive)]
+    image_files = [s for s in all_files if \
+                   (s.lower().endswith('.jpg') or s.lower().endswith('.jpeg'))]
         
 
     ##%% Remove EXIF data (execution)
 
-    from joblib import Parallel, delayed
-
-    n_exif_threads = 50
-        
-    if n_exif_threads == 1:
+    if n_processes == 1:
         
         # fn = image_files[0]
-        for fn in image_files:
-            remove_exif(fn)
+        for fn in tqdm(image_files):
+            remove_exif_from_image(fn)
             
     else:
-        # joblib.Parallel defaults to a process-based backend, but let's be sure
-        # results = Parallel(n_jobs=n_exif_threads,verbose=2,prefer='processes')(delayed(remove_exif)(fn) for fn in image_files[0:10])
-        _ = Parallel(n_jobs=n_exif_threads,verbose=2,prefer='processes')(delayed(remove_exif)(fn) for fn in image_files)
+        # pyexiv2 is not thread-safe, so we need to use processes
+        print('Starting parallel process pool with {} workers'.format(n_processes))
+        pool = Pool(n_processes)
+        _ = list(tqdm(pool.imap(remove_exif_from_image,image_files),total=len(image_files)))
             
-if __name__ == '__main__':
-    main()
+# ...remove_exif(...)
+
+
+#%% Command-line driver
+
+## TODO

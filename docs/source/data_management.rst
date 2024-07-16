@@ -151,6 +151,15 @@ data\_management.ocr\_tools module
    :undoc-members:
    :show-inheritance:
 
+data\_management.remove\_exif module
+------------------------------------
+
+.. automodule:: megadetector.data_management.remove_exif
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
 data\_management.read\_exif module
 ----------------------------------
 

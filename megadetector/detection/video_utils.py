@@ -88,13 +88,13 @@ def find_videos(dirname,
     else:
         files = glob.glob(os.path.join(dirname, '*.*'))
         
+    files = [fn for fn in files if os.path.isfile(fn)]
+    
     if return_relative_paths:
         files = [os.path.relpath(fn,dirname) for fn in files]
 
     if convert_slashes:
         files = [fn.replace('\\', '/') for fn in files]
-    
-    files = [fn for fn in files if os.path.isfile(fn)]
     
     return find_video_strings(files)
 

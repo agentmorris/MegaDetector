@@ -924,8 +924,8 @@ def zip_files_into_single_zipfile(input_files, output_fn, arc_name_base,
     
 def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, compresslevel=9):
     """
-    Recursively zip everything in [input_folder] into a single zipfile, storing outputs as relative 
-    paths.
+    Recursively zip everything in [input_folder] into a single zipfile, storing files as paths 
+    relative to [input_folder].
     
     Args: 
         input_folder (str): folder to zip
