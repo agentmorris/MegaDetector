@@ -72,8 +72,8 @@ for ds_name in metadata_table.keys():
 url_to_source = {}
 
 # The first image in a dataset is disproportionately likely to be human (and thus 404),
-# so we pick a semi-arbitrary image that isn't the first.  How about the 1000th?
-image_index = 1000
+# so we pick a semi-arbitrary image that isn't the first.  How about the 2000th?
+image_index = 2000
 
 # ds_name = list(metadata_table.keys())[0]
 for ds_name in metadata_table.keys():

@@ -14,8 +14,9 @@ import json
 input_base_folder = r'i:/data/desert-lion'
 assert os.path.isdir(input_base_folder)
 
-md_results_file = r'i:/data/desert-lion/desert-lion-camera-traps-2024-07-14-v5a.0.0_detections-all.json'
-# assert os.path.isfile(md_results_file)
+# md_results_file = r'i:/data/desert-lion/desert-lion-camera-traps-2024-07-14-v5a.0.0_detections-all.json'
+md_results_file = r'i:/data/desert-lion/desert-lion-camera-traps-2024-07-14-v5a.0.0_detections.json'
+assert os.path.isfile(md_results_file)
 
 export_base = os.path.join(input_base_folder,'annotated-imgs')
 assert os.path.isdir(export_base)
@@ -36,7 +37,9 @@ from megadetector.utils.path_utils import find_images
 video_files = find_videos(input_base_folder,recursive=True,return_relative_paths=True,convert_slashes=True)
 image_files = find_images(input_base_folder,recursive=True,return_relative_paths=True,convert_slashes=True)
 
-print('Found {} images, {} videos'.format(len(image_files),len(video_files)))
+n_annotated_imgs = len([fn for fn in image_files if 'annotated-imgs' in fn])
+print('Found {} images ({} in the annotated-imgs folder), {} videos'.format(
+    len(image_files),n_annotated_imgs,len(video_files)))
 
 
 #%% Read EXIF data

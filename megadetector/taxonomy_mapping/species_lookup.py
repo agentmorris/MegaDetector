@@ -208,7 +208,7 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
     # Load GBIF taxonomy
     gbif_taxonomy_file = os.path.join(taxonomy_download_dir, 'GBIF', 'Taxon.tsv')
     print('Loading GBIF taxonomy from {}'.format(gbif_taxonomy_file))
-    gbif_taxonomy = pd.read_csv(gbif_taxonomy_file, sep='\t')
+    gbif_taxonomy = pd.read_csv(gbif_taxonomy_file, sep='\t', encoding='utf-8',on_bad_lines='warn')
     gbif_taxonomy['scientificName'] = gbif_taxonomy['scientificName'].fillna('').str.strip()
     gbif_taxonomy['canonicalName'] = gbif_taxonomy['canonicalName'].fillna('').str.strip()
 

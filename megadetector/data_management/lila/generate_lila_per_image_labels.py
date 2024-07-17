@@ -354,7 +354,7 @@ print('Processed {} datasets'.format(len(metadata_table)))
 #%% Read the .csv back
 
 df = pd.read_csv(output_file)
-print('Read {} lines from {}'.format(len(df),output_file))
+print('Read {} rows from {}'.format(len(df),output_file))
 
 
 #%% Do some post-hoc integrity checking
@@ -403,9 +403,9 @@ else:
         check_row(row)
 
 
-#%% Check for datasets that have only one location string
+#%% Check for datasets that have only one location string (typically "unknown")
 
-# Expected: ENA24, Missouri Camera Traps
+# Expected: ENA24, Missouri Camera Traps, Desert Lion Conservation Camera Traps
 
 for ds_name in dataset_name_to_locations.keys():
     if len(dataset_name_to_locations[ds_name]) == 1:

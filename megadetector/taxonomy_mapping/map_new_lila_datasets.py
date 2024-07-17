@@ -15,10 +15,10 @@ import json
 # Created by get_lila_category_list.py
 input_lila_category_list_file = os.path.expanduser('~/lila/lila_categories_list/lila_dataset_to_categories.json')
 
-output_file = os.path.expanduser('~/lila/lila_additions_2023.12.29.csv')
+output_file = os.path.expanduser('~/lila/lila_additions_2024.07.16.csv')
 
 datasets_to_map = [
-    'Trail Camera Images of New Zealand Animals'
+    'Desert Lion Conservation Camera Traps'
     ]
 
 
@@ -133,7 +133,7 @@ if False:
     # q = 'white-throated monkey'
     # q = 'cingulata'
     # q = 'notamacropus'
-    q = 'porzana'
+    q = 'aves'
     taxonomy_preference = 'inat'
     m = get_preferred_taxonomic_match(q,taxonomy_preference)
     # print(m.scientific_name); import clipboard; clipboard.copy(m.scientific_name)

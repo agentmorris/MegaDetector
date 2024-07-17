@@ -24,7 +24,7 @@ if False:
     release_taxonomy_file = os.path.expanduser('~/lila/lila-taxonomy-mapping_release.csv')
     # import clipboard; clipboard.copy(release_taxonomy_file)
 
-    # Created by get_lila_category_list.py... contains counts for each category
+    # Created by get_lila_annotation_counts.py... contains counts for each category
     lila_dataset_to_categories_file = os.path.expanduser('~/lila/lila_categories_list/lila_dataset_to_categories.json')
 
     assert os.path.isfile(lila_dataset_to_categories_file)
@@ -140,3 +140,4 @@ if False:
 
     print('Wrote final output to {}'.format(release_taxonomy_file))
 
+# ...if False

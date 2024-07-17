@@ -8,6 +8,11 @@ Slightly modified from:
 
 https://github.com/RiddlerQ/simple_image_download
 
+pip install python-magic
+
+# On Windows, also run:
+pip install python-magic-bin
+
 """
 
 #%% Imports

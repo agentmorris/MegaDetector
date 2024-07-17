@@ -75,7 +75,8 @@ def download_url(url,
                  destination_filename=None, 
                  progress_updater=None, 
                  force_download=False, 
-                 verbose=True):
+                 verbose=True,
+                 escape_spaces=True):
     """
     Downloads a URL to a file.  If no file is specified, creates a temporary file, 
     making a best effort to avoid filename collisions.
@@ -92,6 +93,7 @@ def download_url(url,
         force_download (bool, optional): download this file even if [destination_filename]
             exists.
         verbose (bool, optional): enable additional debug console output
+        escape_spaces (bool, optional): replace ' ' with '%20'
         
     Returns:
         str: the filename to which [url] was downloaded, the same as [destination_filename]
@@ -107,6 +109,7 @@ def download_url(url,
     url_no_sas = url.split('?')[0]
         
     if destination_filename is None:
+        
         target_folder = get_temp_folder()
         url_without_sas = url.split('?', 1)[0]
         
@@ -118,6 +121,9 @@ def download_url(url,
             url_as_filename = url_as_filename[-1*(max_path_len-n_folder_chars):]
         destination_filename = \
             os.path.join(target_folder,url_as_filename)
+        
+    if escape_spaces:
+        url = url.replace(' ','%20')
         
     if (not force_download) and (os.path.isfile(destination_filename)):
         if verbose:
