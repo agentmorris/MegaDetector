@@ -987,10 +987,10 @@ output_file = os.path.join(filename_base,'run_{}_'.format(classifier_name_short)
 classifier_base = os.path.expanduser('~/models/camera_traps/megaclassifier/v0.1/')
 assert os.path.isdir(classifier_base)
 
-checkpoint_path = os.path.join(classifier_base,'v0.1_efficientnet-b3_compiled.pt')
+checkpoint_path = os.path.join(classifier_base,'megaclassifier_v0.1_efficientnet-b3_compiled.pt')
 assert os.path.isfile(checkpoint_path)
 
-classifier_categories_path = os.path.join(classifier_base,'v0.1_index_to_name.json')
+classifier_categories_path = os.path.join(classifier_base,'megaclassifier_v0.1_index_to_name.json')
 assert os.path.isfile(classifier_categories_path)
 
 target_mapping_path = os.path.join(classifier_base,'idfg_to_megaclassifier_labels.json')
