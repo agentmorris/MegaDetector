@@ -543,7 +543,7 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 * [TNC Animl](https://animl.camera/) ([code](https://github.com/tnc-ca-geo/animl-frontend))
 * [Cam-WON](https://wildlifeobserver.net/)
 * [Zooniverse ML Subject Assistant](https://subject-assistant.zooniverse.org/#/intro)
-* [Dudek Wildlife Camera Trap AI Image Toolkit](https://dudek.com/services/wildlife-camera-trap-ai-image-processing-and-management/)
+* [Dudek AI Image Toolkit](https://ait.dudek.com)
 * [Zamba Cloud](https://github.com/drivendataorg/zamba)
 * [OCAPI](https://www.terroiko.fr/ocapi/)
 
