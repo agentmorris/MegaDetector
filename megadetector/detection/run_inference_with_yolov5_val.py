@@ -330,7 +330,9 @@ def run_inference_with_yolo_val(options):
     image_files_relative = None
     image_files_absolute = None
     
+    # If the caller just provided a folder, not a list of files...
     if options.image_filename_list is None:
+        
         assert options.input_folder is not None and os.path.isdir(options.input_folder), \
             'Could not find input folder {}'.format(options.input_folder)
         image_files_relative = path_utils.find_images(options.input_folder,
@@ -339,18 +341,23 @@ def run_inference_with_yolo_val(options):
                                                       convert_slashes=True)
         image_files_absolute = [os.path.join(options.input_folder,fn) for \
                                 fn in image_files_relative]
+            
     else:
         
-        if is_iterable(options.image_filename_list):
+        # If the caller provided a list of image files (rather than a filename pointing 
+        # to a list of image files)...
+        if is_iterable(options.image_filename_list) and not isinstance(options.image_filename_list,str):
             
             image_files_relative = options.image_filename_list
             
+        # If the caller provided a filename pointing to a list of image files...
         else:
+            
             assert isinstance(options.image_filename_list,str), \
                 'Unrecognized image filename list object type: {}'.format(options.image_filename_list)
             assert os.path.isfile(options.image_filename_list), \
                 'Could not find image filename list file: {}'.format(options.image_filename_list)
-            ext = os.path.splitext(options.image_filename_list).lower()
+            ext = os.path.splitext(options.image_filename_list)[-1].lower()
             assert ext in ('.json','.txt'), \
                 'Unrecognized image filename list file extension: {}'.format(options.image_filename_list)
             if ext == '.json':
@@ -366,8 +373,11 @@ def run_inference_with_yolo_val(options):
         # ...whether the image filename list was supplied as list vs. a filename
         
         if options.input_folder is None:
+            
             image_files_absolute = image_files_relative
+            
         else:
+            
             # The list should be relative filenames
             for fn in image_files_relative:
                 assert not path_is_abs(fn), \
@@ -375,12 +385,14 @@ def run_inference_with_yolo_val(options):
                 
             image_files_absolute = \
                 [os.path.join(options.input_folder,fn) for fn in image_files_relative]
+        
         for fn in image_files_absolute:
             assert os.path.isfile(fn), 'Could not find image file {}'.format(fn)
     
     # ...whether the caller supplied a list of filenames
     
     image_files_absolute = [fn.replace('\\','/') for fn in image_files_absolute]
+    
     del image_files_relative
     
     
@@ -883,7 +895,7 @@ def main():
         help='model file name')
     parser.add_argument(
         'input_folder',type=str,
-        help='folder on which to recursively run the model')
+        help='folder on which to recursively run the model, or a .json or .txt file containing a list of absolute image paths')
     parser.add_argument(
         'output_file',type=str,
         help='.json file where output will be written')
@@ -994,7 +1006,15 @@ def main():
     
     if args.yolo_dataset_file is not None:
         options.yolo_category_id_to_name = args.yolo_dataset_file
-        del options.yolo_dataset_file
+    
+    # The function convention is that input_folder should be None when we want to use a list of 
+    # absolute paths, but the CLI convention is that the required argument is always valid, whether 
+    # it's a folder or a list of absolute paths.
+    if os.path.isfile(options.input_folder):
+        assert options.image_filename_list is None, \
+            'image_filename_list should not be specified when input_folder is a file'
+        options.image_filename_list = options.input_folder
+        options.input_folder = None        
         
     options.recursive = (not options.nonrecursive)
     options.remove_symlink_folder = (not options.no_remove_symlink_folder)
@@ -1007,6 +1027,7 @@ def main():
     del options.no_remove_yolo_results_folder
     del options.no_use_symlinks
     del options.augment_enabled
+    del options.yolo_dataset_file
         
     print(options.__dict__)
     

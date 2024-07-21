@@ -13,6 +13,7 @@ import os
 
 from megadetector.utils import path_utils
 from megadetector.detection import video_utils
+from megadetector.detection import process_video
 
 input_folder = '/datadrive/data'
 frame_folder_base = '/datadrive/frames'
@@ -169,6 +170,76 @@ if False:
     
     pass
 
+    #%% Render all detections to videos
+    
+    from megadetector.visualization.visualize_detector_output import visualize_detector_output
+    from megadetector.utils.path_utils import insert_before_extension
+    from megadetector.detection.video_utils import frames_to_video
+    
+    rendering_confidence_threshold = 0.1
+    target_fs = 100
+    fourcc = None
+    
+    # Render detections to images
+    frame_rendering_output_dir = os.path.expanduser('~/tmp/rendered-frames')
+    os.makedirs(frame_rendering_output_dir,exist_ok=True)
+    
+    video_rendering_output_dir = os.path.expanduser('~/tmp/rendered-videos')
+    os.makedirs(video_rendering_output_dir,exist_ok=True)
+    
+    frames_json = filtered_output_filename
+    
+    detected_frame_files = visualize_detector_output(
+        detector_output_path=frames_json,
+        out_dir=frame_rendering_output_dir,
+        images_dir=frame_folder_base,
+        confidence_threshold=rendering_confidence_threshold,
+        preserve_path_structure=True,
+        output_image_width=-1)
+    
+    detected_frame_files = [s.replace('\\','/') for s in detected_frame_files]
+    
+    output_video_folder = os.path.expanduser('~/tmp/rendered-videos')    
+    os.makedirs(output_video_folder,exist_ok=True)
+                         
+    # i_video=0; input_video_file_abs = video_filenames[i_video]
+    for i_video,input_video_file_abs in enumerate(video_filenames):
+        
+        video_fs = fs_by_video[i_video]
+        rendering_fs = target_fs / every_n_frames
+
+        input_video_file_relative = os.path.relpath(input_video_file_abs,input_folder)
+        video_frame_output_folder = os.path.join(frame_rendering_output_dir,input_video_file_relative)        
+        video_frame_output_folder = video_frame_output_folder.replace('\\','/')
+        assert os.path.isdir(video_frame_output_folder), \
+            'Could not find frame folder for video {}'.format(input_video_file_relative)
+        
+        # Find the corresponding rendered frame folder
+        video_frame_files = [fn for fn in detected_frame_files if \
+                             fn.startswith(video_frame_output_folder)]
+        assert len(video_frame_files) > 0, 'Could not find rendered frames for video {}'.format(
+            input_video_file_relative)
+        
+        # Select the output filename for the rendered video
+        if input_folder == video_rendering_output_dir:
+            video_output_file = insert_before_extension(input_video_file_abs,'annotated','_')
+        else:
+            video_output_file = os.path.join(video_rendering_output_dir,input_video_file_relative)
+        
+        os.makedirs(os.path.dirname(video_output_file),exist_ok=True)
+        
+        # Create the output video            
+        print('Rendering detections for video {} to {} at {} fps (original video {} fps)'.format(
+            input_video_file_relative,video_output_file,rendering_fs,video_fs))
+        
+        frames_to_video(video_frame_files, 
+                        rendering_fs, 
+                        video_output_file, 
+                        codec_spec='mp4v')
+            
+    # ...for each video    
+    
+    
     #%% Render one or more sample videos...
         
     # ...while we still have the frames and detections around

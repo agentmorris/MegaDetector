@@ -561,9 +561,9 @@ def process_video_folder(options):
                                                           augment=options.augment)
         
         md_results = run_callback_on_frames_for_folder(input_video_folder=options.input_video_file, 
-                                                          frame_callback=frame_callback,
-                                                          every_n_frames=options.frame_sample, 
-                                                          verbose=options.verbose)
+                                                       frame_callback=frame_callback,
+                                                       every_n_frames=options.frame_sample, 
+                                                       verbose=options.verbose)
         
         video_results = md_results['results']
         
@@ -631,7 +631,8 @@ def process_video_folder(options):
         if options.reuse_results_if_available and \
             os.path.isfile(frames_json):
                 print('Bypassing inference, loading results from {}'.format(frames_json))
-                results = None
+                with open(frames_json,'r') as f:
+                    results = json.load(f)
         else:
             print('Running MegaDetector')
             results = run_detector_batch.load_and_run_detector_batch(
