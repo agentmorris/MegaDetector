@@ -636,7 +636,7 @@ def video_to_frames(input_video_file,
 
 def _video_to_frames_for_folder(relative_fn,input_folder,output_folder_base,
                                 every_n_frames,overwrite,verbose,quality,max_width,
-                                frames_to_extract):
+                                frames_to_extract,allow_empty_videos):
     """
     Internal function to call video_to_frames for a single video in the context of 
     video_folder_to_frames;  makes sure the right output folder exists, then calls 
@@ -653,10 +653,15 @@ def _video_to_frames_for_folder(relative_fn,input_folder,output_folder_base,
 
     # Render frames
     # input_video_file = input_fn_absolute; output_folder = output_folder_video
-    frame_filenames,fs = video_to_frames(input_fn_absolute,output_folder_video,
-                                         overwrite=overwrite,every_n_frames=every_n_frames,
-                                         verbose=verbose,quality=quality,max_width=max_width,
-                                         frames_to_extract=frames_to_extract)
+    frame_filenames,fs = video_to_frames(input_fn_absolute,
+                                         output_folder_video,
+                                         overwrite=overwrite,
+                                         every_n_frames=every_n_frames,
+                                         verbose=verbose,
+                                         quality=quality,
+                                         max_width=max_width,
+                                         frames_to_extract=frames_to_extract,
+                                         allow_empty_videos=allow_empty_videos)
     
     return frame_filenames,fs
 
@@ -666,7 +671,7 @@ def video_folder_to_frames(input_folder, output_folder_base,
                            n_threads=1, every_n_frames=None,
                            verbose=False, parallelization_uses_threads=True,
                            quality=None, max_width=None, 
-                           frames_to_extract=None):
+                           frames_to_extract=None, allow_empty_videos=False):
     """
     For every video file in input_folder, creates a folder within output_folder_base, and 
     renders frame of that video to images in that folder.
@@ -724,7 +729,7 @@ def video_folder_to_frames(input_folder, output_folder_base,
             frame_filenames,fs = \
                 _video_to_frames_for_folder(input_fn_relative,input_folder,output_folder_base,
                                             every_n_frames,overwrite,verbose,quality,max_width,
-                                            frames_to_extract)
+                                            frames_to_extract,allow_empty_videos)
             frame_filenames_by_video.append(frame_filenames)
             fs_by_video.append(fs)
     else:
@@ -742,7 +747,8 @@ def video_folder_to_frames(input_folder, output_folder_base,
                                              verbose=verbose,
                                              quality=quality,
                                              max_width=max_width,
-                                             frames_to_extract=frames_to_extract)
+                                             frames_to_extract=frames_to_extract,
+                                             allow_empty_videos=allow_empty_videos)
         results = list(tqdm(pool.imap(
             partial(process_video_with_options),input_files_relative_paths), 
                             total=len(input_files_relative_paths)))

@@ -166,6 +166,11 @@ class ProcessVideoOptions:
         
         #: Enable image augmentation
         self.augment = False
+        
+        #: By default, a video with no frames (or no frames retrievable with the current parameters)
+        #: is an error, this makes it a warning.  This would apply if you request, e.g., the 100th
+        #: frame from each video, but a video only has 50 frames.
+        self.allow_empty_videos = False
     
 # ...class ProcessVideoOptions
 
@@ -387,14 +392,11 @@ def process_video(options):
             detector_file=options.model_file,
             custom_metadata={'video_frame_rate':frame_results['frame_rate']})
 
-    # Extract frames and run MegaDetector    
+    # Extract frames and optionally run MegaDetector on those frames
     else:
                 
-        if options.model_file == 'no_detection':
-            raise ValueError('Internal error: keep_extracted_frames not set, but no model specified')            
-            
         if options.verbose:
-            print('Running MegaDetector on extracted frame images for {}'.format(options.input_video_file))
+            print('Extracting frames for {}'.format(options.input_video_file))
             
         # This does not create any folders, just defines temporary folder names in 
         # case we need them.
@@ -418,7 +420,8 @@ def process_video(options):
                                 quality=options.quality, 
                                 max_width=options.max_width, 
                                 verbose=options.verbose,
-                                frames_to_extract=options.frames_to_extract)
+                                frames_to_extract=options.frames_to_extract,
+                                allow_empty_videos=options.allow_empty_videos)
     
         image_file_names = frame_filenames
         if options.debug_max_frames > 0:
@@ -426,24 +429,29 @@ def process_video(options):
                 
         ## Run MegaDetector on those frames
         
-        results = run_detector_batch.load_and_run_detector_batch(
-            options.model_file, 
-            image_file_names,
-            confidence_threshold=options.json_confidence_threshold,
-            n_cores=options.n_cores,
-            class_mapping_filename=options.class_mapping_filename,
-            quiet=True,
-            augment=options.augment,
-            image_size=options.image_size)
-    
-        _add_frame_numbers_to_results(results)
-    
-        run_detector_batch.write_results_to_file(
-            results, 
-            options.output_json_file,
-            relative_path_base=frame_output_folder,
-            detector_file=options.model_file,
-            custom_metadata={'video_frame_rate':Fs})
+        if options.model_file != 'no_detection':
+        
+            if options.verbose:
+                print('Running MD for {}'.format(options.input_video_file))
+                
+            results = run_detector_batch.load_and_run_detector_batch(
+                options.model_file, 
+                image_file_names,
+                confidence_threshold=options.json_confidence_threshold,
+                n_cores=options.n_cores,
+                class_mapping_filename=options.class_mapping_filename,
+                quiet=True,
+                augment=options.augment,
+                image_size=options.image_size)
+        
+            _add_frame_numbers_to_results(results)
+        
+            run_detector_batch.write_results_to_file(
+                results, 
+                options.output_json_file,
+                relative_path_base=frame_output_folder,
+                detector_file=options.model_file,
+                custom_metadata={'video_frame_rate':Fs})
             
     # ...if we are/aren't keeping raw frames on disk
         
@@ -604,7 +612,8 @@ def process_video_folder(options):
                                    verbose=options.verbose,
                                    quality=options.quality,
                                    max_width=options.max_width,
-                                   frames_to_extract=options.frames_to_extract)
+                                   frames_to_extract=options.frames_to_extract,
+                                   allow_empty_videos=options.allow_empty_videos)
         
         print('Extracted frames for {} videos'.format(len(set(video_filenames))))
         image_file_names = list(itertools.chain.from_iterable(frame_filenames))
@@ -1104,6 +1113,10 @@ def main():
     parser.add_argument('--augment',
                         action='store_true',
                         help='Enable image augmentation')
+    
+    parser.add_argument('--allow_empty_videos',
+                        action='store_true',
+                        help='By default, videos with no retrievable frames cause an error, this makes it a warning')
             
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -1116,6 +1129,10 @@ def main():
     if os.path.isdir(options.input_video_file):
         process_video_folder(options)
     else:
+        assert os.path.isfile(options.input_video_file), \
+            '{} is not a valid file or folder name'.format(options.input_video_file)
+        assert not options.recursive, \
+            '--recursive is only meaningful when processing a folder'
         process_video(options)
 
 if __name__ == '__main__':
