@@ -108,6 +108,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * Department of Ecology, TU Berlin
 * Ghost Cat Analytics
 * Protected Areas Unit, Canadian Wildlife Service
+* Conservation and Restoration Science Branch, New South Wales Department of Climate Change, Energy, the Environment and Water
 
 * [School of Natural Sciences](https://www.utas.edu.au/natural-sciences), University of Tasmania ([story](https://www.utas.edu.au/about/news-and-stories/articles/2022/1204-innovative-camera-network-keeps-close-eye-on-tassie-wildlife))
 * [Kenai National Wildlife Refuge](https://www.fws.gov/refuge/kenai), U.S. Fish & Wildlife Service ([story](https://www.peninsulaclarion.com/sports/refuge-notebook-new-technology-increases-efficiency-of-refuge-cameras/))
