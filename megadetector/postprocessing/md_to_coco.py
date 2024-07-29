@@ -31,7 +31,9 @@ def md_to_coco(md_results_file,
                validate_image_sizes=False,
                info=None,
                preserve_nonstandard_metadata=True,
-               include_failed_images=True):
+               include_failed_images=True,
+               include_annotations_without_bounding_boxes=True,
+               empty_category_id='0'):
     """
     "Converts" MegaDetector output files to COCO format.  "Converts" is in quotes because
     this is an opinionated transformation that requires a confidence threshold.
@@ -59,8 +61,13 @@ def md_to_coco(md_results_file,
         preserve_nonstandard_metadata (bool, optional): if this is True, confidence will be preserved in a 
             non-standard "conf" field in each annotation, and any random fields present in each image's data
             (e.g. EXIF metadata) will be propagated to COCO output    
-        include_failed_images (boo, optional): if this is True, failed images will be propagated to COCO output 
+        include_failed_images (bool, optional): if this is True, failed images will be propagated to COCO output 
             with a non-empty "failure" field and no other fields, otherwise failed images will be skipped.
+        include_annotations_without_bounding_boxes (bool, optional): if this is True, annotations with
+            only class labels (no bounding boxes) will be included in the output.  If this is False, empty
+            images will be represented with no annotations.
+        empty_category_id (str, optional): category ID reserved for the 'empty' class, should not be
+            attached to any bounding boxes
     
     Returns:
         dict: the COCO data dict, identical to what's written to [coco_output_file] if [coco_output_file]
@@ -136,13 +143,13 @@ def md_to_coco(md_results_file,
             coco_category_id = int(md_category_id)
             ann['category_id'] = coco_category_id
             
-            # In very esoteric cases, we use the empty category (0) in MD-formatted output files
-            if md_category_id != '0':
+            if md_category_id != empty_category_id:
                 
                 assert 'bbox' in detection,\
                     'Oops: non-empty category with no bbox in {}'.format(im['file'])
             
                 ann['bbox'] = detection['bbox']
+                
                 # MegaDetector: [x,y,width,height] (normalized, origin upper-left)
                 # COCO: [x,y,width,height] (absolute, origin upper-left)
                 ann['bbox'][0] = ann['bbox'][0] * coco_im['width']
@@ -151,15 +158,19 @@ def md_to_coco(md_results_file,
                 ann['bbox'][3] = ann['bbox'][3] * coco_im['height']                
             
             else:
-                
-                print('Warning: empty category annotation in file {}'.format(im['file']))
+            
+                # In very esoteric cases, we use the empty category (0) in MD-formatted output files
+                print('Warning: empty category ({}) used for annotation in file {}'.format(
+                    empty_category_id,im['file']))
+                pass
                       
             if preserve_nonstandard_metadata:
                 # "Score" is a semi-standard string here, recognized by at least pycocotools
                 # ann['conf'] = detection['conf']
                 ann['score'] = detection['conf']
-                
-            coco_annotations.append(ann)            
+        
+            if 'bbox' in ann or include_annotations_without_bounding_boxes:
+                coco_annotations.append(ann)            
         
         # ...for each detection
     
