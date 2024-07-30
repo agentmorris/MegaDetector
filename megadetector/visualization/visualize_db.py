@@ -122,6 +122,14 @@ class DbVizOptions:
         
         #: Enable additionald debug console output
         self.verbose = False
+        
+        #: COCO files used for evaluation may contain confidence scores, this
+        #: determines the field name used for confidence scores
+        self.confidence_field_name = 'score'
+        
+        #: Optionally apply a confidence threshold; this requires that [confidence_field_name] 
+        #: be present in all detections.
+        self.confidence_threshold = None
     
 
 #%% Helper functions
@@ -294,6 +302,14 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         # iAnn = 0; anno = annos_i.iloc[iAnn]
         for iAnn,anno in annos_i.iterrows():
         
+            if options.confidence_threshold is not None:
+                assert options.confidence_field_name in anno, \
+                    'Error: confidence thresholding requested, ' + \
+                        'but at least one annotation does not have the {} field'.format(
+                            options.confidence_field_name)
+                if anno[options.confidence_field_name] < options.confidence_threshold:
+                    continue
+                
             if 'sequence_level_annotation' in anno:
                 bSequenceLevelAnnotation = anno['sequence_level_annotation']
                 if bSequenceLevelAnnotation:
