@@ -949,6 +949,13 @@ def process_batch_results(options):
               f'negative, {n_positive} positive, {n_unknown} unknown, '
               f'{n_ambiguous} ambiguous')
 
+        if n_positive == 0:
+            print('\n*** Warning: no positives found in ground truth, analysis won\'t be very meaningful ***\n')
+        if n_negative == 0:
+            print('\n*** Warning: no negatives found in ground truth, analysis won\'t be very meaningful ***\n')
+        if n_ambiguous > 0:
+            print('\n*** Warning: {} images with ambiguous positive/negative status found in ground truth ***\n'.format(
+                n_ambiguous))
 
     ##%% Load detection (and possibly classification) results
 
@@ -1095,25 +1102,34 @@ def process_batch_results(options):
 
         ##%% Detection evaluation: compute precision/recall
 
-        # numpy array of detection probabilities
+        # numpy array of maximum confidence values
         p_detection = detections_df['max_detection_conf'].values
-        n_detections = len(p_detection)
+        n_detection_values = len(p_detection)
 
         # numpy array of bools (0.0/1.0), and -1 as null value
-        gt_detections = np.zeros(n_detections, dtype=float)
+        gt_detections = np.zeros(n_detection_values, dtype=float)
 
+        n_positive = 0
+        n_negative = 0
+        
         for i_detection, fn in enumerate(detector_files):
+            
             image_id = ground_truth_indexed_db.filename_to_id[fn]
             image = ground_truth_indexed_db.image_id_to_image[image_id]
             detection_status = image['_detection_status']
 
             if detection_status == DetectionStatus.DS_NEGATIVE:
                 gt_detections[i_detection] = 0.0
+                n_negative += 1
             elif detection_status == DetectionStatus.DS_POSITIVE:
                 gt_detections[i_detection] = 1.0
+                n_positive += 1
             else:
                 gt_detections[i_detection] = -1.0
 
+        print('Of {} ground truth values, found {} positives and {} negatives'.format(
+            len(detections_df),n_positive,n_negative))
+        
         # Don't include ambiguous/unknown ground truth in precision/recall analysis
         b_valid_ground_truth = gt_detections >= 0.0
 
