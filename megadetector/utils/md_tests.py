@@ -528,12 +528,12 @@ def compare_results(inference_output_file,expected_results_file,options):
     if not options.warning_mode:
         
         assert max_conf_error <= options.max_conf_error, \
-            'Confidence error {} is greater than allowable ({})'.format(
-                max_conf_error,options.max_conf_error)
+            'Confidence error {} is greater than allowable ({}), on file:\n{}'.format(
+                max_conf_error,options.max_conf_error,max_conf_error_file)
         
         assert max_coord_error <= options.max_coord_error, \
-            'Coord error {} is greater than allowable ({})'.format(
-                max_coord_error,options.max_coord_error)
+            'Coord error {} is greater than allowable ({}), on file:\n{}'.format(
+                max_coord_error,options.max_coord_error,max_coord_error_file)
         
     print('Max conf error: {} (file {})'.format(
         max_conf_error,max_conf_error_file))

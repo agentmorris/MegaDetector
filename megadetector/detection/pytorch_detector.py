@@ -2,7 +2,7 @@
 
 pytorch_detector.py
 
-Module to run MegaDetector v5, a PyTorch YOLOv5 animal detection model.
+Module to run MegaDetector v5.
 
 """
 
