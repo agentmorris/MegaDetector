@@ -770,13 +770,13 @@ def process_video_folder(options):
 
 def options_to_command(options):
     """
-    Convert a ProcessVideoOptions obejct to a corresponding command line.
+    Convert a ProcessVideoOptions object to a corresponding command line.
     
     Args:
         options (ProcessVideoOptions): the options set to render as a command line
         
     Returns:
-        str: the command line coresponding to [options]
+        str: the command line corresponding to [options]
         
     :meta private:
     """

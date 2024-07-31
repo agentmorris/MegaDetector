@@ -131,7 +131,7 @@ class PTDetector:
         try:
             self.model = PTDetector._load_model(model_path, self.device)
         except Exception as e:
-            # In a very estoeric scenario where an old version of YOLOv5 is used to run
+            # In a very esoteric scenario where an old version of YOLOv5 is used to run
             # newer models, we run into an issue because the "Model" class became
             # "DetectionModel".  New YOLOv5 code handles this case by just setting them
             # to be the same, so doing that via monkey-patch doesn't seem *that* rude.

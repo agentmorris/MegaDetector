@@ -1049,7 +1049,7 @@ if False:
     yolo_working_folder = r'c:\git\yolov5-tegus'
     dataset_file = r'g:\temp\dataset.yaml'
     
-    # This only impacts the output file name, it's not passed to the inference functio
+    # This only impacts the output file name, it's not passed to the inference function
     job_name = 'yolo-inference-test'
     
     model_name = os.path.splitext(os.path.basename(model_filename))[0]

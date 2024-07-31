@@ -771,7 +771,7 @@ def run_python_tests(options):
         ## Confirm this matches the standard inference path
         
         if False:
-            # TODO: compare_resluts() isn't quite ready for this yet
+            # TODO: compare_results() isn't quite ready for this yet
             compare_results(inference_output_file=inference_output_file_yolo_val, 
                             expected_results_file=inference_output_file_standard_inference, 
                             options=options)
