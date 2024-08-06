@@ -74,6 +74,6 @@ Scripts and tools for semi-automated removal of detections on pesky rocks and st
 
 ## CameraTrapJsonFileProcessingApp
 
-This contains a GUI application that does the same thing as "subset_json_detector_output.py": various filename manipulation operations to adjust your .json file, typically to match your Timelapse folder structure.  Again, if you're thinking of using this, it *might* be easier to achieve what you want to achieve in a simple text editor.  More generally, if you're having trouble lining your filenames up with your Timelapse project, feel free to [email us](mailto:cameratraps@lila.science).
+This contains a GUI application that does the same thing as "subset_json_detector_output.py": various filename manipulation operations to adjust your .json file, typically to match your Timelapse folder structure.  More information about the application is available [here](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/CameraTrapJsonManagerApp.md).  Again, if you're thinking of using this, it *might* be easier to achieve what you want to achieve in a simple text editor.  More generally, if you're having trouble lining your filenames up with your Timelapse project, feel free to [email us](mailto:cameratraps@lila.science).
 
 <img src="images/CameraTrapJsonManagerApp.jpg" width="500">
