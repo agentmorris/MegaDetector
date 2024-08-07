@@ -13,7 +13,6 @@ import os
 
 from megadetector.utils import path_utils
 from megadetector.detection import video_utils
-from megadetector.detection import process_video
 
 input_folder = '/datadrive/data'
 frame_folder_base = '/datadrive/frames'
@@ -34,7 +33,6 @@ n_workers = 8
 
 assert os.path.isdir(input_folder)
 os.makedirs(frame_folder_base,exist_ok=True)
-
 
 frame_filenames_by_video,fs_by_video,video_filenames = \
     video_utils.video_folder_to_frames(input_folder=input_folder,
