@@ -847,7 +847,7 @@ options.otherDetectionsThreshold = options.confidenceMin
 
 options.bRenderDetectionTiles = True
 options.maxOutputImageWidth = 2000
-options.detectionTilesMaxCrops = 250
+options.detectionTilesMaxCrops = 150
 
 # options.lineThickness = 5
 # options.boxExpansion = 8
