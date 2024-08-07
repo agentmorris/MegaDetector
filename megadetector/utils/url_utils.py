@@ -141,6 +141,8 @@ def download_url(url,
         
     return destination_filename
 
+# ...def download_url(...)
+
 
 def download_relative_filename(url, output_base, verbose=False):
     """
@@ -167,6 +169,8 @@ def download_relative_filename(url, output_base, verbose=False):
     assert p.path.startswith('/'); relative_filename = p.path[1:]
     destination_filename = os.path.join(output_base,relative_filename)
     return download_url(url, destination_filename, verbose=verbose)
+
+# ...def download_relative_filename(...)
 
 
 def _do_parallelized_download(download_info,overwrite=False,verbose=False):
@@ -196,6 +200,8 @@ def _do_parallelized_download(download_info,overwrite=False,verbose=False):
     
     result['status'] = 'success'
     return result
+
+# ...def _do_parallelized_download(...)
 
 
 def parallel_download_urls(url_to_target_file,verbose=False,overwrite=False,
@@ -257,8 +263,10 @@ def parallel_download_urls(url_to_target_file,verbose=False,overwrite=False,
                 
     return results
 
-    
-def test_url(url, error_on_failure=True, timeout=None):
+# ...def parallel_download_urls(...)
+
+
+def test_url(url,error_on_failure=True,timeout=None):
     """
     Tests the availability of [url], returning an http status code.
     
@@ -281,7 +289,7 @@ def test_url(url, error_on_failure=True, timeout=None):
     return r.status_code
     
 
-def test_urls(urls, error_on_failure=True, n_workers=1, pool_type='thread', timeout=None):
+def test_urls(urls,error_on_failure=True,n_workers=1,pool_type='thread',timeout=None):
     """
     Verify that URLs are available (i.e., returns status 200).  By default,
     errors if any URL is unavailable.  
@@ -327,3 +335,88 @@ def test_urls(urls, error_on_failure=True, n_workers=1, pool_type='thread', time
             urls), total=len(urls)))
                 
     return status_codes
+
+# ...def test_urls(...)
+
+
+#%%
+
+def get_url_size(url,verbose=False,timeout=None):
+    """
+    Get the size of the file pointed to by a URL, based on the Content-Length property.  If the 
+    URL is not available, or the Content-Length property is not available, or the content-Length 
+    property is not an integer, returns None.  
+    
+    Args:
+        url (str): the url to test
+        verbose (bool, optional): enable additional debug output
+        timeout (int, optional): timeout in seconds to wait before considering this 
+            access attempt to be a failure; see requests.head() for precise documentation
+        
+    Returns:
+        int: the file size in bytes, or None if it can't be retrieved
+    """
+
+    try:
+        r = urllib.request.Request(url,method='HEAD')
+        f = urllib.request.urlopen(r, timeout=timeout)
+        if f.status != 200:
+            if verbose:
+                print('Status {} retrieving file size for {}'.format(f.status,url))
+            return None
+        size_bytes = int(f.headers['Content-Length'])
+        return size_bytes
+    except Exception as e:
+        if verbose:
+            print('Error retrieving file size for {}:\n{}'.format(url,str(e)))
+        return None
+    
+# ...def get_url_size(...)
+
+
+def get_url_sizes(urls,n_workers=1,pool_type='thread',timeout=None,verbose=False):
+    """
+    Retrieve file sizes for the URLs specified by [urls].  Returns None for any URLs
+    that we can't access, or URLs for which the Content-Length property is not set.
+    
+    Args:
+        urls (list): list of URLs for which we should retrieve sizes
+        n_workers (int, optional): number of concurrent workers, set to <=1 to disable
+            parallelization
+        pool_type (str, optional): worker type to use; should be 'thread' or 'process'
+        timeout (int, optional): timeout in seconds to wait before considering this 
+            access attempt to be a failure; see requests.head() for precise documentation
+        verbose (bool, optional): print additional debug information
+    
+    Returns:
+        dict: maps urls to file sizes, which will be None for URLs for which we were unable
+        to retrieve a valid size.        
+    """
+        
+    url_to_size = {}
+    
+    if n_workers <= 1:        
+        
+        for url in tqdm(urls):
+            url_to_size[url] = get_url_size(url,verbose=verbose,timeout=timeout)
+                
+    else:
+
+        if pool_type == 'thread':
+            pool = ThreadPool(n_workers)
+        else:
+            assert pool_type == 'process', 'Unsupported pool type {}'.format(pool_type)
+            pool = Pool(n_workers)
+        
+        print('Starting a {} pool with {} workers'.format(pool_type,n_workers))
+        
+        file_sizes = list(tqdm(pool.imap(
+            partial(get_url_size,verbose=verbose,timeout=timeout),
+            urls), total=len(urls)))
+        
+        for i_url,url in enumerate(urls):
+            url_to_size[url] = file_sizes[i_url]
+                
+    return url_to_size
+
+# ...get_url_sizes(...)
