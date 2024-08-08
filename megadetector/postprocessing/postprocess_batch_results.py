@@ -770,7 +770,7 @@ def _render_image_no_gt(file_info,detection_categories_to_results_name,
             if det['conf'] > max_conf:
                 max_conf = det['conf']
 
-            if ('classifications' in det):
+            if ('classifications' in det) and (len(det['classifications']) > 0):
 
                 # This is a list of [class,confidence] pairs, sorted by confidence
                 classifications = det['classifications']
