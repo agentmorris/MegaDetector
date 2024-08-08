@@ -128,8 +128,10 @@ default_workers_for_parallel_tasks = 30
 
 overwrite_handling = 'skip' # 'skip', 'error', or 'overwrite'
 
-# The function used to get camera names from image paths; can also replace this
-# with a custom function.
+# The function used to get camera names from image paths, used only for repeat
+# detection elimination.  This defaults to a standard function (image_file_to_camera_folder) 
+# that replaces typical strings like "BTCF", "RECNYX001", or "DCIM".  There's an example near 
+# the end of this notebook of using a custom function instead.
 relative_path_to_location = image_file_to_camera_folder
 
 # This will be the .json results file after RDE; if this is still None when
@@ -852,8 +854,10 @@ options.detectionTilesMaxCrops = 150
 # options.lineThickness = 5
 # options.boxExpansion = 8
 
-# To invoke custom collapsing of folders for a particular manufacturer's naming scheme
 options.customDirNameFunction = relative_path_to_location
+
+# To invoke custom collapsing of folders for a particular naming scheme
+# options.customDirNameFunction = custom_relative_path_to_location
 
 options.bRenderHtml = False
 options.imageBase = input_path
@@ -1728,6 +1732,12 @@ def custom_relative_path_to_location(relative_path):
     
     relative_path = relative_path.replace('\\','/')    
     tokens = relative_path.split('/')
+    
+    # This example uses a hypothetical (but relatively common) scheme
+    # where the firest two slash-separated tokens define a site, e.g.
+    # where filenames might look like:
+    #
+    # north_fork/site001/recnyx001/image001.jpg
     location_name = '/'.join(tokens[0:2])
     return location_name
 
@@ -1742,7 +1752,13 @@ location_names = set()
 
 # relative_path = image_filenames[0]
 for relative_path in tqdm(image_filenames):
+    
+    # Use the standard replacement function
     location_name = relative_path_to_location(relative_path)
+    
+    # Use a custom replacement function
+    # location_name = custom_relative_path_to_location(relative_path)
+    
     location_names.add(location_name)
     
 location_names = list(location_names)

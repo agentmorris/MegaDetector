@@ -770,7 +770,7 @@ def _render_image_no_gt(file_info,detection_categories_to_results_name,
             if det['conf'] > max_conf:
                 max_conf = det['conf']
 
-            if ('classifications' in det):
+            if ('classifications' in det) and (len(det['classifications']) > 0):
 
                 # This is a list of [class,confidence] pairs, sorted by confidence
                 classifications = det['classifications']
@@ -1203,13 +1203,13 @@ def process_batch_results(options):
         # Rows / first index is ground truth, columns / second index is predicted category
         classifier_cm = collections.defaultdict(lambda: collections.defaultdict(lambda: 0))
 
-        # iDetection = 0; fn = detector_files[iDetection]; print(fn)
+        # i_detection = 0; fn = detector_files[i_detection]; print(fn)
         assert len(detector_files) == len(detections_df)
-        for iDetection, fn in enumerate(detector_files):
+        for i_detection, fn in enumerate(detector_files):
 
             image_id = ground_truth_indexed_db.filename_to_id[fn]
             image = ground_truth_indexed_db.image_id_to_image[image_id]
-            detections = detections_df['detections'].iloc[iDetection]
+            detections = detections_df['detections'].iloc[i_detection]
             pred_class_ids = [det['classifications'][0][0] \
                 for det in detections if 'classifications' in det.keys()]
             pred_classnames = [classification_categories[pd] for pd in pred_class_ids]

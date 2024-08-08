@@ -16,6 +16,8 @@ import os
 import jsonpickle
 import numpy as np
 
+from operator import itemgetter
+
 # List of file extensions we'll consider images; comparisons will be case-insensitive
 # (i.e., no need to include both .jpg and .JPG on this list).
 image_extensions = ['.jpg', '.jpeg', '.gif', '.png']
@@ -294,6 +296,29 @@ def get_max_conf(im):
     return max_conf
 
 
+def sort_results_for_image(im):
+    """
+    Sort classification and detection results in descending order by confidence (in place).
+    
+    Args:
+        im (dict): image dictionary in the MD output format (with a 'detections' field)
+    """
+    if 'detections' not in im or im['detections'] is None:
+        return
+
+    # Sort detections in descending order by confidence
+    im['detections'] = sort_list_of_dicts_by_key(im['detections'],k='conf',reverse=True)
+    
+    for det in im['detections']:
+        
+        # Sort classifications (which are (class,conf) tuples) in descending order by confidence
+        if 'classifications' in det and \
+            (det['classifications'] is not None) and \
+            (len(det['classifications']) > 0):
+            L = det['classifications']
+            det['classifications'] = sorted(L,key=itemgetter(1),reverse=True)
+
+
 def point_dist(p1,p2):
     """
     Computes the distance between two points, represented as length-two tuples.
@@ -406,6 +431,21 @@ def split_list_into_n_chunks(L, n, chunk_strategy='greedy'):
         raise ValueError('Invalid chunk strategy: {}'.format(chunk_strategy))
 
 
+def sort_list_of_dicts_by_key(L,k,reverse=False):
+    """
+    Sorts the list of dictionaries [L] by the key [k].
+    
+    Args:
+        L (list): list of dictionaries to sort
+        k (object, typically str): the sort key
+        reverse (bool, optional): whether to sort in reverse (descending) order
+        
+    Returns:
+        dict: sorted copy of [d]
+    """
+    return sorted(L, key=lambda d: d[k], reverse=reverse)
+    
+    
 def sort_dictionary_by_key(d,reverse=False):
     """
     Sorts the dictionary [d] by key.
@@ -611,3 +651,11 @@ if False:
     r1 = [0.4,0.8,10,22]; r2 = [100, 101, 200, 210.4]; assert abs(rect_distance(r1,r2)-119.753) < 0.001
     r1 = [0.4,0.8,10,22]; r2 = [101, 101, 200, 210.4]; assert abs(rect_distance(r1,r2)-120.507) < 0.001    
     r1 = [0.4,0.8,10,22]; r2 = [120, 120, 200, 210.4]; assert abs(rect_distance(r1,r2)-147.323) < 0.001
+
+    
+    #%% Test dictionary sorting
+    
+    L = [{'a':5},{'a':0},{'a':10}]
+    k = 'a'
+    sort_list_of_dicts_by_key(L, k, reverse=True)
+    
