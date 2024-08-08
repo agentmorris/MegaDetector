@@ -339,8 +339,6 @@ def test_urls(urls,error_on_failure=True,n_workers=1,pool_type='thread',timeout=
 # ...def test_urls(...)
 
 
-#%%
-
 def get_url_size(url,verbose=False,timeout=None):
     """
     Get the size of the file pointed to by a URL, based on the Content-Length property.  If the 
