@@ -133,7 +133,7 @@ When the detector model detects no animal (or person or vehicle), the confidence
 
 ### Classifier outputs
 
-After a classifier is applied, each tuple in a `classifications` list represents `[species, confidence]`. They are listed in order of confidence. The species categories should be interpreted using the `classification_categories` dictionary.  Keys in `classification_categories` will always be nonnegative integers formatted as strings.
+After a classifier is applied, each tuple in a `classifications` list represents `[species, confidence]`. They must be listed in descending order by confidence. The species categories should be interpreted using the `classification_categories` dictionary.  Keys in `classification_categories` will always be nonnegative integers formatted as strings.
 
 
 ## API

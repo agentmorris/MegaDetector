@@ -536,6 +536,9 @@ def render_detection_bounding_boxes(detections,
             
             x1, y1, w_box, h_box = detection['bbox']
             display_boxes.append([y1, x1, y1 + h_box, x1 + w_box])
+            
+            # The class index to use for coloring this box, which may be based on the detection
+            # category or on the most confident classification category.
             clss = detection['category']
             
             # {} is the default, which means "show labels with no mapping", so don't use "if label_map" here
@@ -558,22 +561,30 @@ def render_detection_bounding_boxes(detections,
                         assert len(displayed_label) == 1
                         displayed_label[0] += ' ' + custom_string
                                     
-            if 'classifications' in detection:
+            if ('classifications' in detection) and len(detection['classifications']) > 0:
 
-                # To avoid duplicate colors with detection-only visualization, offset
-                # the classification class index by the number of detection classes
-                clss = annotation_constants.NUM_DETECTOR_CATEGORIES + int(detection['classifications'][0][0])
                 classifications = detection['classifications']
+                
                 if len(classifications) > max_classifications:
                     classifications = classifications[0:max_classifications]
                     
+                max_classification_category = 0
+                max_classification_conf = -100
+                
                 for classification in classifications:
                     
                     classification_conf = classification[1]
-                    if classification_conf is not None and \
-                        classification_conf < classification_confidence_threshold:
+                    if classification_conf is None or \
+                       classification_conf < classification_confidence_threshold:
                         continue
+                    
                     class_key = classification[0]
+                    
+                    # Is this the most confident classification for this detection?
+                    if classification_conf > max_classification_conf:
+                        max_classification_conf = classification_conf
+                        max_classification_category = int(class_key)
+                        
                     if (classification_label_map is not None) and (class_key in classification_label_map):
                         class_name = classification_label_map[class_key]
                     else:
@@ -585,6 +596,10 @@ def render_detection_bounding_boxes(detections,
                     
                 # ...for each classification
 
+                # To avoid duplicate colors with detection-only visualization, offset
+                # the classification class index by the number of detection classes
+                clss = annotation_constants.NUM_DETECTOR_CATEGORIES + max_classification_category
+                
             # ...if we have classification results
                         
             display_strs.append(displayed_label)
