@@ -34,6 +34,8 @@ Code for converting frequently-used metadata formats (or sometimes one-off data 
 
 # COCO Camera Traps format
 
+Permanent link to this section: <https://lila.science/coco-camera-traps>
+
 The COCO Camera Traps (CCT) format (used for camera trap data on [LILA](https://lila.science)) and for some intermediate processing by other scripts in this repo is an extension of the [COCO format](https://docs.aws.amazon.com/rekognition/latest/customlabels-dg/md-coco-overview.html) to add fields that are relevant for camera trap data. CCT is a superset of COCO, so CCT datasets are compatible with tools that expect COCO-formatted data.
 
 
