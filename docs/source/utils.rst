@@ -86,6 +86,14 @@ utils.url\_utils module
    :undoc-members:
    :show-inheritance:
 
+utils.torch\_test module
+---------------------------
+
+.. automodule:: megadetector.utils.torch_test
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 utils.write\_html\_image\_list module
 -----------------------------------------
 

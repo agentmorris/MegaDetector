@@ -145,7 +145,7 @@ slcc = '\\'
 # OS-specific script comment character (modified later if we're running on Windows)
 scc = '#' 
 
-# # OS-specific script extension (modified later if we're running on Windows)
+# OS-specific script extension (modified later if we're running on Windows)
 script_extension = '.sh'
 
 # Stuff we stick into scripts to ensure early termination if there's an error
