@@ -5,21 +5,19 @@ This package is a pip-installable version of the support/inference code for [Meg
 If you aren't looking for the Python package specifically, and you just want to learn more about what MegaDetector is all about, head over to the [MegaDetector repo](https://github.com/agentmorris/MegaDetector/?tab=readme-ov-file#megadetector).
 
 
-## Reasons you probably aren't looking for this package
+## Reasons you might not be looking for this package
 
 ### If you are an ecologist...
 
-If you are an ecologist looking to use MegaDetector to help you get through your camera trap images, you probably don't want this package.  We recommend starting with our "[Getting started with MegaDetector](https://github.com/agentmorris/MegaDetector/blob/main/getting-started.md)" page, then digging in to the [MegaDetector User Guide](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md), which will walk you through the process of using MegaDetector.  That journey will <i>not</i> involve this Python package.
+If you are an ecologist looking to use MegaDetector to help you get through your camera trap images, you probably don't want this package, or at least you probably don't want to start at this page.  We recommend starting with our "[Getting started with MegaDetector](https://github.com/agentmorris/MegaDetector/blob/main/getting-started.md)" page, then digging in to the [MegaDetector User Guide](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md), which will walk you through the process of using MegaDetector.
 
 ### If you are a computer-vision-y type...
 
-If you are a computer-vision-y person looking to run or fine-tune MegaDetector programmatically, you still probably don't want this package.  MegaDetector is just a fine-tuned version of [YOLOv5](https://github.com/ultralytics/yolov5), and the [ultralytics](https://github.com/ultralytics/ultralytics/) package (from the developers of YOLOv5) has a zillion bells and whistles for both inference and fine-tuning that this package doesn't.
+If you are a computer-vision-y person looking to run or fine-tune MegaDetector programmatically, you probably don't want this package.  MegaDetector is just a fine-tuned version of [YOLOv5](https://github.com/ultralytics/yolov5), and the [ultralytics](https://github.com/ultralytics/ultralytics/) package (from the developers of YOLOv5) has a zillion bells and whistles for both inference and fine-tuning that this package doesn't.
 
 ## Reasons you might want to use this package
 
 If you want to programmatically interact with the postprocessing tools from the MegaDetector repo, or programmatically run MegaDetector in a way that produces [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse)-friendly output (i.e., output in the standard [MegaDetector output format](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#megadetector-batch-output-format)), this package might be for you.
-
-Although even if that describes you, you <i>still</i> might be better off cloning the MegaDetector repo.  Pip-installability requires that some dependencies be newer than what was available at the time MDv5 was trained, so results are <i>very slightly</i> different than results produced in the "official" environment.  These differences <i>probably</i> don't matter much, but they have not been formally characterized.
 
 ## If I haven't talked you out of using this package...
 
