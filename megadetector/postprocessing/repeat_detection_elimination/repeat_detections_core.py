@@ -210,9 +210,12 @@ class RepeatDetectionOptions:
         #: a/b/c/RECONYX100 and a/b/c/RECONYX101 may really be the same camera).
         #:
         #: See ct_utils for a common replacement function that handles most common
-        #: manufacturer folder names.
+        #: manufacturer folder names:
+        #:
+        #: from megadetector.utils import ct_utils
+        #: self.customDirNameFunction = ct_utils.image_file_to_camera_folder
         self.customDirNameFunction = None
-        
+                
         #: Include only specific folders, mutually exclusive with [excludeFolders]
         self.includeFolders = None
         

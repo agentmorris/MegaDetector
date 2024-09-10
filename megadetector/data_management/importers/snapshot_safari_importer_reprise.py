@@ -24,7 +24,7 @@ from collections import defaultdict
 
 from megadetector.utils import path_utils
 
-input_base = '/media/user/Elements'
+input_base = 'e:/'
 output_base = os.path.expanduser('~/data/snapshot-safari-metadata')
 file_list_cache_file = os.path.join(output_base,'file_list.json')
 
@@ -76,23 +76,16 @@ print('Found a total of {} files, {} of which are images'.format(
     len(all_files_relative),len(all_image_files)))
 
 
-#%% Copy all csv files to the annotation cache folder
+#%% Copy all .csv files to the annotation cache folder
 
 # fn = csv_files[0]
-for fn in csv_files:
+for fn in tqdm(csv_files):
+    
     target_file = os.path.join(annotation_cache_dir,os.path.basename(fn))
     source_file = os.path.join(input_base,fn)
     shutil.copyfile(source_file,target_file)    
 
-def read_cached_csv_file(fn):
-    """
-    Later cells will ask to read a .csv file from the original hard drive;
-    read from the annotation cache instead.
-    """
-    
-    cached_csv_file = os.path.join(annotation_cache_dir,os.path.basename(fn))
-    df = pd.read_csv(cached_csv_file)
-    return df
+print('Copied {} .csv files to cache folder'.format(len(csv_files)))
 
 
 #%% List project folders
@@ -123,6 +116,21 @@ project_folder_to_project_code = {v: k for k, v in project_code_to_project_folde
 project_codes = sorted(list(project_code_to_project_folder.keys()))
 project_folders = sorted(list(project_code_to_project_folder.values()))
 
+print('Eumerated {} project folders'.format(len(project_folders)))
+
+
+#%% Support functions
+
+def read_cached_csv_file(fn):
+    """
+    Later cells will ask to read a .csv file from the original hard drive;
+    read from the annotation cache instead.
+    """
+    
+    cached_csv_file = os.path.join(annotation_cache_dir,os.path.basename(fn))
+    df = pd.read_csv(cached_csv_file)
+    return df
+
 def file_to_project_folder(fn):
     """
     For a given filename relative to the drive root, return the corresponding
@@ -138,7 +146,6 @@ def file_to_project_folder(fn):
     assert project_folder in project_folders
     return project_folder
 
-
 def file_to_project_code(fn):
     """
     For a given filename relative to the drive root, return the corresponding
@@ -146,6 +153,9 @@ def file_to_project_code(fn):
     """    
     
     return project_folder_to_project_code[file_to_project_folder(fn)]
+
+
+#%% Consistency checking
 
 assert file_to_project_folder(
     'APN/APN_S2/DW/DW_R5/APN_S2_DW_R5_IMAG0003.JPG') == 'APN'
@@ -163,9 +173,11 @@ assert file_to_project_code(
 #
 # E.g.:
 #
-# 'DHP': ['Snapshot South Africa/DHP/LILA_Reports/DHP_S1_report_lila.csv',
-# 'Snapshot South Africa/DHP/LILA_Reports/DHP_S2_report_lila.csv',
-# 'Snapshot South Africa/DHP/LILA_Reports/DHP_S3_report_lila.csv']
+# 'DHP': [
+#        'Snapshot South Africa/DHP/LILA_Reports/DHP_S1_report_lila.csv',
+#        'Snapshot South Africa/DHP/LILA_Reports/DHP_S2_report_lila.csv',
+#        'Snapshot South Africa/DHP/LILA_Reports/DHP_S3_report_lila.csv'
+#       ]
 #
 project_code_to_report_files = defaultdict(list)
 
