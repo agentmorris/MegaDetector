@@ -79,7 +79,7 @@ def cct_to_md(input_filename,output_filename=None):
     results = {}
     
     info = {}
-    info['format_version'] = "1.3"
+    info['format_version'] = '1.4'
     info['detector'] = 'cct_to_md'
     results['info'] = info
     results['detection_categories'] = category_id_to_name

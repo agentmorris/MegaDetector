@@ -62,6 +62,22 @@ postprocessing.compare\_batch\_results module
    :prog: compare_batch_results
    :no_default_values:
 
+postprocessing.validate\_batch\_results module
+----------------------------------------------
+
+.. automodule:: megadetector.postprocessing.validate_batch_results
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.postprocessing.validate_batch_results
+   :func: main
+   :hook:
+   :prog: validate_batch_results
+   :no_default_values:
+
 postprocessing.convert\_output\_format module
 ---------------------------------------------
 

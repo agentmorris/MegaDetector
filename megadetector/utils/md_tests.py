@@ -683,10 +683,16 @@ def run_python_tests(options):
     
     ## Verify results
     
+    # Verify format correctness
+    from megadetector.postprocessing.validate_batch_results import validate_batch_results 
+    validate_batch_results(inference_output_file)
+    
+    # Verify value correctness
     expected_results_file = get_expected_results_filename(is_gpu_available(verbose=False),
                                                           options=options)
     compare_results(inference_output_file,expected_results_file,options)
-        
+    
+    
     # Make note of this filename, we will use it again later
     inference_output_file_standard_inference = inference_output_file
     

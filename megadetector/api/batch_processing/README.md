@@ -24,7 +24,11 @@ Example output with both detection and classification results:
 ```jsonc
 {
     "info": {
-        "format_version": "1.3",
+	
+		// Required
+        "format_version": "1.4",
+		
+		// All other "info" fields are optional
         "detector": "md_v4.1.0.pb",
         "detection_completion_time": "2019-05-22 02:12:19",
         "classifier": "ecosystem1_v2",
@@ -33,18 +37,19 @@ Example output with both detection and classification results:
            "megadetector_version":"v4.1.0",
            "typical_detection_threshold":0.8,
            "conservative_detection_threshold":0.6
-        }
+        },
         "classifier_metadata": {
            "typical_classification_threshold":0.75
         }
     },
-    // Category IDs must be string-formatted ints
+    // detection_categories is required; category IDs must be string-formatted ints
     "detection_categories": {
         "1": "animal",
         "2": "person",
         "3": "vehicle"
     },
-    // Category IDs must be string-formatted ints
+    // classification_categories is optional; if present, category IDs must be 
+	// string-formatted ints
     "classification_categories": {
         "0": "fox",
         "1": "elk",
@@ -96,7 +101,7 @@ Example output with both detection and classification results:
                     "frame_number": 20
                 }								
             ]
-        }
+        },
         {
             // This file was processed correctly, but had no detections
             "file": "/path/from/base/dir/empty_image.jpg",
@@ -108,12 +113,12 @@ Example output with both detection and classification results:
             // valid array for a failed image, i.e. it should never be [].
             "file": "/path/from/base/dir2/corrupted_image_0.jpg",
             "failure": "Failure image access"
-        }
+        },
         {
             // This file was also not processed.
             "file": "/path/from/base/dir2/corrupted_image_1.jpg",
             "failure": "Failure image access",
-            "detections": None
+            "detections": null
         }
     ]
 }

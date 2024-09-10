@@ -886,7 +886,7 @@ def write_results_to_file(results,
         
         info = { 
             'detection_completion_time': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
-            'format_version': '1.3' 
+            'format_version': '1.4' 
         }
         
         if detector_file is not None:

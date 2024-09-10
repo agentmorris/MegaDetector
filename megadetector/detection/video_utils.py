@@ -781,7 +781,9 @@ class FrameToVideoOptions:
         self.non_video_behavior = 'error'
     
 
-def frame_results_to_video_results(input_file,output_file,options=None,
+def frame_results_to_video_results(input_file,
+                                   output_file,
+                                   options=None,
                                    video_filename_to_frame_rate=None):
     """
     Given an MD results file produced at the *frame* level, corresponding to a directory 

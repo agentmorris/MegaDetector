@@ -578,6 +578,7 @@ def process_video_folder(options):
         video_results = md_results['results']
         
         for i_video,video_filename in enumerate(md_results['video_filenames']):
+            video_filename = video_filename.replace('\\','/')
             assert video_filename not in video_filename_to_fs
             video_filename_to_fs[video_filename] = md_results['frame_rates'][i_video]
         
@@ -621,9 +622,11 @@ def process_video_folder(options):
                                    frames_to_extract=options.frames_to_extract,
                                    allow_empty_videos=options.allow_empty_videos)
         
-        for i_video,video_filename in enumerate(video_filenames):
-            assert video_filename not in video_filename_to_fs
-            video_filename_to_fs[video_filename] = Fs[i_video]
+        for i_video,video_filename_abs in enumerate(video_filenames):
+            video_filename_relative = os.path.relpath(video_filename_abs,options.input_video_file)
+            video_filename_relative = video_filename_relative.replace('\\','/')
+            assert video_filename_relative not in video_filename_to_fs
+            video_filename_to_fs[video_filename_relative] = Fs[i_video]
                 
         print('Extracted frames for {} videos'.format(len(set(video_filenames))))
         image_file_names = list(itertools.chain.from_iterable(frame_filenames))

@@ -301,7 +301,7 @@ def yolo_json_output_to_md_output(yolo_json_file,
     
     d = {}
     d['images'] = output_images
-    d['info'] = {'format_version':1.3,'detector':detector_name}
+    d['info'] = {'format_version':'1.4','detector':detector_name}
     d['detection_categories'] = {}
         
     for cat_id in yolo_category_id_to_name:
@@ -411,7 +411,7 @@ def yolo_txt_output_to_md_output(input_results_folder,
         'info': {
             'detector': detector_string,
             'detector_metadata': {},
-            'format_version': '1.3'
+            'format_version': '1.4'
         },
         'detection_categories': {
             '1': 'animal',
