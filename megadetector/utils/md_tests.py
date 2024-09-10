@@ -653,7 +653,7 @@ def run_python_tests(options):
     
     ## Run inference on an image
     
-    print('\n** Running MD on a single image **\n')
+    print('\n** Running MD on a single image (module) **\n')
     
     from megadetector.detection import run_detector
     from megadetector.visualization import visualization_utils as vis_utils
@@ -665,7 +665,7 @@ def run_python_tests(options):
     
     ## Run inference on a folder
 
-    print('\n** Running MD on a folder of images **\n')
+    print('\n** Running MD on a folder of images (module) **\n')
     
     from megadetector.detection.run_detector_batch import load_and_run_detector_batch,write_results_to_file
     from megadetector.utils import path_utils
@@ -693,7 +693,7 @@ def run_python_tests(options):
     
     ## Run and verify again with augmentation enabled
     
-    print('\n** Running MD on images with augmentation **\n')
+    print('\n** Running MD on images with augmentation (module) **\n')
     
     from megadetector.utils.path_utils import insert_before_extension
     
@@ -712,6 +712,8 @@ def run_python_tests(options):
     
     ## Postprocess results
     
+    print('\n** Post-processing results (module) **\n')
+    
     from megadetector.postprocessing.postprocess_batch_results import \
         PostProcessingOptions,process_batch_results
     postprocessing_options = PostProcessingOptions()
@@ -726,6 +728,8 @@ def run_python_tests(options):
     
         
     ## Partial RDE test
+    
+    print('\n** Testing RDE (module) **\n')
     
     from megadetector.postprocessing.repeat_detection_elimination.repeat_detections_core import \
         RepeatDetectionOptions, find_repeat_detections
@@ -749,7 +753,9 @@ def run_python_tests(options):
         print('Skipping YOLO val inference tests, no YOLO folder supplied')
         
     else:
-            
+        
+        print('\n** Running YOLO val inference test (module) **\n')
+        
         from megadetector.detection.run_inference_with_yolov5_val import \
             YoloInferenceOptions, run_inference_with_yolo_val
         from megadetector.utils.path_utils import insert_before_extension
@@ -775,9 +781,7 @@ def run_python_tests(options):
             compare_results(inference_output_file=inference_output_file_yolo_val, 
                             expected_results_file=inference_output_file_standard_inference, 
                             options=options)
-        
-        
-        
+                        
         # Run again, without symlinks this time
         
         inference_output_file_yolo_val_no_links = insert_before_extension(inference_output_file_yolo_val,
@@ -822,7 +826,7 @@ def run_python_tests(options):
         
         ## Video test (single video)
        
-        print('\n** Running MD on a single video **\n')
+        print('\n** Running MD on a single video (module) **\n')
         
         from megadetector.detection.process_video import ProcessVideoOptions, process_video
         from megadetector.utils.path_utils import insert_before_extension
@@ -861,7 +865,7 @@ def run_python_tests(options):
         
         ## Video test (folder)
         
-        print('\n** Running MD on a folder of videos **\n')
+        print('\n** Running MD on a folder of videos (module) **\n')
         
         from megadetector.detection.process_video import ProcessVideoOptions, process_video_folder
         from megadetector.utils.path_utils import insert_before_extension
@@ -920,7 +924,7 @@ def run_python_tests(options):
         
         # They won't be quite the same, because the on-disk path goes through a jpeg intermediate
         
-        print('\n** Running MD on a folder of videos (in memory) **\n')
+        print('\n** Running MD on a folder of videos (in memory) (module) **\n')
         
         video_options.output_json_file = insert_before_extension(video_options.output_json_file,'in-memory')
         video_options.force_on_disk_frame_extraction = False
@@ -977,6 +981,8 @@ def run_cli_tests(options):
     
     ## Run inference on an image
     
+    print('\n** Running MD on a single image (CLI) **\n')
+    
     image_fn = os.path.join(options.scratch_dir,options.test_images[0])
     output_dir = os.path.join(options.scratch_dir,'single_image_test')
     if options.cli_working_dir is None:
@@ -999,6 +1005,7 @@ def run_cli_tests(options):
     
     ## Run inference on a folder
     
+    print('\n** Running MD on a folder (CLI) **\n')
     
     image_folder = os.path.join(options.scratch_dir,'md-test-images')
     assert os.path.isdir(image_folder), 'Test image folder {} is not available'.format(image_folder)
@@ -1018,6 +1025,8 @@ def run_cli_tests(options):
     
     ## Run again with checkpointing enabled, make sure the results are the same
     
+    print('\n** Running MD on a folder (with checkpoints) (CLI) **\n')
+    
     from megadetector.utils.path_utils import insert_before_extension
         
     checkpoint_string = ' --checkpoint_frequency 5'
@@ -1032,6 +1041,8 @@ def run_cli_tests(options):
     
     
     ## Run again with the image queue enabled, make sure the results are the same
+    
+    print('\n** Running MD on a folder (with image queue) (CLI) **\n')
     
     cmd = base_cmd + ' --use_image_queue'
     from megadetector.utils.path_utils import insert_before_extension
@@ -1060,11 +1071,16 @@ def run_cli_tests(options):
     if not gpu_available:
         inference_output_file_cpu = inference_output_file
     else:
+        
+        print('\n** Running MD on a folder (single CPU) (CLI) **\n')
+                
         inference_output_file_cpu = insert_before_extension(inference_output_file,'cpu')    
         cmd = base_cmd
         cmd = cmd.replace(inference_output_file,inference_output_file_cpu)    
         cmd_results = execute_and_print(cmd)
         
+    print('\n** Running MD on a folder (multiple CPUs) (CLI) **\n')
+    
     cpu_string = ' --ncores 4'
     cmd = base_cmd + cpu_string
     from megadetector.utils.path_utils import insert_before_extension
@@ -1085,6 +1101,8 @@ def run_cli_tests(options):
     
     ## Postprocessing
     
+    print('\n** Testing post-processing (CLI) **\n')
+    
     postprocessing_output_dir = os.path.join(options.scratch_dir,'postprocessing_output_cli')
     
     if options.cli_working_dir is None:
@@ -1098,6 +1116,8 @@ def run_cli_tests(options):
                 
     
     ## RDE
+    
+    print('\n** Running RDE (CLI) **\n')
     
     rde_output_dir = os.path.join(options.scratch_dir,'rde_output_cli')
     
@@ -1135,6 +1155,8 @@ def run_cli_tests(options):
     
     ## Run inference on a folder (tiled)
     
+    print('\n** Running tiled inference (CLI) **\n')
+    
     image_folder = os.path.join(options.scratch_dir,'md-test-images')
     tiling_folder = os.path.join(options.scratch_dir,'tiling-folder')
     inference_output_file_tiled = os.path.join(options.scratch_dir,'folder_inference_output_tiled.json')
@@ -1159,6 +1181,8 @@ def run_cli_tests(options):
         
     else:
     
+        print('\n** Running YOLOv5 val tests (CLI) **\n')
+        
         image_folder = os.path.join(options.scratch_dir,'md-test-images')
         yolo_results_folder = os.path.join(options.scratch_dir,'yolo-output-folder')
         yolo_symlink_folder = os.path.join(options.scratch_dir,'yolo-symlink_folder')
@@ -1193,6 +1217,8 @@ def run_cli_tests(options):
             
         ## Video test
         
+        print('\n** Testing video rendering (CLI) **\n')
+        
         video_inference_output_file = os.path.join(options.scratch_dir,'video_inference_output.json')
         output_video_file = os.path.join(options.scratch_dir,'video_scratch/cli_rendered_video.mp4')
         frame_folder = os.path.join(options.scratch_dir,'video_scratch/frame_folder_cli')
@@ -1218,6 +1244,8 @@ def run_cli_tests(options):
     
     
     ## Run inference on a folder (with MDV5B, so we can do a comparison)
+    
+    print('\n** Running MDv5b (CLI) **\n')
     
     image_folder = os.path.join(options.scratch_dir,'md-test-images')
     inference_output_file_alt = os.path.join(options.scratch_dir,'folder_inference_output_alt.json')
@@ -1307,7 +1335,7 @@ if False:
     options.cpu_execution_is_error = False
     options.skip_video_tests = False
     options.skip_python_tests = False
-    options.skip_cli_tests = True
+    options.skip_cli_tests = False
     options.scratch_dir = None
     options.test_data_url = 'https://lila.science/public/md-test-package.zip'
     options.force_data_download = False
