@@ -345,7 +345,8 @@ def process_video(options):
     caller_provided_rendering_output_folder = (options.frame_rendering_folder is not None)
     
     frame_output_folder = None
-        
+    frame_filenames = None
+    
     # If we should re-use existing results, and the output file exists, don't bother running MD
     if (options.reuse_results_if_available and os.path.isfile(options.output_json_file)):
             
@@ -383,7 +384,7 @@ def process_video(options):
                                                verbose=options.verbose, 
                                                frames_to_process=options.frames_to_extract)
         
-        _add_frame_numbers_to_results(frame_results['results'])
+        frame_results['results'] = _add_frame_numbers_to_results(frame_results['results'])
         
         run_detector_batch.write_results_to_file(
             frame_results['results'], 
@@ -444,7 +445,7 @@ def process_video(options):
                 augment=options.augment,
                 image_size=options.image_size)
         
-            _add_frame_numbers_to_results(results)
+            results = _add_frame_numbers_to_results(results)
         
             run_detector_batch.write_results_to_file(
                 results, 
@@ -545,6 +546,7 @@ def process_video_folder(options):
     
     frame_output_folder = None
     image_file_names = None
+    video_filename_to_fs = {}
     
     # Run MD in memory if we don't need to generate frames
     #
@@ -575,6 +577,10 @@ def process_video_folder(options):
         
         video_results = md_results['results']
         
+        for i_video,video_filename in enumerate(md_results['video_filenames']):
+            assert video_filename not in video_filename_to_fs
+            video_filename_to_fs[video_filename] = md_results['frame_rates'][i_video]
+        
         all_frame_results = []
         
         # r = video_results[0]
@@ -586,13 +592,15 @@ def process_video_folder(options):
             all_frame_results, 
             frames_json,
             relative_path_base=None,
-            detector_file=options.model_file,
-            custom_metadata={'video_frame_rate':md_results['frame_rates']})
+            detector_file=options.model_file)
     
     else:
         
         ## Split every video into frames
         
+        if options.verbose:
+            print('Extracting frames for folder {}'.format(options.input_video_file))
+            
         if caller_provided_frame_output_folder:
             frame_output_folder = options.frame_folder
         else:
@@ -600,8 +608,6 @@ def process_video_folder(options):
             
         os.makedirs(frame_output_folder, exist_ok=True)
     
-        print('Extracting frames')
-        
         frame_filenames, Fs, video_filenames = \
             video_folder_to_frames(input_folder=options.input_video_file,
                                    output_folder_base=frame_output_folder, 
@@ -615,6 +621,10 @@ def process_video_folder(options):
                                    frames_to_extract=options.frames_to_extract,
                                    allow_empty_videos=options.allow_empty_videos)
         
+        for i_video,video_filename in enumerate(video_filenames):
+            assert video_filename not in video_filename_to_fs
+            video_filename_to_fs[video_filename] = Fs[i_video]
+                
         print('Extracted frames for {} videos'.format(len(set(video_filenames))))
         image_file_names = list(itertools.chain.from_iterable(frame_filenames))
         
@@ -660,15 +670,15 @@ def process_video_folder(options):
                 results, 
                 frames_json,
                 relative_path_base=frame_output_folder,
-                detector_file=options.model_file,
-                custom_metadata={'video_frame_rate':Fs})
+                detector_file=options.model_file)
         
     # ...if we're running MD on in-memory frames vs. extracting frames to disk
     
     ## Convert frame-level results to video-level results
 
     print('Converting frame-level results to video-level results')
-    frame_results_to_video_results(frames_json,video_json)
+    frame_results_to_video_results(frames_json,video_json,
+                                   video_filename_to_frame_rate=video_filename_to_fs)
 
 
     ## (Optionally) render output videos

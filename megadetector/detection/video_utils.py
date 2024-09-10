@@ -22,6 +22,7 @@ from functools import partial
 from inspect import signature
 
 from megadetector.utils import path_utils    
+from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 from megadetector.visualization import visualization_utils as vis_utils
 
 default_fourcc = 'h264'
@@ -197,7 +198,7 @@ def _filename_to_frame_number(filename):
 def _add_frame_numbers_to_results(results):
     """
     Given the 'images' list from a set of MD results that was generated on video frames,
-    add a 'frame_number' field to each image.
+    add a 'frame_number' field to each image, and return the list, sorted by frame number.
     
     Args:
         results (list): list of image dicts        
@@ -208,6 +209,9 @@ def _add_frame_numbers_to_results(results):
         fn = im['file']
         frame_number = _filename_to_frame_number(fn)
         im['frame_number'] = frame_number
+        
+    results = sort_list_of_dicts_by_key(results,'frame_number')
+    return results
     
 
 def run_callback_on_frames(input_video_file, 
@@ -332,8 +336,8 @@ def run_callback_on_frames_for_folder(input_video_folder,
         recursive (bool, optional): recurse into [input_video_folder]
     
     Returns:
-        dict: dict with keys 'video_filenames' (list), 'frame_rates' (list of floats), 'results' (list).
-        video_filenames will be *relative* filenames.
+        dict: dict with keys 'video_filenames' (list of str), 'frame_rates' (list of floats),
+        'results' (list of list of dicts). 'video_filenames' will contain *relative* filenames.
     """
     
     to_return = {'video_filenames':[],'frame_rates':[],'results':[]}
@@ -777,7 +781,8 @@ class FrameToVideoOptions:
         self.non_video_behavior = 'error'
     
 
-def frame_results_to_video_results(input_file,output_file,options=None):
+def frame_results_to_video_results(input_file,output_file,options=None,
+                                   video_filename_to_frame_rate=None):
     """
     Given an MD results file produced at the *frame* level, corresponding to a directory 
     created with video_folder_to_frames, maps those frame-level results back to the 
@@ -790,6 +795,8 @@ def frame_results_to_video_results(input_file,output_file,options=None):
         output_file (str): the .json file to which we should write video-level results
         options (FrameToVideoOptions, optional): parameters for converting frame-level results
             to video-level results, see FrameToVideoOptions for details            
+        video_filename_to_frame_rate (dict): maps (relative) video path names to frame rates,
+            used only to populate the output file
     """
 
     if options is None:
@@ -877,6 +884,10 @@ def frame_results_to_video_results(input_file,output_file,options=None):
         im_out = {}
         im_out['file'] = video_name
         im_out['detections'] = canonical_detections
+        
+        if (video_filename_to_frame_rate is not None) and \
+            (video_name in video_filename_to_frame_rate):
+            im_out['frame_rate'] = video_filename_to_frame_rate[video_name]
         
         # 'max_detection_conf' is no longer included in output files by default
         if False:
