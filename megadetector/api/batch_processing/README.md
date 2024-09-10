@@ -74,27 +74,27 @@ Example output with both detection and classification results:
                 }
             ]
         },
-		// Videos appear in the same format as images, with the addition of the 
-		// "frame_rate" field (for the file) and the "frame_number" field (for each 
-		// detection).  Typically detections are only included for one frame per 
-		// video, but detections may be included for multiple frames.
-		{
+            // Videos appear in the same format as images, with the addition of the 
+            // "frame_rate" field (for the file) and the "frame_number" field (for each 
+            // detection).  Typically detections are only included for one frame per 
+            // video, but detections may be included for multiple frames.
+            {
             "file": "path/from/base/dir/video_with_person.mp4",
-			"frame_rate": 20,
+            "frame_rate": 20,
             "detections": [
                 {
                     "category": "2",
                     "conf": 0.871,
                     "bbox": [0.1, 0.2, 0.3, 0.4],
-					"frame_number": 0
-				},
-				{
+                    "frame_number": 0
+                },
+                {
                     "category": "2",
                     "conf": 0.774,
                     "bbox": [0.11, 0.21, 0.31, 0.41],
-					"frame_number": 20
-				}								
-            ]			
+                    "frame_number": 20
+                }								
+            ]
         }
         {
             // This file was processed correctly, but had no detections
