@@ -76,8 +76,9 @@ Example output with both detection and classification results:
         },
             // Videos appear in the same format as images, with the addition of the 
             // "frame_rate" field (for the file) and the "frame_number" field (for each 
-            // detection).  Typically detections are only included for one frame per 
-            // video, but detections may be included for multiple frames.
+            // detection).  Detections are typically included for just one representative
+            // frame for each detection category, but detections may also be reported for
+            // multiple frames for a single detection category, as in this example.
             {
             "file": "path/from/base/dir/video_with_person.mp4",
             "frame_rate": 20,
