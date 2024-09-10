@@ -846,7 +846,7 @@ def write_results_to_file(results,
     https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#batch-processing-api-output-format
 
     Args:
-        results (list):  list of dict, each dict represents detections on one image
+        results (list): list of dict, each dict represents detections on one image
         output_file (str): path to JSON output file, should end in '.json'
         relative_path_base (str, optional): path to a directory as the base for relative paths, can
             be None if the paths in [results] are absolute

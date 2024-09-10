@@ -1,6 +1,6 @@
 # MegaDetector batch processing API
 
-Though most users run MegaDetector locally, we also provide a reference implementation for a an API that processes a large quantity of camera trap images.  This API is no longer in widespread use, but the output [format](#megadetector-batch-output-format) used by this API is still the format used for MegaDetector inference (particularly by [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector_batch.py)), so the postprocessing tools in this folder are still compatible with MegaDetector output.
+Though most users run MegaDetector locally, we also provide a reference implementation for a an API that processes a large quantity of camera trap images.  This API is no longer in widespread use, but the output [format](#megadetector-batch-output-format) used by this API is still the format used for MegaDetector inference (particularly by [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector_batch.py)).
 
 If you are interested in setting up an endpoint to process very small numbers of images for real-time applications (e.g. for anti-poaching applications), see the [real-time API](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/synchronous) folder.
 
@@ -17,9 +17,7 @@ The [integration](integration) folder contains guidelines and postprocessing scr
 
 ## MegaDetector batch output format
 
-The output of the detector is saved in `requestID_detections_requestName_timestamp.json`. The `classifications` fields will be added if a classifier was trained for your project and applied to the images. 
-
-If an image could not be opened or an error occurred when applying the model to it, it will still have an entry in the output file images list, but it will have a `failure` field indicating the type of error (see last entry in the example below). However, if the API runs into problems processing an entire shard of images (usually 2000 images per shard), they will not have entries in the results file - this should be very rare.
+Permanent link to this section: <https://lila.science/megadetector-output-format>
 
 Example output with both detection and classification results:
 
@@ -76,6 +74,28 @@ Example output with both detection and classification results:
                 }
             ]
         },
+		// Videos appear in the same format as images, with the addition of the 
+		// "frame_rate" field (for the file) and the "frame_number" field (for each 
+		// detection).  Typically detections are only included for one frame per 
+		// video, but detections may be included for multiple frames.
+		{
+            "file": "path/from/base/dir/video_with_person.mp4",
+			"frame_rate": 20,
+            "detections": [
+                {
+                    "category": "2",
+                    "conf": 0.871,
+                    "bbox": [0.1, 0.2, 0.3, 0.4],
+					"frame_number": 0
+				},
+				{
+                    "category": "2",
+                    "conf": 0.774,
+                    "bbox": [0.11, 0.21, 0.31, 0.41],
+					"frame_number": 20
+				}								
+            ]			
+        }
         {
             // This file was processed correctly, but had no detections
             "file": "/path/from/base/dir/empty_image.jpg",
