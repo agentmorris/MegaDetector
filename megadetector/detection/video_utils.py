@@ -776,6 +776,10 @@ class FrameToVideoOptions:
         #: for the whole video, i.e. "1" means "use the confidence value from the highest-confidence frame"
         self.nth_highest_confidence = 1
         
+        #: Should we include just a single representative frame result for each video (default), or
+        #: every frame that was processed?
+        self.include_all_processed_frames = False
+        
         #: What to do if a file referred to in a .json results file appears not to be a 
         #: video; can be 'error' or 'skip_with_warning'
         self.non_video_behavior = 'error'
@@ -803,6 +807,9 @@ def frame_results_to_video_results(input_file,
 
     if options is None:
         options = FrameToVideoOptions()
+    
+    if options.include_all_processed_frames:
+        raise NotImplementedError('Including all processed frames not yet implemented')
         
     # Load results
     with open(input_file,'r') as f:

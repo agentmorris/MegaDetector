@@ -5,12 +5,8 @@ process_video.py
 Splits a video (or folder of videos) into frames, runs the frames through run_detector_batch.py,
 and optionally stitches together results into a new video with detection boxes.
 
-Operates by separating the video into frames, typically sampling every Nth frame, and writing
-those frames to disk, before running MD.  This approach clearly has a downside: it requires
-a bunch more disk space, compared to extracting frames and running MD on them without ever
-writing them to disk.  The upside, though, is that this approach allows you to run repeat
-detection elimination after running MegaDetector, and it allows allows more efficient re-use
-of frames if you end up running MD more than once, or running multiple versions of MD.
+When possible, video processing happens in memory, without writing intermediate frames to disk.
+If the caller requests that frames be saved, frames are written to disk.
 
 """
 
@@ -36,6 +32,7 @@ from megadetector.detection.video_utils import run_callback_on_frames
 from megadetector.detection.video_utils import run_callback_on_frames_for_folder
 from megadetector.detection.video_utils import frames_to_video
 from megadetector.detection.video_utils import frame_results_to_video_results
+from megadetector.detection.video_utils import FrameToVideoOptions
 from megadetector.detection.video_utils import _add_frame_numbers_to_results
 from megadetector.detection.video_utils import video_folder_to_frames
 from megadetector.detection.video_utils import default_fourcc
@@ -133,12 +130,15 @@ class ProcessVideoOptions:
         
         #: Sample every Nth frame; set to None (default) or 1 to sample every frame.  Typically
         #: we sample down to around 3 fps, so for typical 30 fps videos, frame_sample=10 is a 
-        #: typical value.  Mutually exclusive with [frames_to_extract].
+        #: typical value.  Mutually exclusive with [frames_to_extract] and [time_sample].
         self.frame_sample = None
         
         #: Extract a specific set of frames (list of ints, or a single int).  Mutually exclusive with
-        #: [frame_sample].
+        #: [frame_sample] and [time_sample].
         self.frames_to_extract = None
+        
+        # Sample frames every N seconds.  Mutally exclusive with [frame_sample] and [frames_to_extract].
+        self.time_sample = None
         
         #: Number of workers to use for parallelization; set to <= 1 to disable parallelization
         self.n_cores = 1
@@ -172,11 +172,37 @@ class ProcessVideoOptions:
         #: frame from each video, but a video only has 50 frames.
         self.allow_empty_videos = False
     
+        #: When processing a folder of videos, should we include just a single representative 
+        #: frame result for each video (default), or every frame that was processed?
+        self.include_all_processed_frames = False
+        
 # ...class ProcessVideoOptions
 
 
 #%% Functions
 
+def _validate_video_options(options):
+    """
+    Consistency checking for ProcessVideoOptions objects.
+    """
+    
+    n_sampling_options_configured = 0
+    if options.frame_sample is not None:
+        n_sampling_options_configured += 1
+    if options.time_sample is not None:
+        n_sampling_options_configured += 1
+    if options.frames_to_extract is not None:
+        n_sampling_options_configured += 1
+    
+    if n_sampling_options_configured > 1:
+        raise ValueError('frame_sample, time_sample, and frames_to_extract are mutually exclusive')
+    
+    if options.time_sample is not None:
+        raise NotImplementedError('time_sample is not implemented')
+        
+    return True
+        
+    
 def _select_temporary_output_folders(options):
     """
     Choose folders in system temp space for writing temporary frames.  Does not create folders,
@@ -330,6 +356,9 @@ def process_video(options):
         dict: frame-level MegaDetector results, identical to what's in the output .json file
     """
 
+    # Check for incompatible options
+    _validate_video_options(options)
+    
     if options.output_json_file is None:
         options.output_json_file = options.input_video_file + '.json'
 
@@ -521,6 +550,9 @@ def process_video_folder(options):
     
     ## Validate options
 
+    # Check for incompatible options
+    _validate_video_options(options)
+    
     assert os.path.isdir(options.input_video_file), \
         '{} is not a folder'.format(options.input_video_file)
            
@@ -679,8 +711,13 @@ def process_video_folder(options):
     
     ## Convert frame-level results to video-level results
 
+    frame_to_video_options = FrameToVideoOptions()
+    frame_to_video_options.include_all_processed_frames = options.include_all_processed_frames
+    
     print('Converting frame-level results to video-level results')
-    frame_results_to_video_results(frames_json,video_json,
+    frame_results_to_video_results(frames_json,
+                                   video_json,
+                                   options=frame_to_video_options,
                                    video_filename_to_frame_rate=video_filename_to_fs)
 
 
@@ -1088,10 +1125,16 @@ def main():
                             'a folder.  Default {}.'.format(default_options.n_cores))
 
     parser.add_argument('--frame_sample', type=int,
-                        default=None, help='process every Nth frame (defaults to every frame)')
+                        default=None, help='process every Nth frame (defaults to every frame), mutually exclusive '\
+                            'with --frames_to_extract and --time_sample.')
 
     parser.add_argument('--frames_to_extract', nargs='+', type=int,
-                        default=None, help='extract specific frames (one or more ints)')
+                        default=None, help='extract specific frames (one or more ints), mutually exclusive '\
+                            'with --frame_sample and --time_sample.')
+    
+    parser.add_argument('--time_sample', type=float,
+                        default=None, help='process frames every N seconds, mutually exclusive '\
+                            'with --frame_sample and --frames_to_extract.')
 
     parser.add_argument('--quality', type=int,
                         default=default_options.quality, 
@@ -1126,6 +1169,12 @@ def main():
     parser.add_argument('--augment',
                         action='store_true',
                         help='Enable image augmentation')
+    
+    parser.add_argument('--include_all_processed_frames',
+                        action='store_true',
+                        help='When processing a folder of videos, this flag indicates that the output  '\
+                             'should include results for every frame that was processed, rather than just '\
+                             'one representative frame for each detection category per video.')
     
     parser.add_argument('--allow_empty_videos',
                         action='store_true',
