@@ -24,11 +24,11 @@ Example output with both detection and classification results:
 ```jsonc
 {
     "info": {
-	
-		// Required
+
+        // Required
         "format_version": "1.4",
 		
-		// All other "info" fields are optional
+        // All other "info" fields are optional
         "detector": "md_v4.1.0.pb",
         "detection_completion_time": "2019-05-22 02:12:19",
         "classifier": "ecosystem1_v2",
