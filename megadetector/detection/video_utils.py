@@ -228,9 +228,10 @@ def run_callback_on_frames(input_video_file,
         input_video_file (str): video file to process
         frame_callback (function): callback to run on frames, should take an np.array and a string and 
             return a single value.  callback should expect PIL-formatted (RGB) images.
-        every_n_frames (int, optional): sample every Nth frame starting from the first frame;
-            if this is None or 1, every frame is processed. Mutually exclusive with
-            frames_to_process.
+        every_n_frames (float, optional): sample every Nth frame starting from the first frame;
+            if this is None or 1, every frame is processed.  If this is a negative value, that's 
+            interpreted as a sampling rate in seconds, which is rounded to the nearest frame sampling 
+            rate. Mutually exclusive with frames_to_process.
         verbose (bool, optional): enable additional debug console output
         frames_to_process (list of int, optional): process this specific set of frames;
             mutually exclusive with every_n_frames.  If all values are beyond the length
@@ -263,6 +264,13 @@ def run_callback_on_frames(input_video_file,
     frame_filenames = []
     results = []
     
+    if every_n_frames is not None and every_n_frames < 0:
+        every_n_seconds = abs(every_n_frames)
+        every_n_frames = int(every_n_seconds * frame_rate)
+        if verbose:
+            print('Interpreting a time sampling rate of {} hz as a frame interval of {}'.format(
+                every_n_seconds,every_n_frames))        
+        
     # frame_number = 0
     for frame_number in range(0,n_frames):
 
@@ -808,9 +816,6 @@ def frame_results_to_video_results(input_file,
     if options is None:
         options = FrameToVideoOptions()
     
-    if options.include_all_processed_frames:
-        raise NotImplementedError('Including all processed frames not yet implemented')
-        
     # Load results
     with open(input_file,'r') as f:
         input_data = json.load(f)
@@ -863,47 +868,58 @@ def frame_results_to_video_results(input_file,
     # video_name = list(video_to_frame_info.keys())[0]
     for video_name in tqdm(video_to_frame_info):
         
-        frames = video_to_frame_info[video_name]
-        
-        all_detections_this_video = []
-        
-        # frame = frames[0]
-        for frame in frames:
-            if ('detections' in frame) and (frame['detections'] is not None):
-                all_detections_this_video.extend(frame['detections'])
-            
-        # At most one detection for each category for the whole video
-        canonical_detections = []
-            
-        # category_id = list(detection_categories.keys())[0]
-        for category_id in detection_categories:
-            
-            category_detections = [det for det in all_detections_this_video if \
-                                   det['category'] == category_id]
-            
-            # Find the nth-highest-confidence video to choose a confidence value
-            if len(category_detections) >= options.nth_highest_confidence:
-                
-                category_detections_by_confidence = sorted(category_detections, 
-                                                           key = lambda i: i['conf'],reverse=True)
-                canonical_detection = category_detections_by_confidence[options.nth_highest_confidence-1]
-                canonical_detections.append(canonical_detection)
-                                      
         # Prepare the output representation for this video
         im_out = {}
         im_out['file'] = video_name
-        im_out['detections'] = canonical_detections
         
         if (video_filename_to_frame_rate is not None) and \
             (video_name in video_filename_to_frame_rate):
             im_out['frame_rate'] = video_filename_to_frame_rate[video_name]
         
-        # 'max_detection_conf' is no longer included in output files by default
-        if False:
-            im_out['max_detection_conf'] = 0
-            if len(canonical_detections) > 0:
-                confidences = [d['conf'] for d in canonical_detections]
-                im_out['max_detection_conf'] = max(confidences)
+        # Find all detections for this video
+        all_detections_this_video = []
+        
+        frames = video_to_frame_info[video_name]
+                
+        # frame = frames[0]
+        for frame in frames:
+            if ('detections' in frame) and (frame['detections'] is not None):                
+                all_detections_this_video.extend(frame['detections'])
+        
+        # Should we keep detections for all frames?
+        if (options.include_all_processed_frames):
+        
+            im_out['detections'] = all_detections_this_video
+        
+        # ...or should we keep just a canonical detection for each category?
+        else:
+            
+            canonical_detections = []
+                
+            # category_id = list(detection_categories.keys())[0]
+            for category_id in detection_categories:
+                
+                category_detections = [det for det in all_detections_this_video if \
+                                       det['category'] == category_id]
+                
+                # Find the nth-highest-confidence video to choose a confidence value
+                if len(category_detections) >= options.nth_highest_confidence:
+                    
+                    category_detections_by_confidence = sorted(category_detections, 
+                                                               key = lambda i: i['conf'],reverse=True)
+                    canonical_detection = category_detections_by_confidence[options.nth_highest_confidence-1]
+                    canonical_detections.append(canonical_detection)
+                                          
+            im_out['detections'] = canonical_detections
+            
+            # 'max_detection_conf' is no longer included in output files by default
+            if False:
+                im_out['max_detection_conf'] = 0
+                if len(canonical_detections) > 0:
+                    confidences = [d['conf'] for d in canonical_detections]
+                    im_out['max_detection_conf'] = max(confidences)
+
+        # ...if we're keeping output for all frames / canonical frames
         
         output_images.append(im_out)
         

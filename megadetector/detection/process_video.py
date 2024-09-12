@@ -6,7 +6,9 @@ Splits a video (or folder of videos) into frames, runs the frames through run_de
 and optionally stitches together results into a new video with detection boxes.
 
 When possible, video processing happens in memory, without writing intermediate frames to disk.
-If the caller requests that frames be saved, frames are written to disk.
+If the caller requests that frames be saved, frames are written before processing, and the MD
+results correspond to the frames that were written to disk (which simplifies, for example,
+repeat detection elimination).
 
 """
 
@@ -197,9 +199,6 @@ def _validate_video_options(options):
     if n_sampling_options_configured > 1:
         raise ValueError('frame_sample, time_sample, and frames_to_extract are mutually exclusive')
     
-    if options.time_sample is not None:
-        raise NotImplementedError('time_sample is not implemented')
-        
     return True
         
     
@@ -365,6 +364,10 @@ def process_video(options):
     if options.render_output_video and (options.output_video_file is None):
         options.output_video_file = options.input_video_file + '.detections.mp4'
 
+    if options.time_sample is not None:
+        raise ValueError('Time-based sampling is not supported when processing a single video; ' + \
+                         'consider processing a folder, or using frame_sample')
+        
     if options.model_file == 'no_detection' and not options.keep_extracted_frames:
         print('Warning: you asked for no detection, but did not specify keep_extracted_frames, this is a no-op')
         return
@@ -490,7 +493,8 @@ def process_video(options):
     
     if options.render_output_video:
         
-        # Render detections to images
+        ## Render detections to images
+        
         if (caller_provided_rendering_output_folder):
             rendering_output_dir = options.frame_rendering_folder
         else:
@@ -504,16 +508,24 @@ def process_video(options):
             images_dir=frame_output_folder,
             confidence_threshold=options.rendering_confidence_threshold)
 
-        # Combine into a video
+        
+        ## Choose the frame rate at which we should render the output video
+        
         if options.rendering_fs is not None:
             rendering_fs = options.rendering_fs
-        elif options.frame_sample is None:
+        elif options.frame_sample is None and options.time_sample is None:
             rendering_fs = Fs
-        else:
+        elif options.frame_sample is not None:
+            assert options.time_sample is None
             # If the original video was 30fps and we sampled every 10th frame, 
             # render at 3fps
             rendering_fs = Fs / options.frame_sample
+        elif options.time_sample is not None:
+            rendering_fs = options.time_sample
             
+        
+        ## Render the output video
+        
         print('Rendering {} frames to {} at {} fps (original video {} fps)'.format(
             len(detected_frame_files), options.output_video_file,rendering_fs,Fs))
         frames_to_video(detected_frame_files, 
@@ -528,6 +540,7 @@ def process_video(options):
     
     
     ## (Optionally) delete the extracted frames
+    
     _clean_up_extracted_frames(options, frame_output_folder, frame_filenames)
     
 # ...process_video()
@@ -580,6 +593,11 @@ def process_video_folder(options):
     image_file_names = None
     video_filename_to_fs = {}
     
+    if options.time_sample is not None:
+        every_n_frames_param = -1 * options.time_sample
+    else:
+        every_n_frames_param = options.frame_sample
+    
     # Run MD in memory if we don't need to generate frames
     #
     # Currently if we're generating an output video, we need to generate frames on disk first.
@@ -604,7 +622,7 @@ def process_video_folder(options):
         
         md_results = run_callback_on_frames_for_folder(input_video_folder=options.input_video_file, 
                                                        frame_callback=frame_callback,
-                                                       every_n_frames=options.frame_sample, 
+                                                       every_n_frames=every_n_frames_param,
                                                        verbose=options.verbose)
         
         video_results = md_results['results']
@@ -1133,8 +1151,9 @@ def main():
                             'with --frame_sample and --time_sample.')
     
     parser.add_argument('--time_sample', type=float,
-                        default=None, help='process frames every N seconds, mutually exclusive '\
-                            'with --frame_sample and --frames_to_extract.')
+                        default=None, help='process frames every N seconds; this is converted to a '\
+                            'frame sampling rate, so it may not be exactly the requested interval in seconds. '\
+                            'mutually exclusive with --frame_sample and --frames_to_extract.')
 
     parser.add_argument('--quality', type=int,
                         default=default_options.quality, 
