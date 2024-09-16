@@ -9,6 +9,48 @@
 
 """
 
+#%% Metadata format notes
+
+"""
+
+## "report" files (e.g. APN_S2_report_lila.csv) ##
+
+One row per identification (typically one row per image) with the conensus annotations.  This
+is the most important file for each season.
+
+Notable columns:
+    
+* capture_id (e.g. APN_S2#13U#3#1) (this uniquely identified an image file)
+* question__species: values may be "human", "blank", "impala", "porcupine", etc.
+* A whole bunch of other question__ columns (e.g. "question__count_median", "question__standing")
+  that I'm ignoring for now.
+* "season", "site", roll", and "capture" (redundant with "capture_id")
+
+## "inventory" files (e.g. APN_S2_report_lila_image_inventory.csv) ##
+
+Just a list of images, I don't use this (redundant with the "report" files).
+
+Three columns:
+    
+* capture_id (e.g. APN_S2#13U#3#1)
+* image_rank_in_capture (int)              
+* image_path_rel (e.g. APN_S2/13U/13U_R3/APN_S2_13U_R3_IMAG0001.JPG)
+
+## "overview" files (e.g. APN_S2_report_lila_overview.csv)
+
+Statistical summary of the responses for this season, one row per unique answer to each
+question.
+
+Five columns:
+
+* question (e.g. "question__species", "question__count_median")    
+* answer (e.g. "blank", "impala", "4", NaN)
+* count (int)
+* total (should be constant throughout the report file)
+* percent (float, the percent of responses that gave this answer, should add up to 100 for each question)
+
+"""
+
 #%% Constants and imports
 
 import os
@@ -78,10 +120,17 @@ print('Found a total of {} files, {} of which are images'.format(
 
 #%% Copy all .csv files to the annotation cache folder
 
+force_csv_copy = False
+
 # fn = csv_files[0]
 for fn in tqdm(csv_files):
     
     target_file = os.path.join(annotation_cache_dir,os.path.basename(fn))
+    
+    if os.path.exists(target_file) and (not force_csv_copy):
+        print('File {} exists, skipping copy'.format(target_file))
+        continue
+    
     source_file = os.path.join(input_base,fn)
     shutil.copyfile(source_file,target_file)    
 
