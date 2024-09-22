@@ -510,7 +510,8 @@ def load_and_run_detector_batch(model_file,
                                 include_image_size=False, 
                                 include_image_timestamp=False, 
                                 include_exif_data=False,
-                                augment=False):
+                                augment=False,
+                                force_model_download=False):
     """
     Load a model file and run it on a list of images.
     
@@ -539,6 +540,9 @@ def load_and_run_detector_batch(model_file,
         include_image_timestamp (bool, optional): should we include image timestamps in the output for each image?
         include_exif_data (bool, optional): should we include EXIF data in the output for each image?
         augment (bool, optional): enable image augmentation
+        force_model_download (bool, optional): force downloading the model file if
+            a named model (e.g. "MDV5A") is supplied, even if the local file already
+            exists
         
     Returns:
         results: list of dicts; each dict represents detections on one image
@@ -599,7 +603,7 @@ def load_and_run_detector_batch(model_file,
 
     already_processed = set([i['file'] for i in results])
 
-    model_file = try_download_known_detector(model_file)
+    model_file = try_download_known_detector(model_file, force_download=force_model_download)
         
     print('GPU available: {}'.format(is_gpu_available(model_file)))
     
@@ -1145,7 +1149,12 @@ def main():
         type=str,
         default='overwrite',
         help='What should we do if the output file exists?  overwrite/skip/error (default overwrite)'
-    )
+    )    
+    parser.add_argument(
+        '--force_model_download',
+        action='store_true',
+        help=('If a named model (e.g. "MDV5A") is supplied, force a download of that model even if the ' +\
+              'local file already exists.'))
     
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -1155,7 +1164,8 @@ def main():
 
     # If the specified detector file is really the name of a known model, find 
     # (and possibly download) that model
-    args.detector_file = try_download_known_detector(args.detector_file)
+    args.detector_file = try_download_known_detector(args.detector_file, 
+                                                     force_download=args.force_model_download)
     
     assert os.path.exists(args.detector_file), \
         'detector file {} does not exist'.format(args.detector_file)
@@ -1322,7 +1332,9 @@ def main():
                                           include_image_size=args.include_image_size,
                                           include_image_timestamp=args.include_image_timestamp,
                                           include_exif_data=args.include_exif_data,
-                                          augment=args.augment)
+                                          augment=args.augment,
+                                          # Don't download the model *again*
+                                          force_model_download=False)
 
     elapsed = time.time() - start_time
     images_per_second = len(results) / elapsed
