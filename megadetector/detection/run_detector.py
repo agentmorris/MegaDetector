@@ -356,22 +356,29 @@ def is_gpu_available(model_file):
                 pass
         return gpu_available
     else:
-        raise ValueError('Unrecognized model file extension for model {}'.format(model_file))
+        raise ValueError('Model {} does not have a recognized extension and is not a known model name'.\
+                         format(model_file))
 
 
-def load_detector(model_file, force_cpu=False):
+def load_detector(model_file, force_cpu=False, force_model_download=False):
     r"""
     Loads a TF or PT detector, depending on the extension of model_file.
     
     Args:
         model_file (str): model filename, e.g. c:/x/z/md_v5a.0.0.pt
+        force_cpu (bool, optional): force the model to run on the CPU even if a GPU
+            is available
+        force_model_download (bool, optional): force downloading the model file if
+            a named model (e.g. "MDV5A") is supplied, even if the local file already
+            exists
     
     Returns:
         object: loaded detector object
     """
     
     # Possibly automatically download the model
-    model_file = try_download_known_detector(model_file)
+    model_file = try_download_known_detector(model_file, 
+                                             force_download=force_model_download)
     
     start_time = time.time()
     if model_file.endswith('.pb'):
@@ -402,7 +409,8 @@ def load_and_run_detector(model_file,
                           box_expansion=DEFAULT_BOX_EXPANSION,
                           image_size=None,
                           label_font_size=DEFAULT_LABEL_FONT_SIZE,
-                          augment=False
+                          augment=False,
+                          force_model_download=False
                           ):
     r"""
     Loads and runs a detector on target images, and visualizes the results.
@@ -424,6 +432,9 @@ def load_and_run_detector(model_file,
         label_font_size (float, optional): font size to use for displaying class names
             and confidence values in the rendered images        
         augment (bool, optional): enable (implementation-specific) image augmentation
+        force_model_download (bool, optional): force downloading the model file if
+            a named model (e.g. "MDV5A") is supplied, even if the local file already
+            exists
     """
     
     if len(image_file_names) == 0:
@@ -431,7 +442,7 @@ def load_and_run_detector(model_file,
         return
 
     # Possibly automatically download the model
-    model_file = try_download_known_detector(model_file)
+    model_file = try_download_known_detector(model_file, force_download=force_model_download)
 
     print('GPU available: {}'.format(is_gpu_available(model_file)))
     
@@ -581,7 +592,7 @@ def download_model(model_name,force_download=False):
     
     Args:
         model_name (str): a known model string, e.g. "MDV5A"
-        force_download (bool, optional): whether download the model even if the local target 
+        force_download (bool, optional): whether to download the model even if the local target 
             file already exists
     """
     
@@ -597,17 +608,18 @@ def download_model(model_name,force_download=False):
         os.chmod(model_tempdir,0o777)
     except Exception:
         pass
-    if model_name not in downloadable_models:
+    if model_name.upper() not in downloadable_models:
         print('Unrecognized downloadable model {}'.format(model_name))
         return None
-    url = downloadable_models[model_name]
+    url = downloadable_models[model_name.upper()]
     destination_filename = os.path.join(model_tempdir,url.split('/')[-1])
     local_file = download_url(url, destination_filename=destination_filename, progress_updater=None, 
                      force_download=force_download, verbose=True)
+    print('Model {} available at {}'.format(model_name,local_file))
     return local_file
 
 
-def try_download_known_detector(detector_file):
+def try_download_known_detector(detector_file,force_download=False):
     """
     Checks whether detector_file is really the name of a known model, in which case we will
     either read the actual filename from the corresponding environment variable or download
@@ -616,13 +628,15 @@ def try_download_known_detector(detector_file):
     Args:
         detector_file (str): a known model string (e.g. "MDV5A"), or any other string (in which
             case this function is a no-op)
+        force_download (bool, optional): whether to download the model even if the local target 
+            file already exists
     
     Returns:
         str: the local filename to which the model was downloaded, or the same string that
         was passed in, if it's not recognized as a well-known model name
     """
     
-    if detector_file in downloadable_models:
+    if detector_file.upper() in downloadable_models:
         if detector_file in os.environ:
             fn = os.environ[detector_file]
             print('Reading MD location from environment variable {}: {}'.format(
@@ -630,7 +644,7 @@ def try_download_known_detector(detector_file):
             detector_file = fn
         else:
             print('Downloading model {}'.format(detector_file))
-            detector_file = download_model(detector_file)
+            detector_file = download_model(detector_file,force_download=force_download)
     return detector_file
         
     
@@ -725,6 +739,12 @@ def main():
               .format(DETECTION_FILENAME_INSERT) + \
               'This option disables that behavior.'))
     
+    parser.add_argument(
+        '--force_model_download',
+        action='store_true',
+        help=('If a named model (e.g. "MDV5A") is supplied, force a download of that model even if the ' +\
+              'local file already exists.'))
+        
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()
@@ -733,7 +753,8 @@ def main():
 
     # If the specified detector file is really the name of a known model, find 
     # (and possibly download) that model
-    args.detector_file = try_download_known_detector(args.detector_file)
+    args.detector_file = try_download_known_detector(args.detector_file,
+                                                     force_download=args.force_model_download)
     
     assert os.path.exists(args.detector_file), 'detector file {} does not exist'.format(
         args.detector_file)
@@ -774,7 +795,9 @@ def main():
                           crop_images=args.crop,
                           image_size=args.image_size,
                           label_font_size=args.label_font_size,
-                          augment=args.augment)
+                          augment=args.augment,
+                          # Don't download the model *again*
+                          force_model_download=False)
 
 if __name__ == '__main__':
     main()
