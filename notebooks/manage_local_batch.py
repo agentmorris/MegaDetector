@@ -974,7 +974,7 @@ if filtered_output_filename is None:
     filtered_output_filename = combined_api_output_file
     
 classifier_name_short = 'megaclassifier'
-threshold_str = '0.15' # 0.6
+threshold_str = '0.15'
 classifier_name = 'megaclassifier_v0.1_efficientnet-b3'
 
 organization_name = organization_name_short
