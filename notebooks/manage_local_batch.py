@@ -825,9 +825,8 @@ path_utils.open_file(html_output_file,attempt_to_open_in_wsl_host=True,browser_n
 
 #%% Repeat detection elimination, phase 1
 
-# Deliberately leaving these imports here, rather than at the top, because this
-# cell is not typically executed
 from megadetector.postprocessing.repeat_detection_elimination import repeat_detections_core
+
 task_index = 0
 
 options = repeat_detections_core.RepeatDetectionOptions()

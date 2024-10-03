@@ -127,6 +127,49 @@ def _get_exif_ifd(exif):
     }
 
 
+def has_gps_info(im):
+    """
+    Given a filename, PIL image, dict of EXIF tags, or dict containing an 'exif_tags' field, 
+    determine whether GPS location information is present in this image.  Does not retrieve
+    location info, currently only used to determine whether it's present.
+    
+    Args:
+        im (str, PIL.Image.Image, dict): image for which we should determine GPS metadata
+        presence
+        
+    Returns:
+        bool: whether GPS metadata is present, or None if we failed to read EXIF data from
+        a file.
+    """
+    
+    if isinstance(im,str) or isinstance(im,Image.Image):
+        exif_tags = read_pil_exif(im)
+        if exif_tags is None:
+            return None
+        assert isinstance(exif_tags,dict)
+    else:
+        assert isinstance(im,dict)
+        exif_tags = im
+        
+    if 'exif_tags' in exif_tags:
+        exif_tags = exif_tags['exif_tags']
+        if exif_tags is None:
+            return None
+    
+    if 'GPSInfo' in exif_tags and \
+        exif_tags['GPSInfo'] is not None and \
+        isinstance(exif_tags['GPSInfo'],dict):
+            
+            # Don't indicate that GPS data is present if only GPS version info is present
+            if ('GPSLongitude' in exif_tags['GPSInfo']) or ('GPSLatitude' in exif_tags['GPSInfo']):
+                return True
+            return False
+        
+    return False
+    
+# ...def has_gps_info(...)    
+
+
 def read_pil_exif(im,options=None):
     """
     Read all the EXIF data we know how to read from an image, using PIL.  This is primarily
@@ -198,6 +241,36 @@ def read_pil_exif(im,options=None):
         elif isinstance(exif_tags[k],str):
             
             exif_tags[k] = exif_tags[k].strip()
+    
+    # Special case for GPS info... I could decode other encoded tags, but GPS info is 
+    # particularly important, so I'm only doing that for now.
+    if 'GPSInfo' in exif_tags:
+        
+        try:
+            
+            # Find the tag number for GPS info, in practice should alays be 34853
+            GPSINFO_TAG = next(tag for tag, name in ExifTags.TAGS.items() if name == "GPSInfo") 
+            assert GPSINFO_TAG == 34853
+            
+            # These are integer keys, e.g. {7: (14.0, 27.0, 7.24)}
+            gps_info_raw = exif_info.get_ifd(GPSINFO_TAG)
+            
+            # Convert to strings, e.g. 'GPSTimeStamp'
+            gps_info = {}
+            for int_tag,v in enumerate(gps_info_raw.keys()):
+                assert isinstance(int_tag,int)
+                if int_tag in ExifTags.GPSTAGS:
+                    gps_info[ExifTags.GPSTAGS[int_tag]] = v
+                else:
+                    gps_info[int_tag] = v
+                    
+            exif_tags['GPSInfo'] = gps_info
+            
+        except Exception as e:
+            if options.verbose:
+                print('Warning: error reading GPS info: {}'.format(str(e)))
+        
+    # ...if we think there might be GPS tags in this image
             
     return exif_tags
 
