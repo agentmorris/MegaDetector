@@ -906,8 +906,7 @@ def write_results_to_file(results,
     # If the caller supplied the entire "info" struct
     else:
         
-        if detector_file is not None:
-            
+        if detector_file is not None:            
             print('Warning (write_results_to_file): info struct and detector file ' + \
                   'supplied, ignoring detector file')
 
@@ -1155,7 +1154,15 @@ def main():
         action='store_true',
         help=('If a named model (e.g. "MDV5A") is supplied, force a download of that model even if the ' +\
               'local file already exists.'))
-    
+    parser.add_argument(
+        '--previous_results_file',
+        type=str,
+        default=None,
+        help=('If supplied, this should point to a previous .json results file; any results in that ' +\
+              'file will be transferred to the output file without reprocessing those images.  Useful ' +\
+              'for "updating" a set of results when you may have added new images to a folder you\'ve ' +\
+              'already processed.  Only supported when using relative paths.'))
+        
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()
@@ -1177,7 +1184,9 @@ def main():
         assert os.path.isdir(args.image_file), \
             f'Could not find folder {args.image_file}, must supply a folder when ' + \
                 '--output_relative_filenames is set'
-
+    if args.previous_results_file is not None:
+        assert os.path.isdir(args.image_file) and args.output_relative_filenames, \
+            "Can only process previous results when using relative paths"
     if os.path.exists(args.output_file):
         if args.overwrite_handling == 'overwrite':
             print('Warning: output file {} already exists and will be overwritten'.format(
@@ -1203,8 +1212,8 @@ def main():
     
     # Load the checkpoint if available
     #
-    # Relative file names are only output at the end; all file paths in the checkpoint are
-    # still absolute paths.
+    # File paths in the checkpoint are always absolute paths; conversion to relative paths
+    # happens below (if necessary).
     if args.resume_from_checkpoint is not None:
         if args.resume_from_checkpoint == 'auto':
             checkpoint_files = os.listdir(output_dir)
@@ -1235,7 +1244,7 @@ def main():
     else:
         results = []
 
-    # Find the images to score; images can be a directory, may need to recurse
+    # Find the images to process; images can be a directory, may need to recurse
     if os.path.isdir(args.image_file):
         image_file_names = path_utils.find_images(args.image_file, args.recursive)
         if len(image_file_names) > 0:
@@ -1250,7 +1259,7 @@ def main():
             return
         
     # A json list of image paths
-    elif os.path.isfile(args.image_file) and args.image_file.endswith('.json'):
+    elif os.path.isfile(args.image_file) and args.image_file.endswith('.json'):        
         with open(args.image_file) as f:
             image_file_names = json.load(f)
         print('Loaded {} image filenames from .json list file {}'.format(
@@ -1273,10 +1282,62 @@ def main():
         raise ValueError('image_file specified is not a directory, a json list, or an image file, '
                          '(or does not have recognizable extensions).')
 
+    # At this point, regardless of how they were specified, [image_file_names] is a list of 
+    # absolute image paths.
     assert len(image_file_names) > 0, 'Specified image_file does not point to valid image files'
+    
+    # Convert to forward slashes to facilitate comparison with previous results
+    image_file_names = [fn.replace('\\','/') for fn in image_file_names]
+    
+    # We can head off many problems related to incorrect command line formulation if we confirm
+    # that one image exists before proceeding.  The use of the first image for this test is 
+    # arbitrary.
     assert os.path.exists(image_file_names[0]), \
         'The first image to be processed does not exist at {}'.format(image_file_names[0])
 
+    # Possibly load results from a previous pass
+    previous_results = None
+    
+    if args.previous_results_file is not None:
+        
+        assert os.path.isfile(args.previous_results_file), \
+            'Could not find previous results file {}'.format(args.previous_results_file)
+        with open(args.previous_results_file,'r') as f:
+            previous_results = json.load(f)
+                
+        assert previous_results['detection_categories'] == run_detector.DEFAULT_DETECTOR_LABEL_MAP, \
+            "Can't merge previous results when those results use a different set of detection categories"
+        
+        print('Loaded previous results for {} images from {}'.format(
+            len(previous_results['images']), args.previous_results_file))
+        
+        # Convert previous result filenames to absolute paths if necessary 
+        #
+        # We asserted above to make sure that we are using relative paths and processing a 
+        # folder, but just to be super-clear...
+        assert os.path.isdir(args.image_file)
+        
+        previous_image_files_set = set()
+        for im in previous_results['images']:
+            assert not os.path.isabs(im['file']), \
+                "When processing previous results, relative paths are required"
+            fn_abs = os.path.join(args.image_file,im['file']).replace('\\','/')
+            # Absolute paths are expected at the final output stage below
+            im['file'] = fn_abs
+            previous_image_files_set.add(fn_abs)            
+        
+        image_file_names_to_keep = []
+        for fn_abs in image_file_names:
+            if fn_abs not in previous_image_files_set:
+                image_file_names_to_keep.append(fn_abs)
+                
+        print('Based on previous results file, processing {} of {} images'.format(
+            len(image_file_names_to_keep), len(image_file_names)))
+        
+        image_file_names = image_file_names_to_keep
+        
+    # ...if we're handling previous results
+        
     # Test that we can write to the output_file's dir if checkpointing requested
     if args.checkpoint_frequency != -1:
         
@@ -1342,10 +1403,25 @@ def main():
         len(results),humanfriendly.format_timespan(elapsed),images_per_second))
 
     relative_path_base = None
+    
+    # We asserted above to make sure that if output_relative_filenames is set, 
+    # args.image_file is a folder.
     if args.output_relative_filenames:
         relative_path_base = args.image_file
-    write_results_to_file(results, args.output_file, relative_path_base=relative_path_base,
-                          detector_file=args.detector_file,include_max_conf=args.include_max_conf)
+    
+    # Merge results from a previous file if necessary
+    if previous_results is not None:
+        previous_filenames_set = set([im['file'] for im in previous_results['images']])
+        new_filenames_set = set([im['file'] for im in results])
+        assert len(previous_filenames_set.intersection(new_filenames_set)) == 0, \
+            'Previous results handling error: redundant image filenames'
+        results.extend(previous_results['images'])        
+        
+    write_results_to_file(results, 
+                          args.output_file, 
+                          relative_path_base=relative_path_base,
+                          detector_file=args.detector_file,
+                          include_max_conf=args.include_max_conf)
 
     if checkpoint_path and os.path.isfile(checkpoint_path):
         os.remove(checkpoint_path)
