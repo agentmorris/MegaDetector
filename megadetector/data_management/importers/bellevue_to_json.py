@@ -270,4 +270,3 @@ html_output_file,image_db = visualize_db.visualize_db(output_filename,
                                                         os.path.join(output_base,'preview'),
                                                         base_dir,viz_options)
 os.startfile(html_output_file)
-
