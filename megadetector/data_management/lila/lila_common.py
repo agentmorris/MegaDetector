@@ -50,12 +50,14 @@ for url in lila_base_urls.values():
 
 #%% Common functions
 
-def read_wildlife_insights_taxonomy_mapping(metadata_dir):
+def read_wildlife_insights_taxonomy_mapping(metadata_dir, force_download=False):
     """
     Reads the WI taxonomy mapping file, downloading the .json data (and writing to .csv) if necessary.
     
     Args:
         metadata_dir (str): folder to use for temporary LILA metadata files
+        force_download (bool, optional): download the taxonomy mapping file 
+            even if the local file exists.
         
     Returns:
         pd.dataframe: A DataFrame with taxonomy information
@@ -67,7 +69,8 @@ def read_wildlife_insights_taxonomy_mapping(metadata_dir):
         df = pd.read_csv(wi_taxonomy_csv_path)
     else:
         wi_taxonomy_json_path = os.path.join(metadata_dir,wildlife_insights_taxonomy_local_json_filename)
-        download_url(wildlife_insights_taxonomy_url, wi_taxonomy_json_path)
+        download_url(wildlife_insights_taxonomy_url, wi_taxonomy_json_path, 
+                     force_download=force_download)
         with open(wi_taxonomy_json_path,'r') as f:
             d = json.load(f)
             
@@ -93,12 +96,14 @@ def read_wildlife_insights_taxonomy_mapping(metadata_dir):
     return df
 
     
-def read_lila_taxonomy_mapping(metadata_dir):
+def read_lila_taxonomy_mapping(metadata_dir, force_download=False):
     """
     Reads the LILA taxonomy mapping file, downloading the .csv file if necessary.
     
     Args:
         metadata_dir (str): folder to use for temporary LILA metadata files
+        force_download (bool, optional): download the taxonomy mapping file 
+            even if the local file exists.        
         
     Returns:
         pd.DataFrame: a DataFrame with one row per identification
@@ -106,19 +111,22 @@ def read_lila_taxonomy_mapping(metadata_dir):
     
     p = urlparse(lila_taxonomy_mapping_url)
     taxonomy_filename = os.path.join(metadata_dir,os.path.basename(p.path))
-    download_url(lila_taxonomy_mapping_url, taxonomy_filename)
+    download_url(lila_taxonomy_mapping_url, taxonomy_filename, 
+                 force_download=force_download)
     
     df = pd.read_csv(lila_taxonomy_mapping_url)
     
     return df
 
    
-def read_lila_metadata(metadata_dir):
+def read_lila_metadata(metadata_dir, force_download=False):
     """
     Reads LILA metadata (URLs to each dataset), downloading the .csv file if necessary.
     
     Args:
         metadata_dir (str): folder to use for temporary LILA metadata files
+        force_download (bool, optional): download the metadata file even if 
+            the local file exists.
         
     Returns:
         dict: a dict mapping dataset names (e.g. "Caltech Camera Traps") to dicts
@@ -130,7 +138,6 @@ def read_lila_metadata(metadata_dir):
         - country
         - region
         - image_base_url_relative
-        - metadata_url_relative
         - bbox_url_relative
         - image_base_url_gcp
         - metadata_url_gcp
@@ -150,7 +157,7 @@ def read_lila_metadata(metadata_dir):
     # Put the master metadata file in the same folder where we're putting images
     p = urlparse(lila_metadata_url)
     metadata_filename = os.path.join(metadata_dir,os.path.basename(p.path))
-    download_url(lila_metadata_url, metadata_filename)
+    download_url(lila_metadata_url, metadata_filename, force_download=force_download)
     
     df = pd.read_csv(metadata_filename)
     
@@ -174,13 +181,15 @@ def read_lila_metadata(metadata_dir):
     return metadata_table    
     
 
-def read_lila_all_images_file(metadata_dir):
+def read_lila_all_images_file(metadata_dir, force_download=False):
     """
     Downloads if necessary - then unzips if necessary - the .csv file with label mappings for
     all LILA files, and opens the resulting .csv file as a Pandas DataFrame.
     
     Args:
         metadata_dir (str): folder to use for temporary LILA metadata files
+        force_download (bool, optional): download the metadata file even if 
+            the local file exists.
         
     Returns:
         pd.DataFrame: a DataFrame containing one row per identification in a LILA camera trap image
@@ -188,7 +197,8 @@ def read_lila_all_images_file(metadata_dir):
         
     p = urlparse(lila_all_images_url)
     lila_all_images_zip_filename = os.path.join(metadata_dir,os.path.basename(p.path))
-    download_url(lila_all_images_url, lila_all_images_zip_filename)
+    download_url(lila_all_images_url, lila_all_images_zip_filename,
+                 force_download=force_download)
     
     with zipfile.ZipFile(lila_all_images_zip_filename,'r') as z:
         files = z.namelist()
@@ -209,7 +219,8 @@ def read_metadata_file_for_dataset(ds_name,
                                    metadata_dir,
                                    metadata_table=None,
                                    json_url=None,
-                                   preferred_cloud='gcp'):
+                                   preferred_cloud='gcp',
+                                   force_download=False):
     """
     Downloads if necessary - then unzips if necessary - the .json file for a specific dataset.
     
@@ -222,6 +233,8 @@ def read_metadata_file_for_dataset(ds_name,
         json_url (str, optional): the URL of the metadata file, if None will be retrieved
             via read_lila_metadata()
         preferred_cloud (str, optional): 'gcp' (default), 'azure', or 'aws'
+        force_download (bool, optional): download the metadata file even if 
+            the local file exists.
         
     Returns:
         str: the .json filename on the local disk
@@ -239,7 +252,7 @@ def read_metadata_file_for_dataset(ds_name,
     
     p = urlparse(json_url)
     json_filename = os.path.join(metadata_dir,os.path.basename(p.path))
-    download_url(json_url, json_filename)
+    download_url(json_url, json_filename, force_download=force_download)
     
     # Unzip if necessary
     if json_filename.endswith('.zip'):
@@ -266,7 +279,10 @@ if False:
     #%% Verify that all base URLs exist
     
     # LILA camera trap primary metadata file
-    urls = (lila_metadata_url,lila_taxonomy_mapping_url,lila_all_images_url,wildlife_insights_taxonomy_url)
+    urls = (lila_metadata_url,
+            lila_taxonomy_mapping_url,
+            lila_all_images_url,
+            wildlife_insights_taxonomy_url)
     
     from megadetector.utils import url_utils
     

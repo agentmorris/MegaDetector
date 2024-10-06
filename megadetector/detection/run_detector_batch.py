@@ -1405,8 +1405,9 @@ def main():
     relative_path_base = None
     
     # We asserted above to make sure that if output_relative_filenames is set, 
-    # args.image_file is a folder.
+    # args.image_file is a folder, but we'll double-check for clarity.
     if args.output_relative_filenames:
+        assert os.path.isdir(args.image_file)
         relative_path_base = args.image_file
     
     # Merge results from a previous file if necessary

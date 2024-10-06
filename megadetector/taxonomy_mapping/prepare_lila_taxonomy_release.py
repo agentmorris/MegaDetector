@@ -68,7 +68,8 @@ if False:
 
     #%% Generate the final output file
 
-    assert not os.path.isfile(release_taxonomy_file)
+    assert not os.path.isfile(release_taxonomy_file), \
+        'File {} exists, delete it manually before proceeding'.format(release_taxonomy_file)
 
     known_levels = ['stateofmatter', #noqa
                         'kingdom',
@@ -88,7 +89,7 @@ if False:
                         'genus',
                         'species','subspecies','variety']
 
-    levels_to_exclude = ['stateofmatter','zoosection','parvorder']
+    levels_to_exclude = ['stateofmatter','zoosection','parvorder','complex']
 
     for s in levels_to_exclude:
         assert s not in levels_to_include

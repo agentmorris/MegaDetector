@@ -11,6 +11,9 @@ This folder is only for generating and maintaining this mapping If you want to <
 
 * Edit the [LILA camera trap datasets index file](http://lila.science/wp-content/uploads/2023/06/lila_camera_trap_datasets.csv) to include the new dataset name, metadata URLs, and MD results URLs.  The copy on LILA is the source of truth.
 
+### Validate the new index file
+
+* Use 'test_lila_metadata_urls.py' to verify that the metadata .csv files and MegaDetector results files exist, and that their contents point to base URLs that actually exist.  I.e., make sure that all the metadata URLs and MD results files are programmatically usable.
 
 ### Update the taxonomy mapping
 
@@ -38,11 +41,6 @@ This folder is only for generating and maintaining this mapping If you want to <
 * Prepare the "release" taxonomy file (which removes a couple columns and removes unused rows) using [prepare_lila_taxonomy_release.py](prepare_lila_taxonomy_release.py).  This will create "lila-taxonomy-mapping_release.csv" in the local LILA base folder.  Run the taxonomy checker against this file too, just to be safe.
 
 * Upload to <https://lila.science/public/lila-taxonomy-mapping_release.csv>.  This is a small file that does not get zipped.
-
-
-### Test the metadata file, index file, and MD results files
-
-* Use 'test_lila_metadata_urls.py' to verify that the metadata .csv files and MegaDetector results files exist, and that their contents point to base URLs that actually exist.  I.e., make sure that all the metadata URLs and MD results files are programmatically usable.
 
 
 ### Update the One True CSV file

@@ -35,15 +35,17 @@ md_results_keys = ['mdv4_results_raw','mdv5a_results_raw','mdv5b_results_raw','m
 
 preferred_cloud = 'gcp' # 'azure', 'aws'
 
+force_download = True
+
 
 #%% Load category and taxonomy files
 
-taxonomy_df = read_lila_taxonomy_mapping(metadata_dir)
+taxonomy_df = read_lila_taxonomy_mapping(metadata_dir, force_download=force_download)
 
 
 #%% Download and parse the metadata file
 
-metadata_table = read_lila_metadata(metadata_dir)
+metadata_table = read_lila_metadata(metadata_dir, force_download=force_download)
 
 print('Loaded metadata URLs for {} datasets'.format(len(metadata_table)))
 
@@ -52,17 +54,24 @@ print('Loaded metadata URLs for {} datasets'.format(len(metadata_table)))
 
 for ds_name in metadata_table.keys():    
 
-    metadata_table[ds_name]['json_filename'] = read_metadata_file_for_dataset(ds_name=ds_name,
-                                                                         metadata_dir=metadata_dir,
-                                                                         metadata_table=metadata_table)
+    # Download the main metadata file for this dataset
+    metadata_table[ds_name]['json_filename'] = \
+        read_metadata_file_for_dataset(ds_name=ds_name,
+                                       metadata_dir=metadata_dir,
+                                       metadata_table=metadata_table,
+                                       force_download=force_download)
+        
+    # Download MD results for this dataset
     for k in md_results_keys:
         md_results_url = metadata_table[ds_name][k]
         if md_results_url is None:
             metadata_table[ds_name][k + '_filename'] = None
         else:
-            metadata_table[ds_name][k + '_filename'] = read_metadata_file_for_dataset(ds_name=ds_name,
-                                                                        metadata_dir=md_results_dir,
-                                                                        json_url=md_results_url)
+            metadata_table[ds_name][k + '_filename'] = \
+                read_metadata_file_for_dataset(ds_name=ds_name,
+                                               metadata_dir=md_results_dir,
+                                               json_url=md_results_url,
+                                               force_download=force_download)
 
 
 #%% Build up a list of URLs to test

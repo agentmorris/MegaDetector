@@ -86,6 +86,8 @@ for ds_name in metadata_table.keys():
 
 #%% Get category names and counts for each dataset
 
+# Takes ~5 minutes
+
 from collections import defaultdict
 
 dataset_to_categories = {}

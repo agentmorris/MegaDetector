@@ -511,6 +511,6 @@ open_file(html_filename)
 
 #%% Zip output file
 
-zipped_output_file = zip_file(output_file,verbose=True)
+zipped_output_file = zip_file(output_file,verbose=True,overwrite=True)
 
 print('Zipped {} to {}'.format(output_file,zipped_output_file))

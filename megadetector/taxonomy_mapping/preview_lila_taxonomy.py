@@ -16,7 +16,7 @@ import os
 import pandas as pd
 
 # lila_taxonomy_file = r"c:\git\agentmorrisprivate\lila-taxonomy\lila-taxonomy-mapping.csv"
-lila_taxonomy_file = os.path.expanduser('~/lila/lila_additions_2024.07.16.csv')
+lila_taxonomy_file = os.path.expanduser('~/lila/lila_additions_2024.10.05.csv')
 
 preview_base = os.path.expanduser('~/lila/lila_taxonomy_preview')
 os.makedirs(preview_base,exist_ok=True)
@@ -382,6 +382,8 @@ for i_row,row in df.iterrows():
 
 
 #%% Download sample images for all scientific names
+
+# Takes ~1 minute per 10 rows
 
 remapped_queries = {'papio':'papio+baboon',
                     'damaliscus lunatus jimela':'damaliscus lunatus',

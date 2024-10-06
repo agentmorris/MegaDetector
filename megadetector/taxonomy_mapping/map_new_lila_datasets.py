@@ -15,10 +15,10 @@ import json
 # Created by get_lila_category_list.py
 input_lila_category_list_file = os.path.expanduser('~/lila/lila_categories_list/lila_dataset_to_categories.json')
 
-output_file = os.path.expanduser('~/lila/lila_additions_2024.07.16.csv')
+output_file = os.path.expanduser('~/lila/lila_additions_2024.10.05.csv')
 
 datasets_to_map = [
-    'Desert Lion Conservation Camera Traps'
+    'Ohio Small Animals'
     ]
 
 
@@ -127,13 +127,18 @@ output_df.to_csv(output_file, index=None, header=True)
 #%% Manual lookup
 
 if False:
+
+    #%%
+
+    from megadetector.utils.path_utils import open_file
+    open_file(output_file)
     
     #%%
     
     # q = 'white-throated monkey'
     # q = 'cingulata'
     # q = 'notamacropus'
-    q = 'aves'
+    q = 'thamnophis saurita saurita'
     taxonomy_preference = 'inat'
     m = get_preferred_taxonomic_match(q,taxonomy_preference)
     # print(m.scientific_name); import clipboard; clipboard.copy(m.scientific_name)
