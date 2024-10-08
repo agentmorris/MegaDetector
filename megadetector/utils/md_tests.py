@@ -177,7 +177,8 @@ def get_expected_results_filename(gpu_is_available,
     
 def download_test_data(options=None):
     """
-    Downloads the test zipfile if necessary, unzips if necessary.
+    Downloads the test zipfile if necessary, unzips if necessary.  Initializes 
+    temporary fields in [options], particularly [options.scratch_dir].
     
     Args:
         options (MDTestOptions, optional): see MDTestOptions for details
@@ -1347,11 +1348,13 @@ if False:
     options.force_data_download = False
     options.force_data_unzip = False
     options.warning_mode = False
-    options.max_coord_error = 0.001
-    options.max_conf_error = 0.005
-    options.cli_working_dir = r'c:\git\MegaDetector'
-    options.yolo_working_dir = r'c:\git\yolov5-md'
-
+    options.max_coord_error = 0.01 # 0.001
+    options.max_conf_error = 0.01 # 0.005
+    # options.cli_working_dir = r'c:\git\MegaDetector'
+    # options.yolo_working_dir = r'c:\git\yolov5-md'
+    options.cli_working_dir = os.path.expanduser('~')
+    options.yolo_working_dir = '/mnt/c/git/yolov5-md'
+    options = download_test_data(options)
     
     #%%
     
@@ -1362,6 +1365,47 @@ if False:
     #%%
     
     run_tests(options)
+    
+    #%%
+    
+    yolo_inference_options_dict = {'input_folder': '/tmp/md-tests/md-test-images', 
+                                   'image_filename_list': None, 
+                                   'model_filename': 'MDV5A', 
+                                   'output_file': '/tmp/md-tests/folder_inference_output_yolo_val.json', 
+                                   'yolo_working_folder': '/mnt/c/git/yolov5-md', 
+                                   'model_type': 'yolov5', 
+                                   'image_size': None, 
+                                   'conf_thres': 0.005, 
+                                   'batch_size': 1, 
+                                   'device_string': '0', 
+                                   'augment': False, 
+                                   'half_precision_enabled': None, 
+                                   'symlink_folder': None, 
+                                   'use_symlinks': True, 
+                                   'unique_id_strategy': 'links', 
+                                   'yolo_results_folder': None, 
+                                   'remove_symlink_folder': True, 
+                                   'remove_yolo_results_folder': True, 
+                                   'yolo_category_id_to_name': {0: 'animal', 1: 'person', 2: 'vehicle'}, 
+                                   'overwrite_handling': 'overwrite', 
+                                   'preview_yolo_command_only': False, 
+                                   'treat_copy_failures_as_warnings': False, 
+                                   'save_yolo_debug_output': False, 
+                                   'recursive': True, 
+                                   'checkpoint_frequency': None}
+    
+    from megadetector.utils.ct_utils import dict_to_object    
+    from megadetector.detection.run_inference_with_yolov5_val import \
+        YoloInferenceOptions, run_inference_with_yolo_val
+    
+    yolo_inference_options = YoloInferenceOptions()
+    yolo_inference_options = dict_to_object(yolo_inference_options_dict, yolo_inference_options)
+    
+    os.makedirs(options.scratch_dir,exist_ok=True)
+    
+    inference_output_file_yolo_val = os.path.join(options.scratch_dir,'folder_inference_output_yolo_val.json')
+    
+    run_inference_with_yolo_val(yolo_inference_options)
     
     
 #%% Command-line driver

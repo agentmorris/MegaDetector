@@ -105,6 +105,26 @@ def args_to_object(args, obj):
     return obj
 
 
+def dict_to_object(d, obj):
+    """
+    Copies all fields from a dict to an object. Skips fields starting with _. 
+    Does not check existence in the target object.
+
+    Args:
+        d (dict): the dict to convert to an object
+        obj (object): object whose whose attributes will be updated
+        
+    Returns:
+        object: the modified object (modified in place, but also returned)
+    """
+    
+    for k in d.keys():
+        if not k.startswith('_'):
+            setattr(obj, k, d[k])
+
+    return obj
+
+
 def pretty_print_object(obj, b_print=True):
     """
     Converts an arbitrary object to .json, optionally printing the .json representation.

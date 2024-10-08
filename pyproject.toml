@@ -5,7 +5,7 @@ requires = [
 
 [project]
 name = "megadetector"
-version = "5.0.19"
+version = "5.0.20"
 description = "MegaDetector is an AI model that helps conservation folks spend less time doing boring things with camera trap images."
 readme = "README-package.md"
 # As of 2023.10.10, PyTorch isn't installable on Python 3.12
@@ -30,7 +30,7 @@ dependencies = [
   "tqdm >= 4.64.0",
   "jsonpickle >= 3.0.2",
   "humanfriendly >= 10.0",
-  "numpy >= 1.26.0",
+  "numpy >= 1.22, < 1.24",
   "matplotlib >= 3.8.0",
   "opencv-python >= 4.8.0",
   "requests >= 2.31.0",
