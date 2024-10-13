@@ -84,12 +84,12 @@ class DbVizOptions:
         #: Number of pixels to expand each bounding box
         self.box_expansion = 0
         
-        #: Only include images that contain annotations with these class names (not IDs)
+        #: Only include images that contain annotations with these class names (not IDs) (list)
         #:
         #: Mutually exclusive with classes_to_exclude
         self.classes_to_include = None
         
-        #: Exclude images that contain annotations with these class names (not IDs)
+        #: Exclude images that contain annotations with these class names (not IDs) (list)
         #:
         #: Mutually exclusive with classes_to_include
         self.classes_to_exclude = None
@@ -217,7 +217,15 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
     assert (not ((options.classes_to_exclude is not None) and \
                  (options.classes_to_include is not None))), \
                  'Cannot specify an inclusion and exclusion list'
-        
+    
+    if options.classes_to_exclude is not None:
+        assert isinstance(options.classes_to_exclude,list), \
+            'If supplied, classes_to_exclude should be a list'
+    
+    if options.classes_to_include is not None:
+        assert isinstance(options.classes_to_include,list), \
+            'If supplied, classes_to_include should be a list'
+            
     if (options.classes_to_exclude is not None) or (options.classes_to_include is not None):
      
         print('Indexing database')

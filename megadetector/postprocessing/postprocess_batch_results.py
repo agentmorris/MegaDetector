@@ -762,7 +762,7 @@ def _render_image_no_gt(file_info,detection_categories_to_results_name,
     if len(rendered_image_html_info) > 0:
 
         image_result = [[res, rendered_image_html_info]]
-
+        classes_rendered_this_image = set()
         max_conf = 0
         
         for det in detections:
@@ -782,11 +782,14 @@ def _render_image_no_gt(file_info,detection_categories_to_results_name,
                 # confidence threshold
                 if (options.classification_confidence_threshold < 0) or \
                     (top1_class_score >= options.classification_confidence_threshold):
-                    image_result.append(['class_{}'.format(top1_class_name),
-                                         rendered_image_html_info])
+                    class_string = 'class_{}'.format(top1_class_name)                    
                 else:
-                    image_result.append(['class_unreliable',
+                    class_string = 'class_unreliable'
+                
+                if class_string not in classes_rendered_this_image:
+                    image_result.append([class_string,
                                          rendered_image_html_info])
+                    classes_rendered_this_image.add(class_string)
 
             # ...if this detection has classification info
 
@@ -1637,14 +1640,15 @@ def process_batch_results(options):
                         files_to_render), total=len(files_to_render)))
         else:
             for file_info in tqdm(files_to_render):
-                rendering_results.append(_render_image_no_gt(file_info,
-                                                            detection_categories_to_results_name,
-                                                            detection_categories,
-                                                            classification_categories,
-                                                            options=options))
+                rendering_result = _render_image_no_gt(file_info,
+                                                       detection_categories_to_results_name,
+                                                       detection_categories,
+                                                       classification_categories,
+                                                       options=options)
+                rendering_results.append(rendering_result)
                 
-        elapsed = time.time() - start_time
-
+        elapsed = time.time() - start_time        
+        
         # Do we have classification results in addition to detection results?
         has_classification_info = False
         
