@@ -72,6 +72,7 @@ Some of these results were measured by "team MegaDetector", and some are user-re
 * A desktop <a href="https://www.nvidia.com/en-us/geforce/graphics-cards/30-series/rtx-3050/">RTX 3050</a> processes around 4.2 images per second, or around 363,000 images per day (for MDv5)
 * A laptop  <a href="https://www.nvidia.com/en-us/geforce/graphics-cards/30-series/rtx-3050/">RTX 3050</a> processes around 3.0 images per second, or around 250,000 images per day (for MDv5)
 * A <a href="https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/quadro-pascal-p2000-data-sheet-us-nvidia-704443-r2-web.pdf">Quadro P2000</a> processes around 2.1 images per second, or around 180,000 images per day (for MDv5)
+* A 2024 M3 MacBook Pro (18 GPU cores) averages around 4.61 images per second, or around 398,000 images per day (for MDv5)
 * A 2020 M1 MacBook Pro (8 GPU cores) averages around 1.85 images per second, or around 160,000 images per day (for MDv5)
 * An Intel Core i7-12700 CPU processes around 0.5 images per second on a single core (43,000 images per day) (multi-core performance is... complicated) (for MDv5)
 * An Intel Core i7-13700K CPU processes around 0.8 images per second on a single core (69,000 images per day) (multi-core performance is... complicated) (for MDv5)
