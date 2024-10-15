@@ -12,17 +12,17 @@ Prepare the OSU Small Animals dataset for LILA release:
 
 import os
 
-input_folder = r'G:\temp\osu-small-animals'
+input_folder = os.path.expanduser('~/osu-small-animals')
 assert os.path.isdir(input_folder)
 
-output_folder = r'G:\temp\osu-small-animals-lila'
+output_folder = os.path.expanduser('~/osu-small-animals-lila')
 os.makedirs(output_folder,exist_ok=True)
 output_file = os.path.join(output_folder,'osu-small-animals.json')
 
-preview_folder = r'G:\temp\osu-small-animals-preview'
+preview_folder = os.path.expanduser('~/osu-small-animals-preview')
 os.makedirs(preview_folder,exist_ok=True)
 
-common_to_latin_file = r'c:\git\agentmorrisprivate\camera-traps\osu-small-animals-common-to-latin.txt'
+common_to_latin_file = r'osu-small-animals-common-to-latin.txt'
 assert os.path.isfile(common_to_latin_file)
 
 

@@ -198,7 +198,7 @@ class PostProcessingOptions:
         
         #: When classification results are present, should be sort alphabetically by class name (False)
         #: or in descending order by frequency (True)?
-        self.sort_classification_results_by_count = False    
+        self.sort_classification_results_by_count = False
         
         #: Should we split individual pages up into smaller pages if there are more than
         #: N images?
