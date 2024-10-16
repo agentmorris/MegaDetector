@@ -117,6 +117,9 @@ class DbVizOptions:
         #: Should we show absolute (True) or relative (False) paths for each image?
         self.show_full_paths = False
         
+        #: List of additional fields in the image struct that we should print in image headers
+        self.extra_images_fields_to_print = None
+        
         #: Set to False to skip existing images
         self.force_rendering = True
         
@@ -164,6 +167,12 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
     if options is None:
         options = DbVizOptions()
     
+    # Consistency checking for fields with specific format requirements
+    
+    # This should be a list, but if someone specifies a string, do a reasonable thing
+    if isinstance(options.extra_images_fields_to_print,str):
+        options.extra_images_fields_to_print = [options.extra_images_fields_to_print]
+        
     if not options.parallelize_rendering_with_threads:
         print('Warning: process-based parallelization is not yet supported by visualize_db')
         options.parallelize_rendering_with_threads = True
@@ -190,27 +199,27 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
     annotations = image_db['annotations']
     images = image_db['images']
     categories = image_db['categories']
-    
+        
     # Optionally remove all images without bounding boxes, *before* sampling
     if options.trim_to_images_with_bboxes:
         
-        bHasBbox = [False] * len(annotations)
-        for iAnn,ann in enumerate(annotations):
+        b_has_bbox = [False] * len(annotations)
+        for i_ann,ann in enumerate(annotations):
             if 'bbox' in ann:
                 assert isinstance(ann['bbox'],list)
-                bHasBbox[iAnn] = True
-        annotationsWithBboxes = list(compress(annotations, bHasBbox))
+                b_has_bbox[i_ann] = True
+        annotations_with_boxes = list(compress(annotations, b_has_bbox))
         
-        imageIDsWithBboxes = [x['image_id'] for x in annotationsWithBboxes]
-        imageIDsWithBboxes = set(imageIDsWithBboxes)
+        image_ids_with_boxes = [x['image_id'] for x in annotations_with_boxes]
+        image_ids_with_boxes = set(image_ids_with_boxes)
         
-        bImageHasBbox = [False] * len(images)
-        for iImage,image in enumerate(images):
+        image_has_box = [False] * len(images)
+        for i_image,image in enumerate(images):
             imageID = image['id']
-            if imageID in imageIDsWithBboxes:
-                bImageHasBbox[iImage] = True
-        imagesWithBboxes = list(compress(images, bImageHasBbox))
-        images = imagesWithBboxes
+            if imageID in image_ids_with_boxes:
+                image_has_box[i_image] = True
+        images_with_bboxes = list(compress(images, image_has_box))
+        images = images_with_bboxes
                 
     # Optionally include/remove images with specific labels, *before* sampling
         
@@ -230,29 +239,29 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
      
         print('Indexing database')
         indexed_db = IndexedJsonDb(image_db)
-        bValidClass = [True] * len(images)        
-        for iImage,image in enumerate(images):
+        b_valid_class = [True] * len(images)        
+        for i_image,image in enumerate(images):
             classes = indexed_db.get_classes_for_image(image)
             if options.classes_to_exclude is not None:
-                for excludedClass in options.classes_to_exclude:
-                    if excludedClass in classes:
-                       bValidClass[iImage] = False
+                for excluded_class in options.classes_to_exclude:
+                    if excluded_class in classes:
+                       b_valid_class[i_image] = False
                        break
             elif options.classes_to_include is not None:
-                bValidClass[iImage] = False
+                b_valid_class[i_image] = False
                 if options.multiple_categories_tag in options.classes_to_include:
                     if len(classes) > 1:
-                        bValidClass[iImage] = True        
-                if not bValidClass[iImage]:
+                        b_valid_class[i_image] = True        
+                if not b_valid_class[i_image]:
                     for c in classes:
                         if c in options.classes_to_include:
-                            bValidClass[iImage] = True
+                            b_valid_class[i_image] = True
                             break                        
             else:
                 raise ValueError('Illegal include/exclude combination')
                 
-        imagesWithValidClasses = list(compress(images, bValidClass))
-        images = imagesWithValidClasses    
+        images_with_valid_classes = list(compress(images, b_valid_class))
+        images = images_with_valid_classes    
     
     # ...if we need to include/exclude categories
     
@@ -278,12 +287,12 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
     
     # Set of dicts representing inputs to render_db_bounding_boxes:
     #
-    # bboxes, boxClasses, image_path
+    # bboxes, box_classes, image_path
     rendering_info = []
     
     print('Preparing rendering list')
     
-    for iImage,img in tqdm(df_img.iterrows(),total=len(df_img)):
+    for i_image,img in tqdm(df_img.iterrows(),total=len(df_img)):
         
         img_id = img['id']
         assert img_id is not None
@@ -299,16 +308,16 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         annos_i = df_anno.loc[df_anno['image_id'] == img_id, :] # all annotations on this image
     
         bboxes = []
-        boxClasses = []
+        box_classes = []
         
         # All the class labels we've seen for this image (with out without bboxes)
-        imageCategories = set()
+        image_categories = set()
         
-        annotationLevelForImage = ''
+        annotation_level_for_image = ''
         
         # Iterate over annotations for this image
-        # iAnn = 0; anno = annos_i.iloc[iAnn]
-        for iAnn,anno in annos_i.iterrows():
+        # i_ann = 0; anno = annos_i.iloc[i_ann]
+        for i_ann,anno in annos_i.iterrows():
         
             if options.confidence_threshold is not None:
                 assert options.confidence_field_name in anno, \
@@ -324,18 +333,18 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
                     annLevel = 'sequence'
                 else:
                     annLevel = 'image'
-                if annotationLevelForImage == '':
-                    annotationLevelForImage = annLevel
-                elif annotationLevelForImage != annLevel:
-                    annotationLevelForImage = 'mixed'
+                if annotation_level_for_image == '':
+                    annotation_level_for_image = annLevel
+                elif annotation_level_for_image != annLevel:
+                    annotation_level_for_image = 'mixed'
                     
-            categoryID = anno['category_id']
-            categoryName = label_map[categoryID]
+            category_id = anno['category_id']
+            category_name = label_map[category_id]
             if options.add_search_links:
-                categoryName = categoryName.replace('"','')
-                categoryName = '<a href="https://www.google.com/search?tbm=isch&q={}">{}</a>'.format(
-                    categoryName,categoryName)
-            imageCategories.add(categoryName)
+                category_name = category_name.replace('"','')
+                category_name = '<a href="https://www.google.com/search?tbm=isch&q={}">{}</a>'.format(
+                    category_name,category_name)
+            image_categories.add(category_name)
             
             if 'bbox' in anno:
                 bbox = anno['bbox']        
@@ -343,11 +352,11 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
                     assert math.isnan(bbox), "I shouldn't see a bbox that's neither a box nor NaN"
                     continue
                 bboxes.append(bbox)
-                boxClasses.append(anno['category_id'])
+                box_classes.append(anno['category_id'])
         
         # ...for each of this image's annotations
         
-        imageClasses = ', '.join(imageCategories)
+        image_classes = ', '.join(image_categories)
                 
         img_id_string = str(img_id).lower()        
         file_name = '{}_gt.jpg'.format(os.path.splitext(img_id_string)[0])
@@ -357,19 +366,19 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         for c in illegal_characters:
             file_name = file_name.replace(c,'~')
         
-        rendering_info.append({'bboxes':bboxes, 'boxClasses':boxClasses, 'img_path':img_path,
+        rendering_info.append({'bboxes':bboxes, 'box_classes':box_classes, 'img_path':img_path,
                                'output_file_name':file_name})
                 
-        labelLevelString = ' '
-        if len(annotationLevelForImage) > 0:
-            labelLevelString = ' (annotation level: {})'.format(annotationLevelForImage)
+        label_level_string = ''
+        if len(annotation_level_for_image) > 0:
+            label_level_string = ' (annotation level: {})'.format(annotation_level_for_image)
             
         if 'frame_num' in img and 'seq_num_frames' in img:
-            frameString = ' frame: {} of {}, '.format(img['frame_num'],img['seq_num_frames'])
+            frame_string = ' frame: {} of {},'.format(img['frame_num'],img['seq_num_frames'])
         elif 'frame_num' in img:
-            frameString = ' frame: {}, '.format(img['frame_num'])
+            frame_string = ' frame: {},'.format(img['frame_num'])
         else:
-            frameString = ' '
+            frame_string = ''
         
         if options.show_full_paths:
             filename_text = img_path
@@ -378,22 +387,33 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         if options.include_filename_links:
             filename_text = '<a href="{}">{}</a>'.format(img_path,filename_text)
             
-        flagString = ''
+        flag_string = ''
         
         def isnan(x):
             return (isinstance(x,float) and np.isnan(x))
         
         if ('flags' in img) and (not isnan(img['flags'])):
-            flagString = ', flags: {}'.format(str(img['flags']))
+            flag_string = ', flags: {}'.format(str(img['flags']))
             
+        extra_field_string = ''
+        
+        if options.extra_images_fields_to_print is not None:
+            for field_name in options.extra_images_fields_to_print:
+                if field_name in img:
+                    # Always include a leading comma; this either separates us from the
+                    # previous field in [extra_fields_to_print] or from the rest of the string
+                    extra_field_string += ', {}: {}'.format(
+                        field_name,str(img[field_name]))
+        
         # We're adding html for an image before we render it, so it's possible this image will
         # fail to render.  For applications where this script is being used to debua a database
         # (the common case?), this is useful behavior, for other applications, this is annoying.
         image_dict = \
         {
             'filename': '{}/{}'.format('rendered_images', file_name),
-            'title': '{}<br/>{}, num boxes: {}, {}class labels: {}{}{}'.format(
-                filename_text, img_id, len(bboxes), frameString, imageClasses, labelLevelString, flagString),
+            'title': '{}<br/>{}, num boxes: {},{} class labels: {}{}{}{}'.format(
+                filename_text, img_id, len(bboxes), frame_string, image_classes, 
+                label_level_string, flag_string, extra_field_string),
             'textStyle': 'font-family:verdana,arial,calibri;font-size:80%;' + \
                 'text-align:left;margin-top:20;margin-bottom:5'
         }
@@ -408,7 +428,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         
         img_path = rendering_info['img_path']
         bboxes = rendering_info['bboxes']
-        bboxClasses = rendering_info['boxClasses']
+        bbox_classes = rendering_info['box_classes']
         output_file_name = rendering_info['output_file_name']
         output_full_path = os.path.join(output_dir, 'rendered_images', output_file_name)
         
@@ -434,7 +454,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
             print('Image {} failed to open, error: {}'.format(img_path, e))
             return False
             
-        vis_utils.render_db_bounding_boxes(boxes=bboxes, classes=bboxClasses,
+        vis_utils.render_db_bounding_boxes(boxes=bboxes, classes=bbox_classes,
                                            image=image, original_size=original_size,
                                            label_map=label_map,
                                            thickness=options.box_thickness,
