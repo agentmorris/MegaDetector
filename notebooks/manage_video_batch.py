@@ -43,7 +43,8 @@ frame_filenames_by_video,fs_by_video,video_filenames = \
                                        every_n_frames=every_n_frames,
                                        parallelization_uses_threads=parallelization_uses_threads,
                                        quality=quality,
-                                       max_width=max_width)
+                                       max_width=max_width,
+                                       allow_empty_videos=True)
 
 
 #%% List frame files, break into folders

@@ -678,12 +678,18 @@ def _video_to_frames_for_folder(relative_fn,input_folder,output_folder_base,
     return frame_filenames,fs
 
 
-def video_folder_to_frames(input_folder, output_folder_base, 
-                           recursive=True, overwrite=True,
-                           n_threads=1, every_n_frames=None,
-                           verbose=False, parallelization_uses_threads=True,
-                           quality=None, max_width=None, 
-                           frames_to_extract=None, allow_empty_videos=False):
+def video_folder_to_frames(input_folder,
+                           output_folder_base, 
+                           recursive=True, 
+                           overwrite=True,
+                           n_threads=1,
+                           every_n_frames=None,
+                           verbose=False,
+                           parallelization_uses_threads=True,
+                           quality=None,
+                           max_width=None, 
+                           frames_to_extract=None,
+                           allow_empty_videos=False):
     """
     For every video file in input_folder, creates a folder within output_folder_base, and 
     renders frame of that video to images in that folder.
@@ -709,6 +715,8 @@ def video_folder_to_frames(input_folder, output_folder_base,
             each video; mutually exclusive with every_n_frames.  If all values are beyond 
             the length of a video, no frames are extracted. Can also be a single int, 
             specifying a single frame number.
+        allow_empty_videos (bool, optional): Just print a warning if a video appears to have no
+            frames (by default, this is an error).
         
     Returns:
         tuple: a length-3 tuple containing:
