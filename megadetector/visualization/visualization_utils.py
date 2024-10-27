@@ -1432,12 +1432,12 @@ def parallel_get_image_sizes(filenames,
         to load.
     """
 
-    n_workers = min(max_workers,len(filenames))
-    
     if isinstance(filenames,str) and os.path.isdir(filenames):
         if verbose:
             print('Enumerating images in {}'.format(filenames))
         filenames = find_images(filenames,recursive=recursive,return_relative_paths=False)
+    
+    n_workers = min(max_workers,len(filenames))
     
     if verbose:
         print('Getting image sizes for {} images'.format(len(filenames)))
@@ -1585,12 +1585,12 @@ def parallel_check_image_integrity(filenames,
         with either 'success' or 'error').
     """
 
-    n_workers = min(max_workers,len(filenames))
-    
     if isinstance(filenames,str) and os.path.isdir(filenames):
         if verbose:
             print('Enumerating images in {}'.format(filenames))
         filenames = find_images(filenames,recursive=recursive,return_relative_paths=False)
+    
+    n_workers = min(max_workers,len(filenames))
     
     if verbose:
         print('Checking image integrity for {} filenames'.format(len(filenames)))

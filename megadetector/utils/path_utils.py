@@ -17,6 +17,7 @@ import platform
 import string
 import json
 import shutil
+import hashlib
 import unicodedata
 import zipfile
 import tarfile
@@ -236,6 +237,30 @@ def path_is_abs(p):
     return (len(p) > 1) and (p[0] == '/' or p[1] == ':' or p[0] == '\\')
 
 
+def safe_create_link(link_exists,link_new):
+    """
+    Creates a symlink at [link_new] pointing to [link_exists].
+    
+    If [link_new] already exists, make sure it's a link (not a file),
+    and if it has a different target than [link_exists], removes and re-creates
+    it.
+    
+    Errors if [link_new] already exists but it's not a link.
+    
+    Args:
+        link_exists (str): the source of the (possibly-new) symlink
+        link_new (str): the target of the (possibly-new) symlink
+    """
+    
+    if os.path.exists(link_new) or os.path.islink(link_new):
+        assert os.path.islink(link_new)
+        if not os.readlink(link_new) == link_exists:
+            os.remove(link_new)
+            os.symlink(link_exists,link_new)
+    else:
+        os.symlink(link_exists,link_new)
+        
+
 def top_level_folder(p):
     r"""
     Gets the top-level folder from the path *p*.
@@ -295,31 +320,6 @@ if False:
     p = r'c:\foo'; s = top_level_folder(p); print(s); assert s == 'c:\\foo'
     p = r'c:/foo'; s = top_level_folder(p); print(s); assert s == 'c:/foo'
     p = r'c:\foo/bar'; s = top_level_folder(p); print(s); assert s == 'c:\\foo'
-        
-    #%%
-
-def safe_create_link(link_exists,link_new):
-    """
-    Creates a symlink at [link_new] pointing to [link_exists].
-    
-    If [link_new] already exists, make sure it's a link (not a file),
-    and if it has a different target than [link_exists], removes and re-creates
-    it.
-    
-    Errors if [link_new] already exists but it's not a link.
-    
-    Args:
-        link_exists (str): the source of the (possibly-new) symlink
-        link_new (str): the target of the (possibly-new) symlink
-    """
-    
-    if os.path.exists(link_new) or os.path.islink(link_new):
-        assert os.path.islink(link_new)
-        if not os.readlink(link_new) == link_exists:
-            os.remove(link_new)
-            os.symlink(link_exists,link_new)
-    else:
-        os.symlink(link_exists,link_new)
         
 
 #%% Image-related path functions
@@ -598,7 +598,9 @@ def open_file(filename, attempt_to_open_in_wsl_host=False, browser_name=None):
         
         opener = 'xdg-open'        
         subprocess.call([opener, filename])
-        
+
+# ...def open_file(...)
+
 
 #%% File list functions
 
@@ -803,6 +805,8 @@ def parallel_get_file_sizes(filenames,
         to_return[fn] = size
 
     return to_return
+
+# ...def parallel_get_file_sizes(...)
 
 
 #%% Zip functions
@@ -1075,3 +1079,104 @@ def unzip_file(input_file, output_folder=None):
         
     with zipfile.ZipFile(input_file, 'r') as zf:
         zf.extractall(output_folder)
+
+
+#%% File hashing functions
+
+def compute_file_hash(file_path, algorithm='sha256', allow_failures=True):
+    """
+    Compute the hash of a file.
+    
+    Adapted from:
+        
+    https://www.geeksforgeeks.org/python-program-to-find-hash-of-file/
+    
+    Args:
+        file_path (str): the file to hash
+        algorithm (str, optional): the hashing algorithm to use (e.g. md5, sha256)
+    
+    Returns:
+        str: the hash value for this file
+    """
+    
+    try:
+        
+        hash_func = hashlib.new(algorithm)
+        
+        with open(file_path, 'rb') as file:
+            while chunk := file.read(8192):  # Read the file in chunks of 8192 bytes
+                hash_func.update(chunk)
+        
+        return str(hash_func.hexdigest())
+    
+    except Exception:
+        
+        if allow_failures:
+            return None
+        else:
+            raise
+
+# ...def compute_file_hash(...)
+
+
+def parallel_compute_file_hashes(filenames,
+                               max_workers=16, 
+                               use_threads=True, 
+                               recursive=True,
+                               algorithm='sha256',
+                               verbose=False):
+    """
+    Compute file hashes for a list or folder of images.
+    
+    Args:
+        filenames (list or str): a list of filenames or a folder
+        max_workers (int, optional): the number of parallel workers to use; set to <=1 to disable
+            parallelization
+        use_threads (bool, optional): whether to use threads (True) or processes (False) for
+            parallelization
+        algorithm (str, optional): the hashing algorithm to use (e.g. md5, sha256)
+        recursive (bool, optional): if [filenames] is a folder, whether to enumerate recursively.
+            Ignored if [filenames] is a list.
+        verbose (bool, optional): enable additional debug output        
+            
+    Returns:
+        dict: a dict mapping filenames to hash values; values will be None for files that fail
+        to load.
+    """
+
+    if isinstance(filenames,str) and os.path.isdir(filenames):
+        if verbose:
+            print('Enumerating files in {}'.format(filenames))
+        filenames = recursive_file_list(filenames,recursive=recursive,return_relative_paths=False)
+    
+    n_workers = min(max_workers,len(filenames))
+    
+    if verbose:
+        print('Computing hashes for {} files on {} workers'.format(len(filenames),n_workers))
+    
+    if n_workers <= 1:
+        
+        results = []
+        for filename in filenames:
+            results.append(compute_file_hash(filename,algorithm=algorithm,allow_failures=True))
+        
+    else:
+        
+        if use_threads:
+            pool = ThreadPool(n_workers)
+        else:
+            pool = Pool(n_workers)
+    
+        results = list(tqdm(pool.imap(
+            partial(compute_file_hash,algorithm=algorithm,allow_failures=True),
+            filenames), total=len(filenames)))
+    
+    assert len(filenames) == len(results), 'Internal error in parallel_compute_file_hashes'
+    
+    to_return = {}
+    for i_file,filename in enumerate(filenames):
+        to_return[filename] = results[i_file]
+        
+    return to_return
+
+# ...def parallel_compute_file_hashes(...)
