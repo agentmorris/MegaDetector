@@ -3,7 +3,13 @@
 manage_video_batch.py
 
 Notebook-esque script to manage the process of running a local batch of videos
-through MD.  Defers most of the heavy lifting to manage_local_batch.py .
+through MD.  Defers most of the heavy lifting to manage_local_batch.py.
+
+This script extracts frames to disk before running MD.  This is not a requirement;
+megadetector.process_video.process_video_folder() can process videos in memory. 
+But when running a large batch job, I prefer to do this in two steps, in 
+part because it facilitates repeat detection elimination and other tweaks to the
+MD process.
 
 """
 
@@ -53,7 +59,7 @@ frame_filenames_by_video,fs_by_video,video_filenames = \
 
 from collections import defaultdict
 
-frame_files = path_utils.find_images(frame_folder_base,True)
+frame_files = path_utils.find_images(frame_folder_base,recursive=True)
 frame_files = [s.replace('\\','/') for s in frame_files]
 print('Enumerated {} total frames'.format(len(frame_files)))
 
@@ -76,7 +82,7 @@ video_filenames = [os.path.relpath(fn,input_folder) for fn in video_filenames]
 print('Input folder contains {} videos'.format(len(video_filenames)))
 
 
-#%% Check for videos that don't have corresponding frame folder
+#%% Check for videos that don't have a corresponding frame folder
 
 # These are almost always corrupt videos; if you have a million camera trap videos, 
 # you will inevitably have a few videos that completely failed to open.  If *all* of 

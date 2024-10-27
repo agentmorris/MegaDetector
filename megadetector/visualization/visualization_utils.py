@@ -1125,7 +1125,6 @@ def gray_scale_fraction(image,crop_size=(0.1,0.1)):
                 if r == g and r == b and g == b:
                     n_gray_pixels += 1            
 
-
 # ...def gray_scale_fraction(...)
 
 
@@ -1374,6 +1373,98 @@ def resize_image_folder(input_folder,
     return results
 
 # ...def resize_image_folder(...)
+
+
+def get_image_size(im,verbose=False):
+    """
+    Retrieve the size of an image.  Returns None if the image fails to load.
+    
+    Args:
+        im (str or PIL.Image): filename or PIL image
+        
+    Returns:
+        tuple (w,h), or None if the image fails to load.
+    """
+    
+    image_name = '[in memory]'
+    
+    try:        
+        if isinstance(im,str):
+            image_name = im
+            im = load_image(im)
+        w = im.width
+        h = im.height
+        if w <= 0 or h <= 0:
+            if verbose:
+                print('Error reading width from image {}: {},{}'.format(
+                    image_name,w,h))
+            return None
+        return (w,h)
+    except Exception as e:
+        if verbose:
+            print('Error reading width from image {}: {}'.format(
+                image_name,str(e)))
+        return None
+    
+# ...def get_image_size(...)
+
+
+def parallel_get_image_sizes(filenames,
+                            max_workers=16, 
+                            use_threads=True, 
+                            recursive=True,
+                            verbose=False):
+    """
+    Retrieve image sizes for a list or folder of images
+    
+    Args:
+        filenames (list or str): a list of image filenames or a folder
+        max_workers (int, optional): the number of parallel workers to use; set to <=1 to disable
+            parallelization
+        use_threads (bool, optional): whether to use threads (True) or processes (False) for
+            parallelization
+        recursive (bool, optional): if [filenames] is a folder, whether to search recursively for images.
+            Ignored if [filenames] is a list.
+        verbose (bool, optional): enable additional debug output
+            
+    Returns:
+        dict: a dict mapping filenames to (w,h) tuples; values will be None for images that fail
+        to load.
+    """
+
+    n_workers = min(max_workers,len(filenames))
+    
+    if isinstance(filenames,str) and os.path.isdir(filenames):
+        if verbose:
+            print('Enumerating images in {}'.format(filenames))
+        filenames = find_images(filenames,recursive=recursive,return_relative_paths=False)
+    
+    if verbose:
+        print('Getting image sizes for {} images'.format(len(filenames)))
+    
+    if n_workers <= 1:
+        
+        results = []
+        for filename in filenames:
+            results.append(get_image_size(filename,verbose=verbose))
+        
+    else:
+        
+        if use_threads:
+            pool = ThreadPool(n_workers)
+        else:
+            pool = Pool(n_workers)
+    
+        results = list(tqdm(pool.imap(
+            partial(get_image_size,verbose=verbose),filenames), total=len(filenames)))
+    
+    assert len(filenames) == len(results), 'Internal error in parallel_get_image_sizes'
+    
+    to_return = {}
+    for i_file,filename in enumerate(filenames):
+        to_return[filename] = results[i_file]
+        
+    return to_return
 
 
 #%% Image integrity checking functions

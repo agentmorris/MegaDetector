@@ -727,8 +727,11 @@ def video_folder_to_frames(input_folder,
     """
     
     # Recursively enumerate video files
+    if verbose:
+        print('Enumerating videos in {}'.format(input_folder))
     input_files_full_paths = find_videos(input_folder,recursive=recursive)
-    print('Found {} videos in folder {}'.format(len(input_files_full_paths),input_folder))
+    if verbose:
+        print('Found {} videos in folder {}'.format(len(input_files_full_paths),input_folder))
     if len(input_files_full_paths) == 0:
         return [],[],[]
     
@@ -982,6 +985,7 @@ if False:
     results_file = r'results.json'
     confidence_threshold = 0.75
         
+    
     #%% Load detector output    
     
     with open(results_file,'r') as f:
