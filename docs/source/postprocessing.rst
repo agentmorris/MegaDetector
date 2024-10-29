@@ -207,4 +207,10 @@ postprocessing.top\_folders\_to\_bottom module
    :members:
    :undoc-members:
    :show-inheritance:
-
+   
+.. sphinx_argparse_cli::
+   :module: megadetector.postprocessing.top_folders_to_bottom
+   :func: main
+   :hook:
+   :prog: top_folders_to_bottom
+   :no_default_values:
