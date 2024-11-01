@@ -129,7 +129,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Q42](https://www.q42.nl/en) ([blog post](https://engineering.q42.nl/ai-bear-repeller/))
 * [Agouti](https://agouti.eu/) ([report](https://efsa.onlinelibrary.wiley.com/doi/pdf/10.2903/sp.efsa.2023.EN-8217))
 * [Trapper](https://trapper-project.readthedocs.io/en/latest/overview.html) ([tutorial](https://trapper-project.readthedocs.io/en/latest/tutorial.html))
-* [BirdLife Malta](https://birdlifemalta.org/) ([tweet](https://x.com/BirdLife_Malta/status/1817456839862173783?t=S-KRiZ5R1-CoW8-tbYNjqQ&s=03))
+* [BirdLife Malta](https://birdlifemalta.org/) ([tweet](https://x.com/BirdLife_Malta/status/1817456839862173783?t=S-KRiZ5R1-CoW8-tbYNjqQ&s=03)) ([LI post](https://www.linkedin.com/posts/birdlifemalta_worldnatureconservationday-shearwater-colony-activity-7223220656589463553-X2Mc/?utm_source=share&utm_medium=member_android))
 * [Endangered Landscapes and Seascapes Programme](https://www.endangeredlandscapes.org/), Cambridge Conservation Initiative ([blog post](https://www.endangeredlandscapes.org/news/ai-for-wildlife-monitoring-a-real-time-alert-system-for-bears-and-wild-boars-in-romanias-carpathian-mountains/))
 
 * [Road Ecology Center](https://roadecology.ucdavis.edu/), University of California, Davis ([Wildlife Observer Network platform](https://wildlifeobserver.net/))

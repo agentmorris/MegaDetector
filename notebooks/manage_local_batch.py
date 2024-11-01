@@ -1736,7 +1736,7 @@ def custom_relative_path_to_location(relative_path):
     tokens = relative_path.split('/')
     
     # This example uses a hypothetical (but relatively common) scheme
-    # where the firest two slash-separated tokens define a site, e.g.
+    # where the first two slash-separated tokens define a site, e.g.
     # where filenames might look like:
     #
     # north_fork/site001/recnyx001/image001.jpg

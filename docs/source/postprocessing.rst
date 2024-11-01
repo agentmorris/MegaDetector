@@ -78,6 +78,15 @@ postprocessing.validate\_batch\_results module
    :prog: validate_batch_results
    :no_default_values:
 
+postprocessing.detector\_calibration module
+----------------------------------------------
+
+.. automodule:: megadetector.postprocessing.detector\_calibration
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
 postprocessing.convert\_output\_format module
 ---------------------------------------------
 
