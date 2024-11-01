@@ -42,9 +42,11 @@ class ValidateBatchResultsOptions:
         #:
         #: If None, assumes absolute paths.
         self.relative_path_base = None
+        
+        #: Should we return the loaded data, or just the validation results?
+        self.return_data = False
     
 # ...class ValidateBatchResultsOptions
-
 
 
 #%% Main function
@@ -55,11 +57,17 @@ def validate_batch_results(json_filename,options=None):
     
     Args: 
         json_filename (str): the filename to validate
-        options (ValidateBatchResultsOptions, optionsl): all the parameters used to control this 
+        options (ValidateBatchResultsOptions, optional): all the parameters used to control this 
             process, see ValidateBatchResultsOptions for details
             
     Returns:
-        bool: reserved; currently always errors or returns True.
+        dict: a dict with a field called "validation_results", which is itself a dict.  The reason
+        it's a dict inside a dict is that if return_data is True, the outer dict also contains all 
+        the loaded data.  The "validation_results" dict contains fields called "errors", "warnings",
+        and "filename".  "errors" and "warnings" are lists of strings, although "errors" will never
+        be longer than N=1, since validation fails at the first error.
+        
+        
     """
     
     if options is None:
@@ -68,75 +76,127 @@ def validate_batch_results(json_filename,options=None):
     with open(json_filename,'r') as f:
         d = json.load(f)
     
-    ## Info validation
+    validation_results = {}
+    validation_results['filename'] = json_filename
+    validation_results['warnings'] = []
+    validation_results['errors'] = []
     
-    assert 'info' in d
-    info = d['info']
-    
-    assert isinstance(info,dict)
-    assert 'format_version' in info 
-    format_version = float(info['format_version'])
-    assert format_version >= 1.3, 'This validator can only be used with format version 1.3 or later'
-            
-    print('Validating a .json results file with format version {}'.format(format_version))
-    
-    ## Category validation
-    
-    assert 'detection_categories' in d
-    for k in d['detection_categories'].keys():
-        # Categories should be string-formatted ints
-        assert isinstance(k,str)
-        _ = int(k)
-        assert isinstance(d['detection_categories'][k],str)
+    if not isinstance(d,dict):
         
-    if 'classification_categories' in d:
-        for k in d['classification_categories'].keys():
-            # Categories should be string-formatted ints
-            assert isinstance(k,str)
+        validation_results['errors'].append('Input data is not a dict')
+        to_return = {}
+        to_return['validation_results'] = validation_results
+        return to_return
+    
+    try:
+        
+        ## Info validation
+        
+        if not 'info' in d:
+            raise ValueError('Input does not contain info field')
+            
+        info = d['info']
+        
+        if not isinstance(info,dict):
+            raise ValueError('Input contains invalid info field')
+        
+        if 'format_version' not in info :
+            raise ValueError('Input does not specify format version')
+            
+        format_version = float(info['format_version'])
+        if format_version < 1.3:
+            raise ValueError('This validator can only be used with format version 1.3 or later')
+        
+        
+        ## Category validation
+        
+        if 'detection_categories' not in d:
+            raise ValueError('Input does not contain detection_categories field')
+            
+        for k in d['detection_categories'].keys():
+            # Category ID should be string-formatted ints
+            if not isinstance(k,str):
+                raise ValueError('Invalid detection category ID: {}'.format(k))
             _ = int(k)
-            assert isinstance(d['classification_categories'][k],str)
-    
-    
-    ## Image validation
-    
-    assert 'images' in d
-    assert isinstance(d['images'],list)
-    
-    # im = d['images'][0]
-    for im in d['images']:
+            if not isinstance(d['detection_categories'][k],str):
+                raise ValueError('Invalid detection category name: {}'.format(
+                    d['detection_categories'][k]))
+            
+        if 'classification_categories' in d:
+            for k in d['classification_categories'].keys():
+                # Categories should be string-formatted ints
+                if not isinstance(k,str):
+                    raise ValueError('Invalid classification category ID: {}'.format(k))
+                _ = int(k)
+                if not isinstance(d['classification_categories'][k],str):
+                    raise ValueError('Invalid classification category name: {}'.format(
+                        d['classification_categories'][k]))
         
-        assert isinstance(im,dict)
-        assert 'file' in im
         
-        file = im['file']
+        ## Image validation
         
-        if options.check_image_existence:
-            if options.relative_path_base is None:
-                file_abs = file
+        if 'images' not in d:
+            raise ValueError('images field not present')
+        if not isinstance(d['images'],list):
+            raise ValueError('Invalid images field')
+        
+        # im = d['images'][0]
+        for i_im,im in enumerate(d['images']):
+            
+            if not isinstance(im,dict):
+                raise ValueError('Invalid image at index {}'.format(i_im))
+            if 'file' not in im:
+                raise ValueError('Image without filename at index {}'.format(i_im))
+            
+            file = im['file']
+            
+            if options.check_image_existence:
+                if options.relative_path_base is None:
+                    file_abs = file
+                else:
+                    file_abs = os.path.join(options.relative_path_base,file)
+                if not os.path.isfile(file_abs):
+                    raise ValueError('Cannot find file {}'.format(file_abs))
+                
+            if ('detections' not in im) or (im['detections'] is None):
+                if not ('failure' in im and isinstance(im['failure'],str)):
+                    raise ValueError('Image {} has no detections and no failure'.format(im['file']))
             else:
-                file_abs = os.path.join(options.relative_path_base,file)
-            assert os.path.isfile(file_abs), 'Cannot find file {}'.format(file_abs)
+                if not isinstance(im['detections'],list):
+                    raise ValueError('Invalid detections list for image {}'.format(im['file']))
+                
+            if is_video_file(im['file']) and (format_version >= 1.4):
+                if 'frame_rate' not in im:
+                    raise ValueError('Video without frame rate: {}'.format(im['file']))
+                if 'detections' in im and im['detections'] is not None:
+                    for det in im['detections']:
+                        if 'frame_number' not in det:
+                            raise ValueError('Frame without frame number in video {}'.format(
+                                im['file']))
+                
+        # ...for each image
             
-        if 'detections' not in im or im['detections'] is None:
-            assert 'failure' in im and isinstance(im['failure'],str)
-        else:
-            assert isinstance(im['detections'],list)
-            
-        if is_video_file(im['file']) and (format_version >= 1.4):
-            assert 'frame_rate' in im
-            if 'detections' in im and im['detections'] is not None:
-                for det in im['detections']:
-                    assert 'frame_number' in det
-            
-    # ...for each image
         
+        ## Checking on other keys
+        
+        for k in d.keys():                        
+            if (k not in typical_keys) and (k not in required_keys):
+                validation_results['warnings'].append(
+                    'Warning: non-standard key {} present at file level'.format(k))                
+        
+    except Exception as e:
+        
+        validation_results['errors'].append(str(e))
+        
+    if options.return_data:
+        to_return = d
+    else:
+        to_return = {}
     
-    ## Checking on other keys
+    to_return['validation_results'] = validation_results
     
-    for k in d.keys():
-        if k not in typical_keys and k not in required_keys:
-            print('Warning: non-standard key {} present at file level'.format(k))
-                  
+    return to_return
+
 # ...def validate_batch_results(...)
 
 

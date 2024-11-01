@@ -192,7 +192,7 @@ def combine_api_shard_files(input_files, output_file=None):
     
     Args:
         input_files (list of str): files to merge
-        output_file (str, optiona): file to which we should write merged results
+        output_file (str, optional): file to which we should write merged results
         
     Returns:
         dict: merged results

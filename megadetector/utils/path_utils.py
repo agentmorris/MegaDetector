@@ -669,7 +669,7 @@ def parallel_copy_files(input_file_to_output_file, max_workers=16,
         use_threads (bool, optional): whether to use threads (True) or processes (False) for
             parallel copying; ignored if max_workers <= 1
         overwrite (bool, optional): whether to overwrite existing destination files
-        verbose (bool, optional): enable additionald debug output
+        verbose (bool, optional): enable additional debug output    
     """
 
     n_workers = min(max_workers,len(input_file_to_output_file))
@@ -752,7 +752,7 @@ def parallel_get_file_sizes(filenames,
         max_workers (int, optional): number of concurrent workers; set to <=1 to disable parallelism
         use_threads (bool, optional): whether to use threads (True) or processes (False) for
             parallel copying; ignored if max_workers <= 1
-        verbose (bool, optional): enable additionald debug output
+        verbose (bool, optional): enable additional debug output
         recursive (bool, optional): enumerate recursively, only relevant if [filenames] is a folder.
         convert_slashes (bool, optional): convert backslashes to forward slashes
         return_relative_paths (bool, optional): return relative paths; only relevant if [filenames]
