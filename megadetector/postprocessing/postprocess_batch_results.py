@@ -92,16 +92,18 @@ class PostProcessingOptions:
         #: Optional .json file containing ground truth information
         self.ground_truth_json_file = ''
     
-        #: Classes we'll treat as negative
+        #: List of classes we'll treat as negative (defaults to "empty", typically includes 
+        #: classes like "blank", "misfire", etc.).
         #:
         #: Include the token "#NO_LABELS#" to indicate that an image with no annotations
         #: should be considered empty.
         self.negative_classes = DEFAULT_NEGATIVE_CLASSES
         
-        #: Classes we'll treat as neither positive nor negative
+        #: List of classes we'll treat as neither positive nor negative (defaults to 
+        #: "unknown", typically includes classes like "unidentifiable").
         self.unlabeled_classes = DEFAULT_UNKNOWN_CLASSES
     
-        #: A list of output sets that we should count, but not render images for.
+        #: List of output sets that we should count, but not render images for.
         #:
         #: Typically used to preview sets with lots of empties, where you don't want to
         #: subset but also don't want to render 100,000 empty images.

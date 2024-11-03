@@ -41,7 +41,8 @@ def md_to_coco(md_results_file,
     The default confidence threshold is not 0; the assumption is that by default, you are 
     going to treat the resulting COCO file as a set of labels.  If you are using the resulting COCO
     file to evaluate a detector, you likely want a default confidence threshold of 0.  Confidence
-    values will be written to the semi-standard "score" field for each image
+    values will be written to the semi-standard "score" field for each image if 
+    preserve_nonstandard_metadata is True.
     
     A folder of images is required if width and height information are not available 
     in the MD results file.

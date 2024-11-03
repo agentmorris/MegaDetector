@@ -59,19 +59,21 @@ def read_classes_from_yolo_dataset_file(fn):
     integer category IDs to string category names.
     
     Args:
-        fn (str): YOLOv5/YOLOv8 dataset file with a .yml or .yaml extension, or a .json file 
-            mapping integer category IDs to category names.
+        fn (str): YOLOv5/YOLOv8 dataset file with a .yml or .yaml extension, a .json file 
+            mapping integer category IDs to category names, or a .txt file with a flat
+            list of classes.
             
     Returns:
         dict: a mapping from integer category IDs to category names
     """
-        
+    
+    category_id_to_name = {}
+    
     if fn.endswith('.yml') or fn.endswith('.yaml'):
         
         with open(fn,'r') as f:
             lines = f.readlines()
                 
-        category_id_to_name = {}
         pat = '\d+:.+'
         for s in lines:
             if re.search(pat,s) is not None:
@@ -83,10 +85,21 @@ def read_classes_from_yolo_dataset_file(fn):
         
         with open(fn,'r') as f:
             d_in = json.load(f)
-            category_id_to_name = {}
             for k in d_in.keys():
                 category_id_to_name[int(k)] = d_in[k]
         
+    elif fn.endswith('.txt'):
+        
+        with open(fn,'r') as f:
+            lines = f.readlines()
+        next_category_id = 0
+        for line in lines:
+            s = line.strip()
+            if len(s) == 0:
+                continue
+            category_id_to_name[next_category_id] = s
+            next_category_id += 1
+            
     else:
         
         raise ValueError('Unrecognized category file type: {}'.format(fn))
