@@ -32,6 +32,9 @@ from megadetector.utils.write_html_image_list import write_html_image_list
 from megadetector.data_management.cct_json_utils import IndexedJsonDb
 from megadetector.visualization import visualization_utils as vis_utils
 
+def isnan(x):
+    return (isinstance(x,float) and np.isnan(x))
+
 
 #%% Settings
 
@@ -118,7 +121,10 @@ class DbVizOptions:
         self.show_full_paths = False
         
         #: List of additional fields in the image struct that we should print in image headers
-        self.extra_images_fields_to_print = None
+        self.extra_image_fields_to_print = None
+        
+        #: List of additional fields in the annotation struct that we should print in image headers
+        self.extra_annotation_fields_to_print = None
         
         #: Set to False to skip existing images
         self.force_rendering = True
@@ -170,8 +176,8 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
     # Consistency checking for fields with specific format requirements
     
     # This should be a list, but if someone specifies a string, do a reasonable thing
-    if isinstance(options.extra_images_fields_to_print,str):
-        options.extra_images_fields_to_print = [options.extra_images_fields_to_print]
+    if isinstance(options.extra_image_fields_to_print,str):
+        options.extra_image_fields_to_print = [options.extra_image_fields_to_print]
         
     if not options.parallelize_rendering_with_threads:
         print('Warning: process-based parallelization is not yet supported by visualize_db')
@@ -313,12 +319,22 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         # All the class labels we've seen for this image (with out without bboxes)
         image_categories = set()
         
+        extra_annotation_field_string = ''
         annotation_level_for_image = ''
         
         # Iterate over annotations for this image
         # i_ann = 0; anno = annos_i.iloc[i_ann]
         for i_ann,anno in annos_i.iterrows():
         
+            if options.extra_annotation_fields_to_print is not None:
+                field_names = list(anno.index)
+                for field_name in field_names:
+                    if field_name in options.extra_annotation_fields_to_print:
+                        field_value = anno[field_name]
+                        if (field_value is not None) and (not isnan(field_value)):
+                            extra_annotation_field_string += ' ({}:{})'.format(
+                                field_name,field_value)                        
+                    
             if options.confidence_threshold is not None:
                 assert options.confidence_field_name in anno, \
                     'Error: confidence thresholding requested, ' + \
@@ -389,16 +405,13 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
             
         flag_string = ''
         
-        def isnan(x):
-            return (isinstance(x,float) and np.isnan(x))
-        
         if ('flags' in img) and (not isnan(img['flags'])):
             flag_string = ', flags: {}'.format(str(img['flags']))
             
         extra_field_string = ''
         
-        if options.extra_images_fields_to_print is not None:
-            for field_name in options.extra_images_fields_to_print:
+        if options.extra_image_fields_to_print is not None:
+            for field_name in options.extra_image_fields_to_print:
                 if field_name in img:
                     # Always include a leading comma; this either separates us from the
                     # previous field in [extra_fields_to_print] or from the rest of the string
@@ -411,9 +424,9 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         image_dict = \
         {
             'filename': '{}/{}'.format('rendered_images', file_name),
-            'title': '{}<br/>{}, num boxes: {},{} class labels: {}{}{}{}'.format(
+            'title': '{}<br/>{}, num boxes: {},{} class labels: {}{}{}{}{}'.format(
                 filename_text, img_id, len(bboxes), frame_string, image_classes, 
-                label_level_string, flag_string, extra_field_string),
+                label_level_string, flag_string, extra_field_string, extra_annotation_field_string),
             'textStyle': 'font-family:verdana,arial,calibri;font-size:80%;' + \
                 'text-align:left;margin-top:20;margin-bottom:5'
         }

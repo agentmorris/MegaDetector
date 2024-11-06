@@ -814,7 +814,7 @@ mkdir c:\git
 cd c:\git
 git clone https://github.com/agentmorris/MegaDetector
 cd c:\git\MegaDetector
-mamba create -n megadetector-pip pip -y
+mamba create -n megadetector-pip python=3.11 pip -y
 mamba activate megadetector-pip
 pip install -r envs\requirements.txt
 set PYTHONPATH=c:\git\MegaDetector
@@ -827,7 +827,7 @@ mkdir ~/git
 cd ~git
 git clone https://github.com/agentmorris/MegaDetector
 cd ~/git/MegaDetector
-mamba create -n megadetector-pip pip -y
+mamba create -n megadetector-pip python=3.11 pip -y
 mamba activate megadetector-pip
 pip install -r envs/requirements.txt
 export PYTHONPATH="$HOME/git/MegaDetector"
@@ -838,7 +838,7 @@ YMMV.
 If you're feeling even more experimental, this also works:
 
 ```batch
-mamba create -n megadetector-pip pip -y
+mamba create -n megadetector-pip python=3.11 pip -y
 mamba activate megadetector-pip
 pip install megadetector --upgrade
 python -m megadetector.detection.run_detector_batch --help
