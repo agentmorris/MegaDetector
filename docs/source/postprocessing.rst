@@ -81,7 +81,7 @@ postprocessing.validate\_batch\_results module
 postprocessing.detector\_calibration module
 ----------------------------------------------
 
-.. automodule:: megadetector.postprocessing.detector\_calibration
+.. automodule:: megadetector.postprocessing.detector_calibration
    :members:
    :undoc-members:
    :show-inheritance:
