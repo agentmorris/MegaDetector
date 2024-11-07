@@ -672,6 +672,36 @@ def draw_bounding_boxes_on_image(image,
 # ...draw_bounding_boxes_on_image(...)
 
 
+def get_text_size(font,s):
+    """
+    Get the expected width and height when rendering the string [s] in the font
+    [font].
+    
+    Args:
+        font (PIL.ImageFont): the font whose size we should query
+        s (str): the string whose size we should query
+    
+    Returns:
+        tuple: (w,h), both floats in pixel coordinatess    
+    """
+    
+    # This is what we did w/Pillow 9
+    # w,h = font.getsize(s)
+    
+    # I would *think* this would be the equivalent for Pillow 10
+    # l,t,r,b = font.getbbox(s); w = r-l; h=b-t
+    
+    # ...but this actually produces the most similar results to Pillow 9
+    # l,t,r,b = font.getbbox(s); w = r; h=b
+    
+    try:
+        l,t,r,b = font.getbbox(s); w = r; h=b  
+    except Exception:
+        w,h = font.getsize(s)
+    
+    return w,h
+
+
 def draw_bounding_box_on_image(image,
                                ymin,
                                xmin,
@@ -773,24 +803,6 @@ def draw_bounding_box_on_image(image,
     except IOError:
         font = ImageFont.load_default()
 
-    def get_text_size(font,s):
-
-        # This is what we did w/Pillow 9
-        # w,h = font.getsize(s)
-        
-        # I would *think* this would be the equivalent for Pillow 10
-        # l,t,r,b = font.getbbox(s); w = r-l; h=b-t
-        
-        # ...but this actually produces the most similar results to Pillow 9
-        # l,t,r,b = font.getbbox(s); w = r; h=b
-        
-        try:
-            l,t,r,b = font.getbbox(s); w = r; h=b  
-        except Exception:
-            w,h = font.getsize(s)
-        
-        return w,h
-    
     # If the total height of the display strings added to the top of the bounding
     # box exceeds the top of the image, stack the strings below the bounding box
     # instead of above.
@@ -972,7 +984,7 @@ def draw_bounding_boxes_on_file(input_file,
             boxes are length-four arrays formatted as [x,y,w,h], normalized, 
             upper-left origin (this is the standard MD detection format)
         detector_label_map (dict, optional): a dict mapping category IDs to strings.  If this 
-            is None, no confidence values or identifiers are shown  If this is {}, just category 
+            is None, no confidence values or identifiers are shown.  If this is {}, just category 
             indices and confidence values are shown.
         thickness (int, optional): line width in pixels for box rendering
         expansion (int, optional): box expansion in pixels
