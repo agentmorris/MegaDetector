@@ -42,6 +42,7 @@ def write_html_image_list(filename=None,images=None,options=None):
         options (dict, optional): a dict with one or more of the following fields:        
             
             - fHtml (file pointer to write to, used for splitting write operations over multiple calls)
+            - pageTitle (HTML page title)
             - headerHtml (html text to include before the image list)
             - trailerHtml (html text to include after the image list)
             - defaultImageStyle (default css style for images)
@@ -60,11 +61,14 @@ def write_html_image_list(filename=None,images=None,options=None):
     if 'fHtml' not in options:
         options['fHtml'] = -1
     
+    if 'pageTitle' not in options or options['pageTitle'] is None:
+        options['pageTitle'] = ''
+        
     if 'headerHtml' not in options or options['headerHtml'] is None:
-        options['headerHtml'] = ''        
+        options['headerHtml'] = ''
     
     if 'trailerHtml' not in options or options['trailerHtml'] is None:
-        options['trailerHtml'] = ''    
+        options['trailerHtml'] = ''
     
     if 'defaultTextStyle' not in options or options['defaultTextStyle'] is None:
         options['defaultTextStyle'] = \
@@ -114,7 +118,7 @@ def write_html_image_list(filename=None,images=None,options=None):
         # You can't supply your own file handle in this case
         if options['fHtml'] != -1:
             raise ValueError(
-                    'You can''t supply your own file handle if we have to page the image set')
+                    "You can't supply your own file handle if we have to page the image set")
         
         figureFileStartingIndices = list(range(0,nImages,options['maxFiguresPerHtmlFile']))
 
@@ -124,7 +128,10 @@ def write_html_image_list(filename=None,images=None,options=None):
         fMeta = open(filename,'w')
         
         # Write header stuff
-        fMeta.write('<html><body>\n')    
+        titleString = '<title>Index page</title>'
+        if len(options['pageTitle']) > 0:
+            titleString = '<title>Index page for: {}</title>'.format(options['pageTitle'])
+        fMeta.write('<html><head>{}</head><body>\n'.format(titleString))
         fMeta.write(options['headerHtml'])        
         fMeta.write('<table border = 0 cellpadding = 2>\n')
         
@@ -170,7 +177,11 @@ def write_html_image_list(filename=None,images=None,options=None):
     else:
         fHtml = options['fHtml']
         
-    fHtml.write('<html><body>\n')
+    titleString = ''
+    if len(options['pageTitle']) > 0:
+        titleString = '<title>{}</title>'.format(options['pageTitle'])
+    
+    fHtml.write('<html>{}<body>\n'.format(titleString))
     
     fHtml.write(options['headerHtml'])
     

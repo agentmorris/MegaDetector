@@ -205,6 +205,11 @@ class PostProcessingOptions:
         #: Should we split individual pages up into smaller pages if there are more than
         #: N images?
         self.max_figures_per_html_file = None
+        
+        #: Footer text for the index page
+        # self.footer_text = '<br/><p style="font-size:80%;">Preview page created with the <a href="{}">MegaDetector Python package</a>.</p>'.\
+        #    format('https://megadetector.readthedocs.io')
+        self.footer_text = ''
 
     # ...__init__()
     
@@ -592,6 +597,7 @@ def _prepare_html_subpages(images_html, output_dir, options=None):
         html_image_list_options = {}    
         html_image_list_options['maxFiguresPerHtmlFile'] = options.max_figures_per_html_file
         html_image_list_options['headerHtml'] = '<h1>{}</h1>'.format(res.upper())
+        html_image_list_options['pageTitle'] = '{}'.format(res.lower())
         
         # Don't write empty pages
         if len(array) == 0:
@@ -1088,7 +1094,8 @@ def process_batch_results(options):
 
     output_html_file = ''
 
-    style_header = """<head>
+    style_header = """<head>    
+        <title>Detection results preview</title>
         <style type="text/css">
         a { text-decoration: none; }
         body { font-family: segoe ui, calibri, "trebuchet ms", verdana, arial, sans-serif; }
@@ -1429,7 +1436,7 @@ def process_batch_results(options):
         else:
             confidence_threshold_string = str(options.confidence_threshold)
         
-        index_page = """<html>
+        index_page = """<html>        
         {}
         <body>
         <h2>Evaluation</h2>
@@ -1514,7 +1521,7 @@ def process_batch_results(options):
             index_page += '</div>'
 
         # Close body and html tags
-        index_page += '</body></html>'
+        index_page += '{}</body></html>'.format(options.footer_text)
         output_html_file = os.path.join(output_dir, 'index.html')
         with open(output_html_file, 'w') as f:
             f.write(index_page)
@@ -1534,7 +1541,6 @@ def process_batch_results(options):
         # for each category
         images_html = collections.defaultdict(list)
         
-
         # Add default entries by accessing them for the first time
 
         # Maps sorted tuples of detection category IDs (string ints) - e.g. ("1"), ("1", "4", "7") - to 
@@ -1799,7 +1805,7 @@ def process_batch_results(options):
                         cname, cname.lower(), ccount)
             index_page += '</div>\n'
 
-        index_page += '</body></html>'
+        index_page += '{}</body></html>'.format(options.footer_text)
         output_html_file = os.path.join(output_dir, 'index.html')
         with open(output_html_file, 'w') as f:
             f.write(index_page)
