@@ -1043,7 +1043,7 @@ def draw_db_boxes_on_file(input_file,
         classes = [0] * len(boxes)
         
     render_db_bounding_boxes(boxes, classes, image, original_size=None,
-                                 label_map=label_map, thickness=thickness, expansion=expansion)
+                             label_map=label_map, thickness=thickness, expansion=expansion)
     
     image.save(output_file)
     
