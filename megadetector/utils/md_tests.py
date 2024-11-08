@@ -29,10 +29,6 @@ import subprocess
 import argparse
 import inspect
 
-#: IoU threshold used to determine whether boxes in two detection files likely correspond
-#: to the same box.
-iou_threshold_for_file_comparison = 0.9
-
 
 #%% Classes
 
@@ -106,6 +102,10 @@ class MDTestOptions:
         #: PYTHONPATH to set for CLI tests; if None, inherits from the parent process.  Only
         #: impacts the called functions, not the parent process.
         self.cli_test_pythonpath = None
+        
+        #: IoU threshold used to determine whether boxes in two detection files likely correspond
+        #: to the same box.
+        self.iou_threshold_for_file_comparison = 0.85
 
 # ...class MDTestOptions()
 
@@ -410,7 +410,7 @@ def compare_detection_lists(detections_a,detections_b,options,bidirectional_comp
             iou = get_iou(det_a['bbox'],b_det['bbox'])
             
             # Is this likely the same detection as det_a?
-            if iou >= iou_threshold_for_file_comparison and iou > highest_iou:
+            if iou >= options.iou_threshold_for_file_comparison and iou > highest_iou:
                 matching_det_b = b_det
                 highest_iou = iou
                 
@@ -529,12 +529,14 @@ def compare_results(inference_output_file,expected_results_file,options):
     if not options.warning_mode:
         
         assert max_conf_error <= options.max_conf_error, \
-            'Confidence error {} is greater than allowable ({}), on file:\n{}'.format(
-                max_conf_error,options.max_conf_error,max_conf_error_file)
+            'Confidence error {} is greater than allowable ({}), on file:\n{} ({},{})'.format(
+                max_conf_error,options.max_conf_error,max_conf_error_file,
+                inference_output_file,expected_results_file)
         
         assert max_coord_error <= options.max_coord_error, \
-            'Coord error {} is greater than allowable ({}), on file:\n{}'.format(
-                max_coord_error,options.max_coord_error,max_coord_error_file)
+            'Coord error {} is greater than allowable ({}), on file:\n{} ({},{})'.format(
+                max_coord_error,options.max_coord_error,max_coord_error_file,
+                inference_output_file,expected_results_file)
         
     print('Max conf error: {} (file {})'.format(
         max_conf_error,max_conf_error_file))
@@ -847,7 +849,7 @@ def run_python_tests(options):
         video_options.frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder')    
         video_options.render_output_video = True
         # video_options.keep_rendered_frames = False
-        # video_options.keep_rendered_frames = False
+        # video_options.keep_extracted_frames = False
         video_options.force_extracted_frame_folder_deletion = True
         video_options.force_rendered_frame_folder_deletion = True
         # video_options.reuse_results_if_available = False
@@ -887,7 +889,7 @@ def run_python_tests(options):
         video_options.frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder')    
         video_options.render_output_video = False
         video_options.keep_rendered_frames = False
-        video_options.keep_rendered_frames = False
+        video_options.keep_extracted_frames = False
         video_options.force_extracted_frame_folder_deletion = True
         video_options.force_rendered_frame_folder_deletion = True
         video_options.reuse_results_if_available = False
@@ -1353,7 +1355,7 @@ if False:
     # options.cli_working_dir = r'c:\git\MegaDetector'
     # options.yolo_working_dir = r'c:\git\yolov5-md'
     options.cli_working_dir = os.path.expanduser('~')
-    options.yolo_working_dir = '/mnt/c/git/yolov5-md'
+    # options.yolo_working_dir = '/mnt/c/git/yolov5-md'
     options = download_test_data(options)
     
     #%%
