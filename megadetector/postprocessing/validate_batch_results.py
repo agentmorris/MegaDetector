@@ -16,7 +16,7 @@ import json
 import argparse
 
 from megadetector.detection.video_utils import is_video_file
-from megadetector.utils.ct_utils import args_to_object
+from megadetector.utils.ct_utils import args_to_object, is_list_sorted
 
 typical_info_fields = ['detector','detection_completion_time',
                        'classifier','classification_completion_time',
@@ -151,6 +151,7 @@ def validate_batch_results(json_filename,options=None):
             file = im['file']
             
             if options.check_image_existence:
+                
                 if options.relative_path_base is None:
                     file_abs = file
                 else:
@@ -164,8 +165,9 @@ def validate_batch_results(json_filename,options=None):
             else:
                 if not isinstance(im['detections'],list):
                     raise ValueError('Invalid detections list for image {}'.format(im['file']))
-                
+              
             if is_video_file(im['file']) and (format_version >= 1.4):
+                
                 if 'frame_rate' not in im:
                     raise ValueError('Video without frame rate: {}'.format(im['file']))
                 if 'detections' in im and im['detections'] is not None:
@@ -173,6 +175,9 @@ def validate_batch_results(json_filename,options=None):
                         if 'frame_number' not in det:
                             raise ValueError('Frame without frame number in video {}'.format(
                                 im['file']))
+                    frame_numbers = [det['frame_number'] for det in im['detections']]
+                    # assert is_list_sorted(frame_numbers)
+                    
                 
         # ...for each image
             
@@ -209,10 +214,12 @@ if False:
     options = ValidateBatchResultsOptions()
     # json_filename = r'g:\temp\format.json'
     # json_filename = r'g:\temp\test-videos\video_results.json'
-    json_filename = r'g:\temp\test-videos\image_results.json'
-    options.check_image_existence = True
-    options.relative_path_base = r'g:\temp\test-videos'
-    validate_batch_results(json_filename,options)
+    # json_filename = r'g:\temp\test-videos\image_results.json'
+    json_filename = os.path.expanduser('~/AppData/Local/Temp/md-tests/video_folder_output.in-memory.json')
+    options.check_image_existence = False
+    options.relative_path_base = None # r'g:\temp\test-videos'
+    results = validate_batch_results(json_filename,options)
+    print(results)
     
 
 #%% Command-line driver

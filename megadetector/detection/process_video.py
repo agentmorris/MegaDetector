@@ -917,9 +917,14 @@ if False:
     #%% Process a folder of videos
     
     model_file = 'MDV5A'
-    input_dir = r'g:\temp\test-videos'
+    # input_dir = r'g:\temp\test-videos'
     # input_dir = r'G:\temp\md-test-package\md-test-images\video-samples'
+    input_dir = os.path.expanduser('~/AppData/Local/Temp/md-tests/md-test-images/video-samples')
+    assert os.path.isdir(input_dir)
+    
     output_base = r'g:\temp\video_test'
+    os.makedirs(output_base,exist_ok=True)
+    
     frame_folder = os.path.join(output_base,'frames')
     rendering_folder = os.path.join(output_base,'rendered-frames')
     output_json_file = os.path.join(output_base,'video-test.json')
@@ -949,7 +954,7 @@ if False:
     options.force_extracted_frame_folder_deletion = False
     options.force_rendered_frame_folder_deletion = False
     options.fourcc = 'mp4v'
-    options.force_on_disk_frame_extraction = True
+    options.force_on_disk_frame_extraction = False
     # options.rendering_confidence_threshold = 0.15
     
     cmd = options_to_command(options); print(cmd)

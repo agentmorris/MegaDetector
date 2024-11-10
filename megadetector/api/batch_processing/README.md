@@ -84,7 +84,7 @@ Example output with both detection and classification results:
             // detection).  Detections are typically included for just one representative
             // frame for each detection category, but detections may also be reported for
             // multiple frames for a single detection category, as in this example.
-            {
+			{
             "file": "path/from/base/dir/video_with_person.mp4",
             "frame_rate": 20,
             "detections": [
