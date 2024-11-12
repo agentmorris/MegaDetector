@@ -15,7 +15,7 @@ import os
 import cv2
 
 from io import BytesIO
-from PIL import Image, ImageFile, ImageFont, ImageDraw
+from PIL import Image, ImageFile, ImageFont, ImageDraw, ImageOps
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
 from tqdm import tqdm
@@ -40,6 +40,10 @@ EXIF_IMAGE_ROTATIONS = {
 
 TEXTALIGN_LEFT = 0
 TEXTALIGN_RIGHT = 1
+TEXTALIGN_CENTER = 2
+
+VTEXTALIGN_TOP = 0
+VTEXTALIGN_BOTTOM = 1
 
 # Convert category ID from int to str
 DEFAULT_DETECTOR_LABEL_MAP = {
@@ -413,6 +417,7 @@ def render_detection_bounding_boxes(detections,
                                     max_classifications=3,
                                     colormap=None,
                                     textalign=TEXTALIGN_LEFT,
+                                    vtextalign=VTEXTALIGN_TOP,
                                     label_font_size=DEFAULT_LABEL_FONT_SIZE,
                                     custom_strings=None):
     """
@@ -469,37 +474,27 @@ def render_detection_bounding_boxes(detections,
                 ]
 
         image (PIL.Image.Image): image on which we should render detections
-
         label_map (dict, optional): optional, mapping the numeric label to a string name. The type of the 
             numeric label (typically strings) needs to be consistent with the keys in label_map; no casting is 
             carried out. If [label_map] is None, no labels are shown (not even numbers and confidence values).  
             If you want category numbers and confidence values without class labels, use the default value, 
             the string 'show_categories'.
-
         classification_label_map (dict, optional): optional, mapping of the string class labels to the actual 
             class names. The type of the numeric label (typically strings) needs to be consistent with the keys 
             in label_map; no casting is  carried out. If [label_map] is None, no labels are shown (not even numbers 
             and confidence values).
-
         confidence_threshold (float or dict, optional), threshold above which boxes are rendered.  Can also be a 
-            dictionary mapping category IDs to thresholds.
-        
-        thickness (int, optional): line thickness in pixels
-        
-        expansion (int, optional): number of pixels to expand bounding boxes on each side
-        
+            dictionary mapping category IDs to thresholds.        
+        thickness (int, optional): line thickness in pixels        
+        expansion (int, optional): number of pixels to expand bounding boxes on each side        
         classification_confidence_threshold (float, optional): confidence above which classification results 
-            are displayed
-        
-        max_classifications (int, optional): maximum number of classification results rendered for one image
-        
+            are displayed        
+        max_classifications (int, optional): maximum number of classification results rendered for one image        
         colormap (list, optional): list of color names, used to choose colors for categories by
-            indexing with the values in [classes]; defaults to a reasonable set of colors
-        
-        textalign (int, optional): TEXTALIGN_LEFT or TEXTALIGN_RIGHT
-        
-        label_font_size (float, optional): font size for labels
-        
+            indexing with the values in [classes]; defaults to a reasonable set of colors        
+        textalign (int, optional): TEXTALIGN_LEFT, TEXTALIGN_CENTER, or TEXTALIGN_RIGHT        
+        vtextalign (int, optional): VTEXTALIGN_TOP or VTEXTALIGN_BOTTOM        
+        label_font_size (float, optional): font size for labels        
         custom_strings: optional set of strings to append to detection labels, should have the
             same length as [detections].  Appended before any classification labels.
     """
@@ -613,7 +608,8 @@ def render_detection_bounding_boxes(detections,
 
     draw_bounding_boxes_on_image(image, display_boxes, classes,
                                  display_strs=display_strs, thickness=thickness, 
-                                 expansion=expansion, colormap=colormap, textalign=textalign,
+                                 expansion=expansion, colormap=colormap, 
+                                 textalign=textalign, vtextalign=vtextalign,
                                  label_font_size=label_font_size)
 
 # ...render_detection_bounding_boxes(...)
@@ -627,6 +623,8 @@ def draw_bounding_boxes_on_image(image,
                                  display_strs=None,
                                  colormap=None,
                                  textalign=TEXTALIGN_LEFT,
+                                 vtextalign=VTEXTALIGN_TOP,
+                                 text_rotation=None,
                                  label_font_size=DEFAULT_LABEL_FONT_SIZE):
     """
     Draws bounding boxes on an image.  Modifies the image in place.
@@ -647,7 +645,9 @@ def draw_bounding_boxes_on_image(image,
             or classification categories and/or confidence values.
         colormap (list, optional): list of color names, used to choose colors for categories by
             indexing with the values in [classes]; defaults to a reasonable set of colors
-        textalign (int, optional): TEXTALIGN_LEFT or TEXTALIGN_RIGHT
+        textalign (int, optional): TEXTALIGN_LEFT, TEXTALIGN_CENTER, or TEXTALIGN_RIGHT
+        vtextalign (int, optional): VTEXTALIGN_TOP or VTEXTALIGN_BOTTOM
+        text_rotation (float, optional): rotation to apply to text
         label_font_size (float, optional): font size for labels
     """
 
@@ -655,19 +655,21 @@ def draw_bounding_boxes_on_image(image,
     if not boxes_shape:
         return
     if len(boxes_shape) != 2 or boxes_shape[1] != 4:
-        # print('Input must be of size [N, 4], but is ' + str(boxes_shape))
-        return  # no object detection on this image, return
+        return
     for i in range(boxes_shape[0]):
+        display_str_list = None
         if display_strs:
             display_str_list = display_strs[i]
-            draw_bounding_box_on_image(image,
-                                       boxes[i, 0], boxes[i, 1], boxes[i, 2], boxes[i, 3],
-                                       classes[i],
-                                       thickness=thickness, expansion=expansion,
-                                       display_str_list=display_str_list,
-                                       colormap=colormap,
-                                       textalign=textalign,
-                                       label_font_size=label_font_size)
+        draw_bounding_box_on_image(image,
+                                   boxes[i, 0], boxes[i, 1], boxes[i, 2], boxes[i, 3],
+                                   classes[i],
+                                   thickness=thickness, expansion=expansion,
+                                   display_str_list=display_str_list,
+                                   colormap=colormap,
+                                   textalign=textalign,
+                                   vtextalign=vtextalign,
+                                   text_rotation=text_rotation,
+                                   label_font_size=label_font_size)
 
 # ...draw_bounding_boxes_on_image(...)
 
@@ -714,7 +716,9 @@ def draw_bounding_box_on_image(image,
                                use_normalized_coordinates=True,
                                label_font_size=DEFAULT_LABEL_FONT_SIZE,
                                colormap=None,
-                               textalign=TEXTALIGN_LEFT):
+                               textalign=TEXTALIGN_LEFT,                               
+                               vtextalign=VTEXTALIGN_TOP,
+                               text_rotation=None):
     """
     Adds a bounding box to an image.  Modifies the image in place.
 
@@ -747,7 +751,9 @@ def draw_bounding_box_on_image(image,
         label_font_size (float, optional): font size 
         colormap (list, optional): list of color names, used to choose colors for categories by
             indexing with the values in [classes]; defaults to a reasonable set of colors
-        textalign (int, optional): TEXTALIGN_LEFT or TEXTALIGN_RIGHT        
+        textalign (int, optional): TEXTALIGN_LEFT, TEXTALIGN_CENTER, or TEXTALIGN_RIGHT        
+        vtextalign (int, optional): VTEXTALIGN_TOP or VTEXTALIGN_BOTTOM
+        text_rotation (float, optional): rotation to apply to text
     """
     
     if colormap is None:
@@ -798,53 +804,98 @@ def draw_bounding_box_on_image(image,
     draw.line([(left, top), (left, bottom), (right, bottom),
                (right, top), (left, top)], width=thickness, fill=color)
 
-    try:
-        font = ImageFont.truetype('arial.ttf', label_font_size)
-    except IOError:
-        font = ImageFont.load_default()
+    if display_str_list is not None:
 
-    # If the total height of the display strings added to the top of the bounding
-    # box exceeds the top of the image, stack the strings below the bounding box
-    # instead of above.
-    display_str_heights = [get_text_size(font,ds)[1] for ds in display_str_list]
-
-    # Each display_str has a top and bottom margin of 0.05x.
-    total_display_str_height = (1 + 2 * 0.05) * sum(display_str_heights)
-
-    if top > total_display_str_height:
-        text_bottom = top
-    else:
-        text_bottom = bottom + total_display_str_height
-
-    # Reverse list and print from bottom to top.
-    for display_str in display_str_list[::-1]:
-
-        # Skip empty strings
-        if len(display_str) == 0:
-            continue
-        
-        text_width, text_height = get_text_size(font,display_str)
-        
-        text_left = left
-        
-        if textalign == TEXTALIGN_RIGHT:
-            text_left = right - text_width
+        try:
+            font = ImageFont.truetype('arial.ttf', label_font_size)
+        except IOError:
+            font = ImageFont.load_default()
+    
+        display_str_heights = [get_text_size(font,ds)[1] for ds in display_str_list]
+    
+        # Each display_str has a top and bottom margin of 0.05x.
+        total_display_str_height = (1 + 2 * 0.05) * sum(display_str_heights)
+    
+        # Reverse list and print from bottom to top
+        for i_str,display_str in enumerate(display_str_list[::-1]):
+    
+            # Skip empty strings
+            if len(display_str) == 0:
+                continue
             
-        margin = np.ceil(0.05 * text_height)
+            text_width, text_height = get_text_size(font,display_str)            
+            margin = int(np.ceil(0.05 * text_height))
+                
+            if text_rotation is not None and text_rotation != 0:
+                
+                assert text_rotation == -90, \
+                    'Only -90-degree text rotation is supported'
+                    
+                image_tmp = Image.new('RGB',(text_width+2*margin,text_height+2*margin))
+                image_tmp_draw = ImageDraw.Draw(image_tmp)
+                image_tmp_draw.rectangle([0,0,text_width+2*margin,text_height+2*margin],fill=color)
+                image_tmp_draw.text( (margin,margin), display_str, font=font, fill='black')
+                rotated_text = image_tmp.rotate(text_rotation,expand=1)
+                
+                if textalign == TEXTALIGN_RIGHT:
+                    text_left = right
+                else:
+                    text_left = left
+                text_left = int(text_left + (text_height) * i_str)
+                
+                if vtextalign == VTEXTALIGN_BOTTOM:
+                    text_top = bottom - text_width
+                else:
+                    text_top = top
+                text_left = int(text_left)
+                text_top = int(text_top) 
+                
+                image.paste(rotated_text,[text_left,text_top])
+            
+            else:
+                
+                # If the total height of the display strings added to the top of the bounding
+                # box exceeds the top of the image, stack the strings below the bounding box
+                # instead of above, and vice-versa if we're bottom-aligning.
+                #
+                # If the text just doesn't fit outside the box, we don't try anything fancy,
+                # it will just appear outside the image.
+                if vtextalign == VTEXTALIGN_TOP:
+                    text_bottom = top
+                    if (text_bottom - total_display_str_height) < 0:
+                        text_bottom = bottom + total_display_str_height
+                else:
+                    assert vtextalign == VTEXTALIGN_BOTTOM, \
+                        'Unrecognized vertical text alignment {}'.format(vtextalign)
+                    text_bottom = bottom + total_display_str_height
+                    if (text_bottom + total_display_str_height) > im_height:
+                        text_bottom = top
+            
+                text_bottom = int(text_bottom) - i_str * (int(text_height + (2 * margin)))
+                
+                text_left = left
+                
+                if textalign == TEXTALIGN_RIGHT:
+                    text_left = right - text_width
+                elif textalign == TEXTALIGN_CENTER:
+                    text_left = ((right + left) / 2.0) - (text_width / 2.0)
+                text_left = int(text_left)                
+                
+                draw.rectangle(
+                    [(text_left, (text_bottom - text_height) - (2 * margin)),
+                     (text_left + text_width, text_bottom)],
+                    fill=color)
+        
+                draw.text(
+                    (text_left + margin, text_bottom - text_height - margin),
+                    display_str,
+                    fill='black',
+                    font=font)
+                
+            # ...if we're rotating text            
 
-        draw.rectangle(
-            [(text_left, text_bottom - text_height - 2 * margin), (text_left + text_width,
-                                                              text_bottom)],
-            fill=color)
-
-        draw.text(
-            (text_left + margin, text_bottom - text_height - margin),
-            display_str,
-            fill='black',
-            font=font)
-
-        text_bottom -= (text_height + 2 * margin)
-
+    # ...if we're rendering text
+    
 # ...def draw_bounding_box_on_image(...)
 
 
@@ -897,7 +948,12 @@ def render_db_bounding_boxes(boxes,
                              original_size=None,
                              label_map=None, 
                              thickness=DEFAULT_BOX_THICKNESS, 
-                             expansion=0):
+                             expansion=0,
+                             colormap=None,
+                             textalign=TEXTALIGN_LEFT,
+                             vtextalign=VTEXTALIGN_TOP,
+                             text_rotation=None,
+                             label_font_size=DEFAULT_LABEL_FONT_SIZE):
     """
     Render bounding boxes (with class labels) on an image.  This is a wrapper for
     draw_bounding_boxes_on_image, allowing the caller to operate on a resized image
@@ -919,6 +975,12 @@ def render_db_bounding_boxes(boxes,
         thickness (int, optional): line width
         expansion (int, optional): a number of pixels to include on each side of a cropped
             detection
+        colormap (list, optional): list of color names, used to choose colors for categories by
+            indexing with the values in [classes]; defaults to a reasonable set of colors
+        textalign (int, optional): TEXTALIGN_LEFT, TEXTALIGN_CENTER, or TEXTALIGN_RIGHT
+        vtextalign (int, optional): VTEXTALIGN_TOP or VTEXTALIGN_BOTTOM
+        text_rotation (float, optional): rotation to apply to text
+        label_font_size (float, optional): font size for labels
     """
 
     display_boxes = []
@@ -956,7 +1018,12 @@ def render_db_bounding_boxes(boxes,
                                  classes, 
                                  display_strs=display_strs,
                                  thickness=thickness, 
-                                 expansion=expansion)
+                                 expansion=expansion,
+                                 colormap=colormap,
+                                 textalign=textalign,
+                                 vtextalign=vtextalign,
+                                 text_rotation=text_rotation,
+                                 label_font_size=label_font_size)
 
 # ...def render_db_bounding_boxes(...)
 
@@ -1629,6 +1696,63 @@ def parallel_check_image_integrity(filenames,
 #%% Test drivers
 
 if False:
+    
+    #%% Text rendering tests
+    
+    import os # noqa
+    import numpy as np # noqa
+    from megadetector.visualization.visualization_utils import \
+        draw_bounding_boxes_on_image, exif_preserving_save, load_image, \
+        TEXTALIGN_LEFT,TEXTALIGN_RIGHT,VTEXTALIGN_BOTTOM,VTEXTALIGN_TOP, \
+        DEFAULT_LABEL_FONT_SIZE
+        
+    fn = os.path.expanduser('~\AppData\Local\Temp\md-tests\md-test-images\ena24_7904.jpg')
+    output_fn = r'g:\temp\test.jpg'
+    
+    image = load_image(fn)
+        
+    w = 0.2; h = 0.2
+    all_boxes = [[0.05, 0.05, 0.25, 0.25],
+                 [0.05, 0.35, 0.25, 0.6],
+                 [0.35, 0.05, 0.6, 0.25],
+                 [0.35, 0.35, 0.6, 0.6]]
+    
+    alignments = [
+        [TEXTALIGN_LEFT,VTEXTALIGN_TOP],
+        [TEXTALIGN_LEFT,VTEXTALIGN_BOTTOM],
+        [TEXTALIGN_RIGHT,VTEXTALIGN_TOP],
+        [TEXTALIGN_RIGHT,VTEXTALIGN_BOTTOM]
+        ]
+    
+    labels = ['left_top','left_bottom','right_top','right_bottom']
+    
+    text_rotation = -90
+    n_label_copies = 2
+    
+    for i_box,box in enumerate(all_boxes):
+        
+        boxes = [box]
+        boxes = np.array(boxes)
+        classes = [i_box]
+        display_strs = [[labels[i_box]]*n_label_copies]
+        textalign = alignments[i_box][0]
+        vtextalign = alignments[i_box][1]
+        draw_bounding_boxes_on_image(image,
+                                     boxes,
+                                     classes,
+                                     thickness=2,
+                                     expansion=0,
+                                     display_strs=display_strs,
+                                     colormap=None,
+                                     textalign=textalign,
+                                     vtextalign=vtextalign,
+                                     label_font_size=DEFAULT_LABEL_FONT_SIZE,
+                                     text_rotation=text_rotation)
+
+    exif_preserving_save(image,output_fn)
+    from megadetector.utils.path_utils import open_file
+    open_file(output_fn)
+    
     
     #%% Recursive resize test
     

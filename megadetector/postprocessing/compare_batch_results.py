@@ -8,10 +8,23 @@ Compare sets of batch results; typically used to compare:
 * Results before/after RDE
 * Results with/without augmentation
 
-Makes pairwise comparisons, but can take lists of results files (will perform 
-all pairwise comparisons).  Results are written to an HTML page that shows the number
-and nature of disagreements (in the sense of each image being a detection or non-detection), 
+Makes pairwise comparisons between sets of results, but can take lists of results files 
+(will perform all pairwise comparisons).  Results are written to an HTML page that shows the 
+number and nature of disagreements (in the sense of each image being a detection or non-detection), 
 with sample images for each category.
+
+Operates in one of three modes, depending on whether ground truth labels/boxes are available:
+    
+* The most common mode assumes no ground truth, just finds agreement/disagreement between
+  results files, or class discrepancies.
+
+* If image-level ground truth is available, finds image-level agreements on TPs/TNs/FPs/FNs, but also 
+  finds image-level TPs/TNs/FPs/FNs that are unique to each set of results (at the specified confidence
+  threshold).
+
+* If box-level ground truth is available, finds box-level agreements on TPs/TNs/FPs/FNs, but also finds
+  image-level TPs/TNs/FPs/FNs that are unique to each set of results (at the specified confidence
+  threshold).
 
 """
 
@@ -24,19 +37,36 @@ import copy
 import urllib
 import itertools
 
+import numpy as np
+
 from tqdm import tqdm
 from functools import partial
+from collections import defaultdict
+
+from PIL import ImageFont, ImageDraw
 
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
 
 from megadetector.visualization import visualization_utils
 from megadetector.utils.write_html_image_list import write_html_image_list
+from megadetector.utils.ct_utils import invert_dictionary, get_iou
 from megadetector.utils import path_utils
+from megadetector.visualization.visualization_utils import get_text_size
 
-
-#%% Constants and support classes
+def _maxempty(L):
+    """
+    Return the maximum value in a list, or 0 if the list is empty
+    """
     
+    if len(L) == 0:
+        return 0
+    else:
+        return max(L)
+    
+    
+#%% Constants and support classes
+
 class PairwiseBatchComparisonOptions:
     """
     Defines the options used for a single pairwise comparison; a list of these
@@ -67,7 +97,7 @@ class PairwiseBatchComparisonOptions:
         self.rendering_confidence_threshold_a = 0.1
         
         #: Rendering threshold to use for all categories for filename B
-        self.rendering_confidence_threshold_b = 0.1
+        self.rendering_confidence_threshold_b = 0.1        
 
 # ...class PairwiseBatchComparisonOptions
 
@@ -128,8 +158,27 @@ class BatchComparisonOptions:
         #: a warning.
         self.error_on_non_matching_lists = True
         
+        #: Ground truth .json file in COCO Camera Traps format, or an already-loaded COCO dictionary
+        self.ground_truth_file = None
+        
+        #: IoU threshold to use when comparing to ground truth with boxes
+        self.gt_iou_threshold = 0.5
+        
+        #: Category names that refer to empty images when image-level ground truth is provided
+        self.gt_empty_categories = ['empty','blank','misfire']
+        
+        #: Should we show image-level labels as text on each image when boxes are not available?
+        self.show_labels_for_image_level_gt = True
+        
+        #: Should we show category names (instead of numbers) on GT boxes?
+        self.show_category_names_on_gt_boxes = True
+        
+        #: Should we show category names (instead of numbers) on detected boxes?
+        self.show_category_names_on_detected_boxes = True
+        
         #: List of PairwiseBatchComparisonOptions that defines the comparisons we'll render.
         self.pairwise_options = []
+                
         
 # ...class BatchComparisonOptions
     
@@ -147,7 +196,8 @@ class PairwiseBatchComparisonResults:
         #: Possibly-modified version of the PairwiseBatchComparisonOptions supplied as input.
         self.pairwise_options = None
         
-        #: A dictionary with keys including:
+        #: A dictionary with keys representing category names; in the no-ground-truth case, for example,
+        #: category names are:
         #:
         #: common_detections
         #: common_non_detections
@@ -155,7 +205,7 @@ class PairwiseBatchComparisonResults:
         #: detections_b_only
         #: class_transitions
         #
-        #: Each of these maps a filename to a two-element list (the image in set A, the image in set B).
+        #: Values are dicts with fields 'im_a', 'im_b', 'sort_conf', and 'im_gt'
         self.categories_to_image_pairs = None
 
 # ...class PairwiseBatchComparisonResults
@@ -212,8 +262,8 @@ def _render_image_pair(fn,image_pairs,category_folder,options,pairwise_options):
     
     im = visualization_utils.open_image(input_image_path)
     image_pair = image_pairs[fn]
-    detections_a = image_pair[0]['detections']
-    detections_b = image_pair[1]['detections']
+    detections_a = image_pair['im_a']['detections']
+    detections_b = image_pair['im_b']['detections']    
     
     custom_strings_a = [''] * len(detections_a)
     custom_strings_b = [''] * len(detections_b)    
@@ -234,25 +284,167 @@ def _render_image_pair(fn,image_pairs,category_folder,options,pairwise_options):
     if options.target_width is not None:
         im = visualization_utils.resize_image(im, options.target_width)
         
+    label_map = None
+    if options.show_category_names_on_detected_boxes:
+        label_map=options.detection_category_id_to_name        
+    
     visualization_utils.render_detection_bounding_boxes(detections_a,im,
         confidence_threshold=pairwise_options.rendering_confidence_threshold_a,
         thickness=4,expansion=0,
+        label_map=label_map,
         colormap=options.colormap_a,
         textalign=visualization_utils.TEXTALIGN_LEFT,
+        vtextalign=visualization_utils.VTEXTALIGN_TOP,
         custom_strings=custom_strings_a)
     visualization_utils.render_detection_bounding_boxes(detections_b,im,
         confidence_threshold=pairwise_options.rendering_confidence_threshold_b,
         thickness=2,expansion=0,
+        label_map=label_map,
         colormap=options.colormap_b,
-        textalign=visualization_utils.TEXTALIGN_RIGHT,
+        textalign=visualization_utils.TEXTALIGN_LEFT,
+        vtextalign=visualization_utils.VTEXTALIGN_BOTTOM,
         custom_strings=custom_strings_b)
 
+    # Do we also need to render ground truth?
+    if 'im_gt' in image_pair:
+        
+        im_gt = image_pair['im_gt']
+        annotations_gt = image_pair['annotations_gt']
+        gt_boxes = []
+        for ann in annotations_gt:
+            if 'bbox' in ann:
+                gt_boxes.append(ann['bbox'])
+        gt_categories = [ann['category_id'] for ann in annotations_gt]
+        
+        if len(gt_boxes) > 0:
+            
+            label_map = None
+            if options.show_category_names_on_gt_boxes:
+                label_map=options.gt_category_id_to_name
+                
+            assert len(gt_boxes) == len(gt_categories)
+            gt_colormap = ['yellow']*(max(gt_categories)+1)
+            visualization_utils.render_db_bounding_boxes(boxes=gt_boxes,
+                                                         classes=gt_categories, 
+                                                         image=im, 
+                                                         original_size=(im_gt['width'],im_gt['height']),
+                                                         label_map=label_map, 
+                                                         thickness=1, 
+                                                         expansion=0,
+                                                         textalign=visualization_utils.TEXTALIGN_RIGHT,
+                                                         vtextalign=visualization_utils.VTEXTALIGN_TOP,
+                                                         text_rotation=-90,
+                                                         colormap=gt_colormap)
+            
+        else:
+            
+            if options.show_labels_for_image_level_gt:
+                
+                gt_categories_set = set([ann['category_id'] for ann in annotations_gt])
+                gt_category_names = [options.gt_category_id_to_name[category_name] for 
+                                     category_name in gt_categories_set]
+                category_string = ','.join(gt_category_names)
+                category_string = '(' + category_string + ')'
+                
+                try:
+                    font = ImageFont.truetype('arial.ttf', 25)
+                except IOError:
+                    font = ImageFont.load_default()
+    
+                draw = ImageDraw.Draw(im)
+                
+                text_width, text_height = get_text_size(font,category_string)
+                
+                text_left = 10
+                text_bottom = text_height + 10
+                margin = np.ceil(0.05 * text_height)
+                
+                draw.text(
+                    (text_left + margin, text_bottom - text_height - margin),
+                    category_string,
+                    fill='white',
+                    font=font)
+                
+        # ...if we have boxes in the GT
+                
+    # ...if we need to render ground truth
+    
     output_image_fn = path_utils.flatten_path(fn)
     output_image_path = os.path.join(category_folder,output_image_fn)
     im.save(output_image_path)
     return output_image_path
 
 # ...def _render_image_pair()
+
+
+def _result_types_to_comparison_category(result_types_present_a,
+                                         result_types_present_b,
+                                         ground_truth_type):
+    """
+    Given the set of result types (tp,tn,fp,fn) present in each of two sets of results
+    for an image, determine the category to which we want to assign this image.
+    """
+        
+    # The "common_tp" category is for the case where both models have *only* TPs
+    if ('tp' in result_types_present_a) and ('tp' in result_types_present_b) and \
+        (len(result_types_present_a) == 1) and (len(result_types_present_b) == 1):
+        return 'common_tp'
+    
+    # The "common_tn" category is for the case where both models have *only* TNs
+    if ('tn' in result_types_present_a) and ('tn' in result_types_present_b) and \
+        (len(result_types_present_a) == 1) and (len(result_types_present_b) == 1):
+        return 'common_tn'
+
+    """        
+    # The "common_fp" category is for the case where both models have *only* FPs
+    if ('fp' in result_types_present_a) and ('fp' in result_types_present_b) and \
+         (len(result_types_present_a) == 1) and (len(result_types_present_b) == 1):
+        return 'common_fp'
+    """
+    
+    # The "common_fp" category is for the case where both models have at least one FP,
+    # and no FNs.
+    if ('fp' in result_types_present_a) and ('fp' in result_types_present_b) and \
+         ('fn' not in result_types_present_a) and ('fn' not in result_types_present_b):
+        return 'common_fp'
+    
+    """
+    # The "common_fn" category is for the case where both models have *only* FNs
+    if ('fn' in result_types_present_a) and ('fn' in result_types_present_b) and \
+         (len(result_types_present_a) == 1) and (len(result_types_present_b) == 1):
+        return 'common_fn'
+    """
+    
+    # The "common_fn" category is for the case where both models have at least one FN,
+    # and no FPs
+    if ('fn' in result_types_present_a) and ('fn' in result_types_present_b) and \
+        ('fp' not in result_types_present_a) and ('fp' not in result_types_present_b):
+        return 'common_fn'
+    
+    # The tp-only categories are for the case where one model has *only* TPs, and the 
+    # other has any FPs or FNs
+    if ('tp' in result_types_present_a) and (len(result_types_present_a) == 1) and \
+        (('fn' in result_types_present_b) or ('fp' in result_types_present_b)):
+        return 'tp_a_only'
+    if ('tp' in result_types_present_b) and (len(result_types_present_b) == 1) and \
+        (('fn' in result_types_present_a) or ('fp' in result_types_present_a)):
+        return 'tp_b_only'
+      
+    # The tn-only categories are for the case where one model has a TN and the
+    # other has at least one fp
+    if 'tn' in result_types_present_a and 'fp' in result_types_present_b:
+        assert len(result_types_present_a) == 1
+        assert len(result_types_present_b) == 1
+        return 'tn_a_only'
+    if 'tn' in result_types_present_b and 'fp' in result_types_present_a:
+        assert len(result_types_present_a) == 1
+        assert len(result_types_present_b) == 1
+        return 'tn_b_only'
+        
+    # The 'fpfn' category is for everything else
+    return 'fpfn'
+
+# def _result_types_to_comparison_category(...)
 
 
 def _pairwise_compare_batch_results(options,output_index,pairwise_options):
@@ -323,6 +515,9 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             
     detection_categories_a = results_a['detection_categories']
     detection_categories_b = results_b['detection_categories']
+    detection_category_id_to_name = detection_categories_a    
+    detection_category_name_to_id = invert_dictionary(detection_categories_a)
+    options.detection_category_id_to_name = detection_category_id_to_name
     
     if pairwise_options.results_description_a is None:
         if 'detector' not in results_a['info']:
@@ -369,20 +564,202 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
     else:
         filenames_to_compare = options.filenames_to_include
     
+    
+    ##%% Determine whether ground truth is available
+    
+    # ...and determine what type of GT is available, boxes or image-level labels
+    
+    gt_data = None
+    gt_category_id_to_detection_category_id = None
+    
+    if options.ground_truth_file is None:
+        
+        ground_truth_type = 'no_gt'
+        
+    else:
+        
+        # Read ground truth data if necessary
+        if isinstance(options.ground_truth_file,dict):            
+            gt_data = options.ground_truth_file            
+        else:        
+            assert isinstance(options.ground_truth_file,str)
+            with open(options.ground_truth_file,'r') as f:
+                gt_data = json.load(f)
+            
+        # Do we have box-level ground truth or image-level ground truth?
+        found_box = False
+        
+        for ann in gt_data['annotations']:
+            if 'bbox' in ann:
+                found_box = True
+                break
+        
+        if found_box:
+            ground_truth_type = 'bbox_gt'
+        else:
+            ground_truth_type = 'image_level_gt'
+    
+        gt_category_name_to_id = {c['name']:c['id'] for c in gt_data['categories']}
+        gt_category_id_to_name = invert_dictionary(gt_category_name_to_id)
+        options.gt_category_id_to_name = gt_category_id_to_name
+        
+        if ground_truth_type == 'bbox_gt':
+            
+            if not options.class_agnostic_comparison:
+                assert set(gt_category_name_to_id.keys()) == set(detection_category_name_to_id.keys()), \
+                    'Cannot compare detections to GT with different categories when class_agnostic_comparison is False'
+                gt_category_id_to_detection_category_id = {}
+                for category_name in gt_category_name_to_id:
+                    gt_category_id = gt_category_name_to_id[category_name]
+                    detection_category_id = detection_category_name_to_id[category_name]
+                    gt_category_id_to_detection_category_id[gt_category_id] = detection_category_id
+        
+        elif ground_truth_type == 'image_level_gt':
+            
+            if not options.class_agnostic_comparison:
+                for detection_category_name in detection_category_name_to_id:
+                    if detection_category_name not in gt_category_name_to_id:
+                        raise ValueError('Detection category {} not available in GT category list'.format(
+                            detection_category_name))                        
+                for gt_category_name in gt_category_name_to_id:
+                    if gt_category_name in options.gt_empty_categories:
+                        continue
+                    if (gt_category_name not in detection_category_name_to_id):
+                        raise ValueError('GT category {} not available in detection category list'.format(
+                            gt_category_name))
+                        
+    assert ground_truth_type in ('no_gt','bbox_gt','image_level_gt')
+    
+    # Make sure ground truth data refers to at least *some* of the same files that are in our
+    # results files    
+    if gt_data is not None:
+        
+        filenames_to_compare_set = set(filenames_to_compare)
+        gt_filenames = [im['file_name'] for im in gt_data['images']]
+        gt_filenames_set = set(gt_filenames)
+        
+        common_filenames = filenames_to_compare_set.intersection(gt_filenames_set)
+        assert len(common_filenames) > 0, 'MD results files and ground truth file have no images in common'
+        
+        filenames_only_in_gt = gt_filenames_set.difference(filenames_to_compare_set)
+        if len(filenames_only_in_gt) > 0:
+            print('Warnining: {} files are only available in the ground truth (not in MD results)'.format(
+                len(filenames_only_in_gt)))
+        
+        filenames_only_in_results = gt_filenames_set.difference(gt_filenames)
+        if len(filenames_only_in_results) > 0:
+            print('Warnining: {} files are only available in the MD results (not in ground truth)'.format(
+                len(filenames_only_in_results)))
+        
+        if options.error_on_non_matching_lists:
+            if len(filenames_only_in_gt) > 0 or len(filenames_only_in_results) > 0:
+               raise ValueError('GT image set is not identical to result image sets') 
+               
+        filenames_to_compare = sorted(list(common_filenames))
+    
+        # Map filenames to ground truth images and annotations
+        filename_to_image_gt = {im['file_name']:im for im in gt_data['images']}
+        gt_image_id_to_image = {}
+        for im in gt_data['images']:
+            gt_image_id_to_image[im['id']] = im
+        gt_image_id_to_annotations = defaultdict(list)
+        for ann in gt_data['annotations']:
+            gt_image_id_to_annotations[ann['image_id']].append(ann)        
+        
+        # Convert annotations to relative (MD) coordinates
+        
+        # ann = gt_data['annotations'][0]
+        for ann in gt_data['annotations']:
+            gt_image = gt_image_id_to_image[ann['image_id']]
+            if 'bbox' not in ann:
+                continue
+            # COCO format: [x,y,width,height]
+            # normalized format: [x_min, y_min, width_of_box, height_of_box]        
+            normalized_bbox = [ann['bbox'][0]/gt_image['width'],ann['bbox'][1]/gt_image['height'],
+                               ann['bbox'][2]/gt_image['width'],ann['bbox'][3]/gt_image['height']]            
+            ann['normalized_bbox'] = normalized_bbox
+            
+            
     ##%% Find differences
     
-    # Each of these maps a filename to a two-element list (the image in set A, the image in set B)
-    #
-    # Right now, we only handle a very simple notion of class transition, where the detection
-    # of maximum confidence changes class *and* both images have an above-threshold detection.
-    common_detections = {}
-    common_non_detections = {}
-    detections_a_only = {}
-    detections_b_only = {}
-    class_transitions = {}
+    # See PairwiseBatchComparisonResults for a description
+    categories_to_image_pairs = {}
+    
+    # This will map category names that can be used in filenames (e.g. "common_non_detections" or 
+    # "false_positives_a_only" to friendly names (e.g. "Common non-detections")
+    categories_to_page_titles = None
+    
+    if ground_truth_type == 'no_gt':
+            
+        categories_to_image_pairs['common_detections'] = {}
+        categories_to_image_pairs['common_non_detections'] = {}
+        categories_to_image_pairs['detections_a_only'] = {}
+        categories_to_image_pairs['detections_b_only'] = {}
+        categories_to_image_pairs['class_transitions'] = {}
         
+        categories_to_page_titles = {
+            'common_detections':'Detections common to both models',
+            'common_non_detections':'Non-detections common to both models',
+            'detections_a_only':'Detections reported by model A only',
+            'detections_b_only':'Detections reported by model B only',
+            'class_transitions':'Detections reported as different classes by models A and B'
+        }
+        
+            
+    elif (ground_truth_type == 'bbox_gt') or (ground_truth_type == 'image_level_gt'):
+        
+        categories_to_image_pairs['common_tp'] = {}
+        categories_to_image_pairs['common_tn'] = {}
+        categories_to_image_pairs['common_fp'] = {}
+        categories_to_image_pairs['common_fn'] = {}
+        
+        categories_to_image_pairs['tp_a_only'] = {}
+        categories_to_image_pairs['tp_b_only'] = {}
+        categories_to_image_pairs['tn_a_only'] = {}
+        categories_to_image_pairs['tn_b_only'] = {}
+        
+        categories_to_image_pairs['fpfn'] = {}
+    
+        categories_to_page_titles = {
+            'common_tp':'Common true positives',
+            'common_tn':'Common true negatives',
+            'common_fp':'Common false positives',
+            'common_fn':'Common false negatives',
+            'tp_a_only':'TP (A only)',
+            'tp_b_only':'TP (B only)',
+            'tn_a_only':'TN (A only)',
+            'tn_b_only':'TN (B only)',
+            'fpfn':'More complicated discrepancies'
+        }
+        
+    else:
+        
+        raise Exception('Unknown ground truth type: {}'.format(ground_truth_type))
+           
+    # Map category IDs to thresholds
+    category_id_to_threshold_a = {}
+    category_id_to_threshold_b = {}
+    
+    for category_id in detection_categories_a:
+        category_name = detection_categories_a[category_id]
+        if category_name in pairwise_options.detection_thresholds_a:
+            category_id_to_threshold_a[category_id] = \
+                pairwise_options.detection_thresholds_a[category_name]
+        else:
+            category_id_to_threshold_a[category_id] = \
+                pairwise_options.detection_thresholds_a['default']
+    
+    for category_id in detection_categories_b:
+        category_name = detection_categories_b[category_id]
+        if category_name in pairwise_options.detection_thresholds_b:
+            category_id_to_threshold_b[category_id] = \
+                pairwise_options.detection_thresholds_b[category_name]
+        else:
+            category_id_to_threshold_b[category_id] = \
+                pairwise_options.detection_thresholds_b['default']
+                
     # fn = filenames_to_compare[0]
-    for fn in tqdm(filenames_to_compare):
+    for i_file,fn in tqdm(enumerate(filenames_to_compare),total=len(filenames_to_compare)):
     
         if fn not in filename_to_image_b:
             
@@ -395,91 +772,352 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
         im_a = filename_to_image_a[fn]
         im_b = filename_to_image_b[fn]
         
-        categories_above_threshold_a = set()
+        im_pair = {}
+        im_pair['im_a'] = im_a
+        im_pair['im_b'] = im_b
+        im_pair['im_gt'] = None
+        im_pair['annotations_gt'] = None
+        
+        if gt_data is not None:
+            
+            if fn not in filename_to_image_gt:
+                
+                # We shouldn't have gotten this far if error_on_non_matching_lists is set
+                assert not options.error_on_non_matching_lists
+                
+                print('Skipping filename {}, not in ground truth'.format(fn))
+                continue            
+            
+            im_gt = filename_to_image_gt[fn]
+            annotations_gt = gt_image_id_to_annotations[im_gt['id']]
+            im_pair['im_gt'] = im_gt
+            im_pair['annotations_gt'] = annotations_gt
+            
+        comparison_category = None
+        
+        # Compare image A to image B, without ground truth
+        if ground_truth_type == 'no_gt':
+        
+            categories_above_threshold_a = set()
 
-        if not 'detections' in im_a or im_a['detections'] is None:
-            assert 'failure' in im_a and im_a['failure'] is not None
-            continue
-        
-        if not 'detections' in im_b or im_b['detections'] is None:
-            assert 'failure' in im_b and im_b['failure'] is not None
-            continue
-                
-        invalid_category_error = False
+            if not 'detections' in im_a or im_a['detections'] is None:
+                assert 'failure' in im_a and im_a['failure'] is not None
+                continue
+            
+            if not 'detections' in im_b or im_b['detections'] is None:
+                assert 'failure' in im_b and im_b['failure'] is not None
+                continue
+                    
+            invalid_category_error = False
 
-        # det = im_a['detections'][0]
-        for det in im_a['detections']:
-            
-            category_id = det['category']
-            
-            if category_id not in detection_categories_a:
-                print('Warning: unexpected category {} for model A on file {}'.format(category_id,fn))
-                invalid_category_error = True
-                break
+            # det = im_a['detections'][0]
+            for det in im_a['detections']:
                 
-            conf = det['conf']
-            
-            if detection_categories_a[category_id] in pairwise_options.detection_thresholds_a:
-                conf_thresh = pairwise_options.detection_thresholds_a[detection_categories_a[category_id]]
-            else:
-                conf_thresh = pairwise_options.detection_thresholds_a['default']
+                category_id = det['category']
                 
-            if conf >= conf_thresh:
-                categories_above_threshold_a.add(category_id)
+                if category_id not in category_id_to_threshold_a:
+                    print('Warning: unexpected category {} for model A on file {}'.format(category_id,fn))
+                    invalid_category_error = True
+                    break
+                    
+                conf = det['conf']                
+                conf_thresh = category_id_to_threshold_a[category_id]
+                if conf >= conf_thresh:
+                    categories_above_threshold_a.add(category_id)
+                                
+            if invalid_category_error:
+                continue
+            
+            categories_above_threshold_b = set()
+            
+            for det in im_b['detections']:
+                
+                category_id = det['category']
+                
+                if category_id not in category_id_to_threshold_b:
+                    print('Warning: unexpected category {} for model B on file {}'.format(category_id,fn))
+                    invalid_category_error = True
+                    break
+                
+                conf = det['conf']                
+                conf_thresh = category_id_to_threshold_b[category_id]                    
+                if conf >= conf_thresh:
+                    categories_above_threshold_b.add(category_id)
+                                
+            if invalid_category_error:
+                
+                continue
+                        
+            detection_a = (len(categories_above_threshold_a) > 0)
+            detection_b = (len(categories_above_threshold_b) > 0)
                             
-        if invalid_category_error:
-            continue
-        
-        categories_above_threshold_b = set()
-        
-        for det in im_b['detections']:
-            
-            category_id = det['category']
-            
-            if category_id not in detection_categories_b:
-                print('Warning: unexpected category {} for model B on file {}'.format(category_id,fn))
-                invalid_category_error = True
-                break
-            
-            conf = det['conf']
-            
-            if detection_categories_b[category_id] in pairwise_options.detection_thresholds_b:
-                conf_thresh = pairwise_options.detection_thresholds_b[detection_categories_b[category_id]]
+            if detection_a and detection_b:            
+                if (categories_above_threshold_a == categories_above_threshold_b) or \
+                    options.class_agnostic_comparison:                                    
+                    comparison_category = 'common_detections'
+                else:                
+                    comparison_category = 'class_transitions'
+            elif (not detection_a) and (not detection_b):
+                comparison_category = 'common_non_detections'
+            elif detection_a and (not detection_b):
+                comparison_category = 'detections_a_only'            
             else:
-                conf_thresh = pairwise_options.detection_thresholds_a['default']
-                
-            if conf >= conf_thresh:
-                categories_above_threshold_b.add(category_id)
-                            
-        if invalid_category_error:
-            continue
-        
-        im_pair = (im_a,im_b)
-        
-        detection_a = (len(categories_above_threshold_a) > 0)
-        detection_b = (len(categories_above_threshold_b) > 0)
-                
-        if detection_a and detection_b:            
-            if (categories_above_threshold_a == categories_above_threshold_b) or \
-                options.class_agnostic_comparison:
-                common_detections[fn] = im_pair
+                assert detection_b and (not detection_a)
+                comparison_category = 'detections_b_only'            
+            
+            max_conf_a = _maxempty([det['conf'] for det in im_a['detections']])
+            max_conf_b = _maxempty([det['conf'] for det in im_b['detections']])
+            
+            # Only used if sort_by_confidence is True
+            if comparison_category == 'common_detections':
+                sort_conf = max(max_conf_a,max_conf_b)
+            elif comparison_category == 'common_non_detections':
+                sort_conf = max(max_conf_a,max_conf_b)
+            elif comparison_category == 'detections_a_only':
+                sort_conf = max_conf_a
+            elif comparison_category == 'detections_b_only':
+                sort_conf = max_conf_b
+            elif comparison_category == 'class_transitions':
+                sort_conf = max(max_conf_a,max_conf_b)
             else:
-                class_transitions[fn] = im_pair
-        elif (not detection_a) and (not detection_b):
-            common_non_detections[fn] = im_pair
-        elif detection_a and (not detection_b):
-            detections_a_only[fn] = im_pair
+                print('Warning: unknown comparison category {}'.format(comparison_category))
+                sort_conf = max(max_conf_a,max_conf_b)
+        
+        elif ground_truth_type == 'bbox_gt':
+        
+            def _boxes_match(det,gt_ann):
+                
+                # if we're doing class-sensitive comparisons, only match same-category classes
+                if not options.class_agnostic_comparison:
+                    detection_category_id = det['category']
+                    gt_category_id = gt_ann['category_id']
+                    if detection_category_id != \
+                        gt_category_id_to_detection_category_id[gt_category_id]:
+                        return False
+                
+                if 'bbox' not in gt_ann:
+                    return False
+                
+                assert 'normalized_bbox' in gt_ann
+                iou = get_iou(det['bbox'],gt_ann['normalized_bbox'])
+                
+                return iou >= options.gt_iou_threshold
+            
+            # ...def _boxes_match(...)
+            
+            # Categorize each model into TP/TN/FP/FN
+            def _categorize_image_with_box_gt(im_detection,im_gt,annotations_gt,category_id_to_threshold):
+            
+                annotations_gt = [ann for ann in annotations_gt if 'bbox' in ann]
+                
+                assert im_detection['file'] == im_gt['file_name']
+                
+                # List of result types - tn, tp, fp, fn - present in this image.  tn is
+                # mutually exclusive with the others.
+                result_types_present = set()
+                
+                # Find detections above threshold
+                detections_above_threshold = []
+                
+                # det = im_detection['detections'][0]
+                for det in im_detection['detections']:
+                    category_id = det['category']
+                    threshold = category_id_to_threshold[category_id]
+                    if det['conf'] > threshold:
+                        detections_above_threshold.append(det)
+                
+                if len(detections_above_threshold) == 0 and len(annotations_gt) == 0:
+                    result_types_present.add('tn')
+                    return result_types_present
+                
+                # Look for a match for each detection
+                #
+                # det = detections_above_threshold[0]
+                for det in detections_above_threshold:
+                    
+                    det_matches_annotation = False
+                    
+                    # gt_ann = annotations_gt[0]
+                    for gt_ann in annotations_gt:
+                        if _boxes_match(det, gt_ann):
+                            det_matches_annotation = True
+                            break                                             
+                    
+                    if det_matches_annotation:
+                        result_types_present.add('tp')
+                    else:
+                        result_types_present.add('fp')
+                                                
+                # Look for a match for each GT bbox
+                #
+                # gt_ann = annotations_gt[0]
+                for gt_ann in annotations_gt:
+                    
+                    annotation_matches_det = False
+                    
+                    for det in detections_above_threshold:
+                                        
+                        if _boxes_match(det, gt_ann):
+                            annotation_matches_det = True
+                            break                                             
+                    
+                    if annotation_matches_det:
+                        # We should have found this when we looped over detections
+                        assert 'tp' in result_types_present                        
+                    else:
+                        result_types_present.add('fn')
+                                                
+                # ...for each above-threshold detection
+                
+                return result_types_present
+            
+            # ...def _categorize_image_with_box_gt(...)
+            
+            # im_detection = im_a; category_id_to_threshold = category_id_to_threshold_a
+            result_types_present_a = \
+                _categorize_image_with_box_gt(im_a,im_gt,annotations_gt,category_id_to_threshold_a)
+            result_types_present_b = \
+                _categorize_image_with_box_gt(im_b,im_gt,annotations_gt,category_id_to_threshold_b)
+
+            
+            ## Some combinations are nonsense
+                
+            # TNs are mutually exclusive with other categories
+            if 'tn' in result_types_present_a or 'tn' in result_types_present_b:
+                assert len(result_types_present_a) == 1
+                assert len(result_types_present_b) == 1
+            
+            # If either model has a TP or FN, the other has to have a TP or FN, since 
+            # there was something in the GT
+            if ('tp' in result_types_present_a) or ('fn' in result_types_present_a):
+                assert 'tp' in result_types_present_b or 'fn' in result_types_present_b
+            if ('tp' in result_types_present_b) or ('fn' in result_types_present_b):
+                assert 'tp' in result_types_present_a or 'fn' in result_types_present_a
+                
+            # If either model has a TP or FN, the other has to have a TP or FN, since 
+            # there was something in the GT
+            if ('tp' in result_types_present_a) or ('fn' in result_types_present_a):
+                assert 'tp' in result_types_present_b or 'fn' in result_types_present_b
+            if ('tp' in result_types_present_b) or ('fn' in result_types_present_b):
+                assert 'tp' in result_types_present_a or 'fn' in result_types_present_a
+            
+            
+            ## Choose a comparison category based on result types
+            
+            comparison_category = _result_types_to_comparison_category(
+                result_types_present_a,result_types_present_b,ground_truth_type)
+            
+            # TODO: this may or may not be the right way to interpret sorting
+            # by confidence in this case, e.g., we may want to sort by confidence
+            # of correct or incorrect matches.  But this isn't *wrong*.
+            max_conf_a = _maxempty([det['conf'] for det in im_a['detections']])
+            max_conf_b = _maxempty([det['conf'] for det in im_b['detections']])
+            sort_conf = max(max_conf_a,max_conf_b)
+            
         else:
-            assert detection_b and (not detection_a)
-            detections_b_only[fn] = im_pair
             
-    # ...for each filename
-    
-    print('Of {} files:\n{} common detections\n{} common non-detections\n{} A only\n{} B only\n{} class transitions'.format(
-        len(filenames_to_compare),len(common_detections),
-        len(common_non_detections),len(detections_a_only),
-        len(detections_b_only),len(class_transitions)))
+            # Categorize each model into TP/TN/FP/FN
+            def _categorize_image_with_image_level_gt(im_detection,im_gt,annotations_gt,
+                                                      category_id_to_threshold):
+                            
+                assert im_detection['file'] == im_gt['file_name']
+                
+                # List of result types - tn, tp, fp, fn - present in this image.
+                result_types_present = set()
+                
+                # Find detections above threshold
+                category_names_detected = set()
+                
+                # det = im_detection['detections'][0]
+                for det in im_detection['detections']:
+                    category_id = det['category']
+                    threshold = category_id_to_threshold[category_id]
+                    if det['conf'] > threshold:
+                        category_name = detection_category_id_to_name[det['category']]
+                        category_names_detected.add(category_name)
+                
+                category_names_in_gt = set()
+                
+                # ann = annotations_gt[0]
+                for ann in annotations_gt:
+                    category_name = gt_category_id_to_name[ann['category_id']]
+                    category_names_in_gt.add(category_name)
+                
+                for category_name in category_names_detected:
+                    
+                    if category_name in category_names_in_gt:
+                        result_types_present.add('tp')
+                    else:
+                        result_types_present.add('fp')
+                        
+                for category_name in category_names_in_gt:
+                    
+                    # Is this an empty image?
+                    if category_name in options.gt_empty_categories:
+                        
+                        assert all([cn in options.gt_empty_categories for cn in category_names_in_gt]), \
+                            'Image {} has both empty and non-empty ground truth labels'.format(
+                                im_detection['file'])
+                        if len(category_names_detected) > 0:                            
+                            result_types_present.add('fp')
+                            # If there is a false positive present in an empty image, there can't
+                            # be any other result types present
+                            assert len(result_types_present) == 1
+                        else:
+                            result_types_present.add('tn')
+                            
+                    elif category_name in category_names_detected:
+                        
+                        assert 'tp' in result_types_present
+                    
+                    else:
+                        
+                        result_types_present.add('fn')
+                        
+                return result_types_present
+            
+            # ...def _categorize_image_with_image_level_gt(...)
+            
+            # if 'val#human#human#HoSa#2021.006_na#2021#2021.006 (2021)#20210713' in im_a['file']:
+            #    import pdb; pdb.set_trace()
+                
+            # im_detection = im_a; category_id_to_threshold = category_id_to_threshold_a
+            result_types_present_a = \
+                _categorize_image_with_image_level_gt(im_a,im_gt,annotations_gt,category_id_to_threshold_a)
+            result_types_present_b = \
+                _categorize_image_with_image_level_gt(im_b,im_gt,annotations_gt,category_id_to_threshold_b)
+            
+            
+            ## Some combinations are nonsense
+            
+            # If either model has a TP or FN, the other has to have a TP or FN, since 
+            # there was something in the GT
+            if ('tp' in result_types_present_a) or ('fn' in result_types_present_a):
+                assert 'tp' in result_types_present_b or 'fn' in result_types_present_b
+            if ('tp' in result_types_present_b) or ('fn' in result_types_present_b):
+                assert 'tp' in result_types_present_a or 'fn' in result_types_present_a
+            
+                
+            ## Choose a comparison category based on result types
+            
+            comparison_category = _result_types_to_comparison_category(
+                result_types_present_a,result_types_present_b,ground_truth_type)
         
+            # TODO: this may or may not be the right way to interpret sorting
+            # by confidence in this case, e.g., we may want to sort by confidence
+            # of correct or incorrect matches.  But this isn't *wrong*.
+            max_conf_a = _maxempty([det['conf'] for det in im_a['detections']])
+            max_conf_b = _maxempty([det['conf'] for det in im_b['detections']])
+            sort_conf = max(max_conf_a,max_conf_b)
+            
+    # ...what kind of ground truth (if any) do we have?            
+        
+        assert comparison_category is not None        
+        categories_to_image_pairs[comparison_category][fn] = im_pair        
+        im_pair['sort_conf'] = sort_conf
+        
+    # ...for each filename
+            
     
     ##%% Sample and plot differences
     
@@ -493,22 +1131,6 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
        else:
            pool = Pool(options.n_rendering_workers)    
         
-    categories_to_image_pairs = {
-        'common_detections':common_detections,
-        'common_non_detections':common_non_detections,
-        'detections_a_only':detections_a_only,
-        'detections_b_only':detections_b_only,
-        'class_transitions':class_transitions
-    }
-    
-    categories_to_page_titles = {
-        'common_detections':'Detections common to both models',
-        'common_non_detections':'Non-detections common to both models',
-        'detections_a_only':'Detections reported by model A only',
-        'detections_b_only':'Detections reported by model B only',
-        'class_transitions':'Detections reported as different classes by models A and B'
-    }
-
     local_output_folder = os.path.join(options.output_folder,'cmp_' + \
                                        str(output_index).zfill(3))
     
@@ -536,6 +1158,17 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
         return output_image_paths
     
     # ...def render_detection_comparisons()
+    
+    if len(options.colormap_a) > 1:
+        color_string_a = str(options.colormap_a)
+    else:
+        color_string_a = options.colormap_a[0]
+    
+    if len(options.colormap_b) > 1:
+        color_string_b = str(options.colormap_b)
+    else:
+        color_string_b = options.colormap_b[0]
+        
     
     # For each category, generate comparison images and the 
     # comparison HTML page.
@@ -575,34 +1208,15 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             
             input_path_relative = image_filenames[i_fn]
             image_pair = image_pairs[input_path_relative]
-            assert len(image_pair) == 2; image_a = image_pair[0]; image_b = image_pair[1]
+            image_a = image_pair['im_a']
+            image_b = image_pair['im_b']
+            sort_conf = image_pair['sort_conf']
             
-            def maxempty(L):
-                if len(L) == 0:
-                    return 0
-                else:
-                    return max(L)
-                
-            max_conf_a = maxempty([det['conf'] for det in image_a['detections']])
-            max_conf_b = maxempty([det['conf'] for det in image_b['detections']])
+            max_conf_a = _maxempty([det['conf'] for det in image_a['detections']])
+            max_conf_b = _maxempty([det['conf'] for det in image_b['detections']])
             
             title = input_path_relative + ' (max conf {:.2f},{:.2f})'.format(max_conf_a,max_conf_b)
             
-            # Only used if sort_by_confidence is True
-            if category == 'common_detections':
-                sort_conf = max(max_conf_a,max_conf_b)
-            elif category == 'common_non_detections':
-                sort_conf = max(max_conf_a,max_conf_b)
-            elif category == 'detections_a_only':
-                sort_conf = max_conf_a
-            elif category == 'detections_b_only':
-                sort_conf = max_conf_b
-            elif category == 'class_transitions':
-                sort_conf = max(max_conf_a,max_conf_b)
-            else:
-                print('Warning: unknown sort category {}'.format(category))
-                sort_conf = max(max_conf_a,max_conf_b)
-                
             info = {
                 'filename': fn,
                 'title': title,
@@ -611,15 +1225,17 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
                 'linkTarget': urllib.parse.quote(input_image_absolute_paths[i_fn]),
                 'sort_conf':sort_conf
             }
+
             image_info.append(info)
     
         # ...for each image
         
-        category_page_header_string = '<h1>{}</h1>'.format(categories_to_page_titles[category])
+        category_page_header_string = '<h1>{}</h1>\n'.format(categories_to_page_titles[category])
         category_page_header_string += '<p style="font-weight:bold;">\n'
-        category_page_header_string += 'Model A: {}<br/>\n'.format(
-            pairwise_options.results_description_a)
-        category_page_header_string += 'Model B: {}'.format(pairwise_options.results_description_b)
+        category_page_header_string += 'Model A: {} ({})<br/>\n'.format(
+            pairwise_options.results_description_a,color_string_a)
+        category_page_header_string += 'Model B: {} ({})'.format(
+            pairwise_options.results_description_b,color_string_b)
         category_page_header_string += '</p>\n'
         
         category_page_header_string += '<p>\n'
@@ -635,6 +1251,8 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             str(pairwise_options.rendering_confidence_threshold_b))
         category_page_header_string += '</p>\n'        
         
+        subpage_header_string = '\n'.join(category_page_header_string.split('\n')[1:])
+        
         # Default to sorting by filename
         if options.sort_by_confidence:
             image_info = sorted(image_info, key=lambda d: d['sort_conf'], reverse=True)
@@ -646,6 +1264,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             images=image_info,
             options={
                 'headerHtml': category_page_header_string,
+                'subPageHeaderHtml': subpage_header_string,
                 'maxFiguresPerHtmlFile': options.max_images_per_page
             })
         
@@ -656,8 +1275,9 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
 
     html_output_string  = ''
     
-    html_output_string += '<p>Comparing <b>{}</b> (A, red) to <b>{}</b> (B, blue)</p>'.format(
-        pairwise_options.results_description_a,pairwise_options.results_description_b)
+    html_output_string += '<p>Comparing <b>{}</b> (A, {}) to <b>{}</b> (B, {})</p>'.format(
+        pairwise_options.results_description_a,color_string_a.lower(),
+        pairwise_options.results_description_b,color_string_b.lower())
     html_output_string += '<div class="contentdiv">\n'
     html_output_string += 'Detection thresholds for {}:\n{}<br/>'.format(
         pairwise_options.results_description_a,
@@ -679,10 +1299,19 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
     
     html_output_string += '<br/>'
     
-    html_output_string += ('Of {} total files:<br/><br/><div style="margin-left:15px;">{} common detections<br/>{} common non-detections<br/>{} A only<br/>{} B only<br/>{} class transitions</div><br/>'.format(
-        len(filenames_to_compare),len(common_detections),
-        len(common_non_detections),len(detections_a_only),
-        len(detections_b_only),len(class_transitions)))
+    category_summary = ''
+    for i_category,category_name in enumerate(categories_to_image_pairs):
+        if i_category > 0:
+            category_summary += '<br/>'    
+        category_summary += '{} {}'.format(
+            len(categories_to_image_pairs[category_name]),
+            category_name.replace('_',' '))
+    
+    category_summary = \
+        'Of {} total files:<br/><br/><div style="margin-left:15px;">{}</div><br/>'.format(
+            len(filenames_to_compare),category_summary)
+        
+    html_output_string += category_summary 
     
     html_output_string += 'Comparison pages:<br/><br/>\n'
     html_output_string += '<div style="margin-left:15px;">\n'
@@ -738,6 +1367,7 @@ def compare_batch_results(options):
     all_pairwise_results = []
     
     # i_comparison = 0; pairwise_options = pairwise_options_list[i_comparison]
+    
     for i_comparison,pairwise_options in enumerate(pairwise_options_list):
         print('Running comparison {} of {}'.format(i_comparison,n_comparisons))
         pairwise_results = \
