@@ -44,6 +44,7 @@ def write_html_image_list(filename=None,images=None,options=None):
             - fHtml (file pointer to write to, used for splitting write operations over multiple calls)
             - pageTitle (HTML page title)
             - headerHtml (html text to include before the image list)
+            - subPageHeaderHtml (html text to include before the images when images are broken into pages)
             - trailerHtml (html text to include after the image list)
             - defaultImageStyle (default css style for images)
             - defaultTextStyle (default css style for image titles)
@@ -67,6 +68,9 @@ def write_html_image_list(filename=None,images=None,options=None):
     if 'headerHtml' not in options or options['headerHtml'] is None:
         options['headerHtml'] = ''
     
+    if 'subPageHeaderHtml' not in options or options['subPageHeaderHtml'] is None:
+        options['subPageHeaderHtml'] = ''
+        
     if 'trailerHtml' not in options or options['trailerHtml'] is None:
         options['trailerHtml'] = ''
     
@@ -152,7 +156,7 @@ def write_html_image_list(filename=None,images=None,options=None):
             localImages = images[iStart:iEnd+1]
             
             localOptions = options.copy();
-            localOptions['headerHtml'] = '';
+            localOptions['headerHtml'] = options['subPageHeaderHtml'];
             localOptions['trailerHtml'] = '';
             
             # Make a recursive call for this image set
