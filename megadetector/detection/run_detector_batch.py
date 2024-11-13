@@ -36,6 +36,24 @@ CUDA_VISIBLE_DEVICES=0 python detection/run_detector_batch.py md_v4.1.0.pb ~/dat
 
 You can disable GPU processing entirely by setting CUDA_VISIBLE_DEVICES=''.
 
+Инструкция для запуска скрипта генерации разметки фотографий для участников проекта "Детектция животных":
+
+1) Клонировать репозиторий с MegaDetector:
+git clone https://github.com/Bulrush3/MegaDetector.git
+
+2) Зайти в папку с репозиторием:
+cd MegaDetector
+
+3) Скачать необходимые библиотеки MegaDetector:
+pip install megadetector
+
+4) Проверить работу скрипта генерации разметки:
+python megadetector/detection/run_detector_batch.py MDV5A "..\..\images\mike_folder\" "..\..\images\mike_folder\" --output_format yolo --threshold 0.2
+(после запуска скрипта в папке с фотографиями должны появиться файлы с разметкой)
+
+5) Создать свою папку с фотографиями и запустить скрипт генерации разметки:
+python megadetector/detection/run_detector_batch.py MDV5A "..\..\images\<my_folder>\" "..\..\images\<my_folder>\" --output_format yolo --threshold 0.2
+
 """
 
 #%% Constants, imports, environment
@@ -843,7 +861,8 @@ def write_results_to_file(results,
                           info=None, 
                           include_max_conf=False,
                           custom_metadata=None, 
-                          force_forward_slashes=True):
+                          force_forward_slashes=True,
+                          output_format='json'):
     """
     Writes list of detection results to JSON output file. Format matches:
 
@@ -868,77 +887,115 @@ def write_results_to_file(results,
     Returns:
         dict: the MD-formatted dictionary that was written to [output_file]
     """
-    
-    if relative_path_base is not None:
-        results_relative = []
-        for r in results:
-            r_relative = copy.copy(r)
-            r_relative['file'] = os.path.relpath(r_relative['file'], start=relative_path_base)
-            results_relative.append(r_relative)
-        results = results_relative
+    if output_format.lower() == 'json':
+        if relative_path_base is not None:
+            results_relative = []
+            for r in results:
+                r_relative = copy.copy(r)
+                r_relative['file'] = os.path.relpath(r_relative['file'], start=relative_path_base)
+                results_relative.append(r_relative)
+            results = results_relative
 
-    if force_forward_slashes:
-        results_converted = []
-        for r in results:
-            r_converted = copy.copy(r)
-            r_converted['file'] = r_converted['file'].replace('\\','/')
-            results_converted.append(r_converted)
-        results = results_converted
+        if force_forward_slashes:
+            results_converted = []
+            for r in results:
+                r_converted = copy.copy(r)
+                r_converted['file'] = r_converted['file'].replace('\\','/')
+                results_converted.append(r_converted)
+            results = results_converted
+                
+        # The typical case: we need to build the 'info' struct
+        if info is None:
             
-    # The typical case: we need to build the 'info' struct
-    if info is None:
-        
-        info = { 
-            'detection_completion_time': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
-            'format_version': '1.4' 
+            info = { 
+                'detection_completion_time': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
+                'format_version': '1.4' 
+            }
+            
+            if detector_file is not None:
+                detector_filename = os.path.basename(detector_file)
+                detector_version = get_detector_version_from_filename(detector_filename)
+                detector_metadata = get_detector_metadata_from_version_string(detector_version)
+                info['detector'] = detector_filename  
+                info['detector_metadata'] = detector_metadata
+            else:
+                info['detector'] = 'unknown'
+                info['detector_metadata'] = get_detector_metadata_from_version_string('unknown')
+            
+        # If the caller supplied the entire "info" struct
+        else:
+            
+            if detector_file is not None:            
+                print('Warning (write_results_to_file): info struct and detector file ' + \
+                    'supplied, ignoring detector file')
+
+        if custom_metadata is not None:
+            info['custom_metadata'] = custom_metadata
+            
+        # The 'max_detection_conf' field used to be included by default, and it caused all kinds
+        # of headaches, so it's no longer included unless the user explicitly requests it.
+        if not include_max_conf:
+            for im in results:
+                if 'max_detection_conf' in im:
+                    del im['max_detection_conf']
+                
+        final_output = {
+            'images': results,
+            'detection_categories': run_detector.DEFAULT_DETECTOR_LABEL_MAP,
+            'info': info
         }
         
-        if detector_file is not None:
-            detector_filename = os.path.basename(detector_file)
-            detector_version = get_detector_version_from_filename(detector_filename)
-            detector_metadata = get_detector_metadata_from_version_string(detector_version)
-            info['detector'] = detector_filename  
-            info['detector_metadata'] = detector_metadata
-        else:
-            info['detector'] = 'unknown'
-            info['detector_metadata'] = get_detector_metadata_from_version_string('unknown')
+        # Create the folder where the output file belongs; this will fail if
+        # this is a relative path with no folder component
+        try:
+            os.makedirs(os.path.dirname(output_file),exist_ok=True)
+        except Exception:
+            pass
         
-    # If the caller supplied the entire "info" struct
-    else:
+        with open(output_file, 'w') as f:
+            json.dump(final_output, f, indent=1, default=str)
+        print('Output file saved at {}'.format(output_file))
         
-        if detector_file is not None:            
-            print('Warning (write_results_to_file): info struct and detector file ' + \
-                  'supplied, ignoring detector file')
+        return final_output
+  
+    elif output_format.lower() == 'yolo':
 
-    if custom_metadata is not None:
-        info['custom_metadata'] = custom_metadata
+
+        # Создаем директорию для labels если её нет
+        os.makedirs(output_file, exist_ok=True)
         
-    # The 'max_detection_conf' field used to be included by default, and it caused all kinds
-    # of headaches, so it's no longer included unless the user explicitly requests it.
-    if not include_max_conf:
-        for im in results:
-            if 'max_detection_conf' in im:
-                del im['max_detection_conf']
+        for result in results:
+            image_file = result['file']
+            # Создаем имя файла для YOLO разметки
+            basename = os.path.splitext(os.path.basename(image_file))[0]
+            label_file = os.path.join(output_file, basename + '.txt')
             
-    final_output = {
-        'images': results,
-        'detection_categories': run_detector.DEFAULT_DETECTOR_LABEL_MAP,
-        'info': info
-    }
+            # Получаем размеры изображения
+            if 'width' in result and 'height' in result:
+                w, h = result['width'], result['height']
+            else:
+                from PIL import Image
+                img = Image.open(image_file)
+                w, h = img.size
+            
+            # Записываем детекции в формате YOLO
+            with open(label_file, 'w') as f:
+                if 'detections' in result:
+                    for det in result['detections']:
+                        # Конвертируем класс MD в YOLO (отнимаем 1, т.к. MD начинает с 1)
+                        category = int(det['category']) - 1
+                        
+                        # Получаем координаты
+                        x, y, w, h = det['bbox']
+                        
+                        # Записываем строку в формате YOLO:
+                                 # <class>   <x_centr> <y_centr> <w> <h>
+                        f.write(f"{category} {x + w/2} {y + h/2} {w} {h}\n")
+        
+        print(f'YOLO format labels saved to directory: {output_file}')
     
-    # Create the folder where the output file belongs; this will fail if
-    # this is a relative path with no folder component
-    try:
-        os.makedirs(os.path.dirname(output_file),exist_ok=True)
-    except Exception:
-        pass
-    
-    with open(output_file, 'w') as f:
-        json.dump(final_output, f, indent=1, default=str)
-    print('Output file saved at {}'.format(output_file))
-    
-    return final_output
-
+    else:
+        raise ValueError(f"Unsupported output format: {format}")
 # ...def write_results_to_file(...)
 
 
@@ -1054,6 +1111,14 @@ def main():
     parser.add_argument(
         'output_file',
         help='Path to output JSON results file, should end with a .json extension')
+
+    parser.add_argument(
+        '--output_format',
+        type=str,
+        default='json',
+        choices=['json', 'yolo'],
+        help='Output format: json or yolo (default: json)')
+
     parser.add_argument(
         '--recursive',
         action='store_true',
@@ -1177,7 +1242,16 @@ def main():
     assert os.path.exists(args.detector_file), \
         'detector file {} does not exist'.format(args.detector_file)
     assert 0.0 <= args.threshold <= 1.0, 'Confidence threshold needs to be between 0 and 1'
-    assert args.output_file.endswith('.json'), 'output_file specified needs to end with .json'
+    
+            # Изменим проверку выходного файла с учетом формата
+    if args.output_format == 'json':
+        assert not os.path.isdir(args.output_file), 'When using JSON format, output_file cannot be a directory'
+        assert args.output_file.endswith('.json'), 'When using JSON format, output_file needs to end with .json'
+    elif args.output_format == 'yolo':
+        # Для YOLO формата выходной путь должен быть директорией
+        os.makedirs(args.output_file, exist_ok=True)
+
+    # assert args.output_file.endswith('.json'), 'output_file specified needs to end with .json'
     if args.checkpoint_frequency != -1:
         assert args.checkpoint_frequency > 0, 'Checkpoint_frequency needs to be > 0 or == -1'
     if args.output_relative_filenames:
@@ -1205,7 +1279,7 @@ def main():
     if len(output_dir) > 0:
         os.makedirs(output_dir,exist_ok=True)
         
-    assert not os.path.isdir(args.output_file), 'Specified output file is a directory'
+    # assert not os.path.isdir(args.output_file), 'Specified output file is a directory'
     
     if args.class_mapping_filename is not None:
         _load_custom_class_mapping(args.class_mapping_filename)
@@ -1422,8 +1496,9 @@ def main():
                           args.output_file, 
                           relative_path_base=relative_path_base,
                           detector_file=args.detector_file,
-                          include_max_conf=args.include_max_conf)
-
+                          include_max_conf=args.include_max_conf,
+                          output_format=args.output_format)
+    
     if checkpoint_path and os.path.isfile(checkpoint_path):
         os.remove(checkpoint_path)
         print('Deleted checkpoint file {}'.format(checkpoint_path))
