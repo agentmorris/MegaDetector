@@ -32,6 +32,8 @@ from functools import partial
 from shutil import which
 from tqdm import tqdm
 
+from megadetector.utils.ct_utils import is_iterable
+
 # Should all be lower-case
 IMG_EXTENSIONS = ('.jpg', '.jpeg', '.gif', '.png', '.tif', '.tiff', '.bmp')
 
@@ -770,16 +772,21 @@ def parallel_get_file_sizes(filenames,
     
     folder_name = None
     
-    if verbose:
-        print('Enumerating files')
-        
-    if isinstance(filenames,str) and os.path.isdir(filenames):
-        
+    if isinstance(filenames,str):
+                
         folder_name = filenames
+        assert os.path.isdir(filenames), 'Could not find folder {}'.format(folder_name)        
         
+        if verbose:
+            print('Enumerating files in {}'.format(folder_name))
+                    
         # Enumerate absolute paths here, we'll convert to relative later if requested
-        filenames = recursive_file_list(filenames,recursive=recursive,return_relative_paths=False)
+        filenames = recursive_file_list(folder_name,recursive=recursive,return_relative_paths=False)
 
+    else:
+        
+        assert is_iterable(filenames), '[filenames] argument is neither a folder nor an iterable'
+    
     if verbose:
         print('Creating worker pool')
     
