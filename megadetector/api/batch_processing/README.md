@@ -35,6 +35,8 @@ Example output with both detection and classification results:
         "classification_completion_time": "2019-05-26 01:52:08",
         "detector_metadata": {
            "megadetector_version":"v4.1.0",
+		   // These fields make recommendations to downstream tools about 
+		   // reasonable default confidence thresholds.
            "typical_detection_threshold":0.8,
            "conservative_detection_threshold":0.6
         },
@@ -42,14 +44,14 @@ Example output with both detection and classification results:
            "typical_classification_threshold":0.75
         }
     },
-    // detection_categories is required; category IDs must be string-formatted ints
+    // detection_categories is required; category IDs must be string-formatted ints.
     "detection_categories": {
         "1": "animal",
         "2": "person",
         "3": "vehicle"
     },
     // classification_categories is optional; if present, category IDs must be 
-    // string-formatted ints
+    // string-formatted ints.
     "classification_categories": {
         "0": "fox",
         "1": "elk",
@@ -57,9 +59,14 @@ Example output with both detection and classification results:
         "3": "bear",
         "4": "moose"
     },
+	// The "images" array is required, but can be empty.
     "images": [
         {
             "file": "path/from/base/dir/image_with_animal.jpg",
+			// "detections" should be present for any image that was 
+			// successfully processed.  I.e., a lack of detections
+			// should be communicated with an empty "detections" array,
+			// not by omitting the "detections" field.
             "detections": [
                 {
                     "category": "1",
@@ -81,20 +88,24 @@ Example output with both detection and classification results:
         },
             // Videos appear in the same format as images, with the addition of the 
             // "frame_rate" field (for the file) and the "frame_number" field (for each 
-            // detection).  Detections are typically included for just one representative
+            // detection).  For videos, "frame_rate" and "frame_number" are required fields.
+			//
+			// frame_rate should be greater than zero, and can be int- or float-valued.  
+			//
+			// frame_number should be int-valued, and greater than or equal to zero.
+			//
+			// Detections are typically included for just one representative
             // frame for each detection category, but detections may also be reported for
             // multiple frames for a single detection category, as in this example.
 			{
             "file": "path/from/base/dir/video_with_person.mp4",
-			// frame_rate is a required field for videos; it should be >0, and can be int-valued or 
-			// fractional.
-            "frame_rate": 20,
+			"frame_rate": 20,
             "detections": [
                 {
                     "category": "2",
                     "conf": 0.871,
                     "bbox": [0.1, 0.2, 0.3, 0.4],
-                    "frame_number": 0
+					"frame_number": 0
                 },
                 {
                     "category": "2",
@@ -112,8 +123,8 @@ Example output with both detection and classification results:
         {
             "file": "/path/from/base/dir/another_image.jpg",
 			"detections": []
-			// The "failure" field is optional; for successfully-processed images, it can be omitted 
-			// or can be null.  This file was processed correctly.
+			// The "failure" field is optional; for successfully-processed images, it can be 
+			// omitted  or can be null.  This file was processed correctly.
 			"failure": null        
         },
         {
