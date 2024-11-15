@@ -233,8 +233,8 @@ if False:
     
     for json_filename in filenames:
         results = validate_batch_results(json_filename,options)
-        if len(results['validation_results']['warnings']) >= 0:
-            print('Warnings in file {}:'.format(json_filenames))
+        if len(results['validation_results']['warnings']) > 0:
+            print('Warnings in file {}:'.format(json_filename))
             for s in results['validation_results']['warnings']:
                 print(s)
             print('')
