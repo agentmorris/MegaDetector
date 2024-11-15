@@ -14,8 +14,7 @@
  corrected_label
 
  Because the MD results file fundamentally stores detections, what we'll
- actually do is created bogus detections that fill the entire image.  Detection
- coordinates are not currently used in Timelapse video video anyway.
+ actually do is create bogus detections that fill the entire image.
 
  There is no special handling of empty/blank categories; because these results are
  based on a classifier, rather than a detector (where "blank" would be the absence of

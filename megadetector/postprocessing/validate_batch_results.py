@@ -16,7 +16,7 @@ import json
 import argparse
 
 from megadetector.detection.video_utils import is_video_file
-from megadetector.utils.ct_utils import args_to_object, is_list_sorted
+from megadetector.utils.ct_utils import args_to_object, is_list_sorted # noqa
 
 typical_info_fields = ['detector','detection_completion_time',
                        'classifier','classification_completion_time',
@@ -158,10 +158,19 @@ def validate_batch_results(json_filename,options=None):
                     file_abs = os.path.join(options.relative_path_base,file)
                 if not os.path.isfile(file_abs):
                     raise ValueError('Cannot find file {}'.format(file_abs))
-                
-            if ('detections' not in im) or (im['detections'] is None):
-                if not ('failure' in im and isinstance(im['failure'],str)):
-                    raise ValueError('Image {} has no detections and no failure'.format(im['file']))
+            
+            if 'failure' in im:
+                if im['failure'] is not None:
+                    if not isinstance(im['failure'],str):
+                        raise ValueError('Image {} has an illegal [failure] value: {}'.format(
+                            im['file'],str(im['failure'])))
+                    if 'detections' not in im:
+                        s = 'Image {} has a failure value, should also have a null detections array'.format(
+                            im['file'])
+                        validation_results['warnings'].append(s)
+                    elif im['detections'] is not None:
+                        raise ValueError('Image {} has a failure value but a non-null detections array'.format(
+                            im['file']))
             else:
                 if not isinstance(im['detections'],list):
                     raise ValueError('Invalid detections list for image {}'.format(im['file']))
@@ -170,14 +179,16 @@ def validate_batch_results(json_filename,options=None):
                 
                 if 'frame_rate' not in im:
                     raise ValueError('Video without frame rate: {}'.format(im['file']))
+                if im['frame_rate'] < 0:
+                    raise ValueError('Video with illegal frame rate {}: {}'.format(
+                        str(im['frame_rate']),im['file']))
                 if 'detections' in im and im['detections'] is not None:
                     for det in im['detections']:
                         if 'frame_number' not in det:
                             raise ValueError('Frame without frame number in video {}'.format(
                                 im['file']))
-                    frame_numbers = [det['frame_number'] for det in im['detections']]
-                    # assert is_list_sorted(frame_numbers)
-                    
+                    frame_numbers = [det['frame_number'] for det in im['detections']] # noqa
+                    # assert is_list_sorted(frame_numbers)                    
                 
         # ...for each image
             
@@ -209,17 +220,25 @@ def validate_batch_results(json_filename,options=None):
 
 if False:
 
-    #%%
+    #%% Validate all .json files in the MD test suite
+    
+    from megadetector.utils.path_utils import recursive_file_list
+    filenames = recursive_file_list(os.path.expanduser('~/AppData/Local/Temp/md-tests'))
+    filenames = [fn for fn in filenames if fn.endswith('.json')]
+    filenames = [fn for fn in filenames if 'detectionIndex' not in fn]
     
     options = ValidateBatchResultsOptions()
-    # json_filename = r'g:\temp\format.json'
-    # json_filename = r'g:\temp\test-videos\video_results.json'
-    # json_filename = r'g:\temp\test-videos\image_results.json'
-    json_filename = os.path.expanduser('~/AppData/Local/Temp/md-tests/video_folder_output.in-memory.json')
     options.check_image_existence = False
     options.relative_path_base = None # r'g:\temp\test-videos'
-    results = validate_batch_results(json_filename,options)
-    print(results)
+    
+    for json_filename in filenames:
+        results = validate_batch_results(json_filename,options)
+        if len(results['validation_results']['warnings']) >= 0:
+            print('Warnings in file {}:'.format(json_filenames))
+            for s in results['validation_results']['warnings']:
+                print(s)
+            print('')
+        assert len(results['validation_results']['errors']) == 0    
     
 
 #%% Command-line driver

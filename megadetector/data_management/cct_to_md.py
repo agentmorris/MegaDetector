@@ -27,10 +27,13 @@ from tqdm import tqdm
 def cct_to_md(input_filename,output_filename=None):
     """
     "Converts" a COCO Camera Traps file to a MD results file.  Currently ignores
-    non-bounding-box annotations, and gives all annotations a confidence of 1.0.
+    non-bounding-box annotations.  If the semi-standard "score" field is present in
+    an annotation, or the totally non-standard "conf" field is present, it will be 
+    transferred to the output, otherwise a confidence value of 1.0 is assumed for
+    all annotations.
 
-    The only reason to do this is if you are going to add information to an existing
-    CCT-formatted dataset, and you want to do that in Timelapse.
+    The main reason to run this script the scenario where you are going to add information 
+    to an existing CCT-formatted dataset, and you want to do that in Timelapse.
 
     Currently assumes that width and height are present in the input data, does not
     read them from images.
@@ -113,8 +116,12 @@ def cct_to_md(input_filename,output_filename=None):
                    
                    det = {}
                    det['category'] = str(ann['category_id'])
-                   det['conf'] = 1.0
-                   # max_detection_conf = 1.0
+                   if 'score' in ann:
+                       det['conf'] = ann['score']
+                   elif 'conf' in ann:
+                       det['conf'] = ann['conf']
+                   else:
+                       det['conf'] = 1.0
                    
                    # MegaDetector: [x,y,width,height] (normalized, origin upper-left)
                    # CCT: [x,y,width,height] (absolute, origin upper-left)
