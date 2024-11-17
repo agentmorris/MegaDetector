@@ -613,6 +613,50 @@ def is_empty(v):
     return False
 
 
+def min_none(a,b):
+    """
+    Returns the minimum of a and b.  If both are None, returns None.  If one is None, 
+    returns the other.
+    
+    Args:
+        a (numeric): the first value to compare
+        b (numeric): the second value to compare
+        
+    Returns:
+        numeric: the minimum of a and b, or None
+    """
+    if a is None and b is None:
+        return None
+    elif a is None:
+        return b
+    elif b is None:
+        return a
+    else:
+        return min(a,b)
+    
+
+def max_none(a,b):
+    """
+    Returns the maximum of a and b.  If both are None, returns None.  If one is None, 
+    returns the other.
+    
+    Args:
+        a (numeric): the first value to compare
+        b (numeric): the second value to compare
+        
+    Returns:
+        numeric: the maximum of a and b, or None
+    """
+    if a is None and b is None:
+        return None
+    elif a is None:
+        return b
+    elif b is None:
+        return a
+    else:
+        return max(a,b)
+
+    
 def isnan(v):
     """
     Returns True if v is a nan-valued float, otherwise returns False.
