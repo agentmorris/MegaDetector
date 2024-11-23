@@ -178,7 +178,24 @@ class BatchComparisonOptions:
         
         #: List of PairwiseBatchComparisonOptions that defines the comparisons we'll render.
         self.pairwise_options = []
-                
+        
+        #: Only process images whose file names contain this token
+        #:
+        #: This can also be a pointer to a function that takes a string (filename)
+        #: and returns a bool (if the function returns True, the image will be 
+        #: included in the comparison).
+        self.required_token = None
+        
+        #: Enable additional debug output
+        self.verbose = False
+        
+        #: Separate out the "clean TP" and "clean TN" categories, only relevant when GT is
+        #: available.
+        self.include_clean_categories = True
+                   
+        #: When rendering to the output table, optionally write alternative strings
+        #: to describe images
+        self.fn_to_display_fn = None
         
 # ...class BatchComparisonOptions
     
@@ -306,7 +323,7 @@ def _render_image_pair(fn,image_pairs,category_folder,options,pairwise_options):
         custom_strings=custom_strings_b)
 
     # Do we also need to render ground truth?
-    if 'im_gt' in image_pair:
+    if 'im_gt' in image_pair and image_pair['im_gt'] is not None:
         
         im_gt = image_pair['im_gt']
         annotations_gt = image_pair['annotations_gt']
@@ -379,7 +396,8 @@ def _render_image_pair(fn,image_pairs,category_folder,options,pairwise_options):
 
 def _result_types_to_comparison_category(result_types_present_a,
                                          result_types_present_b,
-                                         ground_truth_type):
+                                         ground_truth_type,
+                                         options):
     """
     Given the set of result types (tp,tn,fp,fn) present in each of two sets of results
     for an image, determine the category to which we want to assign this image.
@@ -421,14 +439,31 @@ def _result_types_to_comparison_category(result_types_present_a,
         ('fp' not in result_types_present_a) and ('fp' not in result_types_present_b):
         return 'common_fn'
     
-    # The tp-only categories are for the case where one model has *only* TPs, and the 
-    # other has any FPs or FNs
-    if ('tp' in result_types_present_a) and (len(result_types_present_a) == 1) and \
-        (('fn' in result_types_present_b) or ('fp' in result_types_present_b)):
-        return 'tp_a_only'
-    if ('tp' in result_types_present_b) and (len(result_types_present_b) == 1) and \
-        (('fn' in result_types_present_a) or ('fp' in result_types_present_a)):
-        return 'tp_b_only'
+    ## The tp-only categories are for the case where one model has *only* TPs
+    
+    if ('tp' in result_types_present_a) and (len(result_types_present_a) == 1):
+        # Clean TPs are cases where the other model has only FNs, no FPs           
+        if options.include_clean_categories:
+            if  ('fn' in result_types_present_b) and \
+                ('fp' not in result_types_present_b) and \
+                ('tp' not in result_types_present_b):
+                return 'clean_tp_a_only'
+        # Otherwise, TPs are cases where one model has only TPs, and the other model
+        # has any mistakse
+        if ('fn' in result_types_present_b) or ('fp' in result_types_present_b):
+            return 'tp_a_only'
+    
+    if ('tp' in result_types_present_b) and (len(result_types_present_b) == 1):
+        # Clean TPs are cases where the other model has only FNs, no FPs           
+        if options.include_clean_categories:
+            if  ('fn' in result_types_present_a) and \
+                ('fp' not in result_types_present_a) and \
+                ('tp' not in result_types_present_a):
+                return 'clean_tp_b_only'
+        # Otherwise, TPs are cases where one model has only TPs, and the other model
+        # has any mistakse
+        if ('fn' in result_types_present_a) or ('fp' in result_types_present_a):
+            return 'tp_b_only'
       
     # The tn-only categories are for the case where one model has a TN and the
     # other has at least one fp
@@ -444,7 +479,87 @@ def _result_types_to_comparison_category(result_types_present_a,
     # The 'fpfn' category is for everything else
     return 'fpfn'
 
-# def _result_types_to_comparison_category(...)
+# ...def _result_types_to_comparison_category(...)
+
+
+def _subset_md_results(results,options):
+    """
+    Subset a set of MegaDetector results according to the rules defined in the 
+    BatchComparisonOptions object [options].  Typically used to filter for files
+    containing a particular string.  Modifies [results] in place, also returns.
+    
+    Args:
+        results (dict): MD results
+        options (BatchComparisonOptions): job options containing filtering rules
+    """
+    
+    if options.required_token is None:
+        return results
+    
+    images_to_keep = []
+    for im in results['images']:
+        # Is [required_token] a string?
+        if isinstance(options.required_token,str):
+            if options.required_token in im['file']:
+                images_to_keep.append(im)
+        # Otherwise [required_token] is a function
+        else:
+            assert callable(options.required_token), 'Illegal value for required_token'
+            if options.required_token(im['file']):
+                images_to_keep.append(im)
+        
+    
+    if options.verbose:
+        print('Keeping {} of {} images in MD results'.format(
+            len(images_to_keep),len(results['images'])))
+        
+    results['images'] = images_to_keep
+    return results
+    
+# ...def _subset_md_results(...)
+
+
+def _subset_ground_truth(gt_data,options):
+    """
+    Subset a set of COCO annotations according to the rules defined in the 
+    BatchComparisonOptions object [options].  Typically used to filter for files
+    containing a particular string.  Modifies [results] in place, also returns.
+    
+    Args:
+        gt_data (dict): COCO-formatted annotations
+        options (BatchComparisonOptions): job options containing filtering rules
+    """
+    
+    if options.required_token is None:
+        return gt_data
+
+    images_to_keep = []
+    for im in gt_data['images']:
+        if isinstance(options.required_token,str):
+            if options.required_token in im['file_name']:
+                images_to_keep.append(im)
+        else:
+            if options.required_token(im['file_name']):
+                images_to_keep.append(im)
+        
+    image_ids_to_keep_set = set([im['id'] for im in images_to_keep])
+    
+    annotations_to_keep = []
+    for ann in gt_data['annotations']:
+        if ann['image_id'] in image_ids_to_keep_set:
+            annotations_to_keep.append(ann)
+            
+    if options.verbose:
+        print('Keeping {} of {} images, {} of {} annotations in GT data'.format(
+            len(images_to_keep),len(gt_data['images']),
+            len(annotations_to_keep),len(gt_data['annotations'])))
+        
+    gt_data['images'] = images_to_keep
+    gt_data['annotations'] = annotations_to_keep
+    
+    return gt_data
+
+# ...def _subset_ground_truth(...)
 
 
 def _pairwise_compare_batch_results(options,output_index,pairwise_options):
@@ -489,7 +604,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
     assert os.path.isfile(pairwise_options.results_filename_b), \
         "Can't find results file {}".format(pairwise_options.results_filename_b)
     assert os.path.isdir(options.image_folder), \
-        "Can't find image folder {}".format(pairwise_options.image_folder)
+        "Can't find image folder {}".format(options.image_folder)
     os.makedirs(options.output_folder,exist_ok=True)
     
     
@@ -533,9 +648,13 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
         else:            
             pairwise_options.results_description_b = results_b['info']['detector']
     
+    # Restrict this comparison to specific files if requested
+    results_a = _subset_md_results(results_a, options)
+    results_b = _subset_md_results(results_b, options)
+        
     images_a = results_a['images']
     images_b = results_b['images']
-    
+        
     filename_to_image_a = {im['file']:im for im in images_a}
     filename_to_image_b = {im['file']:im for im in images_b}
     
@@ -585,7 +704,10 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             assert isinstance(options.ground_truth_file,str)
             with open(options.ground_truth_file,'r') as f:
                 gt_data = json.load(f)
-            
+        
+        # Restrict this comparison to specific files if requested
+        gt_data = _subset_ground_truth(gt_data, options)
+        
         # Do we have box-level ground truth or image-level ground truth?
         found_box = False
         
@@ -731,6 +853,19 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             'tn_b_only':'TN (B only)',
             'fpfn':'More complicated discrepancies'
         }
+        
+        if options.include_clean_categories:
+            
+            categories_to_image_pairs['clean_tp_a_only'] = {}
+            categories_to_image_pairs['clean_tp_b_only'] = {}
+            # categories_to_image_pairs['clean_tn_a_only'] = {}
+            # categories_to_image_pairs['clean_tn_b_only'] = {}
+            
+            categories_to_page_titles['clean_tp_a_only'] = 'Clean TP wins for A'
+            categories_to_page_titles['clean_tp_b_only'] = 'Clean TP wins for B'
+            # categories_to_page_titles['clean_tn_a_only'] = 'Clean TN wins for A'
+            # categories_to_page_titles['clean_tn_b_only'] = 'Clean TN wins for B'
+        
         
     else:
         
@@ -1005,7 +1140,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             ## Choose a comparison category based on result types
             
             comparison_category = _result_types_to_comparison_category(
-                result_types_present_a,result_types_present_b,ground_truth_type)
+                result_types_present_a,result_types_present_b,ground_truth_type,options)
             
             # TODO: this may or may not be the right way to interpret sorting
             # by confidence in this case, e.g., we may want to sort by confidence
@@ -1101,7 +1236,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             ## Choose a comparison category based on result types
             
             comparison_category = _result_types_to_comparison_category(
-                result_types_present_a,result_types_present_b,ground_truth_type)
+                result_types_present_a,result_types_present_b,ground_truth_type,options)
         
             # TODO: this may or may not be the right way to interpret sorting
             # by confidence in this case, e.g., we may want to sort by confidence
@@ -1210,12 +1345,20 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             image_pair = image_pairs[input_path_relative]
             image_a = image_pair['im_a']
             image_b = image_pair['im_b']
+            
+            if options.fn_to_display_fn is not None:                
+                assert input_path_relative in options.fn_to_display_fn, \
+                    'fn_to_display_fn provided, but {} is not mapped'.format(input_path_relative)
+                display_path = options.fn_to_display_fn[input_path_relative]
+            else:
+                display_path = input_path_relative
+                
             sort_conf = image_pair['sort_conf']
             
             max_conf_a = _maxempty([det['conf'] for det in image_a['detections']])
             max_conf_b = _maxempty([det['conf'] for det in image_b['detections']])
             
-            title = input_path_relative + ' (max conf {:.2f},{:.2f})'.format(max_conf_a,max_conf_b)
+            title = display_path + ' (max conf {:.2f},{:.2f})'.format(max_conf_a,max_conf_b)
             
             info = {
                 'filename': fn,
