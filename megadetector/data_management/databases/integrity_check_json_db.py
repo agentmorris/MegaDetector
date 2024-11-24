@@ -439,7 +439,8 @@ def integrity_check_json_db(jsonFile, options=None):
 def main():
         
     parser = argparse.ArgumentParser()
-    parser.add_argument('jsonFile')
+    parser.add_argument('jsonFile',type=str,
+                        help='COCO-formatted .json file to validate')
     parser.add_argument('--bCheckImageSizes', action='store_true', 
                         help='Validate image size, requires baseDir to be specified. ' + \
                              'Implies existence checking.')

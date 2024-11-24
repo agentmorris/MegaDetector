@@ -150,6 +150,17 @@ def validate_batch_results(json_filename,options=None):
             
             file = im['file']
             
+            if 'detections' in im and im['detections'] is not None:
+                for det in im['detections']:
+                    assert 'category' in det, 'Image {} has a detection with no category'.format(file)
+                    assert 'conf' in det, 'Image {} has a detection with no confidence'.format(file)
+                    assert isinstance(det['conf'],float), \
+                        'Image {} has an illegal confidence value'.format(file)
+                    assert 'bbox' in det, 'Image {} has a detection with no box'.format(file)
+                    assert det['category'] in d['detection_categories'], \
+                        'Image {} has a detection with an unmapped category {}'.format(
+                            file,det['category'])                    
+                
             if options.check_image_existence:
                 
                 if options.relative_path_base is None:
