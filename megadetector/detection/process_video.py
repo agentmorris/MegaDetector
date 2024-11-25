@@ -665,7 +665,7 @@ def process_video_folder(options):
                                    recursive=options.recursive, 
                                    overwrite=(not options.reuse_frames_if_available),
                                    n_threads=options.n_cores,
-                                   every_n_frames=options.frame_sample,
+                                   every_n_frames=every_n_frames_param,
                                    verbose=options.verbose,
                                    quality=options.quality,
                                    max_width=options.max_width,

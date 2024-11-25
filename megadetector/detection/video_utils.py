@@ -229,7 +229,7 @@ def run_callback_on_frames(input_video_file,
         frame_callback (function): callback to run on frames, should take an np.array and a string and 
             return a single value.  callback should expect PIL-formatted (RGB) images.
         every_n_frames (float, optional): sample every Nth frame starting from the first frame;
-            if this is None or 1, every frame is processed.  If this is a negative value, that's 
+            if this is None or 1, every frame is processed.  If this is a negative value, it's
             interpreted as a sampling rate in seconds, which is rounded to the nearest frame sampling 
             rate. Mutually exclusive with frames_to_process.
         verbose (bool, optional): enable additional debug console output
@@ -264,12 +264,12 @@ def run_callback_on_frames(input_video_file,
     frame_filenames = []
     results = []
     
-    if every_n_frames is not None and every_n_frames < 0:
+    if (every_n_frames is not None) and (every_n_frames < 0):
         every_n_seconds = abs(every_n_frames)
         every_n_frames = int(every_n_seconds * frame_rate)
         if verbose:
             print('Interpreting a time sampling rate of {} hz as a frame interval of {}'.format(
-                every_n_seconds,every_n_frames))        
+                every_n_seconds,every_n_frames))
         
     # frame_number = 0
     for frame_number in range(0,n_frames):
@@ -337,7 +337,9 @@ def run_callback_on_frames_for_folder(input_video_folder,
         frame_callback (function): callback to run on frames, should take an np.array and a string and 
             return a single value.  callback should expect PIL-formatted (RGB) images.
         every_n_frames (int, optional): sample every Nth frame starting from the first frame;
-            if this is None or 1, every frame is processed.
+            if this is None or 1, every frame is processed.  If this is a negative value, it's 
+            interpreted as a sampling rate in seconds, which is rounded to the nearest frame 
+            sampling rate.
         verbose (bool, optional): enable additional debug console output
         allow_empty_videos (bool, optional): Just print a warning if a video appears to have no
             frames (by default, this is an error).
@@ -418,8 +420,9 @@ def video_to_frames(input_video_file,
         output_folder (str): folder to put frame images in
         overwrite (bool, optional): whether to overwrite existing frame images
         every_n_frames (int, optional): sample every Nth frame starting from the first frame;
-            if this is None or 1, every frame is extracted. Mutually exclusive with
-            frames_to_extract.
+            if this is None or 1, every frame is extracted.  If this is a negative value, it's
+            interpreted as a sampling rate in seconds, which is rounded to the nearest frame sampling 
+            rate.  Mutually exclusive with frames_to_extract.
         verbose (bool, optional): enable additional debug console output
         quality (int, optional): JPEG quality for frame output, from 0-100.  Defaults
             to the opencv default (typically 95).
@@ -451,6 +454,13 @@ def video_to_frames(input_video_file,
     vidcap = cv2.VideoCapture(input_video_file)
     n_frames = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
     Fs = vidcap.get(cv2.CAP_PROP_FPS)
+    
+    if (every_n_frames is not None) and (every_n_frames < 0):
+        every_n_seconds = abs(every_n_frames)
+        every_n_frames = int(every_n_seconds * Fs)
+        if verbose:
+            print('Interpreting a time sampling rate of {} hz as a frame interval of {}'.format(
+                every_n_seconds,every_n_frames))
     
     # If we're not over-writing, check whether all frame images already exist
     if overwrite == False:
@@ -569,7 +579,7 @@ def video_to_frames(input_video_file,
             break
 
         if every_n_frames is not None:
-            if frame_number % every_n_frames != 0:
+            if (frame_number % every_n_frames) != 0:
                 continue
 
         if frames_to_extract is not None:
@@ -703,8 +713,9 @@ def video_folder_to_frames(input_folder,
         n_threads (int, optional): number of concurrent workers to use; set to <= 1 to disable
             parallelism
         every_n_frames (int, optional): sample every Nth frame starting from the first frame;
-            if this is None or 1, every frame is extracted. Mutually exclusive with 
-            frames_to_extract.
+            if this is None or 1, every frame is extracted.  If this is a negative value, it's
+            interpreted as a sampling rate in seconds, which is rounded to the nearest frame sampling 
+            rate.  Mutually exclusive with frames_to_extract.
         verbose (bool, optional): enable additional debug console output
         parallelization_uses_threads (bool, optional): whether to use threads (True) or
             processes (False) for parallelization; ignored if n_threads <= 1
