@@ -563,4 +563,3 @@ if False:
     options.relative_path_base = r'g:\temp\test-videos'
     validate_batch_results(json_filename,options)
     
-

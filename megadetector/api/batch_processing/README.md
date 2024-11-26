@@ -27,7 +27,7 @@ Example output with both detection and classification results:
 
         // Required
         "format_version": "1.4",
-		
+        
         // All other "info" fields are optional
         "detector": "md_v4.1.0.pb",
         "detection_completion_time": "2019-05-22 02:12:19",
@@ -35,8 +35,8 @@ Example output with both detection and classification results:
         "classification_completion_time": "2019-05-26 01:52:08",
         "detector_metadata": {
            "megadetector_version":"v4.1.0",
-		   // These fields make recommendations to downstream tools about 
-		   // reasonable default confidence thresholds.
+           // These fields make recommendations to downstream tools about 
+           // reasonable default confidence thresholds.
            "typical_detection_threshold":0.8,
            "conservative_detection_threshold":0.6
         },
@@ -59,14 +59,14 @@ Example output with both detection and classification results:
         "3": "bear",
         "4": "moose"
     },
-	// The "images" array is required, but can be empty.
+    // The "images" array is required, but can be empty.
     "images": [
         {
             "file": "path/from/base/dir/image_with_animal.jpg",
-			// "detections" should be present for any image that was 
-			// successfully processed.  I.e., a lack of detections
-			// should be communicated with an empty "detections" array,
-			// not by omitting the "detections" field.
+            // "detections" should be present for any image that was 
+            // successfully processed.  I.e., a lack of detections
+            // should be communicated with an empty "detections" array,
+            // not by omitting the "detections" field.
             "detections": [
                 {
                     "category": "1",
@@ -89,50 +89,50 @@ Example output with both detection and classification results:
             // Videos appear in the same format as images, with the addition of the 
             // "frame_rate" field (for the file) and the "frame_number" field (for each 
             // detection).  For videos, "frame_rate" and "frame_number" are required fields.
-			//
-			// frame_rate should be greater than zero, and can be int- or float-valued.  
-			//
-			// frame_number should be int-valued, and greater than or equal to zero.
-			//
-			// Detections are typically included for just one representative
+            //
+            // frame_rate should be greater than zero, and can be int- or float-valued.  
+            //
+            // frame_number should be int-valued, and greater than or equal to zero.
+            //
+            // Detections are typically included for just one representative
             // frame for each detection category, but detections may also be reported for
             // multiple frames for a single detection category, as in this example.
-			{
+            {
             "file": "path/from/base/dir/video_with_person.mp4",
-			"frame_rate": 20,
+            "frame_rate": 20,
             "detections": [
                 {
                     "category": "2",
                     "conf": 0.871,
                     "bbox": [0.1, 0.2, 0.3, 0.4],
-					"frame_number": 0
+                    "frame_number": 0
                 },
                 {
                     "category": "2",
                     "conf": 0.774,
                     "bbox": [0.11, 0.21, 0.31, 0.41],
                     "frame_number": 20
-                }								
+                }                               
             ]
-        },		   
+        },         
         {
             // This file was processed correctly, but had no detections
             "file": "/path/from/base/dir/empty_image.jpg",
-			"detections": []
+            "detections": []
         },
         {
             "file": "/path/from/base/dir/another_image.jpg",
-			"detections": []
-			// The "failure" field is optional; for successfully-processed images, it can be 
-			// omitted  or can be null.  This file was processed correctly.
-			"failure": null        
+            "detections": []
+            // The "failure" field is optional; for successfully-processed images, it can be 
+            // omitted  or can be null.  This file was processed correctly.
+            "failure": null        
         },
         {
             // This file was not processed.  "failure" should be a string in this case, indicating 
-			// the reason for failure.  "detections" can be null or omitted in this case.
+            // the reason for failure.  "detections" can be null or omitted in this case.
             "file": "/path/from/base/dir2/corrupted_image_0.jpg",
-			"failure": "Failure image access"
-			"detections": null
+            "failure": "Failure image access"
+            "detections": null
         }
     ]
 }

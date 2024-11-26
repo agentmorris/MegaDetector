@@ -28,6 +28,7 @@ from tqdm import tqdm
 
 from megadetector.visualization.visualization_utils import open_image
 from megadetector.utils import ct_utils
+from megadetector.utils.path_utils import find_images
 
 
 #%% Classes and environment
@@ -67,7 +68,7 @@ class IntegrityCheckOptions:
         self.allowIntIDs = False
     
 # This is used in a medium-hacky way to share modified options across threads
-defaultOptions = IntegrityCheckOptions()
+default_options = IntegrityCheckOptions()
 
 
 #%% Functions
@@ -89,7 +90,7 @@ def _check_image_existence_and_size(image,options=None):
     """
 
     if options is None:        
-        options = defaultOptions
+        options = default_options
     
     assert options.bCheckImageExistence
     
@@ -124,9 +125,9 @@ def integrity_check_json_db(jsonFile, options=None):
     
     Returns:
         tuple: tuple containing:
-            - sortedCategories (dict): list of categories used in [jsonFile], sorted by frequency
+            - sorted_categories (dict): list of categories used in [jsonFile], sorted by frequency
             - data (dict): the data loaded from [jsonFile]
-            - errorInfo (dict): specific validation errors
+            - error_info (dict): specific validation errors
     """
     
     if options is None:       
@@ -141,7 +142,7 @@ def integrity_check_json_db(jsonFile, options=None):
     if options.baseDir is None:
         options.baseDir = ''
         
-    baseDir = options.baseDir
+    base_dir = options.baseDir
     
     
     ##%% Read .json file if necessary, integrity-check fields
@@ -156,7 +157,7 @@ def integrity_check_json_db(jsonFile, options=None):
     
         if options.verbose:
             print('Reading .json {} with base dir [{}]...'.format(
-                    jsonFile,baseDir))
+                    jsonFile,base_dir))
         
         with open(jsonFile,'r') as f:
             data = json.load(f) 
@@ -171,17 +172,17 @@ def integrity_check_json_db(jsonFile, options=None):
     # info = data['info']
     assert 'info' in data, 'No info struct in database'
     
-    if len(baseDir) > 0:        
-        assert os.path.isdir(baseDir), 'Base directory {} does not exist'.format(baseDir)
+    if len(base_dir) > 0:        
+        assert os.path.isdir(base_dir), 'Base directory {} does not exist'.format(base_dir)
         
         
     ##%% Build dictionaries, checking ID uniqueness and internal validity as we go
     
-    imageIdToImage = {}
-    annIdToAnn = {}
-    catIdToCat = {}
-    catNameToCat = {}
-    imageLocationSet = set()
+    image_id_to_image = {}
+    ann_id_to_ann = {}
+    category_id_to_category = {}
+    category_name_to_category = {}
+    image_location_set = set()
     
     if options.verbose:
         print('Checking categories...')
@@ -195,16 +196,16 @@ def integrity_check_json_db(jsonFile, options=None):
         assert isinstance(cat['id'],int), 'Illegal category ID type: [{}]'.format(str(cat['id']))
         assert isinstance(cat['name'],str), 'Illegal category name type [{}]'.format(str(cat['name']))
         
-        catId = cat['id']
-        catName = cat['name']
+        category_id = cat['id']
+        category_name = cat['name']
         
         # Confirm ID uniqueness
-        assert catId not in catIdToCat, 'Category ID {} is used more than once'.format(catId)
-        catIdToCat[catId] = cat
+        assert category_id not in category_id_to_category, 'Category ID {} is used more than once'.format(category_id)
+        category_id_to_category[category_id] = cat
         cat['_count'] = 0
         
-        assert catName not in catNameToCat, 'Category name {} is used more than once'.format(catName)
-        catNameToCat[catName] = cat        
+        assert category_name not in category_name_to_category, 'Category name {} is used more than once'.format(category_name)
+        category_name_to_category[category_name] = cat        
         
     # ...for each category
         
@@ -217,7 +218,7 @@ def integrity_check_json_db(jsonFile, options=None):
             print('Trimming image list to {}'.format(options.iMaxNumImages))
         images = images[0:options.iMaxNumImages]
         
-    imagePathsInJson = set()
+    image_paths_in_json = set()
     
     sequences = set()
     
@@ -230,9 +231,9 @@ def integrity_check_json_db(jsonFile, options=None):
         assert 'file_name' in image
         assert 'id' in image
 
-        image['file_name'] = os.path.normpath(image['file_name'])
+        image['file_name'] = image['file_name'].replace('\\','/')
                 
-        imagePathsInJson.add(image['file_name'])
+        image_paths_in_json.add(image['file_name'])
         
         assert isinstance(image['file_name'],str), 'Illegal image filename type'
         
@@ -242,12 +243,12 @@ def integrity_check_json_db(jsonFile, options=None):
         else:
             assert isinstance(image['id'],str), 'Illegal image ID type'
         
-        imageId = image['id']        
+        image_id = image['id']        
         
         # Confirm ID uniqueness
-        assert imageId not in imageIdToImage, 'Duplicate image ID {}'.format(imageId)
+        assert image_id not in image_id_to_image, 'Duplicate image ID {}'.format(image_id)
         
-        imageIdToImage[imageId] = image
+        image_id_to_image[image_id] = image
         
         if 'height' in image:
             assert 'width' in image, 'Image with height but no width: {}'.format(image['id'])
@@ -263,70 +264,74 @@ def integrity_check_json_db(jsonFile, options=None):
             # assert isinstance(image['location'], str) or isinstance(image['location'], int), \
             #  'Illegal image location type'
             assert isinstance(image['location'], str)
-            imageLocationSet.add(image['location'])
+            image_location_set.add(image['location'])
     
         if 'seq_id' in image:
             sequences.add(image['seq_id'])
             
         assert not ('sequence_id' in image or 'sequence' in image), 'Illegal sequence identifier'
         
-    unusedFiles = []
+    unused_files = []
                 
+    image_paths_relative = None
+    
     # Are we checking for unused images?
-    if (len(baseDir) > 0) and options.bFindUnusedImages:    
+    if (len(base_dir) > 0) and options.bFindUnusedImages:    
         
         if options.verbose:
             print('\nEnumerating images...')
         
-        # Recursively enumerate images
-        imagePaths = []
-        for root, dirs, files in os.walk(baseDir):
-            for file in files:
-                if file.lower().endswith(('.jpeg', '.jpg', '.png')):
-                    relDir = os.path.relpath(root, baseDir)
-                    relFile = os.path.join(relDir,file)
-                    relFile = os.path.normpath(relFile)
-                    if len(relFile) > 2 and \
-                        (relFile[0:2] == './' or relFile[0:2] == '.\\'):                     
-                            relFile = relFile[2:]
-                    imagePaths.append(relFile)
-          
-        for p in imagePaths:
-            if p not in imagePathsInJson:
-                # print('Image {} is unused'.format(p))
-                unusedFiles.append(p)
-                
-    validationErrors = []
-    
-    # Are we checking file existence and/or image size?
-    if options.bCheckImageSizes or options.bCheckImageExistence:
+        image_paths_relative = find_images(base_dir,return_relative_paths=True,recursive=True)
         
-        if len(baseDir) == 0:
+        for fn_relative in image_paths_relative:
+            if fn_relative not in image_paths_in_json:
+                unused_files.append(fn_relative)
+                
+    validation_errors = []
+    
+    # If we're checking image existence but not image size, we don't need to read the images
+    if options.bCheckImageExistence and not options.bCheckImageSizes:
+        
+        if image_paths_relative is None:
+            image_paths_relative = find_images(base_dir,return_relative_paths=True,recursive=True)
+            
+        image_paths_relative_set = set(image_paths_relative)
+        
+        for im in images:
+            if im['file_name'] not in image_paths_relative_set:
+                validation_errors.append(im['file_name'])
+            
+    # If we're checking image size, we need to read the images
+    if options.bCheckImageSizes:
+        
+        if len(base_dir) == 0:
             print('Warning: checking image sizes without a base directory, assuming "."')
          
         if options.verbose:
             print('Checking image existence and/or image sizes...')
         
         if options.nThreads is not None and options.nThreads > 1:
+            if options.verbose:
+                print('Starting a pool of {} workers'.format(options.nThreads))
             pool = ThreadPool(options.nThreads)
             # results = pool.imap_unordered(lambda x: fetch_url(x,nImages), indexedUrlList)
-            defaultOptions.baseDir = options.baseDir
-            defaultOptions.bCheckImageSizes = options.bCheckImageSizes
-            defaultOptions.bCheckImageExistence = options.bCheckImageExistence
+            default_options.baseDir = options.baseDir
+            default_options.bCheckImageSizes = options.bCheckImageSizes
+            default_options.bCheckImageExistence = options.bCheckImageExistence
             results = tqdm(pool.imap(_check_image_existence_and_size, images), total=len(images))
         else:
             results = []
             for im in tqdm(images):
                 results.append(_check_image_existence_and_size(im,options))
                 
-        for iImage,r in enumerate(results):
-            if not r:            
-                validationErrors.append(os.path.join(options.baseDir,images[iImage]['file_name']))
+        for i_image,result in enumerate(results):
+            if result is not None:            
+                validation_errors.append(images[i_image]['file_name'])
                             
     # ...for each image
     
     if options.verbose:
-        print('{} validation errors (of {})'.format(len(validationErrors),len(images)))
+        print('{} validation errors (of {})'.format(len(validation_errors),len(images)))
         print('Checking annotations...')
     
     nBoxes = 0
@@ -355,22 +360,22 @@ def integrity_check_json_db(jsonFile, options=None):
         annId = ann['id']        
         
         # Confirm ID uniqueness
-        assert annId not in annIdToAnn
-        annIdToAnn[annId] = ann
+        assert annId not in ann_id_to_ann
+        ann_id_to_ann[annId] = ann
     
         # Confirm validity
-        assert ann['category_id'] in catIdToCat, \
+        assert ann['category_id'] in category_id_to_category, \
             'Category {} not found in category list'.format(ann['category_id'])
-        assert ann['image_id'] in imageIdToImage, \
+        assert ann['image_id'] in image_id_to_image, \
           'Image ID {} referred to by annotation {}, not available'.format(
             ann['image_id'],ann['id'])
     
-        imageIdToImage[ann['image_id']]['_count'] += 1
-        catIdToCat[ann['category_id']]['_count'] +=1 
+        image_id_to_image[ann['image_id']]['_count'] += 1
+        category_id_to_category[ann['category_id']]['_count'] +=1 
         
     # ...for each annotation
     
-    sortedCategories = sorted(categories, key=itemgetter('_count'), reverse=True)
+    sorted_categories = sorted(categories, key=itemgetter('_count'), reverse=True)
     
     
     ##%% Print statistics
@@ -390,18 +395,18 @@ def integrity_check_json_db(jsonFile, options=None):
         print('Found {} unannotated images, {} images with multiple annotations'.format(
                 nUnannotated,nMultiAnnotated))
         
-        if (len(baseDir) > 0) and options.bFindUnusedImages:
-            print('Found {} unused image files'.format(len(unusedFiles)))
+        if (len(base_dir) > 0) and options.bFindUnusedImages:
+            print('Found {} unused image files'.format(len(unused_files)))
             
-        nUnusedCategories = 0
+        n_unused_categories = 0
         
         # Find unused categories
         for cat in categories:
             if cat['_count'] == 0:
                 print('Unused category: {}'.format(cat['name']))
-                nUnusedCategories += 1
+                n_unused_categories += 1
         
-        print('Found {} unused categories'.format(nUnusedCategories))
+        print('Found {} unused categories'.format(n_unused_categories))
                 
         sequenceString = 'no sequence info'
         if len(sequences) > 0:
@@ -410,21 +415,21 @@ def integrity_check_json_db(jsonFile, options=None):
         print('\nDB contains {} images, {} annotations, {} bboxes, {} categories, {}\n'.format(
                 len(images),len(annotations),nBoxes,len(categories),sequenceString))
     
-        if len(imageLocationSet) > 0:
-            print('DB contains images from {} locations\n'.format(len(imageLocationSet)))
+        if len(image_location_set) > 0:
+            print('DB contains images from {} locations\n'.format(len(image_location_set)))
                 
         print('Categories and annotation (not image) counts:\n')
         
-        for cat in sortedCategories:
+        for cat in sorted_categories:
             print('{:6} {}'.format(cat['_count'],cat['name']))
         
         print('')
     
-    errorInfo = {}
-    errorInfo['unusedFiles'] = unusedFiles
-    errorInfo['validationErrors'] = validationErrors
+    error_info = {}
+    error_info['unused_files'] = unused_files
+    error_info['validation_errors'] = validation_errors
     
-    return sortedCategories, data, errorInfo
+    return sorted_categories, data, error_info
 
 # ...def integrity_check_json_db()
     
@@ -434,7 +439,8 @@ def integrity_check_json_db(jsonFile, options=None):
 def main():
         
     parser = argparse.ArgumentParser()
-    parser.add_argument('jsonFile')
+    parser.add_argument('jsonFile',type=str,
+                        help='COCO-formatted .json file to validate')
     parser.add_argument('--bCheckImageSizes', action='store_true', 
                         help='Validate image size, requires baseDir to be specified. ' + \
                              'Implies existence checking.')
@@ -490,4 +496,4 @@ if False:
     
     for json_file in json_files:
         
-        sortedCategories,data,_ = integrity_check_json_db(json_file, options)
+        sorted_categories,data,_ = integrity_check_json_db(json_file, options)

@@ -932,7 +932,7 @@ options.almost_detection_confidence_threshold = options.confidence_threshold - 0
 options.ground_truth_json_file = None
 options.separate_detections_by_category = True
 options.sample_seed = 0
-options.max_figures_per_html_file = 5000
+options.max_figures_per_html_file = 2500
 options.sort_classification_results_by_count = True
 
 options.parallelize_rendering = True

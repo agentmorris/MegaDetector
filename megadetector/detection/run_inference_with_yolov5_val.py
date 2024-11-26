@@ -121,7 +121,7 @@ class YoloInferenceOptions:
         self.device_string = '0'
         
         #: Should we enable test-time augmentation?
-        self.augment = True
+        self.augment = False
         
         #: Should we enable half-precision inference?
         self.half_precision_enabled = None
