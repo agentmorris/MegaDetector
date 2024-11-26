@@ -681,7 +681,6 @@ if len(missing_output_files) > 0:
         print(s)
     raise Exception('Missing output files')
 
-
 n_total_failures = 0
 
 # i_task = 0; task = task_info[i_task]
@@ -1423,11 +1422,23 @@ else:
 
 # ...and add location/datetime info based on filenames and EXIF information.
 
-from megadetector.data_management.read_exif import exif_results_to_cct
+from megadetector.data_management.read_exif import \
+    exif_results_to_cct, ExifResultsToCCTOptions
+from megadetector.utils.ct_utils import is_function_name
 
+exif_results_to_cct_options = ExifResultsToCCTOptions()
+
+# If we've defined a "custom_relative_path_to_location" location, which by convention
+# is what we use in this notebook for a non-standard location mapping function, use it 
+# to parse locations when creating the CCT data.
+if is_function_name('custom_relative_path_to_location',locals()):
+    print('Using custom location mapping function in EXIF conversion')
+    exif_results_to_cct_options.filename_to_location_function = \
+        custom_relative_path_to_location # noqa
+        
 cct_dict = exif_results_to_cct(exif_results=exif_results,
                                cct_output_file=None,
-                               options=None)
+                               options=exif_results_to_cct_options)
 
 
 ##%% Assemble images into sequences

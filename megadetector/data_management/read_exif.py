@@ -730,9 +730,11 @@ def exif_results_to_cct(exif_results,cct_output_file=None,options=None):
     
     Args:
         exif_results (str or list): the filename (or loaded list) containing the results
-          from read_exif_from_folder
-        cct_file (str,optional): the filename to which we should write COCO-Camera-Traps-formatted
-          data
+            from read_exif_from_folder
+        cct_output_file (str,optional): the filename to which we should write 
+            COCO-Camera-Traps-formatted data
+        options (ExifResultsToCCTOptions, optional): options guiding the generation
+            of the CCT file, particularly location mapping
           
     Returns:
         dict: a COCO Camera Traps dict (with no annotations).

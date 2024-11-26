@@ -12,6 +12,7 @@ import inspect
 import json
 import math
 import os
+import builtins
 
 import jsonpickle
 import numpy as np
@@ -689,7 +690,24 @@ def sets_overlap(set1, set2):
     return not set(set1).isdisjoint(set(set2))
 
 
-
+def is_function_name(s,calling_namespace):
+    """
+    Determines whether [s] is a callable function in the global or local scope, or a 
+    built-in function.
+    
+    Args:
+        s (str): the string to test for function-ness
+        calling_namespace (dict): typically pass the output of locals()
+    """
+    
+    assert isinstance(s,str), 'Input is not a string'
+    
+    return callable(globals().get(s)) or \
+        callable(locals().get(s)) or \
+        callable(calling_namespace.get(s)) or \
+        callable(getattr(builtins, s, None))
+        
+        
 #%% Test drivers
 
 if False:
