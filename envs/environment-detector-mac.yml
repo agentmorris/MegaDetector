@@ -6,10 +6,13 @@ channels:
 
 dependencies:
   - python=3.8
-  # Not imported directly, but we force this version to avoid this issue:
+  # mkl is not imported directly, but we constrain the mkl version to avoid this 
+  # issue:
+  #
   # https://github.com/pytorch/pytorch/issues/123097
-  # 2024 versions were not available from conda channels anymore in Nov 2024,
-  # thus we enforce a version lower than 2024.0
+  #
+  # That thread recommends version 2024.0, but 2024.0 is not available for 
+  # osx-64 as of November 2024, so we use an older version.
   - mkl<2024.0
   # We pin Pillow to make it as likely as possible that images are loaded via a loader 
   # that's identical to the training environment
