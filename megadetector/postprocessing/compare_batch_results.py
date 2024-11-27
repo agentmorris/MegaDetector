@@ -1537,7 +1537,11 @@ def compare_batch_results(options):
     return results
 
 
-def n_way_comparison(filenames,options,detection_thresholds=None,rendering_thresholds=None):
+def n_way_comparison(filenames,
+                     options,
+                     detection_thresholds=None,
+                     rendering_thresholds=None,
+                     model_names=None):
     """
     Performs N pairwise comparisons for the list of results files in [filenames], by generating
     sets of pairwise options and calling compare_batch_results.
@@ -1550,6 +1554,8 @@ def n_way_comparison(filenames,options,detection_thresholds=None,rendering_thres
             as [filenames], or None to use sensible defaults
         rendering_thresholds (list, optional): list of rendering thresholds with the same length
             as [filenames], or None to use sensible defaults
+        model_names (list, optional): list of model names to use the output HTML file, with
+            the same length as [filenames], or None to use sensible defaults
     
     Returns:
         BatchComparisonResults: the results of this comparison task
@@ -1557,13 +1563,19 @@ def n_way_comparison(filenames,options,detection_thresholds=None,rendering_thres
     
     if detection_thresholds is None:
         detection_thresholds = [0.15] * len(filenames)
-    assert len(detection_thresholds) == len(filenames)
+    assert len(detection_thresholds) == len(filenames), \
+        '[detection_thresholds] should be the same length as [filenames]'
 
     if rendering_thresholds is not None:
-        assert len(rendering_thresholds) == len(detection_thresholds)
+        assert len(rendering_thresholds) == len(filenames)
+        '[rendering_thresholds] should be the same length as [filenames]'
     else:
         rendering_thresholds = [(x*0.6666) for x in detection_thresholds]
 
+    if model_names is not None:
+        assert len(model_names) == len(filenames), \
+            '[model_names] should be the same length as [filenames]'
+        
     # Choose all pairwise combinations of the files in [filenames]
     for i, j in itertools.combinations(list(range(0,len(filenames))),2):
             
@@ -1577,6 +1589,10 @@ def n_way_comparison(filenames,options,detection_thresholds=None,rendering_thres
         
         pairwise_options.detection_thresholds_a = {'default':detection_thresholds[i]}
         pairwise_options.detection_thresholds_b = {'default':detection_thresholds[j]}
+        
+        if model_names is not None:
+            pairwise_options.results_description_a = model_names[i]
+            pairwise_options.results_description_b = model_names[j]
         
         options.pairwise_options.append(pairwise_options)
 
