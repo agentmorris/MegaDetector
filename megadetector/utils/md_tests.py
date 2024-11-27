@@ -1210,7 +1210,7 @@ def run_cli_tests(options):
         cmd += ' --overwrite_handling overwrite'
         cmd_results = execute_and_print(cmd)
         
-        # Run again with checkpointing, make sure the output are identical
+        # Run again with checkpointing, make sure the outputs are identical
         cmd += ' --checkpoint_frequency 5'
         inference_output_file_yolo_val_checkpoint = \
             os.path.join(options.scratch_dir,'folder_inference_output_yolo_val_checkpoint.json')
