@@ -380,6 +380,8 @@ def load_detector(model_file, force_cpu=False, force_model_download=False):
     model_file = try_download_known_detector(model_file, 
                                              force_download=force_model_download)
     
+    print('GPU available: {}'.format(is_gpu_available(model_file)))
+    
     start_time = time.time()
     if model_file.endswith('.pb'):
         from megadetector.detection.tf_detector import TFDetector

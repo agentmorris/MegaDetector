@@ -702,11 +702,15 @@ def process_video_folder(options):
         
         if options.reuse_results_if_available and \
             os.path.isfile(frames_json):
+                
                 print('Bypassing inference, loading results from {}'.format(frames_json))
                 with open(frames_json,'r') as f:
                     results = json.load(f)
+                    
         else:
+            
             print('Running MegaDetector')
+            
             results = run_detector_batch.load_and_run_detector_batch(
                 options.model_file, 
                 image_file_names,
@@ -724,6 +728,8 @@ def process_video_folder(options):
                 frames_json,
                 relative_path_base=frame_output_folder,
                 detector_file=options.model_file)
+            
+        # ...if we're re-using existing results / running MD
         
     # ...if we're running MD on in-memory frames vs. extracting frames to disk
     
