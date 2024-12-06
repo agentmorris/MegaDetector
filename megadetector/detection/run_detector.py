@@ -446,8 +446,6 @@ def load_and_run_detector(model_file,
     # Possibly automatically download the model
     model_file = try_download_known_detector(model_file, force_download=force_model_download)
 
-    print('GPU available: {}'.format(is_gpu_available(model_file)))
-    
     detector = load_detector(model_file)
 
     detection_results = []
