@@ -183,6 +183,11 @@ class YoloInferenceOptions:
         #: Maximum number of images to run in a single chunk
         self.checkpoint_frequency = None
         
+        #: By default, if we're creating symlinks to images, we append a unique job ID to the 
+        #: symlink folder.  If the caller is 100% sure that the symlink folder can be re-used
+        #: across calls, this can be set to False.
+        self.append_job_id_to_symlink_folder = True
+        
     # ...def __init__()
     
 # ...YoloInferenceOptions()
@@ -228,7 +233,10 @@ def run_inference_with_yolo_val(options):
     
     for k in options.__dict__.keys():
         if k not in default_options.__dict__:
-            print('Warning: unexpected variable {} in options object'.format(k))
+            # Print warnings about unexpected variables, except for things like
+            # "no_append_job_id_to_symlink_folder", which just negate existing objects
+            if not k.startswith('no_'):
+                print('Warning: unexpected variable {} in options object'.format(k))
             
     if options.model_type == 'yolov8':
         
@@ -318,8 +326,12 @@ def run_inference_with_yolo_val(options):
         yolo_results_folder = os.path.join(temporary_folder,'yolo_results')
         yolo_folder_is_temp_folder = True
         
-    # Attach a GUID to the symlink folder, regardless of whether we created it
-    symlink_folder_inner = os.path.join(symlink_folder,job_id)
+    if options.append_job_id_to_symlink_folder:
+        # Attach a GUID to the symlink folder, regardless of whether we created it        
+        symlink_folder_inner = os.path.join(symlink_folder,job_id)
+    else:
+        print('Re-using existing symlink folder {}'.format(symlink_folder))
+        symlink_folder_inner = symlink_folder
     
     os.makedirs(symlink_folder_inner,exist_ok=True)
     os.makedirs(yolo_results_folder,exist_ok=True)
@@ -960,10 +972,12 @@ def main():
         '--checkpoint_frequency', default=options.checkpoint_frequency, type=int,
         help='break the job into chunks with no more than this many images (default {})'.format(
             options.checkpoint_frequency))    
-    
+    parser.add_argument(
+        '--no_append_job_id_to_symlink_folder', action='store_true',
+        help="don't append a unique job ID to the symlink folder name")
     parser.add_argument(
         '--nonrecursive', action='store_true',
-        help='Disable recursive folder processing')
+        help='disable recursive folder processing')
     
     parser.add_argument(
         '--preview_yolo_command_only', action='store_true',
@@ -1014,6 +1028,7 @@ def main():
         options.input_folder = None        
         
     options.recursive = (not options.nonrecursive)
+    options.append_job_id_to_symlink_folder = (not options.no_append_job_id_to_symlink_folder)
     options.remove_symlink_folder = (not options.no_remove_symlink_folder)
     options.remove_yolo_results_folder = (not options.no_remove_yolo_results_folder)
     options.use_symlinks = (not options.no_use_symlinks)
