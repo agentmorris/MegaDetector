@@ -783,7 +783,7 @@ def run_inference_with_yolo_val(options):
       
     if options.save_yolo_debug_output:
         
-        with open(os.path.join(yolo_results_folder,'yolo_console_output.txt'),'w') as f:
+        with open(os.path.join(yolo_results_folder,'yolo_console_output.txt'),'w',encoding='utf-8') as f:
             for s in yolo_console_output:
                 f.write(s + '\n')
         with open(os.path.join(yolo_results_folder,'image_id_to_file.json'),'w') as f:
@@ -817,16 +817,36 @@ def run_inference_with_yolo_val(options):
         # 
         # line = "test: WARNING: /tmp/md_to_yolo/md_to_yolo_xyz/symlinks/xyz/0000000004.jpg: ignoring corrupt image/label: cannot identify image file '/tmp/md-tests/md-test-images/corrupt-images/real-file.jpg'"
         #
+        # Windows example:
+        #
+        # line = "test: WARNING: g:\\temp\\md-test-images\\corrupt-images\\irfanview-can-still-read-me-caltech_camera_traps_5a0e37cc-23d2-11e8-a6a3-ec086b02610b.jpg: ignoring corrupt image/label: cannot identify image file 'g:\\\\temp\\\\md-test-images\\\\corrupt-images\\\\irfanview-can-still-read-me-caltech_camera_traps_5a0e37cc-23d2-11e8-a6a3-ec086b02610b.jpg'"
+        #
+        
         line = line.replace('⚠️',':')
         if 'ignoring corrupt image/label' in line:
                         
-            tokens = line.split('ignoring corrupt image/label')
-            assert len(tokens) == 2
-            tokens = tokens[0].split(':',maxsplit=3)
-            assert len(tokens) == 4
+            line_tokens = line.split('ignoring corrupt image/label')
+            assert len(line_tokens) == 2
+            
+            tokens = line_tokens[0].split(':') # ,maxsplit=3)
+            tokens = [s.strip() for s in tokens]
+            
+            # ['test', ' WARNING', ' a/b/c/d.jpg', ' ']
+            assert len(tokens[-1]) == 0
+            tokens = tokens[:-1]
             assert 'warning' in tokens[1].lower()
-            image_name = tokens[2].strip()
+            
+            if len(tokens) == 3:
+                image_name = tokens[2].strip()
+            else:
+                # Windows filenames have one extra colon
+                assert len(tokens) == 4
+                assert len(tokens[2]) == 1
+                image_name = ':'.join(tokens[2:4])
+                        
             yolo_read_failures.append(image_name)
+            
+        # ...if this line indicated a corrupt image
             
     # ...for each line in the console output
                     
@@ -1052,6 +1072,80 @@ if __name__ == '__main__':
 #%% Interactive driver
 
 if False:
+
+
+    #%% Debugging
+
+    input_folder = r'g:\temp\md-test-images'    
+    model_filename = 'MDV5A'
+    output_folder = r'g:\temp\yolo-test-out'
+    yolo_working_folder = r'c:\git\yolov5-md'
+    dataset_file = r"g:\temp\md-test-images\dataset.yaml"
+    job_name = 'yolo-debug'
+    symlink_folder = os.path.join(output_folder,'symlinks')
+    yolo_results_folder = os.path.join(output_folder,'yolo_results')
+    model_name = os.path.splitext(os.path.basename(model_filename))[0]
+    
+    output_file = os.path.join(output_folder,'{}_{}-md_format.json'.format(
+        job_name,model_name))
+    
+    options = YoloInferenceOptions()
+    
+    options.yolo_working_folder = yolo_working_folder
+    options.input_folder = input_folder
+    options.output_file = output_file
+    
+    options.yolo_category_id_to_name = dataset_file
+    options.augment = False
+    options.conf_thres = '0.001'
+    options.batch_size = 1
+    options.device_string = '0'
+    options.unique_id_strategy = 'auto'
+    options.overwrite_handling = 'overwrite'
+
+    if options.augment:
+        options.image_size = round(1280 * 1.3)
+    else:
+        options.image_size = 1280
+    
+    options.model_filename = model_filename
+    
+    options.yolo_results_folder = yolo_results_folder # os.path.join(output_folder + 'yolo_results')        
+    options.symlink_folder = symlink_folder # os.path.join(output_folder,'symlinks')
+    options.use_symlinks = False
+    
+    options.remove_symlink_folder = True
+    options.remove_yolo_results_folder = True
+    
+    options.checkpoint_frequency = None
+    
+    cmd = f'python run_inference_with_yolov5_val.py {model_filename} {input_folder} ' + \
+          f'{output_file} --yolo_working_folder {yolo_working_folder} ' + \
+          f' --image_size {options.image_size} --conf_thres {options.conf_thres} ' + \
+          f' --batch_size {options.batch_size} ' + \
+          f' --symlink_folder {options.symlink_folder} --yolo_results_folder {options.yolo_results_folder} ' + \
+          f' --yolo_dataset_file {options.yolo_category_id_to_name} ' + \
+          f' --unique_id_strategy {options.unique_id_strategy} --overwrite_handling {options.overwrite_handling}'
+      
+    if not options.remove_symlink_folder:
+        cmd += ' --no_remove_symlink_folder'
+    if not options.remove_yolo_results_folder: 
+        cmd += ' --no_remove_yolo_results_folder'
+    if options.checkpoint_frequency is not None:
+        cmd += f' --checkpoint_frequency {options.checkpoint_frequency}'
+    if not options.use_symlinks:
+        cmd += ' --no_use_symlinks'
+    if not options.augment:
+        cmd += ' --augment_enabled 0'
+        
+    print(cmd)
+    execute_in_python = False
+    if execute_in_python:
+        run_inference_with_yolo_val(options)
+    else:
+        import clipboard; clipboard.copy(cmd)
+
+
 
     #%% Run inference on a folder
     
