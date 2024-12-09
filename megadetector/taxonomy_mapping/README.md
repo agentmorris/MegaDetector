@@ -2,7 +2,7 @@
 
 This folder contains scripts and some reference files used for mapping data on LILA to the iNaturalist taxonomy.  The results of this process are published [here](https://lila.science/taxonomy-mapping-for-camera-trap-data-sets/).
 
-This folder is only for generating and maintaining this mapping If you want to <i>use</i> data from LILA, don't worry about this folder; instead, see the [lila](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/data_management/lila) folder.
+This folder is only for generating and maintaining this mapping. If you want to <i>use</i> data from LILA, don't worry about this folder; instead, see the [lila](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/data_management/lila) folder.
 
 
 ## To add a new dataset come to the harmonized LILA taxonomy

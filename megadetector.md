@@ -833,9 +833,9 @@ pip install -r envs/requirements.txt
 export PYTHONPATH="$HOME/git/MegaDetector"
 ```
 
-YMMV.
+### Using the MD Python package
 
-If you're feeling even more experimental, this also works:
+You can also install the MD Python package without cloning the repo at all, like so:
 
 ```batch
 mamba create -n megadetector-pip python=3.11 pip -y
