@@ -684,7 +684,7 @@ def get_text_size(font,s):
         s (str): the string whose size we should query
     
     Returns:
-        tuple: (w,h), both floats in pixel coordinatess    
+        tuple: (w,h), both floats in pixel coordinates    
     """
     
     # This is what we did w/Pillow 9

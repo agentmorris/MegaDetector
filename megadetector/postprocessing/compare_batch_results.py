@@ -765,12 +765,12 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
         
         filenames_only_in_gt = gt_filenames_set.difference(filenames_to_compare_set)
         if len(filenames_only_in_gt) > 0:
-            print('Warnining: {} files are only available in the ground truth (not in MD results)'.format(
+            print('Warning: {} files are only available in the ground truth (not in MD results)'.format(
                 len(filenames_only_in_gt)))
         
         filenames_only_in_results = gt_filenames_set.difference(gt_filenames)
         if len(filenames_only_in_results) > 0:
-            print('Warnining: {} files are only available in the MD results (not in ground truth)'.format(
+            print('Warning: {} files are only available in the MD results (not in ground truth)'.format(
                 len(filenames_only_in_results)))
         
         if options.error_on_non_matching_lists:

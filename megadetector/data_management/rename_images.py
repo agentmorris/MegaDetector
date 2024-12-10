@@ -1,6 +1,6 @@
 """
 
-rename_images.py.py
+rename_images.py
 
 Copies images from a possibly-nested folder structure to a flat folder structure, including EXIF
 timestamps in each filename.  Loosely equivalent to camtrapR's imageRename() function.
