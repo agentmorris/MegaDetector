@@ -45,7 +45,7 @@ random.seed(0)
 
 #%% Download and open the giant table of image URLs and labels
 
-# Takes ~60 seconds to download, unzip, and open
+# Takes ~2 minutes to download, unzip, and open
 df = read_lila_all_images_file(metadata_dir)
 
 
@@ -142,6 +142,12 @@ download_results = parallel_download_urls(url_to_target_file=url_to_target_file,
                                           overwrite=False,
                                           n_workers=n_download_threads,
                                           pool_type='thread')
+
+
+#%% Open output folder
+
+from megadetector.utils.path_utils import open_file
+open_file(output_dir)
 
 
 #%% Scrap

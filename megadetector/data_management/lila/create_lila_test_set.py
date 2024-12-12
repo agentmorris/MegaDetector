@@ -16,8 +16,6 @@ import random
 from megadetector.data_management.lila.lila_common import \
     read_lila_metadata, read_metadata_file_for_dataset
 
-from megadetector.utils.url_utils import download_url
-
 n_empty_images_per_dataset = 1
 n_non_empty_images_per_dataset = 1
 
@@ -47,6 +45,8 @@ for ds_name in metadata_table.keys():
 
 
 #%% Choose images from each dataset
+
+# Takes ~60 seconds
 
 # ds_name = (list(metadata_table.keys()))[0]
 for ds_name in metadata_table.keys():
@@ -102,10 +102,12 @@ for ds_name in metadata_table.keys():
 
 #%% Convert to URLs
 
+preferred_cloud = 'gcp'
+
 # ds_name = (list(metadata_table.keys()))[0]
 for ds_name in metadata_table.keys():
 
-    base_url = metadata_table[ds_name]['image_base_url']
+    base_url = metadata_table[ds_name]['image_base_url_' + preferred_cloud]
     assert not base_url.endswith('/')
     
     # Retrieve image file names
@@ -123,14 +125,14 @@ for ds_name in metadata_table.keys():
 # ...for each dataset
 
 
-#%% Download those image files
+#%% Download image files (prep)
 
-# TODO: trivially parallelizable
-#
+url_to_target_file = {}
+
 # ds_name = (list(metadata_table.keys()))[0]
 for ds_name in metadata_table.keys():
 
-    base_url = metadata_table[ds_name]['image_base_url']
+    base_url = metadata_table[ds_name]['image_base_url_' + preferred_cloud]
     assert not base_url.endswith('/')
     base_url += '/'
         
@@ -142,11 +144,23 @@ for ds_name in metadata_table.keys():
         assert base_url in url
         output_file_relative = ds_name.lower().replace(' ','_') + '_' + url.replace(base_url,'').replace('/','_').replace('\\','_')
         output_file_absolute = os.path.join(output_dir,output_file_relative)
-        try:
-            download_url(url, destination_filename=output_file_absolute, force_download=False, verbose=True)
-        except Exception as e:
-            print('\n*** Error downloading {} ***\n{}'.format(url,str(e)))
+        url_to_target_file[url] = output_file_absolute
         
     # ...for each url
     
 # ...for each dataset
+
+
+#%% Download image files (execution)
+
+from megadetector.utils.url_utils import parallel_download_urls
+
+download_results = parallel_download_urls(url_to_target_file,
+                                          verbose=False,
+                                          overwrite=False,
+                                          n_workers=20,
+                                          pool_type='thread')
+
+# r = download_results[0]
+for r in download_results:
+   assert r['status'] in ('skipped','success')

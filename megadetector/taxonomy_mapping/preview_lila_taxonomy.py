@@ -16,7 +16,7 @@ import os
 import pandas as pd
 
 # lila_taxonomy_file = r"c:\git\agentmorrisprivate\lila-taxonomy\lila-taxonomy-mapping.csv"
-lila_taxonomy_file = os.path.expanduser('~/lila/lila_additions_2024.10.05.csv')
+lila_taxonomy_file = os.path.expanduser('~/lila/lila_additions_2024.12.11.csv')
 
 preview_base = os.path.expanduser('~/lila/lila_taxonomy_preview')
 os.makedirs(preview_base,exist_ok=True)
@@ -399,6 +399,8 @@ images_per_query = 15
 min_valid_images_per_query = 3
 min_valid_image_size = 3000
 
+# TODO: parallelize this loop
+#
 # i_row = 0; row = df.iloc[i_row]
 for i_row,row in df.iterrows():
     
