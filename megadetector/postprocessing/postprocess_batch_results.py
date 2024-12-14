@@ -898,7 +898,6 @@ def _render_image_with_gt(file_info,ground_truth_indexed_db,
 #%% Main function
 
 def process_batch_results(options):
-
     """
     Given a .json or .csv file containing MD results, do one or more of the following:
 

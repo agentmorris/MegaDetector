@@ -204,7 +204,7 @@ def validate_batch_results(json_filename,options=None):
         # ...for each image
             
         
-        ## Checking on other keys
+        ## Validation of other keys
         
         for k in d.keys():                        
             if (k not in typical_keys) and (k not in required_keys):
