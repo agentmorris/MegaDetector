@@ -15,6 +15,8 @@ import sys
 import json
 import argparse
 
+from tqdm import tqdm
+
 from megadetector.detection.video_utils import is_video_file
 from megadetector.utils.ct_utils import args_to_object, is_list_sorted # noqa
 
@@ -45,6 +47,9 @@ class ValidateBatchResultsOptions:
         
         #: Should we return the loaded data, or just the validation results?
         self.return_data = False
+        
+        #: Enable additional debug output
+        self.verbose = False
     
 # ...class ValidateBatchResultsOptions
 
@@ -73,6 +78,9 @@ def validate_batch_results(json_filename,options=None):
     if options is None:
         options = ValidateBatchResultsOptions()
     
+    if options.verbose:
+        print('Loading results from {}'.format(json_filename))
+        
     with open(json_filename,'r') as f:
         d = json.load(f)
     
@@ -140,8 +148,11 @@ def validate_batch_results(json_filename,options=None):
         if not isinstance(d['images'],list):
             raise ValueError('Invalid images field')
         
+        if options.verbose:
+            print('Validating images')
+            
         # im = d['images'][0]
-        for i_im,im in enumerate(d['images']):
+        for i_im,im in tqdm(enumerate(d['images']),total=len(d['images']),disable=(not options.verbose)):
             
             if not isinstance(im,dict):
                 raise ValueError('Invalid image at index {}'.format(i_im))
@@ -215,6 +226,8 @@ def validate_batch_results(json_filename,options=None):
         
         validation_results['errors'].append(str(e))
         
+    # ...try/except
+    
     if options.return_data:
         to_return = d
     else:
