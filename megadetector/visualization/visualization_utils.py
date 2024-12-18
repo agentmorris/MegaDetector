@@ -1489,10 +1489,10 @@ def get_image_size(im,verbose=False):
 
 
 def parallel_get_image_sizes(filenames,
-                            max_workers=16, 
-                            use_threads=True, 
-                            recursive=True,
-                            verbose=False):
+                             max_workers=16, 
+                             use_threads=True, 
+                             recursive=True,
+                             verbose=False):
     """
     Retrieve image sizes for a list or folder of images
     
@@ -1507,7 +1507,7 @@ def parallel_get_image_sizes(filenames,
         verbose (bool, optional): enable additional debug output
             
     Returns:
-        dict: a dict mapping filenames to (w,h) tuples; values will be None for images that fail
+        dict: a dict mapping filenames to (w,h) tuples; the value will be None for images that fail
         to load.
     """
 
