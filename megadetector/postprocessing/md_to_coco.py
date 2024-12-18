@@ -3,7 +3,8 @@
 md_to_coco.py
 
 "Converts" MegaDetector output files to COCO format.  "Converts" is in quotes because
-this is an opinionated transformation that requires a confidence threshold.
+this is an opinionated transformation that requires a confidence threshold for most 
+applications.
 
 Does not currently handle classification information.
 
@@ -16,9 +17,6 @@ import json
 import uuid
 
 from tqdm import tqdm
-
-from multiprocessing.pool import Pool, ThreadPool
-from functools import partial
 
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.utils.path_utils import insert_before_extension
