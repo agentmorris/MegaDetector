@@ -79,6 +79,7 @@ print('Found {} folders for {} files'.format(len(folder_to_frame_files),len(fram
 
 video_filenames = video_utils.find_videos(input_folder,recursive=True)
 video_filenames = [os.path.relpath(fn,input_folder) for fn in video_filenames]
+video_filenames = [fn.replace('\\','/') for fn in video_filenames]
 print('Input folder contains {} videos'.format(len(video_filenames)))
 
 
