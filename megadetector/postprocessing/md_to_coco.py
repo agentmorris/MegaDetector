@@ -41,13 +41,13 @@ def md_to_coco(md_results_file,
                image_filename_to_size=None):
     """
     "Converts" MegaDetector output files to COCO format.  "Converts" is in quotes because
-    this is an opinionated transformation that requires a confidence threshold.
+    this is an opinionated transformation that typically requires a confidence threshold.
     
     The default confidence threshold is not 0; the assumption is that by default, you are 
     going to treat the resulting COCO file as a set of labels.  If you are using the resulting COCO
-    file to evaluate a detector, you likely want a default confidence threshold of 0.  Confidence
-    values will be written to the semi-standard "score" field for each image if 
-    preserve_nonstandard_metadata is True.
+    file to *evaluate* a detector, rather than as a set of labels, you likely want a 
+    confidence threshold of 0.  Confidence values will be written to the semi-standard "score" 
+    field for each image (regardless of the threshold) if preserve_nonstandard_metadata is True.
     
     A folder of images is required if width and height information are not available 
     in the MD results file.
@@ -67,8 +67,8 @@ def md_to_coco(md_results_file,
         info (dict, optional): arbitrary metadata to include in an "info" field in the COCO-formatted
             output
         preserve_nonstandard_metadata (bool, optional): if this is True, confidence will be preserved in a 
-            non-standard "conf" field in each annotation, and any random fields present in each image's data
-            (e.g. EXIF metadata) will be propagated to COCO output    
+            non-standard "score" field in each annotation, and any random fields present in each image's 
+            data (e.g. EXIF metadata) will be propagated to COCO output    
         include_failed_images (bool, optional): if this is True, failed images will be propagated to COCO output 
             with a non-empty "failure" field and no other fields, otherwise failed images will be skipped.
         include_annotations_without_bounding_boxes (bool, optional): if this is True, annotations with
