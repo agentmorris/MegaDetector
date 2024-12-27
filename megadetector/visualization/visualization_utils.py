@@ -15,7 +15,7 @@ import os
 import cv2
 
 from io import BytesIO
-from PIL import Image, ImageFile, ImageFont, ImageDraw, ImageOps
+from PIL import Image, ImageFile, ImageFont, ImageDraw
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
 from tqdm import tqdm
