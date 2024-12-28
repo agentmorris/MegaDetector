@@ -24,6 +24,7 @@ dependencies:
   - requests=2.31.0
   - pyqtree=1.0.0
   - scikit-learn=1.2.2
+  - python-dateutil
 
   # So we can run Jupyter notebooks in this environment
   - nb_conda_kernels=2.3.1

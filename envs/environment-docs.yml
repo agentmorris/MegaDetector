@@ -22,6 +22,7 @@ dependencies:
 - pandas
 - pytorch::pytorch
 - pytorch::torchvision
+- python-dateutil
 - pip
 - pip:
   - sphinx-argparse-cli

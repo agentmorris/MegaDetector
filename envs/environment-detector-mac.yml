@@ -30,7 +30,8 @@ dependencies:
   - requests
   - pyqtree
   - scikit-learn>=0.19.1
-
+  - python-dateutil
+  
   # So we can run Jupyter notebooks in this environment
   - nb_conda_kernels
   - ipykernel

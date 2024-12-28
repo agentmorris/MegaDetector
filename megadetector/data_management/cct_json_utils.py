@@ -12,6 +12,8 @@ https://github.com/agentmorris/MegaDetector/blob/main/megadetector/data_manageme
 
 import json
 import os
+import datetime
+import dateutil
 
 from tqdm import tqdm
 from collections import defaultdict, OrderedDict
@@ -302,6 +304,106 @@ class SequenceOptions:
     
 #%% Functions
 
+def write_object_with_serialized_datetimes(d,json_fn):
+    """
+    Writes the object [d] to the .json file [json_fn] with a standard approach
+    to serializing Python datetime objects.
+    
+    Args:
+        d (obj): the object to write, typically a dict
+        json_fn (str): the output filename        
+    """
+    
+    # This writes datetimes as:
+    #
+    # 2022-12-31T09:52:50
+    def json_serialize_datetime(obj):
+        if isinstance(obj, (datetime.datetime, datetime.date)):
+            return obj.isoformat()
+        raise TypeError('Object {} (type {}) not serializable'.format(
+            str(obj),type(obj)))
+        
+    with open(json_fn,'w') as f:
+        json.dump(d,f,indent=1,default=json_serialize_datetime)
+
+
+def parse_datetimes_from_cct_image_list(images,conversion_failure_behavior='error'):
+    """
+    Given the "images" field from a COCO camera traps dictionary, converts all
+    string-formatted datetime fields to Python datetimes, making reasonable assumptions 
+    about datetime representations.  Modifies [images] in place.
+    
+    Args:
+        images (list): a list of dicts in CCT images format
+        conversion_failure_behavior (str, optional): determines what happens on a failed
+            conversion; can be "error" (raise an error), "str" (leave as a string), or
+            "none" (convert to None)
+    
+    Returns:
+        images: the input list, with datetimes converted (after modifying in place)
+    """
+    
+    assert isinstance(images,list)
+    
+    for im in images:
+        
+        if 'datetime' not in im:
+            continue
+        if isinstance(im['datetime'],datetime.datetime):
+            continue
+        try:
+            dt = dateutil.parser.parse(im['datetime'])
+            im['datetime'] = dt
+        except Exception as e:
+            s = 'could not parse datetime {}: {}'.format(str(im['datetime']),str(e))
+            if conversion_failure_behavior == 'error':
+                raise ValueError(s)
+            elif conversion_failure_behavior == 'str':
+                print('Warning: {}'.format(s))
+                pass
+            elif conversion_failure_behavior == 'none':
+                print('Warning: {}'.format(s))
+                im['datetime'] = None
+                
+    # ...for each image        
+    
+    return images
+    
+# ...def parse_datetimes_from_cct_image_list(...)
+
+
+def parse_datetimes_from_cct_dict(d,conversion_failure_behavior='error'):
+    """
+    Given a COCO camera traps dictionary that may just have been loaded from file,
+    converts all string-formatted datetime fields to Python datetimes, making
+    reasonable assumptions about datetime representations.  Modifies [d] in place
+    if [d] is supplied as a dict
+    
+    Args:
+        d (dict or str): a dict in CCT format or a filename pointing to a CCT .json file
+        conversion_failure_behavior (str, optional): determines what happens on a failed
+            conversion; can be "error" (raise an error), "str" (leave as a string), or
+            "none" (convert to None)
+    
+    Returns:
+        dict: the CCT dict with converted datetimes.
+    """
+    
+    if isinstance(d,str):        
+        assert os.path.isfile(d), 'Could not find .json file {}'.format(d)
+        with open(d,'r') as f:
+            d = json.load(f)
+    
+    images = d['images']
+    
+    # Modifies in place
+    _ = parse_datetimes_from_cct_image_list(images)
+    
+    return d
+            
+# ...def parse_datetimes_from_cct_dict(...)
+
+
 def create_sequences(image_info,options=None):
     """
     Synthesizes episodes/sequences/bursts for the images in [image_info].
@@ -310,21 +412,41 @@ def create_sequences(image_info,options=None):
     fields for each image.
     
     Args:
-        image_info (str, dict, or list): a dict in CCT format, a CCT .json file, or just the 'images' component
-            of a CCT dataset (a list of dicts with  fields 'file_name' (str), 'datetime' (datetime), and
-            'location' (str)).
+        image_info (str, dict, or list): a dict in CCT format, a CCT .json file, or just the 
+            'images' component of a CCT dataset (a list of dicts with  fields 'file_name' (str), 
+            'datetime' (datetime), and 'location' (str)).
+        options (SequenceOptions): options parameterizing the assembly of images into sequences;
+            see the SequenceOptions class for details.
+            
+    Returns:
+        image_info: if [image_info] is passed as a list, returns the list, otherwise returns
+            a CCT-formatted dict.
     """
     
     if options is None:
         options = SequenceOptions()
     
-    if isinstance(image_info,str):
+    to_return = None
+    
+    if isinstance(image_info,list):
+        to_return = image_info
+        
+    elif isinstance(image_info,str):
         with open(image_info,'r') as f:
-            image_info = json.load(f)
+            d = json.load(f)
+            to_return = d
+            image_info = d['images']
         
-    if isinstance(image_info,dict):
+    elif isinstance(image_info,dict):
+        to_return = image_info
         image_info = image_info['images']
+    
+    else:
+        raise ValueError('Unrecognized type for [image_info]')
         
+    # Modifies the images in place
+    _ = parse_datetimes_from_cct_image_list(image_info)
+    
     # Find all unique locations
     locations = set()
     for im in image_info:
@@ -401,4 +523,18 @@ def create_sequences(image_info,options=None):
     
     print('Created {} sequences from {} images'.format(len(all_sequences),len(image_info)))
     
-# ...create_sequences()
+    return to_return
+
+# ...def create_sequences(...)
+
+
+#%% Test drivers
+
+if False:
+    
+    pass
+
+    #%% 
+    
+    fn = r'g:\temp\test.json'
+    d = parse_datetimes_from_cct_dict(fn,conversion_failure_behavior='error')

@@ -16,7 +16,7 @@ path.  No attempt is made to be consistent in format across the two approaches.
 import os
 import subprocess
 import json
-from datetime import date, datetime
+from datetime import datetime
 
 from multiprocessing.pool import ThreadPool as ThreadPool
 from multiprocessing.pool import Pool as Pool
@@ -27,6 +27,7 @@ from PIL import Image, ExifTags
 from megadetector.utils.path_utils import find_images, is_executable
 from megadetector.utils.ct_utils import args_to_object
 from megadetector.utils.ct_utils import image_file_to_camera_folder
+from megadetector.data_management.cct_json_utils import write_object_with_serialized_datetimes
 
 debug_max_images = None
 
@@ -88,8 +89,8 @@ class ReadExifOptions:
 
 class ExifResultsToCCTOptions:
     """
-    Options controlling the behavior of exif_results_to_cct() (which reformats the datetime information)
-    extracted by read_exif_from_folder().
+    Options controlling the behavior of exif_results_to_cct() (which reformats the datetime 
+    information) extracted by read_exif_from_folder().
     """
     
     def __init__(self):
@@ -813,15 +814,8 @@ def exif_results_to_cct(exif_results,cct_output_file=None,options=None):
     d['annotations'] = []
     d['categories'] = []
     
-    def json_serialize_datetime(obj):
-        if isinstance(obj, (datetime, date)):
-            return obj.isoformat()
-        raise TypeError('Object {} (type {}) not serializable'.format(
-            str(obj),type(obj)))
-        
     if cct_output_file is not None:
-        with open(cct_output_file,'w') as f:
-            json.dump(d,f,indent=1,default=json_serialize_datetime)
+        write_object_with_serialized_datetimes(d,cct_output_file)
     
     return d
 
