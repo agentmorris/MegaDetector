@@ -365,7 +365,8 @@ def load_detector(model_file, force_cpu=False, force_model_download=False):
     Loads a TF or PT detector, depending on the extension of model_file.
     
     Args:
-        model_file (str): model filename, e.g. c:/x/z/md_v5a.0.0.pt
+        model_file (str): model filename (e.g. c:/x/z/md_v5a.0.0.pt) or known model
+            name (e.g. "MDV5A")
         force_cpu (bool, optional): force the model to run on the CPU even if a GPU
             is available
         force_model_download (bool, optional): force downloading the model file if

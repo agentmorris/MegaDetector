@@ -1047,9 +1047,9 @@ def draw_bounding_boxes_on_file(input_file,
     Args:
         input_file (str): filename or URL to load
         output_file (str, optional): filename to which we should write the rendered image
-        detections (list): a list of dictionaries with keys 'conf' and 'bbox';
+        detections (list): a list of dictionaries with keys 'conf', 'bbox', and 'category';
             boxes are length-four arrays formatted as [x,y,w,h], normalized, 
-            upper-left origin (this is the standard MD detection format)
+            upper-left origin (this is the standard MD detection format). 'category' is a string-int.
         detector_label_map (dict, optional): a dict mapping category IDs to strings.  If this 
             is None, no confidence values or identifiers are shown.  If this is {}, just category 
             indices and confidence values are shown.

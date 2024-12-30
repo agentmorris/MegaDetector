@@ -59,8 +59,13 @@ def execute(cmd,encoding=None,errors=None,env=None,verbose=False):
     return return_code
 
 
-def execute_and_print(cmd,print_output=True,encoding=None,errors=None,
-                      env=None,verbose=False,catch_exceptions=True,
+def execute_and_print(cmd,
+                      print_output=True,
+                      encoding=None,
+                      errors=None,
+                      env=None,
+                      verbose=False,
+                      catch_exceptions=True,
                       echo_command=False):
     """
     Run [cmd] (a single string) in a shell, capturing and printing output.  Returns
@@ -73,7 +78,8 @@ def execute_and_print(cmd,print_output=True,encoding=None,errors=None,
     
     Args:
         cmd (str): command to run
-        print_output (bool, optional): whether to print output from [cmd]
+        print_output (bool, optional): whether to print output from [cmd] (stdout is 
+            captured regardless of the value of print_output)
         encoding (str, optional): stdout encoding, see Popen() documentation
         errors (str, optional): error handling, see Popen() documentation
         env (dict, optional): environment variables, see Popen() documentation
