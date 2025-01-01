@@ -52,6 +52,8 @@ print('Loaded metadata URLs for {} datasets'.format(len(metadata_table)))
 
 #%% Download and extract metadata and MD results for each dataset
 
+# Takes ~60 seconds if everything needs to beo downloaded and unzipped
+
 for ds_name in metadata_table.keys():    
 
     # Download the main metadata file for this dataset
@@ -73,10 +75,12 @@ for ds_name in metadata_table.keys():
                                                json_url=md_results_url,
                                                force_download=force_download)
 
+# ...for each dataset
+
 
 #%% Build up a list of URLs to test
 
-# Takes ~15 mins, since it has to open all the giant .json files
+# Takes ~15 mins, since it has to open all the giant .json files.
 
 url_to_source = {}
 

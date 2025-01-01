@@ -57,6 +57,7 @@ ds_name_to_annotation_level['Channel IslandsCamera Traps'] = 'image'
 ds_name_to_annotation_level['WCS Camera Traps'] = 'sequence'
 ds_name_to_annotation_level['Wellington Camera Traps'] = 'sequence'
 ds_name_to_annotation_level['NACTI'] = 'unknown'
+ds_name_to_annotation_level['Seattle(ish) Camera Traps'] = 'image'
 
 known_unmapped_labels = set(['WCS Camera Traps:#ref!'])
 
@@ -103,7 +104,7 @@ for i_row,row in taxonomy_df.iterrows():
 
 #%% Process annotations for each dataset
 
-# Takes several hours
+# Takes a few hours
 
 # The order of these headers needs to match the order in which fields are added later in this cell;
 # don't mess with this order.
@@ -173,7 +174,7 @@ with open(output_file,'w',encoding='utf-8',newline='') as f:
             expected_annotation_level = None
                     
         # im = images[10]
-        for i_image,im in enumerate(images):
+        for i_image,im in tqdm(enumerate(images),total=len(images)):
             
             if (debug_max_images_per_dataset is not None) and (debug_max_images_per_dataset > 0) \
                 and (i_image >= debug_max_images_per_dataset):

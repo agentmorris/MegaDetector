@@ -22,7 +22,8 @@ for s in lila_base_urls.values():
     assert s.endswith('/')
 
 # If any of these strings appear in the common name of a species, we'll download that image
-species_of_interest = ['grey fox','gray fox','cape fox','red fox','kit fox']
+# species_of_interest = ['grey fox','gray fox','cape fox','red fox','kit fox']
+species_of_interest = ['bear']
 
 # We'll write images, metadata downloads, and temporary files here
 lila_local_base = os.path.expanduser('~/lila')

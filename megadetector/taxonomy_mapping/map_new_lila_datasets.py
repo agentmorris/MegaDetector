@@ -15,10 +15,10 @@ import json
 # Created by get_lila_category_list.py
 input_lila_category_list_file = os.path.expanduser('~/lila/lila_categories_list/lila_dataset_to_categories.json')
 
-output_file = os.path.expanduser('~/lila/lila_additions_2024.12.11.csv')
+output_file = os.path.expanduser('~/lila/lila_additions_2024.12.31.csv')
 
 datasets_to_map = [
-    'Snapshot Safari 2024 Expansion'
+    'Seattle(ish) Camera Traps'
     ]
 
 
@@ -141,7 +141,7 @@ if False:
     # q = 'white-throated monkey'
     # q = 'cingulata'
     # q = 'notamacropus'
-    q = 'blue wildebeest'
+    q = 'insects'
     taxonomy_preference = 'inat'
     m = get_preferred_taxonomic_match(q,taxonomy_preference)
     # print(m.scientific_name); import clipboard; clipboard.copy(m.scientific_name)

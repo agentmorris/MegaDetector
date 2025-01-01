@@ -89,7 +89,7 @@ if False:
                         'genus',
                         'species','subspecies','variety']
 
-    levels_to_exclude = ['stateofmatter','zoosection','parvorder','complex']
+    levels_to_exclude = ['stateofmatter','zoosection','parvorder','complex','epifamily']
 
     for s in levels_to_exclude:
         assert s not in levels_to_include
