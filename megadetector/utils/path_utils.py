@@ -947,7 +947,7 @@ def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, com
         output_fn (str, optional): output filename; if this is None, we'll write to [input_folder].zip
         overwrite (bool, optional): whether to overwrite an existing .tar file
         verbose (bool, optional): enable additional debug console output
-        compresslevel (int, optional): compression level to use, between 0 and 9
+        compresslevel (int, optional): compression level to use, between 0 and 9        
         
     Returns:
         str: the output zipfile, whether we created it or determined that it already exists    
