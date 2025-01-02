@@ -107,7 +107,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Wildlife Coexistence Lab](https://wildlife.forestry.ubc.ca/), University of British Columbia
 * [Wildlife Research](https://www.dfw.state.or.us/wildlife/research/index.asp), Oregon Department of Fish and Wildlife
 * [Wildlife Division](https://www.michigan.gov/dnr/about/contact/wildlife), Michigan Department of Natural Resources
-
+* [Kohl Wildlife Lab](https://kohlwildlifelab.com/), University of Georgia
 * Department of Ecology, TU Berlin
 * Ghost Cat Analytics
 * Protected Areas Unit, Canadian Wildlife Service
