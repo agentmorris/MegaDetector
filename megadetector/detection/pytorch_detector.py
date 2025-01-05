@@ -2,12 +2,15 @@
 
 pytorch_detector.py
 
-Module to run MegaDetector v5.
+Module to run YOLO-based MegaDetector models.
 
 """
 
 #%% Imports and constants
 
+import sys
+import cv2
+import math
 import torch
 import numpy as np
 import traceback
@@ -92,7 +95,8 @@ if not utils_imported:
         except ImportError:
             from utils.general import scale_boxes as scale_coords
         utils_imported = True
-        print('Imported YOLOv5 as utils.*')
+        imported_file = sys.modules[scale_coords.__module__].__file__
+        print('Imported YOLOv5 as utils.* from {}'.format(imported_file))
                 
     except ModuleNotFoundError as e:
         raise ModuleNotFoundError('Could not import YOLOv5 functions:\n{}'.format(str(e)))
@@ -106,20 +110,50 @@ print(f'Using PyTorch version {torch.__version__}')
 
 class PTDetector:
 
-    #: Image size passed to YOLOv5's letterbox() function; 1280 means "1280 on the long side, preserving 
-    #: aspect ratio"
-    #:
-    #: :meta private:
-    IMAGE_SIZE = 1280
     
-    #: Stride size passed to YOLOv5's letterbox() function
-    #:
-    #: :meta private:
-    STRIDE = 64
-
-    def __init__(self, model_path, force_cpu=False, use_model_native_classes= False):
+    def __init__(self, model_path, detector_options=None):
         
+        # Parse options specific to this detector family
+        force_cpu = False
+        use_model_native_classes = False
+        compatibility_mode = 'classic'
+                
+        if detector_options is not None:
+            
+            if 'force_cpu' in detector_options:
+                force_cpu = detector_options['force_cpu']
+            if 'use_model_native_classes' in detector_options:
+                use_model_native_classes = detector_options['use_model_native_classes']
+            if 'compatibility_mode' in detector_options:
+                compatibility_mode = detector_options['compatibility_mode']
+        
+        print('Loading PT detector with compatibility mode {}'.format(compatibility_mode))
+        
+        #: Image size passed to YOLOv5's letterbox() function; 1280 means "1280 on the long side, preserving 
+        #: aspect ratio".
+        self.default_image_size = 1280
+    
+        #: Stride size passed to YOLOv5's letterbox() function
+        self.letterbox_stride = 64
+
+        #: Either a string ('cpu','cuda:0') or a torch.device()
         self.device = 'cpu'
+        
+        #: Have we already printed a warning about using a non-standard image size?
+        #:
+        #: :meta private:
+        self.printed_image_size_warning = False
+        
+        #: If this is False, we assume the underlying model is producing class indices in the
+        #: set (0,1,2) (and we assert() on this), and we add 1 to get to the backwards-compatible
+        #: MD classes (1,2,3) before generating output.  If this is True, we use whatever 
+        #: indices the model provides
+        self.use_model_native_classes = use_model_native_classes        
+        
+        #: This allows us to maintain backwards compatibility across a set of changes to the
+        #: way this class does inference.
+        self.compatibility_mode = compatibility_mode
+        
         if not force_cpu:
             if torch.cuda.is_available():
                 self.device = torch.device('cuda:0')
@@ -130,6 +164,7 @@ class PTDetector:
                 pass
         try:
             self.model = PTDetector._load_model(model_path, self.device)
+            
         except Exception as e:
             # In a very esoteric scenario where an old version of YOLOv5 is used to run
             # newer models, we run into an issue because the "Model" class became
@@ -145,10 +180,7 @@ class PTDetector:
         if (self.device != 'cpu'):
             print('Sending model to GPU')
             self.model.to(self.device)
-            
-        self.printed_image_size_warning = False        
-        self.use_model_native_classes = use_model_native_classes
-        
+                    
 
     @staticmethod
     def _load_model(model_pt_path, device):
@@ -192,7 +224,7 @@ class PTDetector:
 
         Args:
             img_original (Image): the PIL Image object (or numpy array) on which we should run the 
-                detector, with EXIF rotation already handled.
+                detector, with EXIF rotation already handled
             image_id (str, optional): a path to identify the image; will be in the "file" field 
                 of the output object
             detection_threshold (float, optional): only detections above this confidence threshold 
@@ -200,7 +232,7 @@ class PTDetector:
             image_size (tuple, optional): image size to use for inference, only mess with this if 
                 (a) you're using a model other than MegaDetector or (b) you know what you're getting into
             skip_image_resizing (bool, optional): whether to skip internal image resizing (and rely on 
-                external resizing)
+                external resizing)... you almost never want ot mess with this
             augment (bool, optional): enable (implementation-specific) image augmentation
 
         Returns:
@@ -224,9 +256,14 @@ class PTDetector:
             if not isinstance(img_original,np.ndarray):                
                 img_original = np.asarray(img_original)
 
-            # Padded resize
-            target_size = PTDetector.IMAGE_SIZE
+            # PIL images are RGB already
+            # img_original = img_original[:, :, ::-1]
             
+            # Save the original shape for scaling boxes later
+            scaling_shape = img_original.shape
+            
+            # If the caller is requesting a specific target size...
+            #
             # Image size can be an int (which translates to a square target size) or (h,w)
             if image_size is not None:
                 
@@ -234,27 +271,81 @@ class PTDetector:
                 
                 if not self.printed_image_size_warning:
                     print('Warning: using user-supplied image size {}'.format(image_size))
-                    self.printed_image_size_warning = True
+                    self.printed_image_size_warning = True                    
             
-                target_size = image_size
-            
+            # Otherwise resize to self.default_image_size
             else:
                 
+                image_size = self.default_image_size
                 self.printed_image_size_warning = False
                 
             # ...if the caller has specified an image size
             
+            # If the caller wants us to skip all the resizing operations...
             if skip_image_resizing:
+                
                 img = img_original
+                
+            # Otherwise we have a bunch of resizing to do...
             else:
-                letterbox_result = letterbox(img_original, 
-                                             new_shape=target_size,
-                                             stride=PTDetector.STRIDE, 
-                                             auto=True)
-                img = letterbox_result[0]                
+                            
+                # In "classic mode", we only do the letterboxing resize, we don't do an
+                # additional initial resizing operation
+                if self.compatibility_mode == 'classic':
+                    
+                    resize_ratio = 1.0
+                    
+                # Resize the image so the long side matches the target image size.  This is not 
+                # letterboxing (i.e., padding) yet, just resizing.
+                else:
+                    
+                    h,w = img_original.shape[:2]
+                    resize_ratio = image_size / max(h,w)
+                    
+                    # Only resize if we have to
+                    if resize_ratio != 1:
+                        
+                        # Match what yolov5 does: use linear interpolation for upsizing; 
+                        # area interpolation for downsizing
+                        if resize_ratio > 1:
+                            interpolation_method = cv2.INTER_LINEAR
+                        else:
+                            interpolation_method = cv2.INTER_AREA                    
+                        img_original = cv2.resize(
+                            img_original, (math.ceil(w * resize_ratio), 
+                                           math.ceil(h * resize_ratio)),
+                            interpolation=interpolation_method)
+
+                if self.compatibility_mode == 'classic':
+                    
+                    letterbox_auto = True
+                    letterbox_scaleup = True
+                    target_shape = image_size
+                    
+                else:
+                    
+                    letterbox_auto = False
+                    letterbox_scaleup = False
+                    letterbox_pad = 0.5
+                    
+                    model_stride = int(self.model.stride.max())
+                    
+                    max_dimension = max(img_original.shape)
+                    normalized_shape = [img_original.shape[0] / max_dimension,
+                                        img_original.shape[1] / max_dimension]
+                    target_shape = np.ceil(np.array(normalized_shape) * image_size / model_stride + letterbox_pad).\
+                        astype(int) * model_stride
+                    
+                # Now we letterbox...
+                img,letterbox_ratio,letterbox_pad = letterbox(img_original, 
+                                                              new_shape=target_shape,
+                                                              stride=self.letterbox_stride, 
+                                                              auto=letterbox_auto,
+                                                              scaleFill=False,
+                                                              scaleup=letterbox_scaleup)
             
             # HWC to CHW; PIL Image is RGB already
-            img = img.transpose((2, 0, 1))
+            img = img.transpose((2, 0, 1)) # [::-1]
             img = np.ascontiguousarray(img)
             img = torch.from_numpy(img)
             img = img.to(self.device)
@@ -267,19 +358,37 @@ class PTDetector:
 
             pred = self.model(img,augment=augment)[0]
 
-            # NMS
+            if self.compatibility_mode == 'classic':
+                nms_conf_thres = detection_threshold
+                nms_iou_thres = 0.45
+                nms_agnostic = False
+                nms_multi_label = False
+            else:
+                nms_conf_thres = 0.01
+                nms_iou_thres = 0.6
+                nms_agnostic = False    
+                # yolov5 sets this to True, but this has some infrastructural implications
+                # that I don't want to deal with.  This is not really a numerical issue.
+                nms_multi_label = False 
+                
+            # As of PyTorch 1.13.0.dev20220824, nms is not implemented for MPS.
+            #
+            # Send predictions back to the CPU for NMS.            
             if self.device == 'mps':
-                # As of PyTorch 1.13.0.dev20220824, nms is not implemented for MPS.
-                #
-                # Send predictions back to the CPU for NMS.
-                pred = non_max_suppression(prediction=pred.cpu(), conf_thres=detection_threshold)
-            else: 
-                pred = non_max_suppression(prediction=pred, conf_thres=detection_threshold)
+                pred_nms = pred.cpu()
+            else:
+                pred_nms = pred
+                
+            pred = non_max_suppression(prediction=pred_nms, 
+                                       conf_thres=nms_conf_thres,
+                                       iou_thres=nms_iou_thres,
+                                       agnostic=nms_agnostic,
+                                       multi_label=nms_multi_label)
 
             # format detections/bounding boxes
             #
             # normalization gain whwh
-            gn = torch.tensor(img_original.shape)[[1, 0, 1, 0]]
+            gn = torch.tensor(scaling_shape)[[1, 0, 1, 0]]
 
             # This is a loop over detection batches, which will always be length 1 in our case,
             # since we're not doing batch inference.
@@ -288,13 +397,23 @@ class PTDetector:
                 if len(det):
                     
                     # Rescale boxes from img_size to im0 size
-                    det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img_original.shape).round()
+                    if self.compatibility_mode == 'classic':
+                        
+                        det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img_original.shape).round()
+                        
+                    else:
+                        # Undo the effect of the padded letterboxing
+                        ratio_pad = ((img_original.shape[0]/scaling_shape[0], img_original.shape[1]/scaling_shape[1]), 
+                                     letterbox_pad)
+                        det[:, :4] = scale_coords(img.shape[2:], det[:, :4], scaling_shape, ratio_pad).round()
 
                     for *xyxy, conf, cls in reversed(det):
                         
-                        # normalized center-x, center-y, width and height
+                        # Convert to normalized cx/cy/w/h (i.e., YOLO format)
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()
 
+                        # Convert from normalized cx/cy/w/h (i.e., YOLO format) to normalized 
+                        # left/top/w/h (i.e., MD format)
                         api_box = ct_utils.convert_yolo_to_xywh(xywh)
 
                         conf = ct_utils.truncate_float(conf.tolist(), precision=CONF_DIGITS)
@@ -327,7 +446,8 @@ class PTDetector:
             
             result['failure'] = FAILURE_INFER
             print('PTDetector: image {} failed during inference: {}\n'.format(image_id, str(e)))
-            traceback.print_exc(e)
+            # traceback.print_exc(e)
+            print(traceback.format_exc())
 
         result['max_detection_conf'] = max_conf
         result['detections'] = detections

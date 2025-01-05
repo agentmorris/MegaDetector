@@ -360,7 +360,7 @@ def is_gpu_available(model_file):
                          format(model_file))
 
 
-def load_detector(model_file, force_cpu=False, force_model_download=False):
+def load_detector(model_file, force_cpu=False, force_model_download=False, detector_options=None):
     r"""
     Loads a TF or PT detector, depending on the extension of model_file.
     
@@ -372,6 +372,8 @@ def load_detector(model_file, force_cpu=False, force_model_download=False):
         force_model_download (bool, optional): force downloading the model file if
             a named model (e.g. "MDV5A") is supplied, even if the local file already
             exists
+        detector_options (dict, optional): key/value pairs that are interpreted differently 
+            by different detectors
     
     Returns:
         object: loaded detector object
@@ -384,17 +386,35 @@ def load_detector(model_file, force_cpu=False, force_model_download=False):
     print('GPU available: {}'.format(is_gpu_available(model_file)))
     
     start_time = time.time()
+
     if model_file.endswith('.pb'):
+
         from megadetector.detection.tf_detector import TFDetector
         if force_cpu:
             raise ValueError('force_cpu is not currently supported for TF detectors, ' + \
                              'use CUDA_VISIBLE_DEVICES=-1 instead')
-        detector = TFDetector(model_file)
+        detector = TFDetector(model_file, detector_options)
+
     elif model_file.endswith('.pt'):
+        
         from megadetector.detection.pytorch_detector import PTDetector
-        detector = PTDetector(model_file, force_cpu, USE_MODEL_NATIVE_CLASSES)        
+        
+        # Prepare options specific to the PTDetector class
+        if detector_options is None:
+            detector_options = {}
+        if 'force_cpu' in detector_options:
+            if force_cpu != detector_options['force_cpu']:
+                print('Warning: over-riding force_cpu parameter ({}) based on detector_options ({})'.format(
+                    force_cpu,detector_options['force_cpu']))
+        else:
+            detector_options['force_cpu'] = force_cpu
+        detector_options['use_model_native_classes'] = USE_MODEL_NATIVE_CLASSES
+        detector = PTDetector(model_file, detector_options)
+        
     else:
+        
         raise ValueError('Unrecognized model format: {}'.format(model_file))
+        
     elapsed = time.time() - start_time
     print('Loaded model in {}'.format(humanfriendly.format_timespan(elapsed)))
     
@@ -413,8 +433,8 @@ def load_and_run_detector(model_file,
                           image_size=None,
                           label_font_size=DEFAULT_LABEL_FONT_SIZE,
                           augment=False,
-                          force_model_download=False
-                          ):
+                          force_model_download=False,
+                          detector_options=None):
     r"""
     Loads and runs a detector on target images, and visualizes the results.
     
@@ -438,6 +458,8 @@ def load_and_run_detector(model_file,
         force_model_download (bool, optional): force downloading the model file if
             a named model (e.g. "MDV5A") is supplied, even if the local file already
             exists
+        detector_options (dict, optional): key/value pairs that are interpreted differently 
+            by different detectors
     """
     
     if len(image_file_names) == 0:
@@ -447,7 +469,7 @@ def load_and_run_detector(model_file,
     # Possibly automatically download the model
     model_file = try_download_known_detector(model_file, force_download=force_model_download)
 
-    detector = load_detector(model_file)
+    detector = load_detector(model_file, detector_options=detector_options)
 
     detection_results = []
     time_load = []
@@ -516,7 +538,7 @@ def load_and_run_detector(model_file,
             time_load.append(elapsed)
 
         except Exception as e:
-            print('Image {} cannot be loaded. Exception: {}'.format(im_file, e))
+            print('Image {} cannot be loaded, error: {}'.format(im_file, str(e)))
             result = {
                 'file': im_file,
                 'failure': FAILURE_IMAGE_OPEN
@@ -539,7 +561,7 @@ def load_and_run_detector(model_file,
             time_infer.append(elapsed)
 
         except Exception as e:
-            print('An error occurred while running the detector on image {}. Exception: {}'.format(im_file, e))
+            print('An error occurred while running the detector on image {}: {}'.format(im_file, str(e)))
             continue
 
         try:
@@ -746,6 +768,12 @@ def main():
         help=('If a named model (e.g. "MDV5A") is supplied, force a download of that model even if the ' +\
               'local file already exists.'))
         
+    parser.add_argument(
+        '--compatibility_mode',
+        type=str,
+        default='classic',
+        help=('Debugging option used to maintain backwards compatibility with earlier versions of the MD package'))
+    
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()
@@ -787,6 +815,9 @@ def main():
             # but for a single image, args.image_dir is also None
             args.output_dir = os.path.dirname(args.image_file)
 
+    detector_options = {}
+    detector_options['compatibility_mode'] = args.compatibility_mode
+    
     load_and_run_detector(model_file=args.detector_file,
                           image_file_names=image_file_names,
                           output_dir=args.output_dir,
@@ -797,8 +828,9 @@ def main():
                           image_size=args.image_size,
                           label_font_size=args.label_font_size,
                           augment=args.augment,
-                          # Don't download the model *again*
-                          force_model_download=False)
+                          # If --force_model_download was specified, we already handled it
+                          force_model_download=False,
+                          detector_options=detector_options)
 
 if __name__ == '__main__':
     main()
@@ -808,7 +840,10 @@ if __name__ == '__main__':
 
 if False:
 
+    pass
+
     #%%
+    
     model_file = r'c:\temp\models\md_v4.1.0.pb'
     image_file_names = path_utils.find_images(r'c:\temp\demo_images\ssverymini')
     output_dir = r'c:\temp\demo_images\ssverymini'

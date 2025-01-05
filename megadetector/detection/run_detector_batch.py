@@ -1162,7 +1162,13 @@ def main():
               'file will be transferred to the output file without reprocessing those images.  Useful ' +\
               'for "updating" a set of results when you may have added new images to a folder you\'ve ' +\
               'already processed.  Only supported when using relative paths.'))
-        
+    parser.add_argument(
+        '--compatibility_mode',
+        type=str,
+        default='classic',
+        help=('Debugging option used to maintain backwards compatibility with earlier versions of the MD ' +\
+              'package.'))
+    
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()
@@ -1379,6 +1385,9 @@ def main():
 
     start_time = time.time()
 
+    detector_options = {}
+    detector_options['compatibility_mode'] = args.compatibility_mode
+    
     results = load_and_run_detector_batch(model_file=args.detector_file,
                                           image_file_names=image_file_names,
                                           checkpoint_path=checkpoint_path,
@@ -1395,7 +1404,8 @@ def main():
                                           include_exif_data=args.include_exif_data,
                                           augment=args.augment,
                                           # Don't download the model *again*
-                                          force_model_download=False)
+                                          force_model_download=False,
+                                          detector_options=detector_options)
 
     elapsed = time.time() - start_time
     images_per_second = len(results) / elapsed
