@@ -281,7 +281,7 @@ def yolo_json_output_to_md_output(yolo_json_file,
             output_det['category'] = str(int(yolo_cat_id))
             conf = det['score']
             if truncate_to_standard_md_precision:
-                conf = ct_utils.truncate_float(conf,CONF_DIGITS)
+                conf = ct_utils.round_float(conf,CONF_DIGITS)
             output_det['conf'] = conf
             input_bbox = det['bbox']
             
@@ -301,7 +301,7 @@ def yolo_json_output_to_md_output(yolo_json_file,
                            box_width_relative,box_height_relative]
             
             if truncate_to_standard_md_precision:
-                output_bbox = ct_utils.truncate_float_array(output_bbox,COORD_DIGITS)
+                output_bbox = ct_utils.round_float_array(output_bbox,COORD_DIGITS)
                 
             output_det['bbox'] = output_bbox
             im['detections'].append(output_det)
@@ -404,8 +404,8 @@ def yolo_txt_output_to_md_output(input_results_folder,
                     conf = float(row[5])
                     
                     if truncate_to_standard_md_precision:
-                        conf = ct_utils.truncate_float(conf, precision=CONF_DIGITS)
-                        api_box = ct_utils.truncate_float_array(api_box, precision=COORD_DIGITS)
+                        conf = ct_utils.round_float(conf, precision=CONF_DIGITS)
+                        api_box = ct_utils.round_float_array(api_box, precision=COORD_DIGITS)
                     
                     detections.append({
                         'category': str(category),

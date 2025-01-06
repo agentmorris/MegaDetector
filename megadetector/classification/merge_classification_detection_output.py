@@ -70,7 +70,7 @@ from typing import Any
 import pandas as pd
 from tqdm import tqdm
 
-from megadetector.utils.ct_utils import truncate_float
+from megadetector.utils.ct_utils import round_float
 
 
 #%% Example usage
@@ -124,7 +124,7 @@ def row_to_classification_list(row: Mapping[str, Any],
 
         # filter out confidences below the threshold, and set precision to 4
         result = [
-            (k, truncate_float(conf, precision=4))
+            (k, round_float(conf, precision=4))
             for k, conf in result if conf >= threshold
         ]
 

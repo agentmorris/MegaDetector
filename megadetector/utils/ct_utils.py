@@ -28,8 +28,8 @@ image_extensions = ['.jpg', '.jpeg', '.gif', '.png']
 
 def truncate_float_array(xs, precision=3):
     """
-    Vectorized version of truncate_float(...), truncates the fractional portion of each
-    floating-point value to a specific number of floating-point digits.
+    Truncates the fractional portion of each floating-point value in the array [xs] 
+    to a specific number of floating-point digits.
 
     Args:
         xs (list): list of floats to truncate
@@ -42,6 +42,37 @@ def truncate_float_array(xs, precision=3):
     return [truncate_float(x, precision=precision) for x in xs]
 
 
+def round_float_array(xs, precision=3):
+    """
+    Truncates the fractional portion of each floating-point value in the array [xs] 
+    to a specific number of floating-point digits.
+
+    Args:
+        xs (list): list of floats to round
+        precision (int, optional): the number of significant digits to preserve, should be >= 1            
+            
+    Returns:
+        list: list of rounded floats    
+    """
+    
+    return [round_float(x,precision) for x in xs]
+
+
+def round_float(x, precision=3):
+    """
+    Convenience wrapper for the native Python round()
+    
+    Args:
+        x (float): number to truncate
+        precision (int, optional): the number of significant digits to preserve, should be >= 1
+    
+    Returns:
+        float: rounded value
+    """
+    
+    return round(x,precision)
+    
+    
 def truncate_float(x, precision=3):
     """
     Truncates the fractional portion of a floating-point value to a specific number of 

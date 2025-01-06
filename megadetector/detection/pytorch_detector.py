@@ -436,8 +436,13 @@ class PTDetector:
                         # left/top/w/h (i.e., MD format)
                         api_box = ct_utils.convert_yolo_to_xywh(xywh)
 
-                        conf = ct_utils.truncate_float(conf.tolist(), precision=CONF_DIGITS)
-
+                        if 'classic' in self.compatibility_mode:
+                            api_box = ct_utils.truncate_float_array(api_box, precision=COORD_DIGITS)
+                            conf = ct_utils.truncate_float(conf.tolist(), precision=CONF_DIGITS)
+                        else:
+                            api_box = ct_utils.round_float_array(api_box, precision=COORD_DIGITS)
+                            conf = ct_utils.round_float(conf.tolist(), precision=CONF_DIGITS)                            
+                        
                         if not self.use_model_native_classes:
                             # MegaDetector output format's categories start at 1, but the MD 
                             # model's categories start at 0.
@@ -450,7 +455,7 @@ class PTDetector:
                         detections.append({
                             'category': str(cls),
                             'conf': conf,
-                            'bbox': ct_utils.truncate_float_array(api_box, precision=COORD_DIGITS)
+                            'bbox': api_box
                         })
                         max_conf = max(max_conf, conf)
                         
