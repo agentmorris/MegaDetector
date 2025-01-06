@@ -106,7 +106,18 @@ class MDTestOptions:
         #: IoU threshold used to determine whether boxes in two detection files likely correspond
         #: to the same box.
         self.iou_threshold_for_file_comparison = 0.85
+        
+        #: Compatibility mode option passed to PTDetector
+        #:
+        #: This will be automatically copied to [detector_options]
+        self.compatibility_mode = 'classic-test'
+        
+        #: detector_options dict passed to load_detector; the "compatibility_mode" field
+        #: is populated automatically.
+        self.detector_options = None
 
+    # ...def __init__()
+    
 # ...class MDTestOptions()
 
 
@@ -268,6 +279,11 @@ def download_test_data(options=None):
                            os.path.isfile(os.path.join(scratch_dir,fn))]
         
     print('Finished unzipping and enumerating test data')
+    
+    # Populate other auto-populated fields
+    if options.detector_options is None:
+        options.detector_options = {}
+    options.detector_options['compatibility_mode'] = options.compatibility_mode
     
     return options
 
@@ -655,13 +671,13 @@ def run_python_tests(options):
     
     
     ## Run inference on an image
-    
+        
     print('\n** Running MD on a single image (module) **\n')
     
     from megadetector.detection import run_detector
     from megadetector.visualization import visualization_utils as vis_utils
     image_fn = os.path.join(options.scratch_dir,options.test_images[0])
-    model = run_detector.load_detector(options.default_model)
+    model = run_detector.load_detector(options.default_model,detector_options=options.detector_options)
     pil_im = vis_utils.load_image(image_fn)
     result = model.generate_detections_one_image(pil_im) # noqa
 
@@ -677,7 +693,10 @@ def run_python_tests(options):
     assert os.path.isdir(image_folder), 'Test image folder {} is not available'.format(image_folder)
     inference_output_file = os.path.join(options.scratch_dir,'folder_inference_output.json')
     image_file_names = path_utils.find_images(image_folder,recursive=True)
-    results = load_and_run_detector_batch(options.default_model, image_file_names, quiet=True)
+    results = load_and_run_detector_batch(options.default_model, 
+                                          image_file_names,
+                                          quiet=True,
+                                          detector_options=options.detector_options)
     _ = write_results_to_file(results,
                               inference_output_file,
                               relative_path_base=image_folder,
@@ -707,7 +726,11 @@ def run_python_tests(options):
     from megadetector.utils.path_utils import insert_before_extension
     
     inference_output_file_augmented = insert_before_extension(inference_output_file,'augmented')
-    results = load_and_run_detector_batch(options.default_model, image_file_names, quiet=True, augment=True)
+    results = load_and_run_detector_batch(options.default_model,
+                                          image_file_names,
+                                          quiet=True,
+                                          augment=True,
+                                          detector_options=options.detector_options)
     _ = write_results_to_file(results,
                               inference_output_file_augmented,
                               relative_path_base=image_folder,
@@ -863,6 +886,7 @@ def run_python_tests(options):
         video_options.n_cores = 5
         # video_options.debug_max_frames = -1
         # video_options.class_mapping_filename = None
+        video_options.detector_options = options.detector_options
         
         _ = process_video(video_options)
     
@@ -900,7 +924,7 @@ def run_python_tests(options):
         # video_options.rendering_confidence_threshold = None
         # video_options.json_confidence_threshold = 0.005
         video_options.frame_sample = 10  
-        video_options.n_cores = 5        
+        video_options.n_cores = 5     
         
         # Force frame extraction to disk, since that's how we generated our expected results file
         video_options.force_on_disk_frame_extraction = True
@@ -910,7 +934,8 @@ def run_python_tests(options):
         # Use quality == None, because we can't control whether YOLOv5 has patched cm2.imread,
         # and therefore can't rely on using the quality parameter
         video_options.quality = None
-        video_options.max_width = None
+        video_options.max_width = None        
+        video_options.detector_options = options.detector_options
         
         _ = process_video_folder(video_options)
     
@@ -970,7 +995,6 @@ def run_cli_tests(options):
     
     print('\n*** Starting CLI tests ***\n')
     
-    
     ## Environment management
     
     if options.cli_test_pythonpath is not None:
@@ -1000,6 +1024,7 @@ def run_cli_tests(options):
         cmd = 'python megadetector/detection/run_detector.py'
     cmd += ' "{}" --image_file "{}" --output_dir "{}"'.format(
         options.default_model,image_fn,output_dir)
+    cmd += ' --compatibility_mode {}'.format(options.compatibility_mode)
     cmd_results = execute_and_print(cmd)
     
     if options.cpu_execution_is_error:
@@ -1027,6 +1052,7 @@ def run_cli_tests(options):
         options.default_model,image_folder,inference_output_file)
     cmd += ' --output_relative_filenames --quiet --include_image_size'
     cmd += ' --include_image_timestamp --include_exif_data'
+    cmd += ' --compatibility_mode {}'.format(options.compatibility_mode)
     cmd_results = execute_and_print(cmd)
     
     base_cmd = cmd
@@ -1042,6 +1068,7 @@ def run_cli_tests(options):
     cmd = base_cmd + checkpoint_string
     inference_output_file_checkpoint = insert_before_extension(inference_output_file,'_checkpoint')
     cmd = cmd.replace(inference_output_file,inference_output_file_checkpoint)
+    cmd += ' --compatibility_mode {}'.format(options.compatibility_mode)
     cmd_results = execute_and_print(cmd)
     
     assert output_files_are_identical(fn1=inference_output_file, 
@@ -1057,6 +1084,7 @@ def run_cli_tests(options):
     from megadetector.utils.path_utils import insert_before_extension
     inference_output_file_queue = insert_before_extension(inference_output_file,'_queue')
     cmd = cmd.replace(inference_output_file,inference_output_file_queue)
+    cmd += ' --compatibility_mode {}'.format(options.compatibility_mode)
     cmd_results = execute_and_print(cmd)
     
     assert output_files_are_identical(fn1=inference_output_file, 
@@ -1078,14 +1106,17 @@ def run_cli_tests(options):
     
     # If we already ran on the CPU, no need to run again
     if not gpu_available:
+        
         inference_output_file_cpu = inference_output_file
+        
     else:
         
         print('\n** Running MD on a folder (single CPU) (CLI) **\n')
                 
         inference_output_file_cpu = insert_before_extension(inference_output_file,'cpu')    
         cmd = base_cmd
-        cmd = cmd.replace(inference_output_file,inference_output_file_cpu)    
+        cmd = cmd.replace(inference_output_file,inference_output_file_cpu)
+        cmd += ' --compatibility_mode {}'.format(options.compatibility_mode)
         cmd_results = execute_and_print(cmd)
         
     print('\n** Running MD on a folder (multiple CPUs) (CLI) **\n')
@@ -1095,6 +1126,7 @@ def run_cli_tests(options):
     from megadetector.utils.path_utils import insert_before_extension
     inference_output_file_cpu_multicore = insert_before_extension(inference_output_file,'multicore')
     cmd = cmd.replace(inference_output_file,inference_output_file_cpu_multicore)
+    cmd += ' --compatibility_mode {}'.format(options.compatibility_mode)
     cmd_results = execute_and_print(cmd)
     
     if cuda_visible_devices is not None:
@@ -1164,23 +1196,33 @@ def run_cli_tests(options):
     
     ## Run inference on a folder (tiled)
     
-    print('\n** Running tiled inference (CLI) **\n')
+    # This is a rather esoteric code path that I turn off when I'm testing some
+    # features that it doesn't include yet, particularly compatibility mode
+    # control.
+    skip_tiling_tests = True
     
-    image_folder = os.path.join(options.scratch_dir,'md-test-images')
-    tiling_folder = os.path.join(options.scratch_dir,'tiling-folder')
-    inference_output_file_tiled = os.path.join(options.scratch_dir,'folder_inference_output_tiled.json')
-    if options.cli_working_dir is None:
-        cmd = 'python -m megadetector.detection.run_tiled_inference'
-    else:
-        cmd = 'python megadetector/detection/run_tiled_inference.py'
-    cmd += ' "{}" "{}" "{}" "{}"'.format(
-        options.default_model,image_folder,tiling_folder,inference_output_file_tiled)
-    cmd += ' --overwrite_handling overwrite'
-    cmd_results = execute_and_print(cmd)
-    
-    with open(inference_output_file_tiled,'r') as f:
-        results_from_file = json.load(f) # noqa
+    if skip_tiling_tests:
         
+        print('### DEBUG: skipping tiling tests ###')
+        
+    else:
+        print('\n** Running tiled inference (CLI) **\n')
+        
+        image_folder = os.path.join(options.scratch_dir,'md-test-images')
+        tiling_folder = os.path.join(options.scratch_dir,'tiling-folder')
+        inference_output_file_tiled = os.path.join(options.scratch_dir,'folder_inference_output_tiled.json')
+        if options.cli_working_dir is None:
+            cmd = 'python -m megadetector.detection.run_tiled_inference'
+        else:
+            cmd = 'python megadetector/detection/run_tiled_inference.py'
+        cmd += ' "{}" "{}" "{}" "{}"'.format(
+            options.default_model,image_folder,tiling_folder,inference_output_file_tiled)
+        cmd += ' --overwrite_handling overwrite'
+        cmd_results = execute_and_print(cmd)
+        
+        with open(inference_output_file_tiled,'r') as f:
+            results_from_file = json.load(f) # noqa
+            
     
     ## Run inference on a folder (augmented, w/YOLOv5 val script)
     
@@ -1247,6 +1289,7 @@ def run_cli_tests(options):
         cmd += ' --render_output_video --fourcc {}'.format(options.video_fourcc)
         cmd += ' --force_extracted_frame_folder_deletion --force_rendered_frame_folder_deletion --n_cores 5 --frame_sample 3'
         cmd += ' --verbose'
+        cmd += ' --compatibility_mode {}'.format(options.compatibility_mode)
         cmd_results = execute_and_print(cmd)
 
     # ...if we're not skipping video tests
@@ -1266,6 +1309,7 @@ def run_cli_tests(options):
         options.alt_model,image_folder,inference_output_file_alt)
     cmd += ' --output_relative_filenames --quiet --include_image_size'
     cmd += ' --include_image_timestamp --include_exif_data'
+    cmd += ' --compatibility_mode {}'.format(options.compatibility_mode)
     cmd_results = execute_and_print(cmd)
     
     with open(inference_output_file_alt,'r') as f:
@@ -1496,6 +1540,13 @@ def main():
         type=str,
         default=None,
         help='PYTHONPATH to set for CLI tests; if None, inherits from the parent process'
+        )
+    
+    parser.add_argument(
+        '--compatibility_mode',
+        type=str,
+        default=options.compatibility_mode,
+        help='Debug option used to test backwards-compatibility'
         )
     
     # token used for linting

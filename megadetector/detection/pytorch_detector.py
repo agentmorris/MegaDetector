@@ -108,15 +108,20 @@ print(f'Using PyTorch version {torch.__version__}')
     
 #%% Classes
 
-class PTDetector:
+default_compatibility_mode = 'classic'
 
+# This is a useful hack when I want to verify that my test driver (md_tests.py) is 
+# correctly forcing a specific compabitility mode (I use "classic-test" in that case)
+require_non_default_compatibility_mode = False
+
+class PTDetector:
     
     def __init__(self, model_path, detector_options=None):
         
         # Parse options specific to this detector family
         force_cpu = False
-        use_model_native_classes = False
-        compatibility_mode = 'classic'
+        use_model_native_classes = False        
+        compatibility_mode = default_compatibility_mode
                 
         if detector_options is not None:
             
@@ -125,7 +130,16 @@ class PTDetector:
             if 'use_model_native_classes' in detector_options:
                 use_model_native_classes = detector_options['use_model_native_classes']
             if 'compatibility_mode' in detector_options:
-                compatibility_mode = detector_options['compatibility_mode']
+                if detector_options['compatibility_mode'] is None:
+                    compatibility_mode = default_compatibility_mode
+                else:    
+                    compatibility_mode = detector_options['compatibility_mode']        
+            
+        if require_non_default_compatibility_mode:
+            
+            print('### DEBUG: requiring non-default compatibility mode ###')
+            assert compatibility_mode != 'classic'
+            assert compatibility_mode != 'default'
         
         print('Loading PT detector with compatibility mode {}'.format(compatibility_mode))
         
@@ -151,7 +165,7 @@ class PTDetector:
         self.use_model_native_classes = use_model_native_classes        
         
         #: This allows us to maintain backwards compatibility across a set of changes to the
-        #: way this class does inference.
+        #: way this class does inference.  Currently should either be "default" or should 
         self.compatibility_mode = compatibility_mode
         
         if not force_cpu:
@@ -291,7 +305,7 @@ class PTDetector:
                             
                 # In "classic mode", we only do the letterboxing resize, we don't do an
                 # additional initial resizing operation
-                if self.compatibility_mode == 'classic':
+                if 'classic' in self.compatibility_mode:
                     
                     resize_ratio = 1.0
                     
@@ -316,7 +330,7 @@ class PTDetector:
                                            math.ceil(h * resize_ratio)),
                             interpolation=interpolation_method)
 
-                if self.compatibility_mode == 'classic':
+                if 'classic' in self.compatibility_mode:
                     
                     letterbox_auto = True
                     letterbox_scaleup = True
@@ -358,7 +372,7 @@ class PTDetector:
 
             pred = self.model(img,augment=augment)[0]
 
-            if self.compatibility_mode == 'classic':
+            if 'classic' in self.compatibility_mode:
                 nms_conf_thres = detection_threshold
                 nms_iou_thres = 0.45
                 nms_agnostic = False
@@ -397,7 +411,7 @@ class PTDetector:
                 if len(det):
                     
                     # Rescale boxes from img_size to im0 size
-                    if self.compatibility_mode == 'classic':
+                    if 'classic' in self.compatibility_mode:
                         
                         det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img_original.shape).round()
                         

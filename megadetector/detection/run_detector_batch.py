@@ -134,7 +134,8 @@ def _consumer_func(q,
                    include_image_size=False,
                    include_image_timestamp=False, 
                    include_exif_data=False,
-                   augment=False):
+                   augment=False,
+                   detector_options=None):
     """ 
     Consumer function; only used when using the (optional) image queue.
     
@@ -145,7 +146,7 @@ def _consumer_func(q,
         print('Consumer starting'); sys.stdout.flush()
 
     start_time = time.time()
-    detector = load_detector(model_file)
+    detector = load_detector(model_file,detector_options=detector_options)
     elapsed = time.time() - start_time
     print('Loaded model (before queueing) in {}, printing updates every {} images'.format(
         humanfriendly.format_timespan(elapsed),n_queue_print))
@@ -199,7 +200,8 @@ def run_detector_with_image_queue(image_files,
                                   include_image_size=False, 
                                   include_image_timestamp=False,
                                   include_exif_data=False,
-                                  augment=False):
+                                  augment=False,
+                                  detector_options=None):
     """
     Driver function for the (optional) multiprocessing-based image queue; only used 
     when --use_image_queue is specified.  Starts a reader process to read images from disk, but 
@@ -248,7 +250,8 @@ def run_detector_with_image_queue(image_files,
                                                           include_image_size,
                                                           include_image_timestamp, 
                                                           include_exif_data,
-                                                          augment))
+                                                          augment,
+                                                          detector_options))
         else:
             consumer = Process(target=_consumer_func,args=(q,
                                                            return_queue,
@@ -258,7 +261,8 @@ def run_detector_with_image_queue(image_files,
                                                            include_image_size,
                                                            include_image_timestamp, 
                                                            include_exif_data,
-                                                           augment))
+                                                           augment,
+                                                           detector_options))
         consumer.daemon = True
         consumer.start()
     else:
@@ -270,7 +274,8 @@ def run_detector_with_image_queue(image_files,
                        include_image_size,
                        include_image_timestamp, 
                        include_exif_data,
-                       augment)
+                       augment,
+                       detector_options)
 
     producer.join()
     print('Producer finished')
@@ -316,7 +321,8 @@ def process_images(im_files,
                    include_image_size=False, 
                    include_image_timestamp=False, 
                    include_exif_data=False,
-                   augment=False):
+                   augment=False,
+                   detector_options=None):
     """
     Runs a detector (typically MegaDetector) over a list of image files on a single thread.
     
@@ -344,7 +350,7 @@ def process_images(im_files,
     if isinstance(detector, str):
         
         start_time = time.time()
-        detector = load_detector(detector)
+        detector = load_detector(detector,detector_options=detector_options)
         elapsed = time.time() - start_time
         print('Loaded model (batch level) in {}'.format(humanfriendly.format_timespan(elapsed)))
 
@@ -358,7 +364,8 @@ def process_images(im_files,
                                       include_image_size=include_image_size, 
                                       include_image_timestamp=include_image_timestamp,
                                       include_exif_data=include_exif_data,
-                                      augment=augment)
+                                      augment=augment,
+                                      detector_options=detector_options)
         
     else:            
         
@@ -511,7 +518,8 @@ def load_and_run_detector_batch(model_file,
                                 include_image_timestamp=False, 
                                 include_exif_data=False,
                                 augment=False,
-                                force_model_download=False):
+                                force_model_download=False,
+                                detector_options=None):
     """
     Load a model file and run it on a list of images.
     
@@ -543,6 +551,8 @@ def load_and_run_detector_batch(model_file,
         force_model_download (bool, optional): force downloading the model file if
             a named model (e.g. "MDV5A") is supplied, even if the local file already
             exists
+        detector_options (dict, optional): key/value pairs that are interpreted differently 
+            by different detectors
         
     Returns:
         results: list of dicts; each dict represents detections on one image
@@ -634,13 +644,14 @@ def load_and_run_detector_batch(model_file,
                                                 include_image_size=include_image_size,
                                                 include_image_timestamp=include_image_timestamp,
                                                 include_exif_data=include_exif_data,
-                                                augment=augment)
+                                                augment=augment,
+                                                detector_options=detector_options)
         
     elif n_cores <= 1:
 
         # Load the detector
         start_time = time.time()
-        detector = load_detector(model_file)
+        detector = load_detector(model_file,detector_options=detector_options)
         elapsed = time.time() - start_time
         print('Loaded model in {}'.format(humanfriendly.format_timespan(elapsed)))
 
@@ -723,7 +734,8 @@ def load_and_run_detector_batch(model_file,
                              include_image_size=include_image_size,
                              include_image_timestamp=include_image_timestamp,
                              include_exif_data=include_exif_data,
-                             augment=augment), 
+                             augment=augment,
+                             detector_options=detector_options), 
                              image_batches)
 
             checkpoint_queue.put(None)
@@ -742,7 +754,8 @@ def load_and_run_detector_batch(model_file,
                                            include_image_size=include_image_size,
                                            include_image_timestamp=include_image_timestamp,
                                            include_exif_data=include_exif_data,
-                                           augment=augment), 
+                                           augment=augment,
+                                           detector_options=detector_options), 
                                            image_batches)
 
             new_results = list(itertools.chain.from_iterable(new_results))

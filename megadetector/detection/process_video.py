@@ -163,7 +163,7 @@ class ProcessVideoOptions:
         self.max_width = None
         
         #: Run the model at this image size (don't mess with this unless you know what you're
-        #: getting into)
+        #: getting into)... if you just want to pass smaller frames to MD, use max_width        
         self.image_size = None
         
         #: Enable image augmentation
@@ -177,6 +177,9 @@ class ProcessVideoOptions:
         #: When processing a folder of videos, should we include just a single representative 
         #: frame result for each video (default), or every frame that was processed?
         self.include_all_processed_frames = False
+        
+        #: Detector-specific options
+        self.detector_options = None
         
 # ...class ProcessVideoOptions
 
@@ -402,7 +405,7 @@ def process_video(options):
             print('Warning: frame_folder specified, but keep_extracted_frames is ' + \
                   'not; no raw frames will be written')
         
-        detector = load_detector(options.model_file)
+        detector = load_detector(options.model_file,detector_options=options.detector_options)
         
         def frame_callback(image_np,image_id):
             return detector.generate_detections_one_image(image_np,
@@ -475,7 +478,8 @@ def process_video(options):
                 class_mapping_filename=options.class_mapping_filename,
                 quiet=True,
                 augment=options.augment,
-                image_size=options.image_size)
+                image_size=options.image_size,
+                detector_options=options.detector_options)
         
             results = _add_frame_numbers_to_results(results)
         
@@ -612,7 +616,7 @@ def process_video_folder(options):
             print('Warning: frame_folder specified, but keep_extracted_frames is ' + \
                   'not; no raw frames will be written')
         
-        detector = load_detector(options.model_file)
+        detector = load_detector(options.model_file,detector_options=options.detector_options)
         
         def frame_callback(image_np,image_id):
             return detector.generate_detections_one_image(image_np,
@@ -719,7 +723,8 @@ def process_video_folder(options):
                 class_mapping_filename=options.class_mapping_filename,
                 quiet=True,
                 augment=options.augment,
-                image_size=options.image_size)
+                image_size=options.image_size,
+                detector_options=options.detector_options)
         
             _add_frame_numbers_to_results(results)
             
@@ -910,6 +915,8 @@ def options_to_command(options):
         cmd += ' --force_extracted_frame_folder_deletion'
     if options.force_rendered_frame_folder_deletion:
         cmd += ' --force_rendered_frame_folder_deletion'
+    if options.detector_options is not None and 'compatibility_mode' in options.detector_options:
+        cmd += ' --compatibility_mode {}'.format(options.detector_options['compatibility_mode'])
 
     return cmd
 
@@ -1209,14 +1216,22 @@ def main():
     parser.add_argument('--allow_empty_videos',
                         action='store_true',
                         help='By default, videos with no retrievable frames cause an error, this makes it a warning')
-            
+    
+    parser.add_argument('--compatibility_mode',
+                        type=str,
+                        default=None,
+                        help=('Debug option used for backwards compatibility testing'))    
+        
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()
         
     args = parser.parse_args()
-    options = ProcessVideoOptions()
+    options = ProcessVideoOptions()    
     args_to_object(args,options)
+    
+    if options.compatibility_mode is not None:
+        options.detector_options = {'compatibility_mode':options.compatibility_mode}
 
     if os.path.isdir(options.input_video_file):
         process_video_folder(options)
