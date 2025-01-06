@@ -644,8 +644,7 @@ def run_inference_with_yolo_val(options):
     assert len(category_ids) == 1 + category_ids[-1]
         
     yolo_dataset_file = os.path.join(yolo_results_folder,'dataset.yaml')
-    yolo_image_list_file = os.path.join(yolo_results_folder,'images.txt')
-    
+    yolo_image_list_file = os.path.join(yolo_results_folder,'images.txt')    
     
     with open(yolo_image_list_file,'w') as f:
         

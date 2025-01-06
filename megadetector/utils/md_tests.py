@@ -474,7 +474,8 @@ def compare_detection_lists(detections_a,detections_b,options,bidirectional_comp
 # ...def compare_detection_lists(...)
 
 
-def compare_results(inference_output_file,expected_results_file,options):
+def compare_results(inference_output_file,expected_results_file,options,
+                    expected_results_file_is_absolute=False):
     """
     Compare two MD-formatted output files that should be nearly identical, allowing small
     changes (e.g. rounding differences).  Generally used to compare a new results file to 
@@ -493,7 +494,10 @@ def compare_results(inference_output_file,expected_results_file,options):
     with open(inference_output_file,'r') as f:
         results_from_file = json.load(f) # noqa
     
-    with open(os.path.join(options.scratch_dir,expected_results_file),'r') as f:
+    if not expected_results_file_is_absolute:
+        expected_results_file= os.path.join(options.scratch_dir,expected_results_file)
+        
+    with open(expected_results_file,'r') as f:
         expected_results = json.load(f)
             
     filename_to_results = {im['file'].replace('\\','/'):im for im in results_from_file['images']}
@@ -504,10 +508,10 @@ def compare_results(inference_output_file,expected_results_file,options):
             len(filename_to_results_expected),
             len(filename_to_results))
     
-    max_conf_error = 0
+    max_conf_error = -1
     max_conf_error_file = None
     
-    max_coord_error = 0
+    max_coord_error = -1
     max_coord_error_file = None    
     
     # fn = next(iter(filename_to_results.keys()))

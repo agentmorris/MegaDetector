@@ -332,7 +332,8 @@ def yolo_json_output_to_md_output(yolo_json_file,
 def yolo_txt_output_to_md_output(input_results_folder, 
                                  image_folder,
                                  output_file, 
-                                 detector_tag=None):
+                                 detector_tag=None,
+                                 truncate_to_standard_md_precision=True):
     """
     Converts a folder of YOLO-output .txt files to MD .json format.
     
@@ -347,7 +348,9 @@ def yolo_txt_output_to_md_output(input_results_folder,
         output_file (str): the MD-formatted .json file to which we should write
             results
         detector_tag (str, optional): string to put in the 'detector' field in the
-            output file            
+            output file
+        truncate_to_standard_md_precision (bool, optional): set this to truncate to 
+            COORD_DIGITS and CONF_DIGITS, like the standard MD pipeline does.
     """
     
     assert os.path.isdir(input_results_folder)
@@ -398,12 +401,16 @@ def yolo_txt_output_to_md_output(input_results_folder,
                     api_box = ct_utils.convert_yolo_to_xywh([float(row[1]), float(row[2]), 
                                                              float(row[3]), float(row[4])])
     
-                    conf = ct_utils.truncate_float(float(row[5]), precision=4)
+                    conf = float(row[5])
+                    
+                    if truncate_to_standard_md_precision:
+                        conf = ct_utils.truncate_float(conf, precision=CONF_DIGITS)
+                        api_box = ct_utils.truncate_float_array(api_box, precision=COORD_DIGITS)
                     
                     detections.append({
                         'category': str(category),
                         'conf': conf,
-                        'bbox': ct_utils.truncate_float_array(api_box, precision=4)
+                        'bbox': api_box
                     })
                 
         images_entries.append({
