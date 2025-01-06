@@ -41,7 +41,7 @@ def _render_image(entry,
                  detector_label_map,classification_label_map,
                  confidence_threshold,classification_confidence_threshold,
                  render_detections_only,preserve_path_structure,out_dir,images_dir,
-                 output_image_width):
+                 output_image_width,box_sort_order=None):
     """
     Internal function for rendering a single image.
     """
@@ -80,7 +80,8 @@ def _render_image(entry,
         label_map=detector_label_map,
         classification_label_map=classification_label_map,
         confidence_threshold=confidence_threshold,
-        classification_confidence_threshold=classification_confidence_threshold)
+        classification_confidence_threshold=classification_confidence_threshold,
+        box_sort_order=box_sort_order)
 
     if not preserve_path_structure:
         for char in ['/', '\\', ':']:
@@ -113,7 +114,8 @@ def visualize_detector_output(detector_output_path,
                               preserve_path_structure=False,
                               parallelize_rendering=False,
                               parallelize_rendering_n_cores=10,
-                              parallelize_rendering_with_threads=True):
+                              parallelize_rendering_with_threads=True,
+                              box_sort_order=None):
     
     """
     Draws bounding boxes on images given the output of a detector.
@@ -145,6 +147,8 @@ def visualize_detector_output(detector_output_path,
         parallelize_rendering_with_threads (bool, optional): determines whether we use
             threads (True) or processes (False) for parallelization (ignored if parallelize_rendering 
             is False)
+        box_sort_order (str, optional): sorting scheme for detection boxes, can be None, "confidence", or
+            "reverse_confidence"
 
     Returns:
         list: list of paths to annotated images
@@ -235,7 +239,8 @@ def visualize_detector_output(detector_output_path,
                                          preserve_path_structure=preserve_path_structure,
                                          out_dir=out_dir,
                                          images_dir=images_dir,
-                                         output_image_width=output_image_width),
+                                         output_image_width=output_image_width,
+                                         box_sort_order=box_sort_order),
                                  images), total=len(images)))
         
     else:
@@ -245,7 +250,7 @@ def visualize_detector_output(detector_output_path,
             rendering_result = _render_image(entry,detector_label_map,classification_label_map,
                                             confidence_threshold,classification_confidence_threshold,
                                             render_detections_only,preserve_path_structure,out_dir,
-                                            images_dir,output_image_width)
+                                            images_dir,output_image_width,box_sort_order)
             rendering_results.append(rendering_result)
         
     # ...for each image

@@ -25,6 +25,7 @@ from megadetector.utils.path_utils import find_images
 from megadetector.data_management.annotations import annotation_constants
 from megadetector.data_management.annotations.annotation_constants import \
     detector_bbox_category_id_to_name
+from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -419,7 +420,8 @@ def render_detection_bounding_boxes(detections,
                                     textalign=TEXTALIGN_LEFT,
                                     vtextalign=VTEXTALIGN_TOP,
                                     label_font_size=DEFAULT_LABEL_FONT_SIZE,
-                                    custom_strings=None):
+                                    custom_strings=None,
+                                    box_sort_order=None):
     """
     Renders bounding boxes (with labels and confidence values) on an image for all
     detections above a threshold.
@@ -497,6 +499,8 @@ def render_detection_bounding_boxes(detections,
         label_font_size (float, optional): font size for labels        
         custom_strings: optional set of strings to append to detection labels, should have the
             same length as [detections].  Appended before any classification labels.
+        box_sort_order (str, optional): sorting scheme for detection boxes, can be None, "confidence", or 
+            "reverse_confidence"
     """
 
     # Input validation
@@ -516,6 +520,14 @@ def render_detection_bounding_boxes(detections,
     # for color selection
     classes = []  
 
+    if box_sort_order is not None:
+        if box_sort_order == 'confidence':            
+            detections = sort_list_of_dicts_by_key(detections,k='conf',reverse=False)
+        elif box_sort_order == 'reverse_confidence':
+            detections = sort_list_of_dicts_by_key(detections,k='conf',reverse=True)
+        else:
+            raise ValueError('Unrecognized sorting scheme {}'.format(box_sort_order))
+            
     for i_detection,detection in enumerate(detections):
 
         score = detection['conf']

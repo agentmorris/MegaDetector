@@ -582,7 +582,8 @@ def load_and_run_detector(model_file,
                             label_map=DEFAULT_DETECTOR_LABEL_MAP,
                             confidence_threshold=render_confidence_threshold,
                             thickness=box_thickness, expansion=box_expansion,
-                            label_font_size=label_font_size)
+                            label_font_size=label_font_size,
+                            box_sort_order='confidence')
                 output_full_path = input_file_to_detection_file(im_file)
                 image.save(output_full_path)
 
@@ -598,8 +599,8 @@ def load_and_run_detector(model_file,
         std_dev_time_load = humanfriendly.format_timespan(statistics.stdev(time_load))
         std_dev_time_infer = humanfriendly.format_timespan(statistics.stdev(time_infer))
     else:
-        std_dev_time_load = 'not available'
-        std_dev_time_infer = 'not available'
+        std_dev_time_load = 'not available (<=1 image processed)'
+        std_dev_time_infer = 'not available (<=1 image processed)'
     print('On average, for each image,')
     print('- loading took {}, std dev is {}'.format(humanfriendly.format_timespan(ave_time_load),
                                                     std_dev_time_load))

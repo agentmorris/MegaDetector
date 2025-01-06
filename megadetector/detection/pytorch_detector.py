@@ -147,9 +147,6 @@ class PTDetector:
         #: aspect ratio".
         self.default_image_size = 1280
     
-        #: Stride size passed to YOLOv5's letterbox() function
-        self.letterbox_stride = 64
-
         #: Either a string ('cpu','cuda:0') or a torch.device()
         self.device = 'cpu'
         
@@ -167,6 +164,15 @@ class PTDetector:
         #: This allows us to maintain backwards compatibility across a set of changes to the
         #: way this class does inference.  Currently should either be "default" or should 
         self.compatibility_mode = compatibility_mode
+        
+        #: Stride size passed to YOLOv5's letterbox() function
+        self.letterbox_stride = 32
+        
+        if 'classic' in self.compatibility_mode:
+            self.letterbox_stride = 64
+        
+        #: Use half-precision inference... fixed by the model, generally don't mess with this
+        self.half_precision = False
         
         if not force_cpu:
             if torch.cuda.is_available():
@@ -363,7 +369,7 @@ class PTDetector:
             img = np.ascontiguousarray(img)
             img = torch.from_numpy(img)
             img = img.to(self.device)
-            img = img.float()
+            img = img.half() if self.half_precision else img.float()
             img /= 255
 
             # In practice this is always true 
