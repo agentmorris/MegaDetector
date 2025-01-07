@@ -389,7 +389,7 @@ class PTDetector:
                     target_shape = np.ceil(np.array(normalized_shape) * image_size / model_stride + \
                                            pad).astype(int) * model_stride
                     
-                # Now we letterbox...
+                # Now we letterbox, which is just padding, since we've already resized.
                 img,letterbox_ratio,letterbox_pad = letterbox(img_original, 
                                                               new_shape=target_shape,
                                                               stride=self.letterbox_stride, 
@@ -397,7 +397,8 @@ class PTDetector:
                                                               scaleFill=False,
                                                               scaleup=letterbox_scaleup)
             
-            # HWC to CHW; PIL Image is RGB already
+            # Convert HWC to CHW (which is what the model expects).  The PIL Image is RGB already,
+            # so we don't need to mess with the color channels.
             img = img.transpose((2, 0, 1)) # [::-1]
             img = np.ascontiguousarray(img)
             img = torch.from_numpy(img)
@@ -409,6 +410,7 @@ class PTDetector:
             if len(img.shape) == 3:  
                 img = torch.unsqueeze(img, 0)
 
+            # Run the model
             pred = self.model(img,augment=augment)[0]
 
             if 'classic' in self.compatibility_mode:
@@ -417,12 +419,10 @@ class PTDetector:
                 nms_agnostic = False
                 nms_multi_label = False
             else:
-                nms_conf_thres = 0.01
+                nms_conf_thres = detection_threshold # 0.01
                 nms_iou_thres = 0.6
                 nms_agnostic = False    
-                # yolov5 sets this to True, but this has some infrastructural implications
-                # that I don't want to deal with.  This is not really a numerical issue.
-                nms_multi_label = False 
+                nms_multi_label = True
                 
             # As of PyTorch 1.13.0.dev20220824, nms is not implemented for MPS.
             #
@@ -432,6 +432,7 @@ class PTDetector:
             else:
                 pred_nms = pred
                 
+            # NMS
             pred = non_max_suppression(prediction=pred_nms, 
                                        conf_thres=nms_conf_thres,
                                        iou_thres=nms_iou_thres,
@@ -505,8 +506,8 @@ class PTDetector:
                         conf = ct_utils.round_float(conf.tolist(), precision=CONF_DIGITS)                            
                     
                     if not self.use_model_native_classes:
-                        # MegaDetector output format's categories start at 1, but the MD 
-                        # model's categories start at 0.
+                        # The MegaDetector output format's categories start at 1, but all YOLO-based 
+                        # MD models have category numbers starting at 0.                        
                         cls = int(cls.tolist()) + 1
                         if cls not in (1, 2, 3):
                             raise KeyError(f'{cls} is not a valid class.')

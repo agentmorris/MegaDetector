@@ -411,7 +411,7 @@ def render_detection_bounding_boxes(detections,
                                     image,
                                     label_map='show_categories',
                                     classification_label_map=None, 
-                                    confidence_threshold=0.15, 
+                                    confidence_threshold=0, 
                                     thickness=DEFAULT_BOX_THICKNESS, 
                                     expansion=0,
                                     classification_confidence_threshold=0.3,
@@ -421,7 +421,8 @@ def render_detection_bounding_boxes(detections,
                                     vtextalign=VTEXTALIGN_TOP,
                                     label_font_size=DEFAULT_LABEL_FONT_SIZE,
                                     custom_strings=None,
-                                    box_sort_order='confidence'):
+                                    box_sort_order='confidence',
+                                    verbose=False):
     """
     Renders bounding boxes (with labels and confidence values) on an image for all
     detections above a threshold.
@@ -501,6 +502,7 @@ def render_detection_bounding_boxes(detections,
             same length as [detections].  Appended before any classification labels.
         box_sort_order (str, optional): sorting scheme for detection boxes, can be None, "confidence", or 
             "reverse_confidence".
+        verbose (bool, optional): enable additional debug output
     """
 
     # Input validation
@@ -521,6 +523,7 @@ def render_detection_bounding_boxes(detections,
     classes = []  
 
     if box_sort_order is not None:
+        
         if box_sort_order == 'confidence':            
             detections = sort_list_of_dicts_by_key(detections,k='conf',reverse=False)
         elif box_sort_order == 'reverse_confidence':
@@ -618,6 +621,9 @@ def render_detection_bounding_boxes(detections,
     
     display_boxes = np.array(display_boxes)
 
+    if verbose:
+        print('Rendering {} of {} detections'.format(len(display_boxes),len(detections)))
+        
     draw_bounding_boxes_on_image(image, display_boxes, classes,
                                  display_strs=display_strs, thickness=thickness, 
                                  expansion=expansion, colormap=colormap, 
