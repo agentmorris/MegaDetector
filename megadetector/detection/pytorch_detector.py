@@ -48,7 +48,6 @@ try_yolov9_import = True
 # to use more recent YOLOv5 namespace conventions.
 try_ultralytics_import = False
 
-
 # First try importing from the yolov5 package; this is how the pip
 # package finds YOLOv5 utilities.
 if try_yolov5_import and not utils_imported:
@@ -183,7 +182,8 @@ class PTDetector:
         self.use_model_native_classes = use_model_native_classes        
         
         #: This allows us to maintain backwards compatibility across a set of changes to the
-        #: way this class does inference.  Currently should either be "default" or should 
+        #: way this class does inference.  Currently should start with either "default" or 
+        #: "classic".
         self.compatibility_mode = compatibility_mode
         
         #: Stride size passed to YOLOv5's letterbox() function
@@ -335,11 +335,13 @@ class PTDetector:
                 if 'classic' in self.compatibility_mode:
                     
                     resize_ratio = 1.0
-                    
+                                    
                 # Resize the image so the long side matches the target image size.  This is not 
                 # letterboxing (i.e., padding) yet, just resizing.
                 else:
                     
+                    use_ceil_for_resize = ('use_ceil_for_resize' in self.compatibility_mode)
+                         
                     h,w = img_original.shape[:2]
                     resize_ratio = image_size / max(h,w)
                     
@@ -353,9 +355,6 @@ class PTDetector:
                         else:
                             interpolation_method = cv2.INTER_AREA                    
                         
-                        # TODO: this is a compatibility variable that I may want to 
-                        # promote to an option.
-                        use_ceil_for_resize = False
                         if use_ceil_for_resize:
                             target_w = math.ceil(w * resize_ratio)
                             target_h = math.ceil(h * resize_ratio)
