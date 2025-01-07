@@ -17,9 +17,6 @@ are processed and final results file written to output_file, the temporary
 checkpoint file will be deleted. If you want to resume from a checkpoint, set
 the checkpoint file's path using --resume_from_checkpoint.
 
-The `threshold` you can provide as an argument is the confidence threshold above
-which detections will be included in the output file.
-
 Has multiprocessing support for CPUs only; if a GPU is available, it will
 use the GPU instead of CPUs, and the --ncores option will be ignored.  Checkpointing
 is not supported when using a GPU.

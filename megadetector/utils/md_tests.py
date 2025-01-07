@@ -407,8 +407,8 @@ def compare_detection_lists(detections_a,detections_b,options,bidirectional_comp
         det_a = detections_a[i_det_a]
         
         # Don't process very-low-confidence boxes
-        if det_a['conf'] < options.max_conf_error:
-            continue
+        # if det_a['conf'] < options.max_conf_error:
+        #    continue
         
         matching_det_b = None
         highest_iou = -1
@@ -474,7 +474,9 @@ def compare_detection_lists(detections_a,detections_b,options,bidirectional_comp
 # ...def compare_detection_lists(...)
 
 
-def compare_results(inference_output_file,expected_results_file,options,
+def compare_results(inference_output_file,
+                    expected_results_file,
+                    options,
                     expected_results_file_is_absolute=False):
     """
     Compare two MD-formatted output files that should be nearly identical, allowing small
@@ -485,6 +487,9 @@ def compare_results(inference_output_file,expected_results_file,options,
         inference_output_file (str): the first results file to compare
         expected_results_file (str): the second results file to compare
         options (MDTestOptions): options that determine tolerable differences between files
+        expected_results_file_is_absolute (str, optional): by default, 
+            expected_results_file is appended to options.scratch_dir; this option
+            specifies that it's an absolute path.
         
     Returns:
         dict: dictionary with keys 'max_coord_error' and 'max_conf_error'
@@ -557,7 +562,7 @@ def compare_results(inference_output_file,expected_results_file,options,
             'Coord error {} is greater than allowable ({}), on file:\n{} ({},{})'.format(
                 max_coord_error,options.max_coord_error,max_coord_error_file,
                 inference_output_file,expected_results_file)
-        
+            
     print('Max conf error: {} (file {})'.format(
         max_conf_error,max_conf_error_file))
     print('Max coord error: {} (file {})'.format(

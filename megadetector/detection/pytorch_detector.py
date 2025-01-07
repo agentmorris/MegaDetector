@@ -210,7 +210,7 @@ class PTDetector:
             # In a very esoteric scenario where an old version of YOLOv5 is used to run
             # newer models, we run into an issue because the "Model" class became
             # "DetectionModel".  New YOLOv5 code handles this case by just setting them
-            # to be the same, so doing that via monkey-patch doesn't seem *that* rude.
+            # to be the same, so doing that externally doesn't seem *that* rude.
             if "Can't get attribute 'DetectionModel'" in str(e):
                 print('Forward-compatibility issue detected, patching')
                 from models import yolo
@@ -352,9 +352,19 @@ class PTDetector:
                             interpolation_method = cv2.INTER_LINEAR
                         else:
                             interpolation_method = cv2.INTER_AREA                    
+                        
+                        # TODO: this is a compatibility variable that I may want to 
+                        # promote to an option.
+                        use_ceil_for_resize = False
+                        if use_ceil_for_resize:
+                            target_w = math.ceil(w * resize_ratio)
+                            target_h = math.ceil(h * resize_ratio)
+                        else:
+                            target_w = int(w * resize_ratio)
+                            target_h = int(h * resize_ratio)
+                            
                         img_original = cv2.resize(
-                            img_original, (math.ceil(w * resize_ratio), 
-                                           math.ceil(h * resize_ratio)),
+                            img_original, (target_w, target_h),
                             interpolation=interpolation_method)
 
                 if 'classic' in self.compatibility_mode:
@@ -476,6 +486,9 @@ class PTDetector:
 
                 # Loop over detections
                 for *xyxy, conf, cls in reversed(det):
+                    
+                    if conf < detection_threshold:
+                        continue
                     
                     # Convert this box to normalized cx, cy, w, h (i.e., YOLO format)
                     xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()
