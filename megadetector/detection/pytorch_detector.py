@@ -75,7 +75,6 @@ if try_yolov9_import and not utils_imported:
         # print('YOLOv5 module import failed, falling back to path-based import')
         pass
 
-
 # If we haven't succeeded yet, import from the ultralytics package        
 if try_ultralytics_import and not utils_imported:
     
@@ -163,7 +162,7 @@ class PTDetector:
         
         print('Loading PT detector with compatibility mode {}'.format(compatibility_mode))
         
-        #: Image size passed to YOLOv5's letterbox() function; 1280 means "1280 on the long side, preserving 
+        #: Image size passed to the letterbox() function; 1280 means "1280 on the long side, preserving 
         #: aspect ratio".
         self.default_image_size = 1280
     
