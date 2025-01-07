@@ -42,10 +42,12 @@ from megadetector.utils import ct_utils
 
 utils_imported = False
 try_yolov5_import = True
+try_yolov9_import = True
 
 # See above; this should remain as "False" unless we update the MegaDetector .pt file
 # to use more recent YOLOv5 namespace conventions.
 try_ultralytics_import = False
+
 
 # First try importing from the yolov5 package; this is how the pip
 # package finds YOLOv5 utilities.
@@ -61,13 +63,32 @@ if try_yolov5_import and not utils_imported:
         # print('YOLOv5 module import failed, falling back to path-based import')
         pass
 
+# Next try importing from the yolov9 package
+if try_yolov9_import and not utils_imported:
+    
+    try:
+        from yolov9.utils.general import non_max_suppression, xyxy2xywh # noqa
+        from yolov9.utils.augmentations import letterbox # noqa
+        from yolov9.utils.general import scale_boxes as scale_coords # noqa
+        utils_imported = True
+        print('Imported YOLOv5 from YOLOv9 package')
+    except Exception:
+        # print('YOLOv5 module import failed, falling back to path-based import')
+        pass
+
+
 # If we haven't succeeded yet, import from the ultralytics package        
 if try_ultralytics_import and not utils_imported:
     
     try:
         from ultralytics.utils.ops import non_max_suppression # noqa
         from ultralytics.utils.ops import xyxy2xywh # noqa
-        from ultralytics.utils.ops import scale_coords # noqa
+        
+        # In the ultralytics package, scale_boxes and scale_coords both exist;
+        # we want scale_boxes.
+        #        
+        # from ultralytics.utils.ops import scale_coords # noqa
+        from ultralytics.utils.ops import scale_boxes as scale_coords # noqa
         from ultralytics.data.augment import LetterBox
         
         # letterbox() became a LetterBox class in the ultralytics package
@@ -89,7 +110,7 @@ if not utils_imported:
         from utils.general import non_max_suppression, xyxy2xywh # noqa
         from utils.augmentations import letterbox # noqa
         
-        # scale_coords() became scale_boxes() in later YOLOv5 versions
+        # scale_coords() is scale_boxes() in some YOLOv5 versions
         try:
             from utils.general import scale_coords # noqa
         except ImportError:
@@ -193,7 +214,7 @@ class PTDetector:
             if "Can't get attribute 'DetectionModel'" in str(e):
                 print('Forward-compatibility issue detected, patching')
                 from models import yolo
-                yolo.DetectionModel = yolo.Model                
+                yolo.DetectionModel = yolo.Model
                 self.model = PTDetector._load_model(model_path, self.device)                
             else:
                 raise
@@ -346,15 +367,17 @@ class PTDetector:
                     
                     letterbox_auto = False
                     letterbox_scaleup = False
-                    letterbox_pad = 0.5
+                    
+                    # The padding to apply as a fraction of the stride size
+                    pad = 0.5
                     
                     model_stride = int(self.model.stride.max())
                     
                     max_dimension = max(img_original.shape)
                     normalized_shape = [img_original.shape[0] / max_dimension,
                                         img_original.shape[1] / max_dimension]
-                    target_shape = np.ceil(np.array(normalized_shape) * image_size / model_stride + letterbox_pad).\
-                        astype(int) * model_stride
+                    target_shape = np.ceil(np.array(normalized_shape) * image_size / model_stride + \
+                                           pad).astype(int) * model_stride
                     
                 # Now we letterbox...
                 img,letterbox_ratio,letterbox_pad = letterbox(img_original, 
@@ -405,65 +428,88 @@ class PTDetector:
                                        agnostic=nms_agnostic,
                                        multi_label=nms_multi_label)
 
-            # format detections/bounding boxes
-            #
-            # normalization gain whwh
+            # In practice this is [w,h,w,h] of the original image
             gn = torch.tensor(scaling_shape)[[1, 0, 1, 0]]
 
+            if 'classic' in self.compatibility_mode:
+                
+                ratio = None
+                ratio_pad = None
+                
+            else:
+                
+                # letterbox_pad is a 2-tuple specifying the padding that was added on each axis
+                # ratio is a 2-tuple specifying the scaling that was applied to each dimension
+                #
+                # The scale_boxes function expects a 2-tuple with these things combined.
+                ratio = (img_original.shape[0]/scaling_shape[0], img_original.shape[1]/scaling_shape[1])
+                ratio_pad = (ratio, letterbox_pad)                
+                
             # This is a loop over detection batches, which will always be length 1 in our case,
             # since we're not doing batch inference.
+            #
+            # det = pred[0]
+            #
+            # det is a torch.Tensor with size [nBoxes,6].  In practice the boxes are sorted 
+            # in descending order by confidence.
+            #
+            # Columns are:
+            #
+            # x0,y0,x1,y1,confidence,class
+            #
+            # At this point, these are *non*-normalized values, referring to the size at which we
+            # ran inference (img.shape).
             for det in pred:
                 
-                if len(det):
+                if len(det) == 0:
+                    continue
+                                    
+                # Rescale boxes from img_size to im0 size, and undo the effect of padded letterboxing
+                if 'classic' in self.compatibility_mode:
                     
-                    # Rescale boxes from img_size to im0 size
+                    det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img_original.shape).round()
+                    
+                else:
+                    # After this scaling, each element of det is a box in x0,y0,x1,y1 format, referring to the
+                    # original pixel dimension of the image, followed by the class and confidence
+                    det[:, :4] = scale_coords(img.shape[2:], det[:, :4], scaling_shape, ratio_pad).round()
+
+                # Loop over detections
+                for *xyxy, conf, cls in reversed(det):
+                    
+                    # Convert this box to normalized cx, cy, w, h (i.e., YOLO format)
+                    xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()
+
+                    # Convert from normalized cx/cy/w/h (i.e., YOLO format) to normalized 
+                    # left/top/w/h (i.e., MD format)
+                    api_box = ct_utils.convert_yolo_to_xywh(xywh)
+
                     if 'classic' in self.compatibility_mode:
-                        
-                        det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img_original.shape).round()
-                        
+                        api_box = ct_utils.truncate_float_array(api_box, precision=COORD_DIGITS)
+                        conf = ct_utils.truncate_float(conf.tolist(), precision=CONF_DIGITS)
                     else:
-                        # Undo the effect of the padded letterboxing
-                        ratio_pad = ((img_original.shape[0]/scaling_shape[0], img_original.shape[1]/scaling_shape[1]), 
-                                     letterbox_pad)
-                        det[:, :4] = scale_coords(img.shape[2:], det[:, :4], scaling_shape, ratio_pad).round()
+                        api_box = ct_utils.round_float_array(api_box, precision=COORD_DIGITS)
+                        conf = ct_utils.round_float(conf.tolist(), precision=CONF_DIGITS)                            
+                    
+                    if not self.use_model_native_classes:
+                        # MegaDetector output format's categories start at 1, but the MD 
+                        # model's categories start at 0.
+                        cls = int(cls.tolist()) + 1
+                        if cls not in (1, 2, 3):
+                            raise KeyError(f'{cls} is not a valid class.')
+                    else:
+                        cls = int(cls.tolist())
 
-                    for *xyxy, conf, cls in reversed(det):
-                        
-                        # Convert to normalized cx/cy/w/h (i.e., YOLO format)
-                        xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()
-
-                        # Convert from normalized cx/cy/w/h (i.e., YOLO format) to normalized 
-                        # left/top/w/h (i.e., MD format)
-                        api_box = ct_utils.convert_yolo_to_xywh(xywh)
-
-                        if 'classic' in self.compatibility_mode:
-                            api_box = ct_utils.truncate_float_array(api_box, precision=COORD_DIGITS)
-                            conf = ct_utils.truncate_float(conf.tolist(), precision=CONF_DIGITS)
-                        else:
-                            api_box = ct_utils.round_float_array(api_box, precision=COORD_DIGITS)
-                            conf = ct_utils.round_float(conf.tolist(), precision=CONF_DIGITS)                            
-                        
-                        if not self.use_model_native_classes:
-                            # MegaDetector output format's categories start at 1, but the MD 
-                            # model's categories start at 0.
-                            cls = int(cls.tolist()) + 1
-                            if cls not in (1, 2, 3):
-                                raise KeyError(f'{cls} is not a valid class.')
-                        else:
-                            cls = int(cls.tolist())
-
-                        detections.append({
-                            'category': str(cls),
-                            'conf': conf,
-                            'bbox': api_box
-                        })
-                        max_conf = max(max_conf, conf)
-                        
-                    # ...for each detection in this batch
-                        
-                # ...if this is a non-empty batch
-                
-            # ...for each detection batch
+                    detections.append({
+                        'category': str(cls),
+                        'conf': conf,
+                        'bbox': api_box
+                    })
+                    max_conf = max(max_conf, conf)
+                    
+                # ...for each detection in this batch
+                    
+            # ...for each detection batch (always one iteration)
 
         # ...try
         

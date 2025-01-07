@@ -421,7 +421,7 @@ def render_detection_bounding_boxes(detections,
                                     vtextalign=VTEXTALIGN_TOP,
                                     label_font_size=DEFAULT_LABEL_FONT_SIZE,
                                     custom_strings=None,
-                                    box_sort_order=None):
+                                    box_sort_order='confidence'):
     """
     Renders bounding boxes (with labels and confidence values) on an image for all
     detections above a threshold.
@@ -500,7 +500,7 @@ def render_detection_bounding_boxes(detections,
         custom_strings: optional set of strings to append to detection labels, should have the
             same length as [detections].  Appended before any classification labels.
         box_sort_order (str, optional): sorting scheme for detection boxes, can be None, "confidence", or 
-            "reverse_confidence"
+            "reverse_confidence".
     """
 
     # Input validation
