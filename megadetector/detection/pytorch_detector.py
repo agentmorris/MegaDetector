@@ -8,12 +8,19 @@ Module to run YOLO-based MegaDetector models.
 
 #%% Imports and constants
 
+import os
 import sys
-import cv2
 import math
+import zipfile
+import tempfile
+import shutil
+import traceback
+import uuid
+import json
+
+import cv2
 import torch
 import numpy as np
-import traceback
 
 from megadetector.detection.run_detector import CONF_DIGITS, COORD_DIGITS, FAILURE_INFER
 from megadetector.utils import ct_utils
@@ -34,19 +41,17 @@ from megadetector.utils import ct_utils
 # * Unfinished:
 #
 #   pip install ultralytics
-#
+
+utils_imported = False
+
+try_yolov5_import = True
+try_yolov9_import = True
+
 #   If try_ultralytics_import is True, we'll try to import all YOLOv5 dependencies from 
 #   ultralytics.utils and ultralytics.data.  But as of 2023.11, this results in a "No 
 #   module named 'models'" error when running MDv5, and there's no upside to this approach
 #   compared to using either of the YOLOv5 PyPI packages, so... punting on this for now.
-
-utils_imported = False
-try_yolov5_import = True
-try_yolov9_import = True
-
-# See above; this should remain as "False" unless we update the MegaDetector .pt file
-# to use more recent YOLOv5 namespace conventions.
-try_ultralytics_import = False
+try_ultralytics_import = True
 
 # First try importing from the yolov5 package; this is how the pip
 # package finds YOLOv5 utilities.
@@ -90,10 +95,34 @@ if try_ultralytics_import and not utils_imported:
         from ultralytics.data.augment import LetterBox
         
         # letterbox() became a LetterBox class in the ultralytics package
-        def letterbox(img,new_shape,stride,auto=True): # noqa
-            L = LetterBox(new_shape,stride=stride,auto=auto)
+        def letterbox(img,new_shape,auto=False,scaleFill=False,scaleup=True,center=True,stride=32): # noqa
+            
+            L = LetterBox(new_shape,auto=auto,scaleFill=scaleFill,scaleup=scaleup,center=center,stride=stride)
             letterbox_result = L(image=img)
-            return [letterbox_result]
+        
+            # The letterboxing is done, we just need to reverse-engineer what it did
+            shape = img.shape[:2]
+            
+            r = min(new_shape[0] / shape[0], new_shape[1] / shape[1])
+            if not scaleup:
+                r = min(r, 1.0)
+            ratio = r, r
+            
+            new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
+            dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - new_unpad[1]
+            if auto:
+                dw, dh = np.mod(dw, stride), np.mod(dh, stride)
+            elif scaleFill: 
+                dw, dh = 0.0, 0.0
+                new_unpad = (new_shape[1], new_shape[0])
+                ratio = (new_shape[1] / shape[1], new_shape[0] / shape[0])
+
+            dw /= 2
+            dh /= 2
+            pad = (dw,dh)
+            
+            return [letterbox_result,ratio,pad]
+        
         utils_imported = True
         print('Imported YOLOv5 from ultralytics package')
     except Exception:
@@ -125,7 +154,114 @@ assert utils_imported, 'YOLOv5 import error'
 print(f'Using PyTorch version {torch.__version__}')
 
     
-#%% Classes
+#%% Model metadata functions
+
+def add_metadata_to_megadetector_model_file(model_file_in, 
+                                            model_file_out,
+                                            metadata, 
+                                            destination_path='megadetector_info.json'):
+    """
+    Adds a .json file to the specified MegaDetector model file containing metadata used 
+    by this module.  Always over-writes the output file.
+    
+    Args:
+        model_file_in (str): The input model filename, typically .pt (.zip is also sensible)
+        model_file_out (str): The output model filename, typically .pt (.zip is also sensible).
+            May be the same as model_file_in.
+        metadata (dict): The metadata dict to add to the output model file
+        destination_path (str, optional): The relative path within the main folder of the 
+            model archive where we should write the metadata.  This is not relative to the root 
+            of the archive, it's relative to the one and only folder at the root of the archive
+            (this is a PyTorch convention).        
+    """
+        
+    tmp_base = os.path.join(tempfile.gettempdir(),'md_metadata')
+    os.makedirs(tmp_base,exist_ok=True)
+    metadata_tmp_file_relative = 'megadetector_info_' + str(uuid.uuid1()) + '.json'
+    metadata_tmp_file_abs = os.path.join(tmp_base,metadata_tmp_file_relative)    
+
+    with open(metadata_tmp_file_abs,'w') as f:
+        json.dump(metadata,f,indent=1)
+        
+    # Copy the input file to the output file
+    shutil.copyfile(model_file_in,model_file_out)
+
+    # Write metadata to the output file
+    with zipfile.ZipFile(model_file_out, 'a', compression=zipfile.ZIP_DEFLATED) as zipf:
+        
+        # Torch doesn't like anything in the root folder of the zipfile, so we put 
+        # it in the one and only folder.
+        names = zipf.namelist()
+        root_folders = set()
+        for name in names:
+            root_folder = name.split('/')[0]
+            root_folders.add(root_folder)
+        assert len(root_folders) == 1,\
+            'This archive does not have exactly one folder at the top level; are you sure it\'s a Torch model file?'
+        root_folder = next(iter(root_folders))
+        
+        zipf.write(metadata_tmp_file_abs, 
+                   root_folder + '/' + destination_path, 
+                   compresslevel=9,
+                   compress_type=zipfile.ZIP_DEFLATED)
+
+    try:
+        os.remove(metadata_tmp_file_abs)
+    except Exception as e:
+        print('Warning: error deleting file {}: {}'.format(metadata_tmp_file_abs,str(e)))
+                
+# ...def add_metadata_to_megadetector_model_file(...)
+
+
+def read_metadata_from_megadetector_model_file(model_file,relative_path='megadetector_info.json'):
+    """
+    Reads custom MegaDetector metadata from a modified MegaDetector model file.
+    
+    Args:
+        model_file (str): The model filename to read, typically .pt (.zip is also sensible)
+        relative_path (str, optional): The relative path within the main folder of the model 
+            archive from which we should read the metadata.  This is not relative to the root 
+            of the archive, it's relative to the one and only folder at the root of the archive
+            (this is a PyTorch convention).    
+    
+    Returns:
+        object: Whatever we read from the metadata file, always a dict in practice.  Returns
+            None if we failed to read the specified metadata file.
+    """
+    
+    with zipfile.ZipFile(model_file,'r') as zipf:
+        
+        # Torch doesn't like anything in the root folder of the zipfile, so we put 
+        # it in the one and only folder.
+        names = zipf.namelist()
+        root_folders = set()
+        for name in names:
+            root_folder = name.split('/')[0]
+            root_folders.add(root_folder)
+        if len(root_folders) != 1:
+            print('Warning: this archive does not have exactly one folder at the top level; are you sure it\'s a Torch model file?')
+            return None
+        root_folder = next(iter(root_folders))
+        
+        metadata_file = root_folder + '/' + relative_path
+        if metadata_file not in names:
+            print('Warning: could not find metadata file {} in zip archive'.format(metadata_file))
+            return None
+    
+        try:
+            path = zipfile.Path(zipf,metadata_file)
+            contents = path.read_text()
+            d = json.loads(contents)
+        except Exception as e:
+            print('Warning: error reading metadata from path {}: {}'.format(metadata_file,str(e)))
+            return None
+        
+        return d
+        
+# ...def read_metadata_from_megadetector_model_file(...)
+
+
+#%% Inference classes
 
 default_compatibility_mode = 'classic'
 
