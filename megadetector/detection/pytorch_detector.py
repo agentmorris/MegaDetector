@@ -117,6 +117,18 @@ def _initialize_yolo_imports(model_type='yolov5',allow_fallback_import=True):
         
         try:
             
+            import ultralytics # noqa
+            
+        except Exception:
+            
+            print('It looks like you are trying to run a model that requires the ultralytics package, '
+                  'but the ultralytics package is not installed, but .  For licensing reasons, this '
+                  'is not installed by default with the MegaDetector Python package.  Run '
+                  '"pip install ultralytics" to install it, and try again.')
+            raise
+                 
+        try:
+            
             from ultralytics.utils.ops import non_max_suppression # noqa
             from ultralytics.utils.ops import xyxy2xywh # noqa
             

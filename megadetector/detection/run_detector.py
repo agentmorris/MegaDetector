@@ -70,6 +70,9 @@ DEFAULT_DETECTOR_LABEL_MAP = {
 
 # Should we allow classes that don't look anything like the MegaDetector classes?
 #
+# This flag needs to get set if you want to, for example, run an off-the-shelf
+# YOLO model with this package.
+#
 # By default, we error if we see unfamiliar classes.
 #
 # TODO: the use of a global variable to manage this was fine when this was really
@@ -137,48 +140,42 @@ model_string_to_model_version = {
     'v5b.0.0':'v5b.0.0',        
 }
 
-# Maps known model versions numbers to metadata
+# Maps canonical model version numbers to metadata
 known_models = {
     'v2.0.0':
     {
         'url':'https://lila.science/public/models/megadetector/megadetector_v2.pb',
-        'detector_metadata':
-            {'megadetector_version':'v2.0.0',
-             'typical_detection_threshold':0.8,
-             'conservative_detection_threshold':0.3}        
+        'typical_detection_threshold':0.8,
+        'conservative_detection_threshold':0.3
     },
     'v3.0.0':
     {
         'url':'https://lila.science/public/models/megadetector/megadetector_v3.pb',
-        'detector_metadata':
-            {'megadetector_version':'v3.0.0',
-             'typical_detection_threshold':0.8,
-             'conservative_detection_threshold':0.3}
+        'typical_detection_threshold':0.8,
+        'conservative_detection_threshold':0.3
     },
     'v4.1.0':
     {
         'url':'https://github.com/agentmorris/MegaDetector/releases/download/v4.1/md_v4.1.0.pb',
-        'detector_metadata':
-            {'megadetector_version':'v4.1.0',
-             'typical_detection_threshold':0.8,
-             'conservative_detection_threshold':0.3}  
+        'typical_detection_threshold':0.8,
+        'conservative_detection_threshold':0.3
     },
     'v5a.0.0':
     {
         'url':'https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt',
-        'detector_metadata':
-            {'megadetector_version':'v5a.0.0',
-             'typical_detection_threshold':0.2,
-             'conservative_detection_threshold':0.05}
+        'typical_detection_threshold':0.2,
+        'conservative_detection_threshold':0.05,
+        'image_size':1280,
+        'preferred_inference_package':'yolov5'
     },
     'v5b.0.0':
     {
         'url':'https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.0.pt',
-        'detector_metadata':
-            {'megadetector_version':'v5b.0.0',
-             'typical_detection_threshold':0.2,
-             'conservative_detection_threshold':0.05}      
-    }
+        'typical_detection_threshold':0.2,
+        'conservative_detection_threshold':0.05,
+        'image_size':1280,
+        'preferred_inference_package':'yolov5'
+    },
 }
 
 # Approximate inference speeds (in images per second) for MDv5 based on 
