@@ -42,118 +42,163 @@ from megadetector.utils import ct_utils
 #
 #   pip install ultralytics
 
-utils_imported = False
+yolo_model_type_imported = None
 
-try_yolov5_import = True
-try_yolov9_import = True
+def _initialize_yolo_imports_for_model(model_file):
+    pass
 
-#   If try_ultralytics_import is True, we'll try to import all YOLOv5 dependencies from 
-#   ultralytics.utils and ultralytics.data.  But as of 2023.11, this results in a "No 
-#   module named 'models'" error when running MDv5, and there's no upside to this approach
-#   compared to using either of the YOLOv5 PyPI packages, so... punting on this for now.
-try_ultralytics_import = True
-
-# First try importing from the yolov5 package; this is how the pip
-# package finds YOLOv5 utilities.
-if try_yolov5_import and not utils_imported:
+def _initialize_yolo_imports(model_type='yolov5',allow_fallback_import=True):
+    """
+    Imports required functions from one or more yolo libraries (yolov5, yolov9, 
+    ultralytics, targeting support for [model_type])
     
-    try:
-        from yolov5.utils.general import non_max_suppression, xyxy2xywh # noqa
-        from yolov5.utils.augmentations import letterbox # noqa
-        from yolov5.utils.general import scale_boxes as scale_coords # noqa
-        utils_imported = True
-        print('Imported YOLOv5 from YOLOv5 package')
-    except Exception:
-        # print('YOLOv5 module import failed, falling back to path-based import')
-        pass
-
-# Next try importing from the yolov9 package
-if try_yolov9_import and not utils_imported:
+    Args:
+        model_type (str): The model type for which we're loading support
+        allow_fallback_import: If we can't import from the package for which we're 
+            trying to load support, fall back to "import utils".  This is typically
+            used when the right support library is on your PYTHONPATH.
+    """
     
-    try:
-        from yolov9.utils.general import non_max_suppression, xyxy2xywh # noqa
-        from yolov9.utils.augmentations import letterbox # noqa
-        from yolov9.utils.general import scale_boxes as scale_coords # noqa
-        utils_imported = True
-        print('Imported YOLOv5 from YOLOv9 package')
-    except Exception:
-        # print('YOLOv5 module import failed, falling back to path-based import')
-        pass
-
-# If we haven't succeeded yet, import from the ultralytics package        
-if try_ultralytics_import and not utils_imported:
+    global yolo_model_type_imported
     
-    try:
-        from ultralytics.utils.ops import non_max_suppression # noqa
-        from ultralytics.utils.ops import xyxy2xywh # noqa
-        
-        # In the ultralytics package, scale_boxes and scale_coords both exist;
-        # we want scale_boxes.
-        #        
-        # from ultralytics.utils.ops import scale_coords # noqa
-        from ultralytics.utils.ops import scale_boxes as scale_coords # noqa
-        from ultralytics.data.augment import LetterBox
-        
-        # letterbox() became a LetterBox class in the ultralytics package
-        def letterbox(img,new_shape,auto=False,scaleFill=False,scaleup=True,center=True,stride=32): # noqa
-            
-            L = LetterBox(new_shape,auto=auto,scaleFill=scaleFill,scaleup=scaleup,center=center,stride=stride)
-            letterbox_result = L(image=img)
-        
-            # The letterboxing is done, we just need to reverse-engineer what it did
-            shape = img.shape[:2]
-            
-            r = min(new_shape[0] / shape[0], new_shape[1] / shape[1])
-            if not scaleup:
-                r = min(r, 1.0)
-            ratio = r, r
-            
-            new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
-            dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - new_unpad[1]
-            if auto:
-                dw, dh = np.mod(dw, stride), np.mod(dh, stride)
-            elif scaleFill: 
-                dw, dh = 0.0, 0.0
-                new_unpad = (new_shape[1], new_shape[0])
-                ratio = (new_shape[1] / shape[1], new_shape[0] / shape[0])
-
-            dw /= 2
-            dh /= 2
-            pad = (dw,dh)
-            
-            return [letterbox_result,ratio,pad]
-        
-        utils_imported = True
-        print('Imported YOLOv5 from ultralytics package')
-    except Exception:
-        # print('Ultralytics module import failed, falling back to yolov5 import')
-        pass
-
-# If we haven't succeeded yet, assume the YOLOv5 repo is on our PYTHONPATH.
-if not utils_imported:
+    # The point of this function is to make the appropriate version
+    # of the following functions available at module scope
+    global non_max_suppression
+    global xyxy2xywh
+    global letterbox
+    global scale_coords
     
-    try:
-        # import pre- and post-processing functions from the YOLOv5 repo
-        from utils.general import non_max_suppression, xyxy2xywh # noqa
-        from utils.augmentations import letterbox # noqa
+    if yolo_model_type_imported is not None and yolo_model_type_imported == model_type:
+        print('Bypassing imports for YOLO model type {}'.format(model_type))
+        return
+    
+    try_yolov5_import = (model_type == 'yolov5')
+    try_yolov9_import = (model_type == 'yolov9')
+    try_ultralytics_import = (model_type == 'ultralytics')
+    
+    utils_imported = False
+    
+    # First try importing from the yolov5 package; this is how the pip
+    # package finds YOLOv5 utilities.
+    if try_yolov5_import and not utils_imported:
         
-        # scale_coords() is scale_boxes() in some YOLOv5 versions
         try:
-            from utils.general import scale_coords # noqa
-        except ImportError:
-            from utils.general import scale_boxes as scale_coords
-        utils_imported = True
-        imported_file = sys.modules[scale_coords.__module__].__file__
-        print('Imported YOLOv5 as utils.* from {}'.format(imported_file))
+            
+            from yolov5.utils.general import non_max_suppression, xyxy2xywh # noqa
+            from yolov5.utils.augmentations import letterbox # noqa
+            from yolov5.utils.general import scale_boxes as scale_coords # noqa
+            utils_imported = True
+            print('Imported YOLOv5 from YOLOv5 package')
+            
+        except Exception:
+            
+            # print('yolov5 module import failed')
+            pass
+    
+    # Next try importing from the yolov9 package
+    if try_yolov9_import and not utils_imported:
+        
+        try:
+            
+            from yolov9.utils.general import non_max_suppression, xyxy2xywh # noqa
+            from yolov9.utils.augmentations import letterbox # noqa
+            from yolov9.utils.general import scale_boxes as scale_coords # noqa
+            utils_imported = True
+            print('Imported YOLOv5 from YOLOv9 package')
+            
+        except Exception:
+            
+            # print('yolov9 module import failed')
+            pass
+    
+    # If we haven't succeeded yet, import from the ultralytics package        
+    if try_ultralytics_import and not utils_imported:
+        
+        try:
+            
+            from ultralytics.utils.ops import non_max_suppression # noqa
+            from ultralytics.utils.ops import xyxy2xywh # noqa
+            
+            # In the ultralytics package, scale_boxes and scale_coords both exist;
+            # we want scale_boxes.
+            #        
+            # from ultralytics.utils.ops import scale_coords # noqa
+            from ultralytics.utils.ops import scale_boxes as scale_coords # noqa
+            from ultralytics.data.augment import LetterBox
+            
+            # letterbox() became a LetterBox class in the ultralytics package.  Create a 
+            # backwards-compatible letterbox function wrapper that wraps the class up.
+            def letterbox(img,new_shape,auto=False,scaleFill=False,scaleup=True,center=True,stride=32): # noqa
                 
-    except ModuleNotFoundError as e:
-        raise ModuleNotFoundError('Could not import YOLOv5 functions:\n{}'.format(str(e)))
+                L = LetterBox(new_shape,auto=auto,scaleFill=scaleFill,scaleup=scaleup,center=center,stride=stride)
+                letterbox_result = L(image=img)
+            
+                # The letterboxing is done, we just need to reverse-engineer what it did
+                shape = img.shape[:2]
+                
+                r = min(new_shape[0] / shape[0], new_shape[1] / shape[1])
+                if not scaleup:
+                    r = min(r, 1.0)
+                ratio = r, r
+                
+                new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
+                dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - new_unpad[1]
+                if auto:
+                    dw, dh = np.mod(dw, stride), np.mod(dh, stride)
+                elif scaleFill: 
+                    dw, dh = 0.0, 0.0
+                    new_unpad = (new_shape[1], new_shape[0])
+                    ratio = (new_shape[1] / shape[1], new_shape[0] / shape[0])
+    
+                dw /= 2
+                dh /= 2
+                pad = (dw,dh)
+                
+                return [letterbox_result,ratio,pad]
+            
+            utils_imported = True
+            print('Imported YOLOv5 from ultralytics package')
+            
+        except Exception:
+            
+            # print('Ultralytics module import failed')
+            pass
+    
+    # If we haven't succeeded yet, assume the YOLOv5 repo is on our PYTHONPATH.
+    if (not utils_imported) and allow_fallback_import:
+        
+        try:
+            
+            # import pre- and post-processing functions from the YOLOv5 repo
+            from utils.general import non_max_suppression, xyxy2xywh # noqa
+            from utils.augmentations import letterbox # noqa
+            
+            # scale_coords() is scale_boxes() in some YOLOv5 versions
+            try:
+                from utils.general import scale_coords # noqa
+            except ImportError:
+                from utils.general import scale_boxes as scale_coords
+            utils_imported = True
+            imported_file = sys.modules[scale_coords.__module__].__file__
+            print('Imported YOLOv5 as utils.* from {}'.format(imported_file))
+                    
+        except ModuleNotFoundError as e:
+            
+            raise ModuleNotFoundError('Could not import YOLOv5 functions:\n{}'.format(str(e)))
+    
+    assert utils_imported, 'YOLOv5 import error'
+    
+    yolo_model_type_imported = model_type
+    print('Prepared YOLO imports for model type {}'.format(model_type))
 
-assert utils_imported, 'YOLOv5 import error'
+# ...def _initialize_yolo_imports(...)
+
 
 print(f'Using PyTorch version {torch.__version__}')
 
+_initialize_yolo_imports()
     
+
 #%% Model metadata functions
 
 def add_metadata_to_megadetector_model_file(model_file_in, 
