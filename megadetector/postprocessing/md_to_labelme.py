@@ -26,7 +26,7 @@ from functools import partial
 
 from megadetector.visualization.visualization_utils import open_image
 from megadetector.utils.ct_utils import truncate_float, round_float #noqa
-from megadetector.detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP
+from megadetector.detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP, FAILURE_IMAGE_OPEN
 
 output_precision = 3
 default_confidence_threshold = 0.15
@@ -210,7 +210,7 @@ def md_to_labelme(results_file,image_base,confidence_threshold=None,
                     print('Warning: cannot open image {}, treating as a failure during inference'.format(
                         im_full_path))
                     if 'failure' not in im:
-                        im['failure'] = 'Failure image access'        
+                        im['failure'] = FAILURE_IMAGE_OPEN
     
             # ...if we need to read w/h information
             

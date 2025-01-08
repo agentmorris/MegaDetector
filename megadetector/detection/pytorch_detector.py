@@ -23,6 +23,7 @@ import torch
 import numpy as np
 
 from megadetector.detection.run_detector import CONF_DIGITS, COORD_DIGITS, FAILURE_INFER
+from megadetector.utils.ct_utils import parse_bool_string
 from megadetector.utils import ct_utils
 
 # We support a few ways of accessing the YOLOv5 dependencies:
@@ -326,9 +327,9 @@ class PTDetector:
         if detector_options is not None:
             
             if 'force_cpu' in detector_options:
-                force_cpu = detector_options['force_cpu']
+                force_cpu = parse_bool_string(detector_options['force_cpu'])
             if 'use_model_native_classes' in detector_options:
-                use_model_native_classes = detector_options['use_model_native_classes']
+                use_model_native_classes = parse_bool_string(detector_options['use_model_native_classes'])
             if 'compatibility_mode' in detector_options:
                 if detector_options['compatibility_mode'] is None:
                     compatibility_mode = default_compatibility_mode

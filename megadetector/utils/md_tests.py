@@ -29,6 +29,8 @@ import subprocess
 import argparse
 import inspect
 
+from copy import copy
+
 
 #%% Classes
 
@@ -681,7 +683,8 @@ def run_python_tests(options):
     from megadetector.detection import run_detector
     from megadetector.visualization import visualization_utils as vis_utils
     image_fn = os.path.join(options.scratch_dir,options.test_images[0])
-    model = run_detector.load_detector(options.default_model,detector_options=options.detector_options)
+    model = run_detector.load_detector(options.default_model,
+                                       detector_options=copy(options.detector_options))
     pil_im = vis_utils.load_image(image_fn)
     result = model.generate_detections_one_image(pil_im) # noqa
 
@@ -700,7 +703,7 @@ def run_python_tests(options):
     results = load_and_run_detector_batch(options.default_model, 
                                           image_file_names,
                                           quiet=True,
-                                          detector_options=options.detector_options)
+                                          detector_options=copy(options.detector_options))
     _ = write_results_to_file(results,
                               inference_output_file,
                               relative_path_base=image_folder,
@@ -734,7 +737,7 @@ def run_python_tests(options):
                                           image_file_names,
                                           quiet=True,
                                           augment=True,
-                                          detector_options=options.detector_options)
+                                          detector_options=copy(options.detector_options))
     _ = write_results_to_file(results,
                               inference_output_file_augmented,
                               relative_path_base=image_folder,
@@ -890,7 +893,7 @@ def run_python_tests(options):
         video_options.n_cores = 5
         # video_options.debug_max_frames = -1
         # video_options.class_mapping_filename = None
-        video_options.detector_options = options.detector_options
+        video_options.detector_options = copy(options.detector_options)
         
         _ = process_video(video_options)
     
@@ -939,7 +942,7 @@ def run_python_tests(options):
         # and therefore can't rely on using the quality parameter
         video_options.quality = None
         video_options.max_width = None        
-        video_options.detector_options = options.detector_options
+        video_options.detector_options = copy(options.detector_options)
         
         _ = process_video_folder(video_options)
     
@@ -1018,7 +1021,7 @@ def run_cli_tests(options):
     
     ## Utility imports
     
-    from megadetector.utis.ct_utils import dict_to_kvp_list
+    from megadetector.utils.ct_utils import dict_to_kvp_list
     from megadetector.utils.path_utils import insert_before_extension
     
     

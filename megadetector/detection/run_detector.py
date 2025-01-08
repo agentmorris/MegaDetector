@@ -54,8 +54,8 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 
 
 # An enumeration of failure reasons
-FAILURE_INFER = 'Failure inference'
-FAILURE_IMAGE_OPEN = 'Failure image access'
+FAILURE_INFER = 'inference failure'
+FAILURE_IMAGE_OPEN = 'image access failure'
 
 # Number of decimal places to round to for confidence and bbox coordinates
 CONF_DIGITS = 3
@@ -103,7 +103,7 @@ DETECTOR_METADATA = {
          'conservative_detection_threshold':0.05}
 }
 
-DEFAULT_RENDERING_CONFIDENCE_THRESHOLD = DETECTOR_METADATA['v5b.0.0']['typical_detection_threshold']
+DEFAULT_RENDERING_CONFIDENCE_THRESHOLD = DETECTOR_METADATA['v5a.0.0']['typical_detection_threshold']
 DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD = 0.005
 
 DEFAULT_BOX_THICKNESS = 4
@@ -122,16 +122,63 @@ downloadable_models = {
     'MDV5B':'https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.0.pt'
 }
 
+# Maps a variety of strings that might occur in filenames to canonical version numbers
 model_string_to_model_version = {
-    'v2':'v2.0.0',
-    'v3':'v3.0.0',
-    'v4.1':'v4.1.0',
-    'v5a.0.0':'v5a.0.0',
-    'v5b.0.0':'v5b.0.0',
+    'mdv2':'v2.0.0',
+    'mdv3':'v3.0.0',
+    'mdv4':'v4.1.0',
     'mdv5a':'v5a.0.0',
     'mdv5b':'v5b.0.0',
-    'mdv4':'v4.1.0',
-    'mdv3':'v3.0.0'
+    'v2':'v2.0.0',
+    'v3':'v3.0.0',
+    'v4':'v4.1.0',
+    'v4.1':'v4.1.0',
+    'v5a.0.0':'v5a.0.0',
+    'v5b.0.0':'v5b.0.0',        
+}
+
+# Maps known model versions numbers to metadata
+known_models = {
+    'v2.0.0':
+    {
+        'url':'https://lila.science/public/models/megadetector/megadetector_v2.pb',
+        'detector_metadata':
+            {'megadetector_version':'v2.0.0',
+             'typical_detection_threshold':0.8,
+             'conservative_detection_threshold':0.3}        
+    },
+    'v3.0.0':
+    {
+        'url':'https://lila.science/public/models/megadetector/megadetector_v3.pb',
+        'detector_metadata':
+            {'megadetector_version':'v3.0.0',
+             'typical_detection_threshold':0.8,
+             'conservative_detection_threshold':0.3}
+    },
+    'v4.1.0':
+    {
+        'url':'https://github.com/agentmorris/MegaDetector/releases/download/v4.1/md_v4.1.0.pb',
+        'detector_metadata':
+            {'megadetector_version':'v4.1.0',
+             'typical_detection_threshold':0.8,
+             'conservative_detection_threshold':0.3}  
+    },
+    'v5a.0.0':
+    {
+        'url':'https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt',
+        'detector_metadata':
+            {'megadetector_version':'v5a.0.0',
+             'typical_detection_threshold':0.2,
+             'conservative_detection_threshold':0.05}
+    },
+    'v5b.0.0':
+    {
+        'url':'https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.0.pt',
+        'detector_metadata':
+            {'megadetector_version':'v5b.0.0',
+             'typical_detection_threshold':0.2,
+             'conservative_detection_threshold':0.05}      
+    }
 }
 
 # Approximate inference speeds (in images per second) for MDv5 based on 
@@ -202,7 +249,7 @@ def get_detector_metadata_from_version_string(detector_version):
 
 def get_detector_version_from_filename(detector_filename,accept_first_match=True):
     r"""
-    Gets the version number component of the detector from the model filename.  
+    Gets the canonical version number string of a detector from the model filename.  
     
     [detector_filename] will almost always end with one of the following:
         
@@ -611,7 +658,7 @@ def load_and_run_detector(model_file,
 # ...def load_and_run_detector()
 
 
-def download_model(model_name,force_download=False):
+def _download_model(model_name,force_download=False):
     """
     Downloads one of the known models to local temp space if it hasn't already been downloaded.
     
@@ -669,7 +716,7 @@ def try_download_known_detector(detector_file,force_download=False):
             detector_file = fn
         else:
             print('Downloading model {}'.format(detector_file))
-            detector_file = download_model(detector_file,force_download=force_download)
+            detector_file = _download_model(detector_file,force_download=force_download)
     return detector_file
         
     

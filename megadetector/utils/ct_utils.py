@@ -786,9 +786,12 @@ def parse_kvp_list(items,kv_separator='=',d=None):
         d[key] = value
         
     return d
-    
 
-def dict_to_kvp_list(d,item_separator=' ',kv_separator='='):
+
+def dict_to_kvp_list(d,
+                     item_separator=' ',
+                     kv_separator='=',
+                     non_string_value_handling='error'):
     """
     Convert a string <--> string dict into a string containing list of list of
     key-value pairs.  I.e., converts {'a':'dog','b':'cat'} to 'a=dog b=cat'.  If
@@ -798,6 +801,8 @@ def dict_to_kvp_list(d,item_separator=' ',kv_separator='='):
         d (dict): the dictionary to convert, must contain only strings
         item_separator (str, optional): the delimiter between KV pairs
         kv_separator (str, optional): the separator betweena a key and its value
+        non_string_value_handling (str, optional): what do do with non-string values,
+            can be "omit", "error", or "convert"
     
     Returns:
         str: the string representation of [d]
@@ -811,9 +816,18 @@ def dict_to_kvp_list(d,item_separator=' ',kv_separator='='):
     
     s = ''
     for k in d.keys():
-        assert isinstance(k,str), 'Input is not a str <--> str dict'
+        assert isinstance(k,str), 'Input {} is not a str <--> str dict'.format(str(d))
         v = d[k]
-        assert isinstance(v,str), 'Input is not a str <--> str dict'
+        if not isinstance(v,str):
+            if non_string_value_handling == 'error':
+                raise ValueError('Input {} is not a str <--> str dict'.format(str(d)))
+            elif non_string_value_handling == 'omit':
+                continue
+            elif non_string_value_handling == 'convert':
+                v = str(v)
+            else:
+                raise ValueError('Unrecognized non_string_value_handling value: {}'.format(
+                    non_string_value_handling))
         if s is None:
             s = ''
         else:
@@ -821,6 +835,29 @@ def dict_to_kvp_list(d,item_separator=' ',kv_separator='='):
         s += k + kv_separator + v
     
     return s
+    
+
+def parse_bool_string(s):
+    """
+    Convert the strings "true" or "false" to boolean values.  Case-insensitive, discards
+    leading and trailing whitespace.  If s is already a bool, returns s.
+    
+    Args:
+        s (str or bool): the string to parse, or the bool to return
+        
+    Returns:
+        bool: the parsed value
+    """
+    
+    if isinstance(s,bool):
+        return s
+    s = s.lower().strip()
+    if s == 'true':
+        return True
+    elif s == 'false':
+        return False
+    else:
+        raise ValueError('Cannot parse bool from string {}'.format(str(s)))
     
 
 #%% Test drivers
