@@ -28,6 +28,7 @@ from uuid import uuid1
 from megadetector.detection import run_detector_batch
 from megadetector.visualization import visualize_detector_output
 from megadetector.utils.ct_utils import args_to_object
+from megadetector.utils.ct_utils import dict_to_kvp_list, parse_kvp_list
 from megadetector.utils.path_utils import insert_before_extension, clean_path
 from megadetector.detection.video_utils import video_to_frames
 from megadetector.detection.video_utils import run_callback_on_frames
@@ -915,8 +916,8 @@ def options_to_command(options):
         cmd += ' --force_extracted_frame_folder_deletion'
     if options.force_rendered_frame_folder_deletion:
         cmd += ' --force_rendered_frame_folder_deletion'
-    if options.detector_options is not None and 'compatibility_mode' in options.detector_options:
-        cmd += ' --compatibility_mode {}'.format(options.detector_options['compatibility_mode'])
+    if options.detector_options is not None and len(options.detector_options) > 0:
+        cmd += '--detector_options {}'.format(dict_to_kvp_list(options.detector_options))        
 
     return cmd
 
@@ -1217,10 +1218,12 @@ def main():
                         action='store_true',
                         help='By default, videos with no retrievable frames cause an error, this makes it a warning')
     
-    parser.add_argument('--compatibility_mode',
-                        type=str,
-                        default=None,
-                        help=('Debug option used for backwards compatibility testing'))    
+    parser.add_argument(
+        '--detector_options',
+        nargs='*',
+        metavar='KEY=VALUE',
+        default='',
+        help='Detector-specific options, as a space-separated list of key-value pairs')
         
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -1230,8 +1233,7 @@ def main():
     options = ProcessVideoOptions()    
     args_to_object(args,options)
     
-    if options.compatibility_mode is not None:
-        options.detector_options = {'compatibility_mode':options.compatibility_mode}
+    options.detector_options = parse_kvp_list(args.detector_options)
 
     if os.path.isdir(options.input_video_file):
         process_video_folder(options)

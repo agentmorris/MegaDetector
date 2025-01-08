@@ -71,6 +71,7 @@ from megadetector.detection.run_detector import \
     get_detector_metadata_from_version_string
 
 from megadetector.utils import path_utils
+from megadetector.utils.ct_utils import parse_kvp_list
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.data_management import read_exif
 from megadetector.data_management.yolo_output_to_md_output import read_classes_from_yolo_dataset_file
@@ -1173,11 +1174,11 @@ def main():
               'for "updating" a set of results when you may have added new images to a folder you\'ve ' +\
               'already processed.  Only supported when using relative paths.'))
     parser.add_argument(
-        '--compatibility_mode',
-        type=str,
-        default='classic',
-        help=('Debugging option used to maintain backwards compatibility with earlier versions of the MD ' +\
-              'package.'))
+        '--detector_options',
+        nargs='*',
+        metavar='KEY=VALUE',
+        default='',
+        help='Detector-specific options, as a space-separated list of key-value pairs')
     
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -1185,6 +1186,8 @@ def main():
 
     args = parser.parse_args()
 
+    detector_options = parse_kvp_list(args.detector_options)
+    
     # If the specified detector file is really the name of a known model, find 
     # (and possibly download) that model
     args.detector_file = try_download_known_detector(args.detector_file, 
@@ -1395,9 +1398,6 @@ def main():
 
     start_time = time.time()
 
-    detector_options = {}
-    detector_options['compatibility_mode'] = args.compatibility_mode
-    
     results = load_and_run_detector_batch(model_file=args.detector_file,
                                           image_file_names=image_file_names,
                                           checkpoint_path=checkpoint_path,

@@ -107,14 +107,8 @@ class MDTestOptions:
         #: to the same box.
         self.iou_threshold_for_file_comparison = 0.85
         
-        #: Compatibility mode option passed to PTDetector
-        #:
-        #: This will be automatically copied to [detector_options]
-        self.compatibility_mode = 'classic-test'
-        
-        #: detector_options dict passed to load_detector; the "compatibility_mode" field
-        #: is populated automatically.
-        self.detector_options = None
+        #: Detector options passed to PTDetector
+        self.detector_options = {'compatibility_mode':'classic-test'}                
 
     # ...def __init__()
     
@@ -279,12 +273,7 @@ def download_test_data(options=None):
                            os.path.isfile(os.path.join(scratch_dir,fn))]
         
     print('Finished unzipping and enumerating test data')
-    
-    # Populate other auto-populated fields
-    if options.detector_options is None:
-        options.detector_options = {}
-    options.detector_options['compatibility_mode'] = options.compatibility_mode
-    
+        
     return options
 
 # ...def download_test_data(...)
@@ -673,6 +662,12 @@ def run_python_tests(options):
     """
     
     print('\n*** Starting module tests ***\n')
+        
+    
+    ## Make sure our tests are doing what we think they're doing
+    
+    from megadetector.detection import pytorch_detector
+    pytorch_detector.require_non_default_compatibility_mode = True
     
     ## Prepare data
     
@@ -1021,6 +1016,12 @@ def run_cli_tests(options):
     download_test_data(options)
     
     
+    ## Utility imports
+    
+    from megadetector.utis.ct_utils import dict_to_kvp_list
+    from megadetector.utils.path_utils import insert_before_extension
+    
+    
     ## Run inference on an image
     
     print('\n** Running MD on a single image (CLI) **\n')
@@ -1033,7 +1034,7 @@ def run_cli_tests(options):
         cmd = 'python megadetector/detection/run_detector.py'
     cmd += ' "{}" --image_file "{}" --output_dir "{}"'.format(
         options.default_model,image_fn,output_dir)
-    cmd += ' --compatibility_mode {}'.format(options.compatibility_mode)
+    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
     
     if options.cpu_execution_is_error:
@@ -1061,7 +1062,7 @@ def run_cli_tests(options):
         options.default_model,image_folder,inference_output_file)
     cmd += ' --output_relative_filenames --quiet --include_image_size'
     cmd += ' --include_image_timestamp --include_exif_data'
-    cmd += ' --compatibility_mode {}'.format(options.compatibility_mode)
+    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
     
     base_cmd = cmd
@@ -1070,14 +1071,12 @@ def run_cli_tests(options):
     ## Run again with checkpointing enabled, make sure the results are the same
     
     print('\n** Running MD on a folder (with checkpoints) (CLI) **\n')
-    
-    from megadetector.utils.path_utils import insert_before_extension
         
     checkpoint_string = ' --checkpoint_frequency 5'
     cmd = base_cmd + checkpoint_string
     inference_output_file_checkpoint = insert_before_extension(inference_output_file,'_checkpoint')
     cmd = cmd.replace(inference_output_file,inference_output_file_checkpoint)
-    cmd += ' --compatibility_mode {}'.format(options.compatibility_mode)
+    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
     
     assert output_files_are_identical(fn1=inference_output_file, 
@@ -1090,10 +1089,9 @@ def run_cli_tests(options):
     print('\n** Running MD on a folder (with image queue) (CLI) **\n')
     
     cmd = base_cmd + ' --use_image_queue'
-    from megadetector.utils.path_utils import insert_before_extension
     inference_output_file_queue = insert_before_extension(inference_output_file,'_queue')
     cmd = cmd.replace(inference_output_file,inference_output_file_queue)
-    cmd += ' --compatibility_mode {}'.format(options.compatibility_mode)
+    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
     
     assert output_files_are_identical(fn1=inference_output_file, 
@@ -1125,17 +1123,16 @@ def run_cli_tests(options):
         inference_output_file_cpu = insert_before_extension(inference_output_file,'cpu')    
         cmd = base_cmd
         cmd = cmd.replace(inference_output_file,inference_output_file_cpu)
-        cmd += ' --compatibility_mode {}'.format(options.compatibility_mode)
+        cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
         cmd_results = execute_and_print(cmd)
         
     print('\n** Running MD on a folder (multiple CPUs) (CLI) **\n')
     
     cpu_string = ' --ncores 4'
     cmd = base_cmd + cpu_string
-    from megadetector.utils.path_utils import insert_before_extension
     inference_output_file_cpu_multicore = insert_before_extension(inference_output_file,'multicore')
     cmd = cmd.replace(inference_output_file,inference_output_file_cpu_multicore)
-    cmd += ' --compatibility_mode {}'.format(options.compatibility_mode)
+    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
     
     if cuda_visible_devices is not None:
@@ -1298,7 +1295,7 @@ def run_cli_tests(options):
         cmd += ' --render_output_video --fourcc {}'.format(options.video_fourcc)
         cmd += ' --force_extracted_frame_folder_deletion --force_rendered_frame_folder_deletion --n_cores 5 --frame_sample 3'
         cmd += ' --verbose'
-        cmd += ' --compatibility_mode {}'.format(options.compatibility_mode)
+        cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
         cmd_results = execute_and_print(cmd)
 
     # ...if we're not skipping video tests
@@ -1318,7 +1315,7 @@ def run_cli_tests(options):
         options.alt_model,image_folder,inference_output_file_alt)
     cmd += ' --output_relative_filenames --quiet --include_image_size'
     cmd += ' --include_image_timestamp --include_exif_data'
-    cmd += ' --compatibility_mode {}'.format(options.compatibility_mode)
+    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
     
     with open(inference_output_file_alt,'r') as f:
@@ -1552,19 +1549,22 @@ def main():
         )
     
     parser.add_argument(
-        '--compatibility_mode',
-        type=str,
-        default=options.compatibility_mode,
-        help='Debug option used to test backwards-compatibility'
-        )
+        '--detector_options',
+        nargs='*',
+        metavar='KEY=VALUE',
+        default='',
+        help='Detector-specific options, as a space-separated list of key-value pairs')
     
-    # token used for linting
+    # The following token is used for linting, do not remove.
     #
     # no_arguments_required
-        
+    
     args = parser.parse_args()
     
-    _args_to_object(args,options)
+    initial_detector_options = options.detector_options    
+    _args_to_object(args,options)    
+    from megadetector.utils.ct_utils import parse_kvp_list    
+    options.detector_options = parse_kvp_list(args.detector_options,d=initial_detector_options)
     
     run_tests(options)
     

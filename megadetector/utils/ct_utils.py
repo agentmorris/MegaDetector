@@ -738,7 +738,91 @@ def is_function_name(s,calling_namespace):
         callable(calling_namespace.get(s)) or \
         callable(getattr(builtins, s, None))
         
+
+# From https://gist.github.com/fralau/061a4f6c13251367ef1d9a9a99fb3e8d
+def parse_kvp(s,kv_separator='='):
+    """
+    Parse a key/value pair, separated by [kv_separator].  Errors if s is not
+    a valid key/value pair string.
+    
+    Args:
+        s (str): the string to parse
+        kv_separator (str, optional): the string separating keys from values.
+    
+    Returns:
+        tuple: a 2-tuple formatted as (key,value)
+    """
+    
+    items = s.split(kv_separator)
+    assert len(items) > 1, 'Illegal key-value pair'
+    key = items[0].strip()
+    if len(items) > 1:
+        value = kv_separator.join(items[1:])
+    return (key, value)
+
+
+def parse_kvp_list(items,kv_separator='=',d=None):
+    """
+    Parse a list key-value pairs into a dictionary.  If items is None or [],
+    returns {}.
+    
+    Args:
+        items (list): the list of KVPs to parse
+        kv_separator (str, optional): the string separating keys from values.
+        d (dict, optional): the initial dictionary, defaults to {}
         
+    Returns:
+        dict: a dict mapping keys to values
+    """
+    
+    if d is None:
+        d = {}
+
+    if items is None or len(items) == 0:
+        return d
+    
+    for item in items:
+        key, value = parse_kvp(item)
+        d[key] = value
+        
+    return d
+    
+
+def dict_to_kvp_list(d,item_separator=' ',kv_separator='='):
+    """
+    Convert a string <--> string dict into a string containing list of list of
+    key-value pairs.  I.e., converts {'a':'dog','b':'cat'} to 'a=dog b=cat'.  If
+    d is None, returns None.  If d is empty, returns ''.
+    
+    Args:
+        d (dict): the dictionary to convert, must contain only strings
+        item_separator (str, optional): the delimiter between KV pairs
+        kv_separator (str, optional): the separator betweena a key and its value
+    
+    Returns:
+        str: the string representation of [d]
+    """
+    
+    if d is None:
+        return None
+    
+    if len(d) == 0:
+        return ''
+    
+    s = ''
+    for k in d.keys():
+        assert isinstance(k,str), 'Input is not a str <--> str dict'
+        v = d[k]
+        assert isinstance(v,str), 'Input is not a str <--> str dict'
+        if s is None:
+            s = ''
+        else:
+            s += item_separator
+        s += k + kv_separator + v
+    
+    return s
+    
+
 #%% Test drivers
 
 if False:

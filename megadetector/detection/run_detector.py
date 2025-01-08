@@ -38,6 +38,7 @@ from tqdm import tqdm
 from megadetector.utils import path_utils as path_utils
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.utils.url_utils import download_url
+from megadetector.utils.ct_utils import parse_kvp_list
 
 # ignoring all "PIL cannot read EXIF metainfo for the images" warnings
 warnings.filterwarnings('ignore', '(Possibly )?corrupt EXIF data', UserWarning)
@@ -768,19 +769,21 @@ def main():
         action='store_true',
         help=('If a named model (e.g. "MDV5A") is supplied, force a download of that model even if the ' +\
               'local file already exists.'))
-        
+
     parser.add_argument(
-        '--compatibility_mode',
-        type=str,
-        default='classic',
-        help=('Debugging option used to maintain backwards compatibility with earlier versions of the MD package'))
-    
+        '--detector_options',
+        nargs='*',
+        metavar='KEY=VALUE',
+        default='',
+        help='Detector-specific options, as a space-separated list of key-value pairs')
+        
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()
 
     args = parser.parse_args()
-
+    detector_options = parse_kvp_list(args.detector_options)
+    
     # If the specified detector file is really the name of a known model, find 
     # (and possibly download) that model
     args.detector_file = try_download_known_detector(args.detector_file,
@@ -815,9 +818,6 @@ def main():
         else:
             # but for a single image, args.image_dir is also None
             args.output_dir = os.path.dirname(args.image_file)
-
-    detector_options = {}
-    detector_options['compatibility_mode'] = args.compatibility_mode
     
     load_and_run_detector(model_file=args.detector_file,
                           image_file_names=image_file_names,
