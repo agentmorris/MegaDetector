@@ -131,7 +131,7 @@ def _initialize_yolo_imports_for_model(model_file,
             type table says something else.  Should be "table" (trust the table) or "file"
             (trust the file).
         default_model_type (str, optional): return value for the case where we can't find
-            appropriate metadata in the file or in the global table.
+            appropriate metadata in the file or in the global table.        
             
     Returns:
         str: the model type for which we initialized support
@@ -142,7 +142,7 @@ def _initialize_yolo_imports_for_model(model_file,
     
     model_type = _get_model_type_for_model(model_file,
                                            prefer_model_type_source=prefer_model_type_source,
-                                           default_model_type=default_model_type)    
+                                           default_model_type=default_model_type)
     
     if yolo_model_type_imported is not None:
         if model_type == yolo_model_type_imported:
@@ -265,6 +265,9 @@ def _initialize_yolo_imports(model_type='yolov5',
                 L = LetterBox(new_shape,auto=auto,scaleFill=scaleFill,scaleup=scaleup,center=center,stride=stride)
                 letterbox_result = L(image=img)
             
+                if isinstance(new_shape,int):
+                    new_shape = [new_shape,new_shape]
+                    
                 # The letterboxing is done, we just need to reverse-engineer what it did
                 shape = img.shape[:2]
                 
@@ -455,6 +458,8 @@ class PTDetector:
         
         _initialize_yolo_imports_for_model(model_path)
         
+        model_metadata = read_metadata_from_megadetector_model_file(model_path)
+        
         # Parse options specific to this detector family
         force_cpu = False
         use_model_native_classes = False        
@@ -482,7 +487,11 @@ class PTDetector:
         
         #: Image size passed to the letterbox() function; 1280 means "1280 on the long side, preserving 
         #: aspect ratio".
-        self.default_image_size = 1280
+        if model_metadata is not None and 'image_size' in model_metadata:
+            self.default_image_size = model_metadata['image_size']
+            print('Loaded image size {} from model metadata'.format(self.default_image_size))
+        else:
+            self.default_image_size = 1280
     
         #: Either a string ('cpu','cuda:0') or a torch.device()
         self.device = 'cpu'
@@ -621,14 +630,12 @@ class PTDetector:
             scaling_shape = img_original.shape
             
             # If the caller is requesting a specific target size...
-            #
-            # Image size can be an int (which translates to a square target size) or (h,w)
             if image_size is not None:
                 
-                assert isinstance(image_size,int) or (len(image_size)==2)
+                assert isinstance(image_size,int)
                 
                 if not self.printed_image_size_warning:
-                    print('Warning: using user-supplied image size {}'.format(image_size))
+                    print('Using user-supplied image size {}'.format(image_size))
                     self.printed_image_size_warning = True                    
             
             # Otherwise resize to self.default_image_size
