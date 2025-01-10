@@ -1,6 +1,6 @@
 ########
 #
-# pip environment file for MegaDetector
+# pip environment file for MegaDetector, supporting yolov5, yolov9, and ultralytics models
 #
 ########
 
@@ -24,6 +24,8 @@ scikit-learn >= 1.3.1
 pandas >= 2.1.1
 seaborn >= 0.12.2
 PyYAML >= 6.0.1
+send2trash
+dill
 
 --extra-index-url https://download.pytorch.org/whl/cu118
 torch
@@ -40,3 +42,13 @@ torchvision
 # Make sure this appears *after* the torch installation
 ultralytics-yolov5 == 0.1.1
 
+# "yolov9-pip" is the frozen-in-time YOLOv9:
+#
+# https://github.com/kadirnar/yolov9-pip
+#
+# https://pypi.org/project/yolov9pip/
+yolov9pip == 0.0.4
+
+# Don't install ultralytics; if the user wants to run an ultralytics-trained
+# model, we'll tell them to install the ultralytics package
+# ultralytics
