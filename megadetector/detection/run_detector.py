@@ -97,19 +97,22 @@ known_models = {
     {
         'url':'https://lila.science/public/models/megadetector/megadetector_v2.pb',
         'typical_detection_threshold':0.8,
-        'conservative_detection_threshold':0.3
+        'conservative_detection_threshold':0.3,
+        'model_type':'tf'
     },
     'v3.0.0':
     {
         'url':'https://lila.science/public/models/megadetector/megadetector_v3.pb',
         'typical_detection_threshold':0.8,
-        'conservative_detection_threshold':0.3
+        'conservative_detection_threshold':0.3,
+        'model_type':'tf'
     },
     'v4.1.0':
     {
         'url':'https://github.com/agentmorris/MegaDetector/releases/download/v4.1/md_v4.1.0.pb',
         'typical_detection_threshold':0.8,
-        'conservative_detection_threshold':0.3
+        'conservative_detection_threshold':0.3,
+        'model_type':'tf'
     },
     'v5a.0.0':
     {
@@ -117,7 +120,7 @@ known_models = {
         'typical_detection_threshold':0.2,
         'conservative_detection_threshold':0.05,
         'image_size':1280,
-        'preferred_inference_package':'yolov5'
+        'model_type':'yolov5'
     },
     'v5b.0.0':
     {
@@ -125,7 +128,7 @@ known_models = {
         'typical_detection_threshold':0.2,
         'conservative_detection_threshold':0.05,
         'image_size':1280,
-        'preferred_inference_package':'yolov5'
+        'model_type':'yolov5'
     },
 }
 
@@ -307,6 +310,7 @@ def get_detector_version_from_model_file(detector_filename,verbose=False):
            
         print('Warning: could not determine model version string for model file {}'.format(
             detector_filename))
+        return None
         
     elif version_string_based_on_filename is not None:
         

@@ -22,7 +22,10 @@ import cv2
 import torch
 import numpy as np
 
-from megadetector.detection.run_detector import CONF_DIGITS, COORD_DIGITS, FAILURE_INFER
+from megadetector.detection.run_detector import \
+    CONF_DIGITS, COORD_DIGITS, FAILURE_INFER, \
+    get_detector_version_from_model_file, \
+    known_models
 from megadetector.utils.ct_utils import parse_bool_string
 from megadetector.utils import ct_utils
 
@@ -45,23 +48,139 @@ from megadetector.utils import ct_utils
 
 yolo_model_type_imported = None
 
-def _initialize_yolo_imports_for_model(model_file):
-    pass
+def _get_model_type_for_model(model_file,
+                              prefer_model_type_source='table',
+                              default_model_type='yolov5'):
+    """
+    Determine the model type (i.e., the inference library we need to use) for a .pt file.
+    
+    Args:
+        model_file (str): the model file to read
+        prefer_model_type_source (str, optional): how should we handle the (very unlikely)
+            case where the metadata in the file indicates one model type, but the global model
+            type table says something else.  Should be "table" (trust the table) or "file"
+            (trust the file).
+        default_model_type (str, optional): return value for the case where we can't find
+            appropriate metadata in the file or in the global table.
+            
+    Returns:
+        str: the model type indicated for this model
+    """
+    
+    model_info = read_metadata_from_megadetector_model_file(model_file)
+    
+    # Check whether the model file itself specified a model type
+    model_type_from_model_file_metadata = None
+    
+    if model_info is not None and 'model_type' in model_info:        
+        model_type_from_model_file_metadata = model_info['model_type']
+        print('Parsed model type {} from model {}'.format(
+            model_type_from_model_file_metadata,
+            model_file))
+    
+    model_type_from_model_version = None
+    
+    # Check whether this is a known model version with a specific model type
+    model_version_from_file = get_detector_version_from_model_file(model_file)
+    
+    if model_version_from_file is not None and model_version_from_file in known_models:
+        model_type_from_model_version = known_models[model_version_from_file]['model_type']
+        print('Parsed model type {} from global metadata'.format(model_type_from_model_version))
+        
+    if model_type_from_model_file_metadata is None and \
+        model_type_from_model_version is None:
+        print('Could not determine model type for {}, assuming {}'.format(
+            model_file,default_model_type))
+        model_type = default_model_type
+    
+    elif model_type_from_model_file_metadata is not None and \
+         model_type_from_model_version is not None:
+        if model_type_from_model_version == model_type_from_model_file_metadata:
+            model_type = model_type_from_model_file_metadata
+        else:
+            print('Waring: model type from model version is {}, from file metadata is {}'.format(
+                model_type_from_model_version,model_type_from_model_file_metadata))
+            if prefer_model_type_source == 'table':
+                model_type = model_type_from_model_file_metadata
+            else:
+                model_type = model_type_from_model_version
+    
+    elif model_type_from_model_file_metadata is not None:
+        
+        model_type = model_type_from_model_file_metadata
+        
+    elif model_type_from_model_version is not None:
+        
+        model_type = model_type_from_model_version
+        
+    return model_type
 
-def _initialize_yolo_imports(model_type='yolov5',allow_fallback_import=True):
+# ...def _get_model_type_for_model(...)
+
+
+def _initialize_yolo_imports_for_model(model_file,
+                                       prefer_model_type_source='table',
+                                       default_model_type='yolov5'):
+    """
+    Initialize the appropriate YOLO imports for a model file.
+    
+    Args:
+        model_file (str): The model file for which we're loading support
+        prefer_model_type_source (str, optional): how should we handle the (very unlikely)
+            case where the metadata in the file indicates one model type, but the global model
+            type table says something else.  Should be "table" (trust the table) or "file"
+            (trust the file).
+        default_model_type (str, optional): return value for the case where we can't find
+            appropriate metadata in the file or in the global table.
+            
+    Returns:
+        str: the model type for which we initialized support
+    """
+    
+    
+    global yolo_model_type_imported
+    
+    model_type = _get_model_type_for_model(model_file,
+                                           prefer_model_type_source=prefer_model_type_source,
+                                           default_model_type=default_model_type)    
+    
+    if yolo_model_type_imported is not None:
+        if model_type == yolo_model_type_imported:
+            print('Bypassing imports for model type {}'.format(model_type))
+            return
+        else:
+            print('Previously set up imports for model type {}, re-importing as {}'.format(
+                yolo_model_type_imported,model_type))
+                
+    _initialize_yolo_imports(model_type)
+    
+    return model_type
+
+
+def _initialize_yolo_imports(model_type='yolov5',
+                             allow_fallback_import=True,
+                             force_reimport=False):
     """
     Imports required functions from one or more yolo libraries (yolov5, yolov9, 
-    ultralytics, targeting support for [model_type])
+    ultralytics, targeting support for [model_type]).
     
     Args:
         model_type (str): The model type for which we're loading support
-        allow_fallback_import: If we can't import from the package for which we're 
-            trying to load support, fall back to "import utils".  This is typically
-            used when the right support library is on your PYTHONPATH.
+        allow_fallback_import (bool, optional): If we can't import from the package for 
+            which we're trying to load support, fall back to "import utils".  This is 
+            typically used when the right support library is on the current PYTHONPATH.
+        force_reimport (bool, optional): import the appropriate libraries even if the 
+            requested model type matches the current initialization state
+            
+    Returns:
+        str: the model type for which we initialized support
     """
     
     global yolo_model_type_imported
     
+    if model_type is None:
+        model_type = 'yolov5'
+        
     # The point of this function is to make the appropriate version
     # of the following functions available at module scope
     global non_max_suppression
@@ -203,6 +322,8 @@ def _initialize_yolo_imports(model_type='yolov5',allow_fallback_import=True):
     
     yolo_model_type_imported = model_type
     print('Prepared YOLO imports for model type {}'.format(model_type))
+    
+    return model_type
 
 # ...def _initialize_yolo_imports(...)
 
@@ -332,7 +453,7 @@ class PTDetector:
     
     def __init__(self, model_path, detector_options=None):
         
-        _initialize_yolo_imports()
+        _initialize_yolo_imports_for_model(model_path)
         
         # Parse options specific to this detector family
         force_cpu = False
