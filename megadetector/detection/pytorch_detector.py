@@ -206,10 +206,7 @@ def _initialize_yolo_imports(model_type='yolov5',allow_fallback_import=True):
 
 # ...def _initialize_yolo_imports(...)
 
-
 print(f'Using PyTorch version {torch.__version__}')
-
-_initialize_yolo_imports()
     
 
 #%% Model metadata functions
@@ -334,6 +331,8 @@ require_non_default_compatibility_mode = False
 class PTDetector:
     
     def __init__(self, model_path, detector_options=None):
+        
+        _initialize_yolo_imports()
         
         # Parse options specific to this detector family
         force_cpu = False
@@ -750,7 +749,7 @@ if __name__ == '__main__':
     
     #%%
     
-    import os
+    import os #noqa
     from megadetector.visualization import visualization_utils as vis_utils
     
     model_file = os.environ['MDV5A']
