@@ -218,7 +218,8 @@ def write_json(path, content, indent=1):
 
 def convert_yolo_to_xywh(yolo_box):
     """
-    Converts a YOLO format bounding box to [x_min, y_min, width_of_box, height_of_box].
+    Converts a YOLO format bounding box [x_center, y_center, w, h] to 
+    [x_min, y_min, width_of_box, height_of_box].
 
     Args:
         yolo_box (list): bounding box of format [x_center, y_center, width_of_box, height_of_box]
@@ -233,37 +234,21 @@ def convert_yolo_to_xywh(yolo_box):
     return [x_min, y_min, width_of_box, height_of_box]
 
 
-def convert_xywh_to_tf(api_box):
+def convert_xywh_to_xyxy(api_box):
     """
-    Converts an xywh bounding box (the format used in MD output) to the [y_min, x_min, y_max, x_max] 
-    format that the TensorFlow Object Detection API uses.
+    Converts an xywh bounding box (the MD output format) to an xyxy bounding box (the format
+    produced by TF-based MD models).
 
     Args:
-        api_box: bbox output by the batch processing API [x_min, y_min, width_of_box, height_of_box]
-
-    Returns:
-        list: bbox with coordinates represented as [y_min, x_min, y_max, x_max]
-    """
-    
-    x_min, y_min, width_of_box, height_of_box = api_box
-    x_max = x_min + width_of_box
-    y_max = y_min + height_of_box
-    return [y_min, x_min, y_max, x_max]
-
-
-def convert_xywh_to_xyxy(api_bbox):
-    """
-    Converts an xywh bounding box (the MD output format) to an xyxy bounding box.
-
-    Args:
-        api_bbox (list): bbox formatted as [x_min, y_min, width_of_box, height_of_box]
+        api_box (list): bbox formatted as [x_min, y_min, width_of_box, height_of_box]
 
     Returns:
         list: bbox formatted as [x_min, y_min, x_max, y_max]
     """
 
-    x_min, y_min, width_of_box, height_of_box = api_bbox
-    x_max, y_max = x_min + width_of_box, y_min + height_of_box
+    x_min, y_min, width_of_box, height_of_box = api_box
+    x_max = x_min + width_of_box
+    y_max = y_min + height_of_box
     return [x_min, y_min, x_max, y_max]
 
 

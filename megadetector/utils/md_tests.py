@@ -70,6 +70,9 @@ class MDTestOptions:
         #: Unzip test data even if it appears to have already been unzipped
         self.force_data_unzip = False
         
+        #: Should we test all known model links?
+        self.test_known_model_links = True
+        
         #: By default, any unexpected behavior is an error; this forces most errors to
         #: be treated as warnings.
         self.warning_mode = False
@@ -178,7 +181,7 @@ def get_expected_results_filename(gpu_is_available,
     
     if options is not None and options.scratch_dir is not None:
         fn = os.path.join(options.scratch_dir,fn)
-        
+    
     return fn
     
     
@@ -274,6 +277,32 @@ def download_test_data(options=None):
     options.test_videos = [fn for fn in options.test_videos if \
                            os.path.isfile(os.path.join(scratch_dir,fn))]
         
+    if options.test_known_model_links:
+
+        from megadetector.detection.run_detector import known_models, \
+            try_download_known_detector, \
+            get_detector_version_from_model_file, \
+            model_string_to_model_version
+
+        # Make sure we can download models based on canonical version numbers, 
+        # e.g. "v5a.0.0"
+        for model_name in known_models:
+            print('Testing download for known model {}'.format(model_name))
+            fn = try_download_known_detector(model_name, 
+                                             force_download=False,
+                                             verbose=False)
+            version_string = get_detector_version_from_model_file(fn, verbose=False)
+            assert version_string == model_name
+            
+        # Make sure we can download models based on short names, e.g. "MDV5A"
+        for model_name in model_string_to_model_version:
+            fn = try_download_known_detector(model_name, 
+                                             force_download=False,
+                                             verbose=False)    
+            assert fn != model_name
+
+    # ...if we need to test model downloads
+    
     print('Finished unzipping and enumerating test data')
         
     return options
@@ -283,7 +312,7 @@ def download_test_data(options=None):
 
 def is_gpu_available(verbose=True):
     """
-    Checks whether a GPU (including M1/M2 MPS) is available.
+    Checks whether a GPU (including M1/M2 MPS) is available, according to PyTorch.
     
     Args:
         verbose (bool, optional): enable additional debug console output
@@ -1049,6 +1078,13 @@ def run_cli_tests(options):
         if not gpu_available_via_cli:
             raise Exception('GPU execution is required, but not available')
 
+    # Make sure we can also pass an absolute path to a model file, instead of, e.g. "MDV5A"
+    
+    from megadetector.detection.run_detector import try_download_known_detector
+    model_file = try_download_known_detector(options.default_model,force_download=False,verbose=False)
+    cmd = cmd.replace(options.default_model,model_file)
+    cmd_results = execute_and_print(cmd)
+    
     
     ## Run inference on a folder
     
@@ -1414,7 +1450,8 @@ if False:
     #%%
     
     import os
-    if 'PYTHONPATH' not in os.environ or options.yolo_working_dir not in os.environ['PYTHONPATH']:
+    if ('PYTHONPATH' not in os.environ) or \
+       (options.yolo_working_dir is not None and options.yolo_working_dir not in os.environ['PYTHONPATH']):
         os.environ['PYTHONPATH'] += ';' + options.yolo_working_dir
 
     #%%

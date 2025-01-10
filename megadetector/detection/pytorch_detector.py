@@ -271,7 +271,9 @@ def add_metadata_to_megadetector_model_file(model_file_in,
 # ...def add_metadata_to_megadetector_model_file(...)
 
 
-def read_metadata_from_megadetector_model_file(model_file,relative_path='megadetector_info.json'):
+def read_metadata_from_megadetector_model_file(model_file,
+                                               relative_path='megadetector_info.json',
+                                               verbose=False):
     """
     Reads custom MegaDetector metadata from a modified MegaDetector model file.
     
@@ -303,7 +305,9 @@ def read_metadata_from_megadetector_model_file(model_file,relative_path='megadet
         
         metadata_file = root_folder + '/' + relative_path
         if metadata_file not in names:
-            print('Warning: could not find metadata file {} in zip archive'.format(metadata_file))
+            # This is the case for MDv5a and MDv5b
+            if verbose:
+                print('Warning: could not find metadata file {} in zip archive'.format(metadata_file))
             return None
     
         try:

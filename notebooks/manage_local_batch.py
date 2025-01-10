@@ -218,7 +218,7 @@ assert os.path.isdir(input_path), 'Could not find input folder {}'.format(input_
 input_path = input_path.replace('\\','/')
 
 organization_name_short = 'organization'
-job_date = None # '2024-01-01'
+job_date = None # '2025-01-01'
 assert job_date is not None and organization_name_short != 'organization'
 
 # Optional descriptor

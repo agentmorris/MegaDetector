@@ -14,9 +14,8 @@ import redis
 import argparse
 import PIL
 
-from io import BytesIO
-
-from detection.run_detector import load_detector, convert_to_tf_coords
+from detection.run_detector import load_detector
+from utils.ct_utils import convert_xywh_to_xyxy as convert_to_tf_coords
 import config
 import visualization.visualization_utils as vis_utils 
 
