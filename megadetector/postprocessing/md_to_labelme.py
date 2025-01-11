@@ -25,7 +25,7 @@ from multiprocessing.pool import ThreadPool
 from functools import partial
 
 from megadetector.visualization.visualization_utils import open_image
-from megadetector.utils.ct_utils import truncate_float, round_float #noqa
+from megadetector.utils.ct_utils import round_float
 from megadetector.detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP, FAILURE_IMAGE_OPEN
 
 output_precision = 3

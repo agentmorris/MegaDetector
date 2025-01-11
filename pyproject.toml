@@ -20,13 +20,11 @@ maintainers = [
 ]
 
 classifiers = [
-  "Development Status :: 3 - Alpha",
-  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
 ]
 
 dependencies = [
-  "Pillow >= 9.5",
+  "Pillow >= 9.5, <10",
   "tqdm >= 4.64.0",
   "jsonpickle >= 3.0.2",
   "humanfriendly >= 10.0",
@@ -39,11 +37,17 @@ dependencies = [
   "scikit-learn >= 1.3.1",
   "pandas >= 2.1.1",
   "PyYAML >= 6.0.1",
+  "send2trash",
+  # Not imported directly, but required to de-serialize some models
+  "dill",
+  "python-dateutil",
   "ultralytics-yolov5 == 0.1.1",
-  "python-dateutil"
+  "yolov9pip == 0.0.4"
+  # Let ultralytics-yolov5 install torch
   # "torch >= 2.0.1",
-  # "torchvision >= 0.15.2",
-  # "yolov5 == 7.0.13"
+  # "torchvision >= 0.15.2",  
+  # Let the user install ultralytics if they want to use YOLOv11 models
+  # ultralytics
 ]
 
 [project.urls]

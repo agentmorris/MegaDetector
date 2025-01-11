@@ -58,6 +58,9 @@ class MDTestOptions:
         #: Skip CLI tests
         self.skip_cli_tests = False
         
+        #: Skip download tests
+        self.skip_download_tests = False
+        
         #: Force a specific folder for temporary input/output
         self.scratch_dir = None
         
@@ -69,9 +72,6 @@ class MDTestOptions:
         
         #: Unzip test data even if it appears to have already been unzipped
         self.force_data_unzip = False
-        
-        #: Should we test all known model links?
-        self.test_known_model_links = True
         
         #: By default, any unexpected behavior is an error; this forces most errors to
         #: be treated as warnings.
@@ -114,7 +114,17 @@ class MDTestOptions:
         
         #: Detector options passed to PTDetector
         self.detector_options = {'compatibility_mode':'classic-test'}                
-
+        
+        #: Used to drive a series of tests (typically with a low value for 
+        #: python_test_depth) over a folder of models.
+        self.model_folder = None
+        
+        #: Used as a knob to control the level of Python tests, typically used when
+        #: we want to run a series of simple tests on a small number of models, rather 
+        #: than a deep test of tests on a small number of models.  The gestalt is that
+        #: this is a range from 0-100.
+        self.python_test_depth = 100
+        
     # ...def __init__()
     
 # ...class MDTestOptions()
@@ -277,32 +287,6 @@ def download_test_data(options=None):
     options.test_videos = [fn for fn in options.test_videos if \
                            os.path.isfile(os.path.join(scratch_dir,fn))]
         
-    if options.test_known_model_links:
-
-        from megadetector.detection.run_detector import known_models, \
-            try_download_known_detector, \
-            get_detector_version_from_model_file, \
-            model_string_to_model_version
-
-        # Make sure we can download models based on canonical version numbers, 
-        # e.g. "v5a.0.0"
-        for model_name in known_models:
-            print('Testing download for known model {}'.format(model_name))
-            fn = try_download_known_detector(model_name, 
-                                             force_download=False,
-                                             verbose=False)
-            version_string = get_detector_version_from_model_file(fn, verbose=False)
-            assert version_string == model_name
-            
-        # Make sure we can download models based on short names, e.g. "MDV5A"
-        for model_name in model_string_to_model_version:
-            fn = try_download_known_detector(model_name, 
-                                             force_download=False,
-                                             verbose=False)    
-            assert fn != model_name
-
-    # ...if we need to test model downloads
-    
     print('Finished unzipping and enumerating test data')
         
     return options
@@ -716,7 +700,10 @@ def run_python_tests(options):
                                        detector_options=copy(options.detector_options))
     pil_im = vis_utils.load_image(image_fn)
     result = model.generate_detections_one_image(pil_im) # noqa
-
+    
+    if options.python_test_depth <= 1:
+        return
+        
     
     ## Run inference on a folder
 
@@ -738,7 +725,6 @@ def run_python_tests(options):
                               relative_path_base=image_folder,
                               detector_file=options.default_model)
 
-    
     ## Verify results
     
     # Verify format correctness
@@ -753,6 +739,9 @@ def run_python_tests(options):
     
     # Make note of this filename, we will use it again later
     inference_output_file_standard_inference = inference_output_file
+        
+    if options.python_test_depth <= 2:
+        return
     
     
     ## Run and verify again with augmentation enabled
@@ -1383,6 +1372,41 @@ def run_cli_tests(options):
 # ...def run_cli_tests(...)
 
 
+def run_download_tests(options):
+    """
+    Args:
+        options (MDTestOptions): see MDTestOptions for details    
+    """
+    
+    if not options.skip_download_tests:
+
+        from megadetector.detection.run_detector import known_models, \
+            try_download_known_detector, \
+            get_detector_version_from_model_file, \
+            model_string_to_model_version
+
+        # Make sure we can download models based on canonical version numbers, 
+        # e.g. "v5a.0.0"
+        for model_name in known_models:
+            print('Testing download for known model {}'.format(model_name))
+            fn = try_download_known_detector(model_name, 
+                                             force_download=False,
+                                             verbose=False)
+            version_string = get_detector_version_from_model_file(fn, verbose=False)
+            assert version_string == model_name
+            
+        # Make sure we can download models based on short names, e.g. "MDV5A"
+        for model_name in model_string_to_model_version:
+            fn = try_download_known_detector(model_name, 
+                                             force_download=False,
+                                             verbose=False)    
+            assert fn != model_name
+
+    # ...if we need to test model downloads
+    
+# ...def run_download_tests()
+
+
 #%% Main test wrapper
 
 def run_tests(options):
@@ -1395,6 +1419,9 @@ def run_tests(options):
     
     # Prepare data folder
     download_test_data(options)
+    
+    # Run download tests if necessary
+    run_download_tests(options)
     
     if options.disable_gpu:
         os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
@@ -1412,8 +1439,32 @@ def run_tests(options):
         
     # Run python tests
     if not options.skip_python_tests:
-        run_python_tests(options)
-    
+        
+        if options.model_folder is not None:
+            
+            assert os.path.isdir(options.model_folder), \
+                'Could not find model folder {}'.format(options.model_folder)
+                
+            model_files = os.listdir(options.model_folder)
+            model_files = [fn for fn in model_files if fn.endswith('.pt')]
+            model_files = [os.path.join(options.model_folder,fn) for fn in model_files]
+            
+            assert len(model_files) > 0, \
+                'Could not find any models in folder {}'.format(options.model_folder)
+                
+            original_default_model = options.default_model
+            
+            for model_file in model_files:
+                print('Running Python tests for model {}'.format(model_file))
+                options.default_model = model_file
+                run_python_tests(options)
+        
+            options.default_model = original_default_model
+        
+        else:
+            
+            run_python_tests(options)
+            
     # Run CLI tests
     if not options.skip_cli_tests:
         run_cli_tests(options)
@@ -1541,6 +1592,11 @@ def main():
         help='Skip CLI tests')
         
     parser.add_argument(
+        '--skip_download_tests',
+        action='store_true',
+        help='Skip model download tests')
+        
+    parser.add_argument(
         '--force_data_download',
         action='store_true',
         help='Force download of the test data file, even if it\'s already available')
@@ -1586,6 +1642,20 @@ def main():
         type=str,
         default=None,
         help='PYTHONPATH to set for CLI tests; if None, inherits from the parent process'
+        )
+    
+    parser.add_argument(
+        '--python_test_depth',
+        type=int,
+        default=options.python_test_depth,
+        help='Used as a knob to control the level of Python tests (0-100)'
+        )
+    
+    parser.add_argument(
+        '--model_folder',
+        type=str,
+        default=None,
+        help='Run Python tests on every model in this folder'
         )
     
     parser.add_argument(

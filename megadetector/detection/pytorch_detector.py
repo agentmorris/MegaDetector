@@ -157,6 +157,54 @@ def _initialize_yolo_imports_for_model(model_file,
     return model_type
 
 
+def _clean_yolo_imports(verbose=True):
+    """
+    Remove all YOLO-related imports from sys.modules and sys.path, to allow a clean re-import
+    of another YOLO library version.  The reason we jump through all these hoops, rather than 
+    just, e.g., handling different libraries in different modules, is that we need to make sure
+    *pickle* sees the right version of modules during module loading, including modules we don't
+    load directly (i.e., every module loaded within a YOLO library), and the only way I know to 
+    do that is to remove all the "wrong" versions from sys.modules and sys.path.
+    
+    Args:
+        verbose (bool, optional): enable additional debug output
+    """
+    
+    modules_to_delete = []
+    for module_name in sys.modules.keys():        
+        module = sys.modules[module_name]
+        try:
+            module_file = module.__file__.replace('\\','/')
+            if 'site-packages' not in module_file:
+                continue
+            tokens = module_file.split('/')[-4:]
+            for token in tokens:
+                if 'yolov5' in token or 'yolov9' in token or 'ultralytics' in token:
+                    modules_to_delete.append(module_name)
+                    break                    
+        except Exception:
+            pass
+        
+    for module_name in modules_to_delete:
+        if module_name in sys.modules.keys():
+            module_file = module.__file__.replace('\\','/')
+            if verbose:
+                print('clean_yolo_imports: deleting module {}: {}'.format(module_name,module_file))
+            del sys.modules[module_name]
+    
+    paths_to_delete = []
+    
+    for p in sys.path:
+        if p.endswith('yolov5') or p.endswith('yolov9') or p.endswith('ultralytics'):
+            print('clean_yolo_imports: removing {} from path'.format(p))
+            paths_to_delete.append(p)
+            
+    for p in paths_to_delete:
+        sys.path.remove(p)
+
+# ...def _clean_yolo_imports(...)
+
+
 def _initialize_yolo_imports(model_type='yolov5',
                              allow_fallback_import=True,
                              force_reimport=False):
@@ -188,9 +236,12 @@ def _initialize_yolo_imports(model_type='yolov5',
     global letterbox
     global scale_coords
     
-    if yolo_model_type_imported is not None and yolo_model_type_imported == model_type:
-        print('Bypassing imports for YOLO model type {}'.format(model_type))
-        return
+    if yolo_model_type_imported is not None:
+        if yolo_model_type_imported == model_type:
+            print('Bypassing imports for YOLO model type {}'.format(model_type))
+            return
+        else:
+            _clean_yolo_imports()
     
     try_yolov5_import = (model_type == 'yolov5')
     try_yolov9_import = (model_type == 'yolov9')
@@ -201,18 +252,21 @@ def _initialize_yolo_imports(model_type='yolov5',
     # First try importing from the yolov5 package; this is how the pip
     # package finds YOLOv5 utilities.
     if try_yolov5_import and not utils_imported:
-        
-        try:
             
+        try:            
             from yolov5.utils.general import non_max_suppression, xyxy2xywh # noqa
             from yolov5.utils.augmentations import letterbox # noqa
-            from yolov5.utils.general import scale_boxes as scale_coords # noqa
+            try:
+                from yolov5.utils.general import scale_boxes as scale_coords
+            except Exception:
+                from yolov5.utils.general import scale_coords
             utils_imported = True
-            print('Imported YOLOv5 from YOLOv5 package')
+            print('Imported utils from YOLOv5 package')
             
-        except Exception:
-            
-            # print('yolov5 module import failed')
+        except Exception as e: # noqa           
+        
+            # print('yolov5 module import failed: {}'.format(e))
+            # print(traceback.format_exc())            
             pass
     
     # Next try importing from the yolov9 package
@@ -224,11 +278,12 @@ def _initialize_yolo_imports(model_type='yolov5',
             from yolov9.utils.augmentations import letterbox # noqa
             from yolov9.utils.general import scale_boxes as scale_coords # noqa
             utils_imported = True
-            print('Imported YOLOv5 from YOLOv9 package')
+            print('Imported utils from YOLOv9 package')
             
-        except Exception:
+        except Exception as e: # noqa
             
-            # print('yolov9 module import failed')
+            # print('yolov9 module import failed: {}'.format(e))
+            # print(traceback.format_exc())
             pass
     
     # If we haven't succeeded yet, import from the ultralytics package        
@@ -292,7 +347,7 @@ def _initialize_yolo_imports(model_type='yolov5',
                 return [letterbox_result,ratio,pad]
             
             utils_imported = True
-            print('Imported YOLOv5 from ultralytics package')
+            print('Imported utils from ultralytics package')
             
         except Exception:
             
@@ -315,13 +370,13 @@ def _initialize_yolo_imports(model_type='yolov5',
                 from utils.general import scale_boxes as scale_coords
             utils_imported = True
             imported_file = sys.modules[scale_coords.__module__].__file__
-            print('Imported YOLOv5 as utils.* from {}'.format(imported_file))
+            print('Imported utils from {}'.format(imported_file))
                     
         except ModuleNotFoundError as e:
             
             raise ModuleNotFoundError('Could not import YOLOv5 functions:\n{}'.format(str(e)))
     
-    assert utils_imported, 'YOLOv5 import error'
+    assert utils_imported, 'YOLO utils import error'
     
     yolo_model_type_imported = model_type
     print('Prepared YOLO imports for model type {}'.format(model_type))

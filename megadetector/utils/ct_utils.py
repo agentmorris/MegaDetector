@@ -94,26 +94,7 @@ def truncate_float(x, precision=3):
         float: truncated version of [x]
     """
 
-    assert precision > 0
-
-    if np.isclose(x, 0):
-        
-        return 0
-    
-    elif (x > 1):
-        
-        fractional_component = x - 1.0
-        return 1 + truncate_float(fractional_component)
-    
-    else:
-        
-        # Determine the factor, which shifts the decimal point of x
-        # just behind the last significant digit.
-        factor = math.pow(10, precision - 1 - math.floor(math.log10(abs(x))))
-        
-        # Shift decimal point by multiplication with factor, flooring, and
-        # division by factor.
-        return math.floor(x * factor)/factor
+    return math.floor(x * (10 ** precision)) / (10 ** precision)
 
 
 def args_to_object(args, obj):

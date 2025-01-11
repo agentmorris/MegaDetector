@@ -759,7 +759,6 @@ def try_download_known_detector(detector_file,force_download=False,verbose=False
                 detector_file,fn))
             detector_file = fn
         else:
-            print('Downloading model {}'.format(model_string))
             detector_file = _download_model(model_string,force_download=force_download)
             
     return detector_file
