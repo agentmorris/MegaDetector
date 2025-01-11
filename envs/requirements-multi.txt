@@ -45,8 +45,12 @@ ultralytics-yolov5 == 0.1.1
 # "yolov9-pip" is the frozen-in-time YOLOv9:
 #
 # https://github.com/kadirnar/yolov9-pip
-#
 # https://pypi.org/project/yolov9pip/
+#
+# ...which is different from either of these:
+#
+# https://pypi.org/project/pyyolov9/
+# https://pypi.org/project/yolov9py/
 yolov9pip == 0.0.4
 
 # Don't install ultralytics; if the user wants to run an ultralytics-trained
