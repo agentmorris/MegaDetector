@@ -2,6 +2,8 @@
 #
 # pip environment file for MegaDetector
 #
+# mamba create -n md-pip python=3.11 pip -y && mamba activate md-pip
+#
 ########
 
 # Not imported directly, but we force this version to avoid this issue:
@@ -9,6 +11,11 @@
 # https://github.com/pytorch/pytorch/issues/123097
 mkl == 2024.0
   
+# To run ultralytics-yolov5, we need to use an old version of numpy, because
+# of the removal of np.int in numpy 1.24.0.  Even if we relaxed that requirement
+# or patched np.int, we definitely don't want numpy>=2.0.
+numpy == 1.23.5
+
 # ultralytics-yolov5 has a dependency on FreeTypeFont.getsize(), which was
 # removed in Pillow 10, so we force Pillow < 10.0
 Pillow >= 9.1.0, < 10.0
@@ -16,26 +23,31 @@ Pillow >= 9.1.0, < 10.0
 tqdm >= 4.64.0
 jsonpickle >= 3.0.2
 humanfriendly >= 10.0
-
-# To run ultralytics-yolov5, we need to use an old version of numpy, because
-# of the removal of np.int in numpy 1.24.0
-numpy == 1.23.5
-
 matplotlib >= 3.8.0
 opencv-python >= 4.8.0
 requests >= 2.31.0
 pyqtree >= 1.0.0
 scikit-learn >= 1.3.1
 pandas >= 2.1.1
-seaborn >= 0.12.2
-PyYAML >= 6.0.1
+
+python-dateutil
 send2trash
+
 # Not imported directly, but required to de-serialize some models
 dill
 
 --extra-index-url https://download.pytorch.org/whl/cu118
-torch
-torchvision
+torch >= 2.0
+torchvision >=0.15.0
+
+# I am still experimenting with how I can get albumentations installed
+# without opencv-python-headless when opencv-python is already installed.
+#
+# See:
+#
+# https://github.com/albumentations-team/albumentations/issues/1785
+#
+# albumentations>=1.0.3
 
 # "ultralytics-yolov5" is the frozen-in-time YOLOv5:
 #
@@ -61,4 +73,5 @@ yolov9pip == 0.0.4
 
 # Don't install ultralytics; if the user wants to run an ultralytics-trained
 # model, we'll tell them to install the ultralytics package
+#
 # ultralytics

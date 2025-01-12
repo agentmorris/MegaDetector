@@ -120,7 +120,8 @@ def _get_model_type_for_model(model_file,
 
 def _initialize_yolo_imports_for_model(model_file,
                                        prefer_model_type_source='table',
-                                       default_model_type='yolov5'):
+                                       default_model_type='yolov5',
+                                       detector_options=None):
     """
     Initialize the appropriate YOLO imports for a model file.
     
@@ -132,6 +133,8 @@ def _initialize_yolo_imports_for_model(model_file,
             (trust the file).
         default_model_type (str, optional): return value for the case where we can't find
             appropriate metadata in the file or in the global table.        
+        detector_options (dict, optional): dictionary of detector options that mean
+            different things to different models
             
     Returns:
         str: the model type for which we initialized support
@@ -140,10 +143,14 @@ def _initialize_yolo_imports_for_model(model_file,
     
     global yolo_model_type_imported
     
-    model_type = _get_model_type_for_model(model_file,
-                                           prefer_model_type_source=prefer_model_type_source,
-                                           default_model_type=default_model_type)
-    
+    if detector_options is not None and 'model_type' in detector_options:
+        model_type = detector_options['model_type']
+        print('Model type {} provided in detector options'.format(model_type))
+    else:
+        model_type = _get_model_type_for_model(model_file,
+                                               prefer_model_type_source=prefer_model_type_source,
+                                               default_model_type=default_model_type)
+        
     if yolo_model_type_imported is not None:
         if model_type == yolo_model_type_imported:
             print('Bypassing imports for model type {}'.format(model_type))
@@ -157,7 +164,7 @@ def _initialize_yolo_imports_for_model(model_file,
     return model_type
 
 
-def _clean_yolo_imports(verbose=True):
+def _clean_yolo_imports(verbose=False):
     """
     Remove all YOLO-related imports from sys.modules and sys.path, to allow a clean re-import
     of another YOLO library version.  The reason we jump through all these hoops, rather than 
@@ -511,9 +518,10 @@ class PTDetector:
     
     def __init__(self, model_path, detector_options=None):
         
-        _initialize_yolo_imports_for_model(model_path)
-        
-        model_metadata = read_metadata_from_megadetector_model_file(model_path)
+        # Set up the import environment for this model, unloading previous
+        # YOLO library versions if necessary.
+        _initialize_yolo_imports_for_model(model_path,
+                                           detector_options=detector_options)
         
         # Parse options specific to this detector family
         force_cpu = False
@@ -539,6 +547,8 @@ class PTDetector:
             assert compatibility_mode != 'default'
         
         print('Loading PT detector with compatibility mode {}'.format(compatibility_mode))
+        
+        model_metadata = read_metadata_from_megadetector_model_file(model_path)
         
         #: Image size passed to the letterbox() function; 1280 means "1280 on the long side, preserving 
         #: aspect ratio".

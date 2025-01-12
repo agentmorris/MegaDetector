@@ -52,6 +52,9 @@ class MDTestOptions:
         #: Skip tests related to video processing
         self.skip_video_tests = False
         
+        #: Skip tests related to video rendering
+        self.skip_video_rendering_tests = False
+        
         #: Skip tests launched via Python functions (as opposed to CLIs)
         self.skip_python_tests = False
         
@@ -895,7 +898,9 @@ def run_python_tests(options):
         video_options.output_video_file = os.path.join(options.scratch_dir,'video_scratch/rendered_video.mp4')
         video_options.frame_folder = os.path.join(options.scratch_dir,'video_scratch/frame_folder')
         video_options.frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder')    
-        video_options.render_output_video = True
+        
+        video_options.render_output_video = (not options.skip_video_rendering_tests)
+             
         # video_options.keep_rendered_frames = False
         # video_options.keep_extracted_frames = False
         video_options.force_extracted_frame_folder_deletion = True
@@ -1320,10 +1325,14 @@ def run_cli_tests(options):
         cmd += ' "{}" "{}"'.format(options.default_model,video_fn)
         cmd += ' --frame_folder "{}" --frame_rendering_folder "{}" --output_json_file "{}" --output_video_file "{}"'.format(
             frame_folder,frame_rendering_folder,video_inference_output_file,output_video_file)
-        cmd += ' --render_output_video --fourcc {}'.format(options.video_fourcc)
+        cmd += ' --fourcc {}'.format(options.video_fourcc)
         cmd += ' --force_extracted_frame_folder_deletion --force_rendered_frame_folder_deletion --n_cores 5 --frame_sample 3'
         cmd += ' --verbose'
         cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+        
+        if not options.skip_video_rendering_tests:
+            cmd += ' --render_output_video'
+            
         cmd_results = execute_and_print(cmd)
 
     # ...if we're not skipping video tests
@@ -1456,7 +1465,7 @@ def run_tests(options):
             
             for model_file in model_files:
                 print('Running Python tests for model {}'.format(model_file))
-                options.default_model = model_file
+                options.default_model = model_file                
                 run_python_tests(options)
         
             options.default_model = original_default_model
@@ -1582,6 +1591,11 @@ def main():
         help='Skip tests related to video (which can be slow)')
         
     parser.add_argument(
+        '--skip_video_rendering_tests',
+        action='store_true',
+        help='Skip tests related to *rendering* video')
+        
+    parser.add_argument(
         '--skip_python_tests',
         action='store_true',
         help='Skip python tests')
@@ -1665,6 +1679,12 @@ def main():
         default='',
         help='Detector-specific options, as a space-separated list of key-value pairs')
     
+    parser.add_argument(
+        '--default_model',
+        type=str,
+        default=options.default_model,
+        help='Default model file or well-known model name (used for most tests)')
+    
     # The following token is used for linting, do not remove.
     #
     # no_arguments_required
@@ -1685,17 +1705,55 @@ if __name__ == '__main__':
 #%% Sample invocations
 
 r"""
-# Windows
-set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5-md
-cd c:\git\MegaDetector\megadetector\utils
-python md_tests.py --cli_working_dir "c:\git\MegaDetector" --yolo_working_dir "c:\git\yolov5-md" --cli_test_pythonpath "c:\git\MegaDetector;c:\git\yolov5-md"
 
-# Linux
-export PYTHONPATH=/mnt/c/git/MegaDetector:/mnt/c/git/yolov5-md
-cd /mnt/c/git/MegaDetector/megadetector/utils
-python md_tests.py --cli_working_dir "/mnt/c/git/MegaDetector" --yolo_working_dir "/mnt/c/git/yolov5-md" --cli_test_pythonpath "/mnt/c/git/MegaDetector:/mnt/c/git/yolov5-md"
+## Windows
 
-python -c "import md_tests; print(md_tests.get_expected_results_filename(True))"
+set PYTHONPATH=c:\git\MegaDetector
+cd c:\git\MegaDetector
+
+# Without yolo val tests
+python megadetector\utils\md_tests.py --cli_working_dir "c:\git\MegaDetector" --cli_test_pythonpath "c:\git\MegaDetector" --max_coord_error 0.01 --max_conf_error 0.01
+
+# With yolo val tests
+python megadetector\utils\md_tests.py --cli_working_dir "c:\git\MegaDetector" --yolo_working_dir "c:\git\yolov5-md" --cli_test_pythonpath "c:\git\MegaDetector" --max_coord_error 0.01 --max_conf_error 0.01
+
+# Test GPU support
+python megadetector\utils\torch_test.py
+
+# Run MDV5A
+python megadetector\detection\run_detector.py MDV5A --image_file "G:\temp\snapshot_enonkishu_ENO_S1_B05_B05_R2_ENO_S1_B05_R2_IMAG0624.JPG"
+
+# Test all supported models
+python megadetector\utils\md_tests.py --skip_cli_tests --skip_download_tests --python_test_depth 1 --model_folder "g:\temp\inference-library-tests"
+
+# Test GPL models only
+python megadetector\utils\md_tests.py --skip_cli_tests --skip_download_tests --python_test_depth 1 --model_folder "g:\temp\inference-library-tests\supported-gpl-models"
+
+
+## Linux
+
+export PYTHONPATH=/mnt/c/git/MegaDetector
+cd /mnt/c/git/MegaDetector
+
+# Without yolo val tests
+python megadetector/utils/md_tests.py --cli_working_dir "/mnt/c/git/MegaDetector" --cli_test_pythonpath "/mnt/c/git/MegaDetector" --max_coord_error 0.01 --max_conf_error 0.01
+
+# With yolo val tests
+python megadetector/utils/md_tests.py --cli_working_dir "/mnt/c/git/MegaDetector" --yolo_working_dir "/mnt/c/git/yolov5-md" --cli_test_pythonpath "c:\git\MegaDetector" --max_coord_error 0.01 --max_conf_error 0.01
+
+# Test GPU support
+python megadetector/utils/torch_test.py
+
+# Run MDV5A
+python megadetector/detection/run_detector.py MDV5A --image_file "/mnt/g/temp/snapshot_enonkishu_ENO_S1_B05_B05_R2_ENO_S1_B05_R2_IMAG0624.JPG"
+
+# Test all supported models
+python megadetector/utils/md_tests.py --skip_cli_tests --skip_download_tests --python_test_depth 1 --model_folder "/mnt/g/temp/inference-library-tests"
+
+# Test GPL models only
+python megadetector/utils/md_tests.py --skip_cli_tests --skip_download_tests --python_test_depth 1 --model_folder "/mnt/g/temp/inference-library-tests/supported-gpl-models"
+
+
 """
 
 
@@ -1730,3 +1788,4 @@ if False:
     fn1 = r"G:\temp\md-test-package\mdv5a-image-cpu-pt1.10.1.json"
     fn2 = r"G:\temp\md-test-package\mdv5a-augment-image-cpu-pt1.10.1.json"
     print(output_files_are_identical(fn1,fn2,verbose=True))
+    
