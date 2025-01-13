@@ -10,7 +10,7 @@ Install with:
 
 `pip install megadetector`
 
-MegaDetector model weights aren't downloaded at pip-install time, but they will be (optionally) automatically downloaded the first time you run the model.
+MegaDetector model weights aren't downloaded at the time you install the package, but they will be (optionally) automatically downloaded the first time you run the model.
 
 ## Package reference
 
