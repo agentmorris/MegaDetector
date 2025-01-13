@@ -24,14 +24,18 @@ dependencies:
   #
   # - mkl=2024.0
   
-  # To use ultralytics-yolov5, we need to use an old version of numpy, because
-  # of the removal of np.int in numpy 1.24.0.  Even if we relaxed that requirement
-  # or patched np.int, we definitely don't want numpy>=2.0.
-  - numpy=1.23.5
+  # To use ultralytics-yolov5's val.py, we need to use an old version of numpy, 
+  # because of the removal of np.int in numpy 1.24.0.  This is only necessary if 
+  # you're going to use the full val.py suite in ultralytics-yolov5.  If you pin 
+  # numpy here, do it again in the pip section below.
+  # - numpy=1.23.5
+  - numpy>=1.22,<2.0
     
   # ultralytics-yolov5 has a dependency on FreeTypeFont.getsize(), which was
-  # removed in Pillow 10, so we force Pillow < 10.0
-  - Pillow>= 9.1.0,< 10.0
+  # removed in Pillow 10.  Restrict to <10.0 if you want to use val.py from 
+  # ultralytics-yolov5.
+  # - Pillow>= 9.1.0,< 10.0
+  - Pillow>= 9.5.0
   
   - tqdm>=4.64.0
   - jsonpickle>=3.0.0
@@ -91,7 +95,7 @@ dependencies:
     
     # yolov9pip triggers the installation of a more recent numpy version, 
     # for reasons that don't matter to MegaDetector.  Insist on 1.23.5.
-    - numpy==1.23.5     
+    # - numpy==1.23.5
 
     # Not imported directly, but we force this version to avoid this issue:
     #
