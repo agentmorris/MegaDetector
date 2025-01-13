@@ -595,7 +595,9 @@ class PTDetector:
             except AttributeError:
                 pass
         try:
-            self.model = PTDetector._load_model(model_path, self.device)
+            self.model = PTDetector._load_model(model_path, 
+                                                device=self.device, 
+                                                compatibility_mode=self.compatibility_mode)
             
         except Exception as e:
             # In a very esoteric scenario where an old version of YOLOv5 is used to run
@@ -606,7 +608,9 @@ class PTDetector:
                 print('Forward-compatibility issue detected, patching')
                 from models import yolo
                 yolo.DetectionModel = yolo.Model
-                self.model = PTDetector._load_model(model_path, self.device)                
+                self.model = PTDetector._load_model(model_path, 
+                                                    device=self.device,
+                                                    compatibility_mode=self.compatibility_mode) 
             else:
                 raise
         if (self.device != 'cpu'):
@@ -615,7 +619,7 @@ class PTDetector:
                     
 
     @staticmethod
-    def _load_model(model_pt_path, device):
+    def _load_model(model_pt_path, device, compatibility_mode=''):
         
         # There are two very slightly different ways to load the model, (1) using the
         # map_location=device parameter to torch.load and (2) calling .to(device) after
@@ -623,7 +627,10 @@ class PTDetector:
         # supported on Apple silicon at of 2029.09.  Switching to the latter causes
         # very slight changes to the output, which always make me nervous, so I'm not
         # doing a wholesale swap just yet.  Instead, we'll just do this on M1 hardware.
-        use_map_location = (device != 'mps')        
+        if 'classic' in compatibility_mode:
+            use_map_location = (device != 'mps')        
+        else:
+            use_map_location = False
         
         if use_map_location:
             checkpoint = torch.load(model_pt_path, map_location=device)
@@ -637,10 +644,10 @@ class PTDetector:
             if t is torch.nn.Upsample and not hasattr(m, 'recompute_scale_factor'):
                 m.recompute_scale_factor = None
         
-        if use_map_location:
-            model = checkpoint['model'].float().fuse().eval()
+        if use_map_location:            
+            model = checkpoint['model'].float().fuse().eval()            
         else:
-            model = checkpoint['model'].float().fuse().eval().to(device)
+            model = checkpoint['model'].float().fuse().eval().to(device)            
             
         return model
 

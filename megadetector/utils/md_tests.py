@@ -64,6 +64,9 @@ class MDTestOptions:
         #: Skip download tests
         self.skip_download_tests = False
         
+        #: Skip force-CPU tests
+        self.skip_cpu_tests = False
+        
         #: Force a specific folder for temporary input/output
         self.scratch_dir = None
         
@@ -407,7 +410,13 @@ def compare_detection_lists(detections_a,detections_b,options,bidirectional_comp
     
     max_conf_error = 0
     max_coord_error = 0
-        
+    
+    max_conf_error_det_a = None
+    max_conf_error_det_b = None
+    
+    max_coord_error_det_a = None
+    max_coord_error_det_b = None
+    
     # i_det_a = 0
     for i_det_a in range(0,len(detections_a)):
         
@@ -425,22 +434,23 @@ def compare_detection_lists(detections_a,detections_b,options,bidirectional_comp
         # i_det_b = 0
         for i_det_b in range(0,len(detections_b)):
             
-            b_det = detections_b[i_det_b]
+            det_b = detections_b[i_det_b]
             
-            if b_det['category'] != det_a['category']:
+            if det_b['category'] != det_a['category']:
                 continue
             
-            iou = get_iou(det_a['bbox'],b_det['bbox'])
+            iou = get_iou(det_a['bbox'],det_b['bbox'])
             
             # Is this likely the same detection as det_a?
             if iou >= options.iou_threshold_for_file_comparison and iou > highest_iou:
-                matching_det_b = b_det
+                matching_det_b = det_b
                 highest_iou = iou
                 
         # If there are no detections in this category in detections_b
         if matching_det_b is None:
             if det_a['conf'] > max_conf_error:
                 max_conf_error = det_a['conf']
+                max_conf_error_det_a = det_a
             # max_coord_error = 1.0
             continue
         
@@ -450,13 +460,17 @@ def compare_detection_lists(detections_a,detections_b,options,bidirectional_comp
         for i_coord in range(0,4):
             coord_differences.append(abs(det_a['bbox'][i_coord]-\
                                          matching_det_b['bbox'][i_coord]))
-        coord_err = max(coord_differences)
+        coord_err = max(coord_differences)        
         
         if conf_err >= max_conf_error:
             max_conf_error = conf_err
+            max_conf_error_det_a = det_a
+            max_conf_error_det_b = det_b
             
         if coord_err >= max_coord_error:
-            max_coord_error = coord_err            
+            max_coord_error = coord_err
+            max_coord_error_det_a = det_a
+            max_coord_error_det_b = det_b
     
     # ...for each detection in detections_a
     
@@ -469,12 +483,22 @@ def compare_detection_lists(detections_a,detections_b,options,bidirectional_comp
         
         if reverse_comparison_results['max_conf_error'] > max_conf_error:
             max_conf_error = reverse_comparison_results['max_conf_error']
+            max_conf_error_det_a = reverse_comparison_results['max_conf_error_det_b']
+            max_conf_error_det_b = reverse_comparison_results['max_conf_error_det_a']
         if reverse_comparison_results['max_coord_error'] > max_coord_error:
             max_coord_error = reverse_comparison_results['max_coord_error']
+            max_coord_error_det_a = reverse_comparison_results['max_coord_error_det_b']
+            max_coord_error_det_b = reverse_comparison_results['max_coord_error_det_a']
     
     list_comparison_results = {}
+    
     list_comparison_results['max_coord_error'] = max_coord_error
+    list_comparison_results['max_coord_error_det_a'] = max_coord_error_det_a
+    list_comparison_results['max_coord_error_det_b'] = max_coord_error_det_b
+    
     list_comparison_results['max_conf_error'] = max_conf_error
+    list_comparison_results['max_conf_error_det_a'] = max_conf_error_det_a
+    list_comparison_results['max_conf_error_det_b'] = max_conf_error_det_b
     
     return list_comparison_results
 
@@ -522,9 +546,11 @@ def compare_results(inference_output_file,
     
     max_conf_error = -1
     max_conf_error_file = None
+    max_conf_error_comparison_results = None
     
     max_coord_error = -1
     max_coord_error_file = None    
+    max_coord_error_comparison_results = None
     
     # fn = next(iter(filename_to_results.keys()))
     for fn in filename_to_results.keys():
@@ -550,10 +576,12 @@ def compare_results(inference_output_file,
         
         if comparison_results_this_image['max_conf_error'] > max_conf_error:
             max_conf_error = comparison_results_this_image['max_conf_error']
+            max_conf_error_comparison_results = comparison_results_this_image
             max_conf_error_file = fn
             
         if comparison_results_this_image['max_coord_error'] > max_coord_error:
             max_coord_error = comparison_results_this_image['max_coord_error']
+            max_coord_error_comparison_results = comparison_results_this_image
             max_coord_error_file = fn
                 
     # ...for each image
@@ -577,7 +605,9 @@ def compare_results(inference_output_file,
     
     comparison_results = {}
     comparison_results['max_conf_error'] = max_conf_error
+    comparison_results['max_conf_error_comparison_results'] = max_conf_error_comparison_results
     comparison_results['max_coord_error'] = max_coord_error
+    comparison_results['max_coord_error_comparison_results'] = max_coord_error_comparison_results
 
     return comparison_results
 
@@ -612,6 +642,10 @@ def _args_to_object(args, obj):
 
 os.environ["PYTHONUNBUFFERED"] = "1"
 
+# In some circumstances I want to allow CLI tests to "succeed" even when they return 
+# specific non-zero output values.
+allowable_process_return_codes = [0]
+
 def execute(cmd):
     """
     Runs [cmd] (a single string) in a shell, yielding each line of output to the caller.
@@ -630,7 +664,7 @@ def execute(cmd):
         yield stdout_line
     popen.stdout.close()
     return_code = popen.wait()
-    if return_code:
+    if return_code not in allowable_process_return_codes:
         raise subprocess.CalledProcessError(return_code, cmd)
     return return_code
 
@@ -660,7 +694,7 @@ def execute_and_print(cmd,print_output=True,catch_exceptions=False,echo_command=
                 print(s,end='',flush=True)
         to_return['status'] = 0
     except subprocess.CalledProcessError as cpe:
-        if not catch_exceptions:
+        if not catch_exceptions:   
             raise
         print('execute_and_print caught error: {}'.format(cpe.output))
         to_return['status'] = cpe.returncode
@@ -967,11 +1001,12 @@ def run_python_tests(options):
         video_options.max_width = None        
         video_options.detector_options = copy(options.detector_options)
         
+        video_options.keep_extracted_frames = True
         _ = process_video_folder(video_options)
     
         assert os.path.isfile(video_options.output_json_file), \
             'Python video test failed to render output .json file'
-            
+        
         frame_output_file = insert_before_extension(video_options.output_json_file,'frames')
         assert os.path.isfile(frame_output_file)
         
@@ -981,6 +1016,7 @@ def run_python_tests(options):
         expected_results_file = \
             get_expected_results_filename(is_gpu_available(verbose=False),test_type='video',options=options)
         assert os.path.isfile(expected_results_file)
+        
         compare_results(frame_output_file,expected_results_file,options)
         
         
@@ -1134,49 +1170,52 @@ def run_cli_tests(options):
     
     ## Run again on multiple cores, make sure the results are the same
     
-    # First run again on the CPU on a single thread if necessary, so we get a file that 
-    # *should* be identical to the multicore version.
+    if not options.skip_cpu_tests:
     
-    gpu_available = is_gpu_available(verbose=False)
-    
-    cuda_visible_devices = None
-    if 'CUDA_VISIBLE_DEVICES' in os.environ:
-        cuda_visible_devices = os.environ['CUDA_VISIBLE_DEVICES']
-    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'    
-    
-    # If we already ran on the CPU, no need to run again
-    if not gpu_available:
+        # First run again on the CPU on a single thread if necessary, so we get a file that 
+        # *should* be identical to the multicore version.    
+        gpu_available = is_gpu_available(verbose=False)
         
-        inference_output_file_cpu = inference_output_file
+        cuda_visible_devices = None
+        if 'CUDA_VISIBLE_DEVICES' in os.environ:
+            cuda_visible_devices = os.environ['CUDA_VISIBLE_DEVICES']
+        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'    
         
-    else:
+        # If we already ran on the CPU, no need to run again
+        if not gpu_available:
+            
+            inference_output_file_cpu = inference_output_file
+            
+        else:
+            
+            print('\n** Running MD on a folder (single CPU) (CLI) **\n')
+                    
+            inference_output_file_cpu = insert_before_extension(inference_output_file,'cpu')    
+            cmd = base_cmd
+            cmd = cmd.replace(inference_output_file,inference_output_file_cpu)
+            cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+            cmd_results = execute_and_print(cmd)
+            
+        print('\n** Running MD on a folder (multiple CPUs) (CLI) **\n')
         
-        print('\n** Running MD on a folder (single CPU) (CLI) **\n')
-                
-        inference_output_file_cpu = insert_before_extension(inference_output_file,'cpu')    
-        cmd = base_cmd
-        cmd = cmd.replace(inference_output_file,inference_output_file_cpu)
+        cpu_string = ' --ncores 4'
+        cmd = base_cmd + cpu_string
+        inference_output_file_cpu_multicore = insert_before_extension(inference_output_file,'multicore')
+        cmd = cmd.replace(inference_output_file,inference_output_file_cpu_multicore)
         cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
         cmd_results = execute_and_print(cmd)
         
-    print('\n** Running MD on a folder (multiple CPUs) (CLI) **\n')
-    
-    cpu_string = ' --ncores 4'
-    cmd = base_cmd + cpu_string
-    inference_output_file_cpu_multicore = insert_before_extension(inference_output_file,'multicore')
-    cmd = cmd.replace(inference_output_file,inference_output_file_cpu_multicore)
-    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
-    cmd_results = execute_and_print(cmd)
-    
-    if cuda_visible_devices is not None:
-        print('Restoring CUDA_VISIBLE_DEVICES')
-        os.environ['CUDA_VISIBLE_DEVICES'] = cuda_visible_devices
-    else:
-        del os.environ['CUDA_VISIBLE_DEVICES']
+        if cuda_visible_devices is not None:
+            print('Restoring CUDA_VISIBLE_DEVICES')
+            os.environ['CUDA_VISIBLE_DEVICES'] = cuda_visible_devices
+        else:
+            del os.environ['CUDA_VISIBLE_DEVICES']
+            
+        assert output_files_are_identical(fn1=inference_output_file_cpu, 
+                                          fn2=inference_output_file_cpu_multicore,
+                                          verbose=True)
         
-    assert output_files_are_identical(fn1=inference_output_file_cpu, 
-                                      fn2=inference_output_file_cpu_multicore,
-                                      verbose=True)
+    # ...if we're not skipping the force-cpu tests
     
     
     ## Postprocessing
@@ -1501,9 +1540,18 @@ if False:
     options.warning_mode = False
     options.max_coord_error = 0.01 # 0.001
     options.max_conf_error = 0.01 # 0.005
-    # options.cli_working_dir = r'c:\git\MegaDetector'
+    options.skip_video_rendering_tests = True
+    # options.iou_threshold_for_file_comparison = 0.7
+    
+    options.cli_working_dir = r'c:\git\MegaDetector'
+    # When running in the cameratraps-detector environment    
+    # options.cli_test_pythonpath = r'c:\git\MegaDetector;c:\git\yolov5-md'
+    
+    # When running in the MegaDetector environment
+    options.cli_test_pythonpath = r'c:\git\MegaDetector'
+    
+    # options.cli_working_dir = os.path.expanduser('~')
     # options.yolo_working_dir = r'c:\git\yolov5-md'
-    options.cli_working_dir = os.path.expanduser('~')
     # options.yolo_working_dir = '/mnt/c/git/yolov5-md'
     options = download_test_data(options)
     
@@ -1611,6 +1659,11 @@ def main():
         help='Skip model download tests')
         
     parser.add_argument(
+        '--skip_cpu_tests',
+        action='store_true',
+        help='Skip force-CPU tests')
+        
+    parser.add_argument(
         '--force_data_download',
         action='store_true',
         help='Force download of the test data file, even if it\'s already available')
@@ -1692,7 +1745,7 @@ def main():
     args = parser.parse_args()
     
     initial_detector_options = options.detector_options    
-    _args_to_object(args,options)    
+    _args_to_object(args,options)
     from megadetector.utils.ct_utils import parse_kvp_list    
     options.detector_options = parse_kvp_list(args.detector_options,d=initial_detector_options)
     
@@ -1708,11 +1761,18 @@ r"""
 
 ## Windows
 
+# set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5-md
 set PYTHONPATH=c:\git\MegaDetector
 cd c:\git\MegaDetector
 
 # Without yolo val tests
-python megadetector\utils\md_tests.py --cli_working_dir "c:\git\MegaDetector" --cli_test_pythonpath "c:\git\MegaDetector" --max_coord_error 0.01 --max_conf_error 0.01
+python megadetector\utils\md_tests.py --cli_working_dir "c:\git\MegaDetector" --cli_test_pythonpath "c:\git\MegaDetector" --max_coord_error 0.01 --max_conf_error 0.01 
+
+# Without yolo val tests or video
+python megadetector\utils\md_tests.py --cli_working_dir "c:\git\MegaDetector" --cli_test_pythonpath "c:\git\MegaDetector" --max_coord_error 0.01 --max_conf_error 0.01 --skip_video_tests
+
+# Without yolo val tests, video, or force-cpu tests
+python megadetector\utils\md_tests.py --cli_working_dir "c:\git\MegaDetector" --cli_test_pythonpath "c:\git\MegaDetector;c:\git\yolov5-md" --max_coord_error 0.01 --max_conf_error 0.01 --skip_video_tests --skip_cpu_tests
 
 # With yolo val tests
 python megadetector\utils\md_tests.py --cli_working_dir "c:\git\MegaDetector" --yolo_working_dir "c:\git\yolov5-md" --cli_test_pythonpath "c:\git\MegaDetector" --max_coord_error 0.01 --max_conf_error 0.01
@@ -1739,7 +1799,10 @@ cd /mnt/c/git/MegaDetector
 python megadetector/utils/md_tests.py --cli_working_dir "/mnt/c/git/MegaDetector" --cli_test_pythonpath "/mnt/c/git/MegaDetector" --max_coord_error 0.01 --max_conf_error 0.01
 
 # With yolo val tests
-python megadetector/utils/md_tests.py --cli_working_dir "/mnt/c/git/MegaDetector" --yolo_working_dir "/mnt/c/git/yolov5-md" --cli_test_pythonpath "c:\git\MegaDetector" --max_coord_error 0.01 --max_conf_error 0.01
+python megadetector/utils/md_tests.py --cli_working_dir "/mnt/c/git/MegaDetector" --cli_test_pythonpath "/mnt/c/git/MegaDetector" --max_coord_error 0.01 --max_conf_error 0.01
+
+# With yolo val tests or video
+python megadetector/utils/md_tests.py --cli_working_dir "/mnt/c/git/MegaDetector" --cli_test_pythonpath "/mnt/c/git/MegaDetector" --max_coord_error 0.01 --max_conf_error 0.01 --skip_video_tests
 
 # Test GPU support
 python megadetector/utils/torch_test.py
@@ -1752,7 +1815,6 @@ python megadetector/utils/md_tests.py --skip_cli_tests --skip_download_tests --p
 
 # Test GPL models only
 python megadetector/utils/md_tests.py --skip_cli_tests --skip_download_tests --python_test_depth 1 --model_folder "/mnt/g/temp/inference-library-tests/supported-gpl-models"
-
 
 """
 
@@ -1788,4 +1850,3 @@ if False:
     fn1 = r"G:\temp\md-test-package\mdv5a-image-cpu-pt1.10.1.json"
     fn2 = r"G:\temp\md-test-package\mdv5a-augment-image-cpu-pt1.10.1.json"
     print(output_files_are_identical(fn1,fn2,verbose=True))
-    
