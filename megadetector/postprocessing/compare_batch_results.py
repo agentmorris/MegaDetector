@@ -197,6 +197,10 @@ class BatchComparisonOptions:
         #: to describe images
         self.fn_to_display_fn = None
         
+        #: Should we run urllib.parse.quote() on paths before using them as links in the
+        #: output page?
+        self.parse_link_paths = True
+        
 # ...class BatchComparisonOptions
     
 
@@ -1213,9 +1217,6 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             
             # ...def _categorize_image_with_image_level_gt(...)
             
-            # if 'val#human#human#HoSa#2021.006_na#2021#2021.006 (2021)#20210713' in im_a['file']:
-            #    import pdb; pdb.set_trace()
-                
             # im_detection = im_a; category_id_to_threshold = category_id_to_threshold_a
             result_types_present_a = \
                 _categorize_image_with_image_level_gt(im_a,im_gt,annotations_gt,category_id_to_threshold_a)
@@ -1360,12 +1361,17 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             
             title = display_path + ' (max conf {:.2f},{:.2f})'.format(max_conf_a,max_conf_b)
             
+            if options.parse_link_paths:
+                link_target_string = urllib.parse.quote(input_image_absolute_paths[i_fn])
+            else:
+                link_target_string = input_image_absolute_paths[i_fn]
+                
             info = {
                 'filename': fn,
                 'title': title,
                 'textStyle': 'font-family:verdana,arial,calibri;font-size:' + \
                     '80%;text-align:left;margin-top:20;margin-bottom:5',
-                'linkTarget': urllib.parse.quote(input_image_absolute_paths[i_fn]),
+                'linkTarget': link_target_string,
                 'sort_conf':sort_conf
             }
 
