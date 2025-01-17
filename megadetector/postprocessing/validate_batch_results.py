@@ -50,6 +50,9 @@ class ValidateBatchResultsOptions:
         
         #: Enable additional debug output
         self.verbose = False
+        
+        #: Should we raise errors immediately (vs. just catching and reporting)?
+        self.raise_errors = False
     
 # ...class ValidateBatchResultsOptions
 
@@ -223,8 +226,11 @@ def validate_batch_results(json_filename,options=None):
                     'Warning: non-standard key {} present at file level'.format(k))                
         
     except Exception as e:
-        
-        validation_results['errors'].append(str(e))
+                
+        if options.raise_errors:
+            raise
+        else:
+            validation_results['errors'].append(str(e))
         
     # ...try/except
     

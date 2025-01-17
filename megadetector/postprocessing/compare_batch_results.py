@@ -1604,7 +1604,61 @@ def n_way_comparison(filenames,
 
     return compare_batch_results(options)
 
-# ...n_way_comparison()
+# ...def n_way_comparison(...)
+
+
+def find_equivalent_threshold(results_a,results_b,threshold_a=0.2):
+    """
+    Given two sets of detector results, finds the confidence threshold for results_b
+    that produces the same fraction of *images* with detections as threshold_a does for 
+    results_a.  Uses all categories.
+    
+    Args:
+        results_a (str or dict): the first set of results, either a .json filename or a results
+            dict
+        results_b (str or dict): the second set of results, either a .json filename or a results
+            dict
+        threshold_a (float, optional): the threshold used to determine the target number of 
+            detections in results_a
+            
+    Returns:
+        float: the threshold that - when applied to results_b - produces the same number
+            of image-level detections that results from applying threshold_a to results_a
+    """
+    
+    if isinstance(results_a,str):
+        with open(results_a,'r') as f:
+            results_a = json.load(f)
+    
+    if isinstance(results_b,str):
+        with open(results_b,'r') as f:
+            results_b = json.load(f)
+            
+    def get_confidence_values_for_results(images):
+        confidence_values = []
+        for im in images:
+            if 'detections' in im and im['detections'] is not None:
+                if len(im['detections']) == 0:
+                    confidence_values.append(0)
+                else:
+                    confidence_values_this_image = [det['conf'] for det in im['detections']]
+                    confidence_values.append(max(confidence_values_this_image))                
+        return confidence_values
+    
+    confidence_values_a = get_confidence_values_for_results(results_a['images'])
+    confidence_values_a_above_threshold = [c for c in confidence_values_a if c >= threshold_a]
+    
+    confidence_values_b = get_confidence_values_for_results(results_b['images'])
+    confidence_values_b = sorted(confidence_values_b)                
+        
+    target_detection_fraction = len(confidence_values_a_above_threshold) / len(confidence_values_a)
+        
+    detection_cutoff_index = round((1.0-target_detection_fraction) * len(confidence_values_b))    
+    threshold_b = confidence_values_b[detection_cutoff_index]
+    
+    return threshold_b
+
+# ...def find_equivalent_threshold(...)
 
 
 #%% Interactive driver
