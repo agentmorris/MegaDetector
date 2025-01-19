@@ -50,7 +50,8 @@ yolo_model_type_imported = None
 
 def _get_model_type_for_model(model_file,
                               prefer_model_type_source='table',
-                              default_model_type='yolov5'):
+                              default_model_type='yolov5',
+                              verbose=False):
     """
     Determine the model type (i.e., the inference library we need to use) for a .pt file.
     
@@ -62,6 +63,7 @@ def _get_model_type_for_model(model_file,
             (trust the file).
         default_model_type (str, optional): return value for the case where we can't find
             appropriate metadata in the file or in the global table.
+        verbose (bool, optional): enable additional debug output
             
     Returns:
         str: the model type indicated for this model
@@ -74,9 +76,10 @@ def _get_model_type_for_model(model_file,
     
     if model_info is not None and 'model_type' in model_info:        
         model_type_from_model_file_metadata = model_info['model_type']
-        print('Parsed model type {} from model {}'.format(
-            model_type_from_model_file_metadata,
-            model_file))
+        if verbose:
+            print('Parsed model type {} from model {}'.format(
+                model_type_from_model_file_metadata,
+                model_file))
     
     model_type_from_model_version = None
     
@@ -84,13 +87,19 @@ def _get_model_type_for_model(model_file,
     model_version_from_file = get_detector_version_from_model_file(model_file)
     
     if model_version_from_file is not None and model_version_from_file in known_models:
-        model_type_from_model_version = known_models[model_version_from_file]['model_type']
-        print('Parsed model type {} from global metadata'.format(model_type_from_model_version))
+        model_info = known_models[model_version_from_file]
+        if 'model_type' in model_info:
+            model_type_from_model_version = model_info['model_type']
+            if verbose:
+                print('Parsed model type {} from global metadata'.format(model_type_from_model_version))
+        else:
+            model_type_from_model_version = None        
         
     if model_type_from_model_file_metadata is None and \
         model_type_from_model_version is None:
-        print('Could not determine model type for {}, assuming {}'.format(
-            model_file,default_model_type))
+        if verbose:
+            print('Could not determine model type for {}, assuming {}'.format(
+                model_file,default_model_type))
         model_type = default_model_type
     
     elif model_type_from_model_file_metadata is not None and \

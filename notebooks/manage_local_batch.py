@@ -82,7 +82,7 @@ from megadetector.detection.run_detector import DEFAULT_OUTPUT_CONFIDENCE_THRESH
 from megadetector.detection.run_detector import estimate_md_images_per_second
 from megadetector.postprocessing.postprocess_batch_results import \
     PostProcessingOptions, process_batch_results
-from megadetector.detection.run_detector import get_detector_version_from_filename
+from megadetector.detection.run_detector import get_detector_version_from_model_file
 
 ## Inference options
 
@@ -251,7 +251,7 @@ if augment and (approx_images_per_second is not None):
     approx_images_per_second = approx_images_per_second * 0.7
     
 base_task_name = organization_name_short + '-' + job_date + job_description_string + '-' + \
-    get_detector_version_from_filename(model_file)
+    get_detector_version_from_model_file(model_file)
 base_output_folder_name = os.path.join(postprocessing_base,organization_name_short)
 os.makedirs(base_output_folder_name,exist_ok=True)
 

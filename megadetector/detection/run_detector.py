@@ -77,6 +77,8 @@ DEFAULT_DETECTOR_LABEL_MAP = {
 USE_MODEL_NATIVE_CLASSES = False
 
 # Maps a variety of strings that might occur in filenames to canonical version numbers.
+#
+# Order matters here.
 model_string_to_model_version = {
     'mdv2':'v2.0.0',
     'mdv3':'v3.0.0',
@@ -88,8 +90,17 @@ model_string_to_model_version = {
     'v4':'v4.1.0',
     'v4.1':'v4.1.0',
     'v5a.0.0':'v5a.0.0',
-    'v5b.0.0':'v5b.0.0',        
+    'v5b.0.0':'v5b.0.0',
+    'redwood':'v1000.0.0-redwood',
+    'spruce':'v1000.0.0-spruce',
+    'cedar':'v1000.0.0-cedar',
+    'larch':'v1000.0.0-larch',
+    'default':'v5a.0.0',
+    'megadetector':'v5a.0.0'
 }
+
+model_url_base = 'http://localhost:8181/'
+assert model_url_base.endswith('/')
 
 # Maps canonical model version numbers to metadata
 known_models = {
@@ -98,21 +109,24 @@ known_models = {
         'url':'https://lila.science/public/models/megadetector/megadetector_v2.pb',
         'typical_detection_threshold':0.8,
         'conservative_detection_threshold':0.3,
-        'model_type':'tf'
+        'model_type':'tf',
+        'normalized_typical_inference_speed':1.0/3.5
     },
     'v3.0.0':
     {
         'url':'https://lila.science/public/models/megadetector/megadetector_v3.pb',
         'typical_detection_threshold':0.8,
         'conservative_detection_threshold':0.3,
-        'model_type':'tf'
+        'model_type':'tf',
+        'normalized_typical_inference_speed':1.0/3.5
     },
     'v4.1.0':
     {
         'url':'https://github.com/agentmorris/MegaDetector/releases/download/v4.1/md_v4.1.0.pb',
         'typical_detection_threshold':0.8,
         'conservative_detection_threshold':0.3,
-        'model_type':'tf'
+        'model_type':'tf',
+        'normalized_typical_inference_speed':1.0/3.5
     },
     'v5a.0.0':
     {
@@ -120,7 +134,8 @@ known_models = {
         'typical_detection_threshold':0.2,
         'conservative_detection_threshold':0.05,
         'image_size':1280,
-        'model_type':'yolov5'
+        'model_type':'yolov5',
+        'normalized_typical_inference_speed':1.0
     },
     'v5b.0.0':
     {
@@ -128,8 +143,31 @@ known_models = {
         'typical_detection_threshold':0.2,
         'conservative_detection_threshold':0.05,
         'image_size':1280,
-        'model_type':'yolov5'
+        'model_type':'yolov5',
+        'normalized_typical_inference_speed':1.0
     },
+    
+    # Fake values for testing
+    'v1000.0.0-redwood':
+    {
+        'normalized_typical_inference_speed':2.0,
+        'url':model_url_base + 'md_v1000.0.0-redwood.pt'
+    },
+    'v1000.0.0-spruce':
+    {
+        'normalized_typical_inference_speed':3.0,
+        'url':model_url_base + 'md_v1000.0.0-spruce.pt'
+    },
+    'v1000.0.0-larch':
+    {
+        'normalized_typical_inference_speed':4.0,
+        'url':model_url_base + 'md_v1000.0.0-larch.pt'
+    },
+    'v1000.0.0-cedar':
+    {
+        'normalized_typical_inference_speed':5.0,
+        'url':model_url_base + 'md_v1000.0.0-cedar.pt'
+    }
 }
 
 DEFAULT_RENDERING_CONFIDENCE_THRESHOLD = known_models['v5a.0.0']['typical_detection_threshold']
@@ -152,7 +190,7 @@ device_token_to_mdv5_inference_speed = {
     # is around 3.5x faster than MDv4.
     'V100':2.79*3.5,
     '2080':2.3*3.5,
-    '2060':1.6*3.5
+    '2060':1.6*3.5    
 }
     
 
@@ -220,8 +258,6 @@ def get_detector_version_from_filename(detector_filename,
         if s in fn:
             matches.append(s)
     if len(matches) == 0:
-        if verbose:
-            print('Warning: could not determine MegaDetector version for model file {}'.format(detector_filename))
         return 'unknown'
     elif len(matches) > 1:
         if accept_first_match:
@@ -238,15 +274,15 @@ def get_detector_version_from_filename(detector_filename,
 
 def get_detector_version_from_model_file(detector_filename,verbose=False):
     """
-    Gets the canonical detection version from a model file, preferably by reading it from
-    the file itself, otherwise based on the filename.
+    Gets the canonical detection version from a model file, preferably by reading it 
+    from the file itself, otherwise based on the filename.
     
     Args:
         detector_filename (str): model filename, e.g. c:/x/z/md_v5a.0.0.pt    
         verbose (bool, optional): enable additional debug output
     
     Returns:
-        str: a detector version string, e.g. "v5a.0.0", or "unknown"
+        str: a canonical detector version string, e.g. "v5a.0.0", or "unknown"
     """
     
     # Try to extract a version string from the filename
@@ -326,10 +362,10 @@ def get_detector_version_from_model_file(detector_filename,verbose=False):
  
 def estimate_md_images_per_second(model_file, device_name=None):
     r"""
-    Estimates how fast MegaDetector will run, based on benchmarks.  Defaults to querying
-    the current device.  Returns None if no data is available for the current card/model.
-    Estimates only available for a small handful of GPUs.  Uses an absurdly simple lookup
-    approach, e.g. if the string "4090" appears in the device name, congratulations,
+    Estimates how fast MegaDetector will run on a particular device, based on benchmarks.  
+    Defaults to querying the current device.  Returns None if no data is available for the current 
+    card/model.  Estimates only available for a small handful of GPUs.  Uses an absurdly simple 
+    lookup approach, e.g. if the string "4090" appears in the device name, congratulations,
     you have an RTX 4090.
     
     Args:
@@ -349,15 +385,24 @@ def estimate_md_images_per_second(model_file, device_name=None):
             print('Error querying device name: {}'.format(e))
             return None
     
-    model_file = model_file.lower().strip()
-    if model_file in model_string_to_model_version.values():
-        model_version = model_file
-    else:
-        model_version = get_detector_version_from_filename(model_file)
-        if model_version not in model_string_to_model_version.values():
-            print('Error determining model version for model file {}'.format(model_file))
-            return None
+    # About how fast is this model compared to MDv5?
+    model_version = get_detector_version_from_model_file(model_file)
     
+    if model_version not in known_models.keys():
+        print('Could not estimate inference speed: error determining model version for model file {}'.format(
+            model_file))
+        return None
+        
+    model_info = known_models[model_version]
+    
+    if 'normalized_typical_inference_speed' not in model_info or \
+        model_info['normalized_typical_inference_speed'] is None:
+        print('No speed ratio available for model type {}'.format(model_version))
+        return None
+    
+    normalized_inference_speed = model_info['normalized_typical_inference_speed']
+    
+    # About how fast would MDv5 run on this device?
     mdv5_inference_speed = None
     for device_token in device_token_to_mdv5_inference_speed.keys():
         if device_token in device_name:
@@ -365,15 +410,10 @@ def estimate_md_images_per_second(model_file, device_name=None):
             break
     
     if mdv5_inference_speed is None:
-        print('No speed estimate available for {}'.format(device_name))
-    
-    if 'v5' in model_version:
-        return mdv5_inference_speed
-    elif 'v2' in model_version or 'v3' in model_version or 'v4' in model_version:
-        return mdv5_inference_speed / 3.5
-    else:
-        print('Could not estimate inference speed for model file {}'.format(model_file))
+        print('No baseline speed estimate available for device {}'.format(device_name))
         return None
+    
+    return normalized_inference_speed * mdv5_inference_speed
     
     
 def get_typical_confidence_threshold_from_results(results):
@@ -744,13 +784,17 @@ def try_download_known_detector(detector_file,force_download=False,verbose=False
     """
     
     model_string = detector_file.lower()
-    
+        
     # If this is a short model string (e.g. "MDV5A"), convert to a canonical version 
-    # string (e.g. "mdv5a.0.0")
+    # string (e.g. "v5a.0.0")
     if model_string in model_string_to_model_version:
-        
+    
+        if verbose:
+            print('Converting short string {} to canonical version string {}'.format(
+                model_string,
+                model_string_to_model_version[model_string]))
         model_string = model_string_to_model_version[model_string]
-        
+    
     if model_string in known_models:
         
         if detector_file in os.environ:
@@ -762,6 +806,7 @@ def try_download_known_detector(detector_file,force_download=False,verbose=False
             detector_file = _download_model(model_string,force_download=force_download)
             
     return detector_file
+    
         
     
 
@@ -928,13 +973,25 @@ if __name__ == '__main__':
     main()
 
 
-#%% Interactive driver
+#%% Interactive driver(s)
 
 if False:
 
     pass
 
-    #%%
+    #%% Test model download
+    
+    """
+    cd i:\models\all_models_in_the_wild
+    i:
+    python -m http.server 8181
+    """
+    
+    model_name = 'redwood'
+    try_download_known_detector(model_name,force_download=True,verbose=True)
+    
+
+    #%% Load and run detector
     
     model_file = r'c:\temp\models\md_v4.1.0.pb'
     image_file_names = path_utils.find_images(r'c:\temp\demo_images\ssverymini')
