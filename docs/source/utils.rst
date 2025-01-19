@@ -86,10 +86,10 @@ utils.url\_utils module
    :undoc-members:
    :show-inheritance:
 
-utils.torch\_test module
+utils.gpu\_test module
 ---------------------------
 
-.. automodule:: megadetector.utils.torch_test
+.. automodule:: megadetector.utils.gpu_test
    :members:
    :undoc-members:
    :show-inheritance:
