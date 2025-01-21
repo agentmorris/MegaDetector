@@ -138,6 +138,9 @@ class BatchComparisonOptions:
         #: List of filenames to include in the comparison, or None to use all files
         self.filenames_to_include = None
         
+        #: List of category names to include in the comparison, or None to use all categories
+        self.category_names_to_include = None
+        
         #: Compare only detections/non-detections, ignore categories (still renders categories)
         self.class_agnostic_comparison = False
         
@@ -986,7 +989,32 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             if invalid_category_error:
                 
                 continue
-                        
+            
+            # Should we be restricting the comparison to only certain categories?
+            if options.category_names_to_include is not None:
+                
+                # Just in case the user provided a single category instead of a list
+                if isinstance(options.category_names_to_include,str):
+                    options.category_names_to_include = [options.category_names_to_include]
+                    
+                category_name_to_id_a = invert_dictionary(detection_categories_a)
+                category_name_to_id_b = invert_dictionary(detection_categories_b)
+                category_ids_to_include_a = []
+                category_ids_to_include_b = []
+                
+                for category_name in options.category_names_to_include:
+                    if category_name in category_name_to_id_a:
+                        category_ids_to_include_a.append(category_name_to_id_a[category_name])
+                    if category_name in category_name_to_id_b:
+                        category_ids_to_include_b.append(category_name_to_id_b[category_name])
+                
+                # Restrict the categories we treat as above-threshold to the set we're supposed
+                # to be using
+                categories_above_threshold_a = [category_id for category_id in categories_above_threshold_a if \
+                                                category_id in category_ids_to_include_a]
+                categories_above_threshold_b = [category_id for category_id in categories_above_threshold_b if \
+                                                category_id in category_ids_to_include_b]
+            
             detection_a = (len(categories_above_threshold_a) > 0)
             detection_b = (len(categories_above_threshold_b) > 0)
                             
@@ -1607,7 +1635,72 @@ def n_way_comparison(filenames,
 # ...def n_way_comparison(...)
 
 
-def find_equivalent_threshold(results_a,results_b,threshold_a=0.2):
+def find_image_level_detections_above_threshold(results,threshold=0.2,category_names=None):
+    """
+    Returns images in the set of MD results [results] with detections above
+    a threshold confidence level, optionally only counting certain categories.
+    
+    Args:
+        results (str or dict): the set of results, either a .json filename or a results
+            dict
+        threshold (float, optional): the threshold used to determine the target number of 
+            detections in [results]
+        category_names (list or str, optional): the list of category names to consider (defaults
+            to using all categories), or the name of a single category.        
+    
+    Returns:
+        list: the images with above-threshold detections
+    """
+    if isinstance(results,str):
+        with open(results,'r') as f:
+            results = json.load(f)
+            
+    category_ids_to_consider = None
+    
+    if category_names is not None:
+        
+        if isinstance(category_names,str):
+            category_names = [category_names]
+        
+        category_id_to_name = results['detection_categories']
+        category_name_to_id = invert_dictionary(category_id_to_name)
+        
+        category_ids_to_consider = []
+        
+        # category_name = category_names[0]
+        for category_name in category_names:
+            category_id = category_name_to_id[category_name]
+            category_ids_to_consider.append(category_id)
+            
+        assert len(category_ids_to_consider) > 0, \
+            'Category name list did not map to any category IDs'
+        
+    images_above_threshold = []
+    
+    for im in results['images']:
+        
+        if ('detections' in im) and (im['detections'] is not None) and (len(im['detections']) > 0):
+            confidence_values_this_image = [0]
+            for det in im['detections']:
+                if category_ids_to_consider is not None:
+                    if det['category'] not in category_ids_to_consider:
+                        continue
+                confidence_values_this_image.append(det['conf'])
+            if max(confidence_values_this_image) >= threshold:
+                images_above_threshold.append(im)
+                
+    # ...for each image
+    
+    return images_above_threshold
+
+# ...def find_image_level_detections_above_threshold(...)
+
+
+def find_equivalent_threshold(results_a,
+                              results_b,
+                              threshold_a=0.2,
+                              category_names=None,
+                              verbose=False):
     """
     Given two sets of detector results, finds the confidence threshold for results_b
     that produces the same fraction of *images* with detections as threshold_a does for 
@@ -1620,6 +1713,9 @@ def find_equivalent_threshold(results_a,results_b,threshold_a=0.2):
             dict
         threshold_a (float, optional): the threshold used to determine the target number of 
             detections in results_a
+        category_names (list or str, optional): the list of category names to consider (defaults
+            to using all categories), or the name of a single category.
+        verbose (bool, optional): enable additional debug output
             
     Returns:
         float: the threshold that - when applied to results_b - produces the same number
@@ -1627,35 +1723,106 @@ def find_equivalent_threshold(results_a,results_b,threshold_a=0.2):
     """
     
     if isinstance(results_a,str):
+        if verbose:
+            print('Loading results from {}'.format(results_a))
         with open(results_a,'r') as f:
             results_a = json.load(f)
     
     if isinstance(results_b,str):
+        if verbose:
+            print('Loading results from {}'.format(results_b))
         with open(results_b,'r') as f:
             results_b = json.load(f)
+    
+    category_ids_to_consider_a = None
+    category_ids_to_consider_b = None
+    
+    if category_names is not None:
+        
+        if isinstance(category_names,str):
+            category_names = [category_names]
+        
+        categories_a = results_a['detection_categories']
+        categories_b = results_b['detection_categories']
+        category_name_to_id_a = invert_dictionary(categories_a)
+        category_name_to_id_b = invert_dictionary(categories_b)
+        
+        category_ids_to_consider_a = []
+        category_ids_to_consider_b = []
+        
+        # category_name = category_names[0]
+        for category_name in category_names:
+            category_id_a = category_name_to_id_a[category_name]
+            category_id_b = category_name_to_id_b[category_name]
+            category_ids_to_consider_a.append(category_id_a)
+            category_ids_to_consider_b.append(category_id_b)
             
-    def get_confidence_values_for_results(images):
+        assert len(category_ids_to_consider_a) > 0 and len(category_ids_to_consider_b) > 0, \
+            'Category name list did not map to any category IDs in one or both detection sets'
+    
+    def _get_confidence_values_for_results(images,category_ids_to_consider,threshold):
+        """
+        Return a list of the maximum confidence value for each image in [images].
+        Returns zero confidence for images with no detections (or no detections
+        in the specified categories).  Does not return anything for invalid images.
+        """
+        
         confidence_values = []
+        images_above_threshold = []
+        
         for im in images:
             if 'detections' in im and im['detections'] is not None:
                 if len(im['detections']) == 0:
                     confidence_values.append(0)
                 else:
-                    confidence_values_this_image = [det['conf'] for det in im['detections']]
-                    confidence_values.append(max(confidence_values_this_image))                
-        return confidence_values
+                    confidence_values_this_image = []
+                    for det in im['detections']:
+                        if category_ids_to_consider is not None:
+                            if det['category'] not in category_ids_to_consider:
+                                continue
+                        confidence_values_this_image.append(det['conf'])
+                    if len(confidence_values_this_image) == 0:
+                        confidence_values.append(0)
+                    else:
+                        max_conf_value = max(confidence_values_this_image)
+                        
+                        if threshold is not None and max_conf_value >= threshold:
+                            images_above_threshold.append(im)
+                        confidence_values.append(max_conf_value)
+        # ...for each image
+        
+        return confidence_values, images_above_threshold
     
-    confidence_values_a = get_confidence_values_for_results(results_a['images'])
+    confidence_values_a,images_above_threshold_a = \
+        _get_confidence_values_for_results(results_a['images'],
+                                          category_ids_to_consider_a,
+                                          threshold_a)
+        
+    # ...def _get_confidence_values_for_results(...)
+        
+    if verbose:
+        print('For result set A, considering {} of {} images'.format(
+            len(confidence_values_a),len(results_a['images'])))
     confidence_values_a_above_threshold = [c for c in confidence_values_a if c >= threshold_a]
     
-    confidence_values_b = get_confidence_values_for_results(results_b['images'])
-    confidence_values_b = sorted(confidence_values_b)                
+    confidence_values_b,_ = _get_confidence_values_for_results(results_b['images'],
+                                                              category_ids_to_consider_b,
+                                                              threshold=None)
+    if verbose:
+        print('For result set B, considering {} of {} images'.format(
+            len(confidence_values_b),len(results_b['images'])))
+    confidence_values_b = sorted(confidence_values_b)        
         
     target_detection_fraction = len(confidence_values_a_above_threshold) / len(confidence_values_a)
         
     detection_cutoff_index = round((1.0-target_detection_fraction) * len(confidence_values_b))    
     threshold_b = confidence_values_b[detection_cutoff_index]
     
+    if verbose:
+        print('{} confidence values above threshold (A)'.format(len(confidence_values_a_above_threshold)))
+        confidence_values_b_above_threshold = [c for c in confidence_values_b if c >= threshold_b]
+        print('{} confidence values above threshold (B)'.format(len(confidence_values_b_above_threshold)))
+            
     return threshold_b
 
 # ...def find_equivalent_threshold(...)
