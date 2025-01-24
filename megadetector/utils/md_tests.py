@@ -1436,6 +1436,9 @@ def run_download_tests(options):
         # Make sure we can download models based on canonical version numbers, 
         # e.g. "v5a.0.0"
         for model_name in known_models:
+            url = known_models[model_name]['url']
+            if 'localhost' in url:
+                continue
             print('Testing download for known model {}'.format(model_name))
             fn = try_download_known_detector(model_name, 
                                              force_download=False,
@@ -1445,6 +1448,12 @@ def run_download_tests(options):
             
         # Make sure we can download models based on short names, e.g. "MDV5A"
         for model_name in model_string_to_model_version:
+            model_version = model_string_to_model_version[model_name]
+            assert model_version in known_models
+            url = known_models[model_version]['url']
+            if 'localhost' in url:
+                continue
+            print('Testing download for model short name {}'.format(model_name))
             fn = try_download_known_detector(model_name, 
                                              force_download=False,
                                              verbose=False)    

@@ -27,7 +27,7 @@ dependencies = [
   # Not imported directly, but we force this version to avoid this issue:
   #
   # https://github.com/pytorch/pytorch/issues/123097
-  "mkl == 2024.0",
+  "mkl == 2024.0; sys_platform != 'darwin'",
   # To use ultralytics-yolov5's val.py, we need to use an old version of numpy, 
   # because of the removal of np.int in numpy 1.24.0.  This is only necessary if 
   # you're going to use the full val.py suite in ultralytics-yolov5.

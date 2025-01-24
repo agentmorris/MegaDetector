@@ -1,43 +1,112 @@
+# This is the main conda environment file for MD applications; it's generally 
+# synchronized with requirements.txt.
 name: megadetector
 
 channels:
   - conda-forge
-  # - pytorch
+  - pytorch
+  - nvidia
 
 dependencies:
+
   - nomkl
-  - python=3.8
-  # We pin Pillow to make it as likely as possible that images are loaded via a loader 
-  # that's identical to the training environment
-  - Pillow=9.1.0
-  - tqdm
-  - jsonpickle
-  - humanfriendly
-  # We pin numpy because later versions of numpy are incompatible with the
-  # recommended version of YOLOv5.
-  - numpy==1.21.4
-  - matplotlib
-  - opencv
-  - requests
-  - pyqtree
-  - scikit-learn>=0.19.1
+  
+  # PyTorch is not yet supported in Python 3.12 as of the time I'm writing this 
+  # environment file.
+  - python>=3.8,<3.12
+  - pip
+  
+  # Not imported directly, but we force this version to avoid this issue:
+  #
+  # https://github.com/pytorch/pytorch/issues/123097
+  #
+  # ...but we do this via pip, since it breaks conda's dependency resolver.
+  #
+  # - mkl=2024.0
+  
+  # To use ultralytics-yolov5's val.py, we need to use an old version of numpy, 
+  # because of the removal of np.int in numpy 1.24.0.  This is only necessary if 
+  # you're going to use the full val.py suite in ultralytics-yolov5.  If you pin 
+  # numpy here, do it again in the pip section below.
+  # - numpy=1.23.5
+  - numpy>=1.22,<2.0
+
+  # ultralytics-yolov5 has a dependency on FreeTypeFont.getsize(), which was
+  # removed in Pillow 10.  Restrict to <10.0 if you want to use val.py from 
+  # ultralytics-yolov5.
+  # - Pillow>= 9.1.0,< 10.0
+  - Pillow>= 9.5.0
+  
+  - tqdm>=4.64.0
+  - jsonpickle>=3.0.0
+  - humanfriendly>=10.0  
+  - matplotlib>=3.8.0
+  - opencv>=4.8.0
+  - requests>=2.31.0
+  - pyqtree>=1.0.0
+  - scikit-learn>=1.3.1
+  - pandas>=2.1.1
+  
+  - send2trash
   - python-dateutil
-
-  # So we can run Jupyter notebooks in this environment
-  - nb_conda_kernels
-  - ipykernel
   
-  # For running MegaDetector v5
-  - pandas
-  # Not used directly, but used by YOLOv5 imports
-  - seaborn>=0.11.0
-  - PyYAML>=5.3.1
-  - pytorch::pytorch
-  - pytorch::torchvision
-  # - conda-forge::cudatoolkit=11.3
-  # - conda-forge::cudnn=8.1
-
-  # For running MegaDetector v4
-  # - tensorflow>=2.0  
-
+  # Not used directly, but required for deserializing some models
+  - dill
+    
+  # Not used directly, but if we don't install it before we install our 
+  # pip dependencies, it will get installed by yolov9pip, and it will install
+  # opencv-python-headless, as per this bug:
+  #
+  # https://github.com/albumentations-team/albumentations/issues/1785
+  #
+  # Installing it first via conda (rather than pip) seems to fix the issue, but 
+  # this trick doesn't seem to work if we do it inside the environment file.
+  # - albumentations>=1.0.3
   
+  - pytorch::pytorch>=2.0
+  - pytorch::torchvision>=0.15.0
+  # Don't install pytorch-cuda on Apple silicon
+  # - pytorch::pytorch-cuda=11.8
+  
+  # For running MegaDetector v4 (capping at 2.10 to allow Windows GPU support)
+  # - tensorflow>=2.0,<=2.10
+  
+  - pip:
+    # "ultralytics-yolov5" is the frozen-in-time YOLOv5:
+    #
+    # https://pypi.org/project/ultralytics-yolov5/
+    #
+    # ...which is different than "pip install yolov5", which installs:
+    #
+    # https://pypi.org/project/yolov5/
+    #
+    # Make sure this appears *after* the torch installation
+    - ultralytics-yolov5==0.1.1
+  
+    # "yolov9-pip" is the frozen-in-time YOLOv9:
+    #
+    # https://github.com/kadirnar/yolov9-pip
+    # https://pypi.org/project/yolov9pip/
+    #
+    # ...which is different from either of these:
+    #
+    # https://pypi.org/project/pyyolov9/
+    # https://pypi.org/project/yolov9py/
+    - yolov9pip==0.0.4
+    
+    # yolov9pip triggers the installation of a more recent numpy version, 
+    # for reasons that don't matter to MegaDetector.  Insist on 1.23.5.
+    # - numpy==1.23.5     
+
+    # Not imported directly, but we force this version to avoid this issue:
+    #
+    # https://github.com/pytorch/pytorch/issues/123097
+    #
+    # ...but we do this via pip, since it breaks conda's dependency resolver.
+    #
+    # - mkl==2024.0
+    
+    # Don't install ultralytics; if the user wants to run an ultralytics-trained
+    # model, we'll tell them to install the ultralytics package
+    #
+    # - ultralytics

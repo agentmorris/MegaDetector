@@ -27,11 +27,12 @@ def torch_test():
 
     print('Torch version: {}'.format(str(torch.__version__)))
     print('CUDA available (according to PyTorch): {}'.format(torch.cuda.is_available()))
-    print('CUDA version (according to PyTorch): {}'.format(torch.version.cuda))
-    print('CuDNN version (according to PyTorch): {}'.format(torch.backends.cudnn.version()))
+    if torch.cuda.is_available():
+        print('CUDA version (according to PyTorch): {}'.format(torch.version.cuda))
+        print('CuDNN version (according to PyTorch): {}'.format(torch.backends.cudnn.version()))
 
     device_ids = list(range(torch.cuda.device_count()))
-    
+        
     if len(device_ids) > 0:        
         cuda_str = 'Found {} CUDA devices:'.format(len(device_ids))
         print(cuda_str)
@@ -44,8 +45,13 @@ def torch_test():
                 pass
             print('{}: {}'.format(device_id,device_name))
     else:
-        print('No GPUs reported by PyTorch')
+        print('No CUDA GPUs reported by PyTorch')
         
+    try:
+        if torch.backends.mps.is_built and torch.backends.mps.is_available():
+            print('PyTorch reports that Metal Performance Shaders are available')
+    except Exception:
+        pass 
     return len(device_ids)
 
 
