@@ -214,6 +214,64 @@ def _clean_up_temporary_folders(options,
         print('Warning: using temporary YOLO results folder {}, but not removing it'.format(
             yolo_results_folder))
 
+
+def get_stats_for_category(filename,category='all'):
+    """
+    Retrieve statistics for a category from the YOLO console output
+    stored in [filenam].
+    
+    Args:
+        filename (str): a text file containing console output from a YOLO val run
+        category (optional, str): a category name
+        
+    Returns:
+        dict: a dict with fields n_images, n_labels, P, R, mAP50, and mAP50-95
+    """
+    
+    with open(filename,'r',encoding='utf-8') as f:
+        lines = f.readlines()
+    
+    # This is just a hedge to make sure there isn't some YOLO version floating
+    # around that used different IoU thresholds in the console output.
+    found_map50 = False
+    found_map5095 = False
+    
+    for line in lines:
+        
+        s = line.strip()
+        
+        if ' map50 ' in s.lower() or ' map@.5 ' in s.lower():
+            found_map50 = True
+        if 'map50-95' in s.lower() or 'map@.5:.95' in s.lower():
+            found_map5095 = True
+        
+        if not s.startswith(category):
+            continue
+        
+        tokens = s.split(' ')
+        tokens_filtered = list(filter(None,tokens))
+        
+        if len(tokens_filtered) != 7:
+            continue
+        
+        assert found_map50 and found_map5095, \
+            'Parsing error in YOLO console output file {}'.format(filename)
+            
+        to_return = {}
+        to_return['category'] = category
+        assert category == tokens_filtered[0]
+        to_return['n_images'] = int(tokens_filtered[1])
+        to_return['n_labels'] = int(tokens_filtered[2])
+        to_return['P'] = float(tokens_filtered[3])
+        to_return['R'] = float(tokens_filtered[4])
+        to_return['mAP50'] = float(tokens_filtered[5])
+        to_return['mAP50-95'] = float(tokens_filtered[6])
+        return to_return
+    
+    # ...for each line
+    
+    return None
+
     
 #%% Main function
 

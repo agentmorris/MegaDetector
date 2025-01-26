@@ -811,8 +811,11 @@ def generate_md_formatted_results_from_batch_jsonl(image_folder,
     Given a folder of jsonl files produced by the WI batch API, or a single .json file
     generated locallly, generate MD-formatted results.
     
-    If provided, bucket_prefix should start with gs://; it will be prepended to every results path.
-        
+    If the filenames in the .json file have a prefx that should be appended to each
+    relative image path (either a bucket prefix or an absolute folder prefix), provide
+    that as [bucket_prefix].  Currently this is literally prepended as a string, so it's
+    the responsbility of the caller to make sure that the / vs. \\ convention in the prefix
+    is consistent with whatever is in the results file.
     """
     
     ##%% Read predictions
