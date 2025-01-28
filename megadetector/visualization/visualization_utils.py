@@ -971,7 +971,8 @@ def render_db_bounding_boxes(boxes,
                              textalign=TEXTALIGN_LEFT,
                              vtextalign=VTEXTALIGN_TOP,
                              text_rotation=None,
-                             label_font_size=DEFAULT_LABEL_FONT_SIZE):
+                             label_font_size=DEFAULT_LABEL_FONT_SIZE,
+                             tags=None):
     """
     Render bounding boxes (with class labels) on an image.  This is a wrapper for
     draw_bounding_boxes_on_image, allowing the caller to operate on a resized image
@@ -999,6 +1000,8 @@ def render_db_bounding_boxes(boxes,
         vtextalign (int, optional): VTEXTALIGN_TOP or VTEXTALIGN_BOTTOM
         text_rotation (float, optional): rotation to apply to text
         label_font_size (float, optional): font size for labels
+        tags (list, optional): list of strings of length len(boxes) that should be appended
+            after each class name (e.g. to show scores)
     """
 
     display_boxes = []
@@ -1011,8 +1014,11 @@ def render_db_bounding_boxes(boxes,
 
     img_width, img_height = image_size
 
-    for box, clss in zip(boxes, classes):
+    for i_box in range(0,len(boxes)):
 
+        box = boxes[i_box]
+        clss = classes[i_box]
+        
         x_min_abs, y_min_abs, width_abs, height_abs = box[0:4]
 
         ymin = y_min_abs / img_height
@@ -1026,9 +1032,17 @@ def render_db_bounding_boxes(boxes,
         if label_map:
             clss = label_map[int(clss)]
             
+        display_str = str(clss)
+    
+        # Do we have a tag to append to the class string?
+        if tags is not None and tags[i_box] is not None and len(tags[i_box]) > 0:
+            display_str += ' ' + tags[i_box]
+            
         # need to be a string here because PIL needs to iterate through chars
-        display_strs.append([str(clss)])  
+        display_strs.append([display_str])
 
+    # ...for each box
+    
     display_boxes = np.array(display_boxes)
     
     draw_bounding_boxes_on_image(image, 

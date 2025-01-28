@@ -859,7 +859,7 @@ def generate_md_formatted_results_from_batch_jsonl(image_folder,
         
         # prediction = predictions[0]
         for prediction in predictions:
-            filepath_to_prediction[prediction['filepath']] = prediction
+            filepath_to_prediction[prediction['filepath'].replace('\\','/')] = prediction
     
     else:
         
@@ -885,7 +885,7 @@ def generate_md_formatted_results_from_batch_jsonl(image_folder,
     # image_fn_relative = image_files[0]
     for i_image,image_fn_relative in enumerate(image_files):
         
-        filepath = bucket_prefix + image_fn_relative
+        filepath = (bucket_prefix + image_fn_relative).replace('\\','/')
         prediction = filepath_to_prediction[filepath]
         im = {}
         im['file'] = image_fn_relative
