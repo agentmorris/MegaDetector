@@ -86,7 +86,7 @@ def _check_image_existence_and_size(image,options=None):
         options (IntegrityCheckOptions): parameters impacting validation
     
     Returns:
-        bool: whether this image passes validation
+        str: None if this image passes validation, otherwise an error string
     """
 
     if options is None:        
@@ -96,23 +96,23 @@ def _check_image_existence_and_size(image,options=None):
     
     filePath = os.path.join(options.baseDir,image['file_name'])
     if not os.path.isfile(filePath):
-        # print('Image path {} does not exist'.format(filePath))
-        return False
+        s = 'Image path {} does not exist'.format(filePath)
+        return s
     
     if options.bCheckImageSizes:
         if not ('height' in image and 'width' in image):
-            print('Missing image size in {}'.format(filePath))
-            return False
+            s = 'Missing image size in {}'.format(filePath)
+            return s
 
         # width, height = Image.open(filePath).size
         pil_im = open_image(filePath)
         width,height = pil_im.size
         if (not (width == image['width'] and height == image['height'])):
-            print('Size mismatch for image {}: {} (reported {},{}, actual {},{})'.format(
-                    image['id'], filePath, image['width'], image['height'], width, height))
-            return False
+            s = 'Size mismatch for image {}: {} (reported {},{}, actual {},{})'.format(
+                    image['id'], filePath, image['width'], image['height'], width, height)
+            return s
         
-    return True
+    return None
 
   
 def integrity_check_json_db(jsonFile, options=None):
@@ -287,6 +287,7 @@ def integrity_check_json_db(jsonFile, options=None):
             if fn_relative not in image_paths_in_json:
                 unused_files.append(fn_relative)
                 
+    # List of (filename,error_string) tuples
     validation_errors = []
     
     # If we're checking image existence but not image size, we don't need to read the images
@@ -298,8 +299,8 @@ def integrity_check_json_db(jsonFile, options=None):
         image_paths_relative_set = set(image_paths_relative)
         
         for im in images:
-            if im['file_name'] not in image_paths_relative_set:
-                validation_errors.append(im['file_name'])
+            if im['file_name'] not in image_paths_relative_set:                
+                validation_errors.append((im['file_name'],'not found in relative path list'))
             
     # If we're checking image size, we need to read the images
     if options.bCheckImageSizes:
@@ -321,12 +322,12 @@ def integrity_check_json_db(jsonFile, options=None):
             results = tqdm(pool.imap(_check_image_existence_and_size, images), total=len(images))
         else:
             results = []
-            for im in tqdm(images):
+            for im in tqdm(images):                
                 results.append(_check_image_existence_and_size(im,options))
                 
         for i_image,result in enumerate(results):
-            if result is not None:            
-                validation_errors.append(images[i_image]['file_name'])
+            if result is not None:
+                validation_errors.append(images[i_image]['file_name'],result)
                             
     # ...for each image
     
