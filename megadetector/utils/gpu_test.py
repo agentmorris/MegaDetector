@@ -70,6 +70,11 @@ def tf_test():
             str(e)))
         return
     
+    from tensorflow.python.platform import build_info as build
+    print(f"TF version: {tf.__version__}")
+    print(f"CUDA build version reported by TensorFlow: {build.build_info['cuda_version']}")
+    print(f"CuDNN build version reported by TensorFlow: {build.build_info['cudnn_version']}")
+
     gpus = tf.config.list_physical_devices('GPU')
     if gpus is None:
         gpus = []
@@ -79,10 +84,6 @@ def tf_test():
         for gpu in gpus:
             print(gpu.name)
             
-        from tensorflow.python.platform import build_info as build
-        print(f"TF version: {tf.__version__}")
-        print(f"CUDA version reported by TensorFlow: {build.build_info['cuda_version']}")
-        print(f"CuDNN version reported by TensorFlow: {build.build_info['cudnn_version']}")
     else:
         print('No GPUs reported by TensorFlow')
         

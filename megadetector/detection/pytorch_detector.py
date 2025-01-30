@@ -517,7 +517,7 @@ def read_metadata_from_megadetector_model_file(model_file,
 
 #%% Inference classes
 
-default_compatibility_mode = 'default'
+default_compatibility_mode = 'classic'
 
 # This is a useful hack when I want to verify that my test driver (md_tests.py) is 
 # correctly forcing a specific compabitility mode (I use "classic-test" in that case)
