@@ -5,7 +5,7 @@ requires = [
 
 [project]
 name = "megadetector"
-version = "5.0.21"
+version = "5.0.22"
 description = "MegaDetector is an AI model that helps conservation folks spend less time doing boring things with camera trap images."
 readme = "README-package.md"
 # As of 2023.10.10, PyTorch isn't installable on Python 3.12
@@ -41,8 +41,15 @@ dependencies = [
   "PyYAML >= 6.0.1",
   "ultralytics-yolov5 == 0.1.1",
   "python-dateutil"
+  
+  # PyTorch will get installed by ultralytics-yolov5
+  #
   # "torch >= 2.0.1",
   # "torchvision >= 0.15.2",
+  
+  # This is a compatible alternative to ultralytics-yolov5, just keeping it 
+  #
+  # here for posterity.
   # "yolov5 == 7.0.13"
 ]
 

@@ -162,10 +162,22 @@ class PTDetector:
         use_map_location = (device != 'mps')        
         
         if use_map_location:
-            checkpoint = torch.load(model_pt_path, map_location=device)
+            try:            
+                checkpoint = torch.load(model_pt_path, map_location=device, weights_only=False)
+            except Exception as e:
+                if "'weights_only' is an invalid keyword" in str(e):
+                    checkpoint = torch.load(model_pt_path, map_location=device)
+                else:
+                    raise
         else:
-            checkpoint = torch.load(model_pt_path)
-        
+            try:
+                checkpoint = torch.load(model_pt_path, weights_only=False)
+            except Exception as e:
+                if "'weights_only' is an invalid keyword" in str(e):
+                    checkpoint = torch.load(model_pt_path)    
+                else:
+                    raise
+    
         # Compatibility fix that allows us to load older YOLOv5 models with 
         # newer versions of YOLOv5/PT
         for m in checkpoint['model'].modules():
