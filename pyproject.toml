@@ -52,12 +52,24 @@ dependencies = [
   # Not imported directly, but required to de-serialize some models
   "dill",
   "ultralytics-yolov5 == 0.1.1",
-  "yolov9pip == 0.0.4"
+  "yolov9pip == 0.0.4",
+  "python-dateutil"
+  
   # Let ultralytics-yolov5 install torch
   # "torch >= 2.0.1",
   # "torchvision >= 0.15.2",  
+  
   # Let the user install ultralytics if they want to use YOLOv11 models
   # ultralytics
+  
+  # PyTorch will get installed by ultralytics-yolov5
+  #
+  # "torch >= 2.0.1",
+  # "torchvision >= 0.15.2"
+  
+  # This is a compatible alternative to ultralytics-yolov5, just keeping it 
+  # here for posterity.
+  # "yolov5 == 7.0.13"
 ]
 
 [project.urls]
