@@ -551,8 +551,9 @@ def render_detection_bounding_boxes(detections,
             # category or on the most confident classification category.
             clss = detection['category']
             
-            # {} is the default, which means "show labels with no mapping", so don't use "if label_map" here
-            # if label_map:                
+            # This will be a list of strings that should be rendered above/below this box            
+            displayed_label = []
+            
             if label_map is not None:
                 label = label_map[clss] if clss in label_map else clss
                 if score is not None:
@@ -560,17 +561,14 @@ def render_detection_bounding_boxes(detections,
                 else:
                     displayed_label = ['{}'.format(label)]
             else:
-                displayed_label = ''
+                displayed_label = ['']
 
             if custom_strings is not None:
                 custom_string = custom_strings[i_detection]
                 if custom_string is not None and len(custom_string) > 0:
-                    if isinstance(displayed_label,str):
-                        displayed_label += ' ' + custom_string
-                    else:
-                        assert len(displayed_label) == 1
-                        displayed_label[0] += ' ' + custom_string
-                                    
+                    assert len(displayed_label) == 1
+                    displayed_label[0] += ' ' + custom_string
+
             if ('classifications' in detection) and len(detection['classifications']) > 0:
 
                 classifications = detection['classifications']
@@ -612,6 +610,7 @@ def render_detection_bounding_boxes(detections,
                 
             # ...if we have classification results
                         
+            # display_strs is a list of labels for each box
             display_strs.append(displayed_label)
             classes.append(clss)
 

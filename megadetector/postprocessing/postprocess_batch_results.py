@@ -211,6 +211,9 @@ class PostProcessingOptions:
         #    format('https://megadetector.readthedocs.io')
         self.footer_text = ''
 
+        #: Character encoding to use when writing the index HTML html
+        self.output_html_encoding = None
+        
     # ...__init__()
     
 # ...PostProcessingOptions
@@ -1522,7 +1525,8 @@ def process_batch_results(options):
         # Close body and html tags
         index_page += '{}</body></html>'.format(options.footer_text)
         output_html_file = os.path.join(output_dir, 'index.html')
-        with open(output_html_file, 'w') as f:
+        with open(output_html_file, 'w', 
+                  encoding=options.output_html_encoding) as f:
             f.write(index_page)
 
         print('Finished writing html to {}'.format(output_html_file))
@@ -1778,6 +1782,7 @@ def process_batch_results(options):
         index_page += '</div>\n'
 
         if has_classification_info:
+            
             index_page += '<h3>Images of detected classes</h3>'
             index_page += '<p>The same image might appear under multiple classes ' + \
                 'if multiple species were detected.</p>\n'
@@ -1806,7 +1811,8 @@ def process_batch_results(options):
 
         index_page += '{}</body></html>'.format(options.footer_text)
         output_html_file = os.path.join(output_dir, 'index.html')
-        with open(output_html_file, 'w') as f:
+        with open(output_html_file, 'w', 
+                  encoding=options.output_html_encoding) as f:
             f.write(index_page)
 
         print('Finished writing html to {}'.format(output_html_file))

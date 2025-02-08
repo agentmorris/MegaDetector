@@ -116,7 +116,7 @@ include_exif_data = False
 
 # String to pass as the "detector_options" parameter to run_detector_batch (or None)
 # detector_options = 'compatibility_mode=classic'
-# detector_options = 'compatibility_mode=default'
+# detector_options = 'compatibility_mode=modern'
 detector_options = None
 
 # Only relevant when running on CPU
@@ -856,7 +856,7 @@ options.otherDetectionsThreshold = options.confidenceMin
 
 options.bRenderDetectionTiles = True
 options.maxOutputImageWidth = 2000
-options.detectionTilesMaxCrops = 150
+options.detectionTilesMaxCrops = 100
 
 # options.lineThickness = 5
 # options.boxExpansion = 8
