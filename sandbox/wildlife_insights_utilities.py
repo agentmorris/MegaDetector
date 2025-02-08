@@ -116,11 +116,53 @@ def record_lists_are_identical(records_0,records_1,verbose=False):
     
 #%% Functions for managing WI downloads
 
+def read_sequences_from_download_bundle(download_folder):
+    """
+    Reads sequences.csv from [download_folder], returning a list of dicts.  This is a
+    thin wrapper around pd.read_csv, it's just here for future-proofing.
+    
+    Args:
+        download_folder (str): a folder containing exactly one file called sequences.csv, typically
+            representing a Wildlife Insights download bundle.
+    
+    Returns:
+        list of dict: a direct conversion of the .csv file to a list of dicts
+    """
+
+    print('Reading sequences from {}'.format(download_folder))
+    
+    sequence_list_files = os.listdir(download_folder)
+    sequence_list_files = \
+        [fn for fn in sequence_list_files if fn == 'sequences.csv']
+    assert len(sequence_list_files) == 1, \
+        'Could not find sequences.csv in {}'.format(download_folder)
+    
+    sequence_list_file = os.path.join(download_folder,sequence_list_files[0])
+
+    df = pd.read_csv(sequence_list_file)
+    sequence_records = df.to_dict('records')
+    return sequence_records
+    
+    
 def read_images_from_download_bundle(download_folder):
     """
     Reads all images_...csv files from [download_folder], returns a dict mapping image IDs
     to a list of dicts that describe each image.  It's a list of dicts rather than a single dict
     because images may appear more than once.
+    
+    Args:
+        download_folder (str): a folder containing one or more images_....csv files, typically
+            representing a Wildlife Insights download bundle.
+    
+    Returns:
+        dict: Maps image GUIDs to dicts with at least the following fields:
+            * project_id (int)
+            * deployment_id (str)
+            * image_id (str, should match the key)
+            * filename (str, the filename without path at the time of upload)
+            * location (str, starting with gs://)
+            
+        May also contain clasification fields: wi_taxon_id (str), species, etc.        
     """
     
     print('Reading images from {}'.format(download_folder))
@@ -226,9 +268,21 @@ def write_download_commands(image_records_to_download,
                             download_command_file_base=None):
     """
     Given a list of dicts with at least the field 'location' (a gs:// URL), prepare a set of "gcloud 
-    storage" commands to download images.
+    storage" commands to download images, and write those to a series of .sh scripts, along with one
+    .sh script that runs all the others and blocks.
+    
+    gcloud commands will use relative paths.
     
     image_records_to_download can also be a dict mapping IDs to lists of records.
+    
+    Args:
+        image_records_to_download (list of dict): list of dicts with at least the field 'location'
+        download_dir_base (str): local destination folder
+        force_download (bool, optional): include gs commands even if the target file exists
+        n_download_workers (int, optional): number of scripts to write (that's our hacky way
+            of controlling parallelization)
+        download_command_file (str, optional): path of the .sh script we should write, defaults
+            to "download_wi_images.sh" in the destination folder            
     """
 
     if isinstance(image_records_to_download,dict):
@@ -284,6 +338,9 @@ def write_download_commands(image_records_to_download,
     commands_by_script = split_list_into_n_chunks(commands,n_download_workers)
     
     local_download_commands = []
+    
+    output_dir = os.path.dirname(download_command_file_base)
+    os.makedirs(output_dir,exist_ok=True)
     
     # Write out the download script for each chunk
     # i_script = 0
