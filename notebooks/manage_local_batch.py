@@ -594,6 +594,10 @@ for gpu_number in gpu_to_scripts:
 #%% Run the tasks
 
 r"""
+tl;dr: I almost never run this cell.
+
+Long version...
+
 The cells we've run so far wrote out some shell scripts (.bat files on Windows, 
 .sh files on Linx/Mac) that will run MegaDetector.  I like to leave the interactive
 environment at this point and run those scripts at the command line.  So, for example,
@@ -791,6 +795,13 @@ print('Wrote results to {}'.format(combined_api_output_file))
 
 
 #%% Post-processing (pre-RDE)
+
+"""
+NB: I almost never run this cell.  This preview the results *before* repeat detection
+elimination (RDE), but since I'm essentially always doing RDE, I'm basically never 
+interested in this preview.  There is a similar cell below for previewing results 
+*after* RDE, which I almost always run.
+"""
 
 render_animals_only = False
 
