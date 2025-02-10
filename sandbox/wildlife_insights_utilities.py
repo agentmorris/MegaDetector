@@ -6,6 +6,7 @@ Functions related to working with the WI insights platform, specifically for:
     
 * Retrieving images based on .csv downloads
 * Pushing results to the ProcessCVResponse() API (requires an API key)
+* Working with WI taxonomy records and geofencing data
 
 """
 
@@ -28,12 +29,15 @@ from megadetector.utils.ct_utils import split_list_into_n_chunks
 from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.utils.path_utils import recursive_file_list, find_images
 
-
 md_category_id_to_name = {'1':'animal','2':'person','3':'vehicle'}
 md_category_name_to_id = invert_dictionary(md_category_id_to_name)
 
-# Any detections we want to show in the UI should have at least this confidence value.
+# Only used when pushing results directly to the platform via the API; any detections we want 
+# to show in the UI should have at least this confidence value.
 min_md_output_confidence = 0.25
+
+# Fields expected to be present in a valid WI result
+wi_result_fields = ['wi_taxon_id','class','order','family','genus','species','common_name']
 
 
 #%% Miscellaneous WI support functions
@@ -43,6 +47,12 @@ def is_valid_prediction_string(s):
     Prediction strings look like:
     
     '90d950db-2106-4bd9-a4c1-777604c3eada;mammalia;rodentia;;;;rodent'
+    
+    Args:
+        s (str): the string to be tested for validity
+        
+    Returns:
+        bool: True if this looks more or less like a WI prediction string
     """
     
     return isinstance(s,str) and (len(s.split(';')) == 7) and (s == s.lower())
@@ -55,11 +65,17 @@ def wi_result_to_prediction_string(r):
         
     1f689929-883d-4dae-958c-3d57ab5b6c16;;;;;;animal
     90d950db-2106-4bd9-a4c1-777604c3eada;mammalia;rodentia;;;;rodent
+    
+    Args:
+        r (dict): dict containing WI prediction information, with at least the fields
+            specified in wi_result_fields.
+    
+    Returns:
+        str: the result in [r], as a semicolon-delimited prediction string
     """
     
-    fields = ['wi_taxon_id','class','order','family','genus','species','common_name']
     values = []
-    for field in fields:
+    for field in wi_result_fields:
         if isinstance(r[field],str):
             values.append(r[field].lower())
         else:
@@ -71,6 +87,17 @@ def wi_result_to_prediction_string(r):
         
 
 def compare_values(v0,v1):
+    """
+    Utility function for comparing two values when we want to return True if both
+    values are NaN.
+    
+    Args:
+        v0 (object): the first value to compare
+        v1 (object): the second value to compare
+        
+    Returns:
+        bool: True if v0 == v1, or if both v0 and v1 are NaN
+    """
     if isinstance(v0,float) and isinstance(v1,float) and np.isnan(v0) and np.isnan(v1):
         return True
     return v0 == v1
@@ -79,6 +106,14 @@ def compare_values(v0,v1):
 def record_is_unidentified(record):
     """
     A record is considered "unidentified" if the "identified by" field is either NaN or "computer vision"
+    
+    Args:
+        record (dict): dict representing a WI result loaded from a .csv file, with at least the 
+            field "identified_by"
+    
+    Returns:
+        bool: True if the "identified_by" field is either NaN or a string indicating that this 
+        record has not yet been human-reviewed.
     """    
     
     identified_by = record['identified_by']
@@ -93,7 +128,15 @@ def record_is_unidentified(record):
 def record_lists_are_identical(records_0,records_1,verbose=False):
     """
     Takes two lists of records in the form returned by read_images_from_download_bundle and
-    determined whether they are the same.
+    determines whether they are the same.
+    
+    Args:
+        records_0 (list of dict): the first list of records to compare
+        records_1 (list of dict): the second list of records to compare
+        verbose (bool, optional): enable additional debug output
+        
+    Returns:
+        bool: True if the two lists are identical
     """
     
     if len(records_0) != len(records_1):
@@ -116,11 +159,53 @@ def record_lists_are_identical(records_0,records_1,verbose=False):
     
 #%% Functions for managing WI downloads
 
+def read_sequences_from_download_bundle(download_folder):
+    """
+    Reads sequences.csv from [download_folder], returning a list of dicts.  This is a
+    thin wrapper around pd.read_csv, it's just here for future-proofing.
+    
+    Args:
+        download_folder (str): a folder containing exactly one file called sequences.csv, typically
+            representing a Wildlife Insights download bundle.
+    
+    Returns:
+        list of dict: a direct conversion of the .csv file to a list of dicts
+    """
+
+    print('Reading sequences from {}'.format(download_folder))
+    
+    sequence_list_files = os.listdir(download_folder)
+    sequence_list_files = \
+        [fn for fn in sequence_list_files if fn == 'sequences.csv']
+    assert len(sequence_list_files) == 1, \
+        'Could not find sequences.csv in {}'.format(download_folder)
+    
+    sequence_list_file = os.path.join(download_folder,sequence_list_files[0])
+
+    df = pd.read_csv(sequence_list_file)
+    sequence_records = df.to_dict('records')
+    return sequence_records
+    
+    
 def read_images_from_download_bundle(download_folder):
     """
     Reads all images_...csv files from [download_folder], returns a dict mapping image IDs
     to a list of dicts that describe each image.  It's a list of dicts rather than a single dict
     because images may appear more than once.
+    
+    Args:
+        download_folder (str): a folder containing one or more images_....csv files, typically
+            representing a Wildlife Insights download bundle.
+    
+    Returns:
+        dict: Maps image GUIDs to dicts with at least the following fields:
+            * project_id (int)
+            * deployment_id (str)
+            * image_id (str, should match the key)
+            * filename (str, the filename without path at the time of upload)
+            * location (str, starting with gs://)
+            
+        May also contain clasification fields: wi_taxon_id (str), species, etc.        
     """
     
     print('Reading images from {}'.format(download_folder))
@@ -176,6 +261,15 @@ def find_images_in_identify_tab(download_folder_with_identify,download_folder_ex
     Based on extracted download packages with and without the "exclude images in 'identify' tab 
     checkbox" checked, figure out which images are in the identify tab.  Returns a list of dicts (one
     per image).
+    
+    Args:
+        download_folder_with_identify (str): the folder containing the download bundle that
+            includes images from the "identify" tab
+        download_folder_excluding_identify (str): the folder containing the download bundle that
+            excludes images from the "identify" tab
+        
+    Returns:
+        list of dict: list of image records that are present in the identify tab
     """
     
     ##%% Read data (~30 seconds)
@@ -218,6 +312,8 @@ def find_images_in_identify_tab(download_folder_with_identify,download_folder_ex
 
     return image_records_in_identify_tab
 
+# ...def find_images_in_identify_tab(...)
+
 
 def write_download_commands(image_records_to_download,
                             download_dir_base,
@@ -226,9 +322,21 @@ def write_download_commands(image_records_to_download,
                             download_command_file_base=None):
     """
     Given a list of dicts with at least the field 'location' (a gs:// URL), prepare a set of "gcloud 
-    storage" commands to download images.
+    storage" commands to download images, and write those to a series of .sh scripts, along with one
+    .sh script that runs all the others and blocks.
+    
+    gcloud commands will use relative paths.
     
     image_records_to_download can also be a dict mapping IDs to lists of records.
+    
+    Args:
+        image_records_to_download (list of dict): list of dicts with at least the field 'location'
+        download_dir_base (str): local destination folder
+        force_download (bool, optional): include gs commands even if the target file exists
+        n_download_workers (int, optional): number of scripts to write (that's our hacky way
+            of controlling parallelization)
+        download_command_file (str, optional): path of the .sh script we should write, defaults
+            to "download_wi_images.sh" in the destination folder
     """
 
     if isinstance(image_records_to_download,dict):
@@ -285,6 +393,9 @@ def write_download_commands(image_records_to_download,
     
     local_download_commands = []
     
+    output_dir = os.path.dirname(download_command_file_base)
+    os.makedirs(output_dir,exist_ok=True)
+    
     # Write out the download script for each chunk
     # i_script = 0
     for i_script in range(0,n_download_workers):
@@ -300,6 +411,8 @@ def write_download_commands(image_records_to_download,
             f.write('./' + local_download_command + ' &\n')
         f.write('wait\n')
         f.write('echo done\n')
+
+# ...def write_download_commands(...)
 
 
 #%% Functions and constants related to pushing results to the DB
@@ -658,16 +771,44 @@ validate_payload(blank_payload)
 #%% Functions and constants related to working with batch predictions
 
 def get_kingdom(prediction_string):
+    """
+    Return the kingdom field from a WI prediction string
     
+    Args:
+        prediction_string (str): a string in the semicolon-delimited prediction string format
+        
+    Returns:
+        str: the kingdom field from the input string
+    """
     tokens = prediction_string.split(';')
     return tokens[1]
 
 
 def is_human_classification(prediction_string):
+    """
+    Determines whether the input string represents a human classification, which includes a variety
+    of common names (hiker, person, etc.)
     
+    Args:
+        prediction_string (str): a string in the semicolon-delimited prediction string format
+        
+    Returns:
+        bool: whether this string corresponds to a human category
+    """
     return prediction_string == human_prediction_string or 'homo;sapiens' in prediction_string
     
+
 def is_animal_classification(prediction_string):
+    """
+    Determines whether the input string represents an animal classification, which excludes, e.g.,
+    humans, blanks, vehicles, unknowns
+    
+    Args:
+        prediction_string (str): a string in the semicolon-delimited prediction string format
+        
+    Returns:
+        bool: whether this string corresponds to an animal category
+    """
     
     if prediction_string == animal_prediction_string:
         return True
@@ -683,7 +824,9 @@ def is_animal_classification(prediction_string):
     
 
 def generate_md_formatted_results_from_vertex_ai_results(image_folder,json_file):
-    
+    """
+    Convert results in the WI .json format to MD/Timelapse format.
+    """
     ##%% Read predictions
     
     assert isinstance(json_file,str)
