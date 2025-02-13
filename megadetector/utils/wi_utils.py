@@ -1,6 +1,6 @@
 """
 
-wildlife_insights_utilities.py
+wi_utils.py
 
 Functions related to working with the WI insights platform, specifically for:
     
@@ -29,7 +29,7 @@ from megadetector.utils.path_utils import insert_before_extension
 from megadetector.utils.ct_utils import split_list_into_n_chunks
 from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
-from megadetector.utils.path_utils import recursive_file_list, find_images
+from megadetector.utils.path_utils import find_images
 from megadetector.postprocessing.validate_batch_results import \
     validate_batch_results, ValidateBatchResultsOptions
 
@@ -194,12 +194,12 @@ def read_sequences_from_download_bundle(download_folder):
     
 def read_images_from_download_bundle(download_folder):
     """
-    Reads all images_...csv files from [download_folder], returns a dict mapping image IDs
+    Reads all images.csv files from [download_folder], returns a dict mapping image IDs
     to a list of dicts that describe each image.  It's a list of dicts rather than a single dict
     because images may appear more than once.
     
     Args:
-        download_folder (str): a folder containing one or more images_....csv files, typically
+        download_folder (str): a folder containing one or more images.csv files, typically
             representing a Wildlife Insights download bundle.
     
     Returns:
@@ -1071,10 +1071,17 @@ def generate_md_results_from_predictions_json(predictions_json_file,md_results_f
     
     images_out = sort_list_of_dicts_by_key(images_out,'file')
     
+    # Prepare friendly classification names
+    
+    classification_category_descriptions = invert_dictionary(classification_category_name_to_id)
+    classification_categories_out = {}
+    for category_id in classification_category_descriptions.keys():
+        category_name = classification_category_descriptions[category_id].split(';')[-1]
+        classification_categories_out[category_id] = category_name
+    
     # Prepare the output dict
     
     detection_categories_out = detection_category_id_to_name
-    classification_categories_out = invert_dictionary(classification_category_name_to_id)
     info = {}
     info['format_version'] = 1.4
     info['detector'] = 'converted_from_predictions_json'
@@ -1083,6 +1090,7 @@ def generate_md_results_from_predictions_json(predictions_json_file,md_results_f
     output_dict['info'] = info
     output_dict['detection_categories'] = detection_categories_out
     output_dict['classification_categories'] = classification_categories_out
+    output_dict['classification_category_descriptions'] = classification_category_descriptions
     output_dict['images'] = images_out
     
     with open(md_results_file,'w') as f:
@@ -1137,7 +1145,11 @@ def generate_predictions_json_from_md_results(md_results_file,predictions_json_f
                 output_det = deepcopy(det)
                 output_det['label'] = category_id_to_name[det['category']]
                 detections.append(output_det)
+            
+            # detections *must* be sorted in descending order by confidence
+            detections = sort_list_of_dicts_by_key(detections,'conf', reverse=True)
             prediction['detections'] = detections
+            
         assert len(prediction.keys()) >= 2
         output_dict['predictions'].append(prediction)
             
@@ -1547,16 +1559,11 @@ if False:
 
     #%% MD --> prediction conversion test
     
-    md_results_file = r'G:\temp\md-test-images\mdv5a.abspaths.json'
-    predictions_json_file = r'G:\temp\md-test-images\mdv5a.abspaths.predictions-format.json'
-    generate_predictions_json_from_md_results(md_results_file,predictions_json_file,base_folder=None)
-    
-    
-    #%% Prediction --> MD conversion test
-    
-    predictions_json_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output.json"
-    # predictions_json_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output-from-md-results.json"
-    
+    from megadetector.utils.wi_utils import generate_predictions_json_from_md_results # noqa
+    md_results_file = r'G:\temp\md-test-images\mdv5a.relpaths.json'
+    predictions_json_file = r'\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\mdv5a.abspaths.predictions-format.json'
+    generate_predictions_json_from_md_results(md_results_file,predictions_json_file,base_folder=
+                                              '/home/dmorris/tmp/md-test-images/')
     
     
     #%% Geofencing tests
@@ -1670,15 +1677,31 @@ if False:
         
     #%% Test conversion from predictons.json to MD format
     
-    predictions_json_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output.json"
-    md_results_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output-md-format.json"
+    import os # noqa
+    from megadetector.utils.wi_utils import generate_md_results_from_predictions_json # noqa
+    
+    detector_source = 'speciesnet'
+    # detector_source = 'md'
+    
+    if detector_source == 'speciesnet':    
+        predictions_json_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output.json"
+        md_results_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output-md-format.json"
+    else:
+        assert detector_source == 'md'
+        predictions_json_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output-from-md-results.json"
+        md_results_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output-md-format-from-md-results.json"
     base_folder = '/home/dmorris/tmp/md-test-images/'
     
     generate_md_results_from_predictions_json(predictions_json_file=predictions_json_file,
                                               md_results_file=md_results_file,
                                               base_folder=base_folder)
-        
     
+    # from megadetector.utils.path_utils import open_file; open_file(md_results_file)
+    
+    image_folder = r'g:\temp\md-test-images'
+    assert os.path.isdir(image_folder)
+    
+   
     #%% Preview
     
     from megadetector.postprocessing.postprocess_batch_results import \
@@ -1708,14 +1731,14 @@ if False:
         options.rendering_bypass_sets = ['detections_person','detections_vehicle',
                                           'detections_person_vehicle','non_detections']    
     
-    output_base = r'g:\temp\preview'
+    output_base = r'g:\temp\preview' + '_' + detector_source
     if render_animals_only:
         output_base = output_base + '_render_animals_only'
     os.makedirs(output_base, exist_ok=True)
     
-    print('Processing post-RDE to {}'.format(output_base))
+    print('Writing preview to {}'.format(output_base))
     
-    options.md_results_file = md_formatted_output_file
+    options.md_results_file = md_results_file
     options.output_dir = output_base
     ppresults = process_batch_results(options)
     html_output_file = ppresults.output_html_file

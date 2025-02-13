@@ -94,6 +94,14 @@ utils.gpu\_test module
    :undoc-members:
    :show-inheritance:
 
+utils.wi\_utils module
+---------------------------
+
+.. automodule:: megadetector.utils.wi_utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 utils.write\_html\_image\_list module
 -----------------------------------------
 
