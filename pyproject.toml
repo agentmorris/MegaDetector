@@ -5,11 +5,10 @@ requires = [
 
 [project]
 name = "megadetector"
-version = "5.0.22"
+version = "5.0.23"
 description = "MegaDetector is an AI model that helps conservation folks spend less time doing boring things with camera trap images."
 readme = "README-package.md"
-# As of 2023.10.10, PyTorch isn't installable on Python 3.12
-requires-python = ">=3.9,<3.12"
+requires-python = ">=3.9,<=3.13"
 license = {file = "LICENSE"}
 keywords = ["camera traps", "conservation", "wildlife", "ai", "megadetector"]
 authors = [
@@ -31,8 +30,10 @@ dependencies = [
   # To use ultralytics-yolov5's val.py, we need to use an old version of numpy, 
   # because of the removal of np.int in numpy 1.24.0.  This is only necessary if 
   # you're going to use the full val.py suite in ultralytics-yolov5.
-  # "numpy >= 1.22, < 1.24",
-  "numpy >= 1.22, < 2.0",
+  #
+  # numpy >= 1.26.4 is required for python >= 3.12
+  # "numpy >= 1.26.4, < 1.24",
+  "numpy >= 1.26.4, < 2.0",
   # ultralytics-yolov5 has a dependency on FreeTypeFont.getsize(), which was
   # removed in Pillow 10.  Restrict to <10.0 if you want to use val.py from 
   # ultralytics-yolov5.

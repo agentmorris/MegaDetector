@@ -726,6 +726,14 @@ def run_python_tests(options):
     download_test_data(options)
     
     
+    ## Miscellaneous utility tests
+    
+    print('\n** Running ct_utils module test **\n')
+    
+    from megadetector.utils.ct_utils import __module_test__ as ct_utils_test
+    ct_utils_test()
+    
+    
     ## Run inference on an image
         
     print('\n** Running MD on a single image (module) **\n')
