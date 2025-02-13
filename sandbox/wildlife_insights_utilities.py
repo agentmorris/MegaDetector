@@ -19,6 +19,7 @@ import json
 import numpy as np
 import pandas as pd
 
+from copy import deepcopy
 from collections import defaultdict
 from multiprocessing.pool import Pool, ThreadPool
 from functools import partial
@@ -27,7 +28,10 @@ from tqdm import tqdm
 from megadetector.utils.path_utils import insert_before_extension
 from megadetector.utils.ct_utils import split_list_into_n_chunks
 from megadetector.utils.ct_utils import invert_dictionary
+from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 from megadetector.utils.path_utils import recursive_file_list, find_images
+from megadetector.postprocessing.validate_batch_results import \
+    validate_batch_results, ValidateBatchResultsOptions
 
 md_category_id_to_name = {'1':'animal','2':'person','3':'vehicle'}
 md_category_name_to_id = invert_dictionary(md_category_id_to_name)
@@ -44,7 +48,7 @@ wi_result_fields = ['wi_taxon_id','class','order','family','genus','species','co
 
 def is_valid_prediction_string(s):
     """
-    Prediction strings look like:
+    Determine whether [s] is a valid WI prediction string.  Prediction strings look like:
     
     '90d950db-2106-4bd9-a4c1-777604c3eada;mammalia;rodentia;;;;rodent'
     
@@ -60,7 +64,7 @@ def is_valid_prediction_string(s):
 
 def wi_result_to_prediction_string(r):
     """
-    Converts the dict [r] - typically loaded from a row in a downloaded .csv file - to
+    Convert the dict [r] - typically loaded from a row in a downloaded .csv file - to
     a valid prediction string, e.g.:
         
     1f689929-883d-4dae-958c-3d57ab5b6c16;;;;;;animal
@@ -98,6 +102,7 @@ def compare_values(v0,v1):
     Returns:
         bool: True if v0 == v1, or if both v0 and v1 are NaN
     """
+    
     if isinstance(v0,float) and isinstance(v1,float) and np.isnan(v0) and np.isnan(v1):
         return True
     return v0 == v1
@@ -418,7 +423,6 @@ def write_download_commands(image_records_to_download,
 #%% Functions and constants related to pushing results to the DB
 
 # Sample payload for validation
-
 sample_update_payload = {
     
     "predictions": [
@@ -475,8 +479,14 @@ process_cv_response_url = 'https://placeholder'
 
 def prepare_data_update_auth_headers(auth_token_file):
     """
-    auth_token_file should be a single-line .txt file containing a write-enabled
-    API token.
+    Read the authorization token from a text file and prepare http headers.
+    
+    Args:        
+        auth_token_file (str): a single-line text file containing a write-enabled
+        API token.
+        
+    Returns:
+        dict: http headers, with fields 'Authorization' and 'Content-Type'
     """
 
     with open(auth_token_file,'r') as f:
@@ -495,7 +505,17 @@ def push_results_for_images(payload,
                             url=process_cv_response_url,
                             verbose=False):
     """
-    Push results for one or more images represented in [payload] to the process_cv_response API.
+    Push results for one or more images represented in [payload] to the 
+    process_cv_response API, to write to the WI DB.
+    
+    Args:
+        payload (dict): payload to upload to the API
+        headers (dict): authorization headers, see prepare_data_update_auth_headers
+        url (str, optional): API URL
+        verbose (bool, optional): enable additional debug output            
+        
+    Return:
+        int: response status code
     """
     
     if verbose:
@@ -523,8 +543,19 @@ def parallel_push_results_for_images(payloads,
                                      pool_type='thread',
                                      n_workers=10):
     """
-    Push results for the list of payloads in [payloads] to the process_cv_response API, parallelized
-    over multiple workers.
+    Push results for the list of payloads in [payloads] to the process_cv_response API, 
+    parallelized over multiple workers.
+    
+    Args:
+        payloads (list of dict): payloads to upload to the API
+        headers (dict): authorization headers, see prepare_data_update_auth_headers
+        url (str, optional): API URL
+        verbose (bool, optional): enable additional debug output
+        pool_type (str, optional): 'thread' or 'process'
+        n_workers (int, optional): number of parallel workers
+        
+    Returns:
+        list of int: list of http response codes, one per payload
     """
     
     if n_workers == 1:
@@ -567,6 +598,17 @@ def generate_payload_with_replacement_detections(wi_result,
     """
     Generate a payload for a single image that keeps the classifications from 
     [wi_result], but replaces the detections with the MD-formatted list [detections].
+    
+    Args:
+        wi_result (dict): dict representing a WI prediction result, with at least the 
+            fields in the constant wi_result_fields
+        detections (list): list of WI-formatted detection dicts (with fields ['conf'] and ['category'])
+        prediction_score (float, optional): confidence value to use for the combined prediction
+        model_version (str, optional): model version string to include in the payload
+        prediction_source (str, optional): prediction source string to include in the payload
+        
+    Returns:
+        dict: dictionary suitable for uploading via push_results_for_images
     """
     
     payload_detections = []
@@ -609,7 +651,18 @@ def generate_blank_prediction_payload(data_file_id,
                                       prediction_source='manual_update'):
     """
     Generate a payload that will set a single image to the blank classification, with
-    no detections.
+    no detections.  Suitable for upload via push_results_for_images.
+    
+    Args:
+        data_file_id (str): unique identifier for this image used in the WI DB
+        project_id (int): WI project ID
+        blank_confidence (float, optional): confidence value to associate with this
+            prediction
+        model_version (str, optional): model version string to include in the payload
+        prediction_source (str, optional): prediction source string to include in the payload
+        
+    Returns:
+        dict: dictionary suitable for uploading via push_results_for_images
     """
     
     prediction = {}
@@ -637,7 +690,18 @@ def generate_no_cv_result_payload(data_file_id,
                                   prediction_source='manual_update'):
     """
     Generate a payload that will set a single image to the blank classification, with
-    no detections.
+    no detections.  Suitable for uploading via push_results_for_images.
+    
+    Args:
+        data_file_id (str): unique identifier for this image used in the WI DB
+        project_id (int): WI project ID
+        no_cv_confidence (float, optional): confidence value to associate with this
+            prediction        
+        model_version (str, optional): model version string to include in the payload
+        prediction_source (str, optional): prediction source string to include in the payload
+    
+    Returns:
+        dict: dictionary suitable for uploading via push_results_for_images
     """
     
     prediction = {}
@@ -662,10 +726,27 @@ def generate_payload_for_prediction_string(data_file_id,
                                            project_id,
                                            prediction_string,
                                            prediction_confidence=0.8,
-                                           detections=None):
+                                           detections=None,
+                                           model_version='3.1.2',
+                                           prediction_source='manual_update'):
     """
     Generate a payload that will set a single image to a particular prediction, optionally
-    including detections.    
+    including detections.  Suitable for uploading via push_results_for_images.
+    
+    Args:
+        data_file_id (str): unique identifier for this image used in the WI DB
+        project_id (int): WI project ID
+        prediction_string (str): WI-formatted prediction string to include in the payload
+        prediction_confidence (float, optional): confidence value to associate with this
+            prediction        
+        detections (list, optional): list of MD-formatted detection dicts, with fields
+            ['category'] and 'conf'
+        model_version (str, optional): model version string to include in the payload
+        prediction_source (str, optional): prediction source string to include in the payload
+        
+    
+    Returns:
+        dict: dictionary suitable for uploading via push_results_for_images
     """
     
     assert is_valid_prediction_string(prediction_string), \
@@ -690,8 +771,8 @@ def generate_payload_for_prediction_string(data_file_id,
     prediction['classifications']['classes'] = [prediction_string]
     prediction['classifications']['scores'] = [prediction_confidence]
     prediction['detections'] = payload_detections
-    prediction['model_version'] = '3.1.2'
-    prediction['prediction_source'] = 'manual_update'
+    prediction['model_version'] = model_version
+    prediction['prediction_source'] = prediction_source
     prediction['data_file_id'] = data_file_id
     prediction['project_id'] = project_id
     
@@ -705,6 +786,12 @@ def validate_payload(payload):
     """
     Verifies that the dict [payload] is compatible with the ProcessCVResponse() API.  Throws an
     error if [payload] is invalid.
+    
+    Args:
+        payload (dict): payload in the format expected by push_results_for_images.
+    
+    Returns:
+        bool: successful validation; this is just future-proofing, currently never returns False
     """
     
     assert isinstance(payload,dict)
@@ -756,12 +843,14 @@ def validate_payload(payload):
          
     # ...for each prediction
     
+    return True
+
 # ...def validate_payload(...)
 
 
 #%% Validate constants
 
-# ...at the time this module gets loaded.
+# This is executed at the time this module gets imported.
 
 blank_payload = generate_blank_prediction_payload('70ede9c6-d056-4dd1-9a0b-3098d8113e0e','1234')
 validate_payload(sample_update_payload)
@@ -821,288 +910,296 @@ def is_animal_classification(prediction_string):
     if len(get_kingdom(prediction_string)) == 0:
         return False
     return True
-    
 
-def generate_md_formatted_results_from_vertex_ai_results(image_folder,json_file):
-    """
-    Convert results in the WI .json format to MD/Timelapse format.
-    """
-    
-    ##%% Read predictions
-    
-    assert isinstance(json_file,str)
-    assert os.path.isfile(json_file)
-    with open(json_file,'r') as f:
-        filepath_to_prediction = json.load(f)
-        
-    print('\nRead {} predictions'.format(len(filepath_to_prediction)))
-    
-    
-    ##%% Enumerate image files
-        
-    image_files = find_images(image_folder,return_relative_paths=True,recursive=True)
-    print('Enumerated {} images'.format(len(image_files)))    
-    assert len(image_files) == len(filepath_to_prediction)
-            
 
-    ##%% Create MD results
+def generate_md_results_from_predictions_json(predictions_json_file,md_results_file,base_folder=None):
+    """
+    Generate an MD-formatted .json file from a predictions.json file.  Typically,
+    MD results files use relative paths, and predictions.json files use absolute paths, so 
+    this function optionally removes the leading string [base_folder] from all file names.
     
-    detection_categories = {"1": "animal", "2": "person", "3": "vehicle" }
+    Currently just applies the top classification category to every detection.  If the top classification 
+    is "blank", writes an empty detection list.
+    
+    Args:
+        predictions_json_file (str): path to a predictions.json file
+        md_results_file (str): path to which we should write an MD-formatted .json file
+        base_folder (str, optional): leading string to remove from each path in the predictions.json file
+    """
+        
+    # Read predictions file    
+    with open(predictions_json_file,'r') as f:
+        predictions = json.load(f)
+    predictions = predictions['predictions']
+    assert isinstance(predictions,list)
+    
+    from megadetector.utils.ct_utils import is_list_sorted
+    
+    detection_category_id_to_name = {}
     classification_category_name_to_id = {}
     
-    images = []
+    # Keep track of detections that don't have an assigned detection category; these 
+    # are fake detections we create for non-blank images with non-empty detection lists.
+    # We need to go back later and give them a legitimate detection category ID.
+    all_unknown_detections = []
     
-    image_folder = image_folder.replace('\\','/')
-    if image_folder.endswith('/'):
-        image_folder = image_folder[0:-1]
+    # Create the output images list
+    images_out = []
+    
+    # im_in = predictions[0]
+    for im_in in predictions:
         
-    # i_image = 0; image_fn_relative = image_files[i_image]
-    for i_image,image_fn_relative in enumerate(image_files):
+        # blank_prediction_string
+        im_out = {}
         
-        filepath = image_folder + '/' + image_fn_relative
-        prediction = filepath_to_prediction[filepath]
+        fn = im_in['filepath']
+        if base_folder is not None:
+            if fn.startswith(base_folder):
+                fn = fn.replace(base_folder,'',1)
         
-        im = {}
-        im['file'] = image_fn_relative
+        im_out['file'] = fn
         
-        ## Process detections
-        
-        im['detections'] = []        
-        detection_info = prediction['detection']
-        n_detections = len(detection_info['detection_scores'])
-        assert n_detections == len(detection_info['detection_classes'])
-        assert n_detections == len(detection_info['detection_boxes'])
-        
-        # i_det = 0
-        for i_det in range(0,n_detections):
-            det = {}
-            det['conf'] = detection_info['detection_scores'][i_det]            
-            box = detection_info['detection_boxes'][i_det]
-            x = box[1]
-            y = box[0]
-            w = box[3] - box[1]
-            h = box[2] - box[0]
-            det['bbox'] = [x,y,w,h]
+        if 'failures' in im_in:
             
-            prediction_string = detection_info['detection_classes'][i_det]
-            if is_animal_classification(prediction_string):
-                category_id = '1'
-            elif is_human_classification(prediction_string):
-                category_id = '2'
-            else:
-                # Not trying to do something very elegant here
-                category_id = '1'
-            det['category'] = category_id        
-            im['detections'].append(det)
-        
-        
-        ## Process classifications
-        
-        classification_info = prediction['classifier']        
-        classification_classes = classification_info['classifier_classes']
-        classification_scores = classification_info['classifier_scores']
-        assert len(classification_classes) > 0
-        assert len(classification_classes) == len(classification_scores)
-        
-        prediction_category_string = prediction['data'][0]['tag']
-        prediction_score = prediction['data'][0]['value']
-        
-        category_name = prediction_category_string.split(';')[-1]
-        if category_name not in classification_category_name_to_id:
-            classification_category_name_to_id[category_name] = str(len(classification_category_name_to_id))
-        classification_category_id = classification_category_name_to_id[category_name]
-        classification_conf = prediction_score
-        
-        # Create a fake detection for this case
-        if len(im['detections']) == 0:            
-            det = {}
-            det['conf'] = prediction_score
-            det['bbox'] = [0,0,1,1]
-            det['category'] = '1'
-            im['detections'] = [det]
+            im_out['failure'] = str(im_in['failures'])
+            im_out['detections'] = None
             
-    
-        # Naively assign any animal classification category to all animal detections, don't do anything to human/vehicle boxes
-        for det in im['detections']:
-            if is_animal_classification(prediction_category_string) and det['category'] == '1':
-                det['classifications'] = [[classification_category_id,classification_conf]]
-        
-        images.append(im)
-        
-    classification_categories = {}
-    for category_name in classification_category_name_to_id:
-        category_id = classification_category_name_to_id[category_name]
-        classification_categories[category_id] = category_name
-        
-    info = {}
-    info['format_version'] = 1.4
-    info['detector'] = 'md_v5a.0.0.pt'
-    info['classifier_metadata'] = 'wi_vertex_ai'
-    
-    d = {}
-    d['images'] = images
-    d['classification_categories'] = classification_categories
-    d['detection_categories'] = detection_categories
-    d['info'] = info
-    
-    return d
-
-
-def generate_md_formatted_results_from_batch_jsonl(image_folder,
-                                                   jsonl_folder,
-                                                   bucket_prefix=''):
-    """
-    Given a folder of jsonl files produced by the WI batch API, or a single .json file
-    generated locallly, generate MD-formatted results.
-    
-    If the filenames in the .json file have a prefx that should be appended to each
-    relative image path (either a bucket prefix or an absolute folder prefix), provide
-    that as [bucket_prefix].  Currently this is literally prepended as a string, so it's
-    the responsbility of the caller to make sure that the / vs. \\ convention in the prefix
-    is consistent with whatever is in the results file.
-    """
-    
-    ##%% Read predictions
-    
-    assert isinstance(jsonl_folder,str)
-    
-    if os.path.isdir(jsonl_folder):
-        
-        # Enumerate jsonl files
-        #
-        # Filenames look like:
-        #
-        # prediction.results-00089-of-00090
-        jsonl_files = recursive_file_list(jsonl_folder,recursive=False,return_relative_paths=False)
-        jsonl_files = [fn for fn in jsonl_files if '.results' in fn]
-        
-        filepath_to_prediction = {}
-        # jsonl_fn = jsonl_files[0]
-        for jsonl_fn in tqdm(jsonl_files):
-            with open(jsonl_fn,'r') as f:
-                lines = f.readlines()
-            # line = lines[0]
-            for line in lines:
-                d = json.loads(line)
-                instance = d['instance']
-                assert 'filepath' in instance
-                assert instance['filepath'] == d['prediction']['filepath']            
-                filepath_to_prediction[instance['filepath']] = d['prediction']
+        else:
+            
+            im_out['detections'] = []
+            
+            if 'detections' in im_in:
                 
-    elif os.path.isfile(jsonl_folder):
-        
-        with open(jsonl_folder,'r') as f:
-            d = json.load(f)
-        assert isinstance(d,dict) and 'predictions' in d, \
-            '{} does not appear to be a valid predictions file'.format(jsonl_folder)
+                if len(im_in['detections']) == 0:
+                    im_out['detections'] = []
+                else:
+                    # det_in = im_in['detections'][0]
+                    for det_in in im_in['detections']:
+                        det_out = {}
+                        if det_in['category'] in detection_category_id_to_name:
+                            assert detection_category_id_to_name[det_in['category']] == det_in['label']
+                        else:
+                            detection_category_id_to_name[det_in['category']] = det_in['label']
+                        det_out = {}
+                        for s in ['category','conf','bbox']:
+                            det_out[s] = det_in[s]
+                        im_out['detections'].append(det_out)
+                        
+            # ...if detections are present
             
-        filepath_to_prediction = {}
-        
-        predictions = d['predictions']
-        assert isinstance(predictions,list)
-        
-        # prediction = predictions[0]
-        for prediction in predictions:
-            filepath_to_prediction[prediction['filepath'].replace('\\','/')] = prediction
-    
-    else:
-        
-        raise ValueError('Could not find prediction results at {}'.format(jsonl_folder))
-        
-    print('\nRead {} predictions'.format(len(filepath_to_prediction)))
-    
-    
-    ##%% Enumerate image files
-        
-    image_files = find_images(image_folder,return_relative_paths=True,recursive=True)
-    print('Enumerated {} images'.format(len(image_files)))    
-    assert len(image_files) == len(filepath_to_prediction)
+            class_to_assign = None
+            class_confidence = None
             
-
-    ##%% Create MD results
-    
-    detection_categories = {"1": "animal", "2": "person", "3": "vehicle" }
-    classification_category_name_to_id = {}
-    
-    images = []
-    
-    # image_fn_relative = image_files[0]
-    for i_image,image_fn_relative in enumerate(image_files):
-        
-        filepath = (bucket_prefix + image_fn_relative).replace('\\','/')
-        prediction = filepath_to_prediction[filepath]
-        im = {}
-        im['file'] = image_fn_relative
-        
-        if 'detections' not in prediction:
-            assert ('failures' in prediction) and (len(prediction['failures']) > 0)
-            im['failure'] = str(prediction['failures'])
-            images.append(im)
-            print('Failure for image {}'.format(image_fn_relative))
-            continue
+            if 'classifications' in im_in:
                 
-        im['detections'] = prediction['detections']
-        for det in im['detections']:
-            for s in ['category','conf','bbox']:
-                assert s in det
-        
-        # Not using these for now
-        classifications = prediction['classifications']
-        classification_classes = classifications['classes']
-        classification_scores = classifications['scores']
-        assert len(classification_classes) > 0
-        assert len(classification_classes) == len(classification_scores)
-        
-        prediction_category_string = prediction['prediction']
-        
-        category_name = prediction_category_string.split(';')[-1]
-        if category_name not in classification_category_name_to_id:
-            classification_category_name_to_id[category_name] = str(len(classification_category_name_to_id))
-        classification_category_id = classification_category_name_to_id[category_name]
-        classification_conf = prediction['prediction_score']
-        
-        if len(im['detections']) > 0:
-    
-            """
-            blank_prediction_string = 'f1856211-cfb7-4a5b-9158-c0f72fd09ee6;;;;;;blank'
-            no_cv_result_prediction_string = 'f2efdae9-efb8-48fb-8a91-eccf79ab4ffb;no cv result;no cv result;no cv result;no cv result;no cv result;no cv result'
-            rodent_prediction_string = '90d950db-2106-4bd9-a4c1-777604c3eada;mammalia;rodentia;;;;rodent'
-            mammal_prediction_string = 'f2d233e3-80e3-433d-9687-e29ecc7a467a;mammalia;;;;;mammal'
-            animal_prediction_string = '1f689929-883d-4dae-958c-3d57ab5b6c16;;;;;;animal'
-            human_prediction_string = '990ae9dd-7a59-4344-afcb-1b7b21368000;mammalia;primates;hominidae;homo;sapiens;human'
-            """
-    
-            # Naively assign any animal classification category to all animal detections, don't do anything to human/vehicle boxes
-            for det in im['detections']:
-                if is_animal_classification(prediction_category_string) and det['category'] == '1':
-                    det['classifications'] = [[classification_category_id,classification_conf]]
+                classifications = im_in['classifications']
+                assert len(classifications['scores']) == len(classifications['classes'])
+                assert is_list_sorted(classifications['scores'],reverse=True)
+                class_to_assign = classifications['classes'][0]
+                class_confidence = classifications['scores'][0]
+                
+            if 'prediction' in im_in:
+                
+                class_to_assign = im_in['prediction']
+                class_confidence = im_in['prediction_score']
             
-        images.append(im)
-    
+            if class_to_assign is not None:
+                
+                if class_to_assign == blank_prediction_string:
+                
+                    # This is a scenario that's not captured well by the MD format: a blank prediction
+                    # with detections present.  But, for now, don't do anything special here, just making
+                    # a note of this.
+                    if len(im_out['detections']) > 0:
+                        pass                    
+                
+                else:
+                    
+                    assert not class_to_assign.endswith('blank')
+                    
+                    # This is a scenario that's not captured well by the MD format: no detections present,
+                    # but a non-blank prediction.  For now, create a fake detection to handle this prediction.
+                    if len(im_out['detections']) == 0:
+                    
+                        print('Warning: creating fake detection for non-blank whole-image classification')
+                        det_out = {}
+                        all_unknown_detections.append(det_out)
+                        
+                        # We will change this to a string-int later
+                        det_out['category'] = 'unknown'
+                        det_out['conf'] = class_confidence
+                        det_out['bbox'] = [0,0,1,1]
+                        im_out['detections'].append(det_out)
+                
+                # ...if this is/isn't a blank classification
+                
+                # Attach that classification to each detection
+                
+                # Create a new category ID if necessary
+                if class_to_assign in classification_category_name_to_id:
+                    classification_category_id = classification_category_name_to_id[class_to_assign]
+                else:
+                    classification_category_id = str(len(classification_category_name_to_id))
+                    classification_category_name_to_id[class_to_assign] = classification_category_id
+                
+                for det in im_out['detections']:
+                    det['classifications'] = []
+                    det['classifications'].append([classification_category_id,class_confidence])
+                
+            # ...if we have some type of classification for this image
+        
+        # ...if this is/isn't a failure
+        
+        images_out.append(im_out)
+        
     # ...for each image
     
-    classification_categories = {}
-    for category_name in classification_category_name_to_id:
-        category_id = classification_category_name_to_id[category_name]
-        classification_categories[category_id] = category_name
+    # Fix the 'unknown' category
+    
+    if len(all_unknown_detections) > 0:
         
+        max_detection_category_id = max([int(x) for x in detection_category_id_to_name.keys()])
+        unknown_category_id = str(max_detection_category_id + 1)
+        detection_category_id_to_name[unknown_category_id] = 'unknown'
+        
+        for det in all_unknown_detections:
+            assert det['category'] == 'unknown'
+            det['category'] = unknown_category_id
+                    
+    
+    # Sort by filename
+    
+    images_out = sort_list_of_dicts_by_key(images_out,'file')
+    
+    # Prepare the output dict
+    
+    detection_categories_out = detection_category_id_to_name
+    classification_categories_out = invert_dictionary(classification_category_name_to_id)
     info = {}
     info['format_version'] = 1.4
-    info['detector'] = 'md_v5a.0.0.pt'
-    # info['classifier_metadata'] = 'wi_2024.10.12'
+    info['detector'] = 'converted_from_predictions_json'
     
-    d = {}
-    d['images'] = images
-    d['classification_categories'] = classification_categories
-    d['detection_categories'] = detection_categories
-    d['info'] = info
+    output_dict = {}
+    output_dict['info'] = info
+    output_dict['detection_categories'] = detection_categories_out
+    output_dict['classification_categories'] = classification_categories_out
+    output_dict['images'] = images_out
     
-    return d
+    with open(md_results_file,'w') as f:
+        json.dump(output_dict,f,indent=1)
+    
+    validation_options = ValidateBatchResultsOptions()
+    validation_options.raise_errors = True    
+    _ = validate_batch_results(md_results_file, options=validation_options)
+    
+# ...def generate_md_results_from_predictions_json(...)
+        
 
+def generate_predictions_json_from_md_results(md_results_file,predictions_json_file,base_folder=None):
+    """
+    Generate a predictions.json file from the MD-formatted .json file [md_results_file].  Typically,
+    MD results files use relative paths, and predictions.json files use absolute paths, so 
+    this function optionally prepends [base_folder].  Does not handle classification results in
+    MD format, since this is intended to prepare data for passing through the WI classifier.
     
+    Args:
+        md_results_file (str): path to an MD-formatted .json file
+        predictions_json_file (str): path to which we should write a predictions.json file
+        base_folder (str, optional): folder name to prepend to each path in md_results_file,
+            to convert relative paths to absolute paths.    
+    """
+        
+    # Validate the input file
+    validation_options = ValidateBatchResultsOptions()
+    validation_options.raise_errors = True    
+    validation_options.return_data = True
+    md_results = validate_batch_results(md_results_file, options=validation_options)
+    category_id_to_name = md_results['detection_categories']
+    
+    output_dict = {}
+    output_dict['predictions'] = []
+        
+    # im = md_results['images'][0]
+    for im in md_results['images']:
+        
+        prediction = {}
+        fn = im['file']
+        if base_folder is not None:
+            fn = os.path.join(base_folder,fn)
+        fn = fn.replace('\\','/')
+        prediction['filepath'] = fn
+        if 'failure' in im and im['failure'] is not None:
+            prediction['failures'] = ['DETECTOR']
+        else:
+            assert 'detections' in im and im['detections'] is not None
+            detections = []
+            for det in im['detections']:
+                output_det = deepcopy(det)
+                output_det['label'] = category_id_to_name[det['category']]
+                detections.append(output_det)
+            prediction['detections'] = detections
+        assert len(prediction.keys()) >= 2
+        output_dict['predictions'].append(prediction)
+            
+    # ...for each image
+        
+    os.makedirs(os.path.dirname(predictions_json_file),exist_ok=True)
+    with open(predictions_json_file,'w') as f:
+        json.dump(output_dict,f,indent=1)
+        
+# ...def generate_predictions_json_from_md_results(...)
+
+
+def generate_instances_json_from_folder(folder,country=None,lat=None,lon=None,output_file=None):
+    """
+    Generate an instances.json record that contains all images in [folder], optionally
+    including location information, in a format suitable for run_model.py.  Optionally writes
+    the results to [output_file].
+    
+    Args:
+        folder (str): the folder to recursively search for images
+        country (str, optional): a three-letter country code
+        lat (float, optional): latitude to associate with all images
+        lon (float, optional): longitude to associate with all images
+        output_file (str, optional): .json file to which we should write instance records
+        
+    Returns:
+        dict: dict with at least the field "instances"
+    """
+    
+    assert os.path.isdir(folder)
+        
+    image_files_abs = find_images(folder,recursive=True,return_relative_paths=False)
+    
+    instances = []
+    
+    # image_fn_abs = image_files_abs[0]
+    for image_fn_abs in image_files_abs:
+        instance = {}
+        instance['filepath'] = image_fn_abs
+        if country is not None:
+            instance['country'] = country
+        if lat is not None:
+            assert lon is not None, 'Latitude provided without longitude'
+            instance['latitude'] = lat
+        if lon is not None:
+            assert lat is not None, 'Longitude provided without latitude'
+            instance['longitude'] = lon
+        instances.append(instance)
+    
+    to_return = {'instances':instances}
+    
+    if output_file is not None:
+        os.makedirs(os.path.dirname(output_file),exist_ok=True)
+        with open(output_file,'w') as f:
+            json.dump(to_return,f,indent=1)
+    
+    return to_return
+        
+# ...def generate_instances_json_from_folder(...)
+
+
 #%% Functions related to geofencing and taxonomy mapping
-
-import codecs
 
 # This maps a taxonomy string (e.g. mammalia;cetartiodactyla;cervidae;odocoileus;virginianus) to 
 # a dict with keys taxon_id, common_name, kingdom, phylum, class, order, family, genus, species
@@ -1111,16 +1208,36 @@ binomial_name_to_taxonomy_info = None
 common_name_to_taxonomy_info = None
 
 def taxonomy_info_to_taxonomy_string(taxonomy_info):
+    """
+    Convert a taxonomy record in dict format to a semicolon-delimited string
     
+    Args:
+        taxonomy_info (dict): dict in the format stored in, e.g., taxonomy_string_to_taxonomy_info
+    
+    Returns:
+        str: string in the format used as keys in, e.g., taxonomy_string_to_taxonomy_info
+    """
     return taxonomy_info['class'] + ';' + \
         taxonomy_info['order'] + ';'  + \
         taxonomy_info['family'] + ';'  + \
         taxonomy_info['genus'] + ';'  + \
         taxonomy_info['species']
         
+
 def initialize_taxonomy_info(taxonomy_file,force_init=False,encoding='cp1252'):
+    """
+    Load WI taxonomy information from a .json file.  Stores information in the global
+    dicts [taxonomy_string_to_taxonomy_info], [binomial_name_to_taxonomy_info], and
+    [common_name_to_taxonomy_info].
     
-    global taxonomy_string_to_taxonomy_info 
+    Args:
+        taxonomy_file (str): .json file containing WI taxonomy information
+        force_init (bool, optional): if the output dicts already exist, should we
+            re-initialize anyway?
+        encoding (str, optional): character encoding to use when opening the .json file
+    """
+    
+    global taxonomy_string_to_taxonomy_info
     global binomial_name_to_taxonomy_info
     global common_name_to_taxonomy_info
     
@@ -1143,6 +1260,7 @@ def initialize_taxonomy_info(taxonomy_file,force_init=False,encoding='cp1252'):
     # Right now I'm punting on some unusual-character issues, but here is some scrap that
     # might help address this in the future
     if False:
+        import codecs
         with codecs.open(taxonomy_file,'r',encoding=encoding,errors='ignore') as f:
             s = f.read()        
         import unicodedata
@@ -1189,16 +1307,27 @@ def initialize_taxonomy_info(taxonomy_file,force_init=False,encoding='cp1252'):
 
 #%% Geofencing functions
 
+# Dict mapping semicolon-delimited taxonomy strings to geofencing rules
 taxonomy_string_to_geofencing_rules = None
 
-# Maps lower-case countries to upper-case country codes
+# Maps lower-case country names to upper-case country codes
 country_to_country_code = None
 
-# ...and vice-versa
+# Maps upper-case country codes to lower-case country names
 country_code_to_country = None
 
 def initialize_geofencing(geofencing_file,country_code_file,force_init=False):
+    """
+    Load geofencing information from a .json file, and country code mappings from
+    a .csv file.  Stores results in the global tables [taxonomy_string_to_geofencing_rules],
+    [country_to_country_code], and [country_code_to_country].
     
+    Args:
+        geofencing_file (str): .json file with geofencing rules
+        country_code_file (str): .csv file with country code mappings
+        force_init (bool, optional): if the output dicts already exist, should we
+            re-initialize anyway?
+    """
     global taxonomy_string_to_geofencing_rules
     global country_to_country_code
     global country_code_to_country
@@ -1209,6 +1338,7 @@ def initialize_geofencing(geofencing_file,country_code_file,force_init=False):
         (not force_init):
         return
     
+    # Read country code information
     country_code_df = pd.read_csv(country_code_file)
     country_to_country_code = {}
     country_code_to_country = {}
@@ -1216,6 +1346,7 @@ def initialize_geofencing(geofencing_file,country_code_file,force_init=False):
         country_to_country_code[row['name'].lower()] = row['alpha-3'].upper()
         country_code_to_country[row['alpha-3'].upper()] = row['name'].lower()
                     
+    # Read geofencing information
     with open(geofencing_file,'r',encoding='utf-8') as f:
         taxonomy_string_to_geofencing_rules = json.load(f)
     
@@ -1271,11 +1402,20 @@ def initialize_geofencing(geofencing_file,country_code_file,force_init=False):
 
 def species_allowed_in_country(species,country,state=None,return_status=False):
     """
-    Species can be a common name, a binomial name, or a species string
+    Determines whether [species] is allowed in [country], according to 
+    already-initialized geofencing rules.
     
-    Country can be a country name or a three-letter code
+    Args:
+        species (str): can be a common name, a binomial name, or a species string
+        country (str): country name or three-letter code
+        state (str, optional): two-letter US state code
+        return_status (bool, optional): by default, this function returns a bool;
+            if you want to know *why* [species] is allowed/not allowed, settings
+            return_status to True will return additional information.        
     
-    State should be a two-letter code
+    Returns:
+        bool or str: typically returns True if [species] is allowed in [country], else
+        False.  Returns a more detailed string if return_status is set.
     """
 
     assert taxonomy_string_to_geofencing_rules is not None, \
@@ -1404,6 +1544,21 @@ if False:
     
     pass
 
+
+    #%% MD --> prediction conversion test
+    
+    md_results_file = r'G:\temp\md-test-images\mdv5a.abspaths.json'
+    predictions_json_file = r'G:\temp\md-test-images\mdv5a.abspaths.predictions-format.json'
+    generate_predictions_json_from_md_results(md_results_file,predictions_json_file,base_folder=None)
+    
+    
+    #%% Prediction --> MD conversion test
+    
+    predictions_json_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output.json"
+    # predictions_json_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output-from-md-results.json"
+    
+    
+    
     #%% Geofencing tests
     
     geofencing_file = r'g:\temp\geofence_mapping.json'
@@ -1513,26 +1668,17 @@ if False:
         print('{} ({}) for {}{}: {}'.format(taxonomy_info['common_name'],species,country,state_string,allowed))
             
         
-    #%% Test driver
+    #%% Test conversion from predictons.json to MD format
     
-    image_folder = r'g:\temp\md-test-images'
-    bucket_prefix = '/mnt/g/temp/md-test-images/'
-    jsonl_folder = r'g:\temp\predictions.json'
-        
-    md_formatted_results = generate_md_formatted_results_from_batch_jsonl(image_folder,
-                                                                          jsonl_folder,
-                                                                          bucket_prefix)
+    predictions_json_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output.json"
+    md_results_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output-md-format.json"
+    base_folder = '/home/dmorris/tmp/md-test-images/'
     
-    md_formatted_output_file = os.path.join(image_folder,'md_formatted_results.json')
-    with open(md_formatted_output_file,'w') as f:
-        json.dump(md_formatted_results,f,indent=1)
+    generate_md_results_from_predictions_json(predictions_json_file=predictions_json_file,
+                                              md_results_file=md_results_file,
+                                              base_folder=base_folder)
         
-    image_files_in_results = set()
-    for im in md_formatted_results['images']:
-        assert im['file'] not in image_files_in_results
-        image_files_in_results.add(im['file'])
-        
-        
+    
     #%% Preview
     
     from megadetector.postprocessing.postprocess_batch_results import \
