@@ -889,7 +889,7 @@ def write_results_to_file(results,
     if info is None:
         
         info = { 
-            'detection_completion_time': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
+            'detection_completion_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'format_version': '1.4' 
         }
         
@@ -1346,7 +1346,7 @@ def main():
         else:
             checkpoint_path = os.path.join(output_dir,
                                            'md_checkpoint_{}.json'.format(
-                                               datetime.utcnow().strftime("%Y%m%d%H%M%S")))
+                                               datetime.now().strftime("%Y%m%d%H%M%S")))
         
         # Don't overwrite existing checkpoint files, this is a sure-fire way to eventually
         # erase someone's checkpoint.

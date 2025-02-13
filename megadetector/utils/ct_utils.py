@@ -548,7 +548,7 @@ def image_file_to_camera_folder(image_fn):
     # 100EK113 is (for some reason) the overflow folder style for Bushnell cameras
     # 100_BTCF is the overflow folder style for Browning cameras
     # 100MEDIA is the overflow folder style used on a number of consumer-grade cameras
-    patterns = ['\/\d+RECNX\/','\/\d+EK\d+\/','\/\d+_BTCF\/','\/\d+MEDIA\/']
+    patterns = [r'/\d+RECNX/',r'/\d+EK\d+/',r'/\d+_BTCF/',r'/\d+MEDIA/']
     
     image_fn = image_fn.replace('\\','/')    
     for pat in patterns:
@@ -707,23 +707,19 @@ def is_function_name(s,calling_namespace):
         callable(calling_namespace.get(s)) or \
         callable(getattr(builtins, s, None))
         
-        
-#%% Test drivers
 
-if False:
+def __module_test__():
+    """
+    Module test driver
+    """ 
     
-    pass
+    ##%% Camera folder mapping
     
-    #%% Test image_file_to_camera_folder()
-    
-    relative_path = 'a/b/c/d/100EK113/blah.jpg'
-    print(image_file_to_camera_folder(relative_path))
-    
-    relative_path = 'a/b/c/d/100RECNX/blah.jpg'
-    print(image_file_to_camera_folder(relative_path))
+    assert image_file_to_camera_folder('a/b/c/d/100EK113/blah.jpg') == 'a/b/c/d'    
+    assert image_file_to_camera_folder('a/b/c/d/100RECNX/blah.jpg') == 'a/b/c/d'
     
     
-    #%% Test a few rectangle distances
+    ##%% Test a few rectangle distances
     
     r1 = [0,0,1,1]; r2 = [0,0,1,1]; assert rect_distance(r1,r2)==0
     r1 = [0,0,1,1]; r2 = [0,0,1,100]; assert rect_distance(r1,r2)==0
@@ -735,9 +731,8 @@ if False:
     r1 = [0.4,0.8,10,22]; r2 = [120, 120, 200, 210.4]; assert abs(rect_distance(r1,r2)-147.323) < 0.001
 
     
-    #%% Test dictionary sorting
+    ##%% Test dictionary sorting
     
     L = [{'a':5},{'a':0},{'a':10}]
     k = 'a'
     sort_list_of_dicts_by_key(L, k, reverse=True)
-    
