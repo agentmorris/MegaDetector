@@ -827,6 +827,7 @@ def generate_md_formatted_results_from_vertex_ai_results(image_folder,json_file)
     """
     Convert results in the WI .json format to MD/Timelapse format.
     """
+    
     ##%% Read predictions
     
     assert isinstance(json_file,str)

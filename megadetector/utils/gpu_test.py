@@ -75,6 +75,12 @@ def tf_test():
     print(f"CUDA build version reported by TensorFlow: {build.build_info['cuda_version']}")
     print(f"CuDNN build version reported by TensorFlow: {build.build_info['cudnn_version']}")
 
+    try:
+        from tensorflow.python.compiler.tensorrt import trt_convert as trt
+        print("Linked TensorRT version: {}".format(trt.trt_utils._pywrap_py_utils.get_linked_tensorrt_version()))
+    except Exception:
+        print('Could not probe TensorRT version')
+        
     gpus = tf.config.list_physical_devices('GPU')
     if gpus is None:
         gpus = []
