@@ -921,6 +921,8 @@ def generate_md_results_from_predictions_json(predictions_json_file,md_results_f
     Currently just applies the top classification category to every detection.  If the top classification 
     is "blank", writes an empty detection list.
     
+    wi_to_md.py is a command-line driver for this function.
+    
     Args:
         predictions_json_file (str): path to a predictions.json file
         md_results_file (str): path to which we should write an MD-formatted .json file
@@ -1110,6 +1112,8 @@ def generate_predictions_json_from_md_results(md_results_file,predictions_json_f
     this function optionally prepends [base_folder].  Does not handle classification results in
     MD format, since this is intended to prepare data for passing through the WI classifier.
     
+    md_to_wi.py is a command-line driver for this function.
+    
     Args:
         md_results_file (str): path to an MD-formatted .json file
         predictions_json_file (str): path to which we should write a predictions.json file
@@ -1162,7 +1166,12 @@ def generate_predictions_json_from_md_results(md_results_file,predictions_json_f
 # ...def generate_predictions_json_from_md_results(...)
 
 
-def generate_instances_json_from_folder(folder,country=None,lat=None,lon=None,output_file=None):
+def generate_instances_json_from_folder(folder,
+                                        country=None,
+                                        lat=None,
+                                        lon=None,
+                                        output_file=None,
+                                        filename_replacements=None):
     """
     Generate an instances.json record that contains all images in [folder], optionally
     including location information, in a format suitable for run_model.py.  Optionally writes
@@ -1174,6 +1183,9 @@ def generate_instances_json_from_folder(folder,country=None,lat=None,lon=None,ou
         lat (float, optional): latitude to associate with all images
         lon (float, optional): longitude to associate with all images
         output_file (str, optional): .json file to which we should write instance records
+        filename_replacements (dict, optional): str --> str dict indicating filename substrings
+            that should be replaced with other strings.  Replacement occurs *after* converting
+            backslashes to forward slashes.
         
     Returns:
         dict: dict with at least the field "instances"
@@ -1188,7 +1200,10 @@ def generate_instances_json_from_folder(folder,country=None,lat=None,lon=None,ou
     # image_fn_abs = image_files_abs[0]
     for image_fn_abs in image_files_abs:
         instance = {}
-        instance['filepath'] = image_fn_abs
+        instance['filepath'] = image_fn_abs.replace('\\','/')
+        if filename_replacements is not None:
+            for s in filename_replacements:
+                instance['filepath'] = instance['filepath'].replace(s,filename_replacements[s])
         if country is not None:
             instance['country'] = country
         if lat is not None:
@@ -1556,6 +1571,21 @@ if False:
     
     pass
 
+    #%% instances.json generation test
+    
+    from megadetector.utils.wi_utils import generate_instances_json_from_folder # noqa
+    
+    instances_file = r'g:\temp\water-hole\instances.json'
+    
+    _ = generate_instances_json_from_folder(folder=r'g:\temp\water-hole',
+                                            country='NAM',
+                                            lat=None,
+                                            lon=None,
+                                            output_file=instances_file,
+                                            filename_replacements={'g:/temp':'/mnt/g/temp'})
+
+    # from megadetector.utils.path_utils import open_file; open_file(instances_file)
+
 
     #%% MD --> prediction conversion test
     
@@ -1564,6 +1594,12 @@ if False:
     predictions_json_file = r'\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\mdv5a.abspaths.predictions-format.json'
     generate_predictions_json_from_md_results(md_results_file,predictions_json_file,base_folder=
                                               '/home/dmorris/tmp/md-test-images/')
+    
+    from megadetector.utils.wi_utils import generate_predictions_json_from_md_results # noqa
+    md_results_file = r"G:\temp\water-hole\md_results.json"
+    predictions_json_file = r"G:\temp\water-hole\md_results-prediction_format.json"
+    generate_predictions_json_from_md_results(md_results_file,predictions_json_file,base_folder=
+                                              '/mnt/g/temp/water-hole')    
     
     
     #%% Geofencing tests
@@ -1680,17 +1716,29 @@ if False:
     import os # noqa
     from megadetector.utils.wi_utils import generate_md_results_from_predictions_json # noqa
     
-    detector_source = 'speciesnet'
-    # detector_source = 'md'
+    # detector_source = 'speciesnet'
+    detector_source = 'md'
     
-    if detector_source == 'speciesnet':    
-        predictions_json_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output.json"
-        md_results_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output-md-format.json"
+    if False:
+        image_folder = r'g:\temp\md-test-images'
+        base_folder = '/home/dmorris/tmp/md-test-images/'
+        if detector_source == 'speciesnet':    
+            predictions_json_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output.json"
+            md_results_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output-md-format.json"
+        else:
+            assert detector_source == 'md'
+            predictions_json_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output-from-md-results.json"
+            md_results_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output-md-format-from-md-results.json"        
     else:
-        assert detector_source == 'md'
-        predictions_json_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output-from-md-results.json"
-        md_results_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output-md-format-from-md-results.json"
-    base_folder = '/home/dmorris/tmp/md-test-images/'
+        image_folder = r'g:\temp\water-hole'
+        base_folder = '/mnt/g/temp/water-hole/'
+        if detector_source == 'speciesnet':    
+            predictions_json_file = r'g:\temp\water-hole\ensemble-output.json'
+            md_results_file = r'g:\temp\water-hole\ensemble-output.md_format.json'
+        else:
+            assert detector_source == 'md'
+            predictions_json_file = r'g:\temp\water-hole\ensemble-output-md.json'
+            md_results_file = r'g:\temp\water-hole\ensemble-output-md.md_format.json'
     
     generate_md_results_from_predictions_json(predictions_json_file=predictions_json_file,
                                               md_results_file=md_results_file,
@@ -1698,7 +1746,6 @@ if False:
     
     # from megadetector.utils.path_utils import open_file; open_file(md_results_file)
     
-    image_folder = r'g:\temp\md-test-images'
     assert os.path.isdir(image_folder)
     
    
