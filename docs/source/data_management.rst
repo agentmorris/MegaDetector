@@ -224,3 +224,20 @@ data\_management.yolo\_to\_coco module
    :members:
    :undoc-members:
    :show-inheritance:
+   
+data\_management.mewc\_to\_md module
+-----------------------------------------
+
+.. automodule:: megadetector.data_management.mewc_to_md
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.data_management.mewc_to_md
+   :func: main
+   :hook:
+   :prog: mewc_to_md
+   :no_default_values:
+   
