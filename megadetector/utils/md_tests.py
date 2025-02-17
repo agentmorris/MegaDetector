@@ -1163,7 +1163,7 @@ def run_cli_tests(options):
     
     ## Run again with the image queue enabled, make sure the results are the same
     
-    print('\n** Running MD on a folder (with image queue) (CLI) **\n')
+    print('\n** Running MD on a folder (with image queue but no preprocessing) (CLI) **\n')
     
     cmd = base_cmd + ' --use_image_queue'
     inference_output_file_queue = insert_before_extension(inference_output_file,'_queue')
@@ -1175,6 +1175,18 @@ def run_cli_tests(options):
                                       fn2=inference_output_file_queue,
                                       verbose=True)
     
+    
+    print('\n** Running MD on a folder (with image queue and preprocessing) (CLI) **\n')
+    
+    cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue'
+    inference_output_file_queue = insert_before_extension(inference_output_file,'_queue')
+    cmd = cmd.replace(inference_output_file,inference_output_file_queue)
+    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+    cmd_results = execute_and_print(cmd)
+    
+    assert output_files_are_identical(fn1=inference_output_file, 
+                                      fn2=inference_output_file_queue,
+                                      verbose=True)
     
     ## Run again on multiple cores, make sure the results are the same
     

@@ -57,9 +57,7 @@ import multiprocessing
 from threading import Thread
 from multiprocessing import Process, Manager
 
-# Multiprocessing uses processes, not threads... leaving this here (and commented out)
-# to make sure I don't change this casually at some point, it changes a number of 
-# assumptions about interaction with PyTorch and TF.
+# This pool is used for multi-CPU parallelization, not for data loading workers
 # from multiprocessing.pool import ThreadPool as workerpool
 from multiprocessing.pool import Pool as workerpool
 
