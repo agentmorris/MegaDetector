@@ -481,7 +481,11 @@ def is_gpu_available(model_file):
     return gpu_available
     
 
-def load_detector(model_file, force_cpu=False, force_model_download=False, detector_options=None):
+def load_detector(model_file, 
+                  force_cpu=False, 
+                  force_model_download=False, 
+                  detector_options=None,
+                  verbose=False):
     r"""
     Loads a TF or PT detector, depending on the extension of model_file.
     
@@ -495,6 +499,7 @@ def load_detector(model_file, force_cpu=False, force_model_download=False, detec
             exists
         detector_options (dict, optional): key/value pairs that are interpreted differently 
             by different detectors
+        verbose (bool, optional): enable additional debug output
     
     Returns:
         object: loaded detector object
@@ -504,7 +509,8 @@ def load_detector(model_file, force_cpu=False, force_model_download=False, detec
     model_file = try_download_known_detector(model_file, 
                                              force_download=force_model_download)
     
-    print('GPU available: {}'.format(is_gpu_available(model_file)))
+    if verbose:
+        print('GPU available: {}'.format(is_gpu_available(model_file)))
     
     start_time = time.time()
 
@@ -530,16 +536,20 @@ def load_detector(model_file, force_cpu=False, force_model_download=False, detec
         else:
             detector_options['force_cpu'] = force_cpu
         detector_options['use_model_native_classes'] = USE_MODEL_NATIVE_CLASSES
-        detector = PTDetector(model_file, detector_options)
+        detector = PTDetector(model_file, detector_options, verbose=verbose)
         
     else:
         
         raise ValueError('Unrecognized model format: {}'.format(model_file))
         
     elapsed = time.time() - start_time
-    print('Loaded model in {}'.format(humanfriendly.format_timespan(elapsed)))
+    
+    if verbose:
+        print('Loaded model in {}'.format(humanfriendly.format_timespan(elapsed)))
     
     return detector
+
+# ...def load_detector(...)
 
 
 #%% Main function
