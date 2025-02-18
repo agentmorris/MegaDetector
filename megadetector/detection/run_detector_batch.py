@@ -108,7 +108,8 @@ exif_options.byte_handling = 'convert_to_string'
 
 #%% Support functions for multiprocessing
 
-def _producer_func(q,image_files,
+def _producer_func(q,
+                   image_files,
                    producer_id=-1,
                    preprocessor=None,
                    detector_options=None,
@@ -1384,8 +1385,7 @@ def main():
         metavar='KEY=VALUE',
         default='',
         help='Detector-specific options, as a space-separated list of key-value pairs')
-    
-    
+        
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()
