@@ -889,8 +889,8 @@ options.filenameReplacements = None # {'':''}
 # options.excludeClasses = [2,3]
 
 # options.maxImagesPerFolder = 50000
-# options.includeFolders = ['a/b/c']
-# options.excludeFolder = ['a/b/c']
+# options.includeFolders = ['a/b/c','d/e/f']
+# options.excludeFolders = ['a/b/c','d/e/f']
 
 options.debugMaxDir = -1
 options.debugMaxRenderDir = -1
