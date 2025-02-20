@@ -57,7 +57,7 @@ from megadetector.utils.ct_utils import is_iterable, split_list_into_fixed_size_
 from megadetector.utils.path_utils import path_is_abs
 from megadetector.data_management import yolo_output_to_md_output
 from megadetector.detection.run_detector import try_download_known_detector
-from megadetector.postprocessing.combine_api_outputs import combine_api_output_files
+from megadetector.postprocessing.combine_batch_outputs import combine_batch_output_files
 
 default_image_size_with_augmentation = int(1280 * 1.3)
 default_image_size_with_no_augmentation = 1280
@@ -536,7 +536,7 @@ def run_inference_with_yolo_val(options):
         # ...for each chunk
     
         # Merge
-        _ = combine_api_output_files(input_files=chunk_output_files,
+        _ = combine_batch_output_files(input_files=chunk_output_files,
                                  output_file=options.output_file,
                                  require_uniqueness=True,
                                  verbose=True)
