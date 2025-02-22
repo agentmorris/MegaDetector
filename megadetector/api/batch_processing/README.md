@@ -63,11 +63,11 @@ Example output with both detection and classification results:
     // string-formatted ints.  This is typically used to provide searchable taxonomic names
 	// for categories.
     "classification_category_descriptions": {
-		"0": "animalia;chordata;mammalia;carnivora;canidae;vulpesvulpes",
-		"1": "animalia;chordata;mammalia;artiodactyla;cervidae;cervuscanadensis",
-		"2": "animalia;chordata;mammalia;carnivora;canidae;canislupus",
-		"3": "animalia;chordata;mammalia;carnivora;ursidae;ursusamericanus",
-		"4": "animalia;chordata;mammalia;artiodactyla;cervidae;alcesalces        
+        "0": "animalia;chordata;mammalia;carnivora;canidae;vulpesvulpes",
+        "1": "animalia;chordata;mammalia;artiodactyla;cervidae;cervuscanadensis",
+        "2": "animalia;chordata;mammalia;carnivora;canidae;canislupus",
+        "3": "animalia;chordata;mammalia;carnivora;ursidae;ursusamericanus",
+        "4": "animalia;chordata;mammalia;artiodactyla;cervidae;alcesalces"     
     },
     // The "images" array is required, but can be empty.
     "images": [

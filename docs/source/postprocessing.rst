@@ -31,7 +31,7 @@ postprocessing.classification\_postprocessing module
    :show-inheritance:
 
 postprocessing.combine\_batch\_outputs module
--------------------------------------------
+---------------------------------------------
 
 .. automodule:: megadetector.postprocessing.combine_batch_outputs
    :members:

@@ -9,7 +9,7 @@ results file from MDv5a.
 Detection categories must be the same in both files; if you want to first remap
 one file's category mapping to be the same as another's, see remap_detection_categories.
 
-If you want to literally merge two .json files, see combine_api_outputs.py.
+If you want to literally merge two .json files, see combine_batch_outputs.py.
 
 """
 
