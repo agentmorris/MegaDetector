@@ -533,8 +533,12 @@ def wsl_path_to_windows_path(filename):
         filename (str): filename to convert
     
     Returns:
-        str: Windows equivalent to the WSL path [filename]
+        str: Windows equivalent to the WSL path [filename], or [filename] if the current
+        environment is neither Windows nor WSL.
     """
+    
+    if (not environment_is_wsl()) and (os.name != 'nt'):
+        return filename
     
     if environment_is_wsl():
         result = subprocess.run(['wslpath', '-w', filename], text=True, capture_output=True)
