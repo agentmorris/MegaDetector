@@ -88,6 +88,7 @@ from tqdm import tqdm
 from megadetector.utils.ct_utils import args_to_object, is_float
 from megadetector.detection.run_detector import get_typical_confidence_threshold_from_results
 from megadetector.visualization import visualization_utils as vis_utils
+from megadetector.visualization.visualization_utils import blur_detections
 
 friendly_folder_names = {'animal':'animals','person':'people','vehicle':'vehicles'}
 
@@ -187,6 +188,11 @@ class SeparateDetectionsIntoFoldersOptions:
         
         #: Do not set explicitly; this gets loaded from [results_file]
         self.category_id_to_category_name = None
+        
+        #: List of category names for which we should blur detections, most commonly ['person']
+        #:
+        #: Can also be a comma-separated list.        
+        self.category_names_to_blur = None
         
     # ...__init__()
     
@@ -369,10 +375,10 @@ def _process_detections(im,options):
         return
         
     # At this point, this image is getting copied; we may or may not also need to
-    # draw bounding boxes.
+    # draw bounding boxes or blur pixels.
     
-    # Do a simple copy operation if we don't need to render any boxes
-    if (not options.render_boxes) or \
+    # Do a simple copy operation if we don't need to manipulate the images (render boxes, blur pixels)
+    if (not options.render_boxes and (options.category_names_to_blur is None)) or \
         (categories_above_threshold is None) or \
         (len(categories_above_threshold) == 0):
         
@@ -386,6 +392,24 @@ def _process_detections(im,options):
         # Open the source image
         pil_image = vis_utils.load_image(source_path)
         
+        # Blur regions in the image if necessary
+        category_names_to_blur = options.category_names_to_blur
+        
+        if category_names_to_blur is not None:
+            
+            if isinstance(category_names_to_blur,str):
+                category_names_to_blur = category_names_to_blur.split(',')
+                category_names_to_blur = [s.strip() for s in category_names_to_blur]
+        
+            detections_to_blur = []
+            for d in detections:
+                category_name = options.category_id_to_category_name[d['category']]
+                category_threshold = options.category_name_to_threshold[category_name]
+                if (d['conf'] >= category_threshold) and (category_name in category_names_to_blur):
+                    detections_to_blur.append(d)
+            if len(detections_to_blur) > 0:
+                blur_detections(pil_image,detections_to_blur)
+                
         # Render bounding boxes for each category separately, because
         # we allow different thresholds for each category.
         
@@ -447,9 +471,11 @@ def separate_detections_into_folders(options):
     # Input validation
     
     # Currently we don't support moving (instead of copying) when we're also rendering
-    # bounding boxes.
+    # bounding boxes or blurring humans.
     assert not (options.render_boxes and options.move_images), \
         'Cannot specify both render_boxes and move_images'
+    assert not ((options.category_names_to_blur is not None) and options.move_images), \
+        'Cannot specify both category_names_to_blur and move_images'
                 
     # Create output folder if necessary
     if (os.path.isdir(options.base_output_folder)) and \
@@ -687,6 +713,8 @@ def main():
                         help='Box expansion (in pixels) for rendering, only meaningful if ' + \
                              'using render_boxes (defaults to {})'.format(
                              default_box_expansion))
+    parser.add_argument('--category_names_to_blur', type=str, default=None,
+                        help='Comma-separated list of category names to blur (or a single category name, e.g. "person")')
         
     if len(sys.argv[1:])==0:
         parser.print_help()
