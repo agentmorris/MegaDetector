@@ -23,7 +23,7 @@ Here's a &ldquo;teaser&rdquo; image of what MegaDetector output looks like:
 
 ## How do I get started with MegaDetector?
 
-* If you are looking for a convenient tool to run MegaDetector, you don't need anything from this repository: check out [EcoAssist](https://github.com/PetervanLunteren/EcoAssist?tab=readme-ov-file).
+* If you are looking for a convenient tool to run MegaDetector, you don't need anything from this repository: check out [AddaxAI](https://addaxdatascience.com/addaxai/) (formerly EcoAssist), a GUI-based tool for running AI models (including MegaDetector) on camera trap images.
 * If you're just <i>considering</i> the use of AI in your workflow, and you aren't even sure yet whether MegaDetector would be useful to you, we recommend reading the "[getting started with MegaDetector](getting-started.md)" page.
 * If you're already familiar with MegaDetector and you're ready to run it on your data, see the [MegaDetector User Guide](megadetector.md) for instructions on running MegaDetector.
 * If you're a programmer-type looking to use tools from this repo, check out the [MegaDetector Python package](https://pypi.org/project/megadetector/) that provides access to everything in this repo (yes, you guessed it, "pip install megadetector").
@@ -141,7 +141,7 @@ Also see:
 
 * The [list of MD-related GUIs, platforms, and GitHub repos](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#is-there-a-gui) within the MegaDetector User Guide
 
-* [Peter's map of EcoAssist users](https://addaxdatascience.com/ecoassist) (who are also MegaDetector users!)
+* [Peter's map of AddaxAI (formerly EcoAssist) users](https://addaxdatascience.com/addaxai/) (who are also MegaDetector users!)
 
 * The list of papers tagged "MegaDetector" on our [list of papers about ML and camera traps](https://agentmorris.github.io/camera-trap-ml-survey/#camera-trap-ml-papers)
 
@@ -262,6 +262,6 @@ Code written on or before April 28, 2023 is [copyright Microsoft](https://github
 
 ## Contributing
 
-This project welcomes contributions, as pull requests, issues, or suggestions by [email](mailto:cameratraps@lila.science).  We have a [list](https://github.com/agentmorris/MegaDetector/issues/84) of issues that we're hoping to address, many of which would be good starting points for new contributors.  We also depend on other open-source tools that help users run MegaDetector (e.g. [EcoAssist](https://github.com/PetervanLunteren/EcoAssist) and [CamTrap Detector](https://github.com/bencevans/camtrap-detector)) and work with MegaDetector results (e.g. [Timelapse](https://github.com/saulgreenberg/Timelapse)); if you are looking to get involved in GUI development, reach out to the developers of those tools as well!
+This project welcomes contributions, as pull requests, issues, or suggestions by [email](mailto:cameratraps@lila.science).  We have a [list](https://github.com/agentmorris/MegaDetector/issues/84) of issues that we're hoping to address, many of which would be good starting points for new contributors.  We also depend on other open-source tools that help users run MegaDetector (particularly [AddaxAI](https://github.com/PetervanLunteren/AddaxAI) (formerly EcoAssist), and open-source tools that help users work with MegaDetector results (particularly [Timelapse](https://github.com/saulgreenberg/Timelapse)).  If you are looking to get involved in GUI development, reach out to the developers of those tools as well!
 
 If you are interesting in getting involved in the conservation technology space, and MegaDetector just happens to be the first page you landed on, and none of our open issues are getting you fired up, don't fret!  Head over to the [WILDLABS discussion forums](https://wildlabs.net/discussions) and let the community know you're a developer looking to get involved.  Someone needs your help!
