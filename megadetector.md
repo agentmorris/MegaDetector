@@ -33,7 +33,7 @@ To this end, this page hosts a model we've trained - called "MegaDetector" - to 
 
 Before you read the rest of this page...
 
-* If you are looking for a convenient tool to run MegaDetector, you don't need anything from this page: check out [EcoAssist](https://github.com/PetervanLunteren/EcoAssist?tab=readme-ov-file).
+* If you are looking for a convenient tool to run MegaDetector, you don't need anything from this page: check out [AddaxAI](https://addaxdatascience.com/addaxai/) (formerly EcoAssist).
 * If you're just <i>considering</i> the use of AI in your workflow, and you aren't even sure yet whether MegaDetector would be useful to you, we recommend reading the much shorter "[getting started with MegaDetector](getting-started.md)" page.
 * If you're a programmer-type looking to use tools from this repo, check out the [Python package](https://pypi.org/project/megadetector/) that provides access to everything in this repo (yes, you guessed it, "pip install megadetector").
 * If you're already familiar with MegaDetector and you're ready to run it on your data, and you're looking for instructions on running MegaDetector, read on!
@@ -513,7 +513,7 @@ But we recognize that Python tools can be a bit daunting, so we're excited that 
 
 ### GUI tools for running MegaDetector locally
 
-* [EcoAssist](https://github.com/PetervanLunteren/EcoAssist) is a GUI-based tool for running MegaDetector (supports MDv5) and running some postprocessing functions (e.g. folder separation)
+* [AddaxAI](https://addaxdatascience.com/addaxai/) is a GUI-based tool for running MegaDetector and a variety of species classifiers; also supports a number of postprocessing functions (e.g. folder separation)
 * [CamTrap Detector](https://github.com/bencevans/camtrap-detector) is a GUI-based tool for running MegaDetector (supports MDv5)
 * [MegaDetector-GUI](https://github.com/petargyurov/megadetector-gui) is a GUI-based tool for running MegaDetector in Windows environments (MDv4 only as far as we know)
 

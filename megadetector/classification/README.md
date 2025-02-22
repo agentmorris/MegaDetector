@@ -100,7 +100,7 @@ mamba env create -f envs/environment-classifier-unpinned.yml
 
 #### Run MegaDetector
 
-First, you need to run MegaDetector on your new images to get an output JSON file, typically using [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector_batch.py), though it's also fine to use a third-party tool like [EcoAssist](https://github.com/PetervanLunteren/EcoAssist).  Instructions for running MegaDetector are [here](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#using-the-model).
+First, you need to run MegaDetector on your new images to get an output JSON file, typically using [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector_batch.py), though it's also fine to use a third-party tool like [AddaxAI](https://addaxdatascience.com/addaxai/) (formerly EcoAssist).  Instructions for running MegaDetector are [here](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#using-the-model).
 
 #### A note on all the other steps in this section
 
