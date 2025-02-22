@@ -74,8 +74,7 @@ def validate_batch_results(json_filename,options=None):
         the loaded data.  The "validation_results" dict contains fields called "errors", "warnings",
         and "filename".  "errors" and "warnings" are lists of strings, although "errors" will never
         be longer than N=1, since validation fails at the first error.
-        
-        
+            
     """
     
     if options is None:
