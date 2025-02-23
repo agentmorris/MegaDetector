@@ -735,7 +735,7 @@ def load_and_run_detector_batch(model_file,
     """
     
     # Validate input arguments
-    if n_cores is None:
+    if n_cores is None or n_cores <= 0:
         n_cores = 1
     
     if confidence_threshold is None:
@@ -1331,13 +1331,14 @@ def main():
     parser.add_argument(
         '--ncores',
         type=int,
-        default=0,
-        help='Number of cores to use for inference; only applies to CPU-based inference')
+        default=1,
+        help='Number of cores to use for inference; only applies to CPU-based inference (default 1)')
     parser.add_argument(
         '--loader_workers',
         type=int,
         default=default_loaders,
-        help='Number of image loader workers to use; only relevant when --use_image_queue is set')
+        help='Number of image loader workers to use; only relevant when --use_image_queue ' + \
+            'is set (default {})'.format(default_loaders))
     parser.add_argument(
         '--class_mapping_filename',
         type=str,

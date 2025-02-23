@@ -15,7 +15,7 @@ import os
 import cv2
 
 from io import BytesIO
-from PIL import Image, ImageFile, ImageFont, ImageDraw
+from PIL import Image, ImageFile, ImageFont, ImageDraw, ImageFilter
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
 from tqdm import tqdm
@@ -407,6 +407,41 @@ def crop_image(detections, image, confidence_threshold=0.15, expansion=0):
     return ret_images
 
 
+def blur_detections(image,detections,blur_radius=40):
+    """
+    Blur the regions in [image] corresponding to the MD-formatted list [detections].
+    [image] is modified in place.
+    
+    Args:
+        image (PIL.Image.Image): image in which we should blur specific regions
+        detections (list): list of detections in the MD output format, see render
+            detection_bounding_boxes for more detail.
+    """
+    
+    img_width, img_height = image.size
+    
+    for d in detections:
+        
+        bbox = d['bbox']
+        x_norm, y_norm, width_norm, height_norm = bbox
+
+        # Calculate absolute pixel coordinates
+        x = int(x_norm * img_width)
+        y = int(y_norm * img_height)
+        width = int(width_norm * img_width)
+        height = int(height_norm * img_height)
+        
+        # Calculate box boundaries
+        left = max(0, x)
+        top = max(0, y)
+        right = min(img_width, x + width)
+        bottom = min(img_height, y + height)
+        
+        # Crop the region, blur it, and paste it back
+        region = image.crop((left, top, right, bottom))
+        blurred_region = region.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+        image.paste(blurred_region, (left, top))        
+        
 def render_detection_bounding_boxes(detections, 
                                     image,
                                     label_map='show_categories',
@@ -1737,7 +1772,7 @@ if False:
         TEXTALIGN_LEFT,TEXTALIGN_RIGHT,VTEXTALIGN_BOTTOM,VTEXTALIGN_TOP, \
         DEFAULT_LABEL_FONT_SIZE
         
-    fn = os.path.expanduser('~\AppData\Local\Temp\md-tests\md-test-images\ena24_7904.jpg')
+    fn = os.path.expanduser('~/AppData/Local/Temp/md-tests/md-test-images/ena24_7904.jpg')
     output_fn = r'g:\temp\test.jpg'
     
     image = load_image(fn)

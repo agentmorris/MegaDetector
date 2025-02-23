@@ -780,7 +780,7 @@ def dict_to_kvp_list(d,
     if len(d) == 0:
         return ''
     
-    s = ''
+    s = None
     for k in d.keys():
         assert isinstance(k,str), 'Input {} is not a str <--> str dict'.format(str(d))
         v = d[k]
@@ -800,6 +800,9 @@ def dict_to_kvp_list(d,
             s += item_separator
         s += k + kv_separator + v
     
+    if s is None:
+        s = ''
+        
     return s
     
 

@@ -28,9 +28,9 @@ If you are looking for a more technical description of the MegaDetector model, s
 
 ## How people run MegaDetector
 
-If you are looking for a convenient tool to run MegaDetector, you don't need anything from this repository: check out [EcoAssist](https://addaxdatascience.com/ecoassist/).  Other than this section, the information on this page will be the same whether you run MegaDetector with EcoAssist or with our command-line tools.
+If you are looking for a convenient tool to run MegaDetector, you don't need anything from this repository: check out [AddaxAI](https://addaxdatascience.com/addaxai/) (formerly EcoAssist).  Other than this section, the information on this page will be the same whether you run MegaDetector with AddaxAI or with our command-line tools.
 
-If you have a more "DIY" use case where EcoAssist doesn't fit, MegaDetector is a publicly-available model, and there are instructions [here](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#using-the-model) for running it using our Python scripts.  You don't need to know anything about Python to follow those instructions.  Many of our users run MegaDetector on their own, either on the cloud or on their local computers.
+If you have a more "DIY" use case where AddaxAI doesn't fit, MegaDetector is a publicly-available model, and there are instructions [here](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#using-the-model) for running it using our Python scripts.  You don't need to know anything about Python to follow those instructions.  Many of our users run MegaDetector on their own, either on the cloud or on their local computers.
 
 All of that said, it requires significant processing power to run MegaDetector on millions of images.  So many of our users - particularly high-volume users - send us images (anywhere from tens of thousands to millions), which we run through MegaDetector, then we send back a results file.
 
