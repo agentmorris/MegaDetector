@@ -131,6 +131,12 @@ class MDTestOptions:
         #: this is a range from 0-100.
         self.python_test_depth = 100
         
+        #: Number of cores to use for multi-CPU inference tests
+        self.n_cores_for_multiprocessing_tests = 2
+        
+        #: Number of cores to use for multi-CPU video tests
+        self.n_cores_for_video_tests = 2
+        
     # ...def __init__()
     
 # ...class MDTestOptions()
@@ -955,7 +961,7 @@ def run_python_tests(options):
         # video_options.rendering_confidence_threshold = None
         # video_options.json_confidence_threshold = 0.005
         video_options.frame_sample = 10
-        video_options.n_cores = 5
+        video_options.n_cores = options.n_cores_for_video_tests
         # video_options.debug_max_frames = -1
         # video_options.class_mapping_filename = None
         video_options.detector_options = copy(options.detector_options)
@@ -996,7 +1002,7 @@ def run_python_tests(options):
         # video_options.rendering_confidence_threshold = None
         # video_options.json_confidence_threshold = 0.005
         video_options.frame_sample = 10  
-        video_options.n_cores = 5     
+        video_options.n_cores = options.n_cores_for_video_tests
         
         # Force frame extraction to disk, since that's how we generated our expected results file
         video_options.force_on_disk_frame_extraction = True
@@ -1218,7 +1224,7 @@ def run_cli_tests(options):
             
         print('\n** Running MD on a folder (multiple CPUs) (CLI) **\n')
         
-        cpu_string = ' --ncores 4'
+        cpu_string = ' --ncores {}'.format(options.n_cores_for_multiprocessing_tests)
         cmd = base_cmd + cpu_string
         inference_output_file_cpu_multicore = insert_before_extension(inference_output_file,'multicore')
         cmd = cmd.replace(inference_output_file,inference_output_file_cpu_multicore)
@@ -1385,7 +1391,9 @@ def run_cli_tests(options):
         cmd += ' --frame_folder "{}" --frame_rendering_folder "{}" --output_json_file "{}" --output_video_file "{}"'.format(
             frame_folder,frame_rendering_folder,video_inference_output_file,output_video_file)
         cmd += ' --fourcc {}'.format(options.video_fourcc)
-        cmd += ' --force_extracted_frame_folder_deletion --force_rendered_frame_folder_deletion --n_cores 5 --frame_sample 3'
+        cmd += ' --force_extracted_frame_folder_deletion --force_rendered_frame_folder_deletion'
+        cmd += ' --n_cores {}'.format(options.n_cores_for_video_tests)
+        cmd += ' --frame_sample 4'
         cmd += ' --verbose'
         cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
         

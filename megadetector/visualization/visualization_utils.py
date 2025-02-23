@@ -1772,7 +1772,7 @@ if False:
         TEXTALIGN_LEFT,TEXTALIGN_RIGHT,VTEXTALIGN_BOTTOM,VTEXTALIGN_TOP, \
         DEFAULT_LABEL_FONT_SIZE
         
-    fn = os.path.expanduser('~\AppData\Local\Temp\md-tests\md-test-images\ena24_7904.jpg')
+    fn = os.path.expanduser('~/AppData/Local/Temp/md-tests/md-test-images/ena24_7904.jpg')
     output_fn = r'g:\temp\test.jpg'
     
     image = load_image(fn)

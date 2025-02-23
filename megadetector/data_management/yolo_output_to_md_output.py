@@ -74,7 +74,7 @@ def read_classes_from_yolo_dataset_file(fn):
         with open(fn,'r') as f:
             lines = f.readlines()
                 
-        pat = '\d+:.+'
+        pat = r'\d+:.+'
         for s in lines:
             if re.search(pat,s) is not None:
                 tokens = s.split(':')
