@@ -77,8 +77,12 @@ Package documentation
 
 .. toctree::
    :maxdepth: 2
-
-   modules
+   :caption: Contents
+   
+   Home <self>
+   Getting Started <getting-started>
+   MegaDetector User Guide <userguide>
+   Subpackages <modules>
    
 
 ****************************
