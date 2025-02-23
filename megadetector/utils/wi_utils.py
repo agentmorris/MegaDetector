@@ -1242,7 +1242,7 @@ def merge_prediction_json_files(input_prediction_files,output_prediction_file):
     image_filenames_processed = set()
     
     # input_json_fn = input_prediction_files[0]
-    for input_json_fn in input_prediction_files:
+    for input_json_fn in tqdm(input_prediction_files):
         
         assert os.path.isfile(input_json_fn), \
             'Could not find prediction file {}'.format(input_json_fn)            
