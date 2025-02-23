@@ -1,10 +1,13 @@
 #%% Imports
 
 import os
+import json
+import stat
 
 from megadetector.utils.path_utils import insert_before_extension
 from megadetector.utils.wi_utils import generate_md_results_from_predictions_json
 from megadetector.utils.wi_utils import generate_instances_json_from_folder
+from megadetector.utils.ct_utils import split_list_into_fixed_size_chunks
 
 import clipboard # noqa
 
@@ -22,8 +25,7 @@ input_folder = '/stuff/input_folder'
 assert not input_folder.endswith('/')
 model_file = os.path.expanduser('~/models/speciesnet/crop')
 country_code = None
-lat = None
-lon = None
+state_code = None
 instances_json = None # os.path.join(output_base,'instances.json')
 
 valid_modes = ('all_in_one','modular','md')
@@ -44,8 +46,10 @@ gpu_number = 0
 
 if gpu_number is not None:
     cuda_prefix = 'export CUDA_VISIBLE_DEVICES={} && '.format(gpu_number)
-    
-classifier_batch_size = 64
+
+max_images_per_chunk = 5000
+
+classifier_batch_size = 128
 
 
 #%% Generate instances.json
@@ -54,8 +58,7 @@ if instances_json is not None:
 
     _ = generate_instances_json_from_folder(folder=input_folder,
                                             country=country_code,
-                                            lat=lat,
-                                            lon=lon,
+                                            admin1_region=state_code,
                                             output_file=instances_json,
                                             filename_replacements=None)
 
@@ -104,7 +107,8 @@ if mode == 'modular':
     else:
         source_specifier = '--folders "{}"'.format(input_folder)
     
-    ## Run detector
+    
+    #%% Run detector
     
     detector_commands = []
     detector_commands.append(f'{cuda_prefix} cd {speciesnet_folder} && mamba activate {speciesnet_pt_environment_name}')
@@ -117,23 +121,129 @@ if mode == 'modular':
     detector_cmd = '\n\n'.join(detector_commands)
     # print(detector_cmd); clipboard.copy(detector_cmd)
     
-    ## Run classifier
     
-    classifier_commands = []
-    classifier_commands.append(f'{cuda_prefix} cd {speciesnet_folder} && mamba activate {speciesnet_tf_environment_name}')
+    #%% Run classifier
     
-    cmd = 'python scripts/run_model.py --classifier_only --model "{}"'.format(model_file)
-    cmd += ' ' + source_specifier
-    cmd += ' --predictions_json "{}"'.format(classifier_output_file_modular)
-    cmd += ' --detections_json "{}"'.format(detector_output_file_modular)
-    if classifier_batch_size is not None:
-        cmd += ' --batch_size {}'.format(classifier_batch_size)
-    classifier_commands.append(cmd)
+    if max_images_per_chunk is None:
+       
+        classifier_commands = []
+        classifier_commands.append(f'{cuda_prefix} cd {speciesnet_folder} && mamba activate {speciesnet_tf_environment_name}')
+        
+        cmd = 'python scripts/run_model.py --classifier_only --model "{}"'.format(model_file)
+        cmd += ' ' + source_specifier
+        cmd += ' --predictions_json "{}"'.format(classifier_output_file_modular)
+        cmd += ' --detections_json "{}"'.format(detector_output_file_modular)
+        if classifier_batch_size is not None:
+           cmd += ' --batch_size {}'.format(classifier_batch_size)
+        classifier_commands.append(cmd)
+       
+        classifier_cmd = '\n\n'.join(classifier_commands)
+        # print(classifier_cmd); clipboard.copy(classifier_cmd)
+       
+    else:
+       
+        assert instances_json is not None
+       
+        chunk_folder = os.path.join(output_base,'chunks')
+        os.makedirs(chunk_folder,exist_ok=True)
+        
+        print('Reading instances json...')
+        
+        with open(instances_json,'r') as f:
+            instances_dict = json.load(f)
+        
+        instances = instances_dict['instances']
+               
+        chunks = split_list_into_fixed_size_chunks(instances,max_images_per_chunk)
+        print('Split {} instances into {} chunks'.format(len(instances),len(chunks)))
+        
+        chunk_scripts = []
+        
+        print('Reading detection results...')
+        
+        with open(detector_output_file_modular,'r') as f:
+            detections = json.load(f)
+        
+        detection_filepath_to_instance = {p['filepath']:p for p in detections['predictions']}
+        
+        chunk_prediction_files = []
+        # i_chunk = 0; chunk = chunks[i_chunk]
+        for i_chunk,chunk in enumerate(chunks):
+            
+            chunk_str = str(i_chunk).zfill(3)
+            
+            chunk_instances_json = os.path.join(chunk_folder,'instances_chunk_{}.json'.format(chunk_str))
+            chunk_instances_dict = {'instances':chunk}
+            with open(chunk_instances_json,'w') as f:
+                json.dump(chunk_instances_dict,f,indent=1)
+            
+            chunk_detections_json = os.path.join(chunk_folder,'detections_chunk_{}.json'.format(chunk_str))
+            
+            detection_predictions_this_chunk = []
+            
+            chunk_files = [instance['filepath'] for instance in chunk]
+            # image_fn = chunk_files[0]
+            
+            for image_fn in chunk_files:
+                assert image_fn in detection_filepath_to_instance
+                detection_predictions_this_chunk.append(detection_filepath_to_instance[image_fn])
+                
+            detection_predictions_dict = {'predictions':detection_predictions_this_chunk}
+            
+            with open(chunk_detections_json,'w') as f:
+                json.dump(detection_predictions_dict,f,indent=1)
+                        
+            chunk_predictions_json = os.path.join(chunk_folder,'predictions_chunk_{}.json'.format(chunk_str))
+            chunk_prediction_files.append(chunk_predictions_json)
+            
+            chunk_script = os.path.join(chunk_folder,'run_chunk_{}.sh'.format(i_chunk))
+            cmd = 'python scripts/run_model.py --classifier_only --model "{}"'.format(model_file)
+            cmd += ' --instances_json "{}"'.format(chunk_instances_json)
+            cmd += ' --predictions_json "{}"'.format(chunk_predictions_json)
+            cmd += ' --detections_json "{}"'.format(chunk_detections_json)
+            if classifier_batch_size is not None:
+               cmd += ' --batch_size {}'.format(classifier_batch_size)
+               
+            chunk_script_file = os.path.join(chunk_folder,'run_chunk_{}.sh'.format(chunk_str))
+            with open(chunk_script_file,'w') as f:
+                f.write(cmd)
+            st = os.stat(chunk_script_file)
+            os.chmod(chunk_script_file, st.st_mode | stat.S_IEXEC)
+            
+            chunk_scripts.append(chunk_script_file)
+            
+        # ...for each chunk
+
+        classifier_script_file = os.path.join(output_base,'run_all_classifier_chunks.sh')            
+       
+        classifier_init_cmd = f'{cuda_prefix} cd {speciesnet_folder} && mamba activate {speciesnet_tf_environment_name}'
+        with open(classifier_script_file,'w') as f:
+            f.write('set -e\n')
+            # f.write(classifier_init_cmd + '\n')
+            for s in chunk_scripts:
+                f.write(s + '\n')
+        
+        st = os.stat(classifier_script_file)
+        os.chmod(classifier_script_file, st.st_mode | stat.S_IEXEC)
+       
+        classifier_cmd = '\n\n'.join([classifier_init_cmd,classifier_script_file])
+        # print(classifier_cmd); clipboard.copy(classifier_cmd)
+        
+    # ...if we need to divide the classifier into chunks
     
-    classifier_cmd = '\n\n'.join(classifier_commands)
-    # print(classifier_cmd); clipboard.copy(classifier_cmd)
     
-    ## Run ensemble
+    #%% Merge classification results
+    
+    from megadetector.utils.wi_utils import merge_prediction_json_files
+    
+    input_prediction_files = chunk_prediction_files
+    output_prediction_file = classifier_output_file_modular
+    
+    merge_prediction_json_files(input_prediction_files=input_prediction_files,
+                                output_prediction_file=output_prediction_file)
+        
+    
+    #%% Run ensemble
     
     # It doesn't matter here which environment we use
     ensemble_commands = []
@@ -149,9 +259,16 @@ if mode == 'modular':
     ensemble_cmd = '\n\n'.join(ensemble_commands)
     # print(ensemble_cmd); clipboard.copy(ensemble_cmd)
     
-    modular_command = '\n\n'.join([detector_cmd,classifier_cmd,ensemble_cmd])
-    print(modular_command)
-    # clipboard.copy(modular_command)
+    
+    #%% No longer applicable
+    
+    # ...until we fix some stuff earlier wrt requiring detection to finish before generating
+    # the classifier commands.
+    
+    if False:
+        modular_command = '\n\n'.join([detector_cmd,classifier_cmd,ensemble_cmd])
+        print(modular_command)
+        # clipboard.copy(modular_command)
 
 
 #%% Run everything using MD + SpeciesNet
@@ -335,3 +452,10 @@ ppresults = process_batch_results(options)
 html_output_file = ppresults.output_html_file
 open_file(html_output_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
 # import clipboard; clipboard.copy(html_output_file)
+
+
+#%% Zip results file
+
+from megadetector.utils.path_utils import zip_file
+zip_fn = zip_file(ensemble_output_file_md_format)
+print('Zipped ensemble results to {}'.format(zip_fn))

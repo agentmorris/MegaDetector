@@ -1168,6 +1168,7 @@ def generate_predictions_json_from_md_results(md_results_file,predictions_json_f
 
 def generate_instances_json_from_folder(folder,
                                         country=None,
+                                        admin1_region=None,
                                         lat=None,
                                         lon=None,
                                         output_file=None,
@@ -1206,6 +1207,8 @@ def generate_instances_json_from_folder(folder,
                 instance['filepath'] = instance['filepath'].replace(s,filename_replacements[s])
         if country is not None:
             instance['country'] = country
+        if admin1_region is not None:
+            instance['admin1_region'] = admin1_region
         if lat is not None:
             assert lon is not None, 'Latitude provided without longitude'
             instance['latitude'] = lat
@@ -1226,6 +1229,39 @@ def generate_instances_json_from_folder(folder,
 # ...def generate_instances_json_from_folder(...)
 
 
+def merge_prediction_json_files(input_prediction_files,output_prediction_file):
+    """
+    Merge all predictions.json files in [files] into a single .json file.
+    
+    Args:
+        files (list): list of predictions.json files to merge
+        output_file (str): output .json file        
+    """
+    
+    predictions = []
+    image_filenames_processed = set()
+    
+    # input_json_fn = input_prediction_files[0]
+    for input_json_fn in input_prediction_files:
+        
+        assert os.path.isfile(input_json_fn), \
+            'Could not find prediction file {}'.format(input_json_fn)            
+        with open(input_json_fn,'r') as f:
+            results_this_file = json.load(f)
+        assert isinstance(results_this_file,dict)
+        predictions_this_file = results_this_file['predictions']
+        for prediction in predictions_this_file:
+            image_fn = prediction['filepath']
+            assert image_fn not in image_filenames_processed
+        predictions.extend(predictions_this_file)
+        
+    output_dict = {'predictions':predictions}
+    
+    os.makedirs(os.path.dirname(output_prediction_file),exist_ok=True)
+    with open(output_prediction_file,'w') as f:
+        json.dump(output_dict,f,indent=1)
+    
+    
 #%% Functions related to geofencing and taxonomy mapping
 
 # This maps a taxonomy string (e.g. mammalia;cetartiodactyla;cervidae;odocoileus;virginianus) to 
