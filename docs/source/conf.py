@@ -1,5 +1,6 @@
 import sys
 import os
+import shutil
 
 # Define paths
 repository_root = os.path.abspath('../..')
@@ -8,7 +9,7 @@ repository_root = os.path.abspath('../..')
 sys.path.insert(0, repository_root)
 
 # Add repository root to MyST's image path
-myst_url_schemes = ["http", "https", "", "mailto"]
+myst_url_schemes = ["http", "https", "mailto", ""]
 myst_image_path = [repository_root]
 
 project = 'MegaDetector'
@@ -26,8 +27,6 @@ html_extra_path = [os.path.join(repository_root, 'images')]
 html_copy_source = True
 
 # Copy images to the correct subdirectory
-import shutil
-
 def setup(app):
     # Ensure the images directory exists in the build directory
     build_images_dir = os.path.join(app.outdir, 'images')

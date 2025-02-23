@@ -80,6 +80,7 @@ Package documentation
    :caption: Contents
    
    Home <self>
+   Getting Started <getting-started>
    MegaDetector User Guide <userguide>
    Subpackages <modules>
    

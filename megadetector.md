@@ -632,14 +632,14 @@ While MegaDetector works well in a variety of terrestrial ecosystems, it's not p
 
 But really, we'll answer the question... MegaDetector v5's biggest challenges are with reptiles.  This is an area where accuracy has dramatically improved since MDv4, but it's still the case that reptiles are under-represented in camera trap data, and an AI model is only as good as its training data.  That doesn't mean MDv5 doesn't support reptiles; sometimes it does amazing on reptile-heavy datasets.  But sometimes it drives you bonkers by missing obvious reptiles.
 
-If you want to read more about our favorite MD failure cases, check out the [MegaDetector challenges](megadetector-challenges.md) page.
+If you want to read more about our favorite MD failure cases, check out the [MegaDetector challenges](https://github.com/agentmorris/MegaDetector/blob/main/megadetector-challenges.md) page.
 
 tl;dr: always test on your own data!
  
 
 ## Pro tips for coaxing every bit of accuracy out of MegaDetector
 
-As per the [training data](#can-you-share-the-training-data) section, MDv5 is actually two models (MDv5a and MDv5b), differing only in their training data.  In fact, MDv5a's training data is a superset of MDv5b's training data.  So, when should you use each?  What should you do if MegaDetector is working, but not <i>quite</i> well enough for a difficult scenario, like the ones on our [MegaDetector challenges](megadetector-challenges.md) page?  Or what if MegaDetector is working great, but you're a perfectionist who wants to push the envelope on precision?  This section is a very rough flowchart for how the MegaDetector developers choose MegaDetector versions/enhancements when presented with a new dataset.
+As per the [training data](#can-you-share-the-training-data) section, MDv5 is actually two models (MDv5a and MDv5b), differing only in their training data.  In fact, MDv5a's training data is a superset of MDv5b's training data.  So, when should you use each?  What should you do if MegaDetector is working, but not <i>quite</i> well enough for a difficult scenario, like the ones on our [MegaDetector challenges](https://github.com/agentmorris/MegaDetector/blob/main/megadetector-challenges.md) page?  Or what if MegaDetector is working great, but you're a perfectionist who wants to push the envelope on precision?  This section is a very rough flowchart for how the MegaDetector developers choose MegaDetector versions/enhancements when presented with a new dataset.
 
 1. The first thing we always run is MDv5a... <b>95% of the time, the flowchart stops here</b>.  That's in bold because we want to stress that this whole section is about the unusual case, not the typical case.  There are enough complicated things in life, don't make choosing MegaDetector versions more complicated than it needs to be.<br/></br>Though FWIW, we're not usually trying to squeeze every bit of precision out of a particular dataset, we're almost always focused on recall (i.e., not missing animals).  So if MDv5a is finding all the animals and the number of false positives is "fine", we don't usually run MDv5b, for example, just to see whether it would slightly further reduce the number of false positives.
 
@@ -654,7 +654,7 @@ MDv5a works at least as well as MDv5b, but every dataset is different.<br/><br/>
 
 6. If none of the above are quite working well enough, but two or three of the above are close, try using [merge_detections.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/merge_detections.py) to get the best of both worlds, i.e. to take the high-confidence detections from multiple MegaDetector results files.
 
-7. If things are still not good enough, we have a case where MD just seems not to work; that's what the [MegaDetector challenges](megadetector-challenges.md) page is all about.  Now we're in DIY territory.
+7. If things are still not good enough, we have a case where MD just seems not to work; that's what the [MegaDetector challenges](https://github.com/agentmorris/MegaDetector/blob/main/megadetector-challenges.md) page is all about.  Now we're in DIY territory.
 
 And please please please, <b>if you find you need to do anything other than step 1 (simple MDv5a), please [let us know](mailto:cameratraps@lila.science)!</b>  It's really helpful for us to hear about cases where MegaDetector either doesn't work well or requires extra tinkering.
 
@@ -695,9 +695,9 @@ Here's a "teaser" image of what detector output looks like:
 
 Here's a neat [video](http://dmorris.net/video/detector_video.html) of MDv2 running in a variety of ecosystems, on locations unseen during training.
 
-<a href="http://dmorris.net/video/detector_video.html">
+Teaser thumbnail from that video:
+
 <img width=600 src="http://dmorris.net/video/detector_video_thumbnail.png">
-</a>
 
 Image credit [eMammal](https://emammal.si.edu/).  Video created by [Sara Beery](https://beerys.github.io/).
 
@@ -798,7 +798,7 @@ mamba activate cameratraps
 export PYTHONPATH="$HOME/git/MegaDetector"
 ```
 
-Also, the environment file we're referring to in this section ([envs/environment.yml](environment.yml), the one without all the MegaDetector stuff) doesn't get quite the same level of TLC that our MegaDetector environment does, so if anyone tries to run scripts that don't directly involve MegaDetector using this environment, and packages are missing, [let us know](mailto:cameratraps@lila.science).
+Also, the environment file we're referring to in this section ([environment.yml](https://github.com/agentmorris/MegaDetector/blob/main/envs/environment.yml), the one without all the MegaDetector stuff) doesn't get quite the same level of TLC that our MegaDetector environment does, so if anyone tries to run scripts that don't directly involve MegaDetector using this environment, and packages are missing, [let us know](mailto:cameratraps@lila.science).
 
 
 ## What if I want to use MD without all the baggage of your very specific package versions?
