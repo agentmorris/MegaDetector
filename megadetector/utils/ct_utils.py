@@ -517,6 +517,52 @@ def invert_dictionary(d):
     return {v: k for k, v in d.items()}
 
 
+def round_floats_in_nested_dict(obj, decimal_places=5):
+    """
+    Recursively rounds all floating point values in a nested structure to the 
+    specified number of decimal places. Handles dictionaries, lists, tuples, 
+    sets, and other iterables. Modifies mutable objects in place.
+    
+    Args:
+        obj: The object to process (can be a dict, list, set, tuple, or primitive value)
+        decimal_places: Number of decimal places to round to (default: 5)
+    
+    Returns:
+        The processed object (useful for recursive calls)
+    """
+    if isinstance(obj, dict):
+        for key in obj:
+            obj[key] = round_floats_in_nested_dict(obj[key], decimal_places)
+        return obj
+    
+    elif isinstance(obj, list):
+        for i in range(len(obj)):
+            obj[i] = round_floats_in_nested_dict(obj[i], decimal_places)
+        return obj
+    
+    elif isinstance(obj, tuple):
+        # Tuples are immutable, so we create a new one
+        return tuple(round_floats_in_nested_dict(item, decimal_places) for item in obj)
+    
+    elif isinstance(obj, set):
+        # Sets are mutable but we can't modify elements in-place
+        # Convert to list, process, and convert back to set
+        return set(round_floats_in_nested_dict(list(obj), decimal_places))
+    
+    elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
+        # Handle other iterable types - convert to list, process, and convert back
+        return type(obj)(round_floats_in_nested_dict(item, decimal_places) for item in obj)
+    
+    elif isinstance(obj, float):
+        return round(obj, decimal_places)
+    
+    else:
+        # For other types (int, str, bool, None, etc.), return as is
+        return obj
+
+# ...def round_floats_in_nested_dict(...)    
+
+
 def image_file_to_camera_folder(image_fn):
     r"""
     Removes common overflow folders (e.g. RECNX101, RECNX102) from paths, i.e. turn:
@@ -859,3 +905,25 @@ def __module_test__():
     L = [{'a':5},{'a':0},{'a':10}]
     k = 'a'
     sort_list_of_dicts_by_key(L, k, reverse=True)
+
+
+    ##%% Test float rounding
+    
+    # Example with mixed collection types
+    data = {
+        "name": "Project X",
+        "values": [1.23456789, 2.3456789],
+        "tuple_values": (3.45678901, 4.56789012),
+        "set_values": {5.67890123, 6.78901234},
+        "metrics": {
+            "score": 98.7654321,
+            "components": [5.6789012, 6.7890123]
+        }
+    }
+    
+    result = round_floats_in_nested_dict(data)
+    assert result['values'][0] == 1.23457
+    assert result['tuple_values'][0] == 3.45679
+    assert min(list(result['set_values'])) == 5.6789
+    
+    

@@ -47,6 +47,10 @@ max_images_per_chunk = 5000
 
 classifier_batch_size = 128
 
+# This is not related to running the model, only to postprocessing steps
+# in this notebook.  Threads work better on Windows, processes on Linux.
+use_threads_for_parallelization = (os.name == 'nt')
+
 
 #%% Generate instances.json
 
@@ -83,7 +87,7 @@ else:
 detector_commands = []
 detector_commands.append(f'{cuda_prefix} cd {speciesnet_folder} && mamba activate {speciesnet_pt_environment_name}')
 
-cmd = 'python scripts/run_model.py --detector_only --model "{}"'.format(model_file)
+cmd = 'python speciesnet/scripts/run_model.py --detector_only --model "{}"'.format(model_file)
 cmd += ' ' + source_specifier
 cmd += ' --predictions_json "{}"'.format(detector_output_file_modular)
 detector_commands.append(cmd)
@@ -144,10 +148,14 @@ for i_chunk,chunk in enumerate(chunks):
         json.dump(detection_predictions_dict,f,indent=1)
                 
     chunk_predictions_json = os.path.join(chunk_folder,'predictions_chunk_{}.json'.format(chunk_str))
+    
+    if os.path.isfile(chunk_predictions_json):
+        print('Warning: chunk output file {} exists'.format(chunk_predictions_json))
+        
     chunk_prediction_files.append(chunk_predictions_json)
     
     chunk_script = os.path.join(chunk_folder,'run_chunk_{}.sh'.format(i_chunk))
-    cmd = 'python scripts/run_model.py --classifier_only --model "{}"'.format(model_file)
+    cmd = 'python speciesnet/scripts/run_model.py --classifier_only --model "{}"'.format(model_file)
     cmd += ' --instances_json "{}"'.format(chunk_instances_json)
     cmd += ' --predictions_json "{}"'.format(chunk_predictions_json)
     cmd += ' --detections_json "{}"'.format(chunk_detections_json)
@@ -197,7 +205,7 @@ merge_prediction_json_files(input_prediction_files=input_prediction_files,
 ensemble_commands = []
 ensemble_commands.append(f'{cuda_prefix} cd {speciesnet_folder} && mamba activate {speciesnet_pt_environment_name}')
 
-cmd = 'python scripts/run_model.py --ensemble_only --model "{}"'.format(model_file)
+cmd = 'python speciesnet/scripts/run_model.py --ensemble_only --model "{}"'.format(model_file)
 cmd += ' ' + source_specifier
 cmd += ' --predictions_json "{}"'.format(ensemble_output_file_modular)
 cmd += ' --detections_json "{}"'.format(detector_output_file_modular)
@@ -218,6 +226,8 @@ ensemble_output_file_md_format = insert_before_extension(ensemble_file_to_conver
 generate_md_results_from_predictions_json(predictions_json_file=ensemble_file_to_convert,
                                           md_results_file=ensemble_output_file_md_format,
                                           base_folder=input_folder+'/')
+
+# from megadetector.utils.path_utils import open_file; open_file(ensemble_output_file_md_format)
 
 
 #%% Confirm that all the right files are in the results
@@ -250,6 +260,132 @@ print('Loaded results for {} images with {} failures'.format(
     len(images_in_folder),n_failures))
 
 
+#%% Optional RDE prep: define custom camera folder function
+
+if False:
+    
+    #%% Sample custom camera folder function
+    
+    def custom_relative_path_to_location(relative_path):
+        
+        relative_path = relative_path.replace('\\','/')    
+        tokens = relative_path.split('/')        
+        location_name = '/'.join(tokens[0:2])
+        return location_name
+    
+    #%% Test custom function
+    
+    from tqdm import tqdm
+    
+    with open(ensemble_output_file_md_format,'r') as f:
+        d = json.load(f)
+    image_filenames = [im['file'] for im in d['images']]
+
+    location_names = set()
+
+    # relative_path = image_filenames[0]
+    for relative_path in tqdm(image_filenames):
+        
+        location_name = custom_relative_path_to_location(relative_path)
+        # location_name = image_file_to_camera_folder(relative_path)
+        
+        location_names.add(location_name)
+        
+    location_names = list(location_names)
+    location_names.sort()
+
+    for s in location_names:
+        print(s)
+
+
+#%% Repeat detection elimination, phase 1
+
+from megadetector.postprocessing.repeat_detection_elimination import repeat_detections_core
+from megadetector.utils.ct_utils import image_file_to_camera_folder
+
+rde_base = os.path.join(output_base,'rde')
+options = repeat_detections_core.RepeatDetectionOptions()
+
+options.confidenceMin = 0.1
+options.confidenceMax = 1.01
+options.iouThreshold = 0.85
+options.occurrenceThreshold = 15
+options.maxSuspiciousDetectionSize = 0.2
+# options.minSuspiciousDetectionSize = 0.05
+
+options.parallelizationUsesThreads = use_threads_for_parallelization
+options.nWorkers = 10
+
+# This will cause a very light gray box to get drawn around all the detections
+# we're *not* considering as suspicious.
+options.bRenderOtherDetections = True
+options.otherDetectionsThreshold = options.confidenceMin
+
+options.bRenderDetectionTiles = True
+options.maxOutputImageWidth = 2000
+options.detectionTilesMaxCrops = 100
+
+# options.lineThickness = 5
+# options.boxExpansion = 8
+
+options.customDirNameFunction = image_file_to_camera_folder
+# options.customDirNameFunction = custom_relative_path_to_location
+
+options.bRenderHtml = False
+options.imageBase = input_folder
+rde_string = 'rde_{:.3f}_{:.3f}_{}_{:.3f}'.format(
+    options.confidenceMin, options.iouThreshold,
+    options.occurrenceThreshold, options.maxSuspiciousDetectionSize)
+options.outputBase = os.path.join(rde_base, rde_string)
+options.filenameReplacements = None # {'':''}
+
+# Exclude people and vehicles from RDE
+# options.excludeClasses = [2,3]
+
+# options.maxImagesPerFolder = 50000
+# options.includeFolders = ['a/b/c','d/e/f']
+# options.excludeFolders = ['a/b/c','d/e/f']
+
+options.debugMaxDir = -1
+options.debugMaxRenderDir = -1
+options.debugMaxRenderDetection = -1
+options.debugMaxRenderInstance = -1
+
+# Can be None, 'xsort', or 'clustersort'
+options.smartSort = 'xsort'
+
+suspicious_detection_results = \
+    repeat_detections_core.find_repeat_detections(ensemble_output_file_md_format,
+                                                  outputFilename=None,
+                                                  options=options)
+
+
+#%% Manual RDE step
+
+from megadetector.utils.path_utils import open_file
+
+## DELETE THE VALID DETECTIONS ##
+
+# If you run this line, it will open the folder up in your file browser
+open_file(os.path.dirname(suspicious_detection_results.filterFile),
+          attempt_to_open_in_wsl_host=True)
+
+
+#%% Re-filtering
+
+from megadetector.postprocessing.repeat_detection_elimination import \
+    remove_repeat_detections
+
+filtered_output_filename = insert_before_extension(ensemble_output_file_md_format, 
+                                                              'filtered_{}'.format(rde_string))
+
+remove_repeat_detections.remove_repeat_detections(
+    inputFile=ensemble_output_file_md_format,
+    outputFile=filtered_output_filename,
+    filteringDir=os.path.dirname(suspicious_detection_results.filterFile)
+    )
+
+
 #%% Preview
 
 from megadetector.utils.path_utils import open_file
@@ -258,7 +394,12 @@ from megadetector.postprocessing.postprocess_batch_results import \
 
 assert os.path.isfile(ensemble_output_file_md_format)
 
-preview_file = ensemble_output_file_md_format
+try:
+    preview_file = filtered_output_filename
+    print('Using RDE results for preview')
+except:
+    preview_file = ensemble_output_file_md_format
+    print('RDE results not found, using raw results for preview')
 
 preview_folder = preview_folder_base
 
@@ -267,7 +408,7 @@ render_animals_only = False
 options = PostProcessingOptions()
 options.image_base_dir = input_folder
 options.include_almost_detections = True
-options.num_images_to_sample = 7500
+options.num_images_to_sample = 10000
 options.confidence_threshold = 0.2
 options.almost_detection_confidence_threshold = options.confidence_threshold - 0.05
 options.ground_truth_json_file = None
@@ -278,34 +419,37 @@ options.sort_classification_results_by_count = True
 
 options.parallelize_rendering = True
 options.parallelize_rendering_n_cores = 10
-options.parallelize_rendering_with_threads = True
+options.parallelize_rendering_with_threads = use_threads_for_parallelization
 
 if render_animals_only:
-    # Omit some pages from the output, useful when animals are rare
     options.rendering_bypass_sets = ['detections_person','detections_vehicle',
                                      'detections_person_vehicle','non_detections']
 
-output_base = os.path.join(preview_folder,
+preview_output_base = os.path.join(preview_folder,
     job_name + '_{:.3f}'.format(options.confidence_threshold))
 if render_animals_only:
-    output_base = output_base + '_animals_only'
+    preview_output_base = preview_output_base + '_animals_only'
 
-os.makedirs(output_base, exist_ok=True)
-print('Processing to {}'.format(output_base))
+os.makedirs(preview_output_base, exist_ok=True)
+print('Processing to {}'.format(preview_output_base))
 
 options.md_results_file = preview_file
-options.output_dir = output_base
+options.output_dir = preview_output_base
 ppresults = process_batch_results(options)
 html_output_file = ppresults.output_html_file
 open_file(html_output_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
 # import clipboard; clipboard.copy(html_output_file)
 
 
-#%% Zip results file
+#%% Zip results files
 
-from megadetector.utils.path_utils import zip_file
-zip_fn = zip_file(ensemble_output_file_md_format)
-print('Zipped ensemble results to {}'.format(zip_fn))
+from megadetector.utils.path_utils import parallel_zip_files
+
+json_files = os.listdir(output_base)
+json_files = [fn for fn in json_files if fn.endswith('.json')]
+json_files = [os.path.join(output_base,fn) for fn in json_files]
+
+parallel_zip_files(json_files,verbose=True)
 
 
 #%% Scrap

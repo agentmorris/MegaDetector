@@ -27,6 +27,8 @@ from tqdm import tqdm
 
 from megadetector.utils.path_utils import insert_before_extension
 from megadetector.utils.ct_utils import split_list_into_n_chunks
+from megadetector.utils.ct_utils import round_floats_in_nested_dict
+from megadetector.utils.ct_utils import is_list_sorted
 from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 from megadetector.utils.path_utils import find_images
@@ -912,7 +914,10 @@ def is_animal_classification(prediction_string):
     return True
 
 
-def generate_md_results_from_predictions_json(predictions_json_file,md_results_file,base_folder=None):
+def generate_md_results_from_predictions_json(predictions_json_file,
+                                              md_results_file,
+                                              base_folder=None,
+                                              max_decimals=5):
     """
     Generate an MD-formatted .json file from a predictions.json file.  Typically,
     MD results files use relative paths, and predictions.json files use absolute paths, so 
@@ -924,19 +929,30 @@ def generate_md_results_from_predictions_json(predictions_json_file,md_results_f
     wi_to_md.py is a command-line driver for this function.
     
     Args:
-        predictions_json_file (str): path to a predictions.json file
+        predictions_json_file (str): path to a predictions.json file, or a dict
         md_results_file (str): path to which we should write an MD-formatted .json file
-        base_folder (str, optional): leading string to remove from each path in the predictions.json file
+        base_folder (str, optional): leading string to remove from each path in the 
+            predictions.json file
+        max_decimals (int, optional): number of decimal places to which we should round
+            all values
     """
         
     # Read predictions file    
-    with open(predictions_json_file,'r') as f:
-        predictions = json.load(f)
+    if isinstance(predictions_json_file,str):
+        with open(predictions_json_file,'r') as f:
+            predictions = json.load(f)
+    else:
+        assert isinstance(predictions_json_file,dict)
+        predictions = predictions_json_file
+    
+    # Round floating-point values (confidence scores, coordinates) to a
+    # reasonable number of decimal places
+    if max_decimals is not None and max_decimals > 0:
+        round_floats_in_nested_dict(predictions)
+        
     predictions = predictions['predictions']
     assert isinstance(predictions,list)
-    
-    from megadetector.utils.ct_utils import is_list_sorted
-    
+        
     detection_category_id_to_name = {}
     classification_category_name_to_id = {}
     
