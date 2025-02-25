@@ -51,7 +51,7 @@ MegaDetector is free, and it makes us super-happy when people use it, so we put 
 
 ### If you already know about Python stuff...
 
-This section is largely intended for users who have not previously run lots of Python code.  If you already know how Python environments work, you may want to skip the rest of this page and use the [MegaDetector Python package](https://pypi.org/project/megadetector/) (pip install megadetector).  There are examples on the package home page, and the package is documented [here](https://megadetector.readthedocs.io/).
+This page is largely intended for users who have not previously run lots of Python code.  If you already know how Python environments work, you may want to skip the rest of this page and use the [MegaDetector Python package](https://pypi.org/project/megadetector/) (pip install megadetector).  There are examples on the package home page, and the package is documented [here](https://megadetector.readthedocs.io/).
 
 If you are new to Python, you are in the right place, read on.
 
@@ -59,13 +59,13 @@ If you are new to Python, you are in the right place, read on.
 
 We provide two ways to run MegaDetector at the command line:
 
-1. A simple test script that makes neat pictures with bounding boxes, but doesn't produce a useful output file ([run_detector.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector.py)).  We use this in these instructions just to confirm that your environment is set up correctly, then you'll probably never use it again.
+1. A simple test script that makes neat pictures with boxes around animals, but doesn't produce a useful output file ([run_detector.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector.py)).  We use this in these instructions just to confirm that your environment is set up correctly, then you'll probably never use it again.
 
-2. A script for running large batches of images [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector_batch.py))
+2. A script for running large batches of images [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector_batch.py)).  This is how you'll run 1000, or 1M, or 10M images through MegaDetector.
 
 Also see the <a href="#is-there-a-gui">&ldquo;Is there a GUI?&rdquo;</a> section for graphical options and other ways of running MD, including real-time APIs, Docker environments, and other goodies.
 
-The remainder of this section will get you set up to run MegaDetector locally, at the command line.
+The remainder of this section will get you set up to run MegaDetector on your computer.
 
 ### Install Miniforge
 
@@ -87,7 +87,7 @@ The [list of Miniforge installers](https://github.com/conda-forge/miniforge?tab=
 
 ### Install the MegaDetector Python package
 
-Once you're at your Miniforge prompt, we recommend creating a Python "virtual environment" where you will install MegaDetector stuff.  A virtual environment is a set of Python tools that exist in their own little universe, so they don't bother other Python tools that you have installed in other universes.  To create an environment called "megadetector", open your Miniforge prompt and run this:
+Once you're at your Miniforge prompt, we recommend creating a Python "virtual environment" where you will install MegaDetector stuff.  A virtual environment is a set of Python tools that exist in their own private universe, so they don't bother other Python tools that you have installed in other universes on your computer.  To create an environment called "megadetector", open your Miniforge prompt and run this:
 
 `mamba create -n megadetector python=3.11 pip -y`
 
@@ -103,8 +103,7 @@ To install the MegaDetector Python package in this environment, run:
 
 `pip install --upgrade megadetector`
 
-Your environment is set up now!  In the future, when you open your Miniforge prompt, you only need to run `mamba activate megadetector`.
-
+Your environment is set up now!  In the future, when you open your Miniforge prompt, you only need to run `mamba activate megadetector` to use tools from the MegaDetector Python package.
 
 ### Hooray, we get to run MegaDetector!
 
@@ -119,7 +118,7 @@ mamba activate megadetector
 python -m megadetector.detection.run_detector MDV5A --image_file "some_image_file.jpg" --threshold 0.1
 ```
 
-"MDV5A" tells this script to automatically download MegaDetector v5a; if you already downloaded it (see the instructions below for [downloading megadetector](#downloading-megadetector-optional)), you can replace this with the full path to your MegaDetector model file (e.g. "c:\megadetector\md_v5a.0.0.pt").  You can replace this with other model names, like "MDV5B" or "MD1000-redwood".
+"MDV5A" tells this script to automatically download MegaDetector v5a; if you already downloaded it (see the instructions below for [downloading megadetector](#downloading-megadetector-optional)), you can replace this with the full path to your MegaDetector model file (e.g. "c:\megadetector\md_v5a.0.0.pt").  You can replace this with other model names, like "MDV5B" or "MD1000-redwood", or you can say just "default", in which case you'll get the model that the developers consider to be the most accurate model available.  Available models are described in the "[megadetector versions](#megadetector-versions)" section below.
 
 Change "some_image_file.jpg" to point to a real image on your computer, e.g. "c:\my_images\camera_traps\image001.jpg".
 
@@ -156,7 +155,7 @@ mamba activate megadetector
 python -m megadetector.detection.run_detector_batch MDV5A "c:\some_image_folder" "c:\megadetector\test_output.json" --output_relative_filenames --recursive --checkpoint_frequency 10000 --quiet
 ```
 
-"MDV5A" tells this script to automatically download MegaDetector v5a; if you already downloaded it (see the instructions below for [downloading megadetector](#downloading-megadetector)), you can replace this with the full path to your MegaDetector model file (e.g. "c:\megadetector\md_v5a.0.0.pt").  You can replace this with other model names, like "MDV5B" or "MD1000-redwood".
+"MDV5A" tells this script to automatically download MegaDetector v5a; if you already downloaded it (see the instructions below for [downloading megadetector](#downloading-megadetector-optional)), you can replace this with the full path to your MegaDetector model file (e.g. "c:\megadetector\md_v5a.0.0.pt").  You can replace this with other model names, like "MDV5B" or "MD1000-redwood".
 
 Change "c:\some_image_folder" to point to the real folder on your computer where your images live.
 
@@ -223,9 +222,16 @@ If you download a model from one of these links, in the above instructions, just
 
 ## MegaDetector versions
 
-In this section, we provide download links for lots of MegaDetector versions.  Unless you have a very esoteric scenario, you want MegaDetector v5, and you can ignore all the other MegaDetector versions.  The rest of this section, after the MDv5 download links, is more like a mini-MegaDetector-museum than part of the User Guide.
+In this section, we provide information about lots of MegaDetector versions.  Unless you have a very esoteric scenario, you want MegaDetector v5, and you can ignore all the other MegaDetector versions.  The rest of this section, after the MDv5 download links, is more like a mini-MegaDetector-museum than part of the User Guide.
+
+In any script or function that takes a model name, you can always say "default" or "megadetector", in which case you'll always get the model that the MegaDetector developers consider to be the most accurate model available.  But you can also specify the "short name" for any of the models listed below.
 
 ### MegaDetector v5.0, 2022.06.15
+
+#### Short names
+
+* MDv5a
+* MDv5a
 
 #### Release notes
 
@@ -249,6 +255,10 @@ See the [release page](https://github.com/agentmorris/MegaDetector/releases/tag/
 
 ### MegaDetector v4.1, 2020.04.27
 
+#### Short name
+
+MDv4
+
 #### Release notes
 
 This release incorporates additional training data from Borneo, Australia and the [WCS Camera Traps](http://lila.science/datasets/wcscameratraps) dataset, as well as images of humans in both daytime and nighttime. We also have a preliminary "vehicle" class for cars, trucks, and bicycles.
@@ -264,6 +274,10 @@ If you're not sure which format to use, you want the "frozen model" file (the fi
 
 ### MegaDetector v3, 2019.05.30
 
+#### Short name
+
+MDv3
+
 #### Release notes
 
 In addition to incorporating additional data, this release adds a preliminary "human" class.  Our animal training data is still far more comprehensive than our humans-in-camera-traps data, so if you're interested in using our detector but find that it works better on animals than people, stay tuned.
@@ -277,6 +291,10 @@ In addition to incorporating additional data, this release adds a preliminary "h
 - [TensorFlow SavedModel for TFServing](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/saved_model_megadetector_v3_tf19.zip) (inputs in uint8 format, `serving_default` output signature)
 
 ### MegaDetector v2, 2018
+
+#### Short name
+
+MDv2
 
 #### Release notes
 
@@ -352,7 +370,7 @@ But we recognize that Python tools can be a bit daunting, so we're excited that 
 
 ### GUI tools for running MegaDetector locally
 
-* [AddaxAI](https://addaxdatascience.com/addaxai/) is a GUI-based tool for running MegaDetector and a variety of species classifiers; also supports a number of postprocessing functions (e.g. folder separation).
+* [AddaxAI](https://addaxdatascience.com/addaxai/) is a GUI-based tool for running MegaDetector and a variety of species classifiers; also supports a number of postprocessing functions (e.g. folder separation).  This is how most users run MegaDetector.  AddaxAI worried about all the Python stuff in this repo, so that you don't have to.
 * [CamTrap Detector](https://github.com/bencevans/camtrap-detector) is a GUI-based tool for running MegaDetector (supports MDv5)
 * [MegaDetector-GUI](https://github.com/petargyurov/megadetector-gui) is a GUI-based tool for running MegaDetector in Windows environments (MDv4 only as far as we know)
 
@@ -379,9 +397,9 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 * [Trapper](https://trapper-project.readthedocs.io/en/latest/overview.html)
 * [Camelot](https://camelotproject.org/)
 * [WildePod](https://wildepod.org/)
-* [wpsWatch](https://wildlifeprotectionsolutions.org/wpswatch/)
+* [wpsWatch](https://wildlabs.net/inventory/products/wpswatch)
 * [TNC Animl](https://animl.camera/) ([code](https://github.com/tnc-ca-geo/animl-frontend))
-* [Cam-WON](https://wildlifeobserver.net/)
+* [Wildlife Observer Network](https://roadecology.ucdavis.edu/research/projects/wildlife-observer-network)
 * [Zooniverse ML Subject Assistant](https://subject-assistant.zooniverse.org/#/intro)
 * [Dudek AI Image Toolkit](https://ait.dudek.com)
 * [Zamba Cloud](https://github.com/drivendataorg/zamba)
@@ -584,11 +602,10 @@ MegaDetector v4 was trained on all MDv3 training data, plus new private data, an
 
 MegaDetector v5b was trained on all MDv4 training data, plus new private data, and new public data from:
 
-* [Orinoquía Camera Traps](https://lila.science/orinoquia-camera-traps/)
-* [SWG Camera Traps](https://lila.science/datasets/swg-camera-traps)
 * [ENA24](https://lila.science/datasets/ena24detection)
 * [Wellington Camera Traps](https://lila.science/datasets/wellingtoncameratraps)
 * [Several datasets from Snapshot Safari](https://lila.science/category/camera-traps/snapshot-safari/)
+* Several datasets that were private at the time, but are now public, including [Idaho Camera Traps](https://lila.science/datasets/idaho-camera-traps/), [Orinoquía Camera Traps](https://lila.science/orinoquia-camera-traps/),  [SWG Camera Traps](https://lila.science/datasets/swg-camera-traps), and a small subset of [Trail Camera Images of New Zealand Animals](https://lila.science/datasets/nz-trailcams)
 
 The total dataset for MDv5b (including train/val/test) was around ~2.3M boxes on ~2.7M images, all of which are camera trap images.
 
@@ -597,4 +614,13 @@ MegaDetector v5a was trained on all MDv5b training data, and new (non-camera-tra
 * The [iNaturalist Dataset 2017](https://github.com/visipedia/inat_comp/tree/master/2017)
 * [COCO](https://cocodataset.org/#home)
 
-So if MegaDetector performs really well on any of the above data sets, that's great, but it's a little bit cheating, because we haven't published the set of locations from those data sets that we use during training.
+MD1000 was trained on a new dataset that overlaps with the substantial majority of the MDv5b training set.  That includes:
+
+* All the camera trap datasets listed above that were public at the time MDv5 was trained, with some cleanup of the labels (no whole public datasets were excluded, but some public images were excluded after a review of the labels revealed quality issues for some datasets that were too hard to fix)
+* Several datasets that were private at the time MDv5 was trained, but are now public, including [Idaho Camera Traps](https://lila.science/datasets/idaho-camera-traps/), [Orinoquía Camera Traps](https://lila.science/orinoquia-camera-traps/),  [SWG Camera Traps](https://lila.science/datasets/swg-camera-traps), and a small subset of [Trail Camera Images of New Zealand Animals](https://lila.science/datasets/nz-trailcams)
+* Much of the non-public data from MDv5 (but not all; there were images used for MDv5 training that I was unable to reacquire and re-license)
+* New non-public data that was designed to (a) "backfill" some of the MDv5 training datasets to which I no longer had access, and (b) fix systematic gaps in MDv5 training data, particularly around large reptiles
+
+Overall, experiments suggest that the MD1000 training set is substantially similar to the MDv5 training set (e.g., running MDv5 on the MD1000 validation set yields results that are similar to MDv5 running on its own validation set).  
+
+MD1000 was also pre-trained on output from MDv5 (only using locations from LILA that are <i>not</i> in the MDv5 validation split).  As much as I'd like to think this pre-training allowed the model to retain some information about data I didn't have the ability to explicitly train on, that wasn't really the point, and this probably resulted in little or no information transferred to the final MD1000 models; this was more like a warmup phase that was helpful in reducing the total <i>calendar</i> time for training (i.e., I could keep working on data while the models were getting to a better-than-default starting point).  I don't include that pre-training when I refer to the training data size.

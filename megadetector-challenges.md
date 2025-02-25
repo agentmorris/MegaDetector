@@ -16,7 +16,7 @@
 
 ## Overview
 
-We like to think MegaDetector works pretty well most of the time; you can read third-party evaluations like [this one](https://wildeyeconservation.org/megadetector-version-5/) and [this one](https://www.sciencedirect.com/science/article/pii/S2351989422001068?via%3Dihub) if you want to feel good about MegaDetector, or you can look at sample results like [these](https://lila.science/public/snapshot_safari_public/snapshot-safari-kar-2022-00-00-v5a.0.0_0.200/detections_animal.html).  But lest you should think MegaDetector always works, this page is here to harsh your mellow a little.
+We like to think MegaDetector works pretty well most of the time; you can read third-party evaluations like [this one](https://wildeyeconservation.org/megadetector-version-5/) and [this one](https://www.sciencedirect.com/science/article/pii/S2351989422001068) if you want to feel good about MegaDetector, or you can look at sample results like [these](https://lila.science/public/snapshot_safari_public/snapshot-safari-kar-2022-00-00-v5a.0.0_0.200/detections_animal.html).  But lest you should think MegaDetector always works, this page is here to harsh your mellow a little.
 
 Of course, any AI model will drive you crazy by missing one image in a dataset where it otherwise works fine, that's not what this page is about.  Also, some things are just outside of MegaDetector's domain: it <i>shouldn't</i> work for fish in underwater video, or for images taken from drones, or for veeeeeeeeeery small things in the distance that aren't discernible (even by humans) as animals in single images.  That's also not what this page is about.
 

@@ -49,9 +49,9 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Canadian Parks and Wilderness Society (CPAWS) Northern Alberta Chapter](https://cpawsnab.org/)
 * [Conservation X Labs](https://conservationxlabs.com/)
 * [Czech University of Life Sciences Prague](https://www.czu.cz/en)
-* [Dudek Camera Trap AI Image Toolkit (AIT)](https://dudek.com/services/wildlife-camera-trap-ai-image-processing-and-management/)
+* [Dudek Camera Trap AI Image Toolkit (AIT)](https://ait.dudek.com/)
 * [EcoLogic Consultants Ltd.](https://www.consult-ecologic.com/)
-* [Estación Biológica de Doñana](http://www.ebd.csic.es/inicio)
+* [Estación Biológica de Doñana](https://www.ebd.csic.es/)
 * [Indigenous Desert Alliance](https://www.indigenousdesertalliance.com/)
 * [Myall Lakes Dingo Project](https://carnivorecoexistence.info/myall-lakes-dingo-project/)
 * [Norwegian Institute for Nature Research](https://www.nina.no/english/Home)
@@ -88,7 +88,6 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Department of Fish and Wildlife Sciences](https://www.uidaho.edu/cnr/departments/fish-and-wildlife-sciences), University of Idaho
 * [Department of Society & Conservation](https://www.umt.edu/environment/about/departments/socon/), W.A. Franke College of Forestry & Conservation, University of Montana
 * [Department of Wildlife Ecology and Conservation](https://wec.ifas.ufl.edu/), University of Florida
-* [Ecology and Conservation of Amazonian Vertebrates Research Group](https://www.researchgate.net/lab/Fernanda-Michalski-Lab-4), Federal University of Amapá
 * [Gola Forest Programme](https://www.rspb.org.uk/our-work/conservation/projects/scientific-support-for-the-gola-forest-programme/), Royal Society for the Protection of Birds (RSPB)
 * [Graeme Shannon's Research Group](https://wildliferesearch.co.uk/group-1), Bangor University 
 * [Grizzly Bear Recovery Program](https://www.fws.gov/office/grizzly-bear-recovery-program), U.S. Fish & Wildlife Service
@@ -106,12 +105,13 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Santa Monica Mountains Recreation Area](https://www.nps.gov/samo/index.htm), National Park Service
 * [Seattle Urban Carnivore Project](https://www.zoo.org/seattlecarnivores), Woodland Park Zoo
 * [Serra dos Órgãos National Park](https://www.icmbio.gov.br/parnaserradosorgaos/), ICMBio
-* [Snapshot USA](https://emammal.si.edu/snapshot-usa), Smithsonian
+* [Snapshot USA](https://www.snapshot-usa.org/), Smithsonian
 * [TROPECOLNET project](https://www.anabenitezlopez.com/research/global-change-biology/tropecolnet/), Museo Nacional de Ciencias Naturales
 * [Wildlife Coexistence Lab](https://wildlife.forestry.ubc.ca/), University of British Columbia
 * [Wildlife Research](https://www.dfw.state.or.us/wildlife/research/index.asp), Oregon Department of Fish and Wildlife
 * [Wildlife Division](https://www.michigan.gov/dnr/about/contact/wildlife), Michigan Department of Natural Resources
 * [Kohl Wildlife Lab](https://kohlwildlifelab.com/), University of Georgia
+* Ecology and Conservation of Amazonian Vertebrates Research Group, Federal University of Amapá
 * Department of Ecology, TU Berlin
 * Ghost Cat Analytics
 * Protected Areas Unit, Canadian Wildlife Service
@@ -136,7 +136,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [BirdLife Malta](https://birdlifemalta.org/) ([tweet](https://x.com/BirdLife_Malta/status/1817456839862173783?t=S-KRiZ5R1-CoW8-tbYNjqQ&s=03)) ([LI post](https://www.linkedin.com/posts/birdlifemalta_worldnatureconservationday-shearwater-colony-activity-7223220656589463553-X2Mc/?utm_source=share&utm_medium=member_android))
 * [Endangered Landscapes and Seascapes Programme](https://www.endangeredlandscapes.org/), Cambridge Conservation Initiative ([blog post](https://www.endangeredlandscapes.org/news/ai-for-wildlife-monitoring-a-real-time-alert-system-for-bears-and-wild-boars-in-romanias-carpathian-mountains/))
 
-* [Road Ecology Center](https://roadecology.ucdavis.edu/), University of California, Davis ([Wildlife Observer Network platform](https://wildlifeobserver.net/))
+* [Road Ecology Center](https://roadecology.ucdavis.edu/), University of California, Davis ([Wildlife Observer Network platform](https://roadecology.ucdavis.edu/research/projects/wildlife-observer-network))
 * [The Nature Conservancy in California](https://www.nature.org/en-us/about-us/where-we-work/united-states/california/) ([Animl platform](https://github.com/tnc-ca-geo/animl-frontend)) ([story](https://www.vision-systems.com/non-factory/environment-agriculture/article/14304433/the-nature-conservancy-brings-cameras-ai-to-invasive-species-prevention))
 * [San Diego Zoo Wildlife Alliance](https://science.sandiegozoo.org/)  ([Animl R package](https://github.com/conservationtechlab/animl))
 * [TerrOïko](https://www.terroiko.fr/) ([OCAPI platform](https://www.terroiko.fr/ocapi))
