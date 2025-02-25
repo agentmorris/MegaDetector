@@ -2,7 +2,7 @@
 
 wi_to_md.py
 
-Converts the WI predictions.json format to MD .json format.  This is just a 
+Converts the WI (SpeciesNet) predictions.json format to MD .json format.  This is just a 
 command-line wrapper around utils.wi_utils.generate_md_results_from_predictions_json.
 
 """
@@ -20,7 +20,7 @@ def main():
     
     parser = argparse.ArgumentParser()
     parser.add_argument('predictions_json_file', action='store', type=str, 
-                        help='.json file to convert from predictions.json format to MD format')
+                        help='.json file to convert from SpeciesNet predictions.json format to MD format')
     parser.add_argument('md_results_file', action='store', type=str, 
                         help='output file to write in MD format')
     parser.add_argument('--base_folder', action='store', type=str, default=None, 

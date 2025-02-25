@@ -27,6 +27,7 @@ from tqdm import tqdm
 
 from megadetector.utils.path_utils import insert_before_extension
 from megadetector.utils.ct_utils import split_list_into_n_chunks
+from megadetector.utils.ct_utils import is_list_sorted
 from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 from megadetector.utils.path_utils import find_images
@@ -921,7 +922,7 @@ def generate_md_results_from_predictions_json(predictions_json_file,md_results_f
     Currently just applies the top classification category to every detection.  If the top classification 
     is "blank", writes an empty detection list.
     
-    wi_to_md.py is a command-line driver for this function.
+    speciesnet_to_md.py is a command-line driver for this function.
     
     Args:
         predictions_json_file (str): path to a predictions.json file
@@ -935,7 +936,11 @@ def generate_md_results_from_predictions_json(predictions_json_file,md_results_f
     predictions = predictions['predictions']
     assert isinstance(predictions,list)
     
-    from megadetector.utils.ct_utils import is_list_sorted
+    # Convert backslashes to forward slashes in both filenames and the base folder string
+    for im in predictions:
+        im['filepath'] = im['filepath'].replace('\\','/')
+    if base_folder is not None:
+        base_folder = base_folder.replace('\\','/')
     
     detection_category_id_to_name = {}
     classification_category_name_to_id = {}
@@ -948,6 +953,8 @@ def generate_md_results_from_predictions_json(predictions_json_file,md_results_f
     # Create the output images list
     images_out = []
     
+    base_folder_replacements = 0
+    
     # im_in = predictions[0]
     for im_in in predictions:
         
@@ -957,6 +964,7 @@ def generate_md_results_from_predictions_json(predictions_json_file,md_results_f
         fn = im_in['filepath']
         if base_folder is not None:
             if fn.startswith(base_folder):
+                base_folder_replacements += 1
                 fn = fn.replace(base_folder,'',1)
         
         im_out['file'] = fn
@@ -1056,6 +1064,11 @@ def generate_md_results_from_predictions_json(predictions_json_file,md_results_f
         
     # ...for each image
     
+    if base_folder is not None:
+        if base_folder_replacements == 0:
+            print('Warning: you supplied {} as the base folder, but I made zero replacements'.format(
+                base_folder))
+            
     # Fix the 'unknown' category
     
     if len(all_unknown_detections) > 0:
@@ -1075,7 +1088,8 @@ def generate_md_results_from_predictions_json(predictions_json_file,md_results_f
     
     # Prepare friendly classification names
     
-    classification_category_descriptions = invert_dictionary(classification_category_name_to_id)
+    classification_category_descriptions = \
+        invert_dictionary(classification_category_name_to_id)
     classification_categories_out = {}
     for category_id in classification_category_descriptions.keys():
         category_name = classification_category_descriptions[category_id].split(';')[-1]

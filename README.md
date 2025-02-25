@@ -10,11 +10,15 @@
 5. [Repo contents](#repo-contents)
 6. [Contact](#contact)
 7. [Gratuitous camera trap picture](#gratuitous-camera-trap-picture)
+8. [License](#license)
+9. [Contributing](#contributing)
 
 
 ## What's MegaDetector all about?
 
 [MegaDetector](megadetector.md) is an AI model that identifies animals, people, and vehicles in camera trap images (which also makes it useful for eliminating blank images).  This model is trained on several million images from a variety of ecosystems.
+
+MegaDetector only finds animals, it doesn't identify them to species level.  If you're looking for a species classifier, check out [SpeciesNet](https://github.com/google/cameratrapai), a species classifier that plays nicely with MegaDetector.
 
 Here's a &ldquo;teaser&rdquo; image of what MegaDetector output looks like:
 
@@ -27,7 +31,7 @@ Here's a &ldquo;teaser&rdquo; image of what MegaDetector output looks like:
 * If you're just <i>considering</i> the use of AI in your workflow, and you aren't even sure yet whether MegaDetector would be useful to you, we recommend reading the "[getting started with MegaDetector](getting-started.md)" page.
 * If you're already familiar with MegaDetector and you're ready to run it on your data, see the [MegaDetector User Guide](megadetector.md) for instructions on running MegaDetector.
 * If you're a programmer-type looking to use tools from this repo, check out the [MegaDetector Python package](https://pypi.org/project/megadetector/) that provides access to everything in this repo (yes, you guessed it, "pip install megadetector").
-* If you have any questions, or you want to tell us that MegaDetector was amazing/terrible on your images, <a href="mailto:cameratraps@lila.science">email us</a>!
+* If you have any questions, or you want to tell us that MegaDetector was amazing/terrible on your images, or you have a zillion images and you want some help digging out of that backlog, <a href="mailto:cameratraps@lila.science">email us</a>!
 
 MegaDetector is just one of many tools that aims to make conservation biologists more efficient with AI.  If you want to learn about other ways to use AI to accelerate camera trap workflows, check out our of the field, affectionately titled &ldquo;[Everything I know about machine learning and camera traps](https://agentmorris.github.io/camera-trap-ml-survey/)&rdquo;.
 
@@ -202,9 +206,9 @@ Code for hosting our models as an API, either for synchronous operation (i.e., f
 
 #### megadetector/classification
 
-Experimental code for training species classifiers on new data sets, generally trained on MegaDetector crops.  Currently the main pipeline described in this folder relies on a large database of labeled images that is not publicly available; therefore, this folder is not yet set up to facilitate training of your own classifiers.  However, it is useful for <i>users</i> of the classifiers that we train, and contains some useful starting points if you are going to take a "DIY" approach to training classifiers on cropped images.  
+This folder is largely deprecated thanks to the release of [SpeciesNet](https://github.com/google/cameratrapai), a species classifier that is better than any of the classifiers we ever trained with the stuff in this folder.  That said, this folder contains code for training species classifiers on new data sets, generally trained on MegaDetector crops.
 
-All that said, here's another "teaser image" of what you get at the end of training and running a classifier:
+Here's another "teaser image" of what you get at the end of training and running a classifier:
 
 <img src="images/warthog_classifications.jpg" width="700"><br/>Image credit University of Minnesota, from the Snapshot Safari program.
 
