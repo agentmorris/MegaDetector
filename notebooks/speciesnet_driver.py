@@ -14,7 +14,7 @@ import clipboard # noqa
 
 #%% Constants I set for each job
 
-organization_name ='organization_name'
+organization_name = 'organization_name'
 job_name = 'job_name'
 output_base = os.path.join(os.path.expanduser('~/postprocessing'),organization_name,job_name)
 os.makedirs(output_base,exist_ok=True)
@@ -51,16 +51,19 @@ classifier_batch_size = 128
 # in this notebook.  Threads work better on Windows, processes on Linux.
 use_threads_for_parallelization = (os.name == 'nt')
 
+assert organization_name != 'organization_name'
+assert job_name != 'job_name'
+
 
 #%% Generate instances.json
 
-if instances_json is not None:
+instances = generate_instances_json_from_folder(folder=input_folder,
+                                                country=country_code,
+                                                admin1_region=state_code,
+                                                output_file=instances_json,
+                                                filename_replacements=None)
 
-    _ = generate_instances_json_from_folder(folder=input_folder,
-                                            country=country_code,
-                                            admin1_region=state_code,
-                                            output_file=instances_json,
-                                            filename_replacements=None)
+print('Generated {} instances'.format(len(instances['instances'])))
 
 
 #%% Prep
@@ -76,10 +79,7 @@ for fn in [detector_output_file_modular,classifier_output_file_modular,ensemble_
     if os.path.exists(fn):
         print('** Warning, file {} exists, this is OK if you are resuming **\n'.format(fn))
 
-if instances_json is not None:
-    source_specifier = '--instances_json "{}"'.format(instances_json)
-else:
-    source_specifier = '--folders "{}"'.format(input_folder)
+source_specifier = '--instances_json "{}"'.format(instances_json)
 
 
 #%% Run detector
@@ -94,6 +94,12 @@ detector_commands.append(cmd)
 
 detector_cmd = '\n\n'.join(detector_commands)
 # print(detector_cmd); clipboard.copy(detector_cmd)
+
+
+#%% Validate detector results
+
+from megadetector.utils.wi_utils import validate_predictions_file
+validate_predictions_file(detector_output_file_modular,instances_json)
 
 
 #%% Run classifier
@@ -126,12 +132,14 @@ for i_chunk,chunk in enumerate(chunks):
     
     chunk_str = str(i_chunk).zfill(3)
     
-    chunk_instances_json = os.path.join(chunk_folder,'instances_chunk_{}.json'.format(chunk_str))
+    chunk_instances_json = os.path.join(chunk_folder,'instances_chunk_{}.json'.format(
+        chunk_str))
     chunk_instances_dict = {'instances':chunk}
     with open(chunk_instances_json,'w') as f:
         json.dump(chunk_instances_dict,f,indent=1)
     
-    chunk_detections_json = os.path.join(chunk_folder,'detections_chunk_{}.json'.format(chunk_str))
+    chunk_detections_json = os.path.join(chunk_folder,'detections_chunk_{}.json'.format(
+        chunk_str))
     
     detection_predictions_this_chunk = []
     
@@ -147,7 +155,8 @@ for i_chunk,chunk in enumerate(chunks):
     with open(chunk_detections_json,'w') as f:
         json.dump(detection_predictions_dict,f,indent=1)
                 
-    chunk_predictions_json = os.path.join(chunk_folder,'predictions_chunk_{}.json'.format(chunk_str))
+    chunk_predictions_json = os.path.join(chunk_folder,'predictions_chunk_{}.json'.format(
+        chunk_str))
     
     if os.path.isfile(chunk_predictions_json):
         print('Warning: chunk output file {} exists'.format(chunk_predictions_json))
@@ -155,7 +164,8 @@ for i_chunk,chunk in enumerate(chunks):
     chunk_prediction_files.append(chunk_predictions_json)
     
     chunk_script = os.path.join(chunk_folder,'run_chunk_{}.sh'.format(i_chunk))
-    cmd = 'python speciesnet/scripts/run_model.py --classifier_only --model "{}"'.format(model_file)
+    cmd = 'python speciesnet/scripts/run_model.py --classifier_only --model "{}"'.format(
+        model_file)
     cmd += ' --instances_json "{}"'.format(chunk_instances_json)
     cmd += ' --predictions_json "{}"'.format(chunk_predictions_json)
     cmd += ' --detections_json "{}"'.format(chunk_detections_json)
@@ -192,12 +202,15 @@ classifier_cmd = '\n\n'.join([classifier_init_cmd,classifier_script_file])
 
 from megadetector.utils.wi_utils import merge_prediction_json_files
 
-input_prediction_files = chunk_prediction_files
-output_prediction_file = classifier_output_file_modular
-
-merge_prediction_json_files(input_prediction_files=input_prediction_files,
-                            output_prediction_file=output_prediction_file)
+merge_prediction_json_files(input_prediction_files=chunk_prediction_files,
+                            output_prediction_file=classifier_output_file_modular)
     
+
+#%% Validate classification results
+
+from megadetector.utils.wi_utils import validate_predictions_file
+validate_predictions_file(classifier_output_file_modular,instances_json)
+
 
 #%% Run ensemble
 
@@ -214,6 +227,17 @@ ensemble_commands.append(cmd)
 
 ensemble_cmd = '\n\n'.join(ensemble_commands)
 # print(ensemble_cmd); clipboard.copy(ensemble_cmd)
+
+
+#%% Validate ensemble results
+
+from megadetector.utils.wi_utils import validate_predictions_file
+validate_predictions_file(ensemble_output_file_modular,instances_json)
+
+
+#%% Review geofencing changes
+
+# If no country/state/lat/lon was supplied, there should be no changes due to geofencing
 
 
 #%% Convert output file to MD format 

@@ -1121,7 +1121,9 @@ def generate_md_results_from_predictions_json(predictions_json_file,
 # ...def generate_md_results_from_predictions_json(...)
         
 
-def generate_predictions_json_from_md_results(md_results_file,predictions_json_file,base_folder=None):
+def generate_predictions_json_from_md_results(md_results_file,
+                                              predictions_json_file,
+                                              base_folder=None):
     """
     Generate a predictions.json file from the MD-formatted .json file [md_results_file].  Typically,
     MD results files use relative paths, and predictions.json files use absolute paths, so 
@@ -1277,7 +1279,43 @@ def merge_prediction_json_files(input_prediction_files,output_prediction_file):
     with open(output_prediction_file,'w') as f:
         json.dump(output_dict,f,indent=1)
     
+
+def validate_predictions_file(fn,instances=None,verbose=True):
     
+    with open(fn,'r') as f:
+        d = json.load(f)
+    predictions = d['predictions']
+        
+    failures = []
+
+    for im in predictions:
+        if 'failures' in im:
+            failures.append(im)
+
+    if verbose:
+        print('Read detector results for {} images, with {} failure(s)'.format(
+            len(d['predictions']),len(failures)))
+        
+    if instances is not None:
+        if isinstance(instances,str):
+            if os.path.isdir(instances):
+                instances = generate_instances_json_from_folder(folder=instances)
+            elif os.path.isfile(instances):
+                with open(instances,'r') as f:
+                    instances = json.load(f)
+            else:
+                raise ValueError('Could not find instances file/folder {}'.format(
+                    instances))
+        assert isinstance(instances,dict)
+        assert 'instances' in instances
+        instances = instances['instances']
+        if verbose:
+            print('Expected results for {} files'.format(len(instances)))
+        assert len(instances) == len(predictions)
+
+# ...def validate_predictions_file(...)        
+
+
 #%% Functions related to geofencing and taxonomy mapping
 
 # This maps a taxonomy string (e.g. mammalia;cetartiodactyla;cervidae;odocoileus;virginianus) to 
