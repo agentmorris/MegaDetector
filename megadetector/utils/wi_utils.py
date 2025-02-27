@@ -31,6 +31,7 @@ from megadetector.utils.ct_utils import round_floats_in_nested_dict
 from megadetector.utils.ct_utils import is_list_sorted
 from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
+from megadetector.utils.ct_utils import sort_dictionary_by_value
 from megadetector.utils.path_utils import find_images
 from megadetector.postprocessing.validate_batch_results import \
     validate_batch_results, ValidateBatchResultsOptions
@@ -872,6 +873,7 @@ def get_kingdom(prediction_string):
         str: the kingdom field from the input string
     """
     tokens = prediction_string.split(';')
+    assert is_valid_prediction_string(prediction_string)
     return tokens[1]
 
 
@@ -1278,9 +1280,25 @@ def merge_prediction_json_files(input_prediction_files,output_prediction_file):
     os.makedirs(os.path.dirname(output_prediction_file),exist_ok=True)
     with open(output_prediction_file,'w') as f:
         json.dump(output_dict,f,indent=1)
-    
+
+# ...def merge_prediction_json_files(...)    
+
 
 def validate_predictions_file(fn,instances=None,verbose=True):
+    """
+    Validate the predictions.json file [fn].
+    
+    Args:
+        fn (str): a .json file in predictions.json (SpeciesNet) format
+        instances (str or list, optional): a folder, instances.json file,
+            or dict loaded from an instances.json file.  If supplied, this
+            function will verify that [fn] contains the same number of 
+            images as [instances].
+        verbose (bool, optional): enable additional debug output
+        
+    Returns:
+        dict: the contents of [fn]        
+    """
     
     with open(fn,'r') as f:
         d = json.load(f)
@@ -1313,7 +1331,82 @@ def validate_predictions_file(fn,instances=None,verbose=True):
             print('Expected results for {} files'.format(len(instances)))
         assert len(instances) == len(predictions)
 
+    return d
+
 # ...def validate_predictions_file(...)        
+
+
+def find_geofence_adjustments(ensemble_json_file,use_latin_names=False):
+    """
+    Count the number of instances of each unique change made by the geofence.
+    
+    Args:
+        ensemble_json_file (str): SpeciesNet-formatted .json file produced
+            by the full ensemble.
+        use_latin_names (bool, optional): return a mapping using binomial names
+            rather than common names.
+    
+    Returns:
+        dict: maps strings that look like "puma,felidae family" to integers, 
+            where that entry would indicate the number of times that "puma" was 
+            predicted, but mapped to family level by the geofence.  Sorted in 
+            descending order by count.
+    """
+    
+    ensemble_results = validate_predictions_file(ensemble_json_file)
+    
+    assert isinstance(ensemble_results,dict)
+    predictions = ensemble_results['predictions']
+    
+    # Maps comma-separated pairs of common names (or binomial names) to
+    # the number of times that transition (first --> second) happened
+    rollup_pair_to_count = defaultdict(int)
+    
+    # prediction = predictions[0]
+    for prediction in tqdm(predictions):
+        
+        if 'failures' in prediction and \
+            prediction['failures'] is not None and \
+            len(prediction['failures']) > 0:
+                continue
+            
+        assert 'prediction_source' in prediction, \
+            'Prediction present without [prediction_source] field, are you sure this ' + \
+            'is an ensemble output file?'
+        
+        if 'geofence' in prediction['prediction_source']:
+            
+            classification_taxonomy_string = \
+                prediction['classifications']['classes'][0]
+            prediction_taxonomy_string = prediction['prediction']
+            assert is_valid_prediction_string(classification_taxonomy_string)
+            assert is_valid_prediction_string(prediction_taxonomy_string)
+
+            # Typical examples:
+            # '86f5b978-4f30-40cc-bd08-be9e3fba27a0;mammalia;rodentia;sciuridae;sciurus;carolinensis;eastern gray squirrel'
+            # 'e4d1e892-0e4b-475a-a8ac-b5c3502e0d55;mammalia;rodentia;sciuridae;;;sciuridae family'
+            classification_common_name = classification_taxonomy_string.split(';')[-1]
+            prediction_common_name = prediction_taxonomy_string.split(';')[-1]
+            classification_binomial_name = classification_taxonomy_string.split(';')[-2]
+            prediction_binomial_name = prediction_taxonomy_string.split(';')[-2]
+            
+            input_name = classification_binomial_name if use_latin_names else \
+                classification_common_name
+            output_name = prediction_binomial_name if use_latin_names else \
+                prediction_common_name
+                
+            rollup_pair = input_name.strip() + ',' + output_name.strip()
+            rollup_pair_to_count[rollup_pair] += 1
+            
+        # ...if we made a geofencing change
+        
+    # ...for each prediction
+           
+    rollup_pair_to_count = sort_dictionary_by_value(rollup_pair_to_count,reverse=True)
+    
+    return rollup_pair_to_count
+
+# ...def find_geofence_adjustments(...)    
 
 
 #%% Functions related to geofencing and taxonomy mapping

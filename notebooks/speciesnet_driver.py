@@ -235,9 +235,40 @@ from megadetector.utils.wi_utils import validate_predictions_file
 validate_predictions_file(ensemble_output_file_modular,instances_json)
 
 
-#%% Review geofencing changes
+#%% Generate a list of corrections made by geofencing, and counts
 
-# If no country/state/lat/lon was supplied, there should be no changes due to geofencing
+from megadetector.utils.wi_utils import find_geofence_adjustments
+from megadetector.utils.ct_utils import is_list_sorted
+
+rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular,
+                                                 use_latin_names = False)
+
+min_count = 50
+
+footer_text = ''
+
+rollup_pair_to_count = \
+    {key: value for key, value in rollup_pair_to_count.items() if value >= min_count}
+
+# rollup_pair_to_count is sorted in descending order by count
+assert is_list_sorted(list(rollup_pair_to_count.values()),reverse=True)
+
+if len(rollup_pair_to_count) > 0:
+    
+    footer_text = \
+        '<h3>Geofence changes that occurred more than {} times</h3>\n'.format(min_count)
+    footer_text += '<p>These numbers refer to the whole dataset, not just the sample used for this page.</p>\n'
+    footer_text += '<div class="contentdiv">\n'
+    
+    print('Rollup changes with count > {}:'.format(min_count))
+    for rollup_pair in rollup_pair_to_count.keys():
+        count = rollup_pair_to_count[rollup_pair]
+        rollup_pair_s = rollup_pair.replace(',',' --> ')
+        print('{}: {}'.format(rollup_pair_s,count))
+        rollup_pair_html = rollup_pair.replace(',',' &rarr; ')
+        footer_text += '{} ({})<br>\n'.format(rollup_pair_html,count)
+
+    footer_text += '</div>\n'
 
 
 #%% Convert output file to MD format 
@@ -440,6 +471,7 @@ options.separate_detections_by_category = True
 options.sample_seed = 0
 options.max_figures_per_html_file = 2500
 options.sort_classification_results_by_count = True
+options.footer_text = footer_text
 
 options.parallelize_rendering = True
 options.parallelize_rendering_n_cores = 10
