@@ -59,10 +59,28 @@ def is_valid_prediction_string(s):
     Returns:
         bool: True if this looks more or less like a WI prediction string
     """
-    
+
+    # Note to self... don't get tempted to remove spaces here; spaces are used
+    # to indicate subspecies.
     return isinstance(s,str) and (len(s.split(';')) == 7) and (s == s.lower())
 
 
+def is_valid_taxonomy_string(s):
+    """
+    Determine whether [s] is a valid 5-token WI taxonomy string.  Taxonmy strings look like:
+    
+    'mammalia;rodentia;;;;rodent'
+    'mammalia;chordata;canidae;canis;lupus dingo'
+    
+    Args:
+        s (str): the string to be tested for validity
+        
+    Returns:
+        bool: True if this looks more or less like a WI taxonomy string
+    """
+    return isinstance(s,str) and (len(s.split(';')) == 5) and (s == s.lower())
+
+    
 def wi_result_to_prediction_string(r):
     """
     Convert the dict [r] - typically loaded from a row in a downloaded .csv file - to
@@ -1275,14 +1293,32 @@ def merge_prediction_json_files(input_prediction_files,output_prediction_file):
     with open(output_prediction_file,'w') as f:
         json.dump(output_dict,f,indent=1)
     
-    
-#%% Functions related to geofencing and taxonomy mapping
+
+#%% Module-level globals related to taxonomy mapping and geofencing    
 
 # This maps a taxonomy string (e.g. mammalia;cetartiodactyla;cervidae;odocoileus;virginianus) to 
 # a dict with keys taxon_id, common_name, kingdom, phylum, class, order, family, genus, species
 taxonomy_string_to_taxonomy_info = None
+
+# Maps a binomial name (possibly three tokens, if it's a subspecies) to the same dict
+# dscribed above.
 binomial_name_to_taxonomy_info = None
+
+# Maps a common name to the same dict described above
 common_name_to_taxonomy_info = None
+
+# Dict mapping 5-token semicolon-delimited taxonomy strings to geofencing rules
+taxonomy_string_to_geofencing_rules = None
+
+# Maps lower-case country names to upper-case country codes
+country_to_country_code = None
+
+# Maps upper-case country codes to lower-case country names
+country_code_to_country = None
+
+
+#%% Functions related to geofencing and taxonomy mapping
+
 
 def taxonomy_info_to_taxonomy_string(taxonomy_info):
     """
@@ -1308,12 +1344,16 @@ def initialize_taxonomy_info(taxonomy_file,force_init=False,encoding='cp1252'):
     [common_name_to_taxonomy_info].
     
     Args:
-        taxonomy_file (str): .json file containing WI taxonomy information
+        taxonomy_file (str): .json file containing mappings from the short taxonomy strings 
+            to the longer strings with GUID and common name, see example below.            
         force_init (bool, optional): if the output dicts already exist, should we
             re-initialize anyway?
         encoding (str, optional): character encoding to use when opening the .json file
     """
     
+    if encoding is None:
+        encoding = 'cp1252'
+        
     global taxonomy_string_to_taxonomy_info
     global binomial_name_to_taxonomy_info
     global common_name_to_taxonomy_info
@@ -1376,22 +1416,159 @@ def initialize_taxonomy_info(taxonomy_file,force_init=False,encoding='cp1252'):
             # print('Warning: no binomial name for {}'.format(taxonomy_string))
             pass
         else:
+            # strip(), but don't remove spaces from the species name; 
+            # subspecies are separated with a space, e.g. canis;lupus dingo
             binomial_name = tokens[4].strip() + ' ' + tokens[5].strip()
             binomial_name_to_taxonomy_info[binomial_name] = taxon_info
+    
+    print('Created {} records in taxonomy_string_to_taxonomy_info'.format(
+        len(taxonomy_string_to_taxonomy_info)))
         
 # ...def initialize_taxonomy_info(...)
 
 
-#%% Geofencing functions
+def _parse_code_list(codes):
+    """
+    Turn a list of country or state codes in string, delimited string, or list format
+    into a list.  Also does basic validity checking.
+    """
+    
+    if not isinstance(codes,list):
+        
+        assert isinstance(codes,str)
+        
+        codes = codes.strip()
+        
+        # This is just a single codes
+        if ',' not in codes:
+            codes = [codes]
+        else:
+            codes = codes.split(',')
+        codes = [c.strip() for c in codes]
+        
+    assert isinstance(codes,list)
+    
+    codes = [c.upper().strip() for c in codes]
+    
+    for c in codes:
+        assert len(c) in (2,3)
+        
+    return codes
+        
+        
+def _generate_csv_rows_to_block_all_countries_except(
+        species_string,
+        block_except_list):
+    """
+    Generate rows in the format expected by geofence_fixes.csv, representing a list of
+    allow and block rules to block all countries currently allowed for this species
+    except [allow_countries], and add allow rules these countries.
+    """
+    
+    assert is_valid_taxonomy_string(species_string), \
+        '{} is not a valid taxonomy string'.format(species_string)
+        
+    global taxonomy_string_to_taxonomy_info
+    global binomial_name_to_taxonomy_info
+    global common_name_to_taxonomy_info
+    
+    assert taxonomy_string_to_geofencing_rules is not None, \
+        'Initialize geofencing prior to species lookup'
+    assert taxonomy_string_to_taxonomy_info is not None, \
+        'Initialize taxonomy lookup prior to species lookup'
+        
+    geofencing_rules_this_species = \
+        taxonomy_string_to_geofencing_rules[species_string]
+        
+    allowed_countries = []
+    if 'allow' in geofencing_rules_this_species:
+        allowed_countries.extend(geofencing_rules_this_species['allow'])
+        
+    blocked_countries = []
+    if 'block' in geofencing_rules_this_species:
+        blocked_countries.extend(geofencing_rules_this_species['block'])
+        
+    block_except_list = _parse_code_list(block_except_list)
+    
+    countries_to_block = []
+    countries_to_allow = []
+    
+    # country = allowed_countries[0]
+    for country in allowed_countries:
+        if country not in block_except_list and country not in blocked_countries:
+            countries_to_block.append(country)
+    
+    for country in block_except_list:
+        if country in blocked_countries:
+            raise ValueError("I can't allow a country that has already been blocked")
+        if country not in allowed_countries:
+            countries_to_allow.append(country)
+            
+    rows = generate_csv_rows_for_species(species_string,
+                                         allow_countries=countries_to_allow,
+                                         block_countries=countries_to_block)
+    
+    return rows
+   
+# ...def _generate_csv_rows_to_block_all_countries_except(...)
+    
+    
+def generate_csv_rows_for_species(species_string,
+                                  allow_countries=None,
+                                  block_countries=None,
+                                  allow_states=None,
+                                  block_states=None,
+                                  blockexcept_countries=None):
+    """
+    Generate rows in the format expected by geofence_fixes.csv, representing a list of
+    allow and/or block rules for the specified species and countries/states.  Does not check 
+    that the rules make sense; e.g. nothing will stop you in this function from both allowing
+    and blocking a country.
+    
+    Args:
+        species_string (str): string in semicolon-delimited WI taxonomy format
+        allow_countries (optional, list or str): three-letter country codes, list of
+            country codes, or comma-separated list of country codes to allow
+        block_countries (optional, list or str): three-letter country codes, list of
+            country codes, or comma-separated list of country codes to block
+        allow_states (optional, list or str): two-letter state codes, list of
+            state codes, or comma-separated list of state codes to allow
+        block_states (optional, list or str): two-letter state code, list of
+            state codes, or comma-separated list of state codes to block        
+            
+    Returns:
+        list of str: lines ready to be pasted into geofence_fixes.csv
+    """
+    
+    assert is_valid_taxonomy_string(species_string), \
+        '{} is not a valid taxonomy string'.format(species_string)
+    
+    lines = []
+    
+    if allow_countries is not None:
+        allow_countries = _parse_code_list(allow_countries)
+        for country in allow_countries:
+            lines.append(species_string + ',allow,' + country + ',')
+    
+    if block_countries is not None:
+        block_countries = _parse_code_list(block_countries)
+        for country in block_countries:
+            lines.append(species_string + ',block,' + country + ',')
+            
+    if allow_states is not None:
+        allow_states = _parse_code_list(allow_states)
+        for state in allow_states:
+            lines.append(species_string + ',allow,USA,' + state)
+    
+    if block_states is not None:
+        block_states = _parse_code_list(block_states)
+        for state in block_states:
+            lines.append(species_string + ',block,USA,' + state)
+         
+    return lines
 
-# Dict mapping semicolon-delimited taxonomy strings to geofencing rules
-taxonomy_string_to_geofencing_rules = None
+# ...def generate_csv_rows_for_species(...)
 
-# Maps lower-case country names to upper-case country codes
-country_to_country_code = None
-
-# Maps upper-case country codes to lower-case country names
-country_code_to_country = None
 
 def initialize_geofencing(geofencing_file,country_code_file,force_init=False):
     """
@@ -1401,10 +1578,13 @@ def initialize_geofencing(geofencing_file,country_code_file,force_init=False):
     
     Args:
         geofencing_file (str): .json file with geofencing rules
-        country_code_file (str): .csv file with country code mappings
+        country_code_file (str): .csv file with country code mappings, in columns 
+            called "name" and "alpha-3", e.g. from
+            https://github.com/lukes/ISO-3166-Countries-with-Regional-Codes/blob/master/all/all.csv
         force_init (bool, optional): if the output dicts already exist, should we
             re-initialize anyway?
     """
+    
     global taxonomy_string_to_geofencing_rules
     global country_to_country_code
     global country_code_to_country
@@ -1477,6 +1657,42 @@ def initialize_geofencing(geofencing_file,country_code_file,force_init=False):
 # ...def initialize_geofencing(...)
     
 
+def _species_string_to_canonical_species_string(species):
+    """
+    Convert a string that may be a 5-token species string, a binomial name,
+    or a common name into a 5-token species string.
+    """
+    
+    global taxonomy_string_to_taxonomy_info
+    global binomial_name_to_taxonomy_info
+    global common_name_to_taxonomy_info
+    
+    assert taxonomy_string_to_geofencing_rules is not None, \
+        'Initialize geofencing prior to species lookup'
+    assert taxonomy_string_to_taxonomy_info is not None, \
+        'Initialize taxonomy lookup prior to species lookup'
+            
+    species = species.lower()
+    
+    # Turn "species" into a taxonomy string
+
+    # If this is already a taxonomy string...    
+    if len(species.split(';')) == 5:
+        pass
+    # If this is a binomial name (which may include a subspecies)...
+    elif (len(species.split(' ')) in (2,3)) and (species in binomial_name_to_taxonomy_info):
+        taxonomy_info = binomial_name_to_taxonomy_info[species]
+        taxonomy_string = taxonomy_info_to_taxonomy_string(taxonomy_info)        
+    # If this is a common name...
+    elif species in common_name_to_taxonomy_info:
+        taxonomy_info = common_name_to_taxonomy_info[species]
+        taxonomy_string = taxonomy_info_to_taxonomy_string(taxonomy_info)        
+    else:
+        raise ValueError('Could not find taxonomic information for {}'.format(species))
+        
+    return taxonomy_string
+            
+
 def species_allowed_in_country(species,country,state=None,return_status=False):
     """
     Determines whether [species] is allowed in [country], according to 
@@ -1495,35 +1711,16 @@ def species_allowed_in_country(species,country,state=None,return_status=False):
         False.  Returns a more detailed string if return_status is set.
     """
 
+    global taxonomy_string_to_taxonomy_info
+    global binomial_name_to_taxonomy_info
+    global common_name_to_taxonomy_info
+    
     assert taxonomy_string_to_geofencing_rules is not None, \
         'Initialize geofencing prior to species lookup'
     assert taxonomy_string_to_taxonomy_info is not None, \
         'Initialize taxonomy lookup prior to species lookup'
         
-    # species = 'mammalia;cetartiodactyla;cervidae;odocoileus;virginianus'
-    # species = 'didelphis marsupialis'
-    # country = 'Guatemala'
-    
-    # species = 'common opossum'
-    
-    species = species.lower()
-    
-    # Turn "species" into a taxonomy string
-
-    # If this is already a taxonomy string...    
-    if len(species.split(';')) == 5:
-        pass
-    # If this is a binomial name...
-    elif len(species.split(' ')) == 2 and (species in binomial_name_to_taxonomy_info):
-        taxonomy_info = binomial_name_to_taxonomy_info[species]
-        taxonomy_string = taxonomy_info_to_taxonomy_string(taxonomy_info)        
-    # If this is a common name...
-    elif species in common_name_to_taxonomy_info:
-        taxonomy_info = common_name_to_taxonomy_info[species]
-        taxonomy_string = taxonomy_info_to_taxonomy_string(taxonomy_info)        
-    else:
-        raise ValueError('Could not find taxonomic information for {}'.format(species))
-        
+    taxonomy_string = _species_string_to_canonical_species_string(species)
     
     # Normalize [state]
     
@@ -1565,6 +1762,8 @@ def species_allowed_in_country(species,country,state=None,return_status=False):
         blocked_countries = list(geofencing_rules_this_species['block'])
     
     status = None
+    
+    # The convention is that block rules win over allow rules
     if country_code in blocked_countries:
         status = 'blocked'
     elif country_code in allowed_countries:
@@ -1621,6 +1820,58 @@ if False:
     
     pass
 
+    #%% Shared cell to initialize geofencing and taxonomy information
+    
+    from megadetector.utils.wi_utils import species_allowed_in_country # noqa
+    from megadetector.utils.wi_utils import initialize_geofencing, initialize_taxonomy_info # noqa
+    from megadetector.utils.wi_utils import _species_string_to_canonical_species_string # noqa
+    from megadetector.utils.wi_utils import generate_csv_rows_for_species # noqa
+    from megadetector.utils.wi_utils import _generate_csv_rows_to_block_all_countries_except # noqa
+
+    from megadetector.utils.wi_utils import taxonomy_string_to_geofencing_rules # noqa
+    from megadetector.utils.wi_utils import taxonomy_string_to_taxonomy_info # noqa
+    
+    geofencing_file = r'c:\git\cameratrapai\data\geofence_base.json'
+    
+    country_code_file = r'g:\temp\country-codes.csv'
+    # encoding = 'cp1252'; taxonomy_file = r'g:\temp\taxonomy_mapping-' + encoding + '.json'    
+    encoding = None; taxonomy_file = r'g:\temp\taxonomy_mapping.json'
+    
+    initialize_geofencing(geofencing_file, country_code_file, force_init=True)
+    initialize_taxonomy_info(taxonomy_file, force_init=True, encoding=encoding)
+    
+    
+    #%% Test driver for geofence_fixes.csv function
+    
+    block_except_list = 'AUS, PNG, THA, IDN, MYS'
+    species = 'dingo'
+    species_string = _species_string_to_canonical_species_string(species)
+    rows = _generate_csv_rows_to_block_all_countries_except(species_string,block_except_list)
+        
+    import clipboard; clipboard.copy('\n'.join(rows))
+    
+    
+    #%%
+    
+    generate_csv_rows_for_species(species_string=species_string,
+                                  allow_countries=None,
+                                  block_countries=None,
+                                  allow_states=None,
+                                  block_states=None,
+                                  blockexcept_countries=None)
+    
+    
+    _generate_csv_rows_to_block_all_countries_except(species_string,'AUS')
+    
+    
+    #%% Test the effects of geofence changes
+
+    species = 'canis lupus dingo'
+    country = 'guatemala'
+    species_allowed_in_country(species,country,state=None,return_status=False)
+    
+    
+    
     #%% instances.json generation test
     
     from megadetector.utils.wi_utils import generate_instances_json_from_folder # noqa
@@ -1654,13 +1905,6 @@ if False:
     
     #%% Geofencing tests
     
-    geofencing_file = r'g:\temp\geofence_mapping.json'
-    country_code_file = r'G:/temp/country-codes.csv'    
-    encoding = 'cp1252'; taxonomy_file = r'g:\temp\taxonomy_mapping-' + encoding + '.json'
-    
-    initialize_taxonomy_info(taxonomy_file, force_init=True, encoding=encoding)    
-    initialize_geofencing(geofencing_file, country_code_file, force_init=True)
-    
     species = 'didelphis marsupialis'
     print(binomial_name_to_taxonomy_info[species])
     country = 'Guatemala'
@@ -1673,13 +1917,6 @@ if False:
     
     
     #%% Test several species
-    
-    geofencing_file = r'g:\temp\geofence_mapping.json'
-    country_code_file = r'G:/temp/country-codes.csv'    
-    encoding = 'cp1252'; taxonomy_file = r'g:\temp\taxonomy_mapping-' + encoding + '.json'
-    
-    initialize_taxonomy_info(taxonomy_file, force_init=True, encoding=encoding)    
-    initialize_geofencing(geofencing_file, country_code_file, force_init=True)
     
     if True:
         

@@ -26,7 +26,7 @@
 
 Conservation biologists invest a huge amount of time reviewing camera trap images, and much of that time is spent reviewing images they aren't interested in.  This primarily includes empty images, but for many projects, images of people and vehicles are also "noise", or at least need to be handled separately from animals.
 
-*AI can accelerate this process, letting biologists spend their time on the images that matter.*
+*AI can accelerate this process, letting biologists spend more time on science, and less time clicking through images.*
 
 To this end, this page hosts a model we've trained - called "MegaDetector" - to detect animals, people, and vehicles in camera trap images.  It does not identify animals to the species level, it just finds them.  
 
@@ -616,10 +616,10 @@ MegaDetector v5a was trained on all MDv5b training data, and new (non-camera-tra
 
 MD1000 was trained on a new dataset that overlaps with the substantial majority of the MDv5b training set.  That includes:
 
-* All the camera trap datasets listed above that were public at the time MDv5 was trained, with some cleanup of the labels (no whole public datasets were excluded, but some public images were excluded after a review of the labels revealed quality issues for some datasets that were too hard to fix)
+* All the camera trap datasets listed above that were public at the time MDv5 was trained, with some cleanup of the labels (mostly adjustments to incorrectly-normalized boxes, also some exclusions; no whole public datasets were excluded, but some public images were excluded after a review of the labels revealed quality issues for some datasets that were disproportionately difficult to fix)
 * Several datasets that were private at the time MDv5 was trained, but are now public, including [Idaho Camera Traps](https://lila.science/datasets/idaho-camera-traps/), [Orinoquía Camera Traps](https://lila.science/orinoquia-camera-traps/),  [SWG Camera Traps](https://lila.science/datasets/swg-camera-traps), and a small subset of [Trail Camera Images of New Zealand Animals](https://lila.science/datasets/nz-trailcams)
 * Much of the non-public data from MDv5 (but not all; there were images used for MDv5 training that I was unable to reacquire and re-license)
-* New non-public data that was designed to (a) "backfill" some of the MDv5 training datasets to which I no longer had access, and (b) fix systematic gaps in MDv5 training data, particularly around large reptiles
+* New non-public data that was designed to (a) "backfill" some of the MDv5 training datasets to which I no longer have access, and (b) fix systematic gaps in MDv5 training data, particularly around large reptiles
 
 Overall, experiments suggest that the MD1000 training set is substantially similar to the MDv5 training set (e.g., running MDv5 on the MD1000 validation set yields results that are similar to MDv5 running on its own validation set).  
 
