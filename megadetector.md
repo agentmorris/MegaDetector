@@ -614,13 +614,13 @@ MegaDetector v5a was trained on all MDv5b training data, and new (non-camera-tra
 * The [iNaturalist Dataset 2017](https://github.com/visipedia/inat_comp/tree/master/2017)
 * [COCO](https://cocodataset.org/#home)
 
-MD1000 was trained on a new dataset that overlaps with the substantial majority of the MDv5b training set.  That includes:
+MD1000 was trained on a dataset that overlaps with the substantial majority of the MDv5b training set.  That includes:
 
 * All the camera trap datasets listed above that were public at the time MDv5 was trained, with some cleanup of the labels (mostly adjustments to incorrectly-normalized boxes, also some exclusions; no whole public datasets were excluded, but some public images were excluded after a review of the labels revealed quality issues for some datasets that were disproportionately difficult to fix)
-* Several datasets that were private at the time MDv5 was trained, but are now public, including [Idaho Camera Traps](https://lila.science/datasets/idaho-camera-traps/), [Orinoquía Camera Traps](https://lila.science/orinoquia-camera-traps/),  [SWG Camera Traps](https://lila.science/datasets/swg-camera-traps), and a small subset of [Trail Camera Images of New Zealand Animals](https://lila.science/datasets/nz-trailcams)
+* Several datasets that were private at the time MDv5 was trained, but are now public, including [Idaho Camera Traps](https://lila.science/datasets/idaho-camera-traps/), [Orinoquía Camera Traps](https://lila.science/orinoquia-camera-traps/), [SWG Camera Traps](https://lila.science/datasets/swg-camera-traps), and a small subset of [Trail Camera Images of New Zealand Animals](https://lila.science/datasets/nz-trailcams)
 * Much of the non-public data from MDv5 (but not all; there were images used for MDv5 training that I was unable to reacquire and re-license)
 * New non-public data that was designed to (a) "backfill" some of the MDv5 training datasets to which I no longer have access, and (b) fix systematic gaps in MDv5 training data, particularly around large reptiles
 
-Overall, experiments suggest that the MD1000 training set is substantially similar to the MDv5 training set (e.g., running MDv5 on the MD1000 validation set yields results that are similar to MDv5 running on its own validation set).  
+Overall, experiments suggest that the MD1000 training set is substantially similar to the MDv5 training set (e.g., running MDv5 on the MD1000 validation set yields results that are similar to MDv5 running on its own validation set).
 
 MD1000 was also pre-trained on output from MDv5 (only using locations from LILA that are <i>not</i> in the MDv5 validation split).  As much as I'd like to think this pre-training allowed the model to retain some information about data I didn't have the ability to explicitly train on, that wasn't really the point, and this probably resulted in little or no information transferred to the final MD1000 models; this was more like a warmup phase that was helpful in reducing the total <i>calendar</i> time for training (i.e., I could keep working on data while the models were getting to a better-than-default starting point).  I don't include that pre-training when I refer to the training data size.
