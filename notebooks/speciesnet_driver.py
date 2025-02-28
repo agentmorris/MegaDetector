@@ -39,12 +39,7 @@ speciesnet_folder = os.path.expanduser('~/git/cameratrapai')
 speciesnet_pt_environment_name = 'speciesnet-package-pytorch'
 speciesnet_tf_environment_name = 'speciesnet-package-tf'
 
-md_environment_name = 'megadetector'
-md_folder = os.path.expanduser('~/git/MegaDetector/megadetector')
-md_python_path = '{}:{}'.format(
-    os.path.expanduser('~/git/yolov5-md'),
-    os.path.expanduser('~/git/MegaDetector'))
-
+# Can be None to omit the CUDA prefix
 gpu_number = 0
     
 # This is not related to running the model, only to postprocessing steps
@@ -557,6 +552,12 @@ if False:
 
     #%% Run everything using MD + SpeciesNet
     
+    md_environment_name = 'megadetector'
+    md_folder = os.path.expanduser('~/git/MegaDetector/megadetector')
+    md_python_path = '{}:{}'.format(
+        os.path.expanduser('~/git/yolov5-md'),
+        os.path.expanduser('~/git/MegaDetector'))
+
     detector_output_file_md = os.path.join(output_base,job_name + '-detector_output_md.json')
     detector_output_file_predictions_format_md = insert_before_extension(detector_output_file_md,'predictons-format')
     classifier_output_file_md = os.path.join(output_base,job_name + '-classifier_output_md.json')
