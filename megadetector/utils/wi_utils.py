@@ -1348,6 +1348,7 @@ def validate_predictions_file(fn,instances=None,verbose=True):
             len(d['predictions']),len(failures)))
         
     if instances is not None:
+        
         if isinstance(instances,str):
             if os.path.isdir(instances):
                 instances = generate_instances_json_from_folder(folder=instances)
@@ -1362,7 +1363,15 @@ def validate_predictions_file(fn,instances=None,verbose=True):
         instances = instances['instances']
         if verbose:
             print('Expected results for {} files'.format(len(instances)))
-        assert len(instances) == len(predictions)
+        assert len(instances) == len(predictions), \
+            '{} instances expected, {} found'.format(
+                len(instances),len(predictions))
+        
+        expected_files = set([instance['filepath'] for instance in instances])
+        found_files = set([prediction['filepath'] for prediction in predictions])
+        assert expected_files == found_files
+        
+    # ...if a list of instances was supplied
 
     return d
 
