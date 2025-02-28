@@ -1,3 +1,14 @@
+"""
+
+speciesnet_driver.py
+   
+Semi-automated process for managing a local SpeciesNet job, including
+standard postprocessing steps.  This version uses the complete ensemble logic
+and therefore does not handle multi-species images.  If multi-species images
+are rare in your data, consider using speciesnet_multispecies_driver.py instead.
+
+"""
+
 #%% Imports
 
 import os
@@ -16,43 +27,51 @@ import clipboard # noqa
 
 organization_name = 'organization_name'
 job_name = 'job_name'
-output_base = os.path.join(os.path.expanduser('~/postprocessing'),organization_name,job_name)
-os.makedirs(output_base,exist_ok=True)
-
-preview_folder_base = os.path.join(output_base,'preview')
 
 input_folder = '/stuff/input_folder'
 assert not input_folder.endswith('/')
 model_file = os.path.expanduser('~/models/speciesnet/crop')
+# model_file = 'kaggle:google/speciesnet/keras/v4.0.0a'
+
 country_code = None
 state_code = None
-instances_json = os.path.join(output_base,'instances.json')
 
 speciesnet_folder = os.path.expanduser('~/git/cameratrapai')
 speciesnet_pt_environment_name = 'speciesnet-package-pytorch'
 speciesnet_tf_environment_name = 'speciesnet-package-tf'
 
-md_environment_name = 'cameratraps-detector'
+md_environment_name = 'megadetector'
 md_folder = os.path.expanduser('~/git/MegaDetector/megadetector')
 md_python_path = '{}:{}'.format(
     os.path.expanduser('~/git/yolov5-md'),
     os.path.expanduser('~/git/MegaDetector'))
 
 gpu_number = 0
-
-if gpu_number is not None:
-    cuda_prefix = 'export CUDA_VISIBLE_DEVICES={} && '.format(gpu_number)
-
-max_images_per_chunk = 5000
-
-classifier_batch_size = 128
-
+    
 # This is not related to running the model, only to postprocessing steps
 # in this notebook.  Threads work better on Windows, processes on Linux.
 use_threads_for_parallelization = (os.name == 'nt')
+max_images_per_chunk = 5000
+classifier_batch_size = 128
+
+
+#%% Validate constants, prepare folders and dependent constants
+
+if gpu_number is not None:
+    cuda_prefix = 'export CUDA_VISIBLE_DEVICES={} && '.format(gpu_number)
+else:
+    cuda_prefix = ''
 
 assert organization_name != 'organization_name'
 assert job_name != 'job_name'
+
+output_base = os.path.join(os.path.expanduser('~/postprocessing'),organization_name,job_name)
+os.makedirs(output_base,exist_ok=True)
+preview_folder_base = os.path.join(output_base,'preview')
+instances_json = os.path.join(output_base,'instances.json')
+
+assert os.path.isolder(speciesnet_folder)
+assert os.path.isolder(input_folder)
 
 
 #%% Generate instances.json
@@ -99,7 +118,7 @@ detector_cmd = '\n\n'.join(detector_commands)
 #%% Validate detector results
 
 from megadetector.utils.wi_utils import validate_predictions_file
-validate_predictions_file(detector_output_file_modular,instances_json)
+_ = validate_predictions_file(detector_output_file_modular,instances_json)
 
 
 #%% Run classifier
