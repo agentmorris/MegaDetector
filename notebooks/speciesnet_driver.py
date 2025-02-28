@@ -53,6 +53,7 @@ use_threads_for_parallelization = (os.name == 'nt')
 
 assert organization_name != 'organization_name'
 assert job_name != 'job_name'
+assert country_code != None
 
 
 #%% Generate instances.json
@@ -99,7 +100,7 @@ detector_cmd = '\n\n'.join(detector_commands)
 #%% Validate detector results
 
 from megadetector.utils.wi_utils import validate_predictions_file
-validate_predictions_file(detector_output_file_modular,instances_json)
+_ = validate_predictions_file(detector_output_file_modular,instances_json)
 
 
 #%% Run classifier
@@ -209,7 +210,7 @@ merge_prediction_json_files(input_prediction_files=chunk_prediction_files,
 #%% Validate classification results
 
 from megadetector.utils.wi_utils import validate_predictions_file
-validate_predictions_file(classifier_output_file_modular,instances_json)
+_ = validate_predictions_file(classifier_output_file_modular,instances_json)
 
 
 #%% Run ensemble
@@ -232,7 +233,7 @@ ensemble_cmd = '\n\n'.join(ensemble_commands)
 #%% Validate ensemble results
 
 from megadetector.utils.wi_utils import validate_predictions_file
-validate_predictions_file(ensemble_output_file_modular,instances_json)
+_ = validate_predictions_file(ensemble_output_file_modular,instances_json)
 
 
 #%% Generate a list of corrections made by geofencing, and counts
