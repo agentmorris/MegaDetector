@@ -7,6 +7,16 @@ for TF or PyTorch
 
 """
 
+# Minimize TF printouts
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+
+try:
+    import logging
+    logging.getLogger('tensorflow').setLevel(logging.ERROR)
+except Exception:
+    pass
+       
 #%% Torch/TF test functions
 
 def torch_test():
@@ -45,7 +55,7 @@ def torch_test():
                 pass
             print('{}: {}'.format(device_id,device_name))
     else:
-        print('No CUDA GPUs reported by PyTorch')
+        print('No GPUs reported by PyTorch')
         
     try:
         if torch.backends.mps.is_built and torch.backends.mps.is_available():
@@ -72,8 +82,15 @@ def tf_test():
     
     from tensorflow.python.platform import build_info as build
     print(f"TF version: {tf.__version__}")
-    print(f"CUDA build version reported by TensorFlow: {build.build_info['cuda_version']}")
-    print(f"CuDNN build version reported by TensorFlow: {build.build_info['cudnn_version']}")
+    
+    if 'cuda_version' not in build.build_info:
+        print('TF does not appear to be built with CUDA')
+    else:
+        print(f"CUDA build version reported by TensorFlow: {build.build_info['cuda_version']}")
+    if 'cudnn_version' not in build.build_info:
+        print('TF does not appear to be built with CuDNN')
+    else:
+        print(f"CuDNN build version reported by TensorFlow: {build.build_info['cudnn_version']}")
 
     try:
         from tensorflow.python.compiler.tensorrt import trt_convert as trt

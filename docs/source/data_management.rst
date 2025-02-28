@@ -193,20 +193,20 @@ data\_management.wi\_download\_csv\_to\_coco module
    :undoc-members:
    :show-inheritance:
 
-data\_management.wi\_to\_md module
------------------------------------------
+data\_management.speciesnet\_to\_md module
+------------------------------------------
 
-.. automodule:: megadetector.data_management.wi_to_md
+.. automodule:: megadetector.data_management.speciesnet_to_md
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: megadetector.data_management.wi_to_md
+   :module: megadetector.data_management.speciesnet_to_md
    :func: main
    :hook:
-   :prog: wi_to_md
+   :prog: speciesnet_to_md
    :no_default_values:
 
 data\_management.yolo\_output\_to\_md\_output module

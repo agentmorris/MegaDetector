@@ -7,6 +7,8 @@
   * [Reptiles and other under-represented species](#reptiles-and-other-under-represented-species)
   * [Unusual camera angles](#unusual-camera-angles)
   * [Random AI failures that will drive you bonkers](#random-ai-failures)
+    * [Random AI failures that have been fixed](#random-ai-failures-that-have-been-fixed)
+	* [Random AI failures that have not been fixed](#random-ai-failures-that-have-not-been-fixed)
   * [Small objects that are <i>just</i> at the detection threshold](#very-small-things)
 * [What can we do about these cases?](#what-can-we-do-about-these-cases)
 * [Ending on a happier note](#ending-on-a-happier-note)
@@ -14,7 +16,7 @@
 
 ## Overview
 
-We like to think MegaDetector works pretty well most of the time; you can read third-party evaluations like [this one](https://wildeyeconservation.org/megadetector-version-5/) and [this one](https://www.sciencedirect.com/science/article/pii/S2351989422001068?via%3Dihub) if you want to feel good about MegaDetector, or you can look at sample results like [these](https://lila.science/public/snapshot_safari_public/snapshot-safari-kar-2022-00-00-v5a.0.0_0.200/detections_animal.html).  But lest you should think MegaDetector always works, this page is here to harsh your mellow a little.
+We like to think MegaDetector works pretty well most of the time; you can read third-party evaluations like [this one](https://wildeyeconservation.org/megadetector-version-5/) and [this one](https://www.sciencedirect.com/science/article/pii/S2351989422001068) if you want to feel good about MegaDetector, or you can look at sample results like [these](https://lila.science/public/snapshot_safari_public/snapshot-safari-kar-2022-00-00-v5a.0.0_0.200/detections_animal.html).  But lest you should think MegaDetector always works, this page is here to harsh your mellow a little.
 
 Of course, any AI model will drive you crazy by missing one image in a dataset where it otherwise works fine, that's not what this page is about.  Also, some things are just outside of MegaDetector's domain: it <i>shouldn't</i> work for fish in underwater video, or for images taken from drones, or for veeeeeeeeeery small things in the distance that aren't discernible (even by humans) as animals in single images.  That's also not what this page is about.
 
@@ -41,6 +43,8 @@ OK, now on to failure stories... these fall into basically four categories:
 ## Known challenges
 
 ### Reptiles and other under-represented species
+
+<i>NB: the results shown here reflect MDv5, but this issue (poor performance on reptiles) was a major motivation for training MegaDetector 1000, and we haven't gone back and assessed each of these images to see how MD1000 performs.  For large, iguana-like reptiles, MD1000 <i>definitely</i> performs better than MDv5; we haven't re-assessed (even anecdotally) performance on snakes, turtles, etc.</i>
 
 In this series of images, the animal in the burrow is pretty visually obvious.  But for some reason MD completely whiffs on the first, finds the second with 14% confidence, and finds the third (visually very similar to the first) with 75% confidence. These are not "difficult" images per se, rather this is a classic example of "this model hasn't seen enough reptiles like this in training".
 
@@ -87,10 +91,6 @@ And rounding out our tour de reptiles, another combination of reptiles and a sli
 
 <i>Images credit University of Florida, Department of Wildlife Ecology and Conservation</i>
 
-#### Reptile retrospective
-
-One thing all of those examples have in common: there's clearly signal there, so fine-tuning is likely to work well.  We just need lots of bounding boxes on reptiles (probably beyond the boxes on iNaturalist data that are included in MDv5a's training data).
-
 ### Unusual camera angles
 
 This is a bit of a catch-all category, including some things we tried to fix between MDv4 and MDv5 (e.g. cameras in trees looking straight down), but a lot of things that are rare and difficult to fix just by accumulating data: cameras inside dens or nests, cameras looking straight down a metal pole, etc.
@@ -129,7 +129,16 @@ MegaDetector does fine when the animals are in front of the fence:
 
 And last but not least, sometimes we see a set of images that we consider to be squarely in the training domain - and in one of these cases, <i>literally in the training data</i> - but for some reason that our eyes can't see, MD gets confused.  I wouldn't think of these as "something about the animal is difficult", it's likely more like "something about the camera or jpeg encoding is difficult".
 
-The first series of images comes from [this issue](https://github.com/ultralytics/yolov5/issues/9294), where MegaDetector doesn't exactly "miss" a series of obvious animals, but it puts the boxes in inexplicable locations.  And, bizarrely, when we process the image at a quarter of MD's standard resolution, everything works fine.  High-resolution == bad, low-resolution == better?  AI is maddening!
+#### Random AI failures that have been fixed
+
+The first series of images comes from [this issue](https://github.com/ultralytics/yolov5/issues/9294), where MDv5 doesn't exactly "miss" a series of obvious animals, but it puts the boxes in inexplicable locations.  And, bizarrely, when we process the image at a quarter of MD's standard resolution, everything works fine.  High-resolution == bad, low-resolution == better?  AI is maddening, right?
+
+It turns out that in this case, this was just a training data bug.  It primarily impacted cameras from the [Snapshot Serengeti](https://lila.science/datasets/snapshot-serengeti) dataset, but occasionally (rarely) popped up on visually-similar cameras in other ecosystems.  <b>This image has been conclusively fixed in MD1000</b>.  I'm leaving it on this page for two reasons:
+
+1. This still represents a <i>category</i> of bugs (training data bugs) that will always exist.  I <i>promise</i> there are more quirky issues like this hiding inside every model, we just haven't found them yet.  
+2. I keep this here in part as a reminder that often these issued are fixable, and really get fixed!  It usually comes down to data.
+
+With that said, here's what the issue looks like in MDv5 results...
 
 <i>Processed at the standard input size of 1280 pixels on the long side</i>
 
@@ -147,9 +156,9 @@ The first series of images comes from [this issue](https://github.com/ultralytic
 
 <img src="images/failure-examples/sample-snapshotsafari-04.jpg" width="600">
 
-Maddening!!!  But also a reminder that in the <i>vast</i> majority of savanna data like this, MD does fine.  This appears to be something about a particular subset of older cameras from the Snapshot Serengeti program that confuse MD.
+#### Random AI failures that have not been fixed
 
-Last but not least, a dataset full of mountain goats where MD had no trouble with probably 90% of the images with goats, but in the other 10% we can just stare straight at a goat that MD doesn't see:
+Last but not least, a dataset full of mountain goats where MD had no trouble with probably 90% of the images with goats, but in the other 10% we can just stare straight at a goat that MD doesn't see.  These results are from MDv5, but this issue has not been conclusively fixed in MD1000.
 
 <img src="images/failure-examples/sample-dzf-01.jpg" width="600">
 <img src="images/failure-examples/sample-dzf-02.jpg" width="600">
@@ -208,9 +217,9 @@ But what about objects that are <i>right</i> on that line?  Can we do something 
 
 ## What can we do about these cases?
 
-<a href="mailto:cameratraps@lila.science">Email us!</a>  We want to hear about the cases where MD doesn't work; this helps us prioritize training data.  This is how we made some improvements between MDv4 and MDv5, for example: we heard from users that bait stations in particular where causing MDv4 to misbehave, so we went wild with bait station training data for MDv5, and we think the situation is lots better now.
+<a href="mailto:cameratraps@lila.science">Email us!</a>  We want to hear about the cases where MD doesn't work; this helps us prioritize training data.  This is how we made some improvements between MDv4 and MDv5, for example: we heard from users that bait stations in particular where causing MDv4 to misbehave, so we went wild with bait station training data for MDv5, and we think the situation is lots better now.  Ditto for improvements between MDv5 and MD1000: especially for the Snapshot Serengeti issue and the reptile issues raised above, we addressed these issues in training data, and saw a definitive fix in one case and a substantial improvement in the other.
 
-As with the grouse example above, there is often something we can do at inference time - without training any new models - to improve results.  This typically includes [test-time augmentation](https://docs.ultralytics.com/yolov5/tutorials/test_time_augmentation/), [repeat detection elimination](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/postprocessing/repeat_detection_elimination) (which can allow a much lower confidence threshold), and merging of MDv5a/MDv5b results.
+Furthermore, for difficult cases, there are often tricks we can use at inference time - without training any new models - to improve results.  This typically includes [test-time augmentation](https://docs.ultralytics.com/yolov5/tutorials/test_time_augmentation/), [repeat detection elimination](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/postprocessing/repeat_detection_elimination) (which can allow a much lower confidence threshold), and merging of MDv5a/MDv5b/MD1000 results.
 
 Sometimes a difficult case is beyond the reach of inference-time enhancements, but there is real signal in *all* of the above cases, which suggests that a modest amount of fine-tuning would work really well.  We are excited to work with the community to make the annotation and fine-tuning processes easier, which is 99% about ergonomics and workflow, 1% about AI.
 
@@ -219,6 +228,6 @@ Sometimes a difficult case is beyond the reach of inference-time enhancements, b
 
 With all that negativity, we sure hope this page isn't your first introduction to MegaDetector. :)  
 
-This page is really hitting on the long tail: at least 90% - probably more like 95% - of the use cases we see don't look like the above examples at all.  Typically we see very high recall, with varying degrees of precision, but almost always high enough precision to save users time.  So overall, we're really happy with the performance of MDv5, and the third-party evaluations ([1](https://wildeyeconservation.org/megadetector-version-5/), [2](https://www.sciencedirect.com/science/article/pii/S2351989422001068?via%3Dihub)) and [sample results](https://lila.science/public/snapshot_safari_public/snapshot-safari-kar-2022-00-00-v5a.0.0_0.200/detections_animal.html) that we mentioned above should drive that point home.
+This page is really hitting on the long tail: at least 90% - probably more like 95% - of the use cases we see don't look like the above examples at all.  Typically we see very high recall, with varying degrees of precision, but almost always high enough precision to save users time.  So overall, we're really happy with the performance of MD, and the third-party evaluations ([1](https://wildeyeconservation.org/megadetector-version-5/), [2](https://www.sciencedirect.com/science/article/pii/S2351989422001068?via%3Dihub)) and [sample results](https://lila.science/public/snapshot_safari_public/snapshot-safari-kar-2022-00-00-v5a.0.0_0.200/detections_animal.html) that we mentioned above should drive that point home.
 
 The takeaway from this page isn't that these cases are common (they're not!), rather that with any AI model, always test with a critical eye on your own data!

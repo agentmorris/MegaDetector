@@ -96,6 +96,7 @@ model_string_to_model_version = {
     'cedar':'v1000.0.0-cedar',
     'larch':'v1000.0.0-larch',
     'default':'v5a.0.0',
+    'default-model':'v5a.0.0',
     'megadetector':'v5a.0.0'
 }
 
