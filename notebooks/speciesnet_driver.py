@@ -31,7 +31,6 @@ job_name = 'job_name'
 input_folder = '/stuff/input_folder'
 assert not input_folder.endswith('/')
 model_file = os.path.expanduser('~/models/speciesnet/crop')
-# model_file = 'kaggle:google/speciesnet/keras/v4.0.0a'
 
 country_code = None
 state_code = None
