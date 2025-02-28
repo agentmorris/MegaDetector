@@ -65,8 +65,8 @@ os.makedirs(output_base,exist_ok=True)
 preview_folder_base = os.path.join(output_base,'preview')
 instances_json = os.path.join(output_base,'instances.json')
 
-assert os.path.isolder(speciesnet_folder)
-assert os.path.isolder(input_folder)
+assert os.path.isdir(speciesnet_folder)
+assert os.path.isdir(input_folder)
 
 
 #%% Generate instances.json
@@ -93,7 +93,6 @@ for fn in [detector_output_file_modular,classifier_output_file_modular,ensemble_
     if os.path.exists(fn):
         print('** Warning, file {} exists, this is OK if you are resuming **\n'.format(fn))
 
-source_specifier = '--instances_json "{}"'.format(instances_json)
 
 
 #%% Run detector
@@ -102,7 +101,7 @@ detector_commands = []
 detector_commands.append(f'{cuda_prefix} cd {speciesnet_folder} && mamba activate {speciesnet_pt_environment_name}')
 
 cmd = 'python speciesnet/scripts/run_model.py --detector_only --model "{}"'.format(model_file)
-cmd += ' ' + source_specifier
+cmd += ' --instances_json "{}"'.format(instances_json)
 cmd += ' --predictions_json "{}"'.format(detector_output_file_modular)
 detector_commands.append(cmd)
 
@@ -233,7 +232,7 @@ ensemble_commands = []
 ensemble_commands.append(f'{cuda_prefix} cd {speciesnet_folder} && mamba activate {speciesnet_pt_environment_name}')
 
 cmd = 'python speciesnet/scripts/run_model.py --ensemble_only --model "{}"'.format(model_file)
-cmd += ' ' + source_specifier
+cmd += ' --instances_json "{}"'.format(instances_json)
 cmd += ' --predictions_json "{}"'.format(ensemble_output_file_modular)
 cmd += ' --detections_json "{}"'.format(detector_output_file_modular)
 cmd += ' --classifications_json "{}"'.format(classifier_output_file_modular)
