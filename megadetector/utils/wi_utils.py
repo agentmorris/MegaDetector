@@ -1476,7 +1476,6 @@ country_code_to_country = None
 
 #%% Functions related to geofencing and taxonomy mapping
 
-
 def taxonomy_info_to_taxonomy_string(taxonomy_info):
     """
     Convert a taxonomy record in dict format to a semicolon-delimited string
