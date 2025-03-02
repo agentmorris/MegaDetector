@@ -1970,6 +1970,124 @@ def species_allowed_in_country(species,country,state=None,return_status=False):
 # ...def species_allowed_in_country(...)
 
 
+def restrict_to_taxa_list(taxa_list,
+                          speciesnet_taxonomy_file,
+                          output_file):                           
+    """
+    Given a prediction file in MD .json format, likely without having had
+    a geofence applied, apply a custom taxa list
+    
+    Args:
+        taxa_list (str or list): list of latin names, or a text file containing
+            a list of latin names.  Optionally may contain a second (comma-delimited)
+            column containing common names, used only for debugging.  Latin names
+            must exist in the SpeciesNet taxonomy.
+        taxonomy_file (str): taxonomy filename, in the same format used for model release
+            (with 7-token taxonomy entries)
+        output_file (str): .json file to write        
+    """
+
+    #%% Read target taxa list
+    
+    if isinstance(taxa_list,str):
+        assert os.path.isfile(taxa_list), \
+            'Could not find taxa list file {}'.format(taxa_list)
+        with open(taxa_list,'r') as f:
+            taxa_list = f.readlines()
+    
+    taxa_list = [s.strip().lower() for s in taxa_list]
+    taxa_list = [s for s in taxa_list if len(s) > 0]
+    
+    target_latin_to_common = {}
+    for s in taxa_list:
+        if s.strip().startswith('#'):
+            continue
+        tokens = s.split(',')
+        assert len(tokens) <= 2
+        binomial_name = tokens[0]
+        assert len(binomial_name.split(' ')) in (1,2,3), \
+            'Illegal binomial name in species list: {}'.format(binomial_name)
+        if len(tokens) > 0:
+            common_name = tokens[1].strip().lower()
+        else:
+            common_name = None
+        assert binomial_name not in target_latin_to_common
+        target_latin_to_common[binomial_name] = common_name
+
+
+    #%% Read taxonomy file
+    
+    with open(taxonomy_file,'r') as f:
+        speciesnet_taxonomy_list = f.readlines()
+    speciesnet_taxonomy_list = [s.strip() for s in \
+                                speciesnet_taxonomy_list if len(s.strip()) > 0]
+    
+    speciesnet_latin_name_to_taxon_string = {}
+    speciesnet_common_name_to_taxon_string = {}
+    
+    for s in speciesnet_taxonomy_list:
+        
+        tokens = s.split(';')
+        assert len(tokens) == 7
+        
+        guid = tokens[0] # noqa
+        class_name = tokens[1]
+        order = tokens[2]
+        family = tokens[3]
+        genus = tokens[4]
+        species = tokens[5]        
+        common_name = tokens[6]
+        
+        if len(class_name) == 0:
+            assert common_name in ('animal','vehicle','blank')
+            continue
+        
+        if len(species) > 0:
+            assert all([len(s) > 0 for s in [genus,family,order]])
+            binomial_name = genus + ' ' + species
+            speciesnet_latin_name_to_taxon_string[binomial_name] = s
+        elif len(genus) > 0:
+            assert all([len(s) > 0 for s in [family,order]])
+            speciesnet_latin_name_to_taxon_string[genus] = s
+        elif len(family) > 0:
+            assert len(order) > 0
+            speciesnet_latin_name_to_taxon_string[family] = s
+        elif len(order) > 0:
+            speciesnet_latin_name_to_taxon_string[order] = s
+        else:
+            speciesnet_latin_name_to_taxon_string[class_name] = s
+        
+        if len(common_name) > 0:
+            speciesnet_common_name_to_taxon_string[common_name] = s
+    
+    
+    #%% Make sure all species are in the taxonomy
+    
+    n_failed_mappings = 0
+    
+    for target_taxon_latin_name in target_latin_to_common.keys():
+        if target_taxon_latin_name not in speciesnet_latin_name_to_taxon_string:
+            common_name = target_latin_to_common[target_taxon_latin_name]
+            s = '{} ({}) not in speciesnet taxonomy'.format(
+                target_taxon_latin_name,common_name)
+            if common_name in speciesnet_common_name_to_taxon_string:
+                s += ' (common name maps to {})'.format(
+                    speciesnet_common_name_to_taxon_string[common_name])
+            print(s)
+            n_failed_mappings += 1
+    
+    if n_failed_mappings > 0:
+        raise ValueError('Cannot continue with geofence generation')
+    
+    
+    #%% Map all parent taxa to the prediction we should generate
+    
+    # ...including "animal".  For each parent taxon, if there is only one
+    # child that can possible be predicted, that's the prediction we'll use,
+    # otherwise we predict the parent taxon.
+    
+    
+    
 #%% Interactive driver(s)
 
 if False:

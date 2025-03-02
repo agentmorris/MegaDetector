@@ -34,11 +34,6 @@ model_file = os.path.expanduser('~/models/speciesnet/crop')
 
 # If None, will create a folder in ~/crops
 crop_folder = None
-
-# If None, will put a file inside [crop_folder]
-crop_json_filename = None
-crop_json_filename_whole_image_crops = None
-
 country_code = None
 state_code = None
 
@@ -56,43 +51,10 @@ max_images_per_chunk = 5000
 classifier_batch_size = 128
 
 
-#%% Temp
-
-print('**** fix me ****')
-
-crop_folder = 'g:/temp/water-hole/crops'
-model_file = 'g:/temp/speciesnet/crop'
-input_folder = 'g:/temp/water-hole/Sample data/ShareXScreenShot_NambiaWaterhole/Oct_2024'
-
-speciesnet_pt_environment_name = 'speciesnet'
-speciesnet_tf_environment_name = 'speciesnet'
-
-if os.name != 'nt':
-    from megadetector.utils.path_utils import windows_path_to_wsl_path
-    crop_folder = windows_path_to_wsl_path(crop_folder)
-    model_file = windows_path_to_wsl_path(model_file)
-    input_folder = windows_path_to_wsl_path(input_folder)
-    speciesnet_pt_environment_name = 'speciesnet-package-pytorch'
-    speciesnet_tf_environment_name = 'speciesnet-package-tf'
-    
-crop_json_filename = os.path.join(crop_folder,'crop_dataset.json')
-gpu_number = None
-organization_name = 'multispecies-test'
-job_name = 'multispecies-test'
-country_code = 'NAM'
-classifier_batch_size = 16
-
-
 #%% Validate constants, prepare folders and dependent constants
 
 if crop_folder is None:
     crop_folder = os.path.join(os.path.expanduser('~/crops'),job_name)
-
-if crop_json_filename is None:    
-    crop_json_filename = os.path.join(crop_folder,'crop_dataset' + job_name + '.json')
-
-if crop_json_filename_whole_image_crops is None:
-    crop_json_filename_whole_image_crops = insert_before_extension(crop_json_filename,'whole-image-crops')
 
 if gpu_number is not None:
     cuda_prefix = 'export CUDA_VISIBLE_DEVICES={} && '.format(gpu_number)
@@ -110,8 +72,41 @@ instances_json = os.path.join(output_base,'instances.json')
 assert os.path.isdir(speciesnet_folder)
 assert os.path.isdir(input_folder)
 
+# A results file in MD format, referring to the original images
+detection_results_file_with_crop_ids = os.path.join(output_base,
+                                                    'detection_results_with_crop_ids.json')
+
+# A results file in MD format, referring to the crops, so every detection
+# has bbox [0,0,1,1]
+detection_results_file_for_crop_folder = insert_before_extension(
+        detection_results_file_with_crop_ids,'unity_boxes')
+
+# The instances.json file that refers just to the crops folder
+crop_instances_json = os.path.join(output_base,'crop_instances.json')
+
+# The results of the detector (in SpeciesNet format), after running it on the 
+# original images
+detector_output_file_modular = \
+    os.path.join(output_base,job_name + '-detector_output_modular.json')
+    
+# The results of the classifier (in SpeciesNet format), after running it on the crops
+classifier_output_file_modular_crops = \
+    os.path.join(output_base,job_name + '-classifier_output_modular_crops.json')
+    
+# The results of the ensemble (in SpeciesNet format), after running it on the crops
+ensemble_output_file_modular_crops = \
+    os.path.join(output_base,job_name + '-ensemble_output_modular_crops.json')
+
+for fn in [detector_output_file_modular,
+           classifier_output_file_modular_crops,
+           ensemble_output_file_modular_crops]:
+    if os.path.exists(fn):
+        print('** Warning, file {} exists, this is OK if you are resuming **\n'.format(fn))
+
 
 #%% Generate instances.json
+
+# ...for the original images.
 
 instances = generate_instances_json_from_folder(folder=input_folder,
                                                 country=country_code,
@@ -120,20 +115,6 @@ instances = generate_instances_json_from_folder(folder=input_folder,
                                                 filename_replacements=None)
 
 print('Generated {} instances'.format(len(instances['instances'])))
-
-
-#%% Prep
-
-detector_output_file_modular = \
-    os.path.join(output_base,job_name + '-detector_output_modular.json')
-classifier_output_file_modular = \
-    os.path.join(output_base,job_name + '-classifier_output_modular.json')
-ensemble_output_file_modular = \
-    os.path.join(output_base,job_name + '-ensemble_output_modular.json')
-
-for fn in [detector_output_file_modular,classifier_output_file_modular,ensemble_output_file_modular]:
-    if os.path.exists(fn):
-        print('** Warning, file {} exists, this is OK if you are resuming **\n'.format(fn))
 
 
 #%% Run detector
@@ -178,29 +159,30 @@ create_crop_folder_options.pool_type = 'process'
 create_crop_folder(input_file=detector_output_file_md_format,
                    input_folder=input_folder,
                    output_folder=crop_folder,
-                   output_file=crop_json_filename,
-                   crops_output_file=crop_json_filename_whole_image_crops,
+                   output_file=detection_results_file_with_crop_ids,
+                   crops_output_file=detection_results_file_for_crop_folder,
                    options=create_crop_folder_options)
 
-assert os.path.isfile(crop_json_filename)
-assert os.path.isfile(crop_json_filename_whole_image_crops)
+assert os.path.isfile(detection_results_file_with_crop_ids)
+assert os.path.isfile(detection_results_file_for_crop_folder)
 assert os.path.isdir(crop_folder)
 
 
-#%% Convert the whole-image detections file to predictions.json format
+#%% Convert the detection results for the crops to predictions.json format
+
+# This will be the input to the ensemble when we run it on the crops.
 
 from megadetector.utils.wi_utils import generate_predictions_json_from_md_results
 
-crop_detections_predictions_file = insert_before_extension(crop_json_filename,'speciesnet_format')
+crop_detections_predictions_file = \
+    insert_before_extension(detection_results_file_for_crop_folder,'speciesnet_format')
 
-generate_predictions_json_from_md_results(md_results_file=crop_json_filename_whole_image_crops,
+generate_predictions_json_from_md_results(md_results_file=detection_results_file_for_crop_folder,
                                           predictions_json_file=crop_detections_predictions_file,
                                           base_folder=crop_folder)
 
 
 #%% Generate a new instances.json file for the crops
-
-crop_instances_json = insert_before_extension(crop_json_filename,'instances')
 
 crop_instances = generate_instances_json_from_folder(folder=crop_folder,
                                                      country=country_code,
@@ -208,7 +190,8 @@ crop_instances = generate_instances_json_from_folder(folder=crop_folder,
                                                      output_file=crop_instances_json,
                                                      filename_replacements=None)
 
-print('Generated {} instances for the crop folder'.format(len(crop_instances['instances'])))
+print('Generated {} instances for the crop folder (in file {})'.format(
+    len(crop_instances['instances']),crop_instances_json))
 
 
 #%% Run classifier on crops
@@ -310,18 +293,18 @@ classifier_cmd = '\n\n'.join([classifier_init_cmd,classifier_script_file])
 # print(classifier_cmd); clipboard.copy(classifier_cmd)
     
 
-#%% Merge crop classification results
+#%% Merge crop classification result batches
 
 from megadetector.utils.wi_utils import merge_prediction_json_files
 
 merge_prediction_json_files(input_prediction_files=chunk_prediction_files,
-                            output_prediction_file=classifier_output_file_modular)
+                            output_prediction_file=classifier_output_file_modular_crops)
     
 
 #%% Validate crop classification results
 
 from megadetector.utils.wi_utils import validate_predictions_file
-_ = validate_predictions_file(classifier_output_file_modular,crop_instances_json)
+_ = validate_predictions_file(classifier_output_file_modular_crops,crop_instances_json)
 
 
 #%% Run geofencing
@@ -332,8 +315,8 @@ ensemble_commands.append(f'{cuda_prefix} cd {speciesnet_folder} && mamba activat
 
 cmd = 'python speciesnet/scripts/run_model.py --ensemble_only --model "{}"'.format(model_file)
 cmd += ' --instances_json "{}"'.format(crop_instances_json)
-cmd += ' --predictions_json "{}"'.format(ensemble_output_file_modular)
-cmd += ' --classifications_json "{}"'.format(classifier_output_file_modular)
+cmd += ' --predictions_json "{}"'.format(ensemble_output_file_modular_crops)
+cmd += ' --classifications_json "{}"'.format(classifier_output_file_modular_crops)
 cmd += ' --detections_json "{}"'.format(crop_detections_predictions_file)
 ensemble_commands.append(cmd)
 
@@ -344,7 +327,7 @@ ensemble_cmd = '\n\n'.join(ensemble_commands)
 #%% Validate ensemble results
 
 from megadetector.utils.wi_utils import validate_predictions_file
-_ = validate_predictions_file(ensemble_output_file_modular,crop_instances_json)
+_ = validate_predictions_file(ensemble_output_file_modular_crops,crop_instances_json)
 
 
 #%% Generate a list of corrections made by geofencing, and counts
@@ -352,7 +335,7 @@ _ = validate_predictions_file(ensemble_output_file_modular,crop_instances_json)
 from megadetector.utils.wi_utils import find_geofence_adjustments
 from megadetector.utils.ct_utils import is_list_sorted
 
-rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular,
+rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular_crops,
                                                  use_latin_names = False)
 
 min_count = 50
@@ -385,28 +368,40 @@ if len(rollup_pair_to_count) > 0:
 
 #%% Convert output file to MD format (still crops)
 
-ensemble_file_to_convert = ensemble_output_file_modular   
-assert os.path.isfile(ensemble_file_to_convert)
-ensemble_output_file_md_format = insert_before_extension(ensemble_file_to_convert,
-                                                         'md-format')
+assert os.path.isfile(ensemble_output_file_modular_crops)
+ensemble_output_file_crops_md_format = insert_before_extension(
+    ensemble_output_file_modular_crops,
+    'md-format')
 
-generate_md_results_from_predictions_json(predictions_json_file=ensemble_file_to_convert,
-                                          md_results_file=ensemble_output_file_md_format,
-                                          base_folder=input_folder+'/')
+generate_md_results_from_predictions_json(predictions_json_file=ensemble_output_file_modular_crops,
+                                          md_results_file=ensemble_output_file_crops_md_format,
+                                          base_folder=crop_folder+'/')
 
 # from megadetector.utils.path_utils import open_file; open_file(ensemble_output_file_md_format)
 
 
 #%% Bring those crop-level results back to image level
 
-raise NotImplementedError('')
+from megadetector.postprocessing.create_crop_folder import crop_results_to_image_results
+
+assert '_crops' in ensemble_output_file_crops_md_format
+ensemble_output_file_image_level_md_format = \
+    ensemble_output_file_crops_md_format.replace('_crops','_image-level')
+
+crop_results_to_image_results(
+    image_results_file_with_crop_ids=detection_results_file_with_crop_ids,
+    crop_results_file=ensemble_output_file_crops_md_format,
+    output_file=ensemble_output_file_image_level_md_format)
+
+assert os.path.isfile(ensemble_output_file_image_level_md_format)
+
 
 #%% Confirm that all the right files are in the results
 
 import json
 from megadetector.utils.path_utils import find_images
 
-with open(ensemble_output_file_md_format,'r') as f:
+with open(ensemble_output_file_image_level_md_format,'r') as f:
     d = json.load(f)
 
 filenames_in_results = set([im['file'] for im in d['images']])
@@ -448,7 +443,7 @@ if False:
     
     from tqdm import tqdm
     
-    with open(ensemble_output_file_md_format,'r') as f:
+    with open(ensemble_output_file_image_level_md_format,'r') as f:
         d = json.load(f)
     image_filenames = [im['file'] for im in d['images']]
 
@@ -526,7 +521,7 @@ options.debugMaxRenderInstance = -1
 options.smartSort = 'xsort'
 
 suspicious_detection_results = \
-    repeat_detections_core.find_repeat_detections(ensemble_output_file_md_format,
+    repeat_detections_core.find_repeat_detections(ensemble_output_file_image_level_md_format,
                                                   outputFilename=None,
                                                   options=options)
 
@@ -547,11 +542,11 @@ open_file(os.path.dirname(suspicious_detection_results.filterFile),
 from megadetector.postprocessing.repeat_detection_elimination import \
     remove_repeat_detections
 
-filtered_output_filename = insert_before_extension(ensemble_output_file_md_format, 
-                                                              'filtered_{}'.format(rde_string))
+filtered_output_filename = insert_before_extension(ensemble_output_file_image_level_md_format, 
+                                                   'filtered_{}'.format(rde_string))
 
 remove_repeat_detections.remove_repeat_detections(
-    inputFile=ensemble_output_file_md_format,
+    inputFile=ensemble_output_file_image_level_md_format,
     outputFile=filtered_output_filename,
     filteringDir=os.path.dirname(suspicious_detection_results.filterFile)
     )
@@ -563,13 +558,13 @@ from megadetector.utils.path_utils import open_file
 from megadetector.postprocessing.postprocess_batch_results import \
     PostProcessingOptions, process_batch_results
 
-assert os.path.isfile(ensemble_output_file_md_format)
+assert os.path.isfile(ensemble_output_file_image_level_md_format)
 
 try:
     preview_file = filtered_output_filename
     print('Using RDE results for preview')
 except:
-    preview_file = ensemble_output_file_md_format
+    preview_file = ensemble_output_file_image_level_md_format
     print('RDE results not found, using raw results for preview')
 
 preview_folder = preview_folder_base
