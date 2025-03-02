@@ -32,12 +32,6 @@ speciesnet_folder = os.path.expanduser('~/git/cameratrapai')
 speciesnet_pt_environment_name = 'speciesnet-package-pytorch'
 speciesnet_tf_environment_name = 'speciesnet-package-tf'
 
-md_environment_name = 'cameratraps-detector'
-md_folder = os.path.expanduser('~/git/MegaDetector/megadetector')
-md_python_path = '{}:{}'.format(
-    os.path.expanduser('~/git/yolov5-md'),
-    os.path.expanduser('~/git/MegaDetector'))
-
 gpu_number = 0
 
 if gpu_number is not None:
@@ -244,9 +238,9 @@ from megadetector.utils.ct_utils import is_list_sorted
 rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular,
                                                  use_latin_names = False)
 
-min_count = 50
+min_count = 10
 
-footer_text = ''
+geofence_footer = ''
 
 rollup_pair_to_count = \
     {key: value for key, value in rollup_pair_to_count.items() if value >= min_count}
@@ -256,10 +250,9 @@ assert is_list_sorted(list(rollup_pair_to_count.values()),reverse=True)
 
 if len(rollup_pair_to_count) > 0:
     
-    footer_text = \
+    geofence_footer = \
         '<h3>Geofence changes that occurred more than {} times</h3>\n'.format(min_count)
-    footer_text += '<p>These numbers refer to the whole dataset, not just the sample used for this page.</p>\n'
-    footer_text += '<div class="contentdiv">\n'
+    geofence_footer += '<div class="contentdiv">\n'
     
     print('Rollup changes with count > {}:'.format(min_count))
     for rollup_pair in rollup_pair_to_count.keys():
@@ -267,9 +260,9 @@ if len(rollup_pair_to_count) > 0:
         rollup_pair_s = rollup_pair.replace(',',' --> ')
         print('{}: {}'.format(rollup_pair_s,count))
         rollup_pair_html = rollup_pair.replace(',',' &rarr; ')
-        footer_text += '{} ({})<br>\n'.format(rollup_pair_html,count)
+        geofence_footer += '{} ({})<br/>\n'.format(rollup_pair_html,count)
 
-    footer_text += '</div>\n'
+    geofence_footer += '</div>\n'
 
 
 #%% Convert output file to MD format 
@@ -314,6 +307,51 @@ for im in d['images']:
         
 print('Loaded results for {} images with {} failures'.format(
     len(images_in_folder),n_failures))
+
+
+#%% Generate a list of all predictions made, with counts
+
+from megadetector.utils.ct_utils import sort_dictionary_by_value
+
+with open(ensemble_output_file_md_format,'r') as f:
+    d = json.load(f)
+
+classification_category_to_count = {}
+
+# im = d['images'][0]
+for im in d['images']:
+    if 'detections' in im and im['detections'] is not None:
+        for det in im['detections']:
+            if 'classifications' in det:
+                class_id = det['classifications'][0][0]
+                if class_id not in classification_category_to_count:
+                    classification_category_to_count[class_id] = 0
+                else:
+                    classification_category_to_count[class_id] = \
+                        classification_category_to_count[class_id] + 1
+
+category_name_to_count = {}
+
+for class_id in classification_category_to_count:
+    category_name = d['classification_categories'][class_id]
+    category_name_to_count[category_name] = \
+        classification_category_to_count[class_id]
+
+category_name_to_count = sort_dictionary_by_value(
+    category_name_to_count,reverse=True)
+
+category_count_footer = ''
+category_count_footer += '<br/>\n'
+category_count_footer += \
+    '<h3>Category counts (for the whole dataset, not just the sample used for this page)</h3>\n'
+category_count_footer += '<div class="contentdiv">\n'
+
+for category_name in category_name_to_count.keys():
+    count = category_name_to_count[category_name]
+    category_count_html = '{}: {}<br>\n'.format(category_name,count)    
+    category_count_footer += category_count_html
+
+category_count_footer += '</div>\n'
 
 
 #%% Optional RDE prep: define custom camera folder function
@@ -461,6 +499,8 @@ preview_folder = preview_folder_base
 
 render_animals_only = False
 
+footer_text = geofence_footer + category_count_footer
+
 options = PostProcessingOptions()
 options.image_base_dir = input_folder
 options.include_almost_detections = True
@@ -539,6 +579,12 @@ if False:
 
     #%% Run everything using MD + SpeciesNet
     
+    md_environment_name = 'cameratraps-detector'
+    md_folder = os.path.expanduser('~/git/MegaDetector/megadetector')
+    md_python_path = '{}:{}'.format(
+        os.path.expanduser('~/git/yolov5-md'),
+        os.path.expanduser('~/git/MegaDetector'))
+
     detector_output_file_md = os.path.join(output_base,job_name + '-detector_output_md.json')
     detector_output_file_predictions_format_md = insert_before_extension(detector_output_file_md,'predictons-format')
     classifier_output_file_md = os.path.join(output_base,job_name + '-classifier_output_md.json')
