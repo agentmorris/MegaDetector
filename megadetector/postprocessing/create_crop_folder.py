@@ -13,11 +13,13 @@ import os
 import json
 from tqdm import tqdm
 
+from multiprocessing.pool import Pool, ThreadPool
+from collections import defaultdict
+from functools import partial
+
 from megadetector.utils.path_utils import insert_before_extension
 from megadetector.visualization.visualization_utils import crop_image
 from megadetector.visualization.visualization_utils import exif_preserving_save
-
-from collections import defaultdict
 
 
 #%% Support classes
@@ -37,31 +39,90 @@ class CreateCropFolderOptions:
         
         #: JPEG quality to use for saving crops (None for default)
         self.quality = 95
+        
+        #: Whether to overwrite existing images
+        self.overwrite = True
+        
+        #: Number of concurrent workers
+        self.n_workers = 8
+        
+        #: Whether to use processes ('process') or threads ('thread') for parallelization
+        self.pool_type = 'thread'
                 
           
 #%% Support functions
 
 def _get_crop_filename(image_fn,crop_id):
+    """
+    Generate crop filenames in a consistent way.
+    """
     if isinstance(crop_id,int):
         crop_id = str(crop_id).zfill(3)
     assert isinstance(crop_id,str)
     return insert_before_extension(image_fn,'crop_' + crop_id)
 
 
+def _generate_crops_for_single_image(crops_this_image,
+                                     input_folder,
+                                     output_folder,
+                                     options):
+    """
+    Generate all the crops required for a single image.
+    """
+    if len(crops_this_image) == 0:
+        return
+    
+    image_fn_relative = crops_this_image[0]['image_fn_relative']    
+    input_fn_abs = os.path.join(input_folder,image_fn_relative)
+    assert os.path.isfile(input_fn_abs)
+    
+    detections_to_crop = [c['detection'] for c in crops_this_image]
+    
+    cropped_images = crop_image(detections_to_crop,
+                                input_fn_abs,
+                                confidence_threshold=0,
+                                expansion=options.expansion)
+    
+    assert len(cropped_images) == len(crops_this_image)
+    
+    # i_crop = 0; crop_info = crops_this_image[0]
+    for i_crop,crop_info in enumerate(crops_this_image):
+        
+        assert crop_info['image_fn_relative'] == image_fn_relative
+        crop_filename_relative = _get_crop_filename(image_fn_relative, crop_info['crop_id'])        
+        crop_filename_abs = os.path.join(output_folder,crop_filename_relative).replace('\\','/')
+        
+        if os.path.isfile(crop_filename_abs) and not options.overwrite:
+            continue
+         
+        cropped_image = cropped_images[i_crop]            
+        os.makedirs(os.path.dirname(crop_filename_abs),exist_ok=True)            
+        exif_preserving_save(cropped_image,crop_filename_abs,quality=options.quality)
+    
+    # ...for each crop
+
+
 #%% Main function
     
-def create_crop_folder(input_file,input_folder,output_folder,output_file,options=None):
+def create_crop_folder(input_file,
+                       input_folder,
+                       output_folder,
+                       output_file=None,
+                       crops_output_file=None,
+                       options=None):
     """
     Given a MegaDetector .json file and a folder of images, creates a new folder
     of images representing all above-threshold crops from the original folder.
     
-    Writes a new .json file that attaches unique IDs to each detection.
+    Optionally writes a new .json file that attaches unique IDs to each detection.
     
     Args:
         input_file (str): MD-formatted .json file to process
         input_folder (str): Input image folder
         output_folder (str): Output (cropped) image folder
-        output_file (str): new .json file that attaches unique IDs to each detection.
+        output_file (str, optional): new .json file that attaches unique IDs to each detection.
+        crops_output_file (str, optional): new .json file that includes whole-image detections
+            for each of the crops, using confidence values from the original results
         options (CreateCropFolderOptions, optional): crop parameters    
     """
         
@@ -122,47 +183,83 @@ def create_crop_folder(input_file,input_folder,output_folder,output_file,options
         
     
     ##%% Generate crops
-    
-    # TODO: parallelize this loop
-    
-    # image_fn_relative = next(iter(image_fn_relative_to_crops))
-    for image_fn_relative in tqdm(image_fn_relative_to_crops.keys()):
         
-        input_fn_abs = os.path.join(input_folder,image_fn_relative)
-        assert os.path.isfile(input_fn_abs)
+    if options.n_workers <= 1:
+                
+        # image_fn_relative = next(iter(image_fn_relative_to_crops))
+        for image_fn_relative in tqdm(image_fn_relative_to_crops.keys()):
+            crops_this_image = image_fn_relative_to_crops[image_fn_relative]            
+            _generate_crops_for_single_image(crops_this_image=crops_this_image,
+                                             input_folder=input_folder,
+                                             output_folder=output_folder,
+                                             options=options)
+                
+    else:
         
-        crops_this_image = image_fn_relative_to_crops[image_fn_relative]
-        detections_to_crop = [c['detection'] for c in crops_this_image]
+        print('Creating a {} pool with {} workers'.format(options.pool_type,options.n_workers))
+
+        if options.pool_type == 'thread':
+            pool = ThreadPool(options.n_workers)
+        else:
+            assert options.pool_type == 'process'
+            pool = Pool(options.n_workers)
         
-        cropped_images = crop_image(detections_to_crop,
-                                    input_fn_abs,
-                                    confidence_threshold=0,
-                                    expansion=options.expansion)
+        # Each element in this list is the list of crops for a single image
+        crop_lists = list(image_fn_relative_to_crops.values())
         
-        assert len(cropped_images) == len(crops_this_image)
-        
-        # i_crop = 0; crop_info = crops_this_image[0]
-        for i_crop,crop_info in enumerate(crops_this_image):
-            
-            assert crop_info['image_fn_relative'] == image_fn_relative
-            crop_filename_relative = _get_crop_filename(image_fn_relative, crop_info['crop_id'])        
-            crop_filename_abs = os.path.join(output_folder,crop_filename_relative).replace('\\','/')
-            cropped_image = cropped_images[i_crop]
-            
-            os.makedirs(os.path.dirname(crop_filename_abs),exist_ok=True)
-            
-            exif_preserving_save(cropped_image,crop_filename_abs,quality=options.quality)
-        
-        # ...for each crop
-        
-    # ...for each image
-    
+        with tqdm(total=len(image_fn_relative_to_crops)) as pbar:
+            for i,_ in enumerate(pool.imap_unordered(partial(
+                        _generate_crops_for_single_image,
+                            input_folder=input_folder,
+                            output_folder=output_folder,
+                            options=options),
+                        crop_lists)):
+                pbar.update()
+
+    # ...if we're using parallel processing    
     
     ##%% Write output file
     
-    with open(output_file,'w') as f:
-        json.dump(detection_results,f,indent=1)
+    if output_file is not None:
+        with open(output_file,'w') as f:
+            json.dump(detection_results,f,indent=1)
         
+    if crops_output_file is not None:
+        
+        original_images = detection_results['images']
+        
+        detection_results_cropped = detection_results
+        detection_results_cropped['images'] = []
+        
+        # im = original_images[0]
+        for im in original_images:
+            
+            if 'detections' not in im or im['detections'] is None or len(im['detections']) == 0:
+                continue
+            
+            detections_this_image = im['detections']            
+            image_fn_relative = im['file']
+            
+            for i_detection,det in enumerate(detections_this_image):
+                
+                if 'crop_id' in det:
+                    im_out = {}
+                    im_out['file'] = det['crop_filename_relative']
+                    det_out = {}
+                    det_out['category'] = det['category']
+                    det_out['conf'] = det['conf']
+                    det_out['bbox'] = [0, 0, 1, 1]
+                    im_out['detections'] = [det_out]
+                    detection_results_cropped['images'].append(im_out)
+            
+                # ...if we need to include this crop in the new .json file
+                
+            # ...for each crop
+            
+        # ...for each original image
+        
+        with open(crops_output_file,'w') as f:
+            json.dump(detection_results_cropped,f,indent=1)
     
 # ...def create_crop_folder()
 

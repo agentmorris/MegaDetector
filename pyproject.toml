@@ -81,4 +81,3 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 include = ["megadetector*"]
-

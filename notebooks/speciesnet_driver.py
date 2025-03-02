@@ -140,6 +140,7 @@ with open(detector_output_file_modular,'r') as f:
 detection_filepath_to_instance = {p['filepath']:p for p in detections['predictions']}
 
 chunk_prediction_files = []
+
 # i_chunk = 0; chunk = chunks[i_chunk]
 for i_chunk,chunk in enumerate(chunks):
     
@@ -156,10 +157,9 @@ for i_chunk,chunk in enumerate(chunks):
     
     detection_predictions_this_chunk = []
     
-    chunk_files = [instance['filepath'] for instance in chunk]
-    # image_fn = chunk_files[0]
+    images_this_chunk = [instance['filepath'] for instance in chunk]
     
-    for image_fn in chunk_files:
+    for image_fn in images_this_chunk:
         assert image_fn in detection_filepath_to_instance
         detection_predictions_this_chunk.append(detection_filepath_to_instance[image_fn])
         

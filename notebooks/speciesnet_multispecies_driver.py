@@ -37,6 +37,7 @@ crop_folder = None
 
 # If None, will put a file inside [crop_folder]
 crop_json_filename = None
+crop_json_filename_whole_image_crops = None
 
 country_code = None
 state_code = None
@@ -89,7 +90,10 @@ if crop_folder is None:
 
 if crop_json_filename is None:    
     crop_json_filename = os.path.join(crop_folder,'crop_dataset' + job_name + '.json')
-    
+
+if crop_json_filename_whole_image_crops is None:
+    crop_json_filename_whole_image_crops = insert_before_extension(crop_json_filename,'whole-image-crops')
+
 if gpu_number is not None:
     cuda_prefix = 'export CUDA_VISIBLE_DEVICES={} && '.format(gpu_number)
 else:
@@ -168,18 +172,33 @@ from megadetector.postprocessing.create_crop_folder import \
     CreateCropFolderOptions, create_crop_folder
     
 create_crop_folder_options = CreateCropFolderOptions()
+create_crop_folder_options.n_workers = 8
+create_crop_folder_options.pool_type = 'process'
 
 create_crop_folder(input_file=detector_output_file_md_format,
                    input_folder=input_folder,
                    output_folder=crop_folder,
                    output_file=crop_json_filename,
+                   crops_output_file=crop_json_filename_whole_image_crops,
                    options=create_crop_folder_options)
 
 assert os.path.isfile(crop_json_filename)
+assert os.path.isfile(crop_json_filename_whole_image_crops)
 assert os.path.isdir(crop_folder)
 
 
-#%% Generate new instances.json file for crops
+#%% Convert the whole-image detections file to predictions.json format
+
+from megadetector.utils.wi_utils import generate_predictions_json_from_md_results
+
+crop_detections_predictions_file = insert_before_extension(crop_json_filename,'speciesnet_format')
+
+generate_predictions_json_from_md_results(md_results_file=crop_json_filename_whole_image_crops,
+                                          predictions_json_file=crop_detections_predictions_file,
+                                          base_folder=crop_folder)
+
+
+#%% Generate a new instances.json file for the crops
 
 crop_instances_json = insert_before_extension(crop_json_filename,'instances')
 
@@ -209,7 +228,15 @@ print('Split {} crop instances into {} chunks'.format(len(crop_instances),len(ch
 
 chunk_scripts = []
 
+print('Reading detection results...')
+
+with open(crop_detections_predictions_file,'r') as f:
+    detections = json.load(f)
+
+detection_filepath_to_instance = {p['filepath']:p for p in detections['predictions']}
+
 chunk_prediction_files = []
+
 # i_chunk = 0; chunk = chunks[i_chunk]
 for i_chunk,chunk in enumerate(chunks):
     
@@ -221,8 +248,23 @@ for i_chunk,chunk in enumerate(chunks):
     with open(chunk_instances_json,'w') as f:
         json.dump(chunk_instances_dict,f,indent=1)
     
-    chunk_files = [instance['filepath'] for instance in chunk]
-    # image_fn = chunk_files[0]
+    chunk_detections_json = os.path.join(chunk_folder,'detections_chunk_{}.json'.format(
+        chunk_str))
+    
+    detection_predictions_this_chunk = []
+    
+    images_this_chunk = [instance['filepath'] for instance in chunk]
+    
+    for image_fn in images_this_chunk:
+        assert image_fn in detection_filepath_to_instance
+        detection_predictions_this_chunk.append(detection_filepath_to_instance[image_fn])
+        
+    detection_predictions_dict = {'predictions':detection_predictions_this_chunk}
+    
+    with open(chunk_detections_json,'w') as f:
+        json.dump(detection_predictions_dict,f,indent=1)
+    
+    chunk_files = [instance['filepath'] for instance in chunk]    
     
     chunk_predictions_json = os.path.join(chunk_folder,'predictions_chunk_{}.json'.format(
         chunk_str))
@@ -237,7 +279,7 @@ for i_chunk,chunk in enumerate(chunks):
         model_file)
     cmd += ' --instances_json "{}"'.format(chunk_instances_json)
     cmd += ' --predictions_json "{}"'.format(chunk_predictions_json)
-    cmd += ' --bypass_prompts'
+    cmd += ' --detections_json "{}"'.format(chunk_detections_json)
     
     if classifier_batch_size is not None:
        cmd += ' --batch_size {}'.format(classifier_batch_size)
@@ -292,7 +334,7 @@ cmd = 'python speciesnet/scripts/run_model.py --ensemble_only --model "{}"'.form
 cmd += ' --instances_json "{}"'.format(crop_instances_json)
 cmd += ' --predictions_json "{}"'.format(ensemble_output_file_modular)
 cmd += ' --classifications_json "{}"'.format(classifier_output_file_modular)
-cmd += ' --bypass_prompts'
+cmd += ' --detections_json "{}"'.format(crop_detections_predictions_file)
 ensemble_commands.append(cmd)
 
 ensemble_cmd = '\n\n'.join(ensemble_commands)
@@ -302,7 +344,7 @@ ensemble_cmd = '\n\n'.join(ensemble_commands)
 #%% Validate ensemble results
 
 from megadetector.utils.wi_utils import validate_predictions_file
-validate_predictions_file(ensemble_output_file_modular,instances_json)
+_ = validate_predictions_file(ensemble_output_file_modular,crop_instances_json)
 
 
 #%% Generate a list of corrections made by geofencing, and counts
@@ -341,7 +383,7 @@ if len(rollup_pair_to_count) > 0:
     footer_text += '</div>\n'
 
 
-#%% Convert output file to MD format 
+#%% Convert output file to MD format (still crops)
 
 ensemble_file_to_convert = ensemble_output_file_modular   
 assert os.path.isfile(ensemble_file_to_convert)
@@ -354,6 +396,10 @@ generate_md_results_from_predictions_json(predictions_json_file=ensemble_file_to
 
 # from megadetector.utils.path_utils import open_file; open_file(ensemble_output_file_md_format)
 
+
+#%% Bring those crop-level results back to image level
+
+raise NotImplementedError('')
 
 #%% Confirm that all the right files are in the results
 
