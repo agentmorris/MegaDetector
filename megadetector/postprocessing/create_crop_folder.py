@@ -103,7 +103,96 @@ def _generate_crops_for_single_image(crops_this_image,
 
 
 #%% Main function
+
+def crop_results_to_image_results(image_results_file_with_crop_ids,
+                                  crop_results_file,
+                                  output_file):
+    """
+    This function is intended to be run after you have:
+        
+        1. Run MegaDetector on a folder
+        2. Generated a crop folder using create_crop_folder
+        3. Run a species classifier on those crops
     
+    This function will take the crop-level results and transform them back
+    to the original images.
+        
+    Args:
+        image_results_file_with_crop_ids (str): results file for the original images,
+            containing crop IDs, likely generated via create_crop_folder.
+        crop_results_file (str): results file for the crop folder
+        output_file (str): ouptut .json file, containing crop-level classifications
+            mapped back to the image level
+    """
+    
+    ##%% Validate inputs
+    
+    assert os.path.isfile(image_results_file_with_crop_ids), \
+        'Could not find image-level input file {}'.format(image_results_file_with_crop_ids)
+    assert os.path.isfile(crop_results_file), \
+        'Could not find crop results file {}'.format(crop_results_file)
+    os.makedirs(os.path.dirname(output_file),exist_ok=True)
+        
+    
+    ##%% Read input files
+    
+    with open(image_results_file_with_crop_ids,'r') as f:
+        image_results_with_crop_ids = json.load(f)
+    with open(crop_results_file,'r') as f:
+        crop_results = json.load(f)
+    
+    assert crop_results['detection_categories'] == \
+        image_results_with_crop_ids['detection_categories'], \
+            'Crop results and image-level results use different detection categories'
+        
+    crop_filename_to_results = {}
+    
+    # im = crop_results['images'][0]
+    for im in crop_results['images']:
+        crop_filename_to_results[im['file']] = im
+    
+    image_results_with_crop_ids['classification_categories'] = \
+        crop_results['classification_categories']
+    
+        
+    ##%% Read classifications from crop results
+    
+    # im = image_results_with_crop_ids['images'][0]
+    for im in tqdm(image_results_with_crop_ids['images']):
+        
+        if 'detections' not in im or im['detections'] is None:
+            continue
+        
+        for det in im['detections']:
+        
+            if 'classifications' in det:
+                del det['classifications']
+                
+            if 'crop_id' in det:
+                crop_filename_relative = det['crop_filename_relative']
+                assert crop_filename_relative in crop_filename_to_results, \
+                    'Crop lookup error'
+                crop_results_this_detection = crop_filename_to_results[crop_filename_relative]
+                assert crop_results_this_detection['file'] == crop_filename_relative
+                assert len(crop_results_this_detection['detections']) == 1
+                assert crop_results_this_detection['detections'][0]['conf'] == det['conf']
+                assert crop_results_this_detection['detections'][0]['category'] == det['category']
+                assert crop_results_this_detection['detections'][0]['bbox'] == [0,0,1,1]
+                det['classifications'] = crop_results_this_detection['detections'][0]['classifications']
+                
+        # ...for each detection
+    
+    # ...for each image        
+    
+    
+    ##%% Write output file
+    
+    with open(output_file,'w') as f:
+        json.dump(image_results_with_crop_ids,f,indent=1)
+
+# ...def crop_results_to_image_results(...)
+
+
 def create_crop_folder(input_file,
                        input_folder,
                        output_folder,

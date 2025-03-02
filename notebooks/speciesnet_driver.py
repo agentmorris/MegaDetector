@@ -68,20 +68,6 @@ instances_json = os.path.join(output_base,'instances.json')
 assert os.path.isdir(speciesnet_folder)
 assert os.path.isdir(input_folder)
 
-
-#%% Generate instances.json
-
-instances = generate_instances_json_from_folder(folder=input_folder,
-                                                country=country_code,
-                                                admin1_region=state_code,
-                                                output_file=instances_json,
-                                                filename_replacements=None)
-
-print('Generated {} instances'.format(len(instances['instances'])))
-
-
-#%% Prep
-
 detector_output_file_modular = \
     os.path.join(output_base,job_name + '-detector_output_modular.json')
 classifier_output_file_modular = \
@@ -93,6 +79,16 @@ for fn in [detector_output_file_modular,classifier_output_file_modular,ensemble_
     if os.path.exists(fn):
         print('** Warning, file {} exists, this is OK if you are resuming **\n'.format(fn))
 
+
+#%% Generate instances.json
+
+instances = generate_instances_json_from_folder(folder=input_folder,
+                                                country=country_code,
+                                                admin1_region=state_code,
+                                                output_file=instances_json,
+                                                filename_replacements=None)
+
+print('Generated {} instances'.format(len(instances['instances'])))
 
 
 #%% Run detector
@@ -211,7 +207,7 @@ classifier_cmd = '\n\n'.join([classifier_init_cmd,classifier_script_file])
 # print(classifier_cmd); clipboard.copy(classifier_cmd)
     
 
-#%% Merge classification results
+#%% Merge classification results batches
 
 from megadetector.utils.wi_utils import merge_prediction_json_files
 
@@ -286,12 +282,11 @@ if len(rollup_pair_to_count) > 0:
 
 #%% Convert output file to MD format 
 
-ensemble_file_to_convert = ensemble_output_file_modular   
-assert os.path.isfile(ensemble_file_to_convert)
-ensemble_output_file_md_format = insert_before_extension(ensemble_file_to_convert,
+assert os.path.isfile(ensemble_output_file_modular)
+ensemble_output_file_md_format = insert_before_extension(ensemble_output_file_modular,
                                                          'md-format')
 
-generate_md_results_from_predictions_json(predictions_json_file=ensemble_file_to_convert,
+generate_md_results_from_predictions_json(predictions_json_file=ensemble_output_file_modular,
                                           md_results_file=ensemble_output_file_md_format,
                                           base_folder=input_folder+'/')
 
