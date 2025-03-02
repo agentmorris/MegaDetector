@@ -1,5 +1,5 @@
-# This is a base environment that doesn't include any YOLO-specific dependencies.  Use this if 
-# you plan to import YOLO dependencies from the PYTHONPATH.
+# This is a base environment that doesn't include any YOLO-specific dependencies.  Use this 
+# if you plan to import YOLO dependencies from the PYTHONPATH.
 name: megadetector-no-yolo
 
 channels:

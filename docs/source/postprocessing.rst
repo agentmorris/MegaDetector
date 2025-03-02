@@ -22,6 +22,14 @@ postprocessing.categorize\_detections\_by\_size module
    :undoc-members:
    :show-inheritance:
 
+postprocessing.create\_crop\_folder module
+------------------------------------------------------
+
+.. automodule:: megadetector.postprocessing.create_crop_folder
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 postprocessing.classification\_postprocessing module
 ----------------------------------------------------
 

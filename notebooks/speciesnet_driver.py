@@ -1,3 +1,14 @@
+"""
+
+speciesnet_driver.py
+   
+Semi-automated process for managing a local SpeciesNet job, including
+standard postprocessing steps.  This version uses the complete ensemble logic
+and therefore does not handle multi-species images.  If multi-species images
+are rare in your data, consider using speciesnet_multispecies_driver.py instead.
+
+"""
+
 #%% Imports
 
 import os
@@ -16,38 +27,46 @@ import clipboard # noqa
 
 organization_name = 'organization_name'
 job_name = 'job_name'
-output_base = os.path.join(os.path.expanduser('~/postprocessing'),organization_name,job_name)
-os.makedirs(output_base,exist_ok=True)
-
-preview_folder_base = os.path.join(output_base,'preview')
 
 input_folder = '/stuff/input_folder'
 assert not input_folder.endswith('/')
 model_file = os.path.expanduser('~/models/speciesnet/crop')
+
 country_code = None
 state_code = None
-instances_json = os.path.join(output_base,'instances.json')
 
 speciesnet_folder = os.path.expanduser('~/git/cameratrapai')
 speciesnet_pt_environment_name = 'speciesnet-package-pytorch'
 speciesnet_tf_environment_name = 'speciesnet-package-tf'
 
+# Can be None to omit the CUDA prefix
 gpu_number = 0
-
-if gpu_number is not None:
-    cuda_prefix = 'export CUDA_VISIBLE_DEVICES={} && '.format(gpu_number)
-
-max_images_per_chunk = 5000
-
-classifier_batch_size = 128
-
+    
 # This is not related to running the model, only to postprocessing steps
 # in this notebook.  Threads work better on Windows, processes on Linux.
 use_threads_for_parallelization = (os.name == 'nt')
+max_images_per_chunk = 5000
+classifier_batch_size = 128
+
+
+#%% Validate constants, prepare folders and dependent constants
+
+if gpu_number is not None:
+    cuda_prefix = 'export CUDA_VISIBLE_DEVICES={} && '.format(gpu_number)
+else:
+    cuda_prefix = ''
 
 assert organization_name != 'organization_name'
 assert job_name != 'job_name'
 assert country_code != None
+
+output_base = os.path.join(os.path.expanduser('~/postprocessing'),organization_name,job_name)
+os.makedirs(output_base,exist_ok=True)
+preview_folder_base = os.path.join(output_base,'preview')
+instances_json = os.path.join(output_base,'instances.json')
+
+assert os.path.isdir(speciesnet_folder)
+assert os.path.isdir(input_folder)
 
 
 #%% Generate instances.json
@@ -74,7 +93,6 @@ for fn in [detector_output_file_modular,classifier_output_file_modular,ensemble_
     if os.path.exists(fn):
         print('** Warning, file {} exists, this is OK if you are resuming **\n'.format(fn))
 
-source_specifier = '--instances_json "{}"'.format(instances_json)
 
 
 #%% Run detector
@@ -83,7 +101,7 @@ detector_commands = []
 detector_commands.append(f'{cuda_prefix} cd {speciesnet_folder} && mamba activate {speciesnet_pt_environment_name}')
 
 cmd = 'python speciesnet/scripts/run_model.py --detector_only --model "{}"'.format(model_file)
-cmd += ' ' + source_specifier
+cmd += ' --instances_json "{}"'.format(instances_json)
 cmd += ' --predictions_json "{}"'.format(detector_output_file_modular)
 detector_commands.append(cmd)
 
@@ -122,6 +140,7 @@ with open(detector_output_file_modular,'r') as f:
 detection_filepath_to_instance = {p['filepath']:p for p in detections['predictions']}
 
 chunk_prediction_files = []
+
 # i_chunk = 0; chunk = chunks[i_chunk]
 for i_chunk,chunk in enumerate(chunks):
     
@@ -138,10 +157,9 @@ for i_chunk,chunk in enumerate(chunks):
     
     detection_predictions_this_chunk = []
     
-    chunk_files = [instance['filepath'] for instance in chunk]
-    # image_fn = chunk_files[0]
+    images_this_chunk = [instance['filepath'] for instance in chunk]
     
-    for image_fn in chunk_files:
+    for image_fn in images_this_chunk:
         assert image_fn in detection_filepath_to_instance
         detection_predictions_this_chunk.append(detection_filepath_to_instance[image_fn])
         
@@ -214,7 +232,7 @@ ensemble_commands = []
 ensemble_commands.append(f'{cuda_prefix} cd {speciesnet_folder} && mamba activate {speciesnet_pt_environment_name}')
 
 cmd = 'python speciesnet/scripts/run_model.py --ensemble_only --model "{}"'.format(model_file)
-cmd += ' ' + source_specifier
+cmd += ' --instances_json "{}"'.format(instances_json)
 cmd += ' --predictions_json "{}"'.format(ensemble_output_file_modular)
 cmd += ' --detections_json "{}"'.format(detector_output_file_modular)
 cmd += ' --classifications_json "{}"'.format(classifier_output_file_modular)
@@ -579,7 +597,7 @@ if False:
 
     #%% Run everything using MD + SpeciesNet
     
-    md_environment_name = 'cameratraps-detector'
+    md_environment_name = 'megadetector'
     md_folder = os.path.expanduser('~/git/MegaDetector/megadetector')
     md_python_path = '{}:{}'.format(
         os.path.expanduser('~/git/yolov5-md'),

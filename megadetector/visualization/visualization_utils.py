@@ -353,13 +353,14 @@ def resize_image(image, target_width=-1, target_height=-1, output_file=None,
 def crop_image(detections, image, confidence_threshold=0.15, expansion=0):
     """
     Crops detections above [confidence_threshold] from the PIL image [image],
-    returning a list of PIL Images.
+    returning a list of PIL Images, preserving the order of [detections].
 
     Args:
         detections (list): a list of dictionaries with keys 'conf' and 'bbox';
             boxes are length-four arrays formatted as [x,y,w,h], normalized, 
             upper-left origin (this is the standard MD detection format)
-        image (Image): the PIL Image object from which we should crop detections
+        image (Image or str): the PIL Image object from which we should crop detections,
+            or an image filename
         confidence_threshold (float, optional): only crop detections above this threshold
         expansion (int, optional): a number of pixels to include on each side of a cropped
             detection
@@ -370,6 +371,9 @@ def crop_image(detections, image, confidence_threshold=0.15, expansion=0):
 
     ret_images = []
 
+    if isinstance(image,str):
+        image = load_image(image)
+        
     for detection in detections:
 
         score = float(detection['conf'])
@@ -406,6 +410,8 @@ def crop_image(detections, image, confidence_threshold=0.15, expansion=0):
 
     return ret_images
 
+# ...def crop_image(...)
+
 
 def blur_detections(image,detections,blur_radius=40):
     """
@@ -440,7 +446,12 @@ def blur_detections(image,detections,blur_radius=40):
         # Crop the region, blur it, and paste it back
         region = image.crop((left, top, right, bottom))
         blurred_region = region.filter(ImageFilter.GaussianBlur(radius=blur_radius))
-        image.paste(blurred_region, (left, top))        
+        image.paste(blurred_region, (left, top))
+
+    # ...for each detection
+        
+# ...def blur_detections(...)
+
         
 def render_detection_bounding_boxes(detections, 
                                     image,
