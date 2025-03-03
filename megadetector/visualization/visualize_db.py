@@ -167,7 +167,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         options (DbVizOptions, optional): See DbVizOptions for details
     
     Returns:
-        tuple: A length-two tuple containing (the html filename) and (the loaded database).        
+        tuple: A length-two tuple containing (the html filename) and (the loaded database).
     """    
     
     if options is None:
@@ -315,6 +315,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
     
         bboxes = []
         box_classes = []
+        box_score_strings = []
         
         # All the class labels we've seen for this image (with out without bboxes)
         image_categories = set()
@@ -363,12 +364,19 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
             image_categories.add(category_name)
             
             if 'bbox' in anno:
-                bbox = anno['bbox']        
+                bbox = anno['bbox']                
                 if isinstance(bbox,float):
                     assert math.isnan(bbox), "I shouldn't see a bbox that's neither a box nor NaN"
                     continue
                 bboxes.append(bbox)
                 box_classes.append(anno['category_id'])
+                
+                box_score_string = ''
+                if options.confidence_field_name is not None and \
+                   options.confidence_field_name in anno:
+                       score = anno[options.confidence_field_name]
+                       box_score_string = '({}%)'.format(round(100 * score))
+                box_score_strings.append(box_score_string)
         
         # ...for each of this image's annotations
         
@@ -382,8 +390,12 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         for c in illegal_characters:
             file_name = file_name.replace(c,'~')
         
-        rendering_info.append({'bboxes':bboxes, 'box_classes':box_classes, 'img_path':img_path,
-                               'output_file_name':file_name})
+        rendering_info_this_image = {'bboxes':bboxes,
+                                     'box_classes':box_classes,
+                                     'tags':box_score_strings,
+                                     'img_path':img_path,
+                                     'output_file_name':file_name}
+        rendering_info.append(rendering_info_this_image)
                 
         label_level_string = ''
         if len(annotation_level_for_image) > 0:
@@ -442,6 +454,9 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         img_path = rendering_info['img_path']
         bboxes = rendering_info['bboxes']
         bbox_classes = rendering_info['box_classes']
+        bbox_tags = None
+        if 'tags' in rendering_info:
+            bbox_tags = rendering_info['tags']            
         output_file_name = rendering_info['output_file_name']
         output_full_path = os.path.join(output_dir, 'rendered_images', output_file_name)
         
@@ -467,11 +482,14 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
             print('Image {} failed to open, error: {}'.format(img_path, e))
             return False
             
-        vis_utils.render_db_bounding_boxes(boxes=bboxes, classes=bbox_classes,
-                                           image=image, original_size=original_size,
+        vis_utils.render_db_bounding_boxes(boxes=bboxes, 
+                                           classes=bbox_classes,
+                                           image=image, 
+                                           original_size=original_size,
                                            label_map=label_map,
                                            thickness=options.box_thickness,
-                                           expansion=options.box_expansion)
+                                           expansion=options.box_expansion,
+                                           tags=bbox_tags)
         
         image.save(output_full_path)
                 

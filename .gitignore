@@ -61,3 +61,4 @@ megadetector/api/synchronous/api_core/animal_detection_api/detection
 
 # Sphinx things
 docs/build/
+docs/source/_static

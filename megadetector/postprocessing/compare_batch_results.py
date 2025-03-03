@@ -1609,7 +1609,9 @@ def n_way_comparison(filenames,
     if model_names is not None:
         assert len(model_names) == len(filenames), \
             '[model_names] should be the same length as [filenames]'
-        
+    
+    options.pairwise_options = []
+    
     # Choose all pairwise combinations of the files in [filenames]
     for i, j in itertools.combinations(list(range(0,len(filenames))),2):
             

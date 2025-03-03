@@ -517,6 +517,52 @@ def invert_dictionary(d):
     return {v: k for k, v in d.items()}
 
 
+def round_floats_in_nested_dict(obj, decimal_places=5):
+    """
+    Recursively rounds all floating point values in a nested structure to the 
+    specified number of decimal places. Handles dictionaries, lists, tuples, 
+    sets, and other iterables. Modifies mutable objects in place.
+    
+    Args:
+        obj: The object to process (can be a dict, list, set, tuple, or primitive value)
+        decimal_places: Number of decimal places to round to (default: 5)
+    
+    Returns:
+        The processed object (useful for recursive calls)
+    """
+    if isinstance(obj, dict):
+        for key in obj:
+            obj[key] = round_floats_in_nested_dict(obj[key], decimal_places)
+        return obj
+    
+    elif isinstance(obj, list):
+        for i in range(len(obj)):
+            obj[i] = round_floats_in_nested_dict(obj[i], decimal_places)
+        return obj
+    
+    elif isinstance(obj, tuple):
+        # Tuples are immutable, so we create a new one
+        return tuple(round_floats_in_nested_dict(item, decimal_places) for item in obj)
+    
+    elif isinstance(obj, set):
+        # Sets are mutable but we can't modify elements in-place
+        # Convert to list, process, and convert back to set
+        return set(round_floats_in_nested_dict(list(obj), decimal_places))
+    
+    elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
+        # Handle other iterable types - convert to list, process, and convert back
+        return type(obj)(round_floats_in_nested_dict(item, decimal_places) for item in obj)
+    
+    elif isinstance(obj, float):
+        return round(obj, decimal_places)
+    
+    else:
+        # For other types (int, str, bool, None, etc.), return as is
+        return obj
+
+# ...def round_floats_in_nested_dict(...)    
+
+
 def image_file_to_camera_folder(image_fn):
     r"""
     Removes common overflow folders (e.g. RECNX101, RECNX102) from paths, i.e. turn:
@@ -545,7 +591,7 @@ def image_file_to_camera_folder(image_fn):
     # 100EK113 is (for some reason) the overflow folder style for Bushnell cameras
     # 100_BTCF is the overflow folder style for Browning cameras
     # 100MEDIA is the overflow folder style used on a number of consumer-grade cameras
-    patterns = ['\/\d+RECNX\/','\/\d+EK\d+\/','\/\d+_BTCF\/','\/\d+MEDIA\/']
+    patterns = [r'/\d+RECNX/',r'/\d+EK\d+/',r'/\d+_BTCF/',r'/\d+MEDIA/']
     
     image_fn = image_fn.replace('\\','/')    
     for pat in patterns:
@@ -703,8 +749,8 @@ def is_function_name(s,calling_namespace):
         callable(locals().get(s)) or \
         callable(calling_namespace.get(s)) or \
         callable(getattr(builtins, s, None))
-        
 
+        
 # From https://gist.github.com/fralau/061a4f6c13251367ef1d9a9a99fb3e8d
 def parse_kvp(s,kv_separator='='):
     """
@@ -780,7 +826,7 @@ def dict_to_kvp_list(d,
     if len(d) == 0:
         return ''
     
-    s = ''
+    s = None
     for k in d.keys():
         assert isinstance(k,str), 'Input {} is not a str <--> str dict'.format(str(d))
         v = d[k]
@@ -800,6 +846,9 @@ def dict_to_kvp_list(d,
             s += item_separator
         s += k + kv_separator + v
     
+    if s is None:
+        s = ''
+        
     return s
     
 
@@ -826,22 +875,20 @@ def parse_bool_string(s):
         raise ValueError('Cannot parse bool from string {}'.format(str(s)))
     
 
-#%% Test drivers
+#%% Test driver
 
-if False:
+def __module_test__():
+    """
+    Module test driver
+    """ 
     
-    pass
+    ##%% Camera folder mapping
     
-    #%% Test image_file_to_camera_folder()
-    
-    relative_path = 'a/b/c/d/100EK113/blah.jpg'
-    print(image_file_to_camera_folder(relative_path))
-    
-    relative_path = 'a/b/c/d/100RECNX/blah.jpg'
-    print(image_file_to_camera_folder(relative_path))
+    assert image_file_to_camera_folder('a/b/c/d/100EK113/blah.jpg') == 'a/b/c/d'    
+    assert image_file_to_camera_folder('a/b/c/d/100RECNX/blah.jpg') == 'a/b/c/d'
     
     
-    #%% Test a few rectangle distances
+    ##%% Test a few rectangle distances
     
     r1 = [0,0,1,1]; r2 = [0,0,1,1]; assert rect_distance(r1,r2)==0
     r1 = [0,0,1,1]; r2 = [0,0,1,100]; assert rect_distance(r1,r2)==0
@@ -853,9 +900,30 @@ if False:
     r1 = [0.4,0.8,10,22]; r2 = [120, 120, 200, 210.4]; assert abs(rect_distance(r1,r2)-147.323) < 0.001
 
     
-    #%% Test dictionary sorting
+    ##%% Test dictionary sorting
     
     L = [{'a':5},{'a':0},{'a':10}]
     k = 'a'
     sort_list_of_dicts_by_key(L, k, reverse=True)
+
+
+    ##%% Test float rounding
+    
+    # Example with mixed collection types
+    data = {
+        "name": "Project X",
+        "values": [1.23456789, 2.3456789],
+        "tuple_values": (3.45678901, 4.56789012),
+        "set_values": {5.67890123, 6.78901234},
+        "metrics": {
+            "score": 98.7654321,
+            "components": [5.6789012, 6.7890123]
+        }
+    }
+    
+    result = round_floats_in_nested_dict(data)
+    assert result['values'][0] == 1.23457
+    assert result['tuple_values'][0] == 3.45679
+    assert min(list(result['set_values'])) == 5.6789
+    
     

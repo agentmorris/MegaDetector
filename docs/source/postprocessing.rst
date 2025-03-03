@@ -22,6 +22,14 @@ postprocessing.categorize\_detections\_by\_size module
    :undoc-members:
    :show-inheritance:
 
+postprocessing.create\_crop\_folder module
+------------------------------------------------------
+
+.. automodule:: megadetector.postprocessing.create_crop_folder
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 postprocessing.classification\_postprocessing module
 ----------------------------------------------------
 
@@ -30,20 +38,20 @@ postprocessing.classification\_postprocessing module
    :undoc-members:
    :show-inheritance:
 
-postprocessing.combine\_api\_outputs module
--------------------------------------------
+postprocessing.combine\_batch\_outputs module
+---------------------------------------------
 
-.. automodule:: megadetector.postprocessing.combine_api_outputs
+.. automodule:: megadetector.postprocessing.combine_batch_outputs
    :members:
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
 
 .. sphinx_argparse_cli::
-   :module: megadetector.postprocessing.combine_api_outputs
+   :module: megadetector.postprocessing.combine_batch_outputs
    :func: main
    :hook:
-   :prog: combine_api_outputs
+   :prog: combine_batch_outputs
    :no_default_values:
     
 postprocessing.compare\_batch\_results module
@@ -135,6 +143,23 @@ postprocessing.md\_to\_labelme module
    :hook:
    :prog: md_to_labelme
    :no_default_values:
+
+postprocessing.md\_to\_wi module
+----------------------------------
+
+.. automodule:: megadetector.postprocessing.md_to_wi
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.postprocessing.md_to_wi
+   :func: main
+   :hook:
+   :prog: md_to_wi
+   :no_default_values:
+
 
 postprocessing.merge\_detections module
 ---------------------------------------

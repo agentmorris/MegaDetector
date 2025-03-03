@@ -2,7 +2,7 @@
 
 yolo_output_to_md_output.py
 
-Converts the output of YOLOv5's detect.py or val.py to the MD API output format.
+Converts the output of YOLOv5's detect.py or val.py to the MD output format.
 
 **Converting .txt files**
 
@@ -74,7 +74,7 @@ def read_classes_from_yolo_dataset_file(fn):
         with open(fn,'r') as f:
             lines = f.readlines()
                 
-        pat = '\d+:.+'
+        pat = r'\d+:.+'
         for s in lines:
             if re.search(pat,s) is not None:
                 tokens = s.split(':')

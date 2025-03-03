@@ -7,6 +7,16 @@ for TF or PyTorch
 
 """
 
+# Minimize TF printouts
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+
+try:
+    import logging
+    logging.getLogger('tensorflow').setLevel(logging.ERROR)
+except Exception:
+    pass
+       
 #%% Torch/TF test functions
 
 def torch_test():
@@ -27,11 +37,12 @@ def torch_test():
 
     print('Torch version: {}'.format(str(torch.__version__)))
     print('CUDA available (according to PyTorch): {}'.format(torch.cuda.is_available()))
-    print('CUDA version (according to PyTorch): {}'.format(torch.version.cuda))
-    print('CuDNN version (according to PyTorch): {}'.format(torch.backends.cudnn.version()))
+    if torch.cuda.is_available():
+        print('CUDA version (according to PyTorch): {}'.format(torch.version.cuda))
+        print('CuDNN version (according to PyTorch): {}'.format(torch.backends.cudnn.version()))
 
     device_ids = list(range(torch.cuda.device_count()))
-    
+        
     if len(device_ids) > 0:        
         cuda_str = 'Found {} CUDA devices:'.format(len(device_ids))
         print(cuda_str)
@@ -46,6 +57,11 @@ def torch_test():
     else:
         print('No GPUs reported by PyTorch')
         
+    try:
+        if torch.backends.mps.is_built and torch.backends.mps.is_available():
+            print('PyTorch reports that Metal Performance Shaders are available')
+    except Exception:
+        pass 
     return len(device_ids)
 
 
@@ -64,6 +80,24 @@ def tf_test():
             str(e)))
         return
     
+    from tensorflow.python.platform import build_info as build
+    print(f"TF version: {tf.__version__}")
+    
+    if 'cuda_version' not in build.build_info:
+        print('TF does not appear to be built with CUDA')
+    else:
+        print(f"CUDA build version reported by TensorFlow: {build.build_info['cuda_version']}")
+    if 'cudnn_version' not in build.build_info:
+        print('TF does not appear to be built with CuDNN')
+    else:
+        print(f"CuDNN build version reported by TensorFlow: {build.build_info['cudnn_version']}")
+
+    try:
+        from tensorflow.python.compiler.tensorrt import trt_convert as trt
+        print("Linked TensorRT version: {}".format(trt.trt_utils._pywrap_py_utils.get_linked_tensorrt_version()))
+    except Exception:
+        print('Could not probe TensorRT version')
+        
     gpus = tf.config.list_physical_devices('GPU')
     if gpus is None:
         gpus = []
@@ -73,10 +107,6 @@ def tf_test():
         for gpu in gpus:
             print(gpu.name)
             
-        from tensorflow.python.platform import build_info as build
-        print(f"TF version: {tf.__version__}")
-        print(f"CUDA version reported by TensorFlow: {build.build_info['cuda_version']}")
-        print(f"CuDNN version reported by TensorFlow: {build.build_info['cudnn_version']}")
     else:
         print('No GPUs reported by TensorFlow')
         

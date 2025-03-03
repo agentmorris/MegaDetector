@@ -130,7 +130,8 @@ def _get_model_type_for_model(model_file,
 def _initialize_yolo_imports_for_model(model_file,
                                        prefer_model_type_source='table',
                                        default_model_type='yolov5',
-                                       detector_options=None):
+                                       detector_options=None,
+                                       verbose=False):
     """
     Initialize the appropriate YOLO imports for a model file.
     
@@ -144,6 +145,7 @@ def _initialize_yolo_imports_for_model(model_file,
             appropriate metadata in the file or in the global table.        
         detector_options (dict, optional): dictionary of detector options that mean
             different things to different models
+        verbose (bool, optional): enable additonal debug output
             
     Returns:
         str: the model type for which we initialized support
@@ -168,7 +170,7 @@ def _initialize_yolo_imports_for_model(model_file,
             print('Previously set up imports for model type {}, re-importing as {}'.format(
                 yolo_model_type_imported,model_type))
                 
-    _initialize_yolo_imports(model_type)
+    _initialize_yolo_imports(model_type,verbose=verbose)
     
     return model_type
 
@@ -223,7 +225,8 @@ def _clean_yolo_imports(verbose=False):
 
 def _initialize_yolo_imports(model_type='yolov5',
                              allow_fallback_import=True,
-                             force_reimport=False):
+                             force_reimport=False,
+                             verbose=False):
     """
     Imports required functions from one or more yolo libraries (yolov5, yolov9, 
     ultralytics, targeting support for [model_type]).
@@ -235,6 +238,7 @@ def _initialize_yolo_imports(model_type='yolov5',
             typically used when the right support library is on the current PYTHONPATH.
         force_reimport (bool, optional): import the appropriate libraries even if the 
             requested model type matches the current initialization state
+        verbose (bool, optional): include additonal debug output
             
     Returns:
         str: the model type for which we initialized support
@@ -277,7 +281,8 @@ def _initialize_yolo_imports(model_type='yolov5',
             except Exception:
                 from yolov5.utils.general import scale_coords
             utils_imported = True
-            print('Imported utils from YOLOv5 package')
+            if verbose:
+                print('Imported utils from YOLOv5 package')
             
         except Exception as e: # noqa           
         
@@ -294,7 +299,8 @@ def _initialize_yolo_imports(model_type='yolov5',
             from yolov9.utils.augmentations import letterbox # noqa
             from yolov9.utils.general import scale_boxes as scale_coords # noqa
             utils_imported = True
-            print('Imported utils from YOLOv9 package')
+            if verbose:
+                print('Imported utils from YOLOv9 package')
             
         except Exception as e: # noqa
             
@@ -363,7 +369,8 @@ def _initialize_yolo_imports(model_type='yolov5',
                 return [letterbox_result,ratio,pad]
             
             utils_imported = True
-            print('Imported utils from ultralytics package')
+            if verbose:
+                print('Imported utils from ultralytics package')
             
         except Exception:
             
@@ -386,7 +393,8 @@ def _initialize_yolo_imports(model_type='yolov5',
                 from utils.general import scale_boxes as scale_coords
             utils_imported = True
             imported_file = sys.modules[scale_coords.__module__].__file__
-            print('Imported utils from {}'.format(imported_file))
+            if verbose:
+                print('Imported utils from {}'.format(imported_file))
                     
         except ModuleNotFoundError as e:
             
@@ -395,13 +403,12 @@ def _initialize_yolo_imports(model_type='yolov5',
     assert utils_imported, 'YOLO utils import error'
     
     yolo_model_type_imported = model_type
-    print('Prepared YOLO imports for model type {}'.format(model_type))
+    if verbose:
+        print('Prepared YOLO imports for model type {}'.format(model_type))
     
     return model_type
 
 # ...def _initialize_yolo_imports(...)
-
-print(f'Using PyTorch version {torch.__version__}')
     
 
 #%% Model metadata functions
@@ -517,7 +524,7 @@ def read_metadata_from_megadetector_model_file(model_file,
 
 #%% Inference classes
 
-default_compatibility_mode = 'default'
+default_compatibility_mode = 'classic'
 
 # This is a useful hack when I want to verify that my test driver (md_tests.py) is 
 # correctly forcing a specific compabitility mode (I use "classic-test" in that case)
@@ -525,12 +532,13 @@ require_non_default_compatibility_mode = False
 
 class PTDetector:
     
-    def __init__(self, model_path, detector_options=None):
+    def __init__(self, model_path, detector_options=None, verbose=False):
         
         # Set up the import environment for this model, unloading previous
         # YOLO library versions if necessary.
         _initialize_yolo_imports_for_model(model_path,
-                                           detector_options=detector_options)
+                                           detector_options=detector_options,
+                                           verbose=verbose)
         
         # Parse options specific to this detector family
         force_cpu = False
@@ -555,7 +563,14 @@ class PTDetector:
             assert compatibility_mode != 'classic'
             assert compatibility_mode != 'default'
         
-        print('Loading PT detector with compatibility mode {}'.format(compatibility_mode))
+        preprocess_only = False
+        if (detector_options is not None) and \
+           ('preprocess_only' in detector_options) and \
+           (detector_options['preprocess_only']):
+            preprocess_only = True
+        
+        if verbose or (not preprocess_only):
+            print('Loading PT detector with compatibility mode {}'.format(compatibility_mode))
         
         model_metadata = read_metadata_from_megadetector_model_file(model_path)
         
@@ -563,7 +578,8 @@ class PTDetector:
         #: aspect ratio".
         if model_metadata is not None and 'image_size' in model_metadata:
             self.default_image_size = model_metadata['image_size']
-            print('Loaded image size {} from model metadata'.format(self.default_image_size))
+            if verbose:
+                print('Loaded image size {} from model metadata'.format(self.default_image_size))
         else:
             self.default_image_size = 1280
     
@@ -595,6 +611,9 @@ class PTDetector:
         #: Use half-precision inference... fixed by the model, generally don't mess with this
         self.half_precision = False
         
+        if preprocess_only:
+            return
+            
         if not force_cpu:
             if torch.cuda.is_available():
                 self.device = torch.device('cuda:0')
@@ -619,17 +638,22 @@ class PTDetector:
                 yolo.DetectionModel = yolo.Model
                 self.model = PTDetector._load_model(model_path, 
                                                     device=self.device,
-                                                    compatibility_mode=self.compatibility_mode) 
+                                                    compatibility_mode=self.compatibility_mode,
+                                                    verbose=verbose) 
             else:
                 raise
         if (self.device != 'cpu'):
-            print('Sending model to GPU')
+            if verbose:
+                print('Sending model to GPU')
             self.model.to(self.device)
                     
 
     @staticmethod
-    def _load_model(model_pt_path, device, compatibility_mode=''):
+    def _load_model(model_pt_path, device, compatibility_mode='', verbose=False):
         
+        if verbose:
+            print(f'Using PyTorch version {torch.__version__}')
+
         # There are two very slightly different ways to load the model, (1) using the
         # map_location=device parameter to torch.load and (2) calling .to(device) after
         # loading the model.  The former is what we did for a zillion years, but is not
@@ -642,10 +666,26 @@ class PTDetector:
             use_map_location = False
         
         if use_map_location:
-            checkpoint = torch.load(model_pt_path, map_location=device)
+            try:            
+                checkpoint = torch.load(model_pt_path, map_location=device, weights_only=False)
+            # For a transitional period, we want to support torch 1.1x, where the weights_only
+            # parameter doesn't exist
+            except Exception as e:
+                if "'weights_only' is an invalid keyword" in str(e):
+                    checkpoint = torch.load(model_pt_path, map_location=device)
+                else:
+                    raise
         else:
-            checkpoint = torch.load(model_pt_path)
-        
+            try:
+                checkpoint = torch.load(model_pt_path, weights_only=False)
+            # For a transitional period, we want to support torch 1.1x, where the weights_only
+            # parameter doesn't exist
+            except Exception as e:
+                if "'weights_only' is an invalid keyword" in str(e):
+                    checkpoint = torch.load(model_pt_path)    
+                else:
+                    raise
+    
         # Compatibility fix that allows us to load older YOLOv5 models with 
         # newer versions of YOLOv5/PT
         for m in checkpoint['model'].modules():
@@ -660,13 +700,18 @@ class PTDetector:
             
         return model
 
+    # ...def _load_model(...)
+    
+
     def generate_detections_one_image(self, 
                                       img_original, 
                                       image_id='unknown', 
                                       detection_threshold=0.00001, 
                                       image_size=None,
                                       skip_image_resizing=False,
-                                      augment=False):
+                                      augment=False,
+                                      preprocess_only=False,
+                                      verbose=False):
         """
         Applies the detector to an image.
 
@@ -680,8 +725,11 @@ class PTDetector:
             image_size (tuple, optional): image size to use for inference, only mess with this if 
                 (a) you're using a model other than MegaDetector or (b) you know what you're getting into
             skip_image_resizing (bool, optional): whether to skip internal image resizing (and rely on 
-                external resizing)... you almost never want ot mess with this
+                external resizing), only mess with this if (a) you're using a model other than MegaDetector 
+                or (b) you know what you're getting into
             augment (bool, optional): enable (implementation-specific) image augmentation
+            preprocess_only (bool, optional): only run preprocessing, and return the preprocessed image
+            verbose (bool, optional): enable additional debug output
 
         Returns:
             dict: a dictionary with the following fields:
@@ -695,46 +743,64 @@ class PTDetector:
         detections = []
         max_conf = 0.0
 
+        if preprocess_only:
+            assert 'classic' in self.compatibility_mode, \
+                'Standalone preprocessing only supported in "classic" mode'
+            assert not skip_image_resizing, \
+                'skip_image_resizing and preprocess_only are exclusive' 
+            
         if detection_threshold is None:
             
             detection_threshold = 0
             
         try:
             
-            if not isinstance(img_original,np.ndarray):                
-                img_original = np.asarray(img_original)
-
-            # PIL images are RGB already
-            # img_original = img_original[:, :, ::-1]
-            
-            # Save the original shape for scaling boxes later
-            scaling_shape = img_original.shape
-            
-            # If the caller is requesting a specific target size...
-            if image_size is not None:
-                
-                assert isinstance(image_size,int)
-                
-                if not self.printed_image_size_warning:
-                    print('Using user-supplied image size {}'.format(image_size))
-                    self.printed_image_size_warning = True                    
-            
-            # Otherwise resize to self.default_image_size
-            else:
-                
-                image_size = self.default_image_size
-                self.printed_image_size_warning = False
-                
-            # ...if the caller has specified an image size
-            
             # If the caller wants us to skip all the resizing operations...
             if skip_image_resizing:
                 
-                img = img_original
-                
-            # Otherwise we have a bunch of resizing to do...
+                if isinstance(img_original,dict):
+                    image_info = img_original
+                    img = image_info['img_processed']
+                    scaling_shape = image_info['scaling_shape']
+                    letterbox_pad = image_info['letterbox_pad']
+                    letterbox_ratio = image_info['letterbox_ratio']
+                    img_original = image_info['img_original']
+                    img_original_pil = image_info['img_original_pil']
+                else:
+                    img = img_original
+            
             else:
-                            
+                
+                img_original_pil = None
+                # If we were given a PIL image
+                
+                if not isinstance(img_original,np.ndarray):
+                    img_original_pil = img_original                    
+                    img_original = np.asarray(img_original)
+    
+                # PIL images are RGB already
+                # img_original = img_original[:, :, ::-1]
+                
+                # Save the original shape for scaling boxes later
+                scaling_shape = img_original.shape
+                
+                # If the caller is requesting a specific target size...
+                if image_size is not None:
+                    
+                    assert isinstance(image_size,int)
+                    
+                    if not self.printed_image_size_warning:
+                        print('Using user-supplied image size {}'.format(image_size))
+                        self.printed_image_size_warning = True                    
+                
+                # Otherwise resize to self.default_image_size
+                else:
+                    
+                    image_size = self.default_image_size
+                    self.printed_image_size_warning = False
+                    
+                # ...if the caller has specified an image size
+                                
                 # In "classic mode", we only do the letterboxing resize, we don't do an
                 # additional initial resizing operation
                 if 'classic' in self.compatibility_mode:
@@ -801,8 +867,25 @@ class PTDetector:
                                                               scaleFill=False,
                                                               scaleup=letterbox_scaleup)
             
+                if preprocess_only:
+            
+                    assert 'file' in result
+                    result['img_processed'] = img
+                    result['img_original'] = img_original
+                    result['img_original_pil'] = img_original_pil
+                    result['target_shape'] = target_shape
+                    result['scaling_shape'] = scaling_shape
+                    result['letterbox_ratio'] = letterbox_ratio
+                    result['letterbox_pad'] = letterbox_pad
+                    return result
+                    
+            # ...are we doing resizing here, or were images already resized?
+            
             # Convert HWC to CHW (which is what the model expects).  The PIL Image is RGB already,
             # so we don't need to mess with the color channels.
+            #
+            # TODO, this could be moved into the preprocessing loop
+            
             img = img.transpose((2, 0, 1)) # [::-1]
             img = np.ascontiguousarray(img)
             img = torch.from_numpy(img)
@@ -853,8 +936,9 @@ class PTDetector:
                 
             else:
                 
-                # letterbox_pad is a 2-tuple specifying the padding that was added on each axis
-                # ratio is a 2-tuple specifying the scaling that was applied to each dimension
+                # letterbox_pad is a 2-tuple specifying the padding that was added on each axis.
+                #
+                # ratio is a 2-tuple specifying the scaling that was applied to each dimension.
                 #
                 # The scale_boxes function expects a 2-tuple with these things combined.
                 ratio = (img_original.shape[0]/scaling_shape[0], img_original.shape[1]/scaling_shape[1])

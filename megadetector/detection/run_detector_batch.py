@@ -50,15 +50,14 @@ import humanfriendly
 
 from datetime import datetime
 from functools import partial
+from copy import deepcopy
 from tqdm import tqdm
 
 import multiprocessing
 from threading import Thread
 from multiprocessing import Process, Manager
 
-# Multiprocessing uses processes, not threads... leaving this here (and commented out)
-# to make sure I don't change this casually at some point, it changes a number of 
-# assumptions about interaction with PyTorch and TF.
+# This pool is used for multi-CPU parallelization, not for data loading workers
 # from multiprocessing.pool import ThreadPool as workerpool
 from multiprocessing.pool import Pool as workerpool
 
@@ -72,6 +71,8 @@ from megadetector.detection.run_detector import \
 
 from megadetector.utils import path_utils
 from megadetector.utils.ct_utils import parse_kvp_list
+from megadetector.utils.ct_utils import split_list_into_n_chunks
+from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.data_management import read_exif
 from megadetector.data_management.yolo_output_to_md_output import read_classes_from_yolo_dataset_file
@@ -79,12 +80,24 @@ from megadetector.data_management.yolo_output_to_md_output import read_classes_f
 # Numpy FutureWarnings from tensorflow import
 warnings.filterwarnings('ignore', category=FutureWarning)
 
-# Number of images to pre-fetch
+# Default number of loaders to use when --image_queue is set
+default_loaders = 4
+
+# Should we do preprocessing on the image queue?
+default_preprocess_on_image_queue = False
+
+# Number of images to pre-fetch per worker
 max_queue_size = 10
 
 # How often should we print progress when using the image queue?
 n_queue_print = 1000
 
+# TODO: it's a little sloppy that these are module-level globals, but in practice it 
+# doesn't really matter, so I'm not in a big rush to move these to options until I do
+# a larger cleanup of all the long argument lists in this module.
+#
+# Should the consumer loop run on its own process, or here in the main process?
+run_separate_consumer_process = False
 use_threads_for_queue = False
 verbose = False
 
@@ -95,85 +108,175 @@ exif_options.byte_handling = 'convert_to_string'
 
 #%% Support functions for multiprocessing
 
-def _producer_func(q,image_files):
+def _producer_func(q,
+                   image_files,
+                   producer_id=-1,
+                   preprocessor=None,
+                   detector_options=None,
+                   verbose=False,
+                   image_size=None,
+                   augment=None):
     """ 
     Producer function; only used when using the (optional) image queue.
     
-    Reads up to N images from disk and puts them on the blocking queue for processing.
+    Reads up to images from disk and puts them on the blocking queue for 
+    processing.  Each image is queued as a tuple of [filename,Image].  Sends 
+    "None" to the queue when finished.
+    
+    The "detector" argument is only used for preprocessing.
     """
     
     if verbose:
-        print('Producer starting'); sys.stdout.flush()
+        print('Producer starting: ID {}, preprocessor {}'.format(producer_id,preprocessor))
+        sys.stdout.flush()
+        
+    if preprocessor is not None:
+        assert isinstance(preprocessor,str)
+        detector_options = deepcopy(detector_options)
+        detector_options['preprocess_only'] = True
+        preprocessor = load_detector(preprocessor,detector_options=detector_options,verbose=verbose)
         
     for im_file in image_files:
     
         try:
             if verbose:
-                print('Loading image {}'.format(im_file)); sys.stdout.flush()
+                print('Loading image {} on producer {}'.format(im_file,producer_id))
+                sys.stdout.flush()
             image = vis_utils.load_image(im_file)
+                        
+            if preprocessor is not None:
+                
+                image_info = preprocessor.generate_detections_one_image(
+                                                  image, 
+                                                  im_file, 
+                                                  detection_threshold=None, 
+                                                  image_size=image_size,
+                                                  skip_image_resizing=False,
+                                                  augment=augment,
+                                                  preprocess_only=True,
+                                                  verbose=verbose)
+                if 'failure' in image_info:
+                    assert image_info['failure'] == run_detector.FAILURE_INFER
+                    raise
+                    
+                image = image_info
+                
         except Exception:
-            print('Producer process: image {} cannot be loaded.'.format(im_file))
+            print('Producer process: image {} cannot be loaded'.format(im_file))
             image = run_detector.FAILURE_IMAGE_OPEN            
         
         if verbose:
-            print('Queueing image {}'.format(im_file)); sys.stdout.flush()
-        q.put([im_file,image])
+            print('Queueing image {} from producer {}'.format(im_file,producer_id))
+            sys.stdout.flush()
+        
+        q.put([im_file,image,producer_id])
     
+    # This is a signal to the consumer function that a worker has finished
     q.put(None)
         
-    print('Finished image loading'); sys.stdout.flush()
+    if verbose:
+        print('Loader worker {} finished'.format(producer_id))
+    sys.stdout.flush()
+
+# ...def _producer_func(...)
     
     
 def _consumer_func(q,
                    return_queue,
                    model_file,
                    confidence_threshold,
+                   loader_workers,
                    image_size=None,
                    include_image_size=False,
                    include_image_timestamp=False, 
                    include_exif_data=False,
                    augment=False,
-                   detector_options=None):
+                   detector_options=None,
+                   preprocess_on_image_queue=default_preprocess_on_image_queue,
+                   n_total_images=None
+                   ):
     """ 
     Consumer function; only used when using the (optional) image queue.
     
-    Pulls images from a blocking queue and processes them.
+    Pulls images from a blocking queue and processes them.  Returns when "None" has
+    been read from each loader's queue.
     """
     
     if verbose:
         print('Consumer starting'); sys.stdout.flush()
 
     start_time = time.time()
-    detector = load_detector(model_file,detector_options=detector_options)
-    elapsed = time.time() - start_time
-    print('Loaded model (before queueing) in {}, printing updates every {} images'.format(
-        humanfriendly.format_timespan(elapsed),n_queue_print))
-    sys.stdout.flush()
+    
+    if isinstance(model_file,str):
+        detector = load_detector(model_file,detector_options=detector_options,verbose=verbose)
+        elapsed = time.time() - start_time
+        print('Loaded model (before queueing) in {}, printing updates every {} images'.format(
+            humanfriendly.format_timespan(elapsed),n_queue_print))
+        sys.stdout.flush()
+    else:
+        detector = model_file
+        print('Detector of type {} passed to consumer function'.format(type(detector)))
         
     results = []
     
     n_images_processed = 0
+    n_queues_finished = 0
     
+    pbar = None
+    if n_total_images is not None:
+        # TODO: in principle I should close this pbar
+        pbar = tqdm(total=n_total_images)
+        
     while True:
+        
         r = q.get()
+        
+        # Is this the last image in one of the producer queues?
         if r is None:
+            n_queues_finished += 1
             q.task_done()
-            return_queue.put(results)
-            return
+            if verbose:
+                print('Consumer thread: {} of {} queues finished'.format(
+                    n_queues_finished,loader_workers))
+            if n_queues_finished == loader_workers:
+                return_queue.put(results)
+                return
+            else:
+                continue
         n_images_processed += 1
         im_file = r[0]
         image = r[1]
-        if verbose or ((n_images_processed % n_queue_print) == 1):
-            elapsed = time.time() - start_time
-            images_per_second = n_images_processed / elapsed
-            print('De-queued image {} ({:.2f}/s) ({})'.format(n_images_processed,
-                                                          images_per_second,
-                                                          im_file));
-            sys.stdout.flush()
+        
+        """
+        result['img_processed'] = img
+        result['img_original'] = img_original
+        result['target_shape'] = target_shape
+        result['scaling_shape'] = scaling_shape
+        result['letterbox_ratio'] = letterbox_ratio
+        result['letterbox_pad'] = letterbox_pad
+        """
+        
+        if pbar is not None:
+            pbar.update(1)
+            
+        if False:
+            if verbose or ((n_images_processed % n_queue_print) == 1):
+                elapsed = time.time() - start_time
+                images_per_second = n_images_processed / elapsed
+                print('De-queued image {} ({:.2f}/s) ({})'.format(n_images_processed,
+                                                              images_per_second,
+                                                              im_file));
+                sys.stdout.flush()
+          
         if isinstance(image,str):
             # This is how the producer function communicates read errors
             results.append({'file': im_file,
                             'failure': image})
+        elif preprocess_on_image_queue and (not isinstance(image,dict)):
+                print('Expected a dict, received an image of type {}'.format(type(image)))
+                results.append({'file': im_file,
+                                'failure': 'illegal image type'})
+            
         else:
             results.append(process_image(im_file=im_file,
                                          detector=detector,
@@ -184,11 +287,16 @@ def _consumer_func(q,
                                          include_image_size=include_image_size,
                                          include_image_timestamp=include_image_timestamp, 
                                          include_exif_data=include_exif_data,
-                                         augment=augment))
+                                         augment=augment,
+                                         skip_image_resizing=preprocess_on_image_queue))
         if verbose:
             print('Processed image {}'.format(im_file)); sys.stdout.flush()
         q.task_done()
             
+    # ...while True (consumer loop)
+
+# ...def _consumer_func(...)
+
 
 def run_detector_with_image_queue(image_files,
                                   model_file,
@@ -199,7 +307,9 @@ def run_detector_with_image_queue(image_files,
                                   include_image_timestamp=False,
                                   include_exif_data=False,
                                   augment=False,
-                                  detector_options=None):
+                                  detector_options=None,
+                                  loader_workers=default_loaders,
+                                  preprocess_on_image_queue=default_preprocess_on_image_queue):
     """
     Driver function for the (optional) multiprocessing-based image queue; only used 
     when --use_image_queue is specified.  Starts a reader process to read images from disk, but 
@@ -215,52 +325,93 @@ def run_detector_with_image_queue(image_files,
         image_size (tuple, optional): image size to use for inference, only mess with this
             if (a) you're using a model other than MegaDetector or (b) you know what you're
             doing
+        include_image_size (bool, optional): should we include image size in the output for each image?
+        include_image_timestamp (bool, optional): should we include image timestamps in the output for each image?
+        include_exif_data (bool, optional): should we include EXIF data in the output for each image?
+        augment (bool, optional): enable image augmentation
+        detector_options (dict, optional): key/value pairs that are interpreted differently 
+            by different detectors
+        loader_workers (int, optional): number of loaders to use
             
     Returns:
         list: list of dicts in the format returned by process_image()
     """
     
+    # Validate inputs
+    assert isinstance(model_file,str)
+    
+    if loader_workers <= 0:
+        loader_workers = 1
+        
     q = multiprocessing.JoinableQueue(max_queue_size)
     return_queue = multiprocessing.Queue(1)
     
-    if use_threads_for_queue:
-        producer = Thread(target=_producer_func,args=(q,image_files,))
-    else:
-        producer = Process(target=_producer_func,args=(q,image_files,))
-    producer.daemon = False
-    producer.start()
- 
-    # The queue system is a little more elegant if we start one thread for reading and one
-    # for processing, and this works fine on Windows, but because we import TF at module load,
-    # CUDA will only work in the main process, so currently the consumer function runs here.
-    #
-    # To enable proper multi-GPU support, we may need to move the TF import to a separate module
-    # that isn't loaded until very close to where inference actually happens.
-    run_separate_consumer_process = False
-
+    producers = []
+    
+    worker_string = 'thread' if use_threads_for_queue else 'process'
+    print('Starting a {} pool with {} workers'.format(worker_string,loader_workers))
+    
+    preprocessor = None
+    
+    if preprocess_on_image_queue:
+        preprocessor = model_file
+    
+    n_total_images = len(image_files)
+    
+    chunks = split_list_into_n_chunks(image_files, loader_workers, chunk_strategy='greedy')
+    for i_chunk,chunk in enumerate(chunks):
+        if use_threads_for_queue:
+            producer = Thread(target=_producer_func,args=(q,
+                                                          chunk,
+                                                          i_chunk,preprocessor,
+                                                          detector_options,
+                                                          verbose,
+                                                          image_size,
+                                                          augment))
+        else:
+            producer = Process(target=_producer_func,args=(q,
+                                                           chunk,
+                                                           i_chunk,
+                                                           preprocessor,
+                                                           detector_options,
+                                                           verbose,
+                                                           image_size,
+                                                           augment))
+        producers.append(producer)
+        
+    for producer in producers:
+        producer.daemon = False
+        producer.start()
+    
     if run_separate_consumer_process:
         if use_threads_for_queue:
             consumer = Thread(target=_consumer_func,args=(q,
                                                           return_queue,
                                                           model_file,
                                                           confidence_threshold,
+                                                          loader_workers,
                                                           image_size,
                                                           include_image_size,
                                                           include_image_timestamp, 
                                                           include_exif_data,
                                                           augment,
-                                                          detector_options))
+                                                          detector_options,
+                                                          preprocess_on_image_queue,
+                                                          n_total_images))
         else:
             consumer = Process(target=_consumer_func,args=(q,
                                                            return_queue,
                                                            model_file,
                                                            confidence_threshold,
+                                                           loader_workers,
                                                            image_size,
                                                            include_image_size,
                                                            include_image_timestamp, 
                                                            include_exif_data,
                                                            augment,
-                                                           detector_options))
+                                                           detector_options,
+                                                           preprocess_on_image_queue,
+                                                           n_total_images))
         consumer.daemon = True
         consumer.start()
     else:
@@ -268,26 +419,38 @@ def run_detector_with_image_queue(image_files,
                        return_queue,
                        model_file,
                        confidence_threshold,
+                       loader_workers,
                        image_size,
                        include_image_size,
                        include_image_timestamp, 
                        include_exif_data,
                        augment,
-                       detector_options)
+                       detector_options,
+                       preprocess_on_image_queue,
+                       n_total_images)
 
-    producer.join()
-    print('Producer finished')
+    for i_producer,producer in enumerate(producers):
+        producer.join()
+        if verbose:
+            print('Producer {} finished'.format(i_producer))
+    
+    if verbose:
+        print('All producers finished')
    
     if run_separate_consumer_process:
         consumer.join()
-        print('Consumer finished')
+    if verbose:
+        print('Consumer loop finished')
     
     q.join()
-    print('Queue joined')
+    if verbose:
+        print('Queue joined')
 
     results = return_queue.get()
     
     return results
+
+# ...def run_detector_with_image_queue(...)
 
 
 #%% Other support functions
@@ -320,7 +483,9 @@ def process_images(im_files,
                    include_image_timestamp=False, 
                    include_exif_data=False,
                    augment=False,
-                   detector_options=None):
+                   detector_options=None,
+                   loader_workers=default_loaders,
+                   preprocess_on_image_queue=default_preprocess_on_image_queue):
     """
     Runs a detector (typically MegaDetector) over a list of image files on a single thread.
     
@@ -339,6 +504,9 @@ def process_images(im_files,
         include_image_timestamp (bool, optional): should we include image timestamps in the output for each image?
         include_exif_data (bool, optional): should we include EXIF data in the output for each image?
         augment (bool, optional): enable image augmentation
+        detector_options (dict, optional): key/value pairs that are interpreted differently 
+            by different detectors
+        loader_workers (int, optional): number of loaders to use (only relevant when using image queue)
 
     Returns:
         list: list of dicts, in which each dict represents detections on one image,
@@ -348,7 +516,7 @@ def process_images(im_files,
     if isinstance(detector, str):
         
         start_time = time.time()
-        detector = load_detector(detector,detector_options=detector_options)
+        detector = load_detector(detector,detector_options=detector_options,verbose=verbose)
         elapsed = time.time() - start_time
         print('Loaded model (batch level) in {}'.format(humanfriendly.format_timespan(elapsed)))
 
@@ -363,7 +531,9 @@ def process_images(im_files,
                                       include_image_timestamp=include_image_timestamp,
                                       include_exif_data=include_exif_data,
                                       augment=augment,
-                                      detector_options=detector_options)
+                                      detector_options=detector_options,
+                                      loader_workers=loader_workers,
+                                      preprocess_on_image_queue=preprocess_on_image_queue)
         
     else:            
         
@@ -388,7 +558,8 @@ def process_images(im_files,
 # ...def process_images(...)
 
 
-def process_image(im_file, detector, 
+def process_image(im_file, 
+                  detector, 
                   confidence_threshold, 
                   image=None, 
                   quiet=False, 
@@ -440,6 +611,7 @@ def process_image(im_file, detector,
             return result
 
     try:
+        
         result = detector.generate_detections_one_image(
                     image, 
                     im_file, 
@@ -456,7 +628,10 @@ def process_image(im_file, detector,
         }
         return result
 
-    if include_image_size:
+    if isinstance(image,dict):
+        image = image['img_original_pil']
+
+    if include_image_size:        
         result['width'] = image.width
         result['height'] = image.height
 
@@ -517,7 +692,9 @@ def load_and_run_detector_batch(model_file,
                                 include_exif_data=False,
                                 augment=False,
                                 force_model_download=False,
-                                detector_options=None):
+                                detector_options=None,
+                                loader_workers=default_loaders,
+                                preprocess_on_image_queue=default_preprocess_on_image_queue):
     """
     Load a model file and run it on a list of images.
     
@@ -551,13 +728,14 @@ def load_and_run_detector_batch(model_file,
             exists
         detector_options (dict, optional): key/value pairs that are interpreted differently 
             by different detectors
+        loader_workers (int, optional): number of loaders to use, only relevant when use_image_queue is True
         
     Returns:
         results: list of dicts; each dict represents detections on one image
     """
     
     # Validate input arguments
-    if n_cores is None:
+    if n_cores is None or n_cores <= 0:
         n_cores = 1
     
     if confidence_threshold is None:
@@ -643,13 +821,15 @@ def load_and_run_detector_batch(model_file,
                                                 include_image_timestamp=include_image_timestamp,
                                                 include_exif_data=include_exif_data,
                                                 augment=augment,
-                                                detector_options=detector_options)
+                                                detector_options=detector_options,
+                                                loader_workers=loader_workers,
+                                                preprocess_on_image_queue=preprocess_on_image_queue)
         
     elif n_cores <= 1:
 
         # Load the detector
         start_time = time.time()
-        detector = load_detector(model_file,detector_options=detector_options)
+        detector = load_detector(model_file,detector_options=detector_options,verbose=verbose)
         elapsed = time.time() - start_time
         print('Loaded model in {}'.format(humanfriendly.format_timespan(elapsed)))
 
@@ -900,7 +1080,7 @@ def write_results_to_file(results,
     if info is None:
         
         info = { 
-            'detection_completion_time': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
+            'detection_completion_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'format_version': '1.4' 
         }
         
@@ -930,6 +1110,15 @@ def write_results_to_file(results,
         for im in results:
             if 'max_detection_conf' in im:
                 del im['max_detection_conf']
+        
+    # Sort results by filename; not required by the format, but convenient for consistency
+    results = sort_list_of_dicts_by_key(results,'file')
+    
+    # Sort detections in descending order by confidence; not required by the format, but
+    # convenient for consistency
+    for r in results:
+        if ('detections' in r) and (r['detections'] is not None):
+            r['detections'] = sort_list_of_dicts_by_key(r['detections'], 'conf', reverse=True)
             
     final_output = {
         'images': results,
@@ -1082,6 +1271,10 @@ def main():
         action='store_true',
         help='Suppress per-image console output')
     parser.add_argument(
+        '--verbose',
+        action='store_true',
+        help='Enable additional debug output')
+    parser.add_argument(
         '--image_size',
         type=int,
         default=None,
@@ -1096,6 +1289,14 @@ def main():
         action='store_true',
         help='Pre-load images, may help keep your GPU busy; does not currently support ' + \
              'checkpointing.  Useful if you have a very fast GPU and a very slow disk.')
+    parser.add_argument(
+        '--preprocess_on_image_queue',
+        action='store_true',
+        help='Whether to do image resizing on the image queue (PyTorch detectors only)')
+    parser.add_argument(
+        '--use_threads_for_queue',
+        action='store_true',
+        help='Use threads (rather than processes) for the image queue; only relevant if --use_image_queue is set')
     parser.add_argument(
         '--threshold',
         type=float,
@@ -1130,8 +1331,14 @@ def main():
     parser.add_argument(
         '--ncores',
         type=int,
-        default=0,
-        help='Number of cores to use; only applies to CPU-based inference')
+        default=1,
+        help='Number of cores to use for inference; only applies to CPU-based inference (default 1)')
+    parser.add_argument(
+        '--loader_workers',
+        type=int,
+        default=default_loaders,
+        help='Number of image loader workers to use; only relevant when --use_image_queue ' + \
+            'is set (default {})'.format(default_loaders))
     parser.add_argument(
         '--class_mapping_filename',
         type=str,
@@ -1179,13 +1386,21 @@ def main():
         metavar='KEY=VALUE',
         default='',
         help='Detector-specific options, as a space-separated list of key-value pairs')
-    
+        
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()
 
     args = parser.parse_args()
-
+    
+    global verbose
+    global use_threads_for_queue
+    
+    if args.verbose:
+        verbose = True
+    if args.use_threads_for_queue:
+        use_threads_for_queue = True
+        
     detector_options = parse_kvp_list(args.detector_options)
     
     # If the specified detector file is really the name of a known model, find 
@@ -1365,7 +1580,7 @@ def main():
         else:
             checkpoint_path = os.path.join(output_dir,
                                            'md_checkpoint_{}.json'.format(
-                                               datetime.utcnow().strftime("%Y%m%d%H%M%S")))
+                                               datetime.now().strftime("%Y%m%d%H%M%S")))
         
         # Don't overwrite existing checkpoint files, this is a sure-fire way to eventually
         # erase someone's checkpoint.
@@ -1415,7 +1630,9 @@ def main():
                                           augment=args.augment,
                                           # Don't download the model *again*
                                           force_model_download=False,
-                                          detector_options=detector_options)
+                                          detector_options=detector_options,
+                                          loader_workers=args.loader_workers,
+                                          preprocess_on_image_queue=args.preprocess_on_image_queue)
 
     elapsed = time.time() - start_time
     images_per_second = len(results) / elapsed

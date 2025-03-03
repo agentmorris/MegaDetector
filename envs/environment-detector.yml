@@ -8,6 +8,10 @@ channels:
   - nvidia
 
 dependencies:
+
+  # Only install the nomkl package in the M1 environment file  
+  # - nomkl
+  
   # PyTorch is not yet supported in Python 3.12 as of the time I'm writing this 
   # environment file.
   - python>=3.8,<3.12

@@ -15,7 +15,7 @@ import os
 import cv2
 
 from io import BytesIO
-from PIL import Image, ImageFile, ImageFont, ImageDraw
+from PIL import Image, ImageFile, ImageFont, ImageDraw, ImageFilter
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
 from tqdm import tqdm
@@ -353,13 +353,14 @@ def resize_image(image, target_width=-1, target_height=-1, output_file=None,
 def crop_image(detections, image, confidence_threshold=0.15, expansion=0):
     """
     Crops detections above [confidence_threshold] from the PIL image [image],
-    returning a list of PIL Images.
+    returning a list of PIL Images, preserving the order of [detections].
 
     Args:
         detections (list): a list of dictionaries with keys 'conf' and 'bbox';
             boxes are length-four arrays formatted as [x,y,w,h], normalized, 
             upper-left origin (this is the standard MD detection format)
-        image (Image): the PIL Image object from which we should crop detections
+        image (Image or str): the PIL Image object from which we should crop detections,
+            or an image filename
         confidence_threshold (float, optional): only crop detections above this threshold
         expansion (int, optional): a number of pixels to include on each side of a cropped
             detection
@@ -370,6 +371,9 @@ def crop_image(detections, image, confidence_threshold=0.15, expansion=0):
 
     ret_images = []
 
+    if isinstance(image,str):
+        image = load_image(image)
+        
     for detection in detections:
 
         score = float(detection['conf'])
@@ -406,7 +410,49 @@ def crop_image(detections, image, confidence_threshold=0.15, expansion=0):
 
     return ret_images
 
+# ...def crop_image(...)
 
+
+def blur_detections(image,detections,blur_radius=40):
+    """
+    Blur the regions in [image] corresponding to the MD-formatted list [detections].
+    [image] is modified in place.
+    
+    Args:
+        image (PIL.Image.Image): image in which we should blur specific regions
+        detections (list): list of detections in the MD output format, see render
+            detection_bounding_boxes for more detail.
+    """
+    
+    img_width, img_height = image.size
+    
+    for d in detections:
+        
+        bbox = d['bbox']
+        x_norm, y_norm, width_norm, height_norm = bbox
+
+        # Calculate absolute pixel coordinates
+        x = int(x_norm * img_width)
+        y = int(y_norm * img_height)
+        width = int(width_norm * img_width)
+        height = int(height_norm * img_height)
+        
+        # Calculate box boundaries
+        left = max(0, x)
+        top = max(0, y)
+        right = min(img_width, x + width)
+        bottom = min(img_height, y + height)
+        
+        # Crop the region, blur it, and paste it back
+        region = image.crop((left, top, right, bottom))
+        blurred_region = region.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+        image.paste(blurred_region, (left, top))
+
+    # ...for each detection
+        
+# ...def blur_detections(...)
+
+        
 def render_detection_bounding_boxes(detections, 
                                     image,
                                     label_map='show_categories',
@@ -551,8 +597,9 @@ def render_detection_bounding_boxes(detections,
             # category or on the most confident classification category.
             clss = detection['category']
             
-            # {} is the default, which means "show labels with no mapping", so don't use "if label_map" here
-            # if label_map:                
+            # This will be a list of strings that should be rendered above/below this box            
+            displayed_label = []
+            
             if label_map is not None:
                 label = label_map[clss] if clss in label_map else clss
                 if score is not None:
@@ -560,17 +607,14 @@ def render_detection_bounding_boxes(detections,
                 else:
                     displayed_label = ['{}'.format(label)]
             else:
-                displayed_label = ''
+                displayed_label = ['']
 
             if custom_strings is not None:
                 custom_string = custom_strings[i_detection]
                 if custom_string is not None and len(custom_string) > 0:
-                    if isinstance(displayed_label,str):
-                        displayed_label += ' ' + custom_string
-                    else:
-                        assert len(displayed_label) == 1
-                        displayed_label[0] += ' ' + custom_string
-                                    
+                    assert len(displayed_label) == 1
+                    displayed_label[0] += ' ' + custom_string
+
             if ('classifications' in detection) and len(detection['classifications']) > 0:
 
                 classifications = detection['classifications']
@@ -612,6 +656,7 @@ def render_detection_bounding_boxes(detections,
                 
             # ...if we have classification results
                         
+            # display_strs is a list of labels for each box
             display_strs.append(displayed_label)
             classes.append(clss)
 
@@ -971,7 +1016,8 @@ def render_db_bounding_boxes(boxes,
                              textalign=TEXTALIGN_LEFT,
                              vtextalign=VTEXTALIGN_TOP,
                              text_rotation=None,
-                             label_font_size=DEFAULT_LABEL_FONT_SIZE):
+                             label_font_size=DEFAULT_LABEL_FONT_SIZE,
+                             tags=None):
     """
     Render bounding boxes (with class labels) on an image.  This is a wrapper for
     draw_bounding_boxes_on_image, allowing the caller to operate on a resized image
@@ -999,6 +1045,8 @@ def render_db_bounding_boxes(boxes,
         vtextalign (int, optional): VTEXTALIGN_TOP or VTEXTALIGN_BOTTOM
         text_rotation (float, optional): rotation to apply to text
         label_font_size (float, optional): font size for labels
+        tags (list, optional): list of strings of length len(boxes) that should be appended
+            after each class name (e.g. to show scores)
     """
 
     display_boxes = []
@@ -1011,8 +1059,11 @@ def render_db_bounding_boxes(boxes,
 
     img_width, img_height = image_size
 
-    for box, clss in zip(boxes, classes):
+    for i_box in range(0,len(boxes)):
 
+        box = boxes[i_box]
+        clss = classes[i_box]
+        
         x_min_abs, y_min_abs, width_abs, height_abs = box[0:4]
 
         ymin = y_min_abs / img_height
@@ -1026,9 +1077,17 @@ def render_db_bounding_boxes(boxes,
         if label_map:
             clss = label_map[int(clss)]
             
+        display_str = str(clss)
+    
+        # Do we have a tag to append to the class string?
+        if tags is not None and tags[i_box] is not None and len(tags[i_box]) > 0:
+            display_str += ' ' + tags[i_box]
+            
         # need to be a string here because PIL needs to iterate through chars
-        display_strs.append([str(clss)])  
+        display_strs.append([display_str])
 
+    # ...for each box
+    
     display_boxes = np.array(display_boxes)
     
     draw_bounding_boxes_on_image(image, 
@@ -1724,7 +1783,7 @@ if False:
         TEXTALIGN_LEFT,TEXTALIGN_RIGHT,VTEXTALIGN_BOTTOM,VTEXTALIGN_TOP, \
         DEFAULT_LABEL_FONT_SIZE
         
-    fn = os.path.expanduser('~\AppData\Local\Temp\md-tests\md-test-images\ena24_7904.jpg')
+    fn = os.path.expanduser('~/AppData/Local/Temp/md-tests/md-test-images/ena24_7904.jpg')
     output_fn = r'g:\temp\test.jpg'
     
     image = load_image(fn)

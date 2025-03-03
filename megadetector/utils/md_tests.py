@@ -131,6 +131,12 @@ class MDTestOptions:
         #: this is a range from 0-100.
         self.python_test_depth = 100
         
+        #: Number of cores to use for multi-CPU inference tests
+        self.n_cores_for_multiprocessing_tests = 2
+        
+        #: Number of cores to use for multi-CPU video tests
+        self.n_cores_for_video_tests = 2
+        
     # ...def __init__()
     
 # ...class MDTestOptions()
@@ -726,6 +732,14 @@ def run_python_tests(options):
     download_test_data(options)
     
     
+    ## Miscellaneous utility tests
+    
+    print('\n** Running ct_utils module test **\n')
+    
+    from megadetector.utils.ct_utils import __module_test__ as ct_utils_test
+    ct_utils_test()
+    
+    
     ## Run inference on an image
         
     print('\n** Running MD on a single image (module) **\n')
@@ -947,7 +961,7 @@ def run_python_tests(options):
         # video_options.rendering_confidence_threshold = None
         # video_options.json_confidence_threshold = 0.005
         video_options.frame_sample = 10
-        video_options.n_cores = 5
+        video_options.n_cores = options.n_cores_for_video_tests
         # video_options.debug_max_frames = -1
         # video_options.class_mapping_filename = None
         video_options.detector_options = copy(options.detector_options)
@@ -988,7 +1002,7 @@ def run_python_tests(options):
         # video_options.rendering_confidence_threshold = None
         # video_options.json_confidence_threshold = 0.005
         video_options.frame_sample = 10  
-        video_options.n_cores = 5     
+        video_options.n_cores = options.n_cores_for_video_tests
         
         # Force frame extraction to disk, since that's how we generated our expected results file
         video_options.force_on_disk_frame_extraction = True
@@ -1155,7 +1169,7 @@ def run_cli_tests(options):
     
     ## Run again with the image queue enabled, make sure the results are the same
     
-    print('\n** Running MD on a folder (with image queue) (CLI) **\n')
+    print('\n** Running MD on a folder (with image queue but no preprocessing) (CLI) **\n')
     
     cmd = base_cmd + ' --use_image_queue'
     inference_output_file_queue = insert_before_extension(inference_output_file,'_queue')
@@ -1167,6 +1181,18 @@ def run_cli_tests(options):
                                       fn2=inference_output_file_queue,
                                       verbose=True)
     
+    
+    print('\n** Running MD on a folder (with image queue and preprocessing) (CLI) **\n')
+    
+    cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue'
+    inference_output_file_queue = insert_before_extension(inference_output_file,'_queue')
+    cmd = cmd.replace(inference_output_file,inference_output_file_queue)
+    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+    cmd_results = execute_and_print(cmd)
+    
+    assert output_files_are_identical(fn1=inference_output_file, 
+                                      fn2=inference_output_file_queue,
+                                      verbose=True)
     
     ## Run again on multiple cores, make sure the results are the same
     
@@ -1198,7 +1224,7 @@ def run_cli_tests(options):
             
         print('\n** Running MD on a folder (multiple CPUs) (CLI) **\n')
         
-        cpu_string = ' --ncores 4'
+        cpu_string = ' --ncores {}'.format(options.n_cores_for_multiprocessing_tests)
         cmd = base_cmd + cpu_string
         inference_output_file_cpu_multicore = insert_before_extension(inference_output_file,'multicore')
         cmd = cmd.replace(inference_output_file,inference_output_file_cpu_multicore)
@@ -1365,7 +1391,9 @@ def run_cli_tests(options):
         cmd += ' --frame_folder "{}" --frame_rendering_folder "{}" --output_json_file "{}" --output_video_file "{}"'.format(
             frame_folder,frame_rendering_folder,video_inference_output_file,output_video_file)
         cmd += ' --fourcc {}'.format(options.video_fourcc)
-        cmd += ' --force_extracted_frame_folder_deletion --force_rendered_frame_folder_deletion --n_cores 5 --frame_sample 3'
+        cmd += ' --force_extracted_frame_folder_deletion --force_rendered_frame_folder_deletion'
+        cmd += ' --n_cores {}'.format(options.n_cores_for_video_tests)
+        cmd += ' --frame_sample 4'
         cmd += ' --verbose'
         cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
         
@@ -1436,6 +1464,9 @@ def run_download_tests(options):
         # Make sure we can download models based on canonical version numbers, 
         # e.g. "v5a.0.0"
         for model_name in known_models:
+            url = known_models[model_name]['url']
+            if 'localhost' in url:
+                continue
             print('Testing download for known model {}'.format(model_name))
             fn = try_download_known_detector(model_name, 
                                              force_download=False,
@@ -1445,6 +1476,12 @@ def run_download_tests(options):
             
         # Make sure we can download models based on short names, e.g. "MDV5A"
         for model_name in model_string_to_model_version:
+            model_version = model_string_to_model_version[model_name]
+            assert model_version in known_models
+            url = known_models[model_version]['url']
+            if 'localhost' in url:
+                continue
+            print('Testing download for model short name {}'.format(model_name))
             fn = try_download_known_detector(model_name, 
                                              force_download=False,
                                              verbose=False)    

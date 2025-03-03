@@ -1,5 +1,5 @@
-MegaDetector
-============
+Subpackages
+===========
 
 .. toctree::
    :maxdepth: 4
