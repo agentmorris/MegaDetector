@@ -1,0 +1,84 @@
+[build-system]
+requires = [
+  "setuptools>61"
+]
+
+[project]
+name = "megadetector-utils"
+version = "5.0.24"
+description = "Utility code associated with the MegaDetector project."
+readme = "README-package-utils.md"
+requires-python = ">=3.9,<=3.13"
+license = {file = "LICENSE"}
+keywords = ["camera traps", "conservation", "wildlife", "ai", "megadetector"]
+authors = [
+  {name = "Your friendly neighborhood MegaDetector team", email = "cameratraps@lila.science" }
+]
+maintainers = [
+  {name = "Your friendly neighborhood MegaDetector team", email = "cameratraps@lila.science" }
+]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+]
+
+dependencies = [
+  # Not imported directly, but we force this version to avoid this issue:
+  #
+  # https://github.com/pytorch/pytorch/issues/123097
+  "mkl == 2024.0; sys_platform != 'darwin'",
+  # To use ultralytics-yolov5's val.py, we need to use an old version of numpy, 
+  # because of the removal of np.int in numpy 1.24.0.  This is only necessary if 
+  # you're going to use the full val.py suite in ultralytics-yolov5.
+  #
+  # numpy >= 1.26.4 is required for python >= 3.12
+  # "numpy >= 1.26.4, < 1.24",
+  "numpy >= 1.26.4, < 2.0",
+  # ultralytics-yolov5 has a dependency on FreeTypeFont.getsize(), which was
+  # removed in Pillow 10.  Restrict to <10.0 if you want to use val.py from 
+  # ultralytics-yolov5.
+  # "Pillow >= 9.5, <10",
+  "Pillow >= 9.5",
+  "tqdm >= 4.64.0",
+  "jsonpickle >= 3.0.2",
+  "humanfriendly >= 10.0",
+  "matplotlib >= 3.8.0",
+  "opencv-python >= 4.8.0",
+  "requests >= 2.31.0",
+  "pyqtree >= 1.0.0",
+  "scikit-learn >= 1.3.1",
+  "pandas >= 2.1.1",  
+  "python-dateutil",
+  "send2trash",
+  # Not imported directly, but required to de-serialize some models
+  "dill",
+  # The next two lines are the difference between this package and the main package.
+  # "ultralytics-yolov5 == 0.1.1",
+  # "yolov9pip == 0.0.4",
+  "python-dateutil"
+  
+  # Let ultralytics-yolov5 install torch
+  # "torch >= 2.0.1",
+  # "torchvision >= 0.15.2",  
+  
+  # Let the user install ultralytics if they want to use YOLOv11 models
+  # ultralytics
+  
+  # PyTorch will get installed by ultralytics-yolov5
+  #
+  # "torch >= 2.0.1",
+  # "torchvision >= 0.15.2"
+  
+  # This is a compatible alternative to ultralytics-yolov5, just keeping it 
+  # here for posterity.
+  # "yolov5 == 7.0.13"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/agentmorris/MegaDetector"
+"Documentation" = "https://megadetector.readthedocs.io"
+"Bug Reports" = "https://github.com/agentmorris/MegaDetector/issues"
+"Source" = "https://github.com/agentmorris/MegaDetector"
+
+[tool.setuptools.packages.find]
+include = ["megadetector*"]
