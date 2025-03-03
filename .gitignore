@@ -6,6 +6,7 @@ __pycache__/
 # PyPI distribution files
 dist/
 megadetector.egg-info/
+megadetector_utils.egg-info/
 
 # C extensions
 *.so
