@@ -17,9 +17,6 @@ import sys
 import argparse
 import re
 
-import azure.common
-from azure.storage.blob import BlobServiceClient, ContentSettings
-
 from megadetector.utils.path_utils import is_image_file
 
 
@@ -139,6 +136,8 @@ def traverse_and_create_index(dir, sas_url=None, overwrite_files=False,
     # If we want to set the content type in blob storage using a SAS URL
     if sas_url:
 
+        from azure.storage.blob import BlobServiceClient, ContentSettings
+
         # Example: sas_url = 'https://accname.blob.core.windows.net/bname/path/to/folder?st=...&se=...&sp=...&...'
         if '?' in sas_url:
             # 'https://accname.blob.core.windows.net/bname/path/to/folder' and 'st=...&se=...&sp=...&...'
@@ -196,6 +195,7 @@ def traverse_and_create_index(dir, sas_url=None, overwrite_files=False,
 
         # Set content type in blob storage
         if sas_url:
+            import azure.common
             if container_folder:
                 output_blob_path = container_folder + '/' + output_file[len(dir) + 1:]
             else:

@@ -4,6 +4,8 @@ This package is a pip-installable version of the support/inference code for [Meg
 
 If you aren't looking for the Python package specifically, and you just want to learn more about what MegaDetector is all about, head over to the [MegaDetector repo](https://github.com/agentmorris/MegaDetector/?tab=readme-ov-file#megadetector).
 
+If you don't want to run MegaDetector, and you just want to use the utilities in this package - postprocessing, manipulating large volumes of camera trap images, etc. - you may want to check out the [megadetector-utils](https://pypi.org/project/megadetector-utils/) package, which is identical to this one, but excludes all of the PyTorch/YOLO dependencies, and is thus approximately one zillion times smaller.
+
 ## Installation
 
 Install with:

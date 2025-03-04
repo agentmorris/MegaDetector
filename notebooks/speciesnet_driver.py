@@ -41,12 +41,23 @@ speciesnet_tf_environment_name = 'speciesnet-package-tf'
 
 # Can be None to omit the CUDA prefix
 gpu_number = 0
-    
+
+# Possibly split into multiple batches; you'll run most of this notebook
+# separately on each batch.
+n_batches = 1
+
 # This is not related to running the model, only to postprocessing steps
 # in this notebook.  Threads work better on Windows, processes on Linux.
 use_threads_for_parallelization = (os.name == 'nt')
 max_images_per_chunk = 5000
 classifier_batch_size = 128
+
+# Only necessary when using a custom taxonomy list
+custom_taxa_list = None
+taxonomy_file = os.path.join(model_file,'taxonomy_release.txt')
+
+# Use this when instances.json has already been generated
+force_instances_json = None
 
 
 #%% Validate constants, prepare folders and dependent constants
@@ -79,17 +90,42 @@ for fn in [detector_output_file_modular,classifier_output_file_modular,ensemble_
     if os.path.exists(fn):
         print('** Warning, file {} exists, this is OK if you are resuming **\n'.format(fn))
 
+if custom_taxa_list is not None:
+    assert os.path.isfile(custom_taxa_list)
+    assert os.path.isfile(taxonomy_file)
 
-#%% Generate instances.json
 
-instances = generate_instances_json_from_folder(folder=input_folder,
-                                                country=country_code,
-                                                admin1_region=state_code,
-                                                output_file=instances_json,
-                                                filename_replacements=None)
+#%% Generate or load instances.json
 
-print('Generated {} instances'.format(len(instances['instances'])))
+if force_instances_json not None:
+    
+    instances = generate_instances_json_from_folder(folder=input_folder,
+                                                    country=country_code,
+                                                    admin1_region=state_code,
+                                                    output_file=instances_json,
+                                                    filename_replacements=None)
+    
+    print('Generated {} instances'.format(len(instances['instances'])))    
+    del instances
+    
+else:
+    
+    with open(force_instances_json, 'r') as f:
+        instances = json.load(f)
+    print('Loaded {} instances from {}'.format(
+        len(instances['instances']),force_instances_json))
+    instances_json = force_instances_json
+    del instances
 
+
+#%% Possibly split here into multiple batches
+
+from megadetector.utils.wi_utils import split_instances_into_n_batches
+
+if n_batches > 1:
+    
+    output_files = split_instances_into_n_batches(instances_json, n_batches, output_files=None)
+        
 
 #%% Run detector
 
@@ -232,6 +268,9 @@ cmd += ' --instances_json "{}"'.format(instances_json)
 cmd += ' --predictions_json "{}"'.format(ensemble_output_file_modular)
 cmd += ' --detections_json "{}"'.format(detector_output_file_modular)
 cmd += ' --classifications_json "{}"'.format(classifier_output_file_modular)
+
+if custom_taxa_list is not None:
+    cmd += ' --nogeofence'
 ensemble_commands.append(cmd)
 
 ensemble_cmd = '\n\n'.join(ensemble_commands)
@@ -262,13 +301,17 @@ rollup_pair_to_count = \
 # rollup_pair_to_count is sorted in descending order by count
 assert is_list_sorted(list(rollup_pair_to_count.values()),reverse=True)
 
+if custom_taxa_list is not None:
+    assert len(rollup_pair_to_count) == 0, \
+        'Geofencing should have been disabled when running with a custom taxa list'
+        
 if len(rollup_pair_to_count) > 0:
     
     geofence_footer = \
         '<h3>Geofence changes that occurred more than {} times</h3>\n'.format(min_count)
     geofence_footer += '<div class="contentdiv">\n'
     
-    print('Rollup changes with count > {}:'.format(min_count))
+    print('\nRollup changes with count > {}:'.format(min_count))
     for rollup_pair in rollup_pair_to_count.keys():
         count = rollup_pair_to_count[rollup_pair]
         rollup_pair_s = rollup_pair.replace(',',' --> ')
@@ -278,6 +321,10 @@ if len(rollup_pair_to_count) > 0:
 
     geofence_footer += '</div>\n'
 
+else:
+    
+    print('\nNo corrections made by geofencing')
+    
 
 #%% Convert output file to MD format 
 
@@ -322,6 +369,27 @@ print('Loaded results for {} images with {} failures'.format(
     len(images_in_folder),n_failures))
 
 
+#%% Possibly apply a custom species list
+
+from megadetector.utils.wi_utils import restrict_to_taxa_list
+
+if custom_taxa_list is not None:
+    
+    taxa_list = custom_taxa_list
+    speciesnet_taxonomy_file = taxonomy_file
+    input_file = ensemble_output_file_md_format
+    output_file = insert_before_extension(ensemble_output_file_md_format,'custom-species')
+    allow_walk_down = False
+    
+    restrict_to_taxa_list(taxa_list=taxa_list,
+                          speciesnet_taxonomy_file=speciesnet_taxonomy_file,
+                          input_file=input_file,
+                          output_file=output_file,
+                          allow_walk_down=allow_walk_down)
+    
+    ensemble_output_file_md_format = output_file
+    
+    
 #%% Generate a list of all predictions made, with counts
 
 from megadetector.utils.ct_utils import sort_dictionary_by_value
