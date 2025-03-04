@@ -131,12 +131,15 @@ class MDTestOptions:
         #: this is a range from 0-100.
         self.python_test_depth = 100
         
+        #: Currently should be 'all' or 'utils-only'
+        self.test_mode = 'all'
+        
         #: Number of cores to use for multi-CPU inference tests
         self.n_cores_for_multiprocessing_tests = 2
         
         #: Number of cores to use for multi-CPU video tests
         self.n_cores_for_video_tests = 2
-        
+                
     # ...def __init__()
     
 # ...class MDTestOptions()
@@ -308,18 +311,24 @@ def download_test_data(options=None):
 
 def is_gpu_available(verbose=True):
     """
-    Checks whether a GPU (including M1/M2 MPS) is available, according to PyTorch.
+    Checks whether a GPU (including M1/M2 MPS) is available, according to PyTorch.  Returns 
+    false if PT fails to import.
     
     Args:
-        verbose (bool, optional): enable additional debug console output
+        verbose (bool, optional): enable additional debug console output        
     
     Returns:
-        bool: whether a GPU is available
+        bool: whether a GPU is available        
     """
     
     # Import torch inside this function, so we have a chance to set CUDA_VISIBLE_DEVICES
     # before checking GPU availability.
-    import torch
+    try:
+        import torch
+    except Exception:
+        print('Warning: could not import torch')
+        return False
+    
     gpu_available = torch.cuda.is_available()
     
     if gpu_available:
@@ -711,6 +720,47 @@ def execute_and_print(cmd,print_output=True,catch_exceptions=False,echo_command=
 
 #%% Python tests
 
+def test_package_imports(package_name,exceptions=None,verbose=True):
+    """
+    Imports all modules in [package_name]
+    
+    Args:
+        package_name (str): the package name to test
+        exceptions (list, optional): exclude any modules that contain any of these strings
+        verbose (bool, optional): enable additional debug output
+    """
+    import importlib
+    import pkgutil
+    
+    package = importlib.import_module(package_name)
+    package_path = package.__path__
+    imported_modules = []
+    
+    if exceptions is None:
+        exceptions = []
+        
+    for _, modname, _ in pkgutil.walk_packages(package_path, package_name + '.'):
+        
+        skip_module = False
+        for s in exceptions:
+            if s in modname:
+                skip_module = True
+                break
+        if skip_module:
+            continue
+        
+        if verbose:
+            print('Testing import: {}'.format(modname))
+        
+        try:
+            # Attempt to import each module
+            _ = importlib.import_module(modname)
+            imported_modules.append(modname)            
+        except ImportError as e:
+            print(f"Failed to import module {modname}: {e}")
+            raise
+
+    #%%
 def run_python_tests(options):
     """
     Runs Python-based (as opposed to CLI-based) package tests.
@@ -721,11 +771,6 @@ def run_python_tests(options):
     
     print('\n*** Starting module tests ***\n')
         
-    
-    ## Make sure our tests are doing what we think they're doing
-    
-    from megadetector.detection import pytorch_detector
-    pytorch_detector.require_non_default_compatibility_mode = True
     
     ## Prepare data
     
@@ -740,12 +785,34 @@ def run_python_tests(options):
     ct_utils_test()
     
     
+    ## Import tests
+    
+    print('\n** Running package import tests **\n')
+    test_package_imports('megadetector.visualization')
+    test_package_imports('megadetector.postprocessing')
+    test_package_imports('megadetector.postprocessing.repeat_detection_elimination')
+    test_package_imports('megadetector.utils',exceptions=['azure_utils','sas_blob_utils','md_tests'])
+    test_package_imports('megadetector.data_management',exceptions=['lila','ocr_tools'])
+        
+
+    ## Return early if we're not running torch-related tests
+    
+    if options.test_mode == 'utils-only':
+        return
+    
+    
+    ## Make sure our tests are doing what we think they're doing
+    
+    from megadetector.detection import pytorch_detector
+    pytorch_detector.require_non_default_compatibility_mode = True
+    
+    
     ## Run inference on an image
         
     print('\n** Running MD on a single image (module) **\n')
     
     from megadetector.detection import run_detector
-    from megadetector.visualization import visualization_utils as vis_utils
+    from megadetector.visualization import visualization_utils as vis_utils # noqa
     image_fn = os.path.join(options.scratch_dir,options.test_images[0])
     model = run_detector.load_detector(options.default_model,
                                        detector_options=copy(options.detector_options))
@@ -761,7 +828,7 @@ def run_python_tests(options):
     print('\n** Running MD on a folder of images (module) **\n')
     
     from megadetector.detection.run_detector_batch import load_and_run_detector_batch,write_results_to_file
-    from megadetector.utils import path_utils
+    from megadetector.utils import path_utils # noqa
 
     image_folder = os.path.join(options.scratch_dir,'md-test-images')
     assert os.path.isdir(image_folder), 'Test image folder {} is not available'.format(image_folder)
@@ -779,7 +846,7 @@ def run_python_tests(options):
     ## Verify results
     
     # Verify format correctness
-    from megadetector.postprocessing.validate_batch_results import validate_batch_results 
+    from megadetector.postprocessing.validate_batch_results import validate_batch_results #noqa
     validate_batch_results(inference_output_file)
     
     # Verify value correctness
@@ -1097,6 +1164,17 @@ def run_cli_tests(options):
     from megadetector.utils.ct_utils import dict_to_kvp_list
     from megadetector.utils.path_utils import insert_before_extension
     
+    
+    ## Utility tests
+    
+    # TODO: move postprocessing tests up to this point, using pre-generated .json results files
+    
+
+    ## Return early if we're not running torch-related tests
+    
+    if options.test_mode == 'utils-only':
+        return
+
     
     ## Run inference on an image
     
@@ -1454,40 +1532,39 @@ def run_download_tests(options):
         options (MDTestOptions): see MDTestOptions for details    
     """
     
-    if not options.skip_download_tests:
+    if options.skip_download_tests or options.test_mode == 'utils-only':
+        return
 
-        from megadetector.detection.run_detector import known_models, \
-            try_download_known_detector, \
-            get_detector_version_from_model_file, \
-            model_string_to_model_version
+    from megadetector.detection.run_detector import known_models, \
+        try_download_known_detector, \
+        get_detector_version_from_model_file, \
+        model_string_to_model_version
 
-        # Make sure we can download models based on canonical version numbers, 
-        # e.g. "v5a.0.0"
-        for model_name in known_models:
-            url = known_models[model_name]['url']
-            if 'localhost' in url:
-                continue
-            print('Testing download for known model {}'.format(model_name))
-            fn = try_download_known_detector(model_name, 
-                                             force_download=False,
-                                             verbose=False)
-            version_string = get_detector_version_from_model_file(fn, verbose=False)
-            assert version_string == model_name
-            
-        # Make sure we can download models based on short names, e.g. "MDV5A"
-        for model_name in model_string_to_model_version:
-            model_version = model_string_to_model_version[model_name]
-            assert model_version in known_models
-            url = known_models[model_version]['url']
-            if 'localhost' in url:
-                continue
-            print('Testing download for model short name {}'.format(model_name))
-            fn = try_download_known_detector(model_name, 
-                                             force_download=False,
-                                             verbose=False)    
-            assert fn != model_name
-
-    # ...if we need to test model downloads
+    # Make sure we can download models based on canonical version numbers, 
+    # e.g. "v5a.0.0"
+    for model_name in known_models:
+        url = known_models[model_name]['url']
+        if 'localhost' in url:
+            continue
+        print('Testing download for known model {}'.format(model_name))
+        fn = try_download_known_detector(model_name, 
+                                         force_download=False,
+                                         verbose=False)
+        version_string = get_detector_version_from_model_file(fn, verbose=False)
+        assert version_string == model_name
+        
+    # Make sure we can download models based on short names, e.g. "MDV5A"
+    for model_name in model_string_to_model_version:
+        model_version = model_string_to_model_version[model_name]
+        assert model_version in known_models
+        url = known_models[model_version]['url']
+        if 'localhost' in url:
+            continue
+        print('Testing download for model short name {}'.format(model_name))
+        fn = try_download_known_detector(model_name, 
+                                         force_download=False,
+                                         verbose=False)    
+        assert fn != model_name    
     
 # ...def run_download_tests()
 
@@ -1505,7 +1582,7 @@ def run_tests(options):
     # Prepare data folder
     download_test_data(options)
     
-    # Run download tests if necessary
+    # Run model download tests if necessary
     run_download_tests(options)
     
     if options.disable_gpu:
@@ -1746,6 +1823,13 @@ def main():
         type=str,
         default=None,
         help='PYTHONPATH to set for CLI tests; if None, inherits from the parent process'
+        )
+    
+    parser.add_argument(
+        '--test_mode',
+        type=str,
+        default='utils-only',
+        help='Test mode: "all" or "utils-only"'
         )
     
     parser.add_argument(
