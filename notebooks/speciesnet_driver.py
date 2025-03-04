@@ -41,7 +41,11 @@ speciesnet_tf_environment_name = 'speciesnet-package-tf'
 
 # Can be None to omit the CUDA prefix
 gpu_number = 0
-    
+
+# Possibly split into multiple batches; you'll run most of this notebook
+# separately on each batch.
+n_batches = 1
+
 # This is not related to running the model, only to postprocessing steps
 # in this notebook.  Threads work better on Windows, processes on Linux.
 use_threads_for_parallelization = (os.name == 'nt')
@@ -51,6 +55,9 @@ classifier_batch_size = 128
 # Only necessary when using a custom taxonomy list
 custom_taxa_list = None
 taxonomy_file = os.path.join(model_file,'taxonomy_release.txt')
+
+# Use this when instances.json has already been generated
+force_instances_json = None
 
 
 #%% Validate constants, prepare folders and dependent constants
@@ -88,16 +95,37 @@ if custom_taxa_list is not None:
     assert os.path.isfile(taxonomy_file)
 
 
-#%% Generate instances.json
+#%% Generate or load instances.json
 
-instances = generate_instances_json_from_folder(folder=input_folder,
-                                                country=country_code,
-                                                admin1_region=state_code,
-                                                output_file=instances_json,
-                                                filename_replacements=None)
+if force_instances_json not None:
+    
+    instances = generate_instances_json_from_folder(folder=input_folder,
+                                                    country=country_code,
+                                                    admin1_region=state_code,
+                                                    output_file=instances_json,
+                                                    filename_replacements=None)
+    
+    print('Generated {} instances'.format(len(instances['instances'])))    
+    del instances
+    
+else:
+    
+    with open(force_instances_json, 'r') as f:
+        instances = json.load(f)
+    print('Loaded {} instances from {}'.format(
+        len(instances['instances']),force_instances_json))
+    instances_json = force_instances_json
+    del instances
 
-print('Generated {} instances'.format(len(instances['instances'])))
 
+#%% Possibly split here into multiple batches
+
+from megadetector.utils.wi_utils import split_instances_into_n_batches
+
+if n_batches > 1:
+    
+    output_files = split_instances_into_n_batches(instances_json, n_batches, output_files=None)
+        
 
 #%% Run detector
 
@@ -351,7 +379,7 @@ if custom_taxa_list is not None:
     speciesnet_taxonomy_file = taxonomy_file
     input_file = ensemble_output_file_md_format
     output_file = insert_before_extension(ensemble_output_file_md_format,'custom-species')
-    allow_walk_down = True
+    allow_walk_down = False
     
     restrict_to_taxa_list(taxa_list=taxa_list,
                           speciesnet_taxonomy_file=speciesnet_taxonomy_file,

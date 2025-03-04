@@ -1287,6 +1287,49 @@ def generate_instances_json_from_folder(folder,
 # ...def generate_instances_json_from_folder(...)
 
 
+def split_instances_into_n_batches(instances_json,n_batches,output_files=None):
+    """
+    Given an instances.json file, split it into batches of equal size.
+    
+    Args:
+        instances_json (str): input .json file in
+        n_batches (int): number of new files to generate
+        output_files (list, optional): output .json files for each
+            batch.  If supplied, should have length [n_batches].  If not 
+            supplied, filenames will be generated based on [instances_json].
+            
+    Returns:
+        list: list of output files that were written; identical to [output_files]
+        if it was supplied as input.
+    """
+    
+    with open(instances_json,'r') as f:
+        instances = json.load(f)
+    assert isinstance(instances,dict) and 'instances' in instances
+    instances = instances['instances']
+    
+    if output_files is not None:
+        assert len(output_files) == n_batches, \
+            'Expected {} output files, received {}'.format(
+                n_batches,len(output_files))
+    else:
+        output_files = []
+        for i_batch in range(0,n_batches):
+            batch_string = 'batch_{}'.format(str(i_batch).zfill(3))
+            output_files.append(insert_before_extension(instances_json,batch_string))
+                    
+    batches = split_list_into_n_chunks(instances, n_batches)
+    
+    for i_batch,batch in enumerate(batches):
+        batch_dict = {'instances':batch}
+        with open(output_files[i_batch],'w') as f:
+            json.dump(batch_dict,f,indent=1)
+    
+    print('Wrote {} batches to file'.format(n_batches))
+    
+    return output_files
+    
+    
 def merge_prediction_json_files(input_prediction_files,output_prediction_file):
     """
     Merge all predictions.json files in [files] into a single .json file.
