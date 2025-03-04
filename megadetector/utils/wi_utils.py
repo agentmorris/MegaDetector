@@ -32,6 +32,7 @@ from megadetector.utils.ct_utils import is_list_sorted
 from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 from megadetector.utils.ct_utils import sort_dictionary_by_value
+from megadetector.utils.ct_utils import sort_dictionary_by_key
 from megadetector.utils.path_utils import find_images
 from megadetector.postprocessing.validate_batch_results import \
     validate_batch_results, ValidateBatchResultsOptions
@@ -490,10 +491,14 @@ sample_update_payload = {
 
 blank_prediction_string = 'f1856211-cfb7-4a5b-9158-c0f72fd09ee6;;;;;;blank'
 no_cv_result_prediction_string = 'f2efdae9-efb8-48fb-8a91-eccf79ab4ffb;no cv result;no cv result;no cv result;no cv result;no cv result;no cv result'
-rodent_prediction_string = '90d950db-2106-4bd9-a4c1-777604c3eada;mammalia;rodentia;;;;rodent'
-mammal_prediction_string = 'f2d233e3-80e3-433d-9687-e29ecc7a467a;mammalia;;;;;mammal'
 animal_prediction_string = '1f689929-883d-4dae-958c-3d57ab5b6c16;;;;;;animal'
 human_prediction_string = '990ae9dd-7a59-4344-afcb-1b7b21368000;mammalia;primates;hominidae;homo;sapiens;human'
+vehicle_prediction_string = 'e2895ed5-780b-48f6-8a11-9e27cb594511;;;;;;vehicle'
+
+non_taxonomic_prediction_strings = [blank_prediction_string,
+                                    no_cv_result_prediction_string,
+                                    animal_prediction_string,
+                                    vehicle_prediction_string]
 
 process_cv_response_url = 'https://placeholder'
 
@@ -1282,6 +1287,49 @@ def generate_instances_json_from_folder(folder,
 # ...def generate_instances_json_from_folder(...)
 
 
+def split_instances_into_n_batches(instances_json,n_batches,output_files=None):
+    """
+    Given an instances.json file, split it into batches of equal size.
+    
+    Args:
+        instances_json (str): input .json file in
+        n_batches (int): number of new files to generate
+        output_files (list, optional): output .json files for each
+            batch.  If supplied, should have length [n_batches].  If not 
+            supplied, filenames will be generated based on [instances_json].
+            
+    Returns:
+        list: list of output files that were written; identical to [output_files]
+        if it was supplied as input.
+    """
+    
+    with open(instances_json,'r') as f:
+        instances = json.load(f)
+    assert isinstance(instances,dict) and 'instances' in instances
+    instances = instances['instances']
+    
+    if output_files is not None:
+        assert len(output_files) == n_batches, \
+            'Expected {} output files, received {}'.format(
+                n_batches,len(output_files))
+    else:
+        output_files = []
+        for i_batch in range(0,n_batches):
+            batch_string = 'batch_{}'.format(str(i_batch).zfill(3))
+            output_files.append(insert_before_extension(instances_json,batch_string))
+                    
+    batches = split_list_into_n_chunks(instances, n_batches)
+    
+    for i_batch,batch in enumerate(batches):
+        batch_dict = {'instances':batch}
+        with open(output_files[i_batch],'w') as f:
+            json.dump(batch_dict,f,indent=1)
+    
+    print('Wrote {} batches to file'.format(n_batches))
+    
+    return output_files
+    
+    
 def merge_prediction_json_files(input_prediction_files,output_prediction_file):
     """
     Merge all predictions.json files in [files] into a single .json file.
@@ -1475,7 +1523,6 @@ country_code_to_country = None
 
 
 #%% Functions related to geofencing and taxonomy mapping
-
 
 def taxonomy_info_to_taxonomy_string(taxonomy_info):
     """
@@ -1973,22 +2020,29 @@ def species_allowed_in_country(species,country,state=None,return_status=False):
 
 def restrict_to_taxa_list(taxa_list,
                           speciesnet_taxonomy_file,
-                          output_file):                           
+                          input_file,
+                          output_file,
+                          allow_walk_down=False):
     """
     Given a prediction file in MD .json format, likely without having had
-    a geofence applied, apply a custom taxa list
+    a geofence applied, apply a custom taxa list.
     
     Args:
         taxa_list (str or list): list of latin names, or a text file containing
             a list of latin names.  Optionally may contain a second (comma-delimited)
             column containing common names, used only for debugging.  Latin names
             must exist in the SpeciesNet taxonomy.
-        taxonomy_file (str): taxonomy filename, in the same format used for model release
-            (with 7-token taxonomy entries)
-        output_file (str): .json file to write        
+        taxonomy_file (str): taxonomy filename, in the same format used for model
+            release (with 7-token taxonomy entries)            
+        output_file (str): .json file to write, in MD format      
+        allow_walk_down (bool, optional): should we walk down the taxonomy tree
+            when making mappings if a parent has only a single allowable child?
+            For example, if only a single felid species is allowed, should other
+            felid predictions be mapped to that species, as opposed to being mapped
+            to the family?
     """
 
-    #%% Read target taxa list
+    ##%% Read target taxa list
     
     if isinstance(taxa_list,str):
         assert os.path.isfile(taxa_list), \
@@ -2014,19 +2068,22 @@ def restrict_to_taxa_list(taxa_list,
             common_name = None
         assert binomial_name not in target_latin_to_common
         target_latin_to_common[binomial_name] = common_name
-
-
-    #%% Read taxonomy file
     
-    with open(taxonomy_file,'r') as f:
+
+    ##%% Read taxonomy file
+    
+    with open(speciesnet_taxonomy_file,'r') as f:
         speciesnet_taxonomy_list = f.readlines()
     speciesnet_taxonomy_list = [s.strip() for s in \
                                 speciesnet_taxonomy_list if len(s.strip()) > 0]
     
+    # Maps the latin name of every taxon to the corresponding full taxon string
+    #
+    # For species, the key is a binomial name
     speciesnet_latin_name_to_taxon_string = {}
     speciesnet_common_name_to_taxon_string = {}
     
-    for s in speciesnet_taxonomy_list:
+    def _insert_taxonomy_string(s):
         
         tokens = s.split(';')
         assert len(tokens) == 7
@@ -2041,28 +2098,92 @@ def restrict_to_taxa_list(taxa_list,
         
         if len(class_name) == 0:
             assert common_name in ('animal','vehicle','blank')
-            continue
+            return
         
         if len(species) > 0:
             assert all([len(s) > 0 for s in [genus,family,order]])
             binomial_name = genus + ' ' + species
-            speciesnet_latin_name_to_taxon_string[binomial_name] = s
+            if binomial_name not in speciesnet_latin_name_to_taxon_string:
+                speciesnet_latin_name_to_taxon_string[binomial_name] = s
         elif len(genus) > 0:
             assert all([len(s) > 0 for s in [family,order]])
-            speciesnet_latin_name_to_taxon_string[genus] = s
+            if genus not in speciesnet_latin_name_to_taxon_string:
+                speciesnet_latin_name_to_taxon_string[genus] = s
         elif len(family) > 0:
             assert len(order) > 0
-            speciesnet_latin_name_to_taxon_string[family] = s
+            if family not in speciesnet_latin_name_to_taxon_string:
+                speciesnet_latin_name_to_taxon_string[family] = s
         elif len(order) > 0:
-            speciesnet_latin_name_to_taxon_string[order] = s
+            if order not in speciesnet_latin_name_to_taxon_string:
+                speciesnet_latin_name_to_taxon_string[order] = s
         else:
-            speciesnet_latin_name_to_taxon_string[class_name] = s
+            if class_name not in speciesnet_latin_name_to_taxon_string:
+                speciesnet_latin_name_to_taxon_string[class_name] = s
         
         if len(common_name) > 0:
-            speciesnet_common_name_to_taxon_string[common_name] = s
+            if common_name not in speciesnet_common_name_to_taxon_string:
+                speciesnet_common_name_to_taxon_string[common_name] = s
+    
+    for s in speciesnet_taxonomy_list:
+        
+        _insert_taxonomy_string(s)
     
     
-    #%% Make sure all species are in the taxonomy
+    ##%% Make sure all parent taxa are represented in the taxonomy
+    
+    # In theory any taxon that appears as the parent of another taxon should
+    # also be in the taxonomy, but this isn't always true, so we fix it here.
+    
+    new_taxon_string_to_missing_tokens = defaultdict(list)
+    
+    # latin_name = next(iter(speciesnet_latin_name_to_taxon_string.keys()))
+    for latin_name in speciesnet_latin_name_to_taxon_string.keys():
+        
+        if 'no cv result' in latin_name:
+            continue
+        
+        taxon_string = speciesnet_latin_name_to_taxon_string[latin_name]
+        tokens = taxon_string.split(';')
+        
+        # Don't process GUID, species, or common name
+        # i_token = 6
+        for i_token in range(1,len(tokens)-2):
+            
+            test_token = tokens[i_token]            
+            if len(test_token) == 0:
+                continue
+            
+            # Do we need to make up a taxon for this token?
+            if test_token not in speciesnet_latin_name_to_taxon_string:
+                
+                new_tokens = [''] * 7
+                new_tokens[0] = 'fake_guid'
+                for i_copy_token in range(1,i_token+1):
+                    new_tokens[i_copy_token] = tokens[i_copy_token]
+                new_tokens[-1] = test_token + ' species'
+                assert new_tokens[-2] == ''
+                new_taxon_string = ';'.join(new_tokens)
+                # assert new_taxon_string not in new_taxon_strings
+                new_taxon_string_to_missing_tokens[new_taxon_string].append(test_token)
+                
+        # ...for each token
+        
+    # ...for each taxon
+        
+    print('Found {} taxa that need to be inserted to make the taxonomy valid:\n'.format(
+        len(new_taxon_string_to_missing_tokens)))
+    
+    new_taxon_string_to_missing_tokens = \
+        sort_dictionary_by_key(new_taxon_string_to_missing_tokens)
+    for taxon_string in new_taxon_string_to_missing_tokens:
+        missing_taxa = ','.join(new_taxon_string_to_missing_tokens[taxon_string])
+        print('{} ({})'.format(taxon_string,missing_taxa))
+        
+    for new_taxon_string in new_taxon_string_to_missing_tokens:
+        _insert_taxonomy_string(new_taxon_string)
+        
+        
+    ##%% Make sure all species on the allow-list are in the taxonomy
     
     n_failed_mappings = 0
     
@@ -2081,12 +2202,216 @@ def restrict_to_taxa_list(taxa_list,
         raise ValueError('Cannot continue with geofence generation')
     
     
-    #%% Map all parent taxa to the prediction we should generate
+    ##%% For the allow-list, map each parent taxon to a set of allowable child taxa
     
-    # ...including "animal".  For each parent taxon, if there is only one
-    # child that can possible be predicted, that's the prediction we'll use,
-    # otherwise we predict the parent taxon.
+    # Maps parent names to all allowed child names, or None if this is the 
+    # lowest-level allowable taxon on this path
+    allowed_parent_taxon_to_child_taxa = defaultdict(set)
     
+    # latin_name = next(iter(target_latin_to_common.keys()))
+    for latin_name in target_latin_to_common:
+        
+        taxon_string = speciesnet_latin_name_to_taxon_string[latin_name]
+        tokens = taxon_string.split(';')
+        assert len(tokens) == 7
+        
+        # Remove GUID and common mame
+        #
+        # This is now always class/order/family/genus/species
+        tokens = tokens[1:-1]
+        
+        child_taxon = None
+        
+        # If this is a species
+        if len(tokens[-1]) > 0:
+            binomial_name = tokens[-2] + ' ' + tokens[-1]
+            assert binomial_name == latin_name
+            allowed_parent_taxon_to_child_taxa[binomial_name].add(None)
+            child_taxon = binomial_name
+            
+        # The first candidate parent is the genus        
+        parent_token_index = len(tokens) - 2
+
+        while(parent_token_index >= 0):
+            
+            parent_taxon = tokens[parent_token_index]
+            allowed_parent_taxon_to_child_taxa[parent_taxon].add(child_taxon)
+            child_taxon = parent_taxon
+            parent_token_index -= 1                
+    
+    # ...for each allowed latin name
+    
+    allowed_parent_taxon_to_child_taxa = \
+        sort_dictionary_by_key(allowed_parent_taxon_to_child_taxa)
+    
+    
+    ##%% Map all predictions that exist in this dataset...
+    
+    # ...to the prediction we should generate.
+    
+    with open(input_file,'r') as f:
+        input_data = json.load(f)
+    
+    input_category_id_to_common_name = input_data['classification_categories'] #noqa
+    input_category_id_to_taxonomy_string = \
+        input_data['classification_category_descriptions']
+    
+    input_category_id_to_output_taxon_string = {}
+    
+    # input_category_id = next(iter(input_category_id_to_taxonomy_string.keys()))
+    for input_category_id in input_category_id_to_taxonomy_string.keys():
+        
+        input_taxon_string = input_category_id_to_taxonomy_string[input_category_id]
+        input_taxon_tokens = input_taxon_string.split(';')
+        assert len(input_taxon_tokens) == 7
+    
+        # Don't mess with blank/no-cv-result/animal/human
+        if (input_taxon_string in non_taxonomic_prediction_strings) or \
+           (input_taxon_string == human_prediction_string):
+            input_category_id_to_output_taxon_string[input_category_id] = \
+                input_taxon_string
+            continue
+    
+        # Remove GUID and common mame
+        #
+        # This is now always class/order/family/genus/species
+        input_taxon_tokens = input_taxon_tokens[1:-1]
+        
+        test_index = len(input_taxon_tokens) - 1
+        target_taxon = None
+        
+        # Start at the species level, and see whether each taxon is allowed
+        while((test_index >= 0) and (target_taxon is None)):
+            
+            # Species are represented as binomial names
+            if (test_index == (len(input_taxon_tokens) - 1)) and \
+                (len(input_taxon_tokens[-1]) > 0):
+                test_taxon_name = \
+                    input_taxon_tokens[-2] + ' ' + input_taxon_tokens[-1]
+            else:
+                test_taxon_name = input_taxon_tokens[test_index]
+            
+            # If we haven't yet found the level at which this taxon is non-empty,
+            # keep going up
+            if len(test_taxon_name) == 0:            
+                test_index -= 1
+                continue
+            
+            assert test_taxon_name in speciesnet_latin_name_to_taxon_string
+            
+            # Is this taxon allowed according to the custom species list?
+            if test_taxon_name in allowed_parent_taxon_to_child_taxa:
+                
+                allowed_child_taxa = allowed_parent_taxon_to_child_taxa[test_taxon_name]
+                assert allowed_child_taxa is not None
+                
+                # If this is the lowest-level allowable token or there is not a 
+                # unique child, don't walk any further, even if walking down
+                # is enabled.
+                if (None in allowed_child_taxa):
+                    assert len(allowed_child_taxa) == 1
+                
+                if (None in allowed_child_taxa) or (len(allowed_child_taxa) > 1):
+                    target_taxon = test_taxon_name
+                elif not allow_walk_down:
+                    target_taxon = test_taxon_name
+                else:
+                    # If there's a unique child, walk back *down* the allowable
+                    # taxa until we run out of unique children
+                    while ((next(iter(allowed_child_taxa)) is not None) and \
+                          (len(allowed_child_taxa) == 1)):
+                        candidate_taxon = next(iter(allowed_child_taxa))
+                        assert candidate_taxon in allowed_parent_taxon_to_child_taxa
+                        assert candidate_taxon in speciesnet_latin_name_to_taxon_string
+                        allowed_child_taxa = \
+                            allowed_parent_taxon_to_child_taxa[candidate_taxon]
+                    target_taxon = candidate_taxon
+                    
+            # ...if this is an allowed taxon
+                    
+            test_index -= 1
+    
+        # ...for each token
+        
+        if target_taxon is None:
+            output_taxon_string = animal_prediction_string                        
+        else:
+            output_taxon_string = speciesnet_latin_name_to_taxon_string[target_taxon]
+        input_category_id_to_output_taxon_string[input_category_id] = output_taxon_string        
+    
+    # ...for each category
+        
+    
+    ##%% Build the new tables
+    
+    input_category_id_to_output_category_id = {}
+    output_taxon_string_to_category_id = {}
+    output_category_id_to_common_name = {}
+    
+    for input_category_id in input_category_id_to_output_taxon_string:
+        
+        original_common_name = \
+            input_category_id_to_common_name[input_category_id]
+        original_taxon_string = \
+            input_category_id_to_taxonomy_string[input_category_id]
+        output_taxon_string = \
+            input_category_id_to_output_taxon_string[input_category_id]
+    
+        output_common_name = output_taxon_string.split(';')[-1]
+        
+        # Do we need to create a new output category?
+        if output_taxon_string not in output_taxon_string_to_category_id:
+            output_category_id = str(len(output_taxon_string_to_category_id))
+            output_taxon_string_to_category_id[output_taxon_string] = \
+                output_category_id
+            output_category_id_to_common_name[output_category_id] = \
+                output_common_name            
+        else:
+            output_category_id = \
+                output_taxon_string_to_category_id[output_taxon_string]
+        
+        input_category_id_to_output_category_id[input_category_id] = \
+            output_category_id
+            
+        if False:
+            print('Mapping {} ({}) to:\n{} ({})\n'.format(
+                original_common_name,original_taxon_string,
+                output_common_name,output_taxon_string))
+        if False:    
+            print('Mapping {} to {}'.format(
+                original_common_name,output_common_name,))
+    
+    # ...for each category
+    
+    
+    ##%% Remap all category labels
+    
+    assert len(set(output_taxon_string_to_category_id.keys())) == \
+           len(set(output_taxon_string_to_category_id.values()))
+           
+    output_category_id_to_taxon_string = \
+        invert_dictionary(output_taxon_string_to_category_id)
+        
+    with open(input_file,'r') as f:
+        output_data = json.load(f)
+        
+    for im in tqdm(output_data['images']):
+        if 'detections' in im and im['detections'] is not None:
+            for det in im['detections']:
+                if 'classifications' in det:
+                    for classification in det['classifications']:
+                        classification[0] = \
+                            input_category_id_to_output_category_id[classification[0]]
+    
+    output_data['classification_categories'] = output_category_id_to_common_name
+    output_data['classification_category_descriptions'] = \
+        output_category_id_to_taxon_string
+        
+        
+    ##%% Write output
+    
+    with open(output_file,'w') as f:
+        json.dump(output_data,f,indent=1)
     
     
 #%% Interactive driver(s)
