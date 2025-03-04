@@ -1218,6 +1218,7 @@ def generate_predictions_json_from_md_results(md_results_file,
         
 # ...def generate_predictions_json_from_md_results(...)
 
+default_tokens_to_ignore = ['$RECYCLE.BIN']
 
 def generate_instances_json_from_folder(folder,
                                         country=None,
@@ -1225,7 +1226,8 @@ def generate_instances_json_from_folder(folder,
                                         lat=None,
                                         lon=None,
                                         output_file=None,
-                                        filename_replacements=None):
+                                        filename_replacements=None,
+                                        tokens_to_ignore=default_tokens_to_ignore):
     """
     Generate an instances.json record that contains all images in [folder], optionally
     including location information, in a format suitable for run_model.py.  Optionally writes
@@ -1240,6 +1242,8 @@ def generate_instances_json_from_folder(folder,
         filename_replacements (dict, optional): str --> str dict indicating filename substrings
             that should be replaced with other strings.  Replacement occurs *after* converting
             backslashes to forward slashes.
+        tokens_to_ignore (list, optional): ignore any images with these tokens in their
+            names, typically used to avoid $RECYCLE.BIN.  Can be None.
         
     Returns:
         dict: dict with at least the field "instances"
@@ -1248,6 +1252,13 @@ def generate_instances_json_from_folder(folder,
     assert os.path.isdir(folder)
         
     image_files_abs = find_images(folder,recursive=True,return_relative_paths=False)
+    
+    if tokens_to_ignore is not None:
+        n_images_before_ignore_tokens = len(image_files_abs)
+        for token in tokens_to_ignore:
+            image_files_abs = [fn for fn in image_files_abs if token not in fn]
+        print('After ignoring {} tokens, kept {} of {} images'.format(
+            len(tokens_to_ignore),len(image_files_abs),n_images_before_ignore_tokens))
     
     instances = []
     
