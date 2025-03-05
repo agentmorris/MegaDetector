@@ -11,6 +11,19 @@
 
 This README originally documented the training and inference processes for species classifiers that play nicely with MegaDetector, particularly "MegaClassifier".  The training process used to create MegaClassifier is obsolete at this point, so this page is now about <i>running</i> MegaClassifier.  But first, some tips about tools you might use to train your own classifiers.
 
+## No, first, are you sure you want to train your own classifier?
+
+My two cents...
+
+I would only advise training a custom model as a last resort.  Remember that an AI classifier's ability to make you more efficient isn't necessarily related to whether it knows about all of your species or your geography: if a classifier from an unrelated geography makes _consistent_ predictions on your data, it doesn't really matter whether it knows about your species.  For example, if I am interested in coyotes in Canada, and I run a classifier that was trained in Kenya, and all of my coyotes are consistently classified as jackals, that's just as good as having a coyote classifier.
+
+With that in mind, here are the things I would try before training your own classifier:
+
+1. Consider trying [SpeciesNet](https://github.com/google/cameratrapai), a global classifier that works pretty well in a variety of ecosystems.  If your species are not covered, but you can do a suitable remapping of the outputs, that might be a very efficient solution.  (Full disclosure: I work on both MegaDetector and SpeciesNet.)
+2. I keep a list of publicly-available species classifiers [here](https://agentmorris.github.io/camera-trap-ml-survey/#publicly-available-ml-models-for-camera-traps); if one appears to have species that are visually similar to yours, give that a try.  Remember that the "right" classifier for you doesn't need to be specific to your geography, it just needs to make consistent predictions on the species you care about.
+
+But if you still want to either train a classifier, or try MegaClassifier, or just learn about classifier training, read on...
+
 # Training classifiers that play nicely with MegaDetector
 
 This repo is focused on MegaDetector, but we love talking about species classifiers too.  Feel free to <a href="mailto:cameratraps@lila.science">email us</a> if you want to chat classifiers, or - better yet - post questions to the <a href="https://aiforconservation.slack.com">AI for Conservation Slack</a>.
