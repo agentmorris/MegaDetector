@@ -97,7 +97,7 @@ if custom_taxa_list is not None:
 
 #%% Generate or load instances.json
 
-if force_instances_json not None:
+if force_instances_json is None:
     
     instances = generate_instances_json_from_folder(folder=input_folder,
                                                     country=country_code,
