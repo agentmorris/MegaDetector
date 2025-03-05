@@ -11,7 +11,7 @@ This folder contains information about ways to use MegaDetector output files in 
 
 ### eMammal
 
-A [standalone application](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing/integration/eMammal) is available to transfer MegaDetector results from our .json results format into the [eMammal desktop client](https://emammal.si.edu/eyes-wildlife/content/downloading-desktop-application).  Many eMammal users also work with our results by splitting images into separate folders for animal/empty/vehicle/person using [this script](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/separate_detections_into_folders.py), then either discarding the blanks or creating separate deployments for animal/empty/human.
+A [standalone application](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing/integration/eMammal) is available to transfer MegaDetector results from our .json results format into the [eMammal](https://emammal.si.edu/) desktop client.  Many eMammal users also work with our results by splitting images into separate folders for animal/empty/vehicle/person using [this script](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/separate_detections_into_folders.py), then either discarding the blanks or creating separate deployments for animal/empty/human.
 
 ### digiKam
 

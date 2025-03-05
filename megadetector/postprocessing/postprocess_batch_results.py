@@ -211,6 +211,9 @@ class PostProcessingOptions:
         #    format('https://megadetector.readthedocs.io')
         self.footer_text = ''
 
+        #: Character encoding to use when writing the index HTML html
+        self.output_html_encoding = None
+        
     # ...__init__()
     
 # ...PostProcessingOptions
@@ -778,7 +781,8 @@ def _render_image_no_gt(file_info,detection_categories_to_results_name,
             if det['conf'] > max_conf:
                 max_conf = det['conf']
 
-            if ('classifications' in det) and (len(det['classifications']) > 0):
+            if ('classifications' in det) and (len(det['classifications']) > 0) and \
+                (res != 'non_detections'):
 
                 # This is a list of [class,confidence] pairs, sorted by confidence
                 classifications = det['classifications']
@@ -1522,7 +1526,8 @@ def process_batch_results(options):
         # Close body and html tags
         index_page += '{}</body></html>'.format(options.footer_text)
         output_html_file = os.path.join(output_dir, 'index.html')
-        with open(output_html_file, 'w') as f:
+        with open(output_html_file, 'w', 
+                  encoding=options.output_html_encoding) as f:
             f.write(index_page)
 
         print('Finished writing html to {}'.format(output_html_file))
@@ -1717,7 +1722,7 @@ def process_batch_results(options):
         <p>Model version: {}</p>
         </div>
         
-        <h3>Sample images</h3>\n
+        <h3>Detection results</h3>\n
         <div class="contentdiv">\n""".format(
             style_header, job_name_string, image_count, len(detections_df), confidence_threshold_string,
             almost_detection_string, model_version_string)
@@ -1778,7 +1783,8 @@ def process_batch_results(options):
         index_page += '</div>\n'
 
         if has_classification_info:
-            index_page += '<h3>Images of detected classes</h3>'
+            
+            index_page += '<h3>Species classification results</h3>'
             index_page += '<p>The same image might appear under multiple classes ' + \
                 'if multiple species were detected.</p>\n'
             index_page += '<p>Classifications with confidence less than {:.1%} confidence are considered "unreliable".</p>\n'.format(
@@ -1806,7 +1812,8 @@ def process_batch_results(options):
 
         index_page += '{}</body></html>'.format(options.footer_text)
         output_html_file = os.path.join(output_dir, 'index.html')
-        with open(output_html_file, 'w') as f:
+        with open(output_html_file, 'w', 
+                  encoding=options.output_html_encoding) as f:
             f.write(index_page)
 
         print('Finished writing html to {}'.format(output_html_file))

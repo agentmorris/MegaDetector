@@ -57,4 +57,3 @@ write_results_to_file(results,
                       output_file,
                       relative_path_base=image_folder,
                       detector_file=detector_filename)
-

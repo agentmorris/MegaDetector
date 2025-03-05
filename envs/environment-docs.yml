@@ -5,24 +5,28 @@ channels:
 - pytorch
 
 dependencies:
-- python=3.9
+- python=3.11
 - sphinx
 - sphinx-mdinclude
 - sphinx_rtd_theme
+- numpy
 - Pillow
 - tqdm
 - jsonpickle
 - humanfriendly
-- numpy
 - matplotlib
 - opencv
 - requests
 - pyqtree
 - scikit-learn
 - pandas
+- python-dateutil
+- send2trash
+- dill
 - pytorch::pytorch
 - pytorch::torchvision
-- python-dateutil
 - pip
 - pip:
   - sphinx-argparse-cli
+  - myst-parser
+  - linkify-it-py

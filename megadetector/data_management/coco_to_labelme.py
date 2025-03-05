@@ -18,6 +18,7 @@ from tqdm import tqdm
 from collections import defaultdict
 
 from megadetector.visualization.visualization_utils import open_image
+from megadetector.detection.run_detector import FAILURE_IMAGE_OPEN
 
 
 #%% Functions
@@ -145,7 +146,7 @@ def coco_to_labelme(coco_data,image_base,overwrite=False,bypass_image_size_check
                 except Exception:
                     print('Warning: cannot open image {}'.format(im_full_path))
                     if 'failure' not in im:
-                        im['failure'] = 'Failure image access'
+                        im['failure'] = FAILURE_IMAGE_OPEN
     
             # ...if we need to read w/h information
             

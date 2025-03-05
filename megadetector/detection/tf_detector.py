@@ -36,10 +36,15 @@ class TFDetector:
     BATCH_SIZE = 1
 
 
-    def __init__(self, model_path):
+    def __init__(self, model_path, detector_options=None):
         """
         Loads a model from [model_path] and starts a tf.Session with this graph. Obtains
         input and output tensor handles.
+        
+        Args:
+            model_path (str): path to .pdb file
+            detector_options (dict, optional): key-value pairs that control detector
+                options; currently not used by TFDetector
         """
         
         detection_graph = TFDetector.__load_model(model_path)

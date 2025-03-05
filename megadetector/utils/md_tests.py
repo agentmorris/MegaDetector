@@ -29,6 +29,8 @@ import subprocess
 import argparse
 import inspect
 
+from copy import copy
+
 
 #%% Classes
 
@@ -50,11 +52,20 @@ class MDTestOptions:
         #: Skip tests related to video processing
         self.skip_video_tests = False
         
+        #: Skip tests related to video rendering
+        self.skip_video_rendering_tests = False
+        
         #: Skip tests launched via Python functions (as opposed to CLIs)
         self.skip_python_tests = False
         
         #: Skip CLI tests
         self.skip_cli_tests = False
+        
+        #: Skip download tests
+        self.skip_download_tests = False
+        
+        #: Skip force-CPU tests
+        self.skip_cpu_tests = False
         
         #: Force a specific folder for temporary input/output
         self.scratch_dir = None
@@ -106,7 +117,31 @@ class MDTestOptions:
         #: IoU threshold used to determine whether boxes in two detection files likely correspond
         #: to the same box.
         self.iou_threshold_for_file_comparison = 0.85
-
+        
+        #: Detector options passed to PTDetector
+        self.detector_options = {'compatibility_mode':'classic-test'}                
+        
+        #: Used to drive a series of tests (typically with a low value for 
+        #: python_test_depth) over a folder of models.
+        self.model_folder = None
+        
+        #: Used as a knob to control the level of Python tests, typically used when
+        #: we want to run a series of simple tests on a small number of models, rather 
+        #: than a deep test of tests on a small number of models.  The gestalt is that
+        #: this is a range from 0-100.
+        self.python_test_depth = 100
+        
+        #: Currently should be 'all' or 'utils-only'
+        self.test_mode = 'all'
+        
+        #: Number of cores to use for multi-CPU inference tests
+        self.n_cores_for_multiprocessing_tests = 2
+        
+        #: Number of cores to use for multi-CPU video tests
+        self.n_cores_for_video_tests = 2
+                
+    # ...def __init__()
+    
 # ...class MDTestOptions()
 
 
@@ -171,7 +206,7 @@ def get_expected_results_filename(gpu_is_available,
     
     if options is not None and options.scratch_dir is not None:
         fn = os.path.join(options.scratch_dir,fn)
-        
+    
     return fn
     
     
@@ -268,7 +303,7 @@ def download_test_data(options=None):
                            os.path.isfile(os.path.join(scratch_dir,fn))]
         
     print('Finished unzipping and enumerating test data')
-    
+        
     return options
 
 # ...def download_test_data(...)
@@ -276,18 +311,24 @@ def download_test_data(options=None):
 
 def is_gpu_available(verbose=True):
     """
-    Checks whether a GPU (including M1/M2 MPS) is available.
+    Checks whether a GPU (including M1/M2 MPS) is available, according to PyTorch.  Returns 
+    false if PT fails to import.
     
     Args:
-        verbose (bool, optional): enable additional debug console output
+        verbose (bool, optional): enable additional debug console output        
     
     Returns:
-        bool: whether a GPU is available
+        bool: whether a GPU is available        
     """
     
     # Import torch inside this function, so we have a chance to set CUDA_VISIBLE_DEVICES
     # before checking GPU availability.
-    import torch
+    try:
+        import torch
+    except Exception:
+        print('Warning: could not import torch')
+        return False
+    
     gpu_available = torch.cuda.is_available()
     
     if gpu_available:
@@ -384,15 +425,21 @@ def compare_detection_lists(detections_a,detections_b,options,bidirectional_comp
     
     max_conf_error = 0
     max_coord_error = 0
-        
+    
+    max_conf_error_det_a = None
+    max_conf_error_det_b = None
+    
+    max_coord_error_det_a = None
+    max_coord_error_det_b = None
+    
     # i_det_a = 0
     for i_det_a in range(0,len(detections_a)):
         
         det_a = detections_a[i_det_a]
         
         # Don't process very-low-confidence boxes
-        if det_a['conf'] < options.max_conf_error:
-            continue
+        # if det_a['conf'] < options.max_conf_error:
+        #    continue
         
         matching_det_b = None
         highest_iou = -1
@@ -402,22 +449,23 @@ def compare_detection_lists(detections_a,detections_b,options,bidirectional_comp
         # i_det_b = 0
         for i_det_b in range(0,len(detections_b)):
             
-            b_det = detections_b[i_det_b]
+            det_b = detections_b[i_det_b]
             
-            if b_det['category'] != det_a['category']:
+            if det_b['category'] != det_a['category']:
                 continue
             
-            iou = get_iou(det_a['bbox'],b_det['bbox'])
+            iou = get_iou(det_a['bbox'],det_b['bbox'])
             
             # Is this likely the same detection as det_a?
             if iou >= options.iou_threshold_for_file_comparison and iou > highest_iou:
-                matching_det_b = b_det
+                matching_det_b = det_b
                 highest_iou = iou
                 
         # If there are no detections in this category in detections_b
         if matching_det_b is None:
             if det_a['conf'] > max_conf_error:
                 max_conf_error = det_a['conf']
+                max_conf_error_det_a = det_a
             # max_coord_error = 1.0
             continue
         
@@ -427,13 +475,17 @@ def compare_detection_lists(detections_a,detections_b,options,bidirectional_comp
         for i_coord in range(0,4):
             coord_differences.append(abs(det_a['bbox'][i_coord]-\
                                          matching_det_b['bbox'][i_coord]))
-        coord_err = max(coord_differences)
+        coord_err = max(coord_differences)        
         
         if conf_err >= max_conf_error:
             max_conf_error = conf_err
+            max_conf_error_det_a = det_a
+            max_conf_error_det_b = det_b
             
         if coord_err >= max_coord_error:
-            max_coord_error = coord_err            
+            max_coord_error = coord_err
+            max_coord_error_det_a = det_a
+            max_coord_error_det_b = det_b
     
     # ...for each detection in detections_a
     
@@ -446,19 +498,32 @@ def compare_detection_lists(detections_a,detections_b,options,bidirectional_comp
         
         if reverse_comparison_results['max_conf_error'] > max_conf_error:
             max_conf_error = reverse_comparison_results['max_conf_error']
+            max_conf_error_det_a = reverse_comparison_results['max_conf_error_det_b']
+            max_conf_error_det_b = reverse_comparison_results['max_conf_error_det_a']
         if reverse_comparison_results['max_coord_error'] > max_coord_error:
             max_coord_error = reverse_comparison_results['max_coord_error']
+            max_coord_error_det_a = reverse_comparison_results['max_coord_error_det_b']
+            max_coord_error_det_b = reverse_comparison_results['max_coord_error_det_a']
     
     list_comparison_results = {}
+    
     list_comparison_results['max_coord_error'] = max_coord_error
+    list_comparison_results['max_coord_error_det_a'] = max_coord_error_det_a
+    list_comparison_results['max_coord_error_det_b'] = max_coord_error_det_b
+    
     list_comparison_results['max_conf_error'] = max_conf_error
+    list_comparison_results['max_conf_error_det_a'] = max_conf_error_det_a
+    list_comparison_results['max_conf_error_det_b'] = max_conf_error_det_b
     
     return list_comparison_results
 
 # ...def compare_detection_lists(...)
 
 
-def compare_results(inference_output_file,expected_results_file,options):
+def compare_results(inference_output_file,
+                    expected_results_file,
+                    options,
+                    expected_results_file_is_absolute=False):
     """
     Compare two MD-formatted output files that should be nearly identical, allowing small
     changes (e.g. rounding differences).  Generally used to compare a new results file to 
@@ -468,6 +533,9 @@ def compare_results(inference_output_file,expected_results_file,options):
         inference_output_file (str): the first results file to compare
         expected_results_file (str): the second results file to compare
         options (MDTestOptions): options that determine tolerable differences between files
+        expected_results_file_is_absolute (str, optional): by default, 
+            expected_results_file is appended to options.scratch_dir; this option
+            specifies that it's an absolute path.
         
     Returns:
         dict: dictionary with keys 'max_coord_error' and 'max_conf_error'
@@ -477,7 +545,10 @@ def compare_results(inference_output_file,expected_results_file,options):
     with open(inference_output_file,'r') as f:
         results_from_file = json.load(f) # noqa
     
-    with open(os.path.join(options.scratch_dir,expected_results_file),'r') as f:
+    if not expected_results_file_is_absolute:
+        expected_results_file= os.path.join(options.scratch_dir,expected_results_file)
+        
+    with open(expected_results_file,'r') as f:
         expected_results = json.load(f)
             
     filename_to_results = {im['file'].replace('\\','/'):im for im in results_from_file['images']}
@@ -488,11 +559,13 @@ def compare_results(inference_output_file,expected_results_file,options):
             len(filename_to_results_expected),
             len(filename_to_results))
     
-    max_conf_error = 0
+    max_conf_error = -1
     max_conf_error_file = None
+    max_conf_error_comparison_results = None
     
-    max_coord_error = 0
+    max_coord_error = -1
     max_coord_error_file = None    
+    max_coord_error_comparison_results = None
     
     # fn = next(iter(filename_to_results.keys()))
     for fn in filename_to_results.keys():
@@ -518,10 +591,12 @@ def compare_results(inference_output_file,expected_results_file,options):
         
         if comparison_results_this_image['max_conf_error'] > max_conf_error:
             max_conf_error = comparison_results_this_image['max_conf_error']
+            max_conf_error_comparison_results = comparison_results_this_image
             max_conf_error_file = fn
             
         if comparison_results_this_image['max_coord_error'] > max_coord_error:
             max_coord_error = comparison_results_this_image['max_coord_error']
+            max_coord_error_comparison_results = comparison_results_this_image
             max_coord_error_file = fn
                 
     # ...for each image
@@ -537,7 +612,7 @@ def compare_results(inference_output_file,expected_results_file,options):
             'Coord error {} is greater than allowable ({}), on file:\n{} ({},{})'.format(
                 max_coord_error,options.max_coord_error,max_coord_error_file,
                 inference_output_file,expected_results_file)
-        
+            
     print('Max conf error: {} (file {})'.format(
         max_conf_error,max_conf_error_file))
     print('Max coord error: {} (file {})'.format(
@@ -545,7 +620,9 @@ def compare_results(inference_output_file,expected_results_file,options):
     
     comparison_results = {}
     comparison_results['max_conf_error'] = max_conf_error
+    comparison_results['max_conf_error_comparison_results'] = max_conf_error_comparison_results
     comparison_results['max_coord_error'] = max_coord_error
+    comparison_results['max_coord_error_comparison_results'] = max_coord_error_comparison_results
 
     return comparison_results
 
@@ -580,6 +657,10 @@ def _args_to_object(args, obj):
 
 os.environ["PYTHONUNBUFFERED"] = "1"
 
+# In some circumstances I want to allow CLI tests to "succeed" even when they return 
+# specific non-zero output values.
+allowable_process_return_codes = [0]
+
 def execute(cmd):
     """
     Runs [cmd] (a single string) in a shell, yielding each line of output to the caller.
@@ -598,7 +679,7 @@ def execute(cmd):
         yield stdout_line
     popen.stdout.close()
     return_code = popen.wait()
-    if return_code:
+    if return_code not in allowable_process_return_codes:
         raise subprocess.CalledProcessError(return_code, cmd)
     return return_code
 
@@ -628,7 +709,7 @@ def execute_and_print(cmd,print_output=True,catch_exceptions=False,echo_command=
                 print(s,end='',flush=True)
         to_return['status'] = 0
     except subprocess.CalledProcessError as cpe:
-        if not catch_exceptions:
+        if not catch_exceptions:   
             raise
         print('execute_and_print caught error: {}'.format(cpe.output))
         to_return['status'] = cpe.returncode
@@ -639,6 +720,47 @@ def execute_and_print(cmd,print_output=True,catch_exceptions=False,echo_command=
 
 #%% Python tests
 
+def test_package_imports(package_name,exceptions=None,verbose=True):
+    """
+    Imports all modules in [package_name]
+    
+    Args:
+        package_name (str): the package name to test
+        exceptions (list, optional): exclude any modules that contain any of these strings
+        verbose (bool, optional): enable additional debug output
+    """
+    import importlib
+    import pkgutil
+    
+    package = importlib.import_module(package_name)
+    package_path = package.__path__
+    imported_modules = []
+    
+    if exceptions is None:
+        exceptions = []
+        
+    for _, modname, _ in pkgutil.walk_packages(package_path, package_name + '.'):
+        
+        skip_module = False
+        for s in exceptions:
+            if s in modname:
+                skip_module = True
+                break
+        if skip_module:
+            continue
+        
+        if verbose:
+            print('Testing import: {}'.format(modname))
+        
+        try:
+            # Attempt to import each module
+            _ = importlib.import_module(modname)
+            imported_modules.append(modname)            
+        except ImportError as e:
+            print(f"Failed to import module {modname}: {e}")
+            raise
+
+    #%%
 def run_python_tests(options):
     """
     Runs Python-based (as opposed to CLI-based) package tests.
@@ -648,6 +770,7 @@ def run_python_tests(options):
     """
     
     print('\n*** Starting module tests ***\n')
+        
     
     ## Prepare data
     
@@ -662,40 +785,68 @@ def run_python_tests(options):
     ct_utils_test()
     
     
-    ## Run inference on an image
+    ## Import tests
     
+    print('\n** Running package import tests **\n')
+    test_package_imports('megadetector.visualization')
+    test_package_imports('megadetector.postprocessing')
+    test_package_imports('megadetector.postprocessing.repeat_detection_elimination')
+    test_package_imports('megadetector.utils',exceptions=['azure_utils','sas_blob_utils','md_tests'])
+    test_package_imports('megadetector.data_management',exceptions=['lila','ocr_tools'])
+        
+
+    ## Return early if we're not running torch-related tests
+    
+    if options.test_mode == 'utils-only':
+        return
+    
+    
+    ## Make sure our tests are doing what we think they're doing
+    
+    from megadetector.detection import pytorch_detector
+    pytorch_detector.require_non_default_compatibility_mode = True
+    
+    
+    ## Run inference on an image
+        
     print('\n** Running MD on a single image (module) **\n')
     
     from megadetector.detection import run_detector
-    from megadetector.visualization import visualization_utils as vis_utils
+    from megadetector.visualization import visualization_utils as vis_utils # noqa
     image_fn = os.path.join(options.scratch_dir,options.test_images[0])
-    model = run_detector.load_detector(options.default_model)
+    model = run_detector.load_detector(options.default_model,
+                                       detector_options=copy(options.detector_options))
     pil_im = vis_utils.load_image(image_fn)
     result = model.generate_detections_one_image(pil_im) # noqa
-
+    
+    if options.python_test_depth <= 1:
+        return
+        
     
     ## Run inference on a folder
 
     print('\n** Running MD on a folder of images (module) **\n')
     
     from megadetector.detection.run_detector_batch import load_and_run_detector_batch,write_results_to_file
-    from megadetector.utils import path_utils
+    from megadetector.utils import path_utils # noqa
 
     image_folder = os.path.join(options.scratch_dir,'md-test-images')
     assert os.path.isdir(image_folder), 'Test image folder {} is not available'.format(image_folder)
     inference_output_file = os.path.join(options.scratch_dir,'folder_inference_output.json')
     image_file_names = path_utils.find_images(image_folder,recursive=True)
-    results = load_and_run_detector_batch(options.default_model, image_file_names, quiet=True)
+    results = load_and_run_detector_batch(options.default_model, 
+                                          image_file_names,
+                                          quiet=True,
+                                          detector_options=copy(options.detector_options))
     _ = write_results_to_file(results,
                               inference_output_file,
                               relative_path_base=image_folder,
                               detector_file=options.default_model)
 
-    
     ## Verify results
     
     # Verify format correctness
-    from megadetector.postprocessing.validate_batch_results import validate_batch_results 
+    from megadetector.postprocessing.validate_batch_results import validate_batch_results #noqa
     validate_batch_results(inference_output_file)
     
     # Verify value correctness
@@ -706,6 +857,9 @@ def run_python_tests(options):
     
     # Make note of this filename, we will use it again later
     inference_output_file_standard_inference = inference_output_file
+        
+    if options.python_test_depth <= 2:
+        return
     
     
     ## Run and verify again with augmentation enabled
@@ -715,7 +869,11 @@ def run_python_tests(options):
     from megadetector.utils.path_utils import insert_before_extension
     
     inference_output_file_augmented = insert_before_extension(inference_output_file,'augmented')
-    results = load_and_run_detector_batch(options.default_model, image_file_names, quiet=True, augment=True)
+    results = load_and_run_detector_batch(options.default_model,
+                                          image_file_names,
+                                          quiet=True,
+                                          augment=True,
+                                          detector_options=copy(options.detector_options))
     _ = write_results_to_file(results,
                               inference_output_file_augmented,
                               relative_path_base=image_folder,
@@ -855,7 +1013,9 @@ def run_python_tests(options):
         video_options.output_video_file = os.path.join(options.scratch_dir,'video_scratch/rendered_video.mp4')
         video_options.frame_folder = os.path.join(options.scratch_dir,'video_scratch/frame_folder')
         video_options.frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder')    
-        video_options.render_output_video = True
+        
+        video_options.render_output_video = (not options.skip_video_rendering_tests)
+             
         # video_options.keep_rendered_frames = False
         # video_options.keep_extracted_frames = False
         video_options.force_extracted_frame_folder_deletion = True
@@ -868,9 +1028,10 @@ def run_python_tests(options):
         # video_options.rendering_confidence_threshold = None
         # video_options.json_confidence_threshold = 0.005
         video_options.frame_sample = 10
-        video_options.n_cores = 5
+        video_options.n_cores = options.n_cores_for_video_tests
         # video_options.debug_max_frames = -1
         # video_options.class_mapping_filename = None
+        video_options.detector_options = copy(options.detector_options)
         
         _ = process_video(video_options)
     
@@ -908,7 +1069,7 @@ def run_python_tests(options):
         # video_options.rendering_confidence_threshold = None
         # video_options.json_confidence_threshold = 0.005
         video_options.frame_sample = 10  
-        video_options.n_cores = 5        
+        video_options.n_cores = options.n_cores_for_video_tests
         
         # Force frame extraction to disk, since that's how we generated our expected results file
         video_options.force_on_disk_frame_extraction = True
@@ -918,13 +1079,15 @@ def run_python_tests(options):
         # Use quality == None, because we can't control whether YOLOv5 has patched cm2.imread,
         # and therefore can't rely on using the quality parameter
         video_options.quality = None
-        video_options.max_width = None
+        video_options.max_width = None        
+        video_options.detector_options = copy(options.detector_options)
         
+        video_options.keep_extracted_frames = True
         _ = process_video_folder(video_options)
     
         assert os.path.isfile(video_options.output_json_file), \
             'Python video test failed to render output .json file'
-            
+        
         frame_output_file = insert_before_extension(video_options.output_json_file,'frames')
         assert os.path.isfile(frame_output_file)
         
@@ -934,6 +1097,7 @@ def run_python_tests(options):
         expected_results_file = \
             get_expected_results_filename(is_gpu_available(verbose=False),test_type='video',options=options)
         assert os.path.isfile(expected_results_file)
+        
         compare_results(frame_output_file,expected_results_file,options)
         
         
@@ -978,7 +1142,6 @@ def run_cli_tests(options):
     
     print('\n*** Starting CLI tests ***\n')
     
-    
     ## Environment management
     
     if options.cli_test_pythonpath is not None:
@@ -996,6 +1159,23 @@ def run_cli_tests(options):
     download_test_data(options)
     
     
+    ## Utility imports
+    
+    from megadetector.utils.ct_utils import dict_to_kvp_list
+    from megadetector.utils.path_utils import insert_before_extension
+    
+    
+    ## Utility tests
+    
+    # TODO: move postprocessing tests up to this point, using pre-generated .json results files
+    
+
+    ## Return early if we're not running torch-related tests
+    
+    if options.test_mode == 'utils-only':
+        return
+
+    
     ## Run inference on an image
     
     print('\n** Running MD on a single image (CLI) **\n')
@@ -1008,6 +1188,7 @@ def run_cli_tests(options):
         cmd = 'python megadetector/detection/run_detector.py'
     cmd += ' "{}" --image_file "{}" --output_dir "{}"'.format(
         options.default_model,image_fn,output_dir)
+    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
     
     if options.cpu_execution_is_error:
@@ -1019,6 +1200,13 @@ def run_cli_tests(options):
         if not gpu_available_via_cli:
             raise Exception('GPU execution is required, but not available')
 
+    # Make sure we can also pass an absolute path to a model file, instead of, e.g. "MDV5A"
+    
+    from megadetector.detection.run_detector import try_download_known_detector
+    model_file = try_download_known_detector(options.default_model,force_download=False,verbose=False)
+    cmd = cmd.replace(options.default_model,model_file)
+    cmd_results = execute_and_print(cmd)
+    
     
     ## Run inference on a folder
     
@@ -1035,6 +1223,7 @@ def run_cli_tests(options):
         options.default_model,image_folder,inference_output_file)
     cmd += ' --output_relative_filenames --quiet --include_image_size'
     cmd += ' --include_image_timestamp --include_exif_data'
+    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
     
     base_cmd = cmd
@@ -1043,13 +1232,12 @@ def run_cli_tests(options):
     ## Run again with checkpointing enabled, make sure the results are the same
     
     print('\n** Running MD on a folder (with checkpoints) (CLI) **\n')
-    
-    from megadetector.utils.path_utils import insert_before_extension
         
     checkpoint_string = ' --checkpoint_frequency 5'
     cmd = base_cmd + checkpoint_string
     inference_output_file_checkpoint = insert_before_extension(inference_output_file,'_checkpoint')
     cmd = cmd.replace(inference_output_file,inference_output_file_checkpoint)
+    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
     
     assert output_files_are_identical(fn1=inference_output_file, 
@@ -1059,12 +1247,12 @@ def run_cli_tests(options):
     
     ## Run again with the image queue enabled, make sure the results are the same
     
-    print('\n** Running MD on a folder (with image queue) (CLI) **\n')
+    print('\n** Running MD on a folder (with image queue but no preprocessing) (CLI) **\n')
     
     cmd = base_cmd + ' --use_image_queue'
-    from megadetector.utils.path_utils import insert_before_extension
     inference_output_file_queue = insert_before_extension(inference_output_file,'_queue')
     cmd = cmd.replace(inference_output_file,inference_output_file_queue)
+    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
     
     assert output_files_are_identical(fn1=inference_output_file, 
@@ -1072,48 +1260,66 @@ def run_cli_tests(options):
                                       verbose=True)
     
     
-    ## Run again on multiple cores, make sure the results are the same
+    print('\n** Running MD on a folder (with image queue and preprocessing) (CLI) **\n')
     
-    # First run again on the CPU on a single thread if necessary, so we get a file that 
-    # *should* be identical to the multicore version.
-    
-    gpu_available = is_gpu_available(verbose=False)
-    
-    cuda_visible_devices = None
-    if 'CUDA_VISIBLE_DEVICES' in os.environ:
-        cuda_visible_devices = os.environ['CUDA_VISIBLE_DEVICES']
-    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'    
-    
-    # If we already ran on the CPU, no need to run again
-    if not gpu_available:
-        inference_output_file_cpu = inference_output_file
-    else:
-        
-        print('\n** Running MD on a folder (single CPU) (CLI) **\n')
-                
-        inference_output_file_cpu = insert_before_extension(inference_output_file,'cpu')    
-        cmd = base_cmd
-        cmd = cmd.replace(inference_output_file,inference_output_file_cpu)    
-        cmd_results = execute_and_print(cmd)
-        
-    print('\n** Running MD on a folder (multiple CPUs) (CLI) **\n')
-    
-    cpu_string = ' --ncores 4'
-    cmd = base_cmd + cpu_string
-    from megadetector.utils.path_utils import insert_before_extension
-    inference_output_file_cpu_multicore = insert_before_extension(inference_output_file,'multicore')
-    cmd = cmd.replace(inference_output_file,inference_output_file_cpu_multicore)
+    cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue'
+    inference_output_file_queue = insert_before_extension(inference_output_file,'_queue')
+    cmd = cmd.replace(inference_output_file,inference_output_file_queue)
+    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
     
-    if cuda_visible_devices is not None:
-        print('Restoring CUDA_VISIBLE_DEVICES')
-        os.environ['CUDA_VISIBLE_DEVICES'] = cuda_visible_devices
-    else:
-        del os.environ['CUDA_VISIBLE_DEVICES']
-        
-    assert output_files_are_identical(fn1=inference_output_file_cpu, 
-                                      fn2=inference_output_file_cpu_multicore,
+    assert output_files_are_identical(fn1=inference_output_file, 
+                                      fn2=inference_output_file_queue,
                                       verbose=True)
+    
+    ## Run again on multiple cores, make sure the results are the same
+    
+    if not options.skip_cpu_tests:
+    
+        # First run again on the CPU on a single thread if necessary, so we get a file that 
+        # *should* be identical to the multicore version.    
+        gpu_available = is_gpu_available(verbose=False)
+        
+        cuda_visible_devices = None
+        if 'CUDA_VISIBLE_DEVICES' in os.environ:
+            cuda_visible_devices = os.environ['CUDA_VISIBLE_DEVICES']
+        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'    
+        
+        # If we already ran on the CPU, no need to run again
+        if not gpu_available:
+            
+            inference_output_file_cpu = inference_output_file
+            
+        else:
+            
+            print('\n** Running MD on a folder (single CPU) (CLI) **\n')
+                    
+            inference_output_file_cpu = insert_before_extension(inference_output_file,'cpu')    
+            cmd = base_cmd
+            cmd = cmd.replace(inference_output_file,inference_output_file_cpu)
+            cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+            cmd_results = execute_and_print(cmd)
+            
+        print('\n** Running MD on a folder (multiple CPUs) (CLI) **\n')
+        
+        cpu_string = ' --ncores {}'.format(options.n_cores_for_multiprocessing_tests)
+        cmd = base_cmd + cpu_string
+        inference_output_file_cpu_multicore = insert_before_extension(inference_output_file,'multicore')
+        cmd = cmd.replace(inference_output_file,inference_output_file_cpu_multicore)
+        cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+        cmd_results = execute_and_print(cmd)
+        
+        if cuda_visible_devices is not None:
+            print('Restoring CUDA_VISIBLE_DEVICES')
+            os.environ['CUDA_VISIBLE_DEVICES'] = cuda_visible_devices
+        else:
+            del os.environ['CUDA_VISIBLE_DEVICES']
+            
+        assert output_files_are_identical(fn1=inference_output_file_cpu, 
+                                          fn2=inference_output_file_cpu_multicore,
+                                          verbose=True)
+        
+    # ...if we're not skipping the force-cpu tests
     
     
     ## Postprocessing
@@ -1172,23 +1378,33 @@ def run_cli_tests(options):
     
     ## Run inference on a folder (tiled)
     
-    print('\n** Running tiled inference (CLI) **\n')
+    # This is a rather esoteric code path that I turn off when I'm testing some
+    # features that it doesn't include yet, particularly compatibility mode
+    # control.
+    skip_tiling_tests = True
     
-    image_folder = os.path.join(options.scratch_dir,'md-test-images')
-    tiling_folder = os.path.join(options.scratch_dir,'tiling-folder')
-    inference_output_file_tiled = os.path.join(options.scratch_dir,'folder_inference_output_tiled.json')
-    if options.cli_working_dir is None:
-        cmd = 'python -m megadetector.detection.run_tiled_inference'
-    else:
-        cmd = 'python megadetector/detection/run_tiled_inference.py'
-    cmd += ' "{}" "{}" "{}" "{}"'.format(
-        options.default_model,image_folder,tiling_folder,inference_output_file_tiled)
-    cmd += ' --overwrite_handling overwrite'
-    cmd_results = execute_and_print(cmd)
-    
-    with open(inference_output_file_tiled,'r') as f:
-        results_from_file = json.load(f) # noqa
+    if skip_tiling_tests:
         
+        print('### DEBUG: skipping tiling tests ###')
+        
+    else:
+        print('\n** Running tiled inference (CLI) **\n')
+        
+        image_folder = os.path.join(options.scratch_dir,'md-test-images')
+        tiling_folder = os.path.join(options.scratch_dir,'tiling-folder')
+        inference_output_file_tiled = os.path.join(options.scratch_dir,'folder_inference_output_tiled.json')
+        if options.cli_working_dir is None:
+            cmd = 'python -m megadetector.detection.run_tiled_inference'
+        else:
+            cmd = 'python megadetector/detection/run_tiled_inference.py'
+        cmd += ' "{}" "{}" "{}" "{}"'.format(
+            options.default_model,image_folder,tiling_folder,inference_output_file_tiled)
+        cmd += ' --overwrite_handling overwrite'
+        cmd_results = execute_and_print(cmd)
+        
+        with open(inference_output_file_tiled,'r') as f:
+            results_from_file = json.load(f) # noqa
+            
     
     ## Run inference on a folder (augmented, w/YOLOv5 val script)
     
@@ -1252,9 +1468,16 @@ def run_cli_tests(options):
         cmd += ' "{}" "{}"'.format(options.default_model,video_fn)
         cmd += ' --frame_folder "{}" --frame_rendering_folder "{}" --output_json_file "{}" --output_video_file "{}"'.format(
             frame_folder,frame_rendering_folder,video_inference_output_file,output_video_file)
-        cmd += ' --render_output_video --fourcc {}'.format(options.video_fourcc)
-        cmd += ' --force_extracted_frame_folder_deletion --force_rendered_frame_folder_deletion --n_cores 5 --frame_sample 3'
+        cmd += ' --fourcc {}'.format(options.video_fourcc)
+        cmd += ' --force_extracted_frame_folder_deletion --force_rendered_frame_folder_deletion'
+        cmd += ' --n_cores {}'.format(options.n_cores_for_video_tests)
+        cmd += ' --frame_sample 4'
         cmd += ' --verbose'
+        cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+        
+        if not options.skip_video_rendering_tests:
+            cmd += ' --render_output_video'
+            
         cmd_results = execute_and_print(cmd)
 
     # ...if we're not skipping video tests
@@ -1274,6 +1497,7 @@ def run_cli_tests(options):
         options.alt_model,image_folder,inference_output_file_alt)
     cmd += ' --output_relative_filenames --quiet --include_image_size'
     cmd += ' --include_image_timestamp --include_exif_data'
+    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
     
     with open(inference_output_file_alt,'r') as f:
@@ -1302,6 +1526,49 @@ def run_cli_tests(options):
 # ...def run_cli_tests(...)
 
 
+def run_download_tests(options):
+    """
+    Args:
+        options (MDTestOptions): see MDTestOptions for details    
+    """
+    
+    if options.skip_download_tests or options.test_mode == 'utils-only':
+        return
+
+    from megadetector.detection.run_detector import known_models, \
+        try_download_known_detector, \
+        get_detector_version_from_model_file, \
+        model_string_to_model_version
+
+    # Make sure we can download models based on canonical version numbers, 
+    # e.g. "v5a.0.0"
+    for model_name in known_models:
+        url = known_models[model_name]['url']
+        if 'localhost' in url:
+            continue
+        print('Testing download for known model {}'.format(model_name))
+        fn = try_download_known_detector(model_name, 
+                                         force_download=False,
+                                         verbose=False)
+        version_string = get_detector_version_from_model_file(fn, verbose=False)
+        assert version_string == model_name
+        
+    # Make sure we can download models based on short names, e.g. "MDV5A"
+    for model_name in model_string_to_model_version:
+        model_version = model_string_to_model_version[model_name]
+        assert model_version in known_models
+        url = known_models[model_version]['url']
+        if 'localhost' in url:
+            continue
+        print('Testing download for model short name {}'.format(model_name))
+        fn = try_download_known_detector(model_name, 
+                                         force_download=False,
+                                         verbose=False)    
+        assert fn != model_name    
+    
+# ...def run_download_tests()
+
+
 #%% Main test wrapper
 
 def run_tests(options):
@@ -1314,6 +1581,9 @@ def run_tests(options):
     
     # Prepare data folder
     download_test_data(options)
+    
+    # Run model download tests if necessary
+    run_download_tests(options)
     
     if options.disable_gpu:
         os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
@@ -1331,8 +1601,32 @@ def run_tests(options):
         
     # Run python tests
     if not options.skip_python_tests:
-        run_python_tests(options)
-    
+        
+        if options.model_folder is not None:
+            
+            assert os.path.isdir(options.model_folder), \
+                'Could not find model folder {}'.format(options.model_folder)
+                
+            model_files = os.listdir(options.model_folder)
+            model_files = [fn for fn in model_files if fn.endswith('.pt')]
+            model_files = [os.path.join(options.model_folder,fn) for fn in model_files]
+            
+            assert len(model_files) > 0, \
+                'Could not find any models in folder {}'.format(options.model_folder)
+                
+            original_default_model = options.default_model
+            
+            for model_file in model_files:
+                print('Running Python tests for model {}'.format(model_file))
+                options.default_model = model_file                
+                run_python_tests(options)
+        
+            options.default_model = original_default_model
+        
+        else:
+            
+            run_python_tests(options)
+            
     # Run CLI tests
     if not options.skip_cli_tests:
         run_cli_tests(options)
@@ -1360,16 +1654,26 @@ if False:
     options.warning_mode = False
     options.max_coord_error = 0.01 # 0.001
     options.max_conf_error = 0.01 # 0.005
-    # options.cli_working_dir = r'c:\git\MegaDetector'
+    options.skip_video_rendering_tests = True
+    # options.iou_threshold_for_file_comparison = 0.7
+    
+    options.cli_working_dir = r'c:\git\MegaDetector'
+    # When running in the cameratraps-detector environment    
+    # options.cli_test_pythonpath = r'c:\git\MegaDetector;c:\git\yolov5-md'
+    
+    # When running in the MegaDetector environment
+    options.cli_test_pythonpath = r'c:\git\MegaDetector'
+    
+    # options.cli_working_dir = os.path.expanduser('~')
     # options.yolo_working_dir = r'c:\git\yolov5-md'
-    options.cli_working_dir = os.path.expanduser('~')
     # options.yolo_working_dir = '/mnt/c/git/yolov5-md'
     options = download_test_data(options)
     
     #%%
     
     import os
-    if 'PYTHONPATH' not in os.environ or options.yolo_working_dir not in os.environ['PYTHONPATH']:
+    if ('PYTHONPATH' not in os.environ) or \
+       (options.yolo_working_dir is not None and options.yolo_working_dir not in os.environ['PYTHONPATH']):
         os.environ['PYTHONPATH'] += ';' + options.yolo_working_dir
 
     #%%
@@ -1449,6 +1753,11 @@ def main():
         help='Skip tests related to video (which can be slow)')
         
     parser.add_argument(
+        '--skip_video_rendering_tests',
+        action='store_true',
+        help='Skip tests related to *rendering* video')
+        
+    parser.add_argument(
         '--skip_python_tests',
         action='store_true',
         help='Skip python tests')
@@ -1457,6 +1766,16 @@ def main():
         '--skip_cli_tests',
         action='store_true',
         help='Skip CLI tests')
+        
+    parser.add_argument(
+        '--skip_download_tests',
+        action='store_true',
+        help='Skip model download tests')
+        
+    parser.add_argument(
+        '--skip_cpu_tests',
+        action='store_true',
+        help='Skip force-CPU tests')
         
     parser.add_argument(
         '--force_data_download',
@@ -1506,35 +1825,55 @@ def main():
         help='PYTHONPATH to set for CLI tests; if None, inherits from the parent process'
         )
     
-    # token used for linting
+    parser.add_argument(
+        '--test_mode',
+        type=str,
+        default='utils-only',
+        help='Test mode: "all" or "utils-only"'
+        )
+    
+    parser.add_argument(
+        '--python_test_depth',
+        type=int,
+        default=options.python_test_depth,
+        help='Used as a knob to control the level of Python tests (0-100)'
+        )
+    
+    parser.add_argument(
+        '--model_folder',
+        type=str,
+        default=None,
+        help='Run Python tests on every model in this folder'
+        )
+    
+    parser.add_argument(
+        '--detector_options',
+        nargs='*',
+        metavar='KEY=VALUE',
+        default='',
+        help='Detector-specific options, as a space-separated list of key-value pairs')
+    
+    parser.add_argument(
+        '--default_model',
+        type=str,
+        default=options.default_model,
+        help='Default model file or well-known model name (used for most tests)')
+    
+    # The following token is used for linting, do not remove.
     #
     # no_arguments_required
-        
+    
     args = parser.parse_args()
     
+    initial_detector_options = options.detector_options    
     _args_to_object(args,options)
+    from megadetector.utils.ct_utils import parse_kvp_list    
+    options.detector_options = parse_kvp_list(args.detector_options,d=initial_detector_options)
     
     run_tests(options)
     
 if __name__ == '__main__':    
     main()
-
-
-#%% Sample invocations
-
-r"""
-# Windows
-set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5-md
-cd c:\git\MegaDetector\megadetector\utils
-python md_tests.py --cli_working_dir "c:\git\MegaDetector" --yolo_working_dir "c:\git\yolov5-md" --cli_test_pythonpath "c:\git\MegaDetector;c:\git\yolov5-md"
-
-# Linux
-export PYTHONPATH=/mnt/c/git/MegaDetector:/mnt/c/git/yolov5-md
-cd /mnt/c/git/MegaDetector/megadetector/utils
-python md_tests.py --cli_working_dir "/mnt/c/git/MegaDetector" --yolo_working_dir "/mnt/c/git/yolov5-md" --cli_test_pythonpath "/mnt/c/git/MegaDetector:/mnt/c/git/yolov5-md"
-
-python -c "import md_tests; print(md_tests.get_expected_results_filename(True))"
-"""
 
 
 #%% Scrap

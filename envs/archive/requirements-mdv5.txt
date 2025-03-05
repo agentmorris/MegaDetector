@@ -1,0 +1,42 @@
+########
+#
+# pip environment file for MegaDetector
+#
+########
+
+# ultralytics-yolov5 has a dependency on FreeTypeFont.getsize(), which was
+# removed in Pillow 10, so we force Pillow < 10.0
+Pillow >= 9.1.0, < 10.0
+
+tqdm >= 4.64.0
+jsonpickle >= 3.0.2
+humanfriendly >= 10.0
+
+# To run ultralytics-yolov5, we need to use an old version of numpy, because
+# of the removal of np.int in numpy 1.24.0
+numpy == 1.23.5
+
+matplotlib >= 3.8.0
+opencv-python >= 4.8.0
+requests >= 2.31.0
+pyqtree >= 1.0.0
+scikit-learn >= 1.3.1
+pandas >= 2.1.1
+seaborn >= 0.12.2
+PyYAML >= 6.0.1
+
+--extra-index-url https://download.pytorch.org/whl/cu118
+torch
+torchvision
+
+# "ultralytics-yolov5" is the frozen-in-time YOLOv5:
+#
+# https://pypi.org/project/ultralytics-yolov5/
+#
+# ...which is different than "pip install yolov5", which installs:
+#
+# https://pypi.org/project/yolov5/
+#
+# Make sure this appears *after* the torch installation
+ultralytics-yolov5 == 0.1.1
+

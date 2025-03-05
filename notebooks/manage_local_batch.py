@@ -82,7 +82,7 @@ from megadetector.detection.run_detector import DEFAULT_OUTPUT_CONFIDENCE_THRESH
 from megadetector.detection.run_detector import estimate_md_images_per_second
 from megadetector.postprocessing.postprocess_batch_results import \
     PostProcessingOptions, process_batch_results
-from megadetector.detection.run_detector import get_detector_version_from_filename
+from megadetector.detection.run_detector import get_detector_version_from_model_file
 
 ## Inference options
 
@@ -113,6 +113,11 @@ image_size = None
 include_image_size = False
 include_image_timestamp = False
 include_exif_data = False
+
+# String to pass as the "detector_options" parameter to run_detector_batch (or None)
+# detector_options = 'compatibility_mode=classic'
+# detector_options = 'compatibility_mode=modern'
+detector_options = None
 
 # Only relevant when running on CPU
 ncores = 1
@@ -183,7 +188,7 @@ yolo_dataset_file = None
 # 'yolov5' or 'yolov8'; assumes YOLOv5 if this is None
 yolo_model_type = None
 
-# inference batch size
+# Inference batch size
 yolo_batch_size = 1
 
 # Should we remove intermediate files used for running YOLOv5's val.py?
@@ -218,7 +223,7 @@ assert os.path.isdir(input_path), 'Could not find input folder {}'.format(input_
 input_path = input_path.replace('\\','/')
 
 organization_name_short = 'organization'
-job_date = None # '2024-01-01'
+job_date = None # '2025-01-01'
 assert job_date is not None and organization_name_short != 'organization'
 
 # Optional descriptor
@@ -251,7 +256,7 @@ if augment and (approx_images_per_second is not None):
     approx_images_per_second = approx_images_per_second * 0.7
     
 base_task_name = organization_name_short + '-' + job_date + job_description_string + '-' + \
-    get_detector_version_from_filename(model_file)
+    get_detector_version_from_model_file(model_file)
 base_output_folder_name = os.path.join(postprocessing_base,organization_name_short)
 os.makedirs(base_output_folder_name,exist_ok=True)
 
@@ -519,6 +524,9 @@ for i_task,task in enumerate(task_info):
         if include_exif_data:
             cmd += ' --include_exif_data'
         
+        if detector_options is not None:
+            cmd += ' --detector_options "{}"'.format(detector_options)
+            
     cmd_file = os.path.join(filename_base,'run_chunk_{}_gpu_{}{}'.format(str(i_task).zfill(3),
                             str(gpu_number).zfill(2),script_extension))
     
@@ -586,6 +594,10 @@ for gpu_number in gpu_to_scripts:
 #%% Run the tasks
 
 r"""
+tl;dr: I almost never run this cell.
+
+Long version...
+
 The cells we've run so far wrote out some shell scripts (.bat files on Windows, 
 .sh files on Linx/Mac) that will run MegaDetector.  I like to leave the interactive
 environment at this point and run those scripts at the command line.  So, for example,
@@ -784,6 +796,13 @@ print('Wrote results to {}'.format(combined_api_output_file))
 
 #%% Post-processing (pre-RDE)
 
+"""
+NB: I almost never run this cell.  This preview the results *before* repeat detection
+elimination (RDE), but since I'm essentially always doing RDE, I'm basically never 
+interested in this preview.  There is a similar cell below for previewing results 
+*after* RDE, which I almost always run.
+"""
+
 render_animals_only = False
 
 options = PostProcessingOptions()
@@ -848,7 +867,7 @@ options.otherDetectionsThreshold = options.confidenceMin
 
 options.bRenderDetectionTiles = True
 options.maxOutputImageWidth = 2000
-options.detectionTilesMaxCrops = 150
+options.detectionTilesMaxCrops = 100
 
 # options.lineThickness = 5
 # options.boxExpansion = 8
@@ -870,8 +889,8 @@ options.filenameReplacements = None # {'':''}
 # options.excludeClasses = [2,3]
 
 # options.maxImagesPerFolder = 50000
-# options.includeFolders = ['a/b/c']
-# options.excludeFolder = ['a/b/c']
+# options.includeFolders = ['a/b/c','d/e/f']
+# options.excludeFolders = ['a/b/c','d/e/f']
 
 options.debugMaxDir = -1
 options.debugMaxRenderDir = -1

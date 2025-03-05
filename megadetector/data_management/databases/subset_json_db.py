@@ -12,16 +12,18 @@ subset_json_detector_output.py.
     
 #%% Constants and imports
 
+import os
 import sys
 import json
 import argparse
 
 from tqdm import tqdm
+from copy import copy
 
 
 #%% Functions
 
-def subset_json_db(input_json, query, output_json=None, ignore_case=False):
+def subset_json_db(input_json, query, output_json=None, ignore_case=False, verbose=False):
     """
     Given a json file (or dictionary already loaded from a json file), produce a new 
     database containing only the images whose filenames contain the string 'query', 
@@ -29,54 +31,80 @@ def subset_json_db(input_json, query, output_json=None, ignore_case=False):
     
     Args:
         input_json (str): COCO Camera Traps .json file to load, or an already-loaded dict
-        query (str): string to query for, only include images in the output whose filenames 
-            contain this string.
+        query (str or list): string to query for, only include images in the output whose filenames 
+            contain this string.  If this is a list, test for exact matches.
         output_json (str, optional): file to write the resulting .json file to
         ignore_case (bool, optional): whether to perform a case-insensitive search for [query]
+        verbose (bool, optional): enable additional debug output
         
     Returns:
-        dict: possibly-modified CCT dictionary
+        dict: CCT dictionary containing a subset of the images and annotations in the input dict
     """
-    
-    if ignore_case:
-        query = query.lower()
         
     # Load the input file if necessary
     if isinstance(input_json,str):
         print('Loading input .json...')
         with open(input_json, 'r') as f:
-            data = json.load(f)
+            input_data = json.load(f)
     else:
-        data = input_json
+        input_data = input_json
 
     # Find images matching the query
     images = []
-    image_ids = set()
     
-    for im in tqdm(data['images']):
-        fn = im['file_name']
+    if isinstance(query,str):
+        
         if ignore_case:
-            fn = fn.lower()
-        if query in fn:
-            images.append(im)
-            image_ids.add(im['id'])        
+            query = query.lower()
+        
+        for im in tqdm(input_data['images']):
+            fn = im['file_name']
+            if ignore_case:
+                fn = fn.lower()
+            if query in fn:
+                images.append(im)
+                
+    else:
+        
+        query = set(query)
+        
+        if ignore_case:
+            query = set([s.lower() for s in query])
+            
+        for im in input_data['images']:
+            fn = im['file_name']
+            if ignore_case:
+                fn = fn.lower()
+            if fn in query:
+                images.append(im)
+
+    image_ids = set([im['id'] for im in images])
     
     # Find annotations referring to those images
     annotations = []
     
-    for ann in tqdm(data['annotations']):
+    for ann in input_data['annotations']:
         if ann['image_id'] in image_ids:
             annotations.append(ann)
     
-    output_data = data
+    output_data = copy(input_data)
     output_data['images'] = images
     output_data['annotations'] = annotations
     
     # Write the output file if requested
     if output_json is not None:
-        print('Writing output .json...')
-        json.dump(output_data,open(output_json,'w'),indent=1)
-        
+        if verbose:
+            print('Writing output .json to {}'.format(output_json))
+        output_dir = os.path.dirname(output_json)
+        os.makedirs(output_dir,exist_ok=True)
+        with open(output_json,'w') as f:
+            json.dump(output_data,f,indent=1)
+    
+    if verbose:
+        print('Keeping {} of {} images, {} of {} annotations'.format(
+            len(output_data['images']),len(input_data['images']),
+            len(output_data['annotations']),len(input_data['annotations'])))
+
     return output_data
 
 

@@ -533,15 +533,56 @@ def wsl_path_to_windows_path(filename):
         filename (str): filename to convert
     
     Returns:
-        str: Windows equivalent to the WSL path [filename]
+        str: Windows equivalent to the WSL path [filename], or [filename] if the current
+        environment is neither Windows nor WSL.
     """
     
-    result = subprocess.run(['wslpath', '-w', filename], text=True, capture_output=True)
+    if (not environment_is_wsl()) and (os.name != 'nt'):
+        return filename
+    
+    if environment_is_wsl():
+        result = subprocess.run(['wslpath', '-w', filename], text=True, capture_output=True)
+    else:
+        result = subprocess.run(['wsl', 'wslpath', '-w', filename], text=True, capture_output=True)
     if result.returncode != 0:
         print('Could not convert path {} from WSL to Windows'.format(filename))
         return None
+    
     return result.stdout.strip()
     
+
+def windows_path_to_wsl_path(filename):
+    r"""
+    Converts a Windows path to a WSL path, or returns None if that's not possible.  E.g.
+    converts:
+        
+    e:\a\b\c
+    
+    ...to:
+        
+    /mnt/e/a/b/c
+    
+    Args:
+        filename (str): filename to convert
+    
+    Returns:
+        str: WSL equivalent to the Windows path [filename], or [filename] if the current
+        environment is neither Windows nor WSL.
+    """
+    
+    if (not environment_is_wsl()) and (os.name != 'nt'):
+        return filename
+    
+    if environment_is_wsl():
+        result = subprocess.run(['wslpath', '-u', filename], text=True, capture_output=True)
+    else:
+        result = subprocess.run(['wsl', 'wslpath', '-u', filename], text=True, capture_output=True)
+    if result.returncode != 0:
+        print('Could not convert path {} from Windows to WSL'.format(filename))
+        return None
+    
+    return result.stdout.strip()
+
     
 def open_file(filename, attempt_to_open_in_wsl_host=False, browser_name=None):
     """

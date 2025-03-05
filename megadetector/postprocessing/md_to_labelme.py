@@ -25,8 +25,8 @@ from multiprocessing.pool import ThreadPool
 from functools import partial
 
 from megadetector.visualization.visualization_utils import open_image
-from megadetector.utils.ct_utils import truncate_float
-from megadetector.detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP
+from megadetector.utils.ct_utils import round_float
+from megadetector.detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP, FAILURE_IMAGE_OPEN
 
 output_precision = 3
 default_confidence_threshold = 0.15
@@ -92,10 +92,10 @@ def get_labelme_dict_for_image(im,image_base_name=None,category_id_to_name=None,
         # MD boxes are [x_min, y_min, width_of_box, height_of_box] (relative)
         # 
         # labelme boxes are [[x0,y0],[x1,y1]] (absolute)
-        x0 = truncate_float(det['bbox'][0] * im['width'],output_precision)
-        y0 = truncate_float(det['bbox'][1] * im['height'],output_precision)
-        x1 = truncate_float(x0 + det['bbox'][2] * im['width'],output_precision)
-        y1 = truncate_float(y0 + det['bbox'][3] * im['height'],output_precision)
+        x0 = round_float(det['bbox'][0] * im['width'],output_precision)
+        y0 = round_float(det['bbox'][1] * im['height'],output_precision)
+        x1 = round_float(x0 + det['bbox'][2] * im['width'],output_precision)
+        y1 = round_float(y0 + det['bbox'][3] * im['height'],output_precision)
         shape['points'] = [[x0,y0],[x1,y1]]
         output_dict['shapes'].append(shape)
     
@@ -210,7 +210,7 @@ def md_to_labelme(results_file,image_base,confidence_threshold=None,
                     print('Warning: cannot open image {}, treating as a failure during inference'.format(
                         im_full_path))
                     if 'failure' not in im:
-                        im['failure'] = 'Failure image access'        
+                        im['failure'] = FAILURE_IMAGE_OPEN
     
             # ...if we need to read w/h information
             

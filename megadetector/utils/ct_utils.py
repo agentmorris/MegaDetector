@@ -28,8 +28,8 @@ image_extensions = ['.jpg', '.jpeg', '.gif', '.png']
 
 def truncate_float_array(xs, precision=3):
     """
-    Vectorized version of truncate_float(...), truncates the fractional portion of each
-    floating-point value to a specific number of floating-point digits.
+    Truncates the fractional portion of each floating-point value in the array [xs] 
+    to a specific number of floating-point digits.
 
     Args:
         xs (list): list of floats to truncate
@@ -42,6 +42,37 @@ def truncate_float_array(xs, precision=3):
     return [truncate_float(x, precision=precision) for x in xs]
 
 
+def round_float_array(xs, precision=3):
+    """
+    Truncates the fractional portion of each floating-point value in the array [xs] 
+    to a specific number of floating-point digits.
+
+    Args:
+        xs (list): list of floats to round
+        precision (int, optional): the number of significant digits to preserve, should be >= 1            
+            
+    Returns:
+        list: list of rounded floats    
+    """
+    
+    return [round_float(x,precision) for x in xs]
+
+
+def round_float(x, precision=3):
+    """
+    Convenience wrapper for the native Python round()
+    
+    Args:
+        x (float): number to truncate
+        precision (int, optional): the number of significant digits to preserve, should be >= 1
+    
+    Returns:
+        float: rounded value
+    """
+    
+    return round(x,precision)
+    
+    
 def truncate_float(x, precision=3):
     """
     Truncates the fractional portion of a floating-point value to a specific number of 
@@ -63,26 +94,7 @@ def truncate_float(x, precision=3):
         float: truncated version of [x]
     """
 
-    assert precision > 0
-
-    if np.isclose(x, 0):
-        
-        return 0
-    
-    elif (x > 1):
-        
-        fractional_component = x - 1.0
-        return 1 + truncate_float(fractional_component)
-    
-    else:
-        
-        # Determine the factor, which shifts the decimal point of x
-        # just behind the last significant digit.
-        factor = math.pow(10, precision - 1 - math.floor(math.log10(abs(x))))
-        
-        # Shift decimal point by multiplication with factor, flooring, and
-        # division by factor.
-        return math.floor(x * factor)/factor
+    return math.floor(x * (10 ** precision)) / (10 ** precision)
 
 
 def args_to_object(args, obj):
@@ -187,7 +199,8 @@ def write_json(path, content, indent=1):
 
 def convert_yolo_to_xywh(yolo_box):
     """
-    Converts a YOLO format bounding box to [x_min, y_min, width_of_box, height_of_box].
+    Converts a YOLO format bounding box [x_center, y_center, w, h] to 
+    [x_min, y_min, width_of_box, height_of_box].
 
     Args:
         yolo_box (list): bounding box of format [x_center, y_center, width_of_box, height_of_box]
@@ -202,37 +215,21 @@ def convert_yolo_to_xywh(yolo_box):
     return [x_min, y_min, width_of_box, height_of_box]
 
 
-def convert_xywh_to_tf(api_box):
+def convert_xywh_to_xyxy(api_box):
     """
-    Converts an xywh bounding box (the format used in MD output) to the [y_min, x_min, y_max, x_max] 
-    format that the TensorFlow Object Detection API uses.
+    Converts an xywh bounding box (the MD output format) to an xyxy bounding box (the format
+    produced by TF-based MD models).
 
     Args:
-        api_box: bbox output by the batch processing API [x_min, y_min, width_of_box, height_of_box]
-
-    Returns:
-        list: bbox with coordinates represented as [y_min, x_min, y_max, x_max]
-    """
-    
-    x_min, y_min, width_of_box, height_of_box = api_box
-    x_max = x_min + width_of_box
-    y_max = y_min + height_of_box
-    return [y_min, x_min, y_max, x_max]
-
-
-def convert_xywh_to_xyxy(api_bbox):
-    """
-    Converts an xywh bounding box (the MD output format) to an xyxy bounding box.
-
-    Args:
-        api_bbox (list): bbox formatted as [x_min, y_min, width_of_box, height_of_box]
+        api_box (list): bbox formatted as [x_min, y_min, width_of_box, height_of_box]
 
     Returns:
         list: bbox formatted as [x_min, y_min, x_max, y_max]
     """
 
-    x_min, y_min, width_of_box, height_of_box = api_bbox
-    x_max, y_max = x_min + width_of_box, y_min + height_of_box
+    x_min, y_min, width_of_box, height_of_box = api_box
+    x_max = x_min + width_of_box
+    y_max = y_min + height_of_box
     return [x_min, y_min, x_max, y_max]
 
 
@@ -520,6 +517,52 @@ def invert_dictionary(d):
     return {v: k for k, v in d.items()}
 
 
+def round_floats_in_nested_dict(obj, decimal_places=5):
+    """
+    Recursively rounds all floating point values in a nested structure to the 
+    specified number of decimal places. Handles dictionaries, lists, tuples, 
+    sets, and other iterables. Modifies mutable objects in place.
+    
+    Args:
+        obj: The object to process (can be a dict, list, set, tuple, or primitive value)
+        decimal_places: Number of decimal places to round to (default: 5)
+    
+    Returns:
+        The processed object (useful for recursive calls)
+    """
+    if isinstance(obj, dict):
+        for key in obj:
+            obj[key] = round_floats_in_nested_dict(obj[key], decimal_places)
+        return obj
+    
+    elif isinstance(obj, list):
+        for i in range(len(obj)):
+            obj[i] = round_floats_in_nested_dict(obj[i], decimal_places)
+        return obj
+    
+    elif isinstance(obj, tuple):
+        # Tuples are immutable, so we create a new one
+        return tuple(round_floats_in_nested_dict(item, decimal_places) for item in obj)
+    
+    elif isinstance(obj, set):
+        # Sets are mutable but we can't modify elements in-place
+        # Convert to list, process, and convert back to set
+        return set(round_floats_in_nested_dict(list(obj), decimal_places))
+    
+    elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
+        # Handle other iterable types - convert to list, process, and convert back
+        return type(obj)(round_floats_in_nested_dict(item, decimal_places) for item in obj)
+    
+    elif isinstance(obj, float):
+        return round(obj, decimal_places)
+    
+    else:
+        # For other types (int, str, bool, None, etc.), return as is
+        return obj
+
+# ...def round_floats_in_nested_dict(...)    
+
+
 def image_file_to_camera_folder(image_fn):
     r"""
     Removes common overflow folders (e.g. RECNX101, RECNX102) from paths, i.e. turn:
@@ -706,7 +749,133 @@ def is_function_name(s,calling_namespace):
         callable(locals().get(s)) or \
         callable(calling_namespace.get(s)) or \
         callable(getattr(builtins, s, None))
+
         
+# From https://gist.github.com/fralau/061a4f6c13251367ef1d9a9a99fb3e8d
+def parse_kvp(s,kv_separator='='):
+    """
+    Parse a key/value pair, separated by [kv_separator].  Errors if s is not
+    a valid key/value pair string.
+    
+    Args:
+        s (str): the string to parse
+        kv_separator (str, optional): the string separating keys from values.
+    
+    Returns:
+        tuple: a 2-tuple formatted as (key,value)
+    """
+    
+    items = s.split(kv_separator)
+    assert len(items) > 1, 'Illegal key-value pair'
+    key = items[0].strip()
+    if len(items) > 1:
+        value = kv_separator.join(items[1:])
+    return (key, value)
+
+
+def parse_kvp_list(items,kv_separator='=',d=None):
+    """
+    Parse a list key-value pairs into a dictionary.  If items is None or [],
+    returns {}.
+    
+    Args:
+        items (list): the list of KVPs to parse
+        kv_separator (str, optional): the string separating keys from values.
+        d (dict, optional): the initial dictionary, defaults to {}
+        
+    Returns:
+        dict: a dict mapping keys to values
+    """
+    
+    if d is None:
+        d = {}
+
+    if items is None or len(items) == 0:
+        return d
+    
+    for item in items:
+        key, value = parse_kvp(item)
+        d[key] = value
+        
+    return d
+
+
+def dict_to_kvp_list(d,
+                     item_separator=' ',
+                     kv_separator='=',
+                     non_string_value_handling='error'):
+    """
+    Convert a string <--> string dict into a string containing list of list of
+    key-value pairs.  I.e., converts {'a':'dog','b':'cat'} to 'a=dog b=cat'.  If
+    d is None, returns None.  If d is empty, returns ''.
+    
+    Args:
+        d (dict): the dictionary to convert, must contain only strings
+        item_separator (str, optional): the delimiter between KV pairs
+        kv_separator (str, optional): the separator betweena a key and its value
+        non_string_value_handling (str, optional): what do do with non-string values,
+            can be "omit", "error", or "convert"
+    
+    Returns:
+        str: the string representation of [d]
+    """
+    
+    if d is None:
+        return None
+    
+    if len(d) == 0:
+        return ''
+    
+    s = None
+    for k in d.keys():
+        assert isinstance(k,str), 'Input {} is not a str <--> str dict'.format(str(d))
+        v = d[k]
+        if not isinstance(v,str):
+            if non_string_value_handling == 'error':
+                raise ValueError('Input {} is not a str <--> str dict'.format(str(d)))
+            elif non_string_value_handling == 'omit':
+                continue
+            elif non_string_value_handling == 'convert':
+                v = str(v)
+            else:
+                raise ValueError('Unrecognized non_string_value_handling value: {}'.format(
+                    non_string_value_handling))
+        if s is None:
+            s = ''
+        else:
+            s += item_separator
+        s += k + kv_separator + v
+    
+    if s is None:
+        s = ''
+        
+    return s
+    
+
+def parse_bool_string(s):
+    """
+    Convert the strings "true" or "false" to boolean values.  Case-insensitive, discards
+    leading and trailing whitespace.  If s is already a bool, returns s.
+    
+    Args:
+        s (str or bool): the string to parse, or the bool to return
+        
+    Returns:
+        bool: the parsed value
+    """
+    
+    if isinstance(s,bool):
+        return s
+    s = s.lower().strip()
+    if s == 'true':
+        return True
+    elif s == 'false':
+        return False
+    else:
+        raise ValueError('Cannot parse bool from string {}'.format(str(s)))
+    
+
+#%% Test driver
 
 def __module_test__():
     """
@@ -736,3 +905,25 @@ def __module_test__():
     L = [{'a':5},{'a':0},{'a':10}]
     k = 'a'
     sort_list_of_dicts_by_key(L, k, reverse=True)
+
+
+    ##%% Test float rounding
+    
+    # Example with mixed collection types
+    data = {
+        "name": "Project X",
+        "values": [1.23456789, 2.3456789],
+        "tuple_values": (3.45678901, 4.56789012),
+        "set_values": {5.67890123, 6.78901234},
+        "metrics": {
+            "score": 98.7654321,
+            "components": [5.6789012, 6.7890123]
+        }
+    }
+    
+    result = round_floats_in_nested_dict(data)
+    assert result['values'][0] == 1.23457
+    assert result['tuple_values'][0] == 3.45679
+    assert min(list(result['set_values'])) == 5.6789
+    
+    

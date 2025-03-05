@@ -6,6 +6,7 @@ __pycache__/
 # PyPI distribution files
 dist/
 megadetector.egg-info/
+megadetector_utils.egg-info/
 
 # C extensions
 *.so
@@ -61,3 +62,4 @@ megadetector/api/synchronous/api_core/animal_detection_api/detection
 
 # Sphinx things
 docs/build/
+docs/source/_static

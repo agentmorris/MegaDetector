@@ -22,6 +22,7 @@ from tqdm import tqdm
 
 from megadetector.data_management.annotations.annotation_constants import detector_bbox_category_id_to_name
 from megadetector.visualization import visualization_utils as vis_utils
+from megadetector.visualization.visualization_utils import blur_detections
 from megadetector.utils.ct_utils import get_max_conf
 from megadetector.utils import write_html_image_list
 from megadetector.detection.run_detector import get_typical_confidence_threshold_from_results
@@ -38,10 +39,17 @@ DEFAULT_DETECTOR_LABEL_MAP = {
 #%% Support functions
 
 def _render_image(entry,
-                 detector_label_map,classification_label_map,
-                 confidence_threshold,classification_confidence_threshold,
-                 render_detections_only,preserve_path_structure,out_dir,images_dir,
-                 output_image_width):
+                  detector_label_map,
+                  classification_label_map,
+                  confidence_threshold,
+                  classification_confidence_threshold,
+                  render_detections_only,
+                  preserve_path_structure,
+                  out_dir,
+                  images_dir,
+                  output_image_width,
+                  box_sort_order=None,
+                  category_names_to_blur=None):
     """
     Internal function for rendering a single image.
     """
@@ -65,22 +73,43 @@ def _render_image(entry,
         rendering_result['skipped_image'] = True
         return rendering_result
     
-    image_obj = os.path.join(images_dir, image_id)
-    if not os.path.exists(image_obj):
+    image_filename_in_abs = os.path.join(images_dir, image_id)
+    if not os.path.exists(image_filename_in_abs):
         print(f'Image {image_id} not found in images_dir')
         rendering_result['missing_image'] = True
         return rendering_result
 
+    # Load the image
+    image = vis_utils.open_image(image_filename_in_abs)
+    
+    # Find categories we're supposed to blur
+    category_ids_to_blur = []
+    if category_names_to_blur is not None:
+        if isinstance(category_names_to_blur,str):
+            category_names_to_blur = [category_names_to_blur]
+        for category_id in detector_label_map:
+            if detector_label_map[category_id] in category_names_to_blur:
+                category_ids_to_blur.append(category_id)
+    
+    detections_to_blur = []
+    for d in entry['detections']:
+        if d['conf'] >= confidence_threshold and d['category'] in category_ids_to_blur:
+            detections_to_blur.append(d)
+    if len(detections_to_blur) > 0:
+        blur_detections(image,detections_to_blur)
+        
+    # Resize if necessary
+    #
     # If output_image_width is -1 or None, this will just return the original image
-    image = vis_utils.resize_image(
-        vis_utils.open_image(image_obj), output_image_width)
+    image = vis_utils.resize_image(image, output_image_width)
 
     vis_utils.render_detection_bounding_boxes(
         entry['detections'], image, 
         label_map=detector_label_map,
         classification_label_map=classification_label_map,
         confidence_threshold=confidence_threshold,
-        classification_confidence_threshold=classification_confidence_threshold)
+        classification_confidence_threshold=classification_confidence_threshold,
+        box_sort_order=box_sort_order)
 
     if not preserve_path_structure:
         for char in ['/', '\\', ':']:
@@ -113,7 +142,9 @@ def visualize_detector_output(detector_output_path,
                               preserve_path_structure=False,
                               parallelize_rendering=False,
                               parallelize_rendering_n_cores=10,
-                              parallelize_rendering_with_threads=True):
+                              parallelize_rendering_with_threads=True,
+                              box_sort_order=None,
+                              category_names_to_blur=None):
     
     """
     Draws bounding boxes on images given the output of a detector.
@@ -145,6 +176,10 @@ def visualize_detector_output(detector_output_path,
         parallelize_rendering_with_threads (bool, optional): determines whether we use
             threads (True) or processes (False) for parallelization (ignored if parallelize_rendering 
             is False)
+        box_sort_order (str, optional): sorting scheme for detection boxes, can be None, "confidence", or
+            "reverse_confidence"
+        category_names_to_blur (list of str, optional): category names for which we should blur detections,
+            most commonly ['person']
 
     Returns:
         list: list of paths to annotated images
@@ -235,7 +270,9 @@ def visualize_detector_output(detector_output_path,
                                          preserve_path_structure=preserve_path_structure,
                                          out_dir=out_dir,
                                          images_dir=images_dir,
-                                         output_image_width=output_image_width),
+                                         output_image_width=output_image_width,
+                                         box_sort_order=box_sort_order,
+                                         category_names_to_blur=category_names_to_blur),
                                  images), total=len(images)))
         
     else:
@@ -245,7 +282,8 @@ def visualize_detector_output(detector_output_path,
             rendering_result = _render_image(entry,detector_label_map,classification_label_map,
                                             confidence_threshold,classification_confidence_threshold,
                                             render_detections_only,preserve_path_structure,out_dir,
-                                            images_dir,output_image_width)
+                                            images_dir,output_image_width,box_sort_order,
+                                            category_names_to_blur=category_names_to_blur)
             rendering_results.append(rendering_result)
         
     # ...for each image
@@ -334,12 +372,20 @@ def main():
     parser.add_argument(
         '-pps', '--preserve_path_structure', action='store_true',
         help='Preserve relative image paths (otherwise flattens and assigns unique file names)')
+    parser.add_argument(
+        '--category_names_to_blur', default=None, type=str,
+        help='Comma-separated list of category names to blur (or a single category name, typically "person")')
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()
 
     args = parser.parse_args()
+    
+    category_names_to_blur = args.category_names_to_blur
+    if category_names_to_blur is not None:
+        category_names_to_blur = category_names_to_blur.split(',')
+    
     visualize_detector_output(
         detector_output_path=args.detector_output_path,
         out_dir=args.out_dir,
@@ -350,7 +396,8 @@ def main():
         random_seed=args.random_seed,
         render_detections_only=args.detections_only,
         preserve_path_structure=args.preserve_path_structure,
-        html_output_file=args.html_output_file)
+        html_output_file=args.html_output_file,
+        category_names_to_blur=category_names_to_blur)
 
     if args.html_output_file is not None and args.open_html_output_file:
         from megadetector.utils.path_utils import open_file

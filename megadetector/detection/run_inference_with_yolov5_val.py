@@ -57,7 +57,7 @@ from megadetector.utils.ct_utils import is_iterable, split_list_into_fixed_size_
 from megadetector.utils.path_utils import path_is_abs
 from megadetector.data_management import yolo_output_to_md_output
 from megadetector.detection.run_detector import try_download_known_detector
-from megadetector.postprocessing.combine_api_outputs import combine_api_output_files
+from megadetector.postprocessing.combine_batch_outputs import combine_batch_output_files
 
 default_image_size_with_augmentation = int(1280 * 1.3)
 default_image_size_with_no_augmentation = 1280
@@ -213,6 +213,64 @@ def _clean_up_temporary_folders(options,
     elif yolo_folder_is_temp_folder:
         print('Warning: using temporary YOLO results folder {}, but not removing it'.format(
             yolo_results_folder))
+
+
+def get_stats_for_category(filename,category='all'):
+    """
+    Retrieve statistics for a category from the YOLO console output
+    stored in [filenam].
+    
+    Args:
+        filename (str): a text file containing console output from a YOLO val run
+        category (optional, str): a category name
+        
+    Returns:
+        dict: a dict with fields n_images, n_labels, P, R, mAP50, and mAP50-95
+    """
+    
+    with open(filename,'r',encoding='utf-8') as f:
+        lines = f.readlines()
+    
+    # This is just a hedge to make sure there isn't some YOLO version floating
+    # around that used different IoU thresholds in the console output.
+    found_map50 = False
+    found_map5095 = False
+    
+    for line in lines:
+        
+        s = line.strip()
+        
+        if ' map50 ' in s.lower() or ' map@.5 ' in s.lower():
+            found_map50 = True
+        if 'map50-95' in s.lower() or 'map@.5:.95' in s.lower():
+            found_map5095 = True
+        
+        if not s.startswith(category):
+            continue
+        
+        tokens = s.split(' ')
+        tokens_filtered = list(filter(None,tokens))
+        
+        if len(tokens_filtered) != 7:
+            continue
+        
+        assert found_map50 and found_map5095, \
+            'Parsing error in YOLO console output file {}'.format(filename)
+            
+        to_return = {}
+        to_return['category'] = category
+        assert category == tokens_filtered[0]
+        to_return['n_images'] = int(tokens_filtered[1])
+        to_return['n_labels'] = int(tokens_filtered[2])
+        to_return['P'] = float(tokens_filtered[3])
+        to_return['R'] = float(tokens_filtered[4])
+        to_return['mAP50'] = float(tokens_filtered[5])
+        to_return['mAP50-95'] = float(tokens_filtered[6])
+        return to_return
+    
+    # ...for each line
+    
+    return None
 
     
 #%% Main function
@@ -478,7 +536,7 @@ def run_inference_with_yolo_val(options):
         # ...for each chunk
     
         # Merge
-        _ = combine_api_output_files(input_files=chunk_output_files,
+        _ = combine_batch_output_files(input_files=chunk_output_files,
                                  output_file=options.output_file,
                                  require_uniqueness=True,
                                  verbose=True)
@@ -644,8 +702,7 @@ def run_inference_with_yolo_val(options):
     assert len(category_ids) == 1 + category_ids[-1]
         
     yolo_dataset_file = os.path.join(yolo_results_folder,'dataset.yaml')
-    yolo_image_list_file = os.path.join(yolo_results_folder,'images.txt')
-    
+    yolo_image_list_file = os.path.join(yolo_results_folder,'images.txt')    
     
     with open(yolo_image_list_file,'w') as f:
         

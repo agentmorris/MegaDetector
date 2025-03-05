@@ -4,10 +4,10 @@ requires = [
 ]
 
 [project]
-name = "megadetector"
+name = "megadetector-utils"
 version = "5.0.24"
-description = "MegaDetector is an AI model that helps conservation folks spend less time doing boring things with camera trap images."
-readme = "README-package.md"
+description = "Utility code associated with the MegaDetector project."
+readme = "README-package-utils.md"
 requires-python = ">=3.9,<=3.13"
 license = {file = "LICENSE"}
 keywords = ["camera traps", "conservation", "wildlife", "ai", "megadetector"]
@@ -52,8 +52,9 @@ dependencies = [
   "send2trash",
   # Not imported directly, but required to de-serialize some models
   "dill",
-  "ultralytics-yolov5 == 0.1.1",
-  "yolov9pip == 0.0.4",
+  # The next two lines are the difference between this package and the main package.
+  # "ultralytics-yolov5 == 0.1.1",
+  # "yolov9pip == 0.0.4",
   "python-dateutil"
   
   # Let ultralytics-yolov5 install torch

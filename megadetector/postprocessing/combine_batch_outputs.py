@@ -1,8 +1,8 @@
 """
 
-combine_api_outputs.py
+combine_batch_outputs.py
 
-Merges two or more .json files in batch API output format, optionally
+Merges two or more .json files in MD output format, optionally
 writing the results to another .json file.
 
 * Concatenates image lists, erroring if images are not unique.
@@ -15,10 +15,7 @@ https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_pro
 
 Command-line use:
 
-combine_api_outputs input1.json input2.json ... inputN.json output.json
-
-Also see combine_api_shard_files() (not exposed via the command line yet) to
-combine the intermediate files created by the API.
+combine_batch_outputs input1.json input2.json ... inputN.json output.json
 
 This does no checking for redundancy; if you are looking to ensemble
 the results of multiple model versions, see merge_detections.py.
@@ -34,7 +31,7 @@ import json
 
 #%% Merge functions
 
-def combine_api_output_files(input_files,
+def combine_batch_output_files(input_files,
                              output_file=None,
                              require_uniqueness=True,
                              verbose=True):
@@ -64,7 +61,7 @@ def combine_api_output_files(input_files,
             input_dicts.append(json.load(f))
 
     print_if_verbose('Merging results')
-    merged_dict = combine_api_output_dictionaries(
+    merged_dict = combine_batch_output_dictionaries(
         input_dicts, require_uniqueness=require_uniqueness)
 
     print_if_verbose('Writing output to {}'.format(output_file))
@@ -75,7 +72,7 @@ def combine_api_output_files(input_files,
     return merged_dict
 
 
-def combine_api_output_dictionaries(input_dicts, require_uniqueness=True):
+def combine_batch_output_dictionaries(input_dicts, require_uniqueness=True):
     """
     Merges the list of MD results dictionaries [input_dicts] into a single dict.
     See module header comment for details on merge rules.
@@ -106,7 +103,7 @@ def combine_api_output_dictionaries(input_dicts, require_uniqueness=True):
 
         for k in input_dict:
             if k not in known_fields:
-                raise ValueError(f'Unrecognized API output field: {k}')
+                print(f'Warning: unrecognized batch output field: {k}')
 
         # Check compatibility of detection categories
         for cat_id in input_dict['detection_categories']:
@@ -157,7 +154,7 @@ def combine_api_output_dictionaries(input_dicts, require_uniqueness=True):
             assert info_compare['detector'] == info['detector'], (
                 'Incompatible detection versions in merging')
             assert info_compare['format_version'] == info['format_version'], (
-                'Incompatible API output versions in merging')
+                'Incompatible batch output versions in merging')
             if 'classifier' in info_compare:
                 if 'classifier' in info:
                     assert info['classifier'] == info_compare['classifier']
@@ -179,7 +176,7 @@ def combine_api_output_dictionaries(input_dicts, require_uniqueness=True):
                    'images': sorted_images}
     return merged_dict
 
-# ...combine_api_output_files()
+# ...combine_batch_output_files()
 
 
 def combine_api_shard_files(input_files, output_file=None):
@@ -243,7 +240,7 @@ def main():
         parser.exit()
 
     args = parser.parse_args()
-    combine_api_output_files(args.input_paths, args.output_path)
+    combine_batch_output_files(args.input_paths, args.output_path)
 
 if __name__ == '__main__':
     main()
