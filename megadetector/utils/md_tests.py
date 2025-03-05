@@ -1173,6 +1173,7 @@ def run_cli_tests(options):
     ## Return early if we're not running torch-related tests
     
     if options.test_mode == 'utils-only':
+        print('utils-only tests finished, returning')
         return
 
     
@@ -1828,7 +1829,7 @@ def main():
     parser.add_argument(
         '--test_mode',
         type=str,
-        default='utils-only',
+        default='all',
         help='Test mode: "all" or "utils-only"'
         )
     

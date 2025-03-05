@@ -237,7 +237,7 @@ def main():
     args = parser.parse_args()
 
     assert os.path.isdir(args.directory), "{} is not a valid directory".format(args.directory)
-    assert re.match('https?://[^\.]+\.blob\.core\.windows\.net/.+', args.sas_url), "--sas_url does not " + \
+    assert re.match(r'https?://[^\.]+\.blob\.core\.windows\.net/.+', args.sas_url), "--sas_url does not " + \
         "match the format https://accname.blob.core.windows.net/bname/path/to/folder?..."
 
     traverse_and_create_index(args.directory, overwrite_files=args.enable_overwrite, sas_url=args.sas_url, basepath=args.basepath)
