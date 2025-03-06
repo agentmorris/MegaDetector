@@ -140,11 +140,23 @@ def crop_results_to_image_results(image_results_file_with_crop_ids,
         image_results_with_crop_ids = json.load(f)
     with open(crop_results_file,'r') as f:
         crop_results = json.load(f)
+
+    # Find all the categories that need to be consistent
+    used_category_ids = set()
+    for im in tqdm(image_results_with_crop_ids['images']):
+        if 'detections' not in im or im['detections'] is None:
+            continue        
+        for det in im['detections']:
+            if 'crop_id' in det:
+                used_category_ids.add(det['category'])
     
-    assert crop_results['detection_categories'] == \
-        image_results_with_crop_ids['detection_categories'], \
-            'Crop results and image-level results use different detection categories'
-        
+    # Make sure the categories that matter are consistent across the two files
+    for category_id in used_category_ids:
+        category_name = image_results_with_crop_ids['detection_categories'][category_id]
+        assert category_id in crop_results['detection_categories'] and \
+            category_name == crop_results['detection_categories'][category_id], \
+                'Crop results and detection results use incompatible categories'
+                
     crop_filename_to_results = {}
     
     # im = crop_results['images'][0]
@@ -175,7 +187,8 @@ def crop_results_to_image_results(image_results_file_with_crop_ids,
                 crop_results_this_detection = crop_filename_to_results[crop_filename_relative]
                 assert crop_results_this_detection['file'] == crop_filename_relative
                 assert len(crop_results_this_detection['detections']) == 1
-                assert crop_results_this_detection['detections'][0]['conf'] == det['conf']
+                # Allow a slight confidence difference for the case where output precision was truncated
+                assert abs(crop_results_this_detection['detections'][0]['conf'] - det['conf']) < 0.01
                 assert crop_results_this_detection['detections'][0]['category'] == det['category']
                 assert crop_results_this_detection['detections'][0]['bbox'] == [0,0,1,1]
                 det['classifications'] = crop_results_this_detection['detections'][0]['classifications']

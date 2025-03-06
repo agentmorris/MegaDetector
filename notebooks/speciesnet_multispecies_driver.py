@@ -25,16 +25,16 @@ import clipboard # noqa
 
 #%% Constants I set for each job
 
-organization_name = 'organization_name'
-job_name = 'job_name'
+organization_name = 'test'
+job_name = 'multi-species-test'
 
-input_folder = '/stuff/input_folder'
+input_folder = '/mnt/g/temp/test'
 assert not input_folder.endswith('/')
 model_file = os.path.expanduser('~/models/speciesnet/crop')
 
 # If None, will create a folder in ~/crops
-crop_folder = None
-country_code = None
+crop_folder = '/mnt/g/temp/crops'
+country_code = 'NAM'
 state_code = None
 
 speciesnet_folder = os.path.expanduser('~/git/cameratrapai')
