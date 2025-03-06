@@ -348,7 +348,9 @@ with open(ensemble_output_file_md_format,'r') as f:
     d = json.load(f)
 
 filenames_in_results = set([im['file'] for im in d['images']])
-images_in_folder = set(find_images(input_folder,recursive=True,return_relative_paths=True))
+images_in_folder = find_images(input_folder,recursive=True,return_relative_paths=True)
+images_in_folder = [fn for fn in images_in_folder if not fn.startswith('$RECYCLE')]
+images_in_folder = set(images_in_folder)
 
 for fn in filenames_in_results:
     assert fn in images_in_folder, \
