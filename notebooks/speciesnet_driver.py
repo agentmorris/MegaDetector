@@ -86,6 +86,9 @@ classifier_output_file_modular = \
 ensemble_output_file_modular = \
     os.path.join(output_base,job_name + '-ensemble_output_modular.json')
 
+ensemble_output_file_md_format = insert_before_extension(ensemble_output_file_modular,
+                                                         'md-format')
+
 for fn in [detector_output_file_modular,classifier_output_file_modular,ensemble_output_file_modular]:
     if os.path.exists(fn):
         print('** Warning, file {} exists, this is OK if you are resuming **\n'.format(fn))
@@ -329,9 +332,6 @@ else:
 #%% Convert output file to MD format 
 
 assert os.path.isfile(ensemble_output_file_modular)
-ensemble_output_file_md_format = insert_before_extension(ensemble_output_file_modular,
-                                                         'md-format')
-
 generate_md_results_from_predictions_json(predictions_json_file=ensemble_output_file_modular,
                                           md_results_file=ensemble_output_file_md_format,
                                           base_folder=input_folder+'/')
@@ -762,4 +762,33 @@ if False:
        
         classifier_cmd = '\n\n'.join(classifier_commands)
         # print(classifier_cmd); clipboard.copy(classifier_cmd)
-       
+
+
+    #%% .json splitting
+
+    from megadetector.postprocessing.subset_json_detector_output import \
+        subset_json_detector_output, SubsetJsonDetectorOutputOptions
+
+    input_filename = ensemble_output_file_md_format
+    subset_base = os.path.join(output_base,job_name + '_json_subsets')
+
+    print('Processing file {} to {}'.format(input_filename,subset_base))          
+
+    options = SubsetJsonDetectorOutputOptions()
+    # options.query = None
+    # options.replacement = None
+
+    options.split_folders = True
+    options.make_folder_relative = True
+
+    # Reminder: 'n_from_bottom' with a parameter of zero is the same as 'bottom'
+    options.split_folder_mode = 'top'  # 'bottom', 'top', 'n_from_top', 'n_from_bottom'
+    options.split_folder_param = 0
+    options.overwrite_json_files = False
+    options.confidence_threshold = 0.01
+
+    subset_data = subset_json_detector_output(input_filename, subset_base, options, data=None)
+
+    # Zip the subsets folder
+    from megadetector.utils.path_utils import zip_folder
+    zip_folder(subset_base,verbose=True)
