@@ -208,7 +208,7 @@ for i_chunk,chunk in enumerate(chunks):
         
     chunk_prediction_files.append(chunk_predictions_json)
     
-    chunk_script = os.path.join(chunk_folder,'run_chunk_{}.sh'.format(i_chunk))
+    chunk_script = os.path.join(chunk_folder,'run_chunk_{}.sh'.format(str(i_chunk).zfill(3)))
     cmd = 'python speciesnet/scripts/run_model.py --classifier_only --model "{}"'.format(
         model_file)
     cmd += ' --instances_json "{}"'.format(chunk_instances_json)
