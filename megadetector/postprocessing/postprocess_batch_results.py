@@ -214,6 +214,11 @@ class PostProcessingOptions:
         #: Character encoding to use when writing the index HTML html
         self.output_html_encoding = None
         
+        #: Additional image fields to display in image headers.  If this is a list,
+        #: we'll include those fields; if this is a dict, we'll use that dict to choose
+        #: alternative display names for each field.
+        self.additional_image_fields_to_display = None
+        
     # ...__init__()
     
 # ...PostProcessingOptions
@@ -434,15 +439,6 @@ def _render_bounding_boxes(
     if options is None:
         options = PostProcessingOptions()
 
-    # Leaving code in place for reading from blob storage, may support this
-    # in the future.
-    """
-    stream = io.BytesIO()
-    _ = blob_service.get_blob_to_stream(container_name, image_id, stream)
-    # resize is to display them in this notebook or in the HTML more quickly
-    image = Image.open(stream).resize(viz_size)
-    """
-
     image_full_path = None
     
     if res in options.rendering_bypass_sets:
@@ -472,10 +468,12 @@ def _render_bounding_boxes(
         if image is not None:
             
             original_size = image.size
-            
+    
+            # Resize the image if necessary
             if options.viz_target_width is not None:
                 image = vis_utils.resize_image(image, options.viz_target_width)
     
+            # Render ground truth boxes if necessary
             if ground_truth_boxes is not None and len(ground_truth_boxes) > 0:
                 
                 # Create class labels like "gt_1" or "gt_27"
@@ -487,8 +485,7 @@ def _render_bounding_boxes(
                                                    original_size=original_size,label_map=label_map,
                                                    thickness=4,expansion=4)
         
-            # render_detection_bounding_boxes expects either a float or a dict mapping
-            # category IDs to names.
+            # Preprare per-category confidence thresholds
             if isinstance(options.confidence_threshold,float):
                 rendering_confidence_threshold = options.confidence_threshold
             else:
@@ -499,12 +496,14 @@ def _render_bounding_boxes(
                 for category_id in category_ids:
                     rendering_confidence_threshold[category_id] = \
                         _get_threshold_for_category_id(category_id, options, detection_categories)
-                
+            
+            # Render detection boxes
             vis_utils.render_detection_bounding_boxes(
                 detections, image,
                 label_map=detection_categories,
                 classification_label_map=classification_categories,
                 confidence_threshold=rendering_confidence_threshold,
+                classification_confidence_threshold=options.classification_confidence_threshold,
                 thickness=options.line_thickness,
                 expansion=options.box_expansion)
     
@@ -686,9 +685,11 @@ def _has_positive_detection(detections,options,detection_categories):
     return found_positive_detection
         
 
-def _render_image_no_gt(file_info,detection_categories_to_results_name,
-                       detection_categories,classification_categories,
-                       options):
+def _render_image_no_gt(file_info,
+                        detection_categories_to_results_name,
+                        detection_categories,
+                        classification_categories,
+                        options):
     """
     Renders an image (with no ground truth information)
     
@@ -713,9 +714,15 @@ def _render_image_no_gt(file_info,detection_categories_to_results_name,
     Returns None if there are any errors.
     """
     
-    image_relative_path = file_info[0]
-    max_conf = file_info[1]
-    detections = file_info[2]
+    image_relative_path = file_info['file']
+    
+    # Useful debug snippet
+    #
+    # if 'filename' in image_relative_path:
+    #    import pdb; pdb.set_trace()
+    
+    max_conf = file_info['max_detection_conf']
+    detections = file_info['detections']
 
     # Determine whether any positive detections are present (using a threshold that
     # may vary by category)
@@ -749,9 +756,31 @@ def _render_image_no_gt(file_info,detection_categories_to_results_name,
         assert detection_status == DetectionStatus.DS_ALMOST
         res = 'almost_detections'
 
-    display_name = '<b>Result type</b>: {}, <b>Image</b>: {}, <b>Max conf</b>: {:0.3f}'.format(
+    display_name = '<b>Result type</b>: {}, <b>image</b>: {}, <b>max conf</b>: {:0.3f}'.format(
         res, image_relative_path, max_conf)
 
+    # Are there any bonus fields we need to include in each image header?
+    if options.additional_image_fields_to_display is not None:
+        
+        for field_name in options.additional_image_fields_to_display:
+            
+            if field_name in file_info:
+                
+                field_value = file_info[field_name]
+                
+                if (field_value is None) or \
+                    (isinstance(field_value,float) and np.isnan(field_value)):
+                        continue
+                
+                # Optionally use a display name that's different from the field name
+                if isinstance(options.additional_image_fields_to_display,dict):
+                    field_display_name = \
+                        options.additional_image_fields_to_display[field_name]
+                else:
+                    field_display_name = field_name
+                field_string = '<b>{}</b>: {}'.format(field_display_name,field_value)
+                display_name += ', {}'.format(field_string)
+                
     rendering_options = copy.copy(options)
     if detection_status == DetectionStatus.DS_ALMOST:
         rendering_options.confidence_threshold = \
@@ -781,17 +810,24 @@ def _render_image_no_gt(file_info,detection_categories_to_results_name,
             if det['conf'] > max_conf:
                 max_conf = det['conf']
 
+            # We make the decision here that only "detections" (not "almost-detections")
+            # will appear on the classification category pages
+            detection_threshold = \
+                _get_threshold_for_category_id(det['category'], options, detection_categories)
+            if det['conf'] < detection_threshold:
+                continue
+                
             if ('classifications' in det) and (len(det['classifications']) > 0) and \
                 (res != 'non_detections'):
 
-                # This is a list of [class,confidence] pairs, sorted by confidence
+                # This is a list of [class,confidence] pairs, sorted by classification confidence
                 classifications = det['classifications']
                 top1_class_id = classifications[0][0]
                 top1_class_name = classification_categories[top1_class_id]
                 top1_class_score = classifications[0][1]
 
-                # If we either don't have a confidence threshold, or we've met our
-                # confidence threshold
+                # If we either don't have a classification confidence threshold, or 
+                # we've met our classification confidence threshold
                 if (options.classification_confidence_threshold < 0) or \
                     (top1_class_score >= options.classification_confidence_threshold):
                     class_string = 'class_{}'.format(top1_class_name)                    
@@ -823,9 +859,9 @@ def _render_image_with_gt(file_info,ground_truth_indexed_db,
     data format.
     """
     
-    image_relative_path = file_info[0]
-    max_conf = file_info[1]
-    detections = file_info[2]
+    image_relative_path = file_info['file']
+    max_conf = file_info['max_detection_conf']
+    detections = file_info['detections']
 
     # This should already have been normalized to either '/' or '\'
 
@@ -1372,7 +1408,7 @@ def process_batch_results(options):
         for _, row in images_to_visualize.iterrows():
 
             # Filenames should already have been normalized to either '/' or '\'
-            files_to_render.append([row['file'], row['max_detection_conf'], row['detections']])
+            files_to_render.append(row.to_dict())
 
         start_time = time.time()
         if options.parallelize_rendering:
@@ -1618,9 +1654,7 @@ def process_batch_results(options):
             assert isinstance(row['detections'],list)
             
             # Filenames should already have been normalized to either '/' or '\'
-            files_to_render.append([row['file'],
-                                    row['max_detection_conf'],
-                                    row['detections']])
+            files_to_render.append(row.to_dict())
 
         start_time = time.time()
         if options.parallelize_rendering:

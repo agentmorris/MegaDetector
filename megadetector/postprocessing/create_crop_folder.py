@@ -106,7 +106,8 @@ def _generate_crops_for_single_image(crops_this_image,
 
 def crop_results_to_image_results(image_results_file_with_crop_ids,
                                   crop_results_file,
-                                  output_file):
+                                  output_file,
+                                  delete_crop_information=True):
     """
     This function is intended to be run after you have:
         
@@ -115,14 +116,18 @@ def crop_results_to_image_results(image_results_file_with_crop_ids,
         3. Run a species classifier on those crops
     
     This function will take the crop-level results and transform them back
-    to the original images.
+    to the original images.  Classification categories, if available, are taken 
+    from [crop_results_file].
         
     Args:
         image_results_file_with_crop_ids (str): results file for the original images,
-            containing crop IDs, likely generated via create_crop_folder.
+            containing crop IDs, likely generated via create_crop_folder.  All 
+            non-standard fields in this file will be passed along to [output_file].
         crop_results_file (str): results file for the crop folder
         output_file (str): ouptut .json file, containing crop-level classifications
-            mapped back to the image level
+            mapped back to the image level.
+        delete_crop_information (bool, optional): whether to delete the "crop_id" and
+            "crop_filename_relative" fields from each detection, if present.
     """
     
     ##%% Validate inputs
@@ -136,12 +141,14 @@ def crop_results_to_image_results(image_results_file_with_crop_ids,
     
     ##%% Read input files
     
+    print('Reading input...')
+    
     with open(image_results_file_with_crop_ids,'r') as f:
         image_results_with_crop_ids = json.load(f)
     with open(crop_results_file,'r') as f:
         crop_results = json.load(f)
 
-    # Find all the categories that need to be consistent
+    # Find all the detection categories that need to be consistent
     used_category_ids = set()
     for im in tqdm(image_results_with_crop_ids['images']):
         if 'detections' not in im or im['detections'] is None:
@@ -163,11 +170,16 @@ def crop_results_to_image_results(image_results_file_with_crop_ids,
     for im in crop_results['images']:
         crop_filename_to_results[im['file']] = im
     
-    image_results_with_crop_ids['classification_categories'] = \
-        crop_results['classification_categories']
+    if 'classification_categories' in crop_results:
+        image_results_with_crop_ids['classification_categories'] = \
+            crop_results['classification_categories']
+            
+    if 'classification_category_descriptions' in crop_results:
+        image_results_with_crop_ids['classification_category_descriptions'] = \
+            crop_results['classification_category_descriptions']
     
         
-    ##%% Read classifications from crop results
+    ##%% Read classifications from crop results, merge into image-level results
     
     # im = image_results_with_crop_ids['images'][0]
     for im in tqdm(image_results_with_crop_ids['images']):
@@ -192,13 +204,21 @@ def crop_results_to_image_results(image_results_file_with_crop_ids,
                 assert crop_results_this_detection['detections'][0]['category'] == det['category']
                 assert crop_results_this_detection['detections'][0]['bbox'] == [0,0,1,1]
                 det['classifications'] = crop_results_this_detection['detections'][0]['classifications']
-                
+            
+            if delete_crop_information:
+                if 'crop_id' in det:
+                    del det['crop_id']
+                if 'crop_filename_relative' in det:
+                    del det['crop_filename_relative']
+                    
         # ...for each detection
     
     # ...for each image        
     
     
     ##%% Write output file
+    
+    print('Writing output file...')
     
     with open(output_file,'w') as f:
         json.dump(image_results_with_crop_ids,f,indent=1)
@@ -241,11 +261,12 @@ def create_crop_folder(input_file,
     
     ##%% Read input
     
+    print('Reading MD results file...')    
     with open(input_file,'r') as f:
         detection_results = json.load(f)
        
         
-    ##%% Make a list crops that we need to create
+    ##%% Make a list of crops that we need to create
     
     # Maps input images to list of dicts, with keys 'crop_id','detection'
     image_fn_relative_to_crops = defaultdict(list)

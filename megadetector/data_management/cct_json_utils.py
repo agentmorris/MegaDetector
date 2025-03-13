@@ -300,7 +300,10 @@ class SequenceOptions:
     def __init__(self):
         #: Images separated by <= this duration will be grouped into the same sequence.
         self.episode_interval_seconds = 60.0
-
+        
+        #: How to handle invalid datetimes: 'error' or 'none'
+        self.datetime_conversion_failure_behavior = 'none'
+        
     
 #%% Functions
 
@@ -445,7 +448,17 @@ def create_sequences(image_info,options=None):
         raise ValueError('Unrecognized type for [image_info]')
         
     # Modifies the images in place
-    _ = parse_datetimes_from_cct_image_list(image_info)
+    _ = parse_datetimes_from_cct_image_list(image_info, 
+            conversion_failure_behavior=options.datetime_conversion_failure_behavior)
+    
+    n_invalid_datetimes = 0
+    for im in image_info:
+        if not isinstance(im['datetime'],datetime.datetime):
+            assert im['datetime'] is None, 'At this point, datetimes should be valid or None'
+            n_invalid_datetimes += 1
+    if n_invalid_datetimes > 0:
+        print('Warning: {} of {} images have invalid datetimes'.format(
+            n_invalid_datetimes,len(image_info)))
     
     # Find all unique locations
     locations = set()

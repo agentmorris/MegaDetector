@@ -20,6 +20,7 @@ from collections import defaultdict
 from tqdm import tqdm
 
 from megadetector.utils.ct_utils import is_list_sorted
+from megadetector.utils.wi_utils import clean_taxonomy_string
 
 
 #%% Options classes
@@ -31,32 +32,50 @@ class ClassificationSmoothingOptionsImageLevel:
 
     def __init__(self):
         
-        #: How many detections do we need above the classification threshold to determine a dominant category
-        #: for an image?
-        self.min_detections_above_threshold = 4
+        #: How many detections do we need in a dominant category to overwrite 
+        #: non-dominant classifications?
+        self.min_detections_to_overwrite_secondary = 4
     
-        #: Even if we have a dominant class, if a non-dominant class has at least this many classifications
-        #: in an image, leave them alone.
-        self.max_detections_secondary_class = 3
+        #: Even if we have a dominant class, if a non-dominant class has at least 
+        #: this many classifications in an image, leave them alone.
+        #:
+        #: If this is <= 1, we won't replace non-dominant, non-other classes
+        #: with the dominant class, even if there are 900 cows and 1 deer.
+        self.max_detections_nondominant_class = 1
     
-        #: If the dominant class has at least this many classifications, overwrite "other" classifications
+        #: If the dominant class has at least this many classifications, overwrite 
+        #: "other" classifications with the dominant class
         self.min_detections_to_overwrite_other = 2
         
         #: Names to treat as "other" categories; can't be None, but can be empty
-        self.other_category_names = ['other']
+        #:
+        #: "Other" classifications will be changed to the dominant category, regardless
+        #: of confidence, as long as there are at least min_detections_to_overwrite_other 
+        #: examples of the dominant class.  For example, cow/other will remain unchanged,
+        #: but cow/cow/other will become cow/cow/cow.
+        self.other_category_names = ['other','unknown','no cv result','animal','blank','mammal']
     
-        #: What confidence threshold should we use for assessing the dominant category in an image?
-        self.classification_confidence_threshold = 0.6
+        #: We're not even going to mess around with classifications below this threshold.
+        #:
+        #: We won't count them, we won't over-write them, they don't exist during the
+        #: within-image smoothing step.
+        self.classification_confidence_threshold = 0.5
     
-        #: Which classifications should we even bother over-writing?
-        self.classification_overwrite_threshold = 0.3
-    
-        #: Detection confidence threshold for things we count when determining a dominant class
-        self.detection_confidence_threshold = 0.2
-    
-        #: Which detections should we even bother over-writing?
-        self.detection_overwrite_threshold = 0.05
-
+        #: We're not even going to mess around with detections below this threshold.
+        #:
+        #: We won't count them, we won't over-write them, they don't exist during the
+        #: within-image smoothing step.
+        self.detection_confidence_threshold = 0.15
+        
+        #: If classification descriptions are present and appear to represent taxonomic
+        #: information, should we propagate classifications when lower-level taxa are more 
+        #: common in an image?  For example, if we see "carnivore/fox/fox/deer", should 
+        #: we make that "fox/fox/fox/deer"?
+        self.propagate_classifications_through_taxonomy = True
+        
+        #: Should we record information about the state of labels prior to smoothing?
+        self.add_pre_smoothing_description = True
+        
 
 class ClassificationSmoothingOptionsSequenceLevel:
     """
@@ -132,12 +151,285 @@ class ClassificationSmoothingOptionsSequenceLevel:
         
         #: Only relevant when MegaDetector results are supplied as a dict rather than a file; determines
         #: whether smoothing happens in place.
-        self.modify_in_place = True
+        self.modify_in_place = True        
         
 # ...class ClassificationSmoothingOptionsSequenceLevel()
 
+
+#%% Utility functions
+
+def _count_detections_by_category(detections,options):
+    """
+    Count the number of instances of each category in the detections list
+    [detections] that have an above-threshold detection.  Sort results in descending 
+    order by count.  Returns a dict mapping category ID --> count.  If no detections
+    are above threshold, returns an empty dict.
     
+    Assumes that if the 'classifications' field is present for a detection, it has
+    length 1, i.e. that non-top classifications have already been removed.
+    """
+    
+    category_to_count = defaultdict(int)
+    
+    for det in detections:
+        if ('classifications' in det) and (det['conf'] >= options.detection_confidence_threshold):
+            assert len(det['classifications']) == 1
+            c = det['classifications'][0]
+            if c[1] >= options.classification_confidence_threshold:
+                category_to_count[c[0]] += 1            
+                    
+    category_to_count = {k: v for k, v in sorted(category_to_count.items(),
+                                                 key=lambda item: item[1], 
+                                                 reverse=True)}
+    
+    return category_to_count
+
+
 #%% Image-level smoothing
+
+def _get_description_string(category_to_count,classification_descriptions):
+    """
+    Return a string summarizing the image content according to [category_to_count].
+    """
+    
+    category_strings = []
+    # category_id = next(iter(category_to_count))
+    for category_id in category_to_count:
+        category_description = classification_descriptions[category_id]
+        tokens = category_description.split(';')
+        assert len(tokens) == 7
+        category_name = tokens[-1]
+        if len(category_name) == 0:
+            category_name = 'undefined category'
+        count = category_to_count[category_id]
+        category_string = '{} ({})'.format(category_name,count)
+        category_strings.append(category_string)
+    
+    return ', '.join(category_strings)
+    
+
+def _print_counts_with_names(category_to_count,classification_descriptions):
+    """
+    Print a list of classification categories with counts, based in the name --> count
+    dict [category_to_count]
+    """
+    
+    for category_id in category_to_count:
+        category_name = classification_descriptions[category_id]
+        count = category_to_count[category_id]
+        print('{}: {} ({})'.format(category_id,category_name,count))
+    
+    
+def _smooth_single_image(im,options,
+                         other_category_ids,
+                         classification_descriptions,
+                         classification_descriptions_clean):
+    """
+    Smooth classifications for a single image.  Returns None if no changes are made,
+    else a dict.
+    
+    classification_descriptions_clean should be semicolon-delimited taxonomic strings 
+    from which common names and GUIDs have already been removed.
+    
+    Assumes there is only one classification per detection, i.e. that non-top classifications
+    have already been remoevd.
+    """
+    
+    ## Argument validation
+    
+    if 'detections' not in im or im['detections'] is None or len(im['detections']) == 0:
+        return
+    
+    detections = im['detections']
+        
+    # Useful debug snippet
+    #
+    # if 'filename' in im['file']:
+    #    import pdb; pdb.set_trace()    
+    
+    
+    ## Count the number of instances of each category in this image
+    
+    category_to_count = _count_detections_by_category(detections, options)
+    # _print_counts_with_names(category_to_count,classification_descriptions)
+    # _get_description_string(category_to_count, classification_descriptions)
+        
+    if options.add_pre_smoothing_description:
+        im['pre_smoothing_description'] = \
+            _get_description_string(category_to_count, classification_descriptions)
+        
+    if len(category_to_count) <= 1:
+        return None
+    
+    keys = list(category_to_count.keys())
+    
+    # Handle a quirky special case: if the most common category is "other" and 
+    # it's "tied" with the second-most-common category, swap them
+    if (len(keys) > 1) and \
+        (keys[0] in other_category_ids) and \
+        (keys[1] not in other_category_ids) and \
+        (category_to_count[keys[0]] == category_to_count[keys[1]]):
+            keys[1], keys[0] = keys[0], keys[1]
+            
+    max_count = category_to_count[keys[0]]    
+    most_common_category = keys[0]
+    del keys
+    
+    
+    ## Possibly change "other" classifications to the most common category
+    
+    # ...if the dominant category is not an "other" category.
+    
+    n_other_classifications_changed_this_image = 0
+    
+    # If we have at least *min_detections_to_overwrite_other* in a category that isn't
+    # "other", change all "other" classifications to that category
+    if (max_count >= options.min_detections_to_overwrite_other) and \
+        (most_common_category not in other_category_ids):
+        
+        for det in detections:
+            
+            if ('classifications' in det) and \
+                (det['conf'] >= options.detection_confidence_threshold): 
+                
+                assert len(det['classifications']) == 1
+                c = det['classifications'][0]
+                    
+                if c[1] >= options.classification_confidence_threshold and \
+                    c[0] in other_category_ids:
+                        
+                    n_other_classifications_changed_this_image += 1
+                    c[0] = most_common_category
+                                        
+            # ...if there are classifications for this detection
+            
+        # ...for each detection
+                
+    # ...if we should overwrite all "other" classifications
+    
+    
+    ## Re-count
+    
+    category_to_count = _count_detections_by_category(detections, options)
+    # _print_counts_with_names(category_to_count,classification_descriptions)
+    keys = list(category_to_count.keys())
+    max_count = category_to_count[keys[0]]    
+    most_common_category = keys[0]
+    del keys
+    
+    ## At this point, we know we have a dominant category; possibly change 
+    ## above-threshold classifications to that category.
+    
+    n_detections_flipped_this_image = 0
+    
+    # Don't do this if the most common category is an "other" category
+    if most_common_category not in other_category_ids:
+        
+        # det = detections[0]
+        for det in detections:
+            
+            if ('classifications' in det) and \
+                (det['conf'] >= options.detection_confidence_threshold):
+                
+                assert len(det['classifications']) == 1
+                c = det['classifications'][0]
+                
+                if (c[1] >= options.classification_confidence_threshold) and \
+                   (c[0] != most_common_category) and \
+                   (max_count > category_to_count[c[0]]) and \
+                   (max_count > options.min_detections_to_overwrite_secondary) and \
+                   (category_to_count[c[0]] <= options.max_detections_nondominant_class):
+                        
+                    c[0] = most_common_category
+                    n_detections_flipped_this_image += 1
+                                        
+            # ...if there are classifications for this detection
+            
+        # ...for each detection
+
+    # ...if the dominant category is legit    
+    
+    
+    ## Re-count
+    
+    category_to_count = _count_detections_by_category(detections, options)
+    # _print_counts_with_names(category_to_count,classification_descriptions)
+    keys = list(category_to_count.keys())
+    max_count = category_to_count[keys[0]]    
+    most_common_category = keys[0]
+    del keys
+    
+    
+    ## Possibly collapse higher-level taxonomic predictions down to lower levels
+    
+    n_taxonomic_changes_this_image = 0
+        
+    if (classification_descriptions_clean is not None) and \
+        (len(classification_descriptions_clean) > 0) and \
+        (len(category_to_count) > 1):
+    
+        # det = detections[3]
+        for det in detections:
+            
+            if ('classifications' in det) and \
+                (det['conf'] >= options.detection_confidence_threshold):
+                
+                assert len(det['classifications']) == 1
+                c = det['classifications'][0]
+                
+                # Don't bother with any classifications below the confidence threshold
+                if c[1] < options.classification_confidence_threshold:
+                    continue
+    
+                category_id_this_classification = c[0]
+                assert category_id_this_classification in category_to_count
+                
+                category_description_this_classification = \
+                    classification_descriptions_clean[category_id_this_classification]
+                
+                count_this_category = category_to_count[category_id_this_classification]
+                
+                # Are there any child categories with more classifications?
+                for category_id_of_candidate_child in category_to_count.keys():
+                    
+                    if category_id_of_candidate_child == category_id_this_classification:
+                        continue
+                    
+                    category_description_candidate_child = \
+                        classification_descriptions_clean[category_id_of_candidate_child]
+                    
+                    # An empty description corresponds to "animal", which can never
+                    # be a child of another category.
+                    if len(category_description_candidate_child) == 0:
+                        continue
+                        
+                    # Parent/child taxonomic relationships are defined by a substring relationship
+                    is_child = category_description_this_classification in \
+                        category_description_candidate_child
+                    if not is_child:
+                        continue
+                    
+                    child_category_count = category_to_count[category_id_of_candidate_child]
+                    if child_category_count > count_this_category:
+                        
+                        c[0] = category_id_of_candidate_child
+                        n_taxonomic_changes_this_image += 1
+                    
+                # ...for each classification
+                
+            # ...if there are classifications for this detection
+            
+        # ...for each detection
+        
+    # ...if we have taxonomic information available
+    
+    
+    return {'n_other_classifications_changed_this_image':n_other_classifications_changed_this_image,
+            'n_detections_flipped_this_image':n_detections_flipped_this_image,
+            'n_taxonomic_changes_this_image':n_taxonomic_changes_this_image}
+
+# ...def smooth_single_image
+
 
 def smooth_classification_results_image_level(input_file,output_file=None,options=None):
     """
@@ -151,8 +443,8 @@ def smooth_classification_results_image_level(input_file,output_file=None,option
     [options.classification_confidence_threshold], which in practice means we're only
     looking at one category per detection.
     
-    If an image has at least [options.min_detections_above_threshold] such detections
-    in the most common category, and no more than [options.max_detections_secondary_class]
+    If an image has at least [options.min_detections_to_overwrite_secondary] such detections
+    in the most common category, and no more than [options.max_detections_nondominant_class]
     in the second-most-common category, flip all detections to the most common
     category.
     
@@ -171,7 +463,7 @@ def smooth_classification_results_image_level(input_file,output_file=None,option
         dict: MegaDetector-results-formatted dict, identical to what's written to
         [output_file] if [output_file] is not None.
     """
-    
+        
     if options is None:
         options = ClassificationSmoothingOptionsImageLevel()
         
@@ -187,15 +479,10 @@ def smooth_classification_results_image_level(input_file,output_file=None,option
         else:
             print('Warning: "other" category {} not present in file {}'.format(
                 s,input_file))
-    
-    n_other_classifications_changed = 0
-    n_other_images_changed = 0
-    
-    n_detections_flipped = 0
-    n_images_changed = 0
-    
+        
     # Before we do anything else, get rid of everything but the top classification
-    # for each detection.
+    # for each detection, and remove the 'classifications' field from detections with
+    # no classifications.
     for im in tqdm(d['images']):        
         if 'detections' not in im or im['detections'] is None or len(im['detections']) == 0:
             continue
@@ -204,7 +491,10 @@ def smooth_classification_results_image_level(input_file,output_file=None,option
         
         for det in detections:
             
-            if 'classifications' not in det or len(det['classifications']) == 0:
+            if 'classifications' not in det:
+                continue
+            if len(det['classifications']) == 0:
+                del det['classifications']
                 continue
             
             classification_confidence_values = [c[1] for c in det['classifications']]
@@ -215,121 +505,59 @@ def smooth_classification_results_image_level(input_file,output_file=None,option
         
     # ...for each image
     
+    
+    ## Clean up classification descriptions so we can test taxonomic relationships
+    ## by substring testing.
+    
+    classification_descriptions_clean = None
+    
+    if 'classification_category_descriptions' in d:
+        classification_descriptions = d['classification_category_descriptions']
+        classification_descriptions_clean = {}
+        # category_id = next(iter(classification_descriptions))
+        for category_id in classification_descriptions:            
+            classification_descriptions_clean[category_id] = \
+                clean_taxonomy_string(classification_descriptions[category_id]).strip(';').lower()
+    
+    
+    ## Do the actual smoothing
+    
+    n_other_classifications_changed = 0
+    n_other_images_changed = 0
+    n_taxonomic_images_changed = 0
+    
+    n_detections_flipped = 0
+    n_images_changed = 0
+    n_taxonomic_classification_changes = 0    
+        
     # im = d['images'][0]    
     for im in tqdm(d['images']):
         
-        if 'detections' not in im or im['detections'] is None or len(im['detections']) == 0:
+        r = _smooth_single_image(im,
+                                 options,
+                                 other_category_ids,
+                                 classification_descriptions=classification_descriptions,
+                                 classification_descriptions_clean=classification_descriptions_clean)
+        
+        if r is None:
             continue
         
-        detections = im['detections']
-    
-        category_to_count = defaultdict(int)
-        for det in detections:
-            if ('classifications' in det) and (det['conf'] >= options.detection_confidence_threshold):
-                for c in det['classifications']:
-                    if c[1] >= options.classification_confidence_threshold:
-                        category_to_count[c[0]] += 1
-                # ...for each classification
-            # ...if there are classifications for this detection
-        # ...for each detection
-                        
-        if len(category_to_count) <= 1:
-            continue
+        n_detections_flipped_this_image = r['n_detections_flipped_this_image']
+        n_other_classifications_changed_this_image = \
+            r['n_other_classifications_changed_this_image']
+        n_taxonomic_changes_this_image = r['n_taxonomic_changes_this_image']
         
-        category_to_count = {k: v for k, v in sorted(category_to_count.items(),
-                                                     key=lambda item: item[1], 
-                                                     reverse=True)}
-        
-        keys = list(category_to_count.keys())
-        
-        # Handle a quirky special case: if the most common category is "other" and 
-        # it's "tied" with the second-most-common category, swap them
-        if (len(keys) > 1) and \
-            (keys[0] in other_category_ids) and \
-            (keys[1] not in other_category_ids) and \
-            (category_to_count[keys[0]] == category_to_count[keys[1]]):
-                keys[1], keys[0] = keys[0], keys[1]
-        
-        max_count = category_to_count[keys[0]]
-        # secondary_count = category_to_count[keys[1]]
-        # The 'secondary count' is the most common non-other class
-        secondary_count = 0
-        for i_key in range(1,len(keys)):
-            if keys[i_key] not in other_category_ids:
-                secondary_count = category_to_count[keys[i_key]]
-                break
-
-        most_common_category = keys[0]
-        
-        assert max_count >= secondary_count
-        
-        # If we have at least *min_detections_to_overwrite_other* in a category that isn't
-        # "other", change all "other" classifications to that category
-        if max_count >= options.min_detections_to_overwrite_other and \
-            most_common_category not in other_category_ids:
-            
-            other_change_made = False
-            
-            for det in detections:
-                
-                if ('classifications' in det) and \
-                    (det['conf'] >= options.detection_overwrite_threshold): 
-                    
-                    for c in det['classifications']:                
-                        
-                        if c[1] >= options.classification_overwrite_threshold and \
-                            c[0] in other_category_ids:
-                                
-                            n_other_classifications_changed += 1
-                            other_change_made = True
-                            c[0] = most_common_category
-                            
-                    # ...for each classification
-                    
-                # ...if there are classifications for this detection
-                
-            # ...for each detection
-            
-            if other_change_made:
-                n_other_images_changed += 1
-            
-        # ...if we should overwrite all "other" classifications
-    
-        if max_count < options.min_detections_above_threshold:
-            continue
-        
-        if secondary_count >= options.max_detections_secondary_class:
-            continue
-        
-        # At this point, we know we have a dominant category; change all other above-threshold
-        # classifications to that category.  That category may have been "other", in which
-        # case we may have already made the relevant changes.
-        
-        n_detections_flipped_this_image = 0
-        
-        # det = detections[0]
-        for det in detections:
-            
-            if ('classifications' in det) and \
-                (det['conf'] >= options.detection_overwrite_threshold):
-                
-                for c in det['classifications']:
-                    if c[1] >= options.classification_overwrite_threshold and \
-                        c[0] != most_common_category:
-                            
-                        c[0] = most_common_category
-                        n_detections_flipped += 1
-                        n_detections_flipped_this_image += 1
-                
-                # ...for each classification
-                
-            # ...if there are classifications for this detection
-            
-        # ...for each detection
+        n_detections_flipped += n_detections_flipped_this_image
+        n_other_classifications_changed += n_other_classifications_changed_this_image
+        n_taxonomic_classification_changes += n_taxonomic_changes_this_image
         
         if n_detections_flipped_this_image > 0:
             n_images_changed += 1
-    
+        if n_other_classifications_changed_this_image > 0:
+            n_other_images_changed += 1
+        if n_taxonomic_changes_this_image > 0:
+            n_taxonomic_images_changed += 1
+        
     # ...for each image    
     
     print('Classification smoothing: changed {} detections on {} images'.format(
@@ -337,7 +565,14 @@ def smooth_classification_results_image_level(input_file,output_file=None,option
     
     print('"Other" smoothing: changed {} detections on {} images'.format(
           n_other_classifications_changed,n_other_images_changed))
+    
+    print('Taxonomic smoothing: changed {} detections on {} images'.format(
+          n_taxonomic_classification_changes,n_taxonomic_images_changed))
 
+    for im in d['images']:
+        if 'failure' in im and im['failure'] is None:
+            del im['failure']
+            
     if output_file is not None:    
         print('Writing results after image-level smoothing to:\n{}'.format(output_file))
         with open(output_file,'w') as f:

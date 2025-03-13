@@ -84,6 +84,28 @@ def is_valid_taxonomy_string(s):
     return isinstance(s,str) and (len(s.split(';')) == 5) and (s == s.lower())
 
     
+def clean_taxonomy_string(s):
+    """
+    If [s] is a seven-token prediction string, trim the GUID and common name to produce
+    a "clean" taxonomy string.  Else if [s] is a five-token string, return it.  Else error.
+
+    Args:
+        s (str): the seven- or five-token taxonomy/prediction string to clean
+    
+    Returns:
+        str: the five-token taxonomy string
+    """
+    
+    if is_valid_taxonomy_string(s):
+        return s
+    elif is_valid_prediction_string(s):        
+        tokens = s.split(';')
+        assert len(tokens) == 7
+        return ';'.join(tokens[1:-1])
+    else:
+        raise ValueError('Invalid taxonomy string')
+    
+    
 def wi_result_to_prediction_string(r):
     """
     Convert the dict [r] - typically loaded from a row in a downloaded .csv file - to
@@ -1874,7 +1896,7 @@ def initialize_geofencing(geofencing_file,country_code_file,force_init=False):
 def _species_string_to_canonical_species_string(species):
     """
     Convert a string that may be a 5-token species string, a binomial name,
-    or a common name into a 5-token species string.
+    or a common name into a 5-token species string, using taxonomic lookup.
     """
     
     global taxonomy_string_to_taxonomy_info

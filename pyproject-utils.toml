@@ -8,7 +8,7 @@ name = "megadetector-utils"
 version = "5.0.25"
 description = "Utility code associated with the MegaDetector project."
 readme = "README-package-utils.md"
-requires-python = ">=3.9,<=3.13"
+requires-python = ">=3.9,<3.14"
 license = {file = "LICENSE"}
 keywords = ["camera traps", "conservation", "wildlife", "ai", "megadetector"]
 authors = [
