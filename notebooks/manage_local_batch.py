@@ -1068,7 +1068,7 @@ os.makedirs(crop_folder,exist_ok=True)
 for fn in [classifier_output_file_modular_crops,
            ensemble_output_file_modular_crops]:
     if os.path.exists(fn):
-        print('** Warning, file {} exists, this is OK if you are resuming **\n'.format(fn))
+        print('**\nWarning, file {} exists, this is OK if you are resuming\n**\n'.format(fn))
 
 
 #%% Generate instances.json

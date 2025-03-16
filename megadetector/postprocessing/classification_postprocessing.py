@@ -246,7 +246,7 @@ def _prepare_results_for_smoothing(input_file,options):
         for im in tqdm(d['images']):
             
             if 'detections' not in im or im['detections'] is None or len(im['detections']) == 0:
-                return
+                continue
             
             detections = im['detections']        
             category_to_count = _count_detections_by_category(detections, options)
