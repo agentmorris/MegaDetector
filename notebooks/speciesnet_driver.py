@@ -498,17 +498,9 @@ options.nWorkers = 10
 options.bRenderOtherDetections = True
 options.otherDetectionsThreshold = options.confidenceMin
 
-options.bRenderDetectionTiles = True
-options.maxOutputImageWidth = 2000
-options.detectionTilesMaxCrops = 100
-
-# options.lineThickness = 5
-# options.boxExpansion = 8
-
 options.customDirNameFunction = image_file_to_camera_folder
 # options.customDirNameFunction = custom_relative_path_to_location
 
-options.bRenderHtml = False
 options.imageBase = input_folder
 rde_string = 'rde_{:.3f}_{:.3f}_{}_{:.3f}'.format(
     options.confidenceMin, options.iouThreshold,
@@ -522,14 +514,6 @@ options.filenameReplacements = None # {'':''}
 # options.maxImagesPerFolder = 50000
 # options.includeFolders = ['a/b/c','d/e/f']
 # options.excludeFolders = ['a/b/c','d/e/f']
-
-options.debugMaxDir = -1
-options.debugMaxRenderDir = -1
-options.debugMaxRenderDetection = -1
-options.debugMaxRenderInstance = -1
-
-# Can be None, 'xsort', or 'clustersort'
-options.smartSort = 'xsort'
 
 suspicious_detection_results = \
     repeat_detections_core.find_repeat_detections(ensemble_output_file_md_format,
@@ -600,6 +584,8 @@ options.footer_text = footer_text
 options.parallelize_rendering = True
 options.parallelize_rendering_n_cores = 10
 options.parallelize_rendering_with_threads = use_threads_for_parallelization
+options.additional_image_fields_to_display = \
+    {'top_classification_common_name':'top class'}
 
 if render_animals_only:
     options.rendering_bypass_sets = ['detections_person','detections_vehicle',

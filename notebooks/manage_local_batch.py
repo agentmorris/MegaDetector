@@ -236,7 +236,8 @@ preview_options_base.parallelize_rendering = True
 preview_options_base.parallelize_rendering_n_cores = default_workers_for_parallel_tasks
 preview_options_base.parallelize_rendering_with_threads = parallelization_defaults_to_threads
 preview_options_base.additional_image_fields_to_display = \
-    {'pre_smoothing_description':'pre-smoothing labels'}
+    {'pre_smoothing_description':'pre-smoothing labels',
+     'top_classification_common_name':'top class'}
 
 if render_animals_only:
     preview_options_base.rendering_bypass_sets = ['detections_person','detections_vehicle',
@@ -322,6 +323,9 @@ combined_api_output_file = os.path.join(
 # This will be the .json results file after RDE; if this doesn't exist when
 # we get to classification stuff, that will indicate that we didn't do RDE.
 filtered_output_filename = path_utils.insert_before_extension(combined_api_output_file,'filtered')
+
+# If we do sequence-level smoothing, we'll read EXIF data and put it here
+exif_results_file = os.path.join(filename_base,'exif_data.json')
 
 os.makedirs(filename_base, exist_ok=True)
 os.makedirs(combined_api_output_folder, exist_ok=True)
@@ -888,7 +892,6 @@ options.customDirNameFunction = relative_path_to_location
 # To invoke custom collapsing of folders for a particular naming scheme
 # options.customDirNameFunction = custom_relative_path_to_location
 
-options.bRenderHtml = False
 options.imageBase = input_path
 rde_string = 'rde_{:.3f}_{:.3f}_{}_{:.3f}'.format(
     options.confidenceMin, options.iouThreshold,
@@ -1352,9 +1355,9 @@ print('Loaded results for {} images with {} failures'.format(
 
 from megadetector.postprocessing.classification_postprocessing import \
     smooth_classification_results_image_level, \
-    ClassificationSmoothingOptionsImageLevel
+    ClassificationSmoothingOptions
 
-within_image_smoothing_options = ClassificationSmoothingOptionsImageLevel()
+within_image_smoothing_options = ClassificationSmoothingOptions()
 _ = smooth_classification_results_image_level(input_file=ensemble_output_file_image_level_md_format,
                                               output_file=classifier_output_path_within_image_smoothing,
                                               options=within_image_smoothing_options)
@@ -1390,8 +1393,6 @@ exif_options.use_threads = parallelization_defaults_to_threads
 exif_options.processing_library = 'pil'
 exif_options.byte_handling = 'delete'
 exif_options.tags_to_include = ['DateTime','DateTimeOriginal']
-
-exif_results_file = os.path.join(filename_base,'exif_data.json')
 
 if os.path.isfile(exif_results_file):
     print('Reading EXIF data from {}'.format(exif_results_file))
@@ -1451,13 +1452,23 @@ _ = cct_json_utils.create_sequences(cct_dict, options=sequence_options)
 #%% Sequence-level smoothing
 
 from megadetector.postprocessing.classification_postprocessing import \
-    ClassificationSmoothingOptionsSequenceLevel, smooth_classification_results_sequence_level
+    smooth_classification_results_sequence_level, \
+    ClassificationSmoothingOptions
 
-options = ClassificationSmoothingOptionsSequenceLevel()
-options.category_names_to_smooth_to = set(['deer','elk','cow','canid','cat','bird','bear'])
-options.min_dominant_class_ratio_for_secondary_override_table = {'cow':2,None:3}
+input_file_for_sequence_level_smoothing = None
+if os.path.isfile(classifier_output_path_within_image_smoothing):
+    print('Using within-image smoothing results for sequence-level smoothing')
+    input_file_for_sequence_level_smoothing = \
+        classifier_output_path_within_image_smoothing
+else:
+    assert os.path.isfile(ensemble_output_file_image_level_md_format)
+    print('Using ensemble output file for sequence-level smoothing (no image-level smoothing file found)')
+    input_file_for_sequence_level_smoothing = \
+        ensemble_output_file_image_level_md_format
 
-_ = smooth_classification_results_sequence_level(md_results=classifier_output_path_within_image_smoothing,
+options = ClassificationSmoothingOptions()
+
+_ = smooth_classification_results_sequence_level(md_results=input_file_for_sequence_level_smoothing,
                                                  cct_sequence_information=cct_dict,
                                                  output_file=sequence_smoothed_classification_file,
                                                  options=options)

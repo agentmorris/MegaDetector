@@ -181,7 +181,7 @@ class RepeatDetectionOptions:
         #: Original size is preserved if this is None.
         #:
         #: This does *not* include the tile image grid.
-        self.maxOutputImageWidth = None
+        self.maxOutputImageWidth = 2000
         
         #: Line thickness (in pixels) for box rendering
         self.lineThickness = 10
@@ -256,7 +256,7 @@ class RepeatDetectionOptions:
         self.detectionTilesPrimaryImageLocation = 'right'
         
         #: Maximum number of individual detection instances to include in the mosaic
-        self.detectionTilesMaxCrops = 250
+        self.detectionTilesMaxCrops = 150
         
         #: If bRenderOtherDetections is True, what color should we use to render the
         #: (hopefully pretty subtle) non-target detections?

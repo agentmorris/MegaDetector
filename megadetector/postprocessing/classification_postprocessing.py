@@ -25,9 +25,10 @@ from megadetector.utils.wi_utils import clean_taxonomy_string
 
 #%% Options classes
 
-class ClassificationSmoothingOptionsImageLevel:
+class ClassificationSmoothingOptions:
     """
     Options used to parameterize smooth_classification_results_image_level()
+    and smooth_classification_results_sequence_level()
     """
 
     def __init__(self):
@@ -76,84 +77,9 @@ class ClassificationSmoothingOptionsImageLevel:
         #: Should we record information about the state of labels prior to smoothing?
         self.add_pre_smoothing_description = True
         
-
-class ClassificationSmoothingOptionsSequenceLevel:
-    """
-    Options used to parameterize smooth_classification_results_sequence_level()
-    """
-    
-    def __init__(self):
-        
-        #: Only process detections in this category
-        self.animal_detection_category = '1'
-        
-        #: Treat category names on this list as "other", which can be flipped to common
-        #: categories.
-        self.other_category_names = set(['other'])
-        
-        #: These are the only classes to which we're going to switch "other" classifications.
-        #:
-        #: Example:
-        #:
-        #: ['deer','elk','cow','canid','cat','bird','bear']
-        self.category_names_to_smooth_to = None
-        
-        #: Only switch classifications to the dominant class if we see the dominant class at least
-        #: this many times
-        self.min_dominant_class_classifications_above_threshold_for_class_smoothing = 5 # 2
-        
-        #: If we see more than this many of a class that are above threshold, don't switch those
-        #: classifications to the dominant class.
-        self.max_secondary_class_classifications_above_threshold_for_class_smoothing = 5
-        
-        #: If the ratio between a dominant class and a secondary class count is greater than this, 
-        #: regardless of the secondary class count, switch those classifications (i.e., ignore
-        #: max_secondary_class_classifications_above_threshold_for_class_smoothing).
-        #:
-        #: This may be different for different dominant classes, e.g. if we see lots of cows, they really
-        #: tend to be cows.  Less so for canids, so we set a higher "override ratio" for canids.
-        #:
-        #: Should always include a "None" category as the default ratio.
-        #:
-        #: Example:
-        #:
-        #: {'cow':2,None:3}
-        self.min_dominant_class_ratio_for_secondary_override_table = {None:3}
-        
-        #: If there are at least this many classifications for the dominant class in a sequence,
-        #: regardless of what that class is, convert all 'other' classifications (regardless of 
-        #: confidence) to that class.
-        self.min_dominant_class_classifications_above_threshold_for_other_smoothing = 3 # 2
-        
-        #: If there are at least this many classifications for the dominant class in a sequence,
-        #: regardless of what that class is, classify all previously-unclassified detections
-        #: as that class.
-        self.min_dominant_class_classifications_above_threshold_for_unclassified_smoothing = 3 # 2
-        
-        #: Only count classifications above this confidence level when determining the dominant
-        #: class, and when deciding whether to switch other classifications.
-        self.classification_confidence_threshold = 0.6
-        
-        #: Confidence values to use when we change a detection's classification (the
-        #: original confidence value is irrelevant at that point) (for the "other" class)
-        self.flipped_other_confidence_value = 0.6
-        
-        #: Confidence values to use when we change a detection's classification (the
-        #: original confidence value is irrelevant at that point) (for all non-other classes)
-        self.flipped_class_confidence_value = 0.6
-        
-        #: Confidence values to use when we change a detection's classification (the
-        #: original confidence value is irrelevant at that point) (for previously unclassified detections)
-        self.flipped_unclassified_confidence_value = 0.6
-        
-        #: Only flip the class label unclassified detections if the detection confidence exceeds this threshold
-        self.min_detection_confidence_for_unclassified_flipping = 0.15
-        
-        #: Only relevant when MegaDetector results are supplied as a dict rather than a file; determines
-        #: whether smoothing happens in place.
-        self.modify_in_place = True        
-        
-# ...class ClassificationSmoothingOptionsSequenceLevel()
+        #: When a dict (rather than a file) is passed to either smoothing function,
+        #: if this is True, we'll make a copy of the input dict before modifying.
+        self.options.modify_in_place=False
 
 
 #%% Utility functions
@@ -220,7 +146,8 @@ def _print_counts_with_names(category_to_count,classification_descriptions):
         print('{}: {} ({})'.format(category_id,category_name,count))
     
     
-def _smooth_single_image(im,options,
+def _smooth_single_image(im,
+                         options,
                          other_category_ids,
                          classification_descriptions,
                          classification_descriptions_clean):
@@ -454,23 +381,37 @@ def smooth_classification_results_image_level(input_file,output_file=None,option
     This function also removes everything but the non-dominant classification for each detection.
     
     Args:
-        input_file (str): MegaDetector-formatted classification results file to smooth
+        input_file (str): MegaDetector-formatted classification results file to smooth.  Can
+            also be an already-loaded results dict.
         output_file (str, optional): .json file to write smoothed results
-        options (ClassificationSmoothingOptionsImageLevel, optional): see 
-          ClassificationSmoothingOptionsImageLevel for details.
+        options (ClassificationSmoothingOptions, optional): see 
+          ClassificationSmoothingOptions for details.
             
     Returns:
         dict: MegaDetector-results-formatted dict, identical to what's written to
         [output_file] if [output_file] is not None.
     """
-        
+    
+    ## Input validation
+    
     if options is None:
-        options = ClassificationSmoothingOptionsImageLevel()
-        
-    with open(input_file,'r') as f:
-        print('Loading results from:\n{}'.format(input_file))
-        d = json.load(f)
-        
+        options = ClassificationSmoothingOptions()
+      
+    if isinstance(input_file,str):
+        with open(input_file,'r') as f:
+            print('Loading results from:\n{}'.format(input_file))
+            d = json.load(f)
+    else:
+        assert isinstance(input_file,dict)
+        if options.modify_in_place:
+            d = input_file
+        else:
+            print('modify_in_place is False, copying the input before modifying')
+            d = copy.deepcopy(input_file)
+
+
+    ## Category processing
+    
     category_name_to_id = {d['classification_categories'][k]:k for k in d['classification_categories']}
     other_category_ids = []
     for s in options.other_category_names:
@@ -714,7 +655,7 @@ def _get_first_value_from_sorted_dictionary(di):
     return next(iter(di.items()))[1]
 
 
-def smooth_classification_results_sequence_level(md_results,
+def smooth_classification_results_sequence_level(input_file,
                                                  cct_sequence_information,
                                                  output_file=None,
                                                  options=None):
@@ -726,45 +667,41 @@ def smooth_classification_results_sequence_level(md_results,
     deer/deer/deer/elk/deer/deer/deer/deer is really just a deer.
     
     Args:
-        md_results (str or dict): MegaDetector-formatted classification results file to smooth
+        input_file (str or dict): MegaDetector-formatted classification results file to smooth
           (or already-loaded results).  If you supply a dict, it's modified in place by default, but
           a copy can be forced by setting options.modify_in_place=False.
         cct_sequence_information (str, dict, or list): COCO Camera Traps file containing sequence IDs for
           each image (or an already-loaded CCT-formatted dict, or just the 'images' list from a CCT dict).
         output_file (str, optional): .json file to write smoothed results
-        options (ClassificationSmoothingOptionsSequenceLevel, optional): see 
-          ClassificationSmoothingOptionsSequenceLevel for details.
+        options (ClassificationSmoothingOptions, optional): see 
+          ClassificationSmoothingOptions for details.
             
     Returns:
         dict: MegaDetector-results-formatted dict, identical to what's written to
         [output_file] if [output_file] is not None.
     """
     
+    ## Input validation
+    
     if options is None:
-        options = ClassificationSmoothingOptionsSequenceLevel()
+        options = ClassificationSmoothingOptions()
     
-    if options.category_names_to_smooth_to is None:
-        options.category_names_to_smooth_to = []
-    
-    if options.other_category_names is None:
-        options.other_category_names = []
-        
-    assert None in options.min_dominant_class_ratio_for_secondary_override_table, \
-        'Oops, it looks like you removed the default (None) key from ' + \
-            'options.min_dominant_class_ratio_for_secondary_override_table'
-    
-    if isinstance(md_results,str):
-        print('Loading MD results from {}'.format(md_results))
-        with open(md_results,'r') as f:
+    if options is None:
+        options = ClassificationSmoothingOptions()
+      
+    if isinstance(input_file,str):
+        with open(input_file,'r') as f:
+            print('Loading results from:\n{}'.format(input_file))
             md_results = json.load(f)
     else:
-        assert isinstance(md_results,dict)
-        if not options.modify_in_place:
-            print('Copying MD results instead of modifying in place')
-            md_results = copy.deepcopy(md_results)
+        assert isinstance(input_file,dict)
+        if options.modify_in_place:
+            md_results = input_file
         else:
-            print('Smoothing MD results in place')
-    
+            print('modify_in_place is False, copying the input before modifying')
+            md_results = copy.deepcopy(input_file)
+
+
     if isinstance(cct_sequence_information,list):
         image_info = cct_sequence_information
     elif isinstance(cct_sequence_information,str):
