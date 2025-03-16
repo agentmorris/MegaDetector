@@ -43,13 +43,13 @@ Example output with both detection and classification results:
         "classifier_metadata": {
            "typical_classification_threshold":0.75
         },
-		"summary_report": "<p>Summary report</p><br/><p>...in which HTML is allowed.</p>"
+        "summary_report": "<p>Summary report</p><br/><p>...in which HTML is allowed.</p>"
     },
     // detection_categories is required; category IDs must be string-formatted ints.
-	//
-	// Category names can be arbitrary, but downstream tools may take a particular dependency 
-	// on the name "animal", so using "animal" (rather than, e.g., "animals" or "wildlife")
-	// is recommended.
+    //
+    // Category names can be arbitrary, but downstream tools may take a particular dependency 
+    // on the name "animal", so using "animal" (rather than, e.g., "animals" or "wildlife")
+    // is recommended.
     "detection_categories": {
         "1": "animal",
         "2": "person",
@@ -101,18 +101,18 @@ Example output with both detection and classification results:
                 }
             ]
         },
-		// Videos appear in the same format as images, with the addition of the 
-		// "frame_rate" field (for the file) and the "frame_number" field (for each 
-		// detection).  For videos, "frame_rate" and "frame_number" are required fields.
-		//
-		// frame_rate should be greater than zero, and can be int- or float-valued.  
-		//
-		// frame_number should be int-valued, and greater than or equal to zero.
-		//
-		// Detections are typically included for just one representative
-		// frame for each detection category, but detections may also be reported for
-		// multiple frames for a single detection category, as in this example.
-		{
+        // Videos appear in the same format as images, with the addition of the
+        // "frame_rate" field (for the file) and the "frame_number" field (for each 
+        // detection).  For videos, "frame_rate" and "frame_number" are required fields.
+        //
+        // frame_rate should be greater than zero, and can be int- or float-valued.  
+        //
+        // frame_number should be int-valued, and greater than or equal to zero.
+        //
+        // Detections are typically included for just one representative
+        // frame for each detection category, but detections may also be reported for
+        // multiple frames for a single detection category, as in this example.
+        {
             "file": "path/from/base/dir/video_with_person.mp4",
             "frame_rate": 20,
             "detections": [
