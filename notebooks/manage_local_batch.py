@@ -1468,7 +1468,7 @@ else:
 
 options = ClassificationSmoothingOptions()
 
-_ = smooth_classification_results_sequence_level(md_results=input_file_for_sequence_level_smoothing,
+_ = smooth_classification_results_sequence_level(input_file=input_file_for_sequence_level_smoothing,
                                                  cct_sequence_information=cct_dict,
                                                  output_file=sequence_smoothed_classification_file,
                                                  options=options)

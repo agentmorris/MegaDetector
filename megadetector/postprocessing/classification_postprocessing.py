@@ -79,10 +79,32 @@ class ClassificationSmoothingOptions:
         
         #: When a dict (rather than a file) is passed to either smoothing function,
         #: if this is True, we'll make a copy of the input dict before modifying.
-        self.options.modify_in_place=False
+        self.modify_in_place=False
 
 
 #%% Utility functions
+
+def _results_for_sequence(images_this_sequence,filename_to_results):
+    """
+    Fetch MD results for every image in this sequence, based on the 'file_name' field
+    """
+    
+    results_this_sequence = []
+    for im in images_this_sequence:
+        fn = im['file_name']
+        results_this_image = filename_to_results[fn]
+        assert isinstance(results_this_image,dict)
+        results_this_sequence.append(results_this_image)
+        
+    return results_this_sequence
+            
+    
+def _sort_images_by_time(images):
+    """
+    Returns a copy of [images], sorted by the 'datetime' field (ascending).
+    """
+    return sorted(images, key = lambda im: im['datetime'])        
+
 
 def _count_detections_by_category(detections,options):
     """
@@ -110,8 +132,6 @@ def _count_detections_by_category(detections,options):
     
     return category_to_count
 
-
-#%% Image-level smoothing
 
 def _get_description_string(category_to_count,classification_descriptions):
     """
@@ -146,44 +166,128 @@ def _print_counts_with_names(category_to_count,classification_descriptions):
         print('{}: {} ({})'.format(category_id,category_name,count))
     
     
-def _smooth_single_image(im,
-                         options,
-                         other_category_ids,
-                         classification_descriptions,
-                         classification_descriptions_clean):
+def _prepare_results_for_smoothing(input_file,options):
     """
-    Smooth classifications for a single image.  Returns None if no changes are made,
-    else a dict.
+    Load results from [input_file] if necessary, prepare category descrptions 
+    for smoothing.  Adds pre-smoothing descriptions to every image if the options
+    say we're supposed to do that.
+    """
+        
+    if isinstance(input_file,str):
+        with open(input_file,'r') as f:
+            print('Loading results from:\n{}'.format(input_file))
+            d = json.load(f)
+    else:
+        assert isinstance(input_file,dict)
+        if options.modify_in_place:
+            d = input_file
+        else:
+            print('modify_in_place is False, copying the input before modifying')
+            d = copy.deepcopy(input_file)
+
+
+    ## Category processing
+    
+    category_name_to_id = {d['classification_categories'][k]:k for k in d['classification_categories']}
+    other_category_ids = []
+    for s in options.other_category_names:
+        if s in category_name_to_id:
+            other_category_ids.append(category_name_to_id[s])
+        else:
+            print('Warning: "other" category {} not present in file {}'.format(
+                s,input_file))
+        
+    # Before we do anything else, get rid of everything but the top classification
+    # for each detection, and remove the 'classifications' field from detections with
+    # no classifications.
+    for im in tqdm(d['images']):
+        
+        if 'detections' not in im or im['detections'] is None or len(im['detections']) == 0:
+            continue
+        
+        detections = im['detections']
+        
+        for det in detections:
+            
+            if 'classifications' not in det:
+                continue
+            if len(det['classifications']) == 0:
+                del det['classifications']
+                continue
+            
+            classification_confidence_values = [c[1] for c in det['classifications']]
+            assert is_list_sorted(classification_confidence_values,reverse=True)
+            det['classifications'] = [det['classifications'][0]]
+    
+        # ...for each detection in this image
+        
+    # ...for each image
+    
+    
+    ## Clean up classification descriptions so we can test taxonomic relationships
+    ## by substring testing.
+    
+    classification_descriptions_clean = None
+    classification_descriptions = None
+    
+    if 'classification_category_descriptions' in d:
+        classification_descriptions = d['classification_category_descriptions']
+        classification_descriptions_clean = {}
+        # category_id = next(iter(classification_descriptions))
+        for category_id in classification_descriptions:            
+            classification_descriptions_clean[category_id] = \
+                clean_taxonomy_string(classification_descriptions[category_id]).strip(';').lower()
+    
+    
+    ## Optionally add pre-smoothing descriptions to every image
+    
+    if options.add_pre_smoothing_description:
+        
+        for im in tqdm(d['images']):
+            
+            if 'detections' not in im or im['detections'] is None or len(im['detections']) == 0:
+                return
+            
+            detections = im['detections']        
+            category_to_count = _count_detections_by_category(detections, options)
+                    
+            im['pre_smoothing_description'] = \
+                _get_description_string(category_to_count, classification_descriptions)
+    
+    
+    return {
+        'd':d,
+        'other_category_ids':other_category_ids,
+        'classification_descriptions_clean':classification_descriptions_clean,
+        'classification_descriptions':classification_descriptions
+    }
+
+# ...def _prepare_results_for_smoothing(...)    
+
+
+def _smooth_classifications_for_list_of_detections(detections,
+                                                   options,
+                                                   other_category_ids,
+                                                   classification_descriptions,
+                                                   classification_descriptions_clean):
+    """
+    Smooth classifications for a list of detections, which may have come from a single
+    image, or may represent an entire sequence.
+    
+    Returns None if no changes are made, else a dict.
     
     classification_descriptions_clean should be semicolon-delimited taxonomic strings 
     from which common names and GUIDs have already been removed.
     
     Assumes there is only one classification per detection, i.e. that non-top classifications
-    have already been remoevd.
+    have already been remoevd.    
     """
-    
-    ## Argument validation
-    
-    if 'detections' not in im or im['detections'] is None or len(im['detections']) == 0:
-        return
-    
-    detections = im['detections']
         
-    # Useful debug snippet
-    #
-    # if 'filename' in im['file']:
-    #    import pdb; pdb.set_trace()    
-    
-    
     ## Count the number of instances of each category in this image
     
     category_to_count = _count_detections_by_category(detections, options)
     # _print_counts_with_names(category_to_count,classification_descriptions)
     # _get_description_string(category_to_count, classification_descriptions)
-        
-    if options.add_pre_smoothing_description:
-        im['pre_smoothing_description'] = \
-            _get_description_string(category_to_count, classification_descriptions)
         
     if len(category_to_count) <= 1:
         return None
@@ -348,15 +452,50 @@ def _smooth_single_image(im,
             
         # ...for each detection
         
-    # ...if we have taxonomic information available
-    
+    # ...if we have taxonomic information available    
     
     return {'n_other_classifications_changed_this_image':n_other_classifications_changed_this_image,
             'n_detections_flipped_this_image':n_detections_flipped_this_image,
             'n_taxonomic_changes_this_image':n_taxonomic_changes_this_image}
 
+
+def _smooth_single_image(im,
+                         options,
+                         other_category_ids,
+                         classification_descriptions,
+                         classification_descriptions_clean):
+    """
+    Smooth classifications for a single image.  Returns None if no changes are made,
+    else a dict.
+    
+    classification_descriptions_clean should be semicolon-delimited taxonomic strings 
+    from which common names and GUIDs have already been removed.
+    
+    Assumes there is only one classification per detection, i.e. that non-top classifications
+    have already been remoevd.
+    """
+    
+    # Useful debug snippet
+    #
+    # if 'filename' in im['file']:
+    #    import pdb; pdb.set_trace()    
+    
+    
+    if 'detections' not in im or im['detections'] is None or len(im['detections']) == 0:
+        return
+    
+    detections = im['detections']
+        
+    return _smooth_classifications_for_list_of_detections(detections, 
+        options=options, 
+        other_category_ids=other_category_ids,
+        classification_descriptions=classification_descriptions, 
+        classification_descriptions_clean=classification_descriptions_clean)
+
 # ...def smooth_single_image
 
+
+#%% Image-level smoothing
 
 def smooth_classification_results_image_level(input_file,output_file=None,options=None):
     """
@@ -396,72 +535,15 @@ def smooth_classification_results_image_level(input_file,output_file=None,option
     
     if options is None:
         options = ClassificationSmoothingOptions()
-      
-    if isinstance(input_file,str):
-        with open(input_file,'r') as f:
-            print('Loading results from:\n{}'.format(input_file))
-            d = json.load(f)
-    else:
-        assert isinstance(input_file,dict)
-        if options.modify_in_place:
-            d = input_file
-        else:
-            print('modify_in_place is False, copying the input before modifying')
-            d = copy.deepcopy(input_file)
-
-
-    ## Category processing
-    
-    category_name_to_id = {d['classification_categories'][k]:k for k in d['classification_categories']}
-    other_category_ids = []
-    for s in options.other_category_names:
-        if s in category_name_to_id:
-            other_category_ids.append(category_name_to_id[s])
-        else:
-            print('Warning: "other" category {} not present in file {}'.format(
-                s,input_file))
-        
-    # Before we do anything else, get rid of everything but the top classification
-    # for each detection, and remove the 'classifications' field from detections with
-    # no classifications.
-    for im in tqdm(d['images']):        
-        if 'detections' not in im or im['detections'] is None or len(im['detections']) == 0:
-            continue
-        
-        detections = im['detections']
-        
-        for det in detections:
-            
-            if 'classifications' not in det:
-                continue
-            if len(det['classifications']) == 0:
-                del det['classifications']
-                continue
-            
-            classification_confidence_values = [c[1] for c in det['classifications']]
-            assert is_list_sorted(classification_confidence_values,reverse=True)
-            det['classifications'] = [det['classifications'][0]]
-    
-        # ...for each detection in this image
-        
-    # ...for each image
+              
+    r = _prepare_results_for_smoothing(input_file, options)
+    d = r['d']
+    other_category_ids = r['other_category_ids']
+    classification_descriptions_clean = r['classification_descriptions_clean']
+    classification_descriptions = r['classification_descriptions']
     
     
-    ## Clean up classification descriptions so we can test taxonomic relationships
-    ## by substring testing.
-    
-    classification_descriptions_clean = None
-    
-    if 'classification_category_descriptions' in d:
-        classification_descriptions = d['classification_category_descriptions']
-        classification_descriptions_clean = {}
-        # category_id = next(iter(classification_descriptions))
-        for category_id in classification_descriptions:            
-            classification_descriptions_clean[category_id] = \
-                clean_taxonomy_string(classification_descriptions[category_id]).strip(';').lower()
-    
-    
-    ## Do the actual smoothing
+    ## Smoothing
     
     n_other_classifications_changed = 0
     n_other_images_changed = 0
@@ -513,7 +595,10 @@ def smooth_classification_results_image_level(input_file,output_file=None,option
     for im in d['images']:
         if 'failure' in im and im['failure'] is None:
             del im['failure']
-            
+    
+        
+    ## Write output
+    
     if output_file is not None:    
         print('Writing results after image-level smoothing to:\n{}'.format(output_file))
         with open(output_file,'w') as f:
@@ -525,136 +610,7 @@ def smooth_classification_results_image_level(input_file,output_file=None,option
 
 
 #%% Sequence-level smoothing
-
-def _results_for_sequence(images_this_sequence,filename_to_results):
-    """
-    Fetch MD results for every image in this sequence, based on the 'file_name' field
-    """
     
-    results_this_sequence = []
-    for im in images_this_sequence:
-        fn = im['file_name']
-        results_this_image = filename_to_results[fn]
-        assert isinstance(results_this_image,dict)
-        results_this_sequence.append(results_this_image)
-        
-    return results_this_sequence
-            
-    
-def _top_classifications_for_sequence(images_this_sequence,filename_to_results,options):
-    """
-    Return all top-1 animal classifications for every detection in this 
-    sequence, regardless of  confidence
-
-    May modify [images_this_sequence] (removing non-top-1 classifications)
-    """
-    
-    classifications_this_sequence = []
-
-    # im = images_this_sequence[0]
-    for im in images_this_sequence:
-        
-        fn = im['file_name']
-        results_this_image = filename_to_results[fn]
-        
-        if results_this_image['detections'] is None:
-            continue
-        
-        # det = results_this_image['detections'][0]
-        for det in results_this_image['detections']:
-            
-            # Only process animal detections
-            if det['category'] != options.animal_detection_category:
-                continue
-            
-            # Only process detections with classification information
-            if 'classifications' not in det:
-                continue
-            
-            # We only care about top-1 classifications, remove everything else
-            if len(det['classifications']) > 1:
-                
-                # Make sure the list of classifications is already sorted by confidence
-                classification_confidence_values = [c[1] for c in det['classifications']]
-                assert is_list_sorted(classification_confidence_values,reverse=True)
-                
-                # ...and just keep the first one
-                det['classifications'] = [det['classifications'][0]]
-                
-            # Confidence values should be sorted within a detection; verify this, and ignore 
-            top_classification = det['classifications'][0]
-            
-            classifications_this_sequence.append(top_classification)
-    
-        # ...for each detection in this image
-        
-    # ...for each image in this sequence
-
-    return classifications_this_sequence
-
-# ..._top_classifications_for_sequence()
-
-
-def _count_above_threshold_classifications(classifications_this_sequence,options):
-    """
-    Given a list of classification objects (tuples), return a dict mapping
-    category IDs to the count of above-threshold classifications.
-    
-    This dict's keys will be sorted in descending order by frequency.
-    """
-    
-    # Count above-threshold classifications in this sequence
-    category_to_count = defaultdict(int)
-    for c in classifications_this_sequence:
-        if c[1] >= options.classification_confidence_threshold:
-            category_to_count[c[0]] += 1
-    
-    # Sort the dictionary in descending order by count
-    category_to_count = {k: v for k, v in sorted(category_to_count.items(),
-                                                 key=lambda item: item[1], 
-                                                 reverse=True)}
-    
-    keys_sorted_by_frequency = list(category_to_count.keys())
-        
-    # Handle a quirky special case: if the most common category is "other" and 
-    # it's "tied" with the second-most-common category, swap them.
-    if (options.other_category_names is not None) and (len(options.other_category_names) > 0):
-        if (len(keys_sorted_by_frequency) > 1) and \
-            (keys_sorted_by_frequency[0] in options.other_category_names) and \
-            (keys_sorted_by_frequency[1] not in options.other_category_names) and \
-            (category_to_count[keys_sorted_by_frequency[0]] == \
-             category_to_count[keys_sorted_by_frequency[1]]):
-                keys_sorted_by_frequency[1], keys_sorted_by_frequency[0] = \
-                    keys_sorted_by_frequency[0], keys_sorted_by_frequency[1]
-
-    sorted_category_to_count = {}    
-    for k in keys_sorted_by_frequency:
-        sorted_category_to_count[k] = category_to_count[k]
-        
-    return sorted_category_to_count
-
-# ...def _count_above_threshold_classifications()
- 
-   
-def _sort_images_by_time(images):
-    """
-    Returns a copy of [images], sorted by the 'datetime' field (ascending).
-    """
-    return sorted(images, key = lambda im: im['datetime'])        
-    
-
-def _get_first_key_from_sorted_dictionary(di):
-    if len(di) == 0:
-        return None
-    return next(iter(di.items()))[0]
-
-
-def _get_first_value_from_sorted_dictionary(di):
-    if len(di) == 0:
-        return None
-    return next(iter(di.items()))[1]
-
-
 def smooth_classification_results_sequence_level(input_file,
                                                  cct_sequence_information,
                                                  output_file=None,
@@ -686,22 +642,15 @@ def smooth_classification_results_sequence_level(input_file,
     if options is None:
         options = ClassificationSmoothingOptions()
     
-    if options is None:
-        options = ClassificationSmoothingOptions()
-      
-    if isinstance(input_file,str):
-        with open(input_file,'r') as f:
-            print('Loading results from:\n{}'.format(input_file))
-            md_results = json.load(f)
-    else:
-        assert isinstance(input_file,dict)
-        if options.modify_in_place:
-            md_results = input_file
-        else:
-            print('modify_in_place is False, copying the input before modifying')
-            md_results = copy.deepcopy(input_file)
-
-
+    r = _prepare_results_for_smoothing(input_file, options)
+    d = r['d']
+    other_category_ids = r['other_category_ids']
+    classification_descriptions_clean = r['classification_descriptions_clean']
+    classification_descriptions = r['classification_descriptions']
+        
+    
+    ## Make a list of images appearing in each sequence
+    
     if isinstance(cct_sequence_information,list):
         image_info = cct_sequence_information
     elif isinstance(cct_sequence_information,str):
@@ -712,177 +661,85 @@ def smooth_classification_results_sequence_level(input_file,
     else:
         assert isinstance(cct_sequence_information,dict)
         image_info = cct_sequence_information['images']
-        
-    
-    ##%% Make a list of images appearing at each location
     
     sequence_to_images = defaultdict(list)
     
     # im = image_info[0]
     for im in tqdm(image_info):
         sequence_to_images[im['seq_id']].append(im)
-    
-    all_sequences = list(sorted(sequence_to_images.keys()))
-    
-    
-    ##%% Load classification results
-    
-    # Map each filename to classification results for that file
-    filename_to_results = {}
-    
-    for im in tqdm(md_results['images']):
-        filename_to_results[im['file'].replace('\\','/')] = im
+    del image_info
     
     
-    ##%% Smooth classification results over sequences (prep)
+    ## Smoothing
     
-    classification_category_id_to_name = md_results['classification_categories']
-    classification_category_name_to_id = {v: k for k, v in classification_category_id_to_name.items()}
+    n_other_classifications_changed = 0
+    n_other_sequences_changed = 0
+    n_taxonomic_sequences_changed = 0
     
-    class_names = list(classification_category_id_to_name.values())
-    
-    assert(md_results['detection_categories'][options.animal_detection_category] == 'animal')
-    
-    other_category_ids = set([classification_category_name_to_id[s] for s in options.other_category_names])
-    
-    category_ids_to_smooth_to = set([classification_category_name_to_id[s] for s in options.category_names_to_smooth_to])
-    assert all([s in class_names for s in options.category_names_to_smooth_to])    
-    
-    
-    ##%% Smooth classifications at the sequence level (main loop)
-    
-    n_other_flips = 0
-    n_classification_flips = 0
-    n_unclassified_flips = 0
-    
-    # Break if this token is contained in a filename (set to None for normal operation)
-    debug_fn = None
-    
-    # i_sequence = 0; seq_id = all_sequences[i_sequence]
-    for i_sequence,seq_id in tqdm(enumerate(all_sequences),total=len(all_sequences)):
+    n_detections_flipped = 0
+    n_sequences_changed = 0
+    n_taxonomic_classification_changes = 0    
         
-        images_this_sequence = sequence_to_images[seq_id]
-        
-        # Count top-1 classifications in this sequence (regardless of confidence)
-        classifications_this_sequence = _top_classifications_for_sequence(images_this_sequence,
-                                                                          filename_to_results,
-                                                                          options)
-        
-        # Handy debugging code for looking at the numbers for a particular sequence
+    # sequence_id = list(sequence_to_images.keys())[0]
+    for sequence_id in sequence_to_images.keys():
+
+        images_this_sequence = sequence_to_images[sequence_id]
+        detections_this_sequence = []
         for im in images_this_sequence:
-            if debug_fn is not None and debug_fn in im['file_name']:
-                raise ValueError('')
-                 
-        if len(classifications_this_sequence) == 0:
+            if 'detections' not in im or im['detections'] is None:
+                continue
+            detections_this_sequence.extend(im['detections'])
+            
+        r = _smooth_classifications_for_list_of_detections(
+            detections=detections_this_sequence, 
+            options=options, 
+            other_category_ids=other_category_ids,
+            classification_descriptions=classification_descriptions, 
+            classification_descriptions_clean=classification_descriptions_clean)
+    
+        if r is None:
             continue
         
-        # Count above-threshold classifications for each category
-        sorted_category_to_count = _count_above_threshold_classifications(
-            classifications_this_sequence,options)
+        n_detections_flipped_this_sequence = r['n_detections_flipped_this_image']
+        n_other_classifications_changed_this_sequence = \
+            r['n_other_classifications_changed_this_image']
+        n_taxonomic_changes_this_sequence = r['n_taxonomic_changes_this_image']
         
-        if len(sorted_category_to_count) == 0:
-            continue
+        n_detections_flipped += n_detections_flipped_this_sequence
+        n_other_classifications_changed += n_other_classifications_changed_this_sequence
+        n_taxonomic_classification_changes += n_taxonomic_changes_this_sequence
         
-        max_count = _get_first_value_from_sorted_dictionary(sorted_category_to_count)    
-        dominant_category_id = _get_first_key_from_sorted_dictionary(sorted_category_to_count)
-        
-        # If our dominant category ID isn't something we want to smooth to, 
-        # don't mess around with this sequence
-        if dominant_category_id not in category_ids_to_smooth_to:
-            continue
-            
-        
-        ## Smooth "other" classifications ##
-        
-        if max_count >= options.min_dominant_class_classifications_above_threshold_for_other_smoothing:        
-            for c in classifications_this_sequence:           
-                if c[0] in other_category_ids:
-                    n_other_flips += 1
-                    c[0] = dominant_category_id
-                    c[1] = options.flipped_other_confidence_value
+        if n_detections_flipped_this_sequence > 0:
+            n_sequences_changed += 1
+        if n_other_classifications_changed_this_sequence > 0:
+            n_other_sequences_changed += 1
+        if n_taxonomic_changes_this_sequence > 0:
+            n_taxonomic_sequences_changed += 1
     
+    # ...for each sequence
     
-        # By not re-computing "max_count" here, we are making a decision that the count used
-        # to decide whether a class should overwrite another class does not include any "other"
-        # classifications we changed to be the dominant class.  If we wanted to include those...
-        # 
-        # sorted_category_to_count = count_above_threshold_classifications(classifications_this_sequence)
-        # max_count = get_first_value_from_sorted_dictionary(sorted_category_to_count)    
-        # assert dominant_category_id == get_first_key_from_sorted_dictionary(sorted_category_to_count)
-        
-        
-        ## Smooth non-dominant classes ##
-        
-        if max_count >= options.min_dominant_class_classifications_above_threshold_for_class_smoothing:
-            
-            # Don't flip classes to the dominant class if they have a large number of classifications
-            category_ids_not_to_flip = set()
-            
-            for category_id in sorted_category_to_count.keys():
-                secondary_class_count = sorted_category_to_count[category_id]
-                dominant_to_secondary_ratio = max_count / secondary_class_count
-                
-                # Don't smooth over this class if there are a bunch of them, and the ratio
-                # if primary to secondary class count isn't too large
-                
-                # Default ratio
-                ratio_for_override = options.min_dominant_class_ratio_for_secondary_override_table[None]
-                
-                # Does this dominant class have a custom ratio?
-                dominant_category_name = classification_category_id_to_name[dominant_category_id]
-                if dominant_category_name in options.min_dominant_class_ratio_for_secondary_override_table:
-                    ratio_for_override = \
-                        options.min_dominant_class_ratio_for_secondary_override_table[dominant_category_name]
-                        
-                if (dominant_to_secondary_ratio < ratio_for_override) and \
-                    (secondary_class_count > \
-                     options.max_secondary_class_classifications_above_threshold_for_class_smoothing):
-                    category_ids_not_to_flip.add(category_id)
-                    
-            for c in classifications_this_sequence:
-                if c[0] not in category_ids_not_to_flip and c[0] != dominant_category_id:
-                    c[0] = dominant_category_id
-                    c[1] = options.flipped_class_confidence_value
-                    n_classification_flips += 1
-            
-            
-        ## Smooth unclassified detections ##
-            
-        if max_count >= options.min_dominant_class_classifications_above_threshold_for_unclassified_smoothing:
-            
-            results_this_sequence = _results_for_sequence(images_this_sequence,filename_to_results)
-            detections_this_sequence = []
-            for r in results_this_sequence:
-                if r['detections'] is not None:
-                    detections_this_sequence.extend(r['detections'])
-            for det in detections_this_sequence:
-                if 'classifications' in det and len(det['classifications']) > 0:
-                    continue
-                if det['category'] != options.animal_detection_category:
-                    continue
-                if det['conf'] < options.min_detection_confidence_for_unclassified_flipping:
-                    continue
-                det['classifications'] = [[dominant_category_id,options.flipped_unclassified_confidence_value]]
-                n_unclassified_flips += 1
-                                
-    # ...for each sequence    
-        
-    print('\Finished sequence smoothing\n')
-    print('Flipped {} "other" classifications'.format(n_other_flips))
-    print('Flipped {} species classifications'.format(n_classification_flips))
-    print('Flipped {} unclassified detections'.format(n_unclassified_flips))
-        
+    print('Classification smoothing: changed {} detections in {} sequences'.format(
+        n_detections_flipped,n_sequences_changed))
     
-    ##%% Write smoothed classification results
+    print('"Other" smoothing: changed {} detections in {} sequences'.format(
+          n_other_classifications_changed,n_other_sequences_changed))
     
-    if output_file is not None:
-        
+    print('Taxonomic smoothing: changed {} detections in {} sequences'.format(
+          n_taxonomic_classification_changes,n_taxonomic_sequences_changed))
+
+    for im in d['images']:
+        if 'failure' in im and im['failure'] is None:
+            del im['failure']
+            
+            
+    ## Write output
+    
+    if output_file is not None:        
         print('Writing sequence-smoothed classification results to {}'.format(
-            output_file))
-        
+            output_file))        
         with open(output_file,'w') as f:
-            json.dump(md_results,f,indent=1)
+            json.dump(d,f,indent=1)
             
-    return md_results
+    return d
 
 # ...smooth_classification_results_sequence_level(...)
