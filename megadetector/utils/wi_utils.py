@@ -975,7 +975,9 @@ def is_animal_classification(prediction_string):
 
 
 def generate_whole_image_detections_for_classifications(classifications_json_file,
-                                                        detections_json_file):
+                                                        detections_json_file,
+                                                        ensemble_json_file=None,
+                                                        ignore_blank_classifications=True):
     """
     Given a set of classification results that were likely run on already-cropped
     image, generate a file of [fake] detections in which each image is covered
@@ -984,6 +986,10 @@ def generate_whole_image_detections_for_classifications(classifications_json_fil
     Args:
         classifications_json_file (str): SpeciesNet-formatted file containing classifications 
         detections_json_file (str): SpeciesNet-formatted file to write with detections
+        ensemble_json_file (str, optional): SpeciesNet-formatted file to write with detections 
+            and classfications
+        ignore_blank_classifications (bool, optional): use non-top classifications when
+            the top classification is "blank" or "no CV result"
     
     Returns:
         dict: the contents of [detections_json_file]
@@ -994,13 +1000,20 @@ def generate_whole_image_detections_for_classifications(classifications_json_fil
     predictions = classification_results['predictions']
     
     output_predictions = []
+    ensemble_predictions = []
     
     # prediction = predictions[0]
     for prediction in predictions:
         
         output_prediction = {}
         output_prediction['filepath'] = prediction['filepath']
-        top_classification = prediction['classifications']['classes'][0]
+        i_score = 0
+        if ignore_blank_classifications:
+            while (prediction['classifications']['classes'][i_score] in \
+                   (blank_prediction_string,no_cv_result_prediction_string)):
+                i_score += 1
+        top_classification = prediction['classifications']['classes'][i_score]
+        top_classification_score = prediction['classifications']['scores'][i_score]
         if is_animal_classification(top_classification):
             category_name = 'animal'
         elif is_human_classification(top_classification):
@@ -1020,14 +1033,31 @@ def generate_whole_image_detections_for_classifications(classifications_json_fil
         output_detection['bbox'] = [0.0, 0.0, 1.0, 1.0]
         output_prediction['detections'] = [output_detection]
         output_predictions.append(output_prediction)        
+        
+        ensemble_prediction = {}
+        ensemble_prediction['filepath'] = prediction['filepath']
+        ensemble_prediction['detections'] = [output_detection]
+        ensemble_prediction['prediction'] = top_classification
+        ensemble_prediction['prediction_score'] = top_classification_score
+        ensemble_prediction['prediction_source'] = 'fake_ensemble_file_utility'
+        ensemble_prediction['classifications'] = prediction['classifications']
+        ensemble_predictions.append(ensemble_prediction)
+
+    # ...for each image
+        
+    ## Write output
+        
+    if ensemble_json_file is not None:
+        
+        ensemble_output_data = {'predictions':ensemble_predictions}
+        with open(ensemble_json_file,'w') as f:
+            json.dump(ensemble_output_data,f,indent=1)    
+        _ = validate_predictions_file(ensemble_json_file)
     
     output_data = {'predictions':output_predictions}
-    
     with open(detections_json_file,'w') as f:
         json.dump(output_data,f,indent=1)
-        
     return validate_predictions_file(detections_json_file)
-
     
 # ...def generate_whole_image_detections_for_classifications(...)        
 
