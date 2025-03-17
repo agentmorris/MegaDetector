@@ -30,6 +30,7 @@ import time
 import uuid
 import warnings
 import random
+import json
 
 from enum import IntEnum
 from multiprocessing.pool import ThreadPool
@@ -48,8 +49,11 @@ from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.visualization import plot_utils
 from megadetector.utils.write_html_image_list import write_html_image_list
 from megadetector.utils import path_utils
-from megadetector.utils.ct_utils import args_to_object, sets_overlap
-from megadetector.data_management.cct_json_utils import (CameraTrapJsonUtils, IndexedJsonDb)
+from megadetector.utils.ct_utils import args_to_object
+from megadetector.utils.ct_utils import sets_overlap
+from megadetector.utils.ct_utils import sort_dictionary_by_value
+from megadetector.data_management.cct_json_utils import CameraTrapJsonUtils
+from megadetector.data_management.cct_json_utils import IndexedJsonDb
 from megadetector.postprocessing.load_api_results import load_api_results
 from megadetector.detection.run_detector import get_typical_confidence_threshold_from_results
 
@@ -218,6 +222,10 @@ class PostProcessingOptions:
         #: we'll include those fields; if this is a dict, we'll use that dict to choose
         #: alternative display names for each field.
         self.additional_image_fields_to_display = None
+        
+        #: If classification results are present, should we include a summary of 
+        #: classification categories?
+        self.include_classification_category_report = True
         
     # ...__init__()
     
@@ -1007,6 +1015,7 @@ def process_batch_results(options):
             print('\n*** Warning: {} images with ambiguous positive/negative status found in ground truth ***\n'.format(
                 n_ambiguous))
 
+
     ##%% Load detection (and possibly classification) results
 
     # If the caller hasn't supplied results, load them
@@ -1063,6 +1072,8 @@ def process_batch_results(options):
     # Count detections and almost-detections for reporting purposes
     n_positives = 0
     n_almosts = 0
+    
+    print('Assigning images to rendering categories')
     
     for i_row,row in tqdm(detections_df.iterrows(),total=len(detections_df)):
         
@@ -1559,8 +1570,13 @@ def process_batch_results(options):
                     len(images_html['class_{}'.format(cname)]))
             index_page += '</div>'
 
-        # Close body and html tags
-        index_page += '{}</body></html>'.format(options.footer_text)
+        # Write custom footer if it was provided
+        if (options.footer_text is not None) and (len(options.footer_text) > 0):
+            index_page += '{}\n'.format(options.footer_text)
+        
+        # Close open html tags
+        index_page += '\n</body></html>\n'
+        
         output_html_file = os.path.join(output_dir, 'index.html')
         with open(output_html_file, 'w', 
                   encoding=options.output_html_encoding) as f:
@@ -1568,7 +1584,7 @@ def process_batch_results(options):
 
         print('Finished writing html to {}'.format(output_html_file))
 
-    # ...for each image
+    # ...if we have ground truth
 
 
     ##%% Otherwise, if we don't have ground truth...
@@ -1725,8 +1741,7 @@ def process_batch_results(options):
         # Write index.html
 
         # We can't just sum these, because image_counts includes images in both their
-        # detection and classification classes
-        # total_images = sum(image_counts.values())
+        # detection and classification classes        
         total_images = 0
         for k in image_counts.keys():
             v = image_counts[k]
@@ -1813,9 +1828,15 @@ def process_batch_results(options):
             else:
                 index_page += '<a href="{}">{}</a> ({}, {:.1%})<br/>\n'.format(
                     filename,label,image_count,image_fraction)
-
+        
+        # ...for each result set
+        
         index_page += '</div>\n'
 
+        # If classification information is present and we're supposed to create
+        # a summary of classifications, we'll put it here
+        category_count_footer = None
+        
         if has_classification_info:
             
             index_page += '<h3>Species classification results</h3>'
@@ -1844,15 +1865,74 @@ def process_batch_results(options):
                         cname, cname.lower(), ccount)
             index_page += '</div>\n'
 
-        index_page += '{}</body></html>'.format(options.footer_text)
+            if options.include_classification_category_report:
+
+                # TODO: it's only for silly historical reasons that we re-read
+                # the input file in this case; we're not currently carrying the json
+                # representation around, only the Pandas representation.
+                
+                print('Generating classification category report')
+                
+                with open(options.md_results_file,'r') as f:
+                    d = json.load(f)
+                
+                classification_category_to_count = {}
+
+                # im = d['images'][0]
+                for im in d['images']:
+                    if 'detections' in im and im['detections'] is not None:
+                        for det in im['detections']:
+                            if 'classifications' in det:
+                                class_id = det['classifications'][0][0]
+                                if class_id not in classification_category_to_count:
+                                    classification_category_to_count[class_id] = 0
+                                else:
+                                    classification_category_to_count[class_id] = \
+                                        classification_category_to_count[class_id] + 1
+
+                category_name_to_count = {}
+
+                for class_id in classification_category_to_count:
+                    category_name = d['classification_categories'][class_id]
+                    category_name_to_count[category_name] = \
+                        classification_category_to_count[class_id]
+
+                category_name_to_count = sort_dictionary_by_value(
+                    category_name_to_count,reverse=True)
+
+                category_count_footer = ''
+                category_count_footer += '<br/>\n'
+                category_count_footer += \
+                    '<h3>Category counts (for the whole dataset, not just the sample used for this page)</h3>\n'
+                category_count_footer += '<div class="contentdiv">\n'
+
+                for category_name in category_name_to_count.keys():
+                    count = category_name_to_count[category_name]
+                    category_count_html = '{}: {}<br>\n'.format(category_name,count)    
+                    category_count_footer += category_count_html
+
+                category_count_footer += '</div>\n'
+                
+            # ...if we're generating a classification category report
+            
+        # ...if classification info is present
+        
+        if category_count_footer is not None:
+            index_page += category_count_footer + '\n'
+            
+        # Write custom footer if it was provided
+        if (options.footer_text is not None) and (len(options.footer_text) > 0):
+            index_page += options.footer_text + '\n'
+        
+        # Close open html tags
+        index_page += '\n</body></html>\n'
+        
         output_html_file = os.path.join(output_dir, 'index.html')
         with open(output_html_file, 'w', 
                   encoding=options.output_html_encoding) as f:
             f.write(index_page)
 
-        print('Finished writing html to {}'.format(output_html_file))
-
-        # os.startfile(output_html_file)
+        print('Finished writing html to {}'.format(output_html_file))        
 
     # ...if we do/don't have ground truth
 

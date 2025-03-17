@@ -69,6 +69,7 @@ import time
 import re    
 
 import humanfriendly
+import clipboard #noqa
 
 from tqdm import tqdm
 from collections import defaultdict
@@ -77,13 +78,17 @@ from copy import deepcopy
 from megadetector.utils import path_utils
 from megadetector.utils.ct_utils import split_list_into_n_chunks
 from megadetector.utils.ct_utils import image_file_to_camera_folder
-from megadetector.detection.run_detector_batch import \
-    load_and_run_detector_batch, write_results_to_file
+from megadetector.detection.run_detector_batch import load_and_run_detector_batch
+from megadetector.detection.run_detector_batch import write_results_to_file
 from megadetector.detection.run_detector import DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
 from megadetector.detection.run_detector import estimate_md_images_per_second
-from megadetector.postprocessing.postprocess_batch_results import \
-    PostProcessingOptions, process_batch_results
+from megadetector.postprocessing.postprocess_batch_results import PostProcessingOptions
+from megadetector.postprocessing.postprocess_batch_results import process_batch_results
 from megadetector.detection.run_detector import get_detector_version_from_model_file
+from megadetector.utils.path_utils import insert_before_extension
+from megadetector.utils.wi_utils import generate_md_results_from_predictions_json
+from megadetector.utils.wi_utils import generate_instances_json_from_folder
+from megadetector.utils.ct_utils import split_list_into_fixed_size_chunks
 
 ## Inference options
 
@@ -96,7 +101,7 @@ max_tolerable_failed_images = 100
 # Should we supply the --image_queue_option to run_detector_batch.py?  I only set this 
 # when I have a very slow drive and a comparably fast GPU.  When this is enabled, checkpointing
 # is not supported within a job, so I set n_jobs to a large number (typically 100).
-use_image_queue = False
+use_image_queue = True
 
 # If we are using an image queue (worker pool), should that include image preprocessing
 # (as opposed to just image loading)?  Only relevant if use_image_queue is True.
@@ -244,39 +249,59 @@ if render_animals_only:
                                      'detections_person_vehicle','non_detections']
 
 
-#%% Constants I set per script
+#%% Variables I set for each job
 
 input_path = '/drive/organization'
-
-assert not (input_path.endswith('/') or input_path.endswith('\\'))
-assert os.path.isdir(input_path), 'Could not find input folder {}'.format(input_path)
-input_path = input_path.replace('\\','/')
-
 organization_name_short = 'organization'
 job_date = None # '2025-01-01'
-assert job_date is not None and organization_name_short != 'organization'
+model_file = 'MDV5A' # 'MDV5A', 'MDV5B', 'MDV4'
 
-# Optional descriptor
+# Number of jobs to split data into, typically equal to the number of available GPUs, though
+# when using an image loading queue, I typically use ~100 jobs per GPU;  those serve as de 
+# facto checkpoints.
+n_jobs = 100
+n_gpus = 2
+
+# Set to "None" when using an image loading queue, which doesn't currently support
+# checkpointing.  Don't worry, this will be assert()'d in the next cell.
+checkpoint_frequency = None
+
+# Local root folder where we do all our MegaDetector work; results and
+# temporary files will be stored in a subfolder for this job
+postprocessing_base = os.path.expanduser('~/postprocessing')
+
+# Optional job descriptor
 job_tag = None
+
+# SpeciesNet-related variables
+
+speciesnet_model_file = os.path.expanduser('~/models/speciesnet/crop')
+
+country_code = None
+state_code = None
+
+speciesnet_folder = os.path.expanduser('~/git/cameratrapai')
+speciesnet_pt_environment_name = 'speciesnet-package-pytorch'
+speciesnet_tf_environment_name = 'speciesnet-package-tf'
+
+# Can be None to omit the CUDA prefix
+speciesnet_gpu_number = default_gpu_number
+max_images_per_chunk = 5000
+classifier_batch_size = 128
+
+
+#%% Derived variables, constant validation, path setup
+
+input_path = input_path.replace('\\','/')
+assert not (input_path.endswith('/') or input_path.endswith('\\'))
+assert os.path.isdir(input_path), 'Could not find input folder {}'.format(input_path)
+
+assert job_date is not None and organization_name_short != 'organization'
 
 if job_tag is None:
     job_description_string = ''
 else:
     job_description_string = '-' + job_tag
-
-model_file = 'MDV5A' # 'MDV5A', 'MDV5B', 'MDV4'
-
-postprocessing_base = os.path.expanduser('~/postprocessing')
-
-# Number of jobs to split data into, typically equal to the number of available GPUs, though
-# when using augmentation or an image queue (and thus not using checkpoints), I typically
-# use ~100 jobs per GPU; those serve as de facto checkpoints.
-n_jobs = 2
-n_gpus = 2
-
-# Set to "None" when using augmentation or an image queue, which don't currently support
-# checkpointing.  Don't worry, this will be assert()'d in the next cell.
-checkpoint_frequency = 10000
 
 # Estimate inference speed for the current GPU
 approx_images_per_second = estimate_md_images_per_second(model_file) 
@@ -289,9 +314,6 @@ base_task_name = organization_name_short + '-' + job_date + job_description_stri
     get_detector_version_from_model_file(model_file)
 base_output_folder_name = os.path.join(postprocessing_base,organization_name_short)
 os.makedirs(base_output_folder_name,exist_ok=True)
-
-
-#%% Derived variables, constant validation, path setup
 
 if use_image_queue:
     assert checkpoint_frequency is None,\
@@ -340,7 +362,10 @@ print('Output folder:\n{}'.format(filename_base))
 #%% Enumerate files
 
 # Have we already listed files for this job?
-chunk_files = os.listdir(filename_base)
+chunk_file_base = os.path.join(filename_base,'file_chunks')
+os.makedirs(chunk_file_base,exist_ok=True)
+
+chunk_files = os.listdir(chunk_file_base)
 pattern = re.compile('chunk\d+.json')
 chunk_files = [fn for fn in chunk_files if pattern.match(fn)]
 
@@ -352,14 +377,14 @@ if (not force_enumeration) and (len(chunk_files) > 0):
     
     all_images = []
     for fn in chunk_files:
-        with open(os.path.join(filename_base,fn),'r') as f:
+        with open(os.path.join(chunk_file_base,fn),'r') as f:
             chunk = json.load(f)
             assert isinstance(chunk,list)
             all_images.extend(chunk)
     all_images = sorted(all_images)
     
     print('Loaded {} image files from {} chunks in {}'.format(
-        len(all_images),len(chunk_files),filename_base))
+        len(all_images),len(chunk_files),chunk_file_base))
 
 else:
 
@@ -404,7 +429,7 @@ task_info = []
 
 for i_chunk,chunk_list in enumerate(folder_chunks):
     
-    chunk_fn = os.path.join(filename_base,'chunk{}.json'.format(str(i_chunk).zfill(3)))
+    chunk_fn = os.path.join(chunk_file_base,'chunk{}.json'.format(str(i_chunk).zfill(3)))
     task_info.append({'id':i_chunk,'input_file':chunk_fn})
     path_utils.write_list_to_file(chunk_fn, chunk_list)
     
@@ -414,6 +439,9 @@ for i_chunk,chunk_list in enumerate(folder_chunks):
 # A list of the scripts tied to each GPU, as absolute paths.  We'll write this out at
 # the end so each GPU's list of commands can be run at once
 gpu_to_scripts = defaultdict(list)
+
+detector_chunk_base = os.path.join(filename_base,'detector_commands')
+os.makedirs(detector_chunk_base,exist_ok=True)
 
 # i_task = 0; task = task_info[i_task]
 for i_task,task in enumerate(task_info):
@@ -564,7 +592,8 @@ for i_task,task in enumerate(task_info):
         if detector_options is not None:
             cmd += ' --detector_options "{}"'.format(detector_options)
             
-    cmd_file = os.path.join(filename_base,'run_chunk_{}_gpu_{}{}'.format(str(i_task).zfill(3),
+    cmd_file = os.path.join(filename_base,'detector_commands',
+                            'run_chunk_{}_gpu_{}{}'.format(str(i_task).zfill(3),
                             str(gpu_number).zfill(2),script_extension))
     
     with open(cmd_file,'w') as f:
@@ -587,7 +616,7 @@ for i_task,task in enumerate(task_info):
         resume_string = ' --resume_from_checkpoint "{}"'.format(checkpoint_filename)
         resume_cmd = cmd + resume_string
     
-        resume_cmd_file = os.path.join(filename_base,
+        resume_cmd_file = os.path.join(filename_base,'detector_commands',
                                        'resume_chunk_{}_gpu_{}{}'.format(str(i_task).zfill(3),
                                        str(gpu_number).zfill(2),script_extension))
         
@@ -605,8 +634,7 @@ for i_task,task in enumerate(task_info):
 # ...for each task
 
 # Write out a script for each GPU that runs all of the commands associated with
-# that GPU.  Typically only used when running lots of little scripts in lieu
-# of checkpointing.
+# that GPU.
 for gpu_number in gpu_to_scripts:
     
     gpu_script_file = os.path.join(filename_base,'run_all_for_gpu_{}{}'.format(
@@ -968,33 +996,12 @@ path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True
 # import clipboard; clipboard.copy(ppresults.output_html_file)
 
 
-#%% SpeciesNet constants
+#%% SpeciesNet derived constants
 
-import clipboard #noqa
-
-from megadetector.utils.path_utils import insert_before_extension
-from megadetector.utils.wi_utils import generate_md_results_from_predictions_json
-from megadetector.utils.wi_utils import generate_instances_json_from_folder
-from megadetector.utils.ct_utils import split_list_into_fixed_size_chunks
-
-speciesnet_model_file = os.path.expanduser('~/models/speciesnet/crop')
-crop_folder = os.path.join(os.path.expanduser('~/postprocessing/crops'),base_task_name)
-
-country_code = 'TZA'
-state_code = None
-
-speciesnet_folder = os.path.expanduser('~/git/cameratrapai')
-speciesnet_pt_environment_name = 'speciesnet-package-pytorch'
-speciesnet_tf_environment_name = 'speciesnet-package-tf'
-
-# Can be None to omit the CUDA prefix
-gpu_number = 0
-max_images_per_chunk = 5000
-classifier_batch_size = 128
-
+crop_folder = os.path.join(postprocessing_base,'crops',base_task_name)
 
 # A results file in MD format, referring to the original images
-detection_results_file_with_crop_ids = os.path.join(filename_base,
+detection_results_file_with_crop_ids = os.path.join(combined_api_output_folder,
                                                     base_task_name + '-detection_results_with_crop_ids.json')
 
 # A results file in MD format, referring to the crops, so every detection
@@ -1008,17 +1015,17 @@ crop_detections_predictions_file = \
     insert_before_extension(detection_results_file_for_crop_folder,'speciesnet_format')
 
 # The instances.json file that refers just to the crops folder
-crop_instances_json = os.path.join(filename_base,
+crop_instances_json = os.path.join(combined_api_output_folder,
                                    base_task_name + '-crop_instances.json')
 
 # The results of the classifier (in SpeciesNet format), after running it on the crops
 classifier_output_file_modular_crops = \
-    os.path.join(filename_base,
+    os.path.join(combined_api_output_folder,
                  base_task_name + '-classifier_output_modular_crops.json')
     
 # The results of the ensemble, after running it on the crops (in SpeciesNet format)
 ensemble_output_file_modular_crops = \
-    os.path.join(filename_base,
+    os.path.join(combined_api_output_folder,
                  base_task_name + '-ensemble_output_modular_crops.json')
 
 # The results of the ensemble after running it on the crops (in MD format)
@@ -1033,7 +1040,7 @@ ensemble_output_file_image_level_md_format = \
 # The instances.json file we use to pass path names and the country code to the 
 # classifier and ensemble
 instances_json = \
-    os.path.join(filename_base,
+    os.path.join(combined_api_output_folder,
                  base_task_name + '-instances.json')
 
 # The folder where we'll store classifier results for each chunk
@@ -1050,8 +1057,10 @@ sequence_smoothed_classification_file = \
     insert_before_extension(classifier_output_path_within_image_smoothing,
                             'seqsmoothing')
 
-if gpu_number is not None:
-    cuda_prefix = 'export CUDA_VISIBLE_DEVICES={} && '.format(gpu_number)
+geofence_footer = None
+
+if speciesnet_gpu_number is not None:
+    cuda_prefix = 'export CUDA_VISIBLE_DEVICES={} && '.format(speciesnet_gpu_number)
 else:
     cuda_prefix = ''
 
@@ -1262,38 +1271,13 @@ _ = validate_predictions_file(ensemble_output_file_modular_crops,crop_instances_
 
 #%% Generate a list of corrections made by geofencing, and counts (still crops)
 
-from megadetector.utils.wi_utils import find_geofence_adjustments
-from megadetector.utils.ct_utils import is_list_sorted
+from megadetector.utils.wi_utils import find_geofence_adjustments, \
+    generate_geofence_adjustment_html_summary
 
 rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular_crops,
-                                                 use_latin_names = False)
+                                                 use_latin_names=False)
 
-min_count = 50
-
-footer_text = ''
-
-rollup_pair_to_count = \
-    {key: value for key, value in rollup_pair_to_count.items() if value >= min_count}
-
-# rollup_pair_to_count is sorted in descending order by count
-assert is_list_sorted(list(rollup_pair_to_count.values()),reverse=True)
-
-if len(rollup_pair_to_count) > 0:
-    
-    footer_text = \
-        '<h3>Geofence changes that occurred more than {} times</h3>\n'.format(min_count)
-    footer_text += '<p>These numbers refer to the whole dataset, not just the sample used for this page.</p>\n'
-    footer_text += '<div class="contentdiv">\n'
-    
-    print('Rollup changes with count > {}:'.format(min_count))
-    for rollup_pair in rollup_pair_to_count.keys():
-        count = rollup_pair_to_count[rollup_pair]
-        rollup_pair_s = rollup_pair.replace(',',' --> ')
-        print('{}: {}'.format(rollup_pair_s,count))
-        rollup_pair_html = rollup_pair.replace(',',' &rarr; ')
-        footer_text += '{} ({})<br>\n'.format(rollup_pair_html,count)
-
-    footer_text += '</div>\n'
+geofence_footer = generate_geofence_adjustment_html_summary(rollup_pair_to_count)
 
 
 #%% Convert output file to MD format (still crops)
@@ -1473,6 +1457,7 @@ _ = smooth_classification_results_sequence_level(input_file=input_file_for_seque
                                                  output_file=sequence_smoothed_classification_file,
                                                  options=options)
 
+
 #%% Preview (post-sequence-smoothing)
 
 preview_options = deepcopy(preview_options_base)
@@ -1485,6 +1470,7 @@ os.makedirs(preview_folder, exist_ok=True)
 
 preview_options.md_results_file = sequence_smoothed_classification_file
 preview_options.output_dir = preview_folder
+preview_options.footer_text = geofence_footer
 
 print('Generating post-sequence-smoothing preview in {}'.format(preview_folder))
 ppresults = process_batch_results(preview_options)

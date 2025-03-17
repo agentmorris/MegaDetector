@@ -4,10 +4,10 @@ classification_postprocessing.py
 
 Functions for postprocessing species classification results, particularly:
     
-* Smoothing results within a sequence (a sequence that looks like deer/deer/deer/elk/deer/deer
-  is really just a deer)
 * Smoothing results within an image (an image with 700 cows and one deer is really just 701
   cows)
+* Smoothing results within a sequence (a sequence that looks like deer/deer/deer/elk/deer/deer
+  is really just a deer)
   
 """
 
@@ -193,9 +193,6 @@ def _prepare_results_for_smoothing(input_file,options):
     for s in options.other_category_names:
         if s in category_name_to_id:
             other_category_ids.append(category_name_to_id[s])
-        else:
-            print('Warning: "other" category {} not present in file {}'.format(
-                s,input_file))
         
     # Before we do anything else, get rid of everything but the top classification
     # for each detection, and remove the 'classifications' field from detections with
@@ -591,10 +588,6 @@ def smooth_classification_results_image_level(input_file,output_file=None,option
     
     print('Taxonomic smoothing: changed {} detections on {} images'.format(
           n_taxonomic_classification_changes,n_taxonomic_images_changed))
-
-    for im in d['images']:
-        if 'failure' in im and im['failure'] is None:
-            del im['failure']
     
         
     ## Write output
@@ -662,14 +655,20 @@ def smooth_classification_results_sequence_level(input_file,
         assert isinstance(cct_sequence_information,dict)
         image_info = cct_sequence_information['images']
     
-    sequence_to_images = defaultdict(list)
+    sequence_to_image_filenames = defaultdict(list)
     
     # im = image_info[0]
     for im in tqdm(image_info):
-        sequence_to_images[im['seq_id']].append(im)
+        sequence_to_image_filenames[im['seq_id']].append(im['file_name'])        
     del image_info
     
-    
+    image_fn_to_classification_results = {}
+    for im in d['images']:
+        fn = im['file']
+        assert fn not in image_fn_to_classification_results
+        image_fn_to_classification_results[fn] = im
+            
+        
     ## Smoothing
     
     n_other_classifications_changed = 0
@@ -680,16 +679,21 @@ def smooth_classification_results_sequence_level(input_file,
     n_sequences_changed = 0
     n_taxonomic_classification_changes = 0    
         
-    # sequence_id = list(sequence_to_images.keys())[0]
-    for sequence_id in sequence_to_images.keys():
+    # sequence_id = list(sequence_to_image_filenames.keys())[0]
+    for sequence_id in sequence_to_image_filenames.keys():
 
-        images_this_sequence = sequence_to_images[sequence_id]
+        image_filenames_this_sequence = sequence_to_image_filenames[sequence_id]
+        
         detections_this_sequence = []
-        for im in images_this_sequence:
+        for image_filename in image_filenames_this_sequence:
+            im = image_fn_to_classification_results[image_filename]
             if 'detections' not in im or im['detections'] is None:
                 continue
             detections_this_sequence.extend(im['detections'])
-            
+        
+        if len(detections_this_sequence) == 0:
+            continue
+        
         r = _smooth_classifications_for_list_of_detections(
             detections=detections_this_sequence, 
             options=options, 
@@ -726,12 +730,8 @@ def smooth_classification_results_sequence_level(input_file,
     
     print('Taxonomic smoothing: changed {} detections in {} sequences'.format(
           n_taxonomic_classification_changes,n_taxonomic_sequences_changed))
-
-    for im in d['images']:
-        if 'failure' in im and im['failure'] is None:
-            del im['failure']
-            
-            
+    
+    
     ## Write output
     
     if output_file is not None:        
