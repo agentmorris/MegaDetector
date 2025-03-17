@@ -934,6 +934,19 @@ def is_human_classification(prediction_string):
         bool: whether this string corresponds to a human category
     """
     return prediction_string == human_prediction_string or 'homo;sapiens' in prediction_string
+
+
+def is_vehicle_classification(prediction_string):
+    """
+    Determines whether the input string represents a vehicle classification.
+    
+    Args:
+        prediction_string (str): a string in the semicolon-delimited prediction string format
+        
+    Returns:
+        bool: whether this string corresponds to the vehicle category
+    """
+    return prediction_string == vehicle_prediction_string
     
 
 def is_animal_classification(prediction_string):
@@ -959,6 +972,64 @@ def is_animal_classification(prediction_string):
     if len(get_kingdom(prediction_string)) == 0:
         return False
     return True
+
+
+def generate_whole_image_detections_for_classifications(classifications_json_file,
+                                                        detections_json_file):
+    """
+    Given a set of classification results that were likely run on already-cropped
+    image, generate a file of [fake] detections in which each image is covered
+    in a single whole-image detection.
+    
+    Args:
+        classifications_json_file (str): SpeciesNet-formatted file containing classifications 
+        detections_json_file (str): SpeciesNet-formatted file to write with detections
+    
+    Returns:
+        dict: the contents of [detections_json_file]
+    """
+    
+    with open(classifications_json_file,'r') as f:
+        classification_results = json.load(f)
+    predictions = classification_results['predictions']
+    
+    output_predictions = []
+    
+    # prediction = predictions[0]
+    for prediction in predictions:
+        
+        output_prediction = {}
+        output_prediction['filepath'] = prediction['filepath']
+        top_classification = prediction['classifications']['classes'][0]
+        if is_animal_classification(top_classification):
+            category_name = 'animal'
+        elif is_human_classification(top_classification):
+            category_name = 'human'
+        else:
+            category_name = 'vehicle'
+        
+        if category_name == 'human':
+            md_category_name = 'person'
+        else:
+            md_category_name = category_name
+            
+        output_detection = {}
+        output_detection['label'] = category_name
+        output_detection['category'] = md_category_name_to_id[md_category_name]
+        output_detection['conf'] = 1.0
+        output_detection['bbox'] = [0.0, 0.0, 1.0, 1.0]
+        output_prediction['detections'] = [output_detection]
+        output_predictions.append(output_prediction)        
+    
+    output_data = {'predictions':output_predictions}
+    
+    with open(detections_json_file,'w') as f:
+        json.dump(output_data,f,indent=1)
+        
+    return validate_predictions_file(detections_json_file)
+
+    
+# ...def generate_whole_image_detections_for_classifications(...)        
 
 
 def generate_md_results_from_predictions_json(predictions_json_file,
@@ -1260,6 +1331,7 @@ def generate_predictions_json_from_md_results(md_results_file,
         
 # ...def generate_predictions_json_from_md_results(...)
 
+
 default_tokens_to_ignore = ['$RECYCLE.BIN']
 
 def generate_instances_json_from_folder(folder,
@@ -1440,7 +1512,7 @@ def validate_predictions_file(fn,instances=None,verbose=True):
             failures.append(im)
 
     if verbose:
-        print('Read detector results for {} images, with {} failure(s)'.format(
+        print('Read predictions for {} images, with {} failure(s)'.format(
             len(d['predictions']),len(failures)))
         
     if instances is not None:
