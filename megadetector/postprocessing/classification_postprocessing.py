@@ -79,7 +79,7 @@ class ClassificationSmoothingOptions:
         
         #: When a dict (rather than a file) is passed to either smoothing function,
         #: if this is True, we'll make a copy of the input dict before modifying.
-        self.modify_in_place=False
+        self.modify_in_place = False
 
 
 #%% Utility functions

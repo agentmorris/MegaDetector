@@ -2,12 +2,12 @@
 
 manage_local_batch.py
    
-Semi-automated process for managing a local MegaDetector job, including
-standard postprocessing steps.
+Semi-automated process for managing a local MegaDetector (and, optionally, SpeciesNet job,
+including standard postprocessing steps.
 
 This script is not intended to be run from top to bottom like a typical Python script,
 it's a notebook disguised with a .py extension.  It's the Bestest Most Awesome way to
-run MegaDetector, but it's also pretty subtle; if you want to play with this, you might
+run MegaDetector, but it's also pretty complex; if you want to play with this, you might
 want to check in with cameratraps@lila.science for some tips.  Otherwise... YMMV.
 
 Some general notes on using this script, which I run in Spyder, though everything will be
@@ -1335,6 +1335,26 @@ print('Loaded results for {} images with {} failures'.format(
     len(images_in_folder),n_failures))
 
 
+#%% Preview (post-classification, pre-smoothing)
+
+preview_options = deepcopy(preview_options_base)
+preview_options.image_base_dir = input_path
+
+preview_folder = os.path.join(postprocessing_output_folder,
+    base_task_name + '_{}_classification'.format(preview_options.confidence_threshold))
+
+os.makedirs(preview_folder, exist_ok=True)
+
+preview_options.md_results_file = ensemble_output_file_image_level_md_format
+preview_options.output_dir = preview_folder
+preview_options.footer_text = geofence_footer
+
+print('Generating post-clssification smoothing preview in {}'.format(preview_folder))
+ppresults = process_batch_results(preview_options)
+path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
+# import clipboard; clipboard.copy(ppresults.output_html_file)
+
+
 #%% Within-image classification smoothing
 
 from megadetector.postprocessing.classification_postprocessing import \
@@ -1626,7 +1646,7 @@ nb_header += '\n'
 
 nb_header += \
 """
-This notebook represents an interactive process for running MegaDetector on large batches of images, including typical and optional postprocessing steps.  Everything after "Merge results..." is basically optional, and we typically do a mix of these optional steps, depending on the job.
+This notebook represents an interactive process for running MegaDetector and SpeciesNet on large batches of images, including typical and optional postprocessing steps.  Everything after "Merge results..." is basically optional, and we typically do a mix of these optional steps, depending on the job.
 
 This notebook is auto-generated from manage_local_batch.py (a cell-delimited .py file that is used the same way, typically in Spyder or VS Code).
 

@@ -3,7 +3,8 @@
 manage_video_batch.py
 
 Notebook-esque script to manage the process of running a local batch of videos
-through MD.  Defers most of the heavy lifting to manage_local_batch.py.
+through MD (and, optionally, SpeciesNet).  Defers most of the heavy lifting to
+manage_local_batch.py.
 
 This script extracts frames to disk before running MD.  This is not a requirement;
 megadetector.process_video.process_video_folder() can process videos in memory. 
