@@ -341,6 +341,7 @@ def create_crop_folder(input_file,
 
     # ...if we're using parallel processing    
     
+    
     ##%% Write output file
     
     if output_file is not None:
