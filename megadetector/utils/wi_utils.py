@@ -1699,8 +1699,7 @@ def generate_geofence_adjustment_html_summary(rollup_pair_to_count,min_count=10)
 # a dict with keys taxon_id, common_name, kingdom, phylum, class, order, family, genus, species
 taxonomy_string_to_taxonomy_info = None
 
-# Maps a binomial name (possibly three tokens, if it's a subspecies) to the same dict
-# described above.
+# Maps a binomial name (one, two, or three ws-delimited tokens) to the same dict described above.
 binomial_name_to_taxonomy_info = None
 
 # Maps a common name to the same dict described above
@@ -1810,17 +1809,28 @@ def initialize_taxonomy_info(taxonomy_file,force_init=False,encoding='cp1252'):
             common_name_to_taxonomy_info[taxon_info['common_name']] = taxon_info
             
         taxonomy_string_to_taxonomy_info[taxonomy_string] = taxon_info
-        if tokens[4] == '' or tokens[5] == '':
+        
+        binomial_name = None
+        if len(tokens[4]) > 0 and len(tokens[5]) > 0:
+            # strip(), but don't remove spaces from the species name; 
+            # subspecies are separated with a space, e.g. canis;lupus dingo
+            binomial_name = tokens[4].strip() + ' ' + tokens[5].strip()            
+        elif len(tokens[4]) > 0:
+            binomial_name = tokens[4].strip()
+        elif len(tokens[3]) > 0:
+            binomial_name = tokens[3].strip()
+        elif len(tokens[2]) > 0:
+            binomial_name = tokens[2].strip()
+        elif len(tokens[1]) > 0:
+            binomial_name = tokens[1].strip()
+        if binomial_name is None:
             # print('Warning: no binomial name for {}'.format(taxonomy_string))
             pass
         else:
-            # strip(), but don't remove spaces from the species name; 
-            # subspecies are separated with a space, e.g. canis;lupus dingo
-            binomial_name = tokens[4].strip() + ' ' + tokens[5].strip()
             binomial_name_to_taxonomy_info[binomial_name] = taxon_info
     
-    print('Created {} records in taxonomy_string_to_taxonomy_info'.format(
-        len(taxonomy_string_to_taxonomy_info)))
+    print('Created {} records in taxonomy_string_to_taxonomy_info'.format(len(taxonomy_string_to_taxonomy_info)))
+    print('Created {} records in common_name_to_taxonomy_info'.format(len(common_name_to_taxonomy_info)))
         
 # ...def initialize_taxonomy_info(...)
 
@@ -1924,7 +1934,7 @@ def generate_csv_rows_for_species(species_string,
     and blocking a country.
     
     Args:
-        species_string (str): string in semicolon-delimited WI taxonomy format
+        species_string (str): five-token string in semicolon-delimited WI taxonomy format
         allow_countries (optional, list or str): three-letter country codes, list of
             country codes, or comma-separated list of country codes to allow
         block_countries (optional, list or str): three-letter country codes, list of
@@ -2032,23 +2042,21 @@ def initialize_geofencing(geofencing_file,country_code_file,force_init=False):
         
         species_rules = taxonomy_string_to_geofencing_rules[species_string]
         
-        # Every country should *either* have allow rules or block rules, no countries 
-        # currently have both        
-        assert len(species_rules.keys()) == 1
-        rule_type = list(species_rules.keys())[0]
-        assert rule_type in ('allow','block')
-
-        all_country_rules_this_species = species_rules[rule_type]
-        for country_code in all_country_rules_this_species.keys():
-            
-            assert country_code in country_code_to_country
+        if len(species_rules.keys()) > 1:
+            print('Warning: taxon {} has both allow and block rules'.format(species_string))
         
-            region_rules = all_country_rules_this_species[country_code]
+        for rule_type in species_rules.keys():
             
-            # Right now we only have regional rules for the USA; these may be part of 
-            # allow or block rules.
-            if len(region_rules) > 0:
-                assert country_code == 'USA'
+            assert rule_type in ('allow','block')    
+            all_country_rules_this_species = species_rules[rule_type]
+            
+            for country_code in all_country_rules_this_species.keys():            
+                assert country_code in country_code_to_country            
+                region_rules = all_country_rules_this_species[country_code]                
+                # Right now we only have regional rules for the USA; these may be part of 
+                # allow or block rules.
+                if len(region_rules) > 0:
+                    assert country_code == 'USA'
     
     # ...for each species
     
@@ -2077,13 +2085,13 @@ def _species_string_to_canonical_species_string(species):
     # If this is already a taxonomy string...    
     if len(species.split(';')) == 5:
         pass
-    # If this is a binomial name (which may include a subspecies)...
-    elif (len(species.split(' ')) in (2,3)) and (species in binomial_name_to_taxonomy_info):
-        taxonomy_info = binomial_name_to_taxonomy_info[species]
-        taxonomy_string = taxonomy_info_to_taxonomy_string(taxonomy_info)        
     # If this is a common name...
     elif species in common_name_to_taxonomy_info:
         taxonomy_info = common_name_to_taxonomy_info[species]
+        taxonomy_string = taxonomy_info_to_taxonomy_string(taxonomy_info)        
+    # If this is a binomial name...
+    elif (species in binomial_name_to_taxonomy_info):
+        taxonomy_info = binomial_name_to_taxonomy_info[species]
         taxonomy_string = taxonomy_info_to_taxonomy_string(taxonomy_info)        
     else:
         raise ValueError('Could not find taxonomic information for {}'.format(species))
@@ -2149,29 +2157,34 @@ def species_allowed_in_country(species,country,state=None,return_status=False):
     allowed_countries = []
     blocked_countries = []
     
-    assert len(geofencing_rules_this_species.keys()) == 1
-    rule_type = list(geofencing_rules_this_species.keys())[0]
-    assert rule_type in ('allow','block')
+    rule_types_this_species = list(geofencing_rules_this_species.keys())
+    for rule_type in rule_types_this_species:
+        assert rule_type in ('allow','block')
     
-    if rule_type == 'allow':    
-        allowed_countries = list(geofencing_rules_this_species['allow'])
-    else:
-        assert rule_type == 'block'
+    if 'block' in rule_types_this_species:
         blocked_countries = list(geofencing_rules_this_species['block'])
+    if 'allow' in rule_types_this_species:
+        allowed_countries = list(geofencing_rules_this_species['allow'])    
     
     status = None
     
     # The convention is that block rules win over allow rules
     if country_code in blocked_countries:
-        status = 'blocked'
+        if country_code in allowed_countries:
+            status = 'blocked_over_allow'
+        else:
+            status = 'blocked'
     elif country_code in allowed_countries:
         status = 'allowed'
-    else:
+    elif len(allowed_countries) > 0:
         # The convention is that if allow rules exist, any country not on that list
         # is blocked.
-        assert len(allowed_countries) > 0
-        return 'not_on_country_allow_list'
-    
+        status = 'block_not_on_country_allow_list'
+    else:
+        # Only block rules exist for this species, and they don't include this country
+        assert len(blocked_countries) > 0
+        status = 'allow_not_on_block_list'
+        
     # Now let's see whether we have to deal with any regional rules
     if state is None:
         
@@ -2624,16 +2637,18 @@ if False:
 
     from megadetector.utils.wi_utils import taxonomy_string_to_geofencing_rules # noqa
     from megadetector.utils.wi_utils import taxonomy_string_to_taxonomy_info # noqa
+    from megadetector.utils.wi_utils import common_name_to_taxonomy_info # noqa
+    from megadetector.utils.wi_utils import binomial_name_to_taxonomy_info # noqa
     
-    geofencing_file = r'c:\git\cameratrapai\data\geofence_base.json'
-    
-    country_code_file = r'g:\temp\country-codes.csv'
+    model_base = os.path.expanduser('~/models/speciesnet')
+    geofencing_file = os.path.join(model_base,'crop','geofence_release.2025.02.27.0702.json')
+    country_code_file = os.path.join(model_base,'country-codes.csv')
     # encoding = 'cp1252'; taxonomy_file = r'g:\temp\taxonomy_mapping-' + encoding + '.json'    
-    encoding = None; taxonomy_file = r'g:\temp\taxonomy_mapping.json'
+    encoding = None; taxonomy_file = os.path.join(model_base,'taxonomy_mapping.json')
     
     initialize_geofencing(geofencing_file, country_code_file, force_init=True)
     initialize_taxonomy_info(taxonomy_file, force_init=True, encoding=encoding)
-    
+        
     
     #%% Test driver for geofence_fixes.csv function
     
@@ -2641,21 +2656,26 @@ if False:
     species = 'dingo'
     species_string = _species_string_to_canonical_species_string(species)
     rows = _generate_csv_rows_to_block_all_countries_except(species_string,block_except_list)
-        
-    import clipboard; clipboard.copy('\n'.join(rows))
+    
+    # import clipboard; clipboard.copy('\n'.join(rows))
+    print(rows)
     
     
     #%%
     
-    generate_csv_rows_for_species(species_string=species_string,
-                                  allow_countries=None,
+    taxon_name = 'hippopotamus amphibius'
+    taxonomy_info = binomial_name_to_taxonomy_info[taxon_name]    
+    taxonomy_string_short = taxonomy_info_to_taxonomy_string(taxonomy_info)
+    assert len(taxonomy_string_short.split(';')) == 5
+    
+    generate_csv_rows_for_species(species_string=taxonomy_string_short,
+                                  allow_countries=['COL'],
                                   block_countries=None,
                                   allow_states=None,
                                   block_states=None,
                                   blockexcept_countries=None)
-    
-    
-    _generate_csv_rows_to_block_all_countries_except(species_string,'AUS')
+        
+    # _generate_csv_rows_to_block_all_countries_except(species_string,'AUS')
     
     
     #%% Test the effects of geofence changes
@@ -2665,51 +2685,18 @@ if False:
     species_allowed_in_country(species,country,state=None,return_status=False)
         
     
-    #%% instances.json generation test
+    #%% Geofencing lookups
     
-    from megadetector.utils.wi_utils import generate_instances_json_from_folder # noqa
+    # This can be a latin or common name
+    species = 'hippopotamidae'
+    # print(common_name_to_taxonomy_info[species])
     
-    instances_file = r'g:\temp\water-hole\instances.json'
-    
-    _ = generate_instances_json_from_folder(folder=r'g:\temp\water-hole',
-                                            country='NAM',
-                                            lat=None,
-                                            lon=None,
-                                            output_file=instances_file,
-                                            filename_replacements={'g:/temp':'/mnt/g/temp'})
-
-    # from megadetector.utils.path_utils import open_file; open_file(instances_file)
-
-
-    #%% MD --> prediction conversion test
-    
-    from megadetector.utils.wi_utils import generate_predictions_json_from_md_results # noqa
-    md_results_file = r'G:\temp\md-test-images\mdv5a.relpaths.json'
-    predictions_json_file = r'\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\mdv5a.abspaths.predictions-format.json'
-    generate_predictions_json_from_md_results(md_results_file,predictions_json_file,base_folder=
-                                              '/home/dmorris/tmp/md-test-images/')
-    
-    from megadetector.utils.wi_utils import generate_predictions_json_from_md_results # noqa
-    md_results_file = r"G:\temp\water-hole\md_results.json"
-    predictions_json_file = r"G:\temp\water-hole\md_results-prediction_format.json"
-    generate_predictions_json_from_md_results(md_results_file,predictions_json_file,base_folder=
-                                              '/mnt/g/temp/water-hole')    
-    
-    
-    #%% Geofencing tests
-    
-    species = 'didelphis marsupialis'
-    print(binomial_name_to_taxonomy_info[species])
-    country = 'Guatemala'
-    assert species_allowed_in_country(species, country)
-    
-    species = 'virginia opossum'
-    print(common_name_to_taxonomy_info[species])
+    # This can be a name or country code
     country = 'USA'
-    assert species_allowed_in_country(species, country)
+    print(species_allowed_in_country(species, country))
     
     
-    #%% Test several species
+    #%% Bulk geofence lookups
     
     if True:
         
@@ -2789,86 +2776,3 @@ if False:
         if state is not None:
             state_string = ' ({})'.format(state)
         print('{} ({}) for {}{}: {}'.format(taxonomy_info['common_name'],species,country,state_string,allowed))
-            
-        
-    #%% Test conversion from predictons.json to MD format
-    
-    import os # noqa
-    from megadetector.utils.wi_utils import generate_md_results_from_predictions_json # noqa
-    
-    # detector_source = 'speciesnet'
-    detector_source = 'md'
-    
-    if False:
-        image_folder = r'g:\temp\md-test-images'
-        base_folder = '/home/dmorris/tmp/md-test-images/'
-        if detector_source == 'speciesnet':    
-            predictions_json_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output.json"
-            md_results_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output-md-format.json"
-        else:
-            assert detector_source == 'md'
-            predictions_json_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output-from-md-results.json"
-            md_results_file = r"\\wsl$\Ubuntu\home\dmorris\tmp\speciesnet-tests\ensemble-output-md-format-from-md-results.json"        
-    else:
-        image_folder = r'g:\temp\water-hole'
-        base_folder = '/mnt/g/temp/water-hole/'
-        if detector_source == 'speciesnet':    
-            predictions_json_file = r'g:\temp\water-hole\ensemble-output.json'
-            md_results_file = r'g:\temp\water-hole\ensemble-output.md_format.json'
-        else:
-            assert detector_source == 'md'
-            predictions_json_file = r'g:\temp\water-hole\ensemble-output-md.json'
-            md_results_file = r'g:\temp\water-hole\ensemble-output-md.md_format.json'
-    
-    generate_md_results_from_predictions_json(predictions_json_file=predictions_json_file,
-                                              md_results_file=md_results_file,
-                                              base_folder=base_folder)
-    
-    # from megadetector.utils.path_utils import open_file; open_file(md_results_file)
-    
-    assert os.path.isdir(image_folder)
-    
-   
-    #%% Preview
-    
-    from megadetector.postprocessing.postprocess_batch_results import \
-        PostProcessingOptions, process_batch_results
-    from megadetector.utils import path_utils
-    
-    render_animals_only = False
-    
-    options = PostProcessingOptions()
-    options.image_base_dir = image_folder
-    options.include_almost_detections = True
-    options.num_images_to_sample = None
-    options.confidence_threshold = 0.2
-    options.almost_detection_confidence_threshold = options.confidence_threshold - 0.05
-    options.ground_truth_json_file = None
-    options.separate_detections_by_category = True
-    options.sample_seed = 0
-    options.max_figures_per_html_file = 5000
-    
-    options.parallelize_rendering = True
-    options.parallelize_rendering_n_cores = 10
-    options.parallelize_rendering_with_threads = True
-    options.sort_classification_results_by_count = True
-    
-    if render_animals_only:
-        # Omit some pages from the output, useful when animals are rare
-        options.rendering_bypass_sets = ['detections_person','detections_vehicle',
-                                          'detections_person_vehicle','non_detections']    
-    
-    output_base = r'g:\temp\preview' + '_' + detector_source
-    if render_animals_only:
-        output_base = output_base + '_render_animals_only'
-    os.makedirs(output_base, exist_ok=True)
-    
-    print('Writing preview to {}'.format(output_base))
-    
-    options.md_results_file = md_results_file
-    options.output_dir = output_base
-    ppresults = process_batch_results(options)
-    html_output_file = ppresults.output_html_file
-    
-    path_utils.open_file(html_output_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
-    # import clipboard; clipboard.copy(html_output_file)
