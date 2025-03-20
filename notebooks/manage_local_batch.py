@@ -920,6 +920,13 @@ options.customDirNameFunction = relative_path_to_location
 # To invoke custom collapsing of folders for a particular naming scheme
 # options.customDirNameFunction = custom_relative_path_to_location
 
+# To treat a specific folder level as a camera, frequently used when the leaf 
+# folders each contain frames extracted from a single video
+#
+# Setting this value to 0 is the same as treating each leaf folder as a camera.
+#
+# options.nDirLevelsFromLeaf = 1
+
 options.imageBase = input_path
 rde_string = 'rde_{:.3f}_{:.3f}_{}_{:.3f}'.format(
     options.confidenceMin, options.iouThreshold,
@@ -983,7 +990,7 @@ preview_options = deepcopy(preview_options_base)
 preview_options.image_base_dir = input_path
 
 preview_folder = os.path.join(postprocessing_output_folder, 
-    base_task_name + '_{}_{:.3f}'.format(rde_string, options.confidence_threshold))    
+    base_task_name + '_{}_{:.3f}'.format(rde_string, preview_options.confidence_threshold))    
 
 os.makedirs(preview_folder, exist_ok=True)
 
@@ -1386,71 +1393,132 @@ path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True
 # import clipboard; clipboard.copy(ppresults.output_html_file)
 
 
-#%% Read EXIF date and time from all images
+#%% How should we determine sequence information?
 
-from megadetector.data_management import read_exif
-exif_options = read_exif.ReadExifOptions()
+# Use this when leaf node folders are sequences, typically when each folder really represents
+# frames from a single video.
+# sequence_method = 'folder'
 
-exif_options.verbose = False
-exif_options.n_workers = default_workers_for_parallel_tasks
-exif_options.use_threads = parallelization_defaults_to_threads
-exif_options.processing_library = 'pil'
-exif_options.byte_handling = 'delete'
-exif_options.tags_to_include = ['DateTime','DateTimeOriginal']
-
-if os.path.isfile(exif_results_file):
-    print('Reading EXIF data from {}'.format(exif_results_file))
-    with open(exif_results_file,'r') as f:
-        exif_results = json.load(f)
-else:        
-    exif_results = read_exif.read_exif_from_folder(input_path,
-                                                   output_file=exif_results_file,
-                                                   options=exif_options)
+# Use this for most image (non-video) cases
+sequence_method = 'exif'
 
 
-#%% Prepare COCO-camera-traps-compatible image objects for EXIF results
+#%% If we're building sequence information based on EXIF data
 
-# ...and add location/datetime info based on filenames and EXIF information.
-
-from megadetector.data_management.read_exif import \
-    exif_results_to_cct, ExifResultsToCCTOptions
-from megadetector.utils.ct_utils import is_function_name
-
-exif_results_to_cct_options = ExifResultsToCCTOptions()
-
-exif_data_in_cct_format_file = os.path.join(filename_base,'exif_data_in_cct_format.json')
-
-if os.path.isfile(exif_data_in_cct_format_file):
+if sequence_method == 'exif':
     
-    print('Reading CCT-formatted EXIF data from {}'.format(exif_data_in_cct_format_file))
-    
-    with open(exif_data_in_cct_format_file,'r') as f:
-        cct_dict = json.load(f)
+    pass
 
-else: 
+    #%% Read EXIF date and time from all images
     
-    # If we've defined a "custom_relative_path_to_location" location, which by convention
-    # is what we use in this notebook for a non-standard location mapping function, use it 
-    # to parse locations when creating the CCT data.
-    if is_function_name('custom_relative_path_to_location',locals()):
-        print('Using custom location mapping function in EXIF conversion')
-        exif_results_to_cct_options.filename_to_location_function = \
-            custom_relative_path_to_location # noqa
+    from megadetector.data_management import read_exif
+    exif_options = read_exif.ReadExifOptions()
+    
+    exif_options.verbose = False
+    exif_options.n_workers = default_workers_for_parallel_tasks
+    exif_options.use_threads = parallelization_defaults_to_threads
+    exif_options.processing_library = 'pil'
+    exif_options.byte_handling = 'delete'
+    exif_options.tags_to_include = ['DateTime','DateTimeOriginal']
+    
+    if os.path.isfile(exif_results_file):
+        print('Reading EXIF data from {}'.format(exif_results_file))
+        with open(exif_results_file,'r') as f:
+            exif_results = json.load(f)
+    else:        
+        exif_results = read_exif.read_exif_from_folder(input_path,
+                                                       output_file=exif_results_file,
+                                                       options=exif_options)
+    
+    
+    #%% Prepare COCO-camera-traps-compatible image objects for EXIF results
+    
+    # ...and add location/datetime info based on filenames and EXIF information.
+    
+    from megadetector.data_management.read_exif import \
+        exif_results_to_cct, ExifResultsToCCTOptions
+    from megadetector.utils.ct_utils import is_function_name
+    
+    exif_results_to_cct_options = ExifResultsToCCTOptions()
+    
+    exif_data_in_cct_format_file = os.path.join(filename_base,'exif_data_in_cct_format.json')
+    
+    if os.path.isfile(exif_data_in_cct_format_file):
+        
+        print('Reading CCT-formatted EXIF data from {}'.format(exif_data_in_cct_format_file))
+        
+        with open(exif_data_in_cct_format_file,'r') as f:
+            cct_dict = json.load(f)
+    
+    else: 
+        
+        # If we've defined a "custom_relative_path_to_location" location, which by convention
+        # is what we use in this notebook for a non-standard location mapping function, use it 
+        # to parse locations when creating the CCT data.
+        if is_function_name('custom_relative_path_to_location',locals()):
+            print('Using custom location mapping function in EXIF conversion')
+            exif_results_to_cct_options.filename_to_location_function = \
+                custom_relative_path_to_location # noqa
+                
+        cct_dict = exif_results_to_cct(exif_results=exif_results,
+                                       cct_output_file=exif_data_in_cct_format_file,
+                                       options=exif_results_to_cct_options)
+
+        
+    #%% Assemble images into sequences
+
+    from megadetector.data_management import cct_json_utils
+    from megadetector.data_management.cct_json_utils import SequenceOptions
+
+    sequence_options = SequenceOptions()
+
+    print('Assembling images into sequences')
+    _ = cct_json_utils.create_sequences(cct_dict, options=sequence_options)
+
+
+#%% If we're building sequence information based on folder structure
+
+else:
+    
+    assert sequence_method == 'folder'
+    pass
+
+
+    #%% Read the list of filenames    
+    
+    input_file_for_sequence_aggregation = classifier_output_path_within_image_smoothing
+    with open(input_file_for_sequence_aggregation,'r') as f:
+        d = json.load(f)
+
+
+    #%% Synthesize sequences
+        
+    cct_dict = {'info':{},'annotations':[],'categories':[],'images':[]}
             
-    cct_dict = exif_results_to_cct(exif_results=exif_results,
-                                   cct_output_file=exif_data_in_cct_format_file,
-                                   options=exif_results_to_cct_options)
-
-
-#%% Assemble images into sequences
-
-from megadetector.data_management import cct_json_utils
-from megadetector.data_management.cct_json_utils import SequenceOptions
-
-sequence_options = SequenceOptions()
-
-print('Assembling images into sequences')
-_ = cct_json_utils.create_sequences(cct_dict, options=sequence_options)
+    folder_name_to_images = defaultdict(list) # noqa
+    images_out = []
+    
+    # im_in = d['images'][0]
+    for im_in in tqdm(d['images']):
+        
+        folder_name = os.path.dirname(im_in['file']).replace('\\','/')
+        folder_name_to_images[folder_name].append(im_in['file'])
+        
+        im_out = {}
+        images_out.append(im_out)
+        
+        im_out['file_name'] = im_in['file']
+        im_out['seq_id'] = folder_name
+        
+        # Not required for smoothing
+        # im_out['frame_num'] = len(folder_name_to_images[folder_name]) - 1
+        # location_name = os.path.dirname(folder_name).replace('\\','/')
+        # im_out['location'] = location_name
+    
+    cct_dict['images'] = images_out
+    
+    print('Extracted {} sequences from {} images'.format(
+        len(folder_name_to_images),len(d['images'])))
 
 
 #%% Sequence-level smoothing
@@ -1470,12 +1538,13 @@ else:
     input_file_for_sequence_level_smoothing = \
         ensemble_output_file_image_level_md_format
 
-options = ClassificationSmoothingOptions()
+sequence_level_smoothing_options = ClassificationSmoothingOptions()
+# sequence_level_smoothing_options.max_detections_nondominant_class_same_family = 1000
 
 _ = smooth_classification_results_sequence_level(input_file=input_file_for_sequence_level_smoothing,
                                                  cct_sequence_information=cct_dict,
                                                  output_file=sequence_smoothed_classification_file,
-                                                 options=options)
+                                                 options=sequence_level_smoothing_options)
 
 
 #%% Preview (post-sequence-smoothing)

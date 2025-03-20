@@ -181,7 +181,7 @@ def md_to_coco(md_results_file,
             
             w = im['width']
             h = im['height']
-            
+        
         coco_im['width'] = w
         coco_im['height'] = h
         
