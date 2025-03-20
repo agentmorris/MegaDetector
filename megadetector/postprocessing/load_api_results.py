@@ -107,6 +107,9 @@ def write_api_results(detection_results_table, other_fields, out_path):
     images = detection_results_table.to_json(orient='records',
                                              double_precision=3)
     images = json.loads(images)
+    for im in images:
+        if 'failure' in im and im['failure'] is None:
+            del im['failure']
     fields['images'] = images
     
     # Convert the 'version' field back to a string as per format convention
@@ -129,7 +132,7 @@ def write_api_results(detection_results_table, other_fields, out_path):
     except Exception:
         print('Warning: error removing max_detection_conf from output')
         pass
-
+    
     with open(out_path, 'w') as f:
         json.dump(fields, f, indent=1)
 

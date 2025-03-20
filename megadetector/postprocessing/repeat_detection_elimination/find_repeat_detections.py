@@ -41,7 +41,6 @@ if False:
     baseDir = ''
 
     options = repeat_detections_core.RepeatDetectionOptions()
-    options.bRenderHtml = True
     options.imageBase = baseDir
     options.outputBase = os.path.join(baseDir, 'repeat_detections')
     options.filenameReplacements = {}  # E.g., {'20190430cameratraps\\':''}
@@ -85,11 +84,10 @@ def main():
                              'do manual review of the repeat detection images (which you should)')
         
     parser.add_argument('--imageBase', action='store', type=str, default='',
-                        help='Image base dir, relevant if renderHtml is True or if ' + \
-                             '"omitFilteringFolder" is not set')
+                        help='Image base dir')
                             
     parser.add_argument('--outputBase', action='store', type=str, default='',
-                        help='HTML or filtering folder output dir')
+                        help='filtering folder output dir')
     
     parser.add_argument('--confidenceMin', action='store', type=float,
                         default=defaultOptions.confidenceMin,
@@ -146,7 +144,7 @@ def main():
 
     parser.add_argument('--omitFilteringFolder', action='store_false',
                         dest='bWriteFilteringFolder',
-                        help='Should we create a folder of rendered detections for post-filtering?')
+                        help='Should we skip creating the folder of rendered detections filtering?')
     
     parser.add_argument('--debugMaxDir', action='store', type=int, default=-1, 
                         help='For debugging only, limit the number of directories we process')
@@ -191,9 +189,6 @@ def main():
                         default=defaultOptions.detectionTilesPrimaryImageWidth,
                         help='The width of the main image when rendering images with detection tiles')
 
-    parser.add_argument('--renderHtml', action='store_true',
-                        dest='bRenderHtml', help='Should we render HTML output?')
-    
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()

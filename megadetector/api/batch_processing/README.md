@@ -42,9 +42,14 @@ Example output with both detection and classification results:
         },
         "classifier_metadata": {
            "typical_classification_threshold":0.75
-        }
+        },
+        "summary_report": "<p>Summary report</p><br/><p>...in which HTML is allowed.</p>"
     },
     // detection_categories is required; category IDs must be string-formatted ints.
+    //
+    // Category names can be arbitrary, but downstream tools may take a particular dependency 
+    // on the name "animal", so using "animal" (rather than, e.g., "animals" or "wildlife")
+    // is recommended.
     "detection_categories": {
         "1": "animal",
         "2": "person",
@@ -61,7 +66,7 @@ Example output with both detection and classification results:
     },
     // classification_category_descriptions is optional; if present, category IDs must be 
     // string-formatted ints.  This is typically used to provide searchable taxonomic names
-	// for categories.
+    // for categories.
     "classification_category_descriptions": {
         "0": "animalia;chordata;mammalia;carnivora;canidae;vulpesvulpes",
         "1": "animalia;chordata;mammalia;artiodactyla;cervidae;cervuscanadensis",
@@ -96,18 +101,18 @@ Example output with both detection and classification results:
                 }
             ]
         },
-            // Videos appear in the same format as images, with the addition of the 
-            // "frame_rate" field (for the file) and the "frame_number" field (for each 
-            // detection).  For videos, "frame_rate" and "frame_number" are required fields.
-            //
-            // frame_rate should be greater than zero, and can be int- or float-valued.  
-            //
-            // frame_number should be int-valued, and greater than or equal to zero.
-            //
-            // Detections are typically included for just one representative
-            // frame for each detection category, but detections may also be reported for
-            // multiple frames for a single detection category, as in this example.
-            {
+        // Videos appear in the same format as images, with the addition of the
+        // "frame_rate" field (for the file) and the "frame_number" field (for each 
+        // detection).  For videos, "frame_rate" and "frame_number" are required fields.
+        //
+        // frame_rate should be greater than zero, and can be int- or float-valued.  
+        //
+        // frame_number should be int-valued, and greater than or equal to zero.
+        //
+        // Detections are typically included for just one representative
+        // frame for each detection category, but detections may also be reported for
+        // multiple frames for a single detection category, as in this example.
+        {
             "file": "path/from/base/dir/video_with_person.mp4",
             "frame_rate": 20,
             "detections": [
@@ -132,7 +137,7 @@ Example output with both detection and classification results:
         },
         {
             "file": "/path/from/base/dir/another_image.jpg",
-            "detections": []
+            "detections": [],
             // The "failure" field is optional; for successfully-processed images, it can be 
             // omitted  or can be null.  This file was processed correctly.
             "failure": null        
@@ -141,7 +146,7 @@ Example output with both detection and classification results:
             // This file was not processed.  "failure" should be a string in this case, indicating 
             // the reason for failure.  "detections" can be null or omitted in this case.
             "file": "/path/from/base/dir2/corrupted_image_0.jpg",
-            "failure": "Failure image access"
+            "failure": "Failure image access",
             "detections": null
         }
     ]

@@ -5,7 +5,8 @@ speciesnet_driver.py
 Semi-automated process for managing a local SpeciesNet job, including
 standard postprocessing steps.  This version uses the complete ensemble logic
 and therefore does not handle multi-species images.  If multi-species images
-are rare in your data, consider using speciesnet_multispecies_driver.py instead.
+are common in your data, consider using either manage_local_batch.py or 
+speciesnet_multispecies_driver.py instead.
 
 """
 
@@ -288,46 +289,18 @@ _ = validate_predictions_file(ensemble_output_file_modular,instances_json)
 
 #%% Generate a list of corrections made by geofencing, and counts
 
-from megadetector.utils.wi_utils import find_geofence_adjustments
-from megadetector.utils.ct_utils import is_list_sorted
+from megadetector.utils.wi_utils import find_geofence_adjustments, \
+    generate_geofence_adjustment_html_summary
 
 rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular,
-                                                 use_latin_names = False)
-
-min_count = 10
-
-geofence_footer = ''
-
-rollup_pair_to_count = \
-    {key: value for key, value in rollup_pair_to_count.items() if value >= min_count}
-
-# rollup_pair_to_count is sorted in descending order by count
-assert is_list_sorted(list(rollup_pair_to_count.values()),reverse=True)
+                                                 use_latin_names=False)
 
 if custom_taxa_list is not None:
     assert len(rollup_pair_to_count) == 0, \
         'Geofencing should have been disabled when running with a custom taxa list'
-        
-if len(rollup_pair_to_count) > 0:
-    
-    geofence_footer = \
-        '<h3>Geofence changes that occurred more than {} times</h3>\n'.format(min_count)
-    geofence_footer += '<div class="contentdiv">\n'
-    
-    print('\nRollup changes with count > {}:'.format(min_count))
-    for rollup_pair in rollup_pair_to_count.keys():
-        count = rollup_pair_to_count[rollup_pair]
-        rollup_pair_s = rollup_pair.replace(',',' --> ')
-        print('{}: {}'.format(rollup_pair_s,count))
-        rollup_pair_html = rollup_pair.replace(',',' &rarr; ')
-        geofence_footer += '{} ({})<br/>\n'.format(rollup_pair_html,count)
 
-    geofence_footer += '</div>\n'
+geofence_footer = generate_geofence_adjustment_html_summary(rollup_pair_to_count)
 
-else:
-    
-    print('\nNo corrections made by geofencing')
-    
 
 #%% Convert output file to MD format 
 
@@ -391,51 +364,6 @@ if custom_taxa_list is not None:
     
     ensemble_output_file_md_format = output_file
     
-    
-#%% Generate a list of all predictions made, with counts
-
-from megadetector.utils.ct_utils import sort_dictionary_by_value
-
-with open(ensemble_output_file_md_format,'r') as f:
-    d = json.load(f)
-
-classification_category_to_count = {}
-
-# im = d['images'][0]
-for im in d['images']:
-    if 'detections' in im and im['detections'] is not None:
-        for det in im['detections']:
-            if 'classifications' in det:
-                class_id = det['classifications'][0][0]
-                if class_id not in classification_category_to_count:
-                    classification_category_to_count[class_id] = 0
-                else:
-                    classification_category_to_count[class_id] = \
-                        classification_category_to_count[class_id] + 1
-
-category_name_to_count = {}
-
-for class_id in classification_category_to_count:
-    category_name = d['classification_categories'][class_id]
-    category_name_to_count[category_name] = \
-        classification_category_to_count[class_id]
-
-category_name_to_count = sort_dictionary_by_value(
-    category_name_to_count,reverse=True)
-
-category_count_footer = ''
-category_count_footer += '<br/>\n'
-category_count_footer += \
-    '<h3>Category counts (for the whole dataset, not just the sample used for this page)</h3>\n'
-category_count_footer += '<div class="contentdiv">\n'
-
-for category_name in category_name_to_count.keys():
-    count = category_name_to_count[category_name]
-    category_count_html = '{}: {}<br>\n'.format(category_name,count)    
-    category_count_footer += category_count_html
-
-category_count_footer += '</div>\n'
-
 
 #%% Optional RDE prep: define custom camera folder function
 
@@ -498,17 +426,9 @@ options.nWorkers = 10
 options.bRenderOtherDetections = True
 options.otherDetectionsThreshold = options.confidenceMin
 
-options.bRenderDetectionTiles = True
-options.maxOutputImageWidth = 2000
-options.detectionTilesMaxCrops = 100
-
-# options.lineThickness = 5
-# options.boxExpansion = 8
-
 options.customDirNameFunction = image_file_to_camera_folder
 # options.customDirNameFunction = custom_relative_path_to_location
 
-options.bRenderHtml = False
 options.imageBase = input_folder
 rde_string = 'rde_{:.3f}_{:.3f}_{}_{:.3f}'.format(
     options.confidenceMin, options.iouThreshold,
@@ -522,14 +442,6 @@ options.filenameReplacements = None # {'':''}
 # options.maxImagesPerFolder = 50000
 # options.includeFolders = ['a/b/c','d/e/f']
 # options.excludeFolders = ['a/b/c','d/e/f']
-
-options.debugMaxDir = -1
-options.debugMaxRenderDir = -1
-options.debugMaxRenderDetection = -1
-options.debugMaxRenderInstance = -1
-
-# Can be None, 'xsort', or 'clustersort'
-options.smartSort = 'xsort'
 
 suspicious_detection_results = \
     repeat_detections_core.find_repeat_detections(ensemble_output_file_md_format,
@@ -582,8 +494,6 @@ preview_folder = preview_folder_base
 
 render_animals_only = False
 
-footer_text = geofence_footer + category_count_footer
-
 options = PostProcessingOptions()
 options.image_base_dir = input_folder
 options.include_almost_detections = True
@@ -595,11 +505,13 @@ options.separate_detections_by_category = True
 options.sample_seed = 0
 options.max_figures_per_html_file = 2500
 options.sort_classification_results_by_count = True
-options.footer_text = footer_text
+options.footer_text = geofence_footer
 
 options.parallelize_rendering = True
 options.parallelize_rendering_n_cores = 10
 options.parallelize_rendering_with_threads = use_threads_for_parallelization
+options.additional_image_fields_to_display = \
+    {'top_classification_common_name':'top class'}
 
 if render_animals_only:
     options.rendering_bypass_sets = ['detections_person','detections_vehicle',

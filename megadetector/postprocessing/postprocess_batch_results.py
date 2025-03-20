@@ -30,6 +30,7 @@ import time
 import uuid
 import warnings
 import random
+import json
 
 from enum import IntEnum
 from multiprocessing.pool import ThreadPool
@@ -48,8 +49,11 @@ from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.visualization import plot_utils
 from megadetector.utils.write_html_image_list import write_html_image_list
 from megadetector.utils import path_utils
-from megadetector.utils.ct_utils import args_to_object, sets_overlap
-from megadetector.data_management.cct_json_utils import (CameraTrapJsonUtils, IndexedJsonDb)
+from megadetector.utils.ct_utils import args_to_object
+from megadetector.utils.ct_utils import sets_overlap
+from megadetector.utils.ct_utils import sort_dictionary_by_value
+from megadetector.data_management.cct_json_utils import CameraTrapJsonUtils
+from megadetector.data_management.cct_json_utils import IndexedJsonDb
 from megadetector.postprocessing.load_api_results import load_api_results
 from megadetector.detection.run_detector import get_typical_confidence_threshold_from_results
 
@@ -213,6 +217,15 @@ class PostProcessingOptions:
 
         #: Character encoding to use when writing the index HTML html
         self.output_html_encoding = None
+        
+        #: Additional image fields to display in image headers.  If this is a list,
+        #: we'll include those fields; if this is a dict, we'll use that dict to choose
+        #: alternative display names for each field.
+        self.additional_image_fields_to_display = None
+        
+        #: If classification results are present, should we include a summary of 
+        #: classification categories?
+        self.include_classification_category_report = True
         
     # ...__init__()
     
@@ -434,15 +447,6 @@ def _render_bounding_boxes(
     if options is None:
         options = PostProcessingOptions()
 
-    # Leaving code in place for reading from blob storage, may support this
-    # in the future.
-    """
-    stream = io.BytesIO()
-    _ = blob_service.get_blob_to_stream(container_name, image_id, stream)
-    # resize is to display them in this notebook or in the HTML more quickly
-    image = Image.open(stream).resize(viz_size)
-    """
-
     image_full_path = None
     
     if res in options.rendering_bypass_sets:
@@ -472,10 +476,12 @@ def _render_bounding_boxes(
         if image is not None:
             
             original_size = image.size
-            
+    
+            # Resize the image if necessary
             if options.viz_target_width is not None:
                 image = vis_utils.resize_image(image, options.viz_target_width)
     
+            # Render ground truth boxes if necessary
             if ground_truth_boxes is not None and len(ground_truth_boxes) > 0:
                 
                 # Create class labels like "gt_1" or "gt_27"
@@ -487,8 +493,7 @@ def _render_bounding_boxes(
                                                    original_size=original_size,label_map=label_map,
                                                    thickness=4,expansion=4)
         
-            # render_detection_bounding_boxes expects either a float or a dict mapping
-            # category IDs to names.
+            # Preprare per-category confidence thresholds
             if isinstance(options.confidence_threshold,float):
                 rendering_confidence_threshold = options.confidence_threshold
             else:
@@ -499,12 +504,14 @@ def _render_bounding_boxes(
                 for category_id in category_ids:
                     rendering_confidence_threshold[category_id] = \
                         _get_threshold_for_category_id(category_id, options, detection_categories)
-                
+            
+            # Render detection boxes
             vis_utils.render_detection_bounding_boxes(
                 detections, image,
                 label_map=detection_categories,
                 classification_label_map=classification_categories,
                 confidence_threshold=rendering_confidence_threshold,
+                classification_confidence_threshold=options.classification_confidence_threshold,
                 thickness=options.line_thickness,
                 expansion=options.box_expansion)
     
@@ -686,9 +693,11 @@ def _has_positive_detection(detections,options,detection_categories):
     return found_positive_detection
         
 
-def _render_image_no_gt(file_info,detection_categories_to_results_name,
-                       detection_categories,classification_categories,
-                       options):
+def _render_image_no_gt(file_info,
+                        detection_categories_to_results_name,
+                        detection_categories,
+                        classification_categories,
+                        options):
     """
     Renders an image (with no ground truth information)
     
@@ -713,9 +722,15 @@ def _render_image_no_gt(file_info,detection_categories_to_results_name,
     Returns None if there are any errors.
     """
     
-    image_relative_path = file_info[0]
-    max_conf = file_info[1]
-    detections = file_info[2]
+    image_relative_path = file_info['file']
+    
+    # Useful debug snippet
+    #
+    # if 'filename' in image_relative_path:
+    #    import pdb; pdb.set_trace()
+    
+    max_conf = file_info['max_detection_conf']
+    detections = file_info['detections']
 
     # Determine whether any positive detections are present (using a threshold that
     # may vary by category)
@@ -749,9 +764,31 @@ def _render_image_no_gt(file_info,detection_categories_to_results_name,
         assert detection_status == DetectionStatus.DS_ALMOST
         res = 'almost_detections'
 
-    display_name = '<b>Result type</b>: {}, <b>Image</b>: {}, <b>Max conf</b>: {:0.3f}'.format(
+    display_name = '<b>Result type</b>: {}, <b>image</b>: {}, <b>max conf</b>: {:0.3f}'.format(
         res, image_relative_path, max_conf)
 
+    # Are there any bonus fields we need to include in each image header?
+    if options.additional_image_fields_to_display is not None:
+        
+        for field_name in options.additional_image_fields_to_display:
+            
+            if field_name in file_info:
+                
+                field_value = file_info[field_name]
+                
+                if (field_value is None) or \
+                    (isinstance(field_value,float) and np.isnan(field_value)):
+                        continue
+                
+                # Optionally use a display name that's different from the field name
+                if isinstance(options.additional_image_fields_to_display,dict):
+                    field_display_name = \
+                        options.additional_image_fields_to_display[field_name]
+                else:
+                    field_display_name = field_name
+                field_string = '<b>{}</b>: {}'.format(field_display_name,field_value)
+                display_name += ', {}'.format(field_string)
+                
     rendering_options = copy.copy(options)
     if detection_status == DetectionStatus.DS_ALMOST:
         rendering_options.confidence_threshold = \
@@ -781,17 +818,24 @@ def _render_image_no_gt(file_info,detection_categories_to_results_name,
             if det['conf'] > max_conf:
                 max_conf = det['conf']
 
+            # We make the decision here that only "detections" (not "almost-detections")
+            # will appear on the classification category pages
+            detection_threshold = \
+                _get_threshold_for_category_id(det['category'], options, detection_categories)
+            if det['conf'] < detection_threshold:
+                continue
+                
             if ('classifications' in det) and (len(det['classifications']) > 0) and \
                 (res != 'non_detections'):
 
-                # This is a list of [class,confidence] pairs, sorted by confidence
+                # This is a list of [class,confidence] pairs, sorted by classification confidence
                 classifications = det['classifications']
                 top1_class_id = classifications[0][0]
                 top1_class_name = classification_categories[top1_class_id]
                 top1_class_score = classifications[0][1]
 
-                # If we either don't have a confidence threshold, or we've met our
-                # confidence threshold
+                # If we either don't have a classification confidence threshold, or 
+                # we've met our classification confidence threshold
                 if (options.classification_confidence_threshold < 0) or \
                     (top1_class_score >= options.classification_confidence_threshold):
                     class_string = 'class_{}'.format(top1_class_name)                    
@@ -823,9 +867,9 @@ def _render_image_with_gt(file_info,ground_truth_indexed_db,
     data format.
     """
     
-    image_relative_path = file_info[0]
-    max_conf = file_info[1]
-    detections = file_info[2]
+    image_relative_path = file_info['file']
+    max_conf = file_info['max_detection_conf']
+    detections = file_info['detections']
 
     # This should already have been normalized to either '/' or '\'
 
@@ -971,6 +1015,7 @@ def process_batch_results(options):
             print('\n*** Warning: {} images with ambiguous positive/negative status found in ground truth ***\n'.format(
                 n_ambiguous))
 
+
     ##%% Load detection (and possibly classification) results
 
     # If the caller hasn't supplied results, load them
@@ -1027,6 +1072,8 @@ def process_batch_results(options):
     # Count detections and almost-detections for reporting purposes
     n_positives = 0
     n_almosts = 0
+    
+    print('Assigning images to rendering categories')
     
     for i_row,row in tqdm(detections_df.iterrows(),total=len(detections_df)):
         
@@ -1372,7 +1419,7 @@ def process_batch_results(options):
         for _, row in images_to_visualize.iterrows():
 
             # Filenames should already have been normalized to either '/' or '\'
-            files_to_render.append([row['file'], row['max_detection_conf'], row['detections']])
+            files_to_render.append(row.to_dict())
 
         start_time = time.time()
         if options.parallelize_rendering:
@@ -1523,8 +1570,13 @@ def process_batch_results(options):
                     len(images_html['class_{}'.format(cname)]))
             index_page += '</div>'
 
-        # Close body and html tags
-        index_page += '{}</body></html>'.format(options.footer_text)
+        # Write custom footer if it was provided
+        if (options.footer_text is not None) and (len(options.footer_text) > 0):
+            index_page += '{}\n'.format(options.footer_text)
+        
+        # Close open html tags
+        index_page += '\n</body></html>\n'
+        
         output_html_file = os.path.join(output_dir, 'index.html')
         with open(output_html_file, 'w', 
                   encoding=options.output_html_encoding) as f:
@@ -1532,7 +1584,7 @@ def process_batch_results(options):
 
         print('Finished writing html to {}'.format(output_html_file))
 
-    # ...for each image
+    # ...if we have ground truth
 
 
     ##%% Otherwise, if we don't have ground truth...
@@ -1618,9 +1670,7 @@ def process_batch_results(options):
             assert isinstance(row['detections'],list)
             
             # Filenames should already have been normalized to either '/' or '\'
-            files_to_render.append([row['file'],
-                                    row['max_detection_conf'],
-                                    row['detections']])
+            files_to_render.append(row.to_dict())
 
         start_time = time.time()
         if options.parallelize_rendering:
@@ -1691,8 +1741,7 @@ def process_batch_results(options):
         # Write index.html
 
         # We can't just sum these, because image_counts includes images in both their
-        # detection and classification classes
-        # total_images = sum(image_counts.values())
+        # detection and classification classes        
         total_images = 0
         for k in image_counts.keys():
             v = image_counts[k]
@@ -1779,9 +1828,15 @@ def process_batch_results(options):
             else:
                 index_page += '<a href="{}">{}</a> ({}, {:.1%})<br/>\n'.format(
                     filename,label,image_count,image_fraction)
-
+        
+        # ...for each result set
+        
         index_page += '</div>\n'
 
+        # If classification information is present and we're supposed to create
+        # a summary of classifications, we'll put it here
+        category_count_footer = None
+        
         if has_classification_info:
             
             index_page += '<h3>Species classification results</h3>'
@@ -1810,15 +1865,74 @@ def process_batch_results(options):
                         cname, cname.lower(), ccount)
             index_page += '</div>\n'
 
-        index_page += '{}</body></html>'.format(options.footer_text)
+            if options.include_classification_category_report:
+
+                # TODO: it's only for silly historical reasons that we re-read
+                # the input file in this case; we're not currently carrying the json
+                # representation around, only the Pandas representation.
+                
+                print('Generating classification category report')
+                
+                with open(options.md_results_file,'r') as f:
+                    d = json.load(f)
+                
+                classification_category_to_count = {}
+
+                # im = d['images'][0]
+                for im in d['images']:
+                    if 'detections' in im and im['detections'] is not None:
+                        for det in im['detections']:
+                            if 'classifications' in det:
+                                class_id = det['classifications'][0][0]
+                                if class_id not in classification_category_to_count:
+                                    classification_category_to_count[class_id] = 0
+                                else:
+                                    classification_category_to_count[class_id] = \
+                                        classification_category_to_count[class_id] + 1
+
+                category_name_to_count = {}
+
+                for class_id in classification_category_to_count:
+                    category_name = d['classification_categories'][class_id]
+                    category_name_to_count[category_name] = \
+                        classification_category_to_count[class_id]
+
+                category_name_to_count = sort_dictionary_by_value(
+                    category_name_to_count,reverse=True)
+
+                category_count_footer = ''
+                category_count_footer += '<br/>\n'
+                category_count_footer += \
+                    '<h3>Category counts (for the whole dataset, not just the sample used for this page)</h3>\n'
+                category_count_footer += '<div class="contentdiv">\n'
+
+                for category_name in category_name_to_count.keys():
+                    count = category_name_to_count[category_name]
+                    category_count_html = '{}: {}<br>\n'.format(category_name,count)    
+                    category_count_footer += category_count_html
+
+                category_count_footer += '</div>\n'
+                
+            # ...if we're generating a classification category report
+            
+        # ...if classification info is present
+        
+        if category_count_footer is not None:
+            index_page += category_count_footer + '\n'
+            
+        # Write custom footer if it was provided
+        if (options.footer_text is not None) and (len(options.footer_text) > 0):
+            index_page += options.footer_text + '\n'
+        
+        # Close open html tags
+        index_page += '\n</body></html>\n'
+        
         output_html_file = os.path.join(output_dir, 'index.html')
         with open(output_html_file, 'w', 
                   encoding=options.output_html_encoding) as f:
             f.write(index_page)
 
-        print('Finished writing html to {}'.format(output_html_file))
-
-        # os.startfile(output_html_file)
+        print('Finished writing html to {}'.format(output_html_file))        
 
     # ...if we do/don't have ground truth
 

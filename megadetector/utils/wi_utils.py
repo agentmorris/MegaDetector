@@ -84,6 +84,28 @@ def is_valid_taxonomy_string(s):
     return isinstance(s,str) and (len(s.split(';')) == 5) and (s == s.lower())
 
     
+def clean_taxonomy_string(s):
+    """
+    If [s] is a seven-token prediction string, trim the GUID and common name to produce
+    a "clean" taxonomy string.  Else if [s] is a five-token string, return it.  Else error.
+
+    Args:
+        s (str): the seven- or five-token taxonomy/prediction string to clean
+    
+    Returns:
+        str: the five-token taxonomy string
+    """
+    
+    if is_valid_taxonomy_string(s):
+        return s
+    elif is_valid_prediction_string(s):        
+        tokens = s.split(';')
+        assert len(tokens) == 7
+        return ';'.join(tokens[1:-1])
+    else:
+        raise ValueError('Invalid taxonomy string')
+    
+    
 def wi_result_to_prediction_string(r):
     """
     Convert the dict [r] - typically loaded from a row in a downloaded .csv file - to
@@ -912,6 +934,19 @@ def is_human_classification(prediction_string):
         bool: whether this string corresponds to a human category
     """
     return prediction_string == human_prediction_string or 'homo;sapiens' in prediction_string
+
+
+def is_vehicle_classification(prediction_string):
+    """
+    Determines whether the input string represents a vehicle classification.
+    
+    Args:
+        prediction_string (str): a string in the semicolon-delimited prediction string format
+        
+    Returns:
+        bool: whether this string corresponds to the vehicle category
+    """
+    return prediction_string == vehicle_prediction_string
     
 
 def is_animal_classification(prediction_string):
@@ -939,17 +974,113 @@ def is_animal_classification(prediction_string):
     return True
 
 
+def generate_whole_image_detections_for_classifications(classifications_json_file,
+                                                        detections_json_file,
+                                                        ensemble_json_file=None,
+                                                        ignore_blank_classifications=True):
+    """
+    Given a set of classification results that were likely run on already-cropped
+    image, generate a file of [fake] detections in which each image is covered
+    in a single whole-image detection.
+    
+    Args:
+        classifications_json_file (str): SpeciesNet-formatted file containing classifications 
+        detections_json_file (str): SpeciesNet-formatted file to write with detections
+        ensemble_json_file (str, optional): SpeciesNet-formatted file to write with detections 
+            and classfications
+        ignore_blank_classifications (bool, optional): use non-top classifications when
+            the top classification is "blank" or "no CV result"
+    
+    Returns:
+        dict: the contents of [detections_json_file]
+    """
+    
+    with open(classifications_json_file,'r') as f:
+        classification_results = json.load(f)
+    predictions = classification_results['predictions']
+    
+    output_predictions = []
+    ensemble_predictions = []
+    
+    # prediction = predictions[0]
+    for prediction in predictions:
+        
+        output_prediction = {}
+        output_prediction['filepath'] = prediction['filepath']
+        i_score = 0
+        if ignore_blank_classifications:
+            while (prediction['classifications']['classes'][i_score] in \
+                   (blank_prediction_string,no_cv_result_prediction_string)):
+                i_score += 1
+        top_classification = prediction['classifications']['classes'][i_score]
+        top_classification_score = prediction['classifications']['scores'][i_score]
+        if is_animal_classification(top_classification):
+            category_name = 'animal'
+        elif is_human_classification(top_classification):
+            category_name = 'human'
+        else:
+            category_name = 'vehicle'
+        
+        if category_name == 'human':
+            md_category_name = 'person'
+        else:
+            md_category_name = category_name
+            
+        output_detection = {}
+        output_detection['label'] = category_name
+        output_detection['category'] = md_category_name_to_id[md_category_name]
+        output_detection['conf'] = 1.0
+        output_detection['bbox'] = [0.0, 0.0, 1.0, 1.0]
+        output_prediction['detections'] = [output_detection]
+        output_predictions.append(output_prediction)        
+        
+        ensemble_prediction = {}
+        ensemble_prediction['filepath'] = prediction['filepath']
+        ensemble_prediction['detections'] = [output_detection]
+        ensemble_prediction['prediction'] = top_classification
+        ensemble_prediction['prediction_score'] = top_classification_score
+        ensemble_prediction['prediction_source'] = 'fake_ensemble_file_utility'
+        ensemble_prediction['classifications'] = prediction['classifications']
+        ensemble_predictions.append(ensemble_prediction)
+
+    # ...for each image
+        
+    ## Write output
+        
+    if ensemble_json_file is not None:
+        
+        ensemble_output_data = {'predictions':ensemble_predictions}
+        with open(ensemble_json_file,'w') as f:
+            json.dump(ensemble_output_data,f,indent=1)    
+        _ = validate_predictions_file(ensemble_json_file)
+    
+    output_data = {'predictions':output_predictions}
+    with open(detections_json_file,'w') as f:
+        json.dump(output_data,f,indent=1)
+    return validate_predictions_file(detections_json_file)
+    
+# ...def generate_whole_image_detections_for_classifications(...)        
+
+
 def generate_md_results_from_predictions_json(predictions_json_file,
                                               md_results_file,
                                               base_folder=None,
                                               max_decimals=5):
     """
-    Generate an MD-formatted .json file from a predictions.json file.  Typically,
-    MD results files use relative paths, and predictions.json files use absolute paths, so 
-    this function optionally removes the leading string [base_folder] from all file names.
+    Generate an MD-formatted .json file from a predictions.json file, generated by the 
+    SpeciesNet ensemble.  Typically, MD results files use relative paths, and predictions.json 
+    files use absolute paths, so this function optionally removes the leading string 
+    [base_folder] from all file names.
     
-    Currently just applies the top classification category to every detection.  If the top classification 
-    is "blank", writes an empty detection list.
+    Currently just applies the top classification category to every detection.  If the top 
+    classification is "blank", writes an empty detection list.
+    
+    Uses the classification from the "prediction" field if it's available, otherwise 
+    uses the "classifications" field.
+    
+    When using the "prediction" field, records the top class in the "classifications" field to 
+    a field in each image called "top_classification_common_name".  This is often different 
+    from the value of  the "prediction" field.
     
     speciesnet_to_md.py is a command-line driver for this function.
     
@@ -1040,7 +1171,8 @@ def generate_md_results_from_predictions_json(predictions_json_file,
             # ...if detections are present
             
             class_to_assign = None
-            class_confidence = None
+            class_confidence = None            
+            top_classification_common_name = None
             
             if 'classifications' in im_in:
                 
@@ -1050,8 +1182,15 @@ def generate_md_results_from_predictions_json(predictions_json_file,
                 class_to_assign = classifications['classes'][0]
                 class_confidence = classifications['scores'][0]
                 
+                tokens = class_to_assign.split(';')
+                assert len(tokens) == 7
+                top_classification_common_name = tokens[-1]
+                if len(top_classification_common_name) == 0:
+                    top_classification_common_name = 'undefined'
+                
             if 'prediction' in im_in:
                 
+                im_out['top_classification_common_name'] = top_classification_common_name
                 class_to_assign = im_in['prediction']
                 class_confidence = im_in['prediction_score']
             
@@ -1403,7 +1542,7 @@ def validate_predictions_file(fn,instances=None,verbose=True):
             failures.append(im)
 
     if verbose:
-        print('Read detector results for {} images, with {} failure(s)'.format(
+        print('Read predictions for {} images, with {} failure(s)'.format(
             len(d['predictions']),len(failures)))
         
     if instances is not None:
@@ -1454,6 +1593,7 @@ def find_geofence_adjustments(ensemble_json_file,use_latin_names=False):
             descending order by count.
     """
     
+    # Load and validate ensemble results
     ensemble_results = validate_predictions_file(ensemble_json_file)
     
     assert isinstance(ensemble_results,dict)
@@ -1508,6 +1648,49 @@ def find_geofence_adjustments(ensemble_json_file,use_latin_names=False):
     return rollup_pair_to_count
 
 # ...def find_geofence_adjustments(...)    
+
+
+def generate_geofence_adjustment_html_summary(rollup_pair_to_count,min_count=10):
+    """
+    Given a list of geofence rollups, likely generated by find_geofence_adjustments,
+    generate an HTML summary of the changes made by geofencing.  The resulting HTML
+    is wrapped in <div>, but not, for example, in <html> or <body>.
+    
+    Args:
+        rollup_pair_to_count (dict): list of changes made by geofencing, see 
+            find_geofence_adjustments for details
+        min_count (int, optional): minimum number of changes a pair needs in order
+            to be included in the report.
+    """
+    
+    geofence_footer = ''
+
+    # Restrict to the list of taxa that were impacted by geofencing
+    rollup_pair_to_count = \
+        {key: value for key, value in rollup_pair_to_count.items() if value >= min_count}
+
+    # rollup_pair_to_count is sorted in descending order by count
+    assert is_list_sorted(list(rollup_pair_to_count.values()),reverse=True)
+
+    if len(rollup_pair_to_count) > 0:
+        
+        geofence_footer = \
+            '<h3>Geofence changes that occurred more than {} times</h3>\n'.format(min_count)
+        geofence_footer += '<div class="contentdiv">\n'
+        
+        print('\nRollup changes with count > {}:'.format(min_count))
+        for rollup_pair in rollup_pair_to_count.keys():
+            count = rollup_pair_to_count[rollup_pair]
+            rollup_pair_s = rollup_pair.replace(',',' --> ')
+            print('{}: {}'.format(rollup_pair_s,count))
+            rollup_pair_html = rollup_pair.replace(',',' &rarr; ')
+            geofence_footer += '{} ({})<br/>\n'.format(rollup_pair_html,count)
+
+        geofence_footer += '</div>\n'
+
+    return geofence_footer
+
+# ...def generate_geofence_adjustment_html_summary(...)
 
 
 #%% Module-level globals related to taxonomy mapping and geofencing    
@@ -1883,7 +2066,7 @@ def initialize_geofencing(geofencing_file,country_code_file,force_init=False):
 def _species_string_to_canonical_species_string(species):
     """
     Convert a string that may be a 5-token species string, a binomial name,
-    or a common name into a 5-token species string.
+    or a common name into a 5-token species string, using taxonomic lookup.
     """
     
     global taxonomy_string_to_taxonomy_info

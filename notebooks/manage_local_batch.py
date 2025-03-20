@@ -2,12 +2,12 @@
 
 manage_local_batch.py
    
-Semi-automated process for managing a local MegaDetector job, including
-standard postprocessing steps.
+Semi-automated process for managing a local MegaDetector (and, optionally, SpeciesNet job,
+including standard postprocessing steps.
 
 This script is not intended to be run from top to bottom like a typical Python script,
 it's a notebook disguised with a .py extension.  It's the Bestest Most Awesome way to
-run MegaDetector, but it's also pretty subtle; if you want to play with this, you might
+run MegaDetector, but it's also pretty complex; if you want to play with this, you might
 want to check in with cameratraps@lila.science for some tips.  Otherwise... YMMV.
 
 Some general notes on using this script, which I run in Spyder, though everything will be
@@ -69,20 +69,26 @@ import time
 import re    
 
 import humanfriendly
+import clipboard #noqa
 
 from tqdm import tqdm
 from collections import defaultdict
+from copy import deepcopy
 
 from megadetector.utils import path_utils
 from megadetector.utils.ct_utils import split_list_into_n_chunks
 from megadetector.utils.ct_utils import image_file_to_camera_folder
-from megadetector.detection.run_detector_batch import \
-    load_and_run_detector_batch, write_results_to_file
+from megadetector.detection.run_detector_batch import load_and_run_detector_batch
+from megadetector.detection.run_detector_batch import write_results_to_file
 from megadetector.detection.run_detector import DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
 from megadetector.detection.run_detector import estimate_md_images_per_second
-from megadetector.postprocessing.postprocess_batch_results import \
-    PostProcessingOptions, process_batch_results
+from megadetector.postprocessing.postprocess_batch_results import PostProcessingOptions
+from megadetector.postprocessing.postprocess_batch_results import process_batch_results
 from megadetector.detection.run_detector import get_detector_version_from_model_file
+from megadetector.utils.path_utils import insert_before_extension
+from megadetector.utils.wi_utils import generate_md_results_from_predictions_json
+from megadetector.utils.wi_utils import generate_instances_json_from_folder
+from megadetector.utils.ct_utils import split_list_into_fixed_size_chunks
 
 ## Inference options
 
@@ -95,7 +101,11 @@ max_tolerable_failed_images = 100
 # Should we supply the --image_queue_option to run_detector_batch.py?  I only set this 
 # when I have a very slow drive and a comparably fast GPU.  When this is enabled, checkpointing
 # is not supported within a job, so I set n_jobs to a large number (typically 100).
-use_image_queue = False
+use_image_queue = True
+
+# If we are using an image queue (worker pool), should that include image preprocessing
+# (as opposed to just image loading)?  Only relevant if use_image_queue is True.
+preprocess_on_image_queue = True
 
 # Only relevant when we're using a single GPU
 default_gpu_number = 0
@@ -138,11 +148,6 @@ overwrite_handling = 'skip' # 'skip', 'error', or 'overwrite'
 # that replaces typical strings like "BTCF", "RECNYX001", or "DCIM".  There's an example near 
 # the end of this notebook of using a custom function instead.
 relative_path_to_location = image_file_to_camera_folder
-
-# This will be the .json results file after RDE; if this is still None when
-# we get to classification stuff, that will indicate that we didn't do RDE.
-filtered_output_filename = None
-
 
 # OS-specific script line continuation character (modified later if we're running on Windows)
 slcc = '\\'
@@ -214,39 +219,89 @@ tile_size = (1280,1280)
 tile_overlap = 0.2
 
 
-#%% Constants I set per script
+## Constants related to preview generation
+
+# Optionally omit non-animal images from the output, useful when animals are rare and 
+# we want to dial up the total number of images used in the preview
+render_animals_only = False
+
+preview_options_base = PostProcessingOptions()
+preview_options_base.image_base_dir = None
+preview_options_base.include_almost_detections = True
+preview_options_base.num_images_to_sample = 7500
+preview_options_base.confidence_threshold = 0.2
+preview_options_base.almost_detection_confidence_threshold = \
+    preview_options_base.confidence_threshold - 0.05
+preview_options_base.ground_truth_json_file = None
+preview_options_base.separate_detections_by_category = True
+preview_options_base.sample_seed = 0
+preview_options_base.max_figures_per_html_file = 2500
+preview_options_base.sort_classification_results_by_count = True
+preview_options_base.parallelize_rendering = True
+preview_options_base.parallelize_rendering_n_cores = default_workers_for_parallel_tasks
+preview_options_base.parallelize_rendering_with_threads = parallelization_defaults_to_threads
+preview_options_base.additional_image_fields_to_display = \
+    {'pre_smoothing_description':'pre-smoothing labels',
+     'top_classification_common_name':'top class'}
+
+if render_animals_only:
+    preview_options_base.rendering_bypass_sets = ['detections_person','detections_vehicle',
+                                     'detections_person_vehicle','non_detections']
+
+
+#%% Variables I set for each job
 
 input_path = '/drive/organization'
-
-assert not (input_path.endswith('/') or input_path.endswith('\\'))
-assert os.path.isdir(input_path), 'Could not find input folder {}'.format(input_path)
-input_path = input_path.replace('\\','/')
-
 organization_name_short = 'organization'
 job_date = None # '2025-01-01'
-assert job_date is not None and organization_name_short != 'organization'
+model_file = 'MDV5A' # 'MDV5A', 'MDV5B', 'MDV4'
 
-# Optional descriptor
+# Number of jobs to split data into, typically equal to the number of available GPUs, though
+# when using an image loading queue, I typically use ~100 jobs per GPU;  those serve as de 
+# facto checkpoints.
+n_jobs = 100
+n_gpus = 2
+
+# Set to "None" when using an image loading queue, which doesn't currently support
+# checkpointing.  Don't worry, this will be assert()'d in the next cell.
+checkpoint_frequency = None
+
+# Local root folder where we do all our MegaDetector work; results and
+# temporary files will be stored in a subfolder for this job
+postprocessing_base = os.path.expanduser('~/postprocessing')
+
+# Optional job descriptor
 job_tag = None
+
+# SpeciesNet-related variables
+
+speciesnet_model_file = os.path.expanduser('~/models/speciesnet/crop')
+
+country_code = None
+state_code = None
+
+speciesnet_folder = os.path.expanduser('~/git/cameratrapai')
+speciesnet_pt_environment_name = 'speciesnet-package-pytorch'
+speciesnet_tf_environment_name = 'speciesnet-package-tf'
+
+# Can be None to omit the CUDA prefix
+speciesnet_gpu_number = default_gpu_number
+max_images_per_chunk = 5000
+classifier_batch_size = 128
+
+
+#%% Derived variables, constant validation, path setup
+
+input_path = input_path.replace('\\','/')
+assert not (input_path.endswith('/') or input_path.endswith('\\'))
+assert os.path.isdir(input_path), 'Could not find input folder {}'.format(input_path)
+
+assert job_date is not None and organization_name_short != 'organization'
 
 if job_tag is None:
     job_description_string = ''
 else:
     job_description_string = '-' + job_tag
-
-model_file = 'MDV5A' # 'MDV5A', 'MDV5B', 'MDV4'
-
-postprocessing_base = os.path.expanduser('~/postprocessing')
-
-# Number of jobs to split data into, typically equal to the number of available GPUs, though
-# when using augmentation or an image queue (and thus not using checkpoints), I typically
-# use ~100 jobs per GPU; those serve as de facto checkpoints.
-n_jobs = 2
-n_gpus = 2
-
-# Set to "None" when using augmentation or an image queue, which don't currently support
-# checkpointing.  Don't worry, this will be assert()'d in the next cell.
-checkpoint_frequency = 10000
 
 # Estimate inference speed for the current GPU
 approx_images_per_second = estimate_md_images_per_second(model_file) 
@@ -259,9 +314,6 @@ base_task_name = organization_name_short + '-' + job_date + job_description_stri
     get_detector_version_from_model_file(model_file)
 base_output_folder_name = os.path.join(postprocessing_base,organization_name_short)
 os.makedirs(base_output_folder_name,exist_ok=True)
-
-
-#%% Derived variables, constant validation, path setup
 
 if use_image_queue:
     assert checkpoint_frequency is None,\
@@ -290,6 +342,13 @@ combined_api_output_file = os.path.join(
     combined_api_output_folder,
     '{}_detections.json'.format(base_task_name))
 
+# This will be the .json results file after RDE; if this doesn't exist when
+# we get to classification stuff, that will indicate that we didn't do RDE.
+filtered_output_filename = path_utils.insert_before_extension(combined_api_output_file,'filtered')
+
+# If we do sequence-level smoothing, we'll read EXIF data and put it here
+exif_results_file = os.path.join(filename_base,'exif_data.json')
+
 os.makedirs(filename_base, exist_ok=True)
 os.makedirs(combined_api_output_folder, exist_ok=True)
 os.makedirs(postprocessing_output_folder, exist_ok=True)
@@ -303,7 +362,10 @@ print('Output folder:\n{}'.format(filename_base))
 #%% Enumerate files
 
 # Have we already listed files for this job?
-chunk_files = os.listdir(filename_base)
+chunk_file_base = os.path.join(filename_base,'file_chunks')
+os.makedirs(chunk_file_base,exist_ok=True)
+
+chunk_files = os.listdir(chunk_file_base)
 pattern = re.compile('chunk\d+.json')
 chunk_files = [fn for fn in chunk_files if pattern.match(fn)]
 
@@ -315,14 +377,14 @@ if (not force_enumeration) and (len(chunk_files) > 0):
     
     all_images = []
     for fn in chunk_files:
-        with open(os.path.join(filename_base,fn),'r') as f:
+        with open(os.path.join(chunk_file_base,fn),'r') as f:
             chunk = json.load(f)
             assert isinstance(chunk,list)
             all_images.extend(chunk)
     all_images = sorted(all_images)
     
     print('Loaded {} image files from {} chunks in {}'.format(
-        len(all_images),len(chunk_files),filename_base))
+        len(all_images),len(chunk_files),chunk_file_base))
 
 else:
 
@@ -367,7 +429,7 @@ task_info = []
 
 for i_chunk,chunk_list in enumerate(folder_chunks):
     
-    chunk_fn = os.path.join(filename_base,'chunk{}.json'.format(str(i_chunk).zfill(3)))
+    chunk_fn = os.path.join(chunk_file_base,'chunk{}.json'.format(str(i_chunk).zfill(3)))
     task_info.append({'id':i_chunk,'input_file':chunk_fn})
     path_utils.write_list_to_file(chunk_fn, chunk_list)
     
@@ -377,6 +439,9 @@ for i_chunk,chunk_list in enumerate(folder_chunks):
 # A list of the scripts tied to each GPU, as absolute paths.  We'll write this out at
 # the end so each GPU's list of commands can be run at once
 gpu_to_scripts = defaultdict(list)
+
+detector_chunk_base = os.path.join(filename_base,'detector_commands')
+os.makedirs(detector_chunk_base,exist_ok=True)
 
 # i_task = 0; task = task_info[i_task]
 for i_task,task in enumerate(task_info):
@@ -527,7 +592,8 @@ for i_task,task in enumerate(task_info):
         if detector_options is not None:
             cmd += ' --detector_options "{}"'.format(detector_options)
             
-    cmd_file = os.path.join(filename_base,'run_chunk_{}_gpu_{}{}'.format(str(i_task).zfill(3),
+    cmd_file = os.path.join(filename_base,'detector_commands',
+                            'run_chunk_{}_gpu_{}{}'.format(str(i_task).zfill(3),
                             str(gpu_number).zfill(2),script_extension))
     
     with open(cmd_file,'w') as f:
@@ -550,7 +616,7 @@ for i_task,task in enumerate(task_info):
         resume_string = ' --resume_from_checkpoint "{}"'.format(checkpoint_filename)
         resume_cmd = cmd + resume_string
     
-        resume_cmd_file = os.path.join(filename_base,
+        resume_cmd_file = os.path.join(filename_base,'detector_commands',
                                        'resume_chunk_{}_gpu_{}{}'.format(str(i_task).zfill(3),
                                        str(gpu_number).zfill(2),script_extension))
         
@@ -568,8 +634,7 @@ for i_task,task in enumerate(task_info):
 # ...for each task
 
 # Write out a script for each GPU that runs all of the commands associated with
-# that GPU.  Typically only used when running lots of little scripts in lieu
-# of checkpointing.
+# that GPU.
 for gpu_number in gpu_to_scripts:
     
     gpu_script_file = os.path.join(filename_base,'run_all_for_gpu_{}{}'.format(
@@ -803,43 +868,21 @@ interested in this preview.  There is a similar cell below for previewing result
 *after* RDE, which I almost always run.
 """
 
-render_animals_only = False
+preview_options = deepcopy(preview_options_base)
+preview_options.image_base_dir = input_path
 
-options = PostProcessingOptions()
-options.image_base_dir = input_path
-options.include_almost_detections = True
-options.num_images_to_sample = 7500
-options.confidence_threshold = 0.2
-options.almost_detection_confidence_threshold = options.confidence_threshold - 0.05
-options.ground_truth_json_file = None
-options.separate_detections_by_category = True
-options.sample_seed = 0
-options.max_figures_per_html_file = 2500
-options.sort_classification_results_by_count = True
+preview_folder = os.path.join(postprocessing_output_folder,
+    base_task_name + '_{:.3f}'.format(preview_options.confidence_threshold))
 
-options.parallelize_rendering = True
-options.parallelize_rendering_n_cores = default_workers_for_parallel_tasks
-options.parallelize_rendering_with_threads = parallelization_defaults_to_threads
+os.makedirs(preview_folder, exist_ok=True)
 
-if render_animals_only:
-    # Omit some pages from the output, useful when animals are rare
-    options.rendering_bypass_sets = ['detections_person','detections_vehicle',
-                                     'detections_person_vehicle','non_detections']
+preview_options.md_results_file = combined_api_output_file
+preview_options.output_dir = preview_folder
 
-output_base = os.path.join(postprocessing_output_folder,
-    base_task_name + '_{:.3f}'.format(options.confidence_threshold))
-if render_animals_only:
-    output_base = output_base + '_animals_only'
-
-os.makedirs(output_base, exist_ok=True)
-print('Processing to {}'.format(output_base))
-
-options.md_results_file = combined_api_output_file
-options.output_dir = output_base
-ppresults = process_batch_results(options)
-html_output_file = ppresults.output_html_file
-path_utils.open_file(html_output_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
-# import clipboard; clipboard.copy(html_output_file)
+print('Generating pre-RDE preview in {}'.format(preview_folder))
+ppresults = process_batch_results(preview_options)
+path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
+# import clipboard; clipboard.copy(ppresults.output_html_file)
 
 
 #%% Repeat detection elimination, phase 1
@@ -877,7 +920,6 @@ options.customDirNameFunction = relative_path_to_location
 # To invoke custom collapsing of folders for a particular naming scheme
 # options.customDirNameFunction = custom_relative_path_to_location
 
-options.bRenderHtml = False
 options.imageBase = input_path
 rde_string = 'rde_{:.3f}_{:.3f}_{}_{:.3f}'.format(
     options.confidenceMin, options.iouThreshold,
@@ -928,9 +970,6 @@ path_utils.open_file(os.path.dirname(suspicious_detection_results.filterFile),
 
 from megadetector.postprocessing.repeat_detection_elimination import remove_repeat_detections
 
-filtered_output_filename = path_utils.insert_before_extension(combined_api_output_file, 
-                                                              'filtered_{}'.format(rde_string))
-
 remove_repeat_detections.remove_repeat_detections(
     inputFile=combined_api_output_file,
     outputFile=filtered_output_filename,
@@ -940,480 +979,414 @@ remove_repeat_detections.remove_repeat_detections(
 
 #%% Post-processing (post-RDE)
 
-render_animals_only = False
+preview_options = deepcopy(preview_options_base)
+preview_options.image_base_dir = input_path
 
-options = PostProcessingOptions()
-options.image_base_dir = input_path
-options.include_almost_detections = True
-options.num_images_to_sample = 7500
-options.confidence_threshold = 0.2
-options.almost_detection_confidence_threshold = options.confidence_threshold - 0.05
-options.ground_truth_json_file = None
-options.separate_detections_by_category = True
-options.sample_seed = 0
-options.max_figures_per_html_file = 2500
-options.sort_classification_results_by_count = True
-
-options.parallelize_rendering = True
-options.parallelize_rendering_n_cores = default_workers_for_parallel_tasks
-options.parallelize_rendering_with_threads = parallelization_defaults_to_threads
-
-if render_animals_only:
-    # Omit some pages from the output, useful when animals are rare
-    options.rendering_bypass_sets = ['detections_person','detections_vehicle',
-                                      'detections_person_vehicle','non_detections']    
-
-output_base = os.path.join(postprocessing_output_folder, 
+preview_folder = os.path.join(postprocessing_output_folder, 
     base_task_name + '_{}_{:.3f}'.format(rde_string, options.confidence_threshold))    
 
-if render_animals_only:
-    output_base = output_base + '_render_animals_only'
-os.makedirs(output_base, exist_ok=True)
+os.makedirs(preview_folder, exist_ok=True)
 
-print('Processing post-RDE to {}'.format(output_base))
+preview_options.md_results_file = filtered_output_filename
+preview_options.output_dir = preview_folder
 
-options.md_results_file = filtered_output_filename
-options.output_dir = output_base
-ppresults = process_batch_results(options)
-html_output_file = ppresults.output_html_file
-
-path_utils.open_file(html_output_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
-# import clipboard; clipboard.copy(html_output_file)
+print('Generating post-RDE preview in {}'.format(preview_folder))
+ppresults = process_batch_results(preview_options)
+path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
+# import clipboard; clipboard.copy(ppresults.output_html_file)
 
 
-#%% Run MegaClassifier (actually, write out a script that runs MegaClassifier)
+#%% SpeciesNet derived constants
 
-# Variables that will indicate which classifiers we ran
-final_output_path_mc = None
-final_output_path_ic = None
+crop_folder = os.path.join(postprocessing_base,'crops',base_task_name)
 
-# If we didn't do RDE
-if filtered_output_filename is None:
-    print("Warning: it looks like you didn't do RDE, using the raw output file")
-    filtered_output_filename = combined_api_output_file
+# A results file in MD format, referring to the original images
+detection_results_file_with_crop_ids = os.path.join(combined_api_output_folder,
+                                                    base_task_name + '-detection_results_with_crop_ids.json')
+
+# A results file in MD format, referring to the crops, so every detection
+# has bbox [0,0,1,1]
+detection_results_file_for_crop_folder = insert_before_extension(
+        detection_results_file_with_crop_ids,'unity_boxes')
+
+# A detection results file in SpeciesNet format, referring to the crops, so every detection
+# has bbox [0,0,1,1]
+crop_detections_predictions_file = \
+    insert_before_extension(detection_results_file_for_crop_folder,'speciesnet_format')
+
+# The instances.json file that refers just to the crops folder
+crop_instances_json = os.path.join(combined_api_output_folder,
+                                   base_task_name + '-crop_instances.json')
+
+# The results of the classifier (in SpeciesNet format), after running it on the crops
+classifier_output_file_modular_crops = \
+    os.path.join(combined_api_output_folder,
+                 base_task_name + '-classifier_output_modular_crops.json')
     
-classifier_name_short = 'megaclassifier'
-threshold_str = '0.15'
-classifier_name = 'megaclassifier_v0.1_efficientnet-b3'
+# The results of the ensemble, after running it on the crops (in SpeciesNet format)
+ensemble_output_file_modular_crops = \
+    os.path.join(combined_api_output_folder,
+                 base_task_name + '-ensemble_output_modular_crops.json')
 
-organization_name = organization_name_short
-job_name = base_task_name
-input_filename = filtered_output_filename # combined_api_output_file
-input_files = [input_filename]
-image_base = input_path
-crop_path = os.path.join(os.path.expanduser('~/crops'),job_name + '_crops')
-output_base = combined_api_output_folder
-device_id = 0
+# The results of the ensemble after running it on the crops (in MD format)
+ensemble_output_file_crops_md_format = insert_before_extension(
+    ensemble_output_file_modular_crops,
+    'md-format')
 
-output_file = os.path.join(filename_base,'run_{}_'.format(classifier_name_short) + job_name + script_extension)
+# The results of the ensemble, mapped back to image level (in MD format)
+ensemble_output_file_image_level_md_format = \
+    ensemble_output_file_crops_md_format.replace('_crops','_image-level')
 
-classifier_base = os.path.expanduser('~/models/camera_traps/megaclassifier/v0.1/')
-assert os.path.isdir(classifier_base)
+# The instances.json file we use to pass path names and the country code to the 
+# classifier and ensemble
+instances_json = \
+    os.path.join(combined_api_output_folder,
+                 base_task_name + '-instances.json')
 
-checkpoint_path = os.path.join(classifier_base,'megaclassifier_v0.1_efficientnet-b3_compiled.pt')
-assert os.path.isfile(checkpoint_path)
+# The folder where we'll store classifier results for each chunk
+chunk_folder = os.path.join(filename_base,'classifier_chunks')
 
-classifier_categories_path = os.path.join(classifier_base,'megaclassifier_v0.1_index_to_name.json')
-assert os.path.isfile(classifier_categories_path)
+# The .sh file we'll use to launch the classifier
+classifier_script_file = os.path.join(filename_base,'run_all_classifier_chunks.sh')            
 
-target_mapping_path = os.path.join(classifier_base,'idfg_to_megaclassifier_labels.json')
-assert os.path.isfile(target_mapping_path)
+# The ensemble results (in MD format) after image-level smoothing
+classifier_output_path_within_image_smoothing = insert_before_extension(
+    ensemble_output_file_image_level_md_format,'within_image_smoothing')
+   
+sequence_smoothed_classification_file = \
+    insert_before_extension(classifier_output_path_within_image_smoothing,
+                            'seqsmoothing')
 
-classifier_output_suffix = '_megaclassifier_output.csv.gz'
-final_output_suffix = '_megaclassifier.json'
+geofence_footer = None
 
-n_threads_str = str(default_workers_for_parallel_tasks)
-image_size_str = '300'
-batch_size_str = '64'
-num_workers_str = str(default_workers_for_parallel_tasks)
-classification_threshold_str = '0.05'
+if speciesnet_gpu_number is not None:
+    cuda_prefix = 'export CUDA_VISIBLE_DEVICES={} && '.format(speciesnet_gpu_number)
+else:
+    cuda_prefix = ''
 
-logdir = filename_base
+if filtered_output_filename is not None and os.path.isfile(filtered_output_filename):
+    print('Using filtered MD output file {} for classification'.format(filtered_output_filename))
+    detector_output_file_md_format = filtered_output_filename
+else:
+    print('It looks like you didn\'t do RDE, using raw MD output for classification')
+    detector_output_file_md_format = combined_api_output_file
 
-# This is just passed along to the metadata in the output file, it has no impact
-# on how the classification scripts run.
-typical_classification_threshold_str = '0.75'
+assert os.path.isdir(speciesnet_model_file)
+os.makedirs(crop_folder,exist_ok=True)
 
-
-##%% Set up environment
-
-commands = []
-# commands.append('cd MegaDetector/megadetector/classification\n')
-# commands.append('mamba activate cameratraps-classifier\n')
-
-if script_header is not None and len(script_header) > 0:
-    commands.append(script_header)
+for fn in [classifier_output_file_modular_crops,
+           ensemble_output_file_modular_crops]:
+    if os.path.exists(fn):
+        print('**\nWarning, file {} exists, this is OK if you are resuming\n**\n'.format(fn))
 
 
-##%% Crop images
+#%% Generate instances.json
 
-commands.append('\n' + scc + ' Cropping ' + scc + '\n')
+# ...for the original images.
 
-# fn = input_files[0]
-for fn in input_files:
+instances = generate_instances_json_from_folder(folder=input_path,
+                                                country=country_code,
+                                                admin1_region=state_code,
+                                                output_file=instances_json,
+                                                filename_replacements=None)
 
-    input_file_path = fn
-    crop_cmd = ''
+print('Generated {} instances'.format(len(instances['instances'])))
+
+
+#%% Generate crop dataset
+
+from megadetector.postprocessing.create_crop_folder import \
+    CreateCropFolderOptions, create_crop_folder
     
-    crop_comment = '\n' + scc + ' Cropping {}\n\n'.format(fn)
-    crop_cmd += crop_comment
-    
-    crop_cmd += "python crop_detections.py " + slcc + "\n" + \
-    	 ' "' + input_file_path + '" ' + slcc + '\n' + \
-         ' "' + crop_path + '" ' + slcc + '\n' + \
-         ' ' + '--images-dir "' + image_base + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--threshold "' + threshold_str + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--square-crops ' + ' ' + slcc + '\n' + \
-         ' ' + '--threads "' + n_threads_str + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--logdir "' + logdir + '"' + '\n' + \
-         ' ' + '\n'
-    crop_cmd = '{}'.format(crop_cmd)
-    commands.append(crop_cmd)
+create_crop_folder_options = CreateCropFolderOptions()
+create_crop_folder_options.n_workers = 8
+create_crop_folder_options.pool_type = 'process'
 
-    if len(command_suffix) > 0:
-        commands.append(command_suffix)
-    
-    
-##%% Run classifier
+create_crop_folder(input_file=detector_output_file_md_format,
+                   input_folder=input_path,
+                   output_folder=crop_folder,
+                   output_file=detection_results_file_with_crop_ids,
+                   crops_output_file=detection_results_file_for_crop_folder,
+                   options=create_crop_folder_options)
 
-commands.append('\n' + scc + ' Classifying ' + scc + '\n')
+assert os.path.isfile(detection_results_file_with_crop_ids)
+assert os.path.isfile(detection_results_file_for_crop_folder)
+assert os.path.isdir(crop_folder)
 
-# fn = input_files[0]
-for fn in input_files:
 
-    input_file_path = fn
-    classifier_output_path = crop_path + classifier_output_suffix
+#%% Convert the detection results for the crops to predictions.json format
+
+# This will be the input to the ensemble when we run it on the crops.
+
+from megadetector.utils.wi_utils import generate_predictions_json_from_md_results
+
+generate_predictions_json_from_md_results(md_results_file=detection_results_file_for_crop_folder,
+                                          predictions_json_file=crop_detections_predictions_file,
+                                          base_folder=crop_folder)
+
+
+#%% Generate a new instances.json file for the crops
+
+crop_instances = generate_instances_json_from_folder(folder=crop_folder,
+                                                     country=country_code,
+                                                     admin1_region=state_code,
+                                                     output_file=crop_instances_json,
+                                                     filename_replacements=None)
+
+print('Generated {} instances for the crop folder (in file {})'.format(
+    len(crop_instances['instances']),crop_instances_json))
+
+
+#%% Run classifier on crops
+
+os.makedirs(chunk_folder,exist_ok=True)
+
+print('Reading crop instances json...')
+
+with open(crop_instances_json,'r') as f:
+    crop_instances_dict = json.load(f)
+
+crop_instances = crop_instances_dict['instances']
+       
+chunks = split_list_into_fixed_size_chunks(crop_instances,max_images_per_chunk)
+print('Split {} crop instances into {} chunks'.format(len(crop_instances),len(chunks)))
+
+chunk_scripts = []
+
+print('Reading detection results...')
+
+with open(crop_detections_predictions_file,'r') as f:
+    detections = json.load(f)
+
+detection_filepath_to_instance = {p['filepath']:p for p in detections['predictions']}
+
+chunk_prediction_files = []
+
+# i_chunk = 0; chunk = chunks[i_chunk]
+for i_chunk,chunk in enumerate(chunks):
     
-    classify_cmd = ''
+    chunk_str = str(i_chunk).zfill(3)
     
-    classify_comment = '\n' + scc + ' Classifying {}\n\n'.format(fn)
-    classify_cmd += classify_comment
+    chunk_instances_json = os.path.join(chunk_folder,'crop_instances_chunk_{}.json'.format(
+        chunk_str))
+    chunk_instances_dict = {'instances':chunk}
+    with open(chunk_instances_json,'w') as f:
+        json.dump(chunk_instances_dict,f,indent=1)
     
-    classify_cmd += "python run_classifier.py " + slcc + "\n" + \
-    	 ' "' + checkpoint_path + '" ' + slcc + '\n' + \
-         ' "' + crop_path + '" ' + slcc + '\n' + \
-         ' "' + classifier_output_path + '" ' + slcc + '\n' + \
-         ' ' + '--detections-json "' + input_file_path + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--classifier-categories "' + classifier_categories_path + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--image-size "' + image_size_str + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--batch-size "' + batch_size_str + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--num-workers "' + num_workers_str + '"' + ' ' + slcc + '\n'
+    chunk_detections_json = os.path.join(chunk_folder,'detections_chunk_{}.json'.format(
+        chunk_str))
     
-    if device_id is not None:
-        classify_cmd += ' ' + '--device {}'.format(device_id)
+    detection_predictions_this_chunk = []
+    
+    images_this_chunk = [instance['filepath'] for instance in chunk]
+    
+    for image_fn in images_this_chunk:
+        assert image_fn in detection_filepath_to_instance
+        detection_predictions_this_chunk.append(detection_filepath_to_instance[image_fn])
         
-    classify_cmd += '\n\n'        
-    classify_cmd = '{}'.format(classify_cmd)
-    commands.append(classify_cmd)
+    detection_predictions_dict = {'predictions':detection_predictions_this_chunk}
     
-    if len(command_suffix) > 0:
-        commands.append(command_suffix)
-
-
-##%% Remap classifier outputs
-
-commands.append('\n' + scc + ' Remapping ' + scc + '\n')
-
-# fn = input_files[0]
-for fn in input_files:
-
-    input_file_path = fn
-    classifier_output_path = crop_path + classifier_output_suffix
-    classifier_output_path_remapped = \
-        classifier_output_path.replace(".csv.gz","_remapped.csv.gz")
-    assert not (classifier_output_path == classifier_output_path_remapped)
+    with open(chunk_detections_json,'w') as f:
+        json.dump(detection_predictions_dict,f,indent=1)
     
-    output_label_index = classifier_output_path_remapped.replace(
-        "_remapped.csv.gz","_label_index_remapped.json")
-                                       
-    remap_cmd = ''
+    chunk_files = [instance['filepath'] for instance in chunk]    
     
-    remap_comment = '\n' + scc + ' Remapping {}\n\n'.format(fn)
-    remap_cmd += remap_comment
+    chunk_predictions_json = os.path.join(chunk_folder,'predictions_chunk_{}.json'.format(
+        chunk_str))
     
-    remap_cmd += "python aggregate_classifier_probs.py " + slcc + "\n" + \
-        ' "' + classifier_output_path + '" ' + slcc + '\n' + \
-        ' ' + '--target-mapping "' + target_mapping_path + '"' + ' ' + slcc + '\n' + \
-        ' ' + '--output-csv "' + classifier_output_path_remapped + '"' + ' ' + slcc + '\n' + \
-        ' ' + '--output-label-index "' + output_label_index + '"' \
-        '\n'
-     
-    remap_cmd = '{}'.format(remap_cmd)
-    commands.append(remap_cmd)
-    
-    if len(command_suffix) > 0:
-        commands.append(command_suffix)
-
-
-##%% Merge classification and detection outputs
-
-commands.append('\n\n' + scc + ' Merging ' + scc + '\n')
-
-# fn = input_files[0]
-for fn in input_files:
-
-    input_file_path = fn
-    classifier_output_path = crop_path + classifier_output_suffix
-    
-    classifier_output_path_remapped = \
-        classifier_output_path.replace(".csv.gz","_remapped.csv.gz")
-    
-    output_label_index = classifier_output_path_remapped.replace(
-        "_remapped.csv.gz","_label_index_remapped.json")
-    
-    final_output_path = os.path.join(output_base,
-                                     os.path.basename(classifier_output_path)).\
-        replace(classifier_output_suffix,
-        final_output_suffix)
-    final_output_path = final_output_path.replace('_detections','')
-    final_output_path = final_output_path.replace('_crops','')
-    final_output_path_mc = final_output_path
-    
-    merge_cmd = ''
-    
-    merge_comment = '\n' + scc + ' Merging {}\n\n'.format(fn)
-    merge_cmd += merge_comment
-    
-    merge_cmd += "python merge_classification_detection_output.py " + slcc + "\n" + \
-    	 ' "' + classifier_output_path_remapped + '" ' + slcc + '\n' + \
-         ' "' + output_label_index + '" ' + slcc + '\n' + \
-         ' ' + '--output-json "' + final_output_path + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--detection-json "' + input_file_path + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--classifier-name "' + classifier_name + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--threshold "' + classification_threshold_str + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--typical-confidence-threshold "' + typical_classification_threshold_str + '"' + '\n' + \
-         '\n'
-    merge_cmd = '{}'.format(merge_cmd)
-    commands.append(merge_cmd)
-
-    if len(command_suffix) > 0:
-        commands.append(command_suffix)
-
-
-##%% Write out classification script
-
-with open(output_file,'w') as f:
-    for s in commands:
-        f.write('{}'.format(s))
-
-st = os.stat(output_file)
-os.chmod(output_file, st.st_mode | stat.S_IEXEC)
-
-
-#%% Run a non-MegaClassifier classifier (i.e., a classifier with no output mapping)
-
-classifier_name_short = 'idfgclassifier'
-threshold_str = '0.15' # 0.6
-classifier_name = 'idfg_classifier_ckpt_14_compiled'
-
-organization_name = organization_name_short
-job_name = base_task_name
-input_filename = filtered_output_filename # combined_api_output_file
-input_files = [input_filename]
-image_base = input_path
-crop_path = os.path.join(os.path.expanduser('~/crops'),job_name + '_crops')
-output_base = combined_api_output_folder
-device_id = 1
-
-output_file = os.path.join(filename_base,'run_{}_'.format(classifier_name_short) + job_name +  script_extension)
-
-classifier_base = os.path.expanduser('~/models/camera_traps/idfg_classifier/idfg_classifier_20200905_042558')
-assert os.path.isdir(classifier_base)
-
-checkpoint_path = os.path.join(classifier_base,'idfg_classifier_ckpt_14_compiled.pt')
-assert os.path.isfile(checkpoint_path)
-
-classifier_categories_path = os.path.join(classifier_base,'label_index.json')
-assert os.path.isfile(classifier_categories_path)
-
-classifier_output_suffix = '_{}_output.csv.gz'.format(classifier_name_short)
-final_output_suffix = '_{}.json'.format(classifier_name_short)
-
-threshold_str = '0.65'
-n_threads_str = str(default_workers_for_parallel_tasks)
-image_size_str = '300'
-batch_size_str = '64'
-num_workers_str = str(default_workers_for_parallel_tasks)
-logdir = filename_base
-
-classification_threshold_str = '0.05'
-
-# This is just passed along to the metadata in the output file, it has no impact
-# on how the classification scripts run.
-typical_classification_threshold_str = '0.75'
-
-
-##%% Set up environment
-
-commands = []
-if script_header is not None and len(script_header) > 0:
-    commands.append(script_header)
-
-
-##%% Crop images
-    
-commands.append('\n' + scc + ' Cropping ' + scc + '\n')
-
-# fn = input_files[0]
-for fn in input_files:
-
-    input_file_path = fn
-    crop_cmd = ''
-    
-    crop_comment = '\n' + scc + ' Cropping {}\n'.format(fn)
-    crop_cmd += crop_comment
-    
-    crop_cmd += "python crop_detections.py " + slcc + "\n" + \
-    	 ' "' + input_file_path + '" ' + slcc + '\n' + \
-         ' "' + crop_path + '" ' + slcc + '\n' + \
-         ' ' + '--images-dir "' + image_base + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--threshold "' + threshold_str + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--square-crops ' + ' ' + slcc + '\n' + \
-         ' ' + '--threads "' + n_threads_str + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--logdir "' + logdir + '"' + '\n' + \
-         '\n'
-    crop_cmd = '{}'.format(crop_cmd)
-    commands.append(crop_cmd)
-
-    if len(command_suffix) > 0:
-        commands.append(command_suffix)
-
-
-##%% Run classifier
-
-commands.append('\n' + scc + ' Classifying ' + scc + '\n')
-
-# fn = input_files[0]
-for fn in input_files:
-
-    input_file_path = fn
-    classifier_output_path = crop_path + classifier_output_suffix
-    
-    classify_cmd = ''
-    
-    classify_comment = '\n' + scc + ' Classifying {}\n'.format(fn)
-    classify_cmd += classify_comment
-    
-    classify_cmd += "python run_classifier.py " + slcc + "\n" + \
-    	 ' "' + checkpoint_path + '" ' + slcc + '\n' + \
-         ' "' + crop_path + '" ' + slcc + '\n' + \
-         ' "' + classifier_output_path + '" ' + slcc + '\n' + \
-         ' ' + '--detections-json "' + input_file_path + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--classifier-categories "' + classifier_categories_path + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--image-size "' + image_size_str + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--batch-size "' + batch_size_str + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--num-workers "' + num_workers_str + '"' + ' ' + slcc + '\n'
-    
-    if device_id is not None:
-        classify_cmd += ' ' + '--device {}'.format(device_id)
+    if os.path.isfile(chunk_predictions_json):
+        print('Warning: chunk output file {} exists'.format(chunk_predictions_json))
         
-    classify_cmd += '\n\n'    
-    classify_cmd = '{}'.format(classify_cmd)
-    commands.append(classify_cmd)
-		
-    if len(command_suffix) > 0:
-        commands.append(command_suffix)
-
-
-##%% Merge classification and detection outputs
-
-commands.append('\n' + scc + ' Merging ' + scc + '\n')
-
-# fn = input_files[0]
-for fn in input_files:
-
-    input_file_path = fn
-    classifier_output_path = crop_path + classifier_output_suffix
-    final_output_path = os.path.join(output_base,
-                                     os.path.basename(classifier_output_path)).\
-                                     replace(classifier_output_suffix,
-                                     final_output_suffix)
-    final_output_path = final_output_path.replace('_detections','')
-    final_output_path = final_output_path.replace('_crops','')
-    final_output_path_ic = final_output_path
+    chunk_prediction_files.append(chunk_predictions_json)
     
-    merge_cmd = ''
+    chunk_script = os.path.join(chunk_folder,'run_chunk_{}.sh'.format(i_chunk))
+    cmd = 'python speciesnet/scripts/run_model.py --classifier_only --model "{}"'.format(
+        speciesnet_model_file)
+    cmd += ' --instances_json "{}"'.format(chunk_instances_json)
+    cmd += ' --predictions_json "{}"'.format(chunk_predictions_json)
+    cmd += ' --detections_json "{}"'.format(chunk_detections_json)
     
-    merge_comment = '\n' + scc + ' Merging {}\n'.format(fn)
-    merge_cmd += merge_comment
+    if classifier_batch_size is not None:
+       cmd += ' --batch_size {}'.format(classifier_batch_size)
+       
+    chunk_script_file = os.path.join(chunk_folder,'run_chunk_{}.sh'.format(chunk_str))
+    with open(chunk_script_file,'w') as f:
+        f.write(cmd)
+    st = os.stat(chunk_script_file)
+    os.chmod(chunk_script_file, st.st_mode | stat.S_IEXEC)
     
-    merge_cmd += "python merge_classification_detection_output.py " + slcc + "\n" + \
-    	 ' "' + classifier_output_path + '" ' + slcc + '\n' + \
-         ' "' + classifier_categories_path + '" ' + slcc + '\n' + \
-         ' ' + '--output-json "' + final_output_path_ic + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--detection-json "' + input_file_path + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--classifier-name "' + classifier_name + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--threshold "' + classification_threshold_str + '"' + ' ' + slcc + '\n' + \
-         ' ' + '--typical-confidence-threshold "' + typical_classification_threshold_str + '"' + '\n' + \
-         '\n'
-    merge_cmd = '{}'.format(merge_cmd)
-    commands.append(merge_cmd)
+    chunk_scripts.append(chunk_script_file)
+    
+# ...for each chunk
 
-    if len(command_suffix) > 0:
-        commands.append(command_suffix)
+classifier_init_cmd = f'{cuda_prefix} cd {speciesnet_folder} && mamba activate {speciesnet_tf_environment_name}'
+with open(classifier_script_file,'w') as f:
+    f.write('set -e\n')
+    for s in chunk_scripts:
+        f.write(s + '\n')
 
+st = os.stat(classifier_script_file)
+os.chmod(classifier_script_file, st.st_mode | stat.S_IEXEC)
+   
+classifier_cmd = '\n\n'.join([classifier_init_cmd,classifier_script_file])
+# print(classifier_cmd); clipboard.copy(classifier_cmd)
+    
 
-##%% Write everything out
+#%% Merge crop classification result batches
 
-with open(output_file,'w') as f:
-    for s in commands:
-        f.write('{}'.format(s))
+from megadetector.utils.wi_utils import merge_prediction_json_files
 
-import stat
-st = os.stat(output_file)
-os.chmod(output_file, st.st_mode | stat.S_IEXEC)
+merge_prediction_json_files(input_prediction_files=chunk_prediction_files,
+                            output_prediction_file=classifier_output_file_modular_crops)
+    
 
+#%% Validate crop classification results
 
-#%% Run the classifier(s) via the .sh script(s) or batch file(s) we just wrote
-
-# I do this manually, primarily because this requires a different mamba environment
-# (cameratraps-classifier) from MegaDetector's environment (cameratraps-detector).
-#
-# The next few pseudo-cells (#%) in this script are basically always run all at once, getting us
-# all the way from running the classifier to classification previews and zipped .json files that
-# are ready to upload.
+from megadetector.utils.wi_utils import validate_predictions_file
+_ = validate_predictions_file(classifier_output_file_modular_crops,crop_instances_json)
 
 
-##%% Do All The Rest of The Stuff
+#%% Run geofencing (still crops)
 
-# The remaining cells require no human intervention, so although a few conceptually-unrelated things 
-# happen (e.g., sequence-level smoothing, preview generation, and zipping all the .json files), I group these 
-# all into one super-cell.  Every click counts.
+# It doesn't matter here which environment we use
+ensemble_commands = []
+ensemble_commands.append(f'{cuda_prefix} cd {speciesnet_folder} && mamba activate {speciesnet_pt_environment_name}')
+
+cmd = 'python speciesnet/scripts/run_model.py --ensemble_only --model "{}"'.format(speciesnet_model_file)
+cmd += ' --instances_json "{}"'.format(crop_instances_json)
+cmd += ' --predictions_json "{}"'.format(ensemble_output_file_modular_crops)
+cmd += ' --classifications_json "{}"'.format(classifier_output_file_modular_crops)
+cmd += ' --detections_json "{}"'.format(crop_detections_predictions_file)
+ensemble_commands.append(cmd)
+
+ensemble_cmd = '\n\n'.join(ensemble_commands)
+# print(ensemble_cmd); clipboard.copy(ensemble_cmd)
 
 
-##%% Within-image classification smoothing
+#%% Validate ensemble results (still crops)
 
-classification_detection_files = []
+from megadetector.utils.wi_utils import validate_predictions_file
+_ = validate_predictions_file(ensemble_output_file_modular_crops,crop_instances_json)
+
+
+#%% Generate a list of corrections made by geofencing, and counts (still crops)
+
+from megadetector.utils.wi_utils import find_geofence_adjustments, \
+    generate_geofence_adjustment_html_summary
+
+rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular_crops,
+                                                 use_latin_names=False)
+
+geofence_footer = generate_geofence_adjustment_html_summary(rollup_pair_to_count)
+
+
+#%% Convert output file to MD format (still crops)
+
+assert os.path.isfile(ensemble_output_file_modular_crops)
+
+generate_md_results_from_predictions_json(predictions_json_file=ensemble_output_file_modular_crops,
+                                          md_results_file=ensemble_output_file_crops_md_format,
+                                          base_folder=crop_folder+'/')
+
+# from megadetector.utils.path_utils import open_file; open_file(ensemble_output_file_md_format)
+
+
+#%% Bring those crop-level results back to image level
+
+from megadetector.postprocessing.create_crop_folder import crop_results_to_image_results
+
+assert '_crops' in ensemble_output_file_crops_md_format
+
+crop_results_to_image_results(
+    image_results_file_with_crop_ids=detection_results_file_with_crop_ids,
+    crop_results_file=ensemble_output_file_crops_md_format,
+    output_file=ensemble_output_file_image_level_md_format)
+
+assert os.path.isfile(ensemble_output_file_image_level_md_format)
+
+
+#%% Confirm that all the right images are in the classification results
+
+import json
+from megadetector.utils.path_utils import find_images
+
+with open(ensemble_output_file_image_level_md_format,'r') as f:
+    d = json.load(f)
+
+filenames_in_results = set([im['file'] for im in d['images']])
+images_in_folder = set(find_images(input_path,recursive=True,return_relative_paths=True))
+
+for fn in filenames_in_results:
+    assert fn in images_in_folder, \
+        'Image {} present in results but not in folder'.format(fn)
+
+for fn in images_in_folder:
+    assert fn in filenames_in_results, \
+        'Image {} present in folder but not in results'.format(fn)
+        
+n_failures = 0
+        
+# im = d['images'][0]
+for im in d['images']:
+    if 'failure' in im:
+        n_failures += 1
+        
+print('Loaded results for {} images with {} failures'.format(
+    len(images_in_folder),n_failures))
+
+
+#%% Preview (post-classification, pre-smoothing)
+
+preview_options = deepcopy(preview_options_base)
+preview_options.image_base_dir = input_path
+
+preview_folder = os.path.join(postprocessing_output_folder,
+    base_task_name + '_{}_classification'.format(preview_options.confidence_threshold))
+
+os.makedirs(preview_folder, exist_ok=True)
+
+preview_options.md_results_file = ensemble_output_file_image_level_md_format
+preview_options.output_dir = preview_folder
+preview_options.footer_text = geofence_footer
+
+print('Generating post-clssification smoothing preview in {}'.format(preview_folder))
+ppresults = process_batch_results(preview_options)
+path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
+# import clipboard; clipboard.copy(ppresults.output_html_file)
+
+
+#%% Within-image classification smoothing
 
 from megadetector.postprocessing.classification_postprocessing import \
-    smooth_classification_results_image_level
+    smooth_classification_results_image_level, \
+    ClassificationSmoothingOptions
 
-# Did we run MegaClassifier?
-if final_output_path_mc is not None:
-    classification_detection_files.append(final_output_path_mc)
-    
-# Did we run the IDFG classifier?
-if final_output_path_ic is not None:
-    classification_detection_files.append(final_output_path_ic)
-
-assert all([os.path.isfile(fn) for fn in classification_detection_files])
-
-smoothed_classification_files = []
-
-for final_output_path in classification_detection_files:
-
-    classifier_output_path = final_output_path
-    classifier_output_path_within_image_smoothing = classifier_output_path.replace(
-        '.json','_within_image_smoothing.json')    
-    smoothed_classification_files.append(classifier_output_path_within_image_smoothing)
-    smooth_classification_results_image_level(input_file=classifier_output_path,
+within_image_smoothing_options = ClassificationSmoothingOptions()
+_ = smooth_classification_results_image_level(input_file=ensemble_output_file_image_level_md_format,
                                               output_file=classifier_output_path_within_image_smoothing,
-                                              options=None)
-
-# ...for each file we want to smooth
+                                              options=within_image_smoothing_options)
 
 
-##%% Read EXIF date and time from all images
+#%% Preview (post-within-image smoothing)
+
+preview_options = deepcopy(preview_options_base)
+preview_options.image_base_dir = input_path
+
+preview_folder = os.path.join(postprocessing_output_folder,
+    base_task_name + '_{}_within-image-smoothing'.format(preview_options.confidence_threshold))
+
+os.makedirs(preview_folder, exist_ok=True)
+
+preview_options.md_results_file = classifier_output_path_within_image_smoothing
+preview_options.output_dir = preview_folder
+
+print('Generating post-within-image smoothing preview in {}'.format(preview_folder))
+ppresults = process_batch_results(preview_options)
+path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
+# import clipboard; clipboard.copy(ppresults.output_html_file)
+
+
+#%% Read EXIF date and time from all images
 
 from megadetector.data_management import read_exif
 exif_options = read_exif.ReadExifOptions()
@@ -1425,10 +1398,8 @@ exif_options.processing_library = 'pil'
 exif_options.byte_handling = 'delete'
 exif_options.tags_to_include = ['DateTime','DateTimeOriginal']
 
-exif_results_file = os.path.join(filename_base,'exif_data.json')
-
 if os.path.isfile(exif_results_file):
-    print('Reading EXIF results from {}'.format(exif_results_file))
+    print('Reading EXIF data from {}'.format(exif_results_file))
     with open(exif_results_file,'r') as f:
         exif_results = json.load(f)
 else:        
@@ -1437,7 +1408,7 @@ else:
                                                    options=exif_options)
 
 
-##%% Prepare COCO-camera-traps-compatible image objects for EXIF results
+#%% Prepare COCO-camera-traps-compatible image objects for EXIF results
 
 # ...and add location/datetime info based on filenames and EXIF information.
 
@@ -1447,81 +1418,87 @@ from megadetector.utils.ct_utils import is_function_name
 
 exif_results_to_cct_options = ExifResultsToCCTOptions()
 
-# If we've defined a "custom_relative_path_to_location" location, which by convention
-# is what we use in this notebook for a non-standard location mapping function, use it 
-# to parse locations when creating the CCT data.
-if is_function_name('custom_relative_path_to_location',locals()):
-    print('Using custom location mapping function in EXIF conversion')
-    exif_results_to_cct_options.filename_to_location_function = \
-        custom_relative_path_to_location # noqa
-        
-cct_dict = exif_results_to_cct(exif_results=exif_results,
-                               cct_output_file=None,
-                               options=exif_results_to_cct_options)
+exif_data_in_cct_format_file = os.path.join(filename_base,'exif_data_in_cct_format.json')
+
+if os.path.isfile(exif_data_in_cct_format_file):
+    
+    print('Reading CCT-formatted EXIF data from {}'.format(exif_data_in_cct_format_file))
+    
+    with open(exif_data_in_cct_format_file,'r') as f:
+        cct_dict = json.load(f)
+
+else: 
+    
+    # If we've defined a "custom_relative_path_to_location" location, which by convention
+    # is what we use in this notebook for a non-standard location mapping function, use it 
+    # to parse locations when creating the CCT data.
+    if is_function_name('custom_relative_path_to_location',locals()):
+        print('Using custom location mapping function in EXIF conversion')
+        exif_results_to_cct_options.filename_to_location_function = \
+            custom_relative_path_to_location # noqa
+            
+    cct_dict = exif_results_to_cct(exif_results=exif_results,
+                                   cct_output_file=exif_data_in_cct_format_file,
+                                   options=exif_results_to_cct_options)
 
 
-##%% Assemble images into sequences
+#%% Assemble images into sequences
 
 from megadetector.data_management import cct_json_utils
+from megadetector.data_management.cct_json_utils import SequenceOptions
+
+sequence_options = SequenceOptions()
 
 print('Assembling images into sequences')
-cct_json_utils.create_sequences(cct_dict)
+_ = cct_json_utils.create_sequences(cct_dict, options=sequence_options)
 
 
-##%% Sequence-level smoothing
+#%% Sequence-level smoothing
 
 from megadetector.postprocessing.classification_postprocessing import \
-    ClassificationSmoothingOptionsSequenceLevel, smooth_classification_results_sequence_level
+    smooth_classification_results_sequence_level, \
+    ClassificationSmoothingOptions
 
-options = ClassificationSmoothingOptionsSequenceLevel()
-options.category_names_to_smooth_to = set(['deer','elk','cow','canid','cat','bird','bear'])
-options.min_dominant_class_ratio_for_secondary_override_table = {'cow':2,None:3}
+input_file_for_sequence_level_smoothing = None
+if os.path.isfile(classifier_output_path_within_image_smoothing):
+    print('Using within-image smoothing results for sequence-level smoothing')
+    input_file_for_sequence_level_smoothing = \
+        classifier_output_path_within_image_smoothing
+else:
+    assert os.path.isfile(ensemble_output_file_image_level_md_format)
+    print('Using ensemble output file for sequence-level smoothing (no image-level smoothing file found)')
+    input_file_for_sequence_level_smoothing = \
+        ensemble_output_file_image_level_md_format
 
-sequence_level_smoothing_input_file = smoothed_classification_files[0]
-sequence_smoothed_classification_file = sequence_level_smoothing_input_file.replace(
-    '.json','_seqsmoothing.json')
+options = ClassificationSmoothingOptions()
 
-_ = smooth_classification_results_sequence_level(md_results=sequence_level_smoothing_input_file,
-                                             cct_sequence_information=cct_dict,
-                                             output_file=sequence_smoothed_classification_file,
-                                             options=options)
+_ = smooth_classification_results_sequence_level(input_file=input_file_for_sequence_level_smoothing,
+                                                 cct_sequence_information=cct_dict,
+                                                 output_file=sequence_smoothed_classification_file,
+                                                 options=options)
 
 
-##%% Post-processing (post-classification, post-within-image-and-within-sequence-smoothing)
+#%% Preview (post-sequence-smoothing)
 
-options = PostProcessingOptions()
-options.image_base_dir = input_path
-options.include_almost_detections = True
-options.num_images_to_sample = 10000
-options.confidence_threshold = 0.2
-options.classification_confidence_threshold = 0.7
-options.almost_detection_confidence_threshold = options.confidence_threshold - 0.05
-options.ground_truth_json_file = None
-options.separate_detections_by_category = True
-options.max_figures_per_html_file = 2500
-options.sort_classification_results_by_count = True
+preview_options = deepcopy(preview_options_base)
+preview_options.image_base_dir = input_path
 
-options.parallelize_rendering = True
-options.parallelize_rendering_n_cores = default_workers_for_parallel_tasks
-options.parallelize_rendering_with_threads = parallelization_defaults_to_threads
+preview_folder = os.path.join(postprocessing_output_folder,
+    base_task_name + '_{}_sequence-smoothing'.format(preview_options.confidence_threshold))
 
-folder_token = sequence_smoothed_classification_file.split(os.path.sep)[-1].replace(
-    '_within_image_smoothing_seqsmoothing','')
-folder_token = folder_token.replace('.json','_seqsmoothing')
+os.makedirs(preview_folder, exist_ok=True)
 
-output_base = os.path.join(postprocessing_output_folder, folder_token + \
-    base_task_name + '_{:.3f}'.format(options.confidence_threshold))
-os.makedirs(output_base, exist_ok=True)
-print('Processing {} to {}'.format(base_task_name, output_base))
+preview_options.md_results_file = sequence_smoothed_classification_file
+preview_options.output_dir = preview_folder
+preview_options.footer_text = geofence_footer
 
-options.md_results_file = sequence_smoothed_classification_file
-options.output_dir = output_base
-ppresults = process_batch_results(options)
+print('Generating post-sequence-smoothing preview in {}'.format(preview_folder))
+ppresults = process_batch_results(preview_options)
 path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
 # import clipboard; clipboard.copy(ppresults.output_html_file)
 
 
-##%% Zip .json files
+#%% Zip .json files
 
 from megadetector.utils.path_utils import parallel_zip_files
 
@@ -1534,114 +1511,9 @@ parallel_zip_files(json_files)
 
 #%% 99.9% of jobs end here
 
-# Everything after this is run ad hoc and/or requires some manual editing.
-
-
-#%% Compare results files for different model versions (or before/after RDE)
-
-import itertools
-
-from megadetector.postprocessing.compare_batch_results import \
-    BatchComparisonOptions, PairwiseBatchComparisonOptions, compare_batch_results
-
-options = BatchComparisonOptions()
-
-options.job_name = organization_name_short
-options.output_folder = os.path.join(postprocessing_output_folder,'model_comparison')
-options.image_folder = input_path
-
-options.pairwise_options = []
-
-filenames = [
-    '/postprocessing/organization/mdv4_results.json',
-    '/postprocessing/organization/mdv5a_results.json',
-    '/postprocessing/organization/mdv5b_results.json'    
-    ]
-
-detection_thresholds = [0.7,0.15,0.15]
-
-assert len(detection_thresholds) == len(filenames)
-
-rendering_thresholds = [(x*0.6666) for x in detection_thresholds]
-
-# Choose all pairwise combinations of the files in [filenames]
-for i, j in itertools.combinations(list(range(0,len(filenames))),2):
-        
-    pairwise_options = PairwiseBatchComparisonOptions()
-    
-    pairwise_options.results_filename_a = filenames[i]
-    pairwise_options.results_filename_b = filenames[j]
-    
-    pairwise_options.rendering_confidence_threshold_a = rendering_thresholds[i]
-    pairwise_options.rendering_confidence_threshold_b = rendering_thresholds[j]
-    
-    pairwise_options.detection_thresholds_a = {'animal':detection_thresholds[i],
-                                               'person':detection_thresholds[i],
-                                               'vehicle':detection_thresholds[i]}
-    pairwise_options.detection_thresholds_b = {'animal':detection_thresholds[j],
-                                               'person':detection_thresholds[j],
-                                               'vehicle':detection_thresholds[j]}
-    options.pairwise_options.append(pairwise_options)
-
-results = compare_batch_results(options)
-
-from megadetector.utils.path_utils import open_file
-open_file(results.html_output_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
-
-
-#%% Merge in high-confidence detections from another results file
-
-from megadetector.postprocessing.merge_detections import \
-    MergeDetectionsOptions,merge_detections
-
-source_files = ['']
-target_file = ''
-output_file = target_file.replace('.json','_merged.json')
-
-options = MergeDetectionsOptions()
-options.max_detection_size = 1.0
-options.target_confidence_threshold = 0.25
-options.categories_to_include = [1]
-options.source_confidence_thresholds = [0.2]
-merge_detections(source_files, target_file, output_file, options)
-
-merged_detections_file = output_file
-
-
-#%% Create a new category for large boxes
-
-from megadetector.postprocessing import categorize_detections_by_size
-
-size_options = categorize_detections_by_size.SizeCategorizationOptions()
-
-size_options.size_thresholds = [0.9]
-size_options.size_category_names = ['large_detections']
-
-size_options.categories_to_separate = [1]
-size_options.measurement = 'size' # 'width'
-
-threshold_string = '-'.join([str(x) for x in size_options.size_thresholds])
-
-input_file = filtered_output_filename
-size_separated_file = input_file.replace('.json','-size-separated-{}.json'.format(
-    threshold_string))
-d = categorize_detections_by_size.categorize_detections_by_size(input_file,size_separated_file,
-                                                                size_options)
-
-
-#%% Preview large boxes
-
-output_base_large_boxes = os.path.join(postprocessing_output_folder, 
-    base_task_name + '_{}_{:.3f}_size_separated_boxes'.format(rde_string, options.confidence_threshold))    
-os.makedirs(output_base_large_boxes, exist_ok=True)
-print('Processing post-RDE, post-size-separation to {}'.format(output_base_large_boxes))
-
-options.md_results_file = size_separated_file
-options.output_dir = output_base_large_boxes
-
-ppresults = process_batch_results(options)
-html_output_file = ppresults.output_html_file
-path_utils.open_file(html_output_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
+# The remaining cells are run often, but not all the time.
+#
+# See manage_local_batch_scrap.py for additional cells I sometimes run at this point.
 
 
 #%% .json splitting
@@ -1712,52 +1584,6 @@ for i_folder, folder_name in enumerate(folders):
     subset_data = subset_json_detector_output(input_filename, output_filename, options, data)
 
 
-#%% String replacement
-    
-data = None
-
-from megadetector.postprocessing.subset_json_detector_output import \
-    subset_json_detector_output, SubsetJsonDetectorOutputOptions
-
-input_filename = filtered_output_filename
-output_filename = input_filename.replace('.json','_replaced.json')
-
-options = SubsetJsonDetectorOutputOptions()
-options.query = folder_name + '/'
-options.replacement = ''
-subset_json_detector_output(input_filename,output_filename,options)
-
-
-#%% Splitting images into folders
-
-from megadetector.postprocessing.separate_detections_into_folders import \
-    separate_detections_into_folders, SeparateDetectionsIntoFoldersOptions
-
-default_threshold = 0.2
-base_output_folder = os.path.expanduser('~/data/{}-{}-separated'.format(base_task_name,default_threshold))
-
-options = SeparateDetectionsIntoFoldersOptions(default_threshold)
-
-options.results_file = filtered_output_filename
-options.base_input_folder = input_path
-options.base_output_folder = os.path.join(base_output_folder,folder_name)
-options.n_threads = default_workers_for_parallel_tasks
-options.allow_existing_directory = False
-
-separate_detections_into_folders(options)
-
-
-#%% Convert frame-level results to video-level results
-
-# This cell is only useful if the files submitted to this job were generated via
-# video_folder_to_frames().
-
-from megadetector.detection.video_utils import frame_results_to_video_results
-
-video_output_filename = filtered_output_filename.replace('.json','_aggregated.json')
-frame_results_to_video_results(filtered_output_filename,video_output_filename)
-
-
 #%% Sample custom path replacement function
 
 def custom_relative_path_to_location(relative_path):
@@ -1820,7 +1646,7 @@ nb_header += '\n'
 
 nb_header += \
 """
-This notebook represents an interactive process for running MegaDetector on large batches of images, including typical and optional postprocessing steps.  Everything after "Merge results..." is basically optional, and we typically do a mix of these optional steps, depending on the job.
+This notebook represents an interactive process for running MegaDetector and SpeciesNet on large batches of images, including typical and optional postprocessing steps.  Everything after "Merge results..." is basically optional, and we typically do a mix of these optional steps, depending on the job.
 
 This notebook is auto-generated from manage_local_batch.py (a cell-delimited .py file that is used the same way, typically in Spyder or VS Code).
 
