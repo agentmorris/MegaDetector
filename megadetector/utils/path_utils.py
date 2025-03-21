@@ -263,6 +263,59 @@ def safe_create_link(link_exists,link_new):
         os.symlink(link_exists,link_new)
         
 
+def remove_empty_folders(path, remove_root=False):
+    """
+    Recursively removes empty folders within the specified path.
+    
+    Args:
+        path (str): the folder from which we should recursively remove 
+            empty folders.
+        remove_root (bool, optional): whether to remove the root directory if 
+            it's empty after removing all empty subdirectories.  This will always
+            be True during recursive calls.
+    
+    Returns:
+        bool: True if the directory is empty after processing, False otherwise
+    """
+    
+    # Verify that [path] is a directory
+    if not os.path.isdir(path):
+        return False
+    
+    # Track whether the current directory is empty
+    is_empty = True
+    
+    # Iterate through all items in the directory
+    for item in os.listdir(path):
+        
+        item_path = os.path.join(path, item)
+        
+        # If it's a directory, process it recursively
+        if os.path.isdir(item_path):
+            # If the subdirectory is empty after processing, it will be removed
+            if not remove_empty_folders(item_path, True):
+                # If the subdirectory is not empty, the current directory isn't empty either
+                is_empty = False
+        else:
+            # If there's a file, the directory is not empty
+            is_empty = False
+    
+    # If the directory is empty and we're supposed to remove it
+    if is_empty and remove_root:
+        try:
+            os.rmdir(path)            
+        except Exception as e:
+            print('Error removing directory {}: {}'.format(path,str(e)))
+            is_empty = False
+    
+    return is_empty
+
+# ...def remove_empty_folders(...)
+
+
+# Example usage:
+# remove_empty_folders("/path/to/directory")
+
 def top_level_folder(p):
     r"""
     Gets the top-level folder from the path *p*.
