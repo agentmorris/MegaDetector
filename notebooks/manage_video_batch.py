@@ -149,11 +149,16 @@ for fn in low_frame_videos:
 
 #%% Convert frame results to video results
     
-from megadetector.detection.video_utils import frame_results_to_video_results
+from megadetector.detection.video_utils import \
+    frame_results_to_video_results, FrameToVideoOptions
 
-filtered_output_filename = '/results/organization/stuff.json'
-video_output_filename = filtered_output_filename.replace('.json','_aggregated.json')
-frame_results_to_video_results(filtered_output_filename,video_output_filename)
+frame_level_output_filename = '/results/organization/stuff.json'
+video_output_filename = frame_level_output_filename.replace('.json','_aggregated.json')
+options = FrameToVideoOptions()
+options.include_all_processed_frames = True
+frame_results_to_video_results(frame_level_output_filename,
+                               video_output_filename,
+                               options=options)
     
 
 #%% Confirm that the videos in the .json file are what we expect them to be
@@ -194,7 +199,7 @@ if False:
     video_rendering_output_dir = os.path.expanduser('~/tmp/rendered-videos')
     os.makedirs(video_rendering_output_dir,exist_ok=True)
     
-    frames_json = filtered_output_filename
+    frames_json = frame_level_output_filename
     
     detected_frame_files = visualize_detector_output(
         detector_output_path=frames_json,
@@ -262,7 +267,7 @@ if False:
     confidence_threshold = 0.2
     input_fs = 30
     
-    filtered_output_filename = '/a/b/c/blah_detections.filtered_rde_0.150_0.850_10_1.000.json'
+    frame_level_output_filename = '/a/b/c/blah_detections.filtered_rde_0.150_0.850_10_1.000.json'
     video_fn_relative = '4.10cam6/IMG_0022.MP4'
     output_video_base = os.path.expanduser('~/tmp/video_preview')
     
@@ -281,7 +286,7 @@ if False:
     
     ## Find frames corresponding to this video
     
-    with open(filtered_output_filename,'r') as f:
+    with open(frame_level_output_filename,'r') as f:
         frame_results = json.load(f)
     
     frame_results_this_video = []

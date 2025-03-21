@@ -483,7 +483,9 @@ def sort_dictionary_by_key(d,reverse=False):
 def sort_dictionary_by_value(d,sort_values=None,reverse=False):
     """
     Sorts the dictionary [d] by value.  If sort_values is None, uses d.values(),
-    otherwise uses the dictionary sort_values as the sorting criterion.
+    otherwise uses the dictionary sort_values as the sorting criterion.  Always 
+    returns a new standard dict, so if [d] is, for example, a defaultdict, the 
+    returned value is not.
     
     Args:
         d (dict): dictionary to sort
@@ -492,7 +494,7 @@ def sort_dictionary_by_value(d,sort_values=None,reverse=False):
         reverse (bool, optional): whether to sort in reverse (descending) order
     
     Returns:
-        dict: sorted copy of [d]
+        dict: sorted copy of [d
     """
     
     if sort_values is None:

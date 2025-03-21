@@ -105,6 +105,83 @@ def clean_taxonomy_string(s):
     else:
         raise ValueError('Invalid taxonomy string')
     
+
+taxonomy_level_names = \
+    ['non-taxonomic','kingdom','phylum','class','order','family','genus','species','subspecies']
+
+
+def taxonomy_level_to_string(k):
+    """
+    Maps taxonomy level indices (0 for kindgom, 1 for phylum, etc.) to strings.
+    
+    Args:
+        k (int): taxonomy level index
+    
+    Returns:
+        str: taxonomy level string
+    """
+    
+    assert k >= 0 and k < len(taxonomy_level_names), \
+        'Illegal taxonomy level index {}'.format(k)
+        
+    return taxonomy_level_names[k]
+
+
+def taxonomy_level_string_to_index(s):
+    """
+    Maps strings ('kingdom', 'species', etc.) to level indices.
+    
+    Args:
+        s (str): taxonomy level string
+    
+    Returns:
+        int: taxonomy level index
+    """
+    
+    assert s in taxonomy_level_names, 'Unrecognized taxonomy level string {}'.format(s)
+    return taxonomy_level_names.index(s)
+    
+
+def taxonomy_level_index(s):
+    """
+    Returns the taxonomy level up to which [s] is defined (0 for non-taxnomic, 1 for kingdom,
+    2 for phylum, etc.  Empty strings and non-taxonomic strings are treated as level 0.  1 and 2
+    will never be returned; "animal" doesn't look like other taxonomic strings, so here we treat
+    it as non-taxonomic.
+    
+    Args:
+        s (str): 5-token or 7-token taxonomy string
+    
+    Returns:
+        int: taxonomy level
+    """
+    
+    if s in non_taxonomic_prediction_strings or s in non_taxonomic_prediction_short_strings:
+        return 0
+    
+    tokens = s.split(';')
+    assert len(tokens) in (5,7)
+    
+    if len(tokens) == 7:
+        tokens = tokens[1:-1]
+    
+    if len(tokens[0]) == 0:
+        return 0
+    # WI taxonomy strings start at class, so we'll never return 1 (kingdom) or 2 (phylum)
+    elif len(tokens[1]) == 0:
+        return 3
+    elif len(tokens[2]) == 0:
+        return 4
+    elif len(tokens[3]) == 0:
+        return 5
+    elif len(tokens[4]) == 0:
+        return 6
+    # Subspecies are delimited with a space
+    elif ' ' not in tokens[4]:
+        return 7
+    else: 
+        return 8
+        
     
 def wi_result_to_prediction_string(r):
     """
@@ -521,6 +598,10 @@ non_taxonomic_prediction_strings = [blank_prediction_string,
                                     no_cv_result_prediction_string,
                                     animal_prediction_string,
                                     vehicle_prediction_string]
+
+non_taxonomic_prediction_short_strings = [';'.join(s.split(';')[1:-1]) for s in \
+                                          non_taxonomic_prediction_strings]
+
 
 process_cv_response_url = 'https://placeholder'
 
