@@ -288,6 +288,12 @@ speciesnet_tf_environment_name = 'speciesnet-package-tf'
 max_images_per_chunk = 5000
 classifier_batch_size = 128
 
+# Text file containing binomial names and common names of allowed taxa
+custom_taxa_list = None
+
+# Only necessary when using a custom taxonomy list
+taxonomy_file = os.path.join(speciesnet_model_file,'taxonomy_release.txt')
+
 
 #%% Derived variables, constant validation, path setup
 
@@ -356,6 +362,13 @@ if input_path.endswith('/'):
     input_path = input_path[0:-1]
 
 print('Output folder:\n{}'.format(filename_base))
+
+if custom_taxa_list is not None:
+    
+    assert os.path.isfile(custom_taxa_list), \
+        'Could not find custom taxa file {}'.format(custom_taxa_list)
+    assert os.path.isfile(taxonomy_file), \
+        'Could not find taxonomy file {}'.format(taxonomy_file)
 
 
 #%% Enumerate files
@@ -1016,7 +1029,7 @@ path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True
 
 #%% SpeciesNet derived constants
 
-crop_folder = os.path.join(postprocessing_base,'crops',base_task_name)
+## Detector/cropping constants
 
 # A results file in MD format, referring to the original images
 detection_results_file_with_crop_ids = os.path.join(combined_api_output_folder,
@@ -1027,6 +1040,9 @@ detection_results_file_with_crop_ids = os.path.join(combined_api_output_folder,
 detection_results_file_for_crop_folder = insert_before_extension(
         detection_results_file_with_crop_ids,'unity_boxes')
 
+# The folder where crops will be placed after running the detector
+crop_folder = os.path.join(postprocessing_base,'crops',base_task_name)
+
 # A detection results file in SpeciesNet format, referring to the crops, so every detection
 # has bbox [0,0,1,1]
 crop_detections_predictions_file = \
@@ -1036,11 +1052,27 @@ crop_detections_predictions_file = \
 crop_instances_json = os.path.join(combined_api_output_folder,
                                    base_task_name + '-crop_instances.json')
 
+## Classification constants
+
+# The instances.json file we use to pass path names and the country code to the 
+# classifier and ensemble
+instances_json = \
+    os.path.join(combined_api_output_folder,
+                 base_task_name + '-instances.json')
+
 # The results of the classifier (in SpeciesNet format), after running it on the crops
 classifier_output_file_modular_crops = \
     os.path.join(combined_api_output_folder,
                  base_task_name + '-classifier_output_modular_crops.json')
     
+# The folder where we'll store classifier results for each chunk
+chunk_folder = os.path.join(filename_base,'classifier_chunks')
+
+# The .sh file we'll use to launch the classifier
+classifier_script_file = os.path.join(filename_base,'run_all_classifier_chunks.sh')            
+
+## Ensemble constants
+
 # The results of the ensemble, after running it on the crops (in SpeciesNet format)
 ensemble_output_file_modular_crops = \
     os.path.join(combined_api_output_folder,
@@ -1055,17 +1087,7 @@ ensemble_output_file_crops_md_format = insert_before_extension(
 ensemble_output_file_image_level_md_format = \
     ensemble_output_file_crops_md_format.replace('_crops','_image-level')
 
-# The instances.json file we use to pass path names and the country code to the 
-# classifier and ensemble
-instances_json = \
-    os.path.join(combined_api_output_folder,
-                 base_task_name + '-instances.json')
-
-# The folder where we'll store classifier results for each chunk
-chunk_folder = os.path.join(filename_base,'classifier_chunks')
-
-# The .sh file we'll use to launch the classifier
-classifier_script_file = os.path.join(filename_base,'run_all_classifier_chunks.sh')            
+## Smoothing constants
 
 # The ensemble results (in MD format) after image-level smoothing
 classifier_output_path_within_image_smoothing = insert_before_extension(
@@ -1074,6 +1096,8 @@ classifier_output_path_within_image_smoothing = insert_before_extension(
 sequence_smoothed_classification_file = \
     insert_before_extension(classifier_output_path_within_image_smoothing,
                             'seqsmoothing')
+
+## Miscellaneous
 
 geofence_footer = None
 
@@ -1301,9 +1325,9 @@ ensemble_commands.append(f'{cuda_prefix} cd {speciesnet_folder} && mamba activat
 
 cmd = 'python speciesnet/scripts/run_model.py --ensemble_only --model "{}"'.format(speciesnet_model_file)
 cmd += ' --instances_json "{}"'.format(crop_instances_json)
-cmd += ' --predictions_json "{}"'.format(ensemble_output_file_modular_crops)
 cmd += ' --classifications_json "{}"'.format(classifier_output_file_modular_crops)
 cmd += ' --detections_json "{}"'.format(crop_detections_predictions_file)
+cmd += ' --predictions_json "{}"'.format(ensemble_output_file_modular_crops)
 ensemble_commands.append(cmd)
 
 ensemble_cmd = '\n\n'.join(ensemble_commands)
@@ -1605,6 +1629,47 @@ print('Generating post-sequence-smoothing preview in {}'.format(preview_folder))
 ppresults = process_batch_results(preview_options)
 path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
 # import clipboard; clipboard.copy(ppresults.output_html_file)
+
+
+#%% Possibly apply a custom taxa list
+
+from megadetector.utils.wi_utils import restrict_to_taxa_list
+
+if custom_taxa_list is not None:
+    
+    taxa_list = custom_taxa_list
+    speciesnet_taxonomy_file = taxonomy_file
+    custom_taxa_output_file = insert_before_extension(
+        sequence_smoothed_classification_file,'custom-species')
+    allow_walk_down = False
+    
+    restrict_to_taxa_list(taxa_list=taxa_list,
+                          speciesnet_taxonomy_file=speciesnet_taxonomy_file,
+                          input_file=sequence_smoothed_classification_file,
+                          output_file=custom_taxa_output_file,
+                          allow_walk_down=allow_walk_down)
+        
+
+#%% Preview (post-custom_taxa-smoothing)
+
+if custom_taxa_list is not None:
+    
+    preview_options = deepcopy(preview_options_base)
+    preview_options.image_base_dir = input_path
+    
+    preview_folder = os.path.join(postprocessing_output_folder,
+        base_task_name + '_{}_custom_taxa'.format(preview_options.confidence_threshold))
+    
+    os.makedirs(preview_folder, exist_ok=True)
+    
+    preview_options.md_results_file = custom_taxa_output_file
+    preview_options.output_dir = preview_folder
+    preview_options.footer_text = geofence_footer
+    
+    print('Generating post-sequence-smoothing preview in {}'.format(preview_folder))
+    ppresults = process_batch_results(preview_options)
+    path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
+    # import clipboard; clipboard.copy(ppresults.output_html_file)
 
 
 #%% Zip .json files
