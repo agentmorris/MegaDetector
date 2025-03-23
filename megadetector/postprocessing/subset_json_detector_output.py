@@ -64,6 +64,7 @@ from tqdm import tqdm
 
 from megadetector.utils.ct_utils import args_to_object, get_max_conf, invert_dictionary
 from megadetector.utils.path_utils import top_level_folder
+from megadetector.utils.path_utils import recursive_file_list
 
 
 #%% Helper classes
@@ -136,7 +137,14 @@ class SubsetJsonDetectorOutputOptions:
         
         #: Set to >0 during testing to limit the number of images that get processed.
         self.debug_max_images = -1
+        
+        #: Keep only files in this list, which can be a .json results file or a folder.
+        #
+        #: Assumes that the input .json file contains relative paths when comparing to a folder.
+        self.keep_files_in_list = None
     
+# ...class SubsetJsonDetectorOutputOptions
+
     
 #%% Main function
 
@@ -156,11 +164,13 @@ def _write_detection_results(data, output_filename, options):
     else:
         os.makedirs(basedir, exist_ok=True)
     
-    print('Writing detection output to {}'.format(output_filename))
+    n_images = len(data['images'])
+    
+    print('Writing detection output (with {} images) to {}'.format(n_images,output_filename))
     with open(output_filename, 'w') as f:
         json.dump(data,f,indent=1)
 
-# ..._write_detection_results()
+# ...def _write_detection_results(...)
 
 
 def subset_json_detector_output_by_confidence(data, options):
@@ -172,7 +182,7 @@ def subset_json_detector_output_by_confidence(data, options):
         options (SubsetJsonDetectorOutputOptions): parameters for subsetting
     
     Returns:
-        dict: Possibly-modified version of data (also modifies in place)
+        dict: Possibly-modified version of [data] (also modifies in place)
     """
     
     if options.confidence_threshold is None:
@@ -234,9 +244,55 @@ def subset_json_detector_output_by_confidence(data, options):
     
     return data
 
-# ...subset_json_detector_output_by_confidence()
+# ...def subset_json_detector_output_by_confidence(...)
 
 
+def subset_json_detector_output_by_list(data, options):
+    """
+    Keeps only files in options.keep_files_in_list, which can be a .json results file or a folder.
+    Assumes that the input .json file contains relative paths when comparing to a folder.
+    
+    Args:
+        data (dict): data loaded from a MD results file
+        options (SubsetJsonDetectorOutputOptions): parameters for subsetting
+    
+    Returns:
+        dict: Possibly-modified version of [data] (also modifies in place)
+    """
+    
+    if options.keep_files_in_list is None:
+        return
+    
+    files_to_keep = None
+    
+    if os.path.isfile(options.keep_files_in_list):
+        with open(options.keep_files_in_list,'r') as f:
+            d = json.load(f)
+        files_to_keep = [im['file'] for im in d['images']]
+    elif os.path.isdir(options.keep_files_in_list):
+        files_to_keep = \
+            recursive_file_list(options.keep_files_in_list,return_relative_paths=True)
+    else:
+        raise ValueError('Subsetting .json file by list: {} is neither a .json results file nor a folder'.format(
+            options.keep_files_in_list))
+    
+    files_to_keep = [fn.replace('\\','/') for fn in files_to_keep]
+    files_to_keep_set = set(files_to_keep)
+    
+    images_to_keep = []
+    
+    for im in data['images']:
+        fn = im['file'].replace('\\','/')
+        if fn in files_to_keep_set:
+            images_to_keep.append(im)
+            
+    data['images'] = images_to_keep
+    
+    return data
+
+# ...def subset_json_detector_output_by_list(...)
+
+    
 def subset_json_detector_output_by_categories(data, options):
     """
     Removes all detections without detections above a threshold for specific categories.
@@ -246,7 +302,7 @@ def subset_json_detector_output_by_categories(data, options):
         options (SubsetJsonDetectorOutputOptions): parameters for subsetting
     
     Returns:
-        dict: Possibly-modified version of data (also modifies in place)
+        dict: Possibly-modified version of [data] (also modifies in place)
     """
     
     # If categories_to_keep is supplied as a list, convert to a dict
@@ -342,7 +398,7 @@ def subset_json_detector_output_by_categories(data, options):
     
     return data
 
-# ...subset_json_detector_output_by_categories()
+# ...def subset_json_detector_output_by_categories(...)
 
 
 def remove_failed_images(data,options):
@@ -354,7 +410,7 @@ def remove_failed_images(data,options):
         options (SubsetJsonDetectorOutputOptions): parameters for subsetting
     
     Returns:
-        dict: Possibly-modified version of data (also modifies in place)
+        dict: Possibly-modified version of [data] (also modifies in place)
     """
     
     images_in = data['images']
@@ -381,7 +437,7 @@ def remove_failed_images(data,options):
     
     return data
 
-# ...remove_failed_images()
+# ...def remove_failed_images(...)
 
 
 def subset_json_detector_output_by_query(data, options):
@@ -394,7 +450,7 @@ def subset_json_detector_output_by_query(data, options):
         options (SubsetJsonDetectorOutputOptions): parameters for subsetting
     
     Returns:
-        dict: Possibly-modified version of data (also modifies in place)
+        dict: Possibly-modified version of [data] (also modifies in place)
     """
     
     images_in = data['images']
@@ -441,7 +497,7 @@ def subset_json_detector_output_by_query(data, options):
     
     return data
 
-# ...subset_json_detector_output_by_query()
+# ...def subset_json_detector_output_by_query(...)
 
     
 def subset_json_detector_output(input_filename, output_filename, options, data=None):
@@ -508,6 +564,10 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
     if (options.categories_to_keep is not None) or (options.category_names_to_keep is not None):
         
         data = subset_json_detector_output_by_categories(data, options)
+    
+    if options.keep_files_in_list is not None:
+        
+        data = subset_json_detector_output_by_list(data, options)
         
     if not options.split_folders:
         
@@ -615,7 +675,7 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
     
     # ...if we're splitting folders
 
-# ...subset_json_detector_output()
+# ...def subset_json_detector_output(...)
 
     
 #%% Interactive driver
@@ -676,6 +736,9 @@ def main():
                         help='Replace [query] with this')
     parser.add_argument('--confidence_threshold', type=float, default=None, 
                         help='Remove detections below this confidence level')
+    parser.add_argument('--keep_files_in_list', type=str, default=None, 
+                        help='Keep only files in this list, which can be a .json results file or a folder.' + \
+                             ' Assumes that the input .json file contains relative paths when comparing to a folder.')
     parser.add_argument('--split_folders', action='store_true', 
                         help='Split .json files by leaf-node folder')
     parser.add_argument('--split_folder_param', type=int,

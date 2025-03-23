@@ -86,6 +86,7 @@ from functools import partial
 from tqdm import tqdm
 
 from megadetector.utils.ct_utils import args_to_object, is_float
+from megadetector.utils.path_utils import remove_empty_folders
 from megadetector.detection.run_detector import get_typical_confidence_threshold_from_results
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.visualization.visualization_utils import blur_detections
@@ -193,6 +194,10 @@ class SeparateDetectionsIntoFoldersOptions:
         #:
         #: Can also be a comma-separated list.        
         self.category_names_to_blur = None
+        
+        #: Remove all empty folders from the target folder at the end of the process,
+        #: whether or not they were created by this script
+        self.remove_empty_folders = False
         
     # ...__init__()
     
@@ -611,6 +616,10 @@ def separate_detections_into_folders(options):
         pool = ThreadPool(options.n_threads)
         process_detections_with_options = partial(_process_detections, options=options)
         _ = list(tqdm(pool.imap(process_detections_with_options, images), total=len(images)))
+                
+    if options.remove_empty_folders:
+        print('Removing empty folders from {}'.format(options.base_output_folder))
+        remove_empty_folders(options.base_output_folder)
         
 #  ...def separate_detections_into_folders
 
@@ -715,6 +724,9 @@ def main():
                              default_box_expansion))
     parser.add_argument('--category_names_to_blur', type=str, default=None,
                         help='Comma-separated list of category names to blur (or a single category name, e.g. "person")')
+    parser.add_argument('--remove_empty_folders', action='store_true',
+                        help='Remove all empty folders from the target folder at the end of the process, ' + \
+                             'whether or not they were created by this script')
         
     if len(sys.argv[1:])==0:
         parser.print_help()
