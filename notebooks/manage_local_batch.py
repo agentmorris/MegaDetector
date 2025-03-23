@@ -1321,7 +1321,7 @@ _ = validate_predictions_file(classifier_output_file_modular_crops,crop_instance
 
 # It doesn't matter here which environment we use
 ensemble_commands = []
-ensemble_commands.append(f'{cuda_prefix} cd {speciesnet_folder} && mamba activate {speciesnet_pt_environment_name}')
+ensemble_commands.append(f'{cuda_prefix} && cd {speciesnet_folder} && mamba activate {speciesnet_pt_environment_name}')
 
 cmd = 'python speciesnet/scripts/run_model.py --ensemble_only --model "{}"'.format(speciesnet_model_file)
 cmd += ' --instances_json "{}"'.format(crop_instances_json)
@@ -1334,13 +1334,13 @@ ensemble_cmd = '\n\n'.join(ensemble_commands)
 # print(ensemble_cmd); clipboard.copy(ensemble_cmd)
 
 
-#%% Validate ensemble results (still crops)
+##%% Validate ensemble results (still crops)
 
 from megadetector.utils.wi_utils import validate_predictions_file
 _ = validate_predictions_file(ensemble_output_file_modular_crops,crop_instances_json)
 
 
-#%% Generate a list of corrections made by geofencing, and counts (still crops)
+##%% Generate a list of corrections made by geofencing, and counts (still crops)
 
 from megadetector.utils.wi_utils import find_geofence_adjustments, \
     generate_geofence_adjustment_html_summary
@@ -1351,7 +1351,7 @@ rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular_cr
 geofence_footer = generate_geofence_adjustment_html_summary(rollup_pair_to_count)
 
 
-#%% Convert output file to MD format (still crops)
+##%% Convert output file to MD format (still crops)
 
 assert os.path.isfile(ensemble_output_file_modular_crops)
 
@@ -1362,7 +1362,7 @@ generate_md_results_from_predictions_json(predictions_json_file=ensemble_output_
 # from megadetector.utils.path_utils import open_file; open_file(ensemble_output_file_md_format)
 
 
-#%% Bring those crop-level results back to image level
+##%% Bring those crop-level results back to image level
 
 from megadetector.postprocessing.create_crop_folder import crop_results_to_image_results
 
@@ -1376,7 +1376,7 @@ crop_results_to_image_results(
 assert os.path.isfile(ensemble_output_file_image_level_md_format)
 
 
-#%% Confirm that all the right images are in the classification results
+##%% Confirm that all the right images are in the classification results
 
 import json
 from megadetector.utils.path_utils import find_images
