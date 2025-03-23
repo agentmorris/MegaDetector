@@ -285,7 +285,6 @@ speciesnet_pt_environment_name = 'speciesnet-package-pytorch'
 speciesnet_tf_environment_name = 'speciesnet-package-tf'
 
 # Can be None to omit the CUDA prefix
-speciesnet_gpu_number = default_gpu_number
 max_images_per_chunk = 5000
 classifier_batch_size = 128
 
@@ -610,8 +609,11 @@ for i_task,task in enumerate(task_info):
                             str(gpu_number).zfill(2),script_extension))
     
     with open(cmd_file,'w') as f:
+        
+        # This writes, e.g. "set -e"
         if script_header is not None and len(script_header) > 0:
             f.write(script_header + '\n')
+            
         f.write(cmd + '\n')
     
     st = os.stat(cmd_file)
@@ -634,8 +636,11 @@ for i_task,task in enumerate(task_info):
                                        str(gpu_number).zfill(2),script_extension))
         
         with open(resume_cmd_file,'w') as f:
+            
+            # This writes, e.g. "set -e"
             if script_header is not None and len(script_header) > 0:
                 f.write(script_header + '\n')
+                
             f.write(resume_cmd + '\n')
         
         st = os.stat(resume_cmd_file)
@@ -652,9 +657,13 @@ for gpu_number in gpu_to_scripts:
     
     gpu_script_file = os.path.join(filename_base,'run_all_for_gpu_{}{}'.format(
         str(gpu_number).zfill(2),script_extension))
+    
     with open(gpu_script_file,'w') as f:
+        
+        # This writes, e.g. "set -e"
         if script_header is not None and len(script_header) > 0:
             f.write(script_header + '\n')
+            
         for script_name in gpu_to_scripts[gpu_number]:
             s = script_name
             # When calling a series of batch files on Windows from within a batch file, you need to
@@ -662,7 +671,9 @@ for gpu_number in gpu_to_scripts:
             if os.name == 'nt':
                 s = 'call ' + s
             f.write(s + '\n')
+            
         f.write('echo "Finished all commands for GPU {}"'.format(gpu_number))
+        
     st = os.stat(gpu_script_file)
     os.chmod(gpu_script_file, st.st_mode | stat.S_IEXEC)
 
@@ -1090,11 +1101,6 @@ sequence_smoothed_classification_file = \
 
 geofence_footer = None
 
-if speciesnet_gpu_number is not None:
-    cuda_prefix = 'export CUDA_VISIBLE_DEVICES={} && '.format(speciesnet_gpu_number)
-else:
-    cuda_prefix = ''
-
 if filtered_output_filename is not None and os.path.isfile(filtered_output_filename):
     print('Using filtered MD output file {} for classification'.format(filtered_output_filename))
     detector_output_file_md_format = filtered_output_filename
@@ -1196,9 +1202,21 @@ detection_filepath_to_instance = {p['filepath']:p for p in detections['predictio
 
 chunk_prediction_files = []
 
+gpu_to_classifier_scripts = defaultdict(list)
+
 # i_chunk = 0; chunk = chunks[i_chunk]
 for i_chunk,chunk in enumerate(chunks):
     
+    if n_gpus > 1:
+        gpu_number = i_chunk % n_gpus        
+    else:
+        gpu_number = default_gpu_number
+    
+    if default_gpu_number is not None:
+        cuda_prefix = 'export CUDA_VISIBLE_DEVICES={}'.format(gpu_number)
+    else:
+        cuda_prefix = ''
+
     chunk_str = str(i_chunk).zfill(3)
     
     chunk_instances_json = os.path.join(chunk_folder,'crop_instances_chunk_{}.json'.format(
@@ -1242,28 +1260,50 @@ for i_chunk,chunk in enumerate(chunks):
     
     if classifier_batch_size is not None:
        cmd += ' --batch_size {}'.format(classifier_batch_size)
-       
+        
     chunk_script_file = os.path.join(chunk_folder,'run_chunk_{}.sh'.format(chunk_str))
     with open(chunk_script_file,'w') as f:
-        f.write(cmd)
+        f.write(cuda_prefix + ' && ' + cmd)        
     st = os.stat(chunk_script_file)
     os.chmod(chunk_script_file, st.st_mode | stat.S_IEXEC)
     
-    chunk_scripts.append(chunk_script_file)
+    gpu_to_classifier_scripts[gpu_number].append(chunk_script_file)
     
 # ...for each chunk
 
-classifier_init_cmd = f'{cuda_prefix} cd {speciesnet_folder} && mamba activate {speciesnet_tf_environment_name}'
-with open(classifier_script_file,'w') as f:
-    f.write('set -e\n')
-    for s in chunk_scripts:
-        f.write(s + '\n')
+# Write out a script for each GPU that runs all of the commands associated with
+# that GPU.
+for gpu_number in gpu_to_classifier_scripts:
+    
+    gpu_script_file = os.path.join(filename_base,'run_classifier_for_gpu_{}{}'.format(
+        str(gpu_number).zfill(2),script_extension))
 
-st = os.stat(classifier_script_file)
-os.chmod(classifier_script_file, st.st_mode | stat.S_IEXEC)
-   
-classifier_cmd = '\n\n'.join([classifier_init_cmd,classifier_script_file])
-# print(classifier_cmd); clipboard.copy(classifier_cmd)
+    prepare_conda_environment_cmd = 'eval "$(conda shell.bash hook)"'
+    classifier_init_cmd = f'cd {speciesnet_folder} && {prepare_conda_environment_cmd} && conda activate {speciesnet_tf_environment_name}'
+
+    with open(gpu_script_file,'w') as f:
+        
+        # This writes, e.g. "set -e"
+        if script_header is not None and len(script_header) > 0:
+            f.write(script_header)            
+            
+        # Change folder/environment
+        f.write(classifier_init_cmd + '\n')
+        
+        for script_name in gpu_to_classifier_scripts[gpu_number]:
+            s = script_name
+            # When calling a series of batch files on Windows from within a batch file, you need to
+            # use "call", or only the first will be executed.  No, it doesn't make sense.
+            if os.name == 'nt':
+                s = 'call ' + s
+            f.write(s + '\n')
+            
+        f.write('echo "Finished all commands for GPU {}"'.format(gpu_number))
+        
+    st = os.stat(gpu_script_file)
+    os.chmod(gpu_script_file, st.st_mode | stat.S_IEXEC)
+
+# ...for each GPU
     
 
 #%% Merge crop classification result batches
@@ -1284,7 +1324,7 @@ _ = validate_predictions_file(classifier_output_file_modular_crops,crop_instance
 
 # It doesn't matter here which environment we use
 ensemble_commands = []
-ensemble_commands.append(f'{cuda_prefix} cd {speciesnet_folder} && mamba activate {speciesnet_pt_environment_name}')
+ensemble_commands.append(f'{cuda_prefix} && cd {speciesnet_folder} && mamba activate {speciesnet_pt_environment_name}')
 
 cmd = 'python speciesnet/scripts/run_model.py --ensemble_only --model "{}"'.format(speciesnet_model_file)
 cmd += ' --instances_json "{}"'.format(crop_instances_json)
@@ -1297,13 +1337,13 @@ ensemble_cmd = '\n\n'.join(ensemble_commands)
 # print(ensemble_cmd); clipboard.copy(ensemble_cmd)
 
 
-#%% Validate ensemble results (still crops)
+##%% Validate ensemble results (still crops)
 
 from megadetector.utils.wi_utils import validate_predictions_file
 _ = validate_predictions_file(ensemble_output_file_modular_crops,crop_instances_json)
 
 
-#%% Generate a list of corrections made by geofencing, and counts (still crops)
+##%% Generate a list of corrections made by geofencing, and counts (still crops)
 
 from megadetector.utils.wi_utils import find_geofence_adjustments, \
     generate_geofence_adjustment_html_summary
@@ -1314,7 +1354,7 @@ rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular_cr
 geofence_footer = generate_geofence_adjustment_html_summary(rollup_pair_to_count)
 
 
-#%% Convert output file to MD format (still crops)
+##%% Convert output file to MD format (still crops)
 
 assert os.path.isfile(ensemble_output_file_modular_crops)
 
@@ -1325,7 +1365,7 @@ generate_md_results_from_predictions_json(predictions_json_file=ensemble_output_
 # from megadetector.utils.path_utils import open_file; open_file(ensemble_output_file_md_format)
 
 
-#%% Bring those crop-level results back to image level
+##%% Bring those crop-level results back to image level
 
 from megadetector.postprocessing.create_crop_folder import crop_results_to_image_results
 
@@ -1339,7 +1379,7 @@ crop_results_to_image_results(
 assert os.path.isfile(ensemble_output_file_image_level_md_format)
 
 
-#%% Confirm that all the right images are in the classification results
+##%% Confirm that all the right images are in the classification results
 
 import json
 from megadetector.utils.path_utils import find_images
