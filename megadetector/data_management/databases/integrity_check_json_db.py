@@ -327,7 +327,7 @@ def integrity_check_json_db(jsonFile, options=None):
                 
         for i_image,result in enumerate(results):
             if result is not None:
-                validation_errors.append(images[i_image]['file_name'],result)
+                validation_errors.append((images[i_image]['file_name'],result))
                             
     # ...for each image
     
