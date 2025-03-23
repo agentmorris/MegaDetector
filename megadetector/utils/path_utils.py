@@ -1072,8 +1072,12 @@ def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, com
     return output_fn
 
         
-def parallel_zip_files(input_files, max_workers=16, use_threads=True, compresslevel=9, 
-                       overwrite=False, verbose=False):
+def parallel_zip_files(input_files, 
+                       max_workers=16, 
+                       use_threads=True, 
+                       compresslevel=9, 
+                       overwrite=False, 
+                       verbose=False):
     """
     Zips one or more files to separate output files in parallel, leaving the 
     original files in place.  Each file is zipped to [filename].zip.

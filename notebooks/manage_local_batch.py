@@ -1109,7 +1109,10 @@ for fn in [classifier_output_file_modular_crops,
            ensemble_output_file_modular_crops]:
     if os.path.exists(fn):
         print('**\nWarning, file {} exists, this is OK if you are resuming\n**\n'.format(fn))
-
+        
+assert country_code is not None, 'Did you mean to specify a country code?'
+if country_code == 'USA' and state_code is None:
+    print('*** Did you mean to specify a state code? ***')
 
 #%% Generate instances.json
 
@@ -1417,23 +1420,25 @@ path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True
 # import clipboard; clipboard.copy(ppresults.output_html_file)
 
 
-#%% How should we determine sequence information?
+#%% Build sequences from either EXIF info or folder structure
 
-# Use this when leaf node folders are sequences, typically when each folder really represents
+# How should we determine sequence information?
+
+# Use 'exif' for most image (non-video) cases
+sequence_method = 'exif'
+
+# Use 'folder when leaf node folders are sequences, typically when each folder really represents
 # frames from a single video.
 # sequence_method = 'folder'
 
-# Use this for most image (non-video) cases
-sequence_method = 'exif'
 
-
-#%% If we're building sequence information based on EXIF data
+##%% If we're building sequence information based on EXIF data
 
 if sequence_method == 'exif':
     
     pass
 
-    #%% Read EXIF date and time from all images
+    ##%% Read EXIF date and time from all images
     
     from megadetector.data_management import read_exif
     exif_options = read_exif.ReadExifOptions()
@@ -1455,7 +1460,7 @@ if sequence_method == 'exif':
                                                        options=exif_options)
     
     
-    #%% Prepare COCO-camera-traps-compatible image objects for EXIF results
+    ##%% Prepare COCO-camera-traps-compatible image objects for EXIF results
     
     # ...and add location/datetime info based on filenames and EXIF information.
     
@@ -1489,7 +1494,7 @@ if sequence_method == 'exif':
                                        options=exif_results_to_cct_options)
 
         
-    #%% Assemble images into sequences
+    ##%% Assemble images into sequences
 
     from megadetector.data_management import cct_json_utils
     from megadetector.data_management.cct_json_utils import SequenceOptions
@@ -1500,7 +1505,7 @@ if sequence_method == 'exif':
     _ = cct_json_utils.create_sequences(cct_dict, options=sequence_options)
 
 
-#%% If we're building sequence information based on folder structure
+##%% If we're building sequence information based on folder structure
 
 else:
     
@@ -1508,14 +1513,14 @@ else:
     pass
 
 
-    #%% Read the list of filenames    
+    ##%% Read the list of filenames    
     
     input_file_for_sequence_aggregation = classifier_output_path_within_image_smoothing
     with open(input_file_for_sequence_aggregation,'r') as f:
         d = json.load(f)
 
 
-    #%% Synthesize sequences
+    ##%% Synthesize sequences
         
     cct_dict = {'info':{},'annotations':[],'categories':[],'images':[]}
             
@@ -1640,7 +1645,7 @@ json_files = os.listdir(combined_api_output_folder)
 json_files = [fn for fn in json_files if fn.endswith('.json')]
 json_files = [os.path.join(combined_api_output_folder,fn) for fn in json_files]
 
-parallel_zip_files(json_files)
+parallel_zip_files(json_files,overwrite=True)
 
 
 #%% 99.9% of jobs end here

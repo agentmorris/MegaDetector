@@ -404,10 +404,10 @@ def _smooth_classifications_for_list_of_detections(detections,
     # Don't do this if the most common category is an "other" category, or 
     # if we don't have enough of the most common category
     if (most_common_category not in other_category_ids) and \
-       (max_count > options.min_detections_to_overwrite_secondary):
+       (max_count >= options.min_detections_to_overwrite_secondary):
         
-        # det = detections[0]
-        for det in detections:
+        # i_det = 0; det = detections[i_det]
+        for i_det,det in enumerate(detections):
                         
             if ('classifications' not in det) or \
                 (det['conf'] < options.detection_confidence_threshold):
@@ -676,22 +676,26 @@ def _smooth_single_image(im,
     have already been remoevd.
     """
     
-    # Useful debug snippet
-    #
-    # if 'filename' in im['file']:
-    #    import pdb; pdb.set_trace()    
-    
-    
     if 'detections' not in im or im['detections'] is None or len(im['detections']) == 0:
         return
     
     detections = im['detections']
+    
+    # Simplify debugging
+    for det in detections:
+        det['image_filename'] = im['file']
         
-    return _smooth_classifications_for_list_of_detections(detections, 
+    to_return = _smooth_classifications_for_list_of_detections(detections, 
         options=options, 
         other_category_ids=other_category_ids,
         classification_descriptions=classification_descriptions, 
         classification_descriptions_clean=classification_descriptions_clean)
+
+    # Clean out debug information
+    for det in detections:
+        del det['image_filename']
+        
+    return to_return
 
 # ...def smooth_single_image
 
