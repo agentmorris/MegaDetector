@@ -31,9 +31,10 @@ os.makedirs(metadata_dir,exist_ok=True)
 md_results_dir = os.path.join(lila_local_base,'md_results')
 os.makedirs(md_results_dir,exist_ok=True)
 
-md_results_keys = ['mdv4_results_raw','mdv5a_results_raw','mdv5b_results_raw','md_results_with_rde']
+md_results_keys = ['mdv4_results_raw','mdv5a_results_raw','mdv5b_results_raw',
+                   'md1000-redwood_results_raw','md_results_with_rde']
 
-preferred_cloud = 'gcp' # 'azure', 'aws'
+preferred_cloud = None # 'gcp' # 'azure', 'aws'
 
 force_download = True
 
@@ -52,7 +53,7 @@ print('Loaded metadata URLs for {} datasets'.format(len(metadata_table)))
 
 #%% Download and extract metadata and MD results for each dataset
 
-# Takes ~60 seconds if everything needs to beo downloaded and unzipped
+# Takes ~60 seconds if everything needs to be downloaded and unzipped
 
 for ds_name in metadata_table.keys():    
 
@@ -88,6 +89,8 @@ url_to_source = {}
 # so we pick a semi-arbitrary image that isn't the first.  How about the 2000th?
 image_index = 2000
 
+# TODO: parallelize this loop
+#
 # ds_name = list(metadata_table.keys())[0]
 for ds_name in metadata_table.keys():
     
@@ -101,13 +104,21 @@ for ds_name in metadata_table.keys():
     with open(json_filename, 'r') as f:
         data = json.load(f)
 
-    image_base_url = metadata_table[ds_name]['image_base_url_' + preferred_cloud]
-    assert not image_base_url.endswith('/')
-    # Download a test image
-    test_image_relative_path = data['images'][image_index]['file_name']
-    test_image_url = image_base_url + '/' + test_image_relative_path
-    
-    url_to_source[test_image_url] = ds_name + ' metadata'
+    if preferred_cloud is not None:
+        clouds = [preferred_cloud]
+    else:
+        clouds = ['gcp','aws','azure']
+        
+    for cloud in clouds:
+        
+        image_base_url = metadata_table[ds_name]['image_base_url_' + cloud]
+        assert not image_base_url.endswith('/')
+        
+        # Download a test image
+        test_image_relative_path = data['images'][image_index]['file_name']
+        test_image_url = image_base_url + '/' + test_image_relative_path
+        
+        url_to_source[test_image_url] = ds_name + ' metadata ({})'.format(cloud)
     
     # Grab an image from the MegaDetector results
     

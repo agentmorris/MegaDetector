@@ -16,7 +16,7 @@ import os
 import pandas as pd
 
 # lila_taxonomy_file = r"c:\git\agentmorrisprivate\lila-taxonomy\lila-taxonomy-mapping.csv"
-lila_taxonomy_file = os.path.expanduser('~/lila/lila_additions_2024.12.31.csv')
+lila_taxonomy_file = os.path.expanduser('~/lila/lila_additions_2025.03.24.csv')
 
 preview_base = os.path.expanduser('~/lila/lila_taxonomy_preview')
 os.makedirs(preview_base,exist_ok=True)
@@ -72,64 +72,9 @@ from megadetector.taxonomy_mapping.species_lookup import \
 initialize_taxonomy_lookup()
 
 
-#%% Optionally remap all gbif-based mappings to inat (or vice-versa)
-
-if False:
-    
-    #%%
-    
-    source_mappings = ['gbif','manual']
-    target_mapping = 'inat'
-    valid_mappings = ['gbif','inat','manual']
-    
-    assert target_mapping in valid_mappings
-    for source_mapping in source_mappings:
-        assert source_mapping != target_mapping and \
-            source_mapping in valid_mappings
-    
-    n_remappings = 0
-    
-    # i_row = 1; row = df.iloc[i_row]; row
-    for i_row,row in df.iterrows():
-        
-        if row['source'] not in source_mappings:            
-            continue
-        
-        scientific_name = row['scientific_name']
-        old_common = taxonomy_string_to_common_name(row['taxonomy_string'])
-        
-        m = get_preferred_taxonomic_match(scientific_name,target_mapping)
-        
-        if m is None or m.source != target_mapping:
-            print('No mapping for {} ({}) ({})'.format(scientific_name,row['query'],old_common))
-            continue
-        
-        assert m.scientific_name == row['scientific_name']
-        
-        if m.taxonomic_level == 'variety' and row['taxonomy_level'] == 'subspecies':
-            pass
-        else:
-            assert m.taxonomic_level == row['taxonomy_level']
-        
-        new_common = taxonomy_string_to_common_name(m.taxonomy_string)
-        
-        if row['taxonomy_string'] != m.taxonomy_string:
-            print('Remapping {} ({} to {})'.format(scientific_name, old_common, new_common))
-            n_remappings += 1
-            df.loc[i_row,'taxonomy_string'] = m.taxonomy_string
-            
-        if row['source'] != 'manual':
-            df.loc[i_row,'source'] = m.source                        
-
-    # This should be zero for the release .csv
-    print('Made {} remappings'.format(n_remappings))
-    
-    #%%
-    
-    df.to_csv(lila_taxonomy_file.replace('.csv','_remapped.csv'),header=True,index=False)
-    
-
 #%% Check for mappings that disagree with the taxonomy string
+
+# For example, cases where the "level" column says "species", but the taxonomy string says it's a genus.
 
 df = pd.read_csv(lila_taxonomy_file)
 

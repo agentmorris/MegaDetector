@@ -602,8 +602,17 @@ hyphenated_terms = ['crowned', 'backed', 'throated', 'tailed', 'headed', 'cheeke
 
 def get_preferred_taxonomic_match(query: str, taxonomy_preference = 'inat', retry=True) -> TaxonomicMatch:
     """
-    Wrapper for species_lookup.py, but expressing a variety of heuristics and
-    preferences that are specific to our scenario.
+    Wrapper for _get_preferred_taxonomic_match, but expressing a variety of heuristics 
+    and preferences that are specific to our scenario.
+    
+    Args:
+        query (str): The common or scientific name we want to look up
+        taxonomy_preference (str, optional): 'inat' or 'gbif'
+        retry (bool, optional): if the initial lookup fails, should we try heuristic 
+            substitutions, e.g. replacing "_" with " ", or "spp" with "species"?
+    
+    Returns:
+        TaxonomicMatch: the best taxonomic match, or None
     """
 
     m,query = _get_preferred_taxonomic_match(query=query,taxonomy_preference=taxonomy_preference)
@@ -615,6 +624,36 @@ def get_preferred_taxonomic_match(query: str, taxonomy_preference = 'inat', retr
     m,query = _get_preferred_taxonomic_match(query=query,taxonomy_preference=taxonomy_preference)
     return m
     
+    
+def validate_and_convert(data):
+    """
+    Recursively validates that all elements in the nested structure are only
+    tuples, lists, ints, or np.int64, and converts np.int64 to int.
+    
+    Args:
+        data: The nested structure to validate and convert
+        
+    Returns:
+        The validated and converted structure
+        
+    Raises:
+        TypeError: If an invalid type is encountered
+    """
+    
+    if isinstance(data, np.int64):        
+        return int(data)
+    elif isinstance(data, int) or isinstance(data, str): 
+        return data
+    elif isinstance(data, (list, tuple)):
+        # Process lists and tuples recursively
+        container_type = type(data)
+        return container_type(validate_and_convert(item) for item in data)
+    else:
+        raise TypeError(f"Invalid type encountered: {type(data).__name__}. "
+                        f"Only int, np.int64, list, and tuple are allowed.")
+
+# ...def validate_and_convert(...)
+
     
 def _get_preferred_taxonomic_match(query: str, taxonomy_preference = 'inat') -> TaxonomicMatch:
     
@@ -760,6 +799,10 @@ def _get_preferred_taxonomic_match(query: str, taxonomy_preference = 'inat') -> 
 
     # ...if we needed to look in the GBIF taxonomy
 
+    # Convert np.int64's to ints
+    if match is not None:
+        match = validate_and_convert(match)
+        
     taxonomy_string = str(match)
 
     return TaxonomicMatch(scientific_name, common_name, taxonomic_level, source,
