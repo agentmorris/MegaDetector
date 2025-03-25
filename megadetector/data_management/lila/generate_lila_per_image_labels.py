@@ -349,7 +349,7 @@ with open(output_file,'w',encoding='utf-8',newline='') as f:
 
 # ...with open()
 
-print('Processed {} datasets'.format(len(metadata_table)))
+print('\nProcessed {} datasets'.format(len(metadata_table)))
 
 
 #%% Read the .csv back
@@ -393,7 +393,7 @@ def check_row(row):
     dataset_name_to_locations[ds_name].add(row['location_id'])
     
 # Faster, but more annoying to debug
-if False:
+if True:
     
     df.progress_apply(check_row, axis=1)
 
