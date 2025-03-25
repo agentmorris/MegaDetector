@@ -34,7 +34,7 @@ def _filename_to_image_id(fn):
     return fn.replace(' ','_').replace('\\','/')
 
 
-def _process_image(fn_abs,input_folder,category_id_to_name):
+def _process_image(fn_abs,input_folder,category_id_to_name,label_folder):
     """
     Internal support function for processing one image's labels.
     """
@@ -42,8 +42,8 @@ def _process_image(fn_abs,input_folder,category_id_to_name):
     # Create the image object for this image
     #
     # Always use forward slashes in image filenames and IDs
-    fn_relative = os.path.relpath(fn_abs,input_folder).replace('\\','/')
-    image_id = _filename_to_image_id(fn_relative)
+    image_fn_relative = os.path.relpath(fn_abs,input_folder).replace('\\','/')
+    image_id = _filename_to_image_id(image_fn_relative)
     
     # This is done in a separate loop now
     #
@@ -53,7 +53,7 @@ def _process_image(fn_abs,input_folder,category_id_to_name):
     # image_ids.add(image_id)
     
     im = {}
-    im['file_name'] = fn_relative
+    im['file_name'] = image_fn_relative
     im['id'] = image_id
     
     annotations_this_image = []
@@ -65,14 +65,20 @@ def _process_image(fn_abs,input_folder,category_id_to_name):
         im['height'] = im_height
         im['error'] = None
     except Exception as e:
-        print('Warning: error reading {}:\n{}'.format(fn_relative,str(e)))
+        print('Warning: error reading {}:\n{}'.format(image_fn_relative,str(e)))
         im['width'] = -1
         im['height'] = -1
         im['error'] = str(e)
         return (im,annotations_this_image)
         
     # Is there an annotation file for this image?
-    annotation_file = os.path.splitext(fn_abs)[0] + '.txt'
+    if label_folder is not None:
+        assert input_folder in fn_abs
+        label_file_abs_base = fn_abs.replace(input_folder,label_folder)
+    else:
+        label_file_abs_base = fn_abs
+    
+    annotation_file = os.path.splitext(label_file_abs_base)[0] + '.txt'
     if not os.path.isfile(annotation_file):
         annotation_file = os.path.splitext(fn_abs)[0] + '.TXT'
     
@@ -270,9 +276,14 @@ def validate_label_file(label_file,category_id_to_name=None,verbose=False):
 # ...def validate_label_file(...)
 
     
-def validate_yolo_dataset(input_folder, class_name_file, n_workers=1, pool_type='thread', verbose=False):
+def validate_yolo_dataset(input_folder, 
+                          class_name_file, 
+                          n_workers=1, 
+                          pool_type='thread', 
+                          verbose=False):
     """
-    Verifies all the labels in a YOLO dataset folder.  
+    Verifies all the labels in a YOLO dataset folder.  Does not yet support the case where the 
+    labels and images are in different folders (yolo_to_coco() supports this).
     
     Looks for:
         
@@ -396,14 +407,17 @@ def yolo_to_coco(input_folder,
                  recursive=True,
                  exclude_string=None,
                  include_string=None,
-                 overwrite_handling='overwrite'):
+                 overwrite_handling='overwrite',
+                 label_folder=None):
     """
     Converts a YOLO-formatted dataset to a COCO-formatted dataset.
     
     All images will be assigned an "error" value, usually None.    
     
     Args:
-        input_folder (str): the YOLO dataset folder to validate
+        input_folder (str): the YOLO dataset folder to convert.  If the image and label 
+            folders are different, this is the image folder, and [label_folder] is the
+            label folder.
         class_name_file (str or list): a list of classes, a flat text file, or a yolo 
             dataset.yml/.yaml file.  If it's a dataset.yml file, that file should point to 
             input_folder as the base folder, though this is not explicitly checked.
@@ -432,12 +446,15 @@ def yolo_to_coco(input_folder,
         include_string (str, optional): include only images whose filename contains a string
         overwrite_handling (bool, optional): behavior if output_file exists ('load', 'overwrite', or 
             'error')
+        label_folder (str, optional): label folder, if different from the image folder
     
     Returns:
         dict: COCO-formatted data, the same as what's written to [output_file]
     """
     
     ## Validate input
+    
+    input_folder = input_folder.replace('\\','/')
     
     assert os.path.isdir(input_folder)
     assert os.path.isfile(class_name_file)
@@ -487,6 +504,7 @@ def yolo_to_coco(input_folder,
     print('Enumerating images...')
     
     image_files_abs = find_images(input_folder,recursive=recursive,convert_slashes=True)
+    assert not any(['\\' in fn for fn in image_files_abs])
 
     n_files_original = len(image_files_abs)
     
@@ -516,8 +534,14 @@ def yolo_to_coco(input_folder,
     
     if not allow_images_without_label_files:
         print('Verifying that label files exist')
+        # image_file_abs = image_files_abs[0]
         for image_file_abs in tqdm(image_files_abs):
-            label_file_abs = os.path.splitext(image_file_abs)[0] + '.txt'
+            if label_folder is not None:
+                assert input_folder in image_file_abs
+                label_file_abs_base = image_file_abs.replace(input_folder,label_folder)
+            else:
+                label_file_abs_base = image_file_abs
+            label_file_abs = os.path.splitext(label_file_abs_base)[0] + '.txt'
             assert os.path.isfile(label_file_abs), \
                 'No annotation file for {}'.format(image_file_abs)
     
@@ -528,7 +552,7 @@ def yolo_to_coco(input_folder,
     
     for fn_abs in tqdm(image_files_abs):
         
-        fn_relative = os.path.relpath(fn_abs,input_folder)
+        fn_relative = os.path.relpath(fn_abs,input_folder).replace('\\','/')
         image_id = _filename_to_image_id(fn_relative)
         assert image_id not in image_ids, \
             'Oops, you have hit a very esoteric case where you have the same filename ' + \
@@ -543,8 +567,12 @@ def yolo_to_coco(input_folder,
     if n_workers <= 1:
         
         image_results = []        
+        # fn_abs = image_files_abs[0]
         for fn_abs in tqdm(image_files_abs):                
-            image_results.append(_process_image(fn_abs,input_folder,category_id_to_name))
+            image_results.append(_process_image(fn_abs,
+                                                input_folder,
+                                                category_id_to_name,
+                                                label_folder))
             
     else:
         
@@ -557,8 +585,10 @@ def yolo_to_coco(input_folder,
         
         print('Starting a {} pool of {} workers'.format(pool_type,n_workers))
         
-        p = partial(_process_image,input_folder=input_folder,
-                    category_id_to_name=category_id_to_name)
+        p = partial(_process_image,
+                    input_folder=input_folder,
+                    category_id_to_name=category_id_to_name,
+                    label_folder=label_folder)
         image_results = list(tqdm(pool.imap(p, image_files_abs),
                                   total=len(image_files_abs)))
                 
