@@ -1120,6 +1120,7 @@ assert country_code is not None, 'Did you mean to specify a country code?'
 if country_code == 'USA' and state_code is None:
     print('*** Did you mean to specify a state code? ***')
 
+
 #%% Generate instances.json
 
 # ...for the original images.
