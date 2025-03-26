@@ -1338,7 +1338,7 @@ ensemble_cmd = '\n\n'.join(ensemble_commands)
 # print(ensemble_cmd); clipboard.copy(ensemble_cmd)
 
 
-##%% Validate ensemble results (still crops)
+#%% Validate ensemble results (still crops)
 
 from megadetector.utils.wi_utils import validate_predictions_file
 _ = validate_predictions_file(ensemble_output_file_modular_crops,crop_instances_json)
