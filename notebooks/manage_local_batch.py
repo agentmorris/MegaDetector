@@ -107,6 +107,9 @@ use_image_queue = True
 # (as opposed to just image loading)?  Only relevant if use_image_queue is True.
 preprocess_on_image_queue = True
 
+# Number of image queue loader workers.  Only relevant if use_image_queue is True.
+image_queue_loader_workers = 4
+
 # Only relevant when we're using a single GPU
 default_gpu_number = 0
 
@@ -578,6 +581,10 @@ for i_task,task in enumerate(task_info):
         use_image_queue_string = ''
         if (use_image_queue):
             use_image_queue_string = '--use_image_queue'
+            if preprocess_on_image_queue:
+                use_image_queue_string += ' --preprocess_on_image_queue'
+            if image_queue_loader_workers is not None:
+                use_image_queue_string += ' --loader_workers {}'.format(image_queue_loader_workers)
 
         ncores_string = ''
         if (ncores > 1):
