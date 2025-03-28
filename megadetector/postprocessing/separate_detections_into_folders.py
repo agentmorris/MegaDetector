@@ -168,7 +168,7 @@ class SeparateDetectionsIntoFoldersOptions:
         #:
         #: deer=0.75,cow=0.75
         #:
-        #: Converted internally to a dict mapping name:threshold 
+        #: String, converted internally to a dict mapping name:threshold 
         self.classification_thresholds = None
         
         ## Debug or internal attributes
@@ -324,7 +324,7 @@ def _process_detections(im,options):
                         
                         classification_category_id = classification[0]
                         classification_confidence = classification[1]
-                        
+                    
                         # Do we have a threshold for this category, and if so, is 
                         # this classification above threshold?
                         assert options.classification_category_id_to_name is not None
@@ -526,7 +526,11 @@ def separate_detections_into_folders(options):
     for category_name in category_names:        
 
         # Do we have a custom threshold for this category?
-        assert category_name in options.category_name_to_threshold
+        if category_name not in options.category_name_to_threshold:
+            print('Warning: category {} in detection file, but not in threshold mapping'.format(
+                category_name))
+            options.category_name_to_threshold[category_name] = None
+            
         if options.category_name_to_threshold[category_name] is None:
             options.category_name_to_threshold[category_name] = default_threshold
             
@@ -589,7 +593,7 @@ def separate_detections_into_folders(options):
                 
             # ...for each token
             
-            options.classification_thresholds = classification_thresholds
+            options.classification_thresholds = classification_thresholds            
             
         # ...if classification thresholds are still in string format
         
