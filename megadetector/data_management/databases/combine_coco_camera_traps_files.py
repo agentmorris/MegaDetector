@@ -24,8 +24,10 @@ import sys
 
 #%% Merge functions
 
-def combine_cct_files(input_files, output_file=None, require_uniqueness=True,
-                      filename_prefixes=None):                             
+def combine_cct_files(input_files, 
+                      output_file=None, 
+                      require_uniqueness=True,
+                      filename_prefixes=None):
     """
     Merges the list of COCO Camera Traps files [input_files] into a single
     dictionary, optionally writing the result to [output_file].
@@ -33,8 +35,10 @@ def combine_cct_files(input_files, output_file=None, require_uniqueness=True,
     Args:
         input_files (list): paths to CCT .json files
         output_file (str, optional): path to write merged .json file
-        require_uniqueness (bool): whether to require that the images in
+        require_uniqueness (bool, optional): whether to require that the images in
             each input_dict be unique
+        filename_prefixes (dict, optional): dict mapping input filenames to strings
+            that should be prepended to image filenames from that source            
     
     Returns:
         dict: the merged COCO-formatted .json dict

@@ -27,12 +27,14 @@ import re
 
 from zipfile import ZipFile
 from datetime import datetime
+from collections import defaultdict
 from multiprocessing.pool import Pool, ThreadPool
 from functools import partial
 from shutil import which
 from tqdm import tqdm
 
 from megadetector.utils.ct_utils import is_iterable
+from megadetector.utils.ct_utils import sort_dictionary_by_value
 
 # Should all be lower-case
 IMG_EXTENSIONS = ('.jpg', '.jpeg', '.gif', '.png', '.tif', '.tiff', '.bmp')
@@ -51,8 +53,7 @@ def recursive_file_list(base_dir,
                         sort_files=True,
                         recursive=True):
     r"""
-    Enumerates files (not directories) in [base_dir], optionally converting
-    backslahes to slashes
+    Enumerates files (not directories) in [base_dir].
     
     Args:
         base_dir (str): folder to enumerate
@@ -94,12 +95,15 @@ def recursive_file_list(base_dir,
     return all_files
 
 
-def file_list(base_dir, convert_slashes=True, return_relative_paths=False, sort_files=True, 
+def file_list(base_dir, 
+              convert_slashes=True,
+              return_relative_paths=False, 
+              sort_files=True, 
               recursive=False):
     """
-    Trivial wrapper for recursive_file_list, which was a poor function name choice at the time, 
-    since it doesn't really make sense to have a "recursive" option in a function called 
-    "recursive_file_list".
+    Trivial wrapper for recursive_file_list, which was a poor function name choice 
+    at the time, since I later wanted to add non-recursive lists, but it doesn't 
+    make sense to have a "recursive" option in a function called  "recursive_file_list".
     
     Args:
         base_dir (str): folder to enumerate
@@ -119,6 +123,99 @@ def file_list(base_dir, convert_slashes=True, return_relative_paths=False, sort_
                                recursive=recursive)
 
 
+def folder_list(base_dir,
+                convert_slashes=True,
+                return_relative_paths=False,
+                sort_folders=True,
+                recursive=False):
+    
+    """
+    Enumerates folders (not files) in [base_dir].
+    
+    Args:
+        base_dir (str): folder to enumerate
+        convert_slashes (bool, optional): force forward slashes; if this is False, will use
+            the native path separator
+        return_relative_paths (bool, optional): return paths that are relative to [base_dir],
+            rather than absolute paths
+        sort_files (bool, optional): force folders to be sorted, otherwise uses the sorting
+            provided by os.walk()
+        recursive (bool, optional): enumerate recursively
+        
+    Returns:
+        list: list of folder names
+    """
+    
+    assert os.path.isdir(base_dir), '{} is not a folder'.format(base_dir)
+    
+    folders = []
+
+    if recursive:    
+        folders = []
+        for root, dirs, _ in os.walk(base_dir):
+            for d in dirs:
+                folders.append(os.path.join(root, d))    
+    else:
+        folders = os.listdir(base_dir)
+        folders = [os.path.join(base_dir,fn) for fn in folders]
+        folders = [fn for fn in folders if os.path.isdir(fn)]
+        
+    if return_relative_paths:
+        folders = [os.path.relpath(fn,base_dir) for fn in folders]
+
+    if convert_slashes:
+        folders = [fn.replace('\\', '/') for fn in folders]
+    
+    if sort_folders:
+        folders = sorted(folders)        
+    
+    return folders
+
+
+def folder_summary(folder,print_summary=True):
+    """
+    Returns (and optionally prints) a summary of [folder], including:
+        
+    * The total number of files
+    * The total number of folders
+    * The number of files for each extension    
+    
+    Args:
+        folder (str): folder to summarize
+        print_summary (bool, optional): whether to print the summary
+        
+    Returns:
+        dict: with fields "n_files", "n_folders", and "extension_to_count"
+    """
+    
+    assert os.path.isdir(folder), '{} is not a folder'.format(folder)
+    
+    folders_relative = folder_list(folder,return_relative_paths=True,recursive=True)
+    files_relative = file_list(folder,return_relative_paths=True,recursive=True)
+    
+    extension_to_count = defaultdict(int)
+    
+    for fn in files_relative:
+        ext = os.path.splitext(fn)[1]
+        extension_to_count[ext] += 1
+    
+    extension_to_count = sort_dictionary_by_value(extension_to_count,reverse=True)
+    
+    if print_summary:
+        for extension in extension_to_count.keys():
+            print('{}: {}'.format(extension,extension_to_count[extension]))
+        print('')
+        print('Total files: {}'.format(len(files_relative)))
+        print('Total folders: {}'.format(len(folders_relative)))
+        
+    to_return = {}
+    to_return['n_files'] = len(files_relative)
+    to_return['n_folders'] = len(folders_relative)
+    to_return['extension_to_count'] = extension_to_count    
+    
+    return to_return
+    
+    
 def fileparts(path):
     r"""
     Breaks down a path into the directory path, filename, and extension.
@@ -312,9 +409,6 @@ def remove_empty_folders(path, remove_root=False):
 
 # ...def remove_empty_folders(...)
 
-
-# Example usage:
-# remove_empty_folders("/path/to/directory")
 
 def top_level_folder(p):
     r"""
@@ -698,7 +792,7 @@ def open_file(filename, attempt_to_open_in_wsl_host=False, browser_name=None):
 # ...def open_file(...)
 
 
-#%% File list functions
+#%% File list functions (as in, files that are lists of other filenames)
 
 def write_list_to_file(output_file,strings):
     """
@@ -737,7 +831,9 @@ def read_list_from_file(filename):
     return file_list
 
 
-def _copy_file(input_output_tuple,overwrite=True,verbose=False):
+#%% File copying functions
+
+def _copy_file(input_output_tuple,overwrite=True,verbose=False,move=False):
     """
     Internal function for copying files from within parallel_copy_files.
     """
@@ -750,17 +846,29 @@ def _copy_file(input_output_tuple,overwrite=True,verbose=False):
             print('Skipping existing target file {}'.format(target_fn))
         return        
     
+    if move:
+        action_string = 'Moving'
+    else:
+        action_string = 'Copying'
+        
     if verbose:
-        print('Copying to target file {}'.format(target_fn))
+        print('{} to {}'.format(action_string,target_fn))
         
     os.makedirs(os.path.dirname(target_fn),exist_ok=True)
-    shutil.copyfile(source_fn,target_fn)
-    
+    if move:
+        shutil.move(source_fn, target_fn)
+    else:
+        shutil.copyfile(source_fn,target_fn)
+        
 
-def parallel_copy_files(input_file_to_output_file, max_workers=16, 
-                        use_threads=True, overwrite=False, verbose=False):
+def parallel_copy_files(input_file_to_output_file, 
+                        max_workers=16, 
+                        use_threads=True, 
+                        overwrite=False, 
+                        verbose=False,
+                        move=False):
     """
-    Copies files from source to target according to the dict input_file_to_output_file.
+    Copy (or move) files from source to target according to the dict input_file_to_output_file.
     
     Args:
         input_file_to_output_file (dict): dictionary mapping source files to the target files
@@ -769,7 +877,8 @@ def parallel_copy_files(input_file_to_output_file, max_workers=16,
         use_threads (bool, optional): whether to use threads (True) or processes (False) for
             parallel copying; ignored if max_workers <= 1
         overwrite (bool, optional): whether to overwrite existing destination files
-        verbose (bool, optional): enable additional debug output    
+        verbose (bool, optional): enable additional debug output
+        move (bool, optional): move instead of copying
     """
 
     n_workers = min(max_workers,len(input_file_to_output_file))
@@ -785,12 +894,17 @@ def parallel_copy_files(input_file_to_output_file, max_workers=16,
         pool = Pool(n_workers)
 
     with tqdm(total=len(input_output_tuples)) as pbar:
-        for i,_ in enumerate(pool.imap_unordered(partial(_copy_file,overwrite=overwrite,verbose=verbose),
+        for i,_ in enumerate(pool.imap_unordered(partial(_copy_file,
+                                                         overwrite=overwrite,
+                                                         verbose=verbose,
+                                                         move=move),
                                                  input_output_tuples)):
             pbar.update()
 
 # ...def parallel_copy_files(...)
 
+
+#%% File size functions
 
 def get_file_sizes(base_dir, convert_slashes=True):
     """
@@ -914,7 +1028,7 @@ def parallel_get_file_sizes(filenames,
 # ...def parallel_get_file_sizes(...)
 
 
-#%% Zip functions
+#%% Compression (zip/tar) functions
 
 def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compresslevel=9):
     """
