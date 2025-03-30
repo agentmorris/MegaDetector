@@ -1279,12 +1279,15 @@ for i_chunk,chunk in enumerate(chunks):
     
 # ...for each chunk
 
+per_gpu_scripts = []
+
 # Write out a script for each GPU that runs all of the commands associated with
 # that GPU.
 for gpu_number in gpu_to_classifier_scripts:
     
     gpu_script_file = os.path.join(filename_base,'run_classifier_for_gpu_{}{}'.format(
         str(gpu_number).zfill(2),script_extension))
+    per_gpu_scripts.append(gpu_script_file)
 
     prepare_conda_environment_cmd = 'eval "$(conda shell.bash hook)"'
     classifier_init_cmd = f'cd {speciesnet_folder} && {prepare_conda_environment_cmd} && conda activate {speciesnet_tf_environment_name}'
@@ -1313,6 +1316,10 @@ for gpu_number in gpu_to_classifier_scripts:
 
 # ...for each GPU
     
+print('\nClassification scripts you should run now:')
+for s in per_gpu_scripts:
+    print(s)
+
 
 #%% Merge crop classification result batches
 
@@ -1343,6 +1350,8 @@ ensemble_commands.append(cmd)
 
 ensemble_cmd = '\n\n'.join(ensemble_commands)
 # print(ensemble_cmd); clipboard.copy(ensemble_cmd)
+
+print('Ensemble command you should run now:\n\n{}'.format(ensemble_cmd))
 
 
 #%% Validate ensemble results (still crops)
