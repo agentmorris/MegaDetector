@@ -47,6 +47,9 @@ def write_yolo_dataset_file(yolo_dataset_file,
         class_list (list or str): an ordered list of class names (the first item will be class 0, 
             etc.), or the name of a text file containing an ordered list of class names (one per 
             line, starting from class zero).
+        train_folder_relative (str, optional): train folder name, used only to populate dataset.yaml
+        val_folder_relative (str, optional): val folder name, used only to populate dataset.yaml
+        test_folder_relative (str, optional): test folder name, used only to populate dataset.yaml        
     """
     
     # Read class names
@@ -97,7 +100,7 @@ def coco_to_yolo(input_image_folder,
                  category_names_to_exclude=None,
                  category_names_to_include=None,
                  write_output=True,
-                 flatten_paths=True):
+                 flatten_paths=False):
     """
     Converts a COCO-formatted dataset to a YOLO-formatted dataset, optionally flattening the 
     dataset to a single folder in the process.
@@ -116,17 +119,21 @@ def coco_to_yolo(input_image_folder,
             images are left alone.
         source_format (str, optional): can be 'coco' (default) or 'coco_camera_traps'.  The only difference
             is that when source_format is 'coco_camera_traps', we treat an image with a non-bbox
-            annotation with a category id of 0 as a special case, i.e. that's how an empty image
-            is indicated.  The original COCO standard is a little ambiguous on this issue.  If
-            source_format is 'coco', we either treat images as empty or error, depending on the value
-            of [allow_empty_annotations].  [allow_empty_annotations] has no effect if source_format is
-            'coco_camera_traps'.
+            annotation as a special case, i.e. that's how an empty image is indicated.  The original 
+            COCO standard is a little ambiguous on this issue.  If source_format is 'coco', we 
+            either treat images as empty or error, depending on the value of [allow_empty_annotations].
+            [allow_empty_annotations] has no effect if source_format is 'coco_camera_traps'.
+        overwrite_images (bool, optional): over-write images in the output folder if they exist
         create_image_and_label_folder (bool, optional): whether to create separate folders called 'images' and
             'labels' in the YOLO output folder.  If create_image_and_label_folders is False, 
             a/b/c/image001.jpg will become a#b#c#image001.jpg, and the corresponding text file will 
             be a#b#c#image001.txt.  If create_image_and_label_folders is True, a/b/c/image001.jpg will become 
             images/a#b#c#image001.jpg, and the corresponding text file will be 
             labels/a#b#c#image001.txt.    
+        class_file_name (str, optional): .txt file (relative to the output folder) that we should 
+            populate with a list of classes (or None to omit)
+        allow_empty_annotations (bool, optional): if this is False and [source_format] is 'coco', 
+            we'll error on annotations that have no 'bbox' field
         clip_boxes (bool, optional): whether to clip bounding box coordinates to the range [0,1] before
             converting to YOLO xywh format
         image_id_to_output_image_json_file (str, optional): an optional *output* file, to which we will write
@@ -139,12 +146,14 @@ def coco_to_yolo(input_image_folder,
         category_names_to_exclude (str, optional): category names that should not be represented in the
             YOLO output; only impacts annotations, does not prevent copying images.  There's almost no reason
             you would want to specify this and [category_names_to_include]. 
-        category_names_to_include (str, optional): allow-list of category names that should be represented in the
-            YOLO output; only impacts annotations, does not prevent copying images.  There's almost no reason
-            you would want to specify this and [category_names_to_exclude]. 
+        category_names_to_include (str, optional): allow-list of category names that should be represented 
+            in the YOLO output; only impacts annotations, does not prevent copying images.  There's almost 
+            no reason you would want to specify this and [category_names_to_exclude]. 
         write_output (bool, optional): determines whether we actually copy images and write annotations;
             setting this to False mostly puts this function in "dry run" "mode.  The class list
             file is written regardless of the value of write_output.
+        flatten_paths (bool, optional): replace /'s in image filenames with [path_replacement_char],
+            which ensures that the output folder is a single flat folder.
     
     Returns:
         dict: information about the coco --> yolo mapping, containing at least the fields:
@@ -313,9 +322,9 @@ def coco_to_yolo(input_image_folder,
                     
                     elif source_format == 'coco_camera_traps':
                         
-                        # We allow empty bbox lists in COCO camera traps; this is typically a negative
-                        # example in a dataset that has bounding boxes, and 0 is typically the empty 
-                        # category.
+                        # We allow empty bbox lists in COCO camera traps files; this is typically a 
+                        # negative example in a dataset that has bounding boxes, and 0 is typically 
+                        # the empty category, which is typically 0.
                         if ann['category_id'] != 0:
                             if not printed_empty_annotation_warning:
                                 printed_empty_annotation_warning = True
@@ -429,13 +438,14 @@ def coco_to_yolo(input_image_folder,
     
     print('Generating class list')
     
-    class_list_filename = os.path.join(output_folder,class_file_name)
-    with open(class_list_filename, 'w') as f:
-        print('Writing class list to {}'.format(class_list_filename))
-        for i_class in range(0,len(yolo_id_to_name)):
-            # Category IDs should range from 0..N-1
-            assert i_class in yolo_id_to_name
-            f.write(yolo_id_to_name[i_class] + '\n')
+    if class_file_name is not None:
+        class_list_filename = os.path.join(output_folder,class_file_name)
+        with open(class_list_filename, 'w') as f:
+            print('Writing class list to {}'.format(class_list_filename))
+            for i_class in range(0,len(yolo_id_to_name)):
+                # Category IDs should range from 0..N-1
+                assert i_class in yolo_id_to_name
+                f.write(yolo_id_to_name[i_class] + '\n')
     
     if image_id_to_output_image_json_file is not None:
         print('Writing image ID mapping to {}'.format(image_id_to_output_image_json_file))
@@ -457,6 +467,9 @@ def coco_to_yolo(input_image_folder,
         
     source_image_to_dest_image = {}
     
+    label_files_written = []
+    n_boxes_written = 0
+    
     # TODO: parallelize this loop
     #
     # output_info = images_to_copy[0]
@@ -471,6 +484,7 @@ def coco_to_yolo(input_image_folder,
         
         source_image_to_dest_image[source_image] = dest_image
         
+        # Copy the image if necessary
         if write_output:
             
             os.makedirs(os.path.dirname(dest_image),exist_ok=True)        
@@ -482,17 +496,24 @@ def coco_to_yolo(input_image_folder,
             if (not os.path.isfile(dest_image)) or (overwrite_images):
                 shutil.copyfile(source_image,dest_image)
         
-            bboxes = output_info['bboxes']        
+        bboxes = output_info['bboxes']        
+        
+        # Write the annotation file if necessary
+        #
+        # Only write an annotation file if there are bounding boxes.  Images with 
+        # no .txt files are treated as hard negatives, at least by YOLOv5:
+        #
+        # https://github.com/ultralytics/yolov5/issues/3218
+        #
+        # I think this is also true for images with empty .txt files, but 
+        # I'm using the convention suggested on that issue, i.e. hard 
+        # negatives are expressed as images without .txt files.
+        if len(bboxes) > 0:
             
-            # Only write an annotation file if there are bounding boxes.  Images with 
-            # no .txt files are treated as hard negatives, at least by YOLOv5:
-            #
-            # https://github.com/ultralytics/yolov5/issues/3218
-            #
-            # I think this is also true for images with empty .txt files, but 
-            # I'm using the convention suggested on that issue, i.e. hard 
-            # negatives are expressed as images without .txt files.
-            if len(bboxes) > 0:
+            n_boxes_written += len(bboxes)
+            label_files_written.append(dest_txt)
+            
+            if write_output:
                 
                 with open(dest_txt,'w') as f:
                     
@@ -501,8 +522,7 @@ def coco_to_yolo(input_image_folder,
                         assert len(bbox) == 5
                         s = '{} {} {} {} {}'.format(bbox[0],bbox[1],bbox[2],bbox[3],bbox[4])
                         f.write(s + '\n')
-                        
-        # ...if we're actually writing output
+                            
         
     # ...for each image
     
@@ -510,6 +530,8 @@ def coco_to_yolo(input_image_folder,
     coco_to_yolo_info['class_list_filename'] = class_list_filename
     coco_to_yolo_info['source_image_to_dest_image'] = source_image_to_dest_image
     coco_to_yolo_info['coco_id_to_yolo_id'] = coco_id_to_yolo_id
+    coco_to_yolo_info['label_files_written'] = label_files_written
+    coco_to_yolo_info['n_boxes_written'] = n_boxes_written
     
     return coco_to_yolo_info
 

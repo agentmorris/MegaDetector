@@ -1574,7 +1574,8 @@ def parallel_get_image_sizes(filenames,
     Retrieve image sizes for a list or folder of images
     
     Args:
-        filenames (list or str): a list of image filenames or a folder
+        filenames (list or str): a list of image filenames or a folder.  Non-image files and 
+            unreadable images will be returned with a file size of None.
         max_workers (int, optional): the number of parallel workers to use; set to <=1 to disable
             parallelization
         use_threads (bool, optional): whether to use threads (True) or processes (False) for

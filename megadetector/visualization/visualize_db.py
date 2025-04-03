@@ -51,7 +51,7 @@ class DbVizOptions:
         #: Target size for rendering; set either dimension to -1 to preserve aspect ratio.
         #:
         #: If viz_size is None or (-1,-1), the original image size is used.
-        self.viz_size = (800, -1)
+        self.viz_size = (1000, -1)
         
         #: HTML rendering options; see write_html_image_list for details
         #:

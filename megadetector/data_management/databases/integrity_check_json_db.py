@@ -393,7 +393,7 @@ def integrity_check_json_db(jsonFile, options=None):
             elif image['_count'] > 1:
                 nMultiAnnotated += 1
                 
-        print('Found {} unannotated images, {} images with multiple annotations'.format(
+        print('\nFound {} unannotated images, {} images with multiple annotations'.format(
                 nUnannotated,nMultiAnnotated))
         
         if (len(base_dir) > 0) and options.bFindUnusedImages:
