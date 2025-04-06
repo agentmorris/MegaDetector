@@ -846,10 +846,6 @@ def open_file_in_chrome(filename):
     print(f"Could not open {filename} in Chrome on {system}.")
     return False
 
-
-# Example usage
-open_in_chrome('path/to/your/markdown_file.md')
-    
    
 def open_file(filename, attempt_to_open_in_wsl_host=False, browser_name=None):
     """
