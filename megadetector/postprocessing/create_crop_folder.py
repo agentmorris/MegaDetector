@@ -18,6 +18,7 @@ from collections import defaultdict
 from functools import partial
 
 from megadetector.utils.path_utils import insert_before_extension
+from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.visualization.visualization_utils import crop_image
 from megadetector.visualization.visualization_utils import exif_preserving_save
 
@@ -48,6 +49,11 @@ class CreateCropFolderOptions:
         
         #: Whether to use processes ('process') or threads ('thread') for parallelization
         self.pool_type = 'thread'
+
+        #: Include only these categories, or None to include all
+        #:
+        #: options.category_names_to_include = ['animal']
+        self.category_names_to_include = None
                 
           
 #%% Support functions
@@ -256,7 +262,8 @@ def create_crop_folder(input_file,
     assert os.path.isfile(input_file), 'Input file {} not found'.format(input_file)
     assert os.path.isdir(input_folder), 'Input folder {} not found'.format(input_folder)
     os.makedirs(output_folder,exist_ok=True)
-    os.makedirs(os.path.dirname(output_file),exist_ok=True)
+    if output_file is not None:
+        os.makedirs(os.path.dirname(output_file),exist_ok=True)
     
     
     ##%% Read input
@@ -264,14 +271,26 @@ def create_crop_folder(input_file,
     print('Reading MD results file...')    
     with open(input_file,'r') as f:
         detection_results = json.load(f)
-       
-        
+    
+    category_ids_to_include = None
+                
+    if options.category_names_to_include is not None:        
+        category_id_to_name = detection_results['detection_categories']
+        category_name_to_id = invert_dictionary(category_id_to_name)    
+        category_ids_to_include = set()
+        for category_name in options.category_names_to_include:
+            assert category_name in category_name_to_id, \
+                'Unrecognized category name {}'.format(category_name)
+            category_ids_to_include.add(category_name_to_id[category_name])        
+
     ##%% Make a list of crops that we need to create
     
     # Maps input images to list of dicts, with keys 'crop_id','detection'
     image_fn_relative_to_crops = defaultdict(list)
     n_crops = 0
     
+    n_detections_excluded_by_category = 0
+
     # im = detection_results['images'][0]
     for i_image,im in enumerate(detection_results['images']):
         
@@ -283,27 +302,35 @@ def create_crop_folder(input_file,
         image_fn_relative = im['file']
         
         for i_detection,det in enumerate(detections_this_image):
-            
-            if det['conf'] > options.confidence_threshold:
-                            
-                det['crop_id'] = i_detection
-                
-                crop_info = {'image_fn_relative':image_fn_relative,
-                             'crop_id':i_detection,
-                             'detection':det}
-                
-                crop_filename_relative = _get_crop_filename(image_fn_relative, 
-                                                            crop_info['crop_id'])
-                det['crop_filename_relative'] = crop_filename_relative
+                        
+            if det['conf'] < options.confidence_threshold:
+                continue
 
-                image_fn_relative_to_crops[image_fn_relative].append(crop_info)
-                n_crops += 1
-                
+            if (category_ids_to_include is not None) and \
+                (det['category'] not in category_ids_to_include):
+                n_detections_excluded_by_category += 1
+                continue
+
+            det['crop_id'] = i_detection
+            
+            crop_info = {'image_fn_relative':image_fn_relative,
+                            'crop_id':i_detection,
+                            'detection':det}
+            
+            crop_filename_relative = _get_crop_filename(image_fn_relative, 
+                                                        crop_info['crop_id'])
+            det['crop_filename_relative'] = crop_filename_relative
+
+            image_fn_relative_to_crops[image_fn_relative].append(crop_info)
+            n_crops += 1
+            
     # ...for each input image   
 
     print('Prepared a list of {} crops from {} of {} input images'.format(
         n_crops,len(image_fn_relative_to_crops),len(detection_results['images'])))
-        
+    
+    if n_detections_excluded_by_category > 0:
+        print('Excluded {} detections by category'.format(n_detections_excluded_by_category))
     
     ##%% Generate crops
         
