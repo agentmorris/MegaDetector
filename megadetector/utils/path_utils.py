@@ -22,6 +22,7 @@ import unicodedata
 import zipfile
 import tarfile
 import webbrowser
+import winreg
 import subprocess
 import re
 
@@ -729,8 +730,123 @@ def windows_path_to_wsl_path(filename):
         return None
     
     return result.stdout.strip()
+   
 
+def open_file_in_chrome(filename):
+    """
+    Open a file in chrome, regardless of file type.  I typically use this to open 
+    .md files in Chrome.
     
+    Args:
+        filename (str): file to open
+        
+    Return:
+        bool: whether the operation was successful
+    """
+    
+    # Create URL
+    abs_path = os.path.abspath(filename)
+    
+    system = platform.system()
+    if system == 'Windows':
+        url = f'file:///{abs_path.replace(os.sep, "/")}'
+    else:  # macOS and Linux
+        url = f'file://{abs_path}'
+    
+    # Determine the Chrome path
+    if system == 'Windows':
+        
+        chrome_paths = [
+            os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
+        ]
+        
+        # Default approach: run from a typical chrome location
+        for path in chrome_paths:
+            if os.path.exists(path):
+                subprocess.run([path, url])
+                return True
+        
+        # Method 2: Check registry for Chrome path
+        try:
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, 
+                                r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe") as key:
+                chrome_path = winreg.QueryValue(key, None)
+                if chrome_path and os.path.exists(chrome_path):
+                    subprocess.run([chrome_path, url])
+                    return True
+        except:
+            pass
+           
+        # Method 3: Try alternate registry location
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, 
+                               r"Software\Google\Chrome\BLBeacon") as key:
+                chrome_path = os.path.join(os.path.dirname(winreg.QueryValueEx(key, "version")[0]), "chrome.exe")
+                if os.path.exists(chrome_path):
+                    subprocess.run([chrome_path, url])
+                    return True
+        except:
+            pass
+       
+        # Method 4: Try system path or command
+        for chrome_cmd in ["chrome", "chrome.exe", "googlechrome", "google-chrome"]:
+            try:
+                subprocess.run([chrome_cmd, url], shell=True)
+                return True
+            except:
+                continue
+               
+        # Method 5: Use Windows URL protocol handler
+        try:
+            os.startfile(url)
+            return True
+        except:
+            pass
+           
+        # Method 6: Use rundll32 
+        try:
+            cmd = f'rundll32 url.dll,FileProtocolHandler {url}'
+            subprocess.run(cmd, shell=True)
+            return True
+        except:
+            pass
+             
+    elif system == 'Darwin':
+    
+        chrome_paths = [
+            '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+            os.path.expanduser('~/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')
+        ]
+        
+        for path in chrome_paths:
+            if os.path.exists(path):
+                subprocess.run([path, url])
+                return True
+        
+        # Fallback to 'open' command with Chrome as the app
+        try:
+            subprocess.run(['open', '-a', 'Google Chrome', url])
+            return True
+        except:
+            pass
+            
+    elif system == 'Linux':
+        
+        chrome_commands = ['google-chrome', 'chrome', 'chromium', 'chromium-browser']
+        
+        for cmd in chrome_commands:
+            try:
+                subprocess.run([cmd, url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return True
+            except:
+                continue
+    
+    print(f"Could not open {filename} in Chrome on {system}.")
+    return False
+
+   
 def open_file(filename, attempt_to_open_in_wsl_host=False, browser_name=None):
     """
     Opens [filename] in the default OS file handler for this file type.
