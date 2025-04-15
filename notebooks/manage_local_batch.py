@@ -1738,6 +1738,27 @@ if (custom_taxa_list is not None) and (custom_taxa_stage == 'after_smoothing'):
     # import clipboard; clipboard.copy(ppresults.output_html_file)
 
 
+#%% Remove unused categories
+
+from megadetector.postprocessing.subset_json_detector_output import \
+    SubsetJsonDetectorOutputOptions, subset_json_detector_output
+
+from megadetector.postprocessing.validate_batch_results import \
+    ValidateBatchResultsOptions, validate_batch_results
+    
+input_fn_abs = sequence_smoothed_classification_file
+output_fn_abs = insert_before_extension(input_fn_abs,'trimmed')
+    
+options = SubsetJsonDetectorOutputOptions()
+options.remove_classification_categories_below_count = 1
+options.overwrite_json_files = True
+_ = subset_json_detector_output(input_fn_abs, output_fn_abs, options)
+    
+validation_options = ValidateBatchResultsOptions()
+validation_options.raise_errors = True
+_ = validate_batch_results(output_fn_abs, validation_options)
+
+
 #%% Zip .json files
 
 from megadetector.utils.path_utils import parallel_zip_files
