@@ -65,8 +65,10 @@ Example output with both detection and classification results:
         "4": "moose"
     },
     // classification_category_descriptions is optional; if present, category IDs must be 
-    // string-formatted ints.  This is typically used to provide searchable taxonomic names
-    // for categories.
+    // string-formatted ints, and must be the same set of IDs used in 
+    // "classification_categories".
+    //
+    // This is typically used to provide searchable taxonomic names for categories.
     "classification_category_descriptions": {
         "0": "animalia;chordata;mammalia;carnivora;canidae;vulpesvulpes",
         "1": "animalia;chordata;mammalia;artiodactyla;cervidae;cervuscanadensis",
