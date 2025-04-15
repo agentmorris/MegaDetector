@@ -61,6 +61,7 @@ import os
 import re
 
 from tqdm import tqdm
+from collections import defaultdict
 
 from megadetector.utils.ct_utils import args_to_object, get_max_conf, invert_dictionary
 from megadetector.utils.path_utils import top_level_folder
@@ -142,6 +143,10 @@ class SubsetJsonDetectorOutputOptions:
         #
         #: Assumes that the input .json file contains relative paths when comparing to a folder.
         self.keep_files_in_list = None
+        
+        #: Remove classification with <= N instances.  Does not re-map categories 
+        #: to be contiguous.  Set to 1 to remove empty categories only.
+        self.remove_classification_categories_below_count = None
     
 # ...class SubsetJsonDetectorOutputOptions
 
@@ -167,10 +172,101 @@ def _write_detection_results(data, output_filename, options):
     n_images = len(data['images'])
     
     print('Writing detection output (with {} images) to {}'.format(n_images,output_filename))
-    with open(output_filename, 'w') as f:
+    with open(output_filename, 'w', newline='\n') as f:
         json.dump(data,f,indent=1)
 
 # ...def _write_detection_results(...)
+
+
+def remove_classification_categories_below_count(data, options):
+    """
+    Removes all classification categories below a threshold count.  Does not re-map
+    classification category IDs.
+    
+    Args:
+        data (dict): data loaded from a MD results file
+        options (SubsetJsonDetectorOutputOptions): parameters for subsetting
+    
+    Returns:
+        dict: Possibly-modified version of [data] (also modifies in place)
+    """
+    
+    if options.remove_classification_categories_below_count is None:
+        return data
+    if 'classification_categories' not in data:
+        return data
+    
+    classification_category_id_to_count = {}
+    
+    for classification_category_id in data['classification_categories']:
+        classification_category_id_to_count[classification_category_id] = 0
+        
+    # Count the number of occurrences of each classification category
+    for im in data['images']:
+        if 'detections' not in im or im['detections'] is None:
+            continue
+        for det in im['detections']:
+            if 'classifications' not in det:
+                continue
+            for classification in det['classifications']:
+                classification_category_id_to_count[classification[0]] = \
+                    classification_category_id_to_count[classification[0]] + 1
+                    
+                    
+    # Which categories have above-threshold counts?
+    classification_category_ids_to_keep = set()
+
+    for classification_category_id in classification_category_id_to_count:
+        if classification_category_id_to_count[classification_category_id] > \
+            options.remove_classification_categories_below_count:
+                classification_category_ids_to_keep.add(classification_category_id)
+    
+    n_categories_removed = \
+        len(classification_category_id_to_count) - \
+        len(classification_category_ids_to_keep)
+        
+    print('Removing {} of {} classification categories'.format(
+        n_categories_removed,len(classification_category_id_to_count)))
+    
+    if n_categories_removed == 0:
+        return data
+    
+    
+    # Filter the category list
+    output_classification_categories = {}
+    for category_id in data['classification_categories']:
+        if category_id in classification_category_ids_to_keep:
+            output_classification_categories[category_id] = \
+                data['classification_categories'][category_id]
+    data['classification_categories'] = output_classification_categories
+    assert len(data['classification_categories']) == len(classification_category_ids_to_keep)
+    
+    
+    # If necessary, filter the category descriptions
+    if 'classification_category_descriptions' in data:
+        output_classification_category_descriptions = {}
+        for category_id in data['classification_category_descriptions']:
+            if category_id in classification_category_ids_to_keep:
+                output_classification_category_descriptions[category_id] = \
+                    data['classification_category_descriptions'][category_id]
+        data['classification_category_descriptions'] = output_classification_category_descriptions        
+    
+    # Filter images
+    for im in data['images']:
+        if 'detections' not in im or im['detections'] is None:
+            continue
+        for det in im['detections']:
+            if 'classifications' not in det:
+                continue
+            classifications_to_keep = []
+            for classification in det['classifications']:
+                if classification[0] in classification_category_ids_to_keep:
+                    classifications_to_keep.append(classification)
+            det['classifications'] = classifications_to_keep
+    
+    return data
+
+# ...def remove_classification_categories_below_count(...)
 
 
 def subset_json_detector_output_by_confidence(data, options):
@@ -537,10 +633,10 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
             raise ValueError('When splitting by folders, output must be a valid directory name, you specified an existing file')
             
     if data is None:
-        print('Reading json...', end='')
+        print('Reading file {}'.format(input_filename))
         with open(input_filename) as f:
             data = json.load(f)
-        print(' ...done, read {} images'.format(len(data['images'])))
+        print('Read {} images'.format(len(data['images'])))
         if options.debug_max_images > 0:
             print('Trimming to {} images'.format(options.debug_max_images))
             data['images'] = data['images'][:options.debug_max_images]
@@ -556,7 +652,7 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
     if options.remove_failed_images:
         
         data = remove_failed_images(data, options)
-        
+            
     if options.confidence_threshold is not None:
         
         data = subset_json_detector_output_by_confidence(data, options)
@@ -565,6 +661,10 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
         
         data = subset_json_detector_output_by_categories(data, options)
     
+    if options.remove_classification_categories_below_count is not None:
+        
+        data = remove_classification_categories_below_count(data, options)
+        
     if options.keep_files_in_list is not None:
         
         data = subset_json_detector_output_by_list(data, options)
@@ -753,6 +853,8 @@ def main():
                         help='When using split_folders and make_folder_relative, copy jsons to their corresponding folders (relative to output_file)')
     parser.add_argument('--create_folders', action='store_true',
                         help='When using copy_jsons_to_folders, create folders that don''t exist')    
+    parser.add_argument('--remove_classification_categories_below_count', type=int, default=None,
+                        help='Remove classification categories with less than this many instances (no removal by default)')
     
     if len(sys.argv[1:]) == 0:
         parser.print_help()
