@@ -45,18 +45,21 @@ Example output with both detection and classification results:
         },
         "summary_report": "<p>Summary report</p><br/><p>...in which HTML is allowed.</p>"
     },
-    // detection_categories is required; category IDs must be string-formatted ints.
+    // detection_categories is required; category IDs must be non-negative string-formatted ints.
     //
+	// Category IDs are not required to be contiguous.
+	//
     // Category names can be arbitrary, but downstream tools may take a particular dependency 
     // on the name "animal", so using "animal" (rather than, e.g., "animals" or "wildlife")
-    // is recommended.
+    // is recommended.  Use of the category ID "0" is discouraged, as this is informally reserved
+	// for an "empty" category.
     "detection_categories": {
         "1": "animal",
         "2": "person",
         "3": "vehicle"
     },
     // classification_categories is optional; if present, category IDs must be 
-    // string-formatted ints.
+    // non-negative string-formatted ints.  Category IDs are not required to be contiguous.
     "classification_categories": {
         "0": "fox",
         "1": "elk",

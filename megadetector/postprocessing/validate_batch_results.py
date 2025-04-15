@@ -20,11 +20,19 @@ from tqdm import tqdm
 from megadetector.detection.video_utils import is_video_file
 from megadetector.utils.ct_utils import args_to_object, is_list_sorted # noqa
 
-typical_info_fields = ['detector','detection_completion_time',
-                       'classifier','classification_completion_time',
-                       'detection_metadata','classifier_metadata']
-required_keys = ['info','images','detection_categories']
-typical_keys = ['classification_categories']
+typical_info_fields = ['detector',
+                       'detection_completion_time',
+                       'classifier',
+                       'classification_completion_time',
+                       'detection_metadata',
+                       'classifier_metadata']
+
+required_keys = ['info',
+                 'images',
+                 'detection_categories']
+
+typical_keys = ['classification_categories',
+                'classification_category_descriptions']
 
 
 #%% Classes
