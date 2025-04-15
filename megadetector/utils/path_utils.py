@@ -22,7 +22,6 @@ import unicodedata
 import zipfile
 import tarfile
 import webbrowser
-import winreg
 import subprocess
 import re
 
@@ -755,6 +754,9 @@ def open_file_in_chrome(filename):
     
     # Determine the Chrome path
     if system == 'Windows':
+        
+        # This is a native Python module, but it only exists on Windows
+        import winreg
         
         chrome_paths = [
             os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\Application\chrome.exe",

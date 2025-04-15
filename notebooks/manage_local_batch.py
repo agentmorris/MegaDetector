@@ -294,6 +294,12 @@ classifier_batch_size = 128
 # Text file containing binomial names and common names of allowed taxa
 custom_taxa_list = None
 
+# If custom_taxa_list is not None, when should we apply the custom taxonomy?  Can be
+# 'before_smoothing' or 'after_smoothing'.
+custom_taxa_stage = 'before_smoothing'
+
+custom_taxa_allow_walk_down = False
+
 # Only necessary when using a custom taxonomy list
 taxonomy_file = os.path.join(speciesnet_model_file,'taxonomy_release.txt')
 
@@ -373,6 +379,8 @@ if custom_taxa_list is not None:
     assert os.path.isfile(taxonomy_file), \
         'Could not find taxonomy file {}'.format(taxonomy_file)
 
+    assert custom_taxa_stage in ('before_smoothing','after_smoothing')
+    
 
 #%% Enumerate files
 
@@ -1337,15 +1345,21 @@ _ = validate_predictions_file(classifier_output_file_modular_crops,crop_instance
 
 #%% Run geofencing (still crops)
 
-# It doesn't matter here which environment we use
+# It doesn't matter here which environment we use, and there's no need to add the CUDA prefix
 ensemble_commands = []
-ensemble_commands.append(f'{cuda_prefix} && cd {speciesnet_folder} && mamba activate {speciesnet_pt_environment_name}')
+ensemble_commands.append(f'cd {speciesnet_folder} && mamba activate {speciesnet_pt_environment_name}')
 
 cmd = 'python speciesnet/scripts/run_model.py --ensemble_only --model "{}"'.format(speciesnet_model_file)
 cmd += ' --instances_json "{}"'.format(crop_instances_json)
 cmd += ' --classifications_json "{}"'.format(classifier_output_file_modular_crops)
 cmd += ' --detections_json "{}"'.format(crop_detections_predictions_file)
 cmd += ' --predictions_json "{}"'.format(ensemble_output_file_modular_crops)
+
+# Currently we only skip the geofence if we're imminently going to apply a custom taxa
+# list, otherwise the smoothing is quite messy.
+if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
+    cmd += ' --nogeofence'
+    
 ensemble_commands.append(cmd)
 
 ensemble_cmd = '\n\n'.join(ensemble_commands)
@@ -1425,6 +1439,24 @@ for im in d['images']:
 print('Loaded results for {} images with {} failures'.format(
     len(images_in_folder),n_failures))
 
+
+#%% Possibly apply a custom taxa list (before smoothing)
+
+from megadetector.utils.wi_utils import restrict_to_taxa_list
+
+if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
+    
+    taxa_list = custom_taxa_list
+    speciesnet_taxonomy_file = taxonomy_file
+    custom_taxa_output_file = insert_before_extension(
+        ensemble_output_file_image_level_md_format,'custom-species')    
+    
+    restrict_to_taxa_list(taxa_list=taxa_list,
+                          speciesnet_taxonomy_file=speciesnet_taxonomy_file,
+                          input_file=ensemble_output_file_image_level_md_format,
+                          output_file=custom_taxa_output_file,
+                          allow_walk_down=custom_taxa_allow_walk_down)
+        
 
 #%% Preview (post-classification, pre-smoothing)
 
@@ -1625,7 +1657,15 @@ else:
         ensemble_output_file_image_level_md_format
 
 sequence_level_smoothing_options = ClassificationSmoothingOptions()
-# sequence_level_smoothing_options.max_detections_nondominant_class_same_family = 1000
+
+# Setting this to True says that if I have two predicted species in the same family
+# in a sequence, I will force them all to be the more common species.  Don't set this
+# if you have images where multiple species from the same family can occur in the same
+# sequence.
+allow_same_family_smoothing = False
+
+if allow_same_family_smoothing:
+    sequence_level_smoothing_options.max_detections_nondominant_class_same_family = 10000
 
 _ = smooth_classification_results_sequence_level(input_file=input_file_for_sequence_level_smoothing,
                                                  cct_sequence_information=cct_dict,
@@ -1653,28 +1693,32 @@ path_utils.open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True
 # import clipboard; clipboard.copy(ppresults.output_html_file)
 
 
-#%% Possibly apply a custom taxa list
+#%% Possibly apply a custom taxa list (after smoothing)
 
 from megadetector.utils.wi_utils import restrict_to_taxa_list
 
-if custom_taxa_list is not None:
+if (custom_taxa_list is not None) and (custom_taxa_stage == 'after_smoothing'):
     
     taxa_list = custom_taxa_list
     speciesnet_taxonomy_file = taxonomy_file
     custom_taxa_output_file = insert_before_extension(
         sequence_smoothed_classification_file,'custom-species')
-    allow_walk_down = False
     
     restrict_to_taxa_list(taxa_list=taxa_list,
                           speciesnet_taxonomy_file=speciesnet_taxonomy_file,
                           input_file=sequence_smoothed_classification_file,
                           output_file=custom_taxa_output_file,
-                          allow_walk_down=allow_walk_down)
-        
+                          allow_walk_down=custom_taxa_allow_walk_down)
+    
+    print('Replacing initial ensemble output file:\n\n{}\n\n{}'.format(
+        ensemble_output_file_image_level_md_format,
+        custom_taxa_output_file))
+    ensemble_output_file_image_level_md_format = custom_taxa_output_file
+
 
 #%% Preview (post-custom_taxa-smoothing)
 
-if custom_taxa_list is not None:
+if (custom_taxa_list is not None) and (custom_taxa_stage == 'after_smoothing'):
     
     preview_options = deepcopy(preview_options_base)
     preview_options.image_base_dir = input_path
