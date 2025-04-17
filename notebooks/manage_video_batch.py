@@ -29,11 +29,18 @@ os.makedirs(frame_folder_base,exist_ok=True)
 
 quality = 90
 max_width = 1600
-every_n_frames = 10
 recursive = True
 overwrite = True
 parallelization_uses_threads = True
 n_workers = 8
+
+# Sample every Nth frame.  To specify a sampling rate in seconds, use a negative
+# value.  For example:
+#    
+# * Setting every_n_frames to -2.0 yields a frame rate of 0.5 fps
+# * Setting every_n_frames to -0.5 yields a frame rate of 2.0 fps
+#
+every_n_frames = 10
 
 
 #%% Split videos into frames

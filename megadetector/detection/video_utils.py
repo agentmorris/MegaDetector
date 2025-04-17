@@ -714,8 +714,8 @@ def video_folder_to_frames(input_folder,
             parallelism
         every_n_frames (int, optional): sample every Nth frame starting from the first frame;
             if this is None or 1, every frame is extracted.  If this is a negative value, it's
-            interpreted as a sampling rate in seconds, which is rounded to the nearest frame sampling 
-            rate.  Mutually exclusive with frames_to_extract.
+            interpreted as a sampling rate in seconds, which is rounded to the nearest frame 
+            sampling rate.  Mutually exclusive with frames_to_extract.
         verbose (bool, optional): enable additional debug console output
         parallelization_uses_threads (bool, optional): whether to use threads (True) or
             processes (False) for parallelization; ignored if n_threads <= 1
