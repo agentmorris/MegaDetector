@@ -28,7 +28,8 @@ def split_locations_into_train_val(location_to_category_counts,
                                    target_val_fraction=0.15,
                                    category_to_max_allowable_error=None,                                   
                                    category_to_error_weight=None,
-                                   default_max_allowable_error=0.1):
+                                   default_max_allowable_error=0.1,
+                                   require_complete_coverage=True):
     """
     Splits a list of location IDs into training and validation, targeting a specific
     train/val split for each category, but allowing some categories to be tighter or looser
@@ -63,6 +64,8 @@ def split_locations_into_train_val(location_to_category_counts,
         default_max_allowable_error (float, optional): the maximum allowable error for categories not 
             present in [category_to_max_allowable_error].  Set to None (or >= 1.0) to disable hard 
             constraints for categories not present in [category_to_max_allowable_error]
+        require_complete_coverage (bool, optional): require that every category appear in both train and 
+            val
     
     Returns:
         tuple: A two-element tuple:
@@ -125,7 +128,7 @@ def split_locations_into_train_val(location_to_category_counts,
             category_val_fraction = category_val_count / (category_val_count + category_train_count)
             category_to_val_fraction[category_id] = category_val_fraction
         
-        # Absolute deviation from the target val fraction for each categorys
+        # Absolute deviation from the target val fraction for each category
         category_errors = {}
         weighted_category_errors = {}
         
@@ -161,17 +164,27 @@ def split_locations_into_train_val(location_to_category_counts,
         seed_satisfies_hard_constraints = True
         
         for category in category_to_val_fraction:
-            if category in category_to_max_allowable_error:
+            if category in category_to_max_allowable_error:                
                 max_allowable_error = category_to_max_allowable_error[category]
             else:
                 if default_max_allowable_error is None:
                     continue
                 max_allowable_error = default_max_allowable_error
             val_fraction = category_to_val_fraction[category]
+
+            # If necessary, verify that this category doesn't *only* appear in train or val
+            if require_complete_coverage:
+                if (val_fraction == 0.0) or (val_fraction == 1.0):
+                    seed_satisfies_hard_constraints = False
+                    break
+
+            # Check whether this category exceeds the hard maximum deviation
             category_error = abs(val_fraction - target_val_fraction)
             if category_error > max_allowable_error:
                 seed_satisfies_hard_constraints = False
                 break
+        
+        # ...for each category
         
         if seed_satisfies_hard_constraints:            
             random_seed_to_weighted_average_error[random_seed] = weighted_average_error

@@ -307,9 +307,9 @@ taxonomy_file = os.path.join(speciesnet_model_file,'taxonomy_release.txt')
 #%% Derived variables, constant validation, path setup
 
 input_path = input_path.replace('\\','/')
+
 assert not (input_path.endswith('/') or input_path.endswith('\\'))
 assert os.path.isdir(input_path), 'Could not find input folder {}'.format(input_path)
-
 assert job_date is not None and organization_name_short != 'organization'
 
 if job_tag is None:
