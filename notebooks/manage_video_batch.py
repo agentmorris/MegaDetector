@@ -29,11 +29,18 @@ os.makedirs(frame_folder_base,exist_ok=True)
 
 quality = 90
 max_width = 1600
-every_n_frames = 10
 recursive = True
 overwrite = True
 parallelization_uses_threads = True
 n_workers = 8
+
+# Sample every Nth frame.  To specify a sampling rate in seconds, use a negative
+# value.  For example:
+#    
+# * Setting every_n_frames to -2.0 yields a frame rate of 0.5 fps
+# * Setting every_n_frames to -0.5 yields a frame rate of 2.0 fps
+#
+every_n_frames = 10
 
 
 #%% Split videos into frames
@@ -260,7 +267,8 @@ if False:
     
     from megadetector.visualization import visualize_detector_output
     from megadetector.detection.video_utils import frames_to_video    
-    
+    from megadetector.detection.video_utils import get_video_fs    
+
     
     ## Constants and paths
     
@@ -272,14 +280,29 @@ if False:
     output_video_base = os.path.expanduser('~/tmp/video_preview')
     
     
+    ## Determine input frame rate
+    
+    input_video_abs = os.path.join(input_folder,video_fn_relative)
+    assert os.path.isfile(input_video_abs)
+    input_fs = get_video_fs(input_video_abs)
+    
+    
+    ## Determine output frame rate
+    
+    if every_n_frames > 0:
+        output_fs = input_fs / every_n_frames
+    else:
+        output_fs = (1.0/abs(every_n_frames))
+        
+        
     ## Filename handling
     
     video_fn_relative = video_fn_relative.replace('\\','/')
     video_fn_flat = video_fn_relative.replace('/','#')
     video_name = os.path.splitext(video_fn_flat)[0]
-    output_video = os.path.join(output_video_base,'{}_detections.mp4'.format(video_name))        
-    output_fs = input_fs / every_n_frames
-    
+    output_video = os.path.join(output_video_base,'{}_detections.mp4'.format(video_name))
+        
+        
     rendered_detections_folder = os.path.join(output_video_base,'rendered_detections_{}'.format(video_name))
     os.makedirs(rendered_detections_folder,exist_ok=True)
     
@@ -321,7 +344,9 @@ if False:
     
     ## Render the output video
     
-    frames_to_video(detected_frame_files, output_fs, output_video, codec_spec='h264')
+    codec_spec = 'h264'
+    # codec_spec = 'mp4v'
+    frames_to_video(detected_frame_files, output_fs, output_video, codec_spec=codec_spec)    
     
     # from megadetector.utils.path_utils import open_file; open_file(output_video)
 
