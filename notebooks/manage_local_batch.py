@@ -303,6 +303,12 @@ custom_taxa_allow_walk_down = False
 # Only necessary when using a custom taxonomy list
 taxonomy_file = os.path.join(speciesnet_model_file,'taxonomy_release.txt')
 
+# Setting this to True says that if I have two predicted species in the same family
+# in a sequence, I will force them all to be the more common species.  Don't set this
+# if you have images where multiple species from the same family can occur in the same
+# sequence.
+allow_same_family_smoothing = False
+
 
 #%% Derived variables, constant validation, path setup
 
@@ -1485,6 +1491,9 @@ from megadetector.postprocessing.classification_postprocessing import \
     ClassificationSmoothingOptions
 
 within_image_smoothing_options = ClassificationSmoothingOptions()
+if allow_same_family_smoothing:
+    within_image_smoothing_options.max_detections_nondominant_class_same_family = 10000
+
 _ = smooth_classification_results_image_level(input_file=ensemble_output_file_image_level_md_format,
                                               output_file=classifier_output_path_within_image_smoothing,
                                               options=within_image_smoothing_options)
@@ -1576,7 +1585,7 @@ if sequence_method == 'exif':
         if is_function_name('custom_relative_path_to_location',locals()):
             print('Using custom location mapping function in EXIF conversion')
             exif_results_to_cct_options.filename_to_location_function = \
-                custom_relative_path_to_location # noqa
+                custom_relative_path_to_location # type: ignore # noqa
                 
         cct_dict = exif_results_to_cct(exif_results=exif_results,
                                        cct_output_file=exif_data_in_cct_format_file,
@@ -1657,12 +1666,6 @@ else:
         ensemble_output_file_image_level_md_format
 
 sequence_level_smoothing_options = ClassificationSmoothingOptions()
-
-# Setting this to True says that if I have two predicted species in the same family
-# in a sequence, I will force them all to be the more common species.  Don't set this
-# if you have images where multiple species from the same family can occur in the same
-# sequence.
-allow_same_family_smoothing = False
 
 if allow_same_family_smoothing:
     sequence_level_smoothing_options.max_detections_nondominant_class_same_family = 10000
