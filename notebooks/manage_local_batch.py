@@ -284,11 +284,11 @@ country_code = None
 state_code = None
 
 speciesnet_folder = os.path.expanduser('~/git/cameratrapai')
-speciesnet_pt_environment_name = 'speciesnet-package-pytorch'
-speciesnet_tf_environment_name = 'speciesnet-package-tf'
+speciesnet_detector_environment_name = 'speciesnet' #'speciesnet-package-pytorch'
+speciesnet_classifier_environment_name = 'speciesnet' # 'speciesnet-package-tf'
 
-# Can be None to omit the CUDA prefix
-max_images_per_chunk = 5000
+# Can be None to run the classifier in a single chunk
+max_images_per_chunk = None
 classifier_batch_size = 128
 
 # Text file containing binomial names and common names of allowed taxa
@@ -1081,6 +1081,8 @@ classifier_output_file_modular_crops = \
                  base_task_name + '-classifier_output_modular_crops.json')
     
 # The folder where we'll store classifier results for each chunk
+#
+# (...if we're breaking classification into chunks).
 chunk_folder = os.path.join(filename_base,'classifier_chunks')
 
 # The .sh file we'll use to launch the classifier
@@ -1136,7 +1138,7 @@ if country_code == 'USA' and state_code is None:
     print('*** Did you mean to specify a state code? ***')
 
 
-#%% Generate instances.json
+##%% Generate instances.json
 
 # ...for the original images.
 
@@ -1149,7 +1151,7 @@ instances = generate_instances_json_from_folder(folder=input_path,
 print('Generated {} instances'.format(len(instances['instances'])))
 
 
-#%% Generate crop dataset
+##%% Generate crop dataset
 
 from megadetector.postprocessing.create_crop_folder import \
     CreateCropFolderOptions, create_crop_folder
@@ -1170,7 +1172,7 @@ assert os.path.isfile(detection_results_file_for_crop_folder)
 assert os.path.isdir(crop_folder)
 
 
-#%% Convert the detection results for the crops to predictions.json format
+##%% Convert the detection results for the crops to predictions.json format
 
 # This will be the input to the ensemble when we run it on the crops.
 
@@ -1181,7 +1183,7 @@ generate_predictions_json_from_md_results(md_results_file=detection_results_file
                                           base_folder=crop_folder)
 
 
-#%% Generate a new instances.json file for the crops
+##%% Generate a new instances.json file for the crops
 
 crop_instances = generate_instances_json_from_folder(folder=crop_folder,
                                                      country=country_code,
@@ -1203,8 +1205,11 @@ with open(crop_instances_json,'r') as f:
     crop_instances_dict = json.load(f)
 
 crop_instances = crop_instances_dict['instances']
-       
-chunks = split_list_into_fixed_size_chunks(crop_instances,max_images_per_chunk)
+
+if max_images_per_chunk is None:
+    chunks = split_list_into_n_chunks(crop_instances,n_gpus)
+else:
+    chunks = split_list_into_fixed_size_chunks(crop_instances,max_images_per_chunk)
 print('Split {} crop instances into {} chunks'.format(len(crop_instances),len(chunks)))
 
 chunk_scripts = []
@@ -1298,7 +1303,7 @@ for gpu_number in gpu_to_classifier_scripts:
     per_gpu_scripts.append(gpu_script_file)
 
     prepare_conda_environment_cmd = 'eval "$(conda shell.bash hook)"'
-    classifier_init_cmd = f'cd {speciesnet_folder} && {prepare_conda_environment_cmd} && conda activate {speciesnet_tf_environment_name}'
+    classifier_init_cmd = f'cd {speciesnet_folder} && {prepare_conda_environment_cmd} && conda activate {speciesnet_classifier_environment_name}'
 
     with open(gpu_script_file,'w') as f:
         
@@ -1328,6 +1333,8 @@ print('\nClassification scripts you should run now:')
 for s in per_gpu_scripts:
     print(s)
 
+# import clipboard; clipboard.copy(per_gpu_scripts[0])
+
 
 #%% Merge crop classification result batches
 
@@ -1337,17 +1344,17 @@ merge_prediction_json_files(input_prediction_files=chunk_prediction_files,
                             output_prediction_file=classifier_output_file_modular_crops)
     
 
-#%% Validate crop classification results
+##%% Validate crop classification results
 
 from megadetector.utils.wi_utils import validate_predictions_file
 _ = validate_predictions_file(classifier_output_file_modular_crops,crop_instances_json)
 
 
-#%% Run geofencing (still crops)
+##%% Run geofencing (still crops)
 
 # It doesn't matter here which environment we use, and there's no need to add the CUDA prefix
 ensemble_commands = []
-ensemble_commands.append(f'cd {speciesnet_folder} && mamba activate {speciesnet_pt_environment_name}')
+ensemble_commands.append(f'cd {speciesnet_folder} && mamba activate {speciesnet_detector_environment_name}')
 
 cmd = 'python speciesnet/scripts/run_model.py --ensemble_only --model "{}"'.format(speciesnet_model_file)
 cmd += ' --instances_json "{}"'.format(crop_instances_json)
@@ -1576,7 +1583,7 @@ if sequence_method == 'exif':
         if is_function_name('custom_relative_path_to_location',locals()):
             print('Using custom location mapping function in EXIF conversion')
             exif_results_to_cct_options.filename_to_location_function = \
-                custom_relative_path_to_location # noqa
+                custom_relative_path_to_location # type: ignore # noqa
                 
         cct_dict = exif_results_to_cct(exif_results=exif_results,
                                        cct_output_file=exif_data_in_cct_format_file,
@@ -1639,7 +1646,7 @@ else:
         len(folder_name_to_images),len(d['images'])))
 
 
-#%% Sequence-level smoothing
+##%% Sequence-level smoothing
 
 from megadetector.postprocessing.classification_postprocessing import \
     smooth_classification_results_sequence_level, \
