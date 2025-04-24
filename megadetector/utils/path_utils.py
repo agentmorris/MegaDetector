@@ -71,8 +71,6 @@ def recursive_file_list(base_dir,
     
     assert os.path.isdir(base_dir), '{} is not a folder'.format(base_dir)
     
-    all_files = []
-
     if recursive:
         for root, _, filenames in os.walk(base_dir):
             for filename in filenames:
@@ -665,10 +663,9 @@ def environment_is_wsl():
     return 'microsoft' in platform_string and 'wsl' in platform_string
     
 
-def wsl_path_to_windows_path(filename):
+def wsl_path_to_windows_path(filename, failure_behavior='none'):
     r"""
-    Converts a WSL path to a Windows path, or returns None if that's not possible.  E.g.
-    converts:
+    Converts a WSL path to a Windows path.  For example, converts:
         
     /mnt/e/a/b/c
     
@@ -678,27 +675,42 @@ def wsl_path_to_windows_path(filename):
     
     Args:
         filename (str): filename to convert
+        failure_behavior (str): what to do if the path can't be processed as a WSL path.
+            'none' to return None in this case, 'original' to return the original path.
     
     Returns:
-        str: Windows equivalent to the WSL path [filename], or [filename] if the current
-        environment is neither Windows nor WSL.
+        str: Windows equivalent to the WSL path [filename]
     """
     
-    if (not environment_is_wsl()) and (os.name != 'nt'):
-        return filename
+    assert failure_behavior in ('none','original'), \
+        'Unrecognized failure_behavior value {}'.format(failure_behavior)
     
-    if environment_is_wsl():
-        result = subprocess.run(['wslpath', '-w', filename], text=True, capture_output=True)
-    else:
-        result = subprocess.run(['wsl', 'wslpath', '-w', filename], text=True, capture_output=True)
-    if result.returncode != 0:
-        print('Could not convert path {} from WSL to Windows'.format(filename))
-        return None
+    # Check whether the path follows the standard WSL mount pattern
+    wsl_path_pattern = r'^/mnt/([a-zA-Z])(/.*)?$'
+    match = re.match(wsl_path_pattern, filename)
     
-    return result.stdout.strip()
-    
+    if match:
 
-def windows_path_to_wsl_path(filename):
+        # Extract the drive letter and the rest of the path
+        drive_letter = match.group(1)
+        path_remainder = match.group(2) if match.group(2) else ''
+        
+        # Convert forward slashes to backslashes for Windows
+        path_remainder = path_remainder.replace('/', '\\')
+        
+        # Format the Windows path
+        windows_path = f"{drive_letter}:{path_remainder}"
+        return windows_path
+    
+    if failure_behavior == 'none':
+        return None
+    else:
+        return filename
+
+# ...def wsl_path_to_windows_path(...)
+    
+    
+def windows_path_to_wsl_path(filename, failure_behavior='none'):
     r"""
     Converts a Windows path to a WSL path, or returns None if that's not possible.  E.g.
     converts:
@@ -711,25 +723,38 @@ def windows_path_to_wsl_path(filename):
     
     Args:
         filename (str): filename to convert
+        failure_behavior (str): what to do if the path can't be processed as a Windows path.
+            'none' to return None in this case, 'original' to return the original path.
     
     Returns:
-        str: WSL equivalent to the Windows path [filename], or [filename] if the current
-        environment is neither Windows nor WSL.
+        str: WSL equivalent to the Windows path [filename]
     """
     
-    if (not environment_is_wsl()) and (os.name != 'nt'):
+    assert failure_behavior in ('none','original'), \
+        'Unrecognized failure_behavior value {}'.format(failure_behavior)
+    
+    filename = filename.replace('\\', '/')
+    
+    # Check whether the path follows a Windows drive letter pattern
+    windows_path_pattern = r'^([a-zA-Z]):(/.*)?$'
+    match = re.match(windows_path_pattern, filename)
+    
+    if match:
+        # Extract the drive letter and the rest of the path
+        drive_letter = match.group(1).lower()  # Convert to lowercase for WSL
+        path_remainder = match.group(2) if match.group(2) else ''
+        
+        # Format the WSL path
+        wsl_path = f"/mnt/{drive_letter}{path_remainder}"
+        return wsl_path
+    
+    if failure_behavior == 'none':
+        return None
+    else:
         return filename
     
-    if environment_is_wsl():
-        result = subprocess.run(['wslpath', '-u', filename], text=True, capture_output=True)
-    else:
-        result = subprocess.run(['wsl', 'wslpath', '-u', filename], text=True, capture_output=True)
-    if result.returncode != 0:
-        print('Could not convert path {} from Windows to WSL'.format(filename))
-        return None
-    
-    return result.stdout.strip()
-   
+# ...def window_path_to_wsl_path(...)
+
 
 def open_file_in_chrome(filename):
     """
