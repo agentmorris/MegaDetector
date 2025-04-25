@@ -454,6 +454,25 @@ def top_level_folder(p):
 # ...top_level_folder()
 
 
+def path_join(*paths, convert_slashes=True):
+    r"""
+    Wrapper for os.path.join that optionally converts backslashes to forward slashes.
+    
+    Args:
+        *paths (variable-length set of strings): Path components to be joined.
+        convert_slashes (bool, optional): whether to convert \\ to /
+            
+    Returns:
+        A string with the joined path components.
+    """
+    
+    joined_path = os.path.join(*paths)
+    if convert_slashes:
+        return joined_path.replace('\\', '/')
+    else:
+        return joined_path
+
+
 #%% Test driver for top_level_folder
 
 if False:  
