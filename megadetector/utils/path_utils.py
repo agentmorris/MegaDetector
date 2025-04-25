@@ -71,6 +71,8 @@ def recursive_file_list(base_dir,
     
     assert os.path.isdir(base_dir), '{} is not a folder'.format(base_dir)
     
+    all_files = []
+    
     if recursive:
         for root, _, filenames in os.walk(base_dir):
             for filename in filenames:

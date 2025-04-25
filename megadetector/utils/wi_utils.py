@@ -2329,9 +2329,11 @@ def restrict_to_taxa_list(taxa_list,
             a list of latin names.  Optionally may contain a second (comma-delimited)
             column containing common names, used only for debugging.  Latin names
             must exist in the SpeciesNet taxonomy.
-        taxonomy_file (str): taxonomy filename, in the same format used for model
-            release (with 7-token taxonomy entries)            
-        output_file (str): .json file to write, in MD format      
+        speciesnet_taxonomy_file (str): taxonomy filename, in the same format used for 
+            model release (with 7-token taxonomy entries)            
+        input_file (str): .json file to read, in MD format.  This can be None, in which
+            case this function just validates [taxa_list].
+        output_file (str): .json file to write, in MD format
         allow_walk_down (bool, optional): should we walk down the taxonomy tree
             when making mappings if a parent has only a single allowable child?
             For example, if only a single felid species is allowed, should other
@@ -2540,6 +2542,13 @@ def restrict_to_taxa_list(taxa_list,
     
     allowed_parent_taxon_to_child_taxa = \
         sort_dictionary_by_key(allowed_parent_taxon_to_child_taxa)
+    
+    
+    ##%% If we were just validating the custom taxa file, we're done
+
+    if input_file is None:
+        print('Finished validating custom taxonomy list')
+        return
     
     
     ##%% Map all predictions that exist in this dataset...

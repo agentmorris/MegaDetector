@@ -381,12 +381,15 @@ print('Output folder:\n{}'.format(filename_base))
 if custom_taxa_list is not None:
     
     assert os.path.isfile(custom_taxa_list), \
-        'Could not find custom taxa file {}'.format(custom_taxa_list)
+        'Could not find custom taxa file {}'.format(custom_taxa_list)    
     assert os.path.isfile(taxonomy_file), \
         'Could not find taxonomy file {}'.format(taxonomy_file)
-
     assert custom_taxa_stage in ('before_smoothing','after_smoothing')
     
+    # Validate the species list
+    from megadetector.utils.wi_utils import restrict_to_taxa_list    
+    restrict_to_taxa_list(custom_taxa_list,taxonomy_file,None,None)
+
 
 #%% Enumerate files
 
@@ -1126,7 +1129,6 @@ sequence_smoothed_classification_file = \
 custom_taxa_output_file = insert_before_extension(
     ensemble_output_file_image_level_md_format,'custom-species-{}'.format(custom_taxa_stage))
     
-
 
 ## Miscellaneous
 
