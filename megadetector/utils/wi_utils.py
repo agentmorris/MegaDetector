@@ -2738,7 +2738,9 @@ if False:
     from megadetector.utils.wi_utils import taxonomy_string_to_taxonomy_info # noqa
     from megadetector.utils.wi_utils import common_name_to_taxonomy_info # noqa
     from megadetector.utils.wi_utils import binomial_name_to_taxonomy_info # noqa
-    
+    from megadetector.utils.wi_utils import country_to_country_code # noqa
+    from megadetector.utils.wi_utils import country_code_to_country # noqa
+
     model_base = os.path.expanduser('~/models/speciesnet')
     geofencing_file = os.path.join(model_base,'crop','geofence_release.2025.02.27.0702.json')
     country_code_file = os.path.join(model_base,'country-codes.csv')
@@ -2749,10 +2751,10 @@ if False:
     initialize_taxonomy_info(taxonomy_file, force_init=True, encoding=encoding)
         
     
-    #%% Test driver for geofence_fixes.csv function
+    #%% Generate a block-except list
     
-    block_except_list = 'AUS, PNG, THA, IDN, MYS'
-    species = 'dingo'
+    block_except_list = 'ALB,AND,ARM,AUT,AZE,BEL,BGR,BIH,BLR,CHE,CYP,CZE,DEU,DNK,ESP,EST,FIN,FRA,GBR,GEO,GRC,HRV,HUN,IRL,IRN,IRQ,ISL,ISR,ITA,KAZ,LIE,LTU,LUX,LVA,MDA,MKD,MLT,MNE,NLD,NOR,POL,PRT,ROU,RUS,SMR,SRB,SVK,SVN,SWE,TUR,UKR,UZB'
+    species = 'eurasian badger'
     species_string = _species_string_to_canonical_species_string(species)
     rows = _generate_csv_rows_to_block_all_countries_except(species_string,block_except_list)
     
@@ -2760,7 +2762,7 @@ if False:
     print(rows)
     
     
-    #%%
+    #%% Generate an allow-list
     
     taxon_name = 'hippopotamus amphibius'
     taxonomy_info = binomial_name_to_taxonomy_info[taxon_name]    
@@ -2772,9 +2774,7 @@ if False:
                                   block_countries=None,
                                   allow_states=None,
                                   block_states=None,
-                                  blockexcept_countries=None)
-        
-    # _generate_csv_rows_to_block_all_countries_except(species_string,'AUS')
+                                  blockexcept_countries=None)            
     
     
     #%% Test the effects of geofence changes
