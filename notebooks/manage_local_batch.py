@@ -245,6 +245,7 @@ preview_options_base.parallelize_rendering_n_cores = default_workers_for_paralle
 preview_options_base.parallelize_rendering_with_threads = parallelization_defaults_to_threads
 preview_options_base.additional_image_fields_to_display = \
     {'pre_smoothing_description':'pre-smoothing labels',
+     'pre_filtering_description':'pre-filtering labels',
      'top_classification_common_name':'top class'}
 
 if render_animals_only:
@@ -273,7 +274,7 @@ checkpoint_frequency = None
 # temporary files will be stored in a subfolder for this job
 postprocessing_base = os.path.expanduser('~/postprocessing')
 
-# Optional job descriptor
+# Optional job descriptor (separated by "-", so you don't have to include the delimiter here)
 job_tag = None
 
 # SpeciesNet-related variables
@@ -1154,7 +1155,7 @@ if country_code == 'USA' and state_code is None:
     print('*** Did you mean to specify a state code? ***')
 
 
-##%% Generate instances.json
+#%% Generate instances.json
 
 # ...for the original images.
 
@@ -1465,7 +1466,7 @@ print('Loaded results for {} images with {} failures'.format(
 
 #%% Possibly apply a custom taxa list (before smoothing)
 
-from megadetector.utils.wi_utils import restrict_to_taxa_list
+from megadetector.postprocessing.classification_postprocessing import restrict_to_taxa_list
 
 if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
     
