@@ -351,7 +351,7 @@ def _smooth_classifications_for_list_of_detections(detections,
             
     if verbose_debug_enabled:
         _print_counts_with_names(category_to_count,classification_descriptions)
-        import pdb; pdb.set_trace()
+        from IPython import embed; embed()
     
     
     ## Possibly change "other" classifications to the most common category
@@ -377,6 +377,11 @@ def _smooth_classifications_for_list_of_detections(detections,
             if (c[1] >= options.classification_confidence_threshold) and \
                (c[0] in other_category_ids):
                     
+                if verbose_debug_enabled:
+                    print('Replacing {} with {}'.format(
+                        classification_descriptions[c[0]],
+                        classification_descriptions[c[1]]))
+                    
                 n_other_classifications_changed_this_image += 1
                 c[0] = most_common_category
                                     
@@ -385,6 +390,9 @@ def _smooth_classifications_for_list_of_detections(detections,
         # ...for each detection
                 
     # ...if we should overwrite all "other" classifications
+
+    if verbose_debug_enabled:
+        print('Made {} other changes'.format(n_other_classifications_changed_this_image))
     
     
     ## Re-count
@@ -399,13 +407,18 @@ def _smooth_classifications_for_list_of_detections(detections,
     
     ## Possibly change some non-dominant classifications to the dominant category
     
+    process_taxonomic_rules = \
+        (classification_descriptions_clean is not None) and \
+        (len(classification_descriptions_clean) > 0) and \
+        (len(category_to_count) > 1)
+            
     n_detections_flipped_this_image = 0
     
     # Don't do this if the most common category is an "other" category, or 
     # if we don't have enough of the most common category
     if (most_common_category not in other_category_ids) and \
        (max_count >= options.min_detections_to_overwrite_secondary):
-        
+                
         # i_det = 0; det = detections[i_det]
         for i_det,det in enumerate(detections):
                         
@@ -423,6 +436,32 @@ def _smooth_classifications_for_list_of_detections(detections,
             # Don't bother with below-threshold classifications
             if c[1] < options.classification_confidence_threshold:
                 continue
+                        
+            # If we're doing taxonomic processing, at this stage, don't turn children
+            # into parents; we'll likely turn parents into children in the next stage.
+            
+            if process_taxonomic_rules:
+
+                most_common_category_description = \
+                    classification_descriptions_clean[most_common_category]
+
+                category_id_this_classification = c[0]
+                assert category_id_this_classification in category_to_count
+                
+                category_description_this_classification = \
+                    classification_descriptions_clean[category_id_this_classification]
+                
+                # An empty description corresponds to the "animal" category.  We don't handle 
+                # "animal" here as a parent category, that would be handled in the "other smoothing" 
+                # step above.
+                if len(category_description_this_classification) == 0:
+                    continue
+                
+                most_common_category_is_parent_of_this_category = \
+                    most_common_category_description in category_description_this_classification
+                
+                if most_common_category_is_parent_of_this_category:
+                    continue
             
             # If we have fewer of this category than the most common category,
             # but not *too* many, flip it to the most common category.
@@ -436,6 +475,10 @@ def _smooth_classifications_for_list_of_detections(detections,
 
     # ...if the dominant category is legit    
     
+    if verbose_debug_enabled:
+        print('Made {} non-dominant --> dominant changes'.format(
+            n_detections_flipped_this_image))
+
     
     ## Re-count
     
@@ -448,8 +491,6 @@ def _smooth_classifications_for_list_of_detections(detections,
     
     
     ## Possibly collapse higher-level taxonomic predictions down to lower levels
-    
-    # ...when the most common class is a child of a less common class.
     
     n_taxonomic_changes_this_image = 0
     
@@ -895,7 +936,7 @@ def smooth_classification_results_sequence_level(input_file,
         image_filenames_this_sequence = sequence_to_image_filenames[sequence_id]
         
         # if 'file' in image_filenames_this_sequence:
-        #    import pdb; pdb.set_trace()
+        #    from IPython import embed; embed()
             
         detections_this_sequence = []
         for image_filename in image_filenames_this_sequence:

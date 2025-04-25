@@ -1073,6 +1073,7 @@ crop_detections_predictions_file = \
 crop_instances_json = os.path.join(combined_api_output_folder,
                                    base_task_name + '-crop_instances.json')
 
+
 ## Classification constants
 
 # The instances.json file we use to pass path names and the country code to the 
@@ -1094,6 +1095,7 @@ chunk_folder = os.path.join(filename_base,'classifier_chunks')
 # The .sh file we'll use to launch the classifier
 classifier_script_file = os.path.join(filename_base,'run_all_classifier_chunks.sh')            
 
+
 ## Ensemble constants
 
 # The results of the ensemble, after running it on the crops (in SpeciesNet format)
@@ -1110,6 +1112,7 @@ ensemble_output_file_crops_md_format = insert_before_extension(
 ensemble_output_file_image_level_md_format = \
     ensemble_output_file_crops_md_format.replace('_crops','_image-level')
 
+
 ## Smoothing constants
 
 # The ensemble results (in MD format) after image-level smoothing
@@ -1119,6 +1122,11 @@ classifier_output_path_within_image_smoothing = insert_before_extension(
 sequence_smoothed_classification_file = \
     insert_before_extension(classifier_output_path_within_image_smoothing,
                             'seqsmoothing')
+
+custom_taxa_output_file = insert_before_extension(
+    ensemble_output_file_image_level_md_format,'custom-species-{}'.format(custom_taxa_stage))
+    
+
 
 ## Miscellaneous
 
@@ -1460,16 +1468,17 @@ from megadetector.utils.wi_utils import restrict_to_taxa_list
 if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
     
     taxa_list = custom_taxa_list
-    speciesnet_taxonomy_file = taxonomy_file
-    custom_taxa_output_file = insert_before_extension(
-        ensemble_output_file_image_level_md_format,'custom-species')    
-    
+    speciesnet_taxonomy_file = taxonomy_file    
     restrict_to_taxa_list(taxa_list=taxa_list,
                           speciesnet_taxonomy_file=speciesnet_taxonomy_file,
                           input_file=ensemble_output_file_image_level_md_format,
                           output_file=custom_taxa_output_file,
                           allow_walk_down=custom_taxa_allow_walk_down)
-        
+
+pre_smoothing_file = ensemble_output_file_image_level_md_format
+if os.path.isfile(custom_taxa_output_file):
+    pre_smoothing_file = custom_taxa_output_file
+
 
 #%% Preview (post-classification, pre-smoothing)
 
@@ -1481,7 +1490,7 @@ preview_folder = os.path.join(postprocessing_output_folder,
 
 os.makedirs(preview_folder, exist_ok=True)
 
-preview_options.md_results_file = ensemble_output_file_image_level_md_format
+preview_options.md_results_file = pre_smoothing_file
 preview_options.output_dir = preview_folder
 preview_options.footer_text = geofence_footer
 
@@ -1498,10 +1507,11 @@ from megadetector.postprocessing.classification_postprocessing import \
     ClassificationSmoothingOptions
 
 within_image_smoothing_options = ClassificationSmoothingOptions()
+
 if allow_same_family_smoothing:
     within_image_smoothing_options.max_detections_nondominant_class_same_family = 10000
 
-_ = smooth_classification_results_image_level(input_file=ensemble_output_file_image_level_md_format,
+_ = smooth_classification_results_image_level(input_file=pre_smoothing_file,
                                               output_file=classifier_output_path_within_image_smoothing,
                                               options=within_image_smoothing_options)
 
@@ -1719,11 +1729,6 @@ if (custom_taxa_list is not None) and (custom_taxa_stage == 'after_smoothing'):
                           input_file=sequence_smoothed_classification_file,
                           output_file=custom_taxa_output_file,
                           allow_walk_down=custom_taxa_allow_walk_down)
-    
-    print('Replacing initial ensemble output file:\n\n{}\n\n{}'.format(
-        ensemble_output_file_image_level_md_format,
-        custom_taxa_output_file))
-    ensemble_output_file_image_level_md_format = custom_taxa_output_file
 
 
 #%% Preview (post-custom_taxa-smoothing)
@@ -1763,7 +1768,7 @@ options = SubsetJsonDetectorOutputOptions()
 options.remove_classification_categories_below_count = 1
 options.overwrite_json_files = True
 _ = subset_json_detector_output(input_fn_abs, output_fn_abs, options)
-    
+
 validation_options = ValidateBatchResultsOptions()
 validation_options.raise_errors = True
 _ = validate_batch_results(output_fn_abs, validation_options)
