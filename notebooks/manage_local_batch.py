@@ -259,8 +259,11 @@ preview_options_base.additional_image_fields_to_display = \
      'top_classification_common_name':'top class'}
 
 if render_animals_only:
-    preview_options_base.rendering_bypass_sets = ['detections_person','detections_vehicle',
-                                     'detections_person_vehicle','non_detections']
+    preview_options_base.rendering_bypass_sets = \
+        ['detections_person','detections_vehicle',
+         'detections_person_vehicle','non_detections']
+    # preview_options_base.rendering_bypass_sets.append('almost_detections')
+    # preview_options_base.rendering_bypass_sets.append('detections_animal_person')
 
 
 #%% Variables I set for each job
