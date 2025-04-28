@@ -10,8 +10,8 @@ it's a notebook disguised with a .py extension.  It's the Bestest Most Awesome w
 run MegaDetector, but it's also pretty complex; if you want to play with this, you might
 want to check in with cameratraps@lila.science for some tips.  Otherwise... YMMV.
 
-Some general notes on using this script, which I run in Spyder, though everything will be
-the same if you are reading this in Jupyter Notebook (using the .ipynb version of the 
+Some general notes on using this script, which I run in VS Code or Spyder, though everything 
+will be the same if you are reading this in Jupyter Notebook (using the .ipynb version of the 
 script):
 
 * Typically when I have a MegaDetector job to run, I make a copy of this script.  Let's 
@@ -34,9 +34,9 @@ script):
 
     ~/postprocessing/bibblebop/bibblebop-2023-07-06-mdv5a/
 
-  On Windows, this means:
+  On Windows, this typicaly means:
 
-    ~/postprocessing/bibblebop/bibblebop-2023-07-06-mdv5a/
+    c:/users/[username]/postprocessing/bibblebop/bibblebop-2023-07-06-mdv5a/
 
   Everything related to this job - scripts, outputs, intermediate stuff - will be in this folder.
   Specifically, after the "Generate commands" cell, you'll have scripts in that folder called something
@@ -44,8 +44,8 @@ script):
 
   run_chunk_000_gpu_00.sh (or .bat on Windows)
 
-  Personally, I like to run that script directly in a command prompt (I just leave Spyder open, though 
-  it's OK if Spyder gets shut down while MD is running).
+  Personally, I like to run that script directly in a command prompt (I just leave VS Code or
+  Spyder open, though it's OK if that window gets shut down while MD is running).
   
   At this point, once you get the hang of it, you've invested about zero seconds of human time,
   but possibly several days of unattended compute time, depending on the size of your job.
@@ -69,7 +69,7 @@ import time
 import re    
 
 import humanfriendly
-import clipboard #noqa
+import clipboard # type: ignore #noqa
 
 from tqdm import tqdm
 from collections import defaultdict
@@ -127,7 +127,9 @@ quiet_mode = True
 # Specify a target image size when running MD... strongly recommended to leave this at "None"
 #
 # When using augmented inference, if you leave this at "None", run_inference_with_yolov5_val.py
-# will use its default size, which is 1280 * 1.3, which is almost always what you want.
+# will use its default size, which is 1280 * 1.3, which is almost always what you want.  If you 
+# are using augmentation outside of run_inference_with_yolov5_val.py, you probably want to set
+# this explicitly.
 image_size = None
 
 # Should we include image size, timestamp, and/or EXIF data in MD output?
@@ -351,14 +353,9 @@ os.makedirs(base_output_folder_name,exist_ok=True)
 if use_image_queue:
     assert checkpoint_frequency is None,\
         'Checkpointing is not supported when using an image queue'        
-    
-if augment:
-    assert checkpoint_frequency is None,\
-        'Checkpointing is not supported when using augmentation'
-    
-    assert use_yolo_inference_scripts,\
-        'Augmentation is only supported when running with the YOLO inference scripts'
-
+    if preprocess_on_image_queue and (detector_options is not None) and \
+        'compatibility_mode=modern' in detector_options:
+        raise NotImplementedError('Standalone preprocessing is not yet supported for "modern" preprocessing')
 if use_tiled_inference:
     assert not augment, \
         'Augmentation is not supported when using tiled inference'
@@ -637,7 +634,11 @@ for i_task,task in enumerate(task_info):
             cmd += ' --include_image_timestamp'
         if include_exif_data:
             cmd += ' --include_exif_data'
-        
+        if augment:
+            if image_size is None:
+                print('\n** Warning: you are using --augment with the default image size, you may want to use a larger image size **\n')
+            cmd += ' --augment'
+
         if detector_options is not None:
             cmd += ' --detector_options "{}"'.format(detector_options)
             

@@ -130,7 +130,7 @@ def _producer_func(q,
         print('Producer starting: ID {}, preprocessor {}'.format(producer_id,preprocessor))
         sys.stdout.flush()
         
-    if preprocessor is not None:
+    if preprocessor is not None:        
         assert isinstance(preprocessor,str)
         detector_options = deepcopy(detector_options)
         detector_options['preprocess_only'] = True
@@ -161,8 +161,8 @@ def _producer_func(q,
                     
                 image = image_info
                 
-        except Exception:
-            print('Producer process: image {} cannot be loaded'.format(im_file))
+        except Exception as e:
+            print('Producer process: image {} cannot be loaded:\n{}'.format(im_file,str(e)))
             image = run_detector.FAILURE_IMAGE_OPEN            
         
         if verbose:
