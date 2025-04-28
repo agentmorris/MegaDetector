@@ -48,6 +48,7 @@ from tqdm import tqdm
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.visualization import plot_utils
 from megadetector.utils.write_html_image_list import write_html_image_list
+from megadetector.utils.wi_utils import load_md_or_speciesnet_file
 from megadetector.utils import path_utils
 from megadetector.utils.ct_utils import args_to_object
 from megadetector.utils.ct_utils import sets_overlap
@@ -89,7 +90,9 @@ class PostProcessingOptions:
         ### Options
     
         #: Folder where images live (filenames in [md_results_file] should be relative to this folder)
-        self.image_base_dir = '.'
+        #:
+        #: Can be '' if [md_results_file] uses absolute paths.
+        self.image_base_dir = ''
     
         ## These apply only when we're doing ground-truth comparisons
         
@@ -1873,8 +1876,7 @@ def process_batch_results(options):
                 
                 print('Generating classification category report')
                 
-                with open(options.md_results_file,'r') as f:
-                    d = json.load(f)
+                d = load_md_or_speciesnet_file(options.md_results_file)
                 
                 classification_category_to_count = {}
 

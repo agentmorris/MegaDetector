@@ -15,6 +15,8 @@ Functions related to working with the WI insights platform, specifically for:
 import os
 import requests
 import json
+import tempfile
+import uuid
 
 import numpy as np
 import pandas as pd
@@ -1609,6 +1611,50 @@ def merge_prediction_json_files(input_prediction_files,output_prediction_file):
         json.dump(output_dict,f,indent=1)
 
 # ...def merge_prediction_json_files(...)    
+
+
+def load_md_or_speciesnet_file(fn,verbose=True):
+    """
+    Load a .json file that may be in MD or SpeciesNet format.  Typically used so
+    SpeciesNet files can be supplied to functions originally written to support MD
+    format.
+
+    Args:
+        fn (str): a .json file in predictions.json (MD or SpeciesNet) format
+        verbose (bool, optional): enable additional debug output
+    
+    Returns:
+        dict: the contents of [fn], in MD format.
+    """
+
+    with open(fn,'r') as f:
+        detector_output = json.load(f)
+
+    # Convert to MD format if necessary
+    if 'predictions' in detector_output:
+        if verbose:
+            print('This appears to be a SpeciesNet output file, converting to MD format')
+        md_temp_dir = os.path.join(tempfile.gettempdir(), 'megadetector_temp_files')
+        os.makedirs(md_temp_dir,exist_ok=True)
+        temp_results_file = os.path.join(md_temp_dir,str(uuid.uuid1()) + '.json')
+        print('Writing temporary results to {}'.format(temp_results_file))
+        generate_md_results_from_predictions_json(predictions_json_file=fn,
+                                                  md_results_file=temp_results_file,
+                                                  base_folder=None)
+        with open(temp_results_file,'r') as f:
+            detector_output = json.load(f)
+        try:
+            os.remove(temp_results_file)
+        except Exception:
+            if verbose:
+                print('Warning: error removing temporary .json {}'.format(temp_results_file))    
+
+    assert 'images' in detector_output, \
+        'Detector output file should be a json file with an "images" field.'
+    
+    return detector_output
+
+# ...def load_md_or_speciesnet_file(...)
 
 
 def validate_predictions_file(fn,instances=None,verbose=True):

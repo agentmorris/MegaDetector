@@ -10,12 +10,9 @@ detector output result file (.json), optionally writing an HTML index file.
 #%% Imports
 
 import argparse
-import json
 import os
 import random
-import tempfile
 import sys
-import uuid
 
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
@@ -23,13 +20,14 @@ from functools import partial
 from tqdm import tqdm
 
 from megadetector.data_management.annotations.annotation_constants import detector_bbox_category_id_to_name
-from megadetector.visualization import visualization_utils as vis_utils
-from megadetector.visualization.visualization_utils import blur_detections
+from megadetector.detection.run_detector import get_typical_confidence_threshold_from_results
 from megadetector.utils.ct_utils import get_max_conf
 from megadetector.utils import write_html_image_list
 from megadetector.utils.path_utils import path_is_abs
-from megadetector.detection.run_detector import get_typical_confidence_threshold_from_results
-from megadetector.utils.wi_utils import generate_md_results_from_predictions_json
+from megadetector.utils.wi_utils import load_md_or_speciesnet_file
+from megadetector.visualization import visualization_utils as vis_utils
+from megadetector.visualization.visualization_utils import blur_detections
+
 
 #%% Constants
 
@@ -210,25 +208,7 @@ def visualize_detector_output(detector_output_path,
 
     ##%% Load detector output
 
-    with open(detector_output_path,'r') as f:
-        detector_output = json.load(f)
-
-    # Convert to MD format if necessary
-    if 'predictions' in detector_output:
-        print('This appears to be a SpeciesNet output file, converting to MD format')
-        md_temp_dir = os.path.join(tempfile.gettempdir(), 'megadetector_temp_files')
-        os.makedirs(md_temp_dir,exist_ok=True)
-        temp_results_file = os.path.join(md_temp_dir,str(uuid.uuid1()) + '.json')
-        print('Writing temporary results to {}'.format(temp_results_file))
-        generate_md_results_from_predictions_json(predictions_json_file=detector_output_path,
-                                                  md_results_file=temp_results_file,
-                                                  base_folder=None)
-        with open(temp_results_file,'r') as f:
-            detector_output = json.load(f)
-        os.remove(temp_results_file)
-
-    assert 'images' in detector_output, \
-        'Detector output file should be a json with an "images" field.'
+    detector_output = load_md_or_speciesnet_file(detector_output_path)
     
     images = detector_output['images']
     

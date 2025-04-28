@@ -193,7 +193,7 @@ def write_json(path, content, indent=1):
         indent (int, optional): indentation depth passed to json.dump
     """
     
-    with open(path, 'w') as f:
+    with open(path, 'w', newline='\n') as f:
         json.dump(content, f, indent=indent)
 
 

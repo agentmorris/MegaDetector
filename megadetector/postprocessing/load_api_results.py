@@ -4,7 +4,7 @@ load_api_results.py
 
 DEPRECATED
 
-As of 2023.12, this module is used in postprocessing and RDE.  Not recommended
+As of 2023.12, this module is still used in postprocessing and RDE, but it's not recommended
 for new code.
 
 Loads the output of the batch processing API (json) into a Pandas dataframe.
@@ -23,6 +23,7 @@ from typing import Dict, Mapping, Optional, Tuple
 import pandas as pd
 
 from megadetector.utils import ct_utils
+from megadetector.utils.wi_utils import load_md_or_speciesnet_file
 
 
 #%% Functions for loading .json results into a Pandas DataFrame, and writing back to .json
@@ -50,9 +51,8 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
     
     print('Loading results from {}'.format(api_output_path))
 
-    with open(api_output_path) as f:
-        detection_results = json.load(f)
-
+    detection_results = load_md_or_speciesnet_file(api_output_path)
+    
     # Validate that this is really a detector output file
     for s in ['info', 'detection_categories', 'images']:
         assert s in detection_results, 'Missing field {} in detection results'.format(s)
