@@ -13,7 +13,9 @@ import argparse
 import json
 import os
 import random
+import tempfile
 import sys
+import uuid
 
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
@@ -25,8 +27,9 @@ from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.visualization.visualization_utils import blur_detections
 from megadetector.utils.ct_utils import get_max_conf
 from megadetector.utils import write_html_image_list
+from megadetector.utils.path_utils import path_is_abs
 from megadetector.detection.run_detector import get_typical_confidence_threshold_from_results
-
+from megadetector.utils.wi_utils import generate_md_results_from_predictions_json
 
 #%% Constants
 
@@ -73,9 +76,16 @@ def _render_image(entry,
         rendering_result['skipped_image'] = True
         return rendering_result
     
-    image_filename_in_abs = os.path.join(images_dir, image_id)
+    if images_dir is None:
+        image_filename_in_abs = image_id
+        assert path_is_abs(image_filename_in_abs), \
+            'Absolute paths are required when no image base dir is supplied'
+    else:
+        assert not path_is_abs(image_id), \
+            'Relative paths are required when an image base dir is supplied'
+        image_filename_in_abs = os.path.join(images_dir, image_id)
     if not os.path.exists(image_filename_in_abs):
-        print(f'Image {image_id} not found in images_dir')
+        print(f'Image {image_id} not found')
         rendering_result['missing_image'] = True
         return rendering_result
 
@@ -125,12 +135,14 @@ def _render_image(entry,
 
     return rendering_result
 
+# ...def _render_image(...)
+
 
 #%% Main function
 
 def visualize_detector_output(detector_output_path,
                               out_dir,
-                              images_dir,
+                              images_dir=None,
                               confidence_threshold=0.15,
                               sample=-1,
                               output_image_width=700,
@@ -153,7 +165,8 @@ def visualize_detector_output(detector_output_path,
         detector_output_path (str): path to detector output .json file
         out_dir (str): path to directory for saving annotated images
         images_dir (str): folder where the images live; filenames in 
-            [detector_output_path] should be relative to [image_dir]
+            [detector_output_path] should be relative to [image_dir].  Can be None if paths are
+            absolute.
         confidence_threshold (float, optional): threshold above which detections will be rendered
         sample (int, optional): maximum number of images to render, -1 for all
         output_image_width (int, optional): width in pixels to resize images for display,
@@ -188,25 +201,42 @@ def visualize_detector_output(detector_output_path,
     assert os.path.exists(detector_output_path), \
         'Detector output file does not exist at {}'.format(detector_output_path)
 
-    assert os.path.isdir(images_dir), \
-        'Image folder {} is not available'.format(images_dir)
+    if images_dir is not None:        
+        assert os.path.isdir(images_dir), \
+            'Image folder {} is not available'.format(images_dir)
 
     os.makedirs(out_dir, exist_ok=True)
 
 
     ##%% Load detector output
 
-    with open(detector_output_path) as f:
+    with open(detector_output_path,'r') as f:
         detector_output = json.load(f)
-    assert 'images' in detector_output, (
-        'Detector output file should be a json with an "images" field.')
+
+    # Convert to MD format if necessary
+    if 'predictions' in detector_output:
+        print('This appears to be a SpeciesNet output file, converting to MD format')
+        md_temp_dir = os.path.join(tempfile.gettempdir(), 'megadetector_temp_files')
+        os.makedirs(md_temp_dir,exist_ok=True)
+        temp_results_file = os.path.join(md_temp_dir,str(uuid.uuid1()) + '.json')
+        print('Writing temporary results to {}'.format(temp_results_file))
+        generate_md_results_from_predictions_json(predictions_json_file=detector_output_path,
+                                                  md_results_file=temp_results_file,
+                                                  base_folder=None)
+        with open(temp_results_file,'r') as f:
+            detector_output = json.load(f)
+        os.remove(temp_results_file)
+
+    assert 'images' in detector_output, \
+        'Detector output file should be a json with an "images" field.'
+    
     images = detector_output['images']
     
     if confidence_threshold is None:
         confidence_threshold = get_typical_confidence_threshold_from_results(detector_output)
         
-    assert confidence_threshold >= 0 and confidence_threshold <= 1, (
-        f'Confidence threshold {confidence_threshold} is invalid, must be in (0, 1).')
+    assert confidence_threshold >= 0 and confidence_threshold <= 1, \
+        f'Confidence threshold {confidence_threshold} is invalid, must be in (0, 1).'
     
     if 'detection_categories' in detector_output:
         detector_label_map = detector_output['detection_categories']
@@ -303,9 +333,12 @@ def visualize_detector_output(detector_output_path,
         html_dir = os.path.dirname(html_output_file)
         
         html_image_info = []
-        
+
         for r in rendering_results:
             d = {}
+            if r['annotated_image_path'] is None:
+                assert r['failed_image'] or r['missing_image'] or r['skipped_image']
+                continue
             annotated_image_path_relative = os.path.relpath(r['annotated_image_path'],html_dir)
             d['filename'] = annotated_image_path_relative
             d['textStyle'] = \
@@ -318,6 +351,8 @@ def visualize_detector_output(detector_output_path,
                                                     options=html_output_options)
         
     return annotated_image_paths
+
+# ...def visualize_detector_output(...)
 
 
 #%% Command-line driver
@@ -336,42 +371,45 @@ def main():
         help='Path to directory where the annotated images will be saved. '
              'The directory will be created if it does not exist.')
     parser.add_argument(
-        '-c', '--confidence', type=float, default=0.15,
+        '--confidence', type=float, default=0.15,
         help='Value between 0 and 1, indicating the confidence threshold '
              'above which to visualize bounding boxes')
     parser.add_argument(
-        '-i', '--images_dir', type=str, default=None,
+        '--images_dir', type=str, default=None,
         help='Path to a local directory where images are stored. This '
              'serves as the root directory for image paths in '
-             'detector_output_path.')
+             'detector_output_path.  Omit if image paths are absolute.')
     parser.add_argument(
-        '-n', '--sample', type=int, default=-1,
+        '--sample', type=int, default=-1,
         help='Number of images to be annotated and rendered. Set to -1 '
              '(default) to annotate all images in the detector output file. '
              'There may be fewer images if some are not found in images_dir.')
     parser.add_argument(
-        '-w', '--output_image_width', type=int, default=700,
+        '--output_image_width', type=int, default=700,
         help='Integer, desired width in pixels of the output annotated images. '
              'Use -1 to not resize. Default: 700.')
     parser.add_argument(
-        '-r', '--random_seed', type=int, default=None,
+        '--random_seed', type=int, default=None,
         help='Integer, for deterministic order of image sampling')
     parser.add_argument(
-        '-html', '--html_output_file', type=str, default=None,
+        '--html_output_file', type=str, default=None,
         help='Filename to which we should write an HTML image index (off by default)')
     parser.add_argument(
         '--open_html_output_file', action='store_true',
         help='Open the .html output file when done')
     parser.add_argument(
-        '-do', '--detections_only', action='store_true',
+        '--detections_only', action='store_true',
         help='Only render images with above-threshold detections (by default, '
              'both empty and non-empty images are rendered).')
     parser.add_argument(
-        '-pps', '--preserve_path_structure', action='store_true',
+        '--preserve_path_structure', action='store_true',
         help='Preserve relative image paths (otherwise flattens and assigns unique file names)')
     parser.add_argument(
         '--category_names_to_blur', default=None, type=str,
         help='Comma-separated list of category names to blur (or a single category name, typically "person")')
+    parser.add_argument(
+        '--classification_confidence', type=float, default=0.1,
+        help='If classification results are present, render results above this threshold')
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -392,6 +430,7 @@ def main():
         output_image_width=args.output_image_width,
         random_seed=args.random_seed,
         render_detections_only=args.detections_only,
+        classification_confidence_threshold=args.classification_confidence,
         preserve_path_structure=args.preserve_path_structure,
         html_output_file=args.html_output_file,
         category_names_to_blur=category_names_to_blur)
