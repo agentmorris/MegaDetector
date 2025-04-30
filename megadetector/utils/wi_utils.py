@@ -1281,6 +1281,7 @@ def generate_md_results_from_predictions_json(predictions_json_file,
                 
             if 'prediction' in im_in:
                 
+                class_to_assign = None
                 im_out['top_classification_common_name'] = top_classification_common_name
                 class_to_assign = im_in['prediction']
                 if convert_homo_species_to_human and class_to_assign.endswith('homo species'):

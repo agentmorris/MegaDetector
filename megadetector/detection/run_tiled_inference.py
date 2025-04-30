@@ -26,14 +26,18 @@ augmentation); the command-line interface only supports standard inference right
 
 import os
 import json
+import tempfile
+import uuid
 
 from tqdm import tqdm
 
 import torch
 from torchvision import ops
 
-from megadetector.detection.run_inference_with_yolov5_val import YoloInferenceOptions,run_inference_with_yolo_val
-from megadetector.detection.run_detector_batch import load_and_run_detector_batch,write_results_to_file
+from megadetector.detection.run_inference_with_yolov5_val import \
+    YoloInferenceOptions,run_inference_with_yolo_val
+from megadetector.detection.run_detector_batch import \
+    load_and_run_detector_batch,write_results_to_file
 from megadetector.detection.run_detector import try_download_known_detector
 from megadetector.utils import path_utils
 from megadetector.visualization import visualization_utils as vis_utils
@@ -380,13 +384,25 @@ def _extract_tiles_for_image(fn_relative,image_folder,tiling_folder,patch_size,p
     
 #%% Main function
     
-def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
-                        tile_size_x=1280, tile_size_y=1280, tile_overlap=0.5,
-                        checkpoint_path=None, checkpoint_frequency=-1, remove_tiles=False, 
+def run_tiled_inference(model_file, 
+                        image_folder, 
+                        tiling_folder,
+                        output_file,
+                        tile_size_x=1280,
+                        tile_size_y=1280,
+                        tile_overlap=0.5,
+                        checkpoint_path=None,
+                        checkpoint_frequency=-1,
+                        remove_tiles=False, 
                         yolo_inference_options=None,
                         n_patch_extraction_workers=default_n_patch_extraction_workers,
                         overwrite_tiles=True,
-                        image_list=None):
+                        image_list=None,
+                        augment=False,
+                        detector_options=None,
+                        use_image_queue=True,
+                        preprocess_on_image_queue=True,
+                        inference_size=None):
     """
     Runs inference using [model_file] on the images in [image_folder], fist splitting each image up 
     into tiles of size [tile_size_x] x [tile_size_y], writing those tiles to [tiling_folder],
@@ -397,7 +413,8 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
     within that folder, including deleting everything, so it's best if it's a new folder.  
     Conceptually this folder is temporary, it's just helpful in this case to not actually
     use the system temp folder, because the tile cache may be very large, so the caller may 
-    want it to be on a specific drive.
+    want it to be on a specific drive.  If this is None, a new folder will be created in 
+    system temp space.
     
     tile_overlap is the fraction of overlap between tiles.
     
@@ -410,7 +427,8 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
     Args:
         model_file (str): model filename (ending in .pt), or a well-known model name (e.g. "MDV5A")
         image_folder (str): the folder of images to proess (always recursive)
-        tiling_folder (str): folder for temporary tile storage; see caveats above
+        tiling_folder (str): folder for temporary tile storage; see caveats above.  Can be None
+            to use system temp space.
         output_file (str): .json file to which we should write MD-formatted results
         tile_size_x (int, optional): tile width
         tile_size_y (int, optional): tile height
@@ -427,7 +445,17 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
             set to <= 1 to disable parallelization
         image_list (list, optional): .json file containing a list of specific images to process.  If 
             this is supplied, and the paths are absolute, [image_folder] will be ignored. If this is supplied,
-            and the paths are relative, they should be relative to [image_folder].
+            and the paths are relative, they should be relative to [image_folder]
+        augment (bool, optional): apply test-time augmentation, only relevant if yolo_inference_options
+            is None
+        detector_options (dict, optional): parameters to pass to run_detector, only relevant if
+            yolo_inference_options is None
+        use_image_queue (bool, optional): whether to use a loader worker queue, only relevant if
+            yolo_inference_options is None 
+        preprocess_on_image_queue (bool, optional): whether the image queue should also be responsible
+            for preprocessing
+        inference_size (int, optional): override the default inference image size, only relevant if
+            yolo_inference_options is None
     
     Returns:
         dict: MD-formatted results dictionary, identical to what's written to [output_file]
@@ -447,6 +475,11 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
     patch_stride = (round(patch_size[0]*(1.0-tile_overlap)),
                     round(patch_size[1]*(1.0-tile_overlap)))
     
+    if tiling_folder is None:
+        tiling_folder = \
+            os.path.join(tempfile.gettempdir(), 'md-tiling', str(uuid.uuid1()))
+        print('Creating temporary tiling folder: {}'.format(tiling_folder))
+        
     os.makedirs(tiling_folder,exist_ok=True)
     
     ##%% List files
@@ -545,7 +578,7 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
             images_with_patch_errors[patch_info['image_fn']] = patch_info
     
     
-    ##%% Run inference on tiles
+    ##%% Run inference on the folder of tiles
     
     # When running with run_inference_with_yolov5_val, we'll pass the folder
     if yolo_inference_options is not None:
@@ -582,7 +615,12 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
                                                         patch_file_names, 
                                                         checkpoint_path=checkpoint_path,
                                                         checkpoint_frequency=checkpoint_frequency,
-                                                        quiet=True)
+                                                        quiet=True,
+                                                        augment=augment,
+                                                        detector_options=detector_options,
+                                                        use_image_queue=use_image_queue,
+                                                        preprocess_on_image_queue=preprocess_on_image_queue,
+                                                        image_size=inference_size)
         
         patch_level_output_file = os.path.join(tiling_folder,folder_name + '_patch_level_results.json')
         
@@ -591,6 +629,7 @@ def run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
                                                     relative_path_base=tiling_folder, 
                                                     detector_file=model_file)
         
+    # ...if we are/aren't using run_inference_with_yolov5_val
     
     ##%% Map patch-level detections back to the original images    
     
@@ -899,7 +938,14 @@ def main():
         type=str,
         default=None,
         help=('A .json list of relative filenames (or absolute paths contained within image_folder) to include'))
+    parser.add_argument(
+        '--detector_options',
+        type=str,
+        default=None,
+        help=('A list of detector options (key-value pairs) to '))
         
+    # detector_options = parse_kvp_list(args.detector_options)        
+
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()

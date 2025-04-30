@@ -214,8 +214,8 @@ def get_detector_metadata_from_version_string(detector_version):
         print('Warning: no metadata for unknown detector version {}'.format(detector_version))
         default_detector_metadata = {
             'megadetector_version':'unknown',
-            'typical_detection_threshold':0.5,
-            'conservative_detection_threshold':0.25
+            'typical_detection_threshold':0.2,
+            'conservative_detection_threshold':0.1
         }
         return default_detector_metadata
     else:
