@@ -38,8 +38,10 @@ from megadetector.detection.run_inference_with_yolov5_val import \
     YoloInferenceOptions,run_inference_with_yolo_val
 from megadetector.detection.run_detector_batch import \
     load_and_run_detector_batch,write_results_to_file
-from megadetector.detection.run_detector import try_download_known_detector
+from megadetector.detection.run_detector import \
+    try_download_known_detector, CONF_DIGITS, COORD_DIGITS
 from megadetector.utils import path_utils
+from megadetector.utils.ct_utils import round_float_array, round_float
 from megadetector.visualization import visualization_utils as vis_utils
 
 default_patch_overlap = 0.5
@@ -746,6 +748,10 @@ def run_tiled_inference(model_file,
                                          ymin_image_normalized,
                                          w_image_normalized,
                                          h_image_normalized]
+                
+                bbox_image_normalized = round_float_array(bbox_image_normalized, 
+                                                          precision=COORD_DIGITS)
+                det['conf'] = round_float(det['conf'], precision=CONF_DIGITS)
                 
                 output_det = {}
                 output_det['bbox'] = bbox_image_normalized
