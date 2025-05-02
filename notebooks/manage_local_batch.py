@@ -397,7 +397,7 @@ if custom_taxa_list is not None:
     assert custom_taxa_stage in ('before_smoothing','after_smoothing')
     
     # Validate the species list
-    from megadetector.utils.wi_utils import restrict_to_taxa_list    
+    from megadetector.postprocessing.classification_postprocessing import restrict_to_taxa_list
     restrict_to_taxa_list(custom_taxa_list,taxonomy_file,None,None)
 
 
