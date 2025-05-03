@@ -130,7 +130,7 @@ def crop_results_to_image_results(image_results_file_with_crop_ids,
             containing crop IDs, likely generated via create_crop_folder.  All 
             non-standard fields in this file will be passed along to [output_file].
         crop_results_file (str): results file for the crop folder
-        output_file (str): ouptut .json file, containing crop-level classifications
+        output_file (str): output .json file, containing crop-level classifications
             mapped back to the image level.
         delete_crop_information (bool, optional): whether to delete the "crop_id" and
             "crop_filename_relative" fields from each detection, if present.

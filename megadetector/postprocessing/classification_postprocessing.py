@@ -230,7 +230,7 @@ def _print_counts_with_names(category_to_count,classification_descriptions):
     
 def _prepare_results_for_smoothing(input_file,options):
     """
-    Load results from [input_file] if necessary, prepare category descrptions 
+    Load results from [input_file] if necessary, prepare category descriptions 
     for smoothing.  Adds pre-smoothing descriptions to every image if the options
     say we're supposed to do that.
     """

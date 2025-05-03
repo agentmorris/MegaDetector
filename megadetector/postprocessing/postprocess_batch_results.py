@@ -496,7 +496,7 @@ def _render_bounding_boxes(
                                                    original_size=original_size,label_map=label_map,
                                                    thickness=4,expansion=4)
         
-            # Preprare per-category confidence thresholds
+            # Prepare per-category confidence thresholds
             if isinstance(options.confidence_threshold,float):
                 rendering_confidence_threshold = options.confidence_threshold
             else:

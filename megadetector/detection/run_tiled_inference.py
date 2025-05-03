@@ -434,7 +434,7 @@ def run_tiled_inference(model_file,
         output_file (str): .json file to which we should write MD-formatted results
         tile_size_x (int, optional): tile width
         tile_size_y (int, optional): tile height
-        tile_overlap (float, optional): overlap between adjacenet tiles, as a fraction of the
+        tile_overlap (float, optional): overlap between adjacent tiles, as a fraction of the
             tile size
         checkpoint_path (str, optional): checkpoint path; passed directly to run_detector_batch; see
             run_detector_batch for details

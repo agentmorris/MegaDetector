@@ -34,7 +34,7 @@ script):
 
     ~/postprocessing/bibblebop/bibblebop-2023-07-06-mdv5a/
 
-  On Windows, this typicaly means:
+  On Windows, this typically means:
 
     c:/users/[username]/postprocessing/bibblebop/bibblebop-2023-07-06-mdv5a/
 

@@ -107,7 +107,7 @@ def _get_model_type_for_model(model_file,
         if model_type_from_model_version == model_type_from_model_file_metadata:
             model_type = model_type_from_model_file_metadata
         else:
-            print('Waring: model type from model version is {}, from file metadata is {}'.format(
+            print('Warning: model type from model version is {}, from file metadata is {}'.format(
                 model_type_from_model_version,model_type_from_model_file_metadata))
             if prefer_model_type_source == 'table':
                 model_type = model_type_from_model_file_metadata
@@ -145,7 +145,7 @@ def _initialize_yolo_imports_for_model(model_file,
             appropriate metadata in the file or in the global table.        
         detector_options (dict, optional): dictionary of detector options that mean
             different things to different models
-        verbose (bool, optional): enable additonal debug output
+        verbose (bool, optional): enable additional debug output
             
     Returns:
         str: the model type for which we initialized support
@@ -238,7 +238,7 @@ def _initialize_yolo_imports(model_type='yolov5',
             typically used when the right support library is on the current PYTHONPATH.
         force_reimport (bool, optional): import the appropriate libraries even if the 
             requested model type matches the current initialization state
-        verbose (bool, optional): include additonal debug output
+        verbose (bool, optional): include additional debug output
             
     Returns:
         str: the model type for which we initialized support
@@ -527,7 +527,7 @@ def read_metadata_from_megadetector_model_file(model_file,
 default_compatibility_mode = 'classic'
 
 # This is a useful hack when I want to verify that my test driver (md_tests.py) is 
-# correctly forcing a specific compabitility mode (I use "classic-test" in that case)
+# correctly forcing a specific compatibility mode (I use "classic-test" in that case)
 require_non_default_compatibility_mode = False
 
 class PTDetector:

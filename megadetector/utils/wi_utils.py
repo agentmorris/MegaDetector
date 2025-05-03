@@ -73,7 +73,8 @@ def is_valid_prediction_string(s):
 
 def is_valid_taxonomy_string(s):
     """
-    Determine whether [s] is a valid 5-token WI taxonomy string.  Taxonmy strings look like:
+    Determine whether [s] is a valid 5-token WI taxonomy string.  Taxonomy strings 
+    look like:
     
     'mammalia;rodentia;;;;rodent'
     'mammalia;chordata;canidae;canis;lupus dingo'
@@ -334,7 +335,7 @@ def read_images_from_download_bundle(download_folder):
             * filename (str, the filename without path at the time of upload)
             * location (str, starting with gs://)
             
-        May also contain clasification fields: wi_taxon_id (str), species, etc.        
+        May also contain classification fields: wi_taxon_id (str), species, etc.        
     """
     
     print('Reading images from {}'.format(download_folder))

@@ -2,7 +2,8 @@
 
 manage_local_batch_scrap.py
 
-This file contains optional cells that I ocassionally run at the end of manage_local_batch.py
+This file contains optional cells that I occasionally run at the end of
+manage_local_batch.py.
 
 """
 

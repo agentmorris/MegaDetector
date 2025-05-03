@@ -66,9 +66,6 @@ df = pd.read_csv(lila_taxonomy_file)
 from megadetector.taxonomy_mapping.species_lookup import \
     initialize_taxonomy_lookup, get_preferred_taxonomic_match
 
-# from taxonomy_mapping.species_lookup import (
-#    get_taxonomic_info, print_taxonomy_matche)
-
 initialize_taxonomy_lookup()
 
 

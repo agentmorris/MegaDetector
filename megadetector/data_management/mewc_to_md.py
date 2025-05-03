@@ -242,7 +242,7 @@ def mewc_to_md(mewc_input_folder,
         
         # ...for each image
         
-        ##%% Map MD reults to the global level
+        ##%% Map MD results to the global level
         
         if md_results_all['info'] is None:
             md_results_all['info'] = md_results['info']

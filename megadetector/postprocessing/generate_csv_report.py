@@ -206,7 +206,8 @@ def generate_csv_report(md_results_file,
             folder_level_columns = [int(s) for s in tokens]
         for folder_level in folder_level_columns:
             if (not isinstance(folder_level,int)) or (folder_level < 0):
-                raise ValueError('Illegal folder level specifier {}'.formt(str(folder_level_columns)))
+                raise ValueError('Illegal folder level specifier {}'.format(
+                    str(folder_level_columns)))
 
 
     ##%% Fill in default thresholds

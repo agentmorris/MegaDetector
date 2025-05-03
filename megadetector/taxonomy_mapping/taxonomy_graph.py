@@ -303,7 +303,7 @@ def dag_to_tree(graph: nx.DiGraph,
     component separately.
 
     Args:
-        graph: nx.DiGraph, DAG representation of taxonomy hieararchy
+        graph: nx.DiGraph, DAG representation of taxonomy hierarchy
         taxon_to_node: dict, maps (taxon_level, taxon_name) to a TaxonNode
 
     Returns: nx.DiGraph, a tree-structured graph

@@ -581,7 +581,8 @@ if False:
         os.path.expanduser('~/git/MegaDetector'))
 
     detector_output_file_md = os.path.join(output_base,job_name + '-detector_output_md.json')
-    detector_output_file_predictions_format_md = insert_before_extension(detector_output_file_md,'predictons-format')
+    detector_output_file_predictions_format_md = \
+        insert_before_extension(detector_output_file_md,'predictions-format')
     classifier_output_file_md = os.path.join(output_base,job_name + '-classifier_output_md.json')
     ensemble_output_file_md = os.path.join(output_base,job_name + '-ensemble_output_md.json')
     

@@ -140,7 +140,7 @@ class ProcessVideoOptions:
         #: [frame_sample] and [time_sample].
         self.frames_to_extract = None
         
-        # Sample frames every N seconds.  Mutally exclusive with [frame_sample] and [frames_to_extract].
+        # Sample frames every N seconds.  Mutually exclusive with [frame_sample] and [frames_to_extract].
         self.time_sample = None
         
         #: Number of workers to use for parallelization; set to <= 1 to disable parallelization

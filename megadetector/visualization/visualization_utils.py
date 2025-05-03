@@ -183,7 +183,7 @@ def exif_preserving_save(pil_image,output_file,quality='keep',default_quality=85
     ...for more ways to preserve jpeg quality if quality='keep' doesn't do the trick.
 
     Args:
-        pil_image (Image): the PIL Image objct to save
+        pil_image (Image): the PIL Image object to save
         output_file (str): the destination file
         quality (str or int, optional): can be "keep" (default), or an integer from 0 to 100. 
             This is only used if PIL thinks the the source image is a JPEG.  If you load a JPEG
