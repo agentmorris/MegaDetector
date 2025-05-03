@@ -29,6 +29,7 @@ import os
 import statistics
 import sys
 import time
+import json
 import warnings
 import tempfile
 
@@ -423,12 +424,18 @@ def get_typical_confidence_threshold_from_results(results):
     threshold based on the detector version.
     
     Args:
-        results (dict): a dict of MD results, as it would be loaded from a MD results .json file
+        results (dict or str): a dict of MD results, as it would be loaded from a MD results .json 
+            file, or a .json filename
     
     Returns:
         float: a sensible default threshold for this model
     """
     
+    # Load results if necessary
+    if isinstance(results,str):
+        with open(results,'r') as f:
+            results = json.load(f)
+
     if 'detector_metadata' in results['info'] and \
         'typical_detection_threshold' in results['info']['detector_metadata']:
         default_threshold = results['info']['detector_metadata']['typical_detection_threshold']

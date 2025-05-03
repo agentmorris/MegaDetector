@@ -299,7 +299,8 @@ def _get_max_conf_from_detections(detections):
 def get_max_conf(im):
     """
     Given an image dict in the MD output format, computes the maximum detection confidence for any 
-    class.  Returns 0.0 (rather than None) if there was a failure or 'detections' isn't present.
+    class.  Returns 0.0 if there were no detections, if there was a failure, or if 'detections' isn't 
+    present.
     
     Args:
         im (dict): image dictionary in the MD output format (with a 'detections' field)

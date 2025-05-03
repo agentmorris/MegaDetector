@@ -1285,8 +1285,14 @@ def gray_scale_fraction(image,crop_size=(0.1,0.1)):
 
 
 def _resize_relative_image(fn_relative,
-                          input_folder,output_folder,
-                          target_width,target_height,no_enlarge_width,verbose,quality):
+                          input_folder,
+                          output_folder,
+                          target_width,
+                          target_height,
+                          no_enlarge_width,
+                          verbose,
+                          quality,
+                          overwrite=True):
     """
     Internal function for resizing an image from one folder to another,
     maintaining relative path.
@@ -1294,6 +1300,12 @@ def _resize_relative_image(fn_relative,
     
     input_fn_abs = os.path.join(input_folder,fn_relative)
     output_fn_abs = os.path.join(output_folder,fn_relative)
+
+    if (not overwrite) and (os.path.isfile(output_fn_abs)):
+        status = 'skipped'
+        error = None
+        return {'fn_relative':fn_relative,'status':status,'error':error}
+    
     os.makedirs(os.path.dirname(output_fn_abs),exist_ok=True)
     try:
         _ = resize_image(input_fn_abs, 
@@ -1435,7 +1447,8 @@ def resize_image_folder(input_folder,
                         pool_type='process', 
                         n_workers=10, 
                         recursive=True,
-                        image_files_relative=None):
+                        image_files_relative=None,
+                        overwrite=True):
     """
     Resize all images in a folder (defaults to recursive).
     
@@ -1461,12 +1474,13 @@ def resize_image_folder(input_folder,
             to disable parallelization
         recursive (bool, optional): whether to search [input_folder] recursively for images.
         image_files_relative (list, optional): if not None, skips any relative paths not
-            in this list.
+            in this list
+        overwrite (bool, optional): whether to overwrite existing target images
             
     Returns:
         list: a list of dicts with keys 'input_fn', 'output_fn', 'status', and 'error'.
-        'status' will be 'success' or 'error'; 'error' will be None for successful cases, 
-        otherwise will contain the image-specific error.
+        'status' will be 'success', 'skipped', or 'error'; 'error' will be None for successful 
+        cases, otherwise will contain the image-specific error.
     """
 
     assert os.path.isdir(input_folder), '{} is not a folder'.format(input_folder)
@@ -1502,7 +1516,8 @@ def resize_image_folder(input_folder,
                                   target_height=target_height,
                                   no_enlarge_width=no_enlarge_width,
                                   verbose=verbose,
-                                  quality=quality))
+                                  quality=quality,
+                                  overwrite=overwrite))
 
     else:
         
@@ -1522,7 +1537,8 @@ def resize_image_folder(input_folder,
                 target_height=target_height,
                 no_enlarge_width=no_enlarge_width,
                 verbose=verbose,
-                quality=quality)
+                quality=quality,
+                overwrite=overwrite)
         
         results = list(tqdm(pool.imap(p, image_files_relative),total=len(image_files_relative)))
 
