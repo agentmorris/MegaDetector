@@ -31,7 +31,8 @@ from megadetector.data_management.cct_json_utils import write_object_with_serial
 
 debug_max_images = None
 
-minimal_exif_tags = ['DateTime','Model','Make','ExifImageWidth','ExifImageHeight','DateTimeOriginal','Orientation']    
+minimal_exif_tags = \
+    ['DateTime','Model','Make','ExifImageWidth','ExifImageHeight','DateTimeOriginal','Orientation']    
 
 
 #%% Options
@@ -67,8 +68,7 @@ class ReadExifOptions:
         #:
         #: A useful set of tags one might want to limit queries for:
         #:
-        #: options.tags_to_include = ['DateTime','Model','Make','ExifImageWidth','ExifImageHeight',
-        #: 'DateTimeOriginal','Orientation']    
+        #: options.tags_to_include = minimal_exif_tags
         self.tags_to_include = None
         
         #: Include/exclude specific tags (tags_to_include and tags_to_exclude are mutually incompatible)
