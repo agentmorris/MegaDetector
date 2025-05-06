@@ -79,6 +79,9 @@ def generate_csv_report(md_results_file,
         classification_confidence_threshold (float, optional): classifications below this confidence threshold will 
             not be included in the output data (i.e., detections will be considered "animal").
         verbose (bool, optional): enable debug output, including the progress bar,        
+
+    Returns:
+        str: the output .csv filename
     """
     
     ##%% Load results file
@@ -201,6 +204,7 @@ def generate_csv_report(md_results_file,
     ##%% Parse folder level column specifier
 
     if folder_level_columns is not None:
+        
         if isinstance(folder_level_columns,str):
             tokens = folder_level_columns.split(',')
             folder_level_columns = [int(s) for s in tokens]
@@ -260,13 +264,15 @@ def generate_csv_report(md_results_file,
         # Folder level columns
         tokens = im['file'].split('/')
 
-        for folder_level in folder_level_columns:
-            folder_level_column_name = 'folder_level_' + str(folder_level).zfill(2)
-            if folder_level >= len(tokens):
-                folder_level_value = ''
-            else:
-                folder_level_value = tokens[folder_level]
-            base_record[folder_level_column_name] = folder_level_value
+        if folder_level_columns is not None:
+
+            for folder_level in folder_level_columns:
+                folder_level_column_name = 'folder_level_' + str(folder_level).zfill(2)
+                if folder_level >= len(tokens):
+                    folder_level_value = ''
+                else:
+                    folder_level_value = tokens[folder_level]
+                base_record[folder_level_column_name] = folder_level_value
         
         records_this_image = []
 
@@ -388,6 +394,8 @@ def generate_csv_report(md_results_file,
     
 # ...generate_csv_report(...)
 
+
+# %%
 
 #%% Interactive driver
 

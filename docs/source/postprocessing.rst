@@ -248,3 +248,18 @@ postprocessing.top\_folders\_to\_bottom module
    :hook:
    :prog: top_folders_to_bottom
    :no_default_values:
+
+postprocessing.generate\_csv\_report
+------------------------------------
+
+.. automodule:: megadetector.postprocessing.generate_csv_report
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   
+.. sphinx_argparse_cli::
+   :module: megadetector.postprocessing.generate_csv_report
+   :func: main
+   :hook:
+   :prog: generate_csv_report
+   :no_default_values:

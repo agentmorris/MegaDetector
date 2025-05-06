@@ -81,7 +81,7 @@ from megadetector.data_management.yolo_output_to_md_output import read_classes_f
 warnings.filterwarnings('ignore', category=FutureWarning)
 
 # Default number of loaders to use when --image_queue is set
-default_loaders = 8
+default_loaders = 4
 
 # Should we do preprocessing on the image queue?
 default_preprocess_on_image_queue = False
