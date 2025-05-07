@@ -38,7 +38,7 @@ class DetectionMethod(Enum):
     FRAME_DIFF = auto()      # Simple frame differencing
     MOG2 = auto()            # Mixture of Gaussians
     KNN = auto()             # K-nearest neighbors
-    MOTION_HISTORY = auto()  # Motion History Image
+    MOTION_HISTORY = auto()  # Motion history image
 
 
 class ThresholdType(Enum):
