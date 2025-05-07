@@ -28,7 +28,7 @@ from typing import List, Optional, Dict, Any
 from megadetector.utils.path_utils import find_images
 
 
-#%% Options class and enums
+#%% Support classes
 
 class DetectionMethod(Enum):    
     """
@@ -40,6 +40,7 @@ class DetectionMethod(Enum):
     KNN = auto()             # K-nearest neighbors
     MOTION_HISTORY = auto()  # Motion History Image
 
+
 class ThresholdType(Enum):
     """
     Enum for different thresholding methods.
@@ -48,6 +49,7 @@ class ThresholdType(Enum):
     GLOBAL = auto()      # Global thresholding
     ADAPTIVE = auto()    # Adaptive thresholding
     OTSU = auto()        # Otsu's method
+
 
 @dataclass
 class ChangeDetectionOptions:
@@ -101,8 +103,6 @@ class ChangeDetectionOptions:
 # ...def ChangeDetectionOptions
 
 
-#%% Motion history state class
-
 @dataclass
 class MotionHistoryState:
     """
@@ -121,7 +121,7 @@ class MotionHistoryState:
         Initialize the motion history state with the first frame
         
         Args:
-            frame: First frame to initialize the state
+            frame (np array): First frame to initialize the state
         """
         
         if self.mhi is None and frame is not None:
@@ -134,8 +134,8 @@ class MotionHistoryState:
         Update the motion history with a new frame
         
         Args:
-            frame: New frame to update the motion history
-            options: ChangeDetectionOptions with detection settings
+            frame (np array): New frame to update the motion history
+            options (ChangeDetectionOptions): detection settings
             
         Returns:
             Motion mask based on the updated motion history
@@ -548,7 +548,7 @@ def process_camera_folder(folder_path, options=None):
 
 def process_folders(folders, options=None, output_csv=None):
     """
-    Process multiple folders of timelapse images.
+    Process multiple folders of images.
     
     Args:
         folders (list): list of folder paths to process
@@ -608,7 +608,7 @@ def process_folders(folders, options=None, output_csv=None):
 
 def create_change_previews(motion_results, output_folder, num_samples=10, random_seed=None):
     """
-    Create side-by-side previews of images with detected motion.
+    Create side-by-side previews of images with detected motion
     
     Args:
         motion_results: DataFrame with motion detection results
