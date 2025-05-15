@@ -173,7 +173,8 @@ def integrity_check_json_db(jsonFile, options=None):
     assert 'info' in data, 'No info struct in database'
     
     if len(base_dir) > 0:        
-        assert os.path.isdir(base_dir), 'Base directory {} does not exist'.format(base_dir)
+        assert os.path.isdir(base_dir), \
+            'Base directory {} does not exist'.format(base_dir)
         
         
     ##%% Build dictionaries, checking ID uniqueness and internal validity as we go
@@ -193,18 +194,22 @@ def integrity_check_json_db(jsonFile, options=None):
         assert 'name' in cat
         assert 'id' in cat
         
-        assert isinstance(cat['id'],int), 'Illegal category ID type: [{}]'.format(str(cat['id']))
-        assert isinstance(cat['name'],str), 'Illegal category name type [{}]'.format(str(cat['name']))
+        assert isinstance(cat['id'],int), \
+            'Illegal category ID type: [{}]'.format(str(cat['id']))
+        assert isinstance(cat['name'],str), \
+            'Illegal category name type [{}]'.format(str(cat['name']))
         
         category_id = cat['id']
         category_name = cat['name']
         
         # Confirm ID uniqueness
-        assert category_id not in category_id_to_category, 'Category ID {} is used more than once'.format(category_id)
+        assert category_id not in category_id_to_category, \
+            'Category ID {} is used more than once'.format(category_id)
         category_id_to_category[category_id] = cat
         cat['_count'] = 0
         
-        assert category_name not in category_name_to_category, 'Category name {} is used more than once'.format(category_name)
+        assert category_name not in category_name_to_category, \
+            'Category name {} is used more than once'.format(category_name)
         category_name_to_category[category_name] = cat        
         
     # ...for each category
