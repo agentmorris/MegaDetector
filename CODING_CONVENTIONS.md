@@ -1,30 +1,26 @@
 # Coding conventions
 
-## Introduction
-
-This document outlines the coding conventions to be followed when contributing to the MegaDetector project. Adhering to these conventions ensures consistency, readability, and maintainability of the codebase.
-
 ## Module header comment style
 
-All Python modules (.py files) should begin with a header comment that provides a brief overview of the module's purpose.
-
-Example:
+Python modules (.py files) should begin with a header comment that provides a brief overview of the module's purpose:
 
 ```python
-#
-# CODING_CONVENTIONS.md
-#
-# Outlines the coding conventions for the MegaDetector project.
-#
+"""
+
+important_module.py
+
+This module does important things.
+
+"""
 ```
 
 ## Function and class header comment style (Google-style docstrings)
 
-All functions and classes should have Google-style docstrings that clearly explain their purpose, arguments, and return values (for functions) or methods (for classes). Docstrings should always be multi-line, even for very short functions or methods.
+Functions and classes should have Google-style docstrings.  Docstrings should always be multi-line, even for very short functions or methods.
 
 Class attributes should be documented with inline comments, specifically using the `#: attribute_description` format, directly above or on the same line as the attribute initialization within the `__init__` method.
 
-Example (Function):
+Example function:
 
 ```python
 def example_function(param1: int, param2: str) -> bool:
@@ -32,8 +28,8 @@ def example_function(param1: int, param2: str) -> bool:
     This is an example function.
 
     Args:
-        param1: The first parameter, an integer.
-        param2: The second parameter, a string.
+        param1 (int): The first parameter, an integer
+        param2 (str): The second parameter, a string
 
     Returns:
         A boolean value indicating success or failure.
@@ -43,12 +39,13 @@ def example_function(param1: int, param2: str) -> bool:
     return True
 ```
 
-Example (Class):
+Example class:
 
 ```python
 class ExampleClass:
     """
     This is an example class.
+
     It describes the overall purpose and behavior of the class.
     """
 
@@ -57,9 +54,9 @@ class ExampleClass:
         Initializes ExampleClass.
         """
 
-        #: The first attribute, an integer.
+        #: The first attribute, an integer
         self.attr1 = attr1
-        #: The second attribute, a string.
+        #: The second attribute, a string
         self.attr2 = attr2
 
     def example_method(self) -> None:
@@ -73,26 +70,24 @@ class ExampleClass:
 
 ## Inline comment style
 
-Use inline comments to clarify complex or non-obvious code sections. Comments should be concise and informative.
+Inline comments should not end with periods unless they are full sentences.  Inline comments should almost never occur on the same line as code.
 
-Use `#%%` to break up logical blocks of code, especially in longer scripts or notebooks. This is particularly helpful for interactive development and debugging.
-
-Example:
+Examples:
 
 ```python
-# This is an inline comment explaining a specific part of the code.
-x = y + z  # Another inline comment
 
-#%% A new logical block
+# This is a typical inline comment
+a = b + c
 
-# Code for the new block...
+# This is an inline comment that uses a full sentence.
+x = y + z
+
+p = q + r # Don't do this unless you absolutely have to
 ```
 
 ## Whitespace conventions
 
-Consistent use of whitespace improves readability.
-
-*   **Indentation:** Use four spaces for indentation. Do not use tabs.
+*   **Indentation:** Use four spaces for indentation.
 *   **Blank lines:** Use blank lines to separate logical sections of code, such as functions, classes, and major blocks within functions. Typically, use two blank lines between top-level function and class definitions, and one blank line between methods in a class. A blank line should also always follow a function header comment (docstring) before the first line of code.
 *   **Spaces around operators:** Use a single space on either side of binary operators (e.g., `+`, `-`, `*`, `/`, `=`, `==`, `!=`, `<`, `>`, `<=`, `>=`).
     *   Exception: No spaces around operators in keyword arguments or default parameter values (e.g., `func(param=value)`).
@@ -111,8 +106,12 @@ def correct_spacing(param1, param2):
     Example function for whitespace.
     """
 
-    result = param1 + param2  # Spaces around operator
-    my_list = [1, 2, 3]     # Space after comma, no space inside brackets
+    # Spaces around operator
+    result = param1 + param2
+
+    # Space after comma, no space inside brackets  
+    my_list = [1, 2, 3]
+
     return result
 
 # Two blank lines before this function definition
@@ -124,7 +123,7 @@ def another_function():
 
     # One blank line before this block
     if x > 5:
-        print("x is greater than 5")
+        print('x is greater than 5')
 ```
 
 ## Line length
@@ -163,13 +162,10 @@ if (condition1 and condition2 and
     3.  Third-party library imports (e.g., `import numpy as np`, `import tensorflow as tf`)
     4.  Local application/library specific imports (e.g., `from . import utils`, `from megadetector.detection import run_detector`)
     Separate each group with a blank line.
-*   **`from __future__ import annotations`:** Include this import at the beginning of all Python files to enable postponed evaluation of type hints (PEP 563). This allows using type hints for classes defined later in the file.
 
 Example:
 
 ```python
-from __future__ import annotations
-
 import os
 import json
 from typing import List, Dict, Optional
@@ -182,7 +178,7 @@ from megadetector.utils import some_utility_function
 
 ## Type hinting
 
-Type hinting is strongly encouraged for all new code to improve code clarity and help with static analysis. While not strictly enforced for retroactive changes to older code, it is highly recommended to add type hints when modifying existing code.
+Type hinting is encouraged for new code, but not required and not enforced retroactively.
 
 Use standard Python type hints (PEP 484).
 
@@ -203,9 +199,7 @@ def process_data(data: List[Dict[str, any]], threshold: float = 0.5) -> Optional
 
     if not data:
         return None
+
     # ... processing logic ...
     return "Processed"
-```
-
-This document serves as a guide to maintain a high quality and consistent codebase. Please refer to it regularly and apply these conventions in your contributions.
 ```
