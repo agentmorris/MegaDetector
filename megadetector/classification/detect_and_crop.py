@@ -118,6 +118,7 @@ from megadetector.classification.crop_detections import load_and_crop
 from megadetector.data_management.megadb import megadb_utils
 from megadetector.utils import path_utils
 from megadetector.utils import sas_blob_utils
+from megadetector.utils import ct_utils
 
 
 #%% Example usage
@@ -264,8 +265,7 @@ def main(queried_images_json_path: str,
     # save log of bad images
     date = datetime.now().strftime('%Y%m%d_%H%M%S')  # e.g., '20200722_110816'
     log_path = os.path.join(output_dir, f'detect_and_crop_log_{date}.json')
-    with open(log_path, 'w') as f:
-        json.dump(log, f, indent=1)
+    ct_utils.write_json(log_path, log)
 
 
 #%% Support functions
@@ -450,8 +450,7 @@ def submit_batch_detection_api(images_to_detect: Iterable[str],
         for dataset in tasks_by_dataset
         for task in tasks_by_dataset[dataset]
     ]
-    with open(resume_file_path, 'w') as f:
-        json.dump(resume_json, f, indent=1)
+    ct_utils.write_json(resume_file_path, resume_json)
     return tasks_by_dataset
 
 
@@ -597,8 +596,7 @@ def wait_for_tasks(tasks_by_dataset: Mapping[str, Iterable[Task]],
                 if not os.path.exists(save_dir):
                     tqdm.write(f'Creating API output dir: {save_dir}')
                     os.makedirs(save_dir)
-                with open(os.path.join(save_dir, f'{task.id}.json'), 'w') as f:
-                    json.dump(task.response, f, indent=1)
+                ct_utils.write_json(os.path.join(save_dir, f'{task.id}.json'), task.response)
             message = task.response['Status']['message']
             num_failed_shards = message['num_failed_shards']
             if num_failed_shards != 0:

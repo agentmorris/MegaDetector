@@ -54,6 +54,7 @@ from tqdm import tqdm
 
 from megadetector.taxonomy_mapping.taxonomy_graph import (
     build_taxonomy_graph, dag_to_tree, TaxonNode)
+from megadetector.utils import ct_utils
 
 
 #%% Example usage
@@ -105,8 +106,7 @@ def main(desired_label_spec_json_path: str,
     target_to_classifier_labels = map_target_to_classifier(
         target_label_to_nodes, classifier_label_to_nodes)
     os.makedirs(os.path.dirname(output_json_path), exist_ok=True)
-    with open(output_json_path, 'w') as f:
-        json.dump(target_to_classifier_labels, f, indent=1)
+    ct_utils.write_json(output_json_path, target_to_classifier_labels)
 
 
 #%% Support functions

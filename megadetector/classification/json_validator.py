@@ -86,6 +86,7 @@ from typing import Any
 
 from megadetector.utils import path_utils
 from megadetector.utils import sas_blob_utils
+from megadetector.utils import ct_utils
 
 from megadetector.data_management.megadb import megadb_utils
 from megadetector.taxonomy_mapping.taxonomy_graph import (
@@ -166,36 +167,32 @@ def main(label_spec_json_path: str,
     date = datetime.now().strftime('%Y%m%d_%H%M%S')  # ex: '20200722_110816'
     log_path = os.path.join(output_dir, f'json_validator_log_{date}.json')
     print(f'Saving log of bad images to {log_path}')
-    with open(log_path, 'w') as f:
-        json.dump(log, f, indent=1)
+    ct_utils.write_json(log_path, log)
 
     # save label counts, pre-subsampling
     print('Saving pre-sampling label counts')
     save_path = os.path.join(output_dir, 'image_counts_by_label_presample.json')
-    with open(save_path, 'w') as f:
-        image_counts_by_label = {
-            label: len(filter_images(output_js, label))
-            for label in sorted(input_js.keys())
-        }
-        json.dump(image_counts_by_label, f, indent=1)
+    image_counts_by_label_presample = {
+        label: len(filter_images(output_js, label))
+        for label in sorted(input_js.keys())
+    }
+    ct_utils.write_json(save_path, image_counts_by_label_presample)
 
     print('Sampling with priority (if needed)')
     output_js = sample_with_priority(input_js, output_js)
 
     print('Saving queried_images.json')
     output_json_path = os.path.join(output_dir, 'queried_images.json')
-    with open(output_json_path, 'w') as f:
-        json.dump(output_js, f, indent=json_indent)
+    ct_utils.write_json(output_json_path, output_js, indent=json_indent)
 
     # save label counts, post-subsampling
     print('Saving post-sampling label counts')
     save_path = os.path.join(output_dir, 'image_counts_by_label_sampled.json')
-    with open(save_path, 'w') as f:
-        image_counts_by_label = {
-            label: len(filter_images(output_js, label))
-            for label in sorted(input_js.keys())
-        }
-        json.dump(image_counts_by_label, f, indent=1)
+    image_counts_by_label_sampled = {
+        label: len(filter_images(output_js, label))
+        for label in sorted(input_js.keys())
+    }
+    ct_utils.write_json(save_path, image_counts_by_label_sampled)
 
 
 #%% Support functions

@@ -107,6 +107,7 @@ import json
 from typing import Any
 
 import pandas as pd
+from megadetector.utils import ct_utils
 
 
 #%% Main function
@@ -116,8 +117,7 @@ def main():
     js = csv_to_jsondict(args.input_csv_file)
     for label in js:
         js[label] = order_spec_dict(js[label])
-    with open(args.output_json_path, 'w') as f:
-        json.dump(js, f, indent=args.json_indent)
+    ct_utils.write_json(args.output_json_path, js, indent=args.json_indent)
 
 
 #%% Support functions

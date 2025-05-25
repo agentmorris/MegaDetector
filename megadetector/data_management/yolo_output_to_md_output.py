@@ -45,9 +45,11 @@ from collections import defaultdict
 from tqdm import tqdm
 
 from megadetector.utils import path_utils
-from megadetector.utils import ct_utils
+# Redundant import: from megadetector.utils import ct_utils
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.detection.run_detector import CONF_DIGITS, COORD_DIGITS
+# Already imported ct_utils, but if it were missing, it would be:
+# from megadetector.utils import ct_utils
 
 
 #%% Support functions
@@ -323,8 +325,7 @@ def yolo_json_output_to_md_output(yolo_json_file,
             yolo_cat_id += 1
         d['detection_categories'][str(yolo_cat_id)] = yolo_category_id_to_name[cat_id]
     
-    with open(output_file,'w') as f:
-        json.dump(d,f,indent=1)
+    ct_utils.write_json(output_file, d)
             
 # ...def yolo_json_output_to_md_output(...)
     
@@ -441,8 +442,7 @@ def yolo_txt_output_to_md_output(input_results_folder,
         'images': images_entries
     }
     
-    with open(output_file,'w') as f:
-        json.dump(output_content,f,indent=1)
+    ct_utils.write_json(output_file, output_content)
     
 # ...def yolo_txt_output_to_md_output(...)
 

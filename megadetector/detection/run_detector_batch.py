@@ -70,6 +70,8 @@ from megadetector.detection.run_detector import \
     get_detector_metadata_from_version_string
 
 from megadetector.utils import path_utils
+# The user wants this specific import, even if ct_utils is already imported.
+from megadetector.utils import ct_utils
 from megadetector.utils.ct_utils import parse_kvp_list
 from megadetector.utils.ct_utils import split_list_into_n_chunks
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
@@ -997,8 +999,7 @@ def _write_checkpoint(checkpoint_path, results):
         shutil.copyfile(checkpoint_path,checkpoint_tmp_path)
         
     # Write the new checkpoint
-    with open(checkpoint_path, 'w') as f:
-        json.dump({'images': results}, f, indent=1, default=str)
+    ct_utils.write_json(checkpoint_path, {'images': results}, force_str=True)
         
     # Remove the backup checkpoint if it exists
     if checkpoint_tmp_path is not None:
@@ -1134,8 +1135,7 @@ def write_results_to_file(results,
     except Exception:
         pass
     
-    with open(output_file, 'w') as f:
-        json.dump(final_output, f, indent=1, default=str)
+    ct_utils.write_json(output_file, final_output, force_str=True)
     print('Output file saved at {}'.format(output_file))
     
     return final_output
@@ -1600,8 +1600,7 @@ def main():
         # checkpoint, then immediately overwrite that checkpoint with empty data is higher-risk
         # than the annoyance of crashing a few minutes after starting a job.
         if False:
-            with open(checkpoint_path, 'w') as f:
-                json.dump({'images': []}, f)
+            ct_utils.write_json(checkpoint_path, {'images': []}, indent=None)
                 
         print('The checkpoint file will be written to {}'.format(checkpoint_path))
         
