@@ -84,3 +84,32 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 include = ["megadetector*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py38"
+
+[tool.ruff.lint]
+select = [
+    "E",  # Pycodestyle errors
+    "W",  # Pycodestyle warnings
+    "F",  # Pyflakes
+    "I",  # Isort
+    "N",  # pep8-naming
+    "D",  # Pydocstyle
+    "UP", # Pyupgrade
+    "B"   # flake8-bugbear
+]
+ignore = [
+    "D417" # Missing argument descriptions in the docstring of __init__ (we document attributes in __init__ body)
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["megadetector"]
+force-single-line = true # For `from __future__ import annotations`
+# Default sections (future, stdlib, thirdparty, firstparty, localfolder) are generally good.
+# We can add more specific section configuration here if needed later.
+```
