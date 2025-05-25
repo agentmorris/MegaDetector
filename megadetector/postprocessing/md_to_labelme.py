@@ -226,20 +226,26 @@ def md_to_labelme(results_file,image_base,confidence_threshold=None,
             _write_output_for_image(im,image_base,extension_prefix,md_results['info'],confidence_threshold,
                                    md_results['detection_categories'],overwrite,verbose)
     else:
-        if use_threads:
-            print('Starting parallel thread pool with {} workers'.format(n_workers))
-            pool = ThreadPool(n_workers)
-        else:
-            print('Starting parallel process pool with {} workers'.format(n_workers))
-            pool = Pool(n_workers)
-        _ = list(tqdm(pool.imap(
-                partial(_write_output_for_image,
-                        image_base=image_base,extension_prefix=extension_prefix,
-                        info=md_results['info'],confidence_threshold=confidence_threshold,
-                        category_id_to_name=md_results['detection_categories'],
-                        overwrite=overwrite,verbose=verbose),
-                 md_results['images']),
-                 total=len(md_results['images'])))
+        pool = None
+        try:
+            if use_threads:
+                print('Starting parallel thread pool with {} workers'.format(n_workers))
+                pool = ThreadPool(n_workers)
+            else:
+                print('Starting parallel process pool with {} workers'.format(n_workers))
+                pool = Pool(n_workers)
+            _ = list(tqdm(pool.imap(
+                    partial(_write_output_for_image,
+                            image_base=image_base,extension_prefix=extension_prefix,
+                            info=md_results['info'],confidence_threshold=confidence_threshold,
+                            category_id_to_name=md_results['detection_categories'],
+                            overwrite=overwrite,verbose=verbose),
+                    md_results['images']),
+                    total=len(md_results['images'])))
+        finally:
+            pool.close()
+            pool.join()
+            print("Pool closed and joined for labelme file writes")
             
     # ...for each image
     

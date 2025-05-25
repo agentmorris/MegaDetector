@@ -1052,18 +1052,26 @@ def parallel_copy_files(input_file_to_output_file,
     for input_fn in input_file_to_output_file:
         input_output_tuples.append((input_fn,input_file_to_output_file[input_fn]))
 
-    if use_threads:
-        pool = ThreadPool(n_workers)
-    else:
-        pool = Pool(n_workers)
+    pool = None
 
-    with tqdm(total=len(input_output_tuples)) as pbar:
-        for i,_ in enumerate(pool.imap_unordered(partial(_copy_file,
-                                                         overwrite=overwrite,
-                                                         verbose=verbose,
-                                                         move=move),
-                                                 input_output_tuples)):
-            pbar.update()
+    try:
+        if use_threads:
+            pool = ThreadPool(n_workers)
+        else:
+            pool = Pool(n_workers)
+
+        with tqdm(total=len(input_output_tuples)) as pbar:
+            for i,_ in enumerate(pool.imap_unordered(partial(_copy_file,
+                                                            overwrite=overwrite,
+                                                            verbose=verbose,
+                                                            move=move),
+                                                    input_output_tuples)):
+                pbar.update()
+    finally:
+        pool.close()
+        pool.join()
+        if verbose:
+            print("Pool closed and joined parallel file copying")
 
 # ...def parallel_copy_files(...)
 

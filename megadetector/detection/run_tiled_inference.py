@@ -567,7 +567,7 @@ def run_tiled_inference(model_file,
             if pool is not None:
                 pool.close()
                 pool.join()
-                print("Pool closed and joined.")
+                print("Pool closed and joined for patch extraction")
         
     # ...for each image
     

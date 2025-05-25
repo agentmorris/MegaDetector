@@ -1454,7 +1454,7 @@ def process_batch_results(options):
                 if pool is not None:
                     pool.close()
                     pool.join()
-                    print("Pool closed and joined for GT rendering.")
+                    print("Pool closed and joined for GT rendering")
         else:
             for file_info in tqdm(files_to_render):
                 rendering_results.append(_render_image_with_gt(
@@ -1715,7 +1715,7 @@ def process_batch_results(options):
                 if pool is not None:
                     pool.close()
                     pool.join()
-                    print("Pool closed and joined for non-GT rendering.")
+                    print("Pool closed and joined for non-GT rendering")
         else:
             for file_info in tqdm(files_to_render):
                 rendering_result = _render_image_no_gt(file_info,

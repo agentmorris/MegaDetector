@@ -228,24 +228,30 @@ def render_detection_confusion_matrix(ground_truth_file,
     
     if parallelize_rendering:
 
-        if parallelize_rendering_n_cores is None:                
-            if parallelize_rendering_with_threads:
-                pool = ThreadPool()
+        pool = None
+        try:
+            if parallelize_rendering_n_cores is None:                
+                if parallelize_rendering_with_threads:
+                    pool = ThreadPool()
+                else:
+                    pool = Pool()
             else:
-                pool = Pool()
-        else:
-            if parallelize_rendering_with_threads:
-                pool = ThreadPool(parallelize_rendering_n_cores)
-                worker_string = 'threads'
-            else:
-                pool = Pool(parallelize_rendering_n_cores)
-                worker_string = 'processes'
-            print('Rendering images with {} {}'.format(parallelize_rendering_n_cores,
-                                                       worker_string))
-            
-        _ = list(tqdm(pool.imap(partial(_render_image,render_image_constants=render_image_constants),
-                                md_formatted_results['images']),
-                                total=len(md_formatted_results['images'])))        
+                if parallelize_rendering_with_threads:
+                    pool = ThreadPool(parallelize_rendering_n_cores)
+                    worker_string = 'threads'
+                else:
+                    pool = Pool(parallelize_rendering_n_cores)
+                    worker_string = 'processes'
+                print('Rendering images with {} {}'.format(parallelize_rendering_n_cores,
+                                                        worker_string))
+                
+            _ = list(tqdm(pool.imap(partial(_render_image,render_image_constants=render_image_constants),
+                                    md_formatted_results['images']),
+                                    total=len(md_formatted_results['images'])))
+        finally:
+            pool.close()
+            pool.join()
+            print("Pool closed and joined for confusion matrix rendering")
     
     else:
         

@@ -878,7 +878,7 @@ def load_and_run_detector_batch(model_file,
         # process_images.
         detector = model_file
 
-        print('Creating pool with {} cores'.format(n_cores))
+        print('Creating worker pool with {} cores'.format(n_cores))
 
         if len(already_processed) > 0:
             n_images_all = len(image_file_names)
@@ -953,7 +953,7 @@ def load_and_run_detector_batch(model_file,
             if pool is not None:
                 pool.close()
                 pool.join()
-                print("Pool closed and joined.")
+                print("Pool closed and joined for multi-core inference")
                 
     # ...if we're running (1) with image queue, (2) on one core, or (3) on multiple cores
     

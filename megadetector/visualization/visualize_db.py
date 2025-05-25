@@ -527,7 +527,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
             if pool is not None:
                 pool.close()
                 pool.join()
-                print("Pool closed and joined.")
+                print("Pool closed and joined for DB visualization")
         
     else:
         

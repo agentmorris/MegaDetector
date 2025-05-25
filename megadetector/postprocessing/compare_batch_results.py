@@ -1285,6 +1285,8 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
     
     ##%% Sample and plot differences
     
+    pool = None
+
     if options.n_rendering_workers > 1:
        worker_type = 'processes'
        if options.parallelize_rendering_with_threads:
@@ -1447,7 +1449,13 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
         
     # ...for each category
     
-    
+    if pool is not None:
+        try:
+            pool.close()
+            pool.join()
+            print("Pool closed and joined for comparisong rendering")
+        except Exception:
+            pass
     ##%% Write the top-level HTML file content
 
     html_output_string  = ''
