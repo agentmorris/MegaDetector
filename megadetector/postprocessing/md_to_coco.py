@@ -38,7 +38,8 @@ def md_to_coco(md_results_file,
                empty_category_id='0',
                overwrite_behavior='skip',               
                verbose=True,
-               image_filename_to_size=None):
+               image_filename_to_size=None,
+               unrecognized_category_handling='error'):
     """
     "Converts" MegaDetector output files to COCO format.  "Converts" is in quotes because
     this is an opinionated transformation that typically requires a confidence threshold.
@@ -84,6 +85,10 @@ def md_to_coco(md_results_file,
             image sizes is the slowest step, so if you need to convert many results files at once for the same
             set of images, things will be gobs faster if you read the image sizes in advance and pass them in
             via this argument.  The format used here is the same format output by parallel_get_image_sizes().
+        unrecognized_category_handling (str or float, optional): specifies what to do when encountering category
+            IDs not in the category mapping.  Can be "error", "ignore", or "warning".  Can also be a float,
+            in which case an error is thrown if an unrecognized category has a confidence value higher than
+            this value.
     
     Returns:
         dict: the COCO data dict, identical to what's written to [coco_output_file] if [coco_output_file]
@@ -93,7 +98,10 @@ def md_to_coco(md_results_file,
     assert isinstance(md_results_file,str)
     assert os.path.isfile(md_results_file), \
         'MD results file {} does not exist'.format(md_results_file)
-
+    assert (isinstance(unrecognized_category_handling,float)) or \
+           (unrecognized_category_handling in ('error','warning','ignore')), \
+        'Invalid category handling behavior {}'.format(unrecognized_category_handling)
+                
     if coco_output_file == 'auto':
         coco_output_file = insert_before_extension(md_results_file,'coco')
         
@@ -126,9 +134,10 @@ def md_to_coco(md_results_file,
         
     coco_images = []
     coco_annotations = []
-        
-    print('Converting MD results file {} to COCO file {}...'.format(
-        md_results_file, coco_output_file))
+
+    if verbose:    
+        print('Converting MD results file {} to COCO file {}...'.format(
+            md_results_file, coco_output_file))
     
     # im = md_results['images'][0]
     for im in tqdm(md_results['images'],disable=(not verbose)):
@@ -206,6 +215,24 @@ def md_to_coco(md_results_file,
             ann['image_id'] = coco_im['id']                
                         
             md_category_id = detection['category']
+
+            if md_category_id not in md_results['detection_categories']:
+                    
+                s = 'unrecognized category ID {} occurred with confidence {} in file {}'.format(
+                        md_category_id,detection['conf'],im['file'])
+                if isinstance(unrecognized_category_handling,float):
+                    if detection['conf'] > unrecognized_category_handling:
+                        raise ValueError(s)
+                    else:
+                        continue
+                elif unrecognized_category_handling == 'warning':
+                    print('Warning: {}'.format(s))
+                    continue
+                elif unrecognized_category_handling == 'ignore':
+                    continue
+                else:
+                    raise ValueError(s)
+                    
             coco_category_id = int(md_category_id)
             ann['category_id'] = coco_category_id
             
@@ -262,7 +289,8 @@ def md_to_coco(md_results_file,
                          'name':md_results['detection_categories'][md_category_id]}
         output_dict['categories'].append(coco_category)
         
-    print('Writing COCO output file...')
+    if verbose:
+        print('Writing COCO output file...')
     
     if coco_output_file is not None:
         with open(coco_output_file,'w') as f:
