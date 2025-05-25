@@ -403,49 +403,49 @@ def _get_datetime_from_strings(strings,options=None):
     ### AM/PM
 
     # 2013-10-02 11:40:50 AM
-    m = re.search('(\d\d\d\d)\s?-\s?(\d\d)\s?-\s?(\d\d)\s+(\d+)\s?:?\s?(\d\d)\s?:\s?(\d\d)\s*([a|p]m)',s)
+    m = re.search(r'(\d\d\d\d)\s?-\s?(\d\d)\s?-\s?(\d\d)\s+(\d+)\s?:?\s?(\d\d)\s?:\s?(\d\d)\s*([a|p]m)',s)
     if m is not None:
         return _datetime_string_to_datetime(m.group(0))
 
     # 04/01/2017 08:54:00AM
-    m = re.search('(\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d\d\d)\s+(\d+)\s?:\s?(\d\d)\s?:\s?(\d\d)\s*([a|p]m)',s)
+    m = re.search(r'(\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d\d\d)\s+(\d+)\s?:\s?(\d\d)\s?:\s?(\d\d)\s*([a|p]m)',s)
     if m is not None:
         return _datetime_string_to_datetime(m.group(0))
 
     # 2017/04/01 08:54:00AM
-    m = re.search('(\d\d\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d)\s+(\d+)\s?:\s?(\d\d)\s?:\s?(\d\d)\s*([a|p]m)',s)
+    m = re.search(r'(\d\d\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d)\s+(\d+)\s?:\s?(\d\d)\s?:\s?(\d\d)\s*([a|p]m)',s)
     if m is not None:
         return _datetime_string_to_datetime(m.group(0))
 
     # 04/01/2017 08:54AM
-    m = re.search('(\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d\d\d)\s+(\d+)\s?:\s?(\d\d)\s*([a|p]m)',s)
+    m = re.search(r'(\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d\d\d)\s+(\d+)\s?:\s?(\d\d)\s*([a|p]m)',s)
     if m is not None:
         return _datetime_string_to_datetime(m.group(0))
 
     # 2017/04/01 08:54AM
-    m = re.search('(\d\d\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d)\s+(\d+)\s?:\s?(\d\d)\s*([a|p]m)',s)
+    m = re.search(r'(\d\d\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d)\s+(\d+)\s?:\s?(\d\d)\s*([a|p]m)',s)
     if m is not None:
         return _datetime_string_to_datetime(m.group(0))
 
     ### No AM/PM
 
     # 2013-07-27 04:56:35
-    m = re.search('(\d\d\d\d)\s?-\s?(\d\d)\s?-\s?(\d\d)\s*(\d\d)\s?:\s?(\d\d)\s?:\s?(\d\d)',s)
+    m = re.search(r'(\d\d\d\d)\s?-\s?(\d\d)\s?-\s?(\d\d)\s*(\d\d)\s?:\s?(\d\d)\s?:\s?(\d\d)',s)
     if m is not None:
         return _datetime_string_to_datetime(m.group(0))
 
     # 07-27-2013 04:56:35
-    m = re.search('(\d\d)\s?-\s?(\d\d)\s?-\s?(\d\d\d\d)\s*(\d\d)\s?:\s?(\d\d)\s?:\s?(\d\d)',s)
+    m = re.search(r'(\d\d)\s?-\s?(\d\d)\s?-\s?(\d\d\d\d)\s*(\d\d)\s?:\s?(\d\d)\s?:\s?(\d\d)',s)
     if m is not None:
         return _datetime_string_to_datetime(m.group(0))
 
     # 2013/07/27 04:56:35
-    m = re.search('(\d\d\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d)\s*(\d\d)\s?:\s?(\d\d)\s?:\s?(\d\d)',s)
+    m = re.search(r'(\d\d\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d)\s*(\d\d)\s?:\s?(\d\d)\s?:\s?(\d\d)',s)
     if m is not None:
         return _datetime_string_to_datetime(m.group(0))
 
     # 07/27/2013 04:56:35
-    m = re.search('(\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d\d\d)\s*(\d\d)\s?:\s?(\d\d)\s?:\s?(\d\d)',s)
+    m = re.search(r'(\d\d)\s?/\s?(\d\d)\s?/\s?(\d\d\d\d)\s*(\d\d)\s?:\s?(\d\d)\s?:\s?(\d\d)',s)
     if m is not None:
         return _datetime_string_to_datetime(m.group(0))
 

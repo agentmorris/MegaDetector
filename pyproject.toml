@@ -117,7 +117,7 @@ ignore = [
 convention = "google"
 
 [tool.ruff.per-file-ignores]
-"**/*.py" = ["D212","D415","D202","UP032","UP015","B007"]
+"**/*.py" = ["D212","D415","D202","UP032","UP015","B007","D200","E702","D205"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["megadetector"]

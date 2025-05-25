@@ -18,7 +18,7 @@ This module does important things.
 
 ## Function and class header comment style (Google-style docstrings)
 
-Functions and classes should have Google-style docstrings.  Docstrings should always be multi-line, even for very short functions or methods.
+Functions and classes should have Google-style docstrings.  Docstrings should always be multi-line, even for very short functions or methods.  The single-line summary of Google-style docstrings is not required.
 
 Class attributes should be documented with inline comments, specifically using the `#: attribute_description` format, directly above or on the same line as the attribute initialization within the `__init__` method.
 
@@ -27,7 +27,8 @@ Example function:
 ```python
 def example_function(param1: int, param2: str) -> bool:
     """
-    This is an example function.
+    This is an example function.  The description does not need
+	to start with a single blank line.
 
     Args:
         param1 (int): The first parameter, an integer.
@@ -207,7 +208,7 @@ def process_data(data: List[Dict[str, any]], threshold: float = 0.5) -> Optional
 
 ## Linting with Ruff
 
-We use [Ruff](https://docs.astral.sh/ruff/) to enforce coding conventions.
+This repo uses [Ruff](https://docs.astral.sh/ruff/) to enforce coding conventions.
 
 ### Installation
 
