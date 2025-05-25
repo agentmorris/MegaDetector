@@ -63,6 +63,8 @@ import re
 from tqdm import tqdm
 from collections import defaultdict
 
+# The user wants this specific import, even if ct_utils is already imported.
+from megadetector.utils import ct_utils
 from megadetector.utils.ct_utils import args_to_object, get_max_conf, invert_dictionary
 from megadetector.utils.path_utils import top_level_folder
 from megadetector.utils.path_utils import recursive_file_list
@@ -172,8 +174,7 @@ def _write_detection_results(data, output_filename, options):
     n_images = len(data['images'])
     
     print('Writing detection output (with {} images) to {}'.format(n_images,output_filename))
-    with open(output_filename, 'w', newline='\n') as f:
-        json.dump(data,f,indent=1)
+    ct_utils.write_json(output_filename, data)
 
 # ...def _write_detection_results(...)
 

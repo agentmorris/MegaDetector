@@ -75,6 +75,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from megadetector.classification import detect_and_crop
+from megadetector.utils import ct_utils
 
 
 #%% Example usage
@@ -160,9 +161,8 @@ def main(output_dir: str,
             labels = labels.map(lambda x: x.split(',')).explode()
             # look into sklearn.preprocessing.MultiLabelBinarizer
         label_names = sorted(labels.unique())
-        with open(os.path.join(output_dir, LABEL_INDEX_FILENAME), 'w') as f:
-            # Note: JSON always saves keys as strings!
-            json.dump(dict(enumerate(label_names)), f, indent=1)
+        # Note: JSON always saves keys as strings!
+        ct_utils.write_json(os.path.join(output_dir, LABEL_INDEX_FILENAME), dict(enumerate(label_names)))
 
     if 'splits' in mode:
         assert splits_method is not None
@@ -181,8 +181,7 @@ def main(output_dir: str,
             split_to_locs = create_splits_smallest_label_first(
                 df, val_frac, test_frac, test_split=test_set_locs,
                 label_spec_json_path=label_spec_json_path)
-        with open(os.path.join(output_dir, SPLITS_FILENAME), 'w') as f:
-            json.dump(split_to_locs, f, indent=1)
+        ct_utils.write_json(os.path.join(output_dir, SPLITS_FILENAME), split_to_locs)
 
 
 #%% Support functions
