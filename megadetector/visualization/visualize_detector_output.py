@@ -340,7 +340,7 @@ def visualize_detector_output(detector_output_path,
 
 #%% Command-line driver
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,

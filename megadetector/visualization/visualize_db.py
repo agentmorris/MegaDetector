@@ -570,7 +570,7 @@ def args_to_object(args, obj):
             setattr(obj, n, v)
 
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser()
     parser.add_argument('db_path', action='store', type=str,

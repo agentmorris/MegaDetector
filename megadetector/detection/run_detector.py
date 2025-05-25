@@ -830,7 +830,7 @@ def try_download_known_detector(detector_file,force_download=False,verbose=False
 
 #%% Command-line driver
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser(
         description='Module to run an animal detection model on images')

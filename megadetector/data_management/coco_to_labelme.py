@@ -252,7 +252,7 @@ if False:
 
 import sys,argparse
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser(
         description='Convert a COCO database to labelme annotation format')

@@ -225,7 +225,7 @@ def combine_api_shard_files(input_files, output_file=None):
 
 #%% Command-line driver
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser()
     parser.add_argument(

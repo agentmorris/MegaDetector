@@ -680,7 +680,7 @@ if False:
 
 #%% Command-line driver
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser()
     parser.add_argument('results_file', type=str, help='Input .json filename')

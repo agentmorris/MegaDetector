@@ -153,7 +153,7 @@ if False:
 
 import sys,argparse
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser(
         description='Copies images from a possibly-nested folder structure to a flat folder structure, ' + \

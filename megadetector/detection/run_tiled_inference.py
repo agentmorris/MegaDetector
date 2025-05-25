@@ -899,7 +899,7 @@ if False:
 
 import sys,argparse
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser(
         description='Chop a folder of images up into tiles, run MD on the tiles, and stitch the results together')

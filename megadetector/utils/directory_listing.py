@@ -212,7 +212,7 @@ def traverse_and_create_index(dir, sas_url=None, overwrite_files=False,
 
 #%% Command-line driver
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser()
 

@@ -111,7 +111,7 @@ import pandas as pd
 
 #%% Main function
 
-def main():
+def main(): # noqa
     args = _parse_args()
     js = csv_to_jsondict(args.input_csv_file)
     for label in js:

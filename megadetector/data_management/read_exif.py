@@ -854,7 +854,7 @@ if False:
 import argparse
 import sys
 
-def main():
+def main(): # noqa
 
     options = ReadExifOptions()
 

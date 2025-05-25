@@ -189,7 +189,7 @@ def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
 
 #%% Command-line driver
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser()
     parser.add_argument(

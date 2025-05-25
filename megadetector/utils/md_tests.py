@@ -1725,7 +1725,7 @@ if False:
 
 #%% Command-line driver
 
-def main():
+def main(): # noqa
 
     options = MDTestOptions()
 

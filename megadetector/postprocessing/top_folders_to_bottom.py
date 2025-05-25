@@ -194,7 +194,7 @@ if False:
 
 # python top_folders_to_bottom.py "g:\temp\separated_images" "g:\temp\separated_images_inverted" --n_threads 100
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser()
     parser.add_argument('input_folder', type=str, help='Input image folder')

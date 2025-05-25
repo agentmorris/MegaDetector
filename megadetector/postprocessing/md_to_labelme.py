@@ -292,7 +292,7 @@ if False:
 
 import sys,argparse
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser(
         description='Convert MD output to labelme annotation format')

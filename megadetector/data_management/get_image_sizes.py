@@ -159,7 +159,7 @@ if False:
 
 #%% Command-line driver
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser()
     parser.add_argument('filenames',type=str,

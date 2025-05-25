@@ -353,7 +353,7 @@ class BatchScorer:
         return detections
 
 
-def main():
+def main(): # noqa
     print('score.py, main()')
 
     # information to determine input and output locations

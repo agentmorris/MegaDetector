@@ -13,7 +13,7 @@ Differs from prepare_classification_script_mc.py only in the final class mapping
 
 import os
 
-def main():
+def main(): # noqa
     organization_name = 'idfg'
     job_name = 'idfg-2022-01-27-EOE2021S_Group6'
     input_filename = 'idfg-2022-01-27-EOE2021S_Group6_detections.filtered_rde_0.60_0.85_30_0.20.json'

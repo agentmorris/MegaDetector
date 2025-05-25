@@ -971,7 +971,7 @@ def run_inference_with_yolo_val(options):
 import argparse
 from megadetector.utils.ct_utils import args_to_object
 
-def main():
+def main(): # noqa
 
     options = YoloInferenceOptions()
 

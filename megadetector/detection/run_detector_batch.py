@@ -1241,7 +1241,7 @@ if False:
 
 #%% Command-line driver
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser(
         description='Module to run a TF/PT animal detection model on lots of images')

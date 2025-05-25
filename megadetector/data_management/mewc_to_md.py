@@ -308,7 +308,7 @@ if False:
 import sys
 import argparse
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser()
 

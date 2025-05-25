@@ -1897,7 +1897,7 @@ python compare_batch_results.py ~/tmp/comparison-test ~/data/KGA ~/data/KGA-5a.j
 
 import sys,argparse,textwrap
 
-def main():
+def main(): # noqa
 
     options = BatchComparisonOptions()
 

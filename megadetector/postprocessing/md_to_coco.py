@@ -365,7 +365,7 @@ if False:
 
 import sys,argparse
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser(
         description='"Convert" MD output to COCO format, in quotes because this is an opinionated transformation that requires a confidence threshold')

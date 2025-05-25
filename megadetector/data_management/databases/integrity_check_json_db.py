@@ -442,7 +442,7 @@ def integrity_check_json_db(jsonFile, options=None):
 
 #%% Command-line driver
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser()
     parser.add_argument('jsonFile',type=str,

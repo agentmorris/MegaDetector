@@ -63,7 +63,7 @@ if False:
 
 import sys
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser()
     parser.add_argument('inputFile', help='.json file containing the original, unfiltered API results')

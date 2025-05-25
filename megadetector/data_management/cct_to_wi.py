@@ -28,7 +28,7 @@ from collections import defaultdict
 
 #%% Main wrapper
 
-def main():
+def main(): # noqa
     """
     Converts COCO Camera Traps .json files to the Wildlife Insights
     batch upload format; to use this, you need to modify all the paths in the "Paths"

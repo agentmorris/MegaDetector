@@ -228,7 +228,7 @@ if False:
 
 # This is just a test driver, this module is not meant to be run from the command line.
 
-def main():
+def main(): # noqa
 
     # Load images from a test directory.
     #

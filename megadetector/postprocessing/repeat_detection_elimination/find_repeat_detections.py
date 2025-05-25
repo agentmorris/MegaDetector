@@ -71,7 +71,7 @@ if False:
 
 #%% Command-line driver
 
-def main():
+def main(): # noqa
 
     defaultOptions = repeat_detections_core.RepeatDetectionOptions()
 

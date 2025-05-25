@@ -16,7 +16,7 @@ from PIL import Image
 datafile = '/datadrive/snapshotserengeti/databases/snapshotserengeti.json'
 image_base = '/datadrive/snapshotserengeti/images/'
 
-def main():
+def main(): # noqa
 
     with open(datafile,'r') as f:
         data = json.load(f)

@@ -439,7 +439,7 @@ if False:
 
 import sys,argparse
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser(
         description='Generates a .csv report from a MD-formatted .json file')

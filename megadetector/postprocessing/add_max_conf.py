@@ -44,7 +44,7 @@ def add_max_conf(input_file,output_file):
 
 import sys,argparse
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file',type=str,

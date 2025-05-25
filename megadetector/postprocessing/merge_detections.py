@@ -289,7 +289,7 @@ def merge_detections(source_files,target_file,output_file,options=None):
 
 #%% Command-line driver
 
-def main():
+def main(): # noqa
 
     default_options = MergeDetectionsOptions()
 

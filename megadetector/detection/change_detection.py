@@ -707,7 +707,7 @@ def create_change_previews(motion_results, output_folder, num_samples=10, random
 
 #%% Command-line driver
 
-def main():
+def main(): # noqa
     parser = argparse.ArgumentParser(description='Detect motion in timelapse camera images')
     parser.add_argument('--root_dir', required=True, help='Root directory containing camera folders')
     parser.add_argument('--output_csv', default=None, help='Optional output CSV file')

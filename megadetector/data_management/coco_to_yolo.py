@@ -637,7 +637,7 @@ if False:
 
 import sys,argparse
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser(
         description='Convert COCO-formatted data to YOLO format, flattening the image structure')

@@ -520,7 +520,7 @@ if False:
 
 import sys,argparse
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser(
         description='Convert labelme-formatted data to COCO')

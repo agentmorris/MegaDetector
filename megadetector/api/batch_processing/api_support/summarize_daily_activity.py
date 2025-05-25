@@ -124,7 +124,7 @@ def send_message():
     print('')
 
 
-def main():
+def main(): # noqa
     """
     Wake up at 5 minutes past midnight UTC to send a summary of yesterday's activities if there were any.
     Then goes in a loop to wake up and send a summary every 24 hours.

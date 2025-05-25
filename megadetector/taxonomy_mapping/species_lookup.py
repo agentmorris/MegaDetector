@@ -848,7 +848,7 @@ if False:
 
 #%% Command-line driver
 
-def main():
+def main(): # noqa
 
     # Read command line inputs (absolute path)
     parser = argparse.ArgumentParser()

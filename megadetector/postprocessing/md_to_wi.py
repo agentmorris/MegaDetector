@@ -15,7 +15,7 @@ from megadetector.utils.wi_utils import generate_predictions_json_from_md_result
 
 #%% Command-line driver
 
-def main():
+def main(): # noqa
 
     parser = argparse.ArgumentParser()
     parser.add_argument('md_results_file', action='store', type=str,
