@@ -109,7 +109,6 @@ convention = "google"
 
 [tool.ruff.lint.isort]
 known-first-party = ["megadetector"]
-force-single-line = true # For `from __future__ import annotations`
 # Default sections (future, stdlib, thirdparty, firstparty, localfolder) are generally good.
 # We can add more specific section configuration here if needed later.
 ```
