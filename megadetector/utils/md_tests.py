@@ -28,6 +28,10 @@ import zipfile
 import subprocess
 import argparse
 import inspect
+import datetime
+import tempfile
+import shutil
+from megadetector.utils import ct_utils
 
 from copy import copy
 
@@ -783,6 +787,7 @@ def run_python_tests(options):
     
     from megadetector.utils.ct_utils import __module_test__ as ct_utils_test
     ct_utils_test()
+    test_write_json_functionality()
     
     
     ## Import tests
@@ -1872,6 +1877,92 @@ def main():
     options.detector_options = parse_kvp_list(args.detector_options,d=initial_detector_options)
     
     run_tests(options)
+
+# ...def main()
+
+def test_write_json_functionality():
+    
+    temp_dir = tempfile.mkdtemp()
+
+    def _verify_json_file(file_path, expected_content_str):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        assert content == expected_content_str, \
+            f"File {file_path} content mismatch.\nExpected:\n{expected_content_str}\nGot:\n{content}"
+
+    # Test case i: Default indent (1)
+    data_default = {'a': 1, 'b': 2}
+    file_path_default = os.path.join(temp_dir, 'test_default_indent.json')
+    ct_utils.write_json(file_path_default, data_default)
+    # Default indent is 1
+    _verify_json_file(file_path_default, '{\n "a": 1,\n "b": 2\n}')
+
+    # Test case ii: Custom indent (e.g., 4)
+    data_custom_indent = {'a': 1, 'b': 2}
+    file_path_custom_indent = os.path.join(temp_dir, 'test_custom_indent.json')
+    ct_utils.write_json(file_path_custom_indent, data_custom_indent, indent=4)
+    _verify_json_file(file_path_custom_indent, '{\n    "a": 1,\n    "b": 2\n}')
+
+    # Test case iii: indent=None (compact)
+    data_no_indent = {'a': 1, 'b': 2}
+    file_path_no_indent = os.path.join(temp_dir, 'test_no_indent.json')
+    ct_utils.write_json(file_path_no_indent, data_no_indent, indent=None)
+    _verify_json_file(file_path_no_indent, '{"a": 1, "b": 2}')
+
+    # Test case iv: force_str=True
+    data_force_str = {'a': 1, 's': {1, 2, 3}}  # Set is not normally JSON serializable
+    file_path_force_str = os.path.join(temp_dir, 'test_force_str.json')
+    ct_utils.write_json(file_path_force_str, data_force_str, force_str=True)
+    with open(file_path_force_str, 'r', encoding='utf-8') as f:
+        result_force_str = json.load(f)
+    # Exact string representation of set can vary, e.g. '{1, 2, 3}' vs '{2, 1, 3}'
+    # So, we convert back to a set for comparison.
+    assert isinstance(result_force_str['s'], str)
+    assert eval(result_force_str['s']) == {1, 2, 3}
+
+
+    # Test case v: serialize_datetimes=True
+    dt = datetime.datetime(2023, 1, 1, 10, 30, 0)
+    d_date = datetime.date(2023, 2, 15)
+    data_serialize_datetimes = {'dt_obj': dt, 'd_obj': d_date}
+    file_path_serialize_datetimes = os.path.join(temp_dir, 'test_serialize_datetimes.json')
+    # Sort keys for consistent output, as dict order might not be guaranteed
+    # ct_utils.write_json sorts keys by default if indent is not None.
+    ct_utils.write_json(file_path_serialize_datetimes, data_serialize_datetimes, serialize_datetimes=True)
+    _verify_json_file(file_path_serialize_datetimes, '{\n "d_obj": "2023-02-15",\n "dt_obj": "2023-01-01T10:30:00"\n}')
+
+
+    # Test case vi: serialize_datetimes=True and force_str=True
+    dt_combo = datetime.datetime(2023, 1, 1, 12, 0, 0)
+    data_datetime_force_str = {'dt_obj': dt_combo, 's_obj': {4, 5}}
+    file_path_datetime_force_str = os.path.join(temp_dir, 'test_datetime_and_force_str.json')
+    ct_utils.write_json(file_path_datetime_force_str, data_datetime_force_str, serialize_datetimes=True, force_str=True)
+    with open(file_path_datetime_force_str, 'r', encoding='utf-8') as f:
+        result_datetime_force_str = json.load(f)
+    assert result_datetime_force_str['dt_obj'] == "2023-01-01T12:00:00"
+    assert isinstance(result_datetime_force_str['s_obj'], str)
+    assert eval(result_datetime_force_str['s_obj']) == {4, 5}
+
+    # Test case vii: ensure_ascii=False (with non-ASCII chars)
+    data_ensure_ascii_false = {'name': 'Jules César'}
+    file_path_ensure_ascii_false = os.path.join(temp_dir, 'test_ensure_ascii_false.json')
+    ct_utils.write_json(file_path_ensure_ascii_false, data_ensure_ascii_false, ensure_ascii=False)
+    with open(file_path_ensure_ascii_false, 'r', encoding='utf-8') as f:
+        content_ensure_ascii_false = f.read()
+    assert content_ensure_ascii_false == '{\n "name": "Jules César"\n}'
+    
+    # Test case viii: ensure_ascii=True (with non-ASCII chars, default)
+    data_ensure_ascii_true = {'name': 'Jules César'}
+    file_path_ensure_ascii_true = os.path.join(temp_dir, 'test_ensure_ascii_true.json')
+    ct_utils.write_json(file_path_ensure_ascii_true, data_ensure_ascii_true, ensure_ascii=True)
+    with open(file_path_ensure_ascii_true, 'r', encoding='utf-8') as f: 
+        content_ensure_ascii_true = f.read()
+    assert content_ensure_ascii_true == '{\n "name": "Jules C\\u00e9sar"\n}'
+    
+    shutil.rmtree(temp_dir)
+    print('ct_utils.write_json tests passed!')
+
+# ...def test_write_json_functionality()
     
 if __name__ == '__main__':    
     main()

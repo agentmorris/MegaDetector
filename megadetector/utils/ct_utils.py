@@ -13,6 +13,7 @@ import json
 import math
 import os
 import builtins
+import datetime
 
 import jsonpickle
 import numpy as np
@@ -181,9 +182,27 @@ def is_list_sorted(L, reverse=False):
         return all(L[i] >= L[i + 1] for i in range(len(L)-1))
     else:
         return all(L[i] <= L[i + 1] for i in range(len(L)-1))
+
+
+def json_serialize_datetime(obj):
+    """
+    Serializes datetime.datetime and datetime.date objects to ISO format.
+
+    Args:
+        obj (object): The object to serialize.
+
+    Returns:
+        str: The ISO format string representation of the datetime object.
+
+    Raises:
+        TypeError: If the object is not a datetime.datetime or datetime.date instance.
+    """
+    if isinstance(obj, (datetime.datetime, datetime.date)):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable by json_serialize_datetime")
         
 
-def write_json(path, content, indent=1):
+def write_json(path, content, indent=1, force_str=False, serialize_datetimes=False, ensure_ascii=True):
     """
     Standardized wrapper for json.dump().
     
@@ -191,10 +210,26 @@ def write_json(path, content, indent=1):
         path (str): filename to write to
         content (object): object to dump
         indent (int, optional): indentation depth passed to json.dump
+        force_str (bool, optional): whether to force string conversion for non-serializable objects
+        serialize_datetimes (bool, optional): whether to serialize datetime objects to ISO format
+        ensure_ascii (bool, optional): whether to ensure ASCII characters in the output
     """
     
+    default_handler = None
+    if serialize_datetimes:
+        default_handler = json_serialize_datetime
+        if force_str:
+            def serialize_or_str(obj):
+                try:
+                    return json_serialize_datetime(obj)
+                except TypeError:
+                    return str(obj)
+            default_handler = serialize_or_str
+    elif force_str:
+        default_handler = str
+        
     with open(path, 'w', newline='\n') as f:
-        json.dump(content, f, indent=indent)
+        json.dump(content, f, indent=indent, default=default_handler, ensure_ascii=ensure_ascii)
 
 
 def convert_yolo_to_xywh(yolo_box):

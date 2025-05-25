@@ -29,6 +29,7 @@ from megadetector.data_management.lila.lila_common import read_lila_all_images_f
 from megadetector.utils.url_utils import download_url
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.utils.path_utils import recursive_file_list
+from megadetector.utils import ct_utils
 
 # We'll write images, metadata downloads, and temporary files here
 lila_local_base = os.path.expanduser('~/lila')
@@ -204,8 +205,7 @@ else:
             assert np.isnan(row['common_name'])
             location_to_blank_image_urls[location_id].append(url)
 
-    with open(location_to_blank_image_urls_cache_file,'w') as f:
-        json.dump(location_to_blank_image_urls,f,indent=1)
+    ct_utils.write_json(location_to_blank_image_urls_cache_file, location_to_blank_image_urls)
 
 n_locations_with_blanks = len(location_to_blank_image_urls)
 print('Found {} locations with blank images'.format(n_locations_with_blanks))
@@ -441,8 +441,7 @@ for i_fn,source_file_relative in tqdm(enumerate(images_to_review_to_detections),
                                           target_size=(1280,-1))
 
 # This is a temporary file I just used during debugging
-with open(os.path.join(project_base,'output_file_to_source_file.json'),'w') as f:
-    json.dump(output_file_to_source_file,f,indent=1)
+ct_utils.write_json(os.path.join(project_base,'output_file_to_source_file.json'), output_file_to_source_file)
     
     
 #%% Manual review
@@ -551,8 +550,6 @@ confirmed_fn_relative_to_location = {}
 for i_fn,fn_relative in tqdm(enumerate(all_confirmed_blanks),total=len(all_confirmed_blanks)):
     confirmed_fn_relative_to_location[fn_relative] = all_fn_relative_to_location[fn_relative]
 
-with open(all_fn_relative_to_location_file,'w') as f:
-    json.dump(all_fn_relative_to_location,f,indent=1)
+ct_utils.write_json(all_fn_relative_to_location_file, all_fn_relative_to_location)
     
-with open(confirmed_fn_relative_to_location_file,'w') as f:
-    json.dump(confirmed_fn_relative_to_location,f,indent=1)    
+ct_utils.write_json(confirmed_fn_relative_to_location_file, confirmed_fn_relative_to_location)    
