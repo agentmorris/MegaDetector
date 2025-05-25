@@ -1426,28 +1426,35 @@ def process_batch_results(options):
 
         start_time = time.time()
         if options.parallelize_rendering:
-            if options.parallelize_rendering_n_cores is None:                
-                if options.parallelize_rendering_with_threads:
-                    pool = ThreadPool()
+            pool = None
+            try:
+                if options.parallelize_rendering_n_cores is None:                
+                    if options.parallelize_rendering_with_threads:
+                        pool = ThreadPool()
+                    else:
+                        pool = Pool()
                 else:
-                    pool = Pool()
-            else:
-                if options.parallelize_rendering_with_threads:
-                    pool = ThreadPool(options.parallelize_rendering_n_cores)
-                    worker_string = 'threads'
-                else:
-                    pool = Pool(options.parallelize_rendering_n_cores)
-                    worker_string = 'processes'
-                print('Rendering images with {} {}'.format(options.parallelize_rendering_n_cores,
-                                                           worker_string))
-                
-            rendering_results = list(tqdm(pool.imap(
-                partial(_render_image_with_gt,
-                        ground_truth_indexed_db=ground_truth_indexed_db,
-                        detection_categories=detection_categories,
-                        classification_categories=classification_categories,
-                        options=options), 
-                files_to_render), total=len(files_to_render)))
+                    if options.parallelize_rendering_with_threads:
+                        pool = ThreadPool(options.parallelize_rendering_n_cores)
+                        worker_string = 'threads'
+                    else:
+                        pool = Pool(options.parallelize_rendering_n_cores)
+                        worker_string = 'processes'
+                    print('Rendering images with {} {}'.format(options.parallelize_rendering_n_cores,
+                                                               worker_string))
+                    
+                rendering_results = list(tqdm(pool.imap(
+                    partial(_render_image_with_gt,
+                            ground_truth_indexed_db=ground_truth_indexed_db,
+                            detection_categories=detection_categories,
+                            classification_categories=classification_categories,
+                            options=options), 
+                    files_to_render), total=len(files_to_render)))
+            finally:
+                if pool is not None:
+                    pool.close()
+                    pool.join()
+                    print("Pool closed and joined for GT rendering.")
         else:
             for file_info in tqdm(files_to_render):
                 rendering_results.append(_render_image_with_gt(
@@ -1677,32 +1684,38 @@ def process_batch_results(options):
 
         start_time = time.time()
         if options.parallelize_rendering:
-            
-            if options.parallelize_rendering_n_cores is None:                
-                if options.parallelize_rendering_with_threads:
-                    pool = ThreadPool()
+            pool = None
+            try:
+                if options.parallelize_rendering_n_cores is None:                
+                    if options.parallelize_rendering_with_threads:
+                        pool = ThreadPool()
+                    else:
+                        pool = Pool()
                 else:
-                    pool = Pool()
-            else:
-                if options.parallelize_rendering_with_threads:
-                    pool = ThreadPool(options.parallelize_rendering_n_cores)
-                    worker_string = 'threads'
-                else:
-                    pool = Pool(options.parallelize_rendering_n_cores)
-                    worker_string = 'processes'
-                print('Rendering images with {} {}'.format(options.parallelize_rendering_n_cores,
-                                                           worker_string))
-                
-            # _render_image_no_gt(file_info,detection_categories_to_results_name,
-            # detection_categories,classification_categories)
+                    if options.parallelize_rendering_with_threads:
+                        pool = ThreadPool(options.parallelize_rendering_n_cores)
+                        worker_string = 'threads'
+                    else:
+                        pool = Pool(options.parallelize_rendering_n_cores)
+                        worker_string = 'processes'
+                    print('Rendering images with {} {}'.format(options.parallelize_rendering_n_cores,
+                                                               worker_string))
+                    
+                # _render_image_no_gt(file_info,detection_categories_to_results_name,
+                # detection_categories,classification_categories)
 
-            rendering_results = list(tqdm(pool.imap(
-                partial(_render_image_no_gt, 
-                        detection_categories_to_results_name=detection_categories_to_results_name,
-                        detection_categories=detection_categories,
-                        classification_categories=classification_categories,
-                        options=options),
-                        files_to_render), total=len(files_to_render)))
+                rendering_results = list(tqdm(pool.imap(
+                    partial(_render_image_no_gt, 
+                            detection_categories_to_results_name=detection_categories_to_results_name,
+                            detection_categories=detection_categories,
+                            classification_categories=classification_categories,
+                            options=options),
+                            files_to_render), total=len(files_to_render)))
+            finally:
+                if pool is not None:
+                    pool.close()
+                    pool.join()
+                    print("Pool closed and joined for non-GT rendering.")
         else:
             for file_info in tqdm(files_to_render):
                 rendering_result = _render_image_no_gt(file_info,

@@ -886,69 +886,72 @@ def load_and_run_detector_batch(model_file,
         
         # Divide images into chunks; we'll send one chunk to each worker process   
         image_batches = list(_chunks_by_number_of_chunks(image_file_names, n_cores))
-                
-        pool = workerpool(n_cores)
-
-        if checkpoint_path is not None:
-            
-            # Multiprocessing and checkpointing are both enabled at this point
-            
-            checkpoint_queue = Manager().Queue()
-            
-            # Pass the "results" array (which may already contain images loaded from an existing
-            # checkpoint) to the checkpoint queue handler function, which will append results to 
-            # the list as they become available.
-            checkpoint_thread = Thread(target=_checkpoint_queue_handler, 
-                                       args=(checkpoint_path, checkpoint_frequency,
-                                             checkpoint_queue, results), daemon=True)
-            checkpoint_thread.start()
-
-            pool.map(partial(process_images, 
-                             detector=detector,
-                             confidence_threshold=confidence_threshold,
-                             use_image_queue=False,
-                             quiet=quiet,
-                             image_size=image_size, 
-                             checkpoint_queue=checkpoint_queue,
-                             include_image_size=include_image_size,
-                             include_image_timestamp=include_image_timestamp,
-                             include_exif_data=include_exif_data,
-                             augment=augment,
-                             detector_options=detector_options), 
-                             image_batches)
-
-            checkpoint_queue.put(None)
-
-        else:
-            
-            # Multprocessing is enabled, but checkpointing is not
-            
-            new_results = pool.map(partial(process_images, 
-                                           detector=detector,
-                                           confidence_threshold=confidence_threshold,
-                                           use_image_queue=False,
-                                           quiet=quiet,
-                                           checkpoint_queue=None,
-                                           image_size=image_size,
-                                           include_image_size=include_image_size,
-                                           include_image_timestamp=include_image_timestamp,
-                                           include_exif_data=include_exif_data,
-                                           augment=augment,
-                                           detector_options=detector_options), 
-                                           image_batches)
-
-            new_results = list(itertools.chain.from_iterable(new_results))
-            
-            # Append the results we just computed to "results", which is *usually* empty, but will
-            # be non-empty if we resumed from a checkpoint
-            results += new_results
-
-        # ...if checkpointing is/isn't enabled
-    
+        
+        pool = None
         try:
-            pool.close()
-        except Exception as e:
-            print('Warning: error closing multiprocessing pool:\n{}'.format(str(e)))
+            pool = workerpool(n_cores)
+
+            if checkpoint_path is not None:
+                
+                # Multiprocessing and checkpointing are both enabled at this point
+                
+                checkpoint_queue = Manager().Queue()
+                
+                # Pass the "results" array (which may already contain images loaded from an existing
+                # checkpoint) to the checkpoint queue handler function, which will append results to 
+                # the list as they become available.
+                checkpoint_thread = Thread(target=_checkpoint_queue_handler, 
+                                           args=(checkpoint_path, checkpoint_frequency,
+                                                 checkpoint_queue, results), daemon=True)
+                checkpoint_thread.start()
+
+                pool.map(partial(process_images, 
+                                 detector=detector,
+                                 confidence_threshold=confidence_threshold,
+                                 use_image_queue=False,
+                                 quiet=quiet,
+                                 image_size=image_size, 
+                                 checkpoint_queue=checkpoint_queue,
+                                 include_image_size=include_image_size,
+                                 include_image_timestamp=include_image_timestamp,
+                                 include_exif_data=include_exif_data,
+                                 augment=augment,
+                                 detector_options=detector_options), 
+                                 image_batches)
+
+                checkpoint_queue.put(None)
+
+            else:
+                
+                # Multprocessing is enabled, but checkpointing is not
+                
+                new_results = pool.map(partial(process_images, 
+                                               detector=detector,
+                                               confidence_threshold=confidence_threshold,
+                                               use_image_queue=False,
+                                               quiet=quiet,
+                                               checkpoint_queue=None,
+                                               image_size=image_size,
+                                               include_image_size=include_image_size,
+                                               include_image_timestamp=include_image_timestamp,
+                                               include_exif_data=include_exif_data,
+                                               augment=augment,
+                                               detector_options=detector_options), 
+                                               image_batches)
+
+                new_results = list(itertools.chain.from_iterable(new_results))
+                
+                # Append the results we just computed to "results", which is *usually* empty, but will
+                # be non-empty if we resumed from a checkpoint
+                results += new_results
+
+            # ...if checkpointing is/isn't enabled
+        
+        finally:
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print("Pool closed and joined.")
                 
     # ...if we're running (1) with image queue, (2) on one core, or (3) on multiple cores
     
