@@ -28,10 +28,6 @@ Miscellaneous tools for manipulating COCO Camera Traps .json files.  Of particul
 
 Scripts for preparing data for upload to [LILA](https://lila.science), and working with LILA index files.
 
-## importers
-
-Code for converting frequently-used metadata formats (or sometimes one-off data sets) to COCO Camera Traps .json files.
-
 # COCO Camera Traps format
 
 Permanent link to this section: <https://lila.science/coco-camera-traps>

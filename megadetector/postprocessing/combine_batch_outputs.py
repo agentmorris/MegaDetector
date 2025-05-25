@@ -32,9 +32,9 @@ import json
 #%% Merge functions
 
 def combine_batch_output_files(input_files,
-                             output_file=None,
-                             require_uniqueness=True,
-                             verbose=True):
+                               output_file=None,
+                               require_uniqueness=True,
+                               verbose=True):
     """
     Merges the list of MD results files [input_files] into a single
     dictionary, optionally writing the result to [output_file].

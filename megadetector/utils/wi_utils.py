@@ -2228,7 +2228,7 @@ def _species_string_to_canonical_species_string(species):
 
     # If this is already a taxonomy string...    
     if len(species.split(';')) == 5:
-        pass
+        taxonomy_string = species
     # If this is a common name...
     elif species in common_name_to_taxonomy_info:
         taxonomy_info = common_name_to_taxonomy_info[species]
@@ -2329,33 +2329,34 @@ def species_allowed_in_country(species,country,state=None,return_status=False):
         assert len(blocked_countries) > 0
         status = 'allow_not_on_block_list'
         
-    # Now let's see whether we have to deal with any regional rules
-    if state is None:
-        
-        # If state rules are provided, we need to have a state
-        if country_code == 'USA':
+    # Now let's see whether we have to deal with any regional rules.
+    #
+    # Right now regional rules only exist for the US.
+    if (country_code == 'USA') and ('USA' in geofencing_rules_this_species[rule_type]):
+    
+        if state is None:
+            
             state_list = geofencing_rules_this_species[rule_type][country_code]
             if len(state_list) > 0:
-                raise ValueError('Cannot determine status for a species with state-level rules with no state information')
+                assert status.startswith('allow')
+                status = 'allow_no_state'                
                 
-    else:
-        
-        # Right now state-level rules only exist for the US
-        assert country_code == 'USA'
-        state_list = geofencing_rules_this_species[rule_type][country_code]
-        
-        if state in state_list:
-            # If the state is on the list, do what the list says
-            if rule_type == 'allow':
-                status = 'allow_on_state_allow_list'
-            else:
-                status = 'block_on_state_block_list'
         else:
-            # If the state is not on the list, do the opposite of what the list says
-            if rule_type == 'allow':
-                status = 'block_not_on_state_allow_list'
+
+            state_list = geofencing_rules_this_species[rule_type][country_code]
+            
+            if state in state_list:
+                # If the state is on the list, do what the list says
+                if rule_type == 'allow':
+                    status = 'allow_on_state_allow_list'
+                else:
+                    status = 'block_on_state_block_list'
             else:
-                status = 'allow_not_on_state_block_list'
+                # If the state is not on the list, do the opposite of what the list says
+                if rule_type == 'allow':
+                    status = 'block_not_on_state_allow_list'
+                else:
+                    status = 'allow_not_on_state_block_list'
         
     if return_status:
         return status
@@ -2367,6 +2368,103 @@ def species_allowed_in_country(species,country,state=None,return_status=False):
             return False
 
 # ...def species_allowed_in_country(...)
+
+
+def export_geofence_data_to_csv(csv_fn, include_common_names=True):
+    """
+    Converts the geofence .json representation into an equivalent .csv representation,
+    with one taxon per row and one region per column.  Empty values indicate non-allowed
+    combinations, positive numbers indicate allowed combinations.  Negative values
+    are reserved for specific non-allowed combinations.
+
+    Module-global geofence data should already have been initialized with 
+    initialize_geofencing().
+
+    Args:
+        csv_fn (str): output .csv file
+        include_common_names (bool, optional): include a column for common names
+    
+    Returns:
+        dataframe: the pandas representation of the csv output file
+    """
+
+    global taxonomy_string_to_geofencing_rules
+    global taxonomy_string_to_taxonomy_info
+
+    all_taxa = sorted(list(taxonomy_string_to_geofencing_rules.keys()))
+    print('Preparing geofencing export for {} taxa'.format(len(all_taxa)))
+
+    all_regions = set()
+
+    # taxon = all_taxa[0]
+    for taxon in all_taxa:
+        
+        taxon_rules = taxonomy_string_to_geofencing_rules[taxon]
+        for rule_type in taxon_rules.keys():
+            
+            assert rule_type in ('allow','block')    
+            all_country_rules_this_species = taxon_rules[rule_type]
+            
+            for country_code in all_country_rules_this_species.keys():            
+                all_regions.add(country_code)
+                assert country_code in country_code_to_country
+                assert len(country_code) == 3
+                region_rules = all_country_rules_this_species[country_code]                
+                if len(region_rules) > 0:
+                    assert country_code == 'USA'
+                    for region_name in region_rules:
+                        assert len(region_name) == 2
+                        assert isinstance(region_name,str)
+                        all_regions.add(country_code + ':' + region_name)
+
+    all_regions = sorted(list(all_regions))
+
+    print('Found {} regions'.format(len(all_regions)))
+
+    n_allowed = 0
+    df = pd.DataFrame(index=all_taxa,columns=all_regions)
+    # df = df.fillna(np.nan)
+
+    for taxon in tqdm(all_taxa):
+        for region in all_regions:
+            tokens = region.split(':')
+            country_code = tokens[0]
+            state_code = None
+            if len(tokens) > 1:
+                state_code = tokens[1]
+            allowed = species_allowed_in_country(species=taxon,
+                                                 country=country_code,
+                                                 state=state_code,
+                                                 return_status=False)
+            if allowed:
+                n_allowed += 1
+                df.loc[taxon,region] = 1
+
+        # ...for each region
+
+    # ...for each taxon
+
+    print('Allowed {} of {} combinations'.format(n_allowed,len(all_taxa)*len(all_regions)))
+
+    # Before saving, convert columns with numeric values to integers
+    for col in df.columns:
+        # Check whether each column has any non-NaN values that could be integers
+        if df[col].notna().any() and pd.to_numeric(df[col], errors='coerce').notna().any():
+            # Convert column to Int64 type (pandas nullable integer type)
+            df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
+
+    if include_common_names:
+        df.insert(loc=0,column='common_name',value='')
+        for taxon in all_taxa:
+            if taxon in taxonomy_string_to_taxonomy_info:
+                taxonomy_info = taxonomy_string_to_taxonomy_info[taxon]
+                common_name = taxonomy_info['common_name']
+                assert isinstance(common_name,str) and len(common_name) < 50
+                df.loc[taxon,'common_name'] = common_name
+
+    df.to_csv(csv_fn,index=True,header=True)
+
+# ...def export_geofence_data_to_csv(...)
 
 
 #%% Interactive driver(s)
@@ -2413,13 +2511,13 @@ if False:
     
     #%% Generate an allow-list
     
-    taxon_name = 'hippopotamus amphibius'
+    taxon_name = 'potoroidae'
     taxonomy_info = binomial_name_to_taxonomy_info[taxon_name]    
     taxonomy_string_short = taxonomy_info_to_taxonomy_string(taxonomy_info)
     assert len(taxonomy_string_short.split(';')) == 5
     
     generate_csv_rows_for_species(species_string=taxonomy_string_short,
-                                  allow_countries=['COL'],
+                                  allow_countries=['AUS'],
                                   block_countries=None,
                                   allow_states=None,
                                   block_states=None,
@@ -2436,12 +2534,12 @@ if False:
     #%% Geofencing lookups
     
     # This can be a latin or common name
-    species = 'hippopotamidae'
-    # print(common_name_to_taxonomy_info[species])
+    taxon = 'potoroidae'
+    # print(common_name_to_taxonomy_info[taxon])
     
     # This can be a name or country code
-    country = 'USA'
-    print(species_allowed_in_country(species, country))
+    country = 'AUS'
+    print(species_allowed_in_country(taxon, country))
     
     
     #%% Bulk geofence lookups
