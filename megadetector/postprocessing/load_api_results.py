@@ -169,12 +169,12 @@ def load_api_results_csv(filename, normalize_paths=True, filename_replacements={
 
         replacement_string = filename_replacements[string_to_replace]
 
-        # iRow = 0
-        for iRow in range(0,len(detection_results)):
-            row = detection_results.iloc[iRow]
+        # i_row = 0
+        for i_row in range(0,len(detection_results)):
+            row = detection_results.iloc[i_row]
             fn = row['image_path']
             fn = fn.replace(string_to_replace,replacement_string)
-            detection_results.at[iRow,'image_path'] = fn
+            detection_results.at[i_row,'image_path'] = fn
 
     print('Finished loading and de-serializing MD results for {} images from {}'.format(
         len(detection_results),filename))

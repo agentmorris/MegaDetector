@@ -252,11 +252,11 @@ def read_pil_exif(im,options=None):
         try:
 
             # Find the tag number for GPS info, in practice should alays be 34853
-            GPSINFO_TAG = next(tag for tag, name in ExifTags.TAGS.items() if name == "GPSInfo")
-            assert GPSINFO_TAG == 34853
+            gpsinfo_tag = next(tag for tag, name in ExifTags.TAGS.items() if name == "GPSInfo")
+            assert gpsinfo_tag == 34853
 
             # These are integer keys, e.g. {7: (14.0, 27.0, 7.24)}
-            gps_info_raw = exif_info.get_ifd(GPSINFO_TAG)
+            gps_info_raw = exif_info.get_ifd(gpsinfo_tag)
 
             # Convert to strings, e.g. 'GPSTimeStamp'
             gps_info = {}

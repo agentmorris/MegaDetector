@@ -449,7 +449,7 @@ def process_video(options):
 
         ## Extract frames
 
-        frame_filenames, Fs = video_to_frames(
+        frame_filenames, fs = video_to_frames(
                                 options.input_video_file,
                                 frame_output_folder,
                                 every_n_frames=options.frame_sample,
@@ -489,7 +489,7 @@ def process_video(options):
                 options.output_json_file,
                 relative_path_base=frame_output_folder,
                 detector_file=options.model_file,
-                custom_metadata={'video_frame_rate':Fs})
+                custom_metadata={'video_frame_rate':fs})
 
     # ...if we are/aren't keeping raw frames on disk
 
@@ -519,12 +519,12 @@ def process_video(options):
         if options.rendering_fs is not None:
             rendering_fs = options.rendering_fs
         elif options.frame_sample is None and options.time_sample is None:
-            rendering_fs = Fs
+            rendering_fs = fs
         elif options.frame_sample is not None:
             assert options.time_sample is None
             # If the original video was 30fps and we sampled every 10th frame,
             # render at 3fps
-            rendering_fs = Fs / options.frame_sample
+            rendering_fs = fs / options.frame_sample
         elif options.time_sample is not None:
             rendering_fs = options.time_sample
 
@@ -532,7 +532,7 @@ def process_video(options):
         ## Render the output video
 
         print('Rendering {} frames to {} at {} fps (original video {} fps)'.format(
-            len(detected_frame_files), options.output_video_file,rendering_fs,Fs))
+            len(detected_frame_files), options.output_video_file,rendering_fs,fs))
         frames_to_video(detected_frame_files,
                         rendering_fs,
                         options.output_video_file,
@@ -664,7 +664,7 @@ def process_video_folder(options):
 
         os.makedirs(frame_output_folder, exist_ok=True)
 
-        frame_filenames, Fs, video_filenames = \
+        frame_filenames, fs, video_filenames = \
             video_folder_to_frames(input_folder=options.input_video_file,
                                    output_folder_base=frame_output_folder,
                                    recursive=options.recursive,
@@ -681,7 +681,7 @@ def process_video_folder(options):
             video_filename_relative = os.path.relpath(video_filename_abs,options.input_video_file)
             video_filename_relative = video_filename_relative.replace('\\','/')
             assert video_filename_relative not in video_filename_to_fs
-            video_filename_to_fs[video_filename_relative] = Fs[i_video]
+            video_filename_to_fs[video_filename_relative] = fs[i_video]
 
         print('Extracted frames for {} videos'.format(len(set(video_filenames))))
         image_file_names = list(itertools.chain.from_iterable(frame_filenames))
@@ -794,7 +794,7 @@ def process_video_folder(options):
         # i_video=0; input_video_file_abs = video_filenames[i_video]
         for i_video,input_video_file_abs in enumerate(video_filenames):
 
-            video_fs = Fs[i_video]
+            video_fs = fs[i_video]
 
             if options.rendering_fs is not None:
                 rendering_fs = options.rendering_fs

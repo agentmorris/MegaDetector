@@ -158,9 +158,9 @@ def get_video_fs(input_video_file):
 
     assert os.path.isfile(input_video_file), 'File {} not found'.format(input_video_file)
     vidcap = cv2.VideoCapture(input_video_file)
-    Fs = vidcap.get(cv2.CAP_PROP_FPS)
+    fs = vidcap.get(cv2.CAP_PROP_FPS)
     vidcap.release()
-    return Fs
+    return fs
 
 
 def _frame_number_to_filename(frame_number):
@@ -453,11 +453,11 @@ def video_to_frames(input_video_file,
 
     vidcap = cv2.VideoCapture(input_video_file)
     n_frames = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
-    Fs = vidcap.get(cv2.CAP_PROP_FPS)
+    fs = vidcap.get(cv2.CAP_PROP_FPS)
 
     if (every_n_frames is not None) and (every_n_frames < 0):
         every_n_seconds = abs(every_n_frames)
-        every_n_frames = int(every_n_seconds * Fs)
+        every_n_frames = int(every_n_seconds * fs)
         if verbose:
             print('Interpreting a time sampling rate of {} hz as a frame interval of {}'.format(
                 every_n_seconds,every_n_frames))
@@ -523,7 +523,7 @@ def video_to_frames(input_video_file,
 
             if verbose:
                 print('Skipping video {}, all output frames exist'.format(input_video_file))
-            return frame_filenames,Fs
+            return frame_filenames,fs
 
         else:
 
@@ -538,7 +538,7 @@ def video_to_frames(input_video_file,
     # ...if we need to check whether to skip this video entirely
 
     if verbose:
-        print('Video {} contains {} frames at {} Hz'.format(input_video_file,n_frames,Fs))
+        print('Video {} contains {} frames at {} Hz'.format(input_video_file,n_frames,fs))
 
     frame_filenames = []
 
@@ -651,7 +651,7 @@ def video_to_frames(input_video_file,
             len(frame_filenames),n_frames,input_video_file))
 
     vidcap.release()
-    return frame_filenames,Fs
+    return frame_filenames,fs
 
 # ...def video_to_frames(...)
 

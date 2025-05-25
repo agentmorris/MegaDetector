@@ -94,22 +94,22 @@ def _check_image_existence_and_size(image,options=None):
 
     assert options.bCheckImageExistence
 
-    filePath = os.path.join(options.baseDir,image['file_name'])
-    if not os.path.isfile(filePath):
-        s = 'Image path {} does not exist'.format(filePath)
+    file_path = os.path.join(options.baseDir,image['file_name'])
+    if not os.path.isfile(file_path):
+        s = 'Image path {} does not exist'.format(file_path)
         return s
 
     if options.bCheckImageSizes:
         if not ('height' in image and 'width' in image):
-            s = 'Missing image size in {}'.format(filePath)
+            s = 'Missing image size in {}'.format(file_path)
             return s
 
-        # width, height = Image.open(filePath).size
-        pil_im = open_image(filePath)
+        # width, height = Image.open(file_path).size
+        pil_im = open_image(file_path)
         width,height = pil_im.size
         if (not (width == image['width'] and height == image['height'])):
             s = 'Size mismatch for image {}: {} (reported {},{}, actual {},{})'.format(
-                    image['id'], filePath, image['width'], image['height'], width, height)
+                    image['id'], file_path, image['width'], image['height'], width, height)
             return s
 
     return None
@@ -340,7 +340,7 @@ def integrity_check_json_db(jsonFile, options=None):
         print('{} validation errors (of {})'.format(len(validation_errors),len(images)))
         print('Checking annotations...')
 
-    nBoxes = 0
+    n_boxes = 0
 
     for ann in tqdm(annotations):
 
@@ -361,13 +361,13 @@ def integrity_check_json_db(jsonFile, options=None):
         assert isinstance(ann['category_id'],int), 'Illegal annotation category ID type'
 
         if 'bbox' in ann:
-            nBoxes += 1
+            n_boxes += 1
 
-        annId = ann['id']
+        ann_id = ann['id']
 
         # Confirm ID uniqueness
-        assert annId not in ann_id_to_ann
-        ann_id_to_ann[annId] = ann
+        assert ann_id not in ann_id_to_ann
+        ann_id_to_ann[ann_id] = ann
 
         # Confirm validity
         assert ann['category_id'] in category_id_to_category, \
@@ -389,17 +389,17 @@ def integrity_check_json_db(jsonFile, options=None):
     if options.verbose:
 
         # Find un-annotated images and multi-annotation images
-        nUnannotated = 0
-        nMultiAnnotated = 0
+        n_unannotated = 0
+        n_multi_annotated = 0
 
         for image in images:
             if image['_count'] == 0:
-                nUnannotated += 1
+                n_unannotated += 1
             elif image['_count'] > 1:
-                nMultiAnnotated += 1
+                n_multi_annotated += 1
 
         print('\nFound {} unannotated images, {} images with multiple annotations'.format(
-                nUnannotated,nMultiAnnotated))
+                n_unannotated,n_multi_annotated))
 
         if (len(base_dir) > 0) and options.bFindUnusedImages:
             print('Found {} unused image files'.format(len(unused_files)))
@@ -414,12 +414,12 @@ def integrity_check_json_db(jsonFile, options=None):
 
         print('Found {} unused categories'.format(n_unused_categories))
 
-        sequenceString = 'no sequence info'
+        sequence_string = 'no sequence info'
         if len(sequences) > 0:
-            sequenceString = '{} sequences'.format(len(sequences))
+            sequence_string = '{} sequences'.format(len(sequences))
 
         print('\nDB contains {} images, {} annotations, {} bboxes, {} categories, {}\n'.format(
-                len(images),len(annotations),nBoxes,len(categories),sequenceString))
+                len(images),len(annotations),n_boxes,len(categories),sequence_string))
 
         if len(image_location_set) > 0:
             print('DB contains images from {} locations\n'.format(len(image_location_set)))

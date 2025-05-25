@@ -262,8 +262,8 @@ def convert_csv_to_json(input_path,output_path=None,overwrite=True):
 
     images = []
 
-    # iFile = 0; row = df.iloc[iFile]
-    for iFile,row in df.iterrows():
+    # i_file = 0; row = df.iloc[i_file]
+    for i_file,row in df.iterrows():
 
         image = {}
         image['file'] = row['image_path']
@@ -271,7 +271,7 @@ def convert_csv_to_json(input_path,output_path=None,overwrite=True):
         src_detections = row['detections']
         out_detections = []
 
-        for iDetection,detection in enumerate(src_detections):
+        for i_detection,detection in enumerate(src_detections):
 
             # Our .csv format was ymin/xmin/ymax/xmax
             #
@@ -282,9 +282,9 @@ def convert_csv_to_json(input_path,output_path=None,overwrite=True):
             xmax = detection[3]
             bbox = [xmin, ymin, xmax-xmin, ymax-ymin]
             conf = detection[4]
-            iClass = detection[5]
+            i_class = detection[5]
             out_detection = {}
-            out_detection['category'] = str(iClass)
+            out_detection['category'] = str(i_class)
             out_detection['conf'] = conf
             out_detection['bbox'] = bbox
             out_detections.append(out_detection)

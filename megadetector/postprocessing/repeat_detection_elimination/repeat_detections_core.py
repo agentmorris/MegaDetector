@@ -467,11 +467,11 @@ def _sort_detections_for_directory(candidateDetections,options):
 
     # Just sort by the X location of each box
     if options.smartSort == 'xsort':
-        candidateDetectionsSorted = sorted(candidateDetections,
+        candidate_detections_sorted = sorted(candidateDetections,
                                            key=lambda x: (
                                                (x.bbox[0]) + (x.bbox[2]/2.0)
                                                ))
-        return candidateDetectionsSorted
+        return candidate_detections_sorted
 
     elif options.smartSort == 'clustersort':
 
@@ -490,9 +490,9 @@ def _sort_detections_for_directory(candidateDetections,options):
             # To use the center of the box as the clustering point
             points.append([det.bbox[0]+det.bbox[2]/2.0,
                            det.bbox[1]+det.bbox[3]/2.0])
-        X = np.array(points)
+        points_array = np.array(points)
 
-        labels = cluster.fit_predict(X)
+        labels = cluster.fit_predict(points_array)
         unique_labels = np.unique(labels)
 
         # Labels *could* be any unique labels according to the docs, but in practice
@@ -543,10 +543,10 @@ def _sort_detections_for_directory(candidateDetections,options):
             new_label = old_cluster_label_to_new_cluster_label[old_label]
             det.clusterLabel = new_label
 
-        candidateDetectionsSorted = sorted(candidateDetections,
+        candidate_detections_sorted = sorted(candidateDetections,
                                            key=lambda x: (x.clusterLabel,x.id))
 
-        return candidateDetectionsSorted
+        return candidate_detections_sorted
 
     else:
         raise ValueError('Unrecognized sort method {}'.format(
@@ -580,11 +580,11 @@ def _find_matches_in_directory(dirNameAndRows, options):
         options.pbar.update()
 
     # Create a tree to store candidate detections
-    candidateDetectionsIndex = pyqtree.Index(bbox=(-0.1,-0.1,1.1,1.1))
+    candidate_detections_index = pyqtree.Index(bbox=(-0.1,-0.1,1.1,1.1))
 
     assert len(dirNameAndRows) == 2, 'find_matches_in_directory: invalid input'
     assert isinstance(dirNameAndRows[0],str), 'find_matches_in_directory: invalid location name'
-    dirName = dirNameAndRows[0]
+    dir_name = dirNameAndRows[0]
     rows = dirNameAndRows[1]
 
     detections_loaded_from_csv_file = None
@@ -592,26 +592,26 @@ def _find_matches_in_directory(dirNameAndRows, options):
     if isinstance(rows,str):
         detections_loaded_from_csv_file = rows
         print('Loading results for location {} from {}'.format(
-            dirName,detections_loaded_from_csv_file))
+            dir_name,detections_loaded_from_csv_file))
         rows = pd.read_csv(detections_loaded_from_csv_file)
         # Pandas writes out detections out as strings, convert them back to lists
         rows['detections'] = rows['detections'].apply(lambda s: json.loads(s.replace('\'','"')))
 
     if options.maxImagesPerFolder is not None and len(rows) > options.maxImagesPerFolder:
         print('Ignoring directory {} because it has {} images (limit set to {})'.format(
-            dirName,len(rows),options.maxImagesPerFolder))
+            dir_name,len(rows),options.maxImagesPerFolder))
         return []
 
     if options.includeFolders is not None:
         assert options.excludeFolders is None, 'Cannot specify include and exclude folder lists'
-        if dirName not in options.includeFolders:
-            print('Ignoring folder {}, not in inclusion list'.format(dirName))
+        if dir_name not in options.includeFolders:
+            print('Ignoring folder {}, not in inclusion list'.format(dir_name))
             return []
 
     if options.excludeFolders is not None:
         assert options.includeFolders is None, 'Cannot specify include and exclude folder lists'
-        if dirName in options.excludeFolders:
-            print('Ignoring folder {}, on exclusion list'.format(dirName))
+        if dir_name in options.excludeFolders:
+            print('Ignoring folder {}, on exclusion list'.format(dir_name))
             return []
 
     # For each image in this directory
@@ -636,8 +636,8 @@ def _find_matches_in_directory(dirNameAndRows, options):
             continue
 
         # Don't bother checking images with no detections above threshold
-        maxP = float(row['max_detection_conf'])
-        if maxP < options.confidenceMin:
+        max_p = float(row['max_detection_conf'])
+        if max_p < options.confidenceMin:
             continue
 
         # Array of dicts, where each element is
@@ -720,20 +720,20 @@ def _find_matches_in_directory(dirNameAndRows, options):
                                         filename=row['file'], bbox=bbox,
                                         confidence=confidence, category=category)
 
-            bFoundSimilarDetection = False
+            b_found_similar_detection = False
 
             rtree_rect = _detection_rect_to_rtree_rect(bbox)
 
             # This will return candidates of all classes
-            overlappingCandidateDetections =\
-                candidateDetectionsIndex.intersect(rtree_rect)
+            overlapping_candidate_detections =\
+                candidate_detections_index.intersect(rtree_rect)
 
-            overlappingCandidateDetections.sort(
+            overlapping_candidate_detections.sort(
                 key=lambda x: x.id, reverse=False)
 
             # For each detection in our candidate list
-            for iCandidate, candidate in enumerate(
-                    overlappingCandidateDetections):
+            for i_candidate, candidate in enumerate(
+                    overlapping_candidate_detections):
 
                 # Don't match across categories
                 if (candidate.category != category) and (not (options.categoryAgnosticComparisons)):
@@ -753,7 +753,7 @@ def _find_matches_in_directory(dirNameAndRows, options):
 
                 if iou >= options.iouThreshold:
 
-                    bFoundSimilarDetection = True
+                    b_found_similar_detection = True
 
                     # If so, add this example to the list for this detection
                     candidate.instances.append(instance)
@@ -765,14 +765,14 @@ def _find_matches_in_directory(dirNameAndRows, options):
             # ...for each detection on our candidate list
 
             # If we found no matches, add this to the candidate list
-            if not bFoundSimilarDetection:
+            if not b_found_similar_detection:
 
                 candidate = DetectionLocation(instance=instance,
-                                              detection=detection, relativeDir=dirName,
+                                              detection=detection, relativeDir=dir_name,
                                               category=category, id=i_iteration)
 
                 # pyqtree
-                candidateDetectionsIndex.insert(item=candidate,bbox=rtree_rect)
+                candidate_detections_index.insert(item=candidate,bbox=rtree_rect)
 
         # ...for each detection
 
@@ -780,12 +780,12 @@ def _find_matches_in_directory(dirNameAndRows, options):
 
     # Get all candidate detections
 
-    candidateDetections = candidateDetectionsIndex.intersect([-100,-100,100,100])
+    candidate_detections = candidate_detections_index.intersect([-100,-100,100,100])
 
     # For debugging only, it's convenient to have these sorted
     # as if they had never gone into a tree structure.  Typically
     # this is in practice a sort by filename.
-    candidateDetections.sort(
+    candidate_detections.sort(
         key=lambda x: x.id, reverse=False)
 
     if detections_loaded_from_csv_file is not None:
@@ -793,14 +793,14 @@ def _find_matches_in_directory(dirNameAndRows, options):
             os.path.splitext(detections_loaded_from_csv_file)[0] + \
             '_results.json'
         print('Writing results for location {} to {}'.format(
-            dirName,location_results_file))
-        s = jsonpickle.encode(candidateDetections,make_refs=False)
+            dir_name,location_results_file))
+        s = jsonpickle.encode(candidate_detections,make_refs=False)
         with open(location_results_file,'w') as f:
             f.write(s)
-            # json.dump(candidateDetections,f,indent=1)
+            # json.dump(candidate_detections,f,indent=1)
         return location_results_file
     else:
-        return candidateDetections
+        return candidate_detections
 
 # ...def _find_matches_in_directory(...)
 
@@ -822,21 +822,21 @@ def _update_detection_table(repeatDetectionResults, options, outputFilename=None
     # This is the pandas dataframe that contains actual detection results.
     #
     # Has fields ['file', 'detections','failure'].
-    detectionResults = repeatDetectionResults.detectionResults
+    detection_results = repeatDetectionResults.detectionResults
 
     # An array of length nDirs, where each element is a list of DetectionLocation
     # objects for that directory that have been flagged as suspicious
-    suspiciousDetectionsByDirectory = repeatDetectionResults.suspiciousDetections
+    suspicious_detections_by_directory = repeatDetectionResults.suspiciousDetections
 
-    nBboxChanges = 0
+    n_bbox_changes = 0
 
     print('Updating output table')
 
     # For each directory
-    for iDir, directoryEvents in enumerate(suspiciousDetectionsByDirectory):
+    for i_dir, directory_events in enumerate(suspicious_detections_by_directory):
 
         # For each suspicious detection group in this directory
-        for iDetectionEvent, detectionEvent in enumerate(directoryEvents):
+        for iDetectionEvent, detectionEvent in enumerate(directory_events):
 
             locationBbox = detectionEvent.bbox
 
@@ -868,7 +868,7 @@ def _update_detection_table(repeatDetectionResults, options, outputFilename=None
                 # another bounding box
                 if detectionToModify['conf'] >= 0:
                     detectionToModify['conf'] = -1 * detectionToModify['conf']
-                    nBboxChanges += 1
+                    n_bbox_changes += 1
 
             # ...for each instance
 
@@ -883,7 +883,7 @@ def _update_detection_table(repeatDetectionResults, options, outputFilename=None
     nProbChangesToNegative = 0
     nProbChangesAcrossThreshold = 0
 
-    for iRow, row in detectionResults.iterrows():
+    for iRow, row in detection_results.iterrows():
 
         detections = row['detections']
         if (detections is None) or isinstance(detections,float):
@@ -914,7 +914,7 @@ def _update_detection_table(repeatDetectionResults, options, outputFilename=None
 
         # We should only be making detections *less* likely in this process
         assert maxP <= maxPOriginal
-        detectionResults.at[iRow, 'max_detection_conf'] = maxP
+        detection_results.at[iRow, 'max_detection_conf'] = maxP
 
         # If there was a meaningful change, count it
         if abs(maxP - maxPOriginal) > 1e-3:
@@ -940,14 +940,14 @@ def _update_detection_table(repeatDetectionResults, options, outputFilename=None
 
     # If we're also writing output...
     if outputFilename is not None and len(outputFilename) > 0:
-        write_api_results(detectionResults, repeatDetectionResults.otherFields,
+        write_api_results(detection_results, repeatDetectionResults.otherFields,
                           outputFilename)
 
     print(
         'Finished updating detection table\nChanged {} detections that impacted {} maxPs ({} to negative) ({} across confidence threshold)'.format(
-            nBboxChanges, nProbChanges, nProbChangesToNegative, nProbChangesAcrossThreshold))
+            n_bbox_changes, nProbChanges, nProbChangesToNegative, nProbChangesAcrossThreshold))
 
-    return detectionResults
+    return detection_results
 
 # ...def _update_detection_table(...)
 

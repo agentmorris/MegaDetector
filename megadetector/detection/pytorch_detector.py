@@ -339,8 +339,8 @@ def _initialize_yolo_imports(model_type='yolov5',
             # backwards-compatible letterbox function wrapper that wraps the class up.
             def letterbox(img,new_shape,auto=False,scaleFill=False,scaleup=True,center=True,stride=32): # noqa
 
-                L = LetterBox(new_shape,auto=auto,scaleFill=scaleFill,scaleup=scaleup,center=center,stride=stride)
-                letterbox_result = L(image=img)
+                letterbox_transformer = LetterBox(new_shape,auto=auto,scaleFill=scaleFill,scaleup=scaleup,center=center,stride=stride)
+                letterbox_result = letterbox_transformer(image=img)
 
                 if isinstance(new_shape,int):
                     new_shape = [new_shape,new_shape]

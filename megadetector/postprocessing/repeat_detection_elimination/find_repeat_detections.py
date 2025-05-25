@@ -73,7 +73,7 @@ if False:
 
 def main(): # noqa
 
-    defaultOptions = repeat_detections_core.RepeatDetectionOptions()
+    default_options = repeat_detections_core.RepeatDetectionOptions()
 
     parser = argparse.ArgumentParser()
 
@@ -90,35 +90,35 @@ def main(): # noqa
                         help='filtering folder output dir')
 
     parser.add_argument('--confidenceMin', action='store', type=float,
-                        default=defaultOptions.confidenceMin,
+                        default=default_options.confidenceMin,
                         help='Detection confidence threshold; don\'t process anything below this')
 
     parser.add_argument('--confidenceMax', action='store', type=float,
-                        default=defaultOptions.confidenceMax,
+                        default=default_options.confidenceMax,
                         help='Detection confidence threshold; don\'t process anything above this')
 
     parser.add_argument('--iouThreshold', action='store', type=float,
-                        default=defaultOptions.iouThreshold,
+                        default=default_options.iouThreshold,
                         help='Detections with IOUs greater than this are considered ' + \
                              '"the same detection"')
 
     parser.add_argument('--occurrenceThreshold', action='store', type=int,
-                        default=defaultOptions.occurrenceThreshold,
+                        default=default_options.occurrenceThreshold,
                         help='More than this many near-identical detections in a group ' + \
                              '(e.g. a folder) is considered suspicious')
 
     parser.add_argument('--minSuspiciousDetectionSize', action='store', type=float,
-                        default=defaultOptions.minSuspiciousDetectionSize,
+                        default=default_options.minSuspiciousDetectionSize,
                         help='Detections smaller than this fraction of image area are not ' + \
                              'considered suspicious')
 
     parser.add_argument('--maxSuspiciousDetectionSize', action='store', type=float,
-                        default=defaultOptions.maxSuspiciousDetectionSize,
+                        default=default_options.maxSuspiciousDetectionSize,
                         help='Detections larger than this fraction of image area are not ' + \
                              'considered suspicious')
 
     parser.add_argument('--maxImagesPerFolder', action='store', type=int,
-                        default=defaultOptions.maxImagesPerFolder,
+                        default=default_options.maxImagesPerFolder,
                         help='Ignore folders with more than this many images in them')
 
     parser.add_argument('--excludeClasses', action='store', nargs='+', type=int,
@@ -126,11 +126,11 @@ def main(): # noqa
                         help='List of integer classes we don\'t want to treat as suspicious, separated by spaces.')
 
     parser.add_argument('--pass_detections_to_processes_method', action='store', type=str,
-                        default=defaultOptions.pass_detections_to_processes_method,
+                        default=default_options.pass_detections_to_processes_method,
                         help='Pass detections information to/from workers via "memory" (default) or "files"')
 
     parser.add_argument('--nWorkers', action='store', type=int,
-                        default=defaultOptions.nWorkers,
+                        default=default_options.nWorkers,
                         help='Level of parallelism for rendering and IOU computation')
 
     parser.add_argument('--parallelizationUsesProcesses', action='store_false',
@@ -163,19 +163,19 @@ def main(): # noqa
                         help='Disable parallelization during the rendering stage')
 
     parser.add_argument('--maxOutputImageWidth', action='store', type=int,
-                        default=defaultOptions.maxOutputImageWidth,
+                        default=default_options.maxOutputImageWidth,
                         help='Maximum output size for thumbnail images')
 
     parser.add_argument('--lineThickness', action='store', type=int,
-                        default=defaultOptions.lineThickness,
+                        default=default_options.lineThickness,
                         help='Line thickness thumbnail images')
 
     parser.add_argument('--boxExpansion', action='store', type=int,
-                        default=defaultOptions.boxExpansion,
+                        default=default_options.boxExpansion,
                         help='Box expansion for thumbnail images')
 
     parser.add_argument('--nDirLevelsFromLeaf', type=int,
-                        default=defaultOptions.nDirLevelsFromLeaf,
+                        default=default_options.nDirLevelsFromLeaf,
                         help='Number of levels from the leaf folders to use for repeat ' + \
                              'detection (0 == leaves)')
 
@@ -186,7 +186,7 @@ def main(): # noqa
                         help='Should we render a grid showing every instance (up to a limit) for each detection?')
 
     parser.add_argument('--detectionTilesPrimaryImageWidth', type=int,
-                        default=defaultOptions.detectionTilesPrimaryImageWidth,
+                        default=default_options.detectionTilesPrimaryImageWidth,
                         help='The width of the main image when rendering images with detection tiles')
 
     if len(sys.argv[1:]) == 0:
