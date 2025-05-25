@@ -1600,7 +1600,7 @@ def main():
         # checkpoint, then immediately overwrite that checkpoint with empty data is higher-risk
         # than the annoyance of crashing a few minutes after starting a job.
         if False:
-            # ct_utils.write_json(checkpoint_path, {'images': []}, indent=None)
+            ct_utils.write_json(checkpoint_path, {'images': []}, indent=None)
                 
         print('The checkpoint file will be written to {}'.format(checkpoint_path))
         

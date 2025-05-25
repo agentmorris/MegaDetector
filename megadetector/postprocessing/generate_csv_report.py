@@ -405,7 +405,7 @@ if False:
 
     #%% Configure options
     
-    """
+    r"""
     python run_detector_batch.py MDV5A "g:\temp\md-test-images" "g:\temp\md-test-images\md_results_with_datetime.json" --recursive --output_relative_filenames --include_image_timestamp --include_exif_data
     """
 

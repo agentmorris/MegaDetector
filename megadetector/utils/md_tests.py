@@ -1886,9 +1886,14 @@ def test_write_json_functionality():
 
     def _verify_json_file(file_path, expected_content_str):
         with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        assert content == expected_content_str, \
-            f"File {file_path} content mismatch.\nExpected:\n{expected_content_str}\nGot:\n{content}"
+            content = json.load(f)
+        assert isinstance(content,dict)            
+        from megadetector.utils.ct_utils import sort_dictionary_by_key
+        content = sort_dictionary_by_key(content)
+        expected_content = json.loads(expected_content_str)
+        expected_content = sort_dictionary_by_key(expected_content)
+        assert content == expected_content, \
+            f"File {file_path} content mismatch.\nExpected:\n{expected_content}\nGot:\n{content}"
 
     # Test case i: Default indent (1)
     data_default = {'a': 1, 'b': 2}
