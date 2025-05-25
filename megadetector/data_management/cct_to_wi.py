@@ -5,7 +5,7 @@ cct_to_wi.py
 Converts COCO Camera Traps .json files to the Wildlife Insights
 batch upload format.
 
-**This is very much just a demo script; all the relevant constants are hard-coded 
+**This is very much just a demo script; all the relevant constants are hard-coded
 at the top of main().**
 
 But given that caveat, it works.  You need to set up all the paths in the "paths" cell
@@ -23,7 +23,7 @@ Also see:
 import os
 import json
 import pandas as pd
-from collections import defaultdict 
+from collections import defaultdict
 
 
 #%% Main wrapper
@@ -31,34 +31,34 @@ from collections import defaultdict
 def main():
     """
     Converts COCO Camera Traps .json files to the Wildlife Insights
-    batch upload format; to use this, you need to modify all the paths in the "Paths"    
+    batch upload format; to use this, you need to modify all the paths in the "Paths"
     cell.
     """
-    
+
     #%% Paths
 
     # A COCO camera traps file with information about this dataset
     input_file = r'c:\temp\camera_trap_images_no_people\bellevue_camera_traps.2020-12-26.json'
-    
-    # A .json dictionary mapping common names in this dataset to dictionaries with the 
+
+    # A .json dictionary mapping common names in this dataset to dictionaries with the
     # WI taxonomy fields: common_name, wi_taxon_id, class, order, family, genus, species
     taxonomy_file = r'c:\temp\camera_trap_images_no_people\bellevue_camera_traps_to_wi.json'
 
     # The folder where the .csv template files live
     templates_dir = r'c:\temp\wi_batch_upload_templates'
-    
+
     # The folder to which you want to write WI-formatted .csv files
     output_base = r'c:\temp\wi_output'
-    
-    
+
+
     #%% Path validation
-    
+
     assert os.path.isfile(input_file)
     assert os.path.isfile(taxonomy_file)
     assert os.path.isdir(templates_dir)
     os.makedirs(output_base,exist_ok = True)
 
-        
+
     #%% Constants
 
     projects_file_name = 'Template Wildlife Insights Batch Upload - Projectv1.0.csv'
@@ -99,7 +99,7 @@ def main():
     project_info['project_sensor_cluster'] = 'No'
 
     camera_info = {}
-    camera_info['project_id'] = project_info['project_id'] 
+    camera_info['project_id'] = project_info['project_id']
     camera_info['camera_id'] = '0000'
     camera_info['make'] = ''
     camera_info['model'] = ''
@@ -108,7 +108,7 @@ def main():
 
     deployment_info = {}
 
-    deployment_info['project_id'] = project_info['project_id'] 
+    deployment_info['project_id'] = project_info['project_id']
     deployment_info['deployment_id'] = 'test_deployment'
     deployment_info['subproject_name'] = 'test_subproject'
     deployment_info['subproject_design'] = ''
@@ -140,7 +140,7 @@ def main():
     #%% Read templates
 
     def parse_fields(templates_dir,file_name):
-        
+
         with open(os.path.join(templates_dir,file_name),'r') as f:
             lines = f.readlines()
             lines = [s.strip() for s in lines if len(s.strip().replace(',','')) > 0]
@@ -158,7 +158,7 @@ def main():
     #%% Compare dictionary to template lists
 
     def compare_info_to_template(info,template_fields,name):
-        
+
         for s in info.keys():
             assert s in template_fields,'Field {} not specified in {}_fields'.format(s,name)
         for s in template_fields:
@@ -166,26 +166,26 @@ def main():
 
 
     def write_table(file_name,info,template_fields):
-        
+
         assert len(info) == len(template_fields)
-        
+
         project_output_file = os.path.join(output_base,file_name)
         with open(project_output_file,'w') as f:
-        
+
             # Write the header
             for i_field,s in enumerate(template_fields):
                 f.write(s)
                 if i_field != len(template_fields)-1:
                     f.write(',')
             f.write('\n')
-            
+
             # Write values
             for i_field,s in enumerate(template_fields):
                 f.write(info[s])
                 if i_field != len(template_fields)-1:
                     f.write(',')
             f.write('\n')
-        
+
 
     #%% Project file
 
@@ -214,7 +214,7 @@ def main():
     # Read taxonomy dictionary
     with open(taxonomy_file,'r') as f:
         taxonomy_mapping = json.load(f)
-        
+
     url_base = taxonomy_mapping['url_base']
     taxonomy_mapping = taxonomy_mapping['taxonomy']
 
@@ -226,7 +226,7 @@ def main():
     image_id_to_annotations = defaultdict(list)
 
     annotations = input_data['annotations']
-                            
+
     # annotation = annotations[0]
     for annotation in annotations:
         image_id_to_annotations[annotation['image_id']].append(
@@ -238,31 +238,31 @@ def main():
     for im in input_data['images']:
 
         row = {}
-        
+
         url = url_base + im['file_name'].replace('\\','/')
         row['project_id'] = project_info['project_id']
         row['deployment_id'] = deployment_info['deployment_id']
         row['image_id'] = im['id']
         row['location'] = url
         row['identified_by'] = image_info['identified_by']
-        
+
         category_names = image_id_to_annotations[im['id']]
         assert len(category_names) == 1
         category_name = category_names[0]
-        
+
         taxon_info = taxonomy_mapping[category_name]
-        
+
         assert len(taxon_info.keys()) == 7
-        
+
         for s in taxon_info.keys():
-            row[s] = taxon_info[s]    
-        
+            row[s] = taxon_info[s]
+
         # We don't have counts, but we can differentiate between zero and 1
         if category_name == 'empty':
             row['number_of_objects'] = 0
         else:
             row['number_of_objects'] = 1
-            
+
         row['uncertainty'] = None
         row['timestamp'] = im['datetime']; assert isinstance(im['datetime'],str)
         row['highlighted'] = 0
@@ -272,10 +272,10 @@ def main():
         row['individual_id'] = None
         row['individual_animal_notes'] = None
         row['markings'] = None
-        
+
         assert len(row) == len(images_fields)
         rows.append(row)
-        
+
     df = pd.DataFrame(rows)
 
     df.to_csv(os.path.join(output_base,images_file_name),index=False)

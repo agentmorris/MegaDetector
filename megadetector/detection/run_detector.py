@@ -2,15 +2,15 @@
 
 run_detector.py
 
-Module to run an animal detection model on images.  The main function in this script also renders 
+Module to run an animal detection model on images.  The main function in this script also renders
 the predicted bounding boxes on images and saves the resulting images (with bounding boxes).
 
 **This script is not a good way to process lots of images**.  It does not produce a useful
 output format, and it does not facilitate checkpointing the results so if it crashes you
-would have to start from scratch. **If you want to run a detector on lots of images, you should 
+would have to start from scratch. **If you want to run a detector on lots of images, you should
 check out run_detector_batch.py**.
 
-That said, this script (run_detector.py) is a good way to test our detector on a handful of images 
+That said, this script (run_detector.py) is a good way to test our detector on a handful of images
 and get super-satisfying, graphical results.
 
 If you would like to *not* use the GPU on the machine, set the environment
@@ -148,7 +148,7 @@ known_models = {
         'model_type':'yolov5',
         'normalized_typical_inference_speed':1.0
     },
-    
+
     # Fake values for testing
     'v1000.0.0-redwood':
     {
@@ -180,7 +180,7 @@ DEFAULT_BOX_EXPANSION = 0
 DEFAULT_LABEL_FONT_SIZE = 16
 DETECTION_FILENAME_INSERT = '_detections'
 
-# Approximate inference speeds (in images per second) for MDv5 based on 
+# Approximate inference speeds (in images per second) for MDv5 based on
 # benchmarks, only used for reporting very coarse expectations about inference time.
 device_token_to_mdv5_inference_speed = {
     '4090':17.6,
@@ -192,9 +192,9 @@ device_token_to_mdv5_inference_speed = {
     # is around 3.5x faster than MDv4.
     'V100':2.79*3.5,
     '2080':2.3*3.5,
-    '2060':1.6*3.5    
+    '2060':1.6*3.5
 }
-    
+
 
 #%% Utility functions
 
@@ -202,15 +202,15 @@ def get_detector_metadata_from_version_string(detector_version):
     """
     Given a MegaDetector version string (e.g. "v4.1.0"), returns the metadata for
     the model.  Used for writing standard defaults to batch output files.
-    
+
     Args:
         detector_version (str): a detection version string, e.g. "v4.1.0", which you
             can extract from a filename using get_detector_version_from_filename()
-    
+
     Returns:
         dict: metadata for this model, suitable for writing to a MD output file
     """
-    
+
     if detector_version not in known_models:
         print('Warning: no metadata for unknown detector version {}'.format(detector_version))
         default_detector_metadata = {
@@ -229,31 +229,31 @@ def get_detector_version_from_filename(detector_filename,
                                        accept_first_match=True,
                                        verbose=False):
     r"""
-    Gets the canonical version number string of a detector from the model filename.  
-    
+    Gets the canonical version number string of a detector from the model filename.
+
     [detector_filename] will almost always end with one of the following:
-        
+
     * megadetector_v2.pb
     * megadetector_v3.pb
     * megadetector_v4.1 (not produed by run_detector_batch.py, only found in output files from the deprecated Azure Batch API)
     * md_v4.1.0.pb
     * md_v5a.0.0.pt
     * md_v5b.0.0.pt
-    
-    This function identifies the version number as "v2.0.0", "v3.0.0", "v4.1.0", 
-    "v4.1.0", "v5a.0.0", and "v5b.0.0", respectively.  See known_models for the list 
+
+    This function identifies the version number as "v2.0.0", "v3.0.0", "v4.1.0",
+    "v4.1.0", "v5a.0.0", and "v5b.0.0", respectively.  See known_models for the list
     of valid version numbers.
-    
+
     Args:
         detector_filename (str): model filename, e.g. c:/x/z/md_v5a.0.0.pt
-        accept_first_match (bool, optional): if multiple candidates match the filename, choose the 
+        accept_first_match (bool, optional): if multiple candidates match the filename, choose the
             first one, otherwise returns the string "multiple"
         verbose (bool, optional): enable additional debug output
-    
+
     Returns:
         str: a detector version string, e.g. "v5a.0.0", or "multiple" if I'm confused
     """
-    
+
     fn = os.path.basename(detector_filename).lower()
     matches = []
     for s in model_string_to_model_version.keys():
@@ -268,68 +268,68 @@ def get_detector_version_from_filename(detector_filename,
             if verbose:
                 print('Warning: multiple MegaDetector versions for model file {}:'.format(detector_filename))
                 for s in matches:
-                    print(s)            
+                    print(s)
             return 'multiple'
     else:
         return model_string_to_model_version[matches[0]]
-    
+
 
 def get_detector_version_from_model_file(detector_filename,verbose=False):
     """
-    Gets the canonical detection version from a model file, preferably by reading it 
+    Gets the canonical detection version from a model file, preferably by reading it
     from the file itself, otherwise based on the filename.
-    
+
     Args:
-        detector_filename (str): model filename, e.g. c:/x/z/md_v5a.0.0.pt    
+        detector_filename (str): model filename, e.g. c:/x/z/md_v5a.0.0.pt
         verbose (bool, optional): enable additional debug output
-    
+
     Returns:
         str: a canonical detector version string, e.g. "v5a.0.0", or "unknown"
     """
-    
+
     # Try to extract a version string from the filename
     version_string_based_on_filename = get_detector_version_from_filename(
         detector_filename, verbose=verbose)
     if version_string_based_on_filename == 'unknown':
         version_string_based_on_filename = None
-        
-    # Try to extract a version string from the file itself; currently this is only 
+
+    # Try to extract a version string from the file itself; currently this is only
     # a thing for PyTorch models
-    
+
     version_string_based_on_model_file = None
-    
+
     if detector_filename.endswith('.pt') or detector_filename.endswith('.zip'):
-        
+
         from megadetector.detection.pytorch_detector import \
             read_metadata_from_megadetector_model_file
         metadata = read_metadata_from_megadetector_model_file(detector_filename,verbose=verbose)
-        
+
         if metadata is not None and isinstance(metadata,dict):
-            
+
             if 'metadata_format_version' not in metadata or \
                 not isinstance(metadata['metadata_format_version'],float):
-                    
+
                 print(f'Warning: I found a metadata file in detector file {detector_filename}, '+\
                       'but it doesn\'t have a valid format version number')
-            
+
             elif 'model_version_string' not in metadata or \
                 not isinstance(metadata['model_version_string'],str):
-                    
+
                 print(f'Warning: I found a metadata file in detector file {detector_filename}, '+\
                       'but it doesn\'t have a format model version string')
-                    
+
             else:
-                
+
                 version_string_based_on_model_file = metadata['model_version_string']
-                
+
                 if version_string_based_on_model_file not in known_models:
                     print('Warning: unknown model version {} specified in file {}'.format(
                         version_string_based_on_model_file,detector_filename))
-                    
+
         # ...if there's metadata in this file
-        
+
     # ...if this looks like a PyTorch file
-                
+
     # If we got versions strings from the filename *and* the model file...
     if (version_string_based_on_filename is not None) and \
        (version_string_based_on_model_file is not None):
@@ -339,46 +339,46 @@ def get_detector_version_from_model_file(detector_filename,verbose=False):
                 detector_filename,
                 version_string_based_on_model_file,
                 version_string_based_on_filename))
-          
+
         return version_string_based_on_model_file
-        
+
     # If we got version string from neither the filename nor the model file...
     if (version_string_based_on_filename is None) and \
        (version_string_based_on_model_file is None):
-           
+
         print('Warning: could not determine model version string for model file {}'.format(
             detector_filename))
         return None
-        
+
     elif version_string_based_on_filename is not None:
-        
+
         return version_string_based_on_filename
-    
+
     else:
-        
+
         assert version_string_based_on_model_file is not None
         return version_string_based_on_model_file
-         
+
 # ...def get_detector_version_from_model_file(...)
 
- 
+
 def estimate_md_images_per_second(model_file, device_name=None):
     r"""
-    Estimates how fast MegaDetector will run on a particular device, based on benchmarks.  
-    Defaults to querying the current device.  Returns None if no data is available for the current 
-    card/model.  Estimates only available for a small handful of GPUs.  Uses an absurdly simple 
+    Estimates how fast MegaDetector will run on a particular device, based on benchmarks.
+    Defaults to querying the current device.  Returns None if no data is available for the current
+    card/model.  Estimates only available for a small handful of GPUs.  Uses an absurdly simple
     lookup approach, e.g. if the string "4090" appears in the device name, congratulations,
     you have an RTX 4090.
-    
+
     Args:
         model_file (str): model filename, e.g. c:/x/z/md_v5a.0.0.pt
         device_name (str, optional): device name, e.g. blah-blah-4090-blah-blah
-    
+
     Returns:
         float: the approximate number of images this model version can process on this
         device per second
     """
-    
+
     if device_name is None:
         try:
             import torch
@@ -386,51 +386,51 @@ def estimate_md_images_per_second(model_file, device_name=None):
         except Exception as e:
             print('Error querying device name: {}'.format(e))
             return None
-    
+
     # About how fast is this model compared to MDv5?
     model_version = get_detector_version_from_model_file(model_file)
-    
+
     if model_version not in known_models.keys():
         print('Could not estimate inference speed: error determining model version for model file {}'.format(
             model_file))
         return None
-        
+
     model_info = known_models[model_version]
-    
+
     if 'normalized_typical_inference_speed' not in model_info or \
         model_info['normalized_typical_inference_speed'] is None:
         print('No speed ratio available for model type {}'.format(model_version))
         return None
-    
+
     normalized_inference_speed = model_info['normalized_typical_inference_speed']
-    
+
     # About how fast would MDv5 run on this device?
     mdv5_inference_speed = None
     for device_token in device_token_to_mdv5_inference_speed.keys():
         if device_token in device_name:
             mdv5_inference_speed = device_token_to_mdv5_inference_speed[device_token]
             break
-    
+
     if mdv5_inference_speed is None:
         print('No baseline speed estimate available for device {}'.format(device_name))
         return None
-    
+
     return normalized_inference_speed * mdv5_inference_speed
-    
-    
+
+
 def get_typical_confidence_threshold_from_results(results):
     """
     Given the .json data loaded from a MD results file, returns a typical confidence
     threshold based on the detector version.
-    
+
     Args:
-        results (dict or str): a dict of MD results, as it would be loaded from a MD results .json 
+        results (dict or str): a dict of MD results, as it would be loaded from a MD results .json
             file, or a .json filename
-    
+
     Returns:
         float: a sensible default threshold for this model
     """
-    
+
     # Load results if necessary
     if isinstance(results,str):
         with open(results,'r') as f:
@@ -450,31 +450,31 @@ def get_typical_confidence_threshold_from_results(results):
         detector_metadata = get_detector_metadata_from_version_string(detector_version)
         default_threshold = detector_metadata['typical_detection_threshold']
 
-    return default_threshold    
+    return default_threshold
 
-    
+
 def is_gpu_available(model_file):
     r"""
     Determines whether a GPU is available, importing PyTorch or TF depending on the extension
-    of model_file.  Does not actually load model_file, just uses that to determine how to check 
+    of model_file.  Does not actually load model_file, just uses that to determine how to check
     for GPU availability (PT vs. TF).
-    
+
     Args:
         model_file (str): model filename, e.g. c:/x/z/md_v5a.0.0.pt
-    
+
     Returns:
         bool: whether a GPU is available
     """
-    
+
     if model_file.endswith('.pb'):
         import tensorflow.compat.v1 as tf
         gpu_available = tf.test.is_gpu_available()
         print('TensorFlow version:', tf.__version__)
-        print('tf.test.is_gpu_available:', gpu_available)                
+        print('tf.test.is_gpu_available:', gpu_available)
         return gpu_available
     if not model_file.endswith('.pt'):
         print('Warning: could not determine environment from model file name, assuming PyTorch')
-        
+
     import torch
     gpu_available = torch.cuda.is_available()
     print('PyTorch reports {} available CUDA devices'.format(torch.cuda.device_count()))
@@ -487,16 +487,16 @@ def is_gpu_available(model_file):
         except AttributeError:
             pass
     return gpu_available
-    
 
-def load_detector(model_file, 
-                  force_cpu=False, 
-                  force_model_download=False, 
+
+def load_detector(model_file,
+                  force_cpu=False,
+                  force_model_download=False,
                   detector_options=None,
                   verbose=False):
     r"""
     Loads a TF or PT detector, depending on the extension of model_file.
-    
+
     Args:
         model_file (str): model filename (e.g. c:/x/z/md_v5a.0.0.pt) or known model
             name (e.g. "MDV5A")
@@ -505,21 +505,21 @@ def load_detector(model_file,
         force_model_download (bool, optional): force downloading the model file if
             a named model (e.g. "MDV5A") is supplied, even if the local file already
             exists
-        detector_options (dict, optional): key/value pairs that are interpreted differently 
+        detector_options (dict, optional): key/value pairs that are interpreted differently
             by different detectors
         verbose (bool, optional): enable additional debug output
-    
+
     Returns:
         object: loaded detector object
     """
-    
+
     # Possibly automatically download the model
-    model_file = try_download_known_detector(model_file, 
+    model_file = try_download_known_detector(model_file,
                                              force_download=force_model_download)
-    
+
     if verbose:
         print('GPU available: {}'.format(is_gpu_available(model_file)))
-    
+
     start_time = time.time()
 
     if model_file.endswith('.pb'):
@@ -531,9 +531,9 @@ def load_detector(model_file,
         detector = TFDetector(model_file, detector_options)
 
     elif model_file.endswith('.pt'):
-        
+
         from megadetector.detection.pytorch_detector import PTDetector
-        
+
         # Prepare options specific to the PTDetector class
         if detector_options is None:
             detector_options = {}
@@ -545,16 +545,16 @@ def load_detector(model_file,
             detector_options['force_cpu'] = force_cpu
         detector_options['use_model_native_classes'] = USE_MODEL_NATIVE_CLASSES
         detector = PTDetector(model_file, detector_options, verbose=verbose)
-        
+
     else:
-        
+
         raise ValueError('Unrecognized model format: {}'.format(model_file))
-        
+
     elapsed = time.time() - start_time
-    
+
     if verbose:
         print('Loaded model in {}'.format(humanfriendly.format_timespan(elapsed)))
-    
+
     return detector
 
 # ...def load_detector(...)
@@ -562,12 +562,12 @@ def load_detector(model_file,
 
 #%% Main function
 
-def load_and_run_detector(model_file, 
+def load_and_run_detector(model_file,
                           image_file_names,
                           output_dir,
                           render_confidence_threshold=DEFAULT_RENDERING_CONFIDENCE_THRESHOLD,
-                          crop_images=False, 
-                          box_thickness=DEFAULT_BOX_THICKNESS, 
+                          crop_images=False,
+                          box_thickness=DEFAULT_BOX_THICKNESS,
                           box_expansion=DEFAULT_BOX_EXPANSION,
                           image_size=None,
                           label_font_size=DEFAULT_LABEL_FONT_SIZE,
@@ -576,7 +576,7 @@ def load_and_run_detector(model_file,
                           detector_options=None):
     r"""
     Loads and runs a detector on target images, and visualizes the results.
-    
+
     Args:
         model_file (str): model filename, e.g. c:/x/z/md_v5a.0.0.pt, or a known model
             string, e.g. "MDV5A"
@@ -592,15 +592,15 @@ def load_and_run_detector(model_file,
             if (a) you're using a model other than MegaDetector or (b) you know what you're
             doing
         label_font_size (float, optional): font size to use for displaying class names
-            and confidence values in the rendered images        
+            and confidence values in the rendered images
         augment (bool, optional): enable (implementation-specific) image augmentation
         force_model_download (bool, optional): force downloading the model file if
             a named model (e.g. "MDV5A") is supplied, even if the local file already
             exists
-        detector_options (dict, optional): key/value pairs that are interpreted differently 
+        detector_options (dict, optional): key/value pairs that are interpreted differently
             by different detectors
     """
-    
+
     if len(image_file_names) == 0:
         print('Warning: no files available')
         return
@@ -649,7 +649,7 @@ def load_and_run_detector(model_file,
 
         Returns: output file path
         """
-        
+
         fn = os.path.basename(fn).lower()
         name, ext = os.path.splitext(fn)
         if crop_index >= 0:
@@ -665,7 +665,7 @@ def load_and_run_detector(model_file,
         return fn
 
     # ...def input_file_to_detection_file()
-    
+
     for im_file in tqdm(image_file_names):
 
         try:
@@ -689,7 +689,7 @@ def load_and_run_detector(model_file,
             start_time = time.time()
 
             result = detector.generate_detections_one_image(
-                image, 
+                image,
                 im_file,
                 detection_threshold=DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD,
                 image_size=image_size,
@@ -752,21 +752,21 @@ def load_and_run_detector(model_file,
 def _download_model(model_name,force_download=False):
     """
     Downloads one of the known models to local temp space if it hasn't already been downloaded.
-    
+
     Args:
         model_name (str): a known model string, e.g. "MDV5A".  Returns None if this string is not
             a known model name.
-        force_download (bool, optional): whether to download the model even if the local target 
+        force_download (bool, optional): whether to download the model even if the local target
             file already exists
     """
-    
-    model_tempdir = os.path.join(tempfile.gettempdir(), 'megadetector_models')    
+
+    model_tempdir = os.path.join(tempfile.gettempdir(), 'megadetector_models')
     os.makedirs(model_tempdir,exist_ok=True)
-    
+
     # This is a lazy fix to an issue... if multiple users run this script, the
     # "megadetector_models" folder is owned by the first person who creates it, and others
     # can't write to it.  I could create uniquely-named folders, but I philosophically prefer
-    # to put all the individual UUID-named folders within a larger folder, so as to be a 
+    # to put all the individual UUID-named folders within a larger folder, so as to be a
     # good tempdir citizen.  So, the lazy fix is to make this world-writable.
     try:
         os.chmod(model_tempdir,0o777)
@@ -777,7 +777,7 @@ def _download_model(model_name,force_download=False):
         return None
     url = known_models[model_name.lower()]['url']
     destination_filename = os.path.join(model_tempdir,url.split('/')[-1])
-    local_file = download_url(url, destination_filename=destination_filename, progress_updater=None, 
+    local_file = download_url(url, destination_filename=destination_filename, progress_updater=None,
                      force_download=force_download, verbose=True)
     print('Model {} available at {}'.format(model_name,local_file))
     return local_file
@@ -788,33 +788,33 @@ def try_download_known_detector(detector_file,force_download=False,verbose=False
     Checks whether detector_file is really the name of a known model, in which case we will
     either read the actual filename from the corresponding environment variable or download
     (if necessary) to local temp space.  Otherwise just returns the input string.
-    
+
     Args:
         detector_file (str): a known model string (e.g. "MDV5A"), or any other string (in which
             case this function is a no-op)
-        force_download (bool, optional): whether to download the model even if the local target 
+        force_download (bool, optional): whether to download the model even if the local target
             file already exists
         verbose (bool, optional): enable additional debug output
-    
+
     Returns:
         str: the local filename to which the model was downloaded, or the same string that
         was passed in, if it's not recognized as a well-known model name
     """
-    
+
     model_string = detector_file.lower()
-        
-    # If this is a short model string (e.g. "MDV5A"), convert to a canonical version 
+
+    # If this is a short model string (e.g. "MDV5A"), convert to a canonical version
     # string (e.g. "v5a.0.0")
     if model_string in model_string_to_model_version:
-    
+
         if verbose:
             print('Converting short string {} to canonical version string {}'.format(
                 model_string,
                 model_string_to_model_version[model_string]))
         model_string = model_string_to_model_version[model_string]
-    
+
     if model_string in known_models:
-        
+
         if detector_file in os.environ:
             fn = os.environ[detector_file]
             print('Reading MD location from environment variable {}: {}'.format(
@@ -822,11 +822,11 @@ def try_download_known_detector(detector_file,force_download=False,verbose=False
             detector_file = fn
         else:
             detector_file = _download_model(model_string,force_download=force_download)
-            
+
     return detector_file
-    
-        
-    
+
+
+
 
 #%% Command-line driver
 
@@ -834,13 +834,13 @@ def main():
 
     parser = argparse.ArgumentParser(
         description='Module to run an animal detection model on images')
-    
+
     parser.add_argument(
         'detector_file',
         help='Path detector model file (.pb or .pt).  Can also be MDV4, MDV5A, or MDV5B to request automatic download.')
-    
+
     # Must specify either an image file or a directory
-    group = parser.add_mutually_exclusive_group(required=True)    
+    group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
         '--image_file',
         type=str,
@@ -851,73 +851,73 @@ def main():
         type=str,
         default=None,
         help='Directory to search for images, with optional recursion by adding --recursive')
-    
+
     parser.add_argument(
         '--recursive',
         action='store_true',
         help='Recurse into directories, only meaningful if using --image_dir')
-    
+
     parser.add_argument(
         '--output_dir',
         type=str,
         default=None,
         help='Directory for output images (defaults to same as input)')
-    
+
     parser.add_argument(
         '--image_size',
         type=int,
         default=None,
         help=('Force image resizing to a (square) integer size (not recommended to change this)'))
-    
+
     parser.add_argument(
         '--threshold',
         type=float,
         default=DEFAULT_RENDERING_CONFIDENCE_THRESHOLD,
-        help=('Confidence threshold between 0 and 1.0; only render' + 
+        help=('Confidence threshold between 0 and 1.0; only render' +
               ' boxes above this confidence (defaults to {})'.format(
               DEFAULT_RENDERING_CONFIDENCE_THRESHOLD)))
-    
+
     parser.add_argument(
         '--crop',
         default=False,
         action='store_true',
         help=('If set, produces separate output images for each crop, '
               'rather than adding bounding boxes to the original image'))
-    
+
     parser.add_argument(
         '--augment',
         default=False,
         action='store_true',
         help=('Enable image augmentation'))
-    
+
     parser.add_argument(
         '--box_thickness',
         type=int,
         default=DEFAULT_BOX_THICKNESS,
         help=('Line width (in pixels) for box rendering (defaults to {})'.format(
               DEFAULT_BOX_THICKNESS)))
-    
+
     parser.add_argument(
         '--box_expansion',
         type=int,
         default=DEFAULT_BOX_EXPANSION,
         help=('Number of pixels to expand boxes by (defaults to {})'.format(
               DEFAULT_BOX_EXPANSION)))
-    
+
     parser.add_argument(
         '--label_font_size',
         type=int,
         default=DEFAULT_LABEL_FONT_SIZE,
         help=('Label font size (defaults to {})'.format(
               DEFAULT_LABEL_FONT_SIZE)))
-    
+
     parser.add_argument(
         '--process_likely_output_images',
         action='store_true',
         help=('By default, we skip images that end in {}, because they probably came from this script. '\
               .format(DETECTION_FILENAME_INSERT) + \
               'This option disables that behavior.'))
-    
+
     parser.add_argument(
         '--force_model_download',
         action='store_true',
@@ -930,19 +930,19 @@ def main():
         metavar='KEY=VALUE',
         default='',
         help='Detector-specific options, as a space-separated list of key-value pairs')
-        
+
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()
 
     args = parser.parse_args()
     detector_options = parse_kvp_list(args.detector_options)
-    
-    # If the specified detector file is really the name of a known model, find 
+
+    # If the specified detector file is really the name of a known model, find
     # (and possibly download) that model
     args.detector_file = try_download_known_detector(args.detector_file,
                                                      force_download=args.force_model_download)
-    
+
     assert os.path.exists(args.detector_file), 'detector file {} does not exist'.format(
         args.detector_file)
     assert 0.0 < args.threshold <= 1.0, 'Confidence threshold needs to be between 0 and 1'
@@ -961,7 +961,7 @@ def main():
             else:
                 image_file_names_valid.append(fn)
         image_file_names = image_file_names_valid
-                
+
     print('Running detector on {} images...'.format(len(image_file_names)))
 
     if args.output_dir:
@@ -972,13 +972,13 @@ def main():
         else:
             # but for a single image, args.image_dir is also None
             args.output_dir = os.path.dirname(args.image_file)
-    
+
     load_and_run_detector(model_file=args.detector_file,
                           image_file_names=image_file_names,
                           output_dir=args.output_dir,
                           render_confidence_threshold=args.threshold,
                           box_thickness=args.box_thickness,
-                          box_expansion=args.box_expansion,                          
+                          box_expansion=args.box_expansion,
                           crop_images=args.crop,
                           image_size=args.image_size,
                           label_font_size=args.label_font_size,
@@ -998,19 +998,19 @@ if False:
     pass
 
     #%% Test model download
-    
+
     r"""
     cd i:\models\all_models_in_the_wild
     i:
     python -m http.server 8181
     """
-    
+
     model_name = 'redwood'
     try_download_known_detector(model_name,force_download=True,verbose=True)
-    
+
 
     #%% Load and run detector
-    
+
     model_file = r'c:\temp\models\md_v4.1.0.pb'
     image_file_names = path_utils.find_images(r'c:\temp\demo_images\ssverymini')
     output_dir = r'c:\temp\demo_images\ssverymini'

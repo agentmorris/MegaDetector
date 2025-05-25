@@ -86,8 +86,17 @@ dependencies = [
 include = ["megadetector*"]
 
 [tool.ruff]
+ignore = ["D212"]
 line-length = 120
-target-version = "py38"
+target-version = "py312"
+include = ["megadetector/**/*.py"]
+exclude = ["megadetector/api/batch_processing/api_core/**/*.py",
+		   "megadetector/classification/**/*.py",
+           "megadetector/api/batch_processing/api_support/**/*.py",
+		   "megadetector/api/batch_processing/api_core_support/**/*.py",
+		   "megadetector/api/batch_processing/integration/**/*.py",
+		   "megadetector/api/synchronous/**/*.py",
+		   "megadetector/**/__init__.py"]
 
 [tool.ruff.lint]
 select = [
@@ -107,8 +116,18 @@ ignore = [
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+[tool.ruff.per-file-ignores]
+"**/*.py" = ["D212","D415","D202","UP032","UP015","B007"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["megadetector"]
-# Default sections (future, stdlib, thirdparty, firstparty, localfolder) are generally good.
-# We can add more specific section configuration here if needed later.
-```
+order-by-type = true
+force-single-line = false
+force-sort-within-sections = true
+section-order = [
+    "future",
+    "standard-library", 
+    "third-party",
+    "first-party",
+    "local-folder"
+]

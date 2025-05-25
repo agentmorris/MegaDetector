@@ -26,15 +26,15 @@ def remove_repeat_detections(inputFile,outputFile,filteringDir):
     Given an index file that was produced in a first pass through find_repeat_detections,
     and a folder of images (from which the user has deleted images they don't want removed),
     remove the identified repeat detections from a set of MD results and write to a new file.
-    
+
     Args:
         inputFile (str): .json file of MD results, from which we should remove repeat detections
-        outputFile (str): output .json file to which we should write MD results (with repeat 
+        outputFile (str): output .json file to which we should write MD results (with repeat
             detections removed)
-        filteringDir (str): the folder produced by find_repeat_detections, containing a 
-            detectionIndex.json file        
+        filteringDir (str): the folder produced by find_repeat_detections, containing a
+            detectionIndex.json file
     """
-    
+
     assert os.path.isfile(inputFile), "Can't find file {}".format(inputFile)
     assert os.path.isdir(filteringDir), "Can't find folder {}".format(filteringDir)
     options = repeat_detections_core.RepeatDetectionOptions()
@@ -50,9 +50,9 @@ def remove_repeat_detections(inputFile,outputFile,filteringDir):
 #%% Interactive driver
 
 if False:
-    
+
     #%%
-    
+
     inputFile = r''
     outputFile = r''
     filteringDir = r''
@@ -64,14 +64,14 @@ if False:
 import sys
 
 def main():
-    
+
     parser = argparse.ArgumentParser()
     parser.add_argument('inputFile', help='.json file containing the original, unfiltered API results')
     parser.add_argument('outputFile', help='.json file to which you want to write the final, ' + \
                         'filtered API results')
     parser.add_argument('filteringDir', help='directory where you looked at lots of images and ' + \
                         'decided which ones were really false positives')
-    
+
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()

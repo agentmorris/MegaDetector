@@ -114,7 +114,7 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
     if (not force_init) and (inat_taxonomy is not None):
         print('Skipping taxonomy re-init')
         return
-    
+
     if (not force_init) and (os.path.isfile(serialized_structures_file)):
 
         print(f'De-serializing taxonomy data from {serialized_structures_file}')
@@ -135,7 +135,7 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
         gbif_vernacular_to_taxon_id,\
         gbif_taxon_id_to_scientific,\
         gbif_scientific_to_taxon_id = structures_to_serialize
-        
+
         return
 
 
@@ -146,7 +146,7 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
     for taxonomy_name, zip_url in taxonomy_urls.items():
 
         need_to_download = False
-        
+
         if force_init:
             need_to_download = True
 
@@ -267,7 +267,7 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
     # Build iNat dictionaries
 
     print('Building lookup dictionaries for iNat taxonomy')
-    
+
     for i_row, row in tqdm(inat_taxonomy.iterrows(), total=len(inat_taxonomy)):
 
         taxon_id = row['taxonID']
@@ -286,7 +286,7 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
     # Build GBIF dictionaries
 
     print('Building lookup dictionaries for GBIF taxonomy')
-    
+
     for i_row, row in tqdm(gbif_taxonomy.iterrows(), total=len(gbif_taxonomy)):
 
         taxon_id = row['taxonID']
@@ -596,21 +596,21 @@ class TaxonomicMatch:
 
 
 hyphenated_terms = ['crowned', 'backed', 'throated', 'tailed', 'headed', 'cheeked',
-                    'ruffed', 'browed', 'eating', 'striped', 'shanked', 
+                    'ruffed', 'browed', 'eating', 'striped', 'shanked',
                     'fronted', 'bellied', 'spotted', 'eared', 'collared', 'breasted',
                     'necked']
 
 def get_preferred_taxonomic_match(query: str, taxonomy_preference = 'inat', retry=True) -> TaxonomicMatch:
     """
-    Wrapper for _get_preferred_taxonomic_match, but expressing a variety of heuristics 
+    Wrapper for _get_preferred_taxonomic_match, but expressing a variety of heuristics
     and preferences that are specific to our scenario.
-    
+
     Args:
         query (str): The common or scientific name we want to look up
         taxonomy_preference (str, optional): 'inat' or 'gbif'
-        retry (bool, optional): if the initial lookup fails, should we try heuristic 
+        retry (bool, optional): if the initial lookup fails, should we try heuristic
             substitutions, e.g. replacing "_" with " ", or "spp" with "species"?
-    
+
     Returns:
         TaxonomicMatch: the best taxonomic match, or None
     """
@@ -618,31 +618,31 @@ def get_preferred_taxonomic_match(query: str, taxonomy_preference = 'inat', retr
     m,query = _get_preferred_taxonomic_match(query=query,taxonomy_preference=taxonomy_preference)
     if (len(m.scientific_name) > 0) or (not retry):
         return m
-    
+
     for s in hyphenated_terms:
         query = query.replace(' ' + s,'-' + s)
     m,query = _get_preferred_taxonomic_match(query=query,taxonomy_preference=taxonomy_preference)
     return m
-    
-    
+
+
 def validate_and_convert(data):
     """
     Recursively validates that all elements in the nested structure are only
     tuples, lists, ints, or np.int64, and converts np.int64 to int.
-    
+
     Args:
         data: The nested structure to validate and convert
-        
+
     Returns:
         The validated and converted structure
-        
+
     Raises:
         TypeError: If an invalid type is encountered
     """
-    
-    if isinstance(data, np.int64):        
+
+    if isinstance(data, np.int64):
         return int(data)
-    elif isinstance(data, int) or isinstance(data, str): 
+    elif isinstance(data, int) or isinstance(data, str):
         return data
     elif isinstance(data, (list, tuple)):
         # Process lists and tuples recursively
@@ -654,17 +654,17 @@ def validate_and_convert(data):
 
 # ...def validate_and_convert(...)
 
-    
+
 def _get_preferred_taxonomic_match(query: str, taxonomy_preference = 'inat') -> TaxonomicMatch:
-    
+
     query = query.lower().strip().replace('_', ' ')
     query = query.replace('unidentified','')
     query = query.replace('unknown','')
     if query.endswith(' sp'):
         query = query.replace(' sp','')
     if query.endswith(' group'):
-        query = query.replace(' group','')    
-    
+        query = query.replace(' group','')
+
     query = query.strip()
 
     # query = 'person'
@@ -686,17 +686,17 @@ def _get_preferred_taxonomic_match(query: str, taxonomy_preference = 'inat') -> 
 
     n_inat_matches = len(inat_matches)
     n_gbif_matches = len(gbif_matches)
-    
+
     selected_matches = None
-    
+
     assert taxonomy_preference in ['gbif','inat'],\
         'Unrecognized taxonomy preference: {}'.format(taxonomy_preference)
-        
+
     if n_inat_matches > 0 and taxonomy_preference == 'inat':
         selected_matches = 'inat'
     elif n_gbif_matches > 0:
         selected_matches = 'gbif'
-        
+
     if selected_matches == 'inat':
 
         i_match = 0
@@ -802,7 +802,7 @@ def _get_preferred_taxonomic_match(query: str, taxonomy_preference = 'inat') -> 
     # Convert np.int64's to ints
     if match is not None:
         match = validate_and_convert(match)
-        
+
     taxonomy_string = str(match)
 
     return TaxonomicMatch(scientific_name, common_name, taxonomic_level, source,
@@ -828,15 +828,15 @@ if False:
     # print(matches)
 
     print_taxonomy_matches(matches,verbose=True)
-    
+
     print('\n\n')
-    
+
     # Print the taxonomy in the taxonomy spreadsheet format
     assert matches[1]['source'] == 'inat'
     t = str(matches[1]['taxonomy'])
     print(t)
     import clipboard; clipboard.copy(t)
-    
+
 
     #%% Directly access the taxonomy tables
 
@@ -853,7 +853,7 @@ def main():
     # Read command line inputs (absolute path)
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file')
-        
+
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()

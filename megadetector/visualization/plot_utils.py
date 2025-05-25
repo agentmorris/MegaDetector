@@ -34,7 +34,7 @@ def plot_confusion_matrix(matrix,
         matrix (np.ndarray): shape [num_classes, num_classes], confusion matrix
             where rows are ground-truth classes and columns are predicted classes
         classes (list of str): class names for each row/column
-        normalize (bool, optional): whether to perform row-wise normalization; 
+        normalize (bool, optional): whether to perform row-wise normalization;
             by default, assumes values in the confusion matrix are percentages
         title (str, optional): figure title
         cmap (matplotlib.colors.colormap): colormap for cell backgrounds
@@ -45,11 +45,11 @@ def plot_confusion_matrix(matrix,
         fmt (str): format string for rendering numeric values
         fig (Figure): existing figure to which we should render, otherwise creates
             a new figure
-        
-    Returns: 
+
+    Returns:
         matplotlib.figure.Figure: the figure we rendered to or created
     """
-    
+
     num_classes = matrix.shape[0]
     assert matrix.shape[1] == num_classes
     assert len(classes) == num_classes
@@ -86,7 +86,7 @@ def plot_confusion_matrix(matrix,
         ax.set_ylabel('Ground-truth class')
 
     for i, j in np.ndindex(matrix.shape):
-        v = matrix[i, j]        
+        v = matrix[i, j]
         ax.text(j, i, fmt.format(v),
                 horizontalalignment='center',
                 verticalalignment='center',
@@ -97,8 +97,8 @@ def plot_confusion_matrix(matrix,
 # ...def plot_confusion_matrix(...)
 
 
-def plot_precision_recall_curve(precisions, 
-                                recalls, 
+def plot_precision_recall_curve(precisions,
+                                recalls,
                                 title='Precision/recall curve',
                                 xlim=(0.0,1.05),
                                 ylim=(0.0,1.05)):
@@ -115,10 +115,10 @@ def plot_precision_recall_curve(precisions,
         xlim (tuple, optional): x-axis limits as a length-2 tuple
         ylim (tuple, optional): y-axis limits as a length-2 tuple
 
-    Returns: 
+    Returns:
         matplotlib.figure.Figure: the (new) figure
     """
-    
+
     assert len(precisions) == len(recalls)
 
     fig = matplotlib.figure.Figure(tight_layout=True)
@@ -128,15 +128,15 @@ def plot_precision_recall_curve(precisions,
 
     try:
         ax.set(x_label='Recall', y_label='Precision', title=title)
-        ax.set(x_lim=xlim, y_lim=ylim)    
-    # 
+        ax.set(x_lim=xlim, y_lim=ylim)
+    #
     except Exception:
         ax.set_xlabel('Recall')
         ax.set_ylabel('Precision')
         ax.set_title(title)
         ax.set_xlim(xlim[0],xlim[1])
         ax.set_ylim(ylim[0],ylim[1])
-        
+
     return fig
 
 
@@ -144,7 +144,7 @@ def plot_stacked_bar_chart(data, series_labels=None, col_labels=None,
                            x_label=None, y_label=None, log_scale=False):
     """
     Plot a stacked bar chart, for plotting e.g. species distribution across locations.
-    
+
     Reference: https://stackoverflow.com/q/44309507
 
     Args:
@@ -156,10 +156,10 @@ def plot_stacked_bar_chart(data, series_labels=None, col_labels=None,
         y_label (str, optional): y-axis label
         log_scale (bool, optional) whether to plot the y axis in log-scale
 
-    Returns: 
+    Returns:
         matplotlib.figure.Figure: the (new) figure
     """
-    
+
     data = np.asarray(data)
     num_series, num_columns = data.shape
     ind = np.arange(num_columns)
@@ -206,24 +206,24 @@ def calibration_ece(true_scores, pred_scores, num_bins):
 
     Implementation modified from sklearn.calibration.calibration_curve()
     in order to implement ECE calculation. See:
-    
+
     https://github.com/scikit-learn/scikit-learn/issues/18268
 
     Args:
         true_scores (list of int): true values, length N, binary-valued (0 = neg, 1 = pos)
-        pred_scores (list of float): predicted confidence values, length N, pred_scores[i] is the 
+        pred_scores (list of float): predicted confidence values, length N, pred_scores[i] is the
             predicted confidence that example i is positive
         num_bins (int): number of bins to use (`M` in eq. (3) of Guo 2017)
 
     Returns:
         tuple: a length-three tuple containing:
             - accs: np.ndarray, shape [M], type float64, accuracy in each bin,
-              M <= num_bins because bins with no samples are not returned        
+              M <= num_bins because bins with no samples are not returned
             - confs: np.ndarray, shape [M], type float64, mean model confidence in
               each bin
             - ece: float, expected calibration error
     """
-    
+
     assert len(true_scores) == len(pred_scores)
 
     bins = np.linspace(0., 1. + 1e-8, num=num_bins + 1)
@@ -250,7 +250,7 @@ def plot_calibration_curve(true_scores, pred_scores, num_bins,
 
     Args:
         true_scores (list of int): true values, length N, binary-valued (0 = neg, 1 = pos)
-        pred_scores (list of float): predicted confidence values, length N, pred_scores[i] is the 
+        pred_scores (list of float): predicted confidence values, length N, pred_scores[i] is the
             predicted confidence that example i is positive
         num_bins (int): number of bins to use (`M` in eq. (3) of Guo 2017)
         name (str, optional): label in legend for the calibration curve
@@ -262,7 +262,7 @@ def plot_calibration_curve(true_scores, pred_scores, num_bins,
     Returns:
         matplotlib.figure.Figure: the (new) figure
     """
-    
+
     accs, confs, ece = calibration_ece(true_scores, pred_scores, num_bins)
 
     created_fig = False

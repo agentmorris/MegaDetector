@@ -2,7 +2,7 @@
 
 prepare_lila_taxonomy_release.py
 
-Given the private intermediate taxonomy mapping (produced by map_new_lila_datasets.py), 
+Given the private intermediate taxonomy mapping (produced by map_new_lila_datasets.py),
 prepare the public (release) taxonomy mapping file.
 
 """
@@ -17,9 +17,9 @@ import pandas as pd
 #%% Prevent execution during infrastructural imports
 
 if False:
-    
+
     #%% Filenames
-    
+
     lila_taxonomy_file = 'c:/git/agentmorrisprivate/lila-taxonomy/lila-taxonomy-mapping.csv'
     release_taxonomy_file = os.path.expanduser('~/lila/lila-taxonomy-mapping_release.csv')
     # import clipboard; clipboard.copy(release_taxonomy_file)
@@ -42,7 +42,7 @@ if False:
 
     # dataset_name = datasets_to_map[0]
     for dataset_name in lila_dataset_to_categories.keys():
-        
+
         ds_categories = lila_dataset_to_categories[dataset_name]
         for category in ds_categories:
             category_name = category['name'].lower()
@@ -93,23 +93,23 @@ if False:
 
     for s in levels_to_exclude:
         assert s not in levels_to_include
-        
+
     levels_used = set()
 
     # i_row = 0; row = df.iloc[i_row]; row
     for i_row,row in df.iterrows():
-        
+
         if not isinstance(row['scientific_name'],str):
             assert not isinstance(row['taxonomy_string'],str)
             continue
-        
+
         taxonomic_match = eval(row['taxonomy_string'])
-        
+
         # match_at_level = taxonomic_match[0]
         for match_at_level in taxonomic_match:
             assert len(match_at_level) == 4
             levels_used.add(match_at_level[1])
-            
+
     levels_used = [s for s in levels_used if isinstance(s,str)]
 
     for s in levels_used:
@@ -117,20 +117,20 @@ if False:
 
     for s in levels_to_include:
         assert s in levels_used
-        
+
     for s in levels_to_include:
         df[s] = ''
-        
+
     # i_row = 0; row = df.iloc[i_row]; row
     for i_row,row in df.iterrows():
-        
+
         if not isinstance(row['scientific_name'],str):
             assert not isinstance(row['taxonomy_string'],str)
             continue
-        
+
         # E.g.: (43117, 'genus', 'lepus', ['hares and jackrabbits']
         taxonomic_match = eval(row['taxonomy_string'])
-        
+
         for match_at_level in taxonomic_match:
             level = match_at_level[1]
             if level in levels_to_include:

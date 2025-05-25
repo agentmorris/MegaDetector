@@ -33,7 +33,7 @@ def walk_container(container_client: ContainerClient,
     Based on:
     https://github.com/Azure/azure-sdk-for-python/blob/master/sdk/storage/azure-storage-blob/samples/blob_samples_walk_blob_hierarchy.py
     """
-    
+
     depth = 1
 
     def walk_blob_hierarchy(prefix: str,
@@ -80,7 +80,7 @@ def list_top_level_blob_folders(container_client: ContainerClient) -> List[str]:
     """
     List all top-level folders in a container.
     """
-    
+
     top_level_folders, _ = walk_container(
         container_client, max_depth=1, store_blobs=False)
     return top_level_folders
@@ -94,7 +94,7 @@ def concatenate_json_lists(input_files: Iterable[str],
     filenames), concatenates the lists into a single list and optionally
     writes out this list to a new output JSON file.
     """
-    
+
     output_list = []
     for fn in input_files:
         with open(fn, 'r') as f:
@@ -116,12 +116,12 @@ def upload_file_to_blob(account_name: str,
     Uploads a local file to Azure Blob Storage and returns the uploaded
     blob URI with SAS token.
     """
-    
+
     container_uri = sas_blob_utils.build_azure_storage_uri(
         account=account_name, container=container_name, sas_token=sas_token)
     with open(local_path, 'rb') as data:
         return sas_blob_utils.upload_blob(
-            container_uri=container_uri, blob_name=blob_name, data=data, 
+            container_uri=container_uri, blob_name=blob_name, data=data,
             overwrite=overwrite)
 
 
@@ -143,7 +143,7 @@ def enumerate_blobs_to_file(
     Args:
         output_file: str, path to save list of files in container
             If ends in '.json', writes a JSON string. Otherwise, writes a
-            newline-delimited list. Can be None, in which case this is just a 
+            newline-delimited list. Can be None, in which case this is just a
             convenient wrapper for blob enumeration.
         account_name: str, Azure Storage account name
         container_name: str, Azure Blob Storage container name
@@ -155,24 +155,24 @@ def enumerate_blobs_to_file(
             be lowercased first before comparing with the suffix(es).
         rsearch: optional str, returned results will only contain blob names
             that match this regex. Can also be a list of regexes, in which case
-            blobs matching *any* of the regex's will be returned.            
+            blobs matching *any* of the regex's will be returned.
         limit: int, maximum # of blob names to list
             if None, then returns all blob names
 
     Returns: list of str, sorted blob names, of length limit or shorter.
     """
-    
+
     if sas_token is not None and len(sas_token) > 9 and sas_token[0] == '?':
         sas_token = sas_token[1:]
-        
+
     container_uri = sas_blob_utils.build_azure_storage_uri(
         account=account_name, container=container_name, sas_token=sas_token)
-    
+
     matched_blobs = sas_blob_utils.list_blobs_in_container(
         container_uri=container_uri, blob_prefix=blob_prefix,
         blob_suffix=blob_suffix, rsearch=rsearch, limit=limit, verbose=verbose)
-    
+
     if output_file is not None:
         path_utils.write_list_to_file(output_file, matched_blobs)
-        
+
     return matched_blobs

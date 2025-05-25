@@ -2,7 +2,7 @@
 
 directory_listing.py
 
-Script for creating Apache-style HTML directory listings for a local directory 
+Script for creating Apache-style HTML directory listings for a local directory
 and all its subdirectories.
 
 Also includes a preview of a jpg file (the first in an alphabetical list),
@@ -24,7 +24,7 @@ from megadetector.utils.path_utils import is_image_file
 
 def create_plain_index(root, dirs, files, dirname=None):
     """
-    Creates the fairly plain HTML folder index including a preview of a single image file, 
+    Creates the fairly plain HTML folder index including a preview of a single image file,
     if any is present.
 
     Args:
@@ -32,10 +32,10 @@ def create_plain_index(root, dirs, files, dirname=None):
             [files] are relative to this root folder
         dirs (list): list of strings, the directories in [root]
         files (list): list of strings, the files in [root]
-        dirname (str, optional): name to print in the html, 
+        dirname (str, optional): name to print in the html,
             which may be different than [root]
 
-    Returns: 
+    Returns:
         str: HTML source of the directory listing
     """
 
@@ -116,13 +116,13 @@ def traverse_and_create_index(dir, sas_url=None, overwrite_files=False,
 
     Args:
         dir (str): directory to process
-        sas_url (str, optional): write-capable SAS URL that points to the same place as 
+        sas_url (str, optional): write-capable SAS URL that points to the same place as
             [dir], used for the very esoteric scenario where [dir] is really a mounted
             blob container, and we want to set the content-type on each file so the resulting
             index can be viewed in a browser
         overwrite_files (bool, optional): whether to over-write existing index file
-        template_fun (func, optional): function taking three arguments (string, 
-            list of string, list of string) representing the current root, the list of folders, 
+        template_fun (func, optional): function taking three arguments (string,
+            list of string, list of string) representing the current root, the list of folders,
             and the list of files.  Should return the HTML source of the index file.
         basepath (str, optional): if not None, the name used for each subfolder in [dir]
             in the output files will be relative to [basepath]
@@ -213,15 +213,15 @@ def traverse_and_create_index(dir, sas_url=None, overwrite_files=False,
 #%% Command-line driver
 
 def main():
-    
+
     parser = argparse.ArgumentParser()
-    
-    parser.add_argument("directory", type=str, 
+
+    parser.add_argument("directory", type=str,
                         help='Path to directory which should be traversed.')
-    parser.add_argument("--basepath", type=str, 
-                        help='Folder names will be printed relative to basepath, if specified', 
+    parser.add_argument("--basepath", type=str,
+                        help='Folder names will be printed relative to basepath, if specified',
                         default=None)
-    parser.add_argument("--sas_url", type=str, 
+    parser.add_argument("--sas_url", type=str,
                         help='Blobfuse does not set the content-type property ' + \
                              'properly and hence index.html won\'t be accessible in the browser. If you want to set the ' + \
                               'content-type in the corresponding blob storage, provide the SAS URL that corresponds to the ' + \

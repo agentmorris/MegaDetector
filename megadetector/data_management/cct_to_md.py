@@ -28,92 +28,92 @@ def cct_to_md(input_filename,output_filename=None):
     """
     "Converts" a COCO Camera Traps file to a MD results file.  Currently ignores
     non-bounding-box annotations.  If the semi-standard "score" field is present in
-    an annotation, or the totally non-standard "conf" field is present, it will be 
+    an annotation, or the totally non-standard "conf" field is present, it will be
     transferred to the output, otherwise a confidence value of 1.0 is assumed for
     all annotations.
 
-    The main reason to run this script the scenario where you are going to add information 
+    The main reason to run this script the scenario where you are going to add information
     to an existing CCT-formatted dataset, and you want to do that in Timelapse.
 
     Currently assumes that width and height are present in the input data, does not
     read them from images.
-    
+
     Args:
         input_filename (str): the COCO Camera Traps .json file to read
         output_filename (str, optional): the .json file to write in MD results format
-        
+
     Returns:
         dict: MD-formatted results, identical to the content of [output_filename] if
         [output_filename] is not None
     """
-    
+
     ## Validate input
-    
+
     assert os.path.isfile(input_filename)
-    
+
     if (output_filename is None):
-        
+
         tokens = os.path.splitext(input_filename)
         assert len(tokens) == 2
         output_filename = tokens[0] + '_md-format' + tokens[1]
-    
-        
+
+
     ## Read input
-    
+
     with open(input_filename,'r') as f:
         d = json.load(f)
-        
+
     for s in ['annotations','images','categories']:
         assert s in d.keys(), 'Cannot find category {} in input file, is this a CCT file?'.format(s)
-        
-    
+
+
     ## Prepare metadata
-    
+
     image_id_to_annotations = defaultdict(list)
-    
+
     # ann = d['annotations'][0]
     for ann in tqdm(d['annotations']):
         image_id_to_annotations[ann['image_id']].append(ann)
-    
+
     category_id_to_name = {}
     for cat in d['categories']:
         category_id_to_name[str(cat['id'])] = cat['name']
-        
+
     results = {}
-    
+
     info = {}
     info['format_version'] = '1.4'
     info['detector'] = 'cct_to_md'
     results['info'] = info
     results['detection_categories'] = category_id_to_name
-        
-    
+
+
     ## Process images
-    
+
     images_out = []
-    
+
     # im = d['images'][0]
     for im in tqdm(d['images']):
-        
+
         im_out = {}
         im_out['file'] = im['file_name']
         im_out['location'] = im['location']
         im_out['id'] = im['id']
-        
+
         image_h = im['height']
         image_w = im['width']
-        
+
         detections = []
-        
+
         annotations_this_image = image_id_to_annotations[im['id']]
-        
+
         # This field is no longer included in MD output files by default
         # max_detection_conf = 0
-        
+
         for ann in annotations_this_image:
-            
+
                if 'bbox' in ann:
-                   
+
                    det = {}
                    det['category'] = str(ann['category_id'])
                    if 'score' in ann:
@@ -122,7 +122,7 @@ def cct_to_md(input_filename,output_filename=None):
                        det['conf'] = ann['conf']
                    else:
                        det['conf'] = 1.0
-                   
+
                    # MegaDetector: [x,y,width,height] (normalized, origin upper-left)
                    # CCT: [x,y,width,height] (absolute, origin upper-left)
                    bbox_in = ann['bbox']
@@ -130,37 +130,37 @@ def cct_to_md(input_filename,output_filename=None):
                                bbox_in[2]/image_w,bbox_in[3]/image_h]
                    det['bbox'] = bbox_out
                    detections.append(det)
-                   
+
               # ...if there's a bounding box
-              
+
         # ...for each annotation
-        
+
         im_out['detections'] = detections
-        
+
         # This field is no longer included in MD output files by default
         # im_out['max_detection_conf'] = max_detection_conf
-    
+
         images_out.append(im_out)
-        
+
     # ...for each image
-    
-    
+
+
     ## Write output
-    
+
     results['images'] = images_out
-    
+
     with open(output_filename,'w') as f:
         json.dump(results, f, indent=1)
-        
+
     return output_filename
 
-# ...cct_to_md()    
-    
+# ...cct_to_md()
+
 
 #%% Interactive driver
 
 if False:
-    
+
     pass
 
     #%%
@@ -168,11 +168,11 @@ if False:
     input_filename = r"G:\temp\noaa_estuary_fish.json"
     output_filename = None
     output_filename = cct_to_md(input_filename,output_filename)
-    
+
     #%%
-    
+
     from megadetector.visualization import visualize_detector_output
-    
+
     visualize_detector_output.visualize_detector_output(
                               detector_output_path=output_filename,
                               out_dir=r'g:\temp\fish_output',

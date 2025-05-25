@@ -2,7 +2,7 @@
 
 create_lila_test_set.py
 
-Create a test set of camera trap images, containing N empty and N non-empty 
+Create a test set of camera trap images, containing N empty and N non-empty
 images from each LILA data set.
 
 """
@@ -52,49 +52,49 @@ for ds_name in metadata_table.keys():
 for ds_name in metadata_table.keys():
 
     print('Choosing images for {}'.format(ds_name))
-    
+
     json_filename = metadata_table[ds_name]['metadata_filename']
-    
+
     with open(json_filename,'r') as f:
         d = json.load(f)
-    
+
     category_id_to_name = {c['id']:c['name'] for c in d['categories']}
     category_name_to_id = {c['name']:c['id'] for c in d['categories']}
-    
+
     ## Find empty images
-    
+
     if 'empty' not in category_name_to_id:
         empty_annotations_to_download = []
     else:
-        empty_category_id = category_name_to_id['empty']        
+        empty_category_id = category_name_to_id['empty']
         empty_annotations = [ann for ann in d['annotations'] if ann['category_id'] == empty_category_id]
         try:
-            empty_annotations_to_download = random.sample(empty_annotations,n_empty_images_per_dataset)        
+            empty_annotations_to_download = random.sample(empty_annotations,n_empty_images_per_dataset)
         except ValueError:
             print('No empty images available for dataset {}'.format(ds_name))
             empty_annotations_to_download = []
-        
+
     ## Find non-empty images
-    
-    non_empty_annotations = [ann for ann in d['annotations'] if ann['category_id'] != empty_category_id]    
+
+    non_empty_annotations = [ann for ann in d['annotations'] if ann['category_id'] != empty_category_id]
     try:
         non_empty_annotations_to_download = random.sample(non_empty_annotations,n_non_empty_images_per_dataset)
     except ValueError:
         print('No non-empty images available for dataset {}'.format(ds_name))
         non_empty_annotations_to_download = []
 
-    
+
     annotations_to_download = empty_annotations_to_download + non_empty_annotations_to_download
-    
+
     image_ids_to_download = set([ann['image_id'] for ann in annotations_to_download])
     assert len(image_ids_to_download) == len(set(image_ids_to_download))
-    
+
     images_to_download = []
     for im in d['images']:
         if im['id'] in image_ids_to_download:
             images_to_download.append(im)
     assert len(images_to_download) == len(image_ids_to_download)
-    
+
     metadata_table[ds_name]['images_to_download'] = images_to_download
 
 # ...for each dataset
@@ -109,19 +109,19 @@ for ds_name in metadata_table.keys():
 
     base_url = metadata_table[ds_name]['image_base_url_' + preferred_cloud]
     assert not base_url.endswith('/')
-    
+
     # Retrieve image file names
     filenames = [im['file_name'] for im in metadata_table[ds_name]['images_to_download']]
-    
+
     urls_to_download = []
-    
+
     # Convert to URLs
-    for fn in filenames:        
+    for fn in filenames:
         url = base_url + '/' + fn
         urls_to_download.append(url)
 
     metadata_table[ds_name]['urls_to_download'] = urls_to_download
-    
+
 # ...for each dataset
 
 
@@ -135,19 +135,19 @@ for ds_name in metadata_table.keys():
     base_url = metadata_table[ds_name]['image_base_url_' + preferred_cloud]
     assert not base_url.endswith('/')
     base_url += '/'
-        
+
     urls_to_download = metadata_table[ds_name]['urls_to_download']
-    
+
     # url = urls_to_download[0]
     for url in urls_to_download:
-        
+
         assert base_url in url
         output_file_relative = ds_name.lower().replace(' ','_') + '_' + url.replace(base_url,'').replace('/','_').replace('\\','_')
         output_file_absolute = os.path.join(output_dir,output_file_relative)
         url_to_target_file[url] = output_file_absolute
-        
+
     # ...for each url
-    
+
 # ...for each dataset
 
 

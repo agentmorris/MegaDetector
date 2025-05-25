@@ -47,7 +47,7 @@ os.makedirs(metadata_dir,exist_ok=True)
 
 output_file = os.path.join(lila_local_base,'lila_image_urls_and_labels.csv')
 
-# Some datasets don't have "sequence_level_annotation" fields populated, but we know their 
+# Some datasets don't have "sequence_level_annotation" fields populated, but we know their
 # annotation level
 ds_name_to_annotation_level = {}
 ds_name_to_annotation_level['Caltech Camera Traps'] = 'image'
@@ -79,11 +79,11 @@ if False:
 
 #%% Download and extract metadata for each dataset
 
-for ds_name in metadata_table.keys():    
+for ds_name in metadata_table.keys():
     metadata_table[ds_name]['metadata_filename'] = read_metadata_file_for_dataset(ds_name=ds_name,
                                                                          metadata_dir=metadata_dir,
                                                                          metadata_table=metadata_table)
-    
+
 #%% Load taxonomy data
 
 taxonomy_df = read_lila_taxonomy_mapping(metadata_dir)
@@ -95,12 +95,12 @@ ds_label_to_taxonomy = {}
 
 # i_row = 0; row = taxonomy_df.iloc[i_row]
 for i_row,row in taxonomy_df.iterrows():
-    
+
     ds_label = row['dataset_name'] + ':' + row['query']
     assert ds_label.strip() == ds_label
     assert ds_label not in ds_label_to_taxonomy
     ds_label_to_taxonomy[ds_label] = row.to_dict()
-    
+
 
 #%% Process annotations for each dataset
 
@@ -116,7 +116,7 @@ taxonomy_levels_to_include = \
     ['kingdom','phylum','subphylum','superclass','class','subclass','infraclass','superorder','order',
      'suborder','infraorder','superfamily','family','subfamily','tribe','genus','species','subspecies',
      'variety']
-    
+
 header.extend(taxonomy_levels_to_include)
 
 missing_annotations = set()
@@ -129,57 +129,57 @@ def clearnan(v):
     return v
 
 with open(output_file,'w',encoding='utf-8',newline='') as f:
-    
+
     csv_writer = csv.writer(f)
     csv_writer.writerow(header)
-    
+
     # ds_name = list(metadata_table.keys())[0]
     for ds_name in metadata_table.keys():
-        
+
         if 'bbox' in ds_name:
             print('Skipping bbox dataset {}'.format(ds_name))
             continue
-    
+
         print('Processing dataset {}'.format(ds_name))
-        
+
         json_filename = metadata_table[ds_name]['metadata_filename']
         with open(json_filename, 'r') as f:
             data = json.load(f)
-        
+
         categories = data['categories']
         category_ids = [c['id'] for c in categories]
         for c in categories:
             category_id_to_name = {c['id']:c['name'] for c in categories}
-            
+
         annotations = data['annotations']
         images = data['images']
-        
+
         image_id_to_annotations = defaultdict(list)
-        
+
         # Go through annotations, marking each image with the categories that are present
         #
         # ann = annotations[0]
-        for ann in annotations:            
+        for ann in annotations:
             image_id_to_annotations[ann['image_id']].append(ann)
-    
+
         unannotated_images = []
-        
+
         found_date = False
         found_location = False
         found_annotation_level = False
-        
+
         if ds_name in ds_name_to_annotation_level:
             expected_annotation_level = ds_name_to_annotation_level[ds_name]
         else:
             expected_annotation_level = None
-                    
+
         # im = images[10]
         for i_image,im in tqdm(enumerate(images),total=len(images)):
-            
+
             if (debug_max_images_per_dataset is not None) and (debug_max_images_per_dataset > 0) \
                 and (i_image >= debug_max_images_per_dataset):
                 break
-            
+
             file_name = im['file_name'].replace('\\','/')
             base_url_gcp = metadata_table[ds_name]['image_base_url_gcp']
             base_url_aws = metadata_table[ds_name]['image_base_url_aws']
@@ -187,20 +187,20 @@ with open(output_file,'w',encoding='utf-8',newline='') as f:
             assert not base_url_gcp.endswith('/')
             assert not base_url_aws.endswith('/')
             assert not base_url_azure.endswith('/')
-            
+
             url_gcp = base_url_gcp + '/' + file_name
             url_aws = base_url_aws + '/' + file_name
             url_azure = base_url_azure + '/' + file_name
-                        
+
             for k in im.keys():
                 if ('date' in k or 'time' in k) and (k not in ['datetime','date_captured']):
                     raise ValueError('Unrecognized datetime field')
-                    
+
             # This field name was only used for Caltech Camera Traps
             if 'date_captured' in im:
                 assert ds_name == 'Caltech Camera Traps'
                 im['datetime'] = im['date_captured']
-                
+
             def has_valid_datetime(im):
                 if 'datetime' not in im:
                     return False
@@ -212,29 +212,29 @@ with open(output_file,'w',encoding='utf-8',newline='') as f:
                 else:
                     assert isinstance(v,float) and np.isnan(v)
                     return False
-                    
-            dt_string = ''                
+
+            dt_string = ''
             if (has_valid_datetime(im)):
-                
+
                 dt = dateparser.parse(im['datetime'])
-                
+
                 if dt is None or dt.year < 1990 or dt.year > 2025:
-                    
+
                     # raise ValueError('Suspicious date parsing result')
-                    
-                    # Special case we don't want to print a warning about... this is 
+
+                    # Special case we don't want to print a warning about... this is
                     # in invalid date that very likely originates on the camera, not at
                     # some intermediate processing step.
                     #
                     # print('Suspicious date for image {}: {} ({})'.format(
                     #    im['id'], im['datetime'], ds_name))
-                    pass                
-                    
+                    pass
+
                 else:
-                    
+
                     found_date = True
                     dt_string = dt.strftime("%m-%d-%Y %H:%M:%S")
-                
+
             # Location, sequence, and image IDs are only guaranteed to be unique within
             # a dataset, so for the output .csv file, include both
             if 'location' in im:
@@ -242,25 +242,25 @@ with open(output_file,'w',encoding='utf-8',newline='') as f:
                 location_id = ds_name + ' : ' + str(im['location'])
             else:
                 location_id = ds_name
-                
+
             image_id = ds_name + ' : ' + str(im['id'])
-            
+
             if 'seq_id' in im:
                 sequence_id = ds_name + ' : ' + str(im['seq_id'])
             else:
                 sequence_id = ds_name + ' : ' + 'unknown'
-                
+
             if 'frame_num' in im:
                 frame_num = im['frame_num']
             else:
                 frame_num = -1
-            
+
             annotations_this_image = image_id_to_annotations[im['id']]
-            
+
             categories_this_image = set()
-            
+
             annotation_level = 'unknown'
-            
+
             for ann in annotations_this_image:
                 assert ann['image_id'] == im['id']
                 categories_this_image.add(category_id_to_name[ann['category_id']])
@@ -275,35 +275,35 @@ with open(output_file,'w',encoding='utf-8',newline='') as f:
                             'Unexpected annotation level'
                 elif expected_annotation_level is not None:
                     annotation_level = expected_annotation_level
-                    
+
             if len(categories_this_image) == 0:
                 unannotated_images.append(im)
                 continue
-            
+
             # category_name = list(categories_this_image)[0]
             for category_name in categories_this_image:
-                
+
                 ds_label = ds_name + ':' + category_name.lower()
-                
+
                 if ds_label not in ds_label_to_taxonomy:
-                    
+
                     assert ds_label in known_unmapped_labels
-                    
+
                     # Only print a warning the first time we see an unmapped label
                     if ds_label not in missing_annotations:
                         print('Warning: {} not in taxonomy file'.format(ds_label))
                     missing_annotations.add(ds_label)
                     continue
-                
+
                 taxonomy_labels = ds_label_to_taxonomy[ds_label]
-                
+
                 """
-                header =        
+                header =
                     ['dataset_name','url','image_id','sequence_id','location_id',
                      'frame_num','original_label','scientific_name','common_name',
                      'datetime','annotation_level']
                 """
-                
+
                 row = []
                 row.append(ds_name)
                 row.append(url_gcp)
@@ -318,33 +318,33 @@ with open(output_file,'w',encoding='utf-8',newline='') as f:
                 row.append(clearnan(taxonomy_labels['common_name']))
                 row.append(dt_string)
                 row.append(annotation_level)
-                
+
                 for s in taxonomy_levels_to_include:
                     row.append(clearnan(taxonomy_labels[s]))
-                
+
                 assert len(row) == len(header)
-                
+
                 csv_writer.writerow(row)
-                        
+
             # ...for each category that was applied at least once to this image
-            
+
         # ...for each image in this dataset
-        
+
         if not found_date:
             pass
             # print('Warning: no date information available for this dataset')
-            
+
         if not found_location:
             pass
             # print('Warning: no location information available for this dataset')
-        
+
         if not found_annotation_level and (ds_name not in ds_name_to_annotation_level):
             print('Warning: no annotation level information available for this dataset')
-        
+
         if len(unannotated_images) > 0:
             print('Warning: {} of {} images are un-annotated\n'.\
                   format(len(unannotated_images),len(images)))
-        
+
     # ...for each dataset
 
 # ...with open()
@@ -374,7 +374,7 @@ valid_annotation_levels = set(['sequence','image','unknown'])
 dataset_name_to_locations = defaultdict(set)
 
 def check_row(row):
-    
+
     assert row['dataset_name'] in metadata_table.keys()
     for url_column in ['url_gcp','url_aws','url_azure']:
         assert row[url_column].startswith('https://') or row[url_column].startswith('http://')
@@ -391,14 +391,14 @@ def check_row(row):
 
     ds_name = row['dataset_name']
     dataset_name_to_locations[ds_name].add(row['location_id'])
-    
+
 # Faster, but more annoying to debug
 if True:
-    
+
     df.progress_apply(check_row, axis=1)
 
 else:
-    
+
     # i_row = 0; row = df.iloc[i_row]
     for i_row,row in tqdm(df.iterrows(),total=len(df)):
         check_row(row)
@@ -428,19 +428,19 @@ images_to_download = []
 
 # ds_name = list(metadata_table.keys())[2]
 for ds_name in metadata_table.keys():
-    
+
     if 'bbox' in ds_name:
         continue
-    
+
     # Find all rows for this dataset
     ds_rows = df.loc[df['dataset_name'] == ds_name]
-    
+
     print('{} rows available for {}'.format(len(ds_rows),ds_name))
     assert len(ds_rows) > 0
-    
+
     empty_rows = ds_rows[ds_rows['scientific_name'].isnull()]
     non_empty_rows = ds_rows[~ds_rows['scientific_name'].isnull()]
-    
+
     if len(empty_rows) == 0:
         print('No empty images available for {}'.format(ds_name))
     elif len(empty_rows) > n_empty_images_per_dataset:
@@ -452,7 +452,7 @@ for ds_name in metadata_table.keys():
     elif len(non_empty_rows) > n_non_empty_images_per_dataset:
         non_empty_rows = non_empty_rows.sample(n=n_non_empty_images_per_dataset)
     images_to_download.extend(non_empty_rows.to_dict('records'))
-    
+
  # ...for each dataset
 
 print('Selected {} total images'.format(len(images_to_download)))
@@ -468,7 +468,7 @@ url_to_target_file = {}
 
 # i_image = 10; image = images_to_download[i_image]
 for i_image,image in tqdm(enumerate(images_to_download),total=len(images_to_download)):
-    
+
     url = image['url_' + preferred_cloud]
     ext = os.path.splitext(url)[1]
     fn_relative = 'image_{}'.format(str(i_image).zfill(4)) + ext
@@ -476,7 +476,7 @@ for i_image,image in tqdm(enumerate(images_to_download),total=len(images_to_down
     image['relative_file'] = fn_relative
     image['url'] = url
     url_to_target_file[url] = fn_abs
-    
+
 
 #%% Download images (execution)
 
@@ -493,10 +493,10 @@ html_images = []
 
 # im = images_to_download[0]
 for im in images_to_download:
-    
+
     if im['relative_file'] is None:
         continue
-    
+
     output_im = {}
     output_im['filename'] = im['relative_file']
     output_im['linkTarget'] = im['url']
@@ -504,7 +504,7 @@ for im in images_to_download:
     output_im['imageStyle'] = 'width:600px;'
     output_im['textStyle'] = 'font-weight:normal;font-size:100%;'
     html_images.append(output_im)
-    
+
 write_html_image_list.write_html_image_list(html_filename,html_images)
 
 open_file(html_filename)

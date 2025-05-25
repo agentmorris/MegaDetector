@@ -2,7 +2,7 @@
 
 map_lila_taxonomy_to_wi_taxonomy.py
 
-Loads the LILA category mapping (in which taxonomy information comes from an 
+Loads the LILA category mapping (in which taxonomy information comes from an
 iNat taxonomy snapshot) and tries to map each class to the Wildlife Insights taxonomy.
 
 """
@@ -22,9 +22,9 @@ from megadetector.data_management.lila.lila_common import \
 #%% Prevent execution during infrastructural imports
 
 if False:
-    
+
     #%%
-    
+
     lila_local_base = os.path.expanduser('~/lila')
 
     metadata_dir = os.path.join(lila_local_base, 'metadata')
@@ -67,7 +67,7 @@ if False:
 
     def is_empty_wi_item(v):
         if isinstance(v, str):
-            return len(v) == 0        
+            return len(v) == 0
         elif v is None:
             return True
         else:
@@ -121,7 +121,7 @@ if False:
             v = taxon[k]
             if isinstance(v,str):
                 taxon[k] = v.strip()
-                
+
         if taxon['commonNameEnglish'] in ignore_taxa:
             continue
 
@@ -157,7 +157,7 @@ if False:
             # If 'species' is populated, 'genus' should always be populated; one item currently breaks
             # this rule.
             assert not is_empty_wi_item(taxon['genus'])
-            
+
             taxon_name = (taxon['genus'].strip() + ' ' +
                         taxon['species'].strip()).strip().lower()
             assert not is_empty_wi_item(taxon['class']) and \
@@ -205,7 +205,7 @@ if False:
                             previous_taxon['taxon_name'],
                             level,taxon[level])
                         assert taxonomy_items_equal(previous_taxon[level], taxon[level]), error_string
-                    
+
         taxon['taxon_name'] = taxon_name
         if taxon_name == 'homo sapiens':
             human_taxa.append(taxon)
@@ -234,7 +234,7 @@ if False:
         pass
 
         #%% Manual review of redundant taxa
-        
+
         s = taxon_names_with_multiple_entries[15]
         taxa = wi_taxon_name_to_taxa[s]
         for t in taxa:
@@ -249,19 +249,19 @@ if False:
     taxon_name_to_preferred_taxon_id = {}
 
     # "helmeted guineafowl" vs "domestic guineafowl"
-    taxon_name_to_preferred_taxon_id['numida meleagris'] = '83133617-8358-4910-82ee-4c23e40ba3dc' # 2005826 
+    taxon_name_to_preferred_taxon_id['numida meleagris'] = '83133617-8358-4910-82ee-4c23e40ba3dc' # 2005826
 
     # "domestic turkey" vs. "wild turkey"
-    taxon_name_to_preferred_taxon_id['meleagris gallopavo'] = 'c10547c3-1748-48bf-a451-8066c820f22f' # 2021598 
+    taxon_name_to_preferred_taxon_id['meleagris gallopavo'] = 'c10547c3-1748-48bf-a451-8066c820f22f' # 2021598
 
     # multiple sensible human entries
-    taxon_name_to_preferred_taxon_id['homo sapiens'] = '990ae9dd-7a59-4344-afcb-1b7b21368000' # 2002045 
+    taxon_name_to_preferred_taxon_id['homo sapiens'] = '990ae9dd-7a59-4344-afcb-1b7b21368000' # 2002045
 
     # "domestic dog" and "dog-on-leash"
-    taxon_name_to_preferred_taxon_id['canis familiaris'] = '3d80f1d6-b1df-4966-9ff4-94053c7a902a' # 2021548 
+    taxon_name_to_preferred_taxon_id['canis familiaris'] = '3d80f1d6-b1df-4966-9ff4-94053c7a902a' # 2021548
 
     # "small mammal" vs. "mammal"
-    taxon_name_to_preferred_taxon_id['mammalia'] = 'f2d233e3-80e3-433d-9687-e29ecc7a467a' # 2021108 
+    taxon_name_to_preferred_taxon_id['mammalia'] = 'f2d233e3-80e3-433d-9687-e29ecc7a467a' # 2021108
 
     # "Hispaniolan Mango" vs. NaN
     taxon_name_to_preferred_taxon_id['anthracothorax dominicus'] = 'f94e6d97-59cf-4d38-a05a-a75efdd2863b'
@@ -276,19 +276,19 @@ if False:
     taxon_name_to_preferred_taxon_id['stagonopleura bella'] = '7fec8e7e-fd3b-4d7f-99fd-3ade6f3bbaa5' # 2021939
 
     # "yellow wagtail" vs. "yellow crowned-wagtail"
-    taxon_name_to_preferred_taxon_id['motacilla flava'] = 'ac6669bc-9f9e-4473-b609-b9082f9bf50c' # 2016194 
+    taxon_name_to_preferred_taxon_id['motacilla flava'] = 'ac6669bc-9f9e-4473-b609-b9082f9bf50c' # 2016194
 
     # "dremomys species" vs. "dremomys genus"
     taxon_name_to_preferred_taxon_id['dremomys'] = '1507d153-af11-46f1-bfb8-77918d035ab3' # 2019370
 
     # "elk" vs. "domestic elk"
-    taxon_name_to_preferred_taxon_id['cervus canadensis'] = 'c5ce946f-8f0d-4379-992b-cc0982381f5e' 
+    taxon_name_to_preferred_taxon_id['cervus canadensis'] = 'c5ce946f-8f0d-4379-992b-cc0982381f5e'
 
     # "American bison" vs. "domestic bison"
-    taxon_name_to_preferred_taxon_id['bison bison'] = '539ebd55-081b-429a-9ae6-5a6a0f6999d4' # 2021593 
+    taxon_name_to_preferred_taxon_id['bison bison'] = '539ebd55-081b-429a-9ae6-5a6a0f6999d4' # 2021593
 
     # "woodrat or rat or mouse species" vs. "mouse species"
-    taxon_name_to_preferred_taxon_id['muridae'] = 'e7503287-468c-45af-a1bd-a17821bb62f2' # 2021642 
+    taxon_name_to_preferred_taxon_id['muridae'] = 'e7503287-468c-45af-a1bd-a17821bb62f2' # 2021642
 
     # both "southern sand frog"
     taxon_name_to_preferred_taxon_id['tomopterna adiastola'] = 'a5dc63cb-41be-4090-84a7-b944b16dcee4' # 2021834
@@ -296,18 +296,18 @@ if False:
     # sericornis species vs. scrubwren species
     taxon_name_to_preferred_taxon_id['sericornis'] = 'ad82c0ac-df48-4028-bf71-d2b2f4bc4129' # 2021776
 
-        
+
     # taxon_name = list(taxon_name_to_preferred_taxon_id.keys())[0]
     for taxon_name in taxon_name_to_preferred_taxon_id.keys():
-        
+
         candidate_taxa = wi_taxon_name_to_taxa[taxon_name]
-        
+
         # If we've gotten this far, we should be choosing from multiple taxa.
         #
         # This will become untrue if any of these are resolved later, at which point we should
         # remove them from taxon_name_to_preferred_id
         assert len(candidate_taxa) > 1, 'Only one taxon available for {}'.format(taxon_name)
-        
+
         # Choose the preferred taxa
         selected_taxa = [t for t in candidate_taxa if t[id_column] == \
                         taxon_name_to_preferred_taxon_id[taxon_name]]
@@ -365,7 +365,7 @@ if False:
         query = None
 
         lila_dataset_category = lila_taxon['dataset_name'] + ':' + lila_taxon['query']
-        
+
         # Go from kingdom --> species, choosing the lowest-level description as the query
         for level in lila_taxonomy_levels:
             if isinstance(lila_taxon[level], str):
@@ -455,37 +455,37 @@ if False:
     #%% Map LILA datasets to WI taxa, and count the number of each taxon available in each dataset
 
     with open(wi_mapping_table_file,'w') as f:
-        
+
         f.write('lila_dataset_name,lila_category_name,wi_guid,wi_taxon_name,wi_common,count\n')
-        
+
         # dataset_name = list(lila_dataset_to_categories.keys())[0]
         for dataset_name in lila_dataset_to_categories.keys():
-            
+
             if '_bbox' in dataset_name:
                 continue
-            
+
             dataset_categories = lila_dataset_to_categories[dataset_name]
-            
+
             # dataset_category = dataset_categories[0]
             for category in dataset_categories:
-                
+
                 lila_dataset_category = dataset_name + ':' + category['name'].strip().lower()
                 if '#' in lila_dataset_category:
                     continue
                 assert lila_dataset_category in lila_dataset_category_to_lila_taxon
                 assert lila_dataset_category in lila_dataset_category_to_wi_taxon
                 assert 'count' in category
-        
+
                 wi_taxon = lila_dataset_category_to_wi_taxon[lila_dataset_category]
-                
-                # Write out the dataset name, category name, WI GUID, WI scientific name, WI common name, 
+
+                # Write out the dataset name, category name, WI GUID, WI scientific name, WI common name,
                 # and count
                 s = f"{dataset_name},{category['name']},{wi_taxon['uniqueIdentifier']},"+\
                     f"{wi_taxon['taxon_name']},{wi_taxon['commonNameEnglish']},{category['count']}\n"
                 f.write(s)
-                
+
             # ...for each category in this dataset
-                
-        # ...for each dataset    
+
+        # ...for each dataset
 
     # ...with open()

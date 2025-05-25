@@ -25,14 +25,14 @@ print('Is GPU available? tf.test.is_gpu_available:', tf.test.is_gpu_available())
 class TFDetector:
     """
     A detector model loaded at the time of initialization. It is intended to be used with
-    TensorFlow-based versions of MegaDetector (v2, v3, or v4).  If someone can find v1, I 
+    TensorFlow-based versions of MegaDetector (v2, v3, or v4).  If someone can find v1, I
     suppose you could use this class for v1 also.
     """
-    
-    #: TF versions of MD were trained with batch size of 1, and the resizing function is a 
+
+    #: TF versions of MD were trained with batch size of 1, and the resizing function is a
     #: part of the inference graph, so this is fixed.
     #:
-    #: :meta private:  
+    #: :meta private:
     BATCH_SIZE = 1
 
 
@@ -40,13 +40,13 @@ class TFDetector:
         """
         Loads a model from [model_path] and starts a tf.Session with this graph. Obtains
         input and output tensor handles.
-        
+
         Args:
             model_path (str): path to .pdb file
             detector_options (dict, optional): key-value pairs that control detector
                 options; currently not used by TFDetector
         """
-        
+
         detection_graph = TFDetector.__load_model(model_path)
         self.tf_session = tf.Session(graph=detection_graph)
         self.image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
@@ -73,7 +73,7 @@ class TFDetector:
 
         Returns: list of Python float, predicted bounding box coordinates [x1, y1, width, height]
         """
-        
+
         # change from [y1, x1, y2, x2] to [x1, y1, width, height]
         width = tf_coords[3] - tf_coords[1]
         height = tf_coords[2] - tf_coords[0]
@@ -96,7 +96,7 @@ class TFDetector:
 
         Returns: the loaded graph.
         """
-        
+
         print('TFDetector: Loading graph...')
         detection_graph = tf.Graph()
         with detection_graph.as_default():
@@ -114,7 +114,7 @@ class TFDetector:
         """
         Runs the detector on a single image.
         """
-        
+
         if isinstance(image,np.ndarray):
             np_im = image
         else:
@@ -133,10 +133,10 @@ class TFDetector:
         return box_tensor_out, score_tensor_out, class_tensor_out
 
 
-    def generate_detections_one_image(self, 
-                                      image, 
-                                      image_id, 
-                                      detection_threshold, 
+    def generate_detections_one_image(self,
+                                      image,
+                                      image_id,
+                                      detection_threshold,
                                       image_size=None,
                                       skip_image_resizing=False,
                                       augment=False):
@@ -146,15 +146,15 @@ class TFDetector:
         Args:
             image (Image): the PIL Image object (or numpy array) on which we should run the detector, with
                 EXIF rotation already handled.
-            image_id (str): a path to identify the image; will be in the "file" field of the output object            
+            image_id (str): a path to identify the image; will be in the "file" field of the output object
             detection_threshold (float): only detections above this threshold will be included in the return
                 value
             image_size (tuple, optional): image size to use for inference, only mess with this
                 if (a) you're using a model other than MegaDetector or (b) you know what you're
                 doing
-            skip_image_resizing (bool, optional): whether to skip internal image resizing (and rely on external 
+            skip_image_resizing (bool, optional): whether to skip internal image resizing (and rely on external
                 resizing).  Not currently supported, but included here for compatibility with PTDetector.
-            augment (bool, optional): enable image augmentation.  Not currently  supported, but included 
+            augment (bool, optional): enable image augmentation.  Not currently  supported, but included
                 here for compatibility with PTDetector.
 
         Returns:
@@ -164,18 +164,18 @@ class TFDetector:
                 - 'detections' (a list of detection objects containing keys 'category', 'conf', and 'bbox')
                 - 'failure' (a failure string, or None if everything went fine)
         """
-        
+
         assert image_size is None, 'Image sizing not supported for TF detectors'
         assert not skip_image_resizing, 'Image sizing not supported for TF detectors'
         assert not augment, 'Image augmentation is not supported for TF detectors'
-        
+
         if detection_threshold is None:
             detection_threshold = 0
-            
+
         result = { 'file': image_id }
-        
+
         try:
-            
+
             b_box, b_score, b_class = self._generate_detections_one_image(image)
 
             # our batch size is 1; need to loop the batch dim if supporting batch size > 1
@@ -200,12 +200,12 @@ class TFDetector:
             result['detections'] = detections_cur_image
 
         except Exception as e:
-            
+
             result['failure'] = FAILURE_INFER
             print('TFDetector: image {} failed during inference: {}'.format(image_id, str(e)))
 
         return result
 
     # ...def generate_detections_one_image(...)
-    
+
 # ...class TFDetector

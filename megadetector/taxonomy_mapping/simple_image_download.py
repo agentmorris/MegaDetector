@@ -49,7 +49,7 @@ def generate_urls(search):
     """
     Generate Google search URLs for all tokens in the list [search]
     """
-    
+
     return [(BASE_URL+quote(word)+GOOGLE_PICTURE_ID) for word in search]
 
 
@@ -60,7 +60,7 @@ def check_webpage(url):
         if 'html' not in str(request.content):
             checked_url = request
     except Exception as err:
-        print(err)        
+        print(err)
     return checked_url
 
 
@@ -68,7 +68,7 @@ def scan_webpage(webpage, extensions, timer):
     """
     Scan for pictures to download based on keywords
     """
-    
+
     global SCANNER_COUNTER
     scanner = webpage.find
     found = False
@@ -143,7 +143,7 @@ class Downloader:
         urls_ = generate_urls(search)
         timer = timer if timer else 1000
         # max_progressbar = count * (list(range(limit+1))[-1]+1)
-        
+
         # bar = progressbar.ProgressBar(maxval=max_progressbar,
         #                               widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()]).start()
         i = 0
@@ -172,7 +172,7 @@ class Downloader:
             print('==='*15 + ' < ' + 'NO PICTURES FOUND' + ' > ' + '==='*15)
         return cache_out
 
-    def download(self, keywords=None, limit=1, verbose=False, cache=True, download_cache=False, 
+    def download(self, keywords=None, limit=1, verbose=False, cache=True, download_cache=False,
                  timer=None):
         if not download_cache:
             content = self.search_urls(keywords, limit, verbose, cache, timer)
@@ -180,16 +180,16 @@ class Downloader:
             content = self._cached_urls
             if not content:
                 print('Downloader has not URLs saved in Memory yet, run Downloader.search_urls to find pics first')
-        paths = []                
+        paths = []
         for name, (path, url) in content.items():
             fullpath = os.path.join(path, name)
             paths.append(fullpath)
             with open(fullpath, 'wb') as file:
                 file.write(url.content)
             if verbose:
-                print(f'File Name={name}, Downloaded from {url.url}')            
+                print(f'File Name={name}, Downloaded from {url.url}')
         return paths
-    
+
     def _create_directories(self, name):
         dir_path = os.path.join(self._directory, name)
         try:

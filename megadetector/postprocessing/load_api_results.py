@@ -48,11 +48,11 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
         detection_results: pd.DataFrame, contains at least the columns ['file', 'detections','failure']
         other_fields: a dict containing fields in the results other than 'images'
     """
-    
+
     print('Loading results from {}'.format(api_output_path))
 
     detection_results = load_md_or_speciesnet_file(api_output_path)
-    
+
     # Validate that this is really a detector output file
     for s in ['info', 'detection_categories', 'images']:
         assert s in detection_results, 'Missing field {} in detection results'.format(s)
@@ -65,12 +65,12 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
 
     if normalize_paths:
         for image in detection_results['images']:
-            image['file'] = os.path.normpath(image['file'])            
+            image['file'] = os.path.normpath(image['file'])
 
     if force_forward_slashes:
         for image in detection_results['images']:
             image['file'] = image['file'].replace('\\','/')
-            
+
     # Replace some path tokens to match local paths to original blob structure
     if filename_replacements is not None:
         for string_to_replace in filename_replacements.keys():
@@ -79,16 +79,16 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
                 im['file'] = im['file'].replace(string_to_replace,replacement_string)
 
     print('Converting results to dataframe')
-    
+
     # If this is a newer file that doesn't include maximum detection confidence values,
     # add them, because our unofficial internal dataframe format includes this.
     for im in detection_results['images']:
         if 'max_detection_conf' not in im:
             im['max_detection_conf'] = ct_utils.get_max_conf(im)
-    
+
     # Pack the json output into a Pandas DataFrame
     detection_results = pd.DataFrame(detection_results['images'])
-    
+
     print('Finished loading MegaDetector results for {} images from {}'.format(
             len(detection_results),api_output_path))
 
@@ -111,7 +111,7 @@ def write_api_results(detection_results_table, other_fields, out_path):
         if 'failure' in im and im['failure'] is None:
             del im['failure']
     fields['images'] = images
-    
+
     # Convert the 'version' field back to a string as per format convention
     try:
         version = other_fields['info']['format_version']
@@ -120,7 +120,7 @@ def write_api_results(detection_results_table, other_fields, out_path):
     except Exception:
         print('Warning: error determining format version')
         pass
-    
+
     # Remove 'max_detection_conf' as per newer file convention (format >= v1.3)
     try:
         version = other_fields['info']['format_version']
@@ -132,7 +132,7 @@ def write_api_results(detection_results_table, other_fields, out_path):
     except Exception:
         print('Warning: error removing max_detection_conf from output')
         pass
-    
+
     with open(out_path, 'w') as f:
         json.dump(fields, f, indent=1)
 
@@ -142,7 +142,7 @@ def write_api_results(detection_results_table, other_fields, out_path):
 def load_api_results_csv(filename, normalize_paths=True, filename_replacements={}, nrows=None):
     """
     [DEPRECATED]
-    
+
     Loads .csv-formatted MegaDetector results to a pandas table
     """
 
@@ -183,9 +183,9 @@ def load_api_results_csv(filename, normalize_paths=True, filename_replacements={
 
 
 def write_api_results_csv(detection_results, filename):
-    """    
+    """
     [DEPRECATED]
-    
+
     Writes a Pandas table to csv in a way that's compatible with the .csv output
     format.  Currently just a wrapper around to_csv that forces output writing
     to go through a common code path.

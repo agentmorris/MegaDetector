@@ -4,7 +4,7 @@ create_lila_blank_set.py
 
 Create a folder of blank images sampled from LILA.  We'll aim for diversity, so less-common
 locations will be oversampled relative to more common locations.  We'll also run MegaDetector
-(with manual review) to remove some incorrectly-labeled, not-actually-empty images from our 
+(with manual review) to remove some incorrectly-labeled, not-actually-empty images from our
 blank set.
 
 We'll store location information for each image in a .json file, so we can split locations
@@ -90,7 +90,7 @@ other_labels_without_common_names = (
     'car', 'motorcycle', 'vehicle'
 )
 
-common_names = sorted(list(df['common_name'].unique()), 
+common_names = sorted(list(df['common_name'].unique()),
                       key=lambda x:str(x) if isinstance(x,float) else x)
 original_labels = sorted(list(df['original_label'].unique()),
                          key=lambda x:str(x) if isinstance(x,float) else x)
@@ -118,16 +118,16 @@ original_label_to_count = defaultdict(int)
 
 # This loop takes ~10 mins
 for i_row,row in tqdm(df.iterrows(),total=len(df)):
-    
+
     common_name = row['common_name']
     original_label = row['original_label']
-    
+
     if isinstance(common_name,float):
         assert np.isnan(common_name)
         original_labels_with_nan_common_names.add(original_label)
-        
+
     common_name = str(common_name)
-    
+
     assert isinstance(original_label,str)
     if original_label in blank_original_labels:
         common_names_with_empty_original_labels.add(common_name)
@@ -185,20 +185,20 @@ force_map_locations = False
 
 # Load from .json if available
 if (not force_map_locations) and (os.path.isfile(location_to_blank_image_urls_cache_file)):
-    
+
     with open(location_to_blank_image_urls_cache_file,'r') as f:
         location_to_blank_image_urls = json.load(f)
 
 else:
-    
+
     location_to_blank_image_urls = defaultdict(list)
-    
+
     # i_row = 0; row = df.iloc[i_row]
     for i_row,row in tqdm(df.iterrows(),total=len(df)):
-        
+
         location_id = row['location_id']
         url = row['url']
-        
+
         original_label = row['original_label']
         if original_label in blank_original_labels:
             assert np.isnan(row['common_name'])
@@ -210,7 +210,7 @@ else:
 n_locations_with_blanks = len(location_to_blank_image_urls)
 print('Found {} locations with blank images'.format(n_locations_with_blanks))
 
-    
+
 #%% Sample blanks
 
 random.seed(0)
@@ -223,7 +223,7 @@ for location in location_to_blank_image_urls:
     blank_image_urls_this_location = location_to_blank_image_urls[location]
     unsampled_blank_image_urls_this_location = blank_image_urls_this_location.copy()
     location_to_unsampled_blank_image_urls[location] = unsampled_blank_image_urls_this_location
-    
+
 # Put locations in a random order
 location_ids = list(location_to_unsampled_blank_image_urls.keys())
 random.shuffle(location_ids)
@@ -234,32 +234,32 @@ fully_sampled_locations = set()
 
 # Pick from each location until we hit our limit or have no blanks left
 while(True):
-    
+
     found_sample = False
-    
+
     # location = location_ids[0]
     for location in location_ids:
-        
+
         unsampled_images_this_location = location_to_unsampled_blank_image_urls[location]
         if len(unsampled_images_this_location) == 0:
             fully_sampled_locations.add(location)
             continue
-        
+
         url = random.choice(unsampled_images_this_location)
-        blank_urls.append(url)        
+        blank_urls.append(url)
         location_to_unsampled_blank_image_urls[location].remove(url)
         location_to_sampled_blanks[location].append(url)
         found_sample = True
-        
+
         if len(blank_urls) == n_blanks:
             break
-        
+
     # ...for each location
-    
+
     if not found_sample:
         print('Terminating after {} blanks, we ran out before hitting {}'.format(
             len(blank_urls),n_blanks))
-        
+
     if len(blank_urls) == n_blanks:
         break
 
@@ -278,7 +278,7 @@ for location in location_to_sampled_blanks:
 print('Choose {} blanks from {} locations'.format(n_blanks,len(location_ids)))
 print('Fully sampled {} locations'.format(len(fully_sampled_locations)))
 print('Max samples per location: {}'.format(max_blanks_per_location))
-    
+
 
 #%% Download those image files (prep)
 
@@ -291,26 +291,26 @@ def download_relative_filename(url, output_base, verbose=False, url_base=None, o
     """
     Download a URL to output_base, preserving relative path
     """
-    
+
     result = {'status':'unknown','url':url,'destination_filename':None}
-    
+
     if url_base is None:
         assert url.startswith('https://')
         container = url.split('/')[2]
         assert container in container_to_url_base
         url_base = container_to_url_base[container]
-    
+
     assert url_base.startswith('/') and url_base.endswith('/')
-    
+
     p = urlparse(url)
     relative_filename = str(p.path)
     # remove the leading '/'
     assert relative_filename.startswith(url_base)
-    relative_filename = relative_filename.replace(url_base,'',1)        
-    
+    relative_filename = relative_filename.replace(url_base,'',1)
+
     destination_filename = os.path.join(output_base,relative_filename)
     result['destination_filename'] = destination_filename
-    
+
     if ((os.path.isfile(destination_filename)) and (not overwrite)):
         result['status'] = 'skipped'
         return result
@@ -318,10 +318,10 @@ def download_relative_filename(url, output_base, verbose=False, url_base=None, o
         download_url(url, destination_filename, verbose=verbose)
     except Exception as e:
         print('Warning: error downloading URL {}: {}'.format(
-            url,str(e)))     
+            url,str(e)))
         result['status'] = 'error: {}'.format(str(e))
         return result
-    
+
     result['status'] = 'success'
     return result
 
@@ -331,11 +331,11 @@ def azure_url_to_gcp_http_url(url,error_if_not_azure_url=True):
     Most URLs point to Azure by default, but most files are available on both Azure and GCP.
     This function converts an Azure URL to the corresponding GCP http:// url.
     """
-    
+
     lila_azure_storage_account = 'https://lilawildlife.blob.core.windows.net'
     gcp_bucket_api_url = 'https://storage.googleapis.com/public-datasets-lila'
     error_if_not_azure_url = False
-    
+
     if error_if_not_azure_url:
         assert url.startswith(lila_azure_storage_account)
     gcp_url = url.replace(lila_azure_storage_account,gcp_bucket_api_url,1)
@@ -344,7 +344,7 @@ def azure_url_to_gcp_http_url(url,error_if_not_azure_url=True):
 # Convert Azure URLs to GCP URLs if necessary
 if preferred_image_download_source != 'azure':
     assert preferred_image_download_source == 'gcp'
-    blank_urls = [azure_url_to_gcp_http_url(url) for url in blank_urls]    
+    blank_urls = [azure_url_to_gcp_http_url(url) for url in blank_urls]
 
 
 #%% Download those image files (execution)
@@ -354,16 +354,16 @@ print('Downloading {} images on {} workers'.format(len(blank_urls),n_download_th
 if n_download_threads <= 1:
 
     results = []
-    
+
     # url = all_urls[0]
-    for url in tqdm(blank_urls):        
+    for url in tqdm(blank_urls):
         results.append(download_relative_filename(url,candidate_blanks_base,url_base=None))
-    
+
 else:
 
-    pool = ThreadPool(n_download_threads)        
+    pool = ThreadPool(n_download_threads)
     results = list(tqdm(pool.imap(lambda s: download_relative_filename(
-        s,candidate_blanks_base,url_base=None), 
+        s,candidate_blanks_base,url_base=None),
         blank_urls), total=len(blank_urls)))
 
 # pool.terminate()
@@ -406,11 +406,11 @@ for category_id in md_results['detection_categories']:
 
 # im = md_results['images'][0]
 for im in md_results['images']:
-    
+
     if 'detections' not in im:
         continue
-    
-    found_object = False    
+
+    found_object = False
     for det in im['detections']:
         threshold = category_id_to_threshold[det['category']]
         if det['conf'] >= threshold:
@@ -426,7 +426,7 @@ output_file_to_source_file = {}
 # i_fn = 0; source_file_relative = images_to_review[i_fn]
 for i_fn,source_file_relative in tqdm(enumerate(images_to_review_to_detections),
                                       total=len(images_to_review_to_detections)):
-    
+
     source_file_abs = os.path.join(candidate_blanks_base,source_file_relative)
     assert os.path.isfile(source_file_abs)
     ext = os.path.splitext(source_file_abs)[1]
@@ -435,16 +435,16 @@ for i_fn,source_file_relative in tqdm(enumerate(images_to_review_to_detections),
     output_file_to_source_file[target_file_relative] = source_file_relative
     # shutil.copyfile(source_file_abs,target_file_abs)
     vis_utils.draw_bounding_boxes_on_file(input_file=source_file_abs,
-                                          output_file=target_file_abs, 
-                                          detections=images_to_review_to_detections[source_file_relative], 
+                                          output_file=target_file_abs,
+                                          detections=images_to_review_to_detections[source_file_relative],
                                           confidence_threshold=min_threshold,
                                           target_size=(1280,-1))
 
 # This is a temporary file I just used during debugging
 with open(os.path.join(project_base,'output_file_to_source_file.json'),'w') as f:
     json.dump(output_file_to_source_file,f,indent=1)
-    
-    
+
+
 #%% Manual review
 
 # Delete images that are *not* empty
@@ -463,7 +463,7 @@ for output_file in tqdm(output_file_to_source_file.keys()):
     if output_file not in remaining_images:
         source_file_relative = output_file_to_source_file[output_file]
         removed_blank_images_relative.append(source_file_relative)
-        
+
 removed_blank_images_relative_set = set(removed_blank_images_relative)
 assert len(removed_blank_images_relative) + len(remaining_images) == len(output_file_to_source_file)
 
@@ -479,19 +479,19 @@ skipped_images_relative = []
 skipped_non_images = []
 
 for source_fn_relative in tqdm(all_candidate_blanks):
-    
+
     # Skip anything we removed from the "candidate non-blanks" folder; these weren't really
     # blank.
     if source_fn_relative in removed_blank_images_relative_set:
         skipped_images_relative.append(source_fn_relative)
         continue
-    
+
     if not is_image_file(source_fn_relative):
         # Not a typo; "skipped images" really means "skipped files"
         skipped_images_relative.append(source_fn_relative)
         skipped_non_images.append(source_fn_relative)
-    
-    
+
+
     source_fn_abs = os.path.join(candidate_blanks_base,source_fn_relative)
     assert os.path.isfile(source_fn_abs)
     target_fn_abs = os.path.join(confirmed_blanks_base,source_fn_relative)
@@ -532,27 +532,27 @@ all_fn_relative_to_location = {}
 # location = next(iter(location_to_blank_image_urls.keys()))
 for location in tqdm(location_to_blank_image_urls):
     urls_this_location = location_to_blank_image_urls[location]
-    
+
     # url = urls_this_location[0]
     for url in urls_this_location:
         # Turn:
-        # 
+        #
         # https://lilablobssc.blob.core.windows.net/caltech-unzipped/cct_images/5968c0f9-23d2-11e8-a6a3-ec086b02610b.jpg'
         #
         # ...into:
         #
-        # caltech-unzipped/cct_images/5968c0f9-23d2-11e8-a6a3-ec086b02610b.jpg'   
+        # caltech-unzipped/cct_images/5968c0f9-23d2-11e8-a6a3-ec086b02610b.jpg'
         p = urlparse(url)
         fn_relative = str(p.path)[1:]
         all_fn_relative_to_location[fn_relative] = location
 
 # Build a much smaller mapping of just the confirmed blanks
-confirmed_fn_relative_to_location = {}        
+confirmed_fn_relative_to_location = {}
 for i_fn,fn_relative in tqdm(enumerate(all_confirmed_blanks),total=len(all_confirmed_blanks)):
     confirmed_fn_relative_to_location[fn_relative] = all_fn_relative_to_location[fn_relative]
 
 with open(all_fn_relative_to_location_file,'w') as f:
     json.dump(all_fn_relative_to_location,f,indent=1)
-    
+
 with open(confirmed_fn_relative_to_location_file,'w') as f:
-    json.dump(confirmed_fn_relative_to_location,f,indent=1)    
+    json.dump(confirmed_fn_relative_to_location,f,indent=1)

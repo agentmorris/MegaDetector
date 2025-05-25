@@ -36,7 +36,7 @@ def check_taxonomy_csv(csv_path: str) -> None:
     """
     See module docstring.
     """
-    
+
     taxonomy_df = pd.read_csv(csv_path)
 
     graph = nx.DiGraph()
@@ -46,12 +46,12 @@ def check_taxonomy_csv(csv_path: str) -> None:
     num_scientific_name_errors = 0
 
     for i_row, row in taxonomy_df.iterrows():
-        
+
         ds = row['dataset_name']
         ds_label = row['query']
         scientific_name = row['scientific_name']
         level = row['taxonomy_level']
-        
+
         # This used to represent the source of the mapping: iNat, gbif, or manual.  We've
         # stopped tracking this, so this is now vestigial.
         id_source = 0 # row['source']
@@ -95,8 +95,8 @@ def check_taxonomy_csv(csv_path: str) -> None:
                     num_scientific_name_errors += 1
 
             taxon_child = node
-    
-    # ...for each row in the taxonomy file        
+
+    # ...for each row in the taxonomy file
 
     assert nx.is_directed_acyclic_graph(graph)
 
@@ -124,36 +124,36 @@ def check_taxonomy_csv(csv_path: str) -> None:
         print(f'At least one node has unresolved ambiguous parents: {e}')
 
     print('Processed {} rows from {}'.format(len(taxonomy_df),csv_path))
-    
+
     print('num taxon level errors:', num_taxon_level_errors)
     print('num scientific name errors:', num_scientific_name_errors)
 
 
 #%% Command-line driver
-    
+
 if __name__ == '__main__':
-    
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'taxonomy_csv_path',
         help='path to taxonomy CSV file')
-    
+
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()
-    
+
     args = parser.parse_args()
 
     check_taxonomy_csv(args.taxonomy_csv_path)
 
 
 #%% Interactive driver
-    
+
 if False:
-    
+
     #%%
-    
+
     import os
     csv_path = os.path.expanduser('~/lila/lila-taxonomy-mapping_release.csv')
     check_taxonomy_csv(csv_path)
-    
+
