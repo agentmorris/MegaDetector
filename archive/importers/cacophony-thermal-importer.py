@@ -15,7 +15,7 @@
 #%% Imports and constants
 
 import os
-import h5py
+import h5py # type: ignore
 import numpy as np
 import json
 

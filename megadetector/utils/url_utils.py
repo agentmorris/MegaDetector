@@ -249,17 +249,25 @@ def parallel_download_urls(url_to_target_file,verbose=False,overwrite=False,
         
     else:
 
-        if pool_type == 'thread':
-            pool = ThreadPool(n_workers)
-        else:
-            assert pool_type == 'process', 'Unsupported pool type {}'.format(pool_type)
-            pool = Pool(n_workers)
+        pool = None
+
+        try:
+            if pool_type == 'thread':
+                pool = ThreadPool(n_workers)
+            else:
+                assert pool_type == 'process', 'Unsupported pool type {}'.format(pool_type)
+                pool = Pool(n_workers)
+            
+            print('Starting a {} pool with {} workers'.format(pool_type,n_workers))
+            
+            results = list(tqdm(pool.imap(
+                partial(_do_parallelized_download,overwrite=overwrite,verbose=verbose),
+                all_download_info), total=len(all_download_info)))
         
-        print('Starting a {} pool with {} workers'.format(pool_type,n_workers))
-        
-        results = list(tqdm(pool.imap(
-            partial(_do_parallelized_download,overwrite=overwrite,verbose=verbose),
-            all_download_info), total=len(all_download_info)))
+        finally:
+            pool.close()
+            pool.join()
+            print("Pool closed and joined for parallel URL downloads")
                 
     return results
 

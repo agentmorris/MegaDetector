@@ -347,24 +347,30 @@ def create_crop_folder(input_file,
     else:
         
         print('Creating a {} pool with {} workers'.format(options.pool_type,options.n_workers))
-
-        if options.pool_type == 'thread':
-            pool = ThreadPool(options.n_workers)
-        else:
-            assert options.pool_type == 'process'
-            pool = Pool(options.n_workers)
-        
-        # Each element in this list is the list of crops for a single image
-        crop_lists = list(image_fn_relative_to_crops.values())
-        
-        with tqdm(total=len(image_fn_relative_to_crops)) as pbar:
-            for i,_ in enumerate(pool.imap_unordered(partial(
-                        _generate_crops_for_single_image,
-                            input_folder=input_folder,
-                            output_folder=output_folder,
-                            options=options),
-                        crop_lists)):
-                pbar.update()
+        pool = None
+        try:
+            if options.pool_type == 'thread':
+                pool = ThreadPool(options.n_workers)
+            else:
+                assert options.pool_type == 'process'
+                pool = Pool(options.n_workers)
+            
+            # Each element in this list is the list of crops for a single image
+            crop_lists = list(image_fn_relative_to_crops.values())
+            
+            with tqdm(total=len(image_fn_relative_to_crops)) as pbar:
+                for i,_ in enumerate(pool.imap_unordered(partial(
+                            _generate_crops_for_single_image,
+                                input_folder=input_folder,
+                                output_folder=output_folder,
+                                options=options),
+                            crop_lists)):
+                    pbar.update()
+        finally:
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print("Pool closed and joined for crop folder creation")
 
     # ...if we're using parallel processing    
     

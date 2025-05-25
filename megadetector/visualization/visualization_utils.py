@@ -1414,23 +1414,30 @@ def resize_images(input_file_to_output_file,
 
     else:
         
-        if pool_type == 'thread':
-            pool = ThreadPool(n_workers); poolstring = 'threads'                
-        else:
-            assert pool_type == 'process'
-            pool = Pool(n_workers); poolstring = 'processes'
-        
-        if verbose:
-            print('Starting resizing pool with {} {}'.format(n_workers,poolstring))
-        
-        p = partial(_resize_absolute_image,
-                target_width=target_width,
-                target_height=target_height,
-                no_enlarge_width=no_enlarge_width,
-                verbose=verbose,
-                quality=quality)
-        
-        results = list(tqdm(pool.imap(p, input_output_file_pairs),total=len(input_output_file_pairs)))
+        pool = None
+
+        try:
+            if pool_type == 'thread':
+                pool = ThreadPool(n_workers); poolstring = 'threads'                
+            else:
+                assert pool_type == 'process'
+                pool = Pool(n_workers); poolstring = 'processes'
+            
+            if verbose:
+                print('Starting resizing pool with {} {}'.format(n_workers,poolstring))
+            
+            p = partial(_resize_absolute_image,
+                    target_width=target_width,
+                    target_height=target_height,
+                    no_enlarge_width=no_enlarge_width,
+                    verbose=verbose,
+                    quality=quality)
+            
+            results = list(tqdm(pool.imap(p, input_output_file_pairs),total=len(input_output_file_pairs)))
+        finally:
+            pool.close()
+            pool.join()
+            print("Pool closed and joined for image resizing")
 
     return results
 

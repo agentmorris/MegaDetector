@@ -324,7 +324,12 @@ def integrity_check_json_db(jsonFile, options=None):
             default_options.baseDir = options.baseDir
             default_options.bCheckImageSizes = options.bCheckImageSizes
             default_options.bCheckImageExistence = options.bCheckImageExistence
-            results = tqdm(pool.imap(_check_image_existence_and_size, images), total=len(images))
+            try:
+                results = tqdm(pool.imap(_check_image_existence_and_size, images), total=len(images))
+            finally:
+                pool.close()
+                pool.join()
+                print("Pool closed and joined for image size checks")
         else:
             results = []
             for im in tqdm(images):                

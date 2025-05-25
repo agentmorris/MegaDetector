@@ -26,7 +26,7 @@ from tqdm import tqdm
 # Parallelizing across processes is fine.
 def remove_exif_from_image(fn):
 
-    import pyexiv2
+    import pyexiv2 # type: ignore
     
     try:
         img = pyexiv2.Image(fn)
@@ -79,9 +79,15 @@ def remove_exif(image_base_folder,recursive=True,n_processes=1):
             
     else:
         # pyexiv2 is not thread-safe, so we need to use processes
-        print('Starting parallel process pool with {} workers'.format(n_processes))
-        pool = Pool(n_processes)
-        _ = list(tqdm(pool.imap(remove_exif_from_image,image_files),total=len(image_files)))
+        pool = None
+        try:
+            print('Starting parallel process pool with {} workers'.format(n_processes))
+            pool = Pool(n_processes)
+            _ = list(tqdm(pool.imap(remove_exif_from_image,image_files),total=len(image_files)))
+        finally:
+            pool.close()
+            pool.join()
+            print("Pool closed and joined for EXIF removal")
             
 # ...remove_exif(...)
 
