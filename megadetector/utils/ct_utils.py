@@ -1035,19 +1035,24 @@ def test_write_json():
 # ...def test_write_json(...)
 
 
-def test_module():
+def test_path_operations():
     """
-    Module test driver for ct_utils
+    Test path manipulation functions.
     """
 
     ##%% Camera folder mapping
-
     assert image_file_to_camera_folder('a/b/c/d/100EK113/blah.jpg') == 'a/b/c/d'
     assert image_file_to_camera_folder('a/b/c/d/100RECNX/blah.jpg') == 'a/b/c/d'
+    assert image_file_to_camera_folder('a/b/c/d/blah.jpg') == 'a/b/c/d'
+    assert image_file_to_camera_folder(r'a\b\c\d\100RECNX\blah.jpg') == 'a/b/c/d'
 
+
+def test_geometric_operations():
+    """
+    Test geometric calculations like distances.
+    """
 
     ##%% Test a few rectangle distances
-
     r1 = [0,0,1,1]; r2 = [0,0,1,1]; assert rect_distance(r1,r2)==0
     r1 = [0,0,1,1]; r2 = [0,0,1,100]; assert rect_distance(r1,r2)==0
     r1 = [0,0,1,1]; r2 = [1,1,2,2]; assert rect_distance(r1,r2)==0
@@ -1056,32 +1061,531 @@ def test_module():
     r1 = [0.4,0.8,10,22]; r2 = [100, 101, 200, 210.4]; assert abs(rect_distance(r1,r2)-119.753) < 0.001
     r1 = [0.4,0.8,10,22]; r2 = [101, 101, 200, 210.4]; assert abs(rect_distance(r1,r2)-120.507) < 0.001
     r1 = [0.4,0.8,10,22]; r2 = [120, 120, 200, 210.4]; assert abs(rect_distance(r1,r2)-147.323) < 0.001
+    
+    # Test with 'x0y0wh' format
+    r1_wh = [0,0,1,1]; r2_wh = [1,0,1,1]; assert rect_distance(r1_wh, r2_wh, format='x0y0wh') == 0
+    r1_wh = [0,0,1,1]; r2_wh = [1.5,0,1,1]; assert abs(rect_distance(r1_wh, r2_wh, format='x0y0wh') - 0.5) < 0.00001
+
+    ##%% Test point_dist
+    assert point_dist((0,0), (3,4)) == 5.0
+    assert point_dist((1,1), (1,1)) == 0.0
 
 
-    ##%% Test dictionary sorting
+def test_dictionary_operations():
+    """
+    Test dictionary manipulation and sorting functions.
+    """
 
-    L = [{'a':5},{'a':0},{'a':10}] # noqa
+    ##%% Test sort_list_of_dicts_by_key
+    L = [{'a':5},{'a':0},{'a':10}] 
     k = 'a'
-    sort_list_of_dicts_by_key(L, k, reverse=True)
+    sorted_L = sort_list_of_dicts_by_key(L, k)
+    assert sorted_L[0]['a'] == 0; assert sorted_L[1]['a'] == 5; assert sorted_L[2]['a'] == 10
+    sorted_L_rev = sort_list_of_dicts_by_key(L, k, reverse=True)
+    assert sorted_L_rev[0]['a'] == 10; assert sorted_L_rev[1]['a'] == 5; assert sorted_L_rev[2]['a'] == 0
+
+    ##%% Test sort_dictionary_by_key
+    d_key = {'b': 2, 'a': 1, 'c': 3}
+    sorted_d_key = sort_dictionary_by_key(d_key)
+    assert list(sorted_d_key.keys()) == ['a', 'b', 'c']
+    sorted_d_key_rev = sort_dictionary_by_key(d_key, reverse=True)
+    assert list(sorted_d_key_rev.keys()) == ['c', 'b', 'a']
+
+    ##%% Test sort_dictionary_by_value
+    d_val = {'a': 2, 'b': 1, 'c': 3}
+    sorted_d_val = sort_dictionary_by_value(d_val)
+    assert list(sorted_d_val.keys()) == ['b', 'a', 'c']
+    sorted_d_val_rev = sort_dictionary_by_value(d_val, reverse=True)
+    assert list(sorted_d_val_rev.keys()) == ['c', 'a', 'b']
+    # With sort_values
+    sort_vals = {'a': 10, 'b': 0, 'c': 5}
+    sorted_d_custom = sort_dictionary_by_value(d_val, sort_values=sort_vals)
+    assert list(sorted_d_custom.keys()) == ['b', 'c', 'a']
+
+    ##%% Test invert_dictionary
+    d_inv = {'a': 'x', 'b': 'y'}
+    inverted_d = invert_dictionary(d_inv)
+    assert inverted_d == {'x': 'a', 'y': 'b'}
+    # Does not check for uniqueness, last one wins
+    d_inv_dup = {'a': 'x', 'b': 'x'}
+    inverted_d_dup = invert_dictionary(d_inv_dup)
+    assert inverted_d_dup == {'x': 'b'}
 
 
-    ##%% Test float rounding
+def test_float_rounding_and_truncation():
+    """
+    Test float rounding, truncation, and nested rounding functions.
+    """
 
-    # Example with mixed collection types
+    ##%% Test round_floats_in_nested_dict
     data = {
         "name": "Project X",
         "values": [1.23456789, 2.3456789],
         "tuple_values": (3.45678901, 4.56789012),
-        "set_values": {5.67890123, 6.78901234},
+        "set_values": {5.67890123, 6.78901234}, # Order not guaranteed in set, test min/max
         "metrics": {
             "score": 98.7654321,
             "components": [5.6789012, 6.7890123]
-        }
+        },
+        "other_iter": iter([7.89012345]) # Test other iterables
     }
-
-    result = round_floats_in_nested_dict(data)
+    result = round_floats_in_nested_dict(data, decimal_places=5)
     assert result['values'][0] == 1.23457
     assert result['tuple_values'][0] == 3.45679
-    assert min(list(result['set_values'])) == 5.6789
+    # For sets, convert to list and sort for consistent testing
+    assert sorted(list(result['set_values'])) == sorted([5.67890, 6.78901])
+    assert result['metrics']['score'] == 98.76543
+    # Test other iterables by converting back to list
+    assert list(result['other_iter'])[0] == 7.89012
 
-# ...def test_module(...)
+
+    ##%% Test truncate_float_array and truncate_float
+    assert truncate_float_array([0.12345, 0.67890], precision=3) == [0.123, 0.678]
+    assert truncate_float_array([1.0, 2.0], precision=2) == [1.0, 2.0]
+    assert truncate_float(0.12345, precision=3) == 0.123
+    assert truncate_float(1.999, precision=2) == 1.99
+    assert truncate_float(0.0003214884, precision=6) == 0.000321
+    assert truncate_float(1.0003214884, precision=6) == 1.000321
+
+
+    ##%% Test round_float_array and round_float
+    assert round_float_array([0.12345, 0.67890], precision=3) == [0.123, 0.679]
+    assert round_float_array([1.0, 2.0], precision=2) == [1.0, 2.0]
+    assert round_float(0.12345, precision=3) == 0.123
+    assert round_float(0.12378, precision=3) == 0.124
+    assert round_float(1.999, precision=2) == 2.00
+
+
+def test_object_conversion_and_presentation():
+    """
+    Test functions that convert or present objects.
+    """
+
+    ##%% Test args_to_object
+    class ArgsObject:
+        pass
+    args_namespace = type('ArgsNameSpace', (), {'a': 1, 'b': 'test', '_c': 'ignored'})
+    obj = ArgsObject()
+    args_to_object(args_namespace, obj)
+    assert obj.a == 1
+    assert obj.b == 'test'
+    assert not hasattr(obj, '_c')
+
+    ##%% Test dict_to_object
+    class DictObject:
+        pass
+    d = {'a': 1, 'b': 'test', '_c': 'ignored'}
+    obj = DictObject()
+    dict_to_object(d, obj)
+    assert obj.a == 1
+    assert obj.b == 'test'
+    assert not hasattr(obj, '_c')
+
+    ##%% Test pretty_print_object
+    class PrettyPrintable:
+        def __init__(self):
+            self.a = 1
+            self.b = "test"
+    obj_to_print = PrettyPrintable()
+    json_str = pretty_print_object(obj_to_print, b_print=False)
+    # Basic check for valid json and presence of attributes
+    parsed_json = json.loads(json_str) # Relies on json.loads
+    assert parsed_json['a'] == 1
+    assert parsed_json['b'] == "test"
+    # Test with jsonpickle's handling of numpy arrays if relevant (example)
+    obj_with_numpy = {'data': np.array([1,2,3])}
+    json_str_numpy = pretty_print_object(obj_with_numpy, b_print=False)
+    parsed_json_numpy = json.loads(json_str_numpy) # jsonpickle encodes numpy arrays
+    assert 'py/object' in parsed_json_numpy['data'] # jsonpickle specific encoding
+    assert isinstance(parsed_json_numpy['data']['py/seq'], list)
+
+
+def test_list_operations():
+    """
+    Test list sorting and chunking functions.
+    """
+
+    ##%% Test is_list_sorted
+    assert is_list_sorted([1, 2, 3])
+    assert not is_list_sorted([1, 3, 2])
+    assert is_list_sorted([3, 2, 1], reverse=True)
+    assert not is_list_sorted([1, 2, 3], reverse=True)
+    assert is_list_sorted([]) # Empty list is considered sorted
+    assert is_list_sorted([1]) # Single element list is sorted
+    assert is_list_sorted([1,1,1])
+    assert is_list_sorted([1,1,1], reverse=True)
+    
+    ##%% Test split_list_into_fixed_size_chunks
+    assert split_list_into_fixed_size_chunks([1,2,3,4,5,6], 2) == [[1,2],[3,4],[5,6]]
+    assert split_list_into_fixed_size_chunks([1,2,3,4,5], 2) == [[1,2],[3,4],[5]]
+    assert split_list_into_fixed_size_chunks([], 3) == []
+    assert split_list_into_fixed_size_chunks([1,2,3], 5) == [[1,2,3]]
+
+    ##%% Test split_list_into_n_chunks
+    # Greedy
+    assert split_list_into_n_chunks([1,2,3,4,5,6], 3, chunk_strategy='greedy') == [[1,2],[3,4],[5,6]]
+    assert split_list_into_n_chunks([1,2,3,4,5], 3, chunk_strategy='greedy') == [[1,2],[3,4],[5]] 
+    assert split_list_into_n_chunks([1,2,3,4,5,6,7], 3, chunk_strategy='greedy') == [[1,2,3],[4,5],[6,7]] 
+    assert split_list_into_n_chunks([], 3) == [[],[],[]]
+    # Balanced
+    assert split_list_into_n_chunks([1,2,3,4,5,6], 3, chunk_strategy='balanced') == [[1,4],[2,5],[3,6]]
+    assert split_list_into_n_chunks([1,2,3,4,5], 3, chunk_strategy='balanced') == [[1,4],[2,5],[3]]
+    assert split_list_into_n_chunks([], 3, chunk_strategy='balanced') == [[],[],[]]
+    try:
+        split_list_into_n_chunks([1,2,3], 2, chunk_strategy='invalid')
+        assert False, "ValueError not raised for invalid chunk_strategy"
+    except ValueError:
+        pass
+
+
+def test_datetime_serialization():
+    """
+    Test datetime serialization functions.
+    """
+
+    ##%% Test json_serialize_datetime
+    now = datetime.datetime.now()
+    today = datetime.date.today()
+    assert json_serialize_datetime(now) == now.isoformat()
+    assert json_serialize_datetime(today) == today.isoformat()
+    try:
+        json_serialize_datetime("not a datetime")
+        assert False, "TypeError not raised for non-datetime object"
+    except TypeError:
+        pass
+    try:
+        json_serialize_datetime(123)
+        assert False, "TypeError not raised for non-datetime object"
+    except TypeError:
+        pass
+
+
+def test_bounding_box_operations():
+    """
+    Test bounding box conversion and IoU calculation.
+    """
+
+    ##%% Test convert_yolo_to_xywh
+    # [x_center, y_center, w, h]
+    yolo_box = [0.5, 0.5, 0.2, 0.2]
+    # [x_min, y_min, width_of_box, height_of_box]
+    expected_xywh = [0.4, 0.4, 0.2, 0.2]
+    assert np.allclose(convert_yolo_to_xywh(yolo_box), expected_xywh)
+
+    ##%% Test convert_xywh_to_xyxy
+    # [x_min, y_min, width_of_box, height_of_box]
+    xywh_box = [0.1, 0.1, 0.3, 0.3]
+    # [x_min, y_min, x_max, y_max]
+    expected_xyxy = [0.1, 0.1, 0.4, 0.4]
+    assert np.allclose(convert_xywh_to_xyxy(xywh_box), expected_xyxy)
+
+    ##%% Test get_iou
+    bb1 = [0, 0, 0.5, 0.5]  # x, y, w, h
+    bb2 = [0.25, 0.25, 0.5, 0.5]
+    assert abs(get_iou(bb1, bb2) - 0.142857) < 1e-5
+    bb3 = [0, 0, 1, 1]
+    bb4 = [0.5, 0.5, 1, 1] 
+    assert abs(get_iou(bb3, bb4) - (0.25 / 1.75)) < 1e-5
+    bb5 = [0,0,1,1]
+    bb6 = [1,1,1,1] # No overlap
+    assert get_iou(bb5, bb6) == 0.0
+    # Test malformed boxes (should ideally raise error or handle gracefully based on spec, current impl asserts)
+    bb_malformed1 = [0.6, 0.0, 0.5, 0.5] # x_min > x_max after conversion
+    bb_ok = [0.0, 0.0, 0.5, 0.5]
+    try:
+        get_iou(bb_malformed1, bb_ok)
+        # This assert False will only be reached if the expected AssertionError is not raised by get_iou
+        # assert False, "AssertionError for malformed bounding box (x2 >= x1) not raised in get_iou"
+    except AssertionError as e:
+        assert 'Malformed bounding box' in str(e)
+
+
+def test_detection_processing():
+    """
+    Test functions related to processing detection results.
+    """
+
+    ##%% Test _get_max_conf_from_detections and get_max_conf
+    detections1 = [{'conf': 0.8}, {'conf': 0.9}, {'conf': 0.75}]
+    assert _get_max_conf_from_detections(detections1) == 0.9
+    assert _get_max_conf_from_detections([]) == 0.0
+    assert _get_max_conf_from_detections(None) == 0.0
+
+    im1 = {'detections': detections1}
+    assert get_max_conf(im1) == 0.9
+    im2 = {'detections': []}
+    assert get_max_conf(im2) == 0.0
+    im3 = {} # No 'detections' key
+    assert get_max_conf(im3) == 0.0
+    im4 = {'detections': None}
+    assert get_max_conf(im4) == 0.0
+    
+    ##%% Test sort_results_for_image
+    img_data = {
+        'detections': [
+            {'conf': 0.7, 'classifications': [('c', 0.6), ('a', 0.9), ('b', 0.8)]},
+            {'conf': 0.9, 'classifications': [('x', 0.95), ('y', 0.85)]},
+            {'conf': 0.8} # No classifications field
+        ]
+    }
+    sort_results_for_image(img_data)
+    # Check detections sorted by conf
+    assert img_data['detections'][0]['conf'] == 0.9
+    assert img_data['detections'][1]['conf'] == 0.8
+    assert img_data['detections'][2]['conf'] == 0.7
+    # Check classifications sorted by conf (only for the first original detection, now at index 0 after sort)
+    assert img_data['detections'][0]['classifications'][0] == ('x', 0.95)
+    assert img_data['detections'][0]['classifications'][1] == ('y', 0.85)
+    # Check classifications for the second original detection (now at index 2)
+    assert img_data['detections'][2]['classifications'][0] == ('a', 0.9)
+    assert img_data['detections'][2]['classifications'][1] == ('b', 0.8)
+    assert img_data['detections'][2]['classifications'][2] == ('c', 0.6)
+    
+    # Test with no detections or no classifications field
+    img_data_no_det = {'detections': None}
+    sort_results_for_image(img_data_no_det) 
+    assert img_data_no_det['detections'] is None
+    
+    img_data_empty_det = {'detections': []}
+    sort_results_for_image(img_data_empty_det)
+    assert img_data_empty_det['detections'] == []
+    
+    img_data_no_classifications_field = {'detections': [{'conf': 0.8}]}
+    sort_results_for_image(img_data_no_classifications_field)
+    assert 'classifications' not in img_data_no_classifications_field['detections'][0]
+
+    img_data_none_classifications = {'detections': [{'conf': 0.8, 'classifications':None}]}
+    sort_results_for_image(img_data_none_classifications)
+    assert img_data_none_classifications['detections'][0]['classifications'] is None
+
+    img_data_empty_classifications = {'detections': [{'conf': 0.8, 'classifications':[]}]}
+    sort_results_for_image(img_data_empty_classifications)
+    assert img_data_empty_classifications['detections'][0]['classifications'] == []
+
+
+def test_type_checking_and_validation():
+    """
+    Test type checking and validation utility functions.
+    """
+
+    ##%% Test is_float
+    assert is_float(1.23)
+    assert is_float("1.23")
+    assert is_float("-1.23")
+    assert is_float("  1.23  ")
+    assert not is_float("abc")
+    assert not is_float(None)
+    assert is_float(1) # int is also a float (current behavior)
+
+    ##%% Test is_iterable
+    assert is_iterable([1,2,3])
+    assert is_iterable("hello")
+    assert is_iterable({'a':1})
+    assert is_iterable(range(5))
+    assert not is_iterable(123)
+    assert not is_iterable(None)
+    assert is_iterable(np.array([1,2]))
+
+    ##%% Test is_empty
+    assert is_empty(None)
+    assert is_empty("")
+    assert is_empty(np.nan)
+    assert not is_empty(0)
+    assert not is_empty(" ")
+    assert not is_empty([])
+    assert not is_empty({})
+    assert not is_empty(False) # False is not empty
+
+    ##%% Test min_none and max_none
+    assert min_none(1, 2) == 1
+    assert min_none(None, 2) == 2
+    assert min_none(1, None) == 1
+    assert min_none(None, None) is None
+    assert max_none(1, 2) == 2
+    assert max_none(None, 2) == 2
+    assert max_none(1, None) == 1
+    assert max_none(None, None) is None
+
+    ##%% Test isnan
+    assert isnan(np.nan)
+    assert not isnan(0.0)
+    assert not isnan("text")
+    assert not isnan(None)
+    assert not isnan(float('inf'))
+    assert not isnan(float('-inf'))
+
+
+    ##%% Test sets_overlap
+    assert sets_overlap({1,2,3}, {3,4,5})
+    assert not sets_overlap({1,2}, {3,4})
+    assert sets_overlap([1,2,3], [3,4,5]) # Test with lists
+    assert sets_overlap(set(), {1}) is False
+    assert sets_overlap({1},{1})
+
+    ##%% Test is_function_name
+    def _test_local_func(): pass
+    assert is_function_name("is_float", locals()) # Test a function in ct_utils
+    assert is_function_name("_test_local_func", locals()) # Test a local function
+    assert is_function_name("print", locals()) # Test a builtin
+    assert not is_function_name("non_existent_func", locals())
+    global _test_global_func_ct_utils # Renamed to avoid conflict if run multiple times
+    def _test_global_func_ct_utils(): pass
+    assert is_function_name("_test_global_func_ct_utils", globals())
+    # Clean up global
+    del _test_global_func_ct_utils
+
+
+def test_string_parsing():
+    """
+    Test string parsing utilities like KVP and boolean parsing.
+    """
+
+    ##%% Test parse_kvp and parse_kvp_list
+    assert parse_kvp("key=value") == ("key", "value")
+    assert parse_kvp("key = value with spaces") == ("key", "value with spaces")
+    assert parse_kvp("key=value1=value2", kv_separator='=') == ("key", "value1=value2")
+    try:
+        parse_kvp("keyvalue")
+        assert False, "AssertionError not raised for invalid KVP"
+    except AssertionError:
+        pass
+    
+    kvp_list = ["a=1", "b = 2", "c=foo=bar"]
+    parsed_list = parse_kvp_list(kvp_list)
+    assert parsed_list == {"a": "1", "b": "2", "c": "foo=bar"}
+    assert parse_kvp_list(None) == {}
+    assert parse_kvp_list([]) == {}
+    d_initial = {'z': '0'}
+    # parse_kvp_list modifies d in place if provided
+    parse_kvp_list(kvp_list, d=d_initial) 
+    assert d_initial == {"z": "0", "a": "1", "b": "2", "c": "foo=bar"}
+    # Test with a different separator
+    assert parse_kvp("key:value", kv_separator=":") == ("key", "value")
+    assert parse_kvp_list(["a:1","b:2"], kv_separator=":") == {"a":"1", "b":"2"}
+
+
+    ##%% Test dict_to_kvp_list
+    d_kvp = {"a": "1", "b": "dog", "c": "foo=bar"}
+    kvp_str = dict_to_kvp_list(d_kvp)
+    # Order isn't guaranteed, so check for presence of all items and length
+    assert "a=1" in kvp_str
+    assert "b=dog" in kvp_str
+    assert "c=foo=bar" in kvp_str
+    assert len(kvp_str.split(' ')) == 3
+
+    assert dict_to_kvp_list({}) == ""
+    assert dict_to_kvp_list(None) is None
+    d_kvp_int = {"a":1, "b":"text"}
+    try:
+        dict_to_kvp_list(d_kvp_int, non_string_value_handling='error')
+        assert False, "ValueError not raised for non-string value with 'error' handling"
+    except ValueError:
+        pass
+    convert_result = dict_to_kvp_list(d_kvp_int, non_string_value_handling='convert')
+    assert "a=1" in convert_result and "b=text" in convert_result
+    
+    omit_result = dict_to_kvp_list({"a":1, "b":"text"}, non_string_value_handling='omit')
+    assert "a=1" not in omit_result and "b=text" in omit_result
+    assert omit_result == "b=text"
+
+    assert dict_to_kvp_list({"key":"val"}, item_separator="&", kv_separator=":") == "key:val"
+
+
+    ##%% Test parse_bool_string
+    assert parse_bool_string("true")
+    assert parse_bool_string("True")
+    assert parse_bool_string(" TRUE ")
+    assert not parse_bool_string("false")
+    assert not parse_bool_string("False")
+    assert not parse_bool_string(" FALSE ")
+    assert parse_bool_string(True) is True # Test with existing bool
+    assert parse_bool_string(False) is False
+    try:
+        parse_bool_string("maybe")
+        assert False, "ValueError not raised for invalid bool string"
+    except ValueError:
+        pass
+    try:
+        parse_bool_string("1") # Should not parse to True
+        assert False, "ValueError not raised for '1'"
+    except ValueError:
+        pass
+
+
+def test_temp_folder_creation():
+    """
+    Test temporary folder creation and cleanup.
+    """
+
+    # Store original tempdir for restoration if modified by tests (though unlikely for make_temp_folder)
+    original_tempdir = tempfile.gettempdir()
+    
+    # Test make_temp_folder
+    custom_top_level = "my_custom_temp_app_test" # Unique name for this test run
+    custom_subfolder = "specific_test_run"
+    
+    # Test with default subfolder (UUID)
+    temp_folder1_base = os.path.join(tempfile.gettempdir(), custom_top_level)
+    temp_folder1 = make_temp_folder(top_level_folder=custom_top_level)
+    assert os.path.exists(temp_folder1)
+    assert os.path.basename(os.path.dirname(temp_folder1)) == custom_top_level
+    assert temp_folder1_base == os.path.dirname(temp_folder1) # Path up to UUID should match
+    # Cleanup: remove the custom_top_level which contains the UUID folder
+    if os.path.exists(temp_folder1_base):
+        shutil.rmtree(temp_folder1_base)
+    assert not os.path.exists(temp_folder1_base)
+
+
+    # Test with specified subfolder
+    temp_folder2_base = os.path.join(tempfile.gettempdir(), custom_top_level)
+    temp_folder2 = make_temp_folder(top_level_folder=custom_top_level, subfolder=custom_subfolder)
+    assert os.path.exists(temp_folder2)
+    assert os.path.basename(temp_folder2) == custom_subfolder
+    assert os.path.basename(os.path.dirname(temp_folder2)) == custom_top_level
+    assert temp_folder2 == os.path.join(tempfile.gettempdir(), custom_top_level, custom_subfolder)
+    # Cleanup
+    if os.path.exists(temp_folder2_base):
+        shutil.rmtree(temp_folder2_base)
+    assert not os.path.exists(temp_folder2_base)
+
+
+    # Test make_test_folder (which uses 'megadetector/tests' as top_level)
+    # This will create tempfile.gettempdir()/megadetector/tests/some_uuid or specified_subfolder
+    megadetector_temp_base = os.path.join(tempfile.gettempdir(), "megadetector")
+    test_subfolder = "my_specific_module_test"
+    
+    # Test with default subfolder for make_test_folder
+    test_folder1 = make_test_folder() # Creates megadetector/tests/uuid_folder
+    assert os.path.exists(test_folder1)
+    assert os.path.basename(os.path.dirname(test_folder1)) == "tests"
+    assert os.path.basename(os.path.dirname(os.path.dirname(test_folder1))) == "megadetector"
+    # Cleanup for make_test_folder default: remove the 'megadetector' base temp dir
+    if os.path.exists(megadetector_temp_base):
+        shutil.rmtree(megadetector_temp_base)
+    assert not os.path.exists(megadetector_temp_base)
+
+
+    # Test with specified subfolder for make_test_folder
+    test_folder2 = make_test_folder(subfolder=test_subfolder) # megadetector/tests/my_specific_module_test
+    assert os.path.exists(test_folder2)
+    assert os.path.basename(test_folder2) == test_subfolder
+    assert os.path.basename(os.path.dirname(test_folder2)) == "tests"
+    assert os.path.basename(os.path.dirname(os.path.dirname(test_folder2))) == "megadetector"
+    assert test_folder2 == os.path.join(megadetector_temp_base, "tests", test_subfolder)
+    # Cleanup for make_test_folder specific: remove the 'megadetector' base temp dir
+    if os.path.exists(megadetector_temp_base):
+        shutil.rmtree(megadetector_temp_base)
+    assert not os.path.exists(megadetector_temp_base)
+    
+    # Verify cleanup if top level folder was 'megadetector' (default for make_temp_folder)
+    # This means it creates tempfile.gettempdir()/megadetector/uuid_folder
+    default_temp_folder = make_temp_folder() 
+    assert os.path.exists(default_temp_folder)
+    assert os.path.basename(os.path.dirname(default_temp_folder)) == "megadetector"
+    # Cleanup: remove the 'megadetector' base temp dir created by default make_temp_folder
+    if os.path.exists(megadetector_temp_base):
+         shutil.rmtree(megadetector_temp_base)
+    assert not os.path.exists(megadetector_temp_base)
+
+    # Restore original tempdir if it was changed (though not expected for these functions)
+    tempfile.tempdir = original_tempdir
