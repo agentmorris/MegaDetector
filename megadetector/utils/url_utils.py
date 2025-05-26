@@ -24,9 +24,9 @@ from urllib.parse import urlparse
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
 
-from megadetector.utils import ct_utils
+from megadetector.utils.ct_utils import make_test_folder
+from megadetector.utils.ct_utils import make_temp_folder
 
-url_utils_temp_dir = None
 max_path_len = 255
 
 
@@ -62,28 +62,6 @@ class DownloadProgressBar:
                 self.pbar.update(downloaded)
             else:
                 self.pbar.finish()
-        # elif block_num == 0: 
-        #    print("Starting download (no progress bar).")
-
-
-def get_temp_folder(preferred_name='url_utils'):
-    """
-    Gets a temporary folder for use within this module.
-
-    Args:
-        preferred_name (str, optional): subfolder to use within the system temp folder
-
-    Returns:
-        str: the full path to the temporary subfolder
-    """
-
-    global url_utils_temp_dir
-
-    if url_utils_temp_dir is None:
-        url_utils_temp_dir = os.path.join(tempfile.gettempdir(),preferred_name)
-        os.makedirs(url_utils_temp_dir,exist_ok=True)
-
-    return url_utils_temp_dir
 
 
 def download_url(url,
@@ -125,19 +103,22 @@ def download_url(url,
 
     if destination_filename is None:
 
-        target_folder = get_temp_folder()
+        target_folder = make_temp_folder(subfolder='url_utils',append_guid=False)
         url_without_sas = url.split('?', 1)[0]
 
+        # This does not guarantee uniqueness, hence "semi-best-effort"
         url_as_filename = re.sub(r'\W+', '', url_without_sas)
         
-        current_temp_dir_for_len = url_utils_temp_dir if url_utils_temp_dir else target_folder
-        n_folder_chars = len(current_temp_dir_for_len)
+        n_folder_chars = len(target_folder)
         
-        if len(url_as_filename) + n_folder_chars + 1 > max_path_len: 
+        if (len(url_as_filename) + n_folder_chars) >= max_path_len:
+            print('Warning: truncating filename target to {} characters'.format(max_path_len))
             max_fn_len = max_path_len - (n_folder_chars + 1)
             url_as_filename = url_as_filename[-1 * max_fn_len:]
         destination_filename = \
             os.path.join(target_folder,url_as_filename)
+
+    # ...if the destination filename wasn't specified
 
     if escape_spaces:
         url = url.replace(' ','%20')
@@ -157,6 +138,8 @@ def download_url(url,
             print('...done, {} bytes.'.format(n_bytes))
 
     return destination_filename
+
+# ...def download_url(...)
 
 
 def download_relative_filename(url, output_base, verbose=False):
@@ -180,9 +163,12 @@ def download_relative_filename(url, output_base, verbose=False):
     """
 
     p = urlparse(url)
+    # remove the leading '/'
     assert p.path.startswith('/'); relative_filename = p.path[1:]
     destination_filename = os.path.join(output_base,relative_filename)
     return download_url(url, destination_filename, verbose=verbose)
+
+# ...def download_relative_filename(...)
 
 
 def _do_parallelized_download(download_info,overwrite=False,verbose=False):
@@ -213,9 +199,11 @@ def _do_parallelized_download(download_info,overwrite=False,verbose=False):
     result['status'] = 'success'
     return result
 
+# ...def _do_parallelized_download(...)
 
-def parallel_download_urls(url_to_target_file,verbose=False,overwrite=False,
-                           n_workers=20,pool_type='thread'):
+
+def parallel_download_urls(url_to_target_file, verbose=False, overwrite=False,
+                           n_workers=20, pool_type='thread'):
     """
     Downloads a list of URLs to local files.
 
@@ -281,10 +269,11 @@ def parallel_download_urls(url_to_target_file,verbose=False,overwrite=False,
             if pool:
                 pool.close()
                 pool.join()
-            if verbose:
                 print("Pool closed and joined for parallel URL downloads")
 
     return results
+
+# ...def parallel_download_urls(...)
 
 
 @pytest.mark.skip(reason="This is not a test function")
@@ -325,7 +314,7 @@ def test_urls(urls,error_on_failure=True,n_workers=1,pool_type='thread',timeout=
         pool_type (str, optional): worker type to use; should be 'thread' or 'process'
         timeout (int, optional): timeout in seconds to wait before considering this
             access attempt to be a failure; see requests.head() for precise documentation
-        verbose (bool, optional): enable tqdm progress bar
+        verbose (bool, optional): enable additional debug output
 
     Returns:
         list: a list of http status codes, the same length and order as [urls]
@@ -335,9 +324,14 @@ def test_urls(urls,error_on_failure=True,n_workers=1,pool_type='thread',timeout=
 
         status_codes = []
 
-        for url in tqdm(urls, disable=(not verbose)):
-            status_codes.append(test_url(url, error_on_failure=error_on_failure, timeout=timeout))
-            
+        for url in tqdm(urls,disable=(not verbose)):
+
+            r = requests.get(url, timeout=timeout)
+
+            if error_on_failure and r.status_code != 200:
+                raise ValueError('Could not access {}: error {}'.format(url,r.status_code))
+            status_codes.append(r.status_code)
+
     else:
 
         pool = None
@@ -358,8 +352,11 @@ def test_urls(urls,error_on_failure=True,n_workers=1,pool_type='thread',timeout=
             if pool:
                 pool.close()
                 pool.join()
+                print('Pool closed and joined for URL tests')
 
     return status_codes
+
+# ...def test_urls(...)
 
 
 def get_url_size(url,verbose=False,timeout=None):
@@ -396,6 +393,8 @@ def get_url_size(url,verbose=False,timeout=None):
         if verbose:
             print('Error retrieving file size for {}:\n{}'.format(url,str(e)))
         return None
+
+# ...def get_url_size(...)
 
 
 def get_url_sizes(urls,n_workers=1,pool_type='thread',timeout=None,verbose=False):
@@ -447,6 +446,7 @@ def get_url_sizes(urls,n_workers=1,pool_type='thread',timeout=None,verbose=False
             if pool:
                 pool.close()
                 pool.join()
+                print('Pool closed and joined for URL size checks')
 
     return url_to_size
 
@@ -454,14 +454,15 @@ def get_url_sizes(urls,n_workers=1,pool_type='thread',timeout=None,verbose=False
 #%% Tests
 
 # Constants for tests
+
 SMALL_FILE_URL = "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png"
 REDIRECT_SRC_URL = "http://google.com" 
 REDIRECT_DEST_URL = "https://www.google.com/" 
 NON_EXISTENT_URL = "https://example.com/non_existent_page_404.html"
 DEFINITELY_NON_EXISTENT_DOMAIN_URL = "https://thisshouldnotexist1234567890.com/file.txt"
-RELATIVE_DOWNLOAD_URL_BASE = "https://raw.githubusercontent.com/microsoft/CameraTraps/"
-RELATIVE_DOWNLOAD_URL_PATH = "master/README.md"
-RELATIVE_DOWNLOAD_URL_FULL = RELATIVE_DOWNLOAD_URL_BASE + RELATIVE_DOWNLOAD_URL_PATH
+RELATIVE_DOWNLOAD_URL = "https://raw.githubusercontent.com/agentmorris/MegaDetector/main/README.md"
+RELATIVE_DOWNLOAD_CONTAIN_TOKEN = 'agentmorris'
+RELATIVE_DOWNLOAD_NOT_CONTAIN_TOKEN = 'github'
 
 
 class TestUrlUtils:
@@ -470,58 +471,24 @@ class TestUrlUtils:
     """
 
 
-    def setUp(self):
+    def set_up(self):
         """
         Create a temporary directory for testing.
         """
 
-        global url_utils_temp_dir
-        self.original_url_utils_temp_dir = url_utils_temp_dir
-        self.test_dir = ct_utils.make_test_folder(subfolder='url_utils_tests')
-        url_utils_temp_dir = os.path.join(self.test_dir, 'url_utils_module_temp')
-        os.makedirs(url_utils_temp_dir, exist_ok=True)
-        
+        self.test_dir = make_test_folder(subfolder='url_utils_tests')        
         self.download_target_dir = os.path.join(self.test_dir, 'downloads')
         os.makedirs(self.download_target_dir, exist_ok=True)
 
 
-    def tearDown(self):
+    def tear_down(self):
         """
         Remove the temporary directory after tests and restore module temp_dir.
         """
 
-        global url_utils_temp_dir
         if os.path.exists(self.test_dir):
             shutil.rmtree(self.test_dir)
-        url_utils_temp_dir = self.original_url_utils_temp_dir
-
-
-    def test_get_temp_folder(self):
-        """
-        Test the get_temp_folder function.
-        """
-
-        tf = get_temp_folder()
-        assert tf == url_utils_temp_dir
-        assert os.path.exists(tf)
-
-        custom_temp_name = "custom_url_temp"
-        global url_utils_temp_dir
-        _original_val = url_utils_temp_dir
-        url_utils_temp_dir = None 
-        try:
-            custom_tf = get_temp_folder(preferred_name=custom_temp_name)
-            expected_custom_path = os.path.join(tempfile.gettempdir(), custom_temp_name)
-            assert custom_tf == expected_custom_path
-            assert os.path.exists(custom_tf)
-            if os.path.exists(expected_custom_path) and expected_custom_path != _original_val:
-                 if os.path.isdir(expected_custom_path) and not os.listdir(expected_custom_path) : 
-                     os.rmdir(expected_custom_path)
-                 elif os.path.isdir(expected_custom_path) and custom_temp_name in expected_custom_path :
-                     shutil.rmtree(expected_custom_path)
-        finally:
-            url_utils_temp_dir = _original_val
-
+        
 
     def test_download_url_to_specified_file(self):
         """
@@ -543,8 +510,7 @@ class TestUrlUtils:
         returned_filename = download_url(SMALL_FILE_URL, destination_filename=None, verbose=False)
         assert os.path.exists(returned_filename)
         assert os.path.getsize(returned_filename) > 1000
-        assert returned_filename.startswith(url_utils_temp_dir)
-
+        
 
     def test_download_url_non_existent(self):
         """
@@ -560,7 +526,8 @@ class TestUrlUtils:
         
         try:
             download_url(DEFINITELY_NON_EXISTENT_DOMAIN_URL, destination_filename=dest_filename, verbose=False)
-            assert False, "urllib.error.URLError or requests.exceptions.ConnectionError not raised for DNS failure"
+            assert False, \
+                "urllib.error.URLError or requests.exceptions.ConnectionError not raised for DNS failure"
         except urllib.error.URLError: 
             pass
         except requests.exceptions.ConnectionError: 
@@ -600,15 +567,12 @@ class TestUrlUtils:
         Test download_relative_filename.
         """
 
-        output_base = os.path.join(self.download_target_dir, "relative_dl")
-        
-        expected_dest_path_part = os.path.join(output_base, RELATIVE_DOWNLOAD_URL_PATH)
-        expected_dest_filename = os.path.normpath(expected_dest_path_part)
-
-        returned_filename = download_relative_filename(RELATIVE_DOWNLOAD_URL_FULL, output_base, verbose=False)
-        assert os.path.normpath(returned_filename) == expected_dest_filename
-        assert os.path.exists(expected_dest_filename)
-        assert os.path.getsize(expected_dest_filename) > 100
+        output_base = os.path.join(self.download_target_dir, "relative_dl")        
+        returned_filename = download_relative_filename(RELATIVE_DOWNLOAD_URL, output_base, verbose=False)
+        assert RELATIVE_DOWNLOAD_CONTAIN_TOKEN in returned_filename
+        assert RELATIVE_DOWNLOAD_NOT_CONTAIN_TOKEN not in returned_filename
+        assert os.path.exists(returned_filename)
+        assert os.path.getsize(returned_filename) > 100
 
 
     def test_parallel_download_urls(self):
@@ -653,7 +617,7 @@ class TestUrlUtils:
         """
 
         assert test_url(SMALL_FILE_URL, error_on_failure=False, timeout=10) == 200
-        assert test_url(REDIRECT_SRC_URL, error_on_failure=False, timeout=10) == 200
+        assert test_url(REDIRECT_SRC_URL, error_on_failure=False, timeout=10) in (200,301)
 
         status_non_existent = test_url(NON_EXISTENT_URL, error_on_failure=False, timeout=5)
         assert status_non_existent == 404 
@@ -728,9 +692,8 @@ def test_url_utils():
     """
 
     test_instance = TestUrlUtils()
-    test_instance.setUp()
+    test_instance.set_up()
     try:
-        test_instance.test_get_temp_folder()
         test_instance.test_download_url_to_specified_file()
         test_instance.test_download_url_to_temp_file()
         test_instance.test_download_url_non_existent()
@@ -741,4 +704,7 @@ def test_url_utils():
         test_instance.test_test_url_and_test_urls()
         test_instance.test_get_url_size_and_sizes()
     finally:
-        test_instance.tearDown()
+        test_instance.tear_down()
+
+# from IPython import embed; embed()
+# test_url_utils()

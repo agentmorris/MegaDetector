@@ -24,6 +24,9 @@ def is_float(s):
         bool: True if s successfully casts to a float, otherwise False
     """
 
+    if s is None:
+        return False
+    
     try:
         _ = float(s)
     except ValueError:
@@ -82,8 +85,8 @@ def human_readable_to_bytes(size):
             return 0
 
         try:
-            bytes_val = float(numeric_part) # Renamed
-            unit = unit_part # Use the extracted unit_part
+            bytes_val = float(numeric_part)
+            unit = unit_part
             if (unit == 'T'):
                 bytes_val *= 1024*1024*1024*1024
             elif (unit == 'G'):
@@ -94,14 +97,14 @@ def human_readable_to_bytes(size):
                 bytes_val *= 1024
             else:
                 # If it's a known unit (like 'B' already stripped) but not T/G/M/K,
-                # and it was floatable, it's just bytes.
-                # If it's an unknown unit, it's an error.
+                # and it was floatable, it's just bytes.  If it's an unknown unit, it's 
+				# an error.
                 if unit not in ['B', '']: # 'B' was stripped, '' means just a number
                      bytes_val = 0
         except ValueError:
-            bytes_val = 0 # Renamed
+            bytes_val = 0
 
-    return bytes_val # Renamed
+    return bytes_val
 
 
 def remove_ansi_codes(s):
@@ -138,13 +141,13 @@ class TestStringUtils:
         assert is_float("1.23")
         assert is_float("-0.5")
         assert is_float("0")
-        assert is_float(1.23) # Actual float
-        assert is_float(0)    # Actual int
+        assert is_float(1.23)
+        assert is_float(0)
         assert not is_float("abc")
         assert not is_float("1.2.3")
         assert not is_float("")
         assert not is_float(None)
-        assert not is_float("1,23") # Comma as decimal separator
+        assert not is_float("1,23")
 
 
     def test_human_readable_to_bytes(self):
@@ -153,7 +156,7 @@ class TestStringUtils:
         """
 
         assert human_readable_to_bytes("10B") == 10
-        assert human_readable_to_bytes("10") == 10 # Should treat as bytes
+        assert human_readable_to_bytes("10") == 10
         assert human_readable_to_bytes("1K") == 1024
         assert human_readable_to_bytes("1KB") == 1024
         assert human_readable_to_bytes("1M") == 1024*1024
@@ -172,12 +175,12 @@ class TestStringUtils:
 
         # Invalid inputs
         assert human_readable_to_bytes("abc") == 0
-        assert human_readable_to_bytes("1X") == 0 # Invalid unit
-        assert human_readable_to_bytes("1KBB") == 0 # Double unit
-        assert human_readable_to_bytes("K1") == 0 # Unit first
-        assert human_readable_to_bytes("") == 0 # Empty string
-        assert human_readable_to_bytes("1.2.3K") == 0 # Invalid float part
-        assert human_readable_to_bytes("B") == 0 # Just B
+        assert human_readable_to_bytes("1X") == 0
+        assert human_readable_to_bytes("1KBB") == 0
+        assert human_readable_to_bytes("K1") == 0
+        assert human_readable_to_bytes("") == 0
+        assert human_readable_to_bytes("1.2.3K") == 0
+        assert human_readable_to_bytes("B") == 0
 
 
     def test_remove_ansi_codes(self):
@@ -189,10 +192,11 @@ class TestStringUtils:
         assert remove_ansi_codes("\x1b[31mRed text\x1b[0m") == "Red text"
         assert remove_ansi_codes("\x1b[1m\x1b[4mBold and Underline\x1b[0m") == "Bold and Underline"
         assert remove_ansi_codes("Mixed \x1b[32mgreen\x1b[0m and normal") == "Mixed green and normal"
-        assert remove_ansi_codes("") == "" # Empty string
+        assert remove_ansi_codes("") == ""
+
         # More complex/varied ANSI codes
-        assert remove_ansi_codes("text\x1b[1Aup") == "textup" # Cursor up
-        assert remove_ansi_codes("\x1b[2Jclearscreen") == "clearscreen" # Clear screen
+        assert remove_ansi_codes("text\x1b[1Aup") == "textup"
+        assert remove_ansi_codes("\x1b[2Jclearscreen") == "clearscreen"
 
 
 def test_string_utils():
@@ -204,3 +208,6 @@ def test_string_utils():
     test_instance.test_is_float()
     test_instance.test_human_readable_to_bytes()
     test_instance.test_remove_ansi_codes()
+
+# from IPython import embed; embed()
+# test_string_utils()
