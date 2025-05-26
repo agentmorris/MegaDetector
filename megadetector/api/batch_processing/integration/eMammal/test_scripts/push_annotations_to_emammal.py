@@ -51,7 +51,7 @@ def format_data_print_deployments(rows):
 
 #%% Command-line driver
 
-def main():
+def main(): # noqa
     
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file', type=str, help='Input .json filename')

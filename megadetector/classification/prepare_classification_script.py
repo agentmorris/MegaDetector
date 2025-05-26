@@ -13,7 +13,7 @@ Differs from prepare_classification_script_mc.py only in the final class mapping
 
 import os
 
-def main():
+def main(): # noqa
     organization_name = 'idfg'
     job_name = 'idfg-2022-01-27-EOE2021S_Group6'
     input_filename = 'idfg-2022-01-27-EOE2021S_Group6_detections.filtered_rde_0.60_0.85_30_0.20.json'
@@ -44,7 +44,7 @@ def main():
 
     for fn in input_files:
         assert os.path.isfile(fn)
-        
+
 
     #%% Constants
 
@@ -76,7 +76,7 @@ def main():
     typical_classification_threshold_str = '0.75'
 
     classifier_name = 'idfg4'
-            
+
 
     #%% Set up environment
 
@@ -88,18 +88,18 @@ def main():
     #%% Crop images
 
     if include_cropping:
-        
+
         commands.append('\n### Cropping ###\n')
-        
+
         # fn = input_files[0]
         for fn in input_files:
-        
+
             input_file_path = fn
             crop_cmd = ''
-            
+
             crop_comment = '\n# Cropping {}\n'.format(fn)
             crop_cmd += crop_comment
-            
+
             crop_cmd += "python crop_detections.py \\\n" + \
                 input_file_path + ' \\\n' + \
                 crop_path + ' \\\n' + \
@@ -122,12 +122,12 @@ def main():
 
         input_file_path = fn
         classifier_output_path = crop_path + classifier_output_suffix
-        
+
         classify_cmd = ''
-        
+
         classify_comment = '\n# Classifying {}\n'.format(fn)
         classify_cmd += classify_comment
-        
+
         classify_cmd += "python run_classifier.py \\\n" + \
             checkpoint_path + ' \\\n' + \
             crop_path + ' \\\n' + \
@@ -137,14 +137,14 @@ def main():
             '--image-size "' + image_size_str + '"' + ' \\\n' + \
             '--batch-size "' + batch_size_str + '"' + ' \\\n' + \
             '--num-workers "' + num_workers_str + '"' + ' \\\n'
-        
+
         if device_id is not None:
             classify_cmd += '--device {}'.format(device_id)
-            
-        classify_cmd += '\n\n'    
+
+        classify_cmd += '\n\n'
         classify_cmd = '{}'.format(classify_cmd)
         commands.append(classify_cmd)
-            
+
 
     #%% Merge classification and detection outputs
 
@@ -161,12 +161,12 @@ def main():
                                         final_output_suffix)
         final_output_path = final_output_path.replace('_detections','')
         final_output_path = final_output_path.replace('_crops','')
-        
+
         merge_cmd = ''
-        
+
         merge_comment = '\n# Merging {}\n'.format(fn)
         merge_cmd += merge_comment
-        
+
         merge_cmd += "python merge_classification_detection_output.py \\\n" + \
             classifier_output_path + ' \\\n' + \
             classifier_categories_path + ' \\\n' + \
@@ -189,6 +189,6 @@ def main():
     import stat
     st = os.stat(output_file)
     os.chmod(output_file, st.st_mode | stat.S_IEXEC)
-    
+
 if __name__ == '__main__':
     main()

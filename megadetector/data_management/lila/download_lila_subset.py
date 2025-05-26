@@ -14,9 +14,12 @@ import random
 
 from tqdm import tqdm
 from collections import defaultdict
+from copy import deepcopy
 
 from megadetector.data_management.lila.lila_common import \
     read_lila_all_images_file, is_empty, lila_base_urls
+from megadetector.utils.url_utils import parallel_download_urls
+from megadetector.utils.path_utils import open_file
 
 for s in lila_base_urls.values():
     assert s.endswith('/')
@@ -58,13 +61,13 @@ common_name_to_count = defaultdict(int)
 
 ds_name_to_urls = defaultdict(list)
 
-def find_items(row):
-    
+def find_items(row): # noqa
+
     if is_empty(row['common_name']):
         return
-    
+
     match = False
-    
+
     # This is the only bit of this file that's specific to a particular query.  In this case
     # we're checking whether each row is on a list of species of interest, but you do you.
     for species_name in species_of_interest:
@@ -72,7 +75,7 @@ def find_items(row):
             match = True
             common_name_to_count[species_name] += 1
             break
-    
+
     if match:
         ds_name_to_urls[row['dataset_name']].append(row['url_' + preferred_provider])
 
@@ -86,8 +89,7 @@ print('Found {} matching URLs across {} datasets'.format(len(all_urls),len(ds_na
 
 for common_name in common_name_to_count:
     print('{}: {}'.format(common_name,common_name_to_count[common_name]))
-    
-from copy import deepcopy
+
 ds_name_to_urls_raw = deepcopy(ds_name_to_urls)
 
 
@@ -104,19 +106,17 @@ else:
 
 #%% Choose target files for each URL
 
-from megadetector.data_management.lila.lila_common import lila_base_urls
-
 # We have a list of URLs per dataset, flatten that into a single list of URLs
 urls_to_download = set()
 for ds_name in ds_name_to_urls:
     for url in ds_name_to_urls[ds_name]:
         urls_to_download.add(url)
-urls_to_download = sorted(list(urls_to_download))        
+urls_to_download = sorted(list(urls_to_download))
 
 # A URL might look like this:
 #
 # https://storage.googleapis.com/public-datasets-lila/wcs-unzipped/animals/0667/0302.jpg
-# 
+#
 # We'll write that to an output file that looks like this (relative to output_dir):
 #
 # wcs-unzipped/animals/0667/0302.jpg
@@ -128,15 +128,13 @@ assert base_url.endswith('/')
 url_to_target_file = {}
 
 for url in urls_to_download:
-    assert url.startswith(base_url) 
+    assert url.startswith(base_url)
     target_fn_relative = url.replace(base_url,'')
     target_fn_abs = os.path.join(output_dir,target_fn_relative)
     url_to_target_file[url] = target_fn_abs
 
 
 #%% Download image files
-
-from megadetector.utils.url_utils import parallel_download_urls
 
 download_results = parallel_download_urls(url_to_target_file=url_to_target_file,
                                           verbose=False,
@@ -147,39 +145,38 @@ download_results = parallel_download_urls(url_to_target_file=url_to_target_file,
 
 #%% Open output folder
 
-from megadetector.utils.path_utils import open_file
 open_file(output_dir)
 
 
 #%% Scrap
 
 if False:
-    
+
     pass
 
     #%% Find all the reptiles on LILA
 
     reptile_rows = df.loc[df['class'] == 'reptilia']
-    
+
     # i_row = 0; row = reptile_rows.iloc[i_row]
-    
+
     common_name_to_count = defaultdict(int)
     dataset_to_count = defaultdict(int)
     for i_row,row in reptile_rows.iterrows():
         common_name_to_count[row['common_name']] += 1
         dataset_to_count[row['dataset_name']] += 1
-        
+
     from megadetector.utils.ct_utils import sort_dictionary_by_value
-    
+
     print('Found {} reptiles\n'.format(len(reptile_rows)))
-    
+
     common_name_to_count = sort_dictionary_by_value(common_name_to_count,reverse=True)
     dataset_to_count = sort_dictionary_by_value(dataset_to_count,reverse=True)
-    
+
     print('Common names by count:\n')
     for k in common_name_to_count:
         print('{} ({})'.format(k,common_name_to_count[k]))
-    
-    print('\nDatasets by count:\n')    
+
+    print('\nDatasets by count:\n')
     for k in dataset_to_count:
         print('{} ({})'.format(k,dataset_to_count[k]))

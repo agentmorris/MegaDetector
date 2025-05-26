@@ -291,7 +291,7 @@ def load_detection_cache(detector_output_cache_dir: str,
             if no cached detections were found for the given dataset ds.
         detection_categories: dict, maps str category ID to str category name
     """
-    
+
     # cache of Detector outputs: dataset name => {img_path => detection_dict}
     detection_cache = {}
     detection_categories: dict[str, str] = {}
@@ -339,7 +339,7 @@ def filter_detected_images(
         detection_categories: dict, maps str category ID to str category name,
             empty dict if no cached detections are found
     """
-    
+
     datasets = set(img_path[:img_path.find('/')]
                    for img_path in potential_images_to_detect)
     detection_cache, detection_categories = load_detection_cache(
@@ -364,7 +364,7 @@ def split_images_list_by_dataset(images_to_detect: Iterable[str]
 
     Returns: dict, maps dataset name to a list of image paths
     """
-    
+
     images_by_dataset: dict[str, list[str]] = {}
     for img_path in images_to_detect:
         dataset = img_path[:img_path.find('/')]
@@ -402,7 +402,7 @@ def submit_batch_detection_api(images_to_detect: Iterable[str],
 
     Returns: dict, maps str dataset name to list of Task objects
     """
-    
+
     filtered_images_to_detect = [
         x for x in images_to_detect if path_utils.is_image_file(x)]
     not_images = set(images_to_detect) - set(filtered_images_to_detect)
@@ -477,7 +477,7 @@ def submit_batch_detection_api_by_dataset(
 
     Returns: list of Task objects
     """
-    
+
     os.makedirs(task_lists_dir, exist_ok=True)
 
     date = datetime.now().strftime('%Y%m%d_%H%M%S')  # e.g., '20200722_110816'
@@ -521,7 +521,7 @@ def resume_tasks(resume_file_path: str, batch_detection_api_url: str
 
     Returns: dict, maps str dataset name to list of Task objects
     """
-    
+
     with open(resume_file_path, 'r') as f:
         resume_json = json.load(f)
 
@@ -558,7 +558,7 @@ def wait_for_tasks(tasks_by_dataset: Mapping[str, Iterable[Task]],
             saved to <output_dir>/batchapi_response/{task_id}.json
         poll_interval: int, # of seconds between pinging the task status API
     """
-    
+
     remaining_tasks: list[tuple[str, Task]] = [
         (dataset, task) for dataset, tasks in tasks_by_dataset.items()
         for task in tasks]
@@ -674,7 +674,7 @@ def download_and_crop(
     Returns: list of str, images with bounding boxes that failed to download or
         crop properly
     """
-    
+
     # error checking before we download and crop any images
     valid_img_paths = set(queried_images_json.keys())
     if images_missing_detections is not None:
@@ -836,7 +836,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
-    
+
     args = _parse_args()
     main(queried_images_json_path=args.queried_images_json,
          output_dir=args.output_dir,

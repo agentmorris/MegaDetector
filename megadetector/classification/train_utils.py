@@ -35,7 +35,7 @@ class HeapItem:
     """
     A wrapper over non-comparable data with a comparable priority value.
     """
-    
+
     priority: Any
     data: Any = dataclasses.field(compare=False, repr=False)
 
@@ -53,7 +53,7 @@ def add_to_heap(h: list[Any], item: HeapItem, k: Optional[int] = None) -> None:
         item: HeapItem
         k: int, desired capacity of the heap, or None for no limit
     """
-    
+
     if k is None or len(h) < k:
         heapq.heappush(h, item)
     else:
@@ -66,17 +66,17 @@ def prefix_all_keys(d: Mapping[str, Any], prefix: str) -> dict[str, Any]:
     """
     Returns a new dict where the keys are prefixed by <prefix>.
     """
-    
+
     return {f'{prefix}{k}': v for k, v in d.items()}
 
 
 def fig_to_img(fig: matplotlib.figure.Figure) -> np.ndarray:
     """
     Converts a matplotlib figure to an image represented by a numpy array.
-    
+
     Returns: np.ndarray, type uint8, shape [H, W, 3]
     """
-    
+
     with io.BytesIO() as b:
         fig.savefig(b, transparent=False, bbox_inches='tight', pad_inches=0,
                     format='png')
@@ -103,7 +103,7 @@ def imgs_with_confidences(imgs_list: list[tuple[Any, ...]],
         fig: matplotlib.figure.Figure
         img_files: list of str
     """
-    
+
     imgs, img_files, tags, titles = [], [], [], []
     for img, label_id, topk_conf, topk_preds, img_file in imgs_list:
         imgs.append(img)
@@ -140,7 +140,7 @@ def plot_img_grid(imgs: Sequence[Any], row_h: float, col_w: float,
 
     Returns: matplotlib.figure.Figure
     """
-    
+
     # input validation
     num_images = len(imgs)
     if tags is not None:
@@ -186,7 +186,7 @@ def load_splits(splits_json_path: str) -> dict[str, set[tuple[str, str]]]:
 
     Returns: dict, maps split to set of (dataset, location) tuples
     """
-    
+
     with open(splits_json_path, 'r') as f:
         split_to_locs_js = json.load(f)
     split_to_locs = {
@@ -235,7 +235,7 @@ def load_dataset_csv(dataset_csv_path: str,
         label_names: list of str, label names in order of label id
         split_to_locs: dict, maps split to set of (dataset, location) tuples
     """
-    
+
     # read in dataset CSV and create merged (dataset, location) col
     df = pd.read_csv(dataset_csv_path, index_col=False, float_precision='high')
     df['dataset_location'] = list(zip(df['dataset'], df['location']))
@@ -315,7 +315,7 @@ def recall_from_confusion_matrix(
 
     Returns: dict, label_name => recall
     """
-    
+
     result = {
         label_name: confusion_matrix[i, i] / (confusion_matrix[i].sum() + 1e-8)
         for i, label_name in enumerate(label_names)

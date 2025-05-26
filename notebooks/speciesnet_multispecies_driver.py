@@ -1,9 +1,9 @@
 """
 
 speciesnet_multispecies_driver.py
-   
+
 Semi-automated process for managing a local SpeciesNet job, including
-standard postprocessing steps.  This version handles multi-species images, at the 
+standard postprocessing steps.  This version handles multi-species images, at the
 expense of leveraging the complete ensemble logic.  If multi-species images
 are rare in your data, consider using speciesnet_driver.py instead.
 
@@ -43,7 +43,7 @@ speciesnet_tf_environment_name = 'speciesnet-package-tf'
 
 # Can be None to omit the CUDA prefix
 gpu_number = 0
-    
+
 # This is not related to running the model, only to postprocessing steps
 # in this notebook.  Threads work better on Windows, processes on Linux.
 use_threads_for_parallelization = (os.name == 'nt')
@@ -84,15 +84,15 @@ detection_results_file_for_crop_folder = insert_before_extension(
 # The instances.json file that refers just to the crops folder
 crop_instances_json = os.path.join(output_base,'crop_instances.json')
 
-# The results of the detector (in SpeciesNet format), after running it on the 
+# The results of the detector (in SpeciesNet format), after running it on the
 # original images
 detector_output_file_modular = \
     os.path.join(output_base,job_name + '-detector_output_modular.json')
-    
+
 # The results of the classifier (in SpeciesNet format), after running it on the crops
 classifier_output_file_modular_crops = \
     os.path.join(output_base,job_name + '-classifier_output_modular_crops.json')
-    
+
 # The results of the ensemble (in SpeciesNet format), after running it on the crops
 ensemble_output_file_modular_crops = \
     os.path.join(output_base,job_name + '-ensemble_output_modular_crops.json')
@@ -151,7 +151,7 @@ generate_md_results_from_predictions_json(predictions_json_file=detector_output_
 
 from megadetector.postprocessing.create_crop_folder import \
     CreateCropFolderOptions, create_crop_folder
-    
+
 create_crop_folder_options = CreateCropFolderOptions()
 create_crop_folder_options.n_workers = 8
 create_crop_folder_options.pool_type = 'process'
@@ -195,7 +195,7 @@ print('Generated {} instances for the crop folder (in file {})'.format(
 
 
 #%% Run classifier on crops
-   
+
 chunk_folder = os.path.join(output_base,'chunks')
 os.makedirs(chunk_folder,exist_ok=True)
 
@@ -205,7 +205,7 @@ with open(crop_instances_json,'r') as f:
     crop_instances_dict = json.load(f)
 
 crop_instances = crop_instances_dict['instances']
-       
+
 chunks = split_list_into_fixed_size_chunks(crop_instances,max_images_per_chunk)
 print('Split {} crop instances into {} chunks'.format(len(crop_instances),len(chunks)))
 
@@ -222,63 +222,63 @@ chunk_prediction_files = []
 
 # i_chunk = 0; chunk = chunks[i_chunk]
 for i_chunk,chunk in enumerate(chunks):
-    
+
     chunk_str = str(i_chunk).zfill(3)
-    
+
     chunk_instances_json = os.path.join(chunk_folder,'crop_instances_chunk_{}.json'.format(
         chunk_str))
     chunk_instances_dict = {'instances':chunk}
     with open(chunk_instances_json,'w') as f:
         json.dump(chunk_instances_dict,f,indent=1)
-    
+
     chunk_detections_json = os.path.join(chunk_folder,'detections_chunk_{}.json'.format(
         chunk_str))
-    
+
     detection_predictions_this_chunk = []
-    
+
     images_this_chunk = [instance['filepath'] for instance in chunk]
-    
+
     for image_fn in images_this_chunk:
         assert image_fn in detection_filepath_to_instance
         detection_predictions_this_chunk.append(detection_filepath_to_instance[image_fn])
-        
+
     detection_predictions_dict = {'predictions':detection_predictions_this_chunk}
-    
+
     with open(chunk_detections_json,'w') as f:
         json.dump(detection_predictions_dict,f,indent=1)
-    
-    chunk_files = [instance['filepath'] for instance in chunk]    
-    
+
+    chunk_files = [instance['filepath'] for instance in chunk]
+
     chunk_predictions_json = os.path.join(chunk_folder,'predictions_chunk_{}.json'.format(
         chunk_str))
-    
+
     if os.path.isfile(chunk_predictions_json):
         print('Warning: chunk output file {} exists'.format(chunk_predictions_json))
-        
+
     chunk_prediction_files.append(chunk_predictions_json)
-    
+
     chunk_script = os.path.join(chunk_folder,'run_chunk_{}.sh'.format(i_chunk))
     cmd = 'python speciesnet/scripts/run_model.py --classifier_only --model "{}"'.format(
         model_file)
     cmd += ' --instances_json "{}"'.format(chunk_instances_json)
     cmd += ' --predictions_json "{}"'.format(chunk_predictions_json)
     cmd += ' --detections_json "{}"'.format(chunk_detections_json)
-    
+
     if classifier_batch_size is not None:
        cmd += ' --batch_size {}'.format(classifier_batch_size)
-       
+
     chunk_script_file = os.path.join(chunk_folder,'run_chunk_{}.sh'.format(chunk_str))
     with open(chunk_script_file,'w') as f:
         f.write(cmd)
     st = os.stat(chunk_script_file)
     os.chmod(chunk_script_file, st.st_mode | stat.S_IEXEC)
-    
+
     chunk_scripts.append(chunk_script_file)
-    
+
 # ...for each chunk
 
-classifier_script_file = os.path.join(output_base,'run_all_classifier_chunks.sh')            
-   
+classifier_script_file = os.path.join(output_base,'run_all_classifier_chunks.sh')
+
 classifier_init_cmd = f'{cuda_prefix} cd {speciesnet_folder} && mamba activate {speciesnet_tf_environment_name}'
 with open(classifier_script_file,'w') as f:
     f.write('set -e\n')
@@ -288,10 +288,10 @@ with open(classifier_script_file,'w') as f:
 
 st = os.stat(classifier_script_file)
 os.chmod(classifier_script_file, st.st_mode | stat.S_IEXEC)
-   
+
 classifier_cmd = '\n\n'.join([classifier_init_cmd,classifier_script_file])
 # print(classifier_cmd); clipboard.copy(classifier_cmd)
-    
+
 
 #%% Merge crop classification result batches
 
@@ -299,7 +299,7 @@ from megadetector.utils.wi_utils import merge_prediction_json_files
 
 merge_prediction_json_files(input_prediction_files=chunk_prediction_files,
                             output_prediction_file=classifier_output_file_modular_crops)
-    
+
 
 #%% Validate crop classification results
 
@@ -349,12 +349,12 @@ rollup_pair_to_count = \
 assert is_list_sorted(list(rollup_pair_to_count.values()),reverse=True)
 
 if len(rollup_pair_to_count) > 0:
-    
+
     footer_text = \
         '<h3>Geofence changes that occurred more than {} times</h3>\n'.format(min_count)
     footer_text += '<p>These numbers refer to the whole dataset, not just the sample used for this page.</p>\n'
     footer_text += '<div class="contentdiv">\n'
-    
+
     print('Rollup changes with count > {}:'.format(min_count))
     for rollup_pair in rollup_pair_to_count.keys():
         count = rollup_pair_to_count[rollup_pair]
@@ -414,14 +414,14 @@ for fn in filenames_in_results:
 for fn in images_in_folder:
     assert fn in filenames_in_results, \
         'Image {} present in folder but not in results'.format(fn)
-        
+
 n_failures = 0
-        
+
 # im = d['images'][0]
 for im in d['images']:
     if 'failure' in im:
         n_failures += 1
-        
+
 print('Loaded results for {} images with {} failures'.format(
     len(images_in_folder),n_failures))
 
@@ -429,20 +429,20 @@ print('Loaded results for {} images with {} failures'.format(
 #%% Optional RDE prep: define custom camera folder function
 
 if False:
-    
+
     #%% Sample custom camera folder function
-    
+
     def custom_relative_path_to_location(relative_path):
-        
-        relative_path = relative_path.replace('\\','/')    
-        tokens = relative_path.split('/')        
+
+        relative_path = relative_path.replace('\\','/')
+        tokens = relative_path.split('/')
         location_name = '/'.join(tokens[0:2])
         return location_name
-    
+
     #%% Test custom function
-    
+
     from tqdm import tqdm
-    
+
     with open(ensemble_output_file_image_level_md_format,'r') as f:
         d = json.load(f)
     image_filenames = [im['file'] for im in d['images']]
@@ -451,12 +451,12 @@ if False:
 
     # relative_path = image_filenames[0]
     for relative_path in tqdm(image_filenames):
-        
+
         location_name = custom_relative_path_to_location(relative_path)
         # location_name = image_file_to_camera_folder(relative_path)
-        
+
         location_names.add(location_name)
-        
+
     location_names = list(location_names)
     location_names.sort()
 
@@ -542,7 +542,7 @@ open_file(os.path.dirname(suspicious_detection_results.filterFile),
 from megadetector.postprocessing.repeat_detection_elimination import \
     remove_repeat_detections
 
-filtered_output_filename = insert_before_extension(ensemble_output_file_image_level_md_format, 
+filtered_output_filename = insert_before_extension(ensemble_output_file_image_level_md_format,
                                                    'filtered_{}'.format(rde_string))
 
 remove_repeat_detections.remove_repeat_detections(

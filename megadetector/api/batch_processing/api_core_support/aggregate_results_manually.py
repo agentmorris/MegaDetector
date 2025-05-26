@@ -22,7 +22,7 @@ import json
 from api.batch_processing.api_core.orchestrator_api.orchestrator import AMLMonitor
 
 
-def main():
+def main(): # noqa
     parser = argparse.ArgumentParser()
     parser.add_argument('shortened_request_id', type=str,
                         help='the request ID to restart monitoring')

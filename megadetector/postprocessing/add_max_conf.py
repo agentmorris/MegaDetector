@@ -15,43 +15,47 @@ to add it back to an existing .json file.
 
 import os
 import json
+import sys
+import argparse
+
 from megadetector.utils import ct_utils
 
 
 #%% Main function
 
 def add_max_conf(input_file,output_file):
-    
+    """
+    Add maximum confidence values to [input_file] and write the results to [output_file].
+    """
+
     assert os.path.isfile(input_file), "Can't find input file {}".format(input_file)
-    
+
     with open(input_file,'r') as f:
         d = json.load(f)
-        
+
     for im in d['images']:
-        
+
         max_conf = ct_utils.get_max_conf(im)
-        
+
         if 'max_detection_conf' in im:
             assert abs(max_conf - im['max_detection_conf']) < 0.00001
         else:
             im['max_detection_conf'] = max_conf
-            
+
     with open(output_file,'w') as f:
         json.dump(d,f,indent=1)
-    
+
 
 #%% Driver
 
-import sys,argparse
+def main(): # noqa
 
-def main():
-    
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file',type=str,
                         help='Input .json file')
     parser.add_argument('output_file',type=str,
                         help='Output .json file')
-    
+
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()

@@ -432,7 +432,7 @@ def args_to_object(args,obj):
             setattr(obj, n, v)
 
 
-def main():
+def main(): # noqa
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_file', help = 'Path to the MegaDetector .json file', default=None)

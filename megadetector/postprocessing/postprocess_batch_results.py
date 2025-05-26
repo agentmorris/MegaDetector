@@ -12,7 +12,7 @@ Given a .json or .csv file containing MD results, do one or more of the followin
   truth)
 
 Ground truth, if available, must be in COCO Camera Traps format:
-    
+
 https://github.com/agentmorris/MegaDetector/blob/main/megadetector/data_management/README.md#coco-camera-traps-format
 
 """
@@ -30,7 +30,6 @@ import time
 import uuid
 import warnings
 import random
-import json
 
 from enum import IntEnum
 from multiprocessing.pool import ThreadPool
@@ -76,40 +75,40 @@ class PostProcessingOptions:
     """
     Options used to parameterize process_batch_results().
     """
-    
+
     def __init__(self):
-        
+
         ### Required inputs
-    
+
         #: MD results .json file to process
         self.md_results_file = ''
-        
+
         #: Folder to which we should write HTML output
         self.output_dir = ''
-    
+
         ### Options
-    
+
         #: Folder where images live (filenames in [md_results_file] should be relative to this folder)
         #:
         #: Can be '' if [md_results_file] uses absolute paths.
         self.image_base_dir = ''
-    
+
         ## These apply only when we're doing ground-truth comparisons
-        
+
         #: Optional .json file containing ground truth information
         self.ground_truth_json_file = ''
-    
-        #: List of classes we'll treat as negative (defaults to "empty", typically includes 
+
+        #: List of classes we'll treat as negative (defaults to "empty", typically includes
         #: classes like "blank", "misfire", etc.).
         #:
         #: Include the token "#NO_LABELS#" to indicate that an image with no annotations
         #: should be considered empty.
         self.negative_classes = DEFAULT_NEGATIVE_CLASSES
-        
-        #: List of classes we'll treat as neither positive nor negative (defaults to 
+
+        #: List of classes we'll treat as neither positive nor negative (defaults to
         #: "unknown", typically includes classes like "unidentifiable").
         self.unlabeled_classes = DEFAULT_UNKNOWN_CLASSES
-    
+
         #: List of output sets that we should count, but not render images for.
         #:
         #: Typically used to preview sets with lots of empties, where you don't want to
@@ -118,120 +117,122 @@ class PostProcessingOptions:
         #: detections, non_detections
         #: detections_animal, detections_person, detections_vehicle
         self.rendering_bypass_sets = []
-    
+
         #: If this is None, choose a confidence threshold based on the detector version.
         #:
-        #: This can either be a float or a dictionary mapping category names (not IDs) to 
-        #: thresholds.  The category "default" can be used to specify thresholds for 
-        #: other categories.  Currently the use of a dict here is not supported when 
+        #: This can either be a float or a dictionary mapping category names (not IDs) to
+        #: thresholds.  The category "default" can be used to specify thresholds for
+        #: other categories.  Currently the use of a dict here is not supported when
         #: ground truth is supplied.
         self.confidence_threshold = None
-        
+
         #: Confidence threshold to apply to classification (not detection) results
         #:
         #: Only a float is supported here (unlike the "confidence_threshold" parameter, which
-        #: can be a dict).    
+        #: can be a dict).
         self.classification_confidence_threshold = 0.5
-    
+
         #: Used for summary statistics only
         self.target_recall = 0.9
-    
+
         #: Number of images to sample, -1 for "all images"
         self.num_images_to_sample = 500
-    
+
         #: Random seed for sampling, or None
         self.sample_seed = 0 # None
-    
+
         #: Image width for images in the HTML output
         self.viz_target_width = 800
-    
+
         #: Line width (in pixels) for rendering detections
         self.line_thickness = 4
-        
+
         #: Box expansion (in pixels) for rendering detections
         self.box_expansion = 0
-    
+
         #: Job name to include in big letters in the output HTML
         self.job_name_string = None
-        
+
         #: Model version string to include in the output HTML
         self.model_version_string = None
-        
+
         #: Sort order for the output, should be one of "filename", "confidence", or "random"
         self.html_sort_order = 'filename'
-       
+
         #: If True, images in the output HTML will be links back to the original images
         self.link_images_to_originals = True
-        
+
         #: Optionally separate detections into categories (animal/vehicle/human)
-        #: 
+        #:
         #: Currently only supported when ground truth is unavailable
         self.separate_detections_by_category = True
-    
+
         #: Optionally replace one or more strings in filenames with other strings;
         #: useful for taking a set of results generated for one folder structure
         #: and applying them to a slightly different folder structure.
         self.api_output_filename_replacements = {}
-        
+
         #: Optionally replace one or more strings in filenames with other strings;
         #: useful for taking a set of results generated for one folder structure
         #: and applying them to a slightly different folder structure.
         self.ground_truth_filename_replacements = {}
-    
+
         #: Allow bypassing API output loading when operating on previously-loaded
         #: results.  If present, this is a Pandas DataFrame.  Almost never useful.
         self.api_detection_results = None
-        
+
         #: Allow bypassing API output loading when operating on previously-loaded
         #: results.  If present, this is a str --> obj dict.  Almost never useful.
         self.api_other_fields = None
-    
+
         #: Should we also split out a separate report about the detections that were
         #: just below our main confidence threshold?
         #:
         #: Currently only supported when ground truth is unavailable.
         self.include_almost_detections = False
-        
+
         #: Only a float is supported here (unlike the "confidence_threshold" parameter, which
         #: can be a dict).
         self.almost_detection_confidence_threshold = None
-    
-        #: Enable/disable rendering parallelization    
+
+        #: Enable/disable rendering parallelization
         self.parallelize_rendering = False
-        
+
         #: Number of threads/processes to use for rendering parallelization
         self.parallelize_rendering_n_cores = 25
-        
+
         #: Whether to use threads (True) or processes (False) for rendering parallelization
         self.parallelize_rendering_with_threads = True
-        
+
         #: When classification results are present, should be sort alphabetically by class name (False)
         #: or in descending order by frequency (True)?
         self.sort_classification_results_by_count = False
-        
+
         #: Should we split individual pages up into smaller pages if there are more than
         #: N images?
         self.max_figures_per_html_file = None
-        
+
         #: Footer text for the index page
-        # self.footer_text = '<br/><p style="font-size:80%;">Preview page created with the <a href="{}">MegaDetector Python package</a>.</p>'.\
+        # self.footer_text = \
+        #    '<br/><p style="font-size:80%;">Preview page created with the ' + \
+        #    <a href="{}">MegaDetector Python package</a>.</p>'.\
         #    format('https://megadetector.readthedocs.io')
         self.footer_text = ''
 
         #: Character encoding to use when writing the index HTML html
         self.output_html_encoding = None
-        
+
         #: Additional image fields to display in image headers.  If this is a list,
         #: we'll include those fields; if this is a dict, we'll use that dict to choose
         #: alternative display names for each field.
         self.additional_image_fields_to_display = None
-        
-        #: If classification results are present, should we include a summary of 
+
+        #: If classification results are present, should we include a summary of
         #: classification categories?
         self.include_classification_category_report = True
-        
+
     # ...__init__()
-    
+
 # ...PostProcessingOptions
 
 
@@ -239,15 +240,15 @@ class PostProcessingResults:
     """
     Return format from process_batch_results
     """
-    
+
     def __init__(self):
-        
+
         #: HTML file to which preview information was written
         self.output_html_file = ''
-        
+
         #: Pandas Dataframe containing detection results
         self.api_detection_results = None
-        
+
         #: str --> obj dictionary containing other information loaded from the results file
         self.api_other_fields = None
 
@@ -258,10 +259,10 @@ class DetectionStatus(IntEnum):
     """
     Flags used to mark images as positive or negative for P/R analysis
     (according to ground truth and/or detector output)
-        
+
     :meta private:
     """
-    
+
     DS_NEGATIVE = 0
     DS_POSITIVE = 1
 
@@ -294,7 +295,7 @@ def _mark_detection_status(indexed_db,
 
     returns (n_negative, n_positive, n_unknown, n_ambiguous)
     """
-    
+
     negative_classes = set(negative_classes)
     unknown_classes = set(unknown_classes)
 
@@ -323,7 +324,7 @@ def _mark_detection_status(indexed_db,
 
         # If there are no image annotations...
         if len(categories) == 0:
-                        
+
             if '#NO_LABELS#' in negative_classes:
                 n_negative += 1
                 im['_detection_status'] = DetectionStatus.DS_NEGATIVE
@@ -379,10 +380,10 @@ def is_sas_url(s) -> bool:
     """
     Placeholder for a more robust way to verify that a link is a SAS URL.
     99.999% of the time this will suffice for what we're using it for right now.
-    
+
     :meta private:
     """
-    
+
     return (s.startswith(('http://', 'https://')) and ('core.windows.net' in s)
             and ('?' in s))
 
@@ -391,10 +392,10 @@ def relative_sas_url(folder_url, relative_path):
     """
     Given a container-level or folder-level SAS URL, create a SAS URL to the
     specified relative path.
-    
+
     :meta private:
     """
-    
+
     relative_path = relative_path.replace('%','%25')
     relative_path = relative_path.replace('#','%23')
     relative_path = relative_path.replace(' ','%20')
@@ -422,8 +423,8 @@ def _render_bounding_boxes(
         options=None):
     """
     Renders detection bounding boxes on a single image.
-    
-    This is an internal function; if you want tools for rendering boxes on images, see 
+
+    This is an internal function; if you want tools for rendering boxes on images, see
     visualization.visualization_utils.
 
     The source image is:
@@ -432,18 +433,18 @@ def _render_bounding_boxes(
 
     The target image is, for example:
 
-        [options.output_dir] / 
-        ['detections' or 'non_detections'] / 
+        [options.output_dir] /
+        ['detections' or 'non_detections'] /
         [filename with slashes turned into tildes]
 
     "res" is a result type, e.g. "detections", "non-detections"; this determines the
     output folder for the rendered image.
-    
+
     Only very preliminary support is provided for ground truth box rendering.
-    
+
     Returns the html info struct for this image in the format that's used for
     write_html_image_list.
-    
+
     :meta private:
     """
 
@@ -451,7 +452,7 @@ def _render_bounding_boxes(
         options = PostProcessingOptions()
 
     image_full_path = None
-    
+
     if res in options.rendering_bypass_sets:
 
         sample_name = res + '_' + path_utils.flatten_path(image_relative_path)
@@ -467,26 +468,26 @@ def _render_bounding_boxes(
         # to just try/except on the image open.
         try:
             image = vis_utils.open_image(image_full_path)
-        except:
-            print('Warning: could not open image file {}'.format(image_full_path))
+        except Exception as e:
+            print('Warning: could not open image file {}: {}'.format(image_full_path,str(e)))
             image = None
             # return ''
-        
+
         # Render images to a flat folder
         sample_name = res + '_' + path_utils.flatten_path(image_relative_path)
         fullpath = os.path.join(options.output_dir, res, sample_name)
 
         if image is not None:
-            
+
             original_size = image.size
-    
+
             # Resize the image if necessary
             if options.viz_target_width is not None:
                 image = vis_utils.resize_image(image, options.viz_target_width)
-    
+
             # Render ground truth boxes if necessary
             if ground_truth_boxes is not None and len(ground_truth_boxes) > 0:
-                
+
                 # Create class labels like "gt_1" or "gt_27"
                 gt_classes = [0] * len(ground_truth_boxes)
                 label_map = {0:'ground truth'}
@@ -495,7 +496,7 @@ def _render_bounding_boxes(
                 vis_utils.render_db_bounding_boxes(ground_truth_boxes, gt_classes, image,
                                                    original_size=original_size,label_map=label_map,
                                                    thickness=4,expansion=4)
-        
+
             # Prepare per-category confidence thresholds
             if isinstance(options.confidence_threshold,float):
                 rendering_confidence_threshold = options.confidence_threshold
@@ -507,7 +508,7 @@ def _render_bounding_boxes(
                 for category_id in category_ids:
                     rendering_confidence_threshold[category_id] = \
                         _get_threshold_for_category_id(category_id, options, detection_categories)
-            
+
             # Render detection boxes
             vis_utils.render_detection_bounding_boxes(
                 detections, image,
@@ -517,7 +518,7 @@ def _render_bounding_boxes(
                 classification_confidence_threshold=options.classification_confidence_threshold,
                 thickness=options.line_thickness,
                 expansion=options.box_expansion)
-    
+
             try:
                 image.save(fullpath)
             except OSError as e:
@@ -539,18 +540,18 @@ def _render_bounding_boxes(
         'textStyle':\
          'font-family:verdana,arial,calibri;font-size:80%;text-align:left;margin-top:20;margin-bottom:5'
     }
-    
+
     # Optionally add links back to the original images
     if options.link_images_to_originals and (image_full_path is not None):
-                
+
         # Handling special characters in links has been pushed down into
         # write_html_image_list
         #
         # link_target = image_full_path.replace('\\','/')
         # link_target  = urllib.parse.quote(link_target)
         link_target = image_full_path
-        info['linkTarget'] = link_target 
-        
+        info['linkTarget'] = link_target
+
     return info
 
 # ..._render_bounding_boxes
@@ -561,12 +562,12 @@ def _prepare_html_subpages(images_html, output_dir, options=None):
     Write out a series of html image lists, e.g. the "detections" or "non-detections"
     pages.
 
-    image_html is a dictionary mapping an html page name (e.g. "detections_animal") to 
+    image_html is a dictionary mapping an html page name (e.g. "detections_animal") to
     a list of image structs friendly to write_html_image_list.
-    
+
     Returns a dictionary mapping category names to image counts.
     """
-    
+
     if options is None:
         options = PostProcessingOptions()
 
@@ -582,19 +583,20 @@ def _prepare_html_subpages(images_html, output_dir, options=None):
             sorted_array = sorted(array, key=lambda x: x['filename'])
             images_html_sorted[res] = sorted_array
         images_html = images_html_sorted
-    
+
     # Optionally sort by confidence before writing to html
     elif options.html_sort_order == 'confidence':
         images_html_sorted = {}
         for res, array in images_html.items():
-            
+
             if not all(['max_conf' in d for d in array]):
-                print("Warning: some elements in the {} page don't have confidence values, can't sort by confidence".format(res))
+                print(f"Warning: some elements in the {res} page don't have confidence " + \
+                        "values, can't sort by confidence")
             else:
                 sorted_array = sorted(array, key=lambda x: x['max_conf'], reverse=True)
                 images_html_sorted[res] = sorted_array
                 images_html = images_html_sorted
-        
+
     else:
         assert options.html_sort_order == 'random',\
             'Unrecognized sort order {}'.format(options.html_sort_order)
@@ -603,15 +605,15 @@ def _prepare_html_subpages(images_html, output_dir, options=None):
             sorted_array = random.sample(array,len(array))
             images_html_sorted[res] = sorted_array
         images_html = images_html_sorted
-        
+
     # Write the individual HTML files
     for res, array in images_html.items():
-        
-        html_image_list_options = {}    
+
+        html_image_list_options = {}
         html_image_list_options['maxFiguresPerHtmlFile'] = options.max_figures_per_html_file
         html_image_list_options['headerHtml'] = '<h1>{}</h1>'.format(res.upper())
         html_image_list_options['pageTitle'] = '{}'.format(res.lower())
-        
+
         # Don't write empty pages
         if len(array) == 0:
             continue
@@ -630,49 +632,49 @@ def _get_threshold_for_category_name(category_name,options):
     """
     Determines the confidence threshold we should use for a specific category name.
     """
-    
+
     if isinstance(options.confidence_threshold,float):
         return options.confidence_threshold
     else:
         assert isinstance(options.confidence_threshold,dict), \
             'confidence_threshold must either be a float or a dict'
-                           
+
     if category_name in options.confidence_threshold:
-        
+
         return options.confidence_threshold[category_name]
-    
+
     else:
         assert 'default' in options.confidence_threshold, \
             'category {} not in confidence_threshold dict, and no default supplied'.format(
                 category_name)
         return options.confidence_threshold['default']
 
-    
+
 def _get_threshold_for_category_id(category_id,options,detection_categories):
     """
     Determines the confidence threshold we should use for a specific category ID.
-    
+
     [detection_categories] is a dict mapping category IDs to names.
     """
-    
-    if isinstance(options.confidence_threshold,float):        
+
+    if isinstance(options.confidence_threshold,float):
         return options.confidence_threshold
-    
+
     assert category_id in detection_categories, \
         'Invalid category ID {}'.format(category_id)
-        
+
     category_name = detection_categories[category_id]
-    
+
     return _get_threshold_for_category_name(category_name,options)
-    
-    
+
+
 def _get_positive_categories(detections,options,detection_categories):
     """
     Gets a sorted list of unique categories (as string IDs) above the threshold for this image
-    
+
     [detection_categories] is a dict mapping category IDs to names.
     """
-    
+
     positive_categories = set()
     for d in detections:
         threshold = _get_threshold_for_category_id(d['category'], options, detection_categories)
@@ -685,8 +687,8 @@ def _has_positive_detection(detections,options,detection_categories):
     """
     Determines whether any positive detections are present in the detection list
     [detections].
-    """    
-    
+    """
+
     found_positive_detection = False
     for d in detections:
         threshold = _get_threshold_for_category_id(d['category'], options, detection_categories)
@@ -694,51 +696,51 @@ def _has_positive_detection(detections,options,detection_categories):
             found_positive_detection = True
             break
     return found_positive_detection
-        
+
 
 def _render_image_no_gt(file_info,
                         detection_categories_to_results_name,
                         detection_categories,
                         classification_categories,
                         options):
-    """
+    r"""
     Renders an image (with no ground truth information)
-    
-    Returns a list of rendering structs, where the first item is a category (e.g. "detections_animal"), 
+
+    Returns a list of rendering structs, where the first item is a category (e.g. "detections_animal"),
     and  the second is a dict of information needed for rendering.  E.g.:
-        
-    [['detections_animal', 
+
+    [['detections_animal',
     {
-     'filename': 'detections_animal/detections_animal_blah~01060415.JPG', 
-     'title': '<b>Result type</b>: detections_animal, 
+     'filename': 'detections_animal/detections_animal_blah~01060415.JPG',
+     'title': '<b>Result type</b>: detections_animal,
                <b>Image</b>: blah\\01060415.JPG,
                <b>Max conf</b>: 0.897',
       'textStyle': 'font-family:verdana,arial,calibri;font-size:80%;text-align:left;margin-top:20;margin-bottom:5',
       'linkTarget': 'full_path_to_%5C01060415.JPG'
     }]]
-     
+
     When no classification data is present, this list will always be length-1.  When
     classification data is present, an image may appear in multiple categories.
-    
+
     Populates the 'max_conf' field of the first element of the list.
-    
+
     Returns None if there are any errors.
     """
-    
+
     image_relative_path = file_info['file']
-    
+
     # Useful debug snippet
     #
     # if 'filename' in image_relative_path:
     #    import pdb; pdb.set_trace()
-    
+
     max_conf = file_info['max_detection_conf']
     detections = file_info['detections']
 
     # Determine whether any positive detections are present (using a threshold that
     # may vary by category)
     found_positive_detection = _has_positive_detection(detections,options,detection_categories)
-        
+
     detection_status = DetectionStatus.DS_UNASSIGNED
     if found_positive_detection:
         detection_status = DetectionStatus.DS_POSITIVE
@@ -772,17 +774,17 @@ def _render_image_no_gt(file_info,
 
     # Are there any bonus fields we need to include in each image header?
     if options.additional_image_fields_to_display is not None:
-        
+
         for field_name in options.additional_image_fields_to_display:
-            
+
             if field_name in file_info:
-                
+
                 field_value = file_info[field_name]
-                
+
                 if (field_value is None) or \
                     (isinstance(field_value,float) and np.isnan(field_value)):
                         continue
-                
+
                 # Optionally use a display name that's different from the field name
                 if isinstance(options.additional_image_fields_to_display,dict):
                     field_display_name = \
@@ -791,12 +793,12 @@ def _render_image_no_gt(file_info,
                     field_display_name = field_name
                 field_string = '<b>{}</b>: {}'.format(field_display_name,field_value)
                 display_name += ', {}'.format(field_string)
-                
+
     rendering_options = copy.copy(options)
     if detection_status == DetectionStatus.DS_ALMOST:
         rendering_options.confidence_threshold = \
             rendering_options.almost_detection_confidence_threshold
-            
+
     rendered_image_html_info = _render_bounding_boxes(
         image_base_dir=options.image_base_dir,
         image_relative_path=image_relative_path,
@@ -815,9 +817,9 @@ def _render_image_no_gt(file_info,
         image_result = [[res, rendered_image_html_info]]
         classes_rendered_this_image = set()
         max_conf = 0
-        
+
         for det in detections:
-            
+
             if det['conf'] > max_conf:
                 max_conf = det['conf']
 
@@ -827,7 +829,7 @@ def _render_image_no_gt(file_info,
                 _get_threshold_for_category_id(det['category'], options, detection_categories)
             if det['conf'] < detection_threshold:
                 continue
-                
+
             if ('classifications' in det) and (len(det['classifications']) > 0) and \
                 (res != 'non_detections'):
 
@@ -837,14 +839,14 @@ def _render_image_no_gt(file_info,
                 top1_class_name = classification_categories[top1_class_id]
                 top1_class_score = classifications[0][1]
 
-                # If we either don't have a classification confidence threshold, or 
+                # If we either don't have a classification confidence threshold, or
                 # we've met our classification confidence threshold
                 if (options.classification_confidence_threshold < 0) or \
                     (top1_class_score >= options.classification_confidence_threshold):
-                    class_string = 'class_{}'.format(top1_class_name)                    
+                    class_string = 'class_{}'.format(top1_class_name)
                 else:
                     class_string = 'class_unreliable'
-                
+
                 if class_string not in classes_rendered_this_image:
                     image_result.append([class_string,
                                          rendered_image_html_info])
@@ -855,13 +857,13 @@ def _render_image_no_gt(file_info,
         # ...for each detection
 
         image_result[0][1]['max_conf'] = max_conf
-        
+
     # ...if we got valid rendering info back from _render_bounding_boxes()
-    
+
     return image_result
 
 # ...def _render_image_no_gt()
-    
+
 
 def _render_image_with_gt(file_info,ground_truth_indexed_db,
                          detection_categories,classification_categories,options):
@@ -869,7 +871,7 @@ def _render_image_with_gt(file_info,ground_truth_indexed_db,
     Render an image with ground truth information.  See _render_image_no_gt for return
     data format.
     """
-    
+
     image_relative_path = file_info['file']
     max_conf = file_info['max_detection_conf']
     detections = file_info['detections']
@@ -890,7 +892,7 @@ def _render_image_with_gt(file_info,ground_truth_indexed_db,
             ground_truth_box = [x for x in ann['bbox']]
             ground_truth_box.append(ann['category_id'])
             ground_truth_boxes.append(ground_truth_box)
-    
+
     gt_status = image['_detection_status']
 
     gt_presence = bool(gt_status)
@@ -920,7 +922,7 @@ def _render_image_with_gt(file_info,ground_truth_indexed_db,
     else:
         res = 'tn'
 
-    display_name = '<b>Result type</b>: {}, <b>Presence</b>: {}, <b>Class</b>: {}, <b>Max conf</b>: {:0.3f}%, <b>Image</b>: {}'.format(
+    display_name = '<b>Result type</b>: {}, <b>Presence</b>: {}, <b>Class</b>: {}, <b>Max conf</b>: {:0.3f}%, <b>Image</b>: {}'.format( # noqa
         res.upper(), str(gt_presence), gt_class_summary,
         max_conf * 100, image_relative_path)
 
@@ -945,7 +947,7 @@ def _render_image_with_gt(file_info,ground_truth_indexed_db,
 
 # ...def _render_image_with_gt()
 
-    
+
 #%% Main function
 
 def process_batch_results(options):
@@ -960,15 +962,15 @@ def process_batch_results(options):
       truth)
 
     Ground truth, if available, must be in COCO Camera Traps format:
-        
+
     https://github.com/agentmorris/MegaDetector/blob/main/megadetector/data_management/README.md#coco-camera-traps-format
 
     Args:
         options (PostProcessingOptions): everything we need to render a preview/analysis for
             this set of results; see the PostProcessingOptions class for details.
-           
+
     Returns:
-        PostProcessingResults: information about the results/preview, most importantly the 
+        PostProcessingResults: information about the results/preview, most importantly the
         HTML filename of the output.  See the PostProcessingResults class for details.
     """
     ppresults = PostProcessingResults()
@@ -990,7 +992,7 @@ def process_batch_results(options):
     if (options.ground_truth_json_file is not None) and (len(options.ground_truth_json_file) > 0):
         assert (options.confidence_threshold is None) or (isinstance(options.confidence_threshold,float)), \
             'Variable confidence thresholds are not supported when supplying ground truth'
-            
+
     if (options.ground_truth_json_file is not None) and (len(options.ground_truth_json_file) > 0):
 
         if options.separate_detections_by_category:
@@ -1027,7 +1029,7 @@ def process_batch_results(options):
             options.md_results_file, force_forward_slashes=True,
             filename_replacements=options.api_output_filename_replacements)
         ppresults.api_detection_results = detections_df
-        ppresults.api_other_fields = other_fields        
+        ppresults.api_other_fields = other_fields
 
     else:
         print('Bypassing detection results loading...')
@@ -1036,13 +1038,13 @@ def process_batch_results(options):
         other_fields = options.api_other_fields
 
     # Determine confidence thresholds if necessary
-    
+
     if options.confidence_threshold is None:
         options.confidence_threshold = \
             get_typical_confidence_threshold_from_results(other_fields)
         print('Choosing default confidence threshold of {} based on MD version'.format(
-            options.confidence_threshold))    
-            
+            options.confidence_threshold))
+
     if options.almost_detection_confidence_threshold is None and options.include_almost_detections:
         assert isinstance(options.confidence_threshold,float), \
             'If you are using a dictionary of confidence thresholds and almost-detections are enabled, ' + \
@@ -1050,7 +1052,7 @@ def process_batch_results(options):
         options.almost_detection_confidence_threshold = options.confidence_threshold - 0.05
         if options.almost_detection_confidence_threshold < 0:
             options.almost_detection_confidence_threshold = 0
-            
+
     # Remove rows with inference failures (typically due to corrupt images)
     n_failures = 0
     if 'failure' in detections_df.columns:
@@ -1059,11 +1061,11 @@ def process_batch_results(options):
         # Explicitly forcing a copy() operation here to suppress "trying to be set
         # on a copy" warnings (and associated risks) below.
         detections_df = detections_df[detections_df['failure'].isna()].copy()
-        
+
     assert other_fields is not None
 
     detection_categories = other_fields['detection_categories']
-    
+
     # Convert keys and values to lowercase
     classification_categories = other_fields.get('classification_categories', {})
     if classification_categories is not None:
@@ -1075,19 +1077,19 @@ def process_batch_results(options):
     # Count detections and almost-detections for reporting purposes
     n_positives = 0
     n_almosts = 0
-    
+
     print('Assigning images to rendering categories')
-    
+
     for i_row,row in tqdm(detections_df.iterrows(),total=len(detections_df)):
-        
+
         detections = row['detections']
         max_conf = row['max_detection_conf']
         if _has_positive_detection(detections, options, detection_categories):
             n_positives += 1
         elif (options.almost_detection_confidence_threshold is not None) and \
              (max_conf >= options.almost_detection_confidence_threshold):
-            n_almosts += 1        
-        
+            n_almosts += 1
+
     print(f'Finished loading and preprocessing {len(detections_df)} rows '
           f'from detector output, predicted {n_positives} positives.')
 
@@ -1106,18 +1108,18 @@ def process_batch_results(options):
             job_name_string = 'unknown'
         else:
             job_name_string = os.path.basename(options.md_results_file)
-    
+
     if options.model_version_string is not None:
         model_version_string = options.model_version_string
     else:
-        
+
         if 'info' not in other_fields or 'detector' not in other_fields['info']:
             print('No model metadata supplied, assuming MDv4')
             model_version_string = 'MDv4 (assumed)'
-        else:            
+        else:
             model_version_string = other_fields['info']['detector']
-    
-        
+
+
     ##%% If we have ground truth, remove images we can't match to ground truth
 
     if ground_truth_indexed_db is not None:
@@ -1147,7 +1149,7 @@ def process_batch_results(options):
 
     output_html_file = ''
 
-    style_header = """<head>    
+    style_header = """<head>
         <title>Detection results preview</title>
         <style type="text/css">
         a { text-decoration: none; }
@@ -1176,9 +1178,9 @@ def process_batch_results(options):
 
         n_positive = 0
         n_negative = 0
-        
+
         for i_detection, fn in enumerate(detector_files):
-            
+
             image_id = ground_truth_indexed_db.filename_to_id[fn]
             image = ground_truth_indexed_db.image_id_to_image[image_id]
             detection_status = image['_detection_status']
@@ -1194,7 +1196,7 @@ def process_batch_results(options):
 
         print('Of {} ground truth values, found {} positives and {} negatives'.format(
             len(detections_df),n_positive,n_negative))
-        
+
         # Don't include ambiguous/unknown ground truth in precision/recall analysis
         b_valid_ground_truth = gt_detections >= 0.0
 
@@ -1221,16 +1223,16 @@ def process_batch_results(options):
 
         # Thresholds go up throughout precisions/recalls/thresholds; find the last
         # value where recall is at or above target.  That's our precision @ target recall.
-        
+
         i_above_target_recall = (np.where(recalls >= options.target_recall))
-        
-        # np.where returns a tuple of arrays, but in this syntax where we're 
+
+        # np.where returns a tuple of arrays, but in this syntax where we're
         # comparing an array with a scalar, there will only be one element.
         assert len (i_above_target_recall) == 1
-        
+
         # Convert back to a list
         i_above_target_recall = i_above_target_recall[0].tolist()
-        
+
         if len(i_above_target_recall) == 0:
             precision_at_target_recall = 0.0
         else:
@@ -1387,7 +1389,7 @@ def process_batch_results(options):
         t = 'Precision-Recall curve: AP={:0.1%}, P@{:0.1%}={:0.1%}'.format(
             average_precision, options.target_recall, precision_at_target_recall)
         fig = plot_utils.plot_precision_recall_curve(precisions, recalls, t)
-        
+
         pr_figure_relative_filename = 'prec_recall.png'
         pr_figure_filename = os.path.join(output_dir, pr_figure_relative_filename)
         fig.savefig(pr_figure_filename)
@@ -1402,7 +1404,7 @@ def process_batch_results(options):
         # Accumulate html image structs (in the format expected by write_html_image_lists)
         # for each category, e.g. 'tp', 'fp', ..., 'class_bird', ...
         images_html = collections.defaultdict(list)
-        
+
         # Add default entries by accessing them for the first time
         [images_html[res] for res in ['tp', 'tpc', 'tpi', 'fp', 'tn', 'fn']]
         for res in images_html.keys():
@@ -1428,7 +1430,7 @@ def process_batch_results(options):
         if options.parallelize_rendering:
             pool = None
             try:
-                if options.parallelize_rendering_n_cores is None:                
+                if options.parallelize_rendering_n_cores is None:
                     if options.parallelize_rendering_with_threads:
                         pool = ThreadPool()
                     else:
@@ -1442,13 +1444,13 @@ def process_batch_results(options):
                         worker_string = 'processes'
                     print('Rendering images with {} {}'.format(options.parallelize_rendering_n_cores,
                                                                worker_string))
-                    
+
                 rendering_results = list(tqdm(pool.imap(
                     partial(_render_image_with_gt,
                             ground_truth_indexed_db=ground_truth_indexed_db,
                             detection_categories=detection_categories,
                             classification_categories=classification_categories,
-                            options=options), 
+                            options=options),
                     files_to_render), total=len(files_to_render)))
             finally:
                 if pool is not None:
@@ -1495,19 +1497,19 @@ def process_batch_results(options):
             confidence_threshold_string = '{:.2%}'.format(options.confidence_threshold)
         else:
             confidence_threshold_string = str(options.confidence_threshold)
-        
-        index_page = """<html>        
+
+        index_page = """<html>
         {}
         <body>
         <h2>Evaluation</h2>
 
         <h3>Job metadata</h3>
-        
+
         <div class="contentdiv">
         <p>Job name: {}<br/>
         <p>Model version: {}</p>
         </div>
-        
+
         <h3>Sample images</h3>
         <div class="contentdiv">
         <p>A sample of {} images, annotated with detections above confidence {}.</p>
@@ -1583,12 +1585,12 @@ def process_batch_results(options):
         # Write custom footer if it was provided
         if (options.footer_text is not None) and (len(options.footer_text) > 0):
             index_page += '{}\n'.format(options.footer_text)
-        
+
         # Close open html tags
         index_page += '\n</body></html>\n'
-        
+
         output_html_file = os.path.join(output_dir, 'index.html')
-        with open(output_html_file, 'w', 
+        with open(output_html_file, 'w',
                   encoding=options.output_html_encoding) as f:
             f.write(index_page)
 
@@ -1606,34 +1608,34 @@ def process_batch_results(options):
         # Accumulate html image structs (in the format expected by write_html_image_list)
         # for each category
         images_html = collections.defaultdict(list)
-        
+
         # Add default entries by accessing them for the first time
 
-        # Maps sorted tuples of detection category IDs (string ints) - e.g. ("1"), ("1", "4", "7") - to 
+        # Maps sorted tuples of detection category IDs (string ints) - e.g. ("1"), ("1", "4", "7") - to
         # result set names, e.g. "detections_human", "detections_cat_truck".
         detection_categories_to_results_name = {}
-        
+
         # Keep track of which categories are single-class (e.g. "animal") and which are
         # combinations (e.g. "animal_vehicle")
         detection_categories_to_category_count = {}
-        
+
         # For the creation of a "non-detections" category
         images_html['non_detections']
         detection_categories_to_category_count['non_detections'] = 0
-        
-        
+
+
         if not options.separate_detections_by_category:
             # For the creation of a "detections" category
             images_html['detections']
-            detection_categories_to_category_count['detections'] = 0            
+            detection_categories_to_category_count['detections'] = 0
         else:
             # Add a set of results for each category and combination of categories, e.g.
             # "detections_animal_vehicle".  When we're using this script for non-MegaDetector
             # results, this can generate lots of categories, e.g. detections_bear_bird_cat_dog_pig.
             # We'll keep that huge set of combinations in this map, but we'll only write
-            # out links for the ones that are non-empty.            
+            # out links for the ones that are non-empty.
             used_combinations = set()
-            
+
             # row = images_to_visualize.iloc[0]
             for i_row, row in images_to_visualize.iterrows():
                 detections_this_row = row['detections']
@@ -1646,7 +1648,7 @@ def process_batch_results(options):
                     continue
                 sorted_categories_this_row = tuple(sorted(above_threshold_category_ids_this_row))
                 used_combinations.add(sorted_categories_this_row)
-            
+
             for sorted_subset in used_combinations:
                 assert len(sorted_subset) > 0
                 results_name = 'detections'
@@ -1654,7 +1656,7 @@ def process_batch_results(options):
                     results_name = results_name + '_' + detection_categories[category_id]
                 images_html[results_name]
                 detection_categories_to_results_name[sorted_subset] = results_name
-                detection_categories_to_category_count[results_name] = len(sorted_subset)                
+                detection_categories_to_category_count[results_name] = len(sorted_subset)
 
         if options.include_almost_detections:
             images_html['almost_detections']
@@ -1665,7 +1667,7 @@ def process_batch_results(options):
             os.makedirs(os.path.join(output_dir, res), exist_ok=True)
 
         image_count = len(images_to_visualize)
-        
+
         # Each element will be a list of 2-tuples, with elements [collection name,html info struct]
         rendering_results = []
 
@@ -1678,7 +1680,7 @@ def process_batch_results(options):
         for _, row in images_to_visualize.iterrows():
 
             assert isinstance(row['detections'],list)
-            
+
             # Filenames should already have been normalized to either '/' or '\'
             files_to_render.append(row.to_dict())
 
@@ -1686,7 +1688,7 @@ def process_batch_results(options):
         if options.parallelize_rendering:
             pool = None
             try:
-                if options.parallelize_rendering_n_cores is None:                
+                if options.parallelize_rendering_n_cores is None:
                     if options.parallelize_rendering_with_threads:
                         pool = ThreadPool()
                     else:
@@ -1700,12 +1702,12 @@ def process_batch_results(options):
                         worker_string = 'processes'
                     print('Rendering images with {} {}'.format(options.parallelize_rendering_n_cores,
                                                                worker_string))
-                    
+
                 # _render_image_no_gt(file_info,detection_categories_to_results_name,
                 # detection_categories,classification_categories)
 
                 rendering_results = list(tqdm(pool.imap(
-                    partial(_render_image_no_gt, 
+                    partial(_render_image_no_gt,
                             detection_categories_to_results_name=detection_categories_to_results_name,
                             detection_categories=detection_categories,
                             classification_categories=classification_categories,
@@ -1724,12 +1726,12 @@ def process_batch_results(options):
                                                        classification_categories,
                                                        options=options)
                 rendering_results.append(rendering_result)
-                
-        elapsed = time.time() - start_time        
-        
+
+        elapsed = time.time() - start_time
+
         # Do we have classification results in addition to detection results?
         has_classification_info = False
-        
+
         # Map all the rendering results in the list rendering_results into the
         # dictionary images_html
         image_rendered_count = 0
@@ -1744,7 +1746,7 @@ def process_batch_results(options):
 
         # Prepare the individual html image files
         image_counts = _prepare_html_subpages(images_html, output_dir, options)
-        
+
         if image_rendered_count == 0:
             seconds_per_image = 0.0
         else:
@@ -1757,7 +1759,7 @@ def process_batch_results(options):
         # Write index.html
 
         # We can't just sum these, because image_counts includes images in both their
-        # detection and classification classes        
+        # detection and classification classes
         total_images = 0
         for k in image_counts.keys():
             v = image_counts[k]
@@ -1767,7 +1769,7 @@ def process_batch_results(options):
 
         if total_images != image_count:
             print('Warning, missing images: image_count is {}, total_images is {}'.format(total_images,image_count))
-        
+
         almost_detection_string = ''
         if options.include_almost_detections:
             almost_detection_string = ' (&ldquo;almost detection&rdquo; threshold at {:.1%})'.format(
@@ -1778,15 +1780,15 @@ def process_batch_results(options):
             confidence_threshold_string = '{:.2%}'.format(options.confidence_threshold)
         else:
             confidence_threshold_string = str(options.confidence_threshold)
-            
+
         index_page = """<html>\n{}\n<body>\n
         <h2>Visualization of results for {}</h2>\n
         <p>A sample of {} images (of {} total)FAILURE_PLACEHOLDER, annotated with detections above confidence {}{}.</p>\n
-        
+
         <div class="contentdiv">
         <p>Model version: {}</p>
         </div>
-        
+
         <h3>Detection results</h3>\n
         <div class="contentdiv">\n""".format(
             style_header, job_name_string, image_count, len(detections_df), confidence_threshold_string,
@@ -1794,9 +1796,9 @@ def process_batch_results(options):
 
         failure_string = ''
         if n_failures is not None:
-            failure_string = ' ({} failures)'.format(n_failures)        
+            failure_string = ' ({} failures)'.format(n_failures)
         index_page = index_page.replace('FAILURE_PLACEHOLDER',failure_string)
-        
+
         def result_set_name_to_friendly_name(result_set_name):
             friendly_name = ''
             friendly_name = result_set_name.replace('_','-')
@@ -1806,7 +1808,7 @@ def process_batch_results(options):
             return friendly_name
 
         sorted_result_set_names = sorted(list(images_html.keys()))
-        
+
         result_set_name_to_count = {}
         for result_set_name in sorted_result_set_names:
             image_count = image_counts[result_set_name]
@@ -1814,7 +1816,7 @@ def process_batch_results(options):
         sorted_result_set_names = sorted(sorted_result_set_names,
                                          key=lambda x: result_set_name_to_count[x],
                                          reverse=True)
-            
+
         for result_set_name in sorted_result_set_names:
 
             # Don't print classification classes here; we'll do that later with a slightly
@@ -1825,17 +1827,17 @@ def process_batch_results(options):
             filename = result_set_name + '.html'
             label = result_set_name_to_friendly_name(result_set_name)
             image_count = image_counts[result_set_name]
-            
+
             # Don't include line items for empty multi-category pages
             if image_count == 0 and \
                 detection_categories_to_category_count[result_set_name] > 1:
                     continue
-            
+
             if total_images == 0:
                 image_fraction = -1
             else:
                 image_fraction = image_count / total_images
-                
+
             # Write the line item for this category, including a link only if the
             # category is non-empty
             if image_count == 0:
@@ -1844,17 +1846,17 @@ def process_batch_results(options):
             else:
                 index_page += '<a href="{}">{}</a> ({}, {:.1%})<br/>\n'.format(
                     filename,label,image_count,image_fraction)
-        
+
         # ...for each result set
-        
+
         index_page += '</div>\n'
 
         # If classification information is present and we're supposed to create
         # a summary of classifications, we'll put it here
         category_count_footer = None
-        
+
         if has_classification_info:
-            
+
             index_page += '<h3>Species classification results</h3>'
             index_page += '<p>The same image might appear under multiple classes ' + \
                 'if multiple species were detected.</p>\n'
@@ -1868,12 +1870,12 @@ def process_batch_results(options):
                 class_names.append('unreliable')
 
             if options.sort_classification_results_by_count:
-                class_name_to_count = {}                
+                class_name_to_count = {}
                 for cname in class_names:
                     ccount = len(images_html['class_{}'.format(cname)])
                     class_name_to_count[cname] = ccount
-                class_names = sorted(class_names,key=lambda x: class_name_to_count[x],reverse=True)                
-                    
+                class_names = sorted(class_names,key=lambda x: class_name_to_count[x],reverse=True)
+
             for cname in class_names:
                 ccount = len(images_html['class_{}'.format(cname)])
                 if ccount > 0:
@@ -1886,11 +1888,11 @@ def process_batch_results(options):
                 # TODO: it's only for silly historical reasons that we re-read
                 # the input file in this case; we're not currently carrying the json
                 # representation around, only the Pandas representation.
-                
+
                 print('Generating classification category report')
-                
+
                 d = load_md_or_speciesnet_file(options.md_results_file)
-                
+
                 classification_category_to_count = {}
 
                 # im = d['images'][0]
@@ -1923,31 +1925,31 @@ def process_batch_results(options):
 
                 for category_name in category_name_to_count.keys():
                     count = category_name_to_count[category_name]
-                    category_count_html = '{}: {}<br>\n'.format(category_name,count)    
+                    category_count_html = '{}: {}<br>\n'.format(category_name,count)
                     category_count_footer += category_count_html
 
                 category_count_footer += '</div>\n'
-                
+
             # ...if we're generating a classification category report
-            
+
         # ...if classification info is present
-        
+
         if category_count_footer is not None:
             index_page += category_count_footer + '\n'
-            
+
         # Write custom footer if it was provided
         if (options.footer_text is not None) and (len(options.footer_text) > 0):
             index_page += options.footer_text + '\n'
-        
+
         # Close open html tags
         index_page += '\n</body></html>\n'
-        
+
         output_html_file = os.path.join(output_dir, 'index.html')
-        with open(output_html_file, 'w', 
+        with open(output_html_file, 'w',
                   encoding=options.output_html_encoding) as f:
             f.write(index_page)
 
-        print('Finished writing html to {}'.format(output_html_file))        
+        print('Finished writing html to {}'.format(output_html_file))
 
     # ...if we do/don't have ground truth
 
@@ -1978,8 +1980,8 @@ if False:
 
 #%% Command-line driver
 
-def main():
-    
+def main(): # noqa
+
     options = PostProcessingOptions()
 
     parser = argparse.ArgumentParser()
@@ -2028,42 +2030,42 @@ def main():
         '--n_cores', type=int, default=1,
         help='Number of threads to use for rendering (default: 1)')
     parser.add_argument(
-        '--parallelize_rendering_with_processes', 
+        '--parallelize_rendering_with_processes',
         action='store_true',
         help='Should we use processes (instead of threads) for parallelization?')
     parser.add_argument(
-        '--no_separate_detections_by_category', 
+        '--no_separate_detections_by_category',
         action='store_true',
-        help='Collapse all categories into just "detections" and "non-detections"')    
+        help='Collapse all categories into just "detections" and "non-detections"')
     parser.add_argument(
-        '--open_output_file', 
+        '--open_output_file',
         action='store_true',
-        help='Open the HTML output file when finished')    
+        help='Open the HTML output file when finished')
     parser.add_argument(
-        '--max_figures_per_html_file', 
+        '--max_figures_per_html_file',
         type=int, default=None,
         help='Maximum number of images to put on a single HTML page')
-    
+
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()
 
     args = parser.parse_args()
-    
+
     if args.n_cores != 1:
         assert (args.n_cores > 1), 'Illegal number of cores: {}'.format(args.n_cores)
         if args.parallelize_rendering_with_processes:
             args.parallelize_rendering_with_threads = False
         args.parallelize_rendering = True
-        args.parallelize_rendering_n_cores = args.n_cores        
+        args.parallelize_rendering_n_cores = args.n_cores
 
-    args_to_object(args, options)    
+    args_to_object(args, options)
 
     if args.no_separate_detections_by_category:
         options.separate_detections_by_category = False
-    
+
     ppresults = process_batch_results(options)
-    
+
     if options.open_output_file:
         path_utils.open_file(ppresults.output_html_file)
 

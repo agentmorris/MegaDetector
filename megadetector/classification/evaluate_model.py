@@ -76,7 +76,7 @@ def check_override(params: Mapping[str, Any], key: str,
     """
     Return desired value, with optional override.
     """
-    
+
     if override is None:
         return params[key]
     saved = params.get(key, None)
@@ -103,7 +103,7 @@ def trace_model(model_name: str, ckpt_path: str, num_classes: int,
         '/path/to/ckpt_16.pt', then the returned path is
         '/path/to/ckpt_16_compiled.pt'.
     """
-    
+
     root, ext = os.path.splitext(ckpt_path)
     compiled_path = root + '_compiled' + ext
     if os.path.exists(compiled_path):
@@ -136,7 +136,7 @@ def calc_per_label_stats(cm: np.ndarray, label_names: Sequence[str]
         recall values are in [0, 1], or np.nan if that label had 0 ground-truth
             observations
     """
-    
+
     tp = np.diag(cm)  # true positives
 
     predicted_positives = cm.sum(axis=0, dtype=np.float64)  # tp + fp
@@ -187,7 +187,7 @@ def test_epoch(model: torch.nn.Module,
         cm: np.ndarray, confusion matrix C such that C[i,j] is the # of
             observations known to be in group i and predicted to be in group j
     """
-    
+
     # set dropout and BN layers to eval mode
     model.eval()
 
@@ -510,7 +510,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
-    
+
     args = _parse_args()
     main(params_json_path=args.params_json, ckpt_path=args.ckpt_path,
          output_dir=args.output_dir, splits=args.splits,

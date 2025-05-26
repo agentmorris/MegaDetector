@@ -54,7 +54,7 @@ EFFICIENTNET_MODELS: Mapping[str, Mapping[str, Any]] = {
 
 #%% Example usage
 
-"""    
+"""
     python train_classifier_tf.py run_idfg /ssd/crops_sq \
         -m "efficientnet-b0" --pretrained --finetune --label-weighted \
         --epochs 50 --batch-size 512 --lr 1e-4 \
@@ -97,7 +97,7 @@ def create_dataset(
 
     Returns: tf.data.Dataset
     """
-    
+
     # images dataset
     img_ds = tf.data.Dataset.from_tensor_slices(img_files)
     img_ds = img_ds.map(lambda p: tf.io.read_file(img_base_dir + os.sep + p),
@@ -162,7 +162,7 @@ def create_dataloaders(
         datasets: dict, maps split to DataLoader
         label_names: list of str, label names in order of label id
     """
-    
+
     df, label_names, split_to_locs = load_dataset_csv(
         dataset_csv_path, label_index_json_path, splits_json_path,
         multilabel=multilabel, label_weighted=label_weighted,
@@ -238,7 +238,7 @@ def build_model(model_name: str, num_classes: int, img_size: int,
     """
     Creates a model with an EfficientNet base.
     """
-    
+
     class_name = EFFICIENTNET_MODELS[model_name]['cls']
     dropout = EFFICIENTNET_MODELS[model_name]['dropout']
 
@@ -279,7 +279,7 @@ def log_images_with_confidence(
         epoch: int
         tag: str
     """
-    
+
     for label_id, heap in heap_dict.items():
         label_name = label_names[label_id]
 
@@ -319,7 +319,7 @@ def track_extreme_examples(tp_heaps: dict[int, list[HeapItem]],
         img_files: tf.Tensor, shape [batch_size], type tf.string
         logits: tf.Tensor, shape [batch_size, num_classes]
     """
-    
+
     labels = labels.numpy().tolist()
     inputs = inputs.numpy().astype(np.uint8)
     img_files = img_files.numpy().astype(str).tolist()
@@ -480,7 +480,7 @@ def log_run(split: str, epoch: int, writer: tf.summary.SummaryWriter,
     Args:
         metrics: dict, keys already prefixed with {split}/
     """
-    
+
     per_class_recall = recall_from_confusion_matrix(cm, label_names)
     metrics.update(prefix_all_keys(per_class_recall, f'{split}/label_recall/'))
 
@@ -518,7 +518,7 @@ def main(dataset_dir: str,
          seed: Optional[int] = None,
          logdir: str = '',
          cache_splits: Sequence[str] = ()) -> None:
-    
+
     # input validation
     assert os.path.exists(dataset_dir)
     assert os.path.exists(cropped_images_dir)
@@ -597,7 +597,7 @@ def main(dataset_dir: str,
             model.base_model.trainable = True
 
         print('- train:')
-        
+
         train_metrics, train_heaps, train_cm = run_epoch(
             model, loader=loaders['train'], weighted=label_weighted,
             loss_fn=loss_fn, weight_decay=weight_decay, optimizer=optimizer,

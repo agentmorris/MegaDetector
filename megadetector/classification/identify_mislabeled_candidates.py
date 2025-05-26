@@ -5,7 +5,7 @@ identify_mislabeled_candidates.py
 Identify images that may have been mislabeled.
 
 A "mislabeled candidate" is defined as an image meeting both criteria:
-    
+
 * according to the ground-truth label, the model made an incorrect prediction
 
 * the model's prediction confidence exceeds its confidence for the ground-truth
@@ -13,12 +13,12 @@ A "mislabeled candidate" is defined as an image meeting both criteria:
 
 This script outputs for each dataset a text file containing the filenames of
 mislabeled candidates, one per line. The text files are saved to:
-   
+
     <logdir>/mislabeled_candidates_{split}_{dataset}.txt
 
 To this list of files can then be passed to AzCopy to be downloaded:
 
-""  
+""
 azcopy cp "http://<url_of_container>?<sas_token>" "/save/files/here" \
        --list-of-files "/path/to/mislabeled_candidates_{split}_{dataset}.txt"
 ""
@@ -68,7 +68,7 @@ from tqdm import tqdm
 
 def main(logdir: str, splits: Iterable[str], margin: float,
          include_dataset_in_filename: bool) -> None:
-    
+
     # load files
     logdir = os.path.normpath(logdir)  # removes any trailing slash
     base_logdir = os.path.dirname(logdir)
@@ -112,7 +112,7 @@ def get_candidates_df(outputs_csv_path: str, label_names: Sequence[str],
     Returns a DataFrame containing crops only from mislabeled candidate
     images.
     """
-    
+
     df = pd.read_csv(outputs_csv_path, float_precision='high')
     all_rows = range(len(df))
     df['pred'] = df[label_names].idxmax(axis=1)
@@ -146,7 +146,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
-    
+
     args = _parse_args()
     main(logdir=args.logdir, splits=args.splits, margin=args.margin,
          include_dataset_in_filename=args.include_dataset_in_filename)

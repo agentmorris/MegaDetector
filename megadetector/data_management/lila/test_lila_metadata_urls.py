@@ -2,7 +2,7 @@
 
 test_lila_metadata_urls.py
 
-Test that all the metadata URLs for LILA camera trap datasets are valid, including MegaDetector 
+Test that all the metadata URLs for LILA camera trap datasets are valid, including MegaDetector
 results files.
 
 Also pick an arbitrary image from each dataset and make sure that URL is valid.
@@ -18,6 +18,7 @@ import os
 
 from megadetector.data_management.lila.lila_common import read_lila_metadata,\
     read_metadata_file_for_dataset, read_lila_taxonomy_mapping
+from megadetector.utils.url_utils import test_urls
 
 # We'll write images, metadata downloads, and temporary files here
 lila_local_base = os.path.expanduser('~/lila')
@@ -55,7 +56,7 @@ print('Loaded metadata URLs for {} datasets'.format(len(metadata_table)))
 
 # Takes ~60 seconds if everything needs to be downloaded and unzipped
 
-for ds_name in metadata_table.keys():    
+for ds_name in metadata_table.keys():
 
     # Download the main metadata file for this dataset
     metadata_table[ds_name]['json_filename'] = \
@@ -63,7 +64,7 @@ for ds_name in metadata_table.keys():
                                        metadata_dir=metadata_dir,
                                        metadata_table=metadata_table,
                                        force_download=force_download)
-        
+
     # Download MD results for this dataset
     for k in md_results_keys:
         md_results_url = metadata_table[ds_name][k]
@@ -93,13 +94,13 @@ image_index = 2000
 #
 # ds_name = list(metadata_table.keys())[0]
 for ds_name in metadata_table.keys():
-    
+
     if 'bbox' in ds_name:
         print('Skipping bbox dataset {}'.format(ds_name))
         continue
 
     print('Processing dataset {}'.format(ds_name))
-    
+
     json_filename = metadata_table[ds_name]['json_filename']
     with open(json_filename, 'r') as f:
         data = json.load(f)
@@ -108,20 +109,20 @@ for ds_name in metadata_table.keys():
         clouds = [preferred_cloud]
     else:
         clouds = ['gcp','aws','azure']
-        
+
     for cloud in clouds:
-        
+
         image_base_url = metadata_table[ds_name]['image_base_url_' + cloud]
         assert not image_base_url.endswith('/')
-        
+
         # Download a test image
         test_image_relative_path = data['images'][image_index]['file_name']
         test_image_url = image_base_url + '/' + test_image_relative_path
-        
+
         url_to_source[test_image_url] = ds_name + ' metadata ({})'.format(cloud)
-    
+
     # Grab an image from the MegaDetector results
-    
+
     # k = md_results_keys[2]
     for k in md_results_keys:
         k_fn = k + '_filename'
@@ -133,13 +134,11 @@ for ds_name in metadata_table.keys():
                 url_to_source[md_image_url] = ds_name + ' ' + k
             del md_results
     del data
-        
+
 # ...for each dataset
 
 
 #%% Test URLs
-
-from megadetector.utils.url_utils import test_urls
 
 urls_to_test = sorted(url_to_source.keys())
 urls_to_test = [fn.replace('\\','/') for fn in urls_to_test]

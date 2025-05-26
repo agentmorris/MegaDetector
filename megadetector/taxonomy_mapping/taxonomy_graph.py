@@ -1,4 +1,4 @@
-"""
+r"""
 
 taxonomy_graph.py
 
@@ -69,7 +69,7 @@ class TaxonNode:
     By default, we support multiple parents for each TaxonNode. See discussion
     in module docstring above.
     """
-    
+
     # class variables
     single_parent_only: ClassVar[bool] = False
 
@@ -82,7 +82,7 @@ class TaxonNode:
 
     def __init__(self, level: str, name: str,
                  graph: Optional[nx.DiGraph] = None):
-        
+
         self.level = level
         self.name = name
         self.graph = graph
@@ -131,7 +131,7 @@ class TaxonNode:
         Args:
             parent: TaxonNode, must be higher in the taxonomical hierarchy
         """
-        
+
         assert self.graph is not None
         parents = self.parents
         if TaxonNode.single_parent_only and len(parents) > 0:
@@ -150,7 +150,7 @@ class TaxonNode:
         Args:
             child: TaxonNode, must be lower in the taxonomical hierarchy
         """
-        
+
         assert self.graph is not None
         self.graph.add_edge(self, child)
 
@@ -160,7 +160,7 @@ class TaxonNode:
             ds: str, name of dataset
             ds_label: str, name of label used by that dataset
         """
-        
+
         self.dataset_labels.add((ds, ds_label))
 
     def get_dataset_labels(self,
@@ -176,7 +176,7 @@ class TaxonNode:
 
         Returns: set of (ds, ds_label) tuples
         """
-        
+
         result = self.dataset_labels
         if include_datasets is not None:
             result = set(tup for tup in result if tup[0] in include_datasets)
@@ -199,7 +199,7 @@ class TaxonNode:
 
         Returns: TaxonNode, the LCA if it exists, or None if no LCA exists
         """
-        
+
         paths = []
         for node in nodes:
             # get path to root
@@ -242,7 +242,7 @@ def build_taxonomy_graph(taxonomy_df: pd.DataFrame
             TaxonNode node in the tree that contains the label,
             keys are all lowercase
     """
-    
+
     graph = nx.DiGraph()
     taxon_to_node = {}  # maps (taxon_level, taxon_name) to a TaxonNode
     label_to_node = {}  # maps (dataset_name, dataset_label) to a TaxonNode
@@ -308,7 +308,7 @@ def dag_to_tree(graph: nx.DiGraph,
 
     Returns: nx.DiGraph, a tree-structured graph
     """
-    
+
     tree = nx.DiGraph()
     for node in graph.nodes:
         tree.add_node(node)

@@ -62,7 +62,7 @@ def check_image_condition(img_path: str,
         'bad': image exists, but cannot be opened even when setting
             ImageFile.LOAD_TRUNCATED_IMAGES=True
     """
-    
+
     if (account is None) or (container is None) or (datasets_table is not None):
         assert account is None
         assert container is None
@@ -133,7 +133,7 @@ def analyze_images(url_or_path: str, json_keys: Optional[Sequence[str]] = None,
         sas_token: str, optional SAS token (without leading '?') if the
             container is not publicly accessible
     """
-    
+
     datasets_table = None
     if (account is None) or (container is None):
         assert account is None
@@ -190,8 +190,8 @@ def analyze_images(url_or_path: str, json_keys: Optional[Sequence[str]] = None,
 
 #%% Command-line driver
 
-def _parse_args() -> argparse.Namespace:    
-    
+def _parse_args() -> argparse.Namespace:
+
     parser = argparse.ArgumentParser(
         description='Analyze a list of images that failed to download or crop.')
     parser.add_argument(
@@ -220,7 +220,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
-    
+
     args = _parse_args()
     analyze_images(url_or_path=args.failed_images, json_keys=args.json_keys,
                    account=args.account, container=args.container,

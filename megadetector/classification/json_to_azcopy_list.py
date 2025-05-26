@@ -9,7 +9,7 @@ See: https://github.com/Azure/azure-storage-azcopy/wiki/Listing-specific-files-t
 
 """
 
-#%% Imports and constants 
+#%% Imports and constants
 
 import json
 import os

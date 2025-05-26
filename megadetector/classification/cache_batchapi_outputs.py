@@ -85,7 +85,7 @@ def cache_json(json_path: str,
         detector_output_cache_base_dir: str
         detector_version: str
     """
-    
+
     with open(json_path, 'r') as f:
         js = json.load(f)
 
@@ -139,7 +139,7 @@ def cache_detections(detections: Mapping[str, Any], dataset: str,
 
     Returns: str, message
     """
-    
+
     # combine detections with cache
     dataset_cache_path = os.path.join(
         detector_output_cache_dir, f'{dataset}.json')
@@ -188,7 +188,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
-    
+
     args = _parse_args()
     cache_json(
         json_path=args.json_file,

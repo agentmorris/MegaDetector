@@ -6,14 +6,14 @@ If you want to use this script, we recommend that you read the RDE user's guide:
 
 https://github.com/agentmorris/MegaDetector/tree/main/megadetector/postprocessing/repeat_detection_elimination
 
-Really, don't try to run this script without reading the user's guide, you'll think 
-it's more magical than it is. 
+Really, don't try to run this script without reading the user's guide, you'll think
+it's more magical than it is.
 
-This script looks through a sequence of detections in the API output json file, and finds 
-candidates that might be "repeated false positives", i.e. that random branch that the 
+This script looks through a sequence of detections in the API output json file, and finds
+candidates that might be "repeated false positives", i.e. that random branch that the
 detector thinks is an animal/person/vehicle.
 
-Typically after running this script, you would do a manual step to remove 
+Typically after running this script, you would do a manual step to remove
 true positives, then run remove_repeat_detections to produce a final output file.
 
 There's no way that statement was self-explanatory; see the user's guide.
@@ -35,14 +35,14 @@ from megadetector.postprocessing.repeat_detection_elimination import repeat_dete
 #%% Interactive driver
 
 if False:
-    
+
     #%%
 
-    baseDir = ''
+    base_dir = ''
 
     options = repeat_detections_core.RepeatDetectionOptions()
-    options.imageBase = baseDir
-    options.outputBase = os.path.join(baseDir, 'repeat_detections')
+    options.imageBase = base_dir
+    options.outputBase = os.path.join(base_dir, 'repeat_detections')
     options.filenameReplacements = {}  # E.g., {'20190430cameratraps\\':''}
 
     options.confidenceMin = 0.15
@@ -52,7 +52,7 @@ if False:
     options.maxSuspiciousDetectionSize = 0.2
 
     options.filterFileToLoad = ''
-    options.filterFileToLoad = os.path.join(baseDir,r'..\detectionIndex.json')
+    options.filterFileToLoad = os.path.join(base_dir,r'..\detectionIndex.json')
 
     options.debugMaxDir = -1
     options.debugMaxRenderDir = -1
@@ -63,81 +63,81 @@ if False:
     options.bParallelizeRendering = False
     options.excludeClasses = [2]
 
-    inputFilename = os.path.join(baseDir, 'blah.json')
-    outputFilename = os.path.join(baseDir, 'blah.json')
+    input_filename = os.path.join(base_dir, 'blah.json')
+    output_filename = os.path.join(base_dir, 'blah.json')
 
-    results = repeat_detections_core.find_repeat_detections(inputFilename, outputFilename, options)
+    results = repeat_detections_core.find_repeat_detections(input_filename, output_filename, options)
 
 
 #%% Command-line driver
 
-def main():
-    
-    defaultOptions = repeat_detections_core.RepeatDetectionOptions()
+def main(): # noqa
+
+    default_options = repeat_detections_core.RepeatDetectionOptions()
 
     parser = argparse.ArgumentParser()
-    
+
     parser.add_argument('inputFile', type=str, help='MD results .json file to process')
-    
+
     parser.add_argument('--outputFile', action='store', type=str, default=None,
                         help='.json file to write filtered results to... do not use this if you are going to ' + \
                              'do manual review of the repeat detection images (which you should)')
-        
+
     parser.add_argument('--imageBase', action='store', type=str, default='',
                         help='Image base dir')
-                            
+
     parser.add_argument('--outputBase', action='store', type=str, default='',
                         help='filtering folder output dir')
-    
+
     parser.add_argument('--confidenceMin', action='store', type=float,
-                        default=defaultOptions.confidenceMin,
+                        default=default_options.confidenceMin,
                         help='Detection confidence threshold; don\'t process anything below this')
-    
+
     parser.add_argument('--confidenceMax', action='store', type=float,
-                        default=defaultOptions.confidenceMax,
+                        default=default_options.confidenceMax,
                         help='Detection confidence threshold; don\'t process anything above this')
-    
+
     parser.add_argument('--iouThreshold', action='store', type=float,
-                        default=defaultOptions.iouThreshold,
+                        default=default_options.iouThreshold,
                         help='Detections with IOUs greater than this are considered ' + \
                              '"the same detection"')
-        
+
     parser.add_argument('--occurrenceThreshold', action='store', type=int,
-                        default=defaultOptions.occurrenceThreshold,
+                        default=default_options.occurrenceThreshold,
                         help='More than this many near-identical detections in a group ' + \
                              '(e.g. a folder) is considered suspicious')
-        
+
     parser.add_argument('--minSuspiciousDetectionSize', action='store', type=float,
-                        default=defaultOptions.minSuspiciousDetectionSize,
+                        default=default_options.minSuspiciousDetectionSize,
                         help='Detections smaller than this fraction of image area are not ' + \
                              'considered suspicious')
 
     parser.add_argument('--maxSuspiciousDetectionSize', action='store', type=float,
-                        default=defaultOptions.maxSuspiciousDetectionSize,
+                        default=default_options.maxSuspiciousDetectionSize,
                         help='Detections larger than this fraction of image area are not ' + \
                              'considered suspicious')
 
     parser.add_argument('--maxImagesPerFolder', action='store', type=int,
-                        default=defaultOptions.maxImagesPerFolder,
+                        default=default_options.maxImagesPerFolder,
                         help='Ignore folders with more than this many images in them')
-    
+
     parser.add_argument('--excludeClasses', action='store', nargs='+', type=int,
                         default=None,
                         help='List of integer classes we don\'t want to treat as suspicious, separated by spaces.')
-    
+
     parser.add_argument('--pass_detections_to_processes_method', action='store', type=str,
-                        default=defaultOptions.pass_detections_to_processes_method,
+                        default=default_options.pass_detections_to_processes_method,
                         help='Pass detections information to/from workers via "memory" (default) or "files"')
-    
+
     parser.add_argument('--nWorkers', action='store', type=int,
-                        default=defaultOptions.nWorkers,
+                        default=default_options.nWorkers,
                         help='Level of parallelism for rendering and IOU computation')
-    
-    parser.add_argument('--parallelizationUsesProcesses', action='store_false', 
+
+    parser.add_argument('--parallelizationUsesProcesses', action='store_false',
                         dest='parallelizationUsesThreads',
-                        help='Parallelize with processes (defaults to threads)')    
-    
-    parser.add_argument('--filterFileToLoad', action='store', type=str, default='',  
+                        help='Parallelize with processes (defaults to threads)')
+
+    parser.add_argument('--filterFileToLoad', action='store', type=str, default='',
                         help='Path to detectionIndex.json, which should be inside a ' + \
                              'folder of images that are manually verified to _not_ ' + \
                              'contain valid animals')
@@ -145,8 +145,8 @@ def main():
     parser.add_argument('--omitFilteringFolder', action='store_false',
                         dest='bWriteFilteringFolder',
                         help='Should we skip creating the folder of rendered detections filtering?')
-    
-    parser.add_argument('--debugMaxDir', action='store', type=int, default=-1, 
+
+    parser.add_argument('--debugMaxDir', action='store', type=int, default=-1,
                         help='For debugging only, limit the number of directories we process')
     parser.add_argument('--debugMaxRenderDir', action='store', type=int, default=-1,
                         help='For debugging only, limit the number of directories we render')
@@ -161,32 +161,32 @@ def main():
     parser.add_argument('--forceSerialRendering', action='store_false',
                         dest='bParallelizeRendering',
                         help='Disable parallelization during the rendering stage')
-    
+
     parser.add_argument('--maxOutputImageWidth', action='store', type=int,
-                        default=defaultOptions.maxOutputImageWidth,
-                        help='Maximum output size for thumbnail images') 
-    
+                        default=default_options.maxOutputImageWidth,
+                        help='Maximum output size for thumbnail images')
+
     parser.add_argument('--lineThickness', action='store', type=int,
-                        default=defaultOptions.lineThickness,
-                        help='Line thickness thumbnail images')    
-    
+                        default=default_options.lineThickness,
+                        help='Line thickness thumbnail images')
+
     parser.add_argument('--boxExpansion', action='store', type=int,
-                        default=defaultOptions.boxExpansion,
+                        default=default_options.boxExpansion,
                         help='Box expansion for thumbnail images')
-        
+
     parser.add_argument('--nDirLevelsFromLeaf', type=int,
-                        default=defaultOptions.nDirLevelsFromLeaf,
+                        default=default_options.nDirLevelsFromLeaf,
                         help='Number of levels from the leaf folders to use for repeat ' + \
                              'detection (0 == leaves)')
 
     parser.add_argument('--bRenderOtherDetections', action='store_true',
                         help='Show non-target detections in light gray on each image')
-    
+
     parser.add_argument('--bRenderDetectionTiles', action='store_true',
                         help='Should we render a grid showing every instance (up to a limit) for each detection?')
-    
+
     parser.add_argument('--detectionTilesPrimaryImageWidth', type=int,
-                        default=defaultOptions.detectionTilesPrimaryImageWidth,
+                        default=default_options.detectionTilesPrimaryImageWidth,
                         help='The width of the main image when rendering images with detection tiles')
 
     if len(sys.argv[1:]) == 0:

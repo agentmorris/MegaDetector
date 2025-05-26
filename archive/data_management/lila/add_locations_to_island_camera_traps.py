@@ -25,20 +25,20 @@ image_directory = os.path.expanduser('~/data/icct/public/')
 if False:
 
     #%% Read input file
-    
+
     with open(input_fn,'r') as f:
         d = json.load(f)
-        
+
     d['info']
     d['info']['version'] = '1.01'
-    
-    
+
+
     #%% Find locations
-    
+
     images = d['images']
-    
+
     locations = set()
-    
+
     for i_image,im in tqdm(enumerate(images),total=len(images)):
         tokens_fn = im['file_name'].split('/')
         tokens_id = im['id'].split('_')
@@ -47,36 +47,36 @@ if False:
         location = tokens_fn[0] + '_' + tokens_fn[1]
         im['location'] = location
         locations.add(location)
-    
+
     locations = sorted(list(locations))
-        
+
     for s in locations:
         print(s)
-        
-        
+
+
     #%% Write output file
-    
+
     with open(output_fn,'w') as f:
         json.dump(d,f,indent=1)
-        
-    
+
+
     #%% Validate .json files
-    
+
     from megadetector.data_management.databases import integrity_check_json_db
-    
+
     options = integrity_check_json_db.IntegrityCheckOptions()
     options.baseDir = image_directory
     options.bCheckImageSizes = False
     options.bCheckImageExistence = True
     options.bFindUnusedImages = True
-    
+
     sorted_categories, data, error_info = integrity_check_json_db.integrity_check_json_db(output_fn, options)
-    
-    
+
+
     #%% Preview labels
-    
+
     from megadetector.visualization import visualize_db
-    
+
     viz_options = visualize_db.DbVizOptions()
     viz_options.num_to_visualize = 2000
     viz_options.trim_to_images_with_bboxes = False
@@ -88,14 +88,14 @@ if False:
                                                              output_dir=preview_folder,
                                                              image_base_dir=image_directory,
                                                              options=viz_options)
-    
+
     from megadetector.utils import path_utils
     path_utils.open_file(html_output_file)
-    
-    
+
+
     #%% Zip output file
-    
+
     from megadetector.utils.path_utils import zip_file
-    
+
     zip_file(output_fn, verbose=True)
     assert os.path.isfile(output_fn + '.zip')

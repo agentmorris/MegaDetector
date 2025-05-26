@@ -48,7 +48,7 @@ for s in datasets_to_map:
     assert s in lila_datasets
 
 
-#%% Find all categories    
+#%% Find all categories
 
 category_mappings = []
 
@@ -75,17 +75,17 @@ allow_non_preferred_matches = True
 
 # mapping_string = category_mappings[1]; print(mapping_string)
 for mapping_string in category_mappings:
-    
+
     tokens = mapping_string.split(':')
-    assert len(tokens) == 2    
+    assert len(tokens) == 2
 
     dataset_name = tokens[0]
     query = tokens[1]
 
     taxonomic_match = get_preferred_taxonomic_match(query,taxonomy_preference=taxonomy_preference)
-    
+
     if (taxonomic_match.source == taxonomy_preference) or allow_non_preferred_matches:
-    
+
         output_row = {
             'dataset_name': dataset_name,
             'query': query,
@@ -95,9 +95,9 @@ for mapping_string in category_mappings:
             'common_name': taxonomic_match.common_name,
             'taxonomy_string': taxonomic_match.taxonomy_string
         }
-    
+
     else:
-        
+
         output_row = {
             'dataset_name': dataset_name,
             'query': query,
@@ -107,10 +107,10 @@ for mapping_string in category_mappings:
             'common_name': '',
             'taxonomy_string': ''
         }
-        
+
     output_rows.append(output_row)
-    
-# ...for each mapping    
+
+# ...for each mapping
 
 
 #%% Write output rows
@@ -133,19 +133,19 @@ output_df.to_csv(output_file, index=None, header=True)
 if False:
 
     #%% You probably want to open the .csv file first
-    
+
     from megadetector.utils.path_utils import open_file
     open_file(output_file)
 
-    
+
     #%%
-    
+
     q = 'dasyurus maculatus'
-    
+
     taxonomy_preference = 'inat'
     m = get_preferred_taxonomic_match(q,taxonomy_preference)
     # print(m.scientific_name); import clipboard; clipboard.copy(m.scientific_name)
-    
+
     if (m is None) or (len(m.taxonomy_string) == 0):
         print('No match')
     else:

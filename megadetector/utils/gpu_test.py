@@ -17,18 +17,18 @@ try:
 except Exception:
     pass
 
-       
+
 #%% Torch/TF test functions
 
 def torch_test():
     """
     Print diagnostic information about Torch/CUDA status, including Torch/CUDA versions
     and all available CUDA device names.
-    
+
     Returns:
         int: The number of CUDA devices reported by PyTorch.
     """
-    
+
     try:
         import torch
     except Exception as e: #noqa
@@ -43,11 +43,11 @@ def torch_test():
         print('CuDNN version (according to PyTorch): {}'.format(torch.backends.cudnn.version()))
 
     device_ids = list(range(torch.cuda.device_count()))
-        
-    if len(device_ids) > 0:        
+
+    if len(device_ids) > 0:
         cuda_str = 'Found {} CUDA devices:'.format(len(device_ids))
         print(cuda_str)
-        
+
         for device_id in device_ids:
             device_name = 'unknown'
             try:
@@ -57,33 +57,33 @@ def torch_test():
             print('{}: {}'.format(device_id,device_name))
     else:
         print('No GPUs reported by PyTorch')
-        
+
     try:
         if torch.backends.mps.is_built and torch.backends.mps.is_available():
             print('PyTorch reports that Metal Performance Shaders are available')
     except Exception:
-        pass 
+        pass
     return len(device_ids)
 
 
 def tf_test():
     """
     Print diagnostic information about TF/CUDA status.
-    
+
     Returns:
-        int: The number of CUDA devices reported by PyTorch.    
+        int: The number of CUDA devices reported by PyTorch.
     """
-    
+
     try:
         import tensorflow as tf
     except Exception as e: #noqa
         print('TensorFlow unavailable, not running TF tests.  TF import error was:\n{}'.format(
             str(e)))
         return
-    
+
     from tensorflow.python.platform import build_info as build
     print(f"TF version: {tf.__version__}")
-    
+
     if 'cuda_version' not in build.build_info:
         print('TF does not appear to be built with CUDA')
     else:
@@ -98,28 +98,28 @@ def tf_test():
         print("Linked TensorRT version: {}".format(trt.trt_utils._pywrap_py_utils.get_linked_tensorrt_version()))
     except Exception:
         print('Could not probe TensorRT version')
-        
+
     gpus = tf.config.list_physical_devices('GPU')
     if gpus is None:
         gpus = []
-        
+
     if len(gpus) > 0:
         print('TensorFlow found the following GPUs:')
         for gpu in gpus:
             print(gpu.name)
-            
+
     else:
         print('No GPUs reported by TensorFlow')
-        
+
     return len(gpus)
- 
+
 
 #%% Command-line driver
-    
-if __name__ == '__main__':    
-    
+
+if __name__ == '__main__':
+
     print('*** Running Torch tests ***\n')
     torch_test()
-    
+
     print('\n*** Running TF tests ***\n')
     tf_test()

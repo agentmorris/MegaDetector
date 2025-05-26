@@ -4,7 +4,7 @@ annotation_constants.py
 
 Defines default categories for MegaDetector output boxes.
 
-Used throughout the repo; do not change unless you are Dan or Siyu.  In fact, do not change unless 
+Used throughout the repo; do not change unless you are Dan or Siyu.  In fact, do not change unless
 you are both Dan *and* Siyu.
 
 We use integer IDs here; this is different from the MD .json file format,
