@@ -36,6 +36,7 @@ pandas >= 2.1.1
 
 python-dateutil
 send2trash
+pytest
 
 # Not imported directly, but required to de-serialize some models
 dill

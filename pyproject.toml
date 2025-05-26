@@ -53,13 +53,18 @@ dependencies = [
   "pandas >= 2.1.1",  
   "python-dateutil",
   "send2trash",
+  "python-dateutil",
+  
   # Not imported directly, but required to de-serialize some models
   "dill",
+  
   # Used for repo maintenance
   "ruff",
+  "pytest",
+  
+  # PyTorch/yolo stuff
   "ultralytics-yolov5 == 0.1.1",
   "yolov9pip == 0.0.4",
-  "python-dateutil"
   
   # Let ultralytics-yolov5 install torch
   # "torch >= 2.0.1",
@@ -137,4 +142,21 @@ section-order = [
     "third-party",
     "first-party",
     "local-folder"
+]
+
+[tool.pytest.ini_options]
+# --assert=plain fixes a scipy compatibility issue
+# --import-mode=importlib makes import behavior more predictable, and makes
+# it easiest to manage the odd stuff we do w/yolov5
+# -sv enables normal stdout behavior and makes pytest verbose
+addopts = "--assert=plain --import-mode=importlib -sv"
+testpaths = ["megadetector"]
+python_files = ["*.py"]
+python_functions = ["test_*"]
+python_classes = []
+# Only add repo root to the python path, not subdirectories
+pythonpath = ["."]  
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
 ]

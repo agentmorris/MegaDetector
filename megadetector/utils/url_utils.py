@@ -13,6 +13,7 @@ import re
 import urllib
 import tempfile
 import requests
+import pytest
 
 from functools import partial
 from tqdm import tqdm
@@ -274,6 +275,7 @@ def parallel_download_urls(url_to_target_file,verbose=False,overwrite=False,
 # ...def parallel_download_urls(...)
 
 
+@pytest.mark.skip(reason="This is not a test function")
 def test_url(url,error_on_failure=True,timeout=None):
     """
     Tests the availability of [url], returning an http status code.
@@ -297,6 +299,7 @@ def test_url(url,error_on_failure=True,timeout=None):
     return r.status_code
 
 
+@pytest.mark.skip(reason="This is not a test function")
 def test_urls(urls,error_on_failure=True,n_workers=1,pool_type='thread',timeout=None):
     """
     Verify that URLs are available (i.e., returns status 200).  By default,

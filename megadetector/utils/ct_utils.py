@@ -16,6 +16,7 @@ import builtins
 import datetime
 import tempfile
 import shutil
+import uuid
 
 import jsonpickle
 import numpy as np
@@ -204,7 +205,7 @@ def json_serialize_datetime(obj):
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable by json_serialize_datetime")
 
 
-def write_json(path, content, indent=1, force_str=False, serialize_datetimes=False, ensure_ascii=True):
+def write_json(path, content, indent=1, force_str=False, serialize_datetimes=False, ensure_ascii=True, encoding='utf-8'):
     """
     Standardized wrapper for json.dump().
 
@@ -218,6 +219,7 @@ def write_json(path, content, indent=1, force_str=False, serialize_datetimes=Fal
     """
 
     default_handler = None
+
     if serialize_datetimes:
         default_handler = json_serialize_datetime
         if force_str:
@@ -230,7 +232,7 @@ def write_json(path, content, indent=1, force_str=False, serialize_datetimes=Fal
     elif force_str:
         default_handler = str
 
-    with open(path, 'w', newline='\n') as f:
+    with open(path, 'w', newline='\n', encoding=encoding) as f:
         json.dump(content, f, indent=indent, default=default_handler, ensure_ascii=ensure_ascii)
 
 
@@ -916,14 +918,44 @@ def parse_bool_string(s):
         raise ValueError('Cannot parse bool from string {}'.format(str(s)))
 
 
-#%% Test driver
+def make_temp_folder(top_level_folder='megadetector',subfolder=None):
+    """
+    Creates a temporary folder within the system temp folder, by default in a subfolder
+    called megadetector/some_guid.  Used for testing without making too much of a mess.
+
+    Args:
+        top_level_folder (str, optional): the top-level folder to use within the system temp folder
+        subfoolder (str, optional): the subfolder within [top_level_folder], defaults to a UUID
+
+    Returns:
+        str: the new directory
+    """
+
+    base_dir = os.path.join(tempfile.gettempdir(),top_level_folder)
+    if subfolder is None:
+        subfolder = str(uuid.uuid1())
+    to_return = os.path.join(base_dir,subfolder)
+    to_return = os.path.normpath(to_return)
+    os.makedirs(to_return,exist_ok=True)
+    return to_return
+
+
+def make_test_folder(subfolder=None):
+    """
+    Wrapper around make_temp_folder that creates folders within megadetector/tests
+    """
+
+    return make_temp_folder(top_level_folder='megadetector/tests',subfolder=subfolder)
+
+
+#%% Tests
 
 def test_write_json():
     """
     Test driver for write_json.
     """
 
-    temp_dir = tempfile.mkdtemp()
+    temp_dir = make_test_folder()
 
     def _verify_json_file(file_path, expected_content_str):
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -935,49 +967,43 @@ def test_write_json():
         assert content == expected_content, \
             f"File {file_path} content mismatch.\nExpected:\n{expected_content}\nGot:\n{content}"
 
-    # Test case i: Default indent (1)
+    # Test default indent (1)
     data_default = {'a': 1, 'b': 2}
     file_path_default = os.path.join(temp_dir, 'test_default_indent.json')
     write_json(file_path_default, data_default)
     # Default indent is 1
     _verify_json_file(file_path_default, '{\n "a": 1,\n "b": 2\n}')
 
-    # Test case ii: Custom indent (e.g., 4)
+    # Test custom indent (e.g., 4)
     data_custom_indent = {'a': 1, 'b': 2}
     file_path_custom_indent = os.path.join(temp_dir, 'test_custom_indent.json')
     write_json(file_path_custom_indent, data_custom_indent, indent=4)
     _verify_json_file(file_path_custom_indent, '{\n    "a": 1,\n    "b": 2\n}')
 
-    # Test case iii: indent=None (compact)
+    # Test indent=None (compact)
     data_no_indent = {'a': 1, 'b': 2}
     file_path_no_indent = os.path.join(temp_dir, 'test_no_indent.json')
     write_json(file_path_no_indent, data_no_indent, indent=None)
     _verify_json_file(file_path_no_indent, '{"a": 1, "b": 2}')
 
-    # Test case iv: force_str=True
+    # Test force_str=True
     data_force_str = {'a': 1, 's': {1, 2, 3}}  # Set is not normally JSON serializable
     file_path_force_str = os.path.join(temp_dir, 'test_force_str.json')
     write_json(file_path_force_str, data_force_str, force_str=True)
     with open(file_path_force_str, 'r', encoding='utf-8') as f:
         result_force_str = json.load(f)
-    # Exact string representation of set can vary, e.g. '{1, 2, 3}' vs '{2, 1, 3}'
-    # So, we convert back to a set for comparison.
     assert isinstance(result_force_str['s'], str)
     assert eval(result_force_str['s']) == {1, 2, 3}
 
-
-    # Test case v: serialize_datetimes=True
+    # Test serialize_datetimes=True
     dt = datetime.datetime(2023, 1, 1, 10, 30, 0)
     d_date = datetime.date(2023, 2, 15)
     data_serialize_datetimes = {'dt_obj': dt, 'd_obj': d_date}
     file_path_serialize_datetimes = os.path.join(temp_dir, 'test_serialize_datetimes.json')
-    # Sort keys for consistent output, as dict order might not be guaranteed
-    # ct_utils.write_json sorts keys by default if indent is not None.
     write_json(file_path_serialize_datetimes, data_serialize_datetimes, serialize_datetimes=True)
     _verify_json_file(file_path_serialize_datetimes, '{\n "d_obj": "2023-02-15",\n "dt_obj": "2023-01-01T10:30:00"\n}')
 
-
-    # Test case vi: serialize_datetimes=True and force_str=True
+    # Test serialize_datetimes=True and force_str=True
     dt_combo = datetime.datetime(2023, 1, 1, 12, 0, 0)
     data_datetime_force_str = {'dt_obj': dt_combo, 's_obj': {4, 5}}
     file_path_datetime_force_str = os.path.join(temp_dir, 'test_datetime_and_force_str.json')
@@ -988,7 +1014,7 @@ def test_write_json():
     assert isinstance(result_datetime_force_str['s_obj'], str)
     assert eval(result_datetime_force_str['s_obj']) == {4, 5}
 
-    # Test case vii: ensure_ascii=False (with non-ASCII chars)
+    # Test ensure_ascii=False (with non-ASCII chars)
     data_ensure_ascii_false = {'name': 'Jules César'}
     file_path_ensure_ascii_false = os.path.join(temp_dir, 'test_ensure_ascii_false.json')
     write_json(file_path_ensure_ascii_false, data_ensure_ascii_false, ensure_ascii=False)
@@ -996,7 +1022,7 @@ def test_write_json():
         content_ensure_ascii_false = f.read()
     assert content_ensure_ascii_false == '{\n "name": "Jules César"\n}'
 
-    # Test case viii: ensure_ascii=True (with non-ASCII chars, default)
+    # Test ensure_ascii=True (with non-ASCII chars, default)
     data_ensure_ascii_true = {'name': 'Jules César'}
     file_path_ensure_ascii_true = os.path.join(temp_dir, 'test_ensure_ascii_true.json')
     write_json(file_path_ensure_ascii_true, data_ensure_ascii_true, ensure_ascii=True)
@@ -1006,8 +1032,10 @@ def test_write_json():
 
     shutil.rmtree(temp_dir)
 
+# ...def test_write_json(...)
 
-def __module_test__(): # noqa
+
+def test_module():
     """
     Module test driver for ct_utils
     """
@@ -1056,3 +1084,4 @@ def __module_test__(): # noqa
     assert result['tuple_values'][0] == 3.45679
     assert min(list(result['set_values'])) == 5.6789
 
+# ...def test_module(...)

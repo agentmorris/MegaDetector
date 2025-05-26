@@ -41,6 +41,7 @@ dependencies:
   
   - send2trash
   - python-dateutil
+  - pytest
   
   # Not used directly, but required for deserializing some models
   - dill

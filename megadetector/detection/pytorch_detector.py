@@ -244,6 +244,21 @@ def _initialize_yolo_imports(model_type='yolov5',
         str: the model type for which we initialized support
     """
 
+    # When running in pytest, the megadetector 'utils' module is put in the global
+    # namespace, which creates conflicts with yolov5; remove it from the global 
+    # namespsace.
+    if ('PYTEST_CURRENT_TEST' in os.environ):
+        print('*** pytest detected ***')
+        if ('utils' in sys.modules):
+            utils_module = sys.modules['utils']
+            if hasattr(utils_module, '__file__') and 'megadetector' in str(utils_module.__file__):
+                print(f"Removing conflicting utils module: {utils_module.__file__}")
+                sys.modules.pop('utils', None)
+                # Also remove any submodules
+                to_remove = [name for name in sys.modules if name.startswith('utils.')]
+                for name in to_remove:
+                    sys.modules.pop(name, None)
+
     global yolo_model_type_imported
 
     if model_type is None:
@@ -285,7 +300,6 @@ def _initialize_yolo_imports(model_type='yolov5',
                 print('Imported utils from YOLOv5 package')
 
         except Exception as e: # noqa
-
             # print('yolov5 module import failed: {}'.format(e))
             # print(traceback.format_exc())
             pass

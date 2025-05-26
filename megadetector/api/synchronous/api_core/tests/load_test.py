@@ -1,4 +1,3 @@
-
 import os
 import json
 import io
@@ -47,7 +46,7 @@ def get_detections(response):
     print(text_result)
 
 
-def test_load(num_requests, params, max_images=1):
+def load_test(num_requests, params, max_images=1):
     requests = []
     
     # read the images anew for each request
@@ -104,7 +103,7 @@ if __name__ == "__main__":
     max_images = 1
 
     start = datetime.now()
-    responses = test_load(num_requests, params, max_images=max_images)
+    responses = load_test(num_requests, params, max_images=max_images)
     end = datetime.now()
     total_time = end - start
     print('Total time for {} requests: {}'.format(num_requests, total_time))

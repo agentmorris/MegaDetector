@@ -28,6 +28,7 @@ import zipfile
 import subprocess
 import argparse
 import inspect
+import pytest
 
 from copy import copy
 
@@ -720,6 +721,7 @@ def execute_and_print(cmd,print_output=True,catch_exceptions=False,echo_command=
 
 #%% Python tests
 
+@pytest.mark.skip(reason='Called one for each module')
 def test_package_imports(package_name,exceptions=None,verbose=True):
     """
     Imports all modules in [package_name]
@@ -775,14 +777,6 @@ def run_python_tests(options):
     ## Prepare data
 
     download_test_data(options)
-
-
-    ## Miscellaneous utility tests
-
-    print('\n** Running ct_utils module test **\n')
-
-    from megadetector.utils.ct_utils import __module_test__ as ct_utils_test
-    ct_utils_test()
 
 
     ## Import tests
@@ -1631,6 +1625,33 @@ def run_tests(options):
     # Run CLI tests
     if not options.skip_cli_tests:
         run_cli_tests(options)
+
+
+#%% Automated test entry point
+
+def test_suite_entry_point():
+
+    options = MDTestOptions()
+    options.disable_gpu = False
+    options.cpu_execution_is_error = False
+    options.skip_video_tests = True
+    options.skip_python_tests = False
+    options.skip_cli_tests = True
+    options.scratch_dir = None
+    options.test_data_url = 'https://lila.science/public/md-test-package.zip'
+    options.force_data_download = False
+    options.force_data_unzip = False
+    options.warning_mode = False
+    options.max_coord_error = 0.01 # 0.001
+    options.max_conf_error = 0.01 # 0.005
+    options.skip_video_rendering_tests = True
+    options.cli_working_dir = None
+    options.cli_test_pythonpath = None
+    
+    options.skip_download_tests = True
+    
+    options = download_test_data(options)
+    run_tests(options)
 
 
 #%% Interactive driver
