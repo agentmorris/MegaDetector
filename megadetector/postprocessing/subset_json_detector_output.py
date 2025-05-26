@@ -30,12 +30,16 @@ Read from "1800_idfg_statewide_wolf_detections_w_classifications.json", split up
 individual .jsons in 'd:/temp/idfg/output', making filenames relative to their individual
 folders:
 
-python subset_json_detector_output.py "d:/temp/idfg/1800_idfg_statewide_wolf_detections_w_classifications.json" "d:/temp/idfg/output" --split_folders --make_folder_relative
+python subset_json_detector_output.py ^
+  "d:/temp/idfg/1800_idfg_statewide_wolf_detections_w_classifications.json" "d:/temp/idfg/output" ^
+  --split_folders --make_folder_relative
 
 Now do the same thing, but instead of writing .json's to d:/temp/idfg/output, write them to *subfolders*
 corresponding to the subfolders for each .json file.
 
-python subset_json_detector_output.py "d:/temp/idfg/1800_detections_S2.json" "d:/temp/idfg/output_to_folders" --split_folders --make_folder_relative --copy_jsons_to_folders
+python subset_json_detector_output.py ^
+  "d:/temp/idfg/1800_detections_S2.json" "d:/temp/idfg/output_to_folders" ^
+  --split_folders --make_folder_relative --copy_jsons_to_folders
 
 **Sample invocation (creating a single subset matching a query)**
 
@@ -43,11 +47,13 @@ Read from "1800_detections.json", write to "1800_detections_2017.json"
 
 Include only images matching "2017", and change "2017" to "blah"
 
-python subset_json_detector_output.py "d:/temp/1800_detections.json" "d:/temp/1800_detections_2017_blah.json" --query 2017 --replacement blah
+python subset_json_detector_output.py "d:/temp/1800_detections.json" "d:/temp/1800_detections_2017_blah.json" ^
+    --query 2017 --replacement blah
 
 Include all images, prepend with "prefix/"
 
-python subset_json_detector_output.py "d:/temp/1800_detections.json" "d:/temp/1800_detections_prefix.json" --replacement "prefix/"
+python subset_json_detector_output.py "d:/temp/1800_detections.json" "d:/temp/1800_detections_prefix.json" ^
+    --replacement "prefix/"
 
 """
 
@@ -61,9 +67,7 @@ import os
 import re
 
 from tqdm import tqdm
-from collections import defaultdict
 
-# The user wants this specific import, even if ct_utils is already imported.
 from megadetector.utils import ct_utils
 from megadetector.utils.ct_utils import args_to_object, get_max_conf, invert_dictionary
 from megadetector.utils.path_utils import top_level_folder
@@ -615,8 +619,7 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
 
     Returns:
         dict: Results that are either loaded from [input_filename] and processed, or copied
-            from [data] and processed.
-
+        from [data] and processed.
     """
 
     if options is None:
@@ -631,7 +634,8 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
 
     if options.split_folders:
         if os.path.isfile(output_filename):
-            raise ValueError('When splitting by folders, output must be a valid directory name, you specified an existing file')
+            raise ValueError('When splitting by folders, output must be a valid directory name, ' + \
+                             'you specified an existing file')
 
     if data is None:
         print('Reading file {}'.format(input_filename))
@@ -705,7 +709,7 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
                 # tokens = _split_path(fn)
                 tokens = re.split(r'([\\/])',fn)
 
-                n_tokens_to_keep = ((options.split_folder_param + 1) * 2) - 1;
+                n_tokens_to_keep = ((options.split_folder_param + 1) * 2) - 1
 
                 if n_tokens_to_keep > len(tokens):
                     raise ValueError('Cannot walk {} folders from the top in path {}'.format(
@@ -799,7 +803,7 @@ if False:
 
     #%% Subset and split, but don't copy to individual folders
 
-    input_filename = r"C:\temp\xxx-20201028_detections.filtered_rde_0.60_0.85_10_0.05_r2_export\xxx-20201028_detections.filtered_rde_0.60_0.85_10_0.05_r2_export.json"
+    input_filename = r"C:\temp\xxx-export.json"
     output_filename = r"c:\temp\out"
 
     options = SubsetJsonDetectorOutputOptions()
@@ -847,15 +851,18 @@ def main(): # noqa
     parser.add_argument('--split_folder_mode', type=str,
                         help='Folder level to use for splitting ("top" or "bottom")')
     parser.add_argument('--make_folder_relative', action='store_true',
-                        help='Make image paths relative to their containing folder (only meaningful with split_folders)')
+                        help='Make image paths relative to their containing folder ' + \
+                             '(only meaningful with split_folders)')
     parser.add_argument('--overwrite_json_files', action='store_true',
                         help='Overwrite output files')
     parser.add_argument('--copy_jsons_to_folders', action='store_true',
-                        help='When using split_folders and make_folder_relative, copy jsons to their corresponding folders (relative to output_file)')
+                        help='When using split_folders and make_folder_relative, copy jsons to their ' + \
+                             'corresponding folders (relative to output_file)')
     parser.add_argument('--create_folders', action='store_true',
                         help='When using copy_jsons_to_folders, create folders that don''t exist')
     parser.add_argument('--remove_classification_categories_below_count', type=int, default=None,
-                        help='Remove classification categories with less than this many instances (no removal by default)')
+                        help='Remove classification categories with less than this many instances ' + \
+                             '(no removal by default)')
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()

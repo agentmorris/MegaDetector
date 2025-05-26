@@ -26,7 +26,7 @@ max_path_len = 255
 
 #%% Download functions
 
-class DownloadProgressBar():
+class DownloadProgressBar:
     """
     Progress updater based on the progressbar2 package.
 
@@ -36,12 +36,12 @@ class DownloadProgressBar():
     def __init__(self):
         self.pbar = None
 
-    def __call__(self, block_num, block_size, total_size):
+    def __call__(self, block_num, block_size, total_size): # noqa
         if not self.pbar:
             # This is a pretty random import I'd rather not depend on outside of the
             # rare case where it's used, so importing locally
             # pip install progressbar2
-            import progressbar
+            import progressbar # type: ignore
             self.pbar = progressbar.ProgressBar(max_value=total_size)
             self.pbar.start()
 
@@ -135,9 +135,9 @@ def download_url(url,
         os.makedirs(target_dir,exist_ok=True)
         urllib.request.urlretrieve(url, destination_filename, progress_updater)
         assert(os.path.isfile(destination_filename))
-        nBytes = os.path.getsize(destination_filename)
+        n_bytes = os.path.getsize(destination_filename)
         if verbose:
-            print('...done, {} bytes.'.format(nBytes))
+            print('...done, {} bytes.'.format(n_bytes))
 
     return destination_filename
 
@@ -257,13 +257,13 @@ def parallel_download_urls(url_to_target_file,verbose=False,overwrite=False,
             else:
                 assert pool_type == 'process', 'Unsupported pool type {}'.format(pool_type)
                 pool = Pool(n_workers)
-        
+
             print('Starting a {} pool with {} workers'.format(pool_type,n_workers))
-        
+
             results = list(tqdm(pool.imap(
                 partial(_do_parallelized_download,overwrite=overwrite,verbose=verbose),
                 all_download_info), total=len(all_download_info)))
-        
+
         finally:
             pool.close()
             pool.join()

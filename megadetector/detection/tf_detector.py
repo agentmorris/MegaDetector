@@ -183,7 +183,7 @@ class TFDetector:
 
             detections_cur_image = []  # will be empty for an image with no confident detections
             max_detection_conf = 0.0
-            for b, s, c in zip(boxes, scores, classes):
+            for b, s, c in zip(boxes, scores, classes): #noqa
                 if s > detection_threshold:
                     detection_entry = {
                         'category': str(int(c)),  # use string type for the numerical class label, not int

@@ -304,7 +304,7 @@ class RepeatDetectionResults:
         self.rows_by_directory = None
 
         #: dict mapping filenames to rows in the master table
-        self.filenameToRow = None
+        self.filename_to_row = None
 
         #: An array of length nDirs, where each element is a list of DetectionLocation
         #: objects for that directory that have been flagged as suspicious
@@ -320,8 +320,10 @@ class IndexedDetection:
     A single detection event on a single image
     """
 
-    def __init__(self, i_detection=-1, filename='', bbox=[], confidence=-1, category='unknown'):
+    def __init__(self, i_detection=-1, filename='', bbox=None, confidence=-1, category='unknown'):
 
+        if bbox is None:
+            bbox = []
         assert isinstance(i_detection,int)
         assert isinstance(filename,str)
         assert isinstance(bbox,list)
@@ -354,11 +356,11 @@ class DetectionLocation:
     will be stored in IndexedDetection objects.
     """
 
-    def __init__(self, instance, detection, relativeDir, category, id=None):
+    def __init__(self, instance, detection, relative_dir, category, id=None):
 
         assert isinstance(detection,dict)
         assert isinstance(instance,IndexedDetection)
-        assert isinstance(relativeDir,str)
+        assert isinstance(relative_dir,str)
         assert isinstance(category,str)
 
         #: list of IndexedDetections that match this detection
@@ -371,7 +373,7 @@ class DetectionLocation:
         self.bbox = detection['bbox']
 
         #: relative folder (i.e., camera name) in which this detectin was found
-        self.relativeDir = relativeDir
+        self.relativeDir = relative_dir
 
         #: relative path to the canonical image representing this detection
         self.sampleImageRelativeFileName = ''
@@ -415,18 +417,21 @@ class DetectionLocation:
 
 #%% Support functions
 
-def _render_bounding_box(detection, inputFileName, output_filename, lineWidth=5,
-                        expansion=0):
+def _render_bounding_box(detection,
+                         input_file_name,
+                         output_file_name,
+                         line_width=5,
+                         expansion=0):
     """
-    Rendering the detection [detection] on the image [inputFileName], writing the result
-    to [output_filename].
+    Rendering the detection [detection] on the image [input_file_name], writing the result
+    to [output_file_name].
     """
 
-    im = open_image(inputFileName)
+    im = open_image(input_file_name)
     d = detection.to_api_detection()
-    render_detection_bounding_boxes([d],im,thickness=lineWidth,expansion=expansion,
+    render_detection_bounding_boxes([d],im,thickness=line_width,expansion=expansion,
                                     confidence_threshold=-10)
-    im.save(output_filename)
+    im.save(output_file_name)
 
 
 def _detection_rect_to_rtree_rect(detection_rect):
@@ -435,11 +440,11 @@ def _detection_rect_to_rtree_rect(detection_rect):
     our representation to rtree's.
     """
 
-    l = detection_rect[0]
-    b = detection_rect[1]
-    r = detection_rect[0] + detection_rect[2]
-    t = detection_rect[1] + detection_rect[3]
-    return (l,b,r,t)
+    left = detection_rect[0]
+    bottom = detection_rect[1]
+    right = detection_rect[0] + detection_rect[2]
+    top = detection_rect[1] + detection_rect[3]
+    return (left,bottom,right,top)
 
 
 def _rtree_rect_to_detection_rect(rtree_rect):
@@ -455,19 +460,19 @@ def _rtree_rect_to_detection_rect(rtree_rect):
     return (x,y,w,h)
 
 
-def _sort_detections_for_directory(candidateDetections,options):
+def _sort_detections_for_directory(candidate_detections,options):
     """
-    candidateDetections is a list of DetectionLocation objects.  Sorts them to
+    candidate_detections is a list of DetectionLocation objects.  Sorts them to
     put nearby detections next to each other, for easier visual review.  Returns
-    a sorted copy of candidateDetections, does not sort in-place.
+    a sorted copy of candidate_detections, does not sort in-place.
     """
 
-    if len(candidateDetections) <= 1 or options.smartSort is None:
-        return candidateDetections
+    if len(candidate_detections) <= 1 or options.smartSort is None:
+        return candidate_detections
 
     # Just sort by the X location of each box
     if options.smartSort == 'xsort':
-        candidate_detections_sorted = sorted(candidateDetections,
+        candidate_detections_sorted = sorted(candidate_detections,
                                            key=lambda x: (
                                                (x.bbox[0]) + (x.bbox[2]/2.0)
                                                ))
@@ -483,7 +488,7 @@ def _sort_detections_for_directory(candidateDetections,options):
         # Prepare a list of points to represent each box,
         # that's what we'll use for clustering
         points = []
-        for det in candidateDetections:
+        for det in candidate_detections:
             # To use the upper-left of the box as the clustering point
             # points.append([det.bbox[0],det.bbox[1]])
 
@@ -502,18 +507,18 @@ def _sort_detections_for_directory(candidateDetections,options):
         for i_label in range(1,len(unique_labels)):
             assert unique_labels[i_label] == 1 + unique_labels[i_label-1]
 
-        assert len(labels) == len(candidateDetections)
+        assert len(labels) == len(candidate_detections)
 
         # Store the label assigned to each cluster
         for i_label,label in enumerate(labels):
-            candidateDetections[i_label].clusterLabel = label
+            candidate_detections[i_label].clusterLabel = label
 
         # Now sort the clusters by their x coordinate, and re-assign labels
         # so the labels are sortable
         label_x_means = []
 
         for label in unique_labels:
-            detections_this_label = [d for d in candidateDetections if (
+            detections_this_label = [d for d in candidate_detections if (
                 d.clusterLabel == label)]
             points_this_label = [ [d.bbox[0],d.bbox[1]] for d in detections_this_label]
             x = [p[0] for p in points_this_label]
@@ -538,12 +543,12 @@ def _sort_detections_for_directory(candidateDetections,options):
             assert i_cluster == old_label
             new_label = old_cluster_label_to_new_cluster_label[old_label]
 
-        for i_det,det in enumerate(candidateDetections):
+        for i_det,det in enumerate(candidate_detections):
             old_label = det.clusterLabel
             new_label = old_cluster_label_to_new_cluster_label[old_label]
             det.clusterLabel = new_label
 
-        candidate_detections_sorted = sorted(candidateDetections,
+        candidate_detections_sorted = sorted(candidate_detections,
                                            key=lambda x: (x.clusterLabel,x.id))
 
         return candidate_detections_sorted
@@ -686,8 +691,8 @@ def _find_matches_in_directory(dir_name_and_rows, options):
 
             # Optionally exclude some classes from consideration as suspicious
             if (options.excludeClasses is not None) and (len(options.excludeClasses) > 0):
-                iClass = int(detection['category'])
-                if iClass in options.excludeClasses:
+                i_class = int(detection['category'])
+                if i_class in options.excludeClasses:
                     continue
 
             bbox = detection['bbox']
@@ -768,8 +773,10 @@ def _find_matches_in_directory(dir_name_and_rows, options):
             if not b_found_similar_detection:
 
                 candidate = DetectionLocation(instance=instance,
-                                              detection=detection, relativeDir=dir_name,
-                                              category=category, id=i_iteration)
+                                              detection=detection,
+                                              relative_dir=dir_name,
+                                              category=category,
+                                              id=i_iteration)
 
                 # pyqtree
                 candidate_detections_index.insert(item=candidate,bbox=rtree_rect)
@@ -805,7 +812,7 @@ def _find_matches_in_directory(dir_name_and_rows, options):
 # ...def _find_matches_in_directory(...)
 
 
-def _update_detection_table(repeat_detection_results, options, output_filename=None):
+def _update_detection_table(repeat_detection_results, options, output_file_name=None):
     """
     Changes confidence values in repeat_detection_results.detectionResults so that detections
     deemed to be possible false positives are given negative confidence values.
@@ -836,17 +843,17 @@ def _update_detection_table(repeat_detection_results, options, output_filename=N
     for i_dir, directory_events in enumerate(suspicious_detections_by_directory):
 
         # For each suspicious detection group in this directory
-        for i_detectionEvent, detectionEvent in enumerate(directory_events):
+        for i_detection_event, detection_event in enumerate(directory_events):
 
-            locationBbox = detectionEvent.bbox
+            location_bbox = detection_event.bbox
 
             # For each instance of this suspicious detection
-            for iInstance, instance in enumerate(detectionEvent.instances):
+            for i_instance, instance in enumerate(detection_event.instances):
 
-                instanceBbox = instance.bbox
+                instance_bbox = instance.bbox
 
                 # This should match the bbox for the detection event
-                iou = ct_utils.get_iou(instanceBbox, locationBbox)
+                iou = ct_utils.get_iou(instance_bbox, location_bbox)
 
                 # The bbox for this instance should be almost the same as the bbox
                 # for this detection group, where "almost" is defined by the IOU
@@ -855,19 +862,19 @@ def _update_detection_table(repeat_detection_results, options, output_filename=N
                 # if iou < options.iouThreshold:
                 #    print('IOU warning: {},{}'.format(iou,options.iouThreshold))
 
-                assert instance.filename in repeat_detection_results.filenameToRow
-                i_row = repeat_detection_results.filenameToRow[instance.filename]
+                assert instance.filename in repeat_detection_results.filename_to_row
+                i_row = repeat_detection_results.filename_to_row[instance.filename]
                 row = detection_results.iloc[i_row]
-                rowDetections = row['detections']
-                detectionToModify = rowDetections[instance.i_detection]
+                row_detections = row['detections']
+                detection_to_modify = row_detections[instance.i_detection]
 
                 # Make sure the bounding box matches
-                assert (instanceBbox[0:3] == detectionToModify['bbox'][0:3])
+                assert (instance_bbox[0:3] == detection_to_modify['bbox'][0:3])
 
                 # Make the probability negative, if it hasn't been switched by
                 # another bounding box
-                if detectionToModify['conf'] >= 0:
-                    detectionToModify['conf'] = -1 * detectionToModify['conf']
+                if detection_to_modify['conf'] >= 0:
+                    detection_to_modify['conf'] = -1 * detection_to_modify['conf']
                     n_bbox_changes += 1
 
             # ...for each instance
@@ -899,7 +906,7 @@ def _update_detection_table(repeat_detection_results, options, output_filename=N
         # assert max_p_original >= 0
         assert max_p_original >= -1.0
 
-        maxP = None
+        max_p = None
         n_negative = 0
 
         for i_detection, detection in enumerate(detections):
@@ -909,27 +916,27 @@ def _update_detection_table(repeat_detection_results, options, output_filename=N
             if p < 0:
                 n_negative += 1
 
-            if (maxP is None) or (p > maxP):
-                maxP = p
+            if (max_p is None) or (p > max_p):
+                max_p = p
 
         # We should only be making detections *less* likely in this process
-        assert maxP <= max_p_original
-        detection_results.at[i_row, 'max_detection_conf'] = maxP
+        assert max_p <= max_p_original
+        detection_results.at[i_row, 'max_detection_conf'] = max_p
 
         # If there was a meaningful change, count it
-        if abs(maxP - max_p_original) > 1e-3:
+        if abs(max_p - max_p_original) > 1e-3:
 
-            assert maxP < max_p_original
+            assert max_p < max_p_original
 
             n_prob_changes += 1
 
-            if (maxP < 0) and (max_p_original >= 0):
+            if (max_p < 0) and (max_p_original >= 0):
                 n_prob_changes_to_negative += 1
 
-            if (max_p_original >= options.confidenceMin) and (maxP < options.confidenceMin):
+            if (max_p_original >= options.confidenceMin) and (max_p < options.confidenceMin):
                 n_prob_changes_across_threshold += 1
 
-            # Negative probabilities should be the only reason maxP changed, so
+            # Negative probabilities should be the only reason max_p changed, so
             # we should have found at least one negative value if we reached
             # this point.
             assert n_negative > 0
@@ -939,12 +946,12 @@ def _update_detection_table(repeat_detection_results, options, output_filename=N
     # ...for each row
 
     # If we're also writing output...
-    if output_filename is not None and len(output_filename) > 0:
+    if output_file_name is not None and len(output_file_name) > 0:
         write_api_results(detection_results, repeat_detection_results.otherFields,
-                          output_filename)
+                          output_file_name)
 
     print(
-        'Finished updating detection table\nChanged {} detections that impacted {} maxPs ({} to negative) ({} across confidence threshold)'.format(
+        'Finished updating detection table\nChanged {} detections that impacted {} max_ps ({} to negative) ({} across confidence threshold)'.format( # noqa
             n_bbox_changes, n_prob_changes, n_prob_changes_to_negative, n_prob_changes_across_threshold))
 
     return detection_results
@@ -974,18 +981,18 @@ def _render_sample_image_for_detection(detection,filtering_dir,options):
     output_relative_path = detection.sampleImageRelativeFileName
     assert len(output_relative_path) > 0
 
-    outputFullPath = os.path.join(filtering_dir, output_relative_path)
+    output_full_path = os.path.join(filtering_dir, output_relative_path)
 
     if is_sas_url(options.imageBase):
-        inputFullPath = relative_sas_url(options.imageBase, relative_path)
+        input_full_path = relative_sas_url(options.imageBase, relative_path)
     else:
-        inputFullPath = os.path.join(options.imageBase, relative_path)
-        assert (os.path.isfile(inputFullPath)), 'Not a file: {}'.\
-            format(inputFullPath)
+        input_full_path = os.path.join(options.imageBase, relative_path)
+        assert (os.path.isfile(input_full_path)), 'Not a file: {}'.\
+            format(input_full_path)
 
     try:
 
-        im = open_image(inputFullPath)
+        im = open_image(input_full_path)
 
         # Should we render (typically in a very light color) detections
         # *other* than the one we're highlighting here?
@@ -1029,58 +1036,62 @@ def _render_sample_image_for_detection(detection,filtering_dir,options):
                                             expansion=options.boxExpansion,
                                             confidence_threshold=-10)
 
-            im.save(outputFullPath)
+            im.save(output_full_path)
 
         else:
 
-            _render_bounding_box(detection, inputFullPath, outputFullPath,
-                lineWidth=options.lineThickness, expansion=options.boxExpansion)
+            _render_bounding_box(detection,
+                                 input_full_path,
+                                 output_full_path,
+                                 line_width=options.lineThickness,
+                                 expansion=options.boxExpansion)
 
         # ...if we are/aren't rendering other bounding boxes
 
         # If we're rendering detection tiles, we'll re-load and re-write the image we
-        # just wrote to outputFullPath
+        # just wrote to output_full_path
         if options.bRenderDetectionTiles:
 
             assert not is_sas_url(options.imageBase), "Can't render detection tiles from SAS URLs"
 
             if options.detectionTilesPrimaryImageWidth is not None:
-                primaryImageWidth = options.detectionTilesPrimaryImageWidth
+                primary_image_width = options.detectionTilesPrimaryImageWidth
             else:
                 # "im" may be a resized version of the original image, if we've already run
                 # the code to render other bounding boxes.
-                primaryImageWidth = im.size[0]
+                primary_image_width = im.size[0]
 
             if options.detectionTilesCroppedGridWidth <= 1.0:
-                croppedGridWidth = round(options.detectionTilesCroppedGridWidth * primaryImageWidth)
+                cropped_grid_width = \
+                    round(options.detectionTilesCroppedGridWidth * primary_image_width)
             else:
-                croppedGridWidth = options.detectionTilesCroppedGridWidth
+                cropped_grid_width = options.detectionTilesCroppedGridWidth
 
-            secondaryImageFilenameList = []
-            secondaryImageBoundingBoxList = []
+            secondary_image_filename_list = []
+            secondary_image_bounding_box_list = []
 
             # If we start from zero, we include the sample crop
             for instance in detection.instances[0:]:
-                secondaryImageFilenameList.append(os.path.join(options.imageBase,
+                secondary_image_filename_list.append(os.path.join(options.imageBase,
                                                                instance.filename))
-                secondaryImageBoundingBoxList.append(instance.bbox)
+                secondary_image_bounding_box_list.append(instance.bbox)
 
             # Optionally limit the number of crops we pass to the rendering function
             if (options.detectionTilesMaxCrops is not None) and \
                 (len(detection.instances) > options.detectionTilesMaxCrops):
-                    secondaryImageFilenameList = \
-                        secondaryImageFilenameList[0:options.detectionTilesMaxCrops]
-                    secondaryImageBoundingBoxList = \
-                        secondaryImageBoundingBoxList[0:options.detectionTilesMaxCrops]
+                    secondary_image_filename_list = \
+                        secondary_image_filename_list[0:options.detectionTilesMaxCrops]
+                    secondary_image_bounding_box_list = \
+                        secondary_image_bounding_box_list[0:options.detectionTilesMaxCrops]
 
-            # This will over-write the image we've already written to outputFullPath
+            # This will over-write the image we've already written to output_full_path
             render_images_with_thumbnails.render_images_with_thumbnails(
-                primary_image_filename=outputFullPath,
-                primary_image_width=primaryImageWidth,
-                secondary_image_filename_list=secondaryImageFilenameList,
-                secondary_image_bounding_box_list=secondaryImageBoundingBoxList,
-                cropped_grid_width=croppedGridWidth,
-                output_image_filename=outputFullPath,
+                primary_image_filename=output_full_path,
+                primary_image_width=primary_image_width,
+                secondary_image_filename_list=secondary_image_filename_list,
+                secondary_image_bounding_box_list=secondary_image_bounding_box_list,
+                cropped_grid_width=cropped_grid_width,
+                output_image_filename=output_full_path,
                 primary_image_location=options.detectionTilesPrimaryImageLocation)
 
         # ...if we are/aren't rendering detection tiles
@@ -1089,7 +1100,7 @@ def _render_sample_image_for_detection(detection,filtering_dir,options):
 
         stack_trace = traceback.format_exc()
         print('Warning: error rendering bounding box from {} to {}: {} ({})'.format(
-            inputFullPath,outputFullPath,e,stack_trace))
+            input_full_path,output_full_path,e,stack_trace))
         if options.bFailOnRenderError:
             raise
 
@@ -1098,14 +1109,14 @@ def _render_sample_image_for_detection(detection,filtering_dir,options):
 
 #%% Main entry point
 
-def find_repeat_detections(inputFilename, output_filename=None, options=None):
+def find_repeat_detections(input_filename, output_file_name=None, options=None):
     """
     Find detections in a MD results file that occur repeatedly and are likely to be
     rocks/sticks.
 
     Args:
-        inputFilename (str): the MD results .json file to analyze
-        output_filename (str, optional): the filename to which we should write results
+        input_filename (str): the MD results .json file to analyze
+        output_file_name (str, optional): the filename to which we should write results
             with repeat detections removed, typically set to None during the first
             part of the RDE process.
         options (RepeatDetectionOptions): all the interesting options controlling this
@@ -1138,13 +1149,13 @@ def find_repeat_detections(inputFilename, output_filename=None, options=None):
 
         # Load the filtering file
         detection_index_file_name = options.filterFileToLoad
-        sIn = open(detection_index_file_name, 'r').read()
-        detectionInfo = jsonpickle.decode(sIn)
-        filteringBaseDir = os.path.dirname(options.filterFileToLoad)
-        suspicious_detections = detectionInfo['suspicious_detections']
+        s_in = open(detection_index_file_name, 'r').read()
+        detection_info = jsonpickle.decode(s_in)
+        filtering_base_dir = os.path.dirname(options.filterFileToLoad)
+        suspicious_detections = detection_info['suspicious_detections']
 
         # Load the same options we used when finding repeat detections
-        options = detectionInfo['options']
+        options = detection_info['options']
 
         # ...except for things that explicitly tell this function not to
         # find repeat detections.
@@ -1165,7 +1176,7 @@ def find_repeat_detections(inputFilename, output_filename=None, options=None):
 
     # Load file to a pandas dataframe.  Also populates 'max_detection_conf', even if it's
     # not present in the .json file.
-    detection_results, other_fields = load_api_results(inputFilename, normalize_paths=True,
+    detection_results, other_fields = load_api_results(input_filename, normalize_paths=True,
                                                        filename_replacements=options.filenameReplacements,
                                                        force_forward_slashes=True)
     to_return.detectionResults = detection_results
@@ -1185,8 +1196,8 @@ def find_repeat_detections(inputFilename, output_filename=None, options=None):
             if options.filenameReplacements is not None:
                 for s in options.filenameReplacements.keys():
                     relative_path = relative_path.replace(s,options.filenameReplacements[s])
-            absolutePath = os.path.join(options.imageBase,relative_path)
-            assert os.path.isfile(absolutePath), 'Could not find file {}'.format(absolutePath)
+            absolute_path = os.path.join(options.imageBase,relative_path)
+            assert os.path.isfile(absolute_path), 'Could not find file {}'.format(absolute_path)
 
 
     ##%% Separate files into locations
@@ -1195,7 +1206,7 @@ def find_repeat_detections(inputFilename, output_filename=None, options=None):
     rows_by_directory = {}
 
     # This is a mapping back into the rows of the original table
-    filenameToRow = {}
+    filename_to_row = {}
 
     print('Separating images into locations...')
 
@@ -1207,9 +1218,9 @@ def find_repeat_detections(inputFilename, output_filename=None, options=None):
         relative_path = row['file']
 
         if options.customDirNameFunction is not None:
-            basicDirName = os.path.dirname(relative_path.replace('\\','/'))
+            basic_dir_name = os.path.dirname(relative_path.replace('\\','/'))
             dir_name = options.customDirNameFunction(relative_path)
-            if basicDirName != dir_name:
+            if basic_dir_name != dir_name:
                 n_custom_dir_replacements += 1
         else:
             dir_name = os.path.dirname(relative_path)
@@ -1219,21 +1230,21 @@ def find_repeat_detections(inputFilename, output_filename=None, options=None):
                 'Can''t use the dirLevelsFromLeaf option with flat filenames'
         else:
             if options.nDirLevelsFromLeaf > 0:
-                iLevel = 0
-                while (iLevel < options.nDirLevelsFromLeaf):
-                    iLevel += 1
+                i_level = 0
+                while (i_level < options.nDirLevelsFromLeaf):
+                    i_level += 1
                     dir_name = os.path.dirname(dir_name)
             assert len(dir_name) > 0
 
-        if not dir_name in rows_by_directory:
+        if dir_name not in rows_by_directory:
             # Create a new DataFrame with just this row
             # rows_by_directory[dir_name] = pd.DataFrame(row)
             rows_by_directory[dir_name] = []
 
         rows_by_directory[dir_name].append(row)
 
-        assert relative_path not in filenameToRow
-        filenameToRow[relative_path] = i_row
+        assert relative_path not in filename_to_row
+        filename_to_row[relative_path] = i_row
 
     # ...for each unique detection
 
@@ -1247,7 +1258,7 @@ def find_repeat_detections(inputFilename, output_filename=None, options=None):
         rows_by_directory[d] = pd.DataFrame(rows_by_directory[d])
 
     to_return.rows_by_directory = rows_by_directory
-    to_return.filenameToRow = filenameToRow
+    to_return.filename_to_row = filename_to_row
 
     print('Finished separating {} files into {} locations'.format(len(detection_results),
                                                                   len(rows_by_directory)))
@@ -1343,7 +1354,7 @@ def find_repeat_detections(inputFilename, output_filename=None, options=None):
                 os.makedirs(intermediate_json_file_folder,exist_ok=True)
 
                 # i_location = 0; location_info = dir_name_and_rows[0]
-                dir_nameAndIntermediateFile = []
+                dir_name_and_intermediate_file = []
 
                 # i_location = 0; location_info = dir_name_and_rows[i_location]
                 for i_location, location_info in tqdm(enumerate(dir_name_and_rows)):
@@ -1355,14 +1366,14 @@ def find_repeat_detections(inputFilename, output_filename=None, options=None):
                                                              normalized_location_name + '.csv')
                     detections_table_this_location = location_info[1]
                     detections_table_this_location.to_csv(intermediate_results_file,header=True,index=False)
-                    dir_nameAndIntermediateFile.append((location_name,intermediate_results_file))
+                    dir_name_and_intermediate_file.append((location_name,intermediate_results_file))
 
 
                 ##%% Find detections in each directory
 
                 options.pbar = None
                 all_candidate_detection_files = list(pool.imap(
-                    partial(_find_matches_in_directory,options=options), dir_nameAndIntermediateFile))
+                    partial(_find_matches_in_directory,options=options), dir_name_and_intermediate_file))
 
 
                 ##%% Load into a combined list of candidate detections
@@ -1403,8 +1414,8 @@ def find_repeat_detections(inputFilename, output_filename=None, options=None):
                 pool.join()
                 print("Pool closed and joined for RDE comparisons")
             except Exception as e:
-                print('Warning: error closing RDE comparison pool')
-                
+                print('Warning: error closing RDE comparison pool: {}'.format(str(e)))
+
         print('\nFinished looking for similar detections')
 
 
@@ -1493,7 +1504,7 @@ def find_repeat_detections(inputFilename, output_filename=None, options=None):
                 if file_list is None:
 
                     # Is the image still there?
-                    image_full_path = os.path.join(filteringBaseDir,
+                    image_full_path = os.path.join(filtering_base_dir,
                                                    detection.sampleImageRelativeFileName)
 
                     # If not, remove this from the list of suspicious detections
@@ -1526,7 +1537,7 @@ def find_repeat_detections(inputFilename, output_filename=None, options=None):
 
     to_return.suspicious_detections = suspicious_detections
 
-    to_return.allRowsFiltered = _update_detection_table(to_return, options, output_filename)
+    to_return.allRowsFiltered = _update_detection_table(to_return, options, output_file_name)
 
 
     ##%% Create filtering directory
@@ -1554,19 +1565,19 @@ def find_repeat_detections(inputFilename, output_filename=None, options=None):
                 detection.instances.sort(key=attrgetter('confidence'),reverse=True)
 
                 if detection.clusterLabel is not None:
-                    clusterString = '_c{:0>4d}'.format(detection.clusterLabel)
+                    cluster_string = '_c{:0>4d}'.format(detection.clusterLabel)
                 else:
-                    clusterString = ''
+                    cluster_string = ''
 
                 # Choose the highest-confidence index
                 instance = detection.instances[0]
                 relative_path = instance.filename
 
                 output_relative_path = 'dir{:0>4d}_det{:0>4d}{}_n{:0>4d}.jpg'.format(
-                    i_dir, i_detection, clusterString, len(detection.instances))
+                    i_dir, i_detection, cluster_string, len(detection.instances))
                 detection.sampleImageRelativeFileName = output_relative_path
 
-                i_row = filenameToRow[relative_path]
+                i_row = filename_to_row[relative_path]
                 row = detection_results.iloc[i_row]
                 detection.sampleImageDetections = row['detections']
 
@@ -1591,14 +1602,14 @@ def find_repeat_detections(inputFilename, output_filename=None, options=None):
 
             try:
                 if options.parallelizationUsesThreads:
-                    pool = ThreadPool(n_workers); poolstring = 'threads'                
+                    pool = ThreadPool(n_workers); poolstring = 'threads'
                 else:
                     pool = Pool(n_workers); poolstring = 'processes'
 
                 print('Starting rendering pool with {} {}'.format(n_workers,poolstring))
-            
-            # We get slightly nicer progress bar behavior using threads, by passing a pbar 
-            # object and letting it get updated.  We can't serialize this object across 
+
+            # We get slightly nicer progress bar behavior using threads, by passing a pbar
+            # object and letting it get updated.  We can't serialize this object across
                 # processes.
                 if options.parallelizationUsesThreads:
                     options.pbar = tqdm(total=len(all_suspicious_detections))
@@ -1606,7 +1617,7 @@ def find_repeat_detections(inputFilename, output_filename=None, options=None):
                         partial(_render_sample_image_for_detection,filtering_dir=filtering_dir,
                                 options=options), all_suspicious_detections))
                 else:
-                    options.pbar = None                
+                    options.pbar = None
                     all_candidate_detections = list(tqdm(pool.imap(
                         partial(_render_sample_image_for_detection,filtering_dir=filtering_dir,
                                 options=options), all_suspicious_detections)))
@@ -1630,20 +1641,20 @@ def find_repeat_detections(inputFilename, output_filename=None, options=None):
         detection_index_file_name = os.path.join(filtering_dir, detection_index_file_name_base)
 
         # Prepare the data we're going to write to the detection index file
-        detectionInfo = {}
+        detection_info = {}
 
-        detectionInfo['suspicious_detections'] = suspicious_detections
-        detectionInfo['dir_index_to_name'] = dir_index_to_name
+        detection_info['suspicious_detections'] = suspicious_detections
+        detection_info['dir_index_to_name'] = dir_index_to_name
 
         # Remove the one non-serializable object from the options struct before serializing
         # to .json
         options.pbar = None
-        detectionInfo['options'] = options
+        detection_info['options'] = options
 
-        s = jsonpickle.encode(detectionInfo,make_refs=False)
+        s = jsonpickle.encode(detection_info,make_refs=False)
         with open(detection_index_file_name, 'w') as f:
             f.write(s)
-        to_return.filterFile = detection_index_file_name        
+        to_return.filterFile = detection_index_file_name
 
     # ...if we're writing filtering info
 

@@ -15,6 +15,7 @@ import random
 
 from megadetector.data_management.lila.lila_common import \
     read_lila_metadata, read_metadata_file_for_dataset
+from megadetector.utils.url_utils import parallel_download_urls
 
 n_empty_images_per_dataset = 1
 n_non_empty_images_per_dataset = 1
@@ -39,9 +40,10 @@ metadata_table = read_lila_metadata(metadata_dir)
 #%% Download and extract metadata for every dataset
 
 for ds_name in metadata_table.keys():
-    metadata_table[ds_name]['metadata_filename'] = read_metadata_file_for_dataset(ds_name=ds_name,
-                                                                         metadata_dir=metadata_dir,
-                                                                         metadata_table=metadata_table)
+    metadata_table[ds_name]['metadata_filename'] = \
+        read_metadata_file_for_dataset(ds_name=ds_name,
+                                       metadata_dir=metadata_dir,
+                                       metadata_table=metadata_table)
 
 
 #%% Choose images from each dataset
@@ -142,7 +144,8 @@ for ds_name in metadata_table.keys():
     for url in urls_to_download:
 
         assert base_url in url
-        output_file_relative = ds_name.lower().replace(' ','_') + '_' + url.replace(base_url,'').replace('/','_').replace('\\','_')
+        output_file_relative = ds_name.lower().replace(' ','_') + \
+            '_' + url.replace(base_url,'').replace('/','_').replace('\\','_')
         output_file_absolute = os.path.join(output_dir,output_file_relative)
         url_to_target_file[url] = output_file_absolute
 
@@ -152,8 +155,6 @@ for ds_name in metadata_table.keys():
 
 
 #%% Download image files (execution)
-
-from megadetector.utils.url_utils import parallel_download_urls
 
 download_results = parallel_download_urls(url_to_target_file,
                                           verbose=False,

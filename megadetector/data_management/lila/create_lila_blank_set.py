@@ -27,9 +27,15 @@ from collections import defaultdict
 
 from megadetector.data_management.lila.lila_common import read_lila_all_images_file
 from megadetector.utils.url_utils import download_url
+from megadetector.utils.ct_utils import sort_dictionary_by_value
+from megadetector.utils.path_utils import is_image_file
+from megadetector.utils.path_utils import find_images
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.utils.path_utils import recursive_file_list
 from megadetector.utils import ct_utils
+
+
+#%% Environment
 
 # We'll write images, metadata downloads, and temporary files here
 lila_local_base = os.path.expanduser('~/lila')
@@ -49,7 +55,7 @@ md_possible_non_blanks_folder = os.path.join(project_base,'candidate_non_blanks'
 os.makedirs(md_possible_non_blanks_folder,exist_ok=True)
 
 location_to_blank_image_urls_cache_file = os.path.join(project_base,
-                                                       'location_to_blank_image_urls.json')
+                                                    'location_to_blank_image_urls.json')
 
 md_results_file = os.path.join(project_base,'lila_blanks_md_results.json')
 
@@ -92,9 +98,9 @@ other_labels_without_common_names = (
 )
 
 common_names = sorted(list(df['common_name'].unique()),
-                      key=lambda x:str(x) if isinstance(x,float) else x)
+                    key=lambda x:str(x) if isinstance(x,float) else x)
 original_labels = sorted(list(df['original_label'].unique()),
-                         key=lambda x:str(x) if isinstance(x,float) else x)
+                        key=lambda x:str(x) if isinstance(x,float) else x)
 
 # Blanks are represented as NaN in the "common_name" column (though not all NaN's are blanks)
 assert '' not in common_names
@@ -138,7 +144,6 @@ for i_row,row in tqdm(df.iterrows(),total=len(df)):
 
 #%% Look at the most common labels and common names
 
-from megadetector.utils.ct_utils import sort_dictionary_by_value
 common_name_to_count = sort_dictionary_by_value(common_name_to_count,reverse=True)
 original_label_to_count = sort_dictionary_by_value(original_label_to_count,reverse=True)
 
@@ -283,9 +288,9 @@ print('Max samples per location: {}'.format(max_blanks_per_location))
 #%% Download those image files (prep)
 
 container_to_url_base = {
-                         'lilawildlife.blob.core.windows.net':'/lila-wildlide/',
-                         'storage.googleapis.com':'/public-datasets-lila/'
-                         }
+                        'lilawildlife.blob.core.windows.net':'/lila-wildlide/',
+                        'storage.googleapis.com':'/public-datasets-lila/'
+                        }
 
 def download_relative_filename(url, output_base, verbose=False, url_base=None, overwrite=False):
     """
@@ -385,7 +390,7 @@ cmd = 'python run_detector_batch.py MDV5A "{}" "{}"'.format(
     candidate_blanks_base,md_results_file)
 cmd += ' --recursive --output_relative_filenames'
 
-import clipboard; clipboard.copy(cmd); print(cmd)
+# import clipboard; clipboard.copy(cmd); print(cmd)
 
 
 #%% Review MD results that suggests images are non-empty
@@ -425,7 +430,7 @@ output_file_to_source_file = {}
 
 # i_fn = 0; source_file_relative = images_to_review[i_fn]
 for i_fn,source_file_relative in tqdm(enumerate(images_to_review_to_detections),
-                                      total=len(images_to_review_to_detections)):
+                                    total=len(images_to_review_to_detections)):
 
     source_file_abs = os.path.join(candidate_blanks_base,source_file_relative)
     assert os.path.isfile(source_file_abs)
@@ -435,10 +440,10 @@ for i_fn,source_file_relative in tqdm(enumerate(images_to_review_to_detections),
     output_file_to_source_file[target_file_relative] = source_file_relative
     # shutil.copyfile(source_file_abs,target_file_abs)
     vis_utils.draw_bounding_boxes_on_file(input_file=source_file_abs,
-                                          output_file=target_file_abs,
-                                          detections=images_to_review_to_detections[source_file_relative],
-                                          confidence_threshold=min_threshold,
-                                          target_size=(1280,-1))
+                                        output_file=target_file_abs,
+                                        detections=images_to_review_to_detections[source_file_relative],
+                                        confidence_threshold=min_threshold,
+                                        target_size=(1280,-1))
 
 # This is a temporary file I just used during debugging
 ct_utils.write_json(os.path.join(project_base,'output_file_to_source_file.json'), output_file_to_source_file)
@@ -469,8 +474,6 @@ assert len(removed_blank_images_relative) + len(remaining_images) == len(output_
 
 #%% Copy only the confirmed blanks to the confirmed folder
 
-from megadetector.utils.path_utils import is_image_file
-
 all_candidate_blanks = recursive_file_list(candidate_blanks_base,return_relative_paths=True)
 print('Found {} candidate blanks'.format(len(all_candidate_blanks)))
 
@@ -498,12 +501,11 @@ for source_fn_relative in tqdm(all_candidate_blanks):
     # shutil.copyfile(source_fn_abs,target_fn_abs)
 
 print('Skipped {} files ({} non-image files)'.format(len(skipped_images_relative),
-                                                     len(skipped_non_images)))
+                                                    len(skipped_non_images)))
 
 
 #%% Validate the folder of confirmed blanks
 
-from megadetector.utils.path_utils import find_images
 # all_confirmed_blanks = recursive_file_list(confirmed_blanks_base,return_relative_paths=True)
 all_confirmed_blanks = find_images(confirmed_blanks_base,return_relative_paths=True,recursive=True)
 assert len(all_confirmed_blanks) < len(all_candidate_blanks)
@@ -517,8 +519,8 @@ i_image = random.randint(0, len(skipped_images_relative))
 fn_relative = skipped_images_relative[i_image]
 fn_abs = os.path.join(candidate_blanks_base,fn_relative)
 assert os.path.isfile(fn_abs)
-import clipboard
-clipboard.copy('feh --scale-down "{}"'.format(fn_abs))
+
+# import clipboard; clipboard.copy('feh --scale-down "{}"'.format(fn_abs))
 
 
 #%% Record location information for each confirmed file
@@ -551,4 +553,4 @@ for i_fn,fn_relative in tqdm(enumerate(all_confirmed_blanks),total=len(all_confi
     confirmed_fn_relative_to_location[fn_relative] = all_fn_relative_to_location[fn_relative]
 
 ct_utils.write_json(all_fn_relative_to_location_file, all_fn_relative_to_location)
-ct_utils.write_json(confirmed_fn_relative_to_location_file, confirmed_fn_relative_to_location)    
+ct_utils.write_json(confirmed_fn_relative_to_location_file, confirmed_fn_relative_to_location)

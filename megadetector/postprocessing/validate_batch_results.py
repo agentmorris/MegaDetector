@@ -110,7 +110,7 @@ def validate_batch_results(json_filename,options=None):
 
         ## Info validation
 
-        if not 'info' in d:
+        if 'info' not in d:
             raise ValueError('Input does not contain info field')
 
         info = d['info']

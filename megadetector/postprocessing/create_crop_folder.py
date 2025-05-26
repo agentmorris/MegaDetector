@@ -354,10 +354,10 @@ def create_crop_folder(input_file,
             else:
                 assert options.pool_type == 'process'
                 pool = Pool(options.n_workers)
-        
+
             # Each element in this list is the list of crops for a single image
             crop_lists = list(image_fn_relative_to_crops.values())
-        
+
             with tqdm(total=len(image_fn_relative_to_crops)) as pbar:
                 for i,_ in enumerate(pool.imap_unordered(partial(
                             _generate_crops_for_single_image,

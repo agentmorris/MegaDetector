@@ -123,7 +123,6 @@ def yolo_json_output_to_md_output(yolo_json_file,
     Converts a YOLOv5/YOLOv8 .json file to MD .json format.
 
     Args:
-
         yolo_json_file (str): the .json file to convert from YOLOv5 format to MD output format
         image_folder (str): the .json file contains relative path names, this is the path base
         yolo_category_id_to_name (str or dict): the .json results file contains only numeric

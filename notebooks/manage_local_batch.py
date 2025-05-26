@@ -1,7 +1,7 @@
 """
 
 manage_local_batch.py
-   
+
 Semi-automated process for managing a local MegaDetector (and, optionally, SpeciesNet job,
 including standard postprocessing steps.
 
@@ -10,25 +10,25 @@ it's a notebook disguised with a .py extension.  It's the Bestest Most Awesome w
 run MegaDetector, but it's also pretty complex; if you want to play with this, you might
 want to check in with cameratraps@lila.science for some tips.  Otherwise... YMMV.
 
-Some general notes on using this script, which I run in VS Code or Spyder, though everything 
-will be the same if you are reading this in Jupyter Notebook (using the .ipynb version of the 
+Some general notes on using this script, which I run in VS Code or Spyder, though everything
+will be the same if you are reading this in Jupyter Notebook (using the .ipynb version of the
 script):
 
-* Typically when I have a MegaDetector job to run, I make a copy of this script.  Let's 
+* Typically when I have a MegaDetector job to run, I make a copy of this script.  Let's
   say I'm running a job for an organization called "bibblebop"; I have a big folder of
-  job-specific copies of this script, and I might save a new one called "bibblebop-2023-07-26.py" 
+  job-specific copies of this script, and I might save a new one called "bibblebop-2023-07-26.py"
   (the filename doesn't matter, it just helps me keep these organized).
 
 * There are three variables you need to set in this script before you start running code:
-  "input_path", "organization_name_short", and "job_date".  You will get a sensible error if you forget 
+  "input_path", "organization_name_short", and "job_date".  You will get a sensible error if you forget
   to set any of these.  In this case I might set those to "/data/bibblebobcamerastuff",
   "bibblebop", and "2023-07-26", respectively.
 
-* The defaults assume you want to split the job into two tasks (this is the default because I have 
+* The defaults assume you want to split the job into two tasks (this is the default because I have
   two GPUs).  Nothing bad will happen if you do this on a zero-GPU or single-GPU machine, but if you
   want everything to run in one logical task, change "n_gpus" and "n_jobs" to 1 (instead of 2).
 
-* After setting the required variables, I run the first few cells - up to and including the one 
+* After setting the required variables, I run the first few cells - up to and including the one
   called "Generate commands" - which collectively take basically zero seconds.  After you run the
   "Generate commands" cell, you will have a folder that looks something like:
 
@@ -46,14 +46,14 @@ script):
 
   Personally, I like to run that script directly in a command prompt (I just leave VS Code or
   Spyder open, though it's OK if that window gets shut down while MD is running).
-  
+
   At this point, once you get the hang of it, you've invested about zero seconds of human time,
   but possibly several days of unattended compute time, depending on the size of your job.
-  
+
 * Then when the jobs are done, back to the interactive environment!  I run the next few cells,
-  which make sure the job finished OK, and the cell called "Post-processing (pre-RDE)", which 
+  which make sure the job finished OK, and the cell called "Post-processing (pre-RDE)", which
   generates an HTML preview of the results.  You are very plausibly done at this point, and can ignore
-  all the remaining cells.  If you want to do things like repeat detection elimination, or running 
+  all the remaining cells.  If you want to do things like repeat detection elimination, or running
   a classifier, or splitting your results file up in specialized ways, there are cells for all of those
   things, but now you're in power-user territory, so I'm going to leave this guide here.  Email
   cameratraps@lila.science with questions about the fancy stuff.
@@ -66,7 +66,7 @@ import json
 import os
 import stat
 import time
-import re    
+import re
 
 import humanfriendly
 import clipboard # type: ignore #noqa
@@ -106,7 +106,7 @@ json_threshold = None
 # Turn warnings into errors if more than this many images are missing
 max_tolerable_failed_images = 100
 
-# Should we supply the --image_queue_option to run_detector_batch.py?  I only set this 
+# Should we supply the --image_queue_option to run_detector_batch.py?  I only set this
 # when I have a very slow drive and a comparably fast GPU.  When this is enabled, checkpointing
 # is not supported within a job, so I set n_jobs to a large number (typically 100).
 use_image_queue = True
@@ -127,7 +127,7 @@ quiet_mode = True
 # Specify a target image size when running MD... strongly recommended to leave this at "None"
 #
 # When using augmented inference, if you leave this at "None", run_inference_with_yolov5_val.py
-# will use its default size, which is 1280 * 1.3, which is almost always what you want.  If you 
+# will use its default size, which is 1280 * 1.3, which is almost always what you want.  If you
 # are using augmentation outside of run_inference_with_yolov5_val.py, you probably want to set
 # this explicitly.
 image_size = None
@@ -157,8 +157,8 @@ default_workers_for_parallel_tasks = 30
 overwrite_handling = 'skip' # 'skip', 'error', or 'overwrite'
 
 # The function used to get camera names from image paths, used only for repeat
-# detection elimination.  This defaults to a standard function (image_file_to_camera_folder) 
-# that replaces typical strings like "BTCF", "RECNYX001", or "DCIM".  There's an example near 
+# detection elimination.  This defaults to a standard function (image_file_to_camera_folder)
+# that replaces typical strings like "BTCF", "RECNYX001", or "DCIM".  There's an example near
 # the end of this notebook of using a custom function instead.
 relative_path_to_location = image_file_to_camera_folder
 
@@ -166,7 +166,7 @@ relative_path_to_location = image_file_to_camera_folder
 slcc = '\\'
 
 # OS-specific script comment character (modified later if we're running on Windows)
-scc = '#' 
+scc = '#'
 
 # OS-specific script extension (modified later if we're running on Windows)
 script_extension = '.sh'
@@ -178,15 +178,15 @@ script_header = '#!/bin/bash\n\nset -e\n'
 command_suffix = ''
 
 if os.name == 'nt':
-    
+
     script_header = ''
     slcc = '^'
     scc = 'REM'
     script_extension = '.bat'
 
     command_suffix = 'if %errorlevel% neq 0 exit /b %errorlevel%\n'
-    
-    # My experience has been that Python multiprocessing is flaky on Windows, so 
+
+    # My experience has been that Python multiprocessing is flaky on Windows, so
     # default to threads on Windows
     parallelization_defaults_to_threads = True
     default_workers_for_parallel_tasks = 10
@@ -234,7 +234,7 @@ tile_overlap = 0.2
 
 ## Constants related to preview generation
 
-# Optionally omit non-animal images from the output, useful when animals are rare and 
+# Optionally omit non-animal images from the output, useful when animals are rare and
 # we want to dial up the total number of images used in the preview
 render_animals_only = False
 
@@ -274,7 +274,7 @@ job_date = None # '2025-01-01'
 model_file = 'MDV5A' # 'MDV5A', 'MDV5B', 'MDV4'
 
 # Number of jobs to split data into, typically equal to the number of available GPUs, though
-# when using an image loading queue, I typically use ~100 jobs per GPU;  those serve as de 
+# when using an image loading queue, I typically use ~100 jobs per GPU;  those serve as de
 # facto checkpoints.
 n_jobs = 100
 n_gpus = 2
@@ -338,12 +338,12 @@ else:
     job_description_string = '-' + job_tag
 
 # Estimate inference speed for the current GPU
-approx_images_per_second = estimate_md_images_per_second(model_file) 
-    
-# Rough estimate for the inference time cost of augmentation    
+approx_images_per_second = estimate_md_images_per_second(model_file)
+
+# Rough estimate for the inference time cost of augmentation
 if augment and (approx_images_per_second is not None):
     approx_images_per_second = approx_images_per_second * 0.7
-    
+
 base_task_name = organization_name_short + '-' + job_date + job_description_string + '-' + \
     get_detector_version_from_model_file(model_file)
 base_output_folder_name = \
@@ -352,7 +352,7 @@ os.makedirs(base_output_folder_name,exist_ok=True)
 
 if use_image_queue:
     assert checkpoint_frequency is None,\
-        'Checkpointing is not supported when using an image queue'        
+        'Checkpointing is not supported when using an image queue'
     if preprocess_on_image_queue and (detector_options is not None) and \
         'compatibility_mode=modern' in detector_options:
         raise NotImplementedError('Standalone preprocessing is not yet supported for "modern" preprocessing')
@@ -363,7 +363,7 @@ if use_tiled_inference:
         'Using the YOLO inference script is not supported when using tiled inference'
     assert checkpoint_frequency is None, \
         'Checkpointing is not supported when using tiled inference'
-        
+
 filename_base = path_join(base_output_folder_name, base_task_name)
 combined_api_output_folder = path_join(filename_base, 'combined_api_outputs')
 postprocessing_output_folder = path_join(filename_base, 'preview')
@@ -389,13 +389,13 @@ if input_path.endswith('/'):
 print('Output folder:\n{}'.format(filename_base))
 
 if custom_taxa_list is not None:
-    
+
     assert os.path.isfile(custom_taxa_list), \
-        'Could not find custom taxa file {}'.format(custom_taxa_list)    
+        'Could not find custom taxa file {}'.format(custom_taxa_list)
     assert os.path.isfile(taxonomy_file), \
         'Could not find taxonomy file {}'.format(taxonomy_file)
     assert custom_taxa_stage in ('before_smoothing','after_smoothing')
-    
+
     # Validate the species list
     from megadetector.postprocessing.classification_postprocessing import restrict_to_taxa_list
     restrict_to_taxa_list(custom_taxa_list,taxonomy_file,None,None)
@@ -412,11 +412,11 @@ pattern = re.compile('chunk\d+.json')
 chunk_files = [fn for fn in chunk_files if pattern.match(fn)]
 
 if (not force_enumeration) and (len(chunk_files) > 0):
-    
+
     print('Found {} chunk files in folder {}, bypassing enumeration'.format(
         len(chunk_files),
         filename_base))
-    
+
     all_images = []
     for fn in chunk_files:
         with open(path_join(chunk_file_base,fn),'r') as f:
@@ -424,26 +424,26 @@ if (not force_enumeration) and (len(chunk_files) > 0):
             assert isinstance(chunk,list)
             all_images.extend(chunk)
     all_images = sorted(all_images)
-    
+
     print('Loaded {} image files from {} chunks in {}'.format(
         len(all_images),len(chunk_files),chunk_file_base))
 
 else:
 
     print('Enumerating image files in {}'.format(input_path))
-    
+
     all_images = sorted(find_images(input_path,recursive=True,convert_slashes=True))
-    
+
     # It's common to run this notebook on an external drive with the main folders in the drive root
     all_images = [fn for fn in all_images if not \
                   (fn.startswith('$RECYCLE') or fn.startswith('System Volume Information'))]
-        
-    print('')
-        
-    print('Enumerated {} image files in {}'.format(len(all_images),input_path))
-        
 
-#%% Divide images into chunks 
+    print('')
+
+    print('Enumerated {} image files in {}'.format(len(all_images),input_path))
+
+
+#%% Divide images into chunks
 
 folder_chunks = split_list_into_n_chunks(all_images,n_jobs)
 
@@ -451,16 +451,16 @@ folder_chunks = split_list_into_n_chunks(all_images,n_jobs)
 #%% Estimate total time
 
 if approx_images_per_second is None:
-    
+
     print("Can't estimate inference time for the current environment")
-    
+
 else:
-        
+
     n_images = len(all_images)
     execution_seconds = n_images / approx_images_per_second
     wallclock_seconds = execution_seconds / n_gpus
     print('Expected time: {}'.format(humanfriendly.format_timespan(wallclock_seconds)))
-    
+
     seconds_per_chunk = len(folder_chunks[0]) / approx_images_per_second
     print('Expected time per chunk: {}'.format(humanfriendly.format_timespan(seconds_per_chunk)))
 
@@ -470,12 +470,12 @@ else:
 task_info = []
 
 for i_chunk,chunk_list in enumerate(folder_chunks):
-    
+
     chunk_fn = path_join(chunk_file_base,'chunk{}.json'.format(str(i_chunk).zfill(3)))
     task_info.append({'id':i_chunk,'input_file':chunk_fn})
     write_list_to_file(chunk_fn, chunk_list)
-    
-    
+
+
 #%% Generate commands
 
 # A list of the scripts tied to each GPU, as absolute paths.  We'll write this out at
@@ -487,25 +487,25 @@ os.makedirs(detector_chunk_base,exist_ok=True)
 
 # i_task = 0; task = task_info[i_task]
 for i_task,task in enumerate(task_info):
-    
+
     chunk_file = task['input_file']
     checkpoint_filename = chunk_file.replace('.json','_checkpoint.json')
-    
+
     output_fn = chunk_file.replace('.json','_results.json')
-    
+
     task['output_file'] = output_fn
-    
+
     if n_gpus > 1:
-        gpu_number = i_task % n_gpus        
+        gpu_number = i_task % n_gpus
     else:
         gpu_number = default_gpu_number
-        
+
     image_size_string = ''
     if image_size is not None:
         image_size_string = '--image_size {}'.format(image_size)
-        
+
     # Generate the script to run MD
-    
+
     if use_yolo_inference_scripts:
 
         augment_string = ''
@@ -513,98 +513,98 @@ for i_task,task in enumerate(task_info):
             augment_string = '--augment_enabled 1'
         else:
             augment_string = '--augment_enabled 0'
-        
+
         batch_string = '--batch_size {}'.format(yolo_batch_size)
-        
+
         symlink_folder = path_join(filename_base,'symlinks','symlinks_{}'.format(
             str(i_task).zfill(3)))
         yolo_results_folder = path_join(filename_base,'yolo_results','yolo_results_{}'.format(
             str(i_task).zfill(3)))
-                
+
         symlink_folder_string = '--symlink_folder "{}"'.format(symlink_folder)
         yolo_results_folder_string = '--yolo_results_folder "{}"'.format(yolo_results_folder)
-        
+
         remove_symlink_folder_string = ''
         if not remove_yolo_symlink_folder:
             remove_symlink_folder_string = '--no_remove_symlink_folder'
-        
+
         write_yolo_debug_output_string = ''
         if write_yolo_debug_output:
             write_yolo_debug_output = '--write_yolo_debug_output'
-            
+
         remove_yolo_results_string = ''
         if not remove_yolo_intermediate_results:
             remove_yolo_results_string = '--no_remove_yolo_results_folder'
-        
+
         confidence_threshold_string = ''
         if json_threshold is not None:
             confidence_threshold_string = '--conf_thres {}'.format(json_threshold)
         else:
             confidence_threshold_string = '--conf_thres {}'.format(DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD)
-            
+
         cmd = ''
-        
+
         device_string = '--device {}'.format(gpu_number)
-        
-        overwrite_handling_string = '--overwrite_handling {}'.format(overwrite_handling)        
-        
+
+        overwrite_handling_string = '--overwrite_handling {}'.format(overwrite_handling)
+
         cmd += f'python run_inference_with_yolov5_val.py "{model_file}" "{chunk_file}" "{output_fn}" '
         cmd += f'{image_size_string} {augment_string} '
         cmd += f'{symlink_folder_string} {yolo_results_folder_string} {remove_yolo_results_string} '
         cmd += f'{remove_symlink_folder_string} {confidence_threshold_string} {device_string} '
         cmd += f'{overwrite_handling_string} {batch_string} {write_yolo_debug_output_string}'
-                
+
         if yolo_working_dir is not None:
             cmd += f' --yolo_working_folder "{yolo_working_dir}"'
         if yolo_dataset_file is not None:
             cmd += ' --yolo_dataset_file "{}"'.format(yolo_dataset_file)
         if yolo_model_type is not None:
             cmd += ' --model_type {}'.format(yolo_model_type)
-            
+
         if not use_symlinks_for_yolo_inference:
             cmd += ' --no_use_symlinks'
-        
+
         cmd += '\n'
-    
+
     elif use_tiled_inference:
-        
+
         tiling_folder = path_join(filename_base,'tile_cache','tile_cache_{}'.format(
             str(i_task).zfill(3)))
-        
+
         if os.name == 'nt':
             cuda_string = f'set CUDA_VISIBLE_DEVICES={gpu_number} & '
         else:
             cuda_string = f'CUDA_VISIBLE_DEVICES={gpu_number} '
-                        
+
         cmd = f'{cuda_string} python run_tiled_inference.py "{model_file}" "{input_path}" "{tiling_folder}" "{output_fn}"'
-        
+
         cmd += f' --image_list "{chunk_file}"'
         cmd += f' --overwrite_handling {overwrite_handling}'
-        
+
         if not remove_tiles:
             cmd += ' --no_remove_tiles'
-            
+
         # If we're using non-default tile sizes
-        if tile_size is not None and (tile_size[0] > 0 or tile_size[1] > 0):            
+        if tile_size is not None and (tile_size[0] > 0 or tile_size[1] > 0):
             cmd += ' --tile_size_x {} --tile_size_y {}'.format(tile_size[0],tile_size[1])
-            
+
         if tile_overlap is not None:
-            cmd += f' --tile_overlap {tile_overlap}'            
-        
+            cmd += f' --tile_overlap {tile_overlap}'
+
     else:
-        
+
         if os.name == 'nt':
             cuda_string = f'set CUDA_VISIBLE_DEVICES={gpu_number} & '
         else:
             cuda_string = f'CUDA_VISIBLE_DEVICES={gpu_number} '
-                
+
         checkpoint_frequency_string = ''
         checkpoint_path_string = ''
-        
+
         if checkpoint_frequency is not None and checkpoint_frequency > 0:
             checkpoint_frequency_string = f'--checkpoint_frequency {checkpoint_frequency}'
             checkpoint_path_string = '--checkpoint_path "{}"'.format(checkpoint_filename)
-                
+
         use_image_queue_string = ''
         if (use_image_queue):
             use_image_queue_string = '--use_image_queue'
@@ -616,18 +616,18 @@ for i_task,task in enumerate(task_info):
         ncores_string = ''
         if (ncores > 1):
             ncores_string = '--ncores {}'.format(ncores)
-            
+
         quiet_string = ''
         if quiet_mode:
             quiet_string = '--quiet'
-        
+
         confidence_threshold_string = ''
         if json_threshold is not None:
             confidence_threshold_string = '--threshold {}'.format(json_threshold)
-        
-        overwrite_handling_string = '--overwrite_handling {}'.format(overwrite_handling)        
+
+        overwrite_handling_string = '--overwrite_handling {}'.format(overwrite_handling)
         cmd = f'{cuda_string} python run_detector_batch.py "{model_file}" "{chunk_file}" "{output_fn}" {checkpoint_frequency_string} {checkpoint_path_string} {use_image_queue_string} {ncores_string} {quiet_string} {image_size_string} {confidence_threshold_string} {overwrite_handling_string}'
-        
+
         if include_image_size:
             cmd += ' --include_image_size'
         if include_image_timestamp:
@@ -641,49 +641,49 @@ for i_task,task in enumerate(task_info):
 
         if detector_options is not None:
             cmd += ' --detector_options "{}"'.format(detector_options)
-            
+
     cmd_file = path_join(filename_base,'detector_commands',
                             'run_chunk_{}_gpu_{}{}'.format(str(i_task).zfill(3),
                             str(gpu_number).zfill(2),script_extension))
-    
+
     with open(cmd_file,'w') as f:
-        
+
         # This writes, e.g. "set -e"
         if script_header is not None and len(script_header) > 0:
             f.write(script_header + '\n')
-            
+
         f.write(cmd + '\n')
-    
+
     st = os.stat(cmd_file)
     os.chmod(cmd_file, st.st_mode | stat.S_IEXEC)
-        
+
     task['command'] = cmd
     task['command_file'] = cmd_file
 
     # Generate the script to resume from the checkpoint (only supported with MD inference code)
-    
+
     gpu_to_scripts[gpu_number].append(cmd_file)
-    
+
     if checkpoint_frequency is not None:
-        
+
         resume_string = ' --resume_from_checkpoint "{}"'.format(checkpoint_filename)
         resume_cmd = cmd + resume_string
-    
+
         resume_cmd_file = path_join(filename_base,'detector_commands',
                                        'resume_chunk_{}_gpu_{}{}'.format(str(i_task).zfill(3),
                                        str(gpu_number).zfill(2),script_extension))
-        
+
         with open(resume_cmd_file,'w') as f:
-            
+
             # This writes, e.g. "set -e"
             if script_header is not None and len(script_header) > 0:
                 f.write(script_header + '\n')
-                
+
             f.write(resume_cmd + '\n')
-        
+
         st = os.stat(resume_cmd_file)
         os.chmod(resume_cmd_file, st.st_mode | stat.S_IEXEC)
-        
+
         task['resume_command'] = resume_cmd
         task['resume_command_file'] = resume_cmd_file
 
@@ -692,16 +692,16 @@ for i_task,task in enumerate(task_info):
 # Write out a script for each GPU that runs all of the commands associated with
 # that GPU.
 for gpu_number in gpu_to_scripts:
-    
+
     gpu_script_file = path_join(filename_base,'run_all_for_gpu_{}{}'.format(
         str(gpu_number).zfill(2),script_extension))
-    
+
     with open(gpu_script_file,'w') as f:
-        
+
         # This writes, e.g. "set -e"
         if script_header is not None and len(script_header) > 0:
             f.write(script_header + '\n')
-            
+
         for script_name in gpu_to_scripts[gpu_number]:
             s = script_name
             # When calling a series of batch files on Windows from within a batch file, you need to
@@ -709,9 +709,9 @@ for gpu_number in gpu_to_scripts:
             if os.name == 'nt':
                 s = 'call ' + s
             f.write(s + '\n')
-            
+
         f.write('echo "Finished all commands for GPU {}"'.format(gpu_number))
-        
+
     st = os.stat(gpu_script_file)
     os.chmod(gpu_script_file, st.st_mode | stat.S_IEXEC)
 
@@ -725,7 +725,7 @@ tl;dr: I almost never run this cell.
 
 Long version...
 
-The cells we've run so far wrote out some shell scripts (.bat files on Windows, 
+The cells we've run so far wrote out some shell scripts (.bat files on Windows,
 .sh files on Linx/Mac) that will run MegaDetector.  I like to leave the interactive
 environment at this point and run those scripts at the command line.  So, for example,
 if you're on Windows, and you've basically used the default values above, there will be
@@ -736,56 +736,56 @@ c:\users\[username]\postprocessing\[organization]\[job_name]\run_chunk_001_gpu_0
 
 Those batch files expect to be run from the "detection" folder of the MegaDetector repo,
 typically:
-    
+
 c:\git\MegaDetector\megadetector\detection
 
-All of that said, you don't *have* to do this at the command line.  The following cell 
+All of that said, you don't *have* to do this at the command line.  The following cell
 runs these scripts programmatically, so if you set "run_tasks_in_notebook" to "True"
 and run this cell, you can run MegaDetector without leaving this notebook.
 
 One downside of the programmatic approach is that this cell doesn't yet parallelize over
-multiple processes, so the tasks will run serially.  This only matters if you have 
+multiple processes, so the tasks will run serially.  This only matters if you have
 multiple GPUs.
 """
 
 run_tasks_in_notebook = False
 
 if run_tasks_in_notebook:
-    
+
     assert not use_yolo_inference_scripts, \
         'If you want to use the YOLOv5 inference scripts, you can\'t run the model interactively (yet)'
-        
+
     # i_task = 0; task = task_info[i_task]
     for i_task,task in enumerate(task_info):
-    
+
         chunk_file = task['input_file']
         output_fn = task['output_file']
-        
+
         checkpoint_filename = chunk_file.replace('.json','_checkpoint.json')
-        
+
         if json_threshold is not None:
             confidence_threshold = json_threshold
         else:
             confidence_threshold = DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
-            
+
         if checkpoint_frequency is not None and checkpoint_frequency > 0:
             cp_freq_arg = checkpoint_frequency
         else:
             cp_freq_arg = -1
-            
+
         start_time = time.time()
-        results = load_and_run_detector_batch(model_file=model_file, 
-                                              image_file_names=chunk_file, 
-                                              checkpoint_path=checkpoint_filename, 
+        results = load_and_run_detector_batch(model_file=model_file,
+                                              image_file_names=chunk_file,
+                                              checkpoint_path=checkpoint_filename,
                                               confidence_threshold=confidence_threshold,
-                                              checkpoint_frequency=cp_freq_arg, 
+                                              checkpoint_frequency=cp_freq_arg,
                                               results=None,
-                                              n_cores=ncores, 
+                                              n_cores=ncores,
                                               use_image_queue=use_image_queue,
                                               quiet=quiet_mode,
-                                              image_size=image_size)        
+                                              image_size=image_size)
         elapsed = time.time() - start_time
-        
+
         print('Task {}: finished inference for {} images in {}'.format(
             i_task, len(results),humanfriendly.format_timespan(elapsed)))
 
@@ -793,15 +793,15 @@ if run_tasks_in_notebook:
         write_results_to_file(results, output_fn, detector_file=model_file)
 
         if checkpoint_frequency is not None and checkpoint_frequency > 0:
-            if os.path.isfile(checkpoint_filename):                
+            if os.path.isfile(checkpoint_filename):
                 os.remove(checkpoint_filename)
                 print('Deleted checkpoint file {}'.format(checkpoint_filename))
-                
+
     # ...for each chunk
-    
+
 # ...if we're running tasks in this notebook
 
-    
+
 #%% Load results, look for failed or missing images in each task
 
 # Check that all task output files exist
@@ -809,7 +809,7 @@ if run_tasks_in_notebook:
 missing_output_files = []
 
 # i_task = 0; task = task_info[i_task]
-for i_task,task in tqdm(enumerate(task_info),total=len(task_info)):    
+for i_task,task in tqdm(enumerate(task_info),total=len(task_info)):
     output_file = task['output_file']
     if not os.path.isfile(output_file):
         missing_output_files.append(output_file)
@@ -824,25 +824,25 @@ n_total_failures = 0
 
 # i_task = 0; task = task_info[i_task]
 for i_task,task in tqdm(enumerate(task_info),total=len(task_info)):
-    
+
     chunk_file = task['input_file']
     output_file = task['output_file']
-    
+
     with open(chunk_file,'r') as f:
         task_images = json.load(f)
     with open(output_file,'r') as f:
         task_results = json.load(f)
-    
+
     task_images_set = set(task_images)
     filename_to_results = {}
-    
+
     n_task_failures = 0
-    
+
     # im = task_results['images'][0]
     for im in task_results['images']:
-        
-        # Most of the time, inference result files use absolute paths, but it's 
-        # getting annoying to make sure that's *always* true, so handle both here.  
+
+        # Most of the time, inference result files use absolute paths, but it's
+        # getting annoying to make sure that's *always* true, so handle both here.
         # E.g., when using tiled inference, paths will be relative.
         if not os.path.isabs(im['file']):
             fn = path_join(input_path,im['file'])
@@ -853,14 +853,14 @@ for i_task,task in tqdm(enumerate(task_info),total=len(task_info)):
         if 'failure' in im:
             assert im['failure'] is not None
             n_task_failures += 1
-    
+
     task['n_failures'] = n_task_failures
     task['results'] = task_results
-    
+
     for fn in task_images:
         assert fn in filename_to_results, \
             'File {} not found in results for task {}'.format(fn,i_task)
-    
+
     n_total_failures += n_task_failures
 
 # ...for each task
@@ -871,7 +871,7 @@ assert n_total_failures < max_tolerable_failed_images,\
 
 print('Processed all {} images with {} failures'.format(
     len(all_images),n_total_failures))
-        
+
 
 ##%% Merge results files and make filenames relative
 
@@ -882,22 +882,22 @@ images_processed = set()
 for i_task,task in tqdm(enumerate(task_info),total=len(task_info)):
 
     task_results = task['results']
-    
+
     if i_task == 0:
         combined_results['info'] = task_results['info']
-        combined_results['detection_categories'] = task_results['detection_categories']        
+        combined_results['detection_categories'] = task_results['detection_categories']
     else:
         assert task_results['info']['format_version'] == combined_results['info']['format_version']
         assert task_results['detection_categories'] == combined_results['detection_categories']
-        
+
     # Make sure we didn't see this image in another chunk
     for im in task_results['images']:
         assert im['file'] not in images_processed
         images_processed.add(im['file'])
 
     combined_results['images'].extend(task_results['images'])
-    
-# Check that we ended up with the right number of images    
+
+# Check that we ended up with the right number of images
 assert len(combined_results['images']) == len(all_images), \
     'Expected {} images in combined results, found {}'.format(
         len(all_images),len(combined_results['images']))
@@ -914,7 +914,7 @@ for im in combined_results['images']:
         im['file'] = im['file'].replace(input_path,'',1)
     else:
         im['file'] = im['file'].replace(input_path + '/','',1)
-    
+
 with open(combined_api_output_file,'w') as f:
     json.dump(combined_results,f,indent=1)
 
@@ -925,8 +925,8 @@ print('\nWrote results to {}'.format(combined_api_output_file))
 
 """
 NB: I almost never run this cell.  This preview the results *before* repeat detection
-elimination (RDE), but since I'm essentially always doing RDE, I'm basically never 
-interested in this preview.  There is a similar cell below for previewing results 
+elimination (RDE), but since I'm essentially always doing RDE, I'm basically never
+interested in this preview.  There is a similar cell below for previewing results
 *after* RDE, which I almost always run.
 """
 
@@ -982,7 +982,7 @@ options.customDirNameFunction = relative_path_to_location
 # To invoke custom collapsing of folders for a particular naming scheme
 # options.customDirNameFunction = custom_relative_path_to_location
 
-# To treat a specific folder level as a camera, frequently used when the leaf 
+# To treat a specific folder level as a camera, frequently used when the leaf
 # folders each contain frames extracted from a single video
 #
 # Setting this value to 0 is the same as treating each leaf folder as a camera.
@@ -1025,12 +1025,12 @@ open_file(os.path.dirname(suspicious_detection_results.filterFile),
                      attempt_to_open_in_wsl_host=True)
 
 #
-# If you ran the previous cell, but then you change your mind and you don't want to do 
-# the RDE step, that's fine, but don't just blast through this cell once you've run the 
-# previous cell.  If you do that, you're implicitly telling the notebook that you looked 
+# If you ran the previous cell, but then you change your mind and you don't want to do
+# the RDE step, that's fine, but don't just blast through this cell once you've run the
+# previous cell.  If you do that, you're implicitly telling the notebook that you looked
 # at everything in that folder, and confirmed there were no red boxes on animals.
 #
-# Instead, either change "filtered_output_filename" below to "combined_api_output_file", 
+# Instead, either change "filtered_output_filename" below to "combined_api_output_file",
 # or delete *all* the images in the filtering folder.
 #
 
@@ -1051,8 +1051,8 @@ remove_repeat_detections.remove_repeat_detections(
 preview_options = deepcopy(preview_options_base)
 preview_options.image_base_dir = input_path
 
-preview_folder = path_join(postprocessing_output_folder, 
-    base_task_name + '_{}_{:.3f}'.format(rde_string, preview_options.confidence_threshold))    
+preview_folder = path_join(postprocessing_output_folder,
+    base_task_name + '_{}_{:.3f}'.format(rde_string, preview_options.confidence_threshold))
 
 os.makedirs(preview_folder, exist_ok=True)
 
@@ -1093,7 +1093,7 @@ crop_instances_json = path_join(combined_api_output_folder,
 
 ## Classification constants
 
-# The instances.json file we use to pass path names and the country code to the 
+# The instances.json file we use to pass path names and the country code to the
 # classifier and ensemble
 instances_json = \
     path_join(combined_api_output_folder,
@@ -1103,14 +1103,14 @@ instances_json = \
 classifier_output_file_modular_crops = \
     path_join(combined_api_output_folder,
                  base_task_name + '-classifier_output_modular_crops.json')
-    
+
 # The folder where we'll store classifier results for each chunk
 #
 # (...if we're breaking classification into chunks).
 chunk_folder = path_join(filename_base,'classifier_chunks')
 
 # The .sh file we'll use to launch the classifier
-classifier_script_file = path_join(filename_base,'run_all_classifier_chunks.sh')            
+classifier_script_file = path_join(filename_base,'run_all_classifier_chunks.sh')
 
 
 ## Ensemble constants
@@ -1135,14 +1135,14 @@ ensemble_output_file_image_level_md_format = \
 # The ensemble results (in MD format) after image-level smoothing
 classifier_output_path_within_image_smoothing = insert_before_extension(
     ensemble_output_file_image_level_md_format,'within_image_smoothing')
-   
+
 sequence_smoothed_classification_file = \
     insert_before_extension(classifier_output_path_within_image_smoothing,
                             'seqsmoothing')
 
 custom_taxa_output_file = insert_before_extension(
     ensemble_output_file_image_level_md_format,'custom-species-{}'.format(custom_taxa_stage))
-    
+
 
 ## Miscellaneous
 
@@ -1162,7 +1162,7 @@ for fn in [classifier_output_file_modular_crops,
            ensemble_output_file_modular_crops]:
     if os.path.exists(fn):
         print('**\nWarning, file {} exists, this is OK if you are resuming\n**\n'.format(fn))
-        
+
 assert country_code is not None, 'Did you mean to specify a country code?'
 if country_code == 'USA' and state_code is None:
     print('*** Did you mean to specify a state code? ***')
@@ -1185,7 +1185,7 @@ print('Generated {} instances'.format(len(instances['instances'])))
 
 from megadetector.postprocessing.create_crop_folder import \
     CreateCropFolderOptions, create_crop_folder
-    
+
 create_crop_folder_options = CreateCropFolderOptions()
 create_crop_folder_options.n_workers = 8
 create_crop_folder_options.pool_type = 'process'
@@ -1259,77 +1259,77 @@ gpu_to_classifier_scripts = defaultdict(list)
 
 # i_chunk = 0; chunk = chunks[i_chunk]
 for i_chunk,chunk in enumerate(chunks):
-    
+
     if n_gpus > 1:
-        gpu_number = i_chunk % n_gpus        
+        gpu_number = i_chunk % n_gpus
     else:
         gpu_number = default_gpu_number
-    
+
     if default_gpu_number is not None:
         if os.name == 'nt':
             cuda_prefix = f'set CUDA_VISIBLE_DEVICES={gpu_number} & '
         else:
-            cuda_prefix = f'CUDA_VISIBLE_DEVICES={gpu_number} '        
+            cuda_prefix = f'CUDA_VISIBLE_DEVICES={gpu_number} '
     else:
         cuda_prefix = ''
 
     chunk_str = str(i_chunk).zfill(3)
-    
+
     chunk_instances_json = path_join(chunk_folder,'crop_instances_chunk_{}.json'.format(
         chunk_str))
     chunk_instances_dict = {'instances':chunk}
     with open(chunk_instances_json,'w') as f:
         json.dump(chunk_instances_dict,f,indent=1)
-    
+
     chunk_detections_json = path_join(chunk_folder,'detections_chunk_{}.json'.format(
         chunk_str))
-    
+
     detection_predictions_this_chunk = []
-    
+
     images_this_chunk = [instance['filepath'] for instance in chunk]
-    
+
     for image_fn in images_this_chunk:
         assert image_fn in detection_filepath_to_instance
         detection_predictions_this_chunk.append(detection_filepath_to_instance[image_fn])
-        
+
     detection_predictions_dict = {'predictions':detection_predictions_this_chunk}
-    
+
     with open(chunk_detections_json,'w') as f:
         json.dump(detection_predictions_dict,f,indent=1)
-    
-    chunk_files = [instance['filepath'] for instance in chunk]    
-    
+
+    chunk_files = [instance['filepath'] for instance in chunk]
+
     chunk_predictions_json = path_join(chunk_folder,'predictions_chunk_{}.json'.format(
         chunk_str))
-    
+
     if os.path.isfile(chunk_predictions_json):
         print('Warning: chunk output file {} exists'.format(chunk_predictions_json))
-        
+
     chunk_prediction_files.append(chunk_predictions_json)
-    
+
     chunk_script = path_join(chunk_folder,'run_chunk_{}{}'.format(i_chunk,script_extension))
     cmd = 'python speciesnet/scripts/run_model.py --classifier_only --model "{}"'.format(
         speciesnet_model_file)
     cmd += ' --instances_json "{}"'.format(chunk_instances_json)
     cmd += ' --predictions_json "{}"'.format(chunk_predictions_json)
     cmd += ' --detections_json "{}"'.format(chunk_detections_json)
-    
+
     if classifier_batch_size is not None:
        cmd += ' --batch_size {}'.format(classifier_batch_size)
-        
+
     chunk_script_file = path_join(chunk_folder,'run_chunk_{}{}'.format(chunk_str,script_extension))
-    
-    with open(chunk_script_file,'w') as f:        
+
+    with open(chunk_script_file,'w') as f:
         # This writes, e.g. "set -e"
         if script_header is not None and len(script_header) > 0:
-            f.write(script_header + '\n')        
-        f.write(cuda_prefix + cmd)   
-        
+            f.write(script_header + '\n')
+        f.write(cuda_prefix + cmd)
+
     st = os.stat(chunk_script_file)
     os.chmod(chunk_script_file, st.st_mode | stat.S_IEXEC)
-    
+
     gpu_to_classifier_scripts[gpu_number].append(chunk_script_file)
-    
+
 # ...for each chunk
 
 per_gpu_scripts = []
@@ -1337,7 +1337,7 @@ per_gpu_scripts = []
 # Write out a script for each GPU that runs all of the commands associated with
 # that GPU.
 for gpu_number in gpu_to_classifier_scripts:
-    
+
     gpu_script_file = path_join(filename_base,'run_classifier_for_gpu_{}{}'.format(
         str(gpu_number).zfill(2),script_extension))
     per_gpu_scripts.append(gpu_script_file)
@@ -1346,34 +1346,34 @@ for gpu_number in gpu_to_classifier_scripts:
         prepare_conda_environment_cmd = 'call'
     else:
         prepare_conda_environment_cmd = 'eval "$(conda shell.bash hook)" && '
-        
+
     classifier_init_cmd = f'cd {speciesnet_folder} && {prepare_conda_environment_cmd} conda activate {speciesnet_classifier_environment_name}'
 
     with open(gpu_script_file,'w') as f:
-        
+
         # This writes, e.g. "set -e"
         if script_header is not None and len(script_header) > 0:
-            f.write(script_header)            
-            
+            f.write(script_header)
+
         # Change folder/environment
         f.write(classifier_init_cmd + '\n')
-        
+
         for script_name in gpu_to_classifier_scripts[gpu_number]:
-            
+
             s = script_name
             # When calling a series of batch files on Windows from within a batch file, you need to
             # use "call", or only the first will be executed.  No, it doesn't make sense.
             if os.name == 'nt':
                 s = 'call ' + s
             f.write(s + '\n')
-            
+
         f.write('echo "Finished all commands for GPU {}"'.format(gpu_number))
-        
+
     st = os.stat(gpu_script_file)
     os.chmod(gpu_script_file, st.st_mode | stat.S_IEXEC)
 
 # ...for each GPU
-    
+
 print('\nClassification scripts you should run now:')
 for s in per_gpu_scripts:
     print(s)
@@ -1387,7 +1387,7 @@ from megadetector.utils.wi_utils import merge_prediction_json_files
 
 merge_prediction_json_files(input_prediction_files=chunk_prediction_files,
                             output_prediction_file=classifier_output_file_modular_crops)
-    
+
 
 ##%% Validate crop classification results
 
@@ -1411,7 +1411,7 @@ cmd += ' --predictions_json "{}"'.format(ensemble_output_file_modular_crops)
 # list, otherwise the smoothing is quite messy.
 if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
     cmd += ' --nogeofence'
-    
+
 ensemble_commands.append(cmd)
 
 ensemble_cmd = '\n\n'.join(ensemble_commands)
@@ -1480,14 +1480,14 @@ for fn in filenames_in_results:
 for fn in images_in_folder:
     assert fn in filenames_in_results, \
         'Image {} present in folder but not in results'.format(fn)
-        
+
 n_failures = 0
-        
+
 # im = d['images'][0]
 for im in d['images']:
     if 'failure' in im:
         n_failures += 1
-        
+
 print('Loaded results for {} images with {} failures'.format(
     len(images_in_folder),n_failures))
 
@@ -1497,9 +1497,9 @@ print('Loaded results for {} images with {} failures'.format(
 from megadetector.postprocessing.classification_postprocessing import restrict_to_taxa_list
 
 if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
-    
+
     taxa_list = custom_taxa_list
-    speciesnet_taxonomy_file = taxonomy_file    
+    speciesnet_taxonomy_file = taxonomy_file
     restrict_to_taxa_list(taxa_list=taxa_list,
                           speciesnet_taxonomy_file=speciesnet_taxonomy_file,
                           input_file=ensemble_output_file_image_level_md_format,
@@ -1581,65 +1581,65 @@ sequence_method = 'exif'
 ##%% If we're building sequence information based on EXIF data
 
 if sequence_method == 'exif':
-    
+
     pass
 
     ##%% Read EXIF date and time from all images
-    
+
     from megadetector.data_management import read_exif
     exif_options = read_exif.ReadExifOptions()
-    
+
     exif_options.verbose = False
     exif_options.n_workers = default_workers_for_parallel_tasks
     exif_options.use_threads = parallelization_defaults_to_threads
     exif_options.processing_library = 'pil'
     exif_options.byte_handling = 'delete'
     exif_options.tags_to_include = ['DateTime','DateTimeOriginal']
-    
+
     if os.path.isfile(exif_results_file):
         print('Reading EXIF data from {}'.format(exif_results_file))
         with open(exif_results_file,'r') as f:
             exif_results = json.load(f)
-    else:        
+    else:
         exif_results = read_exif.read_exif_from_folder(input_path,
                                                        output_file=exif_results_file,
                                                        options=exif_options)
-    
-    
+
+
     ##%% Prepare COCO-camera-traps-compatible image objects for EXIF results
-    
+
     # ...and add location/datetime info based on filenames and EXIF information.
-    
+
     from megadetector.data_management.read_exif import \
         exif_results_to_cct, ExifResultsToCCTOptions
     from megadetector.utils.ct_utils import is_function_name
-    
+
     exif_results_to_cct_options = ExifResultsToCCTOptions()
-    
+
     exif_data_in_cct_format_file = path_join(filename_base,'exif_data_in_cct_format.json')
-    
+
     if os.path.isfile(exif_data_in_cct_format_file):
-        
+
         print('Reading CCT-formatted EXIF data from {}'.format(exif_data_in_cct_format_file))
-        
+
         with open(exif_data_in_cct_format_file,'r') as f:
             cct_dict = json.load(f)
-    
-    else: 
-        
+
+    else:
+
         # If we've defined a "custom_relative_path_to_location" location, which by convention
-        # is what we use in this notebook for a non-standard location mapping function, use it 
+        # is what we use in this notebook for a non-standard location mapping function, use it
         # to parse locations when creating the CCT data.
         if is_function_name('custom_relative_path_to_location',locals()):
             print('Using custom location mapping function in EXIF conversion')
             exif_results_to_cct_options.filename_to_location_function = \
                 custom_relative_path_to_location # type: ignore # noqa
-                
+
         cct_dict = exif_results_to_cct(exif_results=exif_results,
                                        cct_output_file=exif_data_in_cct_format_file,
                                        options=exif_results_to_cct_options)
 
-        
+
     ##%% Assemble images into sequences
 
     from megadetector.data_management import cct_json_utils
@@ -1654,44 +1654,44 @@ if sequence_method == 'exif':
 ##%% If we're building sequence information based on folder structure
 
 else:
-    
+
     assert sequence_method == 'folder'
     pass
 
 
-    ##%% Read the list of filenames    
-    
+    ##%% Read the list of filenames
+
     input_file_for_sequence_aggregation = classifier_output_path_within_image_smoothing
     with open(input_file_for_sequence_aggregation,'r') as f:
         d = json.load(f)
 
 
     ##%% Synthesize sequences
-        
+
     cct_dict = {'info':{},'annotations':[],'categories':[],'images':[]}
-            
+
     folder_name_to_images = defaultdict(list) # noqa
     images_out = []
-    
+
     # im_in = d['images'][0]
     for im_in in tqdm(d['images']):
-        
+
         folder_name = os.path.dirname(im_in['file']).replace('\\','/')
         folder_name_to_images[folder_name].append(im_in['file'])
-        
+
         im_out = {}
         images_out.append(im_out)
-        
+
         im_out['file_name'] = im_in['file']
         im_out['seq_id'] = folder_name
-        
+
         # Not required for smoothing
         # im_out['frame_num'] = len(folder_name_to_images[folder_name]) - 1
         # location_name = os.path.dirname(folder_name).replace('\\','/')
         # im_out['location'] = location_name
-    
+
     cct_dict['images'] = images_out
-    
+
     print('Extracted {} sequences from {} images'.format(
         len(folder_name_to_images),len(d['images'])))
 
@@ -1749,12 +1749,12 @@ open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_na
 from megadetector.utils.wi_utils import restrict_to_taxa_list
 
 if (custom_taxa_list is not None) and (custom_taxa_stage == 'after_smoothing'):
-    
+
     taxa_list = custom_taxa_list
     speciesnet_taxonomy_file = taxonomy_file
     custom_taxa_output_file = insert_before_extension(
         sequence_smoothed_classification_file,'custom-species')
-    
+
     restrict_to_taxa_list(taxa_list=taxa_list,
                           speciesnet_taxonomy_file=speciesnet_taxonomy_file,
                           input_file=sequence_smoothed_classification_file,
@@ -1765,19 +1765,19 @@ if (custom_taxa_list is not None) and (custom_taxa_stage == 'after_smoothing'):
 #%% Preview (post-custom_taxa-smoothing)
 
 if (custom_taxa_list is not None) and (custom_taxa_stage == 'after_smoothing'):
-    
+
     preview_options = deepcopy(preview_options_base)
     preview_options.image_base_dir = input_path
-    
+
     preview_folder = path_join(postprocessing_output_folder,
         base_task_name + '_{}_custom_taxa'.format(preview_options.confidence_threshold))
-    
+
     os.makedirs(preview_folder, exist_ok=True)
-    
+
     preview_options.md_results_file = custom_taxa_output_file
     preview_options.output_dir = preview_folder
     preview_options.footer_text = geofence_footer
-    
+
     print('Generating post-sequence-smoothing preview in {}'.format(preview_folder))
     ppresults = process_batch_results(preview_options)
     open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
@@ -1791,10 +1791,10 @@ from megadetector.postprocessing.subset_json_detector_output import \
 
 from megadetector.postprocessing.validate_batch_results import \
     ValidateBatchResultsOptions, validate_batch_results
-    
+
 input_fn_abs = sequence_smoothed_classification_file
 output_fn_abs = insert_before_extension(input_fn_abs,'trimmed')
-    
+
 options = SubsetJsonDetectorOutputOptions()
 options.remove_classification_categories_below_count = 1
 options.overwrite_json_files = True
@@ -1833,7 +1833,7 @@ from megadetector.postprocessing.subset_json_detector_output import \
 input_filename = filtered_output_filename
 output_base = path_join(combined_api_output_folder,base_task_name + '_json_subsets')
 
-print('Processing file {} to {}'.format(input_filename,output_base))          
+print('Processing file {} to {}'.format(input_filename,output_base))
 
 options = SubsetJsonDetectorOutputOptions()
 # options.query = None
@@ -1886,18 +1886,18 @@ for i_folder, folder_name in enumerate(folders):
     options.query = folder_name + '/'
 
     # This doesn't do anything in this case, since we're not splitting folders
-    # options.make_folder_relative = True        
-    
+    # options.make_folder_relative = True
+
     subset_data = subset_json_detector_output(input_filename, output_filename, options, data)
 
 
 #%% Sample custom path replacement function
 
 def custom_relative_path_to_location(relative_path):
-    
-    relative_path = relative_path.replace('\\','/')    
+
+    relative_path = relative_path.replace('\\','/')
     tokens = relative_path.split('/')
-    
+
     # This example uses a hypothetical (but relatively common) scheme
     # where the first two slash-separated tokens define a site, e.g.
     # where filenames might look like:
@@ -1917,15 +1917,15 @@ location_names = set()
 
 # relative_path = image_filenames[0]
 for relative_path in tqdm(image_filenames):
-    
+
     # Use the standard replacement function
     location_name = relative_path_to_location(relative_path)
-    
+
     # Use a custom replacement function
     # location_name = custom_relative_path_to_location(relative_path)
-    
+
     location_names.add(location_name)
-    
+
 location_names = list(location_names)
 location_names.sort()
 
@@ -1942,7 +1942,7 @@ if os.name == 'nt':
     git_base = r'c:\git'
 else:
     git_base = os.path.expanduser('~/git')
-    
+
 input_py_file = git_base + '/MegaDetector/notebooks/manage_local_batch.py'
 assert os.path.isfile(input_py_file)
 output_ipynb_file = input_py_file.replace('.py','.ipynb')
@@ -1973,15 +1973,15 @@ i_line = 4
 
 # Everything before the first cell is the header comment
 while(not lines[i_line].startswith('#%%')):
-    
+
     s_raw = lines[i_line]
     s_trimmed = s_raw.strip()
-    
+
     # Ignore the closing quotes at the end of the header
     if (s_trimmed == '"""'):
         i_line += 1
         continue
-    
+
     if len(s_trimmed) == 0:
         header_comment += '\n\n'
     else:
@@ -1995,30 +1995,30 @@ nb['cells'].append(nbf.v4.new_markdown_cell(nb_header))
 current_cell = []
 
 def write_code_cell(c):
-    
+
     first_non_empty_line = None
     last_non_empty_line = None
-    
+
     for i_code_line,code_line in enumerate(c):
         if len(code_line.strip()) > 0:
             if first_non_empty_line is None:
                 first_non_empty_line = i_code_line
             last_non_empty_line = i_code_line
-            
+
     # Remove the first [first_non_empty_lines] from the list
     c = c[first_non_empty_line:]
     last_non_empty_line -= first_non_empty_line
     c = c[:last_non_empty_line+1]
-    
+
     nb['cells'].append(nbf.v4.new_code_cell('\n'.join(c)))
-        
-while(True):    
-            
+
+while(True):
+
     line = lines[i_line].rstrip()
-    
+
     if 'end notebook' in line.lower():
         break
-    
+
     if lines[i_line].startswith('#%% '):
         if len(current_cell) > 0:
             write_code_cell(current_cell)

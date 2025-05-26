@@ -11,6 +11,8 @@ Converts the output of the MEWC inference scripts to the MD output format.
 import os
 import json
 import pandas as pd
+import sys
+import argparse
 
 from copy import deepcopy
 from collections import defaultdict
@@ -304,9 +306,6 @@ if False:
 
 
 #%% Command-line driver
-
-import sys
-import argparse
 
 def main(): # noqa
 

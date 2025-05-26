@@ -98,7 +98,9 @@ exclude = ["megadetector/api/batch_processing/api_core/**/*.py",
 		   "megadetector/api/batch_processing/api_core_support/**/*.py",
 		   "megadetector/api/batch_processing/integration/**/*.py",
 		   "megadetector/api/synchronous/**/*.py",
-		   "megadetector/**/__init__.py"]
+		   "megadetector/**/__init__.py",
+		   "megadetector/data_management/ocr_tools.py",
+		   "megadetector/taxonomy_mapping/**/*.py"]
 
 [tool.ruff.lint]
 select = [
@@ -116,7 +118,13 @@ select = [
 convention = "google"
 
 [tool.ruff.per-file-ignores]
-"**/*.py" = ["D212","D415","D202","UP032","UP015","UP038","B007","D200","E702","D205","D417","B904","D107"]
+"**/*.py" = ["D212","D415","D202","UP032","UP007","UP015","UP038",
+             "UP035","UP024","B007","D200","E702","D205","D417",
+			 "B904","D107","N813","B905","D105","UP028"]
+"megadetector/detection/run_inference_with_yolov5_val.py" = ["E501"]
+"megadetector/postprocessing/compare_batch_results.py" = ["E501"]
+"megadetector/postprocessing/postprocess_batch_results.py" = ["E501"]
+"megadetector/utils/wi_utils.py" = ["E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["megadetector"]

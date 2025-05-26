@@ -37,7 +37,7 @@ avoiding overlapping locations between the train/val/test splits.
 This script outputs 3 files to <output_dir>:
 
 1) classification_ds.csv, contains columns:
-   
+
     - 'path': str, path to cropped images
     - 'dataset': str, name of dataset
     - 'location': str, location that image was taken, as saved in MegaDB
@@ -109,7 +109,7 @@ def main(output_dir: str,
          test_frac: Optional[float],
          splits_method: Optional[str],
          label_spec_json_path: Optional[str]) -> None:
-    
+
     # input validation
     assert set(mode) <= {'csv', 'splits'}
     if label_spec_json_path is not None:
@@ -235,7 +235,7 @@ def create_classification_csv(
             'missing crops': list of tuple (img_path, i), where i is the
                 i-th crop index
     """
-    
+
     assert 0 <= confidence_threshold <= 1
 
     columns = [
@@ -358,7 +358,7 @@ def create_splits_random(df: pd.DataFrame, val_frac: float,
     Returns: dict, keys are ['train', 'val', 'test'], values are lists of locs,
         where each loc is a tuple (dataset, location)
     """
-    
+
     if test_split is not None:
         assert test_frac == 0
     train_frac = 1. - val_frac - test_frac
@@ -444,7 +444,7 @@ def create_splits_smallest_label_first(
     Returns: dict, keys are ['train', 'val', 'test'], values are lists of locs,
         where each loc is a tuple (dataset, location)
     """
-    
+
     # label => list of datasets to prioritize for test and validation sets
     prioritize = {}
     if label_spec_json_path is not None:
@@ -524,7 +524,7 @@ def sort_locs_by_size(loc_to_size: MutableMapping[tuple[str, str], int],
     Returns: list of (dataset, location) tuples, ordered from smallest size to
         largest. Locations from prioritized datasets come first.
     """
-    
+
     result = []
     if prioritize is not None:
         # modify loc_to_size in place, so copy its keys before iterating
@@ -609,7 +609,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
-    
+
     args = _parse_args()
     main(output_dir=args.output_dir,
          mode=args.mode,

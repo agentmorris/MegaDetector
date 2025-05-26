@@ -78,7 +78,7 @@ class CameraTrapJsonUtils:
 
         Returns:
             dict: the same content as [db] but as an OrderedDict with keys ordered for
-                readability
+            readability
         """
 
         ordered = OrderedDict([
@@ -103,7 +103,7 @@ class CameraTrapJsonUtils:
 
         Returns:
             dict: a dict mapping objects (typically strings, in fact typically sequence IDs) to
-                lists of annotations
+            lists of annotations
         """
 
         image_id_to_image_field = {}
@@ -249,7 +249,7 @@ class IndexedJsonDb:
 
         Returns:
             list: list of annotations associated with this image.  Returns None if the db
-                has not been loaded, or [] if no annotations are available for this image.
+            has not been loaded, or [] if no annotations are available for this image.
         """
 
         if self.db is None:
@@ -272,7 +272,7 @@ class IndexedJsonDb:
 
         Returns:
             list: list of class names associated with this image.  Returns None if the db
-                has not been loaded, or [] if no annotations are available for this image.
+            has not been loaded, or [] if no annotations are available for this image.
         """
 
         if self.db is None:
@@ -423,7 +423,7 @@ def create_sequences(image_info,options=None):
 
     Returns:
         image_info: if [image_info] is passed as a list, returns the list, otherwise returns
-            a CCT-formatted dict.
+        a CCT-formatted dict.
     """
 
     if options is None:

@@ -589,7 +589,7 @@ def clean_filename(filename,
             step
         force_lower (bool, optional): convert the resulting filename to lowercase
 
-    returns:
+    Returns:
         str: cleaned version of [filename]
     """
 
@@ -621,7 +621,7 @@ def clean_path(pathname,
             step
         force_lower (bool, optional): convert the resulting filename to lowercase
 
-    returns:
+    Returns:
         str: cleaned version of [filename]
     """
 
@@ -823,7 +823,7 @@ def open_file_in_chrome(filename):
                 if chrome_path and os.path.exists(chrome_path):
                     subprocess.run([chrome_path, url])
                     return True
-        except:
+        except Exception:
             pass
 
         # Method 3: Try alternate registry location
@@ -834,7 +834,7 @@ def open_file_in_chrome(filename):
                 if os.path.exists(chrome_path):
                     subprocess.run([chrome_path, url])
                     return True
-        except:
+        except Exception:
             pass
 
         # Method 4: Try system path or command
@@ -842,14 +842,14 @@ def open_file_in_chrome(filename):
             try:
                 subprocess.run([chrome_cmd, url], shell=True)
                 return True
-            except:
+            except Exception:
                 continue
 
         # Method 5: Use Windows URL protocol handler
         try:
             os.startfile(url)
             return True
-        except:
+        except Exception:
             pass
 
         # Method 6: Use rundll32
@@ -857,7 +857,7 @@ def open_file_in_chrome(filename):
             cmd = f'rundll32 url.dll,FileProtocolHandler {url}'
             subprocess.run(cmd, shell=True)
             return True
-        except:
+        except Exception:
             pass
 
     elif system == 'Darwin':
@@ -876,7 +876,7 @@ def open_file_in_chrome(filename):
         try:
             subprocess.run(['open', '-a', 'Google Chrome', url])
             return True
-        except:
+        except Exception:
             pass
 
     elif system == 'Linux':
@@ -887,7 +887,7 @@ def open_file_in_chrome(filename):
             try:
                 subprocess.run([cmd, url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 return True
-            except:
+            except Exception:
                 continue
 
     print(f"Could not open {filename} in Chrome on {system}.")
@@ -945,7 +945,7 @@ def open_file(filename, attempt_to_open_in_wsl_host=False, browser_name=None):
         if os.path.isdir(filename):
             subprocess.run(["explorer.exe", windows_path])
         else:
-            os.system("cmd.exe /C start %s" % (re.escape(windows_path)))
+            os.system("cmd.exe /C start {}".format(re.escape(windows_path)))
 
     else:
 

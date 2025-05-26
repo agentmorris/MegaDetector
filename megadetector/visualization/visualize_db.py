@@ -32,7 +32,7 @@ from megadetector.utils.write_html_image_list import write_html_image_list
 from megadetector.data_management.cct_json_utils import IndexedJsonDb
 from megadetector.visualization import visualization_utils as vis_utils
 
-def isnan(x):
+def _isnan(x):
     return (isinstance(x,float) and np.isnan(x))
 
 
@@ -57,11 +57,11 @@ class DbVizOptions:
         #:
         #:The most relevant option one might want to set here is:
         #:
-        #: htmlOptions['maxFiguresPerHtmlFile']
+        #: html_options['maxFiguresPerHtmlFile']
         #:
         #: ...which can be used to paginate previews to a number of images that will load well
         #: in a browser (5000 is a reasonable limit).
-        self.htmlOptions = write_html_image_list()
+        self.html_options = write_html_image_list()
 
         #: Whether to sort images by filename (True) or randomly (False)
         self.sort_by_filename = True
@@ -221,8 +221,8 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
 
         image_has_box = [False] * len(images)
         for i_image,image in enumerate(images):
-            imageID = image['id']
-            if imageID in image_ids_with_boxes:
+            image_id = image['id']
+            if image_id in image_ids_with_boxes:
                 image_has_box[i_image] = True
         images_with_bboxes = list(compress(images, image_has_box))
         images = images_with_bboxes
@@ -332,7 +332,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
                 for field_name in field_names:
                     if field_name in options.extra_annotation_fields_to_print:
                         field_value = anno[field_name]
-                        if (field_value is not None) and (not isnan(field_value)):
+                        if (field_value is not None) and (not _isnan(field_value)):
                             extra_annotation_field_string += ' ({}:{})'.format(
                                 field_name,field_value)
 
@@ -345,14 +345,14 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
                     continue
 
             if 'sequence_level_annotation' in anno:
-                bSequenceLevelAnnotation = anno['sequence_level_annotation']
-                if bSequenceLevelAnnotation:
-                    annLevel = 'sequence'
+                b_sequence_level_annotation = anno['sequence_level_annotation']
+                if b_sequence_level_annotation:
+                    annotation_level = 'sequence'
                 else:
-                    annLevel = 'image'
+                    annotation_level = 'image'
                 if annotation_level_for_image == '':
-                    annotation_level_for_image = annLevel
-                elif annotation_level_for_image != annLevel:
+                    annotation_level_for_image = annotation_level
+                elif annotation_level_for_image != annotation_level:
                     annotation_level_for_image = 'mixed'
 
             category_id = anno['category_id']
@@ -417,7 +417,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
 
         flag_string = ''
 
-        if ('flags' in img) and (not isnan(img['flags'])):
+        if ('flags' in img) and (not _isnan(img['flags'])):
             flag_string = ', flags: {}'.format(str(img['flags']))
 
         extra_field_string = ''
@@ -506,7 +506,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
             worker_string = 'threads'
         else:
             worker_string = 'processes'
-            
+
         pool = None
         try:
             if options.parallelize_rendering_n_cores is None:
@@ -520,7 +520,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
                 else:
                     pool = Pool(options.parallelize_rendering_n_cores)
                 print('Rendering images with {} {}'.format(options.parallelize_rendering_n_cores,
-                                                           worker_string))            
+                                                           worker_string))
             rendering_success = list(tqdm(pool.imap(render_image_info, rendering_info),
                                      total=len(rendering_info)))
         finally:
@@ -545,22 +545,22 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
     else:
         random.shuffle(images_html)
 
-    htmlOutputFile = os.path.join(output_dir, 'index.html')
+    html_output_file = os.path.join(output_dir, 'index.html')
 
-    htmlOptions = options.htmlOptions
+    html_options = options.html_options
     if isinstance(db_path,str):
-        htmlOptions['headerHtml'] = '<h1>Sample annotations from {}</h1>'.format(db_path)
+        html_options['headerHtml'] = '<h1>Sample annotations from {}</h1>'.format(db_path)
     else:
-        htmlOptions['headerHtml'] = '<h1>Sample annotations</h1>'
+        html_options['headerHtml'] = '<h1>Sample annotations</h1>'
 
     write_html_image_list(
-            filename=htmlOutputFile,
+            filename=html_output_file,
             images=images_html,
-            options=htmlOptions)
+            options=html_options)
 
-    print('Visualized {} images, wrote results to {}'.format(len(images_html),htmlOutputFile))
+    print('Visualized {} images, wrote results to {}'.format(len(images_html),html_output_file))
 
-    return htmlOutputFile,image_db
+    return html_output_file,image_db
 
 # def visualize_db(...)
 
@@ -570,7 +570,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
 # Copy all fields from a Namespace (i.e., the output from parse_args) to an object.
 #
 # Skips fields starting with _.  Does not check existence in the target object.
-def args_to_object(args, obj):
+def _args_to_object(args, obj):
 
     for n, v in inspect.getmembers(args):
         if not n.startswith('_'):
@@ -607,7 +607,7 @@ def main(): # noqa
 
     # Convert to an options object
     options = DbVizOptions()
-    args_to_object(args, options)
+    _args_to_object(args, options)
     if options.random_sort:
         options.sort_by_filename = False
 

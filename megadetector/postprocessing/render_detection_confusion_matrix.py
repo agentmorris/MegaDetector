@@ -230,7 +230,7 @@ def render_detection_confusion_matrix(ground_truth_file,
 
         pool = None
         try:
-            if parallelize_rendering_n_cores is None:                
+            if parallelize_rendering_n_cores is None:
                 if parallelize_rendering_with_threads:
                     pool = ThreadPool()
                 else:
@@ -244,7 +244,7 @@ def render_detection_confusion_matrix(ground_truth_file,
                     worker_string = 'processes'
                 print('Rendering images with {} {}'.format(parallelize_rendering_n_cores,
                                                         worker_string))
-            
+
             _ = list(tqdm(pool.imap(partial(_render_image,render_image_constants=render_image_constants),
                                     md_formatted_results['images']),
                                     total=len(md_formatted_results['images'])))

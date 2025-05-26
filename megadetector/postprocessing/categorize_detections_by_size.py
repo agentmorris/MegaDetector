@@ -67,7 +67,7 @@ def categorize_detections_by_size(input_file,output_file=None,options=None):
         'Options struct should have the same number of category names and size thresholds'
 
     # Sort size thresholds and names from largest to smallest
-    options.size_category_names = [x for _,x in sorted(zip(options.size_thresholds,
+    options.size_category_names = [x for _,x in sorted(zip(options.size_thresholds, # noqa
                                                              options.size_category_names),reverse=True)]
     options.size_thresholds = sorted(options.size_thresholds,reverse=True)
 

@@ -21,10 +21,14 @@ from tqdm import tqdm
 
 #%% Support functions
 
-# Pyexif2 is not thread safe, do not call this function in parallel within a process
-#
-# Parallelizing across processes is fine.
 def remove_exif_from_image(fn):
+    """
+    Remove EXIF information from a single image
+
+    pyexiv2 is not thread safe, do not call this function in parallel within a process.
+
+    Parallelizing across processes is fine.
+    """
 
     import pyexiv2 # type: ignore
 
@@ -53,8 +57,9 @@ def remove_exif(image_base_folder,recursive=True,n_processes=1):
         n_processes (int, optional): number of concurrent workers.  Because pyexiv2 is not
             thread-safe, only process-based parallelism is supported.
     """
+
     try:
-        import pyexiv2 #noqa
+        import pyexiv2 # type: ignore #noqa
     except:
         print('pyexiv2 not available; try "pip install pyexiv2"')
         raise

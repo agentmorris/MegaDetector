@@ -43,7 +43,7 @@ input_files = [
 
 for fn in input_files:
     assert os.path.isfile(fn)
-    
+
 
 #%% Constants
 
@@ -76,7 +76,7 @@ classification_threshold_str = '0.05'
 typical_classification_threshold_str = '0.75'
 
 classifier_name = 'megaclassifier_v0.1_efficientnet-b3'
-        
+
 
 #%% Set up environment
 
@@ -94,10 +94,10 @@ for fn in input_files:
 
     input_file_path = fn
     crop_cmd = ''
-    
+
     crop_comment = '\n# Cropping {}\n'.format(fn)
     crop_cmd += crop_comment
-    
+
     crop_cmd += "python crop_detections.py \\\n" + \
     	 input_file_path + ' \\\n' + \
          crop_path + ' \\\n' + \
@@ -120,12 +120,12 @@ for fn in input_files:
 
     input_file_path = fn
     classifier_output_path = crop_path + classifier_output_suffix
-    
+
     classify_cmd = ''
-    
+
     classify_comment = '\n# Classifying {}\n'.format(fn)
     classify_cmd += classify_comment
-    
+
     classify_cmd += "python run_classifier.py \\\n" + \
     	 checkpoint_path + ' \\\n' + \
          crop_path + ' \\\n' + \
@@ -135,14 +135,14 @@ for fn in input_files:
          '--image-size "' + image_size_str + '"' + ' \\\n' + \
          '--batch-size "' + batch_size_str + '"' + ' \\\n' + \
          '--num-workers "' + num_workers_str + '"' + ' \\\n'
-    
+
     if device_id is not None:
         classify_cmd += '--device {}'.format(device_id)
-        
-    classify_cmd += '\n\n'        
+
+    classify_cmd += '\n\n'
     classify_cmd = '{}'.format(classify_cmd)
     commands.append(classify_cmd)
-		
+
 
 #%% Remap classifier outputs
 
@@ -156,25 +156,25 @@ for fn in input_files:
     classifier_output_path_remapped = \
         classifier_output_path.replace(".csv.gz","_remapped.csv.gz")
     assert not (classifier_output_path == classifier_output_path_remapped)
-    
+
     output_label_index = classifier_output_path_remapped.replace(
         "_remapped.csv.gz","_label_index_remapped.json")
-                                       
+
     remap_cmd = ''
-    
+
     remap_comment = '\n# Remapping {}\n'.format(fn)
     remap_cmd += remap_comment
-    
+
     remap_cmd += "python aggregate_classifier_probs.py \\\n" + \
         classifier_output_path + ' \\\n' + \
         '--target-mapping "' + target_mapping_path + '"' + ' \\\n' + \
         '--output-csv "' + classifier_output_path_remapped + '"' + ' \\\n' + \
         '--output-label-index "' + output_label_index + '"' + ' \\\n' + \
         '\n'
-     
+
     remap_cmd = '{}'.format(remap_cmd)
     commands.append(remap_cmd)
-    
+
 
 #%% Merge classification and detection outputs
 
@@ -185,25 +185,25 @@ for fn in input_files:
 
     input_file_path = fn
     classifier_output_path = crop_path + classifier_output_suffix
-    
+
     classifier_output_path_remapped = \
         classifier_output_path.replace(".csv.gz","_remapped.csv.gz")
-    
+
     output_label_index = classifier_output_path_remapped.replace(
         "_remapped.csv.gz","_label_index_remapped.json")
-    
+
     final_output_path = os.path.join(output_base,
                                      os.path.basename(classifier_output_path)).\
         replace(classifier_output_suffix,
         final_output_suffix)
     final_output_path = final_output_path.replace('_detections','')
     final_output_path = final_output_path.replace('_crops','')
-    
+
     merge_cmd = ''
-    
+
     merge_comment = '\n# Merging {}\n'.format(fn)
     merge_cmd += merge_comment
-    
+
     merge_cmd += "python merge_classification_detection_output.py \\\n" + \
     	 classifier_output_path_remapped + ' \\\n' + \
          output_label_index + ' \\\n' + \

@@ -28,6 +28,8 @@ import os
 import json
 import tempfile
 import uuid
+import sys
+import argparse
 
 from tqdm import tqdm
 
@@ -543,25 +545,25 @@ def run_tiled_inference(model_file,
         pool = None
         try:
             if n_workers > len(image_files_relative):
-            
+
                 print('Pool of {} requested, but only {} images available, reducing pool to {}'.\
                       format(n_workers,len(image_files_relative),len(image_files_relative)))
                 n_workers = len(image_files_relative)
-                                
+
             if parallelization_uses_threads:
-                pool = ThreadPool(n_workers); poolstring = 'threads'                
+                pool = ThreadPool(n_workers); poolstring = 'threads'
             else:
                 pool = Pool(n_workers); poolstring = 'processes'
 
             print('Starting patch extraction pool with {} {}'.format(n_workers,poolstring))
-        
+
             all_image_patch_info = list(tqdm(pool.imap(
                     partial(_extract_tiles_for_image,
                             image_folder=image_folder,
                             tiling_folder=tiling_folder,
                             patch_size=patch_size,
                             patch_stride=patch_stride,
-                            overwrite=overwrite_tiles), 
+                            overwrite=overwrite_tiles),
                     image_files_relative),total=len(image_files_relative)))
         finally:
             if pool is not None:
@@ -903,8 +905,6 @@ if False:
 
 
 #%% Command-line driver
-
-import sys,argparse
 
 def main(): # noqa
 

@@ -33,7 +33,7 @@ bounding box width or height. In the case that the square crop boundaries exceed
 the original image size, the crop is padded with 0s.
 
 This script outputs a log file to:
-   
+
    <output_dir>/crop_detections_log_{timestamp}.json
 
 ...which contains images that failed to download and crop properly.
@@ -107,7 +107,7 @@ def main(detections_json_path: str,
         threads: int, number of threads to use for downloading images
         logdir: str, path to directory to save log file
     """
-    
+
     # error checking
     assert 0 <= confidence_threshold <= 1, \
             'Invalid confidence threshold {}'.format(confidence_threshold)
@@ -149,7 +149,7 @@ def main(detections_json_path: str,
         for d in info_dict['detections']:
             if d['category'] not in detection_categories:
                 print('Warning: ignoring detection with category {} for image {}'.format(
-                    d['category'],img_path))                
+                    d['category'],img_path))
                 # This will be removed later when we filter for animals
                 d['category'] = 'unsupported'
             else:
@@ -235,7 +235,7 @@ def download_and_crop(
         total_downloads: int, number of images downloaded
         total_new_crops: int, number of new crops saved to cropped_images_dir
     """
-    
+
     # True for ground truth, False for MegaDetector
     # always save as .jpg for consistency
     crop_path_template = {
@@ -297,7 +297,7 @@ def load_local_image(img_path: str |  BinaryIO) -> Optional[Image.Image]:
     """
     Attempts to load an image from a local path.
     """
-    
+
     try:
         with Image.open(img_path) as img:
             img.load()
@@ -347,7 +347,7 @@ def load_and_crop(img_path: str,
         did_download: bool, whether image was downloaded from Azure Blob Storage
         num_new_crops: int, number of new crops successfully saved
     """
-    
+
     did_download = False
     num_new_crops = 0
 
@@ -393,7 +393,7 @@ def load_and_crop(img_path: str,
 
     assert img is not None, 'image "{}" failed to load or download properly'.format(
         debug_path)
-    
+
     if img.mode != 'RGB':
         img = img.convert(mode='RGB')  # always save as RGB for consistency
 
@@ -418,7 +418,7 @@ def save_crop(img: Image.Image, bbox_norm: Sequence[float], square_crop: bool,
 
     Returns: bool, True if a crop was saved, False otherwise
     """
-    
+
     img_w, img_h = img.size
     xmin = int(bbox_norm[0] * img_w)
     ymin = int(bbox_norm[1] * img_h)
@@ -456,7 +456,7 @@ def save_crop(img: Image.Image, bbox_norm: Sequence[float], square_crop: bool,
 #%% Command-line driver
 
 def _parse_args() -> argparse.Namespace:
-    
+
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Crop detections from MegaDetector.')
@@ -501,7 +501,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
-    
+
     args = _parse_args()
     main(detections_json_path=args.detections_json,
          cropped_images_dir=args.cropped_images_dir,

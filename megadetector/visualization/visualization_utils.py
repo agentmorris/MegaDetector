@@ -273,7 +273,7 @@ def resize_image(image, target_width=-1, target_height=-1, output_file=None,
         verbose (bool, optional): enable additional debug output
         quality (str or int, optional): passed to exif_preserving_save, see docs for more detail
 
-    returns:
+    Returns:
         PIL.Image.Image: the resized image, which may be the original image if no resizing is
             required
     """
@@ -339,7 +339,7 @@ def resize_image(image, target_width=-1, target_height=-1, output_file=None,
     # I'd like to support both.
     try:
         resized_image = image.resize((target_width, target_height), Image.ANTIALIAS)
-    except:
+    except Exception:
         resized_image = image.resize((target_width, target_height), Image.Resampling.LANCZOS)
 
     if output_file is not None:
@@ -478,7 +478,6 @@ def render_detection_bounding_boxes(detections,
     [image] is modified in place.
 
     Args:
-
         detections (list): list of detections in the MD output format, for example:
 
             .. code-block::none
@@ -693,7 +692,6 @@ def draw_bounding_boxes_on_image(image,
     Draws bounding boxes on an image.  Modifies the image in place.
 
     Args:
-
         image (PIL.Image): the image on which we should draw boxes
         boxes (np.array): a two-dimensional numpy array of size [N, 4], where N is the
             number of boxes, and each row is (ymin, xmin, ymax, xmax).  Coordinates should be
@@ -760,7 +758,7 @@ def get_text_size(font,s):
     # l,t,r,b = font.getbbox(s); w = r; h=b
 
     try:
-        l,t,r,b = font.getbbox(s); w = r; h=b
+        l,t,r,b = font.getbbox(s); w = r; h=b # noqa
     except Exception:
         w,h = font.getsize(s)
 
@@ -1417,21 +1415,21 @@ def resize_images(input_file_to_output_file,
 
         try:
             if pool_type == 'thread':
-                pool = ThreadPool(n_workers); poolstring = 'threads'                
+                pool = ThreadPool(n_workers); poolstring = 'threads'
             else:
                 assert pool_type == 'process'
                 pool = Pool(n_workers); poolstring = 'processes'
-        
+
             if verbose:
                 print('Starting resizing pool with {} {}'.format(n_workers,poolstring))
-        
+
             p = partial(_resize_absolute_image,
                     target_width=target_width,
                     target_height=target_height,
                     no_enlarge_width=no_enlarge_width,
                     verbose=verbose,
                     quality=quality)
-        
+
             results = list(tqdm(pool.imap(p, input_output_file_pairs),total=len(input_output_file_pairs)))
         finally:
             pool.close()

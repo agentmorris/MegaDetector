@@ -712,12 +712,12 @@ def parallel_push_results_for_images(payloads,
             else:
                 pool_string = 'process'
                 pool = Pool(n_workers)
-    
+
             print('Created a {} pool of {} workers'.format(
                 pool_string,n_workers))
-        
+
             results = list(tqdm(pool.imap(
-                partial(push_results_for_images,headers=headers,url=url,verbose=verbose),payloads), 
+                partial(push_results_for_images,headers=headers,url=url,verbose=verbose),payloads),
                 total=len(payloads)))
         finally:
             pool.close()

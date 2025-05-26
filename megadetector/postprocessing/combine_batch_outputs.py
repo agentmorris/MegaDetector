@@ -84,7 +84,7 @@ def combine_batch_output_dictionaries(input_dicts, require_uniqueness=True):
             each input dict be unique; if this is True and image filenames are
             not unique, an error is raised.
 
-    Returns
+    Returns:
         dict: merged MD results
     """
 

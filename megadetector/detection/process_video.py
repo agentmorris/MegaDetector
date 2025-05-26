@@ -1111,18 +1111,20 @@ def main(): # noqa
                        action='store_true', help='Disable the deletion of extracted frames')
 
     parser.add_argument('--reuse_frames_if_available',
-                       action='store_true', help="Don't extract frames that are already available in the frame extraction folder")
+                       action='store_true',
+                       help="Don't extract frames that are already available in the frame extraction folder")
 
     parser.add_argument('--reuse_results_if_available',
-                       action='store_true', help='If the output .json files exists, and this flag is set,'\
+                       action='store_true',
+                       help='If the output .json files exists, and this flag is set,'\
                            'we\'ll skip running MegaDetector')
 
     parser.add_argument('--render_output_video', action='store_true',
                         help='enable video output rendering (not rendered by default)')
 
     parser.add_argument('--fourcc', default=default_fourcc,
-                        help='fourcc code to use for video encoding (default {}), only used if render_output_video is True'.format(
-                            default_fourcc))
+                        help=f'fourcc code to use for video encoding (default {default_fourcc}), ' + \
+                              'only used if render_output_video is True')
 
     parser.add_argument('--keep_rendered_frames',
                        action='store_true', help='Disable the deletion of rendered (w/boxes) frames')
@@ -1141,7 +1143,8 @@ def main(): # noqa
 
     parser.add_argument('--rendering_confidence_threshold', type=float,
                         default=None,
-                        help="don't render boxes with confidence below this threshold (defaults to choosing based on the MD version)")
+                        help="don't render boxes with confidence below this threshold " + \
+                             "(defaults to choosing based on the MD version)")
 
     parser.add_argument('--rendering_fs', type=float,
                         default=None,
@@ -1176,8 +1179,8 @@ def main(): # noqa
 
     parser.add_argument('--quality', type=int,
                         default=default_options.quality,
-                        help='JPEG quality for extracted frames (defaults to {}), use -1 to force no quality setting'.format(
-                            default_options.quality))
+                        help=f'JPEG quality for extracted frames (defaults to {default_options.quality}), ' + \
+                              'use -1 to force no quality setting')
 
     parser.add_argument('--max_width', type=int,
                         default=default_options.max_width,

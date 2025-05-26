@@ -34,7 +34,10 @@ image0001.jpg,error,error_string,-1
 import os
 import json
 import tempfile
+import sys
+import argparse
 import uuid
+
 import pandas as pd
 
 from copy import deepcopy
@@ -42,10 +45,8 @@ from copy import deepcopy
 from megadetector.utils.wi_utils import load_md_or_speciesnet_file
 from megadetector.utils.ct_utils import get_max_conf
 from megadetector.utils.ct_utils import is_list_sorted
-
 from megadetector.detection.run_detector import \
     get_typical_confidence_threshold_from_results
-
 from megadetector.data_management.read_exif import \
     read_exif_from_folder, ReadExifOptions, minimal_exif_tags
 
@@ -323,7 +324,7 @@ def generate_csv_report(md_results_file,
                     detection_category_name = detection_category_id_to_name[det['category']]
                     detection_confidence = det['conf']
                     classification_category_name = ''
-                    classificaition_confidence = 0.0
+                    classification_confidence = 0.0
 
                     if ('classifications' in det) and (len(det['classifications']) > 0):
 
@@ -406,7 +407,9 @@ if False:
     #%% Configure options
 
     r"""
-    python run_detector_batch.py MDV5A "g:\temp\md-test-images" "g:\temp\md-test-images\md_results_with_datetime.json" --recursive --output_relative_filenames --include_image_timestamp --include_exif_data
+    python run_detector_batch.py MDV5A "g:\temp\md-test-images"
+    "g:\temp\md-test-images\md_results_with_datetime.json"
+    --recursive --output_relative_filenames --include_image_timestamp --include_exif_data
     """
 
     md_results_file = 'g:/temp/csv-report-test/md-results.json'
@@ -436,8 +439,6 @@ if False:
 
 
 #%% Command-line driver
-
-import sys,argparse
 
 def main(): # noqa
 

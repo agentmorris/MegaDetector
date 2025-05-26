@@ -12,11 +12,11 @@ Takes as input 2 label specification JSON files:
 
 1) desired label specification JSON file
    this should not have a target named "other"
-   
+
 2) label specification JSON file of trained classifier
 
 The mapping is accomplished as follows:
-   
+
 1. For each category in the classifier label spec, find all taxon nodes that
     belong to that category.
 
@@ -129,7 +129,7 @@ def map_target_to_classifier(
 
     Returns: dict, maps target label to set of classifier labels
     """
-    
+
     remaining_classifier_labels = set(classifier_label_to_nodes.keys())
     target_to_classifier_labels: defaultdict[str, set[str]] = defaultdict(set)
     for target, target_nodes in tqdm(target_label_to_nodes.items()):
@@ -172,7 +172,7 @@ def parse_spec(spec_dict: Mapping[str, Any],
 
     Raises: ValueError, if specification does not match any dataset labels
     """
-    
+
     result = set()
     if 'taxa' in spec_dict:
         for taxon in spec_dict['taxa']:
@@ -217,7 +217,7 @@ def label_spec_to_nodes(label_spec_js: dict[str, dict[str, Any]],
     Raises: ValueError, if a classification label specification matches no
         TaxonNode, or if a node is included in two or more classification labels
     """
-    
+
     # maps output label name to set of (dataset, dataset_label) tuples
     seen_nodes: set[TaxonNode] = set()
     label_to_nodes: dict[str, set[TaxonNode]] = {}
@@ -239,7 +239,7 @@ def label_spec_to_nodes(label_spec_js: dict[str, dict[str, Any]],
 #%% Command-line driver
 
 def _parse_args() -> argparse.Namespace:
-    
+
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Create mapping from target categories to classifier '
@@ -267,7 +267,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
-    
+
     args = _parse_args()
     main(desired_label_spec_json_path=args.desired_label_spec_json,
          classifier_label_spec_json_path=args.classifier_label_spec_json,

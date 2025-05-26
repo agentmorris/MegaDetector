@@ -46,12 +46,14 @@ import tempfile
 import shutil
 import json
 import copy
+import argparse
 
 from tqdm import tqdm
 
 from megadetector.utils import path_utils
 from megadetector.utils import process_utils
 from megadetector.utils import string_utils
+from megadetector.utils.ct_utils import args_to_object
 
 from megadetector.utils.ct_utils import is_iterable, split_list_into_fixed_size_chunks
 from megadetector.utils import ct_utils
@@ -299,11 +301,13 @@ def run_inference_with_yolo_val(options):
 
     if options.model_type == 'yolov8':
 
-        print('Warning: model type "yolov8" supplied, "ultralytics" is the preferred model type string for YOLOv8 models')
+        print('Warning: model type "yolov8" supplied, "ultralytics" is the preferred model ' + \
+              'type string for YOLOv8 models')
         options.model_type = 'ultralytics'
 
     if (options.model_type == 'yolov5') and ('yolov8' in options.model_filename.lower()):
-        print('\n\n*** Warning: model type set as "yolov5", but your model filename contains "yolov8"... did you mean to use --model_type yolov8?" ***\n\n')
+        print('\n\n*** Warning: model type set as "yolov5", but your model filename contains "yolov8"... ' + \
+              'did you mean to use --model_type yolov8?" ***\n\n')
 
     if options.yolo_working_folder is None:
         assert options.model_type == 'ultralytics', \
@@ -513,13 +517,13 @@ def run_inference_with_yolo_val(options):
                     chunk_results = json.load(f)
                 images_in_this_chunk_results_file = [im['file'] for im in chunk_results['images']]
                 assert len(images_in_this_chunk_results_file) == len(chunk_options.image_filename_list), \
-                    'Expected {} images in chunk results file {}, found {}, possibly this is left over from a previous job?'.format(
-                        len(chunk_options.image_filename_list),chunk_output_file,
-                        len(images_in_this_chunk_results_file))
+                    f'Expected {len(chunk_options.image_filename_list)} images in ' + \
+                    f'chunk results file {chunk_output_file}, found {len(images_in_this_chunk_results_file)}, ' + \
+                     'possibly this is left over from a previous job?'
                 for fn in images_in_this_chunk_results_file:
                     assert fn in chunk_options.image_filename_list, \
-                        'Unexpected image {} in chunk results file {}, possibly this is left over from a previous job?'.format(
-                            fn,chunk_output_file)
+                        f'Unexpected image {fn} in chunk results file {chunk_output_file}, ' + \
+                         'possibly this is left over from a previous job?'
 
                 print('Chunk output file {} exists and is complete, skipping this chunk'.format(
                     chunk_output_file))
@@ -967,9 +971,6 @@ def run_inference_with_yolo_val(options):
 
 #%% Command-line driver
 
-import argparse
-from megadetector.utils.ct_utils import args_to_object
-
 def main(): # noqa
 
     options = YoloInferenceOptions()
@@ -980,7 +981,8 @@ def main(): # noqa
         help='model file name')
     parser.add_argument(
         'input_folder',type=str,
-        help='folder on which to recursively run the model, or a .json or .txt file containing a list of absolute image paths')
+        help='folder on which to recursively run the model, or a .json or .txt file ' + \
+             'containing a list of absolute image paths')
     parser.add_argument(
         'output_file',type=str,
         help='.json file where output will be written')
@@ -1004,10 +1006,12 @@ def main(): # noqa
         help='inference batch size (default {})'.format(options.batch_size))
     parser.add_argument(
         '--half_precision_enabled', default=None, type=int,
-        help='use half-precision-inference (1 or 0) (default is the underlying model\'s default, probably full for YOLOv8 and half for YOLOv5')
+        help='use half-precision-inference (1 or 0) (default is the underlying model\'s default, ' + \
+             'probably full for YOLOv8 and half for YOLOv5')
     parser.add_argument(
         '--device_string', default=options.device_string, type=str,
-        help='CUDA device specifier, typically "0" or "1" for CUDA devices, "mps" for M1/M2 devices, or "cpu" (default {})'.format(
+        help='CUDA device specifier, typically "0" or "1" for CUDA devices, "mps" for ' + \
+             'M1/M2 devices, or "cpu" (default {})'.format(
             options.device_string))
     parser.add_argument(
         '--overwrite_handling', default=options.overwrite_handling, type=str,

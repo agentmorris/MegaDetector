@@ -284,7 +284,7 @@ def _initialize_yolo_imports(model_type='yolov5',
             if verbose:
                 print('Imported utils from YOLOv5 package')
 
-        except Exception as e: # noqa           
+        except Exception as e: # noqa
 
             # print('yolov5 module import failed: {}'.format(e))
             # print(traceback.format_exc())
@@ -337,9 +337,11 @@ def _initialize_yolo_imports(model_type='yolov5',
 
             # letterbox() became a LetterBox class in the ultralytics package.  Create a
             # backwards-compatible letterbox function wrapper that wraps the class up.
-            def letterbox(img,new_shape,auto=False,scaleFill=False,scaleup=True,center=True,stride=32): # noqa
+            def letterbox(img,new_shape,auto=False,scaleFill=False, #noqa
+                          scaleup=True,center=True,stride=32):
 
-                letterbox_transformer = LetterBox(new_shape,auto=auto,scaleFill=scaleFill,scaleup=scaleup,center=center,stride=stride)
+                letterbox_transformer = LetterBox(new_shape,auto=auto,scaleFill=scaleFill,
+                                                  scaleup=scaleup,center=center,stride=stride)
                 letterbox_result = letterbox_transformer(image=img)
 
                 if isinstance(new_shape,int):
@@ -484,8 +486,8 @@ def read_metadata_from_megadetector_model_file(model_file,
             (this is a PyTorch convention).
 
     Returns:
-        object: Whatever we read from the metadata file, always a dict in practice.  Returns
-            None if we failed to read the specified metadata file.
+        object: whatever we read from the metadata file, always a dict in practice.  Returns
+        None if we failed to read the specified metadata file.
     """
 
     with zipfile.ZipFile(model_file,'r') as zipf:
@@ -498,7 +500,8 @@ def read_metadata_from_megadetector_model_file(model_file,
             root_folder = name.split('/')[0]
             root_folders.add(root_folder)
         if len(root_folders) != 1:
-            print('Warning: this archive does not have exactly one folder at the top level; are you sure it\'s a Torch model file?')
+            print('Warning: this archive does not have exactly one folder at the top level; ' + \
+                  'are you sure it\'s a Torch model file?')
             return None
         root_folder = next(iter(root_folders))
 
@@ -531,6 +534,9 @@ default_compatibility_mode = 'classic'
 require_non_default_compatibility_mode = False
 
 class PTDetector:
+    """
+    Class that runs a PyTorch-based MegaDetector model.
+    """
 
     def __init__(self, model_path, detector_options=None, verbose=False):
 

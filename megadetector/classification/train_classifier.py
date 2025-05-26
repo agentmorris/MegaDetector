@@ -44,7 +44,7 @@ from megadetector.visualization import plot_utils
 
 #%% Example usage
 
-"""    
+"""
     python train_classifier.py run_idfg /ssd/crops_sq \
         -m "efficientnet-b0" --pretrained --finetune --label-weighted \
         --epochs 50 --batch-size 512 --lr 1e-4 \

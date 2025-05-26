@@ -10,6 +10,8 @@ timestamps in each filename.  Loosely equivalent to camtrapR's imageRename() fun
 #%% Imports and constants
 
 import os
+import sys
+import argparse
 
 from megadetector.utils.path_utils import \
     find_images, insert_before_extension, parallel_copy_files
@@ -150,8 +152,6 @@ if False:
 
 
 #%% Command-line driver
-
-import sys,argparse
 
 def main(): # noqa
 

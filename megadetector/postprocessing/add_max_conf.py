@@ -15,12 +15,18 @@ to add it back to an existing .json file.
 
 import os
 import json
+import sys
+import argparse
+
 from megadetector.utils import ct_utils
 
 
 #%% Main function
 
 def add_max_conf(input_file,output_file):
+    """
+    Add maximum confidence values to [input_file] and write the results to [output_file].
+    """
 
     assert os.path.isfile(input_file), "Can't find input file {}".format(input_file)
 
@@ -41,8 +47,6 @@ def add_max_conf(input_file,output_file):
 
 
 #%% Driver
-
-import sys,argparse
 
 def main(): # noqa
 

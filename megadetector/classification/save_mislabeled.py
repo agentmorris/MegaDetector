@@ -10,7 +10,7 @@ List of known mislabeled images is stored in Azure Blob Storage.
 * blob: megadb_mislabeled/{dataset}.csv, one file per dataset
 
 Each file megadb_mislabeled/{dataset}.csv has two columns:
-   
+
 * 'file': str, blob name
 
 * 'correct_class': optional str, correct dataset class
@@ -41,7 +41,7 @@ import pandas as pd
 #%% Main function
 
 def update_mislabeled_images(container_path: str, input_csv_path: str) -> None:
-    
+
     df = pd.read_csv(input_csv_path, index_col=False)
 
     # error checking
@@ -62,7 +62,7 @@ def update_mislabeled_images(container_path: str, input_csv_path: str) -> None:
     df['file'] = df['blob_dirname'] + '/' + df['File']
 
     for ds, ds_df in df.groupby('dataset'):
-        
+
         sr_path = os.path.join(container_path, 'megadb_mislabeled', f'{ds}.csv')
         if os.path.exists(sr_path):
             old_sr = pd.read_csv(sr_path, index_col='file', squeeze=True)
@@ -89,7 +89,7 @@ def update_mislabeled_images(container_path: str, input_csv_path: str) -> None:
 #%% Command-line driver
 
 def _parse_args() -> argparse.Namespace:
-    
+
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Merges classification results with Batch Detection API '
@@ -104,7 +104,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
-    
+
     args = _parse_args()
     update_mislabeled_images(container_path=args.container_path,
                              input_csv_path=args.input_csv)

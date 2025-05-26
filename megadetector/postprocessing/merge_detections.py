@@ -28,6 +28,9 @@ from megadetector.utils.ct_utils import get_iou
 #%% Structs
 
 class MergeDetectionsOptions:
+    """
+    Class defining options for merge_detections().
+    """
 
     def __init__(self):
 
@@ -376,36 +379,6 @@ def main(): # noqa
     options.iou_threshold = args.iou_threshold
 
     merge_detections(args.source_files, args.target_file, args.output_file, options)
-
-
-#%% Test driver
-
-if False:
-
-    #%%
-
-    options = MergeDetectionsOptions()
-    options.max_detection_size = 0.1
-    options.target_confidence_threshold = 0.3
-    options.categories_to_include = [1]
-    source_files = ['/home/user/postprocessing/iwildcam/iwildcam-mdv4-2022-05-01/combined_api_outputs/iwildcam-mdv4-2022-05-01_detections.json']
-    options.source_confidence_thresholds = [0.8]
-    target_file = '/home/user/postprocessing/iwildcam/iwildcam-mdv5-camcocoinat-2022-05-02/combined_api_outputs/iwildcam-mdv5-camcocoinat-2022-05-02_detections.json'
-    output_file = '/home/user/postprocessing/iwildcam/merged-detections/mdv4_mdv5-camcocoinat-2022-05-02.json'
-    merge_detections(source_files, target_file, output_file, options)
-
-    options = MergeDetectionsOptions()
-    options.max_detection_size = 0.1
-    options.target_confidence_threshold = 0.3
-    options.categories_to_include = [1]
-    source_files = [
-        '/home/user/postprocessing/iwildcam/iwildcam-mdv4-2022-05-01/combined_api_outputs/iwildcam-mdv4-2022-05-01_detections.json',
-        '/home/user/postprocessing/iwildcam/iwildcam-mdv5-camonly-2022-05-02/combined_api_outputs/iwildcam-mdv5-camonly-2022-05-02_detections.json',
-        ]
-    options.source_confidence_thresholds = [0.8,0.5]
-    target_file = '/home/user/postprocessing/iwildcam/iwildcam-mdv5-camcocoinat-2022-05-02/combined_api_outputs/iwildcam-mdv5-camcocoinat-2022-05-02_detections.json'
-    output_file = '/home/user/postprocessing/iwildcam/merged-detections/mdv4_mdv5-camonly_mdv5-camcocoinat-2022-05-02.json'
-    merge_detections(source_files, target_file, output_file, options)
 
 if __name__ == '__main__':
     main()

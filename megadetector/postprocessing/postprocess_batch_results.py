@@ -30,7 +30,6 @@ import time
 import uuid
 import warnings
 import random
-import json
 
 from enum import IntEnum
 from multiprocessing.pool import ThreadPool
@@ -214,7 +213,9 @@ class PostProcessingOptions:
         self.max_figures_per_html_file = None
 
         #: Footer text for the index page
-        # self.footer_text = '<br/><p style="font-size:80%;">Preview page created with the <a href="{}">MegaDetector Python package</a>.</p>'.\
+        # self.footer_text = \
+        #    '<br/><p style="font-size:80%;">Preview page created with the ' + \
+        #    <a href="{}">MegaDetector Python package</a>.</p>'.\
         #    format('https://megadetector.readthedocs.io')
         self.footer_text = ''
 
@@ -467,8 +468,8 @@ def _render_bounding_boxes(
         # to just try/except on the image open.
         try:
             image = vis_utils.open_image(image_full_path)
-        except:
-            print('Warning: could not open image file {}'.format(image_full_path))
+        except Exception as e:
+            print('Warning: could not open image file {}: {}'.format(image_full_path,str(e)))
             image = None
             # return ''
 
@@ -589,7 +590,8 @@ def _prepare_html_subpages(images_html, output_dir, options=None):
         for res, array in images_html.items():
 
             if not all(['max_conf' in d for d in array]):
-                print("Warning: some elements in the {} page don't have confidence values, can't sort by confidence".format(res))
+                print(f"Warning: some elements in the {res} page don't have confidence " + \
+                        "values, can't sort by confidence")
             else:
                 sorted_array = sorted(array, key=lambda x: x['max_conf'], reverse=True)
                 images_html_sorted[res] = sorted_array
@@ -701,7 +703,7 @@ def _render_image_no_gt(file_info,
                         detection_categories,
                         classification_categories,
                         options):
-    """
+    r"""
     Renders an image (with no ground truth information)
 
     Returns a list of rendering structs, where the first item is a category (e.g. "detections_animal"),
@@ -920,7 +922,7 @@ def _render_image_with_gt(file_info,ground_truth_indexed_db,
     else:
         res = 'tn'
 
-    display_name = '<b>Result type</b>: {}, <b>Presence</b>: {}, <b>Class</b>: {}, <b>Max conf</b>: {:0.3f}%, <b>Image</b>: {}'.format(
+    display_name = '<b>Result type</b>: {}, <b>Presence</b>: {}, <b>Class</b>: {}, <b>Max conf</b>: {:0.3f}%, <b>Image</b>: {}'.format( # noqa
         res.upper(), str(gt_presence), gt_class_summary,
         max_conf * 100, image_relative_path)
 
@@ -1428,7 +1430,7 @@ def process_batch_results(options):
         if options.parallelize_rendering:
             pool = None
             try:
-                if options.parallelize_rendering_n_cores is None:                
+                if options.parallelize_rendering_n_cores is None:
                     if options.parallelize_rendering_with_threads:
                         pool = ThreadPool()
                     else:
@@ -1442,13 +1444,13 @@ def process_batch_results(options):
                         worker_string = 'processes'
                     print('Rendering images with {} {}'.format(options.parallelize_rendering_n_cores,
                                                                worker_string))
-                
+
                 rendering_results = list(tqdm(pool.imap(
                     partial(_render_image_with_gt,
                             ground_truth_indexed_db=ground_truth_indexed_db,
                             detection_categories=detection_categories,
                             classification_categories=classification_categories,
-                            options=options), 
+                            options=options),
                     files_to_render), total=len(files_to_render)))
             finally:
                 if pool is not None:
@@ -1686,7 +1688,7 @@ def process_batch_results(options):
         if options.parallelize_rendering:
             pool = None
             try:
-                if options.parallelize_rendering_n_cores is None:                
+                if options.parallelize_rendering_n_cores is None:
                     if options.parallelize_rendering_with_threads:
                         pool = ThreadPool()
                     else:
@@ -1700,12 +1702,12 @@ def process_batch_results(options):
                         worker_string = 'processes'
                     print('Rendering images with {} {}'.format(options.parallelize_rendering_n_cores,
                                                                worker_string))
-                
+
                 # _render_image_no_gt(file_info,detection_categories_to_results_name,
                 # detection_categories,classification_categories)
 
                 rendering_results = list(tqdm(pool.imap(
-                    partial(_render_image_no_gt, 
+                    partial(_render_image_no_gt,
                             detection_categories_to_results_name=detection_categories_to_results_name,
                             detection_categories=detection_categories,
                             classification_categories=classification_categories,

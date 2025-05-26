@@ -104,14 +104,14 @@ def find_videos(dirname,
 
 # http://tsaith.github.io/combine-images-into-a-video-with-python-3-and-opencv-3.html
 
-def frames_to_video(images, Fs, output_file_name, codec_spec=default_fourcc):
+def frames_to_video(images, fs, output_file_name, codec_spec=default_fourcc):
     """
     Given a list of image files and a sample rate, concatenates those images into
     a video and writes to a new video file.
 
     Args:
         images (list): a list of frame file names to concatenate into a video
-        Fs (float): the frame rate in fps
+        fs (float): the frame rate in fps
         output_file_name (str): the output video file, no checking is performed to make
             sure the extension is compatible with the codec
         codec_spec (str, optional):  codec to use for encoding; h264 is a sensible default
@@ -135,7 +135,7 @@ def frames_to_video(images, Fs, output_file_name, codec_spec=default_fourcc):
 
     # Define the codec and create VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*codec_spec)
-    out = cv2.VideoWriter(output_file_name, fourcc, Fs, (width, height))
+    out = cv2.VideoWriter(output_file_name, fourcc, fs, (width, height))
 
     for image in images:
         frame = cv2.imread(image)
@@ -178,6 +178,7 @@ def _filename_to_frame_number(filename):
 
     Args:
         filename (str): a filename created with _frame_number_to_filename.
+
     Returns:
         int: the frame number extracted from [filename]
     """
@@ -189,7 +190,7 @@ def _filename_to_frame_number(filename):
     frame_number = match.group(1)
     try:
         frame_number = int(frame_number)
-    except:
+    except Exception:
         raise ValueError('Filename {} does contain a valid frame number'.format(filename))
 
     return frame_number
@@ -463,7 +464,7 @@ def video_to_frames(input_video_file,
                 every_n_seconds,every_n_frames))
 
     # If we're not over-writing, check whether all frame images already exist
-    if overwrite == False:
+    if not overwrite:
 
         missing_frame_number = None
         missing_frame_filename = None
@@ -611,7 +612,7 @@ def video_to_frames(input_video_file,
         frame_filename = os.path.join(output_folder,frame_filename_relative)
         frame_filenames.append(frame_filename)
 
-        if overwrite == False and os.path.isfile(frame_filename):
+        if (not overwrite) and (os.path.isfile(frame_filename)):
             # print('Skipping frame {}'.format(frame_filename))
             pass
         else:
@@ -776,7 +777,7 @@ def video_folder_to_frames(input_folder,
             else:
                 print('Starting a worker pool with {} processes'.format(n_threads))
                 pool = Pool(n_threads)
-            process_video_with_options = partial(_video_to_frames_for_folder, 
+            process_video_with_options = partial(_video_to_frames_for_folder,
                                                 input_folder=input_folder,
                                                 output_folder_base=output_folder_base,
                                                 every_n_frames=every_n_frames,
@@ -787,7 +788,7 @@ def video_folder_to_frames(input_folder,
                                                 frames_to_extract=frames_to_extract,
                                                 allow_empty_videos=allow_empty_videos)
             results = list(tqdm(pool.imap(
-                partial(process_video_with_options),input_files_relative_paths), 
+                partial(process_video_with_options),input_files_relative_paths),
                                 total=len(input_files_relative_paths)))
         finally:
             pool.close()
@@ -1076,8 +1077,8 @@ if False:
         original_video_filename = output_video_filename.replace(
             rendered_videos_folder_base,input_folder)
         assert os.path.isfile(original_video_filename)
-        Fs = get_video_fs(original_video_filename)
+        fs = get_video_fs(original_video_filename)
 
-        frames_to_video(frame_files_absolute, Fs, output_video_filename)
+        frames_to_video(frame_files_absolute, fs, output_video_filename)
 
     # ...for each video

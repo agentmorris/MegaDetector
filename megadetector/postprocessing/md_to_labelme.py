@@ -6,7 +6,7 @@ md_to_labelme.py
 file).  "Convert" is in quotes because this is an opinionated transformation that
 requires a confidence threshold.
 
-TODO:
+TODO: # noqa
 
 * support variable confidence thresholds across classes
 * support classification data
@@ -17,6 +17,8 @@ TODO:
 
 import os
 import json
+import sys
+import argparse
 
 from tqdm import tqdm
 
@@ -295,8 +297,6 @@ if False:
 
 
 #%% Command-line driver
-
-import sys,argparse
 
 def main(): # noqa
 

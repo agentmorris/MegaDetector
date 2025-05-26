@@ -10,12 +10,12 @@ See README.md for an example of a classification label specification JSON file.
 The validation step takes the classification label specification JSON file and
 finds the dataset labels that belong to each classification label. It checks
 that the following conditions hold:
-   
+
 1) Each classification label specification matches at least 1 dataset label.
 
 2) If the classification label includes a taxonomical specification, then the
    taxa is actually a part of our master taxonomy.
-   
+
 3) If the 'prioritize' key is found for a given label, then the label must
    also have a 'max_count' key.
 
@@ -44,7 +44,7 @@ exist in Azure Blob Storage. In total, we output the following files:
 
 - queried_images.json
  main output file, ex:
-    
+
     {
         "caltech/cct_images/59f5fe2b-23d2-11e8-a6a3-ec086b02610b.jpg": {
             "dataset": "caltech",
@@ -114,7 +114,7 @@ def main(label_spec_json_path: str,
          json_indent: int | None = None,
          seed: int = 123,
          mislabeled_images_dir: str | None = None) -> None:
-    
+
     # input validation
     assert os.path.exists(label_spec_json_path)
     assert os.path.exists(taxonomy_csv_path)
@@ -212,7 +212,7 @@ def parse_spec(spec_dict: Mapping[str, Any],
 
     Raises: ValueError, if specification does not match any dataset labels
     """
-    
+
     results = set()
     if 'taxa' in spec_dict:
         # spec_dict['taxa']: list of dict
@@ -259,7 +259,7 @@ def validate_json(input_js: dict[str, dict[str, Any]],
         dataset labels, or if allow_multilabel=False but a dataset label is
         included in two or more classification labels
     """
-    
+
     # maps output label name to set of (dataset, dataset_label) tuples
     label_to_inclusions: dict[str, set[tuple[str, str]]] = {}
     for label, spec_dict in input_js.items():
@@ -298,7 +298,7 @@ def get_output_json(label_to_inclusions: dict[str, set[tuple[str, str]]],
         - 'label': list of str, assigned output label
         - 'bbox': list of dicts, optional
     """
-    
+
     # Because MegaDB is organized by dataset, we do the same...
     #
     # ds_to_labels = {
@@ -357,9 +357,9 @@ def get_output_json(label_to_inclusions: dict[str, set[tuple[str, str]]],
     '''
 
     output_json = {}  # maps full image path to json object
-    
+
     for ds in tqdm(sorted(ds_to_labels.keys())):  # sort for determinism
-    
+
         mislabeled_images: Mapping[str, Any] = {}
         if mislabeled_images_dir is not None:
             csv_path = os.path.join(mislabeled_images_dir, f'{ds}.csv')
@@ -425,7 +425,7 @@ def get_image_sas_uris(img_paths: Iterable[str]) -> list[str]:
         image_sas_uris: list of str, image blob URIs with SAS tokens, ready to
             pass to the batch detection API
     """
-    
+
     # we need the datasets table for getting SAS keys
     datasets_table = megadb_utils.MegadbUtils().get_datasets_table()
 
@@ -480,7 +480,7 @@ def remove_nonexistent_images(js: MutableMapping[str, dict[str, Any]],
         check_local: optional str, path to local dir
         num_threads: int, number of threads to use for checking blob existence
     """
-    
+
     def check_local_then_azure(local_path: str, blob_url: str) -> bool:
         return (os.path.exists(local_path)
                 or sas_blob_utils.check_blob_exists(blob_url))
@@ -535,7 +535,7 @@ def remove_images_insufficient_locs(js: MutableMapping[str, dict[str, Any]],
         min_locs: optional int, minimum # of locations that each label must
             have in order to be included
     """
-    
+
     # 1st pass: populate label_to_locs
     # label (tuple of str) => set of (dataset, location)
     label_to_locs = defaultdict(set)
@@ -571,7 +571,7 @@ def filter_images(output_js: Mapping[str, Mapping[str, Any]], label: str,
 
     Returns: set of str, image files that match the filtering criteria
     """
-    
+
     img_files: set[str] = set()
     for img_file, img_dict in output_js.items():
         cond1 = (label in img_dict['label'])
@@ -591,7 +591,7 @@ def sample_with_priority(input_js: Mapping[str, Mapping[str, Any]],
 
     Returns: dict, keys are image file names, sorted alphabetically
     """
-    
+
     filtered_imgs: set[str] = set()
     for label, spec_dict in input_js.items():
         if 'prioritize' in spec_dict and 'max_count' not in spec_dict:
@@ -632,7 +632,7 @@ def sample_with_priority(input_js: Mapping[str, Mapping[str, Any]],
 #%% Command-line driver
 
 def _parse_args() -> argparse.Namespace:
-    
+
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Validates JSON.')
@@ -682,7 +682,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
-    
+
     args = _parse_args()
     main(label_spec_json_path=args.label_spec_json,
          taxonomy_csv_path=args.taxonomy_csv,

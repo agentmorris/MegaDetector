@@ -78,6 +78,9 @@ class CalibrationOptions:
 # ...class CalibrationOptions
 
 class CalibrationMatchColumns(IntEnum):
+    """
+    Enumeration defining columns in the calibration_matches list we'll assemble below.
+    """
 
     COLUMN_CONF_A = 0
     COLUMN_CONF_B = 1
@@ -337,8 +340,10 @@ def compare_model_confidence_values(json_filename_a,json_filename_b,json_filenam
                     # If they matched, the A and B boxes have the same category by definition
                     category_name = categories_a[det_a['category']]
 
-                    max_iou_with_bbox_a = max_iou_between_detection_and_gt(bbox_a,category_name,im_gt,gt_annotations)
-                    max_iou_with_bbox_b = max_iou_between_detection_and_gt(best_bbox_b,category_name,im_gt,gt_annotations)
+                    max_iou_with_bbox_a = \
+                        max_iou_between_detection_and_gt(bbox_a,category_name,im_gt,gt_annotations)
+                    max_iou_with_bbox_b = \
+                        max_iou_between_detection_and_gt(best_bbox_b,category_name,im_gt,gt_annotations)
 
                     max_iou_with_either_detection_set = max_none(max_iou_with_bbox_a,
                                                                  max_iou_with_bbox_b)

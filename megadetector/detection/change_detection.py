@@ -23,7 +23,7 @@ from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import List, Optional, Dict, Any
+from typing import Optional
 
 from megadetector.utils.path_utils import find_images
 
@@ -110,7 +110,7 @@ class MotionHistoryState:
     """
 
     buffer_size: int = 10
-    frame_buffer: List = field(default_factory=list)
+    frame_buffer: list = field(default_factory=list)
     mhi: Optional[np.ndarray] = None  # Motion History Image
     last_timestamp: float = 0.0
     frame_interval: float = 1.0       # Time between frames in "seconds" (nominal)
@@ -625,7 +625,7 @@ def create_change_previews(motion_results, output_folder, num_samples=10, random
     output_folder.mkdir(parents=True, exist_ok=True)
 
     # Filter results to only include rows with motion detected
-    motion_detected = motion_results[motion_results['motion_detected'] == True]
+    motion_detected = motion_results[motion_results['motion_detected'] == True] # noqa
 
     if len(motion_detected) == 0:
         print("No motion detected in any images")
@@ -823,7 +823,8 @@ def main(): # noqa
     # Display summary
     motion_detected_count = results['motion_detected'].sum()
     total_images = len(results)
-    print(f"Motion detected in {motion_detected_count} out of {total_images} images ({motion_detected_count/total_images*100:.2f}%)")
+    print(f"Motion detected in {motion_detected_count} out of {total_images} images "
+          f"({motion_detected_count/total_images*100:.2f}%)")
 
 
 if __name__ == "__main__":

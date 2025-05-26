@@ -16,6 +16,9 @@ path.  No attempt is made to be consistent in format across the two approaches.
 import os
 import subprocess
 import json
+import argparse
+import sys
+
 from datetime import datetime
 
 from multiprocessing.pool import ThreadPool as ThreadPool
@@ -556,21 +559,21 @@ def _populate_exif_for_images(image_base,images,options=None):
     else:
 
         pool = None
-        try:        
+        try:
             if options.use_threads:
                 print('Starting parallel thread pool with {} workers'.format(options.n_workers))
                 pool = ThreadPool(options.n_workers)
             else:
                 print('Starting parallel process pool with {} workers'.format(options.n_workers))
                 pool = Pool(options.n_workers)
-    
+
             results = list(tqdm(pool.imap(partial(_populate_exif_data,image_base=image_base,
                                             options=options),images),total=len(images)))
         finally:
             pool.close()
             pool.join()
             print("Pool closed and joined for EXIF extraction")
-        
+
     return results
 
 
@@ -844,7 +847,8 @@ if False:
     options.use_threads = False
     options.processing_library = 'pil'
     # options.processing_library = 'exiftool'
-    options.tags_to_include = ['DateTime','Model','Make','ExifImageWidth','ExifImageHeight','DateTime','DateTimeOriginal','Orientation']
+    options.tags_to_include = ['DateTime','Model','Make','ExifImageWidth',
+                               'ExifImageHeight','DateTime','DateTimeOriginal','Orientation']
     # options.tags_to_exclude = ['MakerNote']
 
     results = read_exif_from_folder(input_folder,output_file,options)
@@ -856,9 +860,6 @@ if False:
 
 
 #%% Command-line driver
-
-import argparse
-import sys
 
 def main(): # noqa
 

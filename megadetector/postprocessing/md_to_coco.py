@@ -15,6 +15,8 @@ Does not currently handle classification information.
 import os
 import json
 import uuid
+import sys
+import argparse
 
 from tqdm import tqdm
 
@@ -159,14 +161,16 @@ def md_to_coco(md_results_file,
 
         if ('width' not in im) or ('height' not in im) or validate_image_sizes:
             if (image_folder is None) and (image_filename_to_size is None):
-                raise ValueError('Must provide an image folder or a size mapping when height/width need to be read from images')
+                raise ValueError('Must provide an image folder or a size mapping when ' + \
+                                 'height/width need to be read from images')
 
             w = None; h = None
 
             if image_filename_to_size is not None:
 
                 if im['file'] not in image_filename_to_size:
-                    print('Warning: file {} not in image size mapping dict, reading from file'.format(im['file']))
+                    print('Warning: file {} not in image size mapping dict, reading from file'.format(
+                        im['file']))
                 else:
                     image_size = image_filename_to_size[im['file']]
                     if image_size is not None:
@@ -363,12 +367,11 @@ if False:
 
 #%% Command-line driver
 
-import sys,argparse
-
 def main(): # noqa
 
     parser = argparse.ArgumentParser(
-        description='"Convert" MD output to COCO format, in quotes because this is an opinionated transformation that requires a confidence threshold')
+        description='"Convert" MD output to COCO format, in quotes because this is an opinionated ' + \
+                    'transformation that requires a confidence threshold')
 
     parser.add_argument(
         'md_results_file',

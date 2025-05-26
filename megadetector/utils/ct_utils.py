@@ -14,6 +14,8 @@ import math
 import os
 import builtins
 import datetime
+import tempfile
+import shutil
 
 import jsonpickle
 import numpy as np
@@ -163,7 +165,7 @@ def pretty_print_object(obj, b_print=True):
     return s
 
 
-def is_list_sorted(L, reverse=False):
+def is_list_sorted(L, reverse=False): # noqa
     """
     Returns True if the list L appears to be sorted, otherwise False.
 
@@ -227,7 +229,7 @@ def write_json(path, content, indent=1, force_str=False, serialize_datetimes=Fal
             default_handler = serialize_or_str
     elif force_str:
         default_handler = str
-        
+
     with open(path, 'w', newline='\n') as f:
         json.dump(content, f, indent=indent, default=default_handler, ensure_ascii=ensure_ascii)
 
@@ -369,8 +371,9 @@ def sort_results_for_image(im):
         if 'classifications' in det and \
             (det['classifications'] is not None) and \
             (len(det['classifications']) > 0):
-            L = det['classifications']
-            det['classifications'] = sorted(L,key=itemgetter(1),reverse=True)
+            classifications = det['classifications']
+            det['classifications'] = \
+                sorted(classifications,key=itemgetter(1),reverse=True)
 
 
 def point_dist(p1,p2):
@@ -438,7 +441,7 @@ def rect_distance(r1, r2, format='x0y0x1y1'):
         return 0.0
 
 
-def split_list_into_fixed_size_chunks(L,n):
+def split_list_into_fixed_size_chunks(L,n): # noqa
     """
     Split the list or tuple L into chunks of size n (allowing at most one chunk with size
     less than N, i.e. len(L) does not have to be a multiple of n).
@@ -454,7 +457,7 @@ def split_list_into_fixed_size_chunks(L,n):
     return [L[i * n:(i + 1) * n] for i in range((len(L) + n - 1) // n )]
 
 
-def split_list_into_n_chunks(L, n, chunk_strategy='greedy'):
+def split_list_into_n_chunks(L, n, chunk_strategy='greedy'): # noqa
     """
     Splits the list or tuple L into n equally-sized chunks (some chunks may be one
     element smaller than others, i.e. len(L) does not have to be a multiple of n).
@@ -485,7 +488,7 @@ def split_list_into_n_chunks(L, n, chunk_strategy='greedy'):
         raise ValueError('Invalid chunk strategy: {}'.format(chunk_strategy))
 
 
-def sort_list_of_dicts_by_key(L,k,reverse=False):
+def sort_list_of_dicts_by_key(L,k,reverse=False): # noqa
     """
     Sorts the list of dictionaries [L] by the key [k].
 
@@ -670,7 +673,7 @@ def is_iterable(x):
 
     try:
         _ = iter(x)
-    except:
+    except Exception:
        return False
     return True
 
@@ -915,9 +918,98 @@ def parse_bool_string(s):
 
 #%% Test driver
 
-def __module_test__():
+def test_write_json():
     """
-    Module test driver
+    Test driver for write_json.
+    """
+
+    temp_dir = tempfile.mkdtemp()
+
+    def _verify_json_file(file_path, expected_content_str):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = json.load(f)
+        assert isinstance(content,dict)
+        content = sort_dictionary_by_key(content)
+        expected_content = json.loads(expected_content_str)
+        expected_content = sort_dictionary_by_key(expected_content)
+        assert content == expected_content, \
+            f"File {file_path} content mismatch.\nExpected:\n{expected_content}\nGot:\n{content}"
+
+    # Test case i: Default indent (1)
+    data_default = {'a': 1, 'b': 2}
+    file_path_default = os.path.join(temp_dir, 'test_default_indent.json')
+    write_json(file_path_default, data_default)
+    # Default indent is 1
+    _verify_json_file(file_path_default, '{\n "a": 1,\n "b": 2\n}')
+
+    # Test case ii: Custom indent (e.g., 4)
+    data_custom_indent = {'a': 1, 'b': 2}
+    file_path_custom_indent = os.path.join(temp_dir, 'test_custom_indent.json')
+    write_json(file_path_custom_indent, data_custom_indent, indent=4)
+    _verify_json_file(file_path_custom_indent, '{\n    "a": 1,\n    "b": 2\n}')
+
+    # Test case iii: indent=None (compact)
+    data_no_indent = {'a': 1, 'b': 2}
+    file_path_no_indent = os.path.join(temp_dir, 'test_no_indent.json')
+    write_json(file_path_no_indent, data_no_indent, indent=None)
+    _verify_json_file(file_path_no_indent, '{"a": 1, "b": 2}')
+
+    # Test case iv: force_str=True
+    data_force_str = {'a': 1, 's': {1, 2, 3}}  # Set is not normally JSON serializable
+    file_path_force_str = os.path.join(temp_dir, 'test_force_str.json')
+    write_json(file_path_force_str, data_force_str, force_str=True)
+    with open(file_path_force_str, 'r', encoding='utf-8') as f:
+        result_force_str = json.load(f)
+    # Exact string representation of set can vary, e.g. '{1, 2, 3}' vs '{2, 1, 3}'
+    # So, we convert back to a set for comparison.
+    assert isinstance(result_force_str['s'], str)
+    assert eval(result_force_str['s']) == {1, 2, 3}
+
+
+    # Test case v: serialize_datetimes=True
+    dt = datetime.datetime(2023, 1, 1, 10, 30, 0)
+    d_date = datetime.date(2023, 2, 15)
+    data_serialize_datetimes = {'dt_obj': dt, 'd_obj': d_date}
+    file_path_serialize_datetimes = os.path.join(temp_dir, 'test_serialize_datetimes.json')
+    # Sort keys for consistent output, as dict order might not be guaranteed
+    # ct_utils.write_json sorts keys by default if indent is not None.
+    write_json(file_path_serialize_datetimes, data_serialize_datetimes, serialize_datetimes=True)
+    _verify_json_file(file_path_serialize_datetimes, '{\n "d_obj": "2023-02-15",\n "dt_obj": "2023-01-01T10:30:00"\n}')
+
+
+    # Test case vi: serialize_datetimes=True and force_str=True
+    dt_combo = datetime.datetime(2023, 1, 1, 12, 0, 0)
+    data_datetime_force_str = {'dt_obj': dt_combo, 's_obj': {4, 5}}
+    file_path_datetime_force_str = os.path.join(temp_dir, 'test_datetime_and_force_str.json')
+    write_json(file_path_datetime_force_str, data_datetime_force_str, serialize_datetimes=True, force_str=True)
+    with open(file_path_datetime_force_str, 'r', encoding='utf-8') as f:
+        result_datetime_force_str = json.load(f)
+    assert result_datetime_force_str['dt_obj'] == "2023-01-01T12:00:00"
+    assert isinstance(result_datetime_force_str['s_obj'], str)
+    assert eval(result_datetime_force_str['s_obj']) == {4, 5}
+
+    # Test case vii: ensure_ascii=False (with non-ASCII chars)
+    data_ensure_ascii_false = {'name': 'Jules César'}
+    file_path_ensure_ascii_false = os.path.join(temp_dir, 'test_ensure_ascii_false.json')
+    write_json(file_path_ensure_ascii_false, data_ensure_ascii_false, ensure_ascii=False)
+    with open(file_path_ensure_ascii_false, 'r', encoding='utf-8') as f:
+        content_ensure_ascii_false = f.read()
+    assert content_ensure_ascii_false == '{\n "name": "Jules César"\n}'
+
+    # Test case viii: ensure_ascii=True (with non-ASCII chars, default)
+    data_ensure_ascii_true = {'name': 'Jules César'}
+    file_path_ensure_ascii_true = os.path.join(temp_dir, 'test_ensure_ascii_true.json')
+    write_json(file_path_ensure_ascii_true, data_ensure_ascii_true, ensure_ascii=True)
+    with open(file_path_ensure_ascii_true, 'r', encoding='utf-8') as f:
+        content_ensure_ascii_true = f.read()
+    assert content_ensure_ascii_true == '{\n "name": "Jules C\\u00e9sar"\n}'
+
+    shutil.rmtree(temp_dir)
+
+
+def __module_test__(): # noqa
+    """
+    Module test driver for ct_utils
     """
 
     ##%% Camera folder mapping
@@ -940,7 +1032,7 @@ def __module_test__():
 
     ##%% Test dictionary sorting
 
-    L = [{'a':5},{'a':0},{'a':10}]
+    L = [{'a':5},{'a':0},{'a':10}] # noqa
     k = 'a'
     sort_list_of_dicts_by_key(L, k, reverse=True)
 

@@ -148,9 +148,9 @@ if False:
 
     #%%
 
-    target_categories_file = '/home/dmorris/tmp/usgs-tegus/model-comparison/all-classes_usgs-only_yolov5x6.json'
+    target_categories_file = 'all-classes_usgs-only_yolov5x6.json'
     target_category_map = target_categories_file
-    input_file = '/home/dmorris/tmp/usgs-tegus/model-comparison/all-classes_usgs-goannas-lilablanks_yolov5x6-20240223.json'
+    input_file = 'x.json'
 
     output_file = input_file.replace('.json','_remapped.json')
     assert output_file != input_file

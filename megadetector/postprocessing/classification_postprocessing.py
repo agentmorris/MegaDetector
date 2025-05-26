@@ -32,7 +32,7 @@ from megadetector.utils.wi_utils import taxonomy_level_string_to_index
 from megadetector.utils.wi_utils import non_taxonomic_prediction_strings
 from megadetector.utils.wi_utils import human_prediction_string
 from megadetector.utils.wi_utils import animal_prediction_string
-from megadetector.utils.wi_utils import blank_prediction_string
+from megadetector.utils.wi_utils import blank_prediction_string # noqa
 
 
 #%% Options classes

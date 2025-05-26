@@ -266,7 +266,7 @@ def _consumer_func(q,
                 images_per_second = n_images_processed / elapsed
                 print('De-queued image {} ({:.2f}/s) ({})'.format(n_images_processed,
                                                               images_per_second,
-                                                              im_file));
+                                                              im_file))
                 sys.stdout.flush()
 
         if isinstance(image,str):
@@ -701,7 +701,6 @@ def load_and_run_detector_batch(model_file,
     Load a model file and run it on a list of images.
 
     Args:
-
         model_file (str): path to model file, or supported model string (e.g. "MDV5A")
         image_file_names (list or str): list of strings (image filenames), a single image filename,
             a folder to recursively search for images in, or a .json or .txt file containing a list
@@ -887,46 +886,46 @@ def load_and_run_detector_batch(model_file,
 
         # Divide images into chunks; we'll send one chunk to each worker process
         image_batches = list(_chunks_by_number_of_chunks(image_file_names, n_cores))
-                
+
         pool = None
         try:
             pool = workerpool(n_cores)
 
             if checkpoint_path is not None:
-            
+
                 # Multiprocessing and checkpointing are both enabled at this point
-            
+
                 checkpoint_queue = Manager().Queue()
-            
+
                 # Pass the "results" array (which may already contain images loaded from an existing
-            # checkpoint) to the checkpoint queue handler function, which will append results to 
+            # checkpoint) to the checkpoint queue handler function, which will append results to
                 # the list as they become available.
-                checkpoint_thread = Thread(target=_checkpoint_queue_handler, 
+                checkpoint_thread = Thread(target=_checkpoint_queue_handler,
                                            args=(checkpoint_path, checkpoint_frequency,
                                                  checkpoint_queue, results), daemon=True)
                 checkpoint_thread.start()
 
-                pool.map(partial(process_images, 
+                pool.map(partial(process_images,
                                  detector=detector,
                                  confidence_threshold=confidence_threshold,
                                  use_image_queue=False,
                                  quiet=quiet,
-                                 image_size=image_size, 
+                                 image_size=image_size,
                                  checkpoint_queue=checkpoint_queue,
                                  include_image_size=include_image_size,
                                  include_image_timestamp=include_image_timestamp,
                                  include_exif_data=include_exif_data,
                                  augment=augment,
-                                 detector_options=detector_options), 
+                                 detector_options=detector_options),
                                  image_batches)
 
                 checkpoint_queue.put(None)
 
             else:
-            
+
                 # Multprocessing is enabled, but checkpointing is not
-            
-                new_results = pool.map(partial(process_images, 
+
+                new_results = pool.map(partial(process_images,
                                                detector=detector,
                                                confidence_threshold=confidence_threshold,
                                                use_image_queue=False,
@@ -937,17 +936,17 @@ def load_and_run_detector_batch(model_file,
                                                include_image_timestamp=include_image_timestamp,
                                                include_exif_data=include_exif_data,
                                                augment=augment,
-                                               detector_options=detector_options), 
+                                               detector_options=detector_options),
                                                image_batches)
 
                 new_results = list(itertools.chain.from_iterable(new_results))
-            
+
                 # Append the results we just computed to "results", which is *usually* empty, but will
                 # be non-empty if we resumed from a checkpoint
                 results += new_results
 
             # ...if checkpointing is/isn't enabled
-    
+
         finally:
             if pool is not None:
                 pool.close()
@@ -1249,7 +1248,8 @@ def main(): # noqa
         description='Module to run a TF/PT animal detection model on lots of images')
     parser.add_argument(
         'detector_file',
-        help='Path to detector model file (.pb or .pt).  Can also be the strings "MDV4", "MDV5A", or "MDV5B" to request automatic download.')
+        help='Path to detector model file (.pb or .pt).  Can also be the strings "MDV4", ' + \
+             '"MDV5A", or "MDV5B" to request automatic download.')
     parser.add_argument(
         'image_file',
         help=\

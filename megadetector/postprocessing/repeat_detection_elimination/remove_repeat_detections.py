@@ -15,6 +15,7 @@ https://github.com/agentmorris/MegaDetector/tree/main/megadetector/postprocessin
 
 import argparse
 import os
+import sys
 
 from megadetector.postprocessing.repeat_detection_elimination import repeat_detections_core
 
@@ -60,8 +61,6 @@ if False:
 
 
 #%% Command-line driver
-
-import sys
 
 def main(): # noqa
 

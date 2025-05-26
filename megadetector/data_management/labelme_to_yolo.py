@@ -224,14 +224,14 @@ def labelme_folder_to_yolo(labelme_folder,
 
             valid_labelme_files_abs = [os.path.join(labelme_folder,fn_relative) for \
                                     fn_relative in valid_labelme_files_relative]
-            
+
             image_results = list(tqdm(pool.imap(
                 partial(labelme_file_to_yolo_file,
                         category_name_to_category_id=category_name_to_category_id,
                         yolo_file=None,
                         required_token=required_token,
                         overwrite_behavior=overwrite_behavior),
-                        valid_labelme_files_abs), 
+                        valid_labelme_files_abs),
                         total=len(valid_labelme_files_abs)))
         finally:
             pool.close()

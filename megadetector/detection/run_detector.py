@@ -235,7 +235,8 @@ def get_detector_version_from_filename(detector_filename,
 
     * megadetector_v2.pb
     * megadetector_v3.pb
-    * megadetector_v4.1 (not produed by run_detector_batch.py, only found in output files from the deprecated Azure Batch API)
+    * megadetector_v4.1 (not produced by run_detector_batch.py, only found in output files from
+      the deprecated Azure Batch API)
     * md_v4.1.0.pb
     * md_v5a.0.0.pt
     * md_v5b.0.0.pt

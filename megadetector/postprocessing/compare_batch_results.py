@@ -36,6 +36,9 @@ import random
 import copy
 import urllib
 import itertools
+import sys
+import argparse
+import textwrap
 
 import numpy as np
 
@@ -54,7 +57,7 @@ from megadetector.utils.ct_utils import invert_dictionary, get_iou
 from megadetector.utils import path_utils
 from megadetector.visualization.visualization_utils import get_text_size
 
-def _maxempty(L):
+def _maxempty(L): # noqa
     """
     Return the maximum value in a list, or 0 if the list is empty
     """
@@ -942,11 +945,11 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
 
             categories_above_threshold_a = set()
 
-            if not 'detections' in im_a or im_a['detections'] is None:
+            if 'detections' not in im_a or im_a['detections'] is None:
                 assert 'failure' in im_a and im_a['failure'] is not None
                 continue
 
-            if not 'detections' in im_b or im_b['detections'] is None:
+            if 'detections' not in im_b or im_b['detections'] is None:
                 assert 'failure' in im_b and im_b['failure'] is not None
                 continue
 
@@ -1729,7 +1732,7 @@ def find_equivalent_threshold(results_a,
 
     Returns:
         float: the threshold that - when applied to results_b - produces the same number
-            of image-level detections that results from applying threshold_a to results_a
+        of image-level detections that results from applying threshold_a to results_a
     """
 
     if isinstance(results_a,str):
@@ -1900,10 +1903,10 @@ if False:
 #%% Command-line driver
 
 """
-python compare_batch_results.py ~/tmp/comparison-test ~/data/KGA ~/data/KGA-5a.json ~/data/KGA-5b.json ~/data/KGA-4.json --detection_thresholds 0.15 0.15 0.7 --rendering_thresholds 0.1 0.1 0.6 --use_processes
+python compare_batch_results.py ~/tmp/comparison-test ~/data/KGA \
+    ~/data/KGA-5a.json ~/data/KGA-5b.json ~/data/KGA-4.json \
+    --detection_thresholds 0.15 0.15 0.7 --rendering_thresholds 0.1 0.1 0.6 --use_processes
 """
-
-import sys,argparse,textwrap
 
 def main(): # noqa
 

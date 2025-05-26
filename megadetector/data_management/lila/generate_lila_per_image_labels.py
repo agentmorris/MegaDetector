@@ -35,6 +35,7 @@ from megadetector.data_management.lila.lila_common import \
 from megadetector.utils import write_html_image_list
 from megadetector.utils.path_utils import zip_file
 from megadetector.utils.path_utils import open_file
+from megadetector.utils.url_utils import parallel_download_urls
 
 # We'll write images, metadata downloads, and temporary files here
 lila_local_base = os.path.expanduser('~/lila')
@@ -121,7 +122,7 @@ header.extend(taxonomy_levels_to_include)
 
 missing_annotations = set()
 
-def clearnan(v):
+def _clearnan(v):
     if isinstance(v,float):
         assert np.isnan(v)
         v = ''
@@ -201,7 +202,7 @@ with open(output_file,'w',encoding='utf-8',newline='') as f:
                 assert ds_name == 'Caltech Camera Traps'
                 im['datetime'] = im['date_captured']
 
-            def has_valid_datetime(im):
+            def _has_valid_datetime(im):
                 if 'datetime' not in im:
                     return False
                 v = im['datetime']
@@ -214,7 +215,7 @@ with open(output_file,'w',encoding='utf-8',newline='') as f:
                     return False
 
             dt_string = ''
-            if (has_valid_datetime(im)):
+            if (_has_valid_datetime(im)):
 
                 dt = dateparser.parse(im['datetime'])
 
@@ -314,13 +315,13 @@ with open(output_file,'w',encoding='utf-8',newline='') as f:
                 row.append(location_id)
                 row.append(frame_num)
                 row.append(taxonomy_labels['query'])
-                row.append(clearnan(taxonomy_labels['scientific_name']))
-                row.append(clearnan(taxonomy_labels['common_name']))
+                row.append(_clearnan(taxonomy_labels['scientific_name']))
+                row.append(_clearnan(taxonomy_labels['common_name']))
                 row.append(dt_string)
                 row.append(annotation_level)
 
                 for s in taxonomy_levels_to_include:
-                    row.append(clearnan(taxonomy_labels[s]))
+                    row.append(_clearnan(taxonomy_labels[s]))
 
                 assert len(row) == len(header)
 
@@ -364,7 +365,7 @@ print('Read {} rows from {}'.format(len(df),output_file))
 
 tqdm.pandas()
 
-def isint(v):
+def _isint(v):
     return isinstance(v,int) or isinstance(v,np.int64)
 
 valid_annotation_levels = set(['sequence','image','unknown'])
@@ -373,7 +374,7 @@ valid_annotation_levels = set(['sequence','image','unknown'])
 # in the next cell to look for datasets that only have a single location
 dataset_name_to_locations = defaultdict(set)
 
-def check_row(row):
+def _check_row(row):
 
     assert row['dataset_name'] in metadata_table.keys()
     for url_column in ['url_gcp','url_aws','url_azure']:
@@ -387,7 +388,7 @@ def check_row(row):
         assert np.isnan(row['frame_num'])
     else:
         # -1 is sometimes used for sequences of unknown length
-        assert isint(row['frame_num']) and row['frame_num'] >= -1
+        assert _isint(row['frame_num']) and row['frame_num'] >= -1
 
     ds_name = row['dataset_name']
     dataset_name_to_locations[ds_name].add(row['location_id'])
@@ -395,13 +396,13 @@ def check_row(row):
 # Faster, but more annoying to debug
 if True:
 
-    df.progress_apply(check_row, axis=1)
+    df.progress_apply(_check_row, axis=1)
 
 else:
 
     # i_row = 0; row = df.iloc[i_row]
     for i_row,row in tqdm(df.iterrows(),total=len(df)):
-        check_row(row)
+        _check_row(row)
 
 
 #%% Check for datasets that have only one location string (typically "unknown")
@@ -480,7 +481,6 @@ for i_image,image in tqdm(enumerate(images_to_download),total=len(images_to_down
 
 #%% Download images (execution)
 
-from megadetector.utils.url_utils import parallel_download_urls
 download_results = parallel_download_urls(url_to_target_file,verbose=False,overwrite=True,
                                           n_workers=20,pool_type='thread')
 

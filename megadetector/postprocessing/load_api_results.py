@@ -18,7 +18,7 @@ Includes functions to read/write the (very very old) .csv results format.
 import json
 import os
 
-from typing import Dict, Mapping, Optional, Tuple
+from typing import Mapping, Optional
 
 import pandas as pd
 
@@ -31,7 +31,7 @@ from megadetector.utils.wi_utils import load_md_or_speciesnet_file
 def load_api_results(api_output_path: str, normalize_paths: bool = True,
                      filename_replacements: Optional[Mapping[str, str]] = None,
                      force_forward_slashes: bool = True
-                     ) -> Tuple[pd.DataFrame, Dict]:
+                     ) -> tuple[pd.DataFrame, dict]:
     r"""
     Loads json-formatted MegaDetector results to a Pandas DataFrame.
 
@@ -139,12 +139,15 @@ def write_api_results(detection_results_table, other_fields, out_path):
     print('Finished writing detection results to {}'.format(out_path))
 
 
-def load_api_results_csv(filename, normalize_paths=True, filename_replacements={}, nrows=None):
+def load_api_results_csv(filename, normalize_paths=True, filename_replacements=None, nrows=None):
     """
     [DEPRECATED]
 
     Loads .csv-formatted MegaDetector results to a pandas table
     """
+
+    if filename_replacements is None:
+        filename_replacements = {}
 
     print('Loading MegaDetector results from {}'.format(filename))
 

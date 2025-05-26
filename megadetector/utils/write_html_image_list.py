@@ -41,7 +41,7 @@ def write_html_image_list(filename=None,images=None,options=None):
 
         options (dict, optional): a dict with one or more of the following fields:
 
-            - fHtml (file pointer to write to, used for splitting write operations over multiple calls)
+            - f_html (file pointer to write to, used for splitting write operations over multiple calls)
             - pageTitle (HTML page title)
             - headerHtml (html text to include before the image list)
             - subPageHeaderHtml (html text to include before the images when images are broken into pages)
@@ -59,8 +59,8 @@ def write_html_image_list(filename=None,images=None,options=None):
     if options is None:
         options = {}
 
-    if 'fHtml' not in options:
-        options['fHtml'] = -1
+    if 'f_html' not in options:
+        options['f_html'] = -1
 
     if 'pageTitle' not in options or options['pageTitle'] is None:
         options['pageTitle'] = ''
@@ -98,105 +98,105 @@ def write_html_image_list(filename=None,images=None,options=None):
 
     # images may be a list of images or a list of image/style/title dictionaries,
     # enforce that it's the latter to simplify downstream code
-    for iImage,imageInfo in enumerate(images):
-        if isinstance(imageInfo,str):
-            imageInfo = {'filename':imageInfo}
-        if 'filename' not in imageInfo:
-            imageInfo['filename'] = ''
-        if 'imageStyle' not in imageInfo:
-            imageInfo['imageStyle'] = options['defaultImageStyle']
-        if 'title' not in imageInfo:
-            imageInfo['title'] = ''
-        if 'linkTarget' not in imageInfo:
-            imageInfo['linkTarget'] = ''
-        if 'textStyle' not in imageInfo:
-            textStyle = options['defaultTextStyle']
-            imageInfo['textStyle'] = options['defaultTextStyle']
-        images[iImage] = imageInfo
+    for i_image,image_info in enumerate(images):
+        if isinstance(image_info,str):
+            image_info = {'filename':image_info}
+        if 'filename' not in image_info:
+            image_info['filename'] = ''
+        if 'imageStyle' not in image_info:
+            image_info['imageStyle'] = options['defaultImageStyle']
+        if 'title' not in image_info:
+            image_info['title'] = ''
+        if 'linkTarget' not in image_info:
+            image_info['linkTarget'] = ''
+        if 'textStyle' not in image_info:
+            text_style = options['defaultTextStyle']
+            image_info['textStyle'] = options['defaultTextStyle']
+        images[i_image] = image_info
 
-    nImages = len(images)
+    n_images = len(images)
 
     # If we need to break this up into multiple files...
-    if nImages > options['maxFiguresPerHtmlFile']:
+    if n_images > options['maxFiguresPerHtmlFile']:
 
         # You can't supply your own file handle in this case
-        if options['fHtml'] != -1:
+        if options['f_html'] != -1:
             raise ValueError(
                     "You can't supply your own file handle if we have to page the image set")
 
-        figureFileStartingIndices = list(range(0,nImages,options['maxFiguresPerHtmlFile']))
+        figure_file_starting_indices = list(range(0,n_images,options['maxFiguresPerHtmlFile']))
 
-        assert len(figureFileStartingIndices) > 1
+        assert len(figure_file_starting_indices) > 1
 
         # Open the meta-output file
-        fMeta = open(filename,'w')
+        f_meta = open(filename,'w')
 
         # Write header stuff
-        titleString = '<title>Index page</title>'
+        title_string = '<title>Index page</title>'
         if len(options['pageTitle']) > 0:
-            titleString = '<title>Index page for: {}</title>'.format(options['pageTitle'])
-        fMeta.write('<html><head>{}</head><body>\n'.format(titleString))
-        fMeta.write(options['headerHtml'])
-        fMeta.write('<table border = 0 cellpadding = 2>\n')
+            title_string = '<title>Index page for: {}</title>'.format(options['pageTitle'])
+        f_meta.write('<html><head>{}</head><body>\n'.format(title_string))
+        f_meta.write(options['headerHtml'])
+        f_meta.write('<table border = 0 cellpadding = 2>\n')
 
-        for startingIndex in figureFileStartingIndices:
+        for starting_index in figure_file_starting_indices:
 
-            iStart = startingIndex
-            iEnd = startingIndex+options['maxFiguresPerHtmlFile']-1;
-            if iEnd >= nImages:
-                iEnd = nImages-1
+            i_start = starting_index
+            i_end = starting_index + options['maxFiguresPerHtmlFile'] - 1
+            if i_end >= n_images:
+                i_end = n_images-1
 
-            trailer = 'image_{:05d}_{:05d}'.format(iStart,iEnd)
-            localFiguresHtmlFilename = path_utils.insert_before_extension(filename,trailer)
-            fMeta.write('<tr><td>\n')
-            fMeta.write('<p style="padding-bottom:0px;margin-bottom:0px;text-align:left;font-family:''segoe ui'',calibri,arial;font-size:100%;text-decoration:none;font-weight:bold;">')
-            fMeta.write('<a href="{}">Figures for images {} through {}</a></p></td></tr>\n'.format(
-                os.path.basename(localFiguresHtmlFilename),iStart,iEnd))
+            trailer = 'image_{:05d}_{:05d}'.format(i_start,i_end)
+            local_figures_html_filename = path_utils.insert_before_extension(filename,trailer)
+            f_meta.write('<tr><td>\n')
+            f_meta.write('<p style="padding-bottom:0px;margin-bottom:0px;text-align:left;font-family:''segoe ui'',calibri,arial;font-size:100%;text-decoration:none;font-weight:bold;">') # noqa
+            f_meta.write('<a href="{}">Figures for images {} through {}</a></p></td></tr>\n'.format(
+                os.path.basename(local_figures_html_filename),i_start,i_end))
 
-            localImages = images[iStart:iEnd+1]
+            local_images = images[i_start:i_end+1]
 
-            localOptions = options.copy();
-            localOptions['headerHtml'] = options['subPageHeaderHtml'];
-            localOptions['trailerHtml'] = '';
+            local_options = options.copy()
+            local_options['headerHtml'] = options['subPageHeaderHtml']
+            local_options['trailerHtml'] = ''
 
             # Make a recursive call for this image set
-            write_html_image_list(localFiguresHtmlFilename,localImages,localOptions)
+            write_html_image_list(local_figures_html_filename,local_images,local_options)
 
         # ...for each page of images
 
-        fMeta.write('</table></body>\n')
-        fMeta.write(options['trailerHtml'])
-        fMeta.write('</html>\n')
-        fMeta.close()
+        f_meta.write('</table></body>\n')
+        f_meta.write(options['trailerHtml'])
+        f_meta.write('</html>\n')
+        f_meta.close()
 
         return options
 
     # ...if we have to make multiple sub-pages
 
-    bCleanupFile = False
+    b_clean_up_file = False
 
-    if options['fHtml'] == -1:
-        bCleanupFile = True;
-        fHtml = open(filename,'w')
+    if options['f_html'] == -1:
+        b_clean_up_file = True
+        f_html = open(filename,'w')
     else:
-        fHtml = options['fHtml']
+        f_html = options['f_html']
 
-    titleString = ''
+    title_string = ''
     if len(options['pageTitle']) > 0:
-        titleString = '<title>{}</title>'.format(options['pageTitle'])
+        title_string = '<title>{}</title>'.format(options['pageTitle'])
 
-    fHtml.write('<html>{}<body>\n'.format(titleString))
+    f_html.write('<html>{}<body>\n'.format(title_string))
 
-    fHtml.write(options['headerHtml'])
+    f_html.write(options['headerHtml'])
 
     # Write out images
-    for iImage,image in enumerate(images):
+    for i_image,image in enumerate(images):
 
         title = image['title']
-        imageStyle = image['imageStyle']
-        textStyle = image['textStyle']
+        image_style = image['imageStyle']
+        text_style = image['textStyle']
         filename = image['filename']
-        linkTarget = image['linkTarget']
+        link_target = image['linkTarget']
 
         # Remove unicode characters
         title = title.encode('ascii','ignore').decode('ascii')
@@ -207,34 +207,34 @@ def write_html_image_list(filename=None,images=None,options=None):
             filename = urllib.parse.quote(filename)
 
         if len(title) > 0:
-            fHtml.write(
+            f_html.write(
                     '<p style="{}">{}</p>\n'\
-                    .format(textStyle,title))
+                    .format(text_style,title))
 
-        linkTarget = linkTarget.replace('\\','/')
+        link_target = link_target.replace('\\','/')
         if options['urlEncodeLinkTargets']:
             # These are typically absolute paths, so we only want to mess with certain characters
-            linkTarget = urllib.parse.quote(linkTarget,safe=':/')
+            link_target = urllib.parse.quote(link_target,safe=':/')
 
-        if len(linkTarget) > 0:
-            fHtml.write('<a href="{}">'.format(linkTarget))
-            # imageStyle.append(';border:0px;')
+        if len(link_target) > 0:
+            f_html.write('<a href="{}">'.format(link_target))
+            # image_style.append(';border:0px;')
 
-        fHtml.write('<img src="{}" style="{}">\n'.format(filename,imageStyle))
+        f_html.write('<img src="{}" style="{}">\n'.format(filename,image_style))
 
-        if len(linkTarget) > 0:
-            fHtml.write('</a>')
+        if len(link_target) > 0:
+            f_html.write('</a>')
 
-        if iImage != len(images)-1:
-            fHtml.write('<br/>')
+        if i_image != len(images)-1:
+            f_html.write('<br/>')
 
     # ...for each image we need to write
 
-    fHtml.write(options['trailerHtml'])
+    f_html.write(options['trailerHtml'])
 
-    fHtml.write('</body></html>\n')
+    f_html.write('</body></html>\n')
 
-    if bCleanupFile:
-        fHtml.close()
+    if b_clean_up_file:
+        f_html.close()
 
 # ...function

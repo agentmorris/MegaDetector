@@ -637,14 +637,14 @@ def get_datetimes_for_folder(folder_name,output_file=None,n_to_sample=-1,options
             if use_threads:
                 from multiprocessing.pool import ThreadPool
                 pool = ThreadPool(n_workers)
-                worker_string = 'threads'        
+                worker_string = 'threads'
             else:
                 from multiprocessing.pool import Pool
                 pool = Pool(n_workers)
                 worker_string = 'processes'
-            
+
             print('Starting a pool of {} {}'.format(n_workers,worker_string))
-        
+
             all_results = list(tqdm(pool.imap(
                 partial(try_get_datetime_from_image,options=options),image_file_names),
                 total=len(image_file_names)))
@@ -705,7 +705,7 @@ if False:
     options_a = DatetimeExtractionOptions()
     options_b = DatetimeExtractionOptions()
     options_b.image_crop_fraction = [0.08 , 0.08]
-    image = vis_utils.open_image(fn) # noqa    
+    image = vis_utils.open_image(fn) # noqa
     result = try_get_datetime_from_image(fn,options=[options_a,options_b]) # noqa
     print(result)
 

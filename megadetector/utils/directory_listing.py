@@ -15,7 +15,6 @@ if present.
 import os
 import sys
 import argparse
-import re
 
 from megadetector.utils.path_utils import is_image_file
 
@@ -67,7 +66,8 @@ def create_plain_index(root, dirs, files, dirname=None):
         # jpg_file_sizes = [os.path.getsize(f) for f in jpg_files]
         # largest_file_index = max(range(len(jpg_files)), key=lambda x: jpg_file_sizes[x])
 
-        html += "<a href='{0}'><img style='height:200px; float:right;' src='{0}' alt='Preview image'></a>\n".format(jpg_files[0])
+        html += "<a href='{0}'><img style='height:200px; float:right;' src='{0}' alt='Preview image'></a>\n".\
+            format(jpg_files[0])
     else:
         html += "\n"
         # html += "<p style='width:15em; float:right; margin:0;'>[No preview available]</p>\n"
@@ -107,8 +107,10 @@ def create_plain_index(root, dirs, files, dirname=None):
 # ...def create_plain_index(...)
 
 
-def traverse_and_create_index(dir, sas_url=None, overwrite_files=False,
-                              template_fun=create_plain_index, basepath=None):
+def traverse_and_create_index(dir,
+                              overwrite_files=False,
+                              template_fun=create_plain_index,
+                              basepath=None):
     """
     Recursively traverses the local directory [dir] and generates a index
     file for each folder using [template_fun] to generate the HTML output.
@@ -116,10 +118,6 @@ def traverse_and_create_index(dir, sas_url=None, overwrite_files=False,
 
     Args:
         dir (str): directory to process
-        sas_url (str, optional): write-capable SAS URL that points to the same place as
-            [dir], used for the very esoteric scenario where [dir] is really a mounted
-            blob container, and we want to set the content-type on each file so the resulting
-            index can be viewed in a browser
         overwrite_files (bool, optional): whether to over-write existing index file
         template_fun (func, optional): function taking three arguments (string,
             list of string, list of string) representing the current root, the list of folders,
@@ -132,40 +130,6 @@ def traverse_and_create_index(dir, sas_url=None, overwrite_files=False,
 
     # Make sure we remove the trailing /
     dir = os.path.normpath(dir)
-
-    # If we want to set the content type in blob storage using a SAS URL
-    if sas_url:
-
-        from azure.storage.blob import BlobServiceClient, ContentSettings
-
-        # Example: sas_url = 'https://accname.blob.core.windows.net/bname/path/to/folder?st=...&se=...&sp=...&...'
-        if '?' in sas_url:
-            # 'https://accname.blob.core.windows.net/bname/path/to/folder' and 'st=...&se=...&sp=...&...'
-            base_url, sas_token = sas_url.split('?', 1)
-        else:
-            # 'https://accname.blob.core.windows.net/bname/path/to/folder' and None
-            base_url, sas_token = sas_url, None
-        # Remove https:// from base url
-        # 'accname.blob.core.windows.net/bname/path/to/folder'
-        base_url = base_url.split("//", 1)[1]
-        # Everything up to the first dot is account name
-        # 'accname'
-        account_name = base_url.split(".", 1)[0]
-        # get everything after the first /
-        # 'bname/path/to/folder'
-        query_string = base_url.split("/", 1)[1]
-        # Get container name and subfolder
-        if '/' in query_string:
-            # 'bname', 'path/to/folder'
-            container_name, container_folder = query_string.split("/", 1)
-        else:
-            container_name, container_folder = query_string, ''
-
-        # Prepare the storage access
-        target_settings = ContentSettings(content_type='text/html')
-        blob_service = BlobServiceClient(
-            account_url=f'{account_name}.blob.core.windows.net',
-            credential=sas_token)
 
     # Traverse directory and all sub directories, excluding hidden files
     for root, dirs, files in os.walk(dir):
@@ -193,20 +157,6 @@ def traverse_and_create_index(dir, sas_url=None, overwrite_files=False,
         with open(output_file, 'wt') as fi:
             fi.write(html)
 
-        # Set content type in blob storage
-        if sas_url:
-            import azure.common
-            if container_folder:
-                output_blob_path = container_folder + '/' + output_file[len(dir) + 1:]
-            else:
-                output_blob_path = output_file[len(dir) + 1:]
-            try:
-                blob_client = blob_service.get_blob_client(container_name, output_blob_path)
-                blob_client.set_http_headers(content_settings=target_settings)
-            except azure.common.AzureMissingResourceHttpError:
-                print('ERROR: It seems the SAS URL is incorrect or does not allow setting properties.')
-                return
-
 # ...def traverse_and_create_index(...)
 
 
@@ -221,12 +171,6 @@ def main(): # noqa
     parser.add_argument("--basepath", type=str,
                         help='Folder names will be printed relative to basepath, if specified',
                         default=None)
-    parser.add_argument("--sas_url", type=str,
-                        help='Blobfuse does not set the content-type property ' + \
-                             'properly and hence index.html won\'t be accessible in the browser. If you want to set the ' + \
-                              'content-type in the corresponding blob storage, provide the SAS URL that corresponds to the ' + \
-                              'directory, e.g. if *directory* is /mountpoint/path/to/folder, then *--sas_url* looks like ' + \
-                              '"https://accname.blob.core.windows.net/bname/path/to/folder?st=...&se=...&sp=...&..."')
     parser.add_argument("--enable_overwrite", action='store_true', default=False,
                         help='If set, the script will overwrite existing index.html files.')
 
@@ -237,10 +181,10 @@ def main(): # noqa
     args = parser.parse_args()
 
     assert os.path.isdir(args.directory), "{} is not a valid directory".format(args.directory)
-    assert re.match(r'https?://[^\.]+\.blob\.core\.windows\.net/.+', args.sas_url), "--sas_url does not " + \
-        "match the format https://accname.blob.core.windows.net/bname/path/to/folder?..."
 
-    traverse_and_create_index(args.directory, overwrite_files=args.enable_overwrite, sas_url=args.sas_url, basepath=args.basepath)
+    traverse_and_create_index(args.directory,
+                              overwrite_files=args.enable_overwrite,
+                              basepath=args.basepath)
 
 if __name__ == '__main__':
     main()

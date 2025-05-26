@@ -14,9 +14,12 @@ import random
 
 from tqdm import tqdm
 from collections import defaultdict
+from copy import deepcopy
 
 from megadetector.data_management.lila.lila_common import \
     read_lila_all_images_file, is_empty, lila_base_urls
+from megadetector.utils.url_utils import parallel_download_urls
+from megadetector.utils.path_utils import open_file
 
 for s in lila_base_urls.values():
     assert s.endswith('/')
@@ -58,7 +61,7 @@ common_name_to_count = defaultdict(int)
 
 ds_name_to_urls = defaultdict(list)
 
-def find_items(row):
+def find_items(row): # noqa
 
     if is_empty(row['common_name']):
         return
@@ -87,7 +90,6 @@ print('Found {} matching URLs across {} datasets'.format(len(all_urls),len(ds_na
 for common_name in common_name_to_count:
     print('{}: {}'.format(common_name,common_name_to_count[common_name]))
 
-from copy import deepcopy
 ds_name_to_urls_raw = deepcopy(ds_name_to_urls)
 
 
@@ -103,8 +105,6 @@ else:
 
 
 #%% Choose target files for each URL
-
-from megadetector.data_management.lila.lila_common import lila_base_urls
 
 # We have a list of URLs per dataset, flatten that into a single list of URLs
 urls_to_download = set()
@@ -136,8 +136,6 @@ for url in urls_to_download:
 
 #%% Download image files
 
-from megadetector.utils.url_utils import parallel_download_urls
-
 download_results = parallel_download_urls(url_to_target_file=url_to_target_file,
                                           verbose=False,
                                           overwrite=False,
@@ -147,7 +145,6 @@ download_results = parallel_download_urls(url_to_target_file=url_to_target_file,
 
 #%% Open output folder
 
-from megadetector.utils.path_utils import open_file
 open_file(output_dir)
 
 

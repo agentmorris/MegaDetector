@@ -103,7 +103,7 @@ def create_loader(cropped_images_dir: str,
         batch_size: int, batch size in dataloader
         num_workers: int, # of workers in dataloader
     """
-    
+
     crop_files = []
 
     if detections_json_path is None:
@@ -160,7 +160,7 @@ def main(model_path: str,
          batch_size: int,
          num_workers: int,
          device_id: int | None = None) -> None:
-    
+
     # Evaluating with accimage is much faster than Pillow or Pillow-SIMD, but accimage
     # is Linux-only.
     try:
@@ -207,7 +207,7 @@ def test_epoch(model: torch.nn.Module,
         label_names: optional list of str, label names
         output_csv_path: str
     """
-    
+
     # set dropout and BN layers to eval mode
     model.eval()
 
@@ -274,7 +274,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
-    
+
     args = _parse_args()
     main(model_path=args.model,
          cropped_images_dir=args.crops_dir,

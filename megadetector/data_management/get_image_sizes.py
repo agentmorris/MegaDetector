@@ -172,8 +172,8 @@ def main(): # noqa
     parser.add_argument('output_file',type=str,
                         help='Output file (.json) to which we should write image size information')
     parser.add_argument('--image_prefix', type=str, default=None,
-                        help='Prefix to append to image filenames, only relevant if [filenames] points to a list of ' + \
-                             'relative paths')
+                        help='Prefix to append to image filenames, only relevant if [filenames] points to a ' + \
+                             'list of relative paths')
     parser.add_argument('--n_threads', type=int, default=default_n_threads,
                         help='Number of concurrent workers, set to <=1 to disable parallelization (default {})'.format(
                             default_n_threads))

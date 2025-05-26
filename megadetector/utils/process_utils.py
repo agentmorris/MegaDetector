@@ -146,14 +146,14 @@ if False:
 
     test_data = ['a','b','c','d']
 
-    def process_sample(s):
+    def _process_sample(s):
         return execute_and_print('echo ' + s,True)
 
     if n_workers == 1:
 
         results = []
         for i_sample,sample in enumerate(test_data):
-            results.append(process_sample(sample))
+            results.append(_process_sample(sample))
 
     else:
 
@@ -166,7 +166,7 @@ if False:
             print('Starting parallel process pool with {} workers'.format(n_threads))
             pool = Pool(n_threads)
 
-        results = list(pool.map(partial(process_sample),test_data))
+        results = list(pool.map(partial(_process_sample),test_data))
 
         for r in results:
             print(r)

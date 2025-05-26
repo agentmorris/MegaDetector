@@ -189,41 +189,6 @@ def render_images_with_thumbnails(
 # ...def render_images_with_thumbnails(...)
 
 
-#%% Interactive driver
-
-if False:
-
-    pass
-
-    #%%
-
-    primary_image_filename = '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0035.JPG'
-
-    primary_image_width = 5152
-
-    secondary_image_filename_list = ['/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0035.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0040.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0007.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0041.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0008.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0048.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0031.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0006.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0004.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0026.JPG', '/home/user/data/KRU/KRU_public/KRU_S1/13/13_R1/KRU_S1_13_R1_IMAG0005.JPG']
-
-    secondary_image_bounding_box_list = [[0, 0, 0.1853, 0.6552], [0, 0, 0.1855, 0.6527], [0, 0.000252, 0.1991, 0.6925], [0, 0, 0.1855, 0.6527], [0, 0.001008, 0.1902, 0.6774], [0, 0, 0.1845, 0.658], [0, 0, 0.1824, 0.6711], [0, 0.00252, 0.2005, 0.6857], [0, 0.002268, 0.1983, 0.6852], [0, 0, 0.1752, 0.6897], [0, 0.001764, 0.1989, 0.6887]]
-
-    # cropped_grid_width = 3091
-    cropped_grid_width = 500
-
-    primary_image_location = 'right'
-
-    output_image_filename = os.path.expanduser('~/tmp/grid-test.jpg')
-
-    render_images_with_thumbnails(
-            primary_image_filename,
-            primary_image_width,
-            secondary_image_filename_list,
-            secondary_image_bounding_box_list,
-            cropped_grid_width,
-            output_image_filename,
-            primary_image_location='right')
-
-    path_utils.open_file(output_image_filename)
-
-
 #%% Command-line driver
 
 # This is just a test driver, this module is not meant to be run from the command line.
@@ -268,7 +233,6 @@ def main(): # noqa
         cropped_grid_width,
         output_image_filename, 'right')
 
-    from megadetector.utils import path_utils
     path_utils.open_file(output_image_filename)
 
 if __name__ == '__main__':

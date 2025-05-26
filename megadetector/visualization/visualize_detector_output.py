@@ -257,7 +257,7 @@ def visualize_detector_output(detector_output_path,
             worker_string = 'threads'
         else:
             worker_string = 'processes'
-            
+
         pool = None
         try:
             if parallelize_rendering_n_cores is None:
@@ -271,7 +271,7 @@ def visualize_detector_output(detector_output_path,
                 else:
                     pool = Pool(parallelize_rendering_n_cores)
                 print('Rendering images with {} {}'.format(parallelize_rendering_n_cores,
-                                                           worker_string))            
+                                                           worker_string))
             rendering_results = list(tqdm(pool.imap(
                                      partial(_render_image,detector_label_map=detector_label_map,
                                              classification_label_map=classification_label_map,
@@ -440,7 +440,7 @@ if False:
 
     #%%
 
-    detector_output_path = os.path.expanduser('~/postprocessing/bellevue-camera-traps/bellevue-camera-traps-2023-12-05-v5a.0.0/combined_api_outputs/bellevue-camera-traps-2023-12-05-v5a.0.0_detections.json')
+    detector_output_path = os.path.expanduser('detections.json')
     out_dir = r'g:\temp\preview'
     images_dir = r'g:\camera_traps\camera_trap_images'
     confidence_threshold = 0.15

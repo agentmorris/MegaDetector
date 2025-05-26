@@ -65,7 +65,7 @@ if False:
 
     #%% Cache WI taxonomy lookups
 
-    def is_empty_wi_item(v):
+    def _is_empty_wi_item(v):
         if isinstance(v, str):
             return len(v) == 0
         elif v is None:
@@ -75,7 +75,7 @@ if False:
             return True
 
 
-    def taxonomy_items_equal(a, b):
+    def _taxonomy_items_equal(a, b):
         if isinstance(a, str) and (not isinstance(b, str)):
             return False
         if isinstance(b, str) and (not isinstance(a, str)):
@@ -152,37 +152,37 @@ if False:
                 continue
 
         # Do we have a species name?
-        if not is_empty_wi_item(taxon['species']):
+        if not _is_empty_wi_item(taxon['species']):
 
             # If 'species' is populated, 'genus' should always be populated; one item currently breaks
             # this rule.
-            assert not is_empty_wi_item(taxon['genus'])
+            assert not _is_empty_wi_item(taxon['genus'])
 
             taxon_name = (taxon['genus'].strip() + ' ' +
                         taxon['species'].strip()).strip().lower()
-            assert not is_empty_wi_item(taxon['class']) and \
-                not is_empty_wi_item(taxon['order']) and \
-                not is_empty_wi_item(taxon['family'])
+            assert not _is_empty_wi_item(taxon['class']) and \
+                not _is_empty_wi_item(taxon['order']) and \
+                not _is_empty_wi_item(taxon['family'])
 
-        elif not is_empty_wi_item(taxon['genus']):
+        elif not _is_empty_wi_item(taxon['genus']):
 
-            assert not is_empty_wi_item(taxon['class']) and \
-                not is_empty_wi_item(taxon['order']) and \
-                not is_empty_wi_item(taxon['family'])
+            assert not _is_empty_wi_item(taxon['class']) and \
+                not _is_empty_wi_item(taxon['order']) and \
+                not _is_empty_wi_item(taxon['family'])
             taxon_name = taxon['genus'].strip().lower()
 
-        elif not is_empty_wi_item(taxon['family']):
+        elif not _is_empty_wi_item(taxon['family']):
 
-            assert not is_empty_wi_item(taxon['class']) and \
-                not is_empty_wi_item(taxon['order'])
+            assert not _is_empty_wi_item(taxon['class']) and \
+                not _is_empty_wi_item(taxon['order'])
             taxon_name = taxon['family'].strip().lower()
 
-        elif not is_empty_wi_item(taxon['order']):
+        elif not _is_empty_wi_item(taxon['order']):
 
-            assert not is_empty_wi_item(taxon['class'])
+            assert not _is_empty_wi_item(taxon['class'])
             taxon_name = taxon['order'].strip().lower()
 
-        elif not is_empty_wi_item(taxon['class']):
+        elif not _is_empty_wi_item(taxon['class']):
 
             taxon_name = taxon['class'].strip().lower()
 
@@ -204,7 +204,7 @@ if False:
                             level,previous_taxon[level],
                             previous_taxon['taxon_name'],
                             level,taxon[level])
-                        assert taxonomy_items_equal(previous_taxon[level], taxon[level]), error_string
+                        assert _taxonomy_items_equal(previous_taxon[level], taxon[level]), error_string
 
         taxon['taxon_name'] = taxon_name
         if taxon_name == 'homo sapiens':

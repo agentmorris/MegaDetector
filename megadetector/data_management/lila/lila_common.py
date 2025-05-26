@@ -304,7 +304,7 @@ if False:
         ds_info = dataset_metadata[ds_name]
         for cloud_name in lila_base_urls.keys():
             urls_to_test.append(ds_info['metadata_url_' + cloud_name])
-            if ds_info['bbox_url_relative'] != None:
+            if ds_info['bbox_url_relative'] is not None:
                 urls_to_test.append(ds_info['bbox_url_' + cloud_name])
 
     status_codes = url_utils.test_urls(urls_to_test,

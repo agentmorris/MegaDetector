@@ -666,16 +666,30 @@ if False:
 
     """
     # With boxes, no classification
-    python separate_detections_into_folders.py ~/data/ena24-2022-06-15-v5a.0.0_megaclassifier.json ~/data/ENA24/images ~/data/ENA24-separated --threshold 0.17 --animal_threshold 0.2 --n_threads 10 --allow_existing_directory --render_boxes --line_thickness 10 --box_expansion 10
+    python separate_detections_into_folders.py \
+        ~/data/ena24-2022-06-15-v5a.0.0_megaclassifier.json \
+        ~/data/ENA24/images ~/data/ENA24-separated \
+        --threshold 0.17 --animal_threshold 0.2 --n_threads 10 \
+        --allow_existing_directory --render_boxes --line_thickness 10 --box_expansion 10
 
     # No boxes, no classification (default)
-    python separate_detections_into_folders.py ~/data/ena24-2022-06-15-v5a.0.0_megaclassifier.json ~/data/ENA24/images ~/data/ENA24-separated --threshold 0.17 --animal_threshold 0.2 --n_threads 10 --allow_existing_directory
+    python separate_detections_into_folders.py \
+        ~/data/ena24-2022-06-15-v5a.0.0_megaclassifier.json \
+        ~/data/ENA24/images ~/data/ENA24-separated \
+        --threshold 0.17 --animal_threshold 0.2 --n_threads 10 --allow_existing_directory
 
     # With boxes, with classification
-    python separate_detections_into_folders.py ~/data/ena24-2022-06-15-v5a.0.0_megaclassifier.json ~/data/ENA24/images ~/data/ENA24-separated --threshold 0.17 --animal_threshold 0.2 --n_threads 10 --allow_existing_directory --render_boxes --line_thickness 10 --box_expansion 10 --classification_thresholds "deer=0.75,cow=0.75,bird=0.75"
+    python separate_detections_into_folders.py \
+        ~/data/ena24-2022-06-15-v5a.0.0_megaclassifier.json ~/data/ENA24/images ~/data/ENA24-separated \
+        --threshold 0.17 --animal_threshold 0.2 --n_threads 10 --allow_existing_directory \
+        --render_boxes --line_thickness 10 --box_expansion 10 \
+        --classification_thresholds "deer=0.75,cow=0.75,bird=0.75"
 
     # No boxes, with classification
-    python separate_detections_into_folders.py ~/data/ena24-2022-06-15-v5a.0.0_megaclassifier.json ~/data/ENA24/images ~/data/ENA24-separated --threshold 0.17 --animal_threshold 0.2 --n_threads 10 --allow_existing_directory --classification_thresholds "deer=0.75,cow=0.75,bird=0.75"
+    python separate_detections_into_folders.py \
+        ~/data/ena24-2022-06-15-v5a.0.0_megaclassifier.json ~/data/ENA24/images ~/data/ENA24-separated \
+        --threshold 0.17 --animal_threshold 0.2 --n_threads 10 --allow_existing_directory \
+        --classification_thresholds "deer=0.75,cow=0.75,bird=0.75"
     """
 
 #%% Command-line driver
@@ -727,7 +741,8 @@ def main(): # noqa
                              'using render_boxes (defaults to {})'.format(
                              default_box_expansion))
     parser.add_argument('--category_names_to_blur', type=str, default=None,
-                        help='Comma-separated list of category names to blur (or a single category name, e.g. "person")')
+                        help='Comma-separated list of category names to blur ' + \
+                             '(or a single category name, e.g. "person")')
     parser.add_argument('--remove_empty_folders', action='store_true',
                         help='Remove all empty folders from the target folder at the end of the process, ' + \
                              'whether or not they were created by this script')

@@ -12,8 +12,8 @@ Requires azure-storage-blob>=12.4.0
 
 import json
 
-from typing import Any, Iterable, List, Optional, Tuple, Union
-from azure.storage.blob import BlobPrefix, ContainerClient
+from typing import Any, Iterable, Optional, Union
+from azure.storage.blob import BlobPrefix, ContainerClient # type: ignore
 
 from megadetector.utils import path_utils
 from megadetector.utils import sas_blob_utils
@@ -26,7 +26,7 @@ def walk_container(container_client: ContainerClient,
                    prefix: str = '',
                    store_folders: bool = True,
                    store_blobs: bool = True,
-                   debug_max_items: int = -1) -> Tuple[List[str], List[str]]:
+                   debug_max_items: int = -1) -> tuple[list[str], list[str]]:
     """
     Recursively walk folders a Azure Blob Storage container.
 
@@ -37,9 +37,9 @@ def walk_container(container_client: ContainerClient,
     depth = 1
 
     def walk_blob_hierarchy(prefix: str,
-                            folders: Optional[List[str]] = None,
-                            blobs: Optional[List[str]] = None
-                            ) -> Tuple[List[str], List[str]]:
+                            folders: Optional[list[str]] = None,
+                            blobs: Optional[list[str]] = None
+                            ) -> tuple[list[str], list[str]]:
         if folders is None:
             folders = []
         if blobs is None:
@@ -76,7 +76,7 @@ def walk_container(container_client: ContainerClient,
     return folders, blobs
 
 
-def list_top_level_blob_folders(container_client: ContainerClient) -> List[str]:
+def list_top_level_blob_folders(container_client: ContainerClient) -> list[str]:
     """
     List all top-level folders in a container.
     """
@@ -88,7 +88,7 @@ def list_top_level_blob_folders(container_client: ContainerClient) -> List[str]:
 
 def concatenate_json_lists(input_files: Iterable[str],
                            output_file: Optional[str] = None
-                           ) -> List[Any]:
+                           ) -> list[Any]:
     """
     Given a list of JSON files that contain lists (typically string
     filenames), concatenates the lists into a single list and optionally
@@ -131,11 +131,11 @@ def enumerate_blobs_to_file(
         container_name: str,
         sas_token: Optional[str] = None,
         blob_prefix: Optional[str] = None,
-        blob_suffix: Optional[Union[str, Tuple[str]]] = None,
+        blob_suffix: Optional[Union[str, tuple[str]]] = None,
         rsearch: Optional[str] = None,
         limit: Optional[int] = None,
         verbose: Optional[bool] = True
-        ) -> List[str]:
+        ) -> list[str]:
     """
     Enumerates blobs in a container, and writes the blob names to an output
     file.

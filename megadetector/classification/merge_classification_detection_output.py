@@ -110,7 +110,7 @@ def row_to_classification_list(row: Mapping[str, Any],
     (label_id + 1_000_000, 1.) to the list. If label_pos='first', we put this at
     the front of the list. Otherwise, we put it at the end.
     """
-    
+
     contains_label = ('label' in row)
     assert contains_label or contains_preds
     if relative_conf:
@@ -177,7 +177,7 @@ def process_queried_images(
     Returns: dict, detections JSON file, except that the 'images' field is a
         dict (img_path => dict) instead of a list
     """
-    
+
     # input validation
     assert os.path.exists(queried_images_json_path)
     detection_cache_dir = os.path.join(
@@ -275,7 +275,7 @@ def combine_classification_with_detection(
         label_pos: str | None = None,
         relative_conf: bool = False,
         typical_confidence_threshold: float = None
-        ) -> dict[str, Any]:    
+        ) -> dict[str, Any]:
     """
     Adds classification information to a detection JSON. Classification
     information may include the true label and/or the predicted confidences
@@ -303,7 +303,7 @@ def combine_classification_with_detection(
 
     Returns: dict, detections JSON file updated with classification results
     """
-    
+
     classification_metadata = {
         'classifier': classifier_name,
         'classification_completion_time': classifier_timestamp
@@ -355,7 +355,7 @@ def main(classification_csv_path: str,
          label_pos: str | None,
          relative_conf: bool,
          typical_confidence_threshold: float) -> None:
-   
+
     # input validation
     assert os.path.exists(classification_csv_path)
     assert os.path.exists(label_names_json_path)
@@ -421,7 +421,7 @@ def main(classification_csv_path: str,
 #%% Command-line driver
 
 def _parse_args() -> argparse.Namespace:
-    
+
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Merges classification results with Batch Detection API '
@@ -490,7 +490,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
-    
+
     args = _parse_args()
     main(classification_csv_path=args.classification_csv,
          label_names_json_path=args.label_names_json,

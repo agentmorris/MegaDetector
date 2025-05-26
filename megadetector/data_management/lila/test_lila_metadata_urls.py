@@ -18,6 +18,7 @@ import os
 
 from megadetector.data_management.lila.lila_common import read_lila_metadata,\
     read_metadata_file_for_dataset, read_lila_taxonomy_mapping
+from megadetector.utils.url_utils import test_urls
 
 # We'll write images, metadata downloads, and temporary files here
 lila_local_base = os.path.expanduser('~/lila')
@@ -138,8 +139,6 @@ for ds_name in metadata_table.keys():
 
 
 #%% Test URLs
-
-from megadetector.utils.url_utils import test_urls
 
 urls_to_test = sorted(url_to_source.keys())
 urls_to_test = [fn.replace('\\','/') for fn in urls_to_test]

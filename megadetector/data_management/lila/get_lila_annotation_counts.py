@@ -17,6 +17,8 @@ get_lila_image_counts.py counts the number of *images* for each category in each
 import json
 import os
 
+from collections import defaultdict
+
 from megadetector.data_management.lila.lila_common import \
     read_lila_metadata, read_metadata_file_for_dataset, read_lila_taxonomy_mapping
 from megadetector.utils import ct_utils
@@ -88,8 +90,6 @@ for ds_name in metadata_table.keys():
 #%% Get category names and counts for each dataset
 
 # Takes ~5 minutes
-
-from collections import defaultdict
 
 dataset_to_categories = {}
 
