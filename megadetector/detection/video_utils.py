@@ -767,25 +767,32 @@ def video_folder_to_frames(input_folder,
             frame_filenames_by_video.append(frame_filenames)
             fs_by_video.append(fs)
     else:
-        if parallelization_uses_threads:
-            print('Starting a worker pool with {} threads'.format(n_threads))
-            pool = ThreadPool(n_threads)
-        else:
-            print('Starting a worker pool with {} processes'.format(n_threads))
-            pool = Pool(n_threads)
-        process_video_with_options = partial(_video_to_frames_for_folder,
-                                             input_folder=input_folder,
-                                             output_folder_base=output_folder_base,
-                                             every_n_frames=every_n_frames,
-                                             overwrite=overwrite,
-                                             verbose=verbose,
-                                             quality=quality,
-                                             max_width=max_width,
-                                             frames_to_extract=frames_to_extract,
-                                             allow_empty_videos=allow_empty_videos)
-        results = list(tqdm(pool.imap(
-            partial(process_video_with_options),input_files_relative_paths),
-                            total=len(input_files_relative_paths)))
+        pool = None
+        results = None
+        try:
+            if parallelization_uses_threads:
+                print('Starting a worker pool with {} threads'.format(n_threads))
+                pool = ThreadPool(n_threads)
+            else:
+                print('Starting a worker pool with {} processes'.format(n_threads))
+                pool = Pool(n_threads)
+            process_video_with_options = partial(_video_to_frames_for_folder, 
+                                                input_folder=input_folder,
+                                                output_folder_base=output_folder_base,
+                                                every_n_frames=every_n_frames,
+                                                overwrite=overwrite,
+                                                verbose=verbose,
+                                                quality=quality,
+                                                max_width=max_width,
+                                                frames_to_extract=frames_to_extract,
+                                                allow_empty_videos=allow_empty_videos)
+            results = list(tqdm(pool.imap(
+                partial(process_video_with_options),input_files_relative_paths), 
+                                total=len(input_files_relative_paths)))
+        finally:
+            pool.close()
+            pool.join()
+            print("Pool closed and joined for video processing")
         frame_filenames_by_video = [x[0] for x in results]
         fs_by_video = [x[1] for x in results]
 

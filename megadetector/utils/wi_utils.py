@@ -705,19 +705,24 @@ def parallel_push_results_for_images(payloads,
 
         assert pool_type in ('thread','process')
 
-        if pool_type == 'thread':
-            pool_string = 'thread'
-            pool = ThreadPool(n_workers)
-        else:
-            pool_string = 'process'
-            pool = Pool(n_workers)
-
-        print('Created a {} pool of {} workers'.format(
-            pool_string,n_workers))
-
-        results = list(tqdm(pool.imap(
-            partial(push_results_for_images,headers=headers,url=url,verbose=verbose),payloads),
-            total=len(payloads)))
+        try:
+            if pool_type == 'thread':
+                pool_string = 'thread'
+                pool = ThreadPool(n_workers)
+            else:
+                pool_string = 'process'
+                pool = Pool(n_workers)
+    
+            print('Created a {} pool of {} workers'.format(
+                pool_string,n_workers))
+        
+            results = list(tqdm(pool.imap(
+                partial(push_results_for_images,headers=headers,url=url,verbose=verbose),payloads), 
+                total=len(payloads)))
+        finally:
+            pool.close()
+            pool.join()
+            print("Pool closed and joined for WI result uploads")
 
         assert len(results) == len(payloads)
         return results

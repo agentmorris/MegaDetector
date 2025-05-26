@@ -506,21 +506,28 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
             worker_string = 'threads'
         else:
             worker_string = 'processes'
-
-        if options.parallelize_rendering_n_cores is None:
-            if options.parallelize_rendering_with_threads:
-                pool = ThreadPool()
+            
+        pool = None
+        try:
+            if options.parallelize_rendering_n_cores is None:
+                if options.parallelize_rendering_with_threads:
+                    pool = ThreadPool()
+                else:
+                    pool = Pool()
             else:
-                pool = Pool()
-        else:
-            if options.parallelize_rendering_with_threads:
-                pool = ThreadPool(options.parallelize_rendering_n_cores)
-            else:
-                pool = Pool(options.parallelize_rendering_n_cores)
-            print('Rendering images with {} {}'.format(options.parallelize_rendering_n_cores,
-                                                       worker_string))
-        rendering_success = list(tqdm(pool.imap(render_image_info, rendering_info),
-                                 total=len(rendering_info)))
+                if options.parallelize_rendering_with_threads:
+                    pool = ThreadPool(options.parallelize_rendering_n_cores)
+                else:
+                    pool = Pool(options.parallelize_rendering_n_cores)
+                print('Rendering images with {} {}'.format(options.parallelize_rendering_n_cores,
+                                                           worker_string))            
+            rendering_success = list(tqdm(pool.imap(render_image_info, rendering_info),
+                                     total=len(rendering_info)))
+        finally:
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print("Pool closed and joined for DB visualization")
 
     else:
 

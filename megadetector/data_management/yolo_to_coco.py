@@ -31,6 +31,7 @@ def _filename_to_image_id(fn):
     """
     Image IDs can't have spaces in them, replace spaces with underscores
     """
+	
     return fn.replace(' ','_').replace('\\','/')
 
 
@@ -368,19 +369,25 @@ def validate_yolo_dataset(input_folder,
 
         assert pool_type in ('process','thread'), 'Illegal pool type {}'.format(pool_type)
 
-        if pool_type == 'thread':
-            pool = ThreadPool(n_workers)
-        else:
-            pool = Pool(n_workers)
-
-        print('Starting a {} pool of {} workers'.format(pool_type,n_workers))
-
-        p = partial(validate_label_file,
-                    category_id_to_name=category_id_to_name,
-                    verbose=verbose)
-        label_results = list(tqdm(pool.imap(p, label_files),
-                                  total=len(label_files)))
-
+        pool = None
+        try:
+            if pool_type == 'thread':
+                pool = ThreadPool(n_workers)
+            else:
+                pool = Pool(n_workers)
+        
+            print('Starting a {} pool of {} workers'.format(pool_type,n_workers))
+        
+            p = partial(validate_label_file,
+                        category_id_to_name=category_id_to_name,
+                        verbose=verbose)
+            label_results = list(tqdm(pool.imap(p, label_files),
+                                    total=len(label_files)))        
+        finally:
+            pool.close()
+            pool.join()
+            print("Pool closed and joined for label file validation")    
+    
     assert len(label_results) == len(label_files)
 
     validation_results = {}

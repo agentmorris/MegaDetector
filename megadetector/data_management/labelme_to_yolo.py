@@ -215,22 +215,28 @@ def labelme_folder_to_yolo(labelme_folder,
             image_results.append(image_result)
         # ...for each file
     else:
-        if use_threads:
-            pool = ThreadPool(n_workers)
-        else:
-            pool = Pool(n_workers)
+        pool = None
+        try:
+            if use_threads:
+                pool = ThreadPool(n_workers)
+            else:
+                pool = Pool(n_workers)
 
-        valid_labelme_files_abs = [os.path.join(labelme_folder,fn_relative) for \
-                                   fn_relative in valid_labelme_files_relative]
-
-        image_results = list(tqdm(pool.imap(
-            partial(labelme_file_to_yolo_file,
-                    category_name_to_category_id=category_name_to_category_id,
-                    yolo_file=None,
-                    required_token=required_token,
-                    overwrite_behavior=overwrite_behavior),
-                    valid_labelme_files_abs),
-                    total=len(valid_labelme_files_abs)))
+            valid_labelme_files_abs = [os.path.join(labelme_folder,fn_relative) for \
+                                    fn_relative in valid_labelme_files_relative]
+            
+            image_results = list(tqdm(pool.imap(
+                partial(labelme_file_to_yolo_file,
+                        category_name_to_category_id=category_name_to_category_id,
+                        yolo_file=None,
+                        required_token=required_token,
+                        overwrite_behavior=overwrite_behavior),
+                        valid_labelme_files_abs), 
+                        total=len(valid_labelme_files_abs)))
+        finally:
+            pool.close()
+            pool.join()
+            print("Pool closed and joined for labelme conversion to YOLO")
 
     assert len(valid_labelme_files_relative) == len(image_results)
 

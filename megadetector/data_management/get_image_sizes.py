@@ -115,8 +115,13 @@ def get_image_sizes(filenames,image_prefix=None,output_file=None,
         else:
             pool = Pool(n_workers)
         # all_results = list(tqdm(pool.imap(process_image, filenames), total=len(filenames)))
-        all_results = list(tqdm(pool.imap(
-            partial(_get_image_size,image_prefix=image_prefix), filenames), total=len(filenames)))
+        try:
+            all_results = list(tqdm(pool.imap(
+                partial(_get_image_size,image_prefix=image_prefix), filenames), total=len(filenames)))
+        finally:
+            pool.close()
+            pool.join()
+            print("Pool closed and joined for image size reads")
 
     if output_file is not None:
         with open(output_file,'w') as f:

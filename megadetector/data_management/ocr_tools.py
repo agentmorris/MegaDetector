@@ -632,20 +632,26 @@ def get_datetimes_for_folder(folder_name,output_file=None,n_to_sample=-1,options
         if n_workers > len(image_file_names):
             n_workers = len(image_file_names)
 
-        if use_threads:
-            from multiprocessing.pool import ThreadPool
-            pool = ThreadPool(n_workers)
-            worker_string = 'threads'
-        else:
-            from multiprocessing.pool import Pool
-            pool = Pool(n_workers)
-            worker_string = 'processes'
-
-        print('Starting a pool of {} {}'.format(n_workers,worker_string))
-
-        all_results = list(tqdm(pool.imap(
-            partial(try_get_datetime_from_image,options=options),image_file_names),
-            total=len(image_file_names)))
+        pool = None
+        try:
+            if use_threads:
+                from multiprocessing.pool import ThreadPool
+                pool = ThreadPool(n_workers)
+                worker_string = 'threads'        
+            else:
+                from multiprocessing.pool import Pool
+                pool = Pool(n_workers)
+                worker_string = 'processes'
+            
+            print('Starting a pool of {} {}'.format(n_workers,worker_string))
+        
+            all_results = list(tqdm(pool.imap(
+                partial(try_get_datetime_from_image,options=options),image_file_names),
+                total=len(image_file_names)))
+        finally:
+            pool.close()
+            pool.join()
+            print("Pool closed and joined for datetime extraction")
 
     filename_to_results = {}
 

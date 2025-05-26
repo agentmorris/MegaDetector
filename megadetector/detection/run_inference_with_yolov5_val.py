@@ -54,6 +54,7 @@ from megadetector.utils import process_utils
 from megadetector.utils import string_utils
 
 from megadetector.utils.ct_utils import is_iterable, split_list_into_fixed_size_chunks
+from megadetector.utils import ct_utils
 from megadetector.utils.path_utils import path_is_abs
 from megadetector.data_management import yolo_output_to_md_output
 from megadetector.detection.run_detector import try_download_known_detector
@@ -843,10 +844,8 @@ def run_inference_with_yolo_val(options):
         with open(os.path.join(yolo_results_folder,'yolo_console_output.txt'),'w',encoding='utf-8') as f:
             for s in yolo_console_output:
                 f.write(s + '\n')
-        with open(os.path.join(yolo_results_folder,'image_id_to_file.json'),'w') as f:
-            json.dump(image_id_to_file,f,indent=1)
-        with open(os.path.join(yolo_results_folder,'image_id_to_error.json'),'w') as f:
-            json.dump(image_id_to_error,f,indent=1)
+        ct_utils.write_json(os.path.join(yolo_results_folder,'image_id_to_file.json'), image_id_to_file)
+        ct_utils.write_json(os.path.join(yolo_results_folder,'image_id_to_error.json'), image_id_to_error)
 
 
     # YOLO console output contains lots of ANSI escape codes, remove them for easier parsing

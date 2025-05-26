@@ -1,6 +1,7 @@
 import io
 import json
 import math
+from megadetector.utils import ct_utils
 import os
 import sys
 from datetime import datetime
@@ -387,8 +388,7 @@ def main(): # noqa
     task_output_path = os.path.join(task_out_dir, f'job_{job_id}_task_{task_id}.json')
 
     # test that we can write to output path; also in case there is no image to process
-    with open(task_output_path, 'w') as f:
-        json.dump([], f)
+    ct_utils.write_json(task_output_path, [])
 
     # list images to process
     list_images_path = os.path.join(job_folder_mounted, f'{job_id}_images.json')
@@ -432,8 +432,7 @@ def main(): # noqa
     except Exception as e:
         raise RuntimeError(f'score.py, main(), exception in score_images(): {e}')
 
-    with open(task_output_path, 'w', encoding='utf-8') as f:
-        json.dump(detections, f, ensure_ascii=False)
+    ct_utils.write_json(task_output_path, detections, ensure_ascii=False)
 
 if __name__ == '__main__':
     main()

@@ -12,6 +12,7 @@ TODO: this is a one-off script waiting to be cleaned up for more general use.
 
 import json
 from PIL import Image
+from megadetector.utils import ct_utils
 
 datafile = '/datadrive/snapshotserengeti/databases/snapshotserengeti.json'
 image_base = '/datadrive/snapshotserengeti/images/'
@@ -27,7 +28,7 @@ def main(): # noqa
             im['height'] = im_h
             im['width'] = im_w
 
-    json.dump(data, open(datafile,'w'))
+    ct_utils.write_json(datafile, data, indent=None)
 
 if __name__ == '__main__':
     main()

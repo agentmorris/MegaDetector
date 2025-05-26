@@ -540,27 +540,34 @@ def run_tiled_inference(model_file,
         from multiprocessing.pool import Pool
         from functools import partial
 
-        if n_workers > len(image_files_relative):
+        pool = None
+        try:
+            if n_workers > len(image_files_relative):
+            
+                print('Pool of {} requested, but only {} images available, reducing pool to {}'.\
+                      format(n_workers,len(image_files_relative),len(image_files_relative)))
+                n_workers = len(image_files_relative)
+                                
+            if parallelization_uses_threads:
+                pool = ThreadPool(n_workers); poolstring = 'threads'                
+            else:
+                pool = Pool(n_workers); poolstring = 'processes'
 
-            print('Pool of {} requested, but only {} images available, reducing pool to {}'.\
-                  format(n_workers,len(image_files_relative),len(image_files_relative)))
-            n_workers = len(image_files_relative)
-
-        if parallelization_uses_threads:
-            pool = ThreadPool(n_workers); poolstring = 'threads'
-        else:
-            pool = Pool(n_workers); poolstring = 'processes'
-
-        print('Starting patch extraction pool with {} {}'.format(n_workers,poolstring))
-
-        all_image_patch_info = list(tqdm(pool.imap(
-                partial(_extract_tiles_for_image,
-                        image_folder=image_folder,
-                        tiling_folder=tiling_folder,
-                        patch_size=patch_size,
-                        patch_stride=patch_stride,
-                        overwrite=overwrite_tiles),
-                image_files_relative),total=len(image_files_relative)))
+            print('Starting patch extraction pool with {} {}'.format(n_workers,poolstring))
+        
+            all_image_patch_info = list(tqdm(pool.imap(
+                    partial(_extract_tiles_for_image,
+                            image_folder=image_folder,
+                            tiling_folder=tiling_folder,
+                            patch_size=patch_size,
+                            patch_stride=patch_stride,
+                            overwrite=overwrite_tiles), 
+                    image_files_relative),total=len(image_files_relative)))
+        finally:
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print("Pool closed and joined for patch extraction")
 
     # ...for each image
 

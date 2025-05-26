@@ -70,6 +70,7 @@ from megadetector.detection.run_detector import \
     get_detector_metadata_from_version_string
 
 from megadetector.utils import path_utils
+from megadetector.utils import ct_utils
 from megadetector.utils.ct_utils import parse_kvp_list
 from megadetector.utils.ct_utils import split_list_into_n_chunks
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
@@ -876,7 +877,7 @@ def load_and_run_detector_batch(model_file,
         # process_images.
         detector = model_file
 
-        print('Creating pool with {} cores'.format(n_cores))
+        print('Creating worker pool with {} cores'.format(n_cores))
 
         if len(already_processed) > 0:
             n_images_all = len(image_file_names)
@@ -886,69 +887,72 @@ def load_and_run_detector_batch(model_file,
 
         # Divide images into chunks; we'll send one chunk to each worker process
         image_batches = list(_chunks_by_number_of_chunks(image_file_names, n_cores))
-
-        pool = workerpool(n_cores)
-
-        if checkpoint_path is not None:
-
-            # Multiprocessing and checkpointing are both enabled at this point
-
-            checkpoint_queue = Manager().Queue()
-
-            # Pass the "results" array (which may already contain images loaded from an existing
-            # checkpoint) to the checkpoint queue handler function, which will append results to
-            # the list as they become available.
-            checkpoint_thread = Thread(target=_checkpoint_queue_handler,
-                                       args=(checkpoint_path, checkpoint_frequency,
-                                             checkpoint_queue, results), daemon=True)
-            checkpoint_thread.start()
-
-            pool.map(partial(process_images,
-                             detector=detector,
-                             confidence_threshold=confidence_threshold,
-                             use_image_queue=False,
-                             quiet=quiet,
-                             image_size=image_size,
-                             checkpoint_queue=checkpoint_queue,
-                             include_image_size=include_image_size,
-                             include_image_timestamp=include_image_timestamp,
-                             include_exif_data=include_exif_data,
-                             augment=augment,
-                             detector_options=detector_options),
-                             image_batches)
-
-            checkpoint_queue.put(None)
-
-        else:
-
-            # Multprocessing is enabled, but checkpointing is not
-
-            new_results = pool.map(partial(process_images,
-                                           detector=detector,
-                                           confidence_threshold=confidence_threshold,
-                                           use_image_queue=False,
-                                           quiet=quiet,
-                                           checkpoint_queue=None,
-                                           image_size=image_size,
-                                           include_image_size=include_image_size,
-                                           include_image_timestamp=include_image_timestamp,
-                                           include_exif_data=include_exif_data,
-                                           augment=augment,
-                                           detector_options=detector_options),
-                                           image_batches)
-
-            new_results = list(itertools.chain.from_iterable(new_results))
-
-            # Append the results we just computed to "results", which is *usually* empty, but will
-            # be non-empty if we resumed from a checkpoint
-            results += new_results
-
-        # ...if checkpointing is/isn't enabled
-
+                
+        pool = None
         try:
-            pool.close()
-        except Exception as e:
-            print('Warning: error closing multiprocessing pool:\n{}'.format(str(e)))
+            pool = workerpool(n_cores)
+
+            if checkpoint_path is not None:
+            
+                # Multiprocessing and checkpointing are both enabled at this point
+            
+                checkpoint_queue = Manager().Queue()
+            
+                # Pass the "results" array (which may already contain images loaded from an existing
+            # checkpoint) to the checkpoint queue handler function, which will append results to 
+                # the list as they become available.
+                checkpoint_thread = Thread(target=_checkpoint_queue_handler, 
+                                           args=(checkpoint_path, checkpoint_frequency,
+                                                 checkpoint_queue, results), daemon=True)
+                checkpoint_thread.start()
+
+                pool.map(partial(process_images, 
+                                 detector=detector,
+                                 confidence_threshold=confidence_threshold,
+                                 use_image_queue=False,
+                                 quiet=quiet,
+                                 image_size=image_size, 
+                                 checkpoint_queue=checkpoint_queue,
+                                 include_image_size=include_image_size,
+                                 include_image_timestamp=include_image_timestamp,
+                                 include_exif_data=include_exif_data,
+                                 augment=augment,
+                                 detector_options=detector_options), 
+                                 image_batches)
+
+                checkpoint_queue.put(None)
+
+            else:
+            
+                # Multprocessing is enabled, but checkpointing is not
+            
+                new_results = pool.map(partial(process_images, 
+                                               detector=detector,
+                                               confidence_threshold=confidence_threshold,
+                                               use_image_queue=False,
+                                               quiet=quiet,
+                                               checkpoint_queue=None,
+                                               image_size=image_size,
+                                               include_image_size=include_image_size,
+                                               include_image_timestamp=include_image_timestamp,
+                                               include_exif_data=include_exif_data,
+                                               augment=augment,
+                                               detector_options=detector_options), 
+                                               image_batches)
+
+                new_results = list(itertools.chain.from_iterable(new_results))
+            
+                # Append the results we just computed to "results", which is *usually* empty, but will
+                # be non-empty if we resumed from a checkpoint
+                results += new_results
+
+            # ...if checkpointing is/isn't enabled
+    
+        finally:
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print("Pool closed and joined for multi-core inference")
 
     # ...if we're running (1) with image queue, (2) on one core, or (3) on multiple cores
 
@@ -997,8 +1001,7 @@ def _write_checkpoint(checkpoint_path, results):
         shutil.copyfile(checkpoint_path,checkpoint_tmp_path)
 
     # Write the new checkpoint
-    with open(checkpoint_path, 'w') as f:
-        json.dump({'images': results}, f, indent=1, default=str)
+    ct_utils.write_json(checkpoint_path, {'images': results}, force_str=True)
 
     # Remove the backup checkpoint if it exists
     if checkpoint_tmp_path is not None:
@@ -1134,8 +1137,7 @@ def write_results_to_file(results,
     except Exception:
         pass
 
-    with open(output_file, 'w') as f:
-        json.dump(final_output, f, indent=1, default=str)
+    ct_utils.write_json(output_file, final_output, force_str=True)
     print('Output file saved at {}'.format(output_file))
 
     return final_output
@@ -1600,8 +1602,7 @@ def main(): # noqa
         # checkpoint, then immediately overwrite that checkpoint with empty data is higher-risk
         # than the annoyance of crashing a few minutes after starting a job.
         if False:
-            with open(checkpoint_path, 'w') as f:
-                json.dump({'images': []}, f)
+            ct_utils.write_json(checkpoint_path, {'images': []}, indent=None)
 
         print('The checkpoint file will be written to {}'.format(checkpoint_path))
 

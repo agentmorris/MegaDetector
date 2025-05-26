@@ -258,32 +258,39 @@ def visualize_detector_output(detector_output_path,
             worker_string = 'threads'
         else:
             worker_string = 'processes'
-
-        if parallelize_rendering_n_cores is None:
-            if parallelize_rendering_with_threads:
-                pool = ThreadPool()
+            
+        pool = None
+        try:
+            if parallelize_rendering_n_cores is None:
+                if parallelize_rendering_with_threads:
+                    pool = ThreadPool()
+                else:
+                    pool = Pool()
             else:
-                pool = Pool()
-        else:
-            if parallelize_rendering_with_threads:
-                pool = ThreadPool(parallelize_rendering_n_cores)
-            else:
-                pool = Pool(parallelize_rendering_n_cores)
-            print('Rendering images with {} {}'.format(parallelize_rendering_n_cores,
-                                                       worker_string))
-        rendering_results = list(tqdm(pool.imap(
-                                 partial(_render_image,detector_label_map=detector_label_map,
-                                         classification_label_map=classification_label_map,
-                                         confidence_threshold=confidence_threshold,
-                                         classification_confidence_threshold=classification_confidence_threshold,
-                                         render_detections_only=render_detections_only,
-                                         preserve_path_structure=preserve_path_structure,
-                                         out_dir=out_dir,
-                                         images_dir=images_dir,
-                                         output_image_width=output_image_width,
-                                         box_sort_order=box_sort_order,
-                                         category_names_to_blur=category_names_to_blur),
-                                 images), total=len(images)))
+                if parallelize_rendering_with_threads:
+                    pool = ThreadPool(parallelize_rendering_n_cores)
+                else:
+                    pool = Pool(parallelize_rendering_n_cores)
+                print('Rendering images with {} {}'.format(parallelize_rendering_n_cores,
+                                                           worker_string))            
+            rendering_results = list(tqdm(pool.imap(
+                                     partial(_render_image,detector_label_map=detector_label_map,
+                                             classification_label_map=classification_label_map,
+                                             confidence_threshold=confidence_threshold,
+                                             classification_confidence_threshold=classification_confidence_threshold,
+                                             render_detections_only=render_detections_only,
+                                             preserve_path_structure=preserve_path_structure,
+                                             out_dir=out_dir,
+                                             images_dir=images_dir,
+                                             output_image_width=output_image_width,
+                                             box_sort_order=box_sort_order,
+                                             category_names_to_blur=category_names_to_blur),
+                                     images), total=len(images)))
+        finally:
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print("Pool closed and joined for detector output visualization")
 
     else:
 

@@ -17,7 +17,7 @@ import inspect
 import os
 import sys
 import json
-import pyexiv2
+import pyexiv2 # type: ignore
 import ntpath
 import threading
 import traceback

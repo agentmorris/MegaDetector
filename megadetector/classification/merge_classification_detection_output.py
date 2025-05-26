@@ -71,6 +71,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from megadetector.utils.ct_utils import round_float
+from megadetector.utils import ct_utils
 
 
 #%% Example usage
@@ -409,8 +410,10 @@ def main(classification_csv_path: str,
         typical_confidence_threshold=typical_confidence_threshold)
 
     os.makedirs(os.path.dirname(output_json_path), exist_ok=True)
-    with open(output_json_path, 'w') as f:
-        json.dump(classification_js, f, indent=1)
+    # The following line was removed as per the previous refactoring:
+    # with open(output_json_path, 'w') as f:
+    #     json.dump(classification_js, f, indent=1)
+    ct_utils.write_json(output_json_path, classification_js)
 
     print('Wrote merged classification/detection results to {}'.format(output_json_path))
 

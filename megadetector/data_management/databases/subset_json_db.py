@@ -18,6 +18,7 @@ import json
 import argparse
 
 from tqdm import tqdm
+from megadetector.utils import ct_utils
 from copy import copy
 
 
@@ -97,8 +98,7 @@ def subset_json_db(input_json, query, output_json=None, ignore_case=False, verbo
             print('Writing output .json to {}'.format(output_json))
         output_dir = os.path.dirname(output_json)
         os.makedirs(output_dir,exist_ok=True)
-        with open(output_json,'w') as f:
-            json.dump(output_data,f,indent=1)
+        ct_utils.write_json(output_json, output_data)
 
     if verbose:
         print('Keeping {} of {} images, {} of {} annotations'.format(

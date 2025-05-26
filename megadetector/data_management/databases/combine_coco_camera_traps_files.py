@@ -20,6 +20,7 @@ combine_coco_camera_traps_files input1.json input2.json ... inputN.json output.j
 import argparse
 import json
 import sys
+from megadetector.utils import ct_utils
 
 
 #%% Merge functions
@@ -60,8 +61,7 @@ def combine_cct_files(input_files,
 
     print('Writing output')
     if output_file is not None:
-        with open(output_file, 'w') as f:
-            json.dump(merged_dict, f, indent=1)
+        ct_utils.write_json(output_file, merged_dict)
 
     return merged_dict
 

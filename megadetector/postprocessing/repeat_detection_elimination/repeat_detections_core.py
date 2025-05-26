@@ -1304,6 +1304,8 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
                       format(n_workers,len(dirNameAndRows),len(dirNameAndRows)))
                 n_workers = len(dirNameAndRows)
 
+            pool = None
+
             if options.parallelizationUsesThreads:
                 pool = ThreadPool(n_workers); poolstring = 'threads'
             else:
@@ -1395,6 +1397,16 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
                     allCandidateDetections = list(tqdm(pool.imap(
                         partial(_find_matches_in_directory,options=options), dirNameAndRows)))
 
+        # ...if we're parallelizing comparisons
+
+        if pool is not None:
+            try:
+                pool.close()
+                pool.join()
+                print("Pool closed and joined for RDE comparisons")
+            except Exception as e:
+                print('Warning: error closing RDE comparison pool')
+                
         print('\nFinished looking for similar detections')
 
 
@@ -1579,26 +1591,34 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
 
             n_workers = options.nWorkers
 
-            if options.parallelizationUsesThreads:
-                pool = ThreadPool(n_workers); poolstring = 'threads'
-            else:
-                pool = Pool(n_workers); poolstring = 'processes'
+            pool = None
 
-            print('Starting rendering pool with {} {}'.format(n_workers,poolstring))
+            try:
+                if options.parallelizationUsesThreads:
+                    pool = ThreadPool(n_workers); poolstring = 'threads'                
+                else:
+                    pool = Pool(n_workers); poolstring = 'processes'
 
-            # We get slightly nicer progress bar behavior using threads, by passing a pbar
-            # object and letting it get updated.  We can't serialize this object across
-            # processes.
-            if options.parallelizationUsesThreads:
-                options.pbar = tqdm(total=len(allSuspiciousDetections))
-                allCandidateDetections = list(pool.imap(
-                    partial(_render_sample_image_for_detection,filteringDir=filteringDir,
-                            options=options), allSuspiciousDetections))
-            else:
-                options.pbar = None
-                allCandidateDetections = list(tqdm(pool.imap(
-                    partial(_render_sample_image_for_detection,filteringDir=filteringDir,
-                            options=options), allSuspiciousDetections)))
+                print('Starting rendering pool with {} {}'.format(n_workers,poolstring))
+            
+            # We get slightly nicer progress bar behavior using threads, by passing a pbar 
+            # object and letting it get updated.  We can't serialize this object across 
+                # processes.
+                if options.parallelizationUsesThreads:
+                    options.pbar = tqdm(total=len(allSuspiciousDetections))
+                    allCandidateDetections = list(pool.imap(
+                        partial(_render_sample_image_for_detection,filteringDir=filteringDir,
+                                options=options), allSuspiciousDetections))
+                else:
+                    options.pbar = None                
+                    allCandidateDetections = list(tqdm(pool.imap(
+                        partial(_render_sample_image_for_detection,filteringDir=filteringDir,
+                                options=options), allSuspiciousDetections)))
+            finally:
+                if pool is not None:
+                    pool.close()
+                    pool.join()
+                    print("Pool closed and joined for RDE rendering")
 
         else:
 

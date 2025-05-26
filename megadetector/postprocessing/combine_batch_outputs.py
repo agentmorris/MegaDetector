@@ -27,6 +27,7 @@ the results of multiple model versions, see merge_detections.py.
 import argparse
 import sys
 import json
+from megadetector.utils import ct_utils
 
 
 #%% Merge functions
@@ -66,8 +67,7 @@ def combine_batch_output_files(input_files,
 
     print_if_verbose('Writing output to {}'.format(output_file))
     if output_file is not None:
-        with open(output_file, 'w') as f:
-            json.dump(merged_dict, f, indent=1)
+        ct_utils.write_json(output_file, merged_dict)
 
     return merged_dict
 
@@ -215,8 +215,7 @@ def combine_api_shard_files(input_files, output_file=None):
 
     print('Writing output')
     if output_file is not None:
-        with open(output_file, 'w') as f:
-            json.dump(detections, f, indent=1)
+        ct_utils.write_json(output_file, detections)
 
     return detections
 

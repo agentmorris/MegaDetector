@@ -66,6 +66,7 @@ from api.batch_processing.data_preparation.prepare_api_submission import (
     TaskStatus, Task)
 from api.batch_processing.postprocessing.combine_api_outputs import (
     combine_api_output_dictionaries)
+from megadetector.utils import ct_utils
 
 
 #%% Support functions
@@ -155,8 +156,7 @@ def cache_detections(detections: Mapping[str, Any], dataset: str,
                f'{dataset_cache_path}')
 
     # write combined detections back out to cache
-    with open(dataset_cache_path, 'w') as f:
-        json.dump(merged_dataset_cache, f, indent=1)
+    ct_utils.write_json(dataset_cache_path, merged_dataset_cache)
     return msg
 
 

@@ -19,6 +19,7 @@ import os
 
 from megadetector.data_management.lila.lila_common import \
     read_lila_metadata, read_metadata_file_for_dataset, read_lila_taxonomy_mapping
+from megadetector.utils import ct_utils
 
 # cloud provider to use for downloading images; options are 'gcp', 'azure', or 'aws'
 preferred_cloud = 'gcp'
@@ -168,5 +169,4 @@ for ds_name in dataset_to_categories:
 
 #%% Save the results
 
-with open(output_file, 'w') as f:
-    json.dump(dataset_to_categories,f,indent=1)
+ct_utils.write_json(output_file, dataset_to_categories)

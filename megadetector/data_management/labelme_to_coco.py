@@ -331,20 +331,26 @@ def labelme_to_coco(input_folder,
         n_workers = min(max_workers,len(image_filenames_relative))
         assert category_name_to_id is not None
 
-        if use_threads:
-            pool = ThreadPool(n_workers)
-        else:
-            pool = Pool(n_workers)
-
-        image_results = list(tqdm(pool.imap(
-            partial(_process_labelme_file,
-                input_folder=input_folder,
-                use_folders_as_labels=use_folders_as_labels,
-                no_json_handling=no_json_handling,
-                validate_image_sizes=validate_image_sizes,
-                category_name_to_id=category_name_to_id,
-                allow_new_categories=False
-                ),image_filenames_relative), total=len(image_filenames_relative)))
+        pool = None        
+        try:
+            if use_threads:
+                pool = ThreadPool(n_workers)
+            else:
+                pool = Pool(n_workers)
+        
+            image_results = list(tqdm(pool.imap(
+                partial(_process_labelme_file,
+                    input_folder=input_folder,
+                    use_folders_as_labels=use_folders_as_labels,
+                    no_json_handling=no_json_handling,
+                    validate_image_sizes=validate_image_sizes,
+                    category_name_to_id=category_name_to_id,
+                    allow_new_categories=False
+                    ),image_filenames_relative), total=len(image_filenames_relative)))
+        finally:
+            pool.close()
+            pool.join()
+            print("Pool closed and joined for labelme file processing")
 
     images = []
     annotations = []

@@ -323,8 +323,7 @@ def yolo_json_output_to_md_output(yolo_json_file,
             yolo_cat_id += 1
         d['detection_categories'][str(yolo_cat_id)] = yolo_category_id_to_name[cat_id]
 
-    with open(output_file,'w') as f:
-        json.dump(d,f,indent=1)
+    ct_utils.write_json(output_file, d)
 
 # ...def yolo_json_output_to_md_output(...)
 
@@ -441,8 +440,7 @@ def yolo_txt_output_to_md_output(input_results_folder,
         'images': images_entries
     }
 
-    with open(output_file,'w') as f:
-        json.dump(output_content,f,indent=1)
+    ct_utils.write_json(output_file, output_content)
 
 # ...def yolo_txt_output_to_md_output(...)
 

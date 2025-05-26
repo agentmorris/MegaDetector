@@ -23,6 +23,7 @@ from multiprocessing.pool import Pool as Pool
 
 from tqdm import tqdm
 from PIL import Image, ExifTags
+from functools import partial
 
 from megadetector.utils.path_utils import find_images, is_executable
 from megadetector.utils.ct_utils import args_to_object
@@ -554,17 +555,22 @@ def _populate_exif_for_images(image_base,images,options=None):
 
     else:
 
-        from functools import partial
-        if options.use_threads:
-            print('Starting parallel thread pool with {} workers'.format(options.n_workers))
-            pool = ThreadPool(options.n_workers)
-        else:
-            print('Starting parallel process pool with {} workers'.format(options.n_workers))
-            pool = Pool(options.n_workers)
-
-        results = list(tqdm(pool.imap(partial(_populate_exif_data,image_base=image_base,
-                                        options=options),images),total=len(images)))
-
+        pool = None
+        try:        
+            if options.use_threads:
+                print('Starting parallel thread pool with {} workers'.format(options.n_workers))
+                pool = ThreadPool(options.n_workers)
+            else:
+                print('Starting parallel process pool with {} workers'.format(options.n_workers))
+                pool = Pool(options.n_workers)
+    
+            results = list(tqdm(pool.imap(partial(_populate_exif_data,image_base=image_base,
+                                            options=options),images),total=len(images)))
+        finally:
+            pool.close()
+            pool.join()
+            print("Pool closed and joined for EXIF extraction")
+        
     return results
 
 

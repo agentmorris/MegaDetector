@@ -19,6 +19,7 @@ from collections import defaultdict
 
 from megadetector.visualization.visualization_utils import open_image
 from megadetector.detection.run_detector import FAILURE_IMAGE_OPEN
+from megadetector.utils import ct_utils
 
 
 #%% Functions
@@ -201,8 +202,7 @@ def coco_to_labelme(coco_data,image_base,overwrite=False,bypass_image_size_check
                                                                   info=None)
 
         n_json_files_written += 1
-        with open(json_path,'w') as f:
-            json.dump(output_dict,f,indent=1)
+        ct_utils.write_json(json_path, output_dict)
 
     # ...for each image
 
