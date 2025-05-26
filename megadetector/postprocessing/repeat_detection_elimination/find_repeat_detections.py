@@ -38,11 +38,11 @@ if False:
 
     #%%
 
-    baseDir = ''
+    base_dir = ''
 
     options = repeat_detections_core.RepeatDetectionOptions()
-    options.imageBase = baseDir
-    options.outputBase = os.path.join(baseDir, 'repeat_detections')
+    options.imageBase = base_dir
+    options.outputBase = os.path.join(base_dir, 'repeat_detections')
     options.filenameReplacements = {}  # E.g., {'20190430cameratraps\\':''}
 
     options.confidenceMin = 0.15
@@ -52,7 +52,7 @@ if False:
     options.maxSuspiciousDetectionSize = 0.2
 
     options.filterFileToLoad = ''
-    options.filterFileToLoad = os.path.join(baseDir,r'..\detectionIndex.json')
+    options.filterFileToLoad = os.path.join(base_dir,r'..\detectionIndex.json')
 
     options.debugMaxDir = -1
     options.debugMaxRenderDir = -1
@@ -63,10 +63,10 @@ if False:
     options.bParallelizeRendering = False
     options.excludeClasses = [2]
 
-    inputFilename = os.path.join(baseDir, 'blah.json')
-    outputFilename = os.path.join(baseDir, 'blah.json')
+    input_filename = os.path.join(base_dir, 'blah.json')
+    output_filename = os.path.join(base_dir, 'blah.json')
 
-    results = repeat_detections_core.find_repeat_detections(inputFilename, outputFilename, options)
+    results = repeat_detections_core.find_repeat_detections(input_filename, output_filename, options)
 
 
 #%% Command-line driver

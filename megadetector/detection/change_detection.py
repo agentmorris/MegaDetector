@@ -11,7 +11,7 @@ where camera backgrounds are stable, and MegaDetector is not suitable.
 
 import argparse
 import random
-import time
+import sys
 
 import cv2
 
@@ -765,6 +765,10 @@ def main(): # noqa
                         help='Folder to save preview images')
     parser.add_argument('--num_previews', type=int, default=10,
                         help='Number of random preview images to create')
+
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
 
     args = parser.parse_args()
 

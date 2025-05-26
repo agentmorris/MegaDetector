@@ -111,15 +111,12 @@ select = [
     "UP", # Pyupgrade
     "B"   # flake8-bugbear
 ]
-ignore = [
-    "D417" # Missing argument descriptions in the docstring of __init__ (we document attributes in __init__ body)
-]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.ruff.per-file-ignores]
-"**/*.py" = ["D212","D415","D202","UP032","UP015","B007","D200","E702","D205"]
+"**/*.py" = ["D212","D415","D202","UP032","UP015","UP038","B007","D200","E702","D205","D417","B904","D107"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["megadetector"]

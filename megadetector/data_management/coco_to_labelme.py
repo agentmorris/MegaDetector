@@ -13,6 +13,8 @@ coco_to_labelme.
 
 import os
 import json
+import sys
+import argparse
 
 from tqdm import tqdm
 from collections import defaultdict
@@ -249,8 +251,6 @@ if False:
 
 
 #%% Command-line driver
-
-import sys,argparse
 
 def main(): # noqa
 

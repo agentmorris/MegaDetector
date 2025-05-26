@@ -21,30 +21,30 @@ from megadetector.postprocessing.repeat_detection_elimination import repeat_dete
 
 #%% Main function
 
-def remove_repeat_detections(inputFile,outputFile,filteringDir):
+def remove_repeat_detections(input_file,output_file,filtering_dir):
     """
     Given an index file that was produced in a first pass through find_repeat_detections,
     and a folder of images (from which the user has deleted images they don't want removed),
     remove the identified repeat detections from a set of MD results and write to a new file.
 
     Args:
-        inputFile (str): .json file of MD results, from which we should remove repeat detections
-        outputFile (str): output .json file to which we should write MD results (with repeat
+        input_file (str): .json file of MD results, from which we should remove repeat detections
+        output_file (str): output .json file to which we should write MD results (with repeat
             detections removed)
-        filteringDir (str): the folder produced by find_repeat_detections, containing a
+        filtering_dir (str): the folder produced by find_repeat_detections, containing a
             detectionIndex.json file
     """
 
-    assert os.path.isfile(inputFile), "Can't find file {}".format(inputFile)
-    assert os.path.isdir(filteringDir), "Can't find folder {}".format(filteringDir)
+    assert os.path.isfile(input_file), "Can't find file {}".format(input_file)
+    assert os.path.isdir(filtering_dir), "Can't find folder {}".format(filtering_dir)
     options = repeat_detections_core.RepeatDetectionOptions()
-    if os.path.isfile(filteringDir):
-        options.filterFileToLoad = filteringDir
+    if os.path.isfile(filtering_dir):
+        options.filterFileToLoad = filtering_dir
     else:
-        assert os.path.isdir(filteringDir), '{} is not a valid folder'.format(filteringDir)
+        assert os.path.isdir(filtering_dir), '{} is not a valid folder'.format(filtering_dir)
         options.filterFileToLoad = \
-            os.path.join(filteringDir,repeat_detections_core.detection_index_file_name_base)
-    repeat_detections_core.find_repeat_detections(inputFile, outputFile, options)
+            os.path.join(filtering_dir,repeat_detections_core.detection_index_file_name_base)
+    repeat_detections_core.find_repeat_detections(input_file, output_file, options)
 
 
 #%% Interactive driver
@@ -53,10 +53,10 @@ if False:
 
     #%%
 
-    inputFile = r''
-    outputFile = r''
-    filteringDir = r''
-    remove_repeat_detections(inputFile,outputFile,filteringDir)
+    input_file = r''
+    output_file = r''
+    filtering_dir = r''
+    remove_repeat_detections(input_file,output_file,filtering_dir)
 
 
 #%% Command-line driver
@@ -66,10 +66,10 @@ import sys
 def main(): # noqa
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('inputFile', help='.json file containing the original, unfiltered API results')
-    parser.add_argument('outputFile', help='.json file to which you want to write the final, ' + \
+    parser.add_argument('input_file', help='.json file containing the original, unfiltered API results')
+    parser.add_argument('output_file', help='.json file to which you want to write the final, ' + \
                         'filtered API results')
-    parser.add_argument('filteringDir', help='directory where you looked at lots of images and ' + \
+    parser.add_argument('filtering_dir', help='directory where you looked at lots of images and ' + \
                         'decided which ones were really false positives')
 
     if len(sys.argv[1:]) == 0:
@@ -77,7 +77,7 @@ def main(): # noqa
         parser.exit()
 
     args = parser.parse_args()
-    remove_repeat_detections(args.inputFile, args.outputFile, args.filteringDir)
+    remove_repeat_detections(args.input_file, args.output_file, args.filtering_dir)
 
 if __name__ == '__main__':
     main()

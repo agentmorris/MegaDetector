@@ -214,7 +214,7 @@ if False:
     options.nThreads = 1
     options.verbose = True
 
-    sortedCategories, data, errorInfo = integrity_check_json_db(coco_file,options)
+    sorted_categories, data, error_info = integrity_check_json_db(coco_file,options)
 
     #%% Preview
 
@@ -226,10 +226,10 @@ if False:
     options.parallelize_rendering_n_cores = 10
 
     preview_dir = r'c:\temp\camtrapdp-preview'
-    htmlOutputFile,image_db = visualize_db(coco_file, preview_dir, camtrap_dp_folder, options=options)
+    html_output_file, image_db = visualize_db(coco_file, preview_dir, camtrap_dp_folder, options=options)
 
     from megadetector.utils.path_utils import open_file
-    open_file(htmlOutputFile)
+    open_file(html_output_file)
 
 
 #%% Command-line driver

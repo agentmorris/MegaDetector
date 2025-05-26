@@ -630,5 +630,5 @@ if False:
     options = DbVizOptions()
     options.num_to_visualize = 100
 
-    htmlOutputFile,db = visualize_db(db_path,output_dir,image_base_dir,options)
-    # os.startfile(htmlOutputFile)
+    html_output_file, db = visualize_db(db_path,output_dir,image_base_dir,options)
+    # os.startfile(html_output_file)

@@ -11,6 +11,8 @@ Converts a folder of labelme-formatted .json files to COCO.
 import json
 import os
 import uuid
+import sys
+import argparse
 
 from multiprocessing.pool import Pool, ThreadPool
 from functools import partial
@@ -331,13 +333,13 @@ def labelme_to_coco(input_folder,
         n_workers = min(max_workers,len(image_filenames_relative))
         assert category_name_to_id is not None
 
-        pool = None        
+        pool = None
         try:
             if use_threads:
                 pool = ThreadPool(n_workers)
             else:
                 pool = Pool(n_workers)
-        
+
             image_results = list(tqdm(pool.imap(
                 partial(_process_labelme_file,
                     input_folder=input_folder,
@@ -496,7 +498,7 @@ if False:
     options.bFindUnusedImages = True
     options.bRequireLocation = False
 
-    sortedCategories, _, errorInfo = integrity_check_json_db.integrity_check_json_db(output_file,options)
+    sortec_categories, _, error_info = integrity_check_json_db.integrity_check_json_db(output_file,options)
 
 
     #%% Preview
@@ -523,8 +525,6 @@ if False:
 
 
 #%% Command-line driver
-
-import sys,argparse
 
 def main(): # noqa
 

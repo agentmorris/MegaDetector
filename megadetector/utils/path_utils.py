@@ -128,7 +128,6 @@ def folder_list(base_dir,
                 return_relative_paths=False,
                 sort_folders=True,
                 recursive=False):
-
     """
     Enumerates folders (not files) in [base_dir].
 

@@ -21,6 +21,8 @@ use it for more general COCO conversion, YMMV.
 import json
 import os
 import shutil
+import sys
+import argparse
 
 from collections import defaultdict
 from tqdm import tqdm
@@ -634,8 +636,6 @@ if False:
 
 
 #%% Command-line driver
-
-import sys,argparse
 
 def main(): # noqa
 

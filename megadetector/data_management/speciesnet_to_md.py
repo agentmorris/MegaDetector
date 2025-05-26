@@ -1,6 +1,6 @@
 """
 
-wi_to_md.py
+speciesnet_to_md.py
 
 Converts the WI (SpeciesNet) predictions.json format to MD .json format.  This is just a
 command-line wrapper around utils.wi_utils.generate_md_results_from_predictions_json.

@@ -155,7 +155,6 @@ def visualize_detector_output(detector_output_path,
                               parallelize_rendering_with_threads=True,
                               box_sort_order=None,
                               category_names_to_blur=None):
-
     """
     Draws bounding boxes on images given the output of a detector.
 

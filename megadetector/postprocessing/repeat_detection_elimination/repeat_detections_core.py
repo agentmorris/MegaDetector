@@ -301,14 +301,14 @@ class RepeatDetectionResults:
         self.detectionResultsFiltered = None
 
         #: dict mapping folder names to whole rows from the data table
-        self.rowsByDirectory = None
+        self.rows_by_directory = None
 
         #: dict mapping filenames to rows in the master table
         self.filenameToRow = None
 
         #: An array of length nDirs, where each element is a list of DetectionLocation
         #: objects for that directory that have been flagged as suspicious
-        self.suspiciousDetections = None
+        self.suspicious_detections = None
 
         #: The location of the .json file written with information about the RDE
         #: review images (typically detectionIndex.json)
@@ -320,15 +320,15 @@ class IndexedDetection:
     A single detection event on a single image
     """
 
-    def __init__(self, iDetection=-1, filename='', bbox=[], confidence=-1, category='unknown'):
+    def __init__(self, i_detection=-1, filename='', bbox=[], confidence=-1, category='unknown'):
 
-        assert isinstance(iDetection,int)
+        assert isinstance(i_detection,int)
         assert isinstance(filename,str)
         assert isinstance(bbox,list)
         assert isinstance(category,str)
 
         #: index of this detection within all detections for this filename
-        self.iDetection = iDetection
+        self.i_detection = i_detection
 
         #: path to the image corresponding to this detection
         self.filename = filename
@@ -415,18 +415,18 @@ class DetectionLocation:
 
 #%% Support functions
 
-def _render_bounding_box(detection, inputFileName, outputFileName, lineWidth=5,
+def _render_bounding_box(detection, inputFileName, output_filename, lineWidth=5,
                         expansion=0):
     """
     Rendering the detection [detection] on the image [inputFileName], writing the result
-    to [outputFileName].
+    to [output_filename].
     """
 
     im = open_image(inputFileName)
     d = detection.to_api_detection()
     render_detection_bounding_boxes([d],im,thickness=lineWidth,expansion=expansion,
                                     confidence_threshold=-10)
-    im.save(outputFileName)
+    im.save(output_filename)
 
 
 def _detection_rect_to_rtree_rect(detection_rect):
@@ -555,9 +555,9 @@ def _sort_detections_for_directory(candidateDetections,options):
 # ...def _sort_detections_for_directory(...)
 
 
-def _find_matches_in_directory(dirNameAndRows, options):
+def _find_matches_in_directory(dir_name_and_rows, options):
     """
-    dirNameAndRows is a tuple of (name,rows).
+    dir_name_and_rows is a tuple of (name,rows).
 
     "name" is a location name, typically a folder name, though this may be an arbitrary
     location identifier.
@@ -582,10 +582,10 @@ def _find_matches_in_directory(dirNameAndRows, options):
     # Create a tree to store candidate detections
     candidate_detections_index = pyqtree.Index(bbox=(-0.1,-0.1,1.1,1.1))
 
-    assert len(dirNameAndRows) == 2, 'find_matches_in_directory: invalid input'
-    assert isinstance(dirNameAndRows[0],str), 'find_matches_in_directory: invalid location name'
-    dir_name = dirNameAndRows[0]
-    rows = dirNameAndRows[1]
+    assert len(dir_name_and_rows) == 2, 'find_matches_in_directory: invalid input'
+    assert isinstance(dir_name_and_rows[0],str), 'find_matches_in_directory: invalid location name'
+    dir_name = dir_name_and_rows[0]
+    rows = dir_name_and_rows[1]
 
     detections_loaded_from_csv_file = None
 
@@ -616,14 +616,14 @@ def _find_matches_in_directory(dirNameAndRows, options):
 
     # For each image in this directory
     #
-    # iDirectoryRow = 0; row = rows.iloc[iDirectoryRow]
+    # i_directory_row = 0; row = rows.iloc[i_directory_row]
     #
-    # iDirectoryRow is a pandas index, so it may not start from zero;
+    # i_directory_row is a pandas index, so it may not start from zero;
     # for debugging, we maintain i_iteration as a loop index.
     i_iteration = -1
     n_boxes_evaluated = 0
 
-    for iDirectoryRow, row in rows.iterrows():
+    for i_directory_row, row in rows.iterrows():
 
         i_iteration += 1
         filename = row['file']
@@ -632,7 +632,7 @@ def _find_matches_in_directory(dirNameAndRows, options):
 
         if 'max_detection_conf' not in row or 'detections' not in row or \
             row['detections'] is None:
-            print('Skipping row {}'.format(iDirectoryRow))
+            print('Skipping row {}'.format(i_directory_row))
             continue
 
         # Don't bother checking images with no detections above threshold
@@ -658,12 +658,12 @@ def _find_matches_in_directory(dirNameAndRows, options):
         assert len(detections) > 0
 
         # For each detection in this image
-        for iDetection, detection in enumerate(detections):
+        for i_detection, detection in enumerate(detections):
 
             n_boxes_evaluated += 1
 
             if detection is None:
-                print('Skipping detection {}'.format(iDetection))
+                print('Skipping detection {}'.format(i_detection))
                 continue
 
             assert 'category' in detection and \
@@ -716,7 +716,7 @@ def _find_matches_in_directory(dirNameAndRows, options):
 
             category = detection['category']
 
-            instance = IndexedDetection(iDetection=iDetection,
+            instance = IndexedDetection(i_detection=i_detection,
                                         filename=row['file'], bbox=bbox,
                                         confidence=confidence, category=category)
 
@@ -805,28 +805,28 @@ def _find_matches_in_directory(dirNameAndRows, options):
 # ...def _find_matches_in_directory(...)
 
 
-def _update_detection_table(repeatDetectionResults, options, outputFilename=None):
+def _update_detection_table(repeat_detection_results, options, output_filename=None):
     """
-    Changes confidence values in repeatDetectionResults.detectionResults so that detections
+    Changes confidence values in repeat_detection_results.detectionResults so that detections
     deemed to be possible false positives are given negative confidence values.
 
-    repeatDetectionResults is an object of type RepeatDetectionResults, with a pandas
+    repeat_detection_results is an object of type RepeatDetectionResults, with a pandas
     dataframe (detectionResults) containing all the detections loaded from the .json file,
-    and a list of detections for each location (suspiciousDetections) that are deemed to
+    and a list of detections for each location (suspicious_detections) that are deemed to
     be suspicious.
 
-    returns the modified pandas dataframe (repeatDetectionResults.detectionResults), but
+    returns the modified pandas dataframe (repeat_detection_results.detectionResults), but
     also modifies it in place.
     """
 
     # This is the pandas dataframe that contains actual detection results.
     #
     # Has fields ['file', 'detections','failure'].
-    detection_results = repeatDetectionResults.detectionResults
+    detection_results = repeat_detection_results.detectionResults
 
     # An array of length nDirs, where each element is a list of DetectionLocation
     # objects for that directory that have been flagged as suspicious
-    suspicious_detections_by_directory = repeatDetectionResults.suspiciousDetections
+    suspicious_detections_by_directory = repeat_detection_results.suspicious_detections
 
     n_bbox_changes = 0
 
@@ -836,7 +836,7 @@ def _update_detection_table(repeatDetectionResults, options, outputFilename=None
     for i_dir, directory_events in enumerate(suspicious_detections_by_directory):
 
         # For each suspicious detection group in this directory
-        for iDetectionEvent, detectionEvent in enumerate(directory_events):
+        for i_detectionEvent, detectionEvent in enumerate(directory_events):
 
             locationBbox = detectionEvent.bbox
 
@@ -855,11 +855,11 @@ def _update_detection_table(repeatDetectionResults, options, outputFilename=None
                 # if iou < options.iouThreshold:
                 #    print('IOU warning: {},{}'.format(iou,options.iouThreshold))
 
-                assert instance.filename in repeatDetectionResults.filenameToRow
-                iRow = repeatDetectionResults.filenameToRow[instance.filename]
-                row = detectionResults.iloc[iRow]
+                assert instance.filename in repeat_detection_results.filenameToRow
+                i_row = repeat_detection_results.filenameToRow[instance.filename]
+                row = detection_results.iloc[i_row]
                 rowDetections = row['detections']
-                detectionToModify = rowDetections[instance.iDetection]
+                detectionToModify = rowDetections[instance.i_detection]
 
                 # Make sure the bounding box matches
                 assert (instanceBbox[0:3] == detectionToModify['bbox'][0:3])
@@ -879,11 +879,11 @@ def _update_detection_table(repeatDetectionResults, options, outputFilename=None
     # Update maximum probabilities
 
     # For each row...
-    nProbChanges = 0
-    nProbChangesToNegative = 0
-    nProbChangesAcrossThreshold = 0
+    n_prob_changes = 0
+    n_prob_changes_to_negative = 0
+    n_prob_changes_across_threshold = 0
 
-    for iRow, row in detection_results.iterrows():
+    for i_row, row in detection_results.iterrows():
 
         detections = row['detections']
         if (detections is None) or isinstance(detections,float):
@@ -893,66 +893,66 @@ def _update_detection_table(repeatDetectionResults, options, outputFilename=None
         if len(detections) == 0:
             continue
 
-        maxPOriginal = float(row['max_detection_conf'])
+        max_p_original = float(row['max_detection_conf'])
 
         # No longer strictly true; sometimes I run RDE on RDE output
-        # assert maxPOriginal >= 0
-        assert maxPOriginal >= -1.0
+        # assert max_p_original >= 0
+        assert max_p_original >= -1.0
 
         maxP = None
-        nNegative = 0
+        n_negative = 0
 
-        for iDetection, detection in enumerate(detections):
+        for i_detection, detection in enumerate(detections):
 
             p = detection['conf']
 
             if p < 0:
-                nNegative += 1
+                n_negative += 1
 
             if (maxP is None) or (p > maxP):
                 maxP = p
 
         # We should only be making detections *less* likely in this process
-        assert maxP <= maxPOriginal
-        detection_results.at[iRow, 'max_detection_conf'] = maxP
+        assert maxP <= max_p_original
+        detection_results.at[i_row, 'max_detection_conf'] = maxP
 
         # If there was a meaningful change, count it
-        if abs(maxP - maxPOriginal) > 1e-3:
+        if abs(maxP - max_p_original) > 1e-3:
 
-            assert maxP < maxPOriginal
+            assert maxP < max_p_original
 
-            nProbChanges += 1
+            n_prob_changes += 1
 
-            if (maxP < 0) and (maxPOriginal >= 0):
-                nProbChangesToNegative += 1
+            if (maxP < 0) and (max_p_original >= 0):
+                n_prob_changes_to_negative += 1
 
-            if (maxPOriginal >= options.confidenceMin) and (maxP < options.confidenceMin):
-                nProbChangesAcrossThreshold += 1
+            if (max_p_original >= options.confidenceMin) and (maxP < options.confidenceMin):
+                n_prob_changes_across_threshold += 1
 
             # Negative probabilities should be the only reason maxP changed, so
             # we should have found at least one negative value if we reached
             # this point.
-            assert nNegative > 0
+            assert n_negative > 0
 
         # ...if there was a meaningful change to the max probability for this row
 
     # ...for each row
 
     # If we're also writing output...
-    if outputFilename is not None and len(outputFilename) > 0:
-        write_api_results(detection_results, repeatDetectionResults.otherFields,
-                          outputFilename)
+    if output_filename is not None and len(output_filename) > 0:
+        write_api_results(detection_results, repeat_detection_results.otherFields,
+                          output_filename)
 
     print(
         'Finished updating detection table\nChanged {} detections that impacted {} maxPs ({} to negative) ({} across confidence threshold)'.format(
-            n_bbox_changes, nProbChanges, nProbChangesToNegative, nProbChangesAcrossThreshold))
+            n_bbox_changes, n_prob_changes, n_prob_changes_to_negative, n_prob_changes_across_threshold))
 
     return detection_results
 
 # ...def _update_detection_table(...)
 
 
-def _render_sample_image_for_detection(detection,filteringDir,options):
+def _render_sample_image_for_detection(detection,filtering_dir,options):
     """
     Render a sample image for one unique detection, possibly containing lightly-colored
     high-confidence detections from elsewhere in the sample image.
@@ -969,17 +969,17 @@ def _render_sample_image_for_detection(detection,filteringDir,options):
 
     # Choose the highest-confidence index
     instance = detection.instances[0]
-    relativePath = instance.filename
+    relative_path = instance.filename
 
-    outputRelativePath = detection.sampleImageRelativeFileName
-    assert len(outputRelativePath) > 0
+    output_relative_path = detection.sampleImageRelativeFileName
+    assert len(output_relative_path) > 0
 
-    outputFullPath = os.path.join(filteringDir, outputRelativePath)
+    outputFullPath = os.path.join(filtering_dir, output_relative_path)
 
     if is_sas_url(options.imageBase):
-        inputFullPath = relative_sas_url(options.imageBase, relativePath)
+        inputFullPath = relative_sas_url(options.imageBase, relative_path)
     else:
-        inputFullPath = os.path.join(options.imageBase, relativePath)
+        inputFullPath = os.path.join(options.imageBase, relative_path)
         assert (os.path.isfile(inputFullPath)), 'Not a file: {}'.\
             format(inputFullPath)
 
@@ -1098,14 +1098,14 @@ def _render_sample_image_for_detection(detection,filteringDir,options):
 
 #%% Main entry point
 
-def find_repeat_detections(inputFilename, outputFilename=None, options=None):
+def find_repeat_detections(inputFilename, output_filename=None, options=None):
     """
     Find detections in a MD results file that occur repeatedly and are likely to be
     rocks/sticks.
 
     Args:
         inputFilename (str): the MD results .json file to analyze
-        outputFilename (str, optional): the filename to which we should write results
+        output_filename (str, optional): the filename to which we should write results
             with repeat detections removed, typically set to None during the first
             part of the RDE process.
         options (RepeatDetectionOptions): all the interesting options controlling this
@@ -1137,23 +1137,23 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
         print('Bypassing detection-finding, loading from {}'.format(options.filterFileToLoad))
 
         # Load the filtering file
-        detectionIndexFileName = options.filterFileToLoad
-        sIn = open(detectionIndexFileName, 'r').read()
+        detection_index_file_name = options.filterFileToLoad
+        sIn = open(detection_index_file_name, 'r').read()
         detectionInfo = jsonpickle.decode(sIn)
         filteringBaseDir = os.path.dirname(options.filterFileToLoad)
-        suspiciousDetections = detectionInfo['suspiciousDetections']
+        suspicious_detections = detectionInfo['suspicious_detections']
 
         # Load the same options we used when finding repeat detections
         options = detectionInfo['options']
 
         # ...except for things that explicitly tell this function not to
         # find repeat detections.
-        options.filterFileToLoad = detectionIndexFileName
+        options.filterFileToLoad = detection_index_file_name
         options.bWriteFilteringFolder = False
 
     # ...if we're loading from an existing filtering file
 
-    toReturn = RepeatDetectionResults()
+    to_return = RepeatDetectionResults()
 
 
     # Check early to avoid problems with the output folder
@@ -1165,13 +1165,11 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
 
     # Load file to a pandas dataframe.  Also populates 'max_detection_conf', even if it's
     # not present in the .json file.
-    detectionResults, otherFields = load_api_results(inputFilename, normalize_paths=True,
-                                         filename_replacements=options.filenameReplacements,
-                                         force_forward_slashes=True)
-    toReturn.detectionResults = detectionResults
-    toReturn.otherFields = otherFields
-
-    # detectionResults[detectionResults['failure'].notna()]
+    detection_results, other_fields = load_api_results(inputFilename, normalize_paths=True,
+                                                       filename_replacements=options.filenameReplacements,
+                                                       force_forward_slashes=True)
+    to_return.detectionResults = detection_results
+    to_return.otherFields = other_fields
 
     # Before doing any real work, make sure we can *probably* access images
     # This is just a cursory check on the first image, but it heads off most
@@ -1182,41 +1180,41 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
 
         if not is_sas_url(options.imageBase):
 
-            row = detectionResults.iloc[0]
-            relativePath = row['file']
+            row = detection_results.iloc[0]
+            relative_path = row['file']
             if options.filenameReplacements is not None:
                 for s in options.filenameReplacements.keys():
-                    relativePath = relativePath.replace(s,options.filenameReplacements[s])
-            absolutePath = os.path.join(options.imageBase,relativePath)
+                    relative_path = relative_path.replace(s,options.filenameReplacements[s])
+            absolutePath = os.path.join(options.imageBase,relative_path)
             assert os.path.isfile(absolutePath), 'Could not find file {}'.format(absolutePath)
 
 
     ##%% Separate files into locations
 
     # This will be a map from a directory name to smaller data frames
-    rowsByDirectory = {}
+    rows_by_directory = {}
 
     # This is a mapping back into the rows of the original table
     filenameToRow = {}
 
     print('Separating images into locations...')
 
-    nCustomDirReplacements = 0
+    n_custom_dir_replacements = 0
 
-    # iRow = 0; row = detectionResults.iloc[0]
-    for iRow, row in tqdm(detectionResults.iterrows(),total=len(detectionResults)):
+    # i_row = 0; row = detection_results.iloc[i_row]
+    for i_row, row in tqdm(detection_results.iterrows(),total=len(detection_results)):
 
-        relativePath = row['file']
+        relative_path = row['file']
 
         if options.customDirNameFunction is not None:
-            basicDirName = os.path.dirname(relativePath.replace('\\','/'))
-            dirName = options.customDirNameFunction(relativePath)
-            if basicDirName != dirName:
-                nCustomDirReplacements += 1
+            basicDirName = os.path.dirname(relative_path.replace('\\','/'))
+            dir_name = options.customDirNameFunction(relative_path)
+            if basicDirName != dir_name:
+                n_custom_dir_replacements += 1
         else:
-            dirName = os.path.dirname(relativePath)
+            dir_name = os.path.dirname(relative_path)
 
-        if len(dirName) == 0:
+        if len(dir_name) == 0:
             assert options.nDirLevelsFromLeaf == 0, \
                 'Can''t use the dirLevelsFromLeaf option with flat filenames'
         else:
@@ -1224,62 +1222,62 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
                 iLevel = 0
                 while (iLevel < options.nDirLevelsFromLeaf):
                     iLevel += 1
-                    dirName = os.path.dirname(dirName)
-            assert len(dirName) > 0
+                    dir_name = os.path.dirname(dir_name)
+            assert len(dir_name) > 0
 
-        if not dirName in rowsByDirectory:
+        if not dir_name in rows_by_directory:
             # Create a new DataFrame with just this row
-            # rowsByDirectory[dirName] = pd.DataFrame(row)
-            rowsByDirectory[dirName] = []
+            # rows_by_directory[dir_name] = pd.DataFrame(row)
+            rows_by_directory[dir_name] = []
 
-        rowsByDirectory[dirName].append(row)
+        rows_by_directory[dir_name].append(row)
 
-        assert relativePath not in filenameToRow
-        filenameToRow[relativePath] = iRow
+        assert relative_path not in filenameToRow
+        filenameToRow[relative_path] = i_row
 
     # ...for each unique detection
 
     if options.customDirNameFunction is not None:
         print('Custom dir name function made {} replacements (of {} images)'.format(
-            nCustomDirReplacements,len(detectionResults)))
+            n_custom_dir_replacements,len(detection_results)))
 
     # Convert lists of rows to proper DataFrames
-    dirs = list(rowsByDirectory.keys())
+    dirs = list(rows_by_directory.keys())
     for d in dirs:
-        rowsByDirectory[d] = pd.DataFrame(rowsByDirectory[d])
+        rows_by_directory[d] = pd.DataFrame(rows_by_directory[d])
 
-    toReturn.rowsByDirectory = rowsByDirectory
-    toReturn.filenameToRow = filenameToRow
+    to_return.rows_by_directory = rows_by_directory
+    to_return.filenameToRow = filenameToRow
 
-    print('Finished separating {} files into {} locations'.format(len(detectionResults),
-                                                                  len(rowsByDirectory)))
+    print('Finished separating {} files into {} locations'.format(len(detection_results),
+                                                                  len(rows_by_directory)))
 
     ##% Look for repeat detections (or load them from file)
 
-    dirsToSearch = list(rowsByDirectory.keys())
+    dirs_to_search = list(rows_by_directory.keys())
     if options.debugMaxDir > 0:
-        dirsToSearch = dirsToSearch[0:options.debugMaxDir]
+        dirs_to_search = dirs_to_search[0:options.debugMaxDir]
 
     # Map numeric directory indices to names (we'll write this out to the detection index .json file)
-    dirIndexToName = {}
-    for iDir, dirName in enumerate(dirsToSearch):
-        dirIndexToName[iDir] = dirName
+    dir_index_to_name = {}
+    for i_dir, dir_name in enumerate(dirs_to_search):
+        dir_index_to_name[i_dir] = dir_name
 
     # Are we actually looking for matches, or just loading from a file?
     if len(options.filterFileToLoad) == 0:
 
         # length-nDirs list of lists of DetectionLocation objects
-        suspiciousDetections = [None] * len(dirsToSearch)
+        suspicious_detections = [None] * len(dirs_to_search)
 
         # We're actually looking for matches...
         print('Finding similar detections...')
 
-        dirNameAndRows = []
-        for dirName in dirsToSearch:
-            rowsThisDirectory = rowsByDirectory[dirName]
-            dirNameAndRows.append((dirName,rowsThisDirectory))
+        dir_name_and_rows = []
+        for dir_name in dirs_to_search:
+            rows_this_directory = rows_by_directory[dir_name]
+            dir_name_and_rows.append((dir_name,rows_this_directory))
 
-        allCandidateDetections = [None] * len(dirsToSearch)
+        all_candidate_detections = [None] * len(dirs_to_search)
 
         # If we serialize results to intermediate files, we need to remove slashes from
         # location names; we store mappings here.
@@ -1289,20 +1287,20 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
         if not options.bParallelizeComparisons:
 
             options.pbar = None
-            for iDir, dirName in tqdm(enumerate(dirsToSearch)):
-                dirNameAndRow = dirNameAndRows[iDir]
-                assert dirNameAndRow[0] == dirName
-                print('Processing dir {} of {}: {}'.format(iDir,len(dirsToSearch),dirName))
-                allCandidateDetections[iDir] = \
-                    _find_matches_in_directory(dirNameAndRow, options)
+            for i_dir, dir_name in tqdm(enumerate(dirs_to_search)):
+                dir_name_and_row = dir_name_and_rows[i_dir]
+                assert dir_name_and_row[0] == dir_name
+                print('Processing dir {} of {}: {}'.format(i_dir,len(dirs_to_search),dir_name))
+                all_candidate_detections[i_dir] = \
+                    _find_matches_in_directory(dir_name_and_row, options)
 
         else:
 
             n_workers = options.nWorkers
-            if n_workers > len(dirNameAndRows):
+            if n_workers > len(dir_name_and_rows):
                 print('Pool of {} requested, but only {} folders available, reducing pool to {}'.\
-                      format(n_workers,len(dirNameAndRows),len(dirNameAndRows)))
-                n_workers = len(dirNameAndRows)
+                      format(n_workers,len(dir_name_and_rows),len(dir_name_and_rows)))
+                n_workers = len(dir_name_and_rows)
 
             pool = None
 
@@ -1326,7 +1324,7 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
                 ##%% Convert location names to normalized names we can write to files
 
                 normalized_location_name_to_location_name = {}
-                for dir_name in dirsToSearch:
+                for dir_name in dirs_to_search:
                     normalized_location_name = flatten_path(dir_name)
                     assert normalized_location_name not in normalized_location_name_to_location_name, \
                         'Redundant location name {}, can\'t serialize to intermediate files'.format(
@@ -1344,11 +1342,11 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
                 intermediate_json_file_folder = os.path.join(options.outputBase,'intermediate_results')
                 os.makedirs(intermediate_json_file_folder,exist_ok=True)
 
-                # i_location = 0; location_info = dirNameAndRows[0]
-                dirNameAndIntermediateFile = []
+                # i_location = 0; location_info = dir_name_and_rows[0]
+                dir_nameAndIntermediateFile = []
 
-                # i_location = 0; location_info = dirNameAndRows[i_location]
-                for i_location, location_info in tqdm(enumerate(dirNameAndRows)):
+                # i_location = 0; location_info = dir_name_and_rows[i_location]
+                for i_location, location_info in tqdm(enumerate(dir_name_and_rows)):
 
                     location_name = location_info[0]
                     assert location_name in location_name_to_normalized_location_name
@@ -1357,25 +1355,25 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
                                                              normalized_location_name + '.csv')
                     detections_table_this_location = location_info[1]
                     detections_table_this_location.to_csv(intermediate_results_file,header=True,index=False)
-                    dirNameAndIntermediateFile.append((location_name,intermediate_results_file))
+                    dir_nameAndIntermediateFile.append((location_name,intermediate_results_file))
 
 
                 ##%% Find detections in each directory
 
                 options.pbar = None
-                allCandidateDetectionFiles = list(pool.imap(
-                    partial(_find_matches_in_directory,options=options), dirNameAndIntermediateFile))
+                all_candidate_detection_files = list(pool.imap(
+                    partial(_find_matches_in_directory,options=options), dir_nameAndIntermediateFile))
 
 
                 ##%% Load into a combined list of candidate detections
 
-                allCandidateDetections = []
+                all_candidate_detections = []
 
-                # candidate_detection_file = allCandidateDetectionFiles[0]
-                for candidate_detection_file in allCandidateDetectionFiles:
+                # candidate_detection_file = all_candidate_detection_files[0]
+                for candidate_detection_file in all_candidate_detection_files:
                     s = open(candidate_detection_file, 'r').read()
                     candidate_detections_this_file = jsonpickle.decode(s)
-                    allCandidateDetections.append(candidate_detections_this_file)
+                    all_candidate_detections.append(candidate_detections_this_file)
 
 
                 ##%% Clean up intermediate files
@@ -1389,13 +1387,13 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
                 # object and letting it get updated.  We can't serialize this object across
                 # processes.
                 if options.parallelizationUsesThreads:
-                    options.pbar = tqdm(total=len(dirNameAndRows))
-                    allCandidateDetections = list(pool.imap(
-                        partial(_find_matches_in_directory,options=options), dirNameAndRows))
+                    options.pbar = tqdm(total=len(dir_name_and_rows))
+                    all_candidate_detections = list(pool.imap(
+                        partial(_find_matches_in_directory,options=options), dir_name_and_rows))
                 else:
                     options.pbar = None
-                    allCandidateDetections = list(tqdm(pool.imap(
-                        partial(_find_matches_in_directory,options=options), dirNameAndRows)))
+                    all_candidate_detections = list(tqdm(pool.imap(
+                        partial(_find_matches_in_directory,options=options), dir_name_and_rows)))
 
         # ...if we're parallelizing comparisons
 
@@ -1414,123 +1412,121 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
 
         print('Marking repeat detections...')
 
-        nImagesWithSuspiciousDetections = 0
-        nSuspiciousDetections = 0
+        n_images_with_suspicious_detections = 0
+        n_suspicious_detections = 0
 
         # For each directory
-        #
-        # iDir = 51
-        for iDir in range(len(dirsToSearch)):
+        for i_dir in range(len(dirs_to_search)):
 
             # A list of DetectionLocation objects
-            suspiciousDetectionsThisDir = []
+            suspicious_detections_this_dir = []
 
             # A list of DetectionLocation objects
-            candidateDetectionsThisDir = allCandidateDetections[iDir]
+            candidate_detections_this_dir = all_candidate_detections[i_dir]
 
-            for iLocation, candidateLocation in enumerate(candidateDetectionsThisDir):
+            for i_location, candidate_location in enumerate(candidate_detections_this_dir):
 
                 # occurrenceList is a list of file/detection pairs
-                nOccurrences = len(candidateLocation.instances)
+                n_occurrences = len(candidate_location.instances)
 
-                if nOccurrences < options.occurrenceThreshold:
+                if n_occurrences < options.occurrenceThreshold:
                     continue
 
-                nImagesWithSuspiciousDetections += nOccurrences
-                nSuspiciousDetections += 1
+                n_images_with_suspicious_detections += n_occurrences
+                n_suspicious_detections += 1
 
-                suspiciousDetectionsThisDir.append(candidateLocation)
+                suspicious_detections_this_dir.append(candidate_location)
 
-            suspiciousDetections[iDir] = suspiciousDetectionsThisDir
+            suspicious_detections[i_dir] = suspicious_detections_this_dir
 
             # Sort the above-threshold detections for easier review
             if options.smartSort is not None:
-                suspiciousDetections[iDir] = _sort_detections_for_directory(
-                    suspiciousDetections[iDir],options)
+                suspicious_detections[i_dir] = _sort_detections_for_directory(
+                    suspicious_detections[i_dir],options)
 
             print('Found {} suspicious detections in directory {} ({})'.format(
-                  len(suspiciousDetections[iDir]),iDir,dirsToSearch[iDir]))
+                  len(suspicious_detections[i_dir]),i_dir,dirs_to_search[i_dir]))
 
         # ...for each directory
 
         print('Finished marking repeat detections')
 
         print('Found {} unique detections on {} images that are suspicious'.format(
-                nSuspiciousDetections, nImagesWithSuspiciousDetections))
+                n_suspicious_detections, n_images_with_suspicious_detections))
 
     # If we're just loading detections from a file...
     else:
 
-        assert len(suspiciousDetections) == len(dirsToSearch)
+        assert len(suspicious_detections) == len(dirs_to_search)
 
-        nDetectionsRemoved = 0
-        nDetectionsLoaded = 0
+        n_detections_removed = 0
+        n_detections_loaded = 0
 
         # We're skipping detection-finding, but to see which images are actually legit false
         # positives, we may be looking for physical files or loading from a text file.
-        fileList = None
+        file_list = None
         if options.filteredFileListToLoad is not None:
             with open(options.filteredFileListToLoad) as f:
-                fileList = f.readlines()
-                fileList = [x.strip() for x in fileList]
-            nSuspiciousDetections = sum([len(x) for x in suspiciousDetections])
+                file_list = f.readlines()
+                file_list = [x.strip() for x in file_list]
+            n_suspicious_detections = sum([len(x) for x in suspicious_detections])
             print('Loaded false positive list from file ' + \
                   'will remove {} of {} suspicious detections'.format(
-                len(fileList), nSuspiciousDetections))
+                len(file_list), n_suspicious_detections))
 
         # For each directory
-        # iDir = 0; detections = suspiciousDetections[0]
+        # i_dir = 0; detections = suspicious_detections[0]
         #
-        # suspiciousDetections is an array of DetectionLocation objects,
+        # suspicious_detections is an array of DetectionLocation objects,
         # one per directory.
-        for iDir, detections in enumerate(suspiciousDetections):
+        for i_dir, detections in enumerate(suspicious_detections):
 
-            bValidDetection = [True] * len(detections)
-            nDetectionsLoaded += len(detections)
+            b_valid_detection = [True] * len(detections)
+            n_detections_loaded += len(detections)
 
             # For each detection that was present before filtering
-            # iDetection = 0; detection = detections[iDetection]
-            for iDetection, detection in enumerate(detections):
+            # i_detection = 0; detection = detections[i_detection]
+            for i_detection, detection in enumerate(detections):
 
                 # Are we checking the directory to see whether detections were actually false
                 # positives, or reading from a list?
-                if fileList is None:
+                if file_list is None:
 
                     # Is the image still there?
-                    imageFullPath = os.path.join(filteringBaseDir,
-                                                 detection.sampleImageRelativeFileName)
+                    image_full_path = os.path.join(filteringBaseDir,
+                                                   detection.sampleImageRelativeFileName)
 
                     # If not, remove this from the list of suspicious detections
-                    if not os.path.isfile(imageFullPath):
-                        nDetectionsRemoved += 1
-                        bValidDetection[iDetection] = False
+                    if not os.path.isfile(image_full_path):
+                        n_detections_removed += 1
+                        b_valid_detection[i_detection] = False
 
                 else:
 
-                    if detection.sampleImageRelativeFileName not in fileList:
-                        nDetectionsRemoved += 1
-                        bValidDetection[iDetection] = False
+                    if detection.sampleImageRelativeFileName not in file_list:
+                        n_detections_removed += 1
+                        b_valid_detection[i_detection] = False
 
             # ...for each detection
 
-            nRemovedThisDir = len(bValidDetection) - sum(bValidDetection)
-            if nRemovedThisDir > 0:
+            n_removed_this_dir = len(b_valid_detection) - sum(b_valid_detection)
+            if n_removed_this_dir > 0:
                 print('Removed {} of {} detections from directory {}'.\
-                      format(nRemovedThisDir,len(detections), iDir))
+                      format(n_removed_this_dir,len(detections), i_dir))
 
-            detectionsFiltered = list(compress(detections, bValidDetection))
-            suspiciousDetections[iDir] = detectionsFiltered
+            detections_filtered = list(compress(detections, b_valid_detection))
+            suspicious_detections[i_dir] = detections_filtered
 
         # ...for each directory
 
         print('Removed {} of {} total detections via manual filtering'.\
-              format(nDetectionsRemoved, nDetectionsLoaded))
+              format(n_detections_removed, n_detections_loaded))
 
     # ...if we are/aren't finding detections (vs. loading from file)
 
-    toReturn.suspiciousDetections = suspiciousDetections
+    to_return.suspicious_detections = suspicious_detections
 
-    toReturn.allRowsFiltered = _update_detection_table(toReturn, options, outputFilename)
+    to_return.allRowsFiltered = _update_detection_table(to_return, options, output_filename)
 
 
     ##%% Create filtering directory
@@ -1539,9 +1535,9 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
 
         print('Creating filtering folder...')
 
-        dateString = datetime.now().strftime('%Y.%m.%d.%H.%M.%S')
-        filteringDir = os.path.join(options.outputBase, 'filtering_' + dateString)
-        os.makedirs(filteringDir, exist_ok=True)
+        date_string = datetime.now().strftime('%Y.%m.%d.%H.%M.%S')
+        filtering_dir = os.path.join(options.outputBase, 'filtering_' + date_string)
+        os.makedirs(filtering_dir, exist_ok=True)
 
         # Take a first loop over every suspicious detection, and do the things that make
         # sense to do in a serial sampleImageDetectionsloop:
@@ -1550,9 +1546,9 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
         # * Sort instances by confidence
         # * Look up detections for each sample image in the big table (so we don't have to pass the
         #   table to workers)
-        for iDir, suspiciousDetectionsThisDir in enumerate(tqdm(suspiciousDetections)):
+        for i_dir, suspicious_detections_this_dir in enumerate(tqdm(suspicious_detections)):
 
-            for iDetection, detection in enumerate(suspiciousDetectionsThisDir):
+            for i_detection, detection in enumerate(suspicious_detections_this_dir):
 
                 # Sort instances in descending order by confidence
                 detection.instances.sort(key=attrgetter('confidence'),reverse=True)
@@ -1564,14 +1560,14 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
 
                 # Choose the highest-confidence index
                 instance = detection.instances[0]
-                relativePath = instance.filename
+                relative_path = instance.filename
 
-                outputRelativePath = 'dir{:0>4d}_det{:0>4d}{}_n{:0>4d}.jpg'.format(
-                    iDir, iDetection, clusterString, len(detection.instances))
-                detection.sampleImageRelativeFileName = outputRelativePath
+                output_relative_path = 'dir{:0>4d}_det{:0>4d}{}_n{:0>4d}.jpg'.format(
+                    i_dir, i_detection, clusterString, len(detection.instances))
+                detection.sampleImageRelativeFileName = output_relative_path
 
-                iRow = filenameToRow[relativePath]
-                row = detectionResults.iloc[iRow]
+                i_row = filenameToRow[relative_path]
+                row = detection_results.iloc[i_row]
                 detection.sampleImageDetections = row['detections']
 
             # ...for each suspicious detection in this folder
@@ -1579,12 +1575,12 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
         # ...for each folder
 
         # Collapse suspicious detections into a flat list
-        allSuspiciousDetections = []
+        all_suspicious_detections = []
 
-        # iDir = 0; suspiciousDetectionsThisDir = suspiciousDetections[iDir]
-        for iDir, suspiciousDetectionsThisDir in enumerate(tqdm(suspiciousDetections)):
-            for iDetection, detection in enumerate(suspiciousDetectionsThisDir):
-                allSuspiciousDetections.append(detection)
+        # i_dir = 0; suspicious_detections_this_dir = suspicious_detections[i_dir]
+        for i_dir, suspicious_detections_this_dir in enumerate(tqdm(suspicious_detections)):
+            for i_detection, detection in enumerate(suspicious_detections_this_dir):
+                all_suspicious_detections.append(detection)
 
         # Render suspicious detections
         if options.bParallelizeRendering:
@@ -1605,15 +1601,15 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
             # object and letting it get updated.  We can't serialize this object across 
                 # processes.
                 if options.parallelizationUsesThreads:
-                    options.pbar = tqdm(total=len(allSuspiciousDetections))
-                    allCandidateDetections = list(pool.imap(
-                        partial(_render_sample_image_for_detection,filteringDir=filteringDir,
-                                options=options), allSuspiciousDetections))
+                    options.pbar = tqdm(total=len(all_suspicious_detections))
+                    all_candidate_detections = list(pool.imap(
+                        partial(_render_sample_image_for_detection,filtering_dir=filtering_dir,
+                                options=options), all_suspicious_detections))
                 else:
                     options.pbar = None                
-                    allCandidateDetections = list(tqdm(pool.imap(
-                        partial(_render_sample_image_for_detection,filteringDir=filteringDir,
-                                options=options), allSuspiciousDetections)))
+                    all_candidate_detections = list(tqdm(pool.imap(
+                        partial(_render_sample_image_for_detection,filtering_dir=filtering_dir,
+                                options=options), all_suspicious_detections)))
             finally:
                 if pool is not None:
                     pool.close()
@@ -1623,21 +1619,21 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
         else:
 
             # Serial loop over detections
-            for detection in allSuspiciousDetections:
-                _render_sample_image_for_detection(detection,filteringDir,options)
+            for detection in all_suspicious_detections:
+                _render_sample_image_for_detection(detection,filtering_dir,options)
 
         # Delete (large) temporary data from the list of suspicious detections
-        for detection in allSuspiciousDetections:
+        for detection in all_suspicious_detections:
             detection.sampleImageDetections = None
 
         # Write out the detection index
-        detectionIndexFileName = os.path.join(filteringDir, detection_index_file_name_base)
+        detection_index_file_name = os.path.join(filtering_dir, detection_index_file_name_base)
 
         # Prepare the data we're going to write to the detection index file
         detectionInfo = {}
 
-        detectionInfo['suspiciousDetections'] = suspiciousDetections
-        detectionInfo['dirIndexToName'] = dirIndexToName
+        detectionInfo['suspicious_detections'] = suspicious_detections
+        detectionInfo['dir_index_to_name'] = dir_index_to_name
 
         # Remove the one non-serializable object from the options struct before serializing
         # to .json
@@ -1645,14 +1641,12 @@ def find_repeat_detections(inputFilename, outputFilename=None, options=None):
         detectionInfo['options'] = options
 
         s = jsonpickle.encode(detectionInfo,make_refs=False)
-        with open(detectionIndexFileName, 'w') as f:
+        with open(detection_index_file_name, 'w') as f:
             f.write(s)
-        toReturn.filterFile = detectionIndexFileName
-
-        print('Done')
+        to_return.filterFile = detection_index_file_name        
 
     # ...if we're writing filtering info
 
-    return toReturn
+    return to_return
 
 # ...def find_repeat_detections()

@@ -1327,7 +1327,6 @@ def _resize_relative_image(fn_relative,
 
 def _resize_absolute_image(input_output_files,
                           target_width,target_height,no_enlarge_width,verbose,quality):
-
     """
     Internal wrapper for resize_image used in the context of a batch resize operation.
     """

@@ -115,18 +115,18 @@ def _check_image_existence_and_size(image,options=None):
     return None
 
 
-def integrity_check_json_db(jsonFile, options=None):
+def integrity_check_json_db(json_file, options=None):
     """
     Does some integrity-checking and computes basic statistics on a COCO Camera Traps .json file; see
     module header comment for a list of the validation steps.
 
     Args:
-        jsonFile (str): filename to validate, or an already-loaded dict
+        json_file (str): filename to validate, or an already-loaded dict
 
     Returns:
         tuple: tuple containing:
-            - sorted_categories (dict): list of categories used in [jsonFile], sorted by frequency
-            - data (dict): the data loaded from [jsonFile]
+            - sorted_categories (dict): list of categories used in [json_file], sorted by frequency
+            - data (dict): the data loaded from [json_file]
             - error_info (dict): specific validation errors
     """
 
@@ -147,24 +147,24 @@ def integrity_check_json_db(jsonFile, options=None):
 
     ##%% Read .json file if necessary, integrity-check fields
 
-    if isinstance(jsonFile,dict):
+    if isinstance(json_file,dict):
 
-        data = jsonFile
+        data = json_file
 
-    elif isinstance(jsonFile,str):
+    elif isinstance(json_file,str):
 
-        assert os.path.isfile(jsonFile), '.json file {} does not exist'.format(jsonFile)
+        assert os.path.isfile(json_file), '.json file {} does not exist'.format(json_file)
 
         if options.verbose:
             print('Reading .json {} with base dir [{}]...'.format(
-                    jsonFile,base_dir))
+                    json_file,base_dir))
 
-        with open(jsonFile,'r') as f:
+        with open(json_file,'r') as f:
             data = json.load(f)
 
     else:
 
-        raise ValueError('Illegal value for jsonFile')
+        raise ValueError('Illegal value for json_file')
 
     images = data['images']
     annotations = data['annotations']
@@ -450,7 +450,7 @@ def integrity_check_json_db(jsonFile, options=None):
 def main(): # noqa
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('jsonFile',type=str,
+    parser.add_argument('json_file',type=str,
                         help='COCO-formatted .json file to validate')
     parser.add_argument('--bCheckImageSizes', action='store_true',
                         help='Validate image size, requires baseDir to be specified. ' + \
@@ -478,7 +478,7 @@ def main(): # noqa
     args.bRequireLocation = (not args.bAllowNoLocation)
     options = IntegrityCheckOptions()
     ct_utils.args_to_object(args, options)
-    integrity_check_json_db(args.jsonFile,options)
+    integrity_check_json_db(args.json_file,options)
 
 if __name__ == '__main__':
     main()
