@@ -67,6 +67,9 @@ class IntegrityCheckOptions:
         #: Allow integer-valued image and annotation IDs (COCO uses this, CCT files use strings)
         self.allowIntIDs = False
 
+        #: If True, error if the 'info' field is not present
+        self.requireInfo = False
+
 # This is used in a medium-hacky way to share modified options across threads
 default_options = IntegrityCheckOptions()
 
@@ -169,8 +172,9 @@ def integrity_check_json_db(json_file, options=None):
     images = data['images']
     annotations = data['annotations']
     categories = data['categories']
-    # info = data['info']
-    assert 'info' in data, 'No info struct in database'
+    
+    if options.requireInfo:
+        assert 'info' in data, 'No info struct in database'
 
     if len(base_dir) > 0:
         assert os.path.isdir(base_dir), \
