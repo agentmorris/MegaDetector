@@ -36,6 +36,7 @@ dependencies = [
   "pandas >= 2.1.1",  
   "python-dateutil",
   "send2trash",
+  "clipboard",
   # Not imported directly, but required to de-serialize some models
   "dill",
   # The next two lines are the difference between this package and the main package.

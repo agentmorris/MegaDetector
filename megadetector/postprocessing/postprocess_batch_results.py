@@ -1899,7 +1899,7 @@ def process_batch_results(options):
                 for im in d['images']:
                     if 'detections' in im and im['detections'] is not None:
                         for det in im['detections']:
-                            if 'classifications' in det:
+                            if ('classifications' in det) and (len(det['classifications']) > 0):
                                 class_id = det['classifications'][0][0]
                                 if class_id not in classification_category_to_count:
                                     classification_category_to_count[class_id] = 0

@@ -1012,7 +1012,7 @@ options.debugMaxRenderInstance = -1
 options.smartSort = 'xsort'
 
 suspicious_detection_results = repeat_detections_core.find_repeat_detections(combined_api_output_file,
-                                                                             outputFilename=None,
+                                                                             output_file_name=None,
                                                                              options=options)
 
 
@@ -1040,9 +1040,9 @@ open_file(os.path.dirname(suspicious_detection_results.filterFile),
 from megadetector.postprocessing.repeat_detection_elimination import remove_repeat_detections
 
 remove_repeat_detections.remove_repeat_detections(
-    inputFile=combined_api_output_file,
-    outputFile=filtered_output_filename,
-    filteringDir=os.path.dirname(suspicious_detection_results.filterFile)
+    input_file=combined_api_output_file,
+    output_file=filtered_output_filename,
+    filtering_dir=os.path.dirname(suspicious_detection_results.filterFile)
     )
 
 
@@ -1525,7 +1525,7 @@ preview_options.md_results_file = pre_smoothing_file
 preview_options.output_dir = preview_folder
 preview_options.footer_text = geofence_footer
 
-print('Generating post-clssification smoothing preview in {}'.format(preview_folder))
+print('Generating post-classification preview in {}'.format(preview_folder))
 ppresults = process_batch_results(preview_options)
 open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
 # import clipboard; clipboard.copy(ppresults.output_html_file)
@@ -1560,7 +1560,7 @@ os.makedirs(preview_folder, exist_ok=True)
 preview_options.md_results_file = classifier_output_path_within_image_smoothing
 preview_options.output_dir = preview_folder
 
-print('Generating post-within-image smoothing preview in {}'.format(preview_folder))
+print('Generating post-within-image-smoothing preview in {}'.format(preview_folder))
 ppresults = process_batch_results(preview_options)
 open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
 # import clipboard; clipboard.copy(ppresults.output_html_file)

@@ -300,7 +300,7 @@ def _prepare_results_for_smoothing(input_file,options):
 
     ## Optionally add pre-smoothing descriptions to every image
 
-    if options.add_pre_smoothing_description:
+    if options.add_pre_smoothing_description and (classification_descriptions is not None):
 
         for im in tqdm(d['images']):
 

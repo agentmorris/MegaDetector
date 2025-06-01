@@ -19,6 +19,7 @@ from functools import partial
 
 from megadetector.utils.path_utils import insert_before_extension
 from megadetector.utils.ct_utils import invert_dictionary
+from megadetector.utils.ct_utils import is_list_sorted                
 from megadetector.visualization.visualization_utils import crop_image
 from megadetector.visualization.visualization_utils import exif_preserving_save
 
@@ -113,7 +114,11 @@ def _generate_crops_for_single_image(crops_this_image,
 def crop_results_to_image_results(image_results_file_with_crop_ids,
                                   crop_results_file,
                                   output_file,
-                                  delete_crop_information=True):
+                                  delete_crop_information=True,
+                                  require_identical_detection_categories=True,
+                                  restrict_to_top_n=-1,
+                                  crop_results_prefix=None,
+                                  detections_without_classification_handling='error'):
     """
     This function is intended to be run after you have:
 
@@ -134,6 +139,17 @@ def crop_results_to_image_results(image_results_file_with_crop_ids,
             mapped back to the image level.
         delete_crop_information (bool, optional): whether to delete the "crop_id" and
             "crop_filename_relative" fields from each detection, if present.
+        require_identical_detection_categories (bool, optional): if True, error if
+            the image-level and crop-level detection categories are different.  If False,
+            ignore the crop-level detection categories.
+        restrict_to_top_n (int, optional): If >0, removes all but the top N classification
+            results for each detection.
+        crop_results_prefix (str, optional): if not None, removes this prefix from crop
+            results filenames.  Intended to support the case where the crop results
+            use absolute paths.
+        detections_without_classification_handling (str, optional): what to do when we 
+            encounter a crop that doesn't appear in classification results: 'error',
+            or 'include' ("include" means "leave the detection alone, without classifications"            
     """
 
     ##%% Validate inputs
@@ -155,26 +171,33 @@ def crop_results_to_image_results(image_results_file_with_crop_ids,
         crop_results = json.load(f)
 
     # Find all the detection categories that need to be consistent
-    used_category_ids = set()
+    used_detection_category_ids = set()
     for im in tqdm(image_results_with_crop_ids['images']):
         if 'detections' not in im or im['detections'] is None:
             continue
         for det in im['detections']:
             if 'crop_id' in det:
-                used_category_ids.add(det['category'])
+                used_detection_category_ids.add(det['category'])
 
-    # Make sure the categories that matter are consistent across the two files
-    for category_id in used_category_ids:
-        category_name = image_results_with_crop_ids['detection_categories'][category_id]
-        assert category_id in crop_results['detection_categories'] and \
-            category_name == crop_results['detection_categories'][category_id], \
-                'Crop results and detection results use incompatible categories'
+    # Make sure the detection categories that matter are consistent across the two files
+    if require_identical_detection_categories:
+        for category_id in used_detection_category_ids:
+            category_name = image_results_with_crop_ids['detection_categories'][category_id]
+            assert category_id in crop_results['detection_categories'] and \
+                category_name == crop_results['detection_categories'][category_id], \
+                    'Crop results and detection results use incompatible categories'
 
     crop_filename_to_results = {}
 
     # im = crop_results['images'][0]
-    for im in crop_results['images']:
-        crop_filename_to_results[im['file']] = im
+    for im in crop_results['images']:        
+        fn = im['file']
+        # Possibly remove a prefix from each filename
+        if (crop_results_prefix is not None) and (crop_results_prefix in fn):
+            if fn.startswith(crop_results_prefix):
+                fn = fn.replace(crop_results_prefix,'',1)
+                im['file'] = fn
+        crop_filename_to_results[fn] = im
 
     if 'classification_categories' in crop_results:
         image_results_with_crop_ids['classification_categories'] = \
@@ -187,29 +210,70 @@ def crop_results_to_image_results(image_results_file_with_crop_ids,
 
     ##%% Read classifications from crop results, merge into image-level results
 
+    print('Reading classification results...')
+
+    n_skipped_detections = 0
+
+    # Loop over the original image-level detections
+    #
     # im = image_results_with_crop_ids['images'][0]
-    for im in tqdm(image_results_with_crop_ids['images']):
+    for i_image,im in tqdm(enumerate(image_results_with_crop_ids['images']),
+                           total=len(image_results_with_crop_ids['images'])):
 
         if 'detections' not in im or im['detections'] is None:
             continue
 
+        # i_det = 0; det = im['detections'][i_det]
         for det in im['detections']:
 
             if 'classifications' in det:
                 del det['classifications']
 
             if 'crop_id' in det:
+
+                # We may be skipping detections with no classification results
+                skip_detection = False
+
+                # Find the corresponding crop in the classification results
                 crop_filename_relative = det['crop_filename_relative']
-                assert crop_filename_relative in crop_filename_to_results, \
-                    'Crop lookup error'
-                crop_results_this_detection = crop_filename_to_results[crop_filename_relative]
-                assert crop_results_this_detection['file'] == crop_filename_relative
-                assert len(crop_results_this_detection['detections']) == 1
-                # Allow a slight confidence difference for the case where output precision was truncated
-                assert abs(crop_results_this_detection['detections'][0]['conf'] - det['conf']) < 0.01
-                assert crop_results_this_detection['detections'][0]['category'] == det['category']
-                assert crop_results_this_detection['detections'][0]['bbox'] == [0,0,1,1]
-                det['classifications'] = crop_results_this_detection['detections'][0]['classifications']
+                if crop_filename_relative not in crop_filename_to_results:
+                    if detections_without_classification_handling == 'error':
+                        raise ValueError('Crop lookup error: {}'.format(crop_filename_relative))
+                    elif detections_without_classification_handling == 'include':
+                        # Leave this detection unclassified
+                        skip_detection = True
+                    else:
+                        raise ValueError(
+                            'Illegal value for detections_without_classification_handling: {}'.format(
+                                detections_without_classification_handling
+                        ))
+
+                if not skip_detection:
+
+                    crop_results_this_detection = crop_filename_to_results[crop_filename_relative]
+
+                    # Consistency checking
+                    assert crop_results_this_detection['file'] == crop_filename_relative, \
+                        'Crop filename mismatch'
+                    assert len(crop_results_this_detection['detections']) == 1, \
+                        'Multiple crop results for a single detection'
+                    assert crop_results_this_detection['detections'][0]['bbox'] == [0,0,1,1], \
+                        'Invalid crop bounding box'
+
+                    # This check was helpful for the case where crop-level results had already 
+                    # taken detection confidence values from detector output by construct, but this isn't
+                    # really meaningful for most cases.
+                    # assert abs(crop_results_this_detection['detections'][0]['conf'] - det['conf']) < 0.01
+                    
+                    if require_identical_detection_categories:
+                        assert crop_results_this_detection['detections'][0]['category'] == det['category']
+                    
+                    # Copy the crop-level classifications
+                    det['classifications'] = crop_results_this_detection['detections'][0]['classifications']
+                    confidence_values = [x[1] for x in det['classifications']]
+                    assert is_list_sorted(confidence_values,reverse=True)
+                    if restrict_to_top_n > 0:
+                        det['classifications'] = det['classifications'][0:restrict_to_top_n]
 
             if delete_crop_information:
                 if 'crop_id' in det:
@@ -220,6 +284,9 @@ def crop_results_to_image_results(image_results_file_with_crop_ids,
         # ...for each detection
 
     # ...for each image
+
+    if n_skipped_detections > 0:
+        print('Skipped {} detections'.format(n_skipped_detections))
 
 
     ##%% Write output file

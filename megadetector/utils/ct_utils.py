@@ -205,7 +205,13 @@ def json_serialize_datetime(obj):
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable by json_serialize_datetime")
 
 
-def write_json(path, content, indent=1, force_str=False, serialize_datetimes=False, ensure_ascii=True, encoding='utf-8'):
+def write_json(path,
+               content, 
+               indent=1, 
+               force_str=False, 
+               serialize_datetimes=False,
+               ensure_ascii=True,
+               encoding='utf-8'):
     """
     Standardized wrapper for json.dump().
 
