@@ -134,9 +134,8 @@ convention = "google"
     "UP007",  # Use X | Y for type unions
     "UP015",  # Unnecessary open mode parameters (open(filename,'r'))
     "UP038",  # Use X | Y in isinstance call instead of (X, Y)
-    # "UP035",  # Import from typing_extensions is deprecated
-    "UP024",  # Replace aliased errors with Exception
-    "B007",   # Loop control variable not used within loop body
+    
+    # "B007",   # Loop control variable not used within loop body
     "D200",   # One-line docstring should fit on one line
     "E702",   # Multiple statements on one line (semicolon)
     "D205",   # 1 blank line required between summary line and description

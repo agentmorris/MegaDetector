@@ -24,7 +24,8 @@ docs.microsoft.com/en-us/azure/storage/common/storage-sas-overview
 from datetime import datetime, timedelta
 import io
 import re
-from typing import (Any, AnyStr, IO, Iterable, Optional, Union)
+from typing import (Any, AnyStr, IO, Optional, Union)
+from collections.abc import Iterable
 from urllib import parse
 import uuid
 

@@ -869,7 +869,7 @@ def draw_bounding_box_on_image(image,
 
         try:
             font = ImageFont.truetype('arial.ttf', label_font_size)
-        except IOError:
+        except OSError:
             font = ImageFont.load_default()
 
         display_str_heights = [get_text_size(font,ds)[1] for ds in display_str_list]

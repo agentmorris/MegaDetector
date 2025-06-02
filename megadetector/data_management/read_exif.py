@@ -704,7 +704,7 @@ def read_exif_from_folder(input_folder,output_file=None,options=None,filenames=N
         try:
             with open(output_file, 'a') as f:
                 if not f.writable():
-                    raise IOError('File not writable')
+                    raise OSError('File not writable')
         except Exception:
             print('Could not write to file {}'.format(output_file))
             raise
