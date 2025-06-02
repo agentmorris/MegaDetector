@@ -246,7 +246,7 @@ def _initialize_yolo_imports(model_type='yolov5',
     """
 
     # When running in pytest, the megadetector 'utils' module is put in the global
-    # namespace, which creates conflicts with yolov5; remove it from the global 
+    # namespace, which creates conflicts with yolov5; remove it from the global
     # namespsace.
     if ('PYTEST_CURRENT_TEST' in os.environ):
         print('*** pytest detected ***')
@@ -328,7 +328,7 @@ def _initialize_yolo_imports(model_type='yolov5',
 
         try:
 
-            import ultralytics # noqa
+            import ultralytics # type: ignore # noqa
 
         except Exception:
 
@@ -340,15 +340,15 @@ def _initialize_yolo_imports(model_type='yolov5',
 
         try:
 
-            from ultralytics.utils.ops import non_max_suppression # noqa
-            from ultralytics.utils.ops import xyxy2xywh # noqa
+            from ultralytics.utils.ops import non_max_suppression # type: ignore # noqa
+            from ultralytics.utils.ops import xyxy2xywh # type: ignore # noqa
 
             # In the ultralytics package, scale_boxes and scale_coords both exist;
             # we want scale_boxes.
             #
             # from ultralytics.utils.ops import scale_coords # noqa
-            from ultralytics.utils.ops import scale_boxes as scale_coords # noqa
-            from ultralytics.data.augment import LetterBox
+            from ultralytics.utils.ops import scale_boxes as scale_coords # type: ignore # noqa
+            from ultralytics.data.augment import LetterBox # type: ignore # noqa
 
             # letterbox() became a LetterBox class in the ultralytics package.  Create a
             # backwards-compatible letterbox function wrapper that wraps the class up.
@@ -373,7 +373,7 @@ def _initialize_yolo_imports(model_type='yolov5',
                 else:
                     letterbox_transformer = LetterBox(new_shape,auto=auto,scale_fill=scaleFill,
                                                   scaleup=scaleup,center=center,stride=stride)
-                    
+
                 letterbox_result = letterbox_transformer(image=img)
 
                 if isinstance(new_shape,int):
@@ -575,7 +575,7 @@ class PTDetector:
 
         if verbose:
             print('Initializing PTDetector (verbose)')
-        
+
         # Set up the import environment for this model, unloading previous
         # YOLO library versions if necessary.
         _initialize_yolo_imports_for_model(model_path,
