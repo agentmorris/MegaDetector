@@ -728,6 +728,46 @@ def is_empty(v):
     return False
 
 
+def to_bool(v):
+    """
+    Convert an object to a bool with specific rules.
+    
+    Args:
+        obj (object): The object to convert
+        
+    Returns:
+        bool or None: 
+        - For strings: True if 'true' (case-insensitive), False if 'false', recursively applied if int-like
+        - For int/bytes: False if 0, True otherwise
+        - For bool: returns the bool as-is
+        - For other types: None
+    """
+
+    if isinstance(v, bool):
+        return v
+    
+    if isinstance(v, str):
+
+        try:
+            v = int(v)
+            return to_bool(v)
+        except Exception:
+            pass
+
+        v = v.lower().strip()
+        if v == 'true':
+            return True
+        elif v == 'false':
+            return False
+        else:
+            return None
+
+    if isinstance(v, (int, bytes)):
+        return v != 0
+    
+    return None
+
+
 def min_none(a,b):
     """
     Returns the minimum of a and b.  If both are None, returns None.  If one is None,

@@ -324,8 +324,8 @@ def get_detector_version_from_model_file(detector_filename,verbose=False):
                 version_string_based_on_model_file = metadata['model_version_string']
 
                 if version_string_based_on_model_file not in known_models:
-                    print('Warning: unknown model version {} specified in file {}'.format(
-                        version_string_based_on_model_file,detector_filename))
+                    print('Warning: unknown model version:\n\n{}\n\n...specified in file:\n\n{}'.format(
+                        version_string_based_on_model_file,os.path.basename(detector_filename)))
 
         # ...if there's metadata in this file
 
@@ -336,8 +336,9 @@ def get_detector_version_from_model_file(detector_filename,verbose=False):
        (version_string_based_on_model_file is not None):
 
         if version_string_based_on_filename != version_string_based_on_model_file:
-            print('Warning: model version string in file {} is {}, but the filename implies {}'.format(
-                detector_filename,
+            print(
+                'Warning: model version string in file:\n\n{}\n\n...is:\n\n{}\n\n...but the filename implies:\n\n{}'.format(
+                os.path.basename(detector_filename),
                 version_string_based_on_model_file,
                 version_string_based_on_filename))
 
@@ -574,7 +575,8 @@ def load_and_run_detector(model_file,
                           label_font_size=DEFAULT_LABEL_FONT_SIZE,
                           augment=False,
                           force_model_download=False,
-                          detector_options=None):
+                          detector_options=None,
+                          verbose=False):
     r"""
     Loads and runs a detector on target images, and visualizes the results.
 
@@ -607,9 +609,13 @@ def load_and_run_detector(model_file,
         return
 
     # Possibly automatically download the model
-    model_file = try_download_known_detector(model_file, force_download=force_model_download)
+    model_file = try_download_known_detector(model_file,
+                                             force_download=force_model_download,
+                                             verbose=verbose)
 
-    detector = load_detector(model_file, detector_options=detector_options)
+    detector = load_detector(model_file,
+                             detector_options=detector_options,
+                             verbose=verbose)
 
     detection_results = []
     time_load = []
@@ -926,6 +932,11 @@ def main(): # noqa
               'local file already exists.'))
 
     parser.add_argument(
+        '--verbose',
+        action='store_true',
+        help=('Enable additional debug output'))
+
+    parser.add_argument(
         '--detector_options',
         nargs='*',
         metavar='KEY=VALUE',
@@ -986,7 +997,8 @@ def main(): # noqa
                           augment=args.augment,
                           # If --force_model_download was specified, we already handled it
                           force_model_download=False,
-                          detector_options=detector_options)
+                          detector_options=detector_options,
+                          verbose=args.verbose)
 
 if __name__ == '__main__':
     main()

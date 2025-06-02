@@ -17,6 +17,7 @@ import shutil
 import traceback
 import uuid
 import json
+import inspect
 
 import cv2
 import torch
@@ -27,6 +28,7 @@ from megadetector.detection.run_detector import \
     get_detector_version_from_model_file, \
     known_models
 from megadetector.utils.ct_utils import parse_bool_string
+from megadetector.utils.ct_utils import to_bool
 from megadetector.utils import ct_utils
 
 # We support a few ways of accessing the YOLOv5 dependencies:
@@ -151,7 +153,6 @@ def _initialize_yolo_imports_for_model(model_file,
         str: the model type for which we initialized support
     """
 
-
     global yolo_model_type_imported
 
     if detector_options is not None and 'model_type' in detector_options:
@@ -272,7 +273,7 @@ def _initialize_yolo_imports(model_type='yolov5',
     global scale_coords
 
     if yolo_model_type_imported is not None:
-        if yolo_model_type_imported == model_type:
+        if (yolo_model_type_imported == model_type) and (not force_reimport):
             print('Bypassing imports for YOLO model type {}'.format(model_type))
             return
         else:
@@ -354,8 +355,25 @@ def _initialize_yolo_imports(model_type='yolov5',
             def letterbox(img,new_shape,auto=False,scaleFill=False, #noqa
                           scaleup=True,center=True,stride=32):
 
-                letterbox_transformer = LetterBox(new_shape,auto=auto,scaleFill=scaleFill,
+                # Ultralytics changed the "scaleFill" parameter to "scale_fill", we want to support
+                # both conventions.
+                use_old_scalefill_arg = False
+                try:
+                    sig = inspect.signature(LetterBox.__init__)
+                    if 'scaleFill' in sig.parameters:
+                        use_old_scalefill_arg = True
+                except Exception:
+                    pass
+
+                if use_old_scalefill_arg:
+                    if verbose:
+                        print('Using old scaleFill calling convention')
+                    letterbox_transformer = LetterBox(new_shape,auto=auto,scaleFill=scaleFill,
+                                                    scaleup=scaleup,center=center,stride=stride)
+                else:
+                    letterbox_transformer = LetterBox(new_shape,auto=auto,scale_fill=scaleFill,
                                                   scaleup=scaleup,center=center,stride=stride)
+                    
                 letterbox_result = letterbox_transformer(image=img)
 
                 if isinstance(new_shape,int):
@@ -523,7 +541,8 @@ def read_metadata_from_megadetector_model_file(model_file,
         if metadata_file not in names:
             # This is the case for MDv5a and MDv5b
             if verbose:
-                print('Warning: could not find metadata file {} in zip archive'.format(metadata_file))
+                print('Warning: could not find metadata file {} in zip archive {}'.format(
+                    metadata_file,os.path.basename(model_file)))
             return None
 
         try:
@@ -554,6 +573,9 @@ class PTDetector:
 
     def __init__(self, model_path, detector_options=None, verbose=False):
 
+        if verbose:
+            print('Initializing PTDetector (verbose)')
+        
         # Set up the import environment for this model, unloading previous
         # YOLO library versions if necessary.
         _initialize_yolo_imports_for_model(model_path,

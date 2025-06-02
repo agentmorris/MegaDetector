@@ -70,7 +70,6 @@ from tqdm import tqdm
 
 from megadetector.utils import ct_utils
 from megadetector.utils.ct_utils import args_to_object, get_max_conf, invert_dictionary
-from megadetector.utils.path_utils import top_level_folder
 from megadetector.utils.path_utils import recursive_file_list
 
 
@@ -93,11 +92,11 @@ class SubsetJsonDetectorOutputOptions:
         #: Should we split output into individual .json files for each folder?
         self.split_folders = False
 
-        #: Folder level to use for splitting ['bottom','top','n_from_bottom','n_from_top','dict']
+        #: Folder level to use for splitting ['bottom','n_from_bottom','n_from_top','dict']
         #:
         #: 'dict' requires 'split_folder_param' to be a dictionary mapping each filename
         #: to a token.
-        self.split_folder_mode = 'bottom'  # 'top'
+        self.split_folder_mode = 'bottom'
 
         #: When using the 'n_from_bottom' parameter to define folder splitting, this
         #: defines the number of directories from the bottom.  'n_from_bottom' with
@@ -716,10 +715,6 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
                                 options.split_folder_param, fn))
                 dirname = ''.join(tokens[0:n_tokens_to_keep])
 
-            elif options.split_folder_mode == 'top':
-
-                dirname = top_level_folder(fn)
-
             elif options.split_folder_mode == 'dict':
 
                 assert isinstance(options.split_folder_param, dict)
@@ -849,7 +844,7 @@ def main(): # noqa
     parser.add_argument('--split_folder_param', type=int,
                         help='Directory level count for n_from_bottom and n_from_top splitting')
     parser.add_argument('--split_folder_mode', type=str,
-                        help='Folder level to use for splitting ("top" or "bottom")')
+                        help='Folder level to use for splitting ("bottom", "n_from_bottom", or "n_from_top")')
     parser.add_argument('--make_folder_relative', action='store_true',
                         help='Make image paths relative to their containing folder ' + \
                              '(only meaningful with split_folders)')

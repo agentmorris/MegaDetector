@@ -417,64 +417,6 @@ def remove_empty_folders(path, remove_root=False):
 # ...def remove_empty_folders(...)
 
 
-def top_level_folder(p):
-    r"""
-    Gets the top-level folder from the path *p*.
-
-    On UNIX, this is straightforward:
-
-    /blah/foo
-
-    ...returns '/blah'
-
-    On Windows, we define this as the top-level folder that isn't the drive, so:
-
-    c:\blah\foo
-
-    ...returns 'c:\blah'.
-
-    For UNC paths like \\share\folder\abc, it will return \\share\folder, i.e. it treats
-    \\share as the drive.
-
-    Args:
-        p (str): filename to evaluate
-
-    Returns:
-        str: the top-level folder in [p], see above for details on how this is defined
-    """
-
-    if p == '':
-        return ''
-
-    # Check wheter this is a UNC path
-    if p.startswith('\\\\') or p.startswith('//'):
-        # For UNC paths like \\server\share\folder, we want \\server\share
-        parts = split_path(p)
-        if len(parts) >= 3:
-            # parts[0] will be '\\' or '//', parts[1] is server, parts[2] is share
-            return os.path.join(parts[0], parts[1], parts[2])
-        else:
-            # If we don't have enough parts, return what we have
-            return p
-        
-    # Path('/blah').parts is ('/','blah')
-    parts = split_path(p)
-
-    if len(parts) == 1:
-        return parts[0]
-
-    # Handle paths like:
-    #
-    # /, \, /stuff, c:, c:\stuff
-    drive = os.path.splitdrive(p)[0]
-    if parts[0] == drive or parts[0] == drive + '/' or parts[0] == drive + '\\' or parts[0] in ['\\', '/']:
-        return os.path.join(parts[0], parts[1])
-    else:
-        return parts[0]
-
-# ...top_level_folder()
-
-
 def path_join(*paths, convert_slashes=True):
     r"""
     Wrapper for os.path.join that optionally converts backslashes to forward slashes.
@@ -1699,30 +1641,6 @@ class TestPathUtils:
             pass
 
 
-    def test_top_level_folder(self):
-        """
-        Test the top_level_folder function.
-        """
-
-        assert top_level_folder('blah/foo/bar') == 'blah'
-        assert top_level_folder('/blah/foo/bar') == '/blah'
-        assert top_level_folder('bar') == 'bar'
-        assert top_level_folder('') == ''
-
-        # Windows-style paths
-        assert top_level_folder('c:\\') == 'c:\\'
-        assert top_level_folder(r'c:\blah') == r'c:\blah'
-        assert top_level_folder(r'c:\foo') == r'c:\foo'
-        assert top_level_folder(r'c:/foo') == r'c:/foo' # Mixed slashes
-        assert top_level_folder(r'c:\foo/bar') == r'c:\foo' # Mixed slashes
-
-        # Edge cases
-        assert top_level_folder(r'c:\blah\sub') == r'c:\blah'
-        assert top_level_folder(r'/') == r'/'
-        assert top_level_folder(r'\\share\folder') == r'\\share\folder' # UNC Path like
-        assert top_level_folder(r'\\share') == r'\\share'
-
-
     def test_recursive_file_list_and_file_list(self):
         """
         Test the recursive_file_list and file_list functions.
@@ -2682,7 +2600,6 @@ def test_path_utils():
         test_instance.test_is_image_file()
         test_instance.test_find_image_strings()
         test_instance.test_find_images()
-        test_instance.test_top_level_folder()
         test_instance.test_recursive_file_list_and_file_list()
         test_instance.test_folder_list()
         test_instance.test_folder_summary()

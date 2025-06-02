@@ -23,6 +23,7 @@ dependencies:
 - python-dateutil
 - send2trash
 - dill
+- pytest
 - pytorch::pytorch
 - pytorch::torchvision
 - pip
