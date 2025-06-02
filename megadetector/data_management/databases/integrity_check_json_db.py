@@ -172,7 +172,7 @@ def integrity_check_json_db(json_file, options=None):
     images = data['images']
     annotations = data['annotations']
     categories = data['categories']
-    
+
     if options.requireInfo:
         assert 'info' in data, 'No info struct in database'
 

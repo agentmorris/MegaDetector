@@ -126,7 +126,7 @@ convention = "google"
 [tool.ruff.per-file-ignores]
 "**/*.py" = ["D212","D415","D202","UP032","UP007","UP015","UP038",
              "UP035","UP024","B007","D200","E702","D205","D417",
-			 "B904","D107","N813","B905","D105","UP028"]
+			 "B904","D107","N813","B905","D105","UP028","I001"]
 "megadetector/detection/run_inference_with_yolov5_val.py" = ["E501"]
 "megadetector/postprocessing/compare_batch_results.py" = ["E501"]
 "megadetector/postprocessing/postprocess_batch_results.py" = ["E501"]

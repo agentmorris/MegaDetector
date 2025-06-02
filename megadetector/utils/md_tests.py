@@ -1647,9 +1647,9 @@ def test_suite_entry_point():
     options.skip_video_rendering_tests = True
     options.cli_working_dir = None
     options.cli_test_pythonpath = None
-    
+
     options.skip_download_tests = True
-    
+
     options = download_test_data(options)
     run_tests(options)
 

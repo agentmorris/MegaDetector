@@ -26,7 +26,7 @@ def is_float(s):
 
     if s is None:
         return False
-    
+
     try:
         _ = float(s)
     except ValueError:
@@ -53,7 +53,7 @@ def human_readable_to_bytes(size):
 
     if not size: # Handle empty string case after stripping spaces
         return 0
-        
+
     if (size[-1] == 'B'):
         size = size[:-1]
 
@@ -70,7 +70,7 @@ def human_readable_to_bytes(size):
         # Need to separate numeric part from unit more carefully.
         numeric_part = ''
         unit_part = ''
-        
+
         # Iterate from the end to find the unit (K, M, G, T)
         # This handles cases like "10KB" or "2.5GB"
         for i in range(len(size) -1, -1, -1):
@@ -79,7 +79,7 @@ def human_readable_to_bytes(size):
             else:
                 numeric_part = size[:i+1]
                 break
-        
+
         # If no unit found, or numeric part is empty after stripping unit
         if not unit_part or not numeric_part:
             return 0
@@ -97,7 +97,7 @@ def human_readable_to_bytes(size):
                 bytes_val *= 1024
             else:
                 # If it's a known unit (like 'B' already stripped) but not T/G/M/K,
-                # and it was floatable, it's just bytes.  If it's an unknown unit, it's 
+                # and it was floatable, it's just bytes.  If it's an unknown unit, it's
 				# an error.
                 if unit not in ['B', '']: # 'B' was stripped, '' means just a number
                      bytes_val = 0
@@ -165,7 +165,7 @@ class TestStringUtils:
         assert human_readable_to_bytes("1GB") == 1024*1024*1024
         assert human_readable_to_bytes("1T") == 1024*1024*1024*1024
         assert human_readable_to_bytes("1TB") == 1024*1024*1024*1024
-        
+
         assert human_readable_to_bytes("2.5K") == 2.5 * 1024
         assert human_readable_to_bytes("0.5MB") == 0.5 * 1024 * 1024
 

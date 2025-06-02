@@ -206,9 +206,9 @@ def json_serialize_datetime(obj):
 
 
 def write_json(path,
-               content, 
-               indent=1, 
-               force_str=False, 
+               content,
+               indent=1,
+               force_str=False,
                serialize_datetimes=False,
                ensure_ascii=True,
                encoding='utf-8'):
@@ -595,7 +595,7 @@ def round_floats_in_nested_dict(obj, decimal_places=5, allow_iterator_conversion
 
     elif isinstance(obj, tuple):
         # Tuples are immutable, so we create a new one
-        return tuple(round_floats_in_nested_dict(item, decimal_places=decimal_places, 
+        return tuple(round_floats_in_nested_dict(item, decimal_places=decimal_places,
                                                  allow_iterator_conversion=allow_iterator_conversion) for item in obj)
 
     elif isinstance(obj, set):
@@ -606,11 +606,11 @@ def round_floats_in_nested_dict(obj, decimal_places=5, allow_iterator_conversion
 
     elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
         # Handle other iterable types: convert to list, process, and convert back
-        processed_list = [round_floats_in_nested_dict(item, 
+        processed_list = [round_floats_in_nested_dict(item,
                                                       decimal_places=decimal_places,
                                                       allow_iterator_conversion=allow_iterator_conversion) \
                                                         for item in obj]
-        
+
         # Try to recreate the original type, but fall back to list for iterators
         try:
             return type(obj)(processed_list)
@@ -682,7 +682,7 @@ def is_float(v):
 
     if v is None:
         return False
-    
+
     try:
         _ = float(v)
         return True
@@ -736,7 +736,7 @@ def to_bool(v):
         obj (object): The object to convert
         
     Returns:
-        bool or None: 
+        bool or None:
         - For strings: True if 'true' (case-insensitive), False if 'false', recursively applied if int-like
         - For int/bytes: False if 0, True otherwise
         - For bool: returns the bool as-is
@@ -745,7 +745,7 @@ def to_bool(v):
 
     if isinstance(v, bool):
         return v
-    
+
     if isinstance(v, str):
 
         try:
@@ -764,7 +764,7 @@ def to_bool(v):
 
     if isinstance(v, (int, bytes)):
         return v != 0
-    
+
     return None
 
 
@@ -866,7 +866,7 @@ def is_function_name(s,calling_namespace):
 def parse_kvp(s,kv_separator='='):
     """
     Parse a key/value pair, separated by [kv_separator].  Errors if s is not
-    a valid key/value pair string.  Strips leading/trailing whitespace from 
+    a valid key/value pair string.  Strips leading/trailing whitespace from
     the key and value.
 
     Args:
@@ -1135,14 +1135,14 @@ def test_geometric_operations():
     r1 = [0.4,0.8,10,22]; r2 = [100, 101, 200, 210.4]; assert abs(rect_distance(r1,r2)-119.753) < 0.001
     r1 = [0.4,0.8,10,22]; r2 = [101, 101, 200, 210.4]; assert abs(rect_distance(r1,r2)-120.507) < 0.001
     r1 = [0.4,0.8,10,22]; r2 = [120, 120, 200, 210.4]; assert abs(rect_distance(r1,r2)-147.323) < 0.001
-    
+
     # Test with 'x0y0wh' format
     r1_wh = [0,0,1,1]; r2_wh = [1,0,1,1]; assert rect_distance(r1_wh, r2_wh, format='x0y0wh') == 0
     r1_wh = [0,0,1,1]; r2_wh = [1.5,0,1,1]; assert abs(rect_distance(r1_wh, r2_wh, format='x0y0wh') - 0.5) < 0.00001
 
 
     ##%% Test point_dist
-	
+
     assert point_dist((0,0), (3,4)) == 5.0
     assert point_dist((1,1), (1,1)) == 0.0
 
@@ -1153,8 +1153,8 @@ def test_dictionary_operations():
     """
 
     ##%% Test sort_list_of_dicts_by_key
-	
-    L = [{'a':5},{'a':0},{'a':10}] 
+
+    L = [{'a':5},{'a':0},{'a':10}]
     k = 'a'
     sorted_L = sort_list_of_dicts_by_key(L, k)
     assert sorted_L[0]['a'] == 0; assert sorted_L[1]['a'] == 5; assert sorted_L[2]['a'] == 10
@@ -1163,7 +1163,7 @@ def test_dictionary_operations():
 
 
     ##%% Test sort_dictionary_by_key
-	
+
     d_key = {'b': 2, 'a': 1, 'c': 3}
     sorted_d_key = sort_dictionary_by_key(d_key)
     assert list(sorted_d_key.keys()) == ['a', 'b', 'c']
@@ -1190,7 +1190,7 @@ def test_dictionary_operations():
     d_inv = {'a': 'x', 'b': 'y'}
     inverted_d = invert_dictionary(d_inv)
     assert inverted_d == {'x': 'a', 'y': 'b'}
-	
+
     # Does not check for uniqueness, last one wins
     d_inv_dup = {'a': 'x', 'b': 'x'}
     inverted_d_dup = invert_dictionary(d_inv_dup)
@@ -1203,7 +1203,7 @@ def test_float_rounding_and_truncation():
     """
 
     ##%% Test round_floats_in_nested_dict
-	
+
     data = {
         "name": "Project X",
         "values": [1.23456789, 2.3456789],
@@ -1229,7 +1229,7 @@ def test_float_rounding_and_truncation():
 
 
     ##%% Test truncate_float_array and truncate_float
-	
+
     assert truncate_float_array([0.12345, 0.67890], precision=3) == [0.123, 0.678]
     assert truncate_float_array([1.0, 2.0], precision=2) == [1.0, 2.0]
     assert truncate_float(0.12345, precision=3) == 0.123
@@ -1239,7 +1239,7 @@ def test_float_rounding_and_truncation():
 
 
     ##%% Test round_float_array and round_float
-	
+
     assert round_float_array([0.12345, 0.67890], precision=3) == [0.123, 0.679]
     assert round_float_array([1.0, 2.0], precision=2) == [1.0, 2.0]
     assert round_float(0.12345, precision=3) == 0.123
@@ -1253,7 +1253,7 @@ def test_object_conversion_and_presentation():
     """
 
     ##%% Test args_to_object
-	
+
     class ArgsObject:
         pass
     args_namespace = type('ArgsNameSpace', (), {'a': 1, 'b': 'test', '_c': 'ignored'})
@@ -1265,7 +1265,7 @@ def test_object_conversion_and_presentation():
 
 
     ##%% Test dict_to_object
-	
+
     class DictObject:
         pass
     d = {'a': 1, 'b': 'test', '_c': 'ignored'}
@@ -1277,7 +1277,7 @@ def test_object_conversion_and_presentation():
 
 
     ##%% Test pretty_print_object
-	
+
     class PrettyPrintable:
         def __init__(self):
             self.a = 1
@@ -1289,7 +1289,7 @@ def test_object_conversion_and_presentation():
     parsed_json = json.loads(json_str) # Relies on json.loads
     assert parsed_json['a'] == 1
     assert parsed_json['b'] == "test"
-    
+
 
 def test_list_operations():
     """
@@ -1297,7 +1297,7 @@ def test_list_operations():
     """
 
     ##%% Test is_list_sorted
-	
+
     assert is_list_sorted([1, 2, 3])
     assert not is_list_sorted([1, 3, 2])
     assert is_list_sorted([3, 2, 1], reverse=True)
@@ -1306,10 +1306,10 @@ def test_list_operations():
     assert is_list_sorted([1]) # Single element list is sorted
     assert is_list_sorted([1,1,1])
     assert is_list_sorted([1,1,1], reverse=True)
-    
-	
+
+
     ##%% Test split_list_into_fixed_size_chunks
-	
+
     assert split_list_into_fixed_size_chunks([1,2,3,4,5,6], 2) == [[1,2],[3,4],[5,6]]
     assert split_list_into_fixed_size_chunks([1,2,3,4,5], 2) == [[1,2],[3,4],[5]]
     assert split_list_into_fixed_size_chunks([], 3) == []
@@ -1317,11 +1317,11 @@ def test_list_operations():
 
 
     ##%% Test split_list_into_n_chunks
-	
+
     # Greedy
     assert split_list_into_n_chunks([1,2,3,4,5,6], 3, chunk_strategy='greedy') == [[1,2],[3,4],[5,6]]
-    assert split_list_into_n_chunks([1,2,3,4,5], 3, chunk_strategy='greedy') == [[1,2],[3,4],[5]] 
-    assert split_list_into_n_chunks([1,2,3,4,5,6,7], 3, chunk_strategy='greedy') == [[1,2,3],[4,5],[6,7]] 
+    assert split_list_into_n_chunks([1,2,3,4,5], 3, chunk_strategy='greedy') == [[1,2],[3,4],[5]]
+    assert split_list_into_n_chunks([1,2,3,4,5,6,7], 3, chunk_strategy='greedy') == [[1,2,3],[4,5],[6,7]]
     assert split_list_into_n_chunks([], 3) == [[],[],[]]
 
     # Balanced
@@ -1341,7 +1341,7 @@ def test_datetime_serialization():
     """
 
     ##%% Test json_serialize_datetime
-	
+
     now = datetime.datetime.now()
     today = datetime.date.today()
     assert json_serialize_datetime(now) == now.isoformat()
@@ -1364,7 +1364,7 @@ def test_bounding_box_operations():
     """
 
     ##%% Test convert_yolo_to_xywh
-	
+
     # [x_center, y_center, w, h]
     yolo_box = [0.5, 0.5, 0.2, 0.2]
     # [x_min, y_min, width_of_box, height_of_box]
@@ -1373,7 +1373,7 @@ def test_bounding_box_operations():
 
 
     ##%% Test convert_xywh_to_xyxy
-	
+
     # [x_min, y_min, width_of_box, height_of_box]
     xywh_box = [0.1, 0.1, 0.3, 0.3]
     # [x_min, y_min, x_max, y_max]
@@ -1387,7 +1387,7 @@ def test_bounding_box_operations():
     bb2 = [0.25, 0.25, 0.5, 0.5]
     assert abs(get_iou(bb1, bb2) - 0.142857) < 1e-5
     bb3 = [0, 0, 1, 1]
-    bb4 = [0.5, 0.5, 1, 1] 
+    bb4 = [0.5, 0.5, 1, 1]
     assert abs(get_iou(bb3, bb4) - (0.25 / 1.75)) < 1e-5
     bb5 = [0,0,1,1]
     bb6 = [1,1,1,1] # No overlap
@@ -1410,7 +1410,7 @@ def test_detection_processing():
     """
 
     ##%% Test _get_max_conf_from_detections and get_max_conf
-	
+
     detections1 = [{'conf': 0.8}, {'conf': 0.9}, {'conf': 0.75}]
     assert _get_max_conf_from_detections(detections1) == 0.9
     assert _get_max_conf_from_detections([]) == 0.0
@@ -1424,8 +1424,8 @@ def test_detection_processing():
     assert get_max_conf(im3) == 0.0
     im4 = {'detections': None}
     assert get_max_conf(im4) == 0.0
-    
-	
+
+
     ##%% Test sort_results_for_image
 
     img_data = {
@@ -1436,30 +1436,30 @@ def test_detection_processing():
         ]
     }
     sort_results_for_image(img_data)
-    
+
 	# Check detections sorted by conf
     assert img_data['detections'][0]['conf'] == 0.9
     assert img_data['detections'][1]['conf'] == 0.8
     assert img_data['detections'][2]['conf'] == 0.7
-    
+
 	# Check classifications sorted by conf (only for the first original detection, now at index 0 after sort)
     assert img_data['detections'][0]['classifications'][0] == ('x', 0.95)
     assert img_data['detections'][0]['classifications'][1] == ('y', 0.85)
-    
+
 	# Check classifications for the second original detection (now at index 2)
     assert img_data['detections'][2]['classifications'][0] == ('a', 0.9)
     assert img_data['detections'][2]['classifications'][1] == ('b', 0.8)
     assert img_data['detections'][2]['classifications'][2] == ('c', 0.6)
-    
+
     # Test with no detections or no classifications field
     img_data_no_det = {'detections': None}
-    sort_results_for_image(img_data_no_det) 
+    sort_results_for_image(img_data_no_det)
     assert img_data_no_det['detections'] is None
-    
+
     img_data_empty_det = {'detections': []}
     sort_results_for_image(img_data_empty_det)
     assert img_data_empty_det['detections'] == []
-    
+
     img_data_no_classifications_field = {'detections': [{'conf': 0.8}]}
     sort_results_for_image(img_data_no_classifications_field)
     assert 'classifications' not in img_data_no_classifications_field['detections'][0]
@@ -1479,7 +1479,7 @@ def test_type_checking_and_validation():
     """
 
     ##%% Test is_float
-	
+
     assert is_float(1.23)
     assert is_float("1.23")
     assert is_float("-1.23")
@@ -1490,7 +1490,7 @@ def test_type_checking_and_validation():
 
 
     ##%% Test is_iterable
-	
+
     assert is_iterable([1,2,3])
     assert is_iterable("hello")
     assert is_iterable({'a':1})
@@ -1501,7 +1501,7 @@ def test_type_checking_and_validation():
 
 
     ##%% Test is_empty
-	
+
     assert is_empty(None)
     assert is_empty("")
     assert is_empty(np.nan)
@@ -1513,7 +1513,7 @@ def test_type_checking_and_validation():
 
 
     ##%% Test min_none and max_none
-	
+
     assert min_none(1, 2) == 1
     assert min_none(None, 2) == 2
     assert min_none(1, None) == 1
@@ -1525,7 +1525,7 @@ def test_type_checking_and_validation():
 
 
     ##%% Test isnan
-	
+
     assert isnan(np.nan)
     assert not isnan(0.0)
     assert not isnan("text")
@@ -1535,7 +1535,7 @@ def test_type_checking_and_validation():
 
 
     ##%% Test sets_overlap
-	
+
     assert sets_overlap({1,2,3}, {3,4,5})
     assert not sets_overlap({1,2}, {3,4})
     assert sets_overlap([1,2,3], [3,4,5]) # Test with lists
@@ -1544,7 +1544,7 @@ def test_type_checking_and_validation():
 
 
     ##%% Test is_function_name
-	
+
     def _test_local_func(): pass
     assert is_function_name("is_float", locals()) # Test a function in ct_utils
     assert is_function_name("_test_local_func", locals()) # Test a local function
@@ -1563,7 +1563,7 @@ def test_string_parsing():
     """
 
     ##%% Test parse_kvp and parse_kvp_list
-	
+
     assert parse_kvp("key=value") == ("key", "value")
     assert parse_kvp("key = value with spaces") == ("key", "value with spaces")
     assert parse_kvp("key=value1=value2", kv_separator='=') == ("key", "value1=value2")
@@ -1572,28 +1572,28 @@ def test_string_parsing():
         assert False, "AssertionError not raised for invalid KVP"
     except AssertionError:
         pass
-    
+
     kvp_list = ["a=1", "b = 2", "c=foo=bar"]
     parsed_list = parse_kvp_list(kvp_list)
     assert parsed_list == {"a": "1", "b": "2", "c": "foo=bar"}
     assert parse_kvp_list(None) == {}
     assert parse_kvp_list([]) == {}
     d_initial = {'z': '0'}
-    
+
 	# parse_kvp_list modifies d in place if provided
-    parse_kvp_list(kvp_list, d=d_initial) 
+    parse_kvp_list(kvp_list, d=d_initial)
     assert d_initial == {"z": "0", "a": "1", "b": "2", "c": "foo=bar"}
-    
+
 	# Test with a different separator
     assert parse_kvp("key:value", kv_separator=":") == ("key", "value")
     assert parse_kvp_list(["a:1","b:2"], kv_separator=":") == {"a":"1", "b":"2"}
 
 
     ##%% Test dict_to_kvp_list
-	
+
     d_kvp = {"a": "1", "b": "dog", "c": "foo=bar"}
     kvp_str = dict_to_kvp_list(d_kvp)
-    
+
 	# Order isn't guaranteed, so check for presence of all items and length
     assert "a=1" in kvp_str
     assert "b=dog" in kvp_str
@@ -1610,7 +1610,7 @@ def test_string_parsing():
         pass
     convert_result = dict_to_kvp_list(d_kvp_int, non_string_value_handling='convert')
     assert "a=1" in convert_result and "b=text" in convert_result
-    
+
     omit_result = dict_to_kvp_list({"a":1, "b":"text"}, non_string_value_handling='omit')
     assert "a=1" not in omit_result and "b=text" in omit_result
     assert omit_result == "b=text"
@@ -1619,7 +1619,7 @@ def test_string_parsing():
 
 
     ##%% Test parse_bool_string
-	
+
     assert parse_bool_string("true")
     assert parse_bool_string("True")
     assert parse_bool_string(" TRUE ")
@@ -1647,18 +1647,18 @@ def test_temp_folder_creation():
 
     # Store original tempdir for restoration if modified by tests (though unlikely for make_temp_folder)
     original_tempdir = tempfile.gettempdir()
-    
+
     # Test make_temp_folder
     custom_top_level = "my_custom_temp_app_test" # Unique name for this test run
     custom_subfolder = "specific_test_run"
-    
+
     # Test with default subfolder (UUID)
     temp_folder1_base = os.path.join(tempfile.gettempdir(), custom_top_level)
     temp_folder1 = make_temp_folder(top_level_folder=custom_top_level)
     assert os.path.exists(temp_folder1)
     assert os.path.basename(os.path.dirname(temp_folder1)) == custom_top_level
     assert temp_folder1_base == os.path.dirname(temp_folder1) # Path up to UUID should match
-   
+
     # Cleanup: remove the custom_top_level which contains the UUID folder
     if os.path.exists(temp_folder1_base):
         shutil.rmtree(temp_folder1_base)
@@ -1674,7 +1674,7 @@ def test_temp_folder_creation():
     assert os.path.basename(temp_folder2) == custom_subfolder
     assert os.path.basename(os.path.dirname(temp_folder2)) == custom_top_level
     assert temp_folder2 == os.path.join(tempfile.gettempdir(), custom_top_level, custom_subfolder)
-    
+
 	# Cleanup
     if os.path.exists(temp_folder2_base):
         shutil.rmtree(temp_folder2_base)
@@ -1686,13 +1686,13 @@ def test_temp_folder_creation():
     # This will create tempfile.gettempdir()/megadetector/tests/some_uuid or specified_subfolder
     megadetector_temp_base = os.path.join(tempfile.gettempdir(), "megadetector")
     test_subfolder = "my_specific_module_test"
-    
+
     # Test with default subfolder for make_test_folder
     test_folder1 = make_test_folder() # Creates megadetector/tests/uuid_folder
     assert os.path.exists(test_folder1)
     assert os.path.basename(os.path.dirname(test_folder1)) == "tests"
     assert os.path.basename(os.path.dirname(os.path.dirname(test_folder1))) == "megadetector"
-    
+
 	# Cleanup for make_test_folder default: remove the 'megadetector' base temp dir
     if os.path.exists(megadetector_temp_base):
         shutil.rmtree(megadetector_temp_base)
@@ -1703,20 +1703,20 @@ def test_temp_folder_creation():
     test_folder2 = make_test_folder(subfolder=test_subfolder) # megadetector/tests/my_specific_module_test
     assert os.path.exists(test_folder2)
     assert test_subfolder in test_folder2
-    assert "megadetector" in test_folder2    
-    
+    assert "megadetector" in test_folder2
+
 	# Cleanup for make_test_folder specific: remove the 'megadetector' base temp dir
     if os.path.exists(megadetector_temp_base):
         shutil.rmtree(megadetector_temp_base)
     assert not os.path.exists(megadetector_temp_base)
-    
+
     # Verify cleanup if top level folder was 'megadetector' (default for make_temp_folder)
 	#
     # This means it creates tempfile.gettempdir()/megadetector/uuid_folder
-    default_temp_folder = make_temp_folder() 
+    default_temp_folder = make_temp_folder()
     assert os.path.exists(default_temp_folder)
     assert os.path.basename(os.path.dirname(default_temp_folder)) == "megadetector"
-    
+
 	# Cleanup: remove the 'megadetector' base temp dir created by default make_temp_folder
     if os.path.exists(megadetector_temp_base):
          shutil.rmtree(megadetector_temp_base)

@@ -19,7 +19,7 @@ from functools import partial
 
 from megadetector.utils.path_utils import insert_before_extension
 from megadetector.utils.ct_utils import invert_dictionary
-from megadetector.utils.ct_utils import is_list_sorted                
+from megadetector.utils.ct_utils import is_list_sorted
 from megadetector.visualization.visualization_utils import crop_image
 from megadetector.visualization.visualization_utils import exif_preserving_save
 
@@ -147,9 +147,9 @@ def crop_results_to_image_results(image_results_file_with_crop_ids,
         crop_results_prefix (str, optional): if not None, removes this prefix from crop
             results filenames.  Intended to support the case where the crop results
             use absolute paths.
-        detections_without_classification_handling (str, optional): what to do when we 
+        detections_without_classification_handling (str, optional): what to do when we
             encounter a crop that doesn't appear in classification results: 'error',
-            or 'include' ("include" means "leave the detection alone, without classifications"            
+            or 'include' ("include" means "leave the detection alone, without classifications"
     """
 
     ##%% Validate inputs
@@ -190,7 +190,7 @@ def crop_results_to_image_results(image_results_file_with_crop_ids,
     crop_filename_to_results = {}
 
     # im = crop_results['images'][0]
-    for im in crop_results['images']:        
+    for im in crop_results['images']:
         fn = im['file']
         # Possibly remove a prefix from each filename
         if (crop_results_prefix is not None) and (crop_results_prefix in fn):
@@ -260,14 +260,14 @@ def crop_results_to_image_results(image_results_file_with_crop_ids,
                     assert crop_results_this_detection['detections'][0]['bbox'] == [0,0,1,1], \
                         'Invalid crop bounding box'
 
-                    # This check was helpful for the case where crop-level results had already 
+                    # This check was helpful for the case where crop-level results had already
                     # taken detection confidence values from detector output by construct, but this isn't
                     # really meaningful for most cases.
                     # assert abs(crop_results_this_detection['detections'][0]['conf'] - det['conf']) < 0.01
-                    
+
                     if require_identical_detection_categories:
                         assert crop_results_this_detection['detections'][0]['category'] == det['category']
-                    
+
                     # Copy the crop-level classifications
                     det['classifications'] = crop_results_this_detection['detections'][0]['classifications']
                     confidence_values = [x[1] for x in det['classifications']]

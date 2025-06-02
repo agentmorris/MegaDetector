@@ -24,7 +24,6 @@ import tarfile
 import webbrowser
 import subprocess
 import re
-import tempfile
 
 from zipfile import ZipFile
 from datetime import datetime
@@ -315,7 +314,7 @@ def split_path(path):
         return ''
     if path is None:
         return None
-    
+
     parts = []
     while True:
         # ntpath seems to do the right thing for both Windows and Unix paths
@@ -435,7 +434,7 @@ def path_join(*paths, convert_slashes=True):
     else:
         return joined_path
 
-    
+
 #%% Image-related path functions
 
 def is_image_file(s, img_extensions=IMG_EXTENSIONS):
@@ -1584,7 +1583,7 @@ class TestPathUtils:
         """
         Test the find_images function.
         """
-        
+
         # Create some dummy files
         img1_abs = os.path.join(self.test_dir, 'img1.jpg')
         img2_abs = os.path.join(self.test_dir, 'img2.PNG')
@@ -1609,7 +1608,7 @@ class TestPathUtils:
         expected_non_recursive_rel = sorted(['img1.jpg', 'img2.PNG'])
         found_non_recursive_rel = find_images(self.test_dir, recursive=False, return_relative_paths=True)
         assert sorted(found_non_recursive_rel) == expected_non_recursive_rel
-        
+
         # Test recursive
         expected_recursive_abs = sorted([
             img1_abs.replace('\\', '/'),
@@ -1632,7 +1631,7 @@ class TestPathUtils:
         empty_dir = os.path.join(self.test_dir, 'empty_dir')
         os.makedirs(empty_dir, exist_ok=True)
         assert find_images(empty_dir, recursive=True) == []
-        
+
         # Test with a directory that doesn't exist (should assert)
         try:
             find_images(os.path.join(self.test_dir, 'non_existent_dir'))
@@ -1656,7 +1655,7 @@ class TestPathUtils:
         #       file4.png
         #   subdir2/
         #     file5.doc
-        
+
         list_dir = os.path.join(self.test_dir,'recursive_list')
 
         f1 = os.path.join(list_dir, 'file1.txt')
@@ -1677,32 +1676,32 @@ class TestPathUtils:
 
         # Test recursive_file_list (recursive=True by default)
         expected_all_files_abs = sorted([
-            f1.replace('\\', '/'), f2.replace('\\', '/'), f3.replace('\\', '/'), 
+            f1.replace('\\', '/'), f2.replace('\\', '/'), f3.replace('\\', '/'),
             f4.replace('\\', '/'), f5.replace('\\', '/')
         ])
-        all_files_abs = recursive_file_list(list_dir, convert_slashes=True, 
+        all_files_abs = recursive_file_list(list_dir, convert_slashes=True,
                                             return_relative_paths=False)
         assert sorted(all_files_abs) == expected_all_files_abs
 
         # Test recursive_file_list with relative paths
         expected_all_files_rel = sorted([
-            'file1.txt', 'file2.jpg', 
+            'file1.txt', 'file2.jpg',
             os.path.join('subdir1', 'file3.txt').replace('\\', '/'),
             os.path.join('subdir1', 'subsubdir', 'file4.png').replace('\\', '/'),
             os.path.join('subdir2', 'file5.doc').replace('\\', '/')
         ])
-        all_files_rel = recursive_file_list(list_dir, convert_slashes=True, 
+        all_files_rel = recursive_file_list(list_dir, convert_slashes=True,
                                             return_relative_paths=True)
         assert sorted(all_files_rel) == expected_all_files_rel
 
         # Test file_list (non-recursive by default via wrapper)
         expected_top_level_files_abs = sorted([f1.replace('\\', '/'), f2.replace('\\', '/')])
-        top_level_files_abs = file_list(list_dir, convert_slashes=True, 
+        top_level_files_abs = file_list(list_dir, convert_slashes=True,
                                         return_relative_paths=False, recursive=False)
         assert sorted(top_level_files_abs) == expected_top_level_files_abs
-        
+
         # Test file_list (recursive explicitly) - should be same as recursive_file_list
-        recursive_via_file_list = file_list(list_dir, convert_slashes=True, 
+        recursive_via_file_list = file_list(list_dir, convert_slashes=True,
                                             return_relative_paths=False, recursive=True)
         assert sorted(recursive_via_file_list) == expected_all_files_abs
 
@@ -1757,33 +1756,33 @@ class TestPathUtils:
         expected_folders_non_recursive_abs = sorted([
             subdir1.replace('\\', '/'), subdir2.replace('\\', '/')
         ])
-        folders_non_recursive_abs = folder_list(folder_list_dir, recursive=False, 
+        folders_non_recursive_abs = folder_list(folder_list_dir, recursive=False,
                                                 return_relative_paths=False)
         assert sorted(folders_non_recursive_abs) == expected_folders_non_recursive_abs
 
         # Test non-recursive, relative paths
         expected_folders_non_recursive_rel = sorted(['subdir1', 'subdir2'])
-        folders_non_recursive_rel = folder_list(folder_list_dir, recursive=False, 
+        folders_non_recursive_rel = folder_list(folder_list_dir, recursive=False,
                                                 return_relative_paths=True)
         assert sorted(folders_non_recursive_rel) == expected_folders_non_recursive_rel
 
         # Test recursive
         expected_folders_recursive_abs = sorted([
-            subdir1.replace('\\', '/'), 
-            subsubdir1.replace('\\', '/'), 
+            subdir1.replace('\\', '/'),
+            subsubdir1.replace('\\', '/'),
             subdir2.replace('\\', '/')
         ])
-        folders_recursive_abs = folder_list(folder_list_dir, recursive=True, 
+        folders_recursive_abs = folder_list(folder_list_dir, recursive=True,
                                             return_relative_paths=False)
         assert sorted(folders_recursive_abs) == expected_folders_recursive_abs
 
         # Test recursive, relative paths
         expected_folders_recursive_rel = sorted([
-            'subdir1', 
-            os.path.join('subdir1', 'subsubdir1').replace('\\', '/'), 
+            'subdir1',
+            os.path.join('subdir1', 'subsubdir1').replace('\\', '/'),
             'subdir2'
         ])
-        folders_recursive_rel = folder_list(folder_list_dir, recursive=True, 
+        folders_recursive_rel = folder_list(folder_list_dir, recursive=True,
                                             return_relative_paths=True)
         assert sorted(folders_recursive_rel) == expected_folders_recursive_rel
 
@@ -1793,7 +1792,7 @@ class TestPathUtils:
         with open(os.path.join(empty_dir_for_folders, 'temp.txt'), 'w') as f: f.write('t')
         assert folder_list(empty_dir_for_folders, recursive=True) == []
         assert folder_list(empty_dir_for_folders, recursive=False) == []
-        
+
         # Test with a non-existent directory
         try:
             folder_list(os.path.join(self.test_dir, "non_existent_dir"))
@@ -1828,18 +1827,18 @@ class TestPathUtils:
         for filepath in [f1, img1, f2, img2, img3]:
             with open(filepath, 'w') as f:
                 f.write('test')
-        
+
         summary = folder_summary(fodler_summary_dir, print_summary=False)
-        
+
         assert summary['n_files'] == 5
         assert summary['n_folders'] == 1 # 'subdir'
         assert summary['extension_to_count']['.txt'] == 2
         assert summary['extension_to_count']['.jpg'] == 1
         assert summary['extension_to_count']['.png'] == 2
-        
+
         # Check order (sorted by value, desc)
 		#
-        # The specific order of keys with the same counts can vary based on file system list 
+        # The specific order of keys with the same counts can vary based on file system list
 		# order.  We'll check that the counts are correct and the number of unique extensions is
 		# right.
         assert len(summary['extension_to_count']) == 3
@@ -1879,10 +1878,10 @@ class TestPathUtils:
         assert insert_before_extension('path/to/file.ext', 'tag') == 'path/to/file.tag.ext'
         assert insert_before_extension('path/to/file', 'tag') == 'path/to/file.tag'
         assert insert_before_extension('file.tar.gz', 'new') == 'file.tar.new.gz'
-        
+
         # Test with custom separator
         assert insert_before_extension('file.ext', 'inserted', separator='_') == 'file_inserted.ext'
-        
+
         # Test with s=None (timestamp) - check format roughly
         fname_with_ts = insert_before_extension('file.ext', None)
         parts = fname_with_ts.split('.')
@@ -1912,10 +1911,10 @@ class TestPathUtils:
         else: # POSIX
             assert split_path('/dir/subdir/file.jpg') == ['/', 'dir', 'subdir', 'file.jpg']
             assert split_path('/') == ['/']
-        
+
         assert split_path('dir/file.txt') == ['dir', 'file.txt']
         assert split_path('file.txt') == ['file.txt']
-        assert split_path('') == '' 
+        assert split_path('') == ''
         assert split_path('.') == ['.']
         assert split_path('..') == ['..']
         assert split_path('../a/b') == ['..', 'a', 'b']
@@ -1971,7 +1970,7 @@ class TestPathUtils:
         safe_create_link(other_source_path, link_path) # Should remove and re-create
         assert os.path.islink(link_path)
         assert os.readlink(link_path) == other_source_path
-        
+
         # Link_new path exists and is a file (not a link)
         file_path_conflict = os.path.join(self.test_dir, 'conflict_file.txt')
         with open(file_path_conflict, 'w') as f:
@@ -1981,7 +1980,7 @@ class TestPathUtils:
             raise AssertionError("AssertionError not raised for file conflict")
         except AssertionError:
             pass
-        os.remove(file_path_conflict) 
+        os.remove(file_path_conflict)
 
         # Link_new path exists and is a directory
         dir_path_conflict = os.path.join(self.test_dir, 'conflict_dir')
@@ -2010,7 +2009,7 @@ class TestPathUtils:
         #       file.txt
         #   non_empty_top/
         #     file_in_top.txt
-        
+
         empty_top = os.path.join(self.test_dir, 'empty_top')
         empty_mid = os.path.join(empty_top, 'empty_mid')
         empty_leaf = os.path.join(empty_mid, 'empty_leaf')
@@ -2044,7 +2043,7 @@ class TestPathUtils:
         assert not os.path.exists(empty_leaf_in_mixed)
         assert os.path.exists(non_empty_mid)
         assert os.path.exists(os.path.join(non_empty_mid, 'file.txt'))
-        
+
         # Process non_empty_top; should remove nothing.
         remove_empty_folders(non_empty_top, remove_root=True)
         assert os.path.exists(non_empty_top)
@@ -2081,7 +2080,7 @@ class TestPathUtils:
         else:
             # On POSIX, os.path.join uses '/', so convert_slashes=False should still be '/'
             assert path_join('a', 'b', convert_slashes=False) == 'a/b'
-        
+
         assert path_join('a', '', 'b') == 'a/b' # os.path.join behavior
         assert path_join('/a', 'b') == '/a/b'
         assert path_join('a', '/b') == '/b' # '/b' is absolute
@@ -2107,7 +2106,7 @@ class TestPathUtils:
         assert clean_path("path\\to\\file.txt") == "path\\to\\file.txt" # backslashes allowed
         assert clean_path("path:to:file.txt") == "path:to:file.txt" # colons allowed
         assert clean_path("path/to<illegal>/file.txt") == "path/toillegal/file.txt"
-        
+
         # flatten_path
         assert flatten_path("path/to/file.txt") == "path~to~file.txt"
         assert flatten_path("path:to:file.txt", separator_char_replacement='_') == "path_to_file.txt"
@@ -2137,7 +2136,7 @@ class TestPathUtils:
         """
 
         test_list = ["item1", "item2 with space", "item3/with/slash"]
-        
+
         # Test with .json
         json_file_path = os.path.join(self.test_dir, "test_list.json")
         write_list_to_file(json_file_path, test_list)
@@ -2194,7 +2193,7 @@ class TestPathUtils:
             content = f"content of file {i}"
             with open(src_path, 'w') as f:
                 f.write(content)
-            
+
             file_mappings[src_path] = tgt_path
             source_files_content[tgt_path] = content
 
@@ -2204,11 +2203,11 @@ class TestPathUtils:
             assert os.path.exists(tgt_path)
             with open(tgt_path, 'r') as f:
                 assert f.read() == expected_content
-        
+
         existing_target_path = list(source_files_content.keys())[0]
         with open(existing_target_path, 'w') as f:
             f.write("old content")
-        
+
         parallel_copy_files(file_mappings, max_workers=1, use_threads=True, overwrite=False)
         with open(existing_target_path, 'r') as f:
             assert f.read() == "old content"
@@ -2248,7 +2247,7 @@ class TestPathUtils:
         content2 = "01234567890123456789" # 20 bytes
         with open(f2_path, 'w') as f:
             f.write(content2)
-        
+
         sizes_relative = get_file_sizes(file_sizes_test_dir)
         expected_sizes_relative = {
             'file1.txt': len(content1),
@@ -2302,7 +2301,7 @@ class TestPathUtils:
         assert os.path.exists(unzipped_file_path_default)
         with open(unzipped_file_path_default, 'r') as f:
             assert f.read() == content
-        
+
         custom_zip_output_name = "custom_archive.zip"
         custom_zip_output_path = os.path.join(self.test_dir, custom_zip_output_name)
         zip_file(file_to_zip_path, output_fn=custom_zip_output_path, overwrite=True)
@@ -2329,7 +2328,7 @@ class TestPathUtils:
 
         folder_to_zip = os.path.join(self.test_dir, "folder_to_zip")
         os.makedirs(folder_to_zip, exist_ok=True)
-        
+
         file1_name = "file1.txt"; path1 = os.path.join(folder_to_zip, file1_name)
         file2_name = "file2.log"; path2 = os.path.join(folder_to_zip, file2_name)
         subdir_name = "sub"; subdir_path = os.path.join(folder_to_zip, subdir_name)
@@ -2355,7 +2354,7 @@ class TestPathUtils:
         with open(os.path.join(unzip_output_dir, file1_name), 'r')as f: assert f.read() == content1
         with open(os.path.join(unzip_output_dir, file2_name), 'r')as f: assert f.read() == content2
         with open(os.path.join(unzip_output_dir, subdir_name, file3_name), 'r')as f: assert f.read() == content3
-        
+
         mtime_before = os.path.getmtime(default_zip_path)
         zip_folder(folder_to_zip, output_fn=None, overwrite=False)
         mtime_after = os.path.getmtime(default_zip_path)
@@ -2388,7 +2387,7 @@ class TestPathUtils:
 
         expected_unzipped_file1 = os.path.join(unzip_dir, os.path.relpath(file1_path, self.test_dir))
         expected_unzipped_file2 = os.path.join(unzip_dir, os.path.relpath(file2_path, self.test_dir))
-        
+
         assert os.path.exists(expected_unzipped_file1)
         with open(expected_unzipped_file1, 'r') as f: assert f.read() == content1
         assert os.path.exists(expected_unzipped_file2)
@@ -2415,7 +2414,7 @@ class TestPathUtils:
         input_files = [file1_path, file2_path]
         output_tar_path = os.path.join(self.test_dir, "archive.tar.gz")
 
-        add_files_to_single_tar_file(input_files, output_tar_path, arc_name_base=self.test_dir, 
+        add_files_to_single_tar_file(input_files, output_tar_path, arc_name_base=self.test_dir,
                                      overwrite=True, mode='x:gz')
         assert os.path.exists(output_tar_path)
 
@@ -2442,7 +2441,7 @@ class TestPathUtils:
         file2_to_zip = os.path.join(self.test_dir, "pz_file2.txt")
         with open(file1_to_zip, 'w') as f: f.write("pz_content1")
         with open(file2_to_zip, 'w') as f: f.write("pz_content2")
-        
+
         parallel_zip_files([file1_to_zip, file2_to_zip], max_workers=1, overwrite=True)
         assert os.path.exists(file1_to_zip + ".zip")
         assert os.path.exists(file2_to_zip + ".zip")
@@ -2475,13 +2474,13 @@ class TestPathUtils:
 
         for p_path in [zef_file1, zef_file2_png, zef_file3_zip, zef_file_in_sub]:
             with open(p_path, 'w') as f: f.write(f"content of {os.path.basename(p_path)}")
-        
+
         zip_each_file_in_folder(zef_folder, recursive=False, max_workers=1, overwrite=True)
         assert os.path.exists(zef_file1 + ".zip")
         assert os.path.exists(zef_file2_png + ".zip")
-        assert not os.path.exists(zef_file3_zip + ".zip") 
-        assert not os.path.exists(zef_file_in_sub + ".zip") 
-        
+        assert not os.path.exists(zef_file3_zip + ".zip")
+        assert not os.path.exists(zef_file_in_sub + ".zip")
+
         if os.path.exists(zef_file1 + ".zip"): os.remove(zef_file1 + ".zip")
         if os.path.exists(zef_file2_png + ".zip"): os.remove(zef_file2_png + ".zip")
 
@@ -2498,13 +2497,13 @@ class TestPathUtils:
         assert os.path.exists(zef_file1 + ".zip")
         assert not os.path.exists(zef_file2_png + ".zip")
         assert not os.path.exists(zef_file_in_sub + ".zip")
-        
+
         if os.path.exists(zef_file1 + ".zip"): os.remove(zef_file1 + ".zip")
         dummy_to_zip = os.path.join(zef_folder,"dummy.txt")
         with open(dummy_to_zip,'w') as f: f.write('d')
         zip_each_file_in_folder(zef_folder, recursive=False, exclude_zip=False, max_workers=1, overwrite=True)
         assert os.path.exists(dummy_to_zip + ".zip")
-        assert os.path.exists(zef_file3_zip + ".zip") 
+        assert os.path.exists(zef_file3_zip + ".zip")
         if os.path.exists(dummy_to_zip + ".zip"): os.remove(dummy_to_zip + ".zip")
         if os.path.exists(zef_file3_zip + ".zip"): os.remove(zef_file3_zip + ".zip")
 
@@ -2520,12 +2519,12 @@ class TestPathUtils:
         with open(file1_path, 'w') as f:
             f.write(content1)
 
-        file2_name = "hash_me2.txt" 
+        file2_name = "hash_me2.txt"
         file2_path = os.path.join(self.test_dir, file2_name)
         with open(file2_path, 'w') as f:
-            f.write(content1) 
+            f.write(content1)
 
-        file3_name = "hash_me3.txt" 
+        file3_name = "hash_me3.txt"
         file3_path = os.path.join(self.test_dir, file3_name)
         content3 = "This is a different test string for hashing."
         with open(file3_path, 'w') as f:
@@ -2558,7 +2557,7 @@ class TestPathUtils:
 
         files_to_hash = [file1_path, file3_path, non_existent_path]
         hashes_parallel = parallel_compute_file_hashes(files_to_hash, max_workers=1)
-        
+
         norm_f1 = file1_path.replace('\\','/')
         norm_f3 = file3_path.replace('\\','/')
         norm_non = non_existent_path.replace('\\','/')

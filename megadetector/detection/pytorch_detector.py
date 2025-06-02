@@ -28,7 +28,6 @@ from megadetector.detection.run_detector import \
     get_detector_version_from_model_file, \
     known_models
 from megadetector.utils.ct_utils import parse_bool_string
-from megadetector.utils.ct_utils import to_bool
 from megadetector.utils import ct_utils
 
 # We support a few ways of accessing the YOLOv5 dependencies:

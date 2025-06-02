@@ -1069,7 +1069,7 @@ def generate_whole_image_detections_for_classifications(classifications_json_fil
                                                         ensemble_json_file=None,
                                                         ignore_blank_classifications=True):
     """
-    Given a set of classification results in SpeciesNet format that were likely run on 
+    Given a set of classification results in SpeciesNet format that were likely run on
     already-cropped images, generate a file of [fake] detections in SpeciesNet format in which each
     image is covered in a single whole-image detection.
 
