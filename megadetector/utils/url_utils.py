@@ -519,14 +519,13 @@ class TestUrlUtils:
         dest_filename = os.path.join(self.download_target_dir, "non_existent.html")
         try:
             download_url(NON_EXISTENT_URL, destination_filename=dest_filename, verbose=False)
-            assert False, "urllib.error.HTTPError not raised for 404"
+            raise AssertionError("urllib.error.HTTPError not raised for 404")
         except urllib.error.HTTPError:
             pass
 
         try:
             download_url(DEFINITELY_NON_EXISTENT_DOMAIN_URL, destination_filename=dest_filename, verbose=False)
-            assert False, \
-                "urllib.error.URLError or requests.exceptions.ConnectionError not raised for DNS failure"
+            raise AssertionError("urllib.error.URLError or requests.exceptions.ConnectionError not raised for DNS failure")
         except urllib.error.URLError:
             pass
         except requests.exceptions.ConnectionError:
@@ -623,13 +622,13 @@ class TestUrlUtils:
 
         try:
             test_url(NON_EXISTENT_URL, error_on_failure=True, timeout=5)
-            assert False, "ValueError not raised for NON_EXISTENT_URL"
+            raise AssertionError("ValueError not raised for NON_EXISTENT_URL")
         except ValueError:
             pass
 
         try:
             test_url(DEFINITELY_NON_EXISTENT_DOMAIN_URL, error_on_failure=True, timeout=5)
-            assert False, "requests.exceptions.ConnectionError or urllib.error.URLError not raised"
+            raise AssertionError("requests.exceptions.ConnectionError or urllib.error.URLError not raised")
         except requests.exceptions.ConnectionError:
             pass
         except urllib.error.URLError:
@@ -644,7 +643,7 @@ class TestUrlUtils:
 
         try:
             test_urls(urls_to_test, error_on_failure=True, n_workers=1, timeout=5)
-            assert False, "ValueError not raised for urls_to_test"
+            raise AssertionError("ValueError not raised for urls_to_test")
         except ValueError:
             pass
 

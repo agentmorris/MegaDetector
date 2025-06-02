@@ -1330,7 +1330,7 @@ def test_list_operations():
     assert split_list_into_n_chunks([], 3, chunk_strategy='balanced') == [[],[],[]]
     try:
         split_list_into_n_chunks([1,2,3], 2, chunk_strategy='invalid')
-        assert False, "ValueError not raised for invalid chunk_strategy"
+        raise AssertionError("ValueError not raised for invalid chunk_strategy")
     except ValueError:
         pass
 
@@ -1348,12 +1348,12 @@ def test_datetime_serialization():
     assert json_serialize_datetime(today) == today.isoformat()
     try:
         json_serialize_datetime("not a datetime")
-        assert False, "TypeError not raised for non-datetime object"
+        raise AssertionError("TypeError not raised for non-datetime object")
     except TypeError:
         pass
     try:
         json_serialize_datetime(123)
-        assert False, "TypeError not raised for non-datetime object"
+        raise AssertionError("TypeError not raised for non-datetime object")
     except TypeError:
         pass
 
@@ -1569,7 +1569,7 @@ def test_string_parsing():
     assert parse_kvp("key=value1=value2", kv_separator='=') == ("key", "value1=value2")
     try:
         parse_kvp("keyvalue")
-        assert False, "AssertionError not raised for invalid KVP"
+        raise AssertionError("AssertionError not raised for invalid KVP")
     except AssertionError:
         pass
 
@@ -1605,7 +1605,7 @@ def test_string_parsing():
     d_kvp_int = {"a":1, "b":"text"}
     try:
         dict_to_kvp_list(d_kvp_int, non_string_value_handling='error')
-        assert False, "ValueError not raised for non-string value with 'error' handling"
+        raise AssertionError("ValueError not raised for non-string value with 'error' handling")
     except ValueError:
         pass
     convert_result = dict_to_kvp_list(d_kvp_int, non_string_value_handling='convert')
@@ -1630,12 +1630,12 @@ def test_string_parsing():
     assert parse_bool_string(False) is False
     try:
         parse_bool_string("maybe")
-        assert False, "ValueError not raised for invalid bool string"
+        raise AssertionError("ValueError not raised for invalid bool string")
     except ValueError:
         pass
     try:
         parse_bool_string("1") # Should not parse to True
-        assert False, "ValueError not raised for '1'"
+        raise AssertionError("ValueError not raised for '1'")
     except ValueError:
         pass
 
