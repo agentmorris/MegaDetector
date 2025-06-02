@@ -1837,10 +1837,10 @@ class TestPathUtils:
         assert summary['extension_to_count']['.png'] == 2
 
         # Check order (sorted by value, desc)
-		#
+        #
         # The specific order of keys with the same counts can vary based on file system list
-		# order.  We'll check that the counts are correct and the number of unique extensions is
-		# right.
+        # order.  We'll check that the counts are correct and the number of unique extensions is
+        # right.
         assert len(summary['extension_to_count']) == 3
 
 

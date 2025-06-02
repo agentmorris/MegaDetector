@@ -98,7 +98,7 @@ def human_readable_to_bytes(size):
             else:
                 # If it's a known unit (like 'B' already stripped) but not T/G/M/K,
                 # and it was floatable, it's just bytes.  If it's an unknown unit, it's
-				# an error.
+                # an error.
                 if unit not in ['B', '']: # 'B' was stripped, '' means just a number
                      bytes_val = 0
         except ValueError:

@@ -1437,16 +1437,16 @@ def test_detection_processing():
     }
     sort_results_for_image(img_data)
 
-	# Check detections sorted by conf
+    # Check detections sorted by conf
     assert img_data['detections'][0]['conf'] == 0.9
     assert img_data['detections'][1]['conf'] == 0.8
     assert img_data['detections'][2]['conf'] == 0.7
 
-	# Check classifications sorted by conf (only for the first original detection, now at index 0 after sort)
+    # Check classifications sorted by conf (only for the first original detection, now at index 0 after sort)
     assert img_data['detections'][0]['classifications'][0] == ('x', 0.95)
     assert img_data['detections'][0]['classifications'][1] == ('y', 0.85)
 
-	# Check classifications for the second original detection (now at index 2)
+    # Check classifications for the second original detection (now at index 2)
     assert img_data['detections'][2]['classifications'][0] == ('a', 0.9)
     assert img_data['detections'][2]['classifications'][1] == ('b', 0.8)
     assert img_data['detections'][2]['classifications'][2] == ('c', 0.6)
@@ -1580,11 +1580,11 @@ def test_string_parsing():
     assert parse_kvp_list([]) == {}
     d_initial = {'z': '0'}
 
-	# parse_kvp_list modifies d in place if provided
+    # parse_kvp_list modifies d in place if provided
     parse_kvp_list(kvp_list, d=d_initial)
     assert d_initial == {"z": "0", "a": "1", "b": "2", "c": "foo=bar"}
 
-	# Test with a different separator
+    # Test with a different separator
     assert parse_kvp("key:value", kv_separator=":") == ("key", "value")
     assert parse_kvp_list(["a:1","b:2"], kv_separator=":") == {"a":"1", "b":"2"}
 
@@ -1594,7 +1594,7 @@ def test_string_parsing():
     d_kvp = {"a": "1", "b": "dog", "c": "foo=bar"}
     kvp_str = dict_to_kvp_list(d_kvp)
 
-	# Order isn't guaranteed, so check for presence of all items and length
+    # Order isn't guaranteed, so check for presence of all items and length
     assert "a=1" in kvp_str
     assert "b=dog" in kvp_str
     assert "c=foo=bar" in kvp_str
@@ -1675,14 +1675,14 @@ def test_temp_folder_creation():
     assert os.path.basename(os.path.dirname(temp_folder2)) == custom_top_level
     assert temp_folder2 == os.path.join(tempfile.gettempdir(), custom_top_level, custom_subfolder)
 
-	# Cleanup
+    # Cleanup
     if os.path.exists(temp_folder2_base):
         shutil.rmtree(temp_folder2_base)
     assert not os.path.exists(temp_folder2_base)
 
 
     # Test make_test_folder (which uses 'megadetector/tests' as top_level)
-	#
+    #
     # This will create tempfile.gettempdir()/megadetector/tests/some_uuid or specified_subfolder
     megadetector_temp_base = os.path.join(tempfile.gettempdir(), "megadetector")
     test_subfolder = "my_specific_module_test"
@@ -1693,7 +1693,7 @@ def test_temp_folder_creation():
     assert os.path.basename(os.path.dirname(test_folder1)) == "tests"
     assert os.path.basename(os.path.dirname(os.path.dirname(test_folder1))) == "megadetector"
 
-	# Cleanup for make_test_folder default: remove the 'megadetector' base temp dir
+    # Cleanup for make_test_folder default: remove the 'megadetector' base temp dir
     if os.path.exists(megadetector_temp_base):
         shutil.rmtree(megadetector_temp_base)
     assert not os.path.exists(megadetector_temp_base)
@@ -1705,19 +1705,19 @@ def test_temp_folder_creation():
     assert test_subfolder in test_folder2
     assert "megadetector" in test_folder2
 
-	# Cleanup for make_test_folder specific: remove the 'megadetector' base temp dir
+    # Cleanup for make_test_folder specific: remove the 'megadetector' base temp dir
     if os.path.exists(megadetector_temp_base):
         shutil.rmtree(megadetector_temp_base)
     assert not os.path.exists(megadetector_temp_base)
 
     # Verify cleanup if top level folder was 'megadetector' (default for make_temp_folder)
-	#
+    #
     # This means it creates tempfile.gettempdir()/megadetector/uuid_folder
     default_temp_folder = make_temp_folder()
     assert os.path.exists(default_temp_folder)
     assert os.path.basename(os.path.dirname(default_temp_folder)) == "megadetector"
 
-	# Cleanup: remove the 'megadetector' base temp dir created by default make_temp_folder
+    # Cleanup: remove the 'megadetector' base temp dir created by default make_temp_folder
     if os.path.exists(megadetector_temp_base):
          shutil.rmtree(megadetector_temp_base)
     assert not os.path.exists(megadetector_temp_base)
