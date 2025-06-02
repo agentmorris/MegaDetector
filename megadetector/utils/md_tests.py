@@ -1630,6 +1630,9 @@ def run_tests(options):
 #%% Automated test entry point
 
 def test_suite_entry_point():
+    """
+    Main entry point for the numerical test suite.
+    """
 
     options = MDTestOptions()
     options.disable_gpu = False

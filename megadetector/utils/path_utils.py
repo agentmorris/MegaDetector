@@ -2263,14 +2263,19 @@ class TestPathUtils:
         }
         assert sizes_parallel_abs == expected_sizes_parallel_abs
 
-        sizes_parallel_folder_abs = parallel_get_file_sizes(file_sizes_test_dir, max_workers=1, return_relative_paths=False)
+        sizes_parallel_folder_abs = parallel_get_file_sizes(file_sizes_test_dir,
+                                                            max_workers=1,
+                                                            return_relative_paths=False)
         assert sizes_parallel_folder_abs == expected_sizes_parallel_abs
 
-        sizes_parallel_folder_rel = parallel_get_file_sizes(file_sizes_test_dir, max_workers=1, return_relative_paths=True)
+        sizes_parallel_folder_rel = parallel_get_file_sizes(file_sizes_test_dir,
+                                                            max_workers=1,
+                                                            return_relative_paths=True)
         assert sizes_parallel_folder_rel == expected_sizes_relative
 
         non_existent_file = os.path.join(file_sizes_test_dir, "no_such_file.txt")
-        sizes_with_error = parallel_get_file_sizes([f1_path, non_existent_file], max_workers=1)
+        sizes_with_error = parallel_get_file_sizes([f1_path, non_existent_file],
+                                                   max_workers=1)
         expected_with_error = {
             f1_path.replace('\\','/'): len(content1),
             non_existent_file.replace('\\','/'): None

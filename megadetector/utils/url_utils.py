@@ -495,7 +495,9 @@ class TestUrlUtils:
         """
 
         dest_filename = os.path.join(self.download_target_dir, "downloaded_google_logo.png")
-        returned_filename = download_url(SMALL_FILE_URL, destination_filename=dest_filename, verbose=False)
+        returned_filename = download_url(SMALL_FILE_URL,
+                                         destination_filename=dest_filename,
+                                         verbose=False)
         assert returned_filename == dest_filename
         assert os.path.exists(dest_filename)
         assert os.path.getsize(dest_filename) > 1000
@@ -506,7 +508,9 @@ class TestUrlUtils:
         Test download_url when destination_filename is None.
         """
 
-        returned_filename = download_url(SMALL_FILE_URL, destination_filename=None, verbose=False)
+        returned_filename = download_url(SMALL_FILE_URL,
+                                         destination_filename=None,
+                                         verbose=False)
         assert os.path.exists(returned_filename)
         assert os.path.getsize(returned_filename) > 1000
 
@@ -524,8 +528,11 @@ class TestUrlUtils:
             pass
 
         try:
-            download_url(DEFINITELY_NON_EXISTENT_DOMAIN_URL, destination_filename=dest_filename, verbose=False)
-            raise AssertionError("urllib.error.URLError or requests.exceptions.ConnectionError not raised for DNS failure")
+            download_url(DEFINITELY_NON_EXISTENT_DOMAIN_URL,
+                         destination_filename=dest_filename,
+                         verbose=False)
+            raise AssertionError(
+                "urllib.error.URLError or requests.exceptions.ConnectionError not raised for DNS failure")
         except urllib.error.URLError:
             pass
         except requests.exceptions.ConnectionError:
@@ -546,7 +553,10 @@ class TestUrlUtils:
         download_url(SMALL_FILE_URL, destination_filename=dest_filename, verbose=True)
         assert os.path.getmtime(dest_filename) == initial_mtime
 
-        download_url(SMALL_FILE_URL, destination_filename=dest_filename, force_download=True, verbose=False)
+        download_url(SMALL_FILE_URL,
+                     destination_filename=dest_filename,
+                     force_download=True,
+                     verbose=False)
         assert os.path.exists(dest_filename)
 
 
@@ -556,7 +566,10 @@ class TestUrlUtils:
         """
 
         dest_filename = os.path.join(self.download_target_dir, "escape_test.png")
-        download_url(SMALL_FILE_URL, destination_filename=dest_filename, escape_spaces=True, verbose=False)
+        download_url(SMALL_FILE_URL,
+                     destination_filename=dest_filename,
+                     escape_spaces=True,
+                     verbose=False)
         assert os.path.exists(dest_filename)
 
 
@@ -602,10 +615,16 @@ class TestUrlUtils:
 
         if not os.path.exists(url1_target):
              download_url(SMALL_FILE_URL, url1_target, verbose=False)
-        results_skip = parallel_download_urls({SMALL_FILE_URL: url1_target}, n_workers=1, overwrite=False, verbose=True)
+        results_skip = parallel_download_urls({SMALL_FILE_URL: url1_target},
+                                              n_workers=1,
+                                              overwrite=False,
+                                              verbose=True)
         assert results_skip[0]['status'] == 'skipped'
 
-        results_overwrite = parallel_download_urls({SMALL_FILE_URL: url1_target}, n_workers=1, overwrite=True, verbose=False)
+        results_overwrite = parallel_download_urls({SMALL_FILE_URL: url1_target},
+                                                   n_workers=1,
+                                                   overwrite=True,
+                                                   verbose=False)
         assert results_overwrite[0]['status'] == 'success'
 
 
@@ -627,7 +646,9 @@ class TestUrlUtils:
             pass
 
         try:
-            test_url(DEFINITELY_NON_EXISTENT_DOMAIN_URL, error_on_failure=True, timeout=5)
+            test_url(DEFINITELY_NON_EXISTENT_DOMAIN_URL,
+                     error_on_failure=True,
+                     timeout=5)
             raise AssertionError("requests.exceptions.ConnectionError or urllib.error.URLError not raised")
         except requests.exceptions.ConnectionError:
             pass

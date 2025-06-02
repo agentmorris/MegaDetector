@@ -731,10 +731,10 @@ def is_empty(v):
 def to_bool(v):
     """
     Convert an object to a bool with specific rules.
-    
+
     Args:
         obj (object): The object to convert
-        
+
     Returns:
         bool or None:
         - For strings: True if 'true' (case-insensitive), False if 'false', recursively applied if int-like
@@ -1154,12 +1154,12 @@ def test_dictionary_operations():
 
     ##%% Test sort_list_of_dicts_by_key
 
-    L = [{'a':5},{'a':0},{'a':10}]
+    x = [{'a':5},{'a':0},{'a':10}]
     k = 'a'
-    sorted_L = sort_list_of_dicts_by_key(L, k)
-    assert sorted_L[0]['a'] == 0; assert sorted_L[1]['a'] == 5; assert sorted_L[2]['a'] == 10
-    sorted_L_rev = sort_list_of_dicts_by_key(L, k, reverse=True)
-    assert sorted_L_rev[0]['a'] == 10; assert sorted_L_rev[1]['a'] == 5; assert sorted_L_rev[2]['a'] == 0
+    sorted_x = sort_list_of_dicts_by_key(x, k)
+    assert sorted_x[0]['a'] == 0; assert sorted_x[1]['a'] == 5; assert sorted_x[2]['a'] == 10
+    sorted_x_rev = sort_list_of_dicts_by_key(x, k, reverse=True)
+    assert sorted_x_rev[0]['a'] == 10; assert sorted_x_rev[1]['a'] == 5; assert sorted_x_rev[2]['a'] == 0
 
 
     ##%% Test sort_dictionary_by_key

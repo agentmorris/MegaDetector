@@ -124,9 +124,33 @@ select = [
 convention = "google"
 
 [tool.ruff.per-file-ignores]
-"**/*.py" = ["D212","D415","D202","UP032","UP007","UP015","UP038",
-             "UP035","UP024","B007","D200","E702","D205","D417",
-			 "B904","D107","N813","B905","D105","UP028","I001"]
+"**/*.py" = [
+    # Formatting conventions that differ from ruff's defaults
+    "D415",   # First line should end with a period, question mark, or exclamation point
+    "D202",   # No blank lines allowed after function docstring
+    
+    # Coding conventions that differ from ruff's defaults
+    "UP032",  # Use f-string instead of .format() call
+    "UP007",  # Use X | Y for type unions
+    "UP015",  # Unnecessary open mode parameters (open(filename,'r'))
+    "UP038",  # Use X | Y in isinstance call instead of (X, Y)
+    # "UP035",  # Import from typing_extensions is deprecated
+    "UP024",  # Replace aliased errors with Exception
+    "B007",   # Loop control variable not used within loop body
+    "D200",   # One-line docstring should fit on one line
+    "E702",   # Multiple statements on one line (semicolon)
+    "D205",   # 1 blank line required between summary line and description
+    "D417",   # Missing argument descriptions in the docstring
+    "B904",   # Use raise from to specify exception cause
+    "D107",   # Missing docstring in __init__
+    "N813",   # Camelcase imported as lowercase
+    "B905",   # zip() without an explicit strict= parameter
+    "D105",   # Missing docstring in magic method
+    "UP028",  # Replace yield over yield from
+    "I001",   # Import block is un-sorted or un-formatted
+    "E701",   # Multiple statements on one line (colon)
+]
+
 "megadetector/detection/run_inference_with_yolov5_val.py" = ["E501"]
 "megadetector/postprocessing/compare_batch_results.py" = ["E501"]
 "megadetector/postprocessing/postprocess_batch_results.py" = ["E501"]
