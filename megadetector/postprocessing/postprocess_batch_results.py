@@ -1348,7 +1348,7 @@ def process_batch_results(options):
             # Prepend class name on each line and add to the top
             cm_str_lines = [' ' * 16 + ' '.join(classname_headers)]
             cm_str_lines += ['{:>15}'.format(cn[:15]) + ' ' + cm_line for cn, cm_line in \
-                             zip(classname_list, cm_str.splitlines())]
+                             zip(classname_list, cm_str.splitlines(), strict=True)]
 
             # Print formatted confusion matrix
             if False:

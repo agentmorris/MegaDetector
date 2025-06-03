@@ -186,6 +186,7 @@ def read_pil_exif(im,options=None):
     Args:
         im (str or PIL.Image.Image): image (as a filename or an Image object) from which
             we should read EXIF data.
+        options (ReadExifOptions, optional): see ReadExifOptions
 
     Returns:
         dict: a dictionary mapping EXIF tag names to their values
@@ -704,7 +705,7 @@ def read_exif_from_folder(input_folder,output_file=None,options=None,filenames=N
         try:
             with open(output_file, 'a') as f:
                 if not f.writable():
-                    raise IOError('File not writable')
+                    raise OSError('File not writable')
         except Exception:
             print('Could not write to file {}'.format(output_file))
             raise

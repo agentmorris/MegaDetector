@@ -337,7 +337,8 @@ def get_detector_version_from_model_file(detector_filename,verbose=False):
 
         if version_string_based_on_filename != version_string_based_on_model_file:
             print(
-                'Warning: model version string in file:\n\n{}\n\n...is:\n\n{}\n\n...but the filename implies:\n\n{}'.format(
+                'Warning: model version string in file:' + \
+                 '\n\n{}\n\n...is:\n\n{}\n\n...but the filename implies:\n\n{}'.format(
                 os.path.basename(detector_filename),
                 version_string_based_on_model_file,
                 version_string_based_on_filename))
@@ -602,6 +603,7 @@ def load_and_run_detector(model_file,
             exists
         detector_options (dict, optional): key/value pairs that are interpreted differently
             by different detectors
+        verbose (bool, optional): enable additional debug output
     """
 
     if len(image_file_names) == 0:
@@ -707,7 +709,8 @@ def load_and_run_detector(model_file,
             time_infer.append(elapsed)
 
         except Exception as e:
-            print('An error occurred while running the detector on image {}: {}'.format(im_file, str(e)))
+            print('An error occurred while running the detector on image {}: {}'.format(
+                im_file, str(e)))
             continue
 
         try:

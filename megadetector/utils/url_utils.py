@@ -13,9 +13,8 @@ import re
 import urllib
 import urllib.request
 import urllib.error
-import tempfile
-import requests 
-import shutil 
+import requests
+import shutil
 import pytest
 
 from functools import partial
@@ -53,7 +52,7 @@ class DownloadProgressBar:
                 self.pbar = progressbar.ProgressBar(max_value=total_size)
                 self.pbar.start()
             except ImportError:
-                self.pbar = None 
+                self.pbar = None
                 # print("ProgressBar not available, install 'progressbar2' for visual progress.")
 
         if self.pbar:
@@ -108,9 +107,9 @@ def download_url(url,
 
         # This does not guarantee uniqueness, hence "semi-best-effort"
         url_as_filename = re.sub(r'\W+', '', url_without_sas)
-        
+
         n_folder_chars = len(target_folder)
-        
+
         if (len(url_as_filename) + n_folder_chars) >= max_path_len:
             print('Warning: truncating filename target to {} characters'.format(max_path_len))
             max_fn_len = max_path_len - (n_folder_chars + 1)
@@ -229,7 +228,7 @@ def parallel_download_urls(url_to_target_file, verbose=False, overwrite=False,
 
     if verbose:
         print('Preparing download list')
-    for url in tqdm(url_to_target_file, disable=(not verbose)): 
+    for url in tqdm(url_to_target_file, disable=(not verbose)):
         download_info = {}
         download_info['url'] = url
         download_info['target_file'] = url_to_target_file[url]
@@ -341,7 +340,7 @@ def test_urls(urls,error_on_failure=True,n_workers=1,pool_type='thread',timeout=
             else:
                 assert pool_type == 'process', 'Unsupported pool type {}'.format(pool_type)
                 pool = Pool(n_workers)
-            
+
             if verbose:
                 print('Starting a {} pool with {} workers'.format(pool_type,n_workers))
 
@@ -439,7 +438,7 @@ def get_url_sizes(urls,n_workers=1,pool_type='thread',timeout=None,verbose=False
             file_sizes = list(tqdm(pool.imap(
                 partial(get_url_size,verbose=verbose,timeout=timeout),
                 urls), total=len(urls), disable=(not verbose)))
-            
+
             for i_url,url in enumerate(urls):
                 url_to_size[url] = file_sizes[i_url]
         finally:
@@ -456,8 +455,8 @@ def get_url_sizes(urls,n_workers=1,pool_type='thread',timeout=None,verbose=False
 # Constants for tests
 
 SMALL_FILE_URL = "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png"
-REDIRECT_SRC_URL = "http://google.com" 
-REDIRECT_DEST_URL = "https://www.google.com/" 
+REDIRECT_SRC_URL = "http://google.com"
+REDIRECT_DEST_URL = "https://www.google.com/"
 NON_EXISTENT_URL = "https://example.com/non_existent_page_404.html"
 DEFINITELY_NON_EXISTENT_DOMAIN_URL = "https://thisshouldnotexist1234567890.com/file.txt"
 RELATIVE_DOWNLOAD_URL = "https://raw.githubusercontent.com/agentmorris/MegaDetector/main/README.md"
@@ -476,7 +475,7 @@ class TestUrlUtils:
         Create a temporary directory for testing.
         """
 
-        self.test_dir = make_test_folder(subfolder='url_utils_tests')        
+        self.test_dir = make_test_folder(subfolder='url_utils_tests')
         self.download_target_dir = os.path.join(self.test_dir, 'downloads')
         os.makedirs(self.download_target_dir, exist_ok=True)
 
@@ -488,7 +487,7 @@ class TestUrlUtils:
 
         if os.path.exists(self.test_dir):
             shutil.rmtree(self.test_dir)
-        
+
 
     def test_download_url_to_specified_file(self):
         """
@@ -496,7 +495,9 @@ class TestUrlUtils:
         """
 
         dest_filename = os.path.join(self.download_target_dir, "downloaded_google_logo.png")
-        returned_filename = download_url(SMALL_FILE_URL, destination_filename=dest_filename, verbose=False)
+        returned_filename = download_url(SMALL_FILE_URL,
+                                         destination_filename=dest_filename,
+                                         verbose=False)
         assert returned_filename == dest_filename
         assert os.path.exists(dest_filename)
         assert os.path.getsize(dest_filename) > 1000
@@ -507,10 +508,12 @@ class TestUrlUtils:
         Test download_url when destination_filename is None.
         """
 
-        returned_filename = download_url(SMALL_FILE_URL, destination_filename=None, verbose=False)
+        returned_filename = download_url(SMALL_FILE_URL,
+                                         destination_filename=None,
+                                         verbose=False)
         assert os.path.exists(returned_filename)
         assert os.path.getsize(returned_filename) > 1000
-        
+
 
     def test_download_url_non_existent(self):
         """
@@ -520,17 +523,19 @@ class TestUrlUtils:
         dest_filename = os.path.join(self.download_target_dir, "non_existent.html")
         try:
             download_url(NON_EXISTENT_URL, destination_filename=dest_filename, verbose=False)
-            assert False, "urllib.error.HTTPError not raised for 404"
+            raise AssertionError("urllib.error.HTTPError not raised for 404")
         except urllib.error.HTTPError:
             pass
-        
+
         try:
-            download_url(DEFINITELY_NON_EXISTENT_DOMAIN_URL, destination_filename=dest_filename, verbose=False)
-            assert False, \
-                "urllib.error.URLError or requests.exceptions.ConnectionError not raised for DNS failure"
-        except urllib.error.URLError: 
+            download_url(DEFINITELY_NON_EXISTENT_DOMAIN_URL,
+                         destination_filename=dest_filename,
+                         verbose=False)
+            raise AssertionError(
+                "urllib.error.URLError or requests.exceptions.ConnectionError not raised for DNS failure")
+        except urllib.error.URLError:
             pass
-        except requests.exceptions.ConnectionError: 
+        except requests.exceptions.ConnectionError:
             pass
 
 
@@ -540,15 +545,18 @@ class TestUrlUtils:
         """
 
         dest_filename = os.path.join(self.download_target_dir, "force_test.png")
-        
+
         download_url(SMALL_FILE_URL, destination_filename=dest_filename, verbose=False)
         assert os.path.exists(dest_filename)
         initial_mtime = os.path.getmtime(dest_filename)
 
-        download_url(SMALL_FILE_URL, destination_filename=dest_filename, verbose=True) 
+        download_url(SMALL_FILE_URL, destination_filename=dest_filename, verbose=True)
         assert os.path.getmtime(dest_filename) == initial_mtime
 
-        download_url(SMALL_FILE_URL, destination_filename=dest_filename, force_download=True, verbose=False)
+        download_url(SMALL_FILE_URL,
+                     destination_filename=dest_filename,
+                     force_download=True,
+                     verbose=False)
         assert os.path.exists(dest_filename)
 
 
@@ -558,7 +566,10 @@ class TestUrlUtils:
         """
 
         dest_filename = os.path.join(self.download_target_dir, "escape_test.png")
-        download_url(SMALL_FILE_URL, destination_filename=dest_filename, escape_spaces=True, verbose=False)
+        download_url(SMALL_FILE_URL,
+                     destination_filename=dest_filename,
+                     escape_spaces=True,
+                     verbose=False)
         assert os.path.exists(dest_filename)
 
 
@@ -567,7 +578,7 @@ class TestUrlUtils:
         Test download_relative_filename.
         """
 
-        output_base = os.path.join(self.download_target_dir, "relative_dl")        
+        output_base = os.path.join(self.download_target_dir, "relative_dl")
         returned_filename = download_relative_filename(RELATIVE_DOWNLOAD_URL, output_base, verbose=False)
         assert RELATIVE_DOWNLOAD_CONTAIN_TOKEN in returned_filename
         assert RELATIVE_DOWNLOAD_NOT_CONTAIN_TOKEN not in returned_filename
@@ -582,32 +593,38 @@ class TestUrlUtils:
 
         url1_target = os.path.join(self.download_target_dir, "parallel_dl_1.png")
         url2_target = os.path.join(self.download_target_dir, "parallel_dl_2_nonexistent.html")
-        
+
         url_to_target_file = {
             SMALL_FILE_URL: url1_target,
             NON_EXISTENT_URL: url2_target
         }
-        
+
         results = parallel_download_urls(url_to_target_file, n_workers=1, verbose=False)
-        
+
         assert len(results) == 2
-        
+
         status_map = {res['url']: res for res in results}
-        
+
         assert status_map[SMALL_FILE_URL]['status'] == 'success'
         assert status_map[SMALL_FILE_URL]['target_file'] == url1_target
         assert os.path.exists(url1_target)
-        
+
         assert status_map[NON_EXISTENT_URL]['status'].startswith('error: HTTP Error 404')
         assert status_map[NON_EXISTENT_URL]['target_file'] == url2_target
         assert not os.path.exists(url2_target)
 
         if not os.path.exists(url1_target):
              download_url(SMALL_FILE_URL, url1_target, verbose=False)
-        results_skip = parallel_download_urls({SMALL_FILE_URL: url1_target}, n_workers=1, overwrite=False, verbose=True)
+        results_skip = parallel_download_urls({SMALL_FILE_URL: url1_target},
+                                              n_workers=1,
+                                              overwrite=False,
+                                              verbose=True)
         assert results_skip[0]['status'] == 'skipped'
 
-        results_overwrite = parallel_download_urls({SMALL_FILE_URL: url1_target}, n_workers=1, overwrite=True, verbose=False)
+        results_overwrite = parallel_download_urls({SMALL_FILE_URL: url1_target},
+                                                   n_workers=1,
+                                                   overwrite=True,
+                                                   verbose=False)
         assert results_overwrite[0]['status'] == 'success'
 
 
@@ -620,20 +637,22 @@ class TestUrlUtils:
         assert test_url(REDIRECT_SRC_URL, error_on_failure=False, timeout=10) in (200,301)
 
         status_non_existent = test_url(NON_EXISTENT_URL, error_on_failure=False, timeout=5)
-        assert status_non_existent == 404 
-        
+        assert status_non_existent == 404
+
         try:
             test_url(NON_EXISTENT_URL, error_on_failure=True, timeout=5)
-            assert False, "ValueError not raised for NON_EXISTENT_URL"
+            raise AssertionError("ValueError not raised for NON_EXISTENT_URL")
         except ValueError:
             pass
 
         try:
-            test_url(DEFINITELY_NON_EXISTENT_DOMAIN_URL, error_on_failure=True, timeout=5)
-            assert False, "requests.exceptions.ConnectionError or urllib.error.URLError not raised"
-        except requests.exceptions.ConnectionError: 
+            test_url(DEFINITELY_NON_EXISTENT_DOMAIN_URL,
+                     error_on_failure=True,
+                     timeout=5)
+            raise AssertionError("requests.exceptions.ConnectionError or urllib.error.URLError not raised")
+        except requests.exceptions.ConnectionError:
             pass
-        except urllib.error.URLError: 
+        except urllib.error.URLError:
             pass
 
 
@@ -645,10 +664,10 @@ class TestUrlUtils:
 
         try:
             test_urls(urls_to_test, error_on_failure=True, n_workers=1, timeout=5)
-            assert False, "ValueError not raised for urls_to_test"
+            raise AssertionError("ValueError not raised for urls_to_test")
         except ValueError:
             pass
-            
+
         good_urls = [SMALL_FILE_URL, REDIRECT_SRC_URL]
         good_status_codes = test_urls(good_urls, error_on_failure=True, n_workers=1, timeout=10)
         assert good_status_codes == [200, 200]
@@ -661,27 +680,27 @@ class TestUrlUtils:
 
         size = get_url_size(SMALL_FILE_URL, timeout=10)
         assert size is not None
-        assert size > 1000 
+        assert size > 1000
 
         size_dynamic = get_url_size(REDIRECT_DEST_URL, timeout=10, verbose=True)
         if size_dynamic is not None:
             assert isinstance(size_dynamic, int)
-        
+
         size_non_existent = get_url_size(NON_EXISTENT_URL, timeout=5)
         assert size_non_existent is None
-        
+
         size_bad_domain = get_url_size(DEFINITELY_NON_EXISTENT_DOMAIN_URL, timeout=5)
         assert size_bad_domain is None
 
         urls_for_size = [SMALL_FILE_URL, NON_EXISTENT_URL, REDIRECT_DEST_URL]
         sizes_map = get_url_sizes(urls_for_size, n_workers=1, timeout=10)
-        
+
         assert SMALL_FILE_URL in sizes_map
-        assert sizes_map[SMALL_FILE_URL] == size 
-        
+        assert sizes_map[SMALL_FILE_URL] == size
+
         assert NON_EXISTENT_URL in sizes_map
         assert sizes_map[NON_EXISTENT_URL] is None
-        
+
         assert REDIRECT_DEST_URL in sizes_map
         assert sizes_map[REDIRECT_DEST_URL] == size_dynamic
 

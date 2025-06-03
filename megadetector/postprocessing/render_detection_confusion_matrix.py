@@ -118,25 +118,28 @@ def render_detection_confusion_matrix(ground_truth_file,
             [results_file] should be relative to this folder.
         preview_folder (str): the output folder, i.e. the folder in which we'll create our nifty
             HTML stuff.
-        force_rendering_images (bool, optional): if False, skips images that already exist
+        force_render_images (bool, optional): if False, skips images that already exist
         confidence_thresholds (dict, optional): a dictionary mapping class names to thresholds;
             all classes not explicitly named here will use the threshold for the "default" category.
-        rendering_thresholds (dict, optional): a dictionary mapping class names to thresholds;
+        rendering_confidence_thresholds (dict, optional): a dictionary mapping class names to thresholds;
             all classes not explicitly named here will use the threshold for the "default" category.
         target_image_size (tuple, optional): output image size, as a pair of ints (width,height).  If one
             value is -1 and the other is not, aspect ratio is preserved.  If both are -1, the original image
             sizes are preserved.
         parallelize_rendering (bool, optional): enable (default) or disable parallelization when rendering
-        parallelize_rendering_n_core (int, optional): number of threads or processes to use for rendering, only
+        parallelize_rendering_n_cores (int, optional): number of threads or processes to use for rendering, only
             used if parallelize_rendering is True
         parallelize_rendering_with_threads: whether to use threads (True) or processes (False) when rendering,
             only used if parallelize_rendering is True
         job_name (str, optional): job name to include in big letters in the output file
-        model_file (str, optional) model filename to include in HTML output
+        model_file (str, optional): model filename to include in HTML output
         empty_category_name (str, optional): special category name that we should treat as empty, typically
             "empty"
         html_image_list_options (dict, optional): options listed passed along to write_html_image_list;
             see write_html_image_list for documentation.
+
+    Returns:
+        dict: confusion matrix information, containing at least the key "html_file"
     """
 
     ##%% Argument and path handling

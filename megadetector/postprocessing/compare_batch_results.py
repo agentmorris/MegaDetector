@@ -375,7 +375,7 @@ def _render_image_pair(fn,image_pairs,category_folder,options,pairwise_options):
 
                 try:
                     font = ImageFont.truetype('arial.ttf', 25)
-                except IOError:
+                except OSError:
                     font = ImageFont.load_default()
 
                 draw = ImageDraw.Draw(im)

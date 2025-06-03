@@ -124,13 +124,41 @@ select = [
 convention = "google"
 
 [tool.ruff.per-file-ignores]
-"**/*.py" = ["D212","D415","D202","UP032","UP007","UP015","UP038",
-             "UP035","UP024","B007","D200","E702","D205","D417",
-			 "B904","D107","N813","B905","D105","UP028"]
+"**/*.py" = [
+    # Comment/whitespace conventions that differ from ruff's defaults
+    "D415",   # First line should end with a period, question mark, or exclamation point
+    "D202",   # No blank lines allowed after function docstring
+    "D205",   # 1 blank line required between summary line and description
+    
+    # Coding conventions that differ from ruff's defaults
+    "UP032",  # Use f-string instead of .format() call
+    "UP007",  # Use X | Y for type unions
+    "UP015",  # Unnecessary open mode parameters (open(filename,'r'))
+    "UP038",  # Use X | Y in isinstance call instead of (X, Y)
+    "D200",   # One-line docstring should fit on one line
+    "E702",   # Multiple statements on one line (semicolon)
+    "B904",   # Use "raise from" to specify whether this was an error during exception handling
+    "D107",   # Missing docstring in __init__
+    "N813",   # Camelcase imported as lowercase
+    "D105",   # Missing docstring in magic method
+    "UP028",  # Replace yield over yield from
+    
+    # Debugging conveniences
+    "B007",   # Loop control variable not used within loop body
+
+    # Deferring for later 
+    "I001",   # Import block is un-sorted or un-formatted    
+]
+
+# These files have long, useful, single-line sample filenames in comments
 "megadetector/detection/run_inference_with_yolov5_val.py" = ["E501"]
 "megadetector/postprocessing/compare_batch_results.py" = ["E501"]
 "megadetector/postprocessing/postprocess_batch_results.py" = ["E501"]
 "megadetector/utils/wi_utils.py" = ["E501"]
+
+# This file has lots of tests that open a file and does something with it
+# on the same line.
+"megadetector/utils/path_utils.py" = ["E701"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["megadetector"]

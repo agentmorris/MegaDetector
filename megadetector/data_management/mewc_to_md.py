@@ -35,6 +35,7 @@ def mewc_to_md(mewc_input_folder,
                mewc_out_filename='mewc_out.csv',
                md_out_filename='md_out.json'):
     """
+    Converts the output of the MEWC inference scripts to the MD output format.
 
     Args:
         mewc_input_folder (str): the folder we'll search for MEWC output files
@@ -43,6 +44,10 @@ def mewc_to_md(mewc_input_folder,
             .json file, typically the prefix used to mount the image folder.
         category_name_column (str, optional): column in the MEWC results .csv to use for
             category naming.
+        mewc_out_filename (str, optional): MEWC-formatted .csv file that should be
+            in [mewc_input_folder]
+        md_out_filename (str, optional): MD-formatted .json file (without classification
+            information) that should be in [mewc_input_folder]
 
     Returns:
         dict: an MD-formatted dict, the same as what's written to [output_file]

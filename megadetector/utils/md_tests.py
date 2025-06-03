@@ -163,6 +163,10 @@ def get_expected_results_filename(gpu_is_available,
 
     Args:
         gpu_is_available (bool): whether a GPU is available
+        model_string (str, optional): the model for which we're retrieving expected results
+        test_type (str, optional): the test type we're running ("image" or "video")
+        augment (bool, optional): whether we're running this test with image augmentation
+        options (MDTestOptiosn, optional): additional control flow options
 
     Returns:
         str: relative filename of the results file we should use (within the test
@@ -361,6 +365,7 @@ def output_files_are_identical(fn1,fn2,verbose=False):
     Args:
         fn1 (str): the first filename to compare
         fn2 (str): the second filename to compare
+        verbose (bool, optional): enable additional debug output
 
     Returns:
         bool: whether [fn1] and [fn2] are identical other than file sorting.
@@ -692,6 +697,9 @@ def execute_and_print(cmd,print_output=True,catch_exceptions=False,echo_command=
     Args:
         cmd (str): command to run
         print_output (bool, optional): whether to print output from [cmd]
+        catch_exceptions (bool, optional): whether to catch exceptions, rather than raising
+            them
+        echo_command (bool, optional): whether to print [cmd] to stdout prior to execution
 
     Returns:
         dict: a dictionary with fields "status" (the process return code) and "output"
@@ -1630,6 +1638,9 @@ def run_tests(options):
 #%% Automated test entry point
 
 def test_suite_entry_point():
+    """
+    Main entry point for the numerical test suite.
+    """
 
     options = MDTestOptions()
     options.disable_gpu = False
@@ -1647,9 +1658,9 @@ def test_suite_entry_point():
     options.skip_video_rendering_tests = True
     options.cli_working_dir = None
     options.cli_test_pythonpath = None
-    
+
     options.skip_download_tests = True
-    
+
     options = download_test_data(options)
     run_tests(options)
 

@@ -12,7 +12,8 @@ Requires azure-storage-blob>=12.4.0
 
 import json
 
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Optional, Union
+from collections.abc import Iterable
 from azure.storage.blob import BlobPrefix, ContainerClient # type: ignore
 
 from megadetector.utils import path_utils
@@ -158,6 +159,7 @@ def enumerate_blobs_to_file(
             blobs matching *any* of the regex's will be returned.
         limit: int, maximum # of blob names to list
             if None, then returns all blob names
+        verbose (bool, optional): enable additional debug output
 
     Returns: list of str, sorted blob names, of length limit or shorter.
     """

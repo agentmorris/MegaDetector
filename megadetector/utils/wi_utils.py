@@ -465,8 +465,9 @@ def write_download_commands(image_records_to_download,
         force_download (bool, optional): include gs commands even if the target file exists
         n_download_workers (int, optional): number of scripts to write (that's our hacky way
             of controlling parallelization)
-        download_command_file (str, optional): path of the .sh script we should write, defaults
-            to "download_wi_images.sh" in the destination folder
+        download_command_file_base (str, optional): path of the .sh script we should write, defaults
+            to "download_wi_images.sh" in the destination folder.  Individual worker scripts will
+            have a number added, e.g. download_wi_images_00.sh.
     """
 
     if isinstance(image_records_to_download,dict):
@@ -1069,7 +1070,7 @@ def generate_whole_image_detections_for_classifications(classifications_json_fil
                                                         ensemble_json_file=None,
                                                         ignore_blank_classifications=True):
     """
-    Given a set of classification results in SpeciesNet format that were likely run on 
+    Given a set of classification results in SpeciesNet format that were likely run on
     already-cropped images, generate a file of [fake] detections in SpeciesNet format in which each
     image is covered in a single whole-image detection.
 
@@ -1485,6 +1486,8 @@ def generate_instances_json_from_folder(folder,
     Args:
         folder (str): the folder to recursively search for images
         country (str, optional): a three-letter country code
+        admin1_region (str, optional): an administrative region code, typically a two-letter
+            US state code
         lat (float, optional): latitude to associate with all images
         lon (float, optional): longitude to associate with all images
         output_file (str, optional): .json file to which we should write instance records
@@ -1590,8 +1593,8 @@ def merge_prediction_json_files(input_prediction_files,output_prediction_file):
     Merge all predictions.json files in [files] into a single .json file.
 
     Args:
-        files (list): list of predictions.json files to merge
-        output_file (str): output .json file
+        input_prediction_files (list): list of predictions.json files to merge
+        output_prediction_file (str): output .json file
     """
 
     predictions = []
@@ -2074,8 +2077,7 @@ def generate_csv_rows_for_species(species_string,
                                   allow_countries=None,
                                   block_countries=None,
                                   allow_states=None,
-                                  block_states=None,
-                                  blockexcept_countries=None):
+                                  block_states=None):
     """
     Generate rows in the format expected by geofence_fixes.csv, representing a list of
     allow and/or block rules for the specified species and countries/states.  Does not check
@@ -2525,8 +2527,7 @@ if False:
                                   allow_countries=['AUS'],
                                   block_countries=None,
                                   allow_states=None,
-                                  block_states=None,
-                                  blockexcept_countries=None)
+                                  block_states=None)
 
 
     #%% Test the effects of geofence changes

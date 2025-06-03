@@ -99,7 +99,7 @@ for fn in input_files:
     crop_cmd += crop_comment
 
     crop_cmd += "python crop_detections.py \\\n" + \
-    	 input_file_path + ' \\\n' + \
+         input_file_path + ' \\\n' + \
          crop_path + ' \\\n' + \
          '--images-dir "' + image_base + '"' + ' \\\n' + \
          '--threshold "' + threshold_str + '"' + ' \\\n' + \
@@ -127,7 +127,7 @@ for fn in input_files:
     classify_cmd += classify_comment
 
     classify_cmd += "python run_classifier.py \\\n" + \
-    	 checkpoint_path + ' \\\n' + \
+         checkpoint_path + ' \\\n' + \
          crop_path + ' \\\n' + \
          classifier_output_path + ' \\\n' + \
          '--detections-json "' + input_file_path + '"' + ' \\\n' + \
@@ -205,7 +205,7 @@ for fn in input_files:
     merge_cmd += merge_comment
 
     merge_cmd += "python merge_classification_detection_output.py \\\n" + \
-    	 classifier_output_path_remapped + ' \\\n' + \
+         classifier_output_path_remapped + ' \\\n' + \
          output_label_index + ' \\\n' + \
          '--output-json "' + final_output_path + '"' + ' \\\n' + \
          '--detection-json "' + input_file_path + '"' + ' \\\n' + \

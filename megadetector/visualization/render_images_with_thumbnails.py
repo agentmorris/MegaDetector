@@ -131,7 +131,8 @@ def render_images_with_thumbnails(
     # through them, crop them, and save them to a list of cropped_images
     cropped_images = []
     for (name, box) in zip(secondary_image_filename_list,
-                           secondary_image_bounding_box_list):
+                           secondary_image_bounding_box_list,
+                           strict=True):
 
         other_image = vis_utils.load_image(name)
         cropped_image = crop_image_with_normalized_coordinates(

@@ -18,7 +18,8 @@ Includes functions to read/write the (very very old) .csv results format.
 import json
 import os
 
-from typing import Mapping, Optional
+from typing import Optional
+from collections.abc import Mapping
 
 import pandas as pd
 

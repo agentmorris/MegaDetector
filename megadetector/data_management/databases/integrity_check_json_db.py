@@ -125,6 +125,7 @@ def integrity_check_json_db(json_file, options=None):
 
     Args:
         json_file (str): filename to validate, or an already-loaded dict
+        options (IntegrityCheckOptions, optional): see IntegrityCheckOptions
 
     Returns:
         tuple: tuple containing:
@@ -172,7 +173,7 @@ def integrity_check_json_db(json_file, options=None):
     images = data['images']
     annotations = data['annotations']
     categories = data['categories']
-    
+
     if options.requireInfo:
         assert 'info' in data, 'No info struct in database'
 

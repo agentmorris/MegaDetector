@@ -232,6 +232,8 @@ def labelme_to_coco(input_folder,
         category_id_to_category_name (dict, optional): dict mapping category IDs to category names;
             really used to map Labelme category names to COCO category IDs.  IDs will be auto-generated
             if this is None.
+        empty_category_name (str, optional): if images are present without boxes, the category name
+            we should use for whole-image (and not-very-COCO-like) empty categories.
         empty_category_id (int, optional): category ID to use for the not-very-COCO-like "empty" category;
             also see the no_json_handling parameter.
         info_struct (dict, optional): dict to stash in the "info" field of the resulting COCO dict
