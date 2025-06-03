@@ -2645,6 +2645,3 @@ def test_path_utils():
         test_instance.test_compute_file_hash()
     finally:
         test_instance.tear_down()
-
-# from IPython import embed; embed()
-# test_path_utils()
