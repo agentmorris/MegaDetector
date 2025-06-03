@@ -1,7 +1,11 @@
 name: python style checks
 
 on:
-  workflow_dispatch:  # Allows manual triggering from GitHub UI
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Run on manual triggering from GitHub UI
 
 jobs:
   lint:
