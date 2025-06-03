@@ -1,0 +1,32 @@
+name: python tests
+
+on:
+  workflow_dispatch:  # Allows manual triggering from GitHub UI
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        # pip install -r requirements.txt || echo "No requirements.txt found"
+        # pip install -r requirements-dev.txt || echo "No requirements-dev.txt found"
+        pip install -e . || echo "No pyproject.toml found"
+    
+    - name: Run tests with pytest
+      run: |
+        pytest -vv
