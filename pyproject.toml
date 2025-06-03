@@ -137,25 +137,28 @@ convention = "google"
     "UP038",  # Use X | Y in isinstance call instead of (X, Y)
     "D200",   # One-line docstring should fit on one line
     "E702",   # Multiple statements on one line (semicolon)
+    "B904",   # Use "raise from" to specify whether this was an error during exception handling
+    "D107",   # Missing docstring in __init__
+    "N813",   # Camelcase imported as lowercase
+    "D105",   # Missing docstring in magic method
+    "UP028",  # Replace yield over yield from
     
     # Debugging conveniences
     "B007",   # Loop control variable not used within loop body
-    
-    # "D417",   # Missing argument descriptions in the docstring
-    "B904",   # Use raise from to specify exception cause
-    "D107",   # Missing docstring in __init__
-    "N813",   # Camelcase imported as lowercase
-    "B905",   # zip() without an explicit strict= parameter
-    "D105",   # Missing docstring in magic method
-    "UP028",  # Replace yield over yield from
-    "I001",   # Import block is un-sorted or un-formatted
-    "E701",   # Multiple statements on one line (colon)
+
+    # Deferring for later 
+    "I001",   # Import block is un-sorted or un-formatted    
 ]
 
+# These files have long, useful, single-line sample filenames in comments
 "megadetector/detection/run_inference_with_yolov5_val.py" = ["E501"]
 "megadetector/postprocessing/compare_batch_results.py" = ["E501"]
 "megadetector/postprocessing/postprocess_batch_results.py" = ["E501"]
 "megadetector/utils/wi_utils.py" = ["E501"]
+
+# This file has lots of tests that open a file and does something with it
+# on the same line.
+"megadetector/utils/path_utils.py" = ["E701"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["megadetector"]
