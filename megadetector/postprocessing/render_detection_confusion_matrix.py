@@ -129,8 +129,8 @@ def render_detection_confusion_matrix(ground_truth_file,
         parallelize_rendering (bool, optional): enable (default) or disable parallelization when rendering
         parallelize_rendering_n_cores (int, optional): number of threads or processes to use for rendering, only
             used if parallelize_rendering is True
-        parallelize_rendering_with_threads: whether to use threads (True) or processes (False) when rendering,
-            only used if parallelize_rendering is True
+        parallelize_rendering_with_threads (bool, optional): whether to use threads (True) or processes (False)
+            when rendering, only used if parallelize_rendering is True
         job_name (str, optional): job name to include in big letters in the output file
         model_file (str, optional): model filename to include in HTML output
         empty_category_name (str, optional): special category name that we should treat as empty, typically

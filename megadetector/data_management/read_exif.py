@@ -289,6 +289,12 @@ def format_datetime_as_exif_datetime_string(dt):
     """
     Returns a Python datetime object rendered using the standard EXIF datetime
     string format ('%Y:%m:%d %H:%M:%S')
+
+    Args:
+        dt (datetime): datetime object to format
+
+    Returns:
+        str: [dt] as a string in standard EXIF format
     """
 
     return datetime.strftime(dt, '%Y:%m:%d %H:%M:%S')
@@ -348,6 +354,10 @@ def _filter_tags(tags,options):
 def read_exif_tags_for_image(file_path,options=None):
     """
     Get relevant fields from EXIF data for an image
+
+    Args:
+        file_path (str): image from which we should read EXIF data
+        options (ReadExifOptions, optional): see ReadExifOptions
 
     Returns:
         dict: a dict with fields 'status' (str) and 'tags'. The exact format of 'tags' depends on
@@ -657,7 +667,11 @@ def _write_exif_results(results,output_file):
 # ..._write_exif_results(...)
 
 
-def read_exif_from_folder(input_folder,output_file=None,options=None,filenames=None,recursive=True):
+def read_exif_from_folder(input_folder,
+                          output_file=None,
+                          options=None,
+                          filenames=None,
+                          recursive=True):
     """
     Read EXIF data for a folder of images.
 
@@ -671,7 +685,6 @@ def read_exif_from_folder(input_folder,output_file=None,options=None,filenames=N
             a list of absolute filenames (if [input_folder] is None)
         recursive (bool, optional): whether to recurse into [input_folder], not relevant if [input_folder]
             is None.
-        verbose (bool, optional): enable additional debug output
 
     Returns:
         list: list of dicts, each of which contains EXIF information for one images.  Fields include at least:
@@ -744,7 +757,7 @@ def exif_results_to_cct(exif_results,cct_output_file=None,options=None):
     Args:
         exif_results (str or list): the filename (or loaded list) containing the results
             from read_exif_from_folder
-        cct_output_file (str,optional): the filename to which we should write
+        cct_output_file (str, optional): the filename to which we should write
             COCO-Camera-Traps-formatted data
         options (ExifResultsToCCTOptions, optional): options guiding the generation
             of the CCT file, particularly location mapping

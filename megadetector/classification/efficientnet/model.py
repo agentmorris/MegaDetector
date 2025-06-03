@@ -93,7 +93,7 @@ class MBConvBlock(nn.Module):
 
         Args:
             inputs (tensor): Input tensor.
-            drop_connect_rate (bool): Drop connect rate (float, between 0 and 1).
+            drop_connect_rate (bool, optional): Drop connect rate (float, between 0 and 1).
 
         Returns:
             Output of this block after processing.
@@ -135,7 +135,7 @@ class MBConvBlock(nn.Module):
         """Sets swish function as memory efficient (for training) or standard (for export).
 
         Args:
-            memory_efficient (bool): Whether to use memory-efficient version of swish.
+            memory_efficient (bool, optional): Whether to use memory-efficient version of swish.
         """
         self._swish = MemoryEfficientSwish() if memory_efficient else Swish()
 
@@ -221,7 +221,7 @@ class EfficientNet(nn.Module):
         """Sets swish function as memory efficient (for training) or standard (for export).
 
         Args:
-            memory_efficient (bool): Whether to use memory-efficient version of swish.
+            memory_efficient (bool, optional): Whether to use memory-efficient version of swish.
 
         """
         self._swish = MemoryEfficientSwish() if memory_efficient else Swish()
@@ -323,7 +323,7 @@ class EfficientNet(nn.Module):
 
         Args:
             model_name (str): Name for efficientnet.
-            in_channels (int): Input data's channel number.
+            in_channels (int, optional): Input data's channel number.
             override_params (other key word params):
                 Params to override model's global_params.
                 Optional key:
@@ -349,14 +349,14 @@ class EfficientNet(nn.Module):
 
         Args:
             model_name (str): Name for efficientnet.
-            weights_path (None or str):
+            weights_path (None or str, optional):
                 str: path to pretrained weights file on the local disk.
                 None: use pretrained weights downloaded from the Internet.
-            advprop (bool):
+            advprop (bool, optional):
                 Whether to load pretrained weights
                 trained with advprop (valid when weights_path is None).
-            in_channels (int): Input data's channel number.
-            num_classes (int):
+            in_channels (int, optional): Input data's channel number.
+            num_classes (int, optional):
                 Number of categories for classification.
                 It controls the output size for final linear layer.
             override_params (other key word params):

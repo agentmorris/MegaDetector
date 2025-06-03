@@ -133,10 +133,10 @@ class Engine():
             input = input.cuda(non_blocking=True)
             target = target.cuda(non_blocking=True)
 
-	    # compute output
+        # compute output
             output, _ = self.model(input)
 
-	    # measure accuracy and record loss
+        # measure accuracy and record loss
             if calcAccuracy:
                 acc1, acc5 = accuracy(output, target, topk=(1, 5))
             loss = self.criterion(output, target)

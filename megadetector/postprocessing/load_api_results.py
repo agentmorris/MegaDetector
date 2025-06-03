@@ -37,13 +37,13 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
     Loads json-formatted MegaDetector results to a Pandas DataFrame.
 
     Args:
-        api_output_path: path to the output json file
-        normalize_paths: whether to apply os.path.normpath to the 'file' field
-            in each image entry in the output file
-        filename_replacements: replace some path tokens to match local paths to
-            the original blob structure
-        force_forward_slashes: whether to convert backslashes to forward slashes
-            in filenames
+        api_output_path (str): path to the output json file
+        normalize_paths (bool, optional): whether to apply os.path.normpath to the 'file'
+            field in each image entry in the output file
+        filename_replacements (dict, optional): replace some path tokens to match local paths
+            to the original file structure
+        force_forward_slashes (bool, optional): whether to convert backslashes to forward
+            slashes in filenames
 
     Returns:
         detection_results: pd.DataFrame, contains at least the columns ['file', 'detections','failure']
@@ -99,6 +99,11 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
 def write_api_results(detection_results_table, other_fields, out_path):
     """
     Writes a Pandas DataFrame to the MegaDetector .json format.
+
+    Args:
+        detection_results_table (DataFrame): data to write
+        other_fields (dict): additional fields to include in the output .json
+        out_path (str): output .json filename
     """
 
     print('Writing detection results to {}'.format(out_path))
@@ -145,6 +150,14 @@ def load_api_results_csv(filename, normalize_paths=True, filename_replacements=N
     [DEPRECATED]
 
     Loads .csv-formatted MegaDetector results to a pandas table
+
+    Args:
+        filename (str): path to the csv file to read
+        normalize_paths (bool, optional): whether to apply os.path.normpath to the 'file'
+            field in each image entry in the output file
+        filename_replacements (dict, optional): replace some path tokens to match local paths
+            to the original file structure
+        nrows (int, optional): read only the first N rows of [filename]
     """
 
     if filename_replacements is None:
@@ -193,6 +206,10 @@ def write_api_results_csv(detection_results, filename):
     Writes a Pandas table to csv in a way that's compatible with the .csv output
     format.  Currently just a wrapper around to_csv that forces output writing
     to go through a common code path.
+
+    Args:
+        detection_results (DataFrame): dataframe to write to [filename]
+        filename (str): .csv filename to write
     """
 
     print('Writing detection results to {}'.format(filename))

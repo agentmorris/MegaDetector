@@ -546,8 +546,8 @@ def try_get_datetime_from_image(filename,include_crops=False,options=None):
     until we find a datetime.
 
     Args:
-        image (Image or str): the PIL Image object or image filename in which we should look for
-            datetime information.
+        filename (Image or str): the PIL Image object or image filename in which we should look
+            for datetime information.
         include_crops (bool, optional): whether to include cropped images in the return dict (set
             this to False if you're worried about size and you're processing a zillion images)
         options (DatetimeExtractionOptions or list, optional): OCR parameters, either one

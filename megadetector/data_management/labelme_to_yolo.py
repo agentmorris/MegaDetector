@@ -33,6 +33,13 @@ def labelme_file_to_yolo_file(labelme_file,
     this function no-ops (i.e., does not generate a YOLO file).
 
     overwrite_behavior should be 'skip' or 'overwrite' (default).
+
+    Args:
+        labelme_file (str): .json file to convert
+        category_name_to_category_id (dict): category name --> ID mapping
+        yolo_file (str, optional): output .txt file defaults to s/json/txt
+        required_token (str, optional): only process filenames containing this token
+        overwrite_behavior (str, optional): "skip" or "overwrite"
     """
 
     result = {}
@@ -150,6 +157,15 @@ def labelme_folder_to_yolo(labelme_folder,
         'category_name_to_category_id', whether it was passed in or constructed
         'image_results': a list of results for each image (converted, skipped, error)
 
+    Args:
+        labelme_folder (str): folder of .json files to convert
+        category_name_to_category_id (dict): category name --> ID mapping
+        required_token (str, optional): only process filenames containing this token
+        overwrite_behavior (str, optional): "skip" or "overwrite"
+        relative_filenames_to_convert (list of str, optional): only process filenames on this list
+        n_workers (int, optional): parallelism level
+        use_threads (bool, optional): whether to use threads (True) or processes (False) for
+            parallelism
     """
 
     if relative_filenames_to_convert is not None:
