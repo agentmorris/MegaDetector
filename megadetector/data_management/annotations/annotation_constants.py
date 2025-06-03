@@ -31,4 +31,3 @@ detector_bbox_category_name_to_id = {}
 for cat in detector_bbox_categories:
     detector_bbox_category_id_to_name[cat['id']] = cat['name']
     detector_bbox_category_name_to_id[cat['name']] = cat['id']
-
