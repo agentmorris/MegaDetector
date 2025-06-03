@@ -1122,7 +1122,7 @@ def draw_bounding_boxes_on_file(input_file,
 
     Args:
         input_file (str): filename or URL to load
-        output_file (str, optional): filename to which we should write the rendered image
+        output_file (str): filename to which we should write the rendered image
         detections (list): a list of dictionaries with keys 'conf', 'bbox', and 'category';
             boxes are length-four arrays formatted as [x,y,w,h], normalized,
             upper-left origin (this is the standard MD detection format). 'category' is a string-int.
@@ -1218,7 +1218,7 @@ def gray_scale_fraction(image,crop_size=(0.1,0.1)):
 
     Args:
         image (str or PIL.Image.Image): Image, filename, or URL to analyze
-        crop_size (optional): a 2-element list/tuple, representing the fraction of the
+        crop_size: a 2-element list/tuple, representing the fraction of the
             image to crop at the top and bottom, respectively, before analyzing (to minimize
             the possibility of including color elements in the image overlay)
 
@@ -1751,7 +1751,7 @@ def parallel_check_image_integrity(filenames,
 
     Args:
         filenames (list or str): a list of image filenames or a folder
-        modes (list): see check_image_integrity() for documentation on the [modes] parameter
+        modes (list, optional): see check_image_integrity() for documentation on the [modes] parameter
         max_workers (int, optional): the number of parallel workers to use; set to <=1 to disable
             parallelization
         use_threads (bool, optional): whether to use threads (True) or processes (False) for

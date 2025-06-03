@@ -1119,7 +1119,7 @@ def find_repeat_detections(input_filename, output_file_name=None, options=None):
         output_file_name (str, optional): the filename to which we should write results
             with repeat detections removed, typically set to None during the first
             part of the RDE process.
-        options (RepeatDetectionOptions): all the interesting options controlling this
+        options (RepeatDetectionOptions, optional): all the interesting options controlling this
             process; see RepeatDetectionOptions for details.
 
     Returns:

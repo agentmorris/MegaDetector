@@ -194,7 +194,7 @@ def get_same_padding_conv2d(image_size=None):
        Static padding is necessary for ONNX exporting of models.
 
     Args:
-        image_size (int or tuple): Size of the image.
+        image_size (int or tuple, optional): Size of the image.
 
     Returns:
         Conv2dDynamicSamePadding or Conv2dStaticSamePadding.
@@ -274,7 +274,7 @@ def get_same_padding_maxPool2d(image_size=None):
        Static padding is necessary for ONNX exporting of models.
 
     Args:
-        image_size (int or tuple): Size of the image.
+        image_size (int or tuple, optional): Size of the image.
 
     Returns:
         MaxPool2dDynamicSamePadding or MaxPool2dStaticSamePadding.
@@ -579,11 +579,11 @@ def load_pretrained_weights(model, model_name, weights_path=None, load_fc=True, 
     Args:
         model (Module): The whole model of efficientnet.
         model_name (str): Model name of efficientnet.
-        weights_path (None or str):
+        weights_path (None or str, optional):
             str: path to pretrained weights file on the local disk.
             None: use pretrained weights downloaded from the Internet.
-        load_fc (bool): Whether to load pretrained weights for fc layer at the end of the model.
-        advprop (bool): Whether to load pretrained weights
+        load_fc (bool, optional): Whether to load pretrained weights for fc layer at the end of the model.
+        advprop (bool, optional): Whether to load pretrained weights
                         trained with advprop (valid when weights_path is None).
     """
     if isinstance(weights_path, str):

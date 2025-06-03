@@ -37,13 +37,13 @@ def plot_confusion_matrix(matrix,
         normalize (bool, optional): whether to perform row-wise normalization;
             by default, assumes values in the confusion matrix are percentages
         title (str, optional): figure title
-        cmap (matplotlib.colors.colormap): colormap for cell backgrounds
+        cmap (matplotlib.colors.colormap, optional): colormap for cell backgrounds
         vmax (float, optional): value corresponding to the largest value of the colormap;
             if None, the maximum value in [matrix] will be used
         use_colorbar (bool, optional): whether to show colorbar
         y_label (bool, optional): whether to show class names on the y axis
-        fmt (str): format string for rendering numeric values
-        fig (Figure): existing figure to which we should render, otherwise creates
+        fmt (str, optional): format string for rendering numeric values
+        fig (Figure, optional): existing figure to which we should render, otherwise creates
             a new figure
 
     Returns:
@@ -261,7 +261,7 @@ def plot_calibration_curve(true_scores, pred_scores, num_bins,
         plot_perf (bool, optional): whether to plot y=x line indicating perfect calibration
         plot_hist (bool, optional): whether to plot histogram of counts
         ax (Axes, optional): if given then no legend is drawn, and fig_kwargs are ignored
-        fig_kwargs (dict, optional): only used if [ax] is None
+        fig_kwargs (dict): only used if [ax] is None
 
     Returns:
         matplotlib.figure.Figure: the (new) figure

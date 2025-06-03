@@ -39,11 +39,11 @@ def resize_coco_dataset(input_folder,input_filename,
             same as [input_folder], in which case images are over-written
         output_filename (str): the COCO-formatted .json file we should generate that refers to
             the resized images
-        target_size (list or tuple of ints): this should be tuple/list of ints, with length 2 (w,h).
+        target_size (list or tuple of ints, optional): this should be tuple/list of ints, with length 2 (w,h).
             If either dimension is -1, aspect ratio will be preserved.  If both dimensions are -1, this means
             "keep the original size".  If  both dimensions are -1 and correct_size_image_handling is copy, this
             function is basically a no-op.
-        correct_size_image_handling (str): can be 'copy' (in which case the original image is just copied
+        correct_size_image_handling (str, optional): can be 'copy' (in which case the original image is just copied
             to the output folder) or 'rewrite' (in which case the image is opened via PIL and re-written,
             attempting to preserve the same quality).  The only reason to do use 'rewrite' 'is the case where
             you're superstitious about biases coming from images in a training set being written by different

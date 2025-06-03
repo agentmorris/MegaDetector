@@ -478,7 +478,7 @@ def split_list_into_n_chunks(L, n, chunk_strategy='greedy'): # noqa
     Args:
         L (list): list to split into chunks
         n (int): number of chunks
-        chunk_strategy (str, optiopnal): "greedy" or "balanced"; see above
+        chunk_strategy (str, optiopnal, optional): "greedy" or "balanced"; see above
 
     Returns:
         list: list of chunks, each of which is a list

@@ -641,7 +641,7 @@ def wsl_path_to_windows_path(filename, failure_behavior='none'):
 
     Args:
         filename (str): filename to convert
-        failure_behavior (str): what to do if the path can't be processed as a WSL path.
+        failure_behavior (str, optional): what to do if the path can't be processed as a WSL path.
             'none' to return None in this case, 'original' to return the original path.
 
     Returns:
@@ -689,7 +689,7 @@ def windows_path_to_wsl_path(filename, failure_behavior='none'):
 
     Args:
         filename (str): filename to convert
-        failure_behavior (str): what to do if the path can't be processed as a Windows path.
+        failure_behavior (str, optional): what to do if the path can't be processed as a Windows path.
             'none' to return None in this case, 'original' to return the original path.
 
     Returns:

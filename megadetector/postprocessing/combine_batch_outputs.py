@@ -81,7 +81,7 @@ def combine_batch_output_dictionaries(input_dicts, require_uniqueness=True):
     Args:
         input_dicts (list of dicts): list of dicts in which each dict represents the
             contents of a MD output file
-        require_uniqueness (bool): whether to require that the images in
+        require_uniqueness (bool, optional): whether to require that the images in
             each input dict be unique; if this is True and image filenames are
             not unique, an error is raised.
 

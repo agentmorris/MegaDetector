@@ -1,0 +1,1048 @@
+Batch Docstring Modification Log (Final Script Version)
+=====================================================
+
+Function 'visualize_detector_output', parameter 'images_dir': added ', optional' (normalized from '(str)').
+Function 'visualize_detector_output', parameter 'render_detections_only': added ', optional' (normalized from '(bool)').
+File 'megadetector/visualization/visualize_detector_output.py' was modified.
+
+Function 'plot_calibration_curve', parameter 'fig_kwargs': removed ', optional' (normalized from '(dict, optional)').
+Function 'plot_confusion_matrix', parameter 'cmap': added ', optional' (normalized from '(matplotlib.colors.colormap)').
+Function 'plot_confusion_matrix', parameter 'fig': added ', optional' (normalized from '(Figure)').
+Function 'plot_confusion_matrix', parameter 'fmt': added ', optional' (normalized from '(str)').
+File 'megadetector/visualization/plot_utils.py' was modified.
+
+Function 'gray_scale_fraction', parameter 'crop_size': type became empty after normalization (was '(optional)'). Classified as missing type.
+Function 'render_detection_bounding_boxes', parameter 'custom_strings': missing type in docstring.
+Function 'draw_bounding_boxes_on_file', parameter 'output_file': removed ', optional' (normalized from '(str, optional)').
+Function 'parallel_check_image_integrity', parameter 'modes': added ', optional' (normalized from '(list)').
+File 'megadetector/visualization/visualization_utils.py' was modified.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'isnan', parameter 'x': missing from docstring (no docstring found).
+Function 'parse_taxonomy_string', parameter 'taxonomy_string': missing from docstring (no docstring found).
+Function 'taxonomy_string_to_common_name', parameter 'taxonomy_string': missing from docstring (no docstring found).
+Function 'taxonomy_string_to_level', parameter 'taxonomy_string': missing from docstring (no docstring found).
+Function 'taxonomy_string_to_scientific', parameter 'taxonomy_string': missing from docstring (no docstring found).
+
+No docstring issues or modifications needed/made.
+
+Function 'check_taxonomy_csv', parameter 'csv_path': missing from docstring (Args section not found or empty).
+
+Function 'download_images', parameter 'limit': missing from docstring (no docstring found).
+Function 'download_images', parameter 'output_directory': missing from docstring (no docstring found).
+Function 'download_images', parameter 'query': missing from docstring (no docstring found).
+Function 'download_images', parameter 'verbose': missing from docstring (no docstring found).
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'add_child', parameter 'child': missing type in docstring.
+Function 'add_dataset_label', parameter 'ds': missing type in docstring.
+Function 'add_dataset_label', parameter 'ds_label': missing type in docstring.
+Function 'add_id', parameter 'source': missing from docstring (no docstring found).
+Function 'add_id', parameter 'taxon_id': missing from docstring (no docstring found).
+Function 'add_parent', parameter 'parent': missing type in docstring.
+Function 'build_taxonomy_graph', parameter 'taxonomy_df': missing type in docstring.
+Function 'children', parameter 'children': missing from docstring (no docstring found).
+Function 'dag_to_tree', parameter 'graph': missing type in docstring.
+Function 'dag_to_tree', parameter 'taxon_to_node': missing type in docstring.
+Function 'get_dataset_labels', parameter 'include_datasets': missing type in docstring.
+Function 'lowest_common_ancestor', parameter 'nodes': missing from docstring (Args section not found or empty).
+Function 'parents', parameter 'parents': missing from docstring (no docstring found).
+
+No docstring issues or modifications needed/made.
+
+Function 'check_webpage', parameter 'url': missing from docstring (no docstring found).
+Function 'directory', parameter 'value': missing from docstring (no docstring found).
+Function 'download', parameter 'cache': missing from docstring (no docstring found).
+Function 'download', parameter 'download_cache': missing from docstring (no docstring found).
+Function 'download', parameter 'keywords': missing from docstring (no docstring found).
+Function 'download', parameter 'limit': missing from docstring (no docstring found).
+Function 'download', parameter 'timer': missing from docstring (no docstring found).
+Function 'download', parameter 'verbose': missing from docstring (no docstring found).
+Function 'extensions', parameter 'value': missing from docstring (no docstring found).
+Function 'gen_fn', parameter 'check': missing from docstring (Args section not found or empty).
+Function 'gen_fn', parameter 'name': missing from docstring (Args section not found or empty).
+Function 'generate_dir', parameter 'dir_name': missing from docstring (Args section not found or empty).
+Function 'generate_search_url', parameter 'keywords': missing from docstring (no docstring found).
+Function 'generate_urls', parameter 'search': missing from docstring (Args section not found or empty).
+Function 'scan_webpage', parameter 'extensions': missing from docstring (Args section not found or empty).
+Function 'scan_webpage', parameter 'timer': missing from docstring (Args section not found or empty).
+Function 'scan_webpage', parameter 'webpage': missing from docstring (Args section not found or empty).
+Function 'search_urls', parameter 'cache': missing from docstring (no docstring found).
+Function 'search_urls', parameter 'keywords': missing from docstring (no docstring found).
+Function 'search_urls', parameter 'limit': missing from docstring (no docstring found).
+Function 'search_urls', parameter 'timer': missing from docstring (no docstring found).
+Function 'search_urls', parameter 'verbose': missing from docstring (no docstring found).
+
+No docstring issues or modifications needed/made.
+
+Function 'get_scientific_name_from_row', parameter 'r': missing from docstring (Args section not found or empty).
+Function 'get_taxonomic_info', parameter 'query': missing from docstring (Args section not found or empty).
+Function 'initialize_taxonomy_lookup', parameter 'force_init': missing from docstring (Args section not found or empty).
+Function 'print_taxonomy_matches', parameter 'matches': missing from docstring (Args section not found or empty).
+Function 'print_taxonomy_matches', parameter 'verbose': missing from docstring (Args section not found or empty).
+Function 'slugify', parameter 'allow_unicode': missing from docstring (Args section not found or empty).
+Function 'slugify', parameter 'value': missing from docstring (Args section not found or empty).
+Function 'taxonomy_row_to_string', parameter 'r': missing from docstring (Args section not found or empty).
+Function 'traverse_taxonomy', parameter 'matching_rownums': missing from docstring (Args section not found or empty).
+Function 'traverse_taxonomy', parameter 'query': missing from docstring (Args section not found or empty).
+Function 'traverse_taxonomy', parameter 'source_name': missing from docstring (Args section not found or empty).
+Function 'traverse_taxonomy', parameter 'taxon_id_to_row': missing from docstring (Args section not found or empty).
+Function 'traverse_taxonomy', parameter 'taxon_id_to_vernacular': missing from docstring (Args section not found or empty).
+Function 'traverse_taxonomy', parameter 'taxonomy': missing from docstring (Args section not found or empty).
+Function 'validate_and_convert', parameter 'data': missing type in docstring.
+
+No docstring issues or modifications needed/made.
+
+Function 'add_max_conf', parameter 'input_file': missing from docstring (Args section not found or empty).
+Function 'add_max_conf', parameter 'output_file': missing from docstring (Args section not found or empty).
+
+Function 'merge_detections', parameter 'options': missing from docstring (Args section not found or empty).
+Function 'merge_detections', parameter 'output_file': missing from docstring (Args section not found or empty).
+Function 'merge_detections', parameter 'source_files': missing from docstring (Args section not found or empty).
+Function 'merge_detections', parameter 'target_file': missing from docstring (Args section not found or empty).
+
+Function 'is_sas_url', parameter 's': missing from docstring (Args section not found or empty).
+Function 'relative_sas_url', parameter 'folder_url': missing from docstring (Args section not found or empty).
+Function 'relative_sas_url', parameter 'relative_path': missing from docstring (Args section not found or empty).
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'find_repeat_detections', parameter 'options': added ', optional' (normalized from '(RepeatDetectionOptions)').
+File 'megadetector/postprocessing/repeat_detection_elimination/repeat_detections_core.py' was modified.
+
+Function 'load_api_results', parameter 'api_output_path': missing type in docstring.
+Function 'load_api_results', parameter 'filename_replacements': missing type in docstring.
+Function 'load_api_results', parameter 'force_forward_slashes': missing type in docstring.
+Function 'load_api_results', parameter 'normalize_paths': missing type in docstring.
+Function 'load_api_results_csv', parameter 'filename': missing from docstring (Args section not found or empty).
+Function 'load_api_results_csv', parameter 'filename_replacements': missing from docstring (Args section not found or empty).
+Function 'load_api_results_csv', parameter 'normalize_paths': missing from docstring (Args section not found or empty).
+Function 'load_api_results_csv', parameter 'nrows': missing from docstring (Args section not found or empty).
+Function 'write_api_results', parameter 'detection_results_table': missing from docstring (Args section not found or empty).
+Function 'write_api_results', parameter 'other_fields': missing from docstring (Args section not found or empty).
+Function 'write_api_results', parameter 'out_path': missing from docstring (Args section not found or empty).
+Function 'write_api_results_csv', parameter 'detection_results': missing from docstring (Args section not found or empty).
+Function 'write_api_results_csv', parameter 'filename': missing from docstring (Args section not found or empty).
+
+Function 'count_detections_by_classification_category', parameter 'detections': missing type in docstring.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'convert_csv_to_json', parameter 'overwrite': added ', optional' (normalized from '(bool)').
+Function 'convert_json_to_csv', parameter 'omit_bounding_boxes': added ', optional' (normalized from '(bool)').
+Function 'convert_json_to_csv', parameter 'overwrite': added ', optional' (normalized from '(bool)').
+File 'megadetector/postprocessing/convert_output_format.py' was modified.
+
+No docstring issues or modifications needed/made.
+
+Function 'categorize_detections_by_size', parameter 'options': added ', optional' (normalized from '(SizeCategorizationOptions)').
+File 'megadetector/postprocessing/categorize_detections_by_size.py' was modified.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'render_detection_confusion_matrix', parameter 'parallelize_rendering_with_threads': missing type in docstring.
+
+Function 'combine_batch_output_dictionaries', parameter 'require_uniqueness': added ', optional' (normalized from '(bool)').
+File 'megadetector/postprocessing/combine_batch_outputs.py' was modified.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'get_stats_for_category', parameter 'category': normalized 'optional' placement/format (from '(optional, str)').
+File 'megadetector/detection/run_inference_with_yolov5_val.py' was modified.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'create_change_previews', parameter 'motion_results': missing type in docstring.
+Function 'create_change_previews', parameter 'output_folder': missing type in docstring.
+Function 'detect_motion', parameter 'bg_subtractor': missing type in docstring.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'frame_results_to_video_results', parameter 'video_filename_to_frame_rate': added ', optional' (normalized from '(dict)').
+File 'megadetector/detection/video_utils.py' was modified.
+
+Function 'check_posted_data', parameter 'request': missing from docstring (no docstring found).
+Function 'has_access', parameter 'request': missing from docstring (no docstring found).
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'call_api', parameter 'args': missing from docstring (no docstring found).
+Function 'get_detections', parameter 'response': missing from docstring (no docstring found).
+Function 'load_test', parameter 'max_images': missing from docstring (no docstring found).
+Function 'load_test', parameter 'num_requests': missing from docstring (no docstring found).
+Function 'load_test', parameter 'params': missing from docstring (no docstring found).
+
+No docstring issues or modifications needed/made.
+
+Function 'format_data_print_deployments', parameter 'rows': missing from docstring (no docstring found).
+Function 'get_records_all', parameter 'sql': missing from docstring (no docstring found).
+Function 'update_data', parameter 'sql': missing from docstring (no docstring found).
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'args_to_object', parameter 'args': missing from docstring (Args section not found or empty).
+Function 'args_to_object', parameter 'obj': missing from docstring (Args section not found or empty).
+Function 'browse_file', parameter 'file_path_var': missing from docstring (no docstring found).
+Function 'browse_file', parameter 'options': missing from docstring (no docstring found).
+Function 'browse_folder', parameter 'folder_path_var': missing from docstring (no docstring found).
+Function 'browse_folder', parameter 'options': missing from docstring (no docstring found).
+Function 'create_gui', parameter 'options': missing from docstring (no docstring found).
+Function 'process_input_data', parameter 'options': missing from docstring (Args section not found or empty).
+Function 'start_input_processing', parameter 'options': missing from docstring (no docstring found).
+Function 'update_xmp_metadata', parameter 'categories': missing from docstring (Args section not found or empty).
+Function 'update_xmp_metadata', parameter 'image': missing from docstring (Args section not found or empty).
+Function 'update_xmp_metadata', parameter 'n_images': missing from docstring (Args section not found or empty).
+Function 'update_xmp_metadata', parameter 'options': missing from docstring (Args section not found or empty).
+Function 'update_xmp_metadata', parameter 'rename_cats': missing from docstring (Args section not found or empty).
+Function 'write_status', parameter 'options': missing from docstring (no docstring found).
+Function 'write_status', parameter 's': missing from docstring (no docstring found).
+
+No docstring issues or modifications needed/made.
+
+Function 'check_data_container_sas', parameter 'input_container_sas': missing from docstring (Args section not found or empty).
+Function 'get_job_status', parameter 'message': missing from docstring (no docstring found).
+Function 'get_job_status', parameter 'request_status': missing from docstring (no docstring found).
+Function 'make_error', parameter 'error_code': missing from docstring (no docstring found).
+Function 'make_error', parameter 'error_message': missing from docstring (no docstring found).
+Function 'validate_provided_image_paths', parameter 'image_paths': missing type in docstring.
+
+Function 'create_job_status', parameter 'call_params': missing from docstring (no docstring found).
+Function 'create_job_status', parameter 'job_id': missing from docstring (no docstring found).
+Function 'create_job_status', parameter 'status': missing from docstring (no docstring found).
+Function 'read_job_status', parameter 'job_id': missing from docstring (Args section not found or empty).
+Function 'update_job_status', parameter 'job_id': missing from docstring (no docstring found).
+Function 'update_job_status', parameter 'status': missing from docstring (no docstring found).
+
+Function 'cancel_batch_job', parameter 'job_id': missing from docstring (no docstring found).
+Function 'create_job', parameter 'detector_model_rel_path': missing from docstring (no docstring found).
+Function 'create_job', parameter 'input_container_sas': missing from docstring (no docstring found).
+Function 'create_job', parameter 'job_id': missing from docstring (no docstring found).
+Function 'create_job', parameter 'use_url': missing from docstring (no docstring found).
+Function 'get_num_completed_tasks', parameter 'job_id': missing from docstring (Args section not found or empty).
+Function 'submit_tasks', parameter 'job_id': missing type in docstring.
+Function 'submit_tasks', parameter 'num_images': missing type in docstring.
+
+Function 'aggregate_results', parameter 'job_id': missing from docstring (no docstring found).
+Function 'aggregate_results', parameter 'job_name': missing from docstring (no docstring found).
+Function 'aggregate_results', parameter 'job_submission_timestamp': missing from docstring (no docstring found).
+Function 'aggregate_results', parameter 'model_version': missing from docstring (no docstring found).
+Function 'create_batch_job', parameter 'body': missing from docstring (Args section not found or empty).
+Function 'create_batch_job', parameter 'job_id': missing from docstring (Args section not found or empty).
+Function 'monitor_batch_job', parameter 'job_id': missing from docstring (no docstring found).
+Function 'monitor_batch_job', parameter 'job_name': missing from docstring (no docstring found).
+Function 'monitor_batch_job', parameter 'job_submission_timestamp': missing from docstring (no docstring found).
+Function 'monitor_batch_job', parameter 'model_version': missing from docstring (no docstring found).
+Function 'monitor_batch_job', parameter 'num_tasks': missing from docstring (no docstring found).
+
+Function 'retrieve_job_status', parameter 'job_id': missing from docstring (Args section not found or empty).
+
+No docstring issues or modifications needed/made.
+
+Function 'convert_to_tf_coords', parameter 'array': missing from docstring (Args section not found or empty).
+Function 'generate_detections_one_image', parameter 'detection_threshold': missing type in docstring.
+Function 'generate_detections_one_image', parameter 'image': missing type in docstring.
+Function 'generate_detections_one_image', parameter 'image_id': missing type in docstring.
+Function 'load_image', parameter 'input_file': missing type in docstring.
+Function 'open_image', parameter 'input_file': missing type in docstring.
+Function 'round_and_make_float', parameter 'd': missing from docstring (no docstring found).
+Function 'round_and_make_float', parameter 'precision': missing from docstring (no docstring found).
+Function 'truncate_float', parameter 'precision': missing from docstring Args section.
+Function 'truncate_float', parameter 'x': missing from docstring Args section.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'resize_coco_dataset', parameter 'correct_size_image_handling': added ', optional' (normalized from '(str)').
+Function 'resize_coco_dataset', parameter 'target_size': added ', optional' (normalized from '(list or tuple of ints)').
+File 'megadetector/data_management/resize_coco_dataset.py' was modified.
+
+Function 'remap_coco_categories', parameter 'input_category_name_to_output_category_name': missing type in docstring.
+
+Function 'camtrap_dp_to_coco', parameter 'camtrap_dp_folder': missing from docstring (Args section not found or empty).
+Function 'camtrap_dp_to_coco', parameter 'output_file': missing from docstring (Args section not found or empty).
+
+No docstring issues or modifications needed/made.
+
+Function 'create_sequences', parameter 'options': added ', optional' (normalized from '(SequenceOptions)').
+File 'megadetector/data_management/cct_json_utils.py' was modified.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'remove_exif_from_image', parameter 'fn': missing from docstring (Args section not found or empty).
+
+No docstring issues or modifications needed/made.
+
+Function 'combine_cct_dictionaries', parameter 'input_dicts': missing type in docstring.
+Function 'combine_cct_dictionaries', parameter 'require_uniqueness': missing type in docstring.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'yolo_to_coco', parameter 'be': missing type in docstring.
+
+No docstring issues or modifications needed/made.
+
+Function 'format_datetime_as_exif_datetime_string', parameter 'dt': missing from docstring (Args section not found or empty).
+Function 'read_exif_from_folder', parameter 'verbose': in docstring but not in signature.
+Function 'read_exif_tags_for_image', parameter 'file_path': missing from docstring (Args section not found or empty).
+Function 'read_exif_tags_for_image', parameter 'options': missing from docstring (Args section not found or empty).
+Function 'exif_results_to_cct', parameter 'cct_output_file': normalized 'optional' placement/format (from '(str,optional)').
+File 'megadetector/data_management/read_exif.py' was modified.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'azure_url_to_gcp_http_url', parameter 'error_if_not_azure_url': missing from docstring (Args section not found or empty).
+Function 'azure_url_to_gcp_http_url', parameter 'url': missing from docstring (Args section not found or empty).
+Function 'download_relative_filename', parameter 'output_base': missing from docstring (Args section not found or empty).
+Function 'download_relative_filename', parameter 'overwrite': missing from docstring (Args section not found or empty).
+Function 'download_relative_filename', parameter 'url': missing from docstring (Args section not found or empty).
+Function 'download_relative_filename', parameter 'url_base': missing from docstring (Args section not found or empty).
+Function 'download_relative_filename', parameter 'verbose': missing from docstring (Args section not found or empty).
+
+Function 'find_items', parameter 'row': missing from docstring (no docstring found).
+
+No docstring issues or modifications needed/made.
+
+Function 'rename_images', parameter 'dry_run': missing type in docstring.
+Function 'rename_images', parameter 'input_folder': missing type in docstring.
+Function 'rename_images', parameter 'output_folder': missing type in docstring.
+
+Function 'create_yolo_symlinks', parameter 'class_list_file': missing from docstring (Args section not found or empty).
+Function 'create_yolo_symlinks', parameter 'class_list_output_name': missing from docstring (Args section not found or empty).
+Function 'create_yolo_symlinks', parameter 'force_lowercase_image_extension': missing from docstring (Args section not found or empty).
+Function 'create_yolo_symlinks', parameter 'images_folder': missing from docstring (Args section not found or empty).
+Function 'create_yolo_symlinks', parameter 'labels_folder': missing from docstring (Args section not found or empty).
+Function 'create_yolo_symlinks', parameter 'source_folder': missing from docstring (Args section not found or empty).
+
+Function 'try_get_datetime_from_image', parameter 'filename': missing from docstring Args section.
+Function 'try_get_datetime_from_image', parameter 'image': in docstring but not in signature.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'labelme_file_to_yolo_file', parameter 'category_name_to_category_id': missing from docstring (Args section not found or empty).
+Function 'labelme_file_to_yolo_file', parameter 'labelme_file': missing from docstring (Args section not found or empty).
+Function 'labelme_file_to_yolo_file', parameter 'overwrite_behavior': missing from docstring (Args section not found or empty).
+Function 'labelme_file_to_yolo_file', parameter 'required_token': missing from docstring (Args section not found or empty).
+Function 'labelme_file_to_yolo_file', parameter 'yolo_file': missing from docstring (Args section not found or empty).
+Function 'labelme_folder_to_yolo', parameter 'category_name_to_category_id': missing from docstring (Args section not found or empty).
+Function 'labelme_folder_to_yolo', parameter 'labelme_folder': missing from docstring (Args section not found or empty).
+Function 'labelme_folder_to_yolo', parameter 'n_workers': missing from docstring (Args section not found or empty).
+Function 'labelme_folder_to_yolo', parameter 'overwrite_behavior': missing from docstring (Args section not found or empty).
+Function 'labelme_folder_to_yolo', parameter 'relative_filenames_to_convert': missing from docstring (Args section not found or empty).
+Function 'labelme_folder_to_yolo', parameter 'required_token': missing from docstring (Args section not found or empty).
+Function 'labelme_folder_to_yolo', parameter 'use_threads': missing from docstring (Args section not found or empty).
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'is_empty', parameter 'v': missing type in docstring.
+Function 'isnan', parameter 'v': missing type in docstring.
+Function 'make_test_folder', parameter 'subfolder': missing from docstring (Args section not found or empty).
+Function 'point_dist', parameter 'p1': missing type in docstring.
+Function 'point_dist', parameter 'p2': missing type in docstring.
+Function 'rect_distance', parameter 'r1': missing type in docstring.
+Function 'rect_distance', parameter 'r2': missing type in docstring.
+Function 'round_floats_in_nested_dict', parameter 'obj': missing type in docstring.
+Function 'split_list_into_n_chunks', parameter 'chunk_strategy': added ', optional' (normalized from '(str, optiopnal)').
+File 'megadetector/utils/ct_utils.py' was modified.
+
+No docstring issues or modifications needed/made.
+
+Function 'initialize_geofencing', parameter 'https': missing type in docstring.
+Function 'generate_csv_rows_for_species', parameter 'allow_countries': normalized 'optional' placement/format (from '(optional, list or str)').
+Function 'generate_csv_rows_for_species', parameter 'allow_states': normalized 'optional' placement/format (from '(optional, list or str)').
+Function 'generate_csv_rows_for_species', parameter 'block_countries': normalized 'optional' placement/format (from '(optional, list or str)').
+Function 'generate_csv_rows_for_species', parameter 'block_states': normalized 'optional' placement/format (from '(optional, list or str)').
+File 'megadetector/utils/wi_utils.py' was modified.
+
+No docstring issues or modifications needed/made.
+
+Function 'concatenate_json_lists', parameter 'input_files': missing from docstring (Args section not found or empty).
+Function 'concatenate_json_lists', parameter 'output_file': missing from docstring (Args section not found or empty).
+Function 'enumerate_blobs_to_file', parameter 'account_name': missing type in docstring.
+Function 'enumerate_blobs_to_file', parameter 'blob_prefix': missing type in docstring.
+Function 'enumerate_blobs_to_file', parameter 'blob_suffix': missing type in docstring.
+Function 'enumerate_blobs_to_file', parameter 'container_name': missing type in docstring.
+Function 'enumerate_blobs_to_file', parameter 'limit': missing type in docstring.
+Function 'enumerate_blobs_to_file', parameter 'output_file': missing type in docstring.
+Function 'enumerate_blobs_to_file', parameter 'rsearch': missing type in docstring.
+Function 'enumerate_blobs_to_file', parameter 'sas_token': missing type in docstring.
+Function 'list_top_level_blob_folders', parameter 'container_client': missing from docstring (Args section not found or empty).
+Function 'upload_file_to_blob', parameter 'account_name': missing from docstring (Args section not found or empty).
+Function 'upload_file_to_blob', parameter 'blob_name': missing from docstring (Args section not found or empty).
+Function 'upload_file_to_blob', parameter 'container_name': missing from docstring (Args section not found or empty).
+Function 'upload_file_to_blob', parameter 'local_path': missing from docstring (Args section not found or empty).
+Function 'upload_file_to_blob', parameter 'overwrite': missing from docstring (Args section not found or empty).
+Function 'upload_file_to_blob', parameter 'sas_token': missing from docstring (Args section not found or empty).
+Function 'walk_container', parameter 'container_client': missing from docstring (Args section not found or empty).
+Function 'walk_container', parameter 'debug_max_items': missing from docstring (Args section not found or empty).
+Function 'walk_container', parameter 'max_depth': missing from docstring (Args section not found or empty).
+Function 'walk_container', parameter 'prefix': missing from docstring (Args section not found or empty).
+Function 'walk_container', parameter 'store_blobs': missing from docstring (Args section not found or empty).
+Function 'walk_container', parameter 'store_folders': missing from docstring (Args section not found or empty).
+
+Function 'parallel_download_urls', parameter 'url_to_target_file': missing type in docstring.
+
+No docstring issues or modifications needed/made.
+
+Function 'open_file', parameter 'attempt_to_open_in_wsl_host': missing type in docstring.
+Function 'open_file', parameter 'browser_name': missing type in docstring.
+Function 'path_join', parameter 'paths': missing from docstring Args section.
+Function 'windows_path_to_wsl_path', parameter 'failure_behavior': added ', optional' (normalized from '(str)').
+Function 'wsl_path_to_windows_path', parameter 'failure_behavior': added ', optional' (normalized from '(str)').
+File 'megadetector/utils/path_utils.py' was modified.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'build_azure_storage_uri', parameter 'account': missing type in docstring.
+Function 'build_azure_storage_uri', parameter 'account_url_template': missing type in docstring.
+Function 'build_azure_storage_uri', parameter 'blob': missing type in docstring.
+Function 'build_azure_storage_uri', parameter 'container': missing type in docstring.
+Function 'build_azure_storage_uri', parameter 'sas_token': missing type in docstring.
+Function 'build_blob_uri', parameter 'blob_name': missing type in docstring.
+Function 'build_blob_uri', parameter 'container_uri': missing type in docstring.
+Function 'check_blob_exists', parameter 'blob_name': missing type in docstring.
+Function 'check_blob_exists', parameter 'sas_uri': missing type in docstring.
+Function 'download_blob_to_stream', parameter 'sas_uri': missing type in docstring.
+Function 'generate_writable_container_sas', parameter 'access_duration_hrs': missing type in docstring.
+Function 'generate_writable_container_sas', parameter 'account_key': missing type in docstring.
+Function 'generate_writable_container_sas', parameter 'account_name': missing type in docstring.
+Function 'generate_writable_container_sas', parameter 'account_url': missing type in docstring.
+Function 'generate_writable_container_sas', parameter 'container_name': missing type in docstring.
+Function 'get_account_from_uri', parameter 'sas_uri': missing from docstring (Args section not found or empty).
+Function 'get_all_query_parts', parameter 'sas_uri': missing from docstring (Args section not found or empty).
+Function 'get_blob_from_uri', parameter 'sas_uri': missing type in docstring.
+Function 'get_blob_from_uri', parameter 'unquote': missing type in docstring.
+Function 'get_client_from_uri', parameter 'container_uri': missing from docstring (Args section not found or empty).
+Function 'get_container_from_uri', parameter 'sas_uri': missing type in docstring.
+Function 'get_container_from_uri', parameter 'unquote': missing type in docstring.
+Function 'get_endpoint_suffix', parameter 'sas_uri': missing type in docstring.
+Function 'get_permissions_from_uri', parameter 'sas_uri': missing type in docstring.
+Function 'get_resource_type_from_uri', parameter 'sas_uri': missing type in docstring.
+Function 'get_sas_token_from_uri', parameter 'sas_uri': missing type in docstring.
+Function 'is_blob_uri', parameter 'sas_uri': missing from docstring (Args section not found or empty).
+Function 'is_container_uri', parameter 'sas_uri': missing from docstring (Args section not found or empty).
+Function 'list_blobs_in_container', parameter 'blob_prefix': missing type in docstring.
+Function 'list_blobs_in_container', parameter 'blob_suffix': missing type in docstring.
+Function 'list_blobs_in_container', parameter 'container_uri': missing type in docstring.
+Function 'list_blobs_in_container', parameter 'limit': missing type in docstring.
+Function 'list_blobs_in_container', parameter 'rsearch': missing type in docstring.
+Function 'split_container_uri', parameter 'container_uri': missing type in docstring.
+Function 'upload_blob', parameter 'blob_name': missing type in docstring.
+Function 'upload_blob', parameter 'container_uri': missing type in docstring.
+Function 'upload_blob', parameter 'data': missing type in docstring.
+Function 'upload_blob', parameter 'overwrite': missing type in docstring.
+
+Function 'build_model', parameter 'finetune': missing from docstring (Args section not found or empty).
+Function 'build_model', parameter 'img_size': missing from docstring (Args section not found or empty).
+Function 'build_model', parameter 'model_name': missing from docstring (Args section not found or empty).
+Function 'build_model', parameter 'num_classes': missing from docstring (Args section not found or empty).
+Function 'build_model', parameter 'pretrained': missing from docstring (Args section not found or empty).
+Function 'create_dataloaders', parameter 'augment_train': missing type in docstring.
+Function 'create_dataloaders', parameter 'batch_size': missing from docstring Args section.
+Function 'create_dataloaders', parameter 'cache_splits': missing type in docstring.
+Function 'create_dataloaders', parameter 'cropped_images_dir': missing from docstring Args section.
+Function 'create_dataloaders', parameter 'dataset_csv_path': missing type in docstring.
+Function 'create_dataloaders', parameter 'img_size': missing from docstring Args section.
+Function 'create_dataloaders', parameter 'label_index_json_path': missing from docstring Args section.
+Function 'create_dataloaders', parameter 'label_weighted': missing from docstring Args section.
+Function 'create_dataloaders', parameter 'multilabel': missing from docstring Args section.
+Function 'create_dataloaders', parameter 'splits_json_path': missing type in docstring.
+Function 'create_dataloaders', parameter 'weight_by_detection_conf': missing from docstring Args section.
+Function 'create_dataset', parameter 'cache': missing type in docstring.
+Function 'create_dataset', parameter 'img_base_dir': missing type in docstring.
+Function 'create_dataset', parameter 'img_files': missing type in docstring.
+Function 'create_dataset', parameter 'labels': missing type in docstring.
+Function 'create_dataset', parameter 'sample_weights': missing type in docstring.
+Function 'create_dataset', parameter 'target_transform': missing type in docstring.
+Function 'create_dataset', parameter 'transform': missing type in docstring.
+Function 'log_images_with_confidence', parameter 'epoch': missing type in docstring.
+Function 'log_images_with_confidence', parameter 'heap_dict': missing type in docstring.
+Function 'log_images_with_confidence', parameter 'label_names': missing type in docstring.
+Function 'log_images_with_confidence', parameter 'tag': missing type in docstring.
+Function 'log_run', parameter 'cm': missing from docstring Args section.
+Function 'log_run', parameter 'epoch': missing from docstring Args section.
+Function 'log_run', parameter 'heaps': missing from docstring Args section.
+Function 'log_run', parameter 'label_names': missing from docstring Args section.
+Function 'log_run', parameter 'metrics': missing type in docstring.
+Function 'log_run', parameter 'split': missing from docstring Args section.
+Function 'log_run', parameter 'writer': missing from docstring Args section.
+Function 'main', parameter 'batch_size': missing from docstring (no docstring found).
+Function 'main', parameter 'cache_splits': missing from docstring (no docstring found).
+Function 'main', parameter 'cropped_images_dir': missing from docstring (no docstring found).
+Function 'main', parameter 'dataset_dir': missing from docstring (no docstring found).
+Function 'main', parameter 'epochs': missing from docstring (no docstring found).
+Function 'main', parameter 'finetune': missing from docstring (no docstring found).
+Function 'main', parameter 'label_weighted': missing from docstring (no docstring found).
+Function 'main', parameter 'logdir': missing from docstring (no docstring found).
+Function 'main', parameter 'lr': missing from docstring (no docstring found).
+Function 'main', parameter 'model_name': missing from docstring (no docstring found).
+Function 'main', parameter 'multilabel': missing from docstring (no docstring found).
+Function 'main', parameter 'pretrained': missing from docstring (no docstring found).
+Function 'main', parameter 'seed': missing from docstring (no docstring found).
+Function 'main', parameter 'weight_by_detection_conf': missing from docstring (no docstring found).
+Function 'main', parameter 'weight_decay': missing from docstring (no docstring found).
+Function 'run_epoch', parameter 'finetune': missing type in docstring.
+Function 'run_epoch', parameter 'loader': missing type in docstring.
+Function 'run_epoch', parameter 'loss_fn': missing type in docstring.
+Function 'run_epoch', parameter 'model': missing type in docstring.
+Function 'run_epoch', parameter 'optimizer': missing type in docstring.
+Function 'run_epoch', parameter 'return_extreme_images': missing from docstring Args section.
+Function 'run_epoch', parameter 'top': missing type in docstring.
+Function 'run_epoch', parameter 'weight_decay': missing type in docstring.
+Function 'run_epoch', parameter 'weighted': missing type in docstring.
+Function 'track_extreme_examples', parameter 'fn_heaps': missing from docstring Args section.
+Function 'track_extreme_examples', parameter 'fp_heaps': missing from docstring Args section.
+Function 'track_extreme_examples', parameter 'img_files': missing type in docstring.
+Function 'track_extreme_examples', parameter 'inputs': missing type in docstring.
+Function 'track_extreme_examples', parameter 'labels': missing type in docstring.
+Function 'track_extreme_examples', parameter 'logits': missing type in docstring.
+Function 'track_extreme_examples', parameter 'tp_heaps': missing from docstring Args section.
+
+No docstring issues or modifications needed/made.
+
+Function 'build_model', parameter 'finetune': missing type in docstring.
+Function 'build_model', parameter 'model_name': missing type in docstring.
+Function 'build_model', parameter 'num_classes': missing type in docstring.
+Function 'build_model', parameter 'pretrained': missing type in docstring.
+Function 'correct', parameter 'labels': missing type in docstring.
+Function 'correct', parameter 'outputs': missing type in docstring.
+Function 'correct', parameter 'top': missing type in docstring.
+Function 'correct', parameter 'weights': missing type in docstring.
+Function 'create_dataloaders', parameter 'augment_train': missing type in docstring.
+Function 'create_dataloaders', parameter 'batch_size': missing from docstring Args section.
+Function 'create_dataloaders', parameter 'cropped_images_dir': missing from docstring Args section.
+Function 'create_dataloaders', parameter 'dataset_csv_path': missing type in docstring.
+Function 'create_dataloaders', parameter 'img_size': missing from docstring Args section.
+Function 'create_dataloaders', parameter 'label_index_json_path': missing from docstring Args section.
+Function 'create_dataloaders', parameter 'label_weighted': missing from docstring Args section.
+Function 'create_dataloaders', parameter 'multilabel': missing from docstring Args section.
+Function 'create_dataloaders', parameter 'num_workers': missing from docstring Args section.
+Function 'create_dataloaders', parameter 'splits_json_path': missing type in docstring.
+Function 'create_dataloaders', parameter 'weight_by_detection_conf': missing from docstring Args section.
+Function 'log_images_with_confidence', parameter 'epoch': missing type in docstring.
+Function 'log_images_with_confidence', parameter 'heap_dict': missing type in docstring.
+Function 'log_images_with_confidence', parameter 'label_names': missing type in docstring.
+Function 'log_images_with_confidence', parameter 'tag': missing type in docstring.
+Function 'log_images_with_confidence', parameter 'writer': missing type in docstring.
+Function 'log_run', parameter 'cm': missing from docstring Args section.
+Function 'log_run', parameter 'epoch': missing from docstring Args section.
+Function 'log_run', parameter 'heaps': missing from docstring Args section.
+Function 'log_run', parameter 'label_names': missing from docstring Args section.
+Function 'log_run', parameter 'metrics': missing type in docstring.
+Function 'log_run', parameter 'split': missing from docstring Args section.
+Function 'log_run', parameter 'writer': missing from docstring Args section.
+Function 'main', parameter 'batch_size': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'cropped_images_dir': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'dataset_dir': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'epochs': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'finetune': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'label_weighted': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'log_extreme_examples': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'logdir': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'lr': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'model_name': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'multilabel': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'num_workers': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'pretrained': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'seed': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'weight_by_detection_conf': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'weight_decay': missing from docstring (Args section not found or empty).
+Function 'prep_device', parameter 'device_id': missing type in docstring.
+Function 'prep_device', parameter 'model': missing type in docstring.
+Function 'run_epoch', parameter 'device': missing type in docstring.
+Function 'run_epoch', parameter 'finetune': missing type in docstring.
+Function 'run_epoch', parameter 'k_extreme': missing type in docstring.
+Function 'run_epoch', parameter 'loader': missing type in docstring.
+Function 'run_epoch', parameter 'loss_fn': missing type in docstring.
+Function 'run_epoch', parameter 'model': missing type in docstring.
+Function 'run_epoch', parameter 'optimizer': missing type in docstring.
+Function 'run_epoch', parameter 'top': missing type in docstring.
+Function 'run_epoch', parameter 'weighted': missing type in docstring.
+Function 'set_finetune', parameter 'finetune': missing from docstring (Args section not found or empty).
+Function 'set_finetune', parameter 'model': missing from docstring (Args section not found or empty).
+Function 'set_finetune', parameter 'model_name': missing from docstring (Args section not found or empty).
+Function 'track_extreme_examples', parameter 'fn_heaps': missing from docstring Args section.
+Function 'track_extreme_examples', parameter 'fp_heaps': missing from docstring Args section.
+Function 'track_extreme_examples', parameter 'img_files': missing type in docstring.
+Function 'track_extreme_examples', parameter 'inputs': missing type in docstring.
+Function 'track_extreme_examples', parameter 'k': missing type in docstring.
+Function 'track_extreme_examples', parameter 'labels': missing type in docstring.
+Function 'track_extreme_examples', parameter 'logits': missing type in docstring.
+Function 'track_extreme_examples', parameter 'tp_heaps': missing from docstring Args section.
+Function 'update', parameter 'n': missing from docstring (no docstring found).
+Function 'update', parameter 'val': missing from docstring (no docstring found).
+
+Function 'cache_detections', parameter 'dataset': missing type in docstring.
+Function 'cache_detections', parameter 'detections': missing type in docstring.
+Function 'cache_detections', parameter 'detector_output_cache_dir': missing type in docstring.
+Function 'cache_json', parameter 'dataset': missing type in docstring.
+Function 'cache_json', parameter 'detector_output_cache_base_dir': missing type in docstring.
+Function 'cache_json', parameter 'detector_version': missing type in docstring.
+Function 'cache_json', parameter 'is_detections': missing type in docstring.
+Function 'cache_json', parameter 'json_path': missing type in docstring.
+
+Function 'backward', parameter 'ctx': missing from docstring (no docstring found).
+Function 'backward', parameter 'grad_output': missing from docstring (no docstring found).
+Function 'drop_connect', parameter 'input': in docstring but not in signature.
+Function 'drop_connect', parameter 'inputs': missing from docstring Args section.
+Function 'efficientnet', parameter 'depth_coefficient': missing from docstring Args section.
+Function 'efficientnet', parameter 'drop_connect_rate': missing from docstring Args section.
+Function 'efficientnet', parameter 'dropout_rate': missing from docstring Args section.
+Function 'efficientnet', parameter 'image_size': missing from docstring Args section.
+Function 'efficientnet', parameter 'include_top': missing from docstring Args section.
+Function 'efficientnet', parameter 'num_classes': missing from docstring Args section.
+Function 'efficientnet', parameter 'width_coefficient': missing from docstring Args section.
+Function 'forward', parameter 'ctx': missing from docstring (no docstring found).
+Function 'forward', parameter 'i': missing from docstring (no docstring found).
+Function 'forward', parameter 'x': missing from docstring (no docstring found).
+Function 'load_pretrained_weights', parameter 'None': missing type in docstring.
+Function 'load_pretrained_weights', parameter 'str': missing type in docstring.
+Function 'get_same_padding_conv2d', parameter 'image_size': added ', optional' (normalized from '(int or tuple)').
+Function 'get_same_padding_maxPool2d', parameter 'image_size': added ', optional' (normalized from '(int or tuple)').
+Function 'load_pretrained_weights', parameter 'advprop': added ', optional' (normalized from '(bool)').
+Function 'load_pretrained_weights', parameter 'load_fc': added ', optional' (normalized from '(bool)').
+Function 'load_pretrained_weights', parameter 'weights_path': added ', optional' (normalized from '(None or str)').
+File 'megadetector/classification/efficientnet/utils.py' was modified.
+
+Function 'from_pretrained', parameter 'None': missing type in docstring.
+Function 'from_pretrained', parameter 'str': missing type in docstring.
+Function 'forward', parameter 'drop_connect_rate': added ', optional' (normalized from '(bool)').
+Function 'from_name', parameter 'in_channels': added ', optional' (normalized from '(int)').
+Function 'from_pretrained', parameter 'advprop': added ', optional' (normalized from '(bool)').
+Function 'from_pretrained', parameter 'in_channels': added ', optional' (normalized from '(int)').
+Function 'from_pretrained', parameter 'num_classes': added ', optional' (normalized from '(int)').
+Function 'from_pretrained', parameter 'weights_path': added ', optional' (normalized from '(None or str)').
+Function 'set_swish', parameter 'memory_efficient': added ', optional' (normalized from '(bool)').
+File 'megadetector/classification/efficientnet/model.py' was modified.
+
+No docstring issues or modifications needed/made.
+
+Function 'get_candidates_df', parameter 'label_names': missing from docstring (Args section not found or empty).
+Function 'get_candidates_df', parameter 'margin': missing from docstring (Args section not found or empty).
+Function 'get_candidates_df', parameter 'outputs_csv_path': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'include_dataset_in_filename': missing from docstring (no docstring found).
+Function 'main', parameter 'logdir': missing from docstring (no docstring found).
+Function 'main', parameter 'margin': missing from docstring (no docstring found).
+Function 'main', parameter 'splits': missing from docstring (no docstring found).
+
+Function 'create_classification_csv', parameter 'append_df': missing type in docstring.
+Function 'create_classification_csv', parameter 'confidence_threshold': missing type in docstring.
+Function 'create_classification_csv', parameter 'cropped_images_dir': missing type in docstring.
+Function 'create_classification_csv', parameter 'detector_output_cache_base_dir': missing type in docstring.
+Function 'create_classification_csv', parameter 'detector_version': missing type in docstring.
+Function 'create_classification_csv', parameter 'exclude_locs': missing type in docstring.
+Function 'create_classification_csv', parameter 'min_locs': missing type in docstring.
+Function 'create_classification_csv', parameter 'queried_images_json_path': missing type in docstring.
+Function 'create_splits_random', parameter 'df': missing type in docstring.
+Function 'create_splits_random', parameter 'test_frac': missing type in docstring.
+Function 'create_splits_random', parameter 'test_split': missing type in docstring.
+Function 'create_splits_random', parameter 'val_frac': missing type in docstring.
+Function 'create_splits_smallest_label_first', parameter 'df': missing type in docstring.
+Function 'create_splits_smallest_label_first', parameter 'label_spec_json_path': missing type in docstring.
+Function 'create_splits_smallest_label_first', parameter 'test_frac': missing type in docstring.
+Function 'create_splits_smallest_label_first', parameter 'test_split': missing type in docstring.
+Function 'create_splits_smallest_label_first', parameter 'val_frac': missing type in docstring.
+Function 'main', parameter 'confidence_threshold': missing from docstring (no docstring found).
+Function 'main', parameter 'cropped_images_dir': missing from docstring (no docstring found).
+Function 'main', parameter 'detector_output_cache_base_dir': missing from docstring (no docstring found).
+Function 'main', parameter 'detector_version': missing from docstring (no docstring found).
+Function 'main', parameter 'label_spec_json_path': missing from docstring (no docstring found).
+Function 'main', parameter 'match_test': missing from docstring (no docstring found).
+Function 'main', parameter 'min_locs': missing from docstring (no docstring found).
+Function 'main', parameter 'mode': missing from docstring (no docstring found).
+Function 'main', parameter 'output_dir': missing from docstring (no docstring found).
+Function 'main', parameter 'queried_images_json_path': missing from docstring (no docstring found).
+Function 'main', parameter 'splits_method': missing from docstring (no docstring found).
+Function 'main', parameter 'test_frac': missing from docstring (no docstring found).
+Function 'main', parameter 'val_frac': missing from docstring (no docstring found).
+Function 'sort_locs_by_size', parameter 'loc_to_size': missing type in docstring.
+Function 'sort_locs_by_size', parameter 'prioritize': missing type in docstring.
+
+Function 'download_and_crop', parameter 'check_crops_valid': missing type in docstring.
+Function 'download_and_crop', parameter 'confidence_threshold': missing type in docstring.
+Function 'download_and_crop', parameter 'container_url': missing type in docstring.
+Function 'download_and_crop', parameter 'cropped_images_dir': missing type in docstring.
+Function 'download_and_crop', parameter 'detections': missing type in docstring.
+Function 'download_and_crop', parameter 'detector_version': missing type in docstring.
+Function 'download_and_crop', parameter 'images_dir': missing type in docstring.
+Function 'download_and_crop', parameter 'save_full_images': missing type in docstring.
+Function 'download_and_crop', parameter 'square_crops': missing type in docstring.
+Function 'download_and_crop', parameter 'threads': missing type in docstring.
+Function 'load_and_crop', parameter 'bbox_dicts': missing type in docstring.
+Function 'load_and_crop', parameter 'check_crops_valid': missing type in docstring.
+Function 'load_and_crop', parameter 'confidence_threshold': missing type in docstring.
+Function 'load_and_crop', parameter 'container_client': missing type in docstring.
+Function 'load_and_crop', parameter 'crop_path_template': missing type in docstring.
+Function 'load_and_crop', parameter 'images_dir': missing type in docstring.
+Function 'load_and_crop', parameter 'img_path': missing type in docstring.
+Function 'load_and_crop', parameter 'save_full_image': missing from docstring Args section.
+Function 'load_and_crop', parameter 'save_full_images': missing type in docstring.
+Function 'load_and_crop', parameter 'square_crops': missing type in docstring.
+Function 'load_local_image', parameter 'img_path': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'check_crops_valid': missing type in docstring.
+Function 'main', parameter 'confidence_threshold': missing type in docstring.
+Function 'main', parameter 'container_url': missing type in docstring.
+Function 'main', parameter 'cropped_images_dir': missing type in docstring.
+Function 'main', parameter 'detections_json_path': missing type in docstring.
+Function 'main', parameter 'detector_version': missing type in docstring.
+Function 'main', parameter 'images_dir': missing type in docstring.
+Function 'main', parameter 'logdir': missing type in docstring.
+Function 'main', parameter 'save_full_images': missing type in docstring.
+Function 'main', parameter 'square_crops': missing type in docstring.
+Function 'main', parameter 'threads': missing type in docstring.
+Function 'save_crop', parameter 'bbox_norm': missing type in docstring.
+Function 'save_crop', parameter 'img': missing type in docstring.
+Function 'save_crop', parameter 'save': missing type in docstring.
+Function 'save_crop', parameter 'square_crop': missing type in docstring.
+
+Function 'combine_classification_with_detection', parameter 'None': missing type in docstring.
+Function 'combine_classification_with_detection', parameter 'classifier_name': missing type in docstring.
+Function 'combine_classification_with_detection', parameter 'classifier_timestamp': missing type in docstring.
+Function 'combine_classification_with_detection', parameter 'detection_js': missing type in docstring.
+Function 'combine_classification_with_detection', parameter 'df': missing type in docstring.
+Function 'combine_classification_with_detection', parameter 'idx_to_label': missing type in docstring.
+Function 'combine_classification_with_detection', parameter 'label_names': missing type in docstring.
+Function 'combine_classification_with_detection', parameter 'label_pos': missing type in docstring.
+Function 'combine_classification_with_detection', parameter 'relative_conf': missing type in docstring.
+Function 'combine_classification_with_detection', parameter 'threshold': missing type in docstring.
+Function 'combine_classification_with_detection', parameter 'typical_confidence_threshold': missing type in docstring.
+Function 'main', parameter 'classification_csv_path': missing from docstring (no docstring found).
+Function 'main', parameter 'classifier_name': missing from docstring (no docstring found).
+Function 'main', parameter 'datasets': missing from docstring (no docstring found).
+Function 'main', parameter 'detection_json_path': missing from docstring (no docstring found).
+Function 'main', parameter 'detector_output_cache_base_dir': missing from docstring (no docstring found).
+Function 'main', parameter 'detector_version': missing from docstring (no docstring found).
+Function 'main', parameter 'label_names_json_path': missing from docstring (no docstring found).
+Function 'main', parameter 'label_pos': missing from docstring (no docstring found).
+Function 'main', parameter 'output_json_path': missing from docstring (no docstring found).
+Function 'main', parameter 'queried_images_json_path': missing from docstring (no docstring found).
+Function 'main', parameter 'relative_conf': missing from docstring (no docstring found).
+Function 'main', parameter 'samples_per_label': missing from docstring (no docstring found).
+Function 'main', parameter 'seed': missing from docstring (no docstring found).
+Function 'main', parameter 'threshold': missing from docstring (no docstring found).
+Function 'main', parameter 'typical_confidence_threshold': missing from docstring (no docstring found).
+Function 'process_queried_images', parameter 'datasets': missing type in docstring.
+Function 'process_queried_images', parameter 'detector_output_cache_base_dir': missing type in docstring.
+Function 'process_queried_images', parameter 'detector_version': missing type in docstring.
+Function 'process_queried_images', parameter 'df': missing type in docstring.
+Function 'process_queried_images', parameter 'queried_images_json_path': missing type in docstring.
+Function 'process_queried_images', parameter 'samples_per_label': missing type in docstring.
+Function 'process_queried_images', parameter 'seed': missing type in docstring.
+Function 'row_to_classification_list', parameter 'contains_preds': missing from docstring (Args section not found or empty).
+Function 'row_to_classification_list', parameter 'label_names': missing from docstring (Args section not found or empty).
+Function 'row_to_classification_list', parameter 'label_pos': missing from docstring (Args section not found or empty).
+Function 'row_to_classification_list', parameter 'relative_conf': missing from docstring (Args section not found or empty).
+Function 'row_to_classification_list', parameter 'row': missing from docstring (Args section not found or empty).
+Function 'row_to_classification_list', parameter 'threshold': missing from docstring (Args section not found or empty).
+
+Function 'update_mislabeled_images', parameter 'container_path': missing from docstring (no docstring found).
+Function 'update_mislabeled_images', parameter 'input_csv_path': missing from docstring (no docstring found).
+
+Function 'download_and_crop', parameter 'check_crops_valid': missing type in docstring.
+Function 'download_and_crop', parameter 'confidence_threshold': missing type in docstring.
+Function 'download_and_crop', parameter 'cropped_images_dir': missing type in docstring.
+Function 'download_and_crop', parameter 'detection_cache': missing type in docstring.
+Function 'download_and_crop', parameter 'detection_categories': missing from docstring Args section.
+Function 'download_and_crop', parameter 'detector_version': missing type in docstring.
+Function 'download_and_crop', parameter 'images_dir': missing type in docstring.
+Function 'download_and_crop', parameter 'images_missing_detections': missing type in docstring.
+Function 'download_and_crop', parameter 'queried_images_json': missing type in docstring.
+Function 'download_and_crop', parameter 'save_full_images': missing type in docstring.
+Function 'download_and_crop', parameter 'square_crops': missing type in docstring.
+Function 'download_and_crop', parameter 'threads': missing type in docstring.
+Function 'filter_detected_images', parameter 'detector_output_cache_dir': missing type in docstring.
+Function 'filter_detected_images', parameter 'potential_images_to_detect': missing type in docstring.
+Function 'load_detection_cache', parameter 'datasets': missing type in docstring.
+Function 'load_detection_cache', parameter 'detector_output_cache_dir': missing type in docstring.
+Function 'main', parameter 'check_crops_valid': missing type in docstring.
+Function 'main', parameter 'confidence_threshold': missing type in docstring.
+Function 'main', parameter 'cropped_images_dir': missing type in docstring.
+Function 'main', parameter 'detector_output_cache_base_dir': missing type in docstring.
+Function 'main', parameter 'detector_version': missing type in docstring.
+Function 'main', parameter 'images_dir': missing type in docstring.
+Function 'main', parameter 'output_dir': missing type in docstring.
+Function 'main', parameter 'queried_images_json_path': missing type in docstring.
+Function 'main', parameter 'resume_file_path': missing type in docstring.
+Function 'main', parameter 'run_detector': missing type in docstring.
+Function 'main', parameter 'save_full_images': missing type in docstring.
+Function 'main', parameter 'square_crops': missing type in docstring.
+Function 'main', parameter 'threads': missing type in docstring.
+Function 'resume_tasks', parameter 'batch_detection_api_url': missing type in docstring.
+Function 'resume_tasks', parameter 'resume_file_path': missing type in docstring.
+Function 'split_images_list_by_dataset', parameter 'images_to_detect': missing type in docstring.
+Function 'submit_batch_detection_api', parameter 'account': missing type in docstring.
+Function 'submit_batch_detection_api', parameter 'batch_detection_api_url': missing type in docstring.
+Function 'submit_batch_detection_api', parameter 'caller': missing type in docstring.
+Function 'submit_batch_detection_api', parameter 'container': missing type in docstring.
+Function 'submit_batch_detection_api', parameter 'detector_version': missing type in docstring.
+Function 'submit_batch_detection_api', parameter 'images_to_detect': missing type in docstring.
+Function 'submit_batch_detection_api', parameter 'resume_file_path': missing type in docstring.
+Function 'submit_batch_detection_api', parameter 'sas_token': missing type in docstring.
+Function 'submit_batch_detection_api', parameter 'task_lists_dir': missing type in docstring.
+Function 'submit_batch_detection_api_by_dataset', parameter 'account': missing from docstring Args section.
+Function 'submit_batch_detection_api_by_dataset', parameter 'batch_detection_api_url': missing from docstring Args section.
+Function 'submit_batch_detection_api_by_dataset', parameter 'caller': missing from docstring Args section.
+Function 'submit_batch_detection_api_by_dataset', parameter 'container': missing from docstring Args section.
+Function 'submit_batch_detection_api_by_dataset', parameter 'dataset': missing type in docstring.
+Function 'submit_batch_detection_api_by_dataset', parameter 'detector_version': missing from docstring Args section.
+Function 'submit_batch_detection_api_by_dataset', parameter 'image_blob_names': missing type in docstring.
+Function 'submit_batch_detection_api_by_dataset', parameter 'images_container_url': missing type in docstring.
+Function 'submit_batch_detection_api_by_dataset', parameter 'sas_token': missing from docstring Args section.
+Function 'submit_batch_detection_api_by_dataset', parameter 'task_lists_dir': missing from docstring Args section.
+Function 'wait_for_tasks', parameter 'detector_output_cache_dir': missing type in docstring.
+Function 'wait_for_tasks', parameter 'output_dir': missing type in docstring.
+Function 'wait_for_tasks', parameter 'poll_interval': missing type in docstring.
+Function 'wait_for_tasks', parameter 'tasks_by_dataset': missing type in docstring.
+
+Function 'create_loader', parameter 'batch_size': missing type in docstring.
+Function 'create_loader', parameter 'cropped_images_dir': missing type in docstring.
+Function 'create_loader', parameter 'detections_json_path': missing type in docstring.
+Function 'create_loader', parameter 'img_size': missing type in docstring.
+Function 'create_loader', parameter 'num_workers': missing type in docstring.
+Function 'main', parameter 'batch_size': missing from docstring (no docstring found).
+Function 'main', parameter 'classifier_categories_json_path': missing from docstring (no docstring found).
+Function 'main', parameter 'cropped_images_dir': missing from docstring (no docstring found).
+Function 'main', parameter 'detections_json_path': missing from docstring (no docstring found).
+Function 'main', parameter 'device_id': missing from docstring (no docstring found).
+Function 'main', parameter 'img_size': missing from docstring (no docstring found).
+Function 'main', parameter 'model_path': missing from docstring (no docstring found).
+Function 'main', parameter 'num_workers': missing from docstring (no docstring found).
+Function 'main', parameter 'output_csv_path': missing from docstring (no docstring found).
+Function 'test_epoch', parameter 'device': missing type in docstring.
+Function 'test_epoch', parameter 'label_names': missing type in docstring.
+Function 'test_epoch', parameter 'loader': missing type in docstring.
+Function 'test_epoch', parameter 'model': missing type in docstring.
+Function 'test_epoch', parameter 'output_csv_path': missing type in docstring.
+
+No docstring issues or modifications needed/made.
+
+No docstring issues or modifications needed/made.
+
+Function 'main', parameter 'classifier_results_csv_path': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'output_csv_path': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'output_label_index_json_path': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'target_mapping_json_path': missing from docstring (Args section not found or empty).
+
+Function 'analyze_images', parameter 'account': missing type in docstring.
+Function 'analyze_images', parameter 'container': missing type in docstring.
+Function 'analyze_images', parameter 'json_keys': missing type in docstring.
+Function 'analyze_images', parameter 'sas_token': missing type in docstring.
+Function 'analyze_images', parameter 'url_or_path': missing type in docstring.
+Function 'check_image_condition', parameter 'account': missing type in docstring.
+Function 'check_image_condition', parameter 'container': missing type in docstring.
+Function 'check_image_condition', parameter 'datasets_table': missing type in docstring.
+Function 'check_image_condition', parameter 'img_path': missing type in docstring.
+Function 'check_image_condition', parameter 'sas_token': missing type in docstring.
+Function 'check_image_condition', parameter 'truncated_images_lock': missing from docstring Args section.
+
+Function 'add_to_heap', parameter 'h': missing type in docstring.
+Function 'add_to_heap', parameter 'item': missing type in docstring.
+Function 'add_to_heap', parameter 'k': missing type in docstring.
+Function 'fig_to_img', parameter 'fig': missing from docstring (Args section not found or empty).
+Function 'imgs_with_confidences', parameter 'img': missing type in docstring.
+Function 'imgs_with_confidences', parameter 'img_file': missing type in docstring.
+Function 'imgs_with_confidences', parameter 'imgs_list': missing type in docstring.
+Function 'imgs_with_confidences', parameter 'label_id': missing type in docstring.
+Function 'imgs_with_confidences', parameter 'label_names': missing type in docstring.
+Function 'imgs_with_confidences', parameter 'topk_conf': missing type in docstring.
+Function 'imgs_with_confidences', parameter 'topk_preds': missing type in docstring.
+Function 'load_dataset_csv', parameter 'dataset_csv_path': missing type in docstring.
+Function 'load_dataset_csv', parameter 'label_index_json_path': missing type in docstring.
+Function 'load_dataset_csv', parameter 'label_weighted': missing type in docstring.
+Function 'load_dataset_csv', parameter 'multilabel': missing type in docstring.
+Function 'load_dataset_csv', parameter 'splits_json_path': missing type in docstring.
+Function 'load_dataset_csv', parameter 'weight_by_detection_conf': missing type in docstring.
+Function 'load_splits', parameter 'splits_json_path': missing type in docstring.
+Function 'plot_img_grid', parameter 'col_w': missing type in docstring.
+Function 'plot_img_grid', parameter 'imgs': missing type in docstring.
+Function 'plot_img_grid', parameter 'ncols': missing type in docstring.
+Function 'plot_img_grid', parameter 'row_h': missing type in docstring.
+Function 'plot_img_grid', parameter 'tags': missing type in docstring.
+Function 'plot_img_grid', parameter 'titles': missing type in docstring.
+Function 'prefix_all_keys', parameter 'd': missing from docstring (Args section not found or empty).
+Function 'prefix_all_keys', parameter 'prefix': missing from docstring (Args section not found or empty).
+Function 'recall_from_confusion_matrix', parameter 'confusion_matrix': missing type in docstring.
+Function 'recall_from_confusion_matrix', parameter 'label_names': missing type in docstring.
+
+Function 'calc_per_label_stats', parameter 'cm': missing type in docstring.
+Function 'calc_per_label_stats', parameter 'label_names': missing type in docstring.
+Function 'check_override', parameter 'key': missing from docstring (Args section not found or empty).
+Function 'check_override', parameter 'override': missing from docstring (Args section not found or empty).
+Function 'check_override', parameter 'params': missing from docstring (Args section not found or empty).
+Function 'main', parameter 'ckpt_path': missing from docstring (no docstring found).
+Function 'main', parameter 'kwargs': missing from docstring (no docstring found).
+Function 'main', parameter 'label_index_json_path': missing from docstring (no docstring found).
+Function 'main', parameter 'output_dir': missing from docstring (no docstring found).
+Function 'main', parameter 'params_json_path': missing from docstring (no docstring found).
+Function 'main', parameter 'splits': missing from docstring (no docstring found).
+Function 'main', parameter 'target_mapping_json_path': missing from docstring (no docstring found).
+Function 'test_epoch', parameter 'device': missing type in docstring.
+Function 'test_epoch', parameter 'label_names': missing type in docstring.
+Function 'test_epoch', parameter 'loader': missing type in docstring.
+Function 'test_epoch', parameter 'loss_fn': missing type in docstring.
+Function 'test_epoch', parameter 'model': missing type in docstring.
+Function 'test_epoch', parameter 'target_mapping': missing type in docstring.
+Function 'test_epoch', parameter 'top': missing type in docstring.
+Function 'test_epoch', parameter 'weighted': missing type in docstring.
+Function 'trace_model', parameter 'ckpt_path': missing type in docstring.
+Function 'trace_model', parameter 'img_size': missing type in docstring.
+Function 'trace_model', parameter 'model_name': missing type in docstring.
+Function 'trace_model', parameter 'num_classes': missing from docstring Args section.
+Function 'trace_model', parameter 'num_labels': missing type in docstring.
+
+Function 'filter_images', parameter 'datasets': missing type in docstring.
+Function 'filter_images', parameter 'label': missing type in docstring.
+Function 'filter_images', parameter 'output_js': missing type in docstring.
+Function 'get_image_sas_uris', parameter 'img_paths': missing type in docstring.
+Function 'get_output_json', parameter 'label_to_inclusions': missing type in docstring.
+Function 'get_output_json', parameter 'mislabeled_images_dir': missing type in docstring.
+Function 'main', parameter 'allow_multilabel': missing from docstring (no docstring found).
+Function 'main', parameter 'check_blob_exists': missing from docstring (no docstring found).
+Function 'main', parameter 'json_indent': missing from docstring (no docstring found).
+Function 'main', parameter 'label_spec_json_path': missing from docstring (no docstring found).
+Function 'main', parameter 'min_locs': missing from docstring (no docstring found).
+Function 'main', parameter 'mislabeled_images_dir': missing from docstring (no docstring found).
+Function 'main', parameter 'output_dir': missing from docstring (no docstring found).
+Function 'main', parameter 'seed': missing from docstring (no docstring found).
+Function 'main', parameter 'single_parent_taxonomy': missing from docstring (no docstring found).
+Function 'main', parameter 'taxonomy_csv_path': missing from docstring (no docstring found).
+Function 'parse_spec', parameter 'spec_dict': missing type in docstring.
+Function 'parse_spec', parameter 'taxonomy_dict': missing type in docstring.
+Function 'remove_images_insufficient_locs', parameter 'js': missing type in docstring.
+Function 'remove_images_insufficient_locs', parameter 'log': missing type in docstring.
+Function 'remove_images_insufficient_locs', parameter 'min_locs': missing type in docstring.
+Function 'remove_non_images', parameter 'js': missing type in docstring.
+Function 'remove_non_images', parameter 'log': missing type in docstring.
+Function 'remove_nonexistent_images', parameter 'check_local': missing type in docstring.
+Function 'remove_nonexistent_images', parameter 'js': missing type in docstring.
+Function 'remove_nonexistent_images', parameter 'log': missing type in docstring.
+Function 'remove_nonexistent_images', parameter 'num_threads': missing type in docstring.
+Function 'sample_with_priority', parameter 'input_js': missing from docstring (Args section not found or empty).
+Function 'sample_with_priority', parameter 'output_js': missing from docstring (Args section not found or empty).
+Function 'validate_json', parameter 'allow_multilabel': missing type in docstring.
+Function 'validate_json', parameter 'input_js': missing type in docstring.
+Function 'validate_json', parameter 'taxonomy_dict': missing type in docstring.
+
+No docstring issues or modifications needed/made.
+
+Function 'csv_to_jsondict', parameter 'csv_path': missing from docstring (Args section not found or empty).
+Function 'order_spec_dict', parameter 'spec_dict': missing from docstring (Args section not found or empty).
+Function 'parse_csv_row', parameter 'content': missing from docstring (Args section not found or empty).
+Function 'parse_csv_row', parameter 'obj': missing from docstring (Args section not found or empty).
+Function 'parse_csv_row', parameter 'rowtype': missing from docstring (Args section not found or empty).
+
+Function 'label_spec_to_nodes', parameter 'label_spec_js': missing type in docstring.
+Function 'label_spec_to_nodes', parameter 'label_to_node': missing type in docstring.
+Function 'label_spec_to_nodes', parameter 'taxon_to_node': missing type in docstring.
+Function 'main', parameter 'classifier_label_index_path': missing from docstring (no docstring found).
+Function 'main', parameter 'classifier_label_spec_json_path': missing from docstring (no docstring found).
+Function 'main', parameter 'desired_label_spec_json_path': missing from docstring (no docstring found).
+Function 'main', parameter 'output_json_path': missing from docstring (no docstring found).
+Function 'main', parameter 'taxonomy_csv_path': missing from docstring (no docstring found).
+Function 'map_target_to_classifier', parameter 'classifier_label_to_nodes': missing type in docstring.
+Function 'map_target_to_classifier', parameter 'target_label_to_nodes': missing type in docstring.
+Function 'parse_spec', parameter 'label_to_node': missing type in docstring.
+Function 'parse_spec', parameter 'spec_dict': missing type in docstring.
+Function 'parse_spec', parameter 'taxon_to_node': missing type in docstring.
+
+Batch processing complete. Log file 'docstring_modifications_final.log' created.

@@ -2086,13 +2086,13 @@ def generate_csv_rows_for_species(species_string,
 
     Args:
         species_string (str): five-token string in semicolon-delimited WI taxonomy format
-        allow_countries (optional, list or str): three-letter country codes, list of
+        allow_countries (list or str, optional): three-letter country codes, list of
             country codes, or comma-separated list of country codes to allow
-        block_countries (optional, list or str): three-letter country codes, list of
+        block_countries (list or str, optional): three-letter country codes, list of
             country codes, or comma-separated list of country codes to block
-        allow_states (optional, list or str): two-letter state codes, list of
+        allow_states (list or str, optional): two-letter state codes, list of
             state codes, or comma-separated list of state codes to allow
-        block_states (optional, list or str): two-letter state code, list of
+        block_states (list or str, optional): two-letter state code, list of
             state codes, or comma-separated list of state codes to block
 
     Returns:

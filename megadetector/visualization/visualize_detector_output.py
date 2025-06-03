@@ -161,7 +161,7 @@ def visualize_detector_output(detector_output_path,
     Args:
         detector_output_path (str): path to detector output .json file
         out_dir (str): path to directory for saving annotated images
-        images_dir (str): folder where the images live; filenames in
+        images_dir (str, optional): folder where the images live; filenames in
             [detector_output_path] should be relative to [image_dir].  Can be None if paths are
             absolute.
         confidence_threshold (float, optional): threshold above which detections will be rendered
@@ -169,7 +169,7 @@ def visualize_detector_output(detector_output_path,
         output_image_width (int, optional): width in pixels to resize images for display,
             preserving aspect ration; set to -1 to use original image width
         random_seed (int, optional): seed to use for choosing images when sample != -1
-        render_detections_only (bool): only render images with above-threshold detections.  Empty
+        render_detections_only (bool, optional): only render images with above-threshold detections.  Empty
             images are discarded after sampling, so if you want to see, e.g., 1000 non-empty images,
             you can set [render_detections_only], but you need to sample more than 1000 images.
         classification_confidence_threshold (float, optional): only show classifications
