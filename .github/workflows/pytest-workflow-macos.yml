@@ -1,4 +1,4 @@
-name: python tests
+name: python tests (mac)
 
 on:
   workflow_dispatch:  # Allows manual triggering from GitHub UI
@@ -8,7 +8,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [macos-latest]
         python-version: ["3.10", "3.11", "3.12"]
 
     steps:
