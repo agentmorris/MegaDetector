@@ -228,7 +228,8 @@ def detect_motion(prev_image_path,
         curr_image_path (str): path to the current image
         options (ChangeDetectionOptions, optional): detection settings
         motion_state (MotionHistoryState, optional): state for motion history
-        bg_subtractor: background subtractor model for MOG2/KNN methods
+        bg_subtractor (cv2 background subtractor object): background subtractor model for
+            MOG2/KNN methods
 
     Returns:
         tuple: (motion_result, updated_motion_state)
@@ -611,8 +612,8 @@ def create_change_previews(motion_results, output_folder, num_samples=10, random
     Create side-by-side previews of images with detected motion
 
     Args:
-        motion_results: DataFrame with motion detection results
-        output_folder: folder where preview images will be saved
+        motion_results (DataFrame): DataFrame with motion detection results
+        output_folder (str): folder where preview images will be saved
         num_samples (int, optional): number of random samples to create
         random_seed (int, optional): seed for random sampling (for reproducibility)
 

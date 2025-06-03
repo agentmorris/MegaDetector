@@ -201,15 +201,18 @@ def _do_parallelized_download(download_info,overwrite=False,verbose=False):
 # ...def _do_parallelized_download(...)
 
 
-def parallel_download_urls(url_to_target_file, verbose=False, overwrite=False,
-                           n_workers=20, pool_type='thread'):
+def parallel_download_urls(url_to_target_file,
+                           verbose=False,
+                           overwrite=False,
+                           n_workers=20,
+                           pool_type='thread'):
     """
     Downloads a list of URLs to local files.
 
     Catches exceptions and reports them in the returned "results" array.
 
     Args:
-        url_to_target_file: a dict mapping URLs to local filenames.
+        url_to_target_file (dict): a dict mapping URLs to local filenames.
         verbose (bool, optional): enable additional debug console output
         overwrite (bool, optional): whether to overwrite existing local files
         n_workers (int, optional): number of concurrent workers, set to <=1 to disable

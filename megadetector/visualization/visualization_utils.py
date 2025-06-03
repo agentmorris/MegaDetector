@@ -544,8 +544,8 @@ def render_detection_bounding_boxes(detections,
         textalign (int, optional): TEXTALIGN_LEFT, TEXTALIGN_CENTER, or TEXTALIGN_RIGHT
         vtextalign (int, optional): VTEXTALIGN_TOP or VTEXTALIGN_BOTTOM
         label_font_size (float, optional): font size for labels
-        custom_strings: optional set of strings to append to detection labels, should have the
-            same length as [detections].  Appended before any classification labels.
+        custom_strings (list of str, optional): optional set of strings to append to detection labels, should
+            have the same length as [detections].  Appended before any classification labels.
         box_sort_order (str, optional): sorting scheme for detection boxes, can be None, "confidence", or
             "reverse_confidence".
         verbose (bool, optional): enable additional debug output

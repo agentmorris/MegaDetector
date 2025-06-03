@@ -85,6 +85,11 @@ def merge_detections(source_files,target_file,output_file,options=None):
 
     The results are written to [output_file].
 
+    Args:
+        source_files (list of str): list of files to merge into the results in [target_file]
+        target_file (str): filename that is treated as the primary source of results
+        output_file (str): file to which we should write merged results
+        options (MergeDetectionsOptions, optional): see MergeDetectionsOptions
     """
 
     if isinstance(source_files,str):

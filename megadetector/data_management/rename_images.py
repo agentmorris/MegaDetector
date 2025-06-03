@@ -32,10 +32,10 @@ def rename_images(input_folder,
     detections into labelme format.
 
     Args:
-        input_folder: the folder to search for images, always recursive
-        output_folder: the folder to which we will copy images; cannot be the
+        input_folder (str): the folder to search for images, always recursive
+        output_folder (str): the folder to which we will copy images; cannot be the
             same as [input_folder]
-        dry_run: only map images, don't actually copy
+        dry_run (bool, optional): only map images, don't actually copy
         verbose (bool, optional): enable additional debug output
         read_exif_options (ReadExifOptions, optional): parameters controlling the reading of
             EXIF information

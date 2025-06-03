@@ -390,8 +390,8 @@ def point_dist(p1,p2):
     Computes the distance between two points, represented as length-two tuples.
 
     Args:
-        p1: point, formatted as (x,y)
-        p2: point, formatted as (x,y)
+        p1 (list or tuple): point, formatted as (x,y)
+        p2 (list or tuple): point, formatted as (x,y)
 
     Returns:
         float: the Euclidean distance between p1 and p2
@@ -408,8 +408,8 @@ def rect_distance(r1, r2, format='x0y0x1y1'):
     Can also specify "format" as x0y0wh for MD-style bbox formatting (x0,y0,w,h).
 
     Args:
-        r1: rectangle, formatted as (x0,y0,x1,y1) or (x0,y0,xy,y1)
-        r2: rectangle, formatted as (x0,y0,x1,y1) or (x0,y0,xy,y1)
+        r1 (list or tuple): rectangle, formatted as (x0,y0,x1,y1) or (x0,y0,xy,y1)
+        r2 (list or tuple): rectangle, formatted as (x0,y0,x1,y1) or (x0,y0,xy,y1)
         format (str, optional): whether the boxes are formatted as 'x0y0x1y1' (default) or 'x0y0wh'
 
     Returns:
@@ -574,7 +574,7 @@ def round_floats_in_nested_dict(obj, decimal_places=5, allow_iterator_conversion
     sets, and other iterables. Modifies mutable objects in place.
 
     Args:
-        obj: The object to process (can be a dict, list, set, tuple, or primitive value)
+        obj (obj): The object to process (can be a dict, list, set, tuple, or primitive value)
         decimal_places (int, optional): Number of decimal places to round to
         allow_iterator_conversion (bool, optional): for iterator types, should we convert
             to lists?  Otherwise we error.
@@ -715,7 +715,7 @@ def is_empty(v):
     data from .csv files.  "empty" includes None, '', and NaN.
 
     Args:
-        v: the object to evaluate for emptiness
+        v (obj): the object to evaluate for emptiness
 
     Returns:
         bool: True if [v] is None, '', or NaN, otherwise False
@@ -818,7 +818,7 @@ def isnan(v):
     Returns True if v is a nan-valued float, otherwise returns False.
 
     Args:
-        v: the object to evaluate for nan-ness
+        v (obj): the object to evaluate for nan-ness
 
     Returns:
         bool: True if v is a nan-valued float, otherwise False
@@ -1015,6 +1015,10 @@ def make_temp_folder(top_level_folder='megadetector',subfolder=None,append_guid=
 def make_test_folder(subfolder=None):
     """
     Wrapper around make_temp_folder that creates folders within megadetector/tests
+
+    Args:
+        subfolder (str): specific subfolder to create within the default megadetector temp
+            folder.
     """
 
     return make_temp_folder(top_level_folder='megadetector/tests',

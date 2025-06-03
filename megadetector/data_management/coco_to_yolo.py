@@ -540,7 +540,9 @@ def coco_to_yolo(input_image_folder,
 # ...def coco_to_yolo(...)
 
 
-def create_yolo_symlinks(source_folder,images_folder,labels_folder,
+def create_yolo_symlinks(source_folder,
+                         images_folder,
+                         labels_folder,
                          class_list_file=None,
                          class_list_output_name='object.data',
                          force_lowercase_image_extension=False):
@@ -549,6 +551,15 @@ def create_yolo_symlinks(source_folder,images_folder,labels_folder,
     of symlinks to all the images, and a folder of symlinks to all the labels.
     Used to support preview/editing tools that assume images and labels are in separate
     folders.
+
+    Args:
+        source_folder (str): input folder
+        images_folder (str): output folder with links to images
+        labels_folders (str): output folder with links to labels
+        class_list_file (str, optional): list to classes.txt file
+        class_list_output_name (str, optional): output file to write with class information
+        force_lowercase_image_extension (bool, False): create symlinks with, e.g., .jpg, even
+            if the input image is, e.g., .JPG
 
     :meta private:
     """
