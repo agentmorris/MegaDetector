@@ -793,7 +793,7 @@ def run_python_tests(options):
     test_package_imports('megadetector.visualization')
     test_package_imports('megadetector.postprocessing')
     test_package_imports('megadetector.postprocessing.repeat_detection_elimination')
-    test_package_imports('megadetector.utils',exceptions=['azure_utils','sas_blob_utils','md_tests'])
+    test_package_imports('megadetector.utils',exceptions=['md_tests'])
     test_package_imports('megadetector.data_management',exceptions=['lila','ocr_tools'])
 
 

@@ -201,7 +201,7 @@ Code for:
 
 #### megadetector/api
 
-Code for hosting our models as an API, either for synchronous operation (i.e., for real-time inference) or as a batch process (for large biodiversity surveys).
+Code for hosting our models as an API, either for synchronous operation (i.e., for real-time inference) or as a batch process (for large biodiversity surveys).  This folder is largely deprecated, and primarily exists now only to hold documentation that is still relevant, to which there are permanent links.  Mostly everything in this folder has been moved to the "archive" folder.
 
 
 #### megadetector/classification

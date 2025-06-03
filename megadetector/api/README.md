@@ -1,11 +1,11 @@
 # MegaDetector APIs
 
-Though many users run MegaDetector locally, we also package MegaDetector and associated inference scripts into two APIs that can process camera trap images in a variety of scenarios. This folder contains the source code of the APIs, and documentation on how to set them up.  We don't currently operate any public API instances.
+Though many users run MegaDetector locally, we have packaged MegaDetector and associated inference scripts into two APIs that can process camera trap images in a variety of scenarios.  This folder used to contain the source code of the APIs, and documentation on how to set them up.  All of the code has been moved to the [archive](../archive/api) folder; what's left here is just documentation.
 
 
 ### Synchronous API
 
-This API is intended for real-time scenarios where a small number of images are processed at a time and latency is a priority.  See documentation [here](synchronous).
+This API is intended for real-time scenarios where a small number of images are processed at a time and latency is a priority.  See documentation [here](../archive/synchronous).
 
 
 ### Batch processing API

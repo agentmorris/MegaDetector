@@ -1,16 +1,10 @@
-# MegaDetector batch processing format
-
-Tools or scripts that run MegaDetector (particularly [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector_batch.py)), or tools that want to produce MegaDetector-compatible output, produce results in the format described on this page.  This folder contains modules for working with files in this format.
-
-
-## Post-processing tools
-
-The [postprocessing](postprocessing) folder contains tools for working with MegaDetector output.  In particular, [postprocess_batch_results.py](postprocessing/postprocess_batch_results.py) provides visualization and accuracy assessment tools; a sample output report is available [here](https://lila.science/public/snapshot_safari_public/snapshot-safari-kar-2022-00-00-v5a.0.0_0.200/index.html) for the case where ground truth is not available (the typical case).
-
+# Contents of this folder
 
 ## Integration with other tools
 
 The [integration](integration) folder contains guidelines and postprocessing scripts for using the output of our API in other applications, particularly [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/).
+
+But mostly this folder only exists at this point because of permanent links to the MegaDetector output format.  Speaking of which...
 
 
 ## MegaDetector batch output format

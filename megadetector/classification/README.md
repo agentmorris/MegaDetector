@@ -9,7 +9,9 @@
 
 # Overview
 
-This README originally documented the training and inference processes for species classifiers that play nicely with MegaDetector, particularly "MegaClassifier".  The training process used to create MegaClassifier is obsolete at this point, so this page is now about <i>running</i> MegaClassifier.  But first, some tips about tools you might use to train your own classifiers.
+This README originally documented the training and inference processes for species classifiers that play nicely with MegaDetector, particularly "MegaClassifier".  The training process used to create MegaClassifier is obsolete at this point, so this page is now about <i>running</i> MegaClassifier.  In fact, <i>running</i> MegaClassifier is now obsolete too; MegaClassifier is now strictly less useful than [SpeciesNet](http://github.com/google/cameratrapai), so, if you're here looking for MegaClassifier, you probably want to try SpeciesNet.
+
+But regardless of MegaClassifier, SpeciesNet, etc., first, some tips about tools you might use to train your own classifiers.
 
 ## No, first, are you sure you want to train your own classifier?
 
