@@ -169,9 +169,9 @@ def visualize_detector_output(detector_output_path,
         output_image_width (int, optional): width in pixels to resize images for display,
             preserving aspect ration; set to -1 to use original image width
         random_seed (int, optional): seed to use for choosing images when sample != -1
-        render_detections_only (bool, optional): only render images with above-threshold detections.  Empty
-            images are discarded after sampling, so if you want to see, e.g., 1000 non-empty images,
-            you can set [render_detections_only], but you need to sample more than 1000 images.
+        render_detections_only (bool, optional): only render images with above-threshold detections.
+		    Empty images are discarded after sampling, so if you want to see, e.g., 1000 non-empty 
+			images, you can set [render_detections_only], but you need to sample more than 1000 images.
         classification_confidence_threshold (float, optional): only show classifications
             above this threshold; does not impact whether images are rendered, only whether
             classification labels (not detection categories) are displayed

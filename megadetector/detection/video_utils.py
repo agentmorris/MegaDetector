@@ -839,8 +839,8 @@ def frame_results_to_video_results(input_file,
         output_file (str): the .json file to which we should write video-level results
         options (FrameToVideoOptions, optional): parameters for converting frame-level results
             to video-level results, see FrameToVideoOptions for details
-        video_filename_to_frame_rate (dict, optional): maps (relative) video path names to frame rates,
-            used only to populate the output file
+        video_filename_to_frame_rate (dict, optional): maps (relative) video path names to frame
+		    rates, used only to populate the output file
     """
 
     if options is None:

@@ -43,8 +43,8 @@ def plot_confusion_matrix(matrix,
         use_colorbar (bool, optional): whether to show colorbar
         y_label (bool, optional): whether to show class names on the y axis
         fmt (str, optional): format string for rendering numeric values
-        fig (Figure, optional): existing figure to which we should render, otherwise creates
-            a new figure
+        fig (Figure, optional): existing figure to which we should render, otherwise
+		    creates a new figure
 
     Returns:
         matplotlib.figure.Figure: the figure we rendered to or created
