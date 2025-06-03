@@ -555,7 +555,7 @@ def create_yolo_symlinks(source_folder,
     Args:
         source_folder (str): input folder
         images_folder (str): output folder with links to images
-        labels_folders (str): output folder with links to labels
+        labels_folder (str): output folder with links to labels
         class_list_file (str, optional): list to classes.txt file
         class_list_output_name (str, optional): output file to write with class information
         force_lowercase_image_extension (bool, False): create symlinks with, e.g., .jpg, even
