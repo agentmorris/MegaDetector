@@ -438,12 +438,15 @@ def yolo_to_coco(input_folder,
               any bounding boxes, using a category called [empty_image_category_name].
             - 'skip': don't include the image in the image list
             - 'error': there shouldn't be any empty images
+        empty_image_category_name (str, optional): if we're going to be inserting annotations for
+            images with no boxes, what category name should we use?
         error_image_handling (str, optional): how to handle images that don't load properly; can
             be:
 
             - 'skip': don't include the image at all
             - 'no_annotations': include with no annotations
-
+        allow_images_without_label_files (bool, optional): whether to silently allow images with
+            no label files (True) or raise errors for images with no label files (False)
         n_workers (int, optional): number of concurrent workers, set to <= 1 to disable
             parallelization
         pool_type (str, optional): 'thread' or 'process', worker type to use for parallelization;
@@ -493,7 +496,7 @@ def yolo_to_coco(input_folder,
     # Find or create the empty image category, if necessary
     empty_category_id = None
 
-    if (empty_image_handling == 'empty_annotations'):
+    if empty_image_handling == 'empty_annotations':
         category_name_to_id = invert_dictionary(category_id_to_name)
         if empty_image_category_name in category_name_to_id:
             empty_category_id = category_name_to_id[empty_image_category_name]

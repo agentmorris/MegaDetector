@@ -1074,7 +1074,7 @@ def restrict_to_taxa_list(taxa_list,
             For example, if only a single felid species is allowed, should other
             felid predictions be mapped to that species, as opposed to being mapped
             to the family?
-        add_pre_restriction_description (bool, optional): should we add a new metadata
+        add_pre_filtering_description (bool, optional): should we add a new metadata
             field that summarizes each image's classifications prior to taxonomic
             restriction?
     """

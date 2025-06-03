@@ -222,6 +222,7 @@ def write_json(path,
         force_str (bool, optional): whether to force string conversion for non-serializable objects
         serialize_datetimes (bool, optional): whether to serialize datetime objects to ISO format
         ensure_ascii (bool, optional): whether to ensure ASCII characters in the output
+        encoding (str, optional): string encoding to use
     """
 
     default_handler = None
@@ -733,7 +734,7 @@ def to_bool(v):
     Convert an object to a bool with specific rules.
 
     Args:
-        obj (object): The object to convert
+        v (object): The object to convert
 
     Returns:
         bool or None:

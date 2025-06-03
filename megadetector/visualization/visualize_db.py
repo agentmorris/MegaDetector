@@ -162,6 +162,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
 
     Args:
         db_path (str or dict): the .json filename to load, or a previously-loaded database
+        output_dir (str): the folder to which we should write annotated images
         image_base_dir (str): the folder where the images live; filenames in [db_path] should
             be relative to this folder.
         options (DbVizOptions, optional): See DbVizOptions for details

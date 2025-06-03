@@ -603,6 +603,7 @@ def load_and_run_detector(model_file,
             exists
         detector_options (dict, optional): key/value pairs that are interpreted differently
             by different detectors
+        verbose (bool, optional): enable additional debug output
     """
 
     if len(image_file_names) == 0:

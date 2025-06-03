@@ -38,7 +38,7 @@ def plot_confusion_matrix(matrix,
             by default, assumes values in the confusion matrix are percentages
         title (str, optional): figure title
         cmap (matplotlib.colors.colormap): colormap for cell backgrounds
-        vmax (float, optional), value corresponding to the largest value of the colormap;
+        vmax (float, optional): value corresponding to the largest value of the colormap;
             if None, the maximum value in [matrix] will be used
         use_colorbar (bool, optional): whether to show colorbar
         y_label (bool, optional): whether to show class names on the y axis
@@ -140,8 +140,12 @@ def plot_precision_recall_curve(precisions,
     return fig
 
 
-def plot_stacked_bar_chart(data, series_labels=None, col_labels=None,
-                           x_label=None, y_label=None, log_scale=False):
+def plot_stacked_bar_chart(data,
+                           series_labels=None,
+                           col_labels=None,
+                           x_label=None,
+                           y_label=None,
+                           log_scale=False):
     """
     Plot a stacked bar chart, for plotting e.g. species distribution across locations.
 
@@ -154,7 +158,7 @@ def plot_stacked_bar_chart(data, series_labels=None, col_labels=None,
         col_labels (list of str, optional): column labels, typically location names
         x_label (str, optional): x-axis label
         y_label (str, optional): y-axis label
-        log_scale (bool, optional) whether to plot the y axis in log-scale
+        log_scale (bool, optional): whether to plot the y axis in log-scale
 
     Returns:
         matplotlib.figure.Figure: the (new) figure

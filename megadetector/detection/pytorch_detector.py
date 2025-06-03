@@ -492,7 +492,7 @@ def add_metadata_to_megadetector_model_file(model_file_in,
 
         zipf.write(metadata_tmp_file_abs,
                    root_folder + '/' + destination_path,
-                   compresslevel=9,
+                   compress_level=9,
                    compress_type=zipfile.ZIP_DEFLATED)
 
     try:
@@ -515,6 +515,7 @@ def read_metadata_from_megadetector_model_file(model_file,
             archive from which we should read the metadata.  This is not relative to the root
             of the archive, it's relative to the one and only folder at the root of the archive
             (this is a PyTorch convention).
+        verbose (str, optional): enable additional debug output
 
     Returns:
         object: whatever we read from the metadata file, always a dict in practice.  Returns

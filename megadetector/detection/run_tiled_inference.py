@@ -447,6 +447,7 @@ def run_tiled_inference(model_file,
             run_inference_with_yolov5_val.py, rather than with run_detector_batch.py, using these options
         n_patch_extraction_workers (int, optional): number of workers to use for patch extraction;
             set to <= 1 to disable parallelization
+        overwrite_tiles (bool, optional): whether to overwrite image files for individual tiles if they exist
         image_list (list, optional): .json file containing a list of specific images to process.  If
             this is supplied, and the paths are absolute, [image_folder] will be ignored. If this is supplied,
             and the paths are relative, they should be relative to [image_folder]

@@ -422,6 +422,7 @@ def blur_detections(image,detections,blur_radius=40):
         image (PIL.Image.Image): image in which we should blur specific regions
         detections (list): list of detections in the MD output format, see render
             detection_bounding_boxes for more detail.
+        blur_radius (int, optional): radius of blur kernel in pixels
     """
 
     img_width, img_height = image.size
@@ -457,7 +458,7 @@ def render_detection_bounding_boxes(detections,
                                     image,
                                     label_map='show_categories',
                                     classification_label_map=None,
-                                    confidence_threshold=0,
+                                    confidence_threshold=0.0,
                                     thickness=DEFAULT_BOX_THICKNESS,
                                     expansion=0,
                                     classification_confidence_threshold=0.3,
@@ -531,7 +532,7 @@ def render_detection_bounding_boxes(detections,
             class names. The type of the numeric label (typically strings) needs to be consistent with the keys
             in label_map; no casting is  carried out. If [label_map] is None, no labels are shown (not even numbers
             and confidence values).
-        confidence_threshold (float or dict, optional), threshold above which boxes are rendered.  Can also be a
+        confidence_threshold (float or dict, optional): threshold above which boxes are rendered.  Can also be a
             dictionary mapping category IDs to thresholds.
         thickness (int, optional): line thickness in pixels
         expansion (int, optional): number of pixels to expand bounding boxes on each side
@@ -1125,6 +1126,8 @@ def draw_bounding_boxes_on_file(input_file,
         detections (list): a list of dictionaries with keys 'conf', 'bbox', and 'category';
             boxes are length-four arrays formatted as [x,y,w,h], normalized,
             upper-left origin (this is the standard MD detection format). 'category' is a string-int.
+        confidence_threshold (float, optional): only render detections with confidence above this
+            threshold
         detector_label_map (dict, optional): a dict mapping category IDs to strings.  If this
             is None, no confidence values or identifiers are shown.  If this is {}, just category
             indices and confidence values are shown.
@@ -1557,6 +1560,7 @@ def get_image_size(im,verbose=False):
 
     Args:
         im (str or PIL.Image): filename or PIL image
+        verbose (bool, optional): enable additional debug output
 
     Returns:
         tuple (w,h), or None if the image fails to load.
@@ -1747,7 +1751,7 @@ def parallel_check_image_integrity(filenames,
 
     Args:
         filenames (list or str): a list of image filenames or a folder
-        mode (list): see check_image_integrity() for documentation on the [modes] parameter
+        modes (list): see check_image_integrity() for documentation on the [modes] parameter
         max_workers (int, optional): the number of parallel workers to use; set to <=1 to disable
             parallelization
         use_threads (bool, optional): whether to use threads (True) or processes (False) for

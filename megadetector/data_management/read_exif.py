@@ -186,6 +186,7 @@ def read_pil_exif(im,options=None):
     Args:
         im (str or PIL.Image.Image): image (as a filename or an Image object) from which
             we should read EXIF data.
+        options (ReadExifOptions, optional): see ReadExifOptions
 
     Returns:
         dict: a dictionary mapping EXIF tag names to their values

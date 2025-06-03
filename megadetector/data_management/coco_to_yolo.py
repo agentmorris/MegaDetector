@@ -126,7 +126,7 @@ def coco_to_yolo(input_image_folder,
             either treat images as empty or error, depending on the value of [allow_empty_annotations].
             [allow_empty_annotations] has no effect if source_format is 'coco_camera_traps'.
         overwrite_images (bool, optional): over-write images in the output folder if they exist
-        create_image_and_label_folder (bool, optional): whether to create separate folders called 'images' and
+        create_image_and_label_folders (bool, optional): whether to create separate folders called 'images' and
             'labels' in the YOLO output folder.  If create_image_and_label_folders is False,
             a/b/c/image001.jpg will become a#b#c#image001.jpg, and the corresponding text file will
             be a#b#c#image001.txt.  If create_image_and_label_folders is True, a/b/c/image001.jpg will become

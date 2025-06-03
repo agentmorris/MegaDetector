@@ -43,8 +43,9 @@ def combine_batch_output_files(input_files,
     Args:
         input_files (list of str): paths to JSON detection files
         output_file (str, optional): path to write merged JSON
-        require_uniqueness (bool): whether to require that the images in
+        require_uniqueness (bool, optional): whether to require that the images in
             each list of images be unique
+        verbose (bool, optional): enable additional debug output
 
     Returns:
         dict: merged dictionaries loaded from [input_files], identical to what's

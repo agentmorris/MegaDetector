@@ -125,21 +125,23 @@ convention = "google"
 
 [tool.ruff.per-file-ignores]
 "**/*.py" = [
-    # Formatting conventions that differ from ruff's defaults
+    # Comment/whitespace conventions that differ from ruff's defaults
     "D415",   # First line should end with a period, question mark, or exclamation point
     "D202",   # No blank lines allowed after function docstring
+    "D205",   # 1 blank line required between summary line and description
     
     # Coding conventions that differ from ruff's defaults
     "UP032",  # Use f-string instead of .format() call
     "UP007",  # Use X | Y for type unions
     "UP015",  # Unnecessary open mode parameters (open(filename,'r'))
     "UP038",  # Use X | Y in isinstance call instead of (X, Y)
-    
-    # "B007",   # Loop control variable not used within loop body
     "D200",   # One-line docstring should fit on one line
     "E702",   # Multiple statements on one line (semicolon)
-    "D205",   # 1 blank line required between summary line and description
-    "D417",   # Missing argument descriptions in the docstring
+    
+    # Debugging conveniences
+    "B007",   # Loop control variable not used within loop body
+    
+    # "D417",   # Missing argument descriptions in the docstring
     "B904",   # Use raise from to specify exception cause
     "D107",   # Missing docstring in __init__
     "N813",   # Camelcase imported as lowercase

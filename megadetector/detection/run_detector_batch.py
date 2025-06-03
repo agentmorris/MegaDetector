@@ -333,6 +333,8 @@ def run_detector_with_image_queue(image_files,
         detector_options (dict, optional): key/value pairs that are interpreted differently
             by different detectors
         loader_workers (int, optional): number of loaders to use
+        preprocess_on_image_queue (bool, optional): if the image queue is enabled, should it handle
+            image loading and preprocessing (True), or just image loading (False)?
 
     Returns:
         list: list of dicts in the format returned by process_image()
@@ -492,7 +494,7 @@ def process_images(im_files,
     Runs a detector (typically MegaDetector) over a list of image files on a single thread.
 
     Args:
-        im_files (list: paths to image files
+        im_files (list): paths to image files
         detector (str or detector object): loaded model or str; if this is a string, it can be a
             path to a .pb/.pt model file or a known model identifier (e.g. "MDV5A")
         confidence_threshold (float): only detections above this threshold are returned
@@ -509,6 +511,8 @@ def process_images(im_files,
         detector_options (dict, optional): key/value pairs that are interpreted differently
             by different detectors
         loader_workers (int, optional): number of loaders to use (only relevant when using image queue)
+        preprocess_on_image_queue (bool, optional): if the image queue is enabled, should it handle
+            image loading and preprocessing (True), or just image loading (False)?
 
     Returns:
         list: list of dicts, in which each dict represents detections on one image,
@@ -705,7 +709,7 @@ def load_and_run_detector_batch(model_file,
         image_file_names (list or str): list of strings (image filenames), a single image filename,
             a folder to recursively search for images in, or a .json or .txt file containing a list
             of images.
-        checkpoint_path (str, optional), path to use for checkpoints (if None, checkpointing
+        checkpoint_path (str, optional): path to use for checkpoints (if None, checkpointing
             is disabled)
         confidence_threshold (float, optional): only detections above this threshold are returned
         checkpoint_frequency (int, optional): int, write results to JSON checkpoint file every N
@@ -718,7 +722,7 @@ def load_and_run_detector_batch(model_file,
         image_size (tuple, optional): image size to use for inference, only mess with this
             if (a) you're using a model other than MegaDetector or (b) you know what you're
             doing
-        class_mapping_filename (str, optional), use a non-default class mapping supplied in a .json
+        class_mapping_filename (str, optional): use a non-default class mapping supplied in a .json
             file or YOLOv5 dataset.yaml file
         include_image_size (bool, optional): should we include image size in the output for each image?
         include_image_timestamp (bool, optional): should we include image timestamps in the output for each image?
@@ -730,6 +734,8 @@ def load_and_run_detector_batch(model_file,
         detector_options (dict, optional): key/value pairs that are interpreted differently
             by different detectors
         loader_workers (int, optional): number of loaders to use, only relevant when use_image_queue is True
+        preprocess_on_image_queue (bool, optional): if the image queue is enabled, should it handle
+            image loading and preprocessing (True), or just image loading (False)?
 
     Returns:
         results: list of dicts; each dict represents detections on one image

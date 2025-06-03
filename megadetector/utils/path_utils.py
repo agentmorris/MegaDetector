@@ -138,7 +138,7 @@ def folder_list(base_dir,
             the native path separator
         return_relative_paths (bool, optional): return paths that are relative to [base_dir],
             rather than absolute paths
-        sort_files (bool, optional): force folders to be sorted, otherwise uses the sorting
+        sort_folders (bool, optional): force folders to be sorted, otherwise uses the sorting
             provided by os.walk()
         recursive (bool, optional): enumerate recursively
 
@@ -1147,7 +1147,7 @@ def parallel_get_file_sizes(filenames,
 
 #%% Compression (zip/tar) functions
 
-def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compresslevel=9):
+def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compress_level=9):
     """
     Zips a single file.
 
@@ -1157,7 +1157,7 @@ def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compressl
             [input_fn].zip
         overwrite (bool, optional): whether to overwrite an existing target file
         verbose (bool, optional): enable existing debug console output
-        compresslevel (int, optional): compression level to use, between 0 and 9
+        compress_level (int, optional): compression level to use, between 0 and 9
 
     Returns:
         str: the output zipfile, whether we created it or determined that it already exists
@@ -1173,10 +1173,10 @@ def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compressl
         return output_fn
 
     if verbose:
-        print('Zipping {} to {} with level {}'.format(input_fn,output_fn,compresslevel))
+        print('Zipping {} to {} with level {}'.format(input_fn,output_fn,compress_level))
 
     with ZipFile(output_fn,'w',zipfile.ZIP_DEFLATED) as zipf:
-        zipf.write(input_fn,arcname=basename,compresslevel=compresslevel,
+        zipf.write(input_fn,arcname=basename,compress_level=compress_level,
                    compress_type=zipfile.ZIP_DEFLATED)
 
     return output_fn
@@ -1223,7 +1223,7 @@ def add_files_to_single_tar_file(input_files, output_fn, arc_name_base,
 
 
 def zip_files_into_single_zipfile(input_files, output_fn, arc_name_base,
-                                  overwrite=False, verbose=False, compresslevel=9):
+                                  overwrite=False, verbose=False, compress_level=9):
     """
     Zip all the files in [input_files] into [output_fn].  Archive names are relative to
     arc_name_base.
@@ -1236,7 +1236,7 @@ def zip_files_into_single_zipfile(input_files, output_fn, arc_name_base,
             [arc_name_base]
         overwrite (bool, optional): whether to overwrite an existing .tar file
         verbose (bool, optional): enable additional debug console output
-        compresslevel (int, optional): compression level to use, between 0 and 9
+        compress_level (int, optional): compression level to use, between 0 and 9
 
     Returns:
         str: the output zipfile, whether we created it or determined that it already exists
@@ -1249,20 +1249,20 @@ def zip_files_into_single_zipfile(input_files, output_fn, arc_name_base,
 
     if verbose:
         print('Zipping {} files to {} (compression level {})'.format(
-            len(input_files),output_fn,compresslevel))
+            len(input_files),output_fn,compress_level))
 
     with ZipFile(output_fn,'w',zipfile.ZIP_DEFLATED) as zipf:
         for input_fn_abs in tqdm(input_files,disable=(not verbose)):
             input_fn_relative = os.path.relpath(input_fn_abs,arc_name_base)
             zipf.write(input_fn_abs,
                        arcname=input_fn_relative,
-                       compresslevel=compresslevel,
+                       compress_level=compress_level,
                        compress_type=zipfile.ZIP_DEFLATED)
 
     return output_fn
 
 
-def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, compresslevel=9):
+def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, compress_level=9):
     """
     Recursively zip everything in [input_folder] into a single zipfile, storing files as paths
     relative to [input_folder].
@@ -1272,7 +1272,7 @@ def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, com
         output_fn (str, optional): output filename; if this is None, we'll write to [input_folder].zip
         overwrite (bool, optional): whether to overwrite an existing .tar file
         verbose (bool, optional): enable additional debug console output
-        compresslevel (int, optional): compression level to use, between 0 and 9
+        compress_level (int, optional): compression level to use, between 0 and 9
 
     Returns:
         str: the output zipfile, whether we created it or determined that it already exists
@@ -1288,7 +1288,7 @@ def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, com
 
     if verbose:
         print('Zipping {} to {} (compression level {})'.format(
-            input_folder,output_fn,compresslevel))
+            input_folder,output_fn,compress_level))
 
     relative_filenames = recursive_file_list(input_folder,return_relative_paths=True)
 
@@ -1297,7 +1297,7 @@ def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, com
             input_fn_abs = os.path.join(input_folder,input_fn_relative)
             zipf.write(input_fn_abs,
                        arcname=input_fn_relative,
-                       compresslevel=compresslevel,
+                       compress_level=compress_level,
                        compress_type=zipfile.ZIP_DEFLATED)
 
     return output_fn
@@ -1306,7 +1306,7 @@ def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, com
 def parallel_zip_files(input_files,
                        max_workers=16,
                        use_threads=True,
-                       compresslevel=9,
+                       compress_level=9,
                        overwrite=False,
                        verbose=False):
     """
@@ -1314,11 +1314,11 @@ def parallel_zip_files(input_files,
     original files in place.  Each file is zipped to [filename].zip.
 
     Args:
-        input_file (str): list of files to zip
+        input_files (str): list of files to zip
         max_workers (int, optional): number of concurrent workers, set to <= 1 to disable parallelism
         use_threads (bool, optional): whether to use threads (True) or processes (False); ignored if
             max_workers <= 1
-        compresslevel (int, optional): zip compression level between 0 and 9
+        compress_level (int, optional): zip compression level between 0 and 9
         overwrite (bool, optional): whether to overwrite an existing .tar file
         verbose (bool, optional): enable additional debug console output
     """
@@ -1332,23 +1332,27 @@ def parallel_zip_files(input_files,
 
     with tqdm(total=len(input_files)) as pbar:
         for i,_ in enumerate(pool.imap_unordered(partial(zip_file,
-          output_fn=None,overwrite=overwrite,verbose=verbose,compresslevel=compresslevel),
+          output_fn=None,overwrite=overwrite,verbose=verbose,compress_level=compress_level),
           input_files)):
             pbar.update()
 
 
-def parallel_zip_folders(input_folders, max_workers=16, use_threads=True,
-                         compresslevel=9, overwrite=False, verbose=False):
+def parallel_zip_folders(input_folders,
+                         max_workers=16,
+                         use_threads=True,
+                         compress_level=9,
+                         overwrite=False,
+                         verbose=False):
     """
     Zips one or more folders to separate output files in parallel, leaving the
     original folders in place.  Each folder is zipped to [folder_name].zip.
 
     Args:
-        input_folder (list): list of folders to zip
+        input_folders (list): list of folders to zip
         max_workers (int, optional): number of concurrent workers, set to <= 1 to disable parallelism
         use_threads (bool, optional): whether to use threads (True) or processes (False); ignored if
             max_workers <= 1
-        compresslevel (int, optional): zip compression level between 0 and 9
+        compress_level (int, optional): zip compression level between 0 and 9
         overwrite (bool, optional): whether to overwrite an existing .tar file
         verbose (bool, optional): enable additional debug console output
     """
@@ -1363,13 +1367,13 @@ def parallel_zip_folders(input_folders, max_workers=16, use_threads=True,
     with tqdm(total=len(input_folders)) as pbar:
         for i,_ in enumerate(pool.imap_unordered(
                 partial(zip_folder,overwrite=overwrite,
-                        compresslevel=compresslevel,verbose=verbose),
+                        compress_level=compress_level,verbose=verbose),
                 input_folders)):
             pbar.update()
 
 
 def zip_each_file_in_folder(folder_name,recursive=False,max_workers=16,use_threads=True,
-                            compresslevel=9,overwrite=False,required_token=None,verbose=False,
+                            compress_level=9,overwrite=False,required_token=None,verbose=False,
                             exclude_zip=True):
     """
     Zips each file in [folder_name] to its own zipfile (filename.zip), optionally recursing.  To
@@ -1381,7 +1385,7 @@ def zip_each_file_in_folder(folder_name,recursive=False,max_workers=16,use_threa
         max_workers (int, optional): number of concurrent workers, set to <= 1 to disable parallelism
         use_threads (bool, optional): whether to use threads (True) or processes (False); ignored if
             max_workers <= 1
-        compresslevel (int, optional): zip compression level between 0 and 9
+        compress_level (int, optional): zip compression level between 0 and 9
         overwrite (bool, optional): whether to overwrite an existing .tar file
         required_token (str, optional): only zip files whose names contain this string
         verbose (bool, optional): enable additional debug console output
@@ -1399,7 +1403,7 @@ def zip_each_file_in_folder(folder_name,recursive=False,max_workers=16,use_threa
         input_files = [fn for fn in input_files if (not fn.endswith('.zip'))]
 
     parallel_zip_files(input_files=input_files,max_workers=max_workers,
-                       use_threads=use_threads,compresslevel=compresslevel,
+                       use_threads=use_threads,compress_level=compress_level,
                        overwrite=overwrite,verbose=verbose)
 
 
@@ -1434,6 +1438,8 @@ def compute_file_hash(file_path, algorithm='sha256', allow_failures=True):
     Args:
         file_path (str): the file to hash
         algorithm (str, optional): the hashing algorithm to use (e.g. md5, sha256)
+        allow_failures (bool, optional): if True, read failures will silently return
+            None; if false, read failures will raise exceptions
 
     Returns:
         str: the hash value for this file

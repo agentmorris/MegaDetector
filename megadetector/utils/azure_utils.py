@@ -159,6 +159,7 @@ def enumerate_blobs_to_file(
             blobs matching *any* of the regex's will be returned.
         limit: int, maximum # of blob names to list
             if None, then returns all blob names
+        verbose (bool, optional): enable additional debug output
 
     Returns: list of str, sorted blob names, of length limit or shorter.
     """
