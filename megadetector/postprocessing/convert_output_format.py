@@ -51,12 +51,12 @@ def convert_json_to_csv(input_path,
             [input_path].csv
         min_confidence (float, optional): the minimum-confidence detection we should include
             in the "detections" column; has no impact on the other columns
-        omit_bounding_boxes (bool): whether to leave out the json-formatted bounding boxes
-            that make up the "detections" column, which are not generally useful for someone who
-            wants to consume this data as a .csv file
+        omit_bounding_boxes (bool, optional): whether to leave out the json-formatted bounding
+            boxes that make up the "detections" column, which are not generally useful for someone
+            who wants to consume this data as a .csv file
         output_encoding (str, optional): encoding to use for the .csv file
-        overwrite (bool): whether to overwrite an existing .csv file; if this is False and the
-            output file exists, no-ops and returns
+        overwrite (bool, optional): whether to overwrite an existing .csv file; if this is False and
+            the output file exists, no-ops and returns
 
     """
 
@@ -230,8 +230,8 @@ def convert_csv_to_json(input_path,output_path=None,overwrite=True):
         input_path (str): .csv filename to convert to .json
         output_path (str, optional): the output .json file to generate; if this is None, uses
             [input_path].json
-        overwrite (bool): whether to overwrite an existing .json file; if this is False and the
-            output file exists, no-ops and returns
+        overwrite (bool, optional): whether to overwrite an existing .json file; if this is
+            False and the output file exists, no-ops and returns
 
     """
 

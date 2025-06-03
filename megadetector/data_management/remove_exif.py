@@ -28,6 +28,12 @@ def remove_exif_from_image(fn):
     pyexiv2 is not thread safe, do not call this function in parallel within a process.
 
     Parallelizing across processes is fine.
+
+    Args:
+        fn (str): image file from which we should remove EXIF information
+
+    Returns:
+        bool: whether EXIF removal succeeded
     """
 
     import pyexiv2 # type: ignore
@@ -40,6 +46,7 @@ def remove_exif_from_image(fn):
         img.close()
     except Exception as e:
         print('EXIF error on {}: {}'.format(fn,str(e)))
+        return False
 
     return True
 

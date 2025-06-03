@@ -31,7 +31,7 @@ def remap_coco_categories(input_data,
             be copied, not modified in place.
         output_category_name_to_id (dict): a dict mapping strings to ints.  Categories not in
             this dict will be ignored or will result in errors, depending on allow_unused_categories.
-        input_category_name_to_output_category_name: a dict mapping strings to strings.
+        input_category_name_to_output_category_name (dict): a dict mapping strings to strings.
             Annotations using categories not in this dict will be omitted or will result in
             errors, depending on allow_unused_categories.
         output_file (str, optional): output file to which we should write remapped COCO data

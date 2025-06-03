@@ -225,7 +225,7 @@ def get_stats_for_category(filename,category='all'):
 
     Args:
         filename (str): a text file containing console output from a YOLO val run
-        category (optional, str): a category name
+        category (str, optional): a category name
 
     Returns:
         dict: a dict with fields n_images, n_labels, P, R, mAP50, and mAP50-95

@@ -26,6 +26,10 @@ from megadetector.utils import ct_utils
 def add_max_conf(input_file,output_file):
     """
     Add maximum confidence values to [input_file] and write the results to [output_file].
+
+    Args:
+        input_file (str): MD-formatted .json file to which we should add maxconf values
+        output_file (str): output .json file
     """
 
     assert os.path.isfile(input_file), "Can't find input file {}".format(input_file)

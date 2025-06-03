@@ -418,8 +418,8 @@ def create_sequences(image_info,options=None):
         image_info (str, dict, or list): a dict in CCT format, a CCT .json file, or just the
             'images' component of a CCT dataset (a list of dicts with  fields 'file_name' (str),
             'datetime' (datetime), and 'location' (str)).
-        options (SequenceOptions): options parameterizing the assembly of images into sequences;
-            see the SequenceOptions class for details.
+        options (SequenceOptions, optional): options parameterizing the assembly of images into
+            sequences; see the SequenceOptions class for details.
 
     Returns:
         image_info: if [image_info] is passed as a list, returns the list, otherwise returns

@@ -50,7 +50,7 @@ def categorize_detections_by_size(input_file,output_file=None,options=None):
     Args:
         input_file (str): file to process
         output_file (str, optional): optional output file
-        options (SizeCategorizationOptions): categorization parameters
+        options (SizeCategorizationOptions, optional): categorization parameters
 
     Returns:
         dict: data loaded from [input_file], with the new size-based categories.

@@ -159,7 +159,7 @@ def count_detections_by_classification_category(detections,options=None):
     Only processes the top classification for each detection.
 
     Args:
-        detections: detections list
+        detections (list of dict): detections list
         options (ClassificationSmoothingOptions, optional): see ClassificationSmoothingOptions
 
     Returns:

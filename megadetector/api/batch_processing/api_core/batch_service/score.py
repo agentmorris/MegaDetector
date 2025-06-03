@@ -184,9 +184,13 @@ class TFDetector:
 
     @staticmethod
     def convert_to_tf_coords(array):
-        """From [x1, y1, width, height] to [y1, x1, y2, x2], where x1 is x_min, x2 is x_max
+        """
+        From [x1, y1, width, height] to [y1, x1, y2, x2], where x1 is x_min, x2 is x_max
         This is an extraneous step as the model outputs [y1, x1, y2, x2] but were converted to the API
         output format - only to keep the interface of the sync API.
+
+        Args:
+            array (list or np.array): x/y/w/h coordinates
         """
         x1 = array[0]
         y1 = array[1]

@@ -36,6 +36,10 @@ def camtrap_dp_to_coco(camtrap_dp_folder,output_file=None):
     the resulting COCO file.
 
     Optionally writes the results to [output_file]
+
+    Args:
+        camtrap_dp_folder (str): input folder, containing a CamtrapDP package
+        output_file (str, optional): COCO-formatted output file
     """
 
     required_files = ('datapackage.json','deployments.csv','events.csv','media.csv','observations.csv')

@@ -48,14 +48,14 @@ class Engine():
             top1 = AverageMeter()
             top5 = AverageMeter()
 
-	# switch to train mode
+    # switch to train mode
         self.model.train()
         train_loader = tqdm(train_loader)
         for i, batch in enumerate(train_loader):
             input= batch[0]
             target= batch[1]
 
-	    # measure accuracy and record loss
+        # measure accuracy and record loss
             if calcAccuracy:
                 loss, acc1, acc5= self.train_one_batch(input, target, i, True)
                 top1.update(acc1, input.size(0))
@@ -73,10 +73,10 @@ class Engine():
             input = input.to(self.device)
             target = target.to(self.device)
 
-	    # compute output
+        # compute output
             output, _ = self.model(input)
 
-	    # measure accuracy and record loss
+        # measure accuracy and record loss
             if calcAccuracy:
                 acc1, acc5 = accuracy(output, target, topk=(1, 5))
             loss = self.criterion(output, target)

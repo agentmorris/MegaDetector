@@ -72,8 +72,8 @@ def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
     comment for details on merge rules.
 
     Args:
-        input_dicts: list of CCT dicts
-        require_uniqueness: bool, whether to require that the images in
+        input_dicts (list of dict): list of CCT dicts
+        require_uniqueness (bool, optional): whether to require that the images in
             each input_dict be unique
 
     Returns:

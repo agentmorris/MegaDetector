@@ -641,8 +641,8 @@ def wsl_path_to_windows_path(filename, failure_behavior='none'):
 
     Args:
         filename (str): filename to convert
-        failure_behavior (str): what to do if the path can't be processed as a WSL path.
-            'none' to return None in this case, 'original' to return the original path.
+        failure_behavior (str, optional): what to do if the path can't be processed as a
+            WSL path. 'none' to return None in this case, 'original' to return the original path.
 
     Returns:
         str: Windows equivalent to the WSL path [filename]
@@ -689,7 +689,7 @@ def windows_path_to_wsl_path(filename, failure_behavior='none'):
 
     Args:
         filename (str): filename to convert
-        failure_behavior (str): what to do if the path can't be processed as a Windows path.
+        failure_behavior (str, optional): what to do if the path can't be processed as a Windows path.
             'none' to return None in this case, 'original' to return the original path.
 
     Returns:
@@ -840,7 +840,9 @@ def open_file_in_chrome(filename):
     return False
 
 
-def open_file(filename, attempt_to_open_in_wsl_host=False, browser_name=None):
+def open_file(filename,
+              attempt_to_open_in_wsl_host=False,
+              browser_name=None):
     """
     Opens [filename] in the default OS file handler for this file type.
 
@@ -854,9 +856,9 @@ def open_file(filename, attempt_to_open_in_wsl_host=False, browser_name=None):
 
     Args:
         filename (str): file to open
-        attempt_to_open_in_wsl_host: if this is True, and we're in WSL, attempts to open
-            [filename] in the Windows host environment
-        browser_name: see above
+        attempt_to_open_in_wsl_host (bool, optional): if this is True, and we're in WSL, attempts
+            to open [filename] in the Windows host environment
+        browser_name (str, optional): see above
     """
 
     if browser_name is not None:
