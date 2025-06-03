@@ -1176,7 +1176,9 @@ def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compress_
         print('Zipping {} to {} with level {}'.format(input_fn,output_fn,compress_level))
 
     with ZipFile(output_fn,'w',zipfile.ZIP_DEFLATED) as zipf:
-        zipf.write(input_fn,arcname=basename,compress_level=compress_level,
+        zipf.write(input_fn,
+                   arcname=basename,
+                   compresslevel=compress_level,
                    compress_type=zipfile.ZIP_DEFLATED)
 
     return output_fn
@@ -1222,8 +1224,12 @@ def add_files_to_single_tar_file(input_files, output_fn, arc_name_base,
     return output_fn
 
 
-def zip_files_into_single_zipfile(input_files, output_fn, arc_name_base,
-                                  overwrite=False, verbose=False, compress_level=9):
+def zip_files_into_single_zipfile(input_files,
+                                  output_fn,
+                                  arc_name_base,
+                                  overwrite=False,
+                                  verbose=False,
+                                  compress_level=9):
     """
     Zip all the files in [input_files] into [output_fn].  Archive names are relative to
     arc_name_base.
@@ -1256,7 +1262,7 @@ def zip_files_into_single_zipfile(input_files, output_fn, arc_name_base,
             input_fn_relative = os.path.relpath(input_fn_abs,arc_name_base)
             zipf.write(input_fn_abs,
                        arcname=input_fn_relative,
-                       compress_level=compress_level,
+                       compresslevel=compress_level,
                        compress_type=zipfile.ZIP_DEFLATED)
 
     return output_fn
@@ -1297,7 +1303,7 @@ def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, com
             input_fn_abs = os.path.join(input_folder,input_fn_relative)
             zipf.write(input_fn_abs,
                        arcname=input_fn_relative,
-                       compress_level=compress_level,
+                       compresslevel=compress_level,
                        compress_type=zipfile.ZIP_DEFLATED)
 
     return output_fn
@@ -1372,8 +1378,14 @@ def parallel_zip_folders(input_folders,
             pbar.update()
 
 
-def zip_each_file_in_folder(folder_name,recursive=False,max_workers=16,use_threads=True,
-                            compress_level=9,overwrite=False,required_token=None,verbose=False,
+def zip_each_file_in_folder(folder_name,
+                            recursive=False,
+                            max_workers=16,
+                            use_threads=True,
+                            compress_level=9,
+                            overwrite=False,
+                            required_token=None,
+                            verbose=False,
                             exclude_zip=True):
     """
     Zips each file in [folder_name] to its own zipfile (filename.zip), optionally recursing.  To
