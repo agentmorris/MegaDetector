@@ -1218,9 +1218,9 @@ def gray_scale_fraction(image,crop_size=(0.1,0.1)):
 
     Args:
         image (str or PIL.Image.Image): Image, filename, or URL to analyze
-        crop_size (tuple of floats, optional): a 2-element list/tuple, representing the fraction of 
-		    the image to crop at the top and bottom, respectively, before analyzing (to minimize
-			the possibility of including color elements in the image overlay)
+        crop_size (tuple of floats, optional): a 2-element list/tuple, representing the fraction of
+            the image to crop at the top and bottom, respectively, before analyzing (to minimize
+            the possibility of including color elements in the image overlay)
 
     Returns:
         float: the fraction of pixels in [image] that appear to be grayscale (R==G==B)

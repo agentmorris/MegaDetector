@@ -583,7 +583,7 @@ def load_pretrained_weights(model, model_name, weights_path=None, load_fc=True, 
             str: path to pretrained weights file on the local disk.
             None: use pretrained weights downloaded from the Internet.
         load_fc (bool, optional): Whether to load pretrained weights for fc layer at the end 
-		    of the model.
+            of the model.
         advprop (bool, optional): Whether to load pretrained weights
                         trained with advprop (valid when weights_path is None).
     """
