@@ -23,8 +23,10 @@ from megadetector.visualization.visualization_utils import \
 
 #%% Functions
 
-def resize_coco_dataset(input_folder,input_filename,
-                        output_folder,output_filename,
+def resize_coco_dataset(input_folder,
+                        input_filename,
+                        output_folder,
+                        output_filename,
                         target_size=(-1,-1),
                         correct_size_image_handling='copy'):
     """
