@@ -66,5 +66,5 @@ docs/source/_static
 
 # AI things
 .aider*
-.caude*
+.claude*
 .gemini*
