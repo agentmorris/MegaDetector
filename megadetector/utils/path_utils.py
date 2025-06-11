@@ -1834,11 +1834,11 @@ class TestPathUtils:
         #     img2.png
         #     img3.png
 
-        fodler_summary_dir = os.path.join(self.test_dir,'folder_summary')
+        folder_summary_dir = os.path.join(self.test_dir,'folder_summary')
 
-        f1 = os.path.join(fodler_summary_dir, 'file1.txt')
-        img1 = os.path.join(fodler_summary_dir, 'img1.jpg')
-        subdir = os.path.join(fodler_summary_dir, 'subdir')
+        f1 = os.path.join(folder_summary_dir, 'file1.txt')
+        img1 = os.path.join(folder_summary_dir, 'img1.jpg')
+        subdir = os.path.join(folder_summary_dir, 'subdir')
         os.makedirs(subdir, exist_ok=True)
         f2 = os.path.join(subdir, 'file2.txt')
         img2 = os.path.join(subdir, 'img2.png')
@@ -1848,7 +1848,7 @@ class TestPathUtils:
             with open(filepath, 'w') as f:
                 f.write('test')
 
-        summary = folder_summary(fodler_summary_dir, print_summary=False)
+        summary = folder_summary(folder_summary_dir, print_summary=False)
 
         assert summary['n_files'] == 5
         assert summary['n_folders'] == 1 # 'subdir'
@@ -1864,7 +1864,7 @@ class TestPathUtils:
         assert len(summary['extension_to_count']) == 3
 
 
-        empty_dir = os.path.join(fodler_summary_dir, "empty_summary_dir")
+        empty_dir = os.path.join(folder_summary_dir, "empty_summary_dir")
         os.makedirs(empty_dir, exist_ok=True)
         empty_summary = folder_summary(empty_dir, print_summary=False)
         assert empty_summary['n_files'] == 0
