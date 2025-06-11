@@ -2504,6 +2504,31 @@ if False:
     initialize_geofencing(geofencing_file, country_code_file, force_init=True)
     initialize_taxonomy_info(taxonomy_file, force_init=True, encoding=encoding)
 
+    from megadetector.utils.path_utils import open_file; open_file(geofencing_file)
+
+
+    #%% Generate a block list
+
+    taxon_name = 'cercopithecidae'
+    taxonomy_info = binomial_name_to_taxonomy_info[taxon_name]
+    taxonomy_string_short = taxonomy_info_to_taxonomy_string(taxonomy_info)
+    assert len(taxonomy_string_short.split(';')) == 5
+
+    block_list = 'ATG,BHS,BRB,BLZ,CAN,CRI,CUB,DMA,DOM,SLV,GRD,GTM,HTI,HND,JAM,' + \
+                 'MEX,NIC,PAN,KNA,LCA,VCT,TTO,USA,ARG,BOL,BRA,CHL,COL,ECU,GUY,PRY,PER,' + \
+                 'SUR,URY,VEN,ALB,AND,ARM,AUT,AZE,BLR,BEL,BIH,BGR,HRV,CYP,CZE,DNK,EST,FIN,' + \
+                 'FRA,GEO,DEU,GRC,HUN,ISL,IRL,ITA,KAZ,XKX,LVA,LIE,LTU,LUX,MLT,MDA,MCO,MNE,' + \
+                 'NLD,MKD,NOR,POL,PRT,ROU,RUS,SMR,SRB,SVK,SVN,ESP,SWE,CHE,TUR,UKR,GBR,VAT,AUS'
+
+    rows = generate_csv_rows_for_species(species_string=taxonomy_string_short,
+                                         allow_countries=None,
+                                         block_countries=block_list,
+                                         allow_states=None,
+                                         block_states=None)
+
+    # import clipboard; clipboard.copy('\n'.join(rows))
+    print(rows)
+
 
     #%% Generate a block-except list
 
@@ -2523,11 +2548,14 @@ if False:
     taxonomy_string_short = taxonomy_info_to_taxonomy_string(taxonomy_info)
     assert len(taxonomy_string_short.split(';')) == 5
 
-    generate_csv_rows_for_species(species_string=taxonomy_string_short,
-                                  allow_countries=['AUS'],
-                                  block_countries=None,
-                                  allow_states=None,
-                                  block_states=None)
+    rows = generate_csv_rows_for_species(species_string=taxonomy_string_short,
+                                         allow_countries=['AUS'],
+                                         block_countries=None,
+                                         allow_states=None,
+                                         block_states=None)
+
+    # import clipboard; clipboard.copy('\n'.join(rows))
+    print(rows)
 
 
     #%% Test the effects of geofence changes
