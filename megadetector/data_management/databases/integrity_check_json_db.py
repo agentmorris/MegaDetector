@@ -22,6 +22,7 @@ import json
 import os
 import sys
 
+from functools import partial
 from multiprocessing.pool import ThreadPool
 from operator import itemgetter
 from tqdm import tqdm
@@ -70,9 +71,6 @@ class IntegrityCheckOptions:
         #: If True, error if the 'info' field is not present
         self.requireInfo = False
 
-# This is used in a medium-hacky way to share modified options across threads
-default_options = IntegrityCheckOptions()
-
 
 #%% Functions
 
@@ -93,7 +91,7 @@ def _check_image_existence_and_size(image,options=None):
     """
 
     if options is None:
-        options = default_options
+        options = IntegrityCheckOptions()
 
     assert options.bCheckImageExistence
 
@@ -108,7 +106,12 @@ def _check_image_existence_and_size(image,options=None):
             return s
 
         # width, height = Image.open(file_path).size
-        pil_im = open_image(file_path)
+        try:
+            pil_im = open_image(file_path)
+        except Exception as e:
+            s = 'Error opening {}: {}'.format(file_path,str(e))
+            return s
+
         width,height = pil_im.size
         if (not (width == image['width'] and height == image['height'])):
             s = 'Size mismatch for image {}: {} (reported {},{}, actual {},{})'.format(
@@ -220,7 +223,7 @@ def integrity_check_json_db(json_file, options=None):
     # ...for each category
 
     if options.verbose:
-        print('\nChecking images...')
+        print('\nChecking image records...')
 
     if options.iMaxNumImages > 0 and len(images) > options.iMaxNumImages:
 
@@ -325,12 +328,10 @@ def integrity_check_json_db(json_file, options=None):
             if options.verbose:
                 print('Starting a pool of {} workers'.format(options.nThreads))
             pool = ThreadPool(options.nThreads)
-            # results = pool.imap_unordered(lambda x: fetch_url(x,nImages), indexedUrlList)
-            default_options.baseDir = options.baseDir
-            default_options.bCheckImageSizes = options.bCheckImageSizes
-            default_options.bCheckImageExistence = options.bCheckImageExistence
             try:
-                results = tqdm(pool.imap(_check_image_existence_and_size, images), total=len(images))
+                results = list(tqdm(pool.imap(
+                    partial(_check_image_existence_and_size,options=options), images),
+                    total=len(images)))
             finally:
                 pool.close()
                 pool.join()

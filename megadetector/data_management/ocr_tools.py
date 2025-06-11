@@ -39,6 +39,7 @@ Known limitations:
 
 """
 
+
 #%% Constants and imports
 
 import os
@@ -64,7 +65,7 @@ from megadetector.visualization import visualization_utils as vis_utils
 #
 # Also install tesseract from: https://github.com/UB-Mannheim/tesseract/wiki, and add
 # the installation dir to your path (on Windows, typically C:\Program Files (x86)\Tesseract-OCR)
-import pytesseract
+import pytesseract # type: ignore
 
 
 #%% Extraction options

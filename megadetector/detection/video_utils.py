@@ -431,7 +431,9 @@ def video_to_frames(input_video_file,
         frames_to_extract (list of int, optional): extract this specific set of frames;
             mutually exclusive with every_n_frames.  If all values are beyond the length
             of the video, no frames are extracted.  Can also be a single int, specifying
-            a single frame number.
+            a single frame number.  In the special case where frames_to_extract
+            is [], this function still reads video frame rates and verifies that videos
+            are readable, but no frames are extracted.
         allow_empty_videos (bool, optional): Just print a warning if a video appears to have no
             frames (by default, this is an error).
 
@@ -514,7 +516,6 @@ def video_to_frames(input_video_file,
 
         # When specific frames are requested, if anything is missing, reprocess the video
         if (frames_to_extract is not None) and (missing_frame_number is not None):
-
             pass
 
         # If no frames are missing, or only frames very close to the end of the video are "missing",
@@ -571,6 +572,10 @@ def video_to_frames(input_video_file,
 
     # for frame_number in tqdm(range(0,n_frames)):
     for frame_number in range(0,n_frames):
+
+        # Special handling for the case where we're just doing dummy reads
+        if (frames_to_extract is not None) and (len(frames_to_extract) == 0):
+            break
 
         success,image = vidcap.read()
         if not success:
@@ -643,9 +648,9 @@ def video_to_frames(input_video_file,
 
     if len(frame_filenames) == 0:
         if allow_empty_videos:
-            print('Warning: found no frames in file {}'.format(input_video_file))
+            print('Warning: no frames extracted from file {}'.format(input_video_file))
         else:
-            raise Exception('Error: found no frames in file {}'.format(input_video_file))
+            raise Exception('Error: no frames extracted from file {}'.format(input_video_file))
 
     if verbose:
         print('\nExtracted {} of {} frames for {}'.format(
@@ -726,7 +731,9 @@ def video_folder_to_frames(input_folder,
         frames_to_extract (list of int, optional): extract this specific set of frames from
             each video; mutually exclusive with every_n_frames.  If all values are beyond
             the length of a video, no frames are extracted. Can also be a single int,
-            specifying a single frame number.
+            specifying a single frame number.  In the special case where frames_to_extract
+            is [], this function still reads video frame rates and verifies that videos
+            are readable, but no frames are extracted.
         allow_empty_videos (bool, optional): Just print a warning if a video appears to have no
             frames (by default, this is an error).
 
@@ -762,9 +769,16 @@ def video_folder_to_frames(input_folder,
         for input_fn_relative in tqdm(input_files_relative_paths):
 
             frame_filenames,fs = \
-                _video_to_frames_for_folder(input_fn_relative,input_folder,output_folder_base,
-                                            every_n_frames,overwrite,verbose,quality,max_width,
-                                            frames_to_extract,allow_empty_videos)
+                _video_to_frames_for_folder(input_fn_relative,
+                                            input_folder,
+                                            output_folder_base,
+                                            every_n_frames,
+                                            overwrite,
+                                            verbose,
+                                            quality,
+                                            max_width,
+                                            frames_to_extract,
+                                            allow_empty_videos)
             frame_filenames_by_video.append(frame_filenames)
             fs_by_video.append(fs)
     else:
@@ -778,15 +792,15 @@ def video_folder_to_frames(input_folder,
                 print('Starting a worker pool with {} processes'.format(n_threads))
                 pool = Pool(n_threads)
             process_video_with_options = partial(_video_to_frames_for_folder,
-                                                input_folder=input_folder,
-                                                output_folder_base=output_folder_base,
-                                                every_n_frames=every_n_frames,
-                                                overwrite=overwrite,
-                                                verbose=verbose,
-                                                quality=quality,
-                                                max_width=max_width,
-                                                frames_to_extract=frames_to_extract,
-                                                allow_empty_videos=allow_empty_videos)
+                                                 input_folder=input_folder,
+                                                 output_folder_base=output_folder_base,
+                                                 every_n_frames=every_n_frames,
+                                                 overwrite=overwrite,
+                                                 verbose=verbose,
+                                                 quality=quality,
+                                                 max_width=max_width,
+                                                 frames_to_extract=frames_to_extract,
+                                                 allow_empty_videos=allow_empty_videos)
             results = list(tqdm(pool.imap(
                 partial(process_video_with_options),input_files_relative_paths),
                                 total=len(input_files_relative_paths)))
