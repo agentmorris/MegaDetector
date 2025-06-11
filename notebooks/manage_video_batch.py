@@ -19,10 +19,12 @@ MD process.
 import os
 
 from megadetector.utils import path_utils
+from megadetector.utils.ct_utils import write_json
 from megadetector.detection import video_utils
 
 input_folder = '/datadrive/data'
 frame_folder_base = '/datadrive/frames'
+frame_rate_cache = os.path.join(frame_folder_base,'frame_rates.json')
 
 assert os.path.isdir(input_folder)
 os.makedirs(frame_folder_base,exist_ok=True)
@@ -42,6 +44,8 @@ n_workers = 8
 #
 every_n_frames = 10
 
+video_filename_relative_to_fs = None
+
 
 #%% Split videos into frames
 
@@ -59,6 +63,28 @@ frame_filenames_by_video,fs_by_video,video_filenames = \
                                        quality=quality,
                                        max_width=max_width,
                                        allow_empty_videos=True)
+
+
+#%% Cache frame rate information
+
+assert len(video_filenames) == len(fs_by_video)
+
+video_filename_relative_to_fs = {}
+
+# video_filename_abs = video_filenames[0]
+for i_video,video_filename_abs in enumerate(video_filenames):
+
+    assert video_filename_abs.startswith(input_folder)
+    video_filename_relative = os.path.relpath(
+        video_filename_abs,input_folder).replace('\\','/')
+    assert video_filename_relative not in video_filename_relative_to_fs
+    video_filename_relative_to_fs[video_filename_relative] = fs_by_video[i_video]
+
+# ...for each video
+
+assert len(video_filename_relative_to_fs) == len(video_filenames)
+
+write_json(frame_rate_cache,video_filename_relative_to_fs)
 
 
 #%% List frame files, break into folders
@@ -156,15 +182,27 @@ for fn in low_frame_videos:
 
 #%% Convert frame results to video results
 
+import json
 from megadetector.detection.video_utils import \
     frame_results_to_video_results, FrameToVideoOptions
+
+# Load video frame rates if necessary
+if video_filename_relative_to_fs is None:
+    assert os.path.isfile(frame_rate_cache), 'Frame rate cache file not found'
+    with open(frame_rate_cache,'r') as f:
+        video_filename_relative_to_fs = json.load(f)
+        print('Loaded frame rates for {} videos'.format(
+            len(video_filename_relative_to_fs)))
 
 frame_level_output_filename = '/results/organization/stuff.json'
 video_output_filename = frame_level_output_filename.replace('.json','_aggregated.json')
 options = FrameToVideoOptions()
 options.include_all_processed_frames = True
+options.frame_rates_are_required = True
+
 frame_results_to_video_results(frame_level_output_filename,
                                video_output_filename,
+                               video_filename_to_frame_rate=video_filename_relative_to_fs,
                                options=options)
 
 

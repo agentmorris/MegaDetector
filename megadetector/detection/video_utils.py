@@ -452,7 +452,10 @@ def video_to_frames(input_video_file,
     if (frames_to_extract is not None) and (every_n_frames is not None):
         raise ValueError('frames_to_extract and every_n_frames are mutually exclusive')
 
-    os.makedirs(output_folder,exist_ok=True)
+    bypass_extraction = ((frames_to_extract is not None) and (len(frames_to_extract) == 0))
+
+    if not bypass_extraction:
+        os.makedirs(output_folder,exist_ok=True)
 
     vidcap = cv2.VideoCapture(input_video_file)
     n_frames = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -466,7 +469,7 @@ def video_to_frames(input_video_file,
                 every_n_seconds,every_n_frames))
 
     # If we're not over-writing, check whether all frame images already exist
-    if not overwrite:
+    if (not overwrite) and (not bypass_extraction):
 
         missing_frame_number = None
         missing_frame_filename = None
@@ -574,7 +577,7 @@ def video_to_frames(input_video_file,
     for frame_number in range(0,n_frames):
 
         # Special handling for the case where we're just doing dummy reads
-        if (frames_to_extract is not None) and (len(frames_to_extract) == 0):
+        if bypass_extraction:
             break
 
         success,image = vidcap.read()
@@ -836,6 +839,9 @@ class FrameToVideoOptions:
         #: video; can be 'error' or 'skip_with_warning'
         self.non_video_behavior = 'error'
 
+        #: Are frame rates required?
+        self.frame_rates_are_required = False
+
 
 def frame_results_to_video_results(input_file,
                                    output_file,
@@ -859,6 +865,11 @@ def frame_results_to_video_results(input_file,
 
     if options is None:
         options = FrameToVideoOptions()
+
+    if options.frame_rates_are_required:
+        assert video_filename_to_frame_rate is not None, \
+            'You specified that frame rates are required, but you did not ' + \
+            'supply video_filename_to_frame_rate'
 
     # Load results
     with open(input_file,'r') as f:
@@ -916,9 +927,13 @@ def frame_results_to_video_results(input_file,
         im_out = {}
         im_out['file'] = video_name
 
-        if (video_filename_to_frame_rate is not None) and \
-            (video_name in video_filename_to_frame_rate):
-            im_out['frame_rate'] = video_filename_to_frame_rate[video_name]
+        if (video_filename_to_frame_rate is not None):
+
+            if options.frame_rates_are_required:
+                assert video_name in video_filename_to_frame_rate, \
+                    'Could not determine frame rate for {}'.format(video_name)
+            if video_name in video_filename_to_frame_rate:
+                im_out['frame_rate'] = video_filename_to_frame_rate[video_name]
 
         # Find all detections for this video
         all_detections_this_video = []
