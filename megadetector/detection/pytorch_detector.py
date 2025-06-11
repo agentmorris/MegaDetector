@@ -492,7 +492,7 @@ def add_metadata_to_megadetector_model_file(model_file_in,
 
         zipf.write(metadata_tmp_file_abs,
                    root_folder + '/' + destination_path,
-                   compress_level=9,
+                   compresslevel=9,
                    compress_type=zipfile.ZIP_DEFLATED)
 
     try:
