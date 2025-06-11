@@ -212,8 +212,11 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
 
         b_has_bbox = [False] * len(annotations)
         for i_ann,ann in enumerate(annotations):
-            if 'bbox' in ann:
-                assert isinstance(ann['bbox'],list)
+            if 'bbox' in ann or 'bbox_relative' in ann:
+                if 'bbox' in ann:
+                    assert isinstance(ann['bbox'],list)
+                else:
+                    assert isinstance(ann['bbox_relative'],list)
                 b_has_bbox[i_ann] = True
         annotations_with_boxes = list(compress(annotations, b_has_bbox))
 
@@ -324,6 +327,9 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         extra_annotation_field_string = ''
         annotation_level_for_image = ''
 
+        # Did this image come with already-normalized bounding boxes?
+        boxes_are_normalized = None
+
         # Iterate over annotations for this image
         # i_ann = 0; anno = annos_i.iloc[i_ann]
         for i_ann,anno in annos_i.iterrows():
@@ -364,8 +370,22 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
                     category_name,category_name)
             image_categories.add(category_name)
 
-            if 'bbox' in anno:
-                bbox = anno['bbox']
+            assert not ('bbox' in anno and 'bbox_relative' in anno), \
+                "An annotation can't have both an absolute and a relative bounding box"
+
+            if 'bbox_relative' in anno:
+                box_field = 'bbox_relative'
+                assert (boxes_are_normalized is None) or (boxes_are_normalized), \
+                    "An image can't have both absolute and relative bounding boxes"
+                boxes_are_normalized = True
+            elif 'bbox' in anno:
+                box_field = 'bbox'
+                assert (boxes_are_normalized is None) or (not boxes_are_normalized), \
+                    "An image can't have both absolute and relative bounding boxes"
+                boxes_are_normalized = False
+
+            if box_field in anno:
+                bbox = anno[box_field]
                 if isinstance(bbox,float):
                     assert math.isnan(bbox), "I shouldn't see a bbox that's neither a box nor NaN"
                     continue
@@ -395,7 +415,8 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
                                      'box_classes':box_classes,
                                      'tags':box_score_strings,
                                      'img_path':img_path,
-                                     'output_file_name':file_name}
+                                     'output_file_name':file_name,
+                                     'boxes_are_normalized':boxes_are_normalized}
         rendering_info.append(rendering_info_this_image)
 
         label_level_string = ''
@@ -455,6 +476,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         img_path = rendering_info['img_path']
         bboxes = rendering_info['bboxes']
         bbox_classes = rendering_info['box_classes']
+        boxes_are_normalized = rendering_info['boxes_are_normalized']
         bbox_tags = None
         if 'tags' in rendering_info:
             bbox_tags = rendering_info['tags']
@@ -490,7 +512,8 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
                                            label_map=label_map,
                                            thickness=options.box_thickness,
                                            expansion=options.box_expansion,
-                                           tags=bbox_tags)
+                                           tags=bbox_tags,
+                                           boxes_are_normalized=boxes_are_normalized)
 
         image.save(output_full_path)
 

@@ -124,7 +124,14 @@ annotation
   ## Optional ##
   
   # These are in absolute, floating-point coordinates, with the origin at the upper-left
+  #
+  # Mutually exclusive with "bbox_relative"
   "bbox": [x,y,width,height],
+  
+  # These are in normalized, floating-point coordinates, with the origin at the upper-left
+  #
+  # Mutually exclusive with "bbox"
+  "bbox_relative": [x,y,width,height],
   
   # This indicates that this annotation is really applied at the *sequence* level,
   # and may not be reliable at the individual-image level.  Since the *sequences* are
@@ -132,8 +139,6 @@ annotation
   "sequence_level_annotation" : bool
 }
 ```
-
-Note that the coordinates in the `bbox` field are absolute here, different from those in the [MegaDetector results format](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/api/batch_processing/README.md#megadetector-batch-output-format), which are normalized.
 
 Fields listed as "optional" are intended to standardize commonly-used parameters (such as date/time information).  When present, fields should follow the above conventions.  Additional fields may be present for specific data sets.
 
