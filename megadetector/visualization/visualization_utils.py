@@ -1016,14 +1016,16 @@ def render_db_bounding_boxes(boxes,
                              vtextalign=VTEXTALIGN_TOP,
                              text_rotation=None,
                              label_font_size=DEFAULT_LABEL_FONT_SIZE,
-                             tags=None):
+                             tags=None,
+                             boxes_are_normalized=False):
     """
     Render bounding boxes (with class labels) on an image.  This is a wrapper for
     draw_bounding_boxes_on_image, allowing the caller to operate on a resized image
     by providing the original size of the image; boxes will be scaled accordingly.
 
     This function assumes that bounding boxes are in absolute coordinates, typically
-    because they come from COCO camera traps .json files.
+    because they come from COCO camera traps .json files, unless boxes_are_normalized
+    is True.
 
     Args:
         boxes (list): list of length-4 tuples, foramtted as (x,y,w,h) (in pixels)
@@ -1046,6 +1048,7 @@ def render_db_bounding_boxes(boxes,
         label_font_size (float, optional): font size for labels
         tags (list, optional): list of strings of length len(boxes) that should be appended
             after each class name (e.g. to show scores)
+        boxes_are_normalized (bool, optional): whether boxes have already been normalized
     """
 
     display_boxes = []
@@ -1065,11 +1068,21 @@ def render_db_bounding_boxes(boxes,
 
         x_min_abs, y_min_abs, width_abs, height_abs = box[0:4]
 
-        ymin = y_min_abs / img_height
-        ymax = ymin + height_abs / img_height
+        # Normalize boxes if necessary
+        if boxes_are_normalized:
 
-        xmin = x_min_abs / img_width
-        xmax = xmin + width_abs / img_width
+            xmin = x_min_abs
+            xmax = x_min_abs + width_abs
+            ymin = y_min_abs
+            ymax = y_min_abs + height_abs
+
+        else:
+
+            ymin = y_min_abs / img_height
+            ymax = ymin + height_abs / img_height
+
+            xmin = x_min_abs / img_width
+            xmax = xmin + width_abs / img_width
 
         display_boxes.append([ymin, xmin, ymax, xmax])
 

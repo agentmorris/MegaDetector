@@ -4,6 +4,8 @@
 
 * [Coding conventions](#coding-conventions)
 * [Linting](#linting)
+* [Spell checking](#spell-checking)
+* [Markdown link validation](#markdown-link-validation)
 * [Tests](#tests)
 * [Docs](#docs)
 
@@ -326,6 +328,28 @@ To fix linting violations:
 
 ```bash
 ruff check . --fix
+```
+
+
+## Spell checking
+
+I use the [typos](https://pypi.org/project/typos/) package for spell checking:
+
+```bash
+mamba install typos -y
+cd ~/git/MegaDetector
+typos --config ~/git/MegaDetector/envs/typos.toml --exclude \*.resx --exclude \*.ipynb --exclude \*.js --exclude archive\* | more
+```
+
+
+## Markdown link validation
+
+I use [markdown-link-validator](https://www.npmjs.com/package/markdown-link-validator) for link validation in .md files:
+
+```bash
+npm install -g markdown-link-validator
+cd ~/git/MegaDetector
+markdown-link-validator .
 ```
 
 ## Testing
