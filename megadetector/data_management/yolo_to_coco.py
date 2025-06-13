@@ -430,7 +430,7 @@ def yolo_to_coco(input_folder,
             input_folder as the base folder, though this is not explicitly checked.
         output_file (str, optional): .json file to which we should write COCO .json data
         empty_image_handling (str, optional): how to handle images with no boxes; whether
-            this includes images with no .txt files depending on the value of
+            this includes images with no .txt files depends on the value of
             [allow_images_without_label_files].  Can be:
 
             - 'no_annotations': include the image in the image list, with no annotations
@@ -654,6 +654,11 @@ def yolo_to_coco(input_folder,
                 images.append(im)
 
     # ...for each image result
+
+    # Clean up unecessary error fields
+    for im in images:
+        if 'error' in im and im['error'] is None:
+            del im['error']
 
     print('Read {} annotations for {} images'.format(len(annotations),
                                                      len(images)))
