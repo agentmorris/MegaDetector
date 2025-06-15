@@ -1,4 +1,4 @@
-# MegaDetector
+<img src="images/md_logo_450px.png" width="450"/><br/>
 
 ...helping conservation biologists spend less time doing boring things with camera trap images.
 
@@ -271,3 +271,5 @@ This project welcomes contributions, as pull requests, issues, or suggestions by
 If you are interesting in getting involved in the conservation technology space, and MegaDetector just happens to be the first page you landed on, and none of our open issues are getting you fired up, don't fret!  Head over to the [WILDLABS discussion forums](https://wildlabs.net/discussions) and let the community know you're a developer looking to get involved.  Someone needs your help!
 
 Information about the coding conventions, linting, testing, and documentation tools used by this repo are available in [developers.md](developers.md).
+
+Speaking of contributions... thanks to Erin Roche from Idaho Fish and Game for the MegaDetector logo at the top of this page!

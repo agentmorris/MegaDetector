@@ -103,7 +103,7 @@ folder_to_frame_files = defaultdict(list)
 # fn = frame_files[0]
 for fn in frame_files:
     folder_name = os.path.dirname(fn)
-    folder_name = os.path.relpath(folder_name,frame_folder_base)
+    folder_name = os.path.relpath(folder_name,frame_folder_base).replace('\\','/')
     folder_to_frame_files[folder_name].append(fn)
 
 print('Found {} folders for {} files'.format(len(folder_to_frame_files),len(frame_files)))
@@ -238,10 +238,10 @@ if False:
     fourcc = None
 
     # Render detections to images
-    frame_rendering_output_dir = os.path.expanduser('~/tmp/rendered-frames')
+    frame_rendering_output_dir = os.path.expanduser('g:/temp/rendered-frames')
     os.makedirs(frame_rendering_output_dir,exist_ok=True)
 
-    video_rendering_output_dir = os.path.expanduser('~/tmp/rendered-videos')
+    video_rendering_output_dir = os.path.expanduser('g:/temp/rendered-videos')
     os.makedirs(video_rendering_output_dir,exist_ok=True)
 
     frames_json = frame_level_output_filename
@@ -259,13 +259,15 @@ if False:
     output_video_folder = os.path.expanduser('~/tmp/rendered-videos')
     os.makedirs(output_video_folder,exist_ok=True)
 
-    # i_video=0; input_video_file_abs = video_filenames[i_video]
-    for i_video,input_video_file_abs in enumerate(video_filenames):
+    # i_video=0; input_video_file_relative = video_filenames[i_video]
+    for i_video,input_video_file_relative in enumerate(video_filenames):
 
         video_fs = fs_by_video[i_video]
-        rendering_fs = target_fs / every_n_frames
+        if target_fs is None:
+            rendering_fs = video_fs / every_n_frames
+        else:
+            rendering_fs = target_fs / every_n_frames
 
-        input_video_file_relative = os.path.relpath(input_video_file_abs,input_folder)
         video_frame_output_folder = os.path.join(frame_rendering_output_dir,input_video_file_relative)
         video_frame_output_folder = video_frame_output_folder.replace('\\','/')
         assert os.path.isdir(video_frame_output_folder), \
