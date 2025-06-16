@@ -36,12 +36,16 @@ def _process_single_image_for_resize(image_data,
                                      output_folder,
                                      target_size,
                                      correct_size_image_handling,
-                                     unavailable_image_handling):
+                                     unavailable_image_handling,
+                                     verbose):
     """
     Processes a single image: loads, resizes/copies, updates metadata, and scales annotations.
 
     [image_data] is a tuple of [im,annotations]
     """
+
+    assert unavailable_image_handling in ('error','omit'), \
+        f'Illegal unavailable_image_handling {unavailable_image_handling}'
 
     assert isinstance(image_data,tuple) and len(image_data) == 2
     assert isinstance(image_data[0],dict)
@@ -57,11 +61,13 @@ def _process_single_image_for_resize(image_data,
             raise FileNotFoundError('Could not find file {}'.format(input_fn_abs))
         else:
             print("Can't find image {}, skipping".format(input_fn_relative))
-            assert unavailable_image_handling == 'omit'
             return None, None
 
     output_fn_abs = os.path.join(output_folder, input_fn_relative)
     os.makedirs(os.path.dirname(output_fn_abs), exist_ok=True)
+
+    if verbose:
+        print('Resizing {} to {}'.format(input_fn_abs,output_fn_abs))
 
     try:
         pil_im = open_image(input_fn_abs)
@@ -73,7 +79,6 @@ def _process_single_image_for_resize(image_data,
                 input_fn_relative, str(e)))
         else:
             print("Can't open image {}, skipping".format(input_fn_relative))
-            assert unavailable_image_handling == 'omit'
             return None, None
 
     image_is_already_target_size = \
@@ -81,6 +86,7 @@ def _process_single_image_for_resize(image_data,
     preserve_original_size = \
         (target_size[0] == -1) and (target_size[1] == -1)
 
+    # Do we need to resize, or can we try to get away with a copy?
     if image_is_already_target_size or preserve_original_size:
         output_w = input_w
         output_h = input_h
@@ -90,17 +96,27 @@ def _process_single_image_for_resize(image_data,
         elif correct_size_image_handling == 'rewrite':
             exif_preserving_save(pil_im, output_fn_abs)
         else:
-            raise ValueError(f'Unrecognized value {correct_size_image_handling} for correct_size_image_handling')
+            raise ValueError(
+                f'Unrecognized value {correct_size_image_handling} for correct_size_image_handling')
     else:
-        pil_im = resize_image(pil_im, target_size[0], target_size[1])
-        output_w = pil_im.width
-        output_h = pil_im.height
-        exif_preserving_save(pil_im, output_fn_abs)
+        try:
+            pil_im = resize_image(pil_im, target_size[0], target_size[1])
+            output_w = pil_im.width
+            output_h = pil_im.height
+            exif_preserving_save(pil_im, output_fn_abs)
+        except Exception as e:
+            if unavailable_image_handling == 'error':
+                raise Exception('Could not resize image {}: {}'.format(
+                    input_fn_relative, str(e)))
+            else:
+                print("Can't resize image {}, skipping".format(input_fn_relative))
+                return None,None
 
     im['width'] = output_w
     im['height'] = output_h
 
     for ann in annotations_this_image:
+
         if 'bbox' in ann:
             bbox = ann['bbox']
             if (output_w != input_w) or (output_h != input_h):
@@ -114,9 +130,11 @@ def _process_single_image_for_resize(image_data,
                 ]
             ann['bbox'] = bbox
 
+    # ...for each annotation associated with this image
+
     return im, annotations_this_image
 
-# def _process_single_image_for_resize(...)
+# ...def _process_single_image_for_resize(...)
 
 
 def resize_coco_dataset(input_folder,
@@ -127,7 +145,8 @@ def resize_coco_dataset(input_folder,
                         correct_size_image_handling='copy',
                         unavailable_image_handling='error',
                         n_workers=1,
-                        pool_type='thread'):
+                        pool_type='thread',
+                        verbose=False):
     """
     Given a COCO-formatted dataset (images in input_folder, data in input_filename), resizes
     all the images to a target size (in output_folder) and scales bounding boxes accordingly.
@@ -156,10 +175,16 @@ def resize_coco_dataset(input_folder,
             Defaults to 1 (no parallelization). If <= 1, processing is sequential.
         pool_type (str, optional): type of multiprocessing pool to use ('thread' or 'process').
             Defaults to 'thread'. Only used if n_workers > 1.
+        verbose (bool, optional): enable additional debug output
 
     Returns:
         dict: the COCO database with resized images, identical to the content of [output_filename]
     """
+
+    # Validate arguments
+
+    assert unavailable_image_handling in ('error','omit'), \
+        f'Illegal unavailable_image_handling {unavailable_image_handling}'
 
     # Read input data
     with open(input_filename,'r') as f:
@@ -195,7 +220,8 @@ def resize_coco_dataset(input_folder,
                 output_folder=output_folder,
                 target_size=target_size,
                 correct_size_image_handling=correct_size_image_handling,
-                unavailable_image_handling=unavailable_image_handling
+                unavailable_image_handling=unavailable_image_handling,
+                verbose=verbose
             )
             processed_results.append(result)
 
@@ -213,7 +239,8 @@ def resize_coco_dataset(input_folder,
                                        output_folder=output_folder,
                                        target_size=target_size,
                                        correct_size_image_handling=correct_size_image_handling,
-                                       unavailable_image_handling=unavailable_image_handling)
+                                       unavailable_image_handling=unavailable_image_handling,
+                                       verbose=verbose)
 
             processed_results = list(tqdm(pool.imap(p_process_image, image_annotation_tuples),
                                         total=len(image_annotation_tuples),
