@@ -14,20 +14,19 @@ import json
 import shutil
 import argparse
 import sys
-import tempfile
-from PIL import Image
-import pytest
-from copy import deepcopy
 
-from tqdm import tqdm
 from collections import defaultdict
 from multiprocessing.pool import Pool, ThreadPool
 from functools import partial
+
+from PIL import Image
+from tqdm import tqdm
 
 from megadetector.utils.path_utils import insert_before_extension
 from megadetector.visualization.visualization_utils import \
     open_image, resize_image, exif_preserving_save
 from megadetector.utils.ct_utils import make_test_folder
+from megadetector.utils.ct_utils import write_json
 
 
 #%% Functions
@@ -37,30 +36,46 @@ def _process_single_image_for_resize(image_data,
                                      output_folder,
                                      target_size,
                                      correct_size_image_handling,
+                                     unavailable_image_handling,
                                      image_id_to_annotations_map):
     """
     Processes a single image: loads, resizes/copies, updates metadata, and scales annotations.
     """
+
     current_image_data = image_data.copy()
-    annotations_for_this_image = image_id_to_annotations_map.get(image_data['id'], [])
-    # Deepcopy annotations if they are dicts, otherwise simple copy for basic types
-    current_annotations = [ann.copy() if isinstance(ann, dict) else ann for ann in annotations_for_this_image]
+    annotations_for_this_image = \
+        image_id_to_annotations_map.get(image_data['id'], [])
+
+    # deepcopy annotations if they are dicts, otherwise simple copy for basic types
+    current_annotations = \
+        [ann.copy() if isinstance(ann, dict) else ann for ann in annotations_for_this_image]
 
     input_fn_relative = current_image_data['file_name']
     input_fn_abs = os.path.join(input_folder, input_fn_relative)
-    # The main function already asserts this, but good for a helper to be robust
-    if not os.path.isfile(input_fn_abs):
-        print(f"Warning: Image file {input_fn_abs} not found, skipping.")
-        # Return original data if image not found, or handle as error
-        return image_data, annotations_for_this_image
 
+    if not os.path.isfile(input_fn_abs):
+        if unavailable_image_handling == 'error':
+            raise FileNotFoundError('Could not find file {}'.format(input_fn_abs))
+        else:
+            print("Can't find image {}, skipping".format(input_fn_relative))
+            assert unavailable_image_handling == 'omit'
+            return None, None
 
     output_fn_abs = os.path.join(output_folder, input_fn_relative)
     os.makedirs(os.path.dirname(output_fn_abs), exist_ok=True)
 
-    pil_im = open_image(input_fn_abs)
-    input_w = pil_im.width
-    input_h = pil_im.height
+    try:
+        pil_im = open_image(input_fn_abs)
+        input_w = pil_im.width
+        input_h = pil_im.height
+    except Exception as e:
+        if unavailable_image_handling == 'error':
+            raise Exception('Could not open image {}: {}'.format(
+                input_fn_relative, str(e)))
+        else:
+            print("Can't open image {}, skipping".format(input_fn_relative))
+            assert unavailable_image_handling == 'omit'
+            return None, None
 
     image_is_already_target_size = \
         (input_w == target_size[0]) and (input_h == target_size[1])
@@ -102,15 +117,18 @@ def _process_single_image_for_resize(image_data,
 
     return current_image_data, current_annotations
 
+# def _process_single_image_for_resize(...)
+
 
 def resize_coco_dataset(input_folder,
                         input_filename,
                         output_folder,
-                        output_filename,
+                        output_filename=None,
                         target_size=(-1,-1),
                         correct_size_image_handling='copy',
-                        n_workers: int = 1,
-                        pool_type: str = 'thread'):
+                        unavailable_image_handling='error',
+                        n_workers=1,
+                        pool_type='thread'):
     """
     Given a COCO-formatted dataset (images in input_folder, data in input_filename), resizes
     all the images to a target size (in output_folder) and scales bounding boxes accordingly.
@@ -121,8 +139,8 @@ def resize_coco_dataset(input_folder,
         input_filename (str): the (input) COCO-formatted .json file containing annotations
         output_folder (str): the folder to which we should write resized images; can be the
             same as [input_folder], in which case images are over-written
-        output_filename (str): the COCO-formatted .json file we should generate that refers to
-            the resized images
+        output_filename (str, optional): the COCO-formatted .json file we should generate that refers
+            to the resized images
         target_size (list or tuple of ints, optional): this should be tuple/list of ints, with length 2 (w,h).
             If either dimension is -1, aspect ratio will be preserved.  If both dimensions are -1, this means
             "keep the original size".  If  both dimensions are -1 and correct_size_image_handling is copy, this
@@ -133,6 +151,8 @@ def resize_coco_dataset(input_folder,
             attempting to preserve the same quality).  The only reason to do use 'rewrite' 'is the case where
             you're superstitious about biases coming from images in a training set being written by different
             image encoders.
+        unavailable_image_handling (str, optional): what to do when a file can't be opened.  Can be
+            'error' or 'omit'.
         n_workers (int, optional): number of workers to use for parallel processing.
             Defaults to 1 (no parallelization). If <= 1, processing is sequential.
         pool_type (str, optional): type of multiprocessing pool to use ('thread' or 'process').
@@ -151,18 +171,11 @@ def resize_coco_dataset(input_folder,
     for ann in d['annotations']:
         image_id_to_annotations[ann['image_id']].append(ann)
 
-    # TODO: this is trivially parallelizable
-    #
-    # Process images (sequentially or in parallel)
-    # We will replace this loop with pool.map or a sequential call
-    # to _process_single_image_for_resize later.
-
     original_images = d['images']
     processed_results = []
 
     if n_workers <= 1:
-        # Sequential processing
-        print("Processing images sequentially...")
+
         for im_data in tqdm(original_images, desc="Resizing images sequentially"):
             result = _process_single_image_for_resize(
                 im_data,
@@ -170,48 +183,52 @@ def resize_coco_dataset(input_folder,
                 output_folder,
                 target_size,
                 correct_size_image_handling,
+                unavailable_image_handling,
                 image_id_to_annotations
             )
             processed_results.append(result)
+
     else:
-        # Parallel processing
-        assert pool_type in ('process', 'thread'), f'Illegal pool type {pool_type}'
-        SelectedPool = ThreadPool if pool_type == 'thread' else Pool
+        try:
 
-        print(f'Starting a {pool_type} pool of {n_workers} workers for image resizing')
-        pool = SelectedPool(n_workers)
+            assert pool_type in ('process', 'thread'), f'Illegal pool type {pool_type}'
+            selected_pool = ThreadPool if (pool_type == 'thread') else Pool
 
-        p_process_image = partial(_process_single_image_for_resize,
-                                  input_folder=input_folder,
-                                  output_folder=output_folder,
-                                  target_size=target_size,
-                                  correct_size_image_handling=correct_size_image_handling,
-                                  image_id_to_annotations_map=image_id_to_annotations)
+            print(f'Starting a {pool_type} pool of {n_workers} workers for image resizing')
+            pool = selected_pool(n_workers)
 
-        processed_results = list(tqdm(pool.imap(p_process_image, original_images), total=len(original_images), desc=f"Resizing images with {pool_type} pool"))
+            p_process_image = partial(_process_single_image_for_resize,
+                                       input_folder=input_folder,
+                                       output_folder=output_folder,
+                                       target_size=target_size,
+                                       correct_size_image_handling=correct_size_image_handling,
+                                       unavailable_image_handling=unavailable_image_handling,
+                                       image_id_to_annotations_map=image_id_to_annotations)
 
-        pool.close()
-        pool.join()
-        print(f"{pool_type.capitalize()} pool closed and joined.")
+            processed_results = list(tqdm(pool.imap(p_process_image, original_images),
+                                        total=len(original_images),
+                                        desc=f"Resizing images with {pool_type} pool"))
 
-    # Reconstruct the 'images' and 'annotations' lists from processed_results
-    # This part will be handled in the next step as per the plan.
-    # For now, ensure processed_results is populated correctly.
-    # The following lines from the previous version need to be removed from here
-    # and added after this if/else block, operating on 'processed_results'.
+        finally:
+            pool.close()
+            pool.join()
+            print(f"{pool_type.capitalize()} pool closed and joined.")
 
     new_images_list = []
     new_annotations_list = []
     for res_im_data, res_annotations in processed_results:
+        if res_im_data is None or res_annotations is None:
+            assert res_annotations is None and res_im_data is None
+            assert unavailable_image_handling == 'omit'
+            continue
         new_images_list.append(res_im_data)
         new_annotations_list.extend(res_annotations)
 
     d['images'] = new_images_list
     d['annotations'] = new_annotations_list
 
-    # Write output file
-    with open(output_filename,'w') as f:
-        json.dump(d,f,indent=1)
+    if output_filename is not None:
+        write_json(output_filename,d)
 
     return d
 
@@ -226,19 +243,25 @@ if False:
 
     #%% Test resizing
 
-    input_folder = os.path.expanduser('~/data/usgs-tegus/usgs-kissel-training')
-    input_filename = os.path.expanduser('~/data/usgs-tegus/usgs-kissel-training.json')
-    target_size = (1600,-1)
+    input_folder = 'i:/data/lila/ena24'
+    input_filename = 'i:/data/lila/ena24.json'
 
-    output_filename = insert_before_extension(input_filename,'resized-test')
-    output_folder = input_folder + '-resized-test'
+    output_folder = 'i:/data/lila/ena24-resized'
+    output_filename = insert_before_extension(input_filename,'resized')
+
+    target_size = (640,-1)
 
     correct_size_image_handling = 'rewrite'
 
-    resize_coco_dataset(input_folder,input_filename,
-                        output_folder,output_filename,
+    resize_coco_dataset(input_folder=input_folder,
+                        input_filename=input_filename,
+                        output_folder=output_folder,
+                        output_filename=output_filename,
                         target_size=target_size,
-                        correct_size_image_handling=correct_size_image_handling)
+                        correct_size_image_handling=correct_size_image_handling,
+                        unavailable_image_handling='omit',
+                        n_workers=10,
+                        pool_type='thread')
 
 
     #%% Preview
@@ -246,12 +269,13 @@ if False:
     from megadetector.visualization import visualize_db
     options = visualize_db.DbVizOptions()
     options.parallelize_rendering = True
-    options.viz_size = (900, -1)
-    options.num_to_visualize = 5000
+    options.viz_size = (640, -1)
+    options.num_to_visualize = 100
 
+    preview_folder = 'i:/data/lila/ena24-resized-preview'
     html_file,_ = visualize_db.visualize_db(output_filename,
-                                              os.path.expanduser('~/tmp/resize_coco_preview'),
-                                              output_folder,options)
+                                            preview_folder,
+                                            output_folder,options)
 
 
     from megadetector.utils import path_utils # noqa
@@ -262,56 +286,58 @@ if False:
 
 def main():
     """
-    Command-line execution function.
+    Command-line driver for resize_coco_dataset
     """
+
     parser = argparse.ArgumentParser(
-        description='Resize images in a COCO dataset and scale annotations.'
+        description='Resize images in a COCO dataset and scale annotations'
     )
     parser.add_argument(
         'input_folder',
         type=str,
-        help='Path to the folder containing original images.'
+        help='Path to the folder containing original images'
     )
     parser.add_argument(
         'input_filename',
         type=str,
-        help='Path to the input COCO .json file.'
+        help='Path to the input COCO .json file'
     )
     parser.add_argument(
         'output_folder',
         type=str,
-        help='Path to the folder where resized images will be saved.'
+        help='Path to the folder where resized images will be saved'
     )
     parser.add_argument(
         'output_filename',
         type=str,
-        help='Path to the output COCO .json file for resized data.'
+        help='Path to the output COCO .json file for resized data'
     )
     parser.add_argument(
         '--target_size',
         type=str,
         default='-1,-1',
-        help='Target size as "width,height". Use -1 to preserve aspect ratio for a dimension. E.g., "800,600" or "1024,-1".'
+        help='Target size as "width,height". Use -1 to preserve aspect ratio for a dimension. ' + \
+             'E.g., "800,600" or "1024,-1".'
     )
     parser.add_argument(
         '--correct_size_image_handling',
         type=str,
         default='copy',
         choices=['copy', 'rewrite'],
-        help='How to handle images already at target size.'
+        help='How to handle images already at target size'
     )
     parser.add_argument(
         '--n_workers',
         type=int,
         default=1,
-        help='Number of workers for parallel processing. <=1 for sequential.'
+        help='Number of workers for parallel processing. <=1 for sequential'
     )
     parser.add_argument(
         '--pool_type',
         type=str,
         default='thread',
         choices=['thread', 'process'],
-        help='Type of multiprocessing pool if n_workers > 1.'
+        help='Type of multiprocessing pool if n_workers > 1'
     )
 
     if len(sys.argv[1:]) == 0:
@@ -340,7 +366,7 @@ def main():
         n_workers=args.n_workers,
         pool_type=args.pool_type
     )
-    print("Dataset resizing complete.")
+    print("Dataset resizing complete")
 
 if __name__ == '__main__':
     main()
@@ -349,17 +375,11 @@ if __name__ == '__main__':
 #%% Tests
 
 class TestResizeCocoDataset:
-    def set_up(self):
-        # Create a unique base directory for this test run
-        # make_test_folder itself creates a unique subfolder if not given a specific name,
-        # but here we give it a specific subfolder name for clarity.
-        # Using a timestamp or UUID could also make self.test_dir unique per run if needed,
-        # but make_test_folder handles uniqueness if its default behavior is used.
-        # For simplicity here, we'll assume make_test_folder('resize_coco_tests') is sufficient
-        # or that ct_utils.make_test_folder handles creating a unique enough base.
-        # To be absolutely sure for multiple test classes/runs, one might add a unique suffix.
-        # However, following the example of url_utils.py, it seems a fixed subfolder name is okay
-        # if tests are run in a way that teardown always occurs.
+    """
+    Test class for the resize_coco_dataset function.
+    """
+
+    def set_up(self): # noqa
         self.test_dir = make_test_folder(subfolder='resize_coco_tests')
 
         self.input_images_dir_seq = os.path.join(self.test_dir, 'input_images_seq')
@@ -374,7 +394,8 @@ class TestResizeCocoDataset:
         self.output_images_dir_par = os.path.join(self.test_dir, 'output_images_par')
         os.makedirs(self.output_images_dir_par, exist_ok=True)
 
-    def tear_down(self):
+    def tear_down(self): # noqa
+
         # Ensure shutil is imported if not already globally in the file
         # (it is, under '#%% Imports and constants')
         if hasattr(self, 'test_dir') and os.path.exists(self.test_dir):
@@ -436,6 +457,10 @@ class TestResizeCocoDataset:
         return json_file_path, coco_data
 
     def test_resize_sequential_vs_parallel(self):
+        """
+        Test driver for sequence vs. parallel COCO dataset resizing.
+        """
+
         self.set_up()
 
         try:
@@ -453,7 +478,7 @@ class TestResizeCocoDataset:
             )
             output_json_path_seq = os.path.join(self.test_dir, 'output_coco_seq.json')
 
-            print(f"Test: Starting sequential resize (1 worker)...")
+            print("Test: starting sequential resize (1 worker)...")
             resize_coco_dataset(
                 input_folder=self.input_images_dir_seq,
                 input_filename=input_json_path_seq,
@@ -475,7 +500,7 @@ class TestResizeCocoDataset:
             )
             output_json_path_par = os.path.join(self.test_dir, 'output_coco_par.json')
 
-            print(f"Test: Starting parallel resize (2 workers, thread pool)...")
+            print("Test: Starting parallel resize (2 workers, thread pool)...")
             resize_coco_dataset(
                 input_folder=self.input_images_dir_par,
                 input_filename=input_json_path_par,
@@ -501,27 +526,37 @@ class TestResizeCocoDataset:
             sorted_images_seq = sorted(data_seq['images'], key=lambda x: x['id'])
             sorted_images_par = sorted(data_par['images'], key=lambda x: x['id'])
 
-            for img_s, img_p in zip(sorted_images_seq, sorted_images_par):
-                assert img_s['id'] == img_p['id'], f"Image IDs differ: {img_s['id']} vs {img_p['id']}"
-                # Filenames are generated independently, so we only check structure, not exact name matching across seq/par runs' inputs
-                # but output structure should be consistent if input names were e.g. image_0, image_1
+            for img_s, img_p in zip(sorted_images_seq, sorted_images_par, strict=True):
+                assert img_s['id'] == img_p['id'], \
+                    f"Image IDs differ: {img_s['id']} vs {img_p['id']}"
+                # Filenames are generated independently, so we only check structure, not exact name matching
+                # across seq/par runs' inputs, but output structure should be consistent if input
+                # names were e.g. image_0, image_1
                 assert img_s['file_name'] == img_p['file_name']
-                assert img_s['width'] == target_w, f"Seq image {img_s['id']} width incorrect"
-                assert img_s['height'] == target_h, f"Seq image {img_s['id']} height incorrect"
-                assert img_p['width'] == target_w, f"Par image {img_p['id']} width incorrect"
-                assert img_p['height'] == target_h, f"Par image {img_p['id']} height incorrect"
+                assert img_s['width'] == target_w, \
+                    f"Seq image {img_s['id']} width incorrect"
+                assert img_s['height'] == target_h, \
+                    f"Seq image {img_s['id']} height incorrect"
+                assert img_p['width'] == target_w, \
+                    f"Par image {img_p['id']} width incorrect"
+                assert img_p['height'] == target_h, \
+                    f"Par image {img_p['id']} height incorrect"
 
             # Compare annotations
-            assert len(data_seq['annotations']) == len(data_par['annotations']), "Number of annotations differs"
+            assert len(data_seq['annotations']) == len(data_par['annotations']), \
+                "Number of annotations differs"
             # Assuming _create_dummy_image_and_coco_json creates the same number of annotations for each test run
 
             sorted_anns_seq = sorted(data_seq['annotations'], key=lambda x: x['id'])
             sorted_anns_par = sorted(data_par['annotations'], key=lambda x: x['id'])
 
-            for ann_s, ann_p in zip(sorted_anns_seq, sorted_anns_par):
-                assert ann_s['id'] == ann_p['id'], f"Annotation IDs differ: {ann_s['id']} vs {ann_p['id']}"
-                assert ann_s['image_id'] == ann_p['image_id'], f"Annotation image_ids differ for ann_id {ann_s['id']}"
-                assert ann_s['category_id'] == ann_p['category_id'], f"Annotation category_ids differ for ann_id {ann_s['id']}"
+            for ann_s, ann_p in zip(sorted_anns_seq, sorted_anns_par, strict=True):
+                assert ann_s['id'] == ann_p['id'], \
+                    f"Annotation IDs differ: {ann_s['id']} vs {ann_p['id']}"
+                assert ann_s['image_id'] == ann_p['image_id'], \
+                    f"Annotation image_ids differ for ann_id {ann_s['id']}"
+                assert ann_s['category_id'] == ann_p['category_id'], \
+                    f"Annotation category_ids differ for ann_id {ann_s['id']}"
 
                 # Check bbox scaling (example: original width 120, target 60 -> scale 0.5)
                 # Original bbox: [10, 10, 20, 15] -> Scaled: [5, 5, 10, 7.5] (Floats possible)
@@ -541,56 +576,34 @@ class TestResizeCocoDataset:
             assert len(seq_files) == num_images_to_test, "Incorrect number of output images (sequential)"
             assert len(seq_files) == len(par_files), "Number of output image files differs"
 
-            for fname_s, fname_p in zip(seq_files, par_files):
+            for fname_s, fname_p in zip(seq_files, par_files, strict=True):
                 assert fname_s == fname_p, "Output image filenames differ between seq and par runs"
                 img_s_path = os.path.join(self.output_images_dir_seq, fname_s)
                 img_p_path = os.path.join(self.output_images_dir_par, fname_p)
 
                 with Image.open(img_s_path) as img_s_pil:
-                    assert img_s_pil.size == target_size_test, f"Image {fname_s} (seq) has wrong dimensions: {img_s_pil.size}"
+                    assert img_s_pil.size == target_size_test, \
+                        f"Image {fname_s} (seq) has wrong dimensions: {img_s_pil.size}"
                 with Image.open(img_p_path) as img_p_pil:
-                    assert img_p_pil.size == target_size_test, f"Image {fname_p} (par) has wrong dimensions: {img_p_pil.size}"
+                    assert img_p_pil.size == target_size_test, \
+                        f"Image {fname_p} (par) has wrong dimensions: {img_p_pil.size}"
 
             print("Test test_resize_sequential_vs_parallel PASSED")
 
         finally:
             self.tear_down()
 
-# End of TestResizeCocoDataset class definition
+    # ...def test_resize_sequential_vs_parallel(...)
+
+# ...class TestResizeCocoDataset
+
 
 def test_resize_coco_dataset_main():
+    """
+    Driver for the TestResizeCocoDataset() class.
+    """
+
     print("Starting TestResizeCocoDataset main runner...")
     test_runner = TestResizeCocoDataset()
     test_runner.test_resize_sequential_vs_parallel()
-    # If there were more test methods, they would be called here:
-    # test_runner.test_another_feature()
     print("TestResizeCocoDataset main runner finished.")
-
-if __name__ == '__main__':
-    # This allows running the test directly from the command line.
-    # For more comprehensive testing, pytest should be used if available in the project.
-    print("Executing test_resize_coco_dataset_main() due to __main__ guard...")
-    # This will only run if the script is executed directly, *not* when imported.
-    # However, the main CLI driver above this Test cell also uses an __name__ == '__main__'
-    # guard. If this script is run directly, Python executes the *first* __main__ block
-    # it encounters top-to-bottom. So, the main CLI driver will run, not these tests,
-    # if the script is invoked as `python resize_coco_dataset.py`.
-    # To run these tests directly, one would typically comment out the primary __main__ block
-    # or use a test runner like pytest that discovers test classes and methods.
-    # For the purpose of this task, we are adding the block as requested, assuming
-    # it might be used in specific debugging scenarios or if pytest is configured
-    # to find and run such main test functions.
-    # A better way for pytest is to just let pytest discover the Test... class.
-    # A common pattern for a simple script-based runner is to have a specific CLI arg for tests.
-
-    # Given the file structure, if __name__ == '__main__' is used for the CLI driver
-    # at the end of the file (but before this test cell), that block will take precedence.
-    # For this test runner to be effective via `python script.py`, the main CLI's
-    # `if __name__ == '__main__':` block would need to be conditional or removed.
-    # Let's assume for now this is for explicit programmatic invocation or pytest discovery.
-
-    # If the primary CLI driver is intended to be the default __main__ action,
-    # then this test __main__ block is more for documentation or specific invocation.
-    # We'll proceed with adding it as requested by the plan.
-    test_resize_coco_dataset_main()
-
