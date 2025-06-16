@@ -40,17 +40,17 @@ def _process_single_image_for_resize(image_data,
                                      image_id_to_annotations_map):
     """
     Processes a single image: loads, resizes/copies, updates metadata, and scales annotations.
+
+    [image_data] is a tuple of [im,annotations]
     """
 
-    current_image_data = image_data.copy()
-    annotations_for_this_image = \
-        image_id_to_annotations_map.get(image_data['id'], [])
+    assert isinstance(image_data,tuple) and len(image_data) == 2
+    assert isinstance(image_data[0],dict)
+    assert isinstance(image_data[1],list)
+    im = image_data[0].copy()
+    annotations_this_image = [ann.copy() for ann in image_data[1]]
 
-    # deepcopy annotations if they are dicts, otherwise simple copy for basic types
-    current_annotations = \
-        [ann.copy() if isinstance(ann, dict) else ann for ann in annotations_for_this_image]
-
-    input_fn_relative = current_image_data['file_name']
+    input_fn_relative = im['file_name']
     input_fn_abs = os.path.join(input_folder, input_fn_relative)
 
     if not os.path.isfile(input_fn_abs):
@@ -98,10 +98,10 @@ def _process_single_image_for_resize(image_data,
         output_h = pil_im.height
         exif_preserving_save(pil_im, output_fn_abs)
 
-    current_image_data['width'] = output_w
-    current_image_data['height'] = output_h
+    im['width'] = output_w
+    im['height'] = output_h
 
-    for ann in current_annotations:
+    for ann in annotations_this_image:
         if 'bbox' in ann:
             bbox = ann['bbox']
             if (output_w != input_w) or (output_h != input_h):
@@ -115,7 +115,7 @@ def _process_single_image_for_resize(image_data,
                 ]
             ann['bbox'] = bbox
 
-    return current_image_data, current_annotations
+    return im, annotations_this_image
 
 # def _process_single_image_for_resize(...)
 
@@ -172,13 +172,26 @@ def resize_coco_dataset(input_folder,
         image_id_to_annotations[ann['image_id']].append(ann)
 
     original_images = d['images']
+
+    # Our worker function will take tuples of images and their
+    # associated annotations
+    image_annotation_tuples = []
+    for im in original_images:
+        if im['id'] not in image_id_to_annotations:
+            annotations_this_image = []
+        else:
+            annotations_this_image = image_id_to_annotations[im['id']]
+        image_annotation_tuple = (im,annotations_this_image)
+        image_annotation_tuples.append(image_annotation_tuple)
+
     processed_results = []
 
     if n_workers <= 1:
 
-        for im_data in tqdm(original_images, desc="Resizing images sequentially"):
+        for image_annotation_tuple in tqdm(image_annotation_tuples,
+                                           desc="Resizing images sequentially"):
             result = _process_single_image_for_resize(
-                im_data,
+                image_annotation_tuple,
                 input_folder,
                 output_folder,
                 target_size,
@@ -205,8 +218,8 @@ def resize_coco_dataset(input_folder,
                                        unavailable_image_handling=unavailable_image_handling,
                                        image_id_to_annotations_map=image_id_to_annotations)
 
-            processed_results = list(tqdm(pool.imap(p_process_image, original_images),
-                                        total=len(original_images),
+            processed_results = list(tqdm(pool.imap(p_process_image, image_annotation_tuples),
+                                        total=len(image_annotation_tuples),
                                         desc=f"Resizing images with {pool_type} pool"))
 
         finally:
@@ -244,7 +257,8 @@ if False:
     #%% Test resizing
 
     input_folder = 'i:/data/lila/ena24'
-    input_filename = 'i:/data/lila/ena24.json'
+    # input_filename = 'i:/data/lila/ena24.json'
+    input_filename = 'i:/data/lila/ena24-mini.json'
 
     output_folder = 'i:/data/lila/ena24-resized'
     output_filename = insert_before_extension(input_filename,'resized')
@@ -253,15 +267,15 @@ if False:
 
     correct_size_image_handling = 'rewrite'
 
-    resize_coco_dataset(input_folder=input_folder,
-                        input_filename=input_filename,
-                        output_folder=output_folder,
-                        output_filename=output_filename,
-                        target_size=target_size,
-                        correct_size_image_handling=correct_size_image_handling,
-                        unavailable_image_handling='omit',
-                        n_workers=10,
-                        pool_type='thread')
+    _ = resize_coco_dataset(input_folder=input_folder,
+                            input_filename=input_filename,
+                            output_folder=output_folder,
+                            output_filename=output_filename,
+                            target_size=target_size,
+                            correct_size_image_handling=correct_size_image_handling,
+                            unavailable_image_handling='omit',
+                            n_workers=10,
+                            pool_type='process')
 
 
     #%% Preview
