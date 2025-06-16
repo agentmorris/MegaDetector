@@ -36,8 +36,7 @@ def _process_single_image_for_resize(image_data,
                                      output_folder,
                                      target_size,
                                      correct_size_image_handling,
-                                     unavailable_image_handling,
-                                     image_id_to_annotations_map):
+                                     unavailable_image_handling):
     """
     Processes a single image: loads, resizes/copies, updates metadata, and scales annotations.
 
@@ -191,13 +190,12 @@ def resize_coco_dataset(input_folder,
         for image_annotation_tuple in tqdm(image_annotation_tuples,
                                            desc="Resizing images sequentially"):
             result = _process_single_image_for_resize(
-                image_annotation_tuple,
-                input_folder,
-                output_folder,
-                target_size,
-                correct_size_image_handling,
-                unavailable_image_handling,
-                image_id_to_annotations
+                image_data=image_annotation_tuple,
+                input_folder=input_folder,
+                output_folder=output_folder,
+                target_size=target_size,
+                correct_size_image_handling=correct_size_image_handling,
+                unavailable_image_handling=unavailable_image_handling
             )
             processed_results.append(result)
 
@@ -215,8 +213,7 @@ def resize_coco_dataset(input_folder,
                                        output_folder=output_folder,
                                        target_size=target_size,
                                        correct_size_image_handling=correct_size_image_handling,
-                                       unavailable_image_handling=unavailable_image_handling,
-                                       image_id_to_annotations_map=image_id_to_annotations)
+                                       unavailable_image_handling=unavailable_image_handling)
 
             processed_results = list(tqdm(pool.imap(p_process_image, image_annotation_tuples),
                                         total=len(image_annotation_tuples),
