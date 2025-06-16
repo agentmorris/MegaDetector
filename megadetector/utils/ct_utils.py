@@ -1738,7 +1738,7 @@ def test_temp_folder_creation():
 def run_all_module_tests():
     """
     Run all tests in the ct_utils module.  This is not invoked by pytest; this is
-    just a convenience wrapper for debuggig the tests.
+    just a convenience wrapper for debugging the tests.
     """
 
     test_write_json()
@@ -1754,6 +1754,3 @@ def run_all_module_tests():
     test_type_checking_and_validation()
     test_string_parsing()
     test_temp_folder_creation()
-
-# from IPython import embed; embed()
-# run_all_module_tests()

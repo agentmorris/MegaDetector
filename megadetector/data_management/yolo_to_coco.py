@@ -10,6 +10,8 @@ Converts a folder of YOLO-formatted annotation files to a COCO-formatted dataset
 
 import json
 import os
+import argparse
+import sys
 
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
@@ -22,7 +24,8 @@ from megadetector.utils.path_utils import recursive_file_list
 from megadetector.utils.path_utils import find_image_strings
 from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.visualization.visualization_utils import open_image
-from megadetector.data_management.yolo_output_to_md_output import read_classes_from_yolo_dataset_file
+from megadetector.data_management.yolo_output_to_md_output import \
+    read_classes_from_yolo_dataset_file
 
 
 #%% Support functions
@@ -737,4 +740,128 @@ if False:
 
 #%% Command-line driver
 
-# TODO
+def main():
+    """
+    Command-line driver for YOLO to COCO conversion.
+    """
+
+    parser = argparse.ArgumentParser(
+        description='Convert a YOLO-formatted dataset to COCO format'
+    )
+    parser.add_argument(
+        'input_folder',
+        type=str,
+        help='Path to the YOLO dataset folder (image folder)'
+    )
+    parser.add_argument(
+        'class_name_file',
+        type=str,
+        help='Path to the file containing class names (e.g., classes.txt or dataset.yaml)'
+    )
+    parser.add_argument(
+        'output_file',
+        type=str,
+        help='Path to the output COCO .json file.'
+    )
+    parser.add_argument(
+        '--label_folder',
+        type=str,
+        default=None,
+        help='Label folder, if different from the image folder. Default: None (labels are in the image folder)'
+    )
+    parser.add_argument(
+        '--empty_image_handling',
+        type=str,
+        default='no_annotations',
+        choices=['no_annotations', 'empty_annotations', 'skip', 'error'],
+        help='How to handle images with no bounding boxes.'
+    )
+    parser.add_argument(
+        '--empty_image_category_name',
+        type=str,
+        default='empty',
+        help='Category name for empty images if empty_image_handling is "empty_annotations"'
+    )
+    parser.add_argument(
+        '--error_image_handling',
+        type=str,
+        default='no_annotations',
+        choices=['skip', 'no_annotations'],
+        help='How to handle images that fail to load'
+    )
+    parser.add_argument(
+        '--allow_images_without_label_files',
+        type=str,
+        default='true',
+        choices=['true', 'false'],
+        help='Whether to allow images that do not have corresponding label files (true/false)'
+    )
+    parser.add_argument(
+        '--n_workers',
+        type=int,
+        default=1,
+        help='Number of workers for parallel processing. <=1 for sequential'
+    )
+    parser.add_argument(
+        '--pool_type',
+        type=str,
+        default='thread',
+        choices=['thread', 'process'],
+        help='Type of multiprocessing pool if n_workers > 1'
+    )
+    parser.add_argument(
+        '--recursive',
+        type=str,
+        default='true',
+        choices=['true', 'false'],
+        help='Whether to search for images recursively in the input folder (true/false)'
+    )
+    parser.add_argument(
+        '--exclude_string',
+        type=str,
+        default=None,
+        help='Exclude images whose filename contains this string'
+    )
+    parser.add_argument(
+        '--include_string',
+        type=str,
+        default=None,
+        help='Include images only if filename contains this string'
+    )
+    parser.add_argument(
+        '--overwrite_handling',
+        type=str,
+        default='overwrite',
+        choices=['load', 'overwrite', 'error'],
+        help='Behavior if output_file exists.'
+    )
+
+    if len(sys.argv[1:]) == 0:
+        parser.print_help()
+        parser.exit()
+
+    args = parser.parse_args()
+
+    parsed_allow_images = args.allow_images_without_label_files.lower() == 'true'
+    parsed_recursive = args.recursive.lower() == 'true'
+
+    yolo_to_coco(
+        args.input_folder,
+        args.class_name_file,
+        output_file=args.output_file,
+        label_folder=args.label_folder,
+        empty_image_handling=args.empty_image_handling,
+        empty_image_category_name=args.empty_image_category_name,
+        error_image_handling=args.error_image_handling,
+        allow_images_without_label_files=parsed_allow_images,
+        n_workers=args.n_workers,
+        pool_type=args.pool_type,
+        recursive=parsed_recursive,
+        exclude_string=args.exclude_string,
+        include_string=args.include_string,
+        overwrite_handling=args.overwrite_handling
+    )
+    print(f"Dataset conversion complete, output written to {args.output_file}")
+
+if __name__ == '__main__':
+    main()
