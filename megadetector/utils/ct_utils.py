@@ -239,8 +239,12 @@ def write_json(path,
     elif force_str:
         default_handler = str
 
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
     with open(path, 'w', newline='\n', encoding=encoding) as f:
         json.dump(content, f, indent=indent, default=default_handler, ensure_ascii=ensure_ascii)
+
+# ...def write_json(...)
 
 
 def convert_yolo_to_xywh(yolo_box):

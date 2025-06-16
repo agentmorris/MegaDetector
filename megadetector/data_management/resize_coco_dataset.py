@@ -45,7 +45,8 @@ def resize_coco_dataset(input_folder,
             If either dimension is -1, aspect ratio will be preserved.  If both dimensions are -1, this means
             "keep the original size".  If  both dimensions are -1 and correct_size_image_handling is copy, this
             function is basically a no-op.
-        correct_size_image_handling (str, optional): can be 'copy' (in which case the original image is just copied
+        correct_size_image_handling (str, optional): what to do in the case where the original size
+            already matches the target size.  Can be 'copy' (in which case the original image is just copied
             to the output folder) or 'rewrite' (in which case the image is opened via PIL and re-written,
             attempting to preserve the same quality).  The only reason to do use 'rewrite' 'is the case where
             you're superstitious about biases coming from images in a training set being written by different
