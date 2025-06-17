@@ -291,4 +291,94 @@ if False:
 
 #%% Command-line driver
 
-# TODO
+import sys
+import argparse
+import json # Already imported above, but good practice for clarity
+
+def main():
+    """
+    Command-line interface to convert LabelMe JSON files to YOLO format.
+    """
+    parser = argparse.ArgumentParser(
+        description='Convert a folder of LabelMe .json files to YOLO .txt format.'
+    )
+    parser.add_argument(
+        'labelme_folder',
+        type=str,
+        help='Folder of LabelMe .json files to convert'
+    )
+    parser.add_argument(
+        '--output_category_file',
+        type=str,
+        default=None,
+        help='Path to save the generated category mapping (.json)'
+    )
+    parser.add_argument(
+        '--required_token',
+        type=str,
+        default=None,
+        help='Only process files containing this token in their LabelMe JSON data'
+    )
+    parser.add_argument(
+        '--overwrite_behavior',
+        type=str,
+        default='overwrite',
+        choices=['skip', 'overwrite'],
+        help="Behavior if YOLO .txt files exist (default: 'overwrite')"
+    )
+    parser.add_argument(
+        '--n_workers',
+        type=int,
+        default=1,
+        help='Number of workers for parallel processing (default: 1)'
+    )
+    parser.add_argument(
+        '--use_threads',
+        type=str,
+        default='true',
+        choices=['true', 'false'],
+        help="Use threads ('true') or processes ('false') for parallelism (default: 'true')"
+    )
+
+    args = parser.parse_args()
+
+    if args.use_threads.lower() == 'true':
+        use_threads = True
+    elif args.use_threads.lower() == 'false':
+        use_threads = False
+    else:
+        # This case should ideally be caught by choices, but as a safeguard:
+        print("Error: --use_threads must be 'true' or 'false'")
+        sys.exit(1)
+
+    results = labelme_folder_to_yolo(
+        labelme_folder=args.labelme_folder,
+        category_name_to_category_id=None,  # As per requirement
+        required_token=args.required_token,
+        overwrite_behavior=args.overwrite_behavior,
+        relative_filenames_to_convert=None, # As per requirement
+        n_workers=args.n_workers,
+        use_threads=use_threads
+    )
+
+    if args.output_category_file:
+        category_map = results['category_name_to_category_id']
+        with open(args.output_category_file, 'w') as f:
+            json.dump(category_map, f, indent=1)
+        print(f"Saved category mapping to: {args.output_category_file}")
+
+    print(f"Finished processing folder: {args.labelme_folder}")
+    # Optionally, print more detailed results from results['image_results']
+    # For example, count of converted vs. skipped files.
+    converted_count = sum(1 for res in results['image_results'] if res['status'] == 'converted')
+    skipped_exist_count = sum(1 for res in results['image_results'] if res['status'] == 'skip-exists')
+    skipped_token_count = sum(1 for res in results['image_results'] if res['status'] == 'skip-no-required-token')
+    print(f"  Converted files: {converted_count}")
+    if skipped_exist_count > 0:
+        print(f"  Skipped (already exist): {skipped_exist_count}")
+    if skipped_token_count > 0:
+        print(f"  Skipped (missing required token): {skipped_token_count}")
+
+
+if __name__ == '__main__':
+    main()

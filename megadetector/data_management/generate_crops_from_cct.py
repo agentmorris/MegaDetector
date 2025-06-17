@@ -146,4 +146,63 @@ if False:
 
 #%% Command-line driver
 
-# TODO
+import sys
+import argparse
+
+def main():
+    """
+    Command-line interface to generate crops from a COCO Camera Traps .json file.
+    """
+    parser = argparse.ArgumentParser(
+        description='Generate cropped images from a COCO Camera Traps .json file.'
+    )
+    parser.add_argument(
+        'cct_file',
+        type=str,
+        help='COCO .json file to load data from'
+    )
+    parser.add_argument(
+        'image_dir',
+        type=str,
+        help='Folder where images are located'
+    )
+    parser.add_argument(
+        'output_dir',
+        type=str,
+        help='Folder to write cropped images'
+    )
+    parser.add_argument(
+        '--padding',
+        type=int,
+        default=0,
+        help='Pixels to expand each box before cropping (default: 0)'
+    )
+    parser.add_argument(
+        '--flat_output',
+        type=str,
+        default='true',
+        help="If 'false', preserve folder structure in output (default: 'true')"
+    )
+
+    args = parser.parse_args()
+
+    # Convert flat_output string to boolean
+    if args.flat_output.lower() == 'false':
+        flat_output = False
+    elif args.flat_output.lower() == 'true':
+        flat_output = True
+    else:
+        print("Error: --flat_output must be 'true' or 'false'")
+        sys.exit(1)
+
+    generate_crops_from_cct(
+        args.cct_file,
+        args.image_dir,
+        args.output_dir,
+        padding=args.padding,
+        flat_output=flat_output
+    )
+    print(f"Finished generating crops. Output written to: {args.output_dir}")
+
+if __name__ == '__main__':
+    main()
