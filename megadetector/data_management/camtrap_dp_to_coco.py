@@ -240,11 +240,13 @@ if False:
 
 import sys
 import argparse
+import os # For os.sep
 
 def main():
     """
     Command-line interface to convert Camtrap DP to COCO.
     """
+
     parser = argparse.ArgumentParser(description='Convert Camtrap DP to COCO format.')
     parser.add_argument('camtrap_dp_folder', type=str,
                         help='Input folder, containing a CamtrapDP package')

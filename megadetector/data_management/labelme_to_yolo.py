@@ -299,6 +299,7 @@ def main():
     """
     Command-line interface to convert LabelMe JSON files to YOLO format.
     """
+
     parser = argparse.ArgumentParser(
         description='Convert a folder of LabelMe .json files to YOLO .txt format.'
     )

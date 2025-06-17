@@ -138,6 +138,7 @@ def main():
     """
     Command-line interface to remap COCO categories.
     """
+
     parser = argparse.ArgumentParser(
         description='Remap categories in a COCO-formatted dataset.'
     )

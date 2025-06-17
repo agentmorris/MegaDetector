@@ -490,4 +490,127 @@ def create_crop_folder(input_file,
 
 #%% Command-line driver
 
-# TODO
+import sys
+import argparse
+# CreateCropFolderOptions is already defined in this file.
+
+def main():
+    """
+    Command-line interface for creating a crop folder from MegaDetector results.
+    """
+
+    parser = argparse.ArgumentParser(
+        description="Create a folder of crops from MegaDetector results."
+    )
+    parser.add_argument(
+        "input_file",
+        type=str,
+        help="Path to the MegaDetector .json results file."
+    )
+    parser.add_argument(
+        "input_folder",
+        type=str,
+        help="Path to the folder containing the original images."
+    )
+    parser.add_argument(
+        "output_folder",
+        type=str,
+        help="Path to the folder where cropped images will be saved."
+    )
+    parser.add_argument(
+        "--output_file",
+        type=str,
+        default=None,
+        help="Path to save the modified MegaDetector .json file (with crop IDs and filenames)."
+    )
+    parser.add_argument(
+        "--crops_output_file",
+        type=str,
+        default=None,
+        help="Path to save a new .json file for the crops themselves (with full-image detections for each crop)."
+    )
+    parser.add_argument(
+        "--confidence_threshold",
+        type=float,
+        default=0.1,
+        help="Confidence threshold for detections to be cropped (default: 0.1)."
+    )
+    parser.add_argument(
+        "--expansion",
+        type=int,
+        default=0,
+        help="Number of pixels to expand each crop (default: 0)."
+    )
+    parser.add_argument(
+        "--quality",
+        type=int,
+        default=95,
+        help="JPEG quality for saving crops (default: 95)."
+    )
+    parser.add_argument(
+        "--overwrite",
+        type=str,
+        default='true',
+        choices=['true', 'false'],
+        help="Overwrite existing crop images (default: 'true')."
+    )
+    parser.add_argument(
+        "--n_workers",
+        type=int,
+        default=8,
+        help="Number of concurrent workers (default: 8)."
+    )
+    parser.add_argument(
+        "--pool_type",
+        type=str,
+        default='thread',
+        choices=['thread', 'process'],
+        help="Type of parallelism to use ('thread' or 'process', default: 'thread')."
+    )
+    parser.add_argument(
+        "--category_names",
+        type=str,
+        default=None,
+        help="Comma-separated list of category names to include (e.g., 'animal,person'). If None, all categories are included."
+    )
+
+    args = parser.parse_args()
+
+    options = CreateCropFolderOptions()
+    options.confidence_threshold = args.confidence_threshold
+    options.expansion = args.expansion
+    options.quality = args.quality
+    options.overwrite = args.overwrite.lower() == 'true'
+    options.n_workers = args.n_workers
+    options.pool_type = args.pool_type
+
+    if args.category_names:
+        options.category_names_to_include = [name.strip() for name in args.category_names.split(',')]
+    else:
+        options.category_names_to_include = None
+
+    print(f"Starting crop folder creation...")
+    print(f"Input MD results: {args.input_file}")
+    print(f"Input image folder: {args.input_folder}")
+    print(f"Output crop folder: {args.output_folder}")
+    if args.output_file:
+        print(f"Modified MD results will be saved to: {args.output_file}")
+    if args.crops_output_file:
+        print(f"Crops JSON output will be saved to: {args.crops_output_file}")
+    print(f"Options: Confidence={options.confidence_threshold}, Expansion={options.expansion}, Quality={options.quality}, "
+          f"Overwrite={options.overwrite}, Workers={options.n_workers}, Pool={options.pool_type}, "
+          f"Categories={options.category_names_to_include if options.category_names_to_include else 'All'}")
+
+    create_crop_folder(
+        input_file=args.input_file,
+        input_folder=args.input_folder,
+        output_folder=args.output_folder,
+        output_file=args.output_file,
+        crops_output_file=args.crops_output_file,
+        options=options
+    )
+
+    print("Finished creating crop folder.")
+
+if __name__ == '__main__':
+    main()

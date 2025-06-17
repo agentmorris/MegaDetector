@@ -153,6 +153,7 @@ def main():
     """
     Command-line interface to generate crops from a COCO Camera Traps .json file.
     """
+
     parser = argparse.ArgumentParser(
         description='Generate cropped images from a COCO Camera Traps .json file.'
     )

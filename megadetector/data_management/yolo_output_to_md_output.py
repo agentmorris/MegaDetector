@@ -466,6 +466,11 @@ import argparse
 # json is already imported in the script
 
 def main():
+    """
+    Command-line interface to convert YOLOv5/YOLOv8 output (.json or .txt)
+    to MegaDetector output format.
+    """
+
     parser = argparse.ArgumentParser(
         description="Converts YOLOv5 output (.json or .txt) to MD output format."
     )

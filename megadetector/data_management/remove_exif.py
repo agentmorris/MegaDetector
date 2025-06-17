@@ -108,11 +108,13 @@ def remove_exif(image_base_folder,recursive=True,n_processes=1):
 
 import sys
 import argparse
+import os # For os.path.isdir
 
 def main():
     """
     Command-line interface to remove EXIF data from images.
     """
+
     parser = argparse.ArgumentParser(
         description='Removes EXIF/IPTC/XMP metadata from images in a folder.'
     )
