@@ -14,6 +14,7 @@ included in package-level dependency lists.  YMMV.
 
 import os
 import glob
+import argparse
 
 from multiprocessing.pool import Pool as Pool
 from tqdm import tqdm
@@ -106,64 +107,45 @@ def remove_exif(image_base_folder,recursive=True,n_processes=1):
 
 #%% Command-line driver
 
-import sys
-import argparse
-import os # For os.path.isdir
-
 def main():
     """
     Command-line interface to remove EXIF data from images.
     """
 
     parser = argparse.ArgumentParser(
-        description='Removes EXIF/IPTC/XMP metadata from images in a folder.'
+        description='Removes EXIF/IPTC/XMP metadata from images in a folder'
     )
     parser.add_argument(
         'image_base_folder',
         type=str,
-        help="Folder to process for EXIF removal. Note: pyexiv2 library is required but not a standard dependency (try 'pip install pyexiv2')."
+        help='Folder to process for EXIF removal'
     )
     parser.add_argument(
-        '--recursive',
-        type=str,
-        default='true',
-        choices=['true', 'false'],
-        help="Process folders recursively (default: 'true')"
+        '--nonrecursive',
+        action='store_true',
+        help="Don't recurse into [image_base_folder] (default is recursive)"
     )
     parser.add_argument(
         '--n_processes',
         type=int,
         default=1,
-        help="Number of concurrent processes for EXIF removal (default: 1)"
+        help='Number of concurrent processes for EXIF removal (default: 1)'
     )
 
     args = parser.parse_args()
 
-    if args.recursive.lower() == 'true':
-        recursive = True
-    elif args.recursive.lower() == 'false':
-        recursive = False
-    else:
-        # This case should ideally be caught by choices, but as a safeguard:
-        print("Error: --recursive must be 'true' or 'false'")
-        sys.exit(1)
+    recursive = (not args.nonrecursive)
 
-    print(f"Processing folder: {args.image_base_folder}")
+    print('Processing folder: {}'.format(args.image_base_folder))
     if not os.path.isdir(args.image_base_folder):
-        print(f"Error: Folder not found at {args.image_base_folder}")
-        sys.exit(1)
+        raise ValueError('Folder not found at {}'.format(args.image_base_folder))
 
-    try:
-        remove_exif(
-            image_base_folder=args.image_base_folder,
-            recursive=recursive,
-            n_processes=args.n_processes
-        )
-        print("Finished removing EXIF data.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        # Potentially print traceback here if more detail is needed for debugging
-        sys.exit(1)
+    remove_exif(
+        image_base_folder=args.image_base_folder,
+        recursive=recursive,
+        n_processes=args.n_processes
+    )
+    print('Finished removing EXIF data')
 
 if __name__ == '__main__':
     main()

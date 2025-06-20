@@ -2,7 +2,9 @@
 
 remap_coco_categories.py
 
-Given a COCO-formatted dataset, remap the categories to a new mapping.
+Given a COCO-formatted dataset, remap the categories to a new mapping.  A common use
+case is to take a fine-grained dataset (e.g. with species-level categories) and
+map them to coarse categories (typically MD categories).
 
 """
 
@@ -10,6 +12,7 @@ Given a COCO-formatted dataset, remap the categories to a new mapping.
 
 import os
 import json
+import argparse
 
 from copy import deepcopy
 from megadetector.utils.ct_utils import invert_dictionary
@@ -130,17 +133,13 @@ def remap_coco_categories(input_data,
 
 #%% Command-line driver
 
-import sys
-import argparse
-import json # Already imported above
-
 def main():
     """
     Command-line interface to remap COCO categories.
     """
 
     parser = argparse.ArgumentParser(
-        description='Remap categories in a COCO-formatted dataset.'
+        description='Remap categories in a COCO-formatted dataset'
     )
     parser.add_argument(
         'input_coco_file',
@@ -155,7 +154,8 @@ def main():
     parser.add_argument(
         'input_to_output_category_map_file',
         type=str,
-        help="Path to a .json file mapping input category names to output category names (e.g., {'old_cat_name':'cat', 'puppy':'dog'})"
+        help="Path to a .json file mapping input category names to output category names" + \
+            " (e.g., {'old_cat_name':'cat', 'old_dog_name':'dog'})"
     )
     parser.add_argument(
         'output_coco_file',
@@ -164,52 +164,32 @@ def main():
     )
     parser.add_argument(
         '--allow_unused_categories',
-        type=str,
-        default='false',
-        choices=['true', 'false'],
-        help="If 'true', ignore categories not in mappings; if 'false', error (default: 'false')"
+        action='store_true',
+        help='Allow unmapped categories (by default, errors on unmapped categories)'
     )
 
     args = parser.parse_args()
 
-    # Load JSON mapping files
-    try:
-        with open(args.output_category_map_file, 'r') as f:
-            output_category_name_to_id = json.load(f)
-    except Exception as e:
-        print(f"Error loading output_category_map_file '{args.output_category_map_file}': {e}")
-        sys.exit(1)
+    # Load category mappings
+    with open(args.output_category_map_file, 'r') as f:
+        output_category_name_to_id = json.load(f)
 
-    try:
-        with open(args.input_to_output_category_map_file, 'r') as f:
-            input_category_name_to_output_category_name = json.load(f)
-    except Exception as e:
-        print(f"Error loading input_to_output_category_map_file '{args.input_to_output_category_map_file}': {e}")
-        sys.exit(1)
+    with open(args.input_to_output_category_map_file, 'r') as f:
+        input_category_name_to_output_category_name = json.load(f)
 
-    # Load input COCO data
-    try:
-        with open(args.input_coco_file, 'r') as f:
-            input_data = json.load(f)
-    except Exception as e:
-        print(f"Error loading input_coco_file '{args.input_coco_file}': {e}")
-        sys.exit(1)
-
-    # Convert allow_unused_categories string to boolean
-    if args.allow_unused_categories.lower() == 'true':
-        allow_unused_categories = True
-    else: # Default to false, also covers 'false'
-        allow_unused_categories = False
+    # Load COCO data
+    with open(args.input_coco_file, 'r') as f:
+        input_data = json.load(f)
 
     remap_coco_categories(
         input_data=input_data,
         output_category_name_to_id=output_category_name_to_id,
         input_category_name_to_output_category_name=input_category_name_to_output_category_name,
         output_file=args.output_coco_file,
-        allow_unused_categories=allow_unused_categories
+        allow_unused_categories=args.allow_unused_categories
     )
 
-    print(f"Successfully remapped categories and saved to: {args.output_coco_file}")
+    print(f'Successfully remapped categories and saved to {args.output_coco_file}')
 
 if __name__ == '__main__':
     main()

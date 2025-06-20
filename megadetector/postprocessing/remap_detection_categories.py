@@ -11,8 +11,9 @@ Currently only supports remapping detection categories, not classification categ
 
 #%% Constants and imports
 
-import json
 import os
+import json
+import argparse
 
 from tqdm import tqdm
 
@@ -167,42 +168,38 @@ if False:
 
 #%% Command-line driver
 
-import sys
-import argparse
-# json is imported in the main script, not strictly needed here if function handles file loading
-
 def main():
     """
-    Command-line interface for remapping detection categories in a MegaDetector results file.
+    Command-line interface for remapping detection categories in a MegaDetector results file
     """
 
     parser = argparse.ArgumentParser(
-        description="Remap detection categories in a MegaDetector .json results file."
+        description='Remap detection categories in a MegaDetector .json results file'
     )
     parser.add_argument(
-        "input_file",
+        'input_file',
         type=str,
-        help="Path to the MegaDetector .json results file to remap."
+        help='Path to the MegaDetector .json results file to remap'
     )
     parser.add_argument(
-        "output_file",
+        'output_file',
         type=str,
-        help="Path to save the remapped .json results file."
+        help='Path to save the remapped .json results file'
     )
     parser.add_argument(
-        "target_category_map_file",
+        'target_category_map_file',
         type=str,
-        help="Path to a MegaDetector .json results file from which to take the target 'detection_categories' mapping."
+        help="Path to a MegaDetector .json results file from which to take the target 'detection_categories' mapping"
     )
     parser.add_argument(
-        "--extra_category_handling",
+        '--extra_category_handling',
         type=str,
         default='error',
-        choices=['error', 'drop_if_unused'], # 'remap' is not implemented in the function
-        help="How to handle source categories not in target map (default: 'error'). 'remap' is not implemented."
+        choices=['error', 'drop_if_unused'],
+        help="How to handle source categories not in target map (default: 'error')"
     )
     parser.add_argument(
-        "--overwrite",
+        '--overwrite',
         type=str,
         default='false',
         choices=['true', 'false'],
@@ -211,27 +208,16 @@ def main():
 
     args = parser.parse_args()
 
-    overwrite_bool = args.overwrite.lower() == 'true'
+    overwrite_bool = (args.overwrite.lower() == 'true')
 
-    print(f"Starting category remapping...")
-    print(f"Input file: {args.input_file}")
-    print(f"Output file: {args.output_file}")
-    print(f"Target category map file: {args.target_category_map_file}")
-    print(f"Extra category handling: {args.extra_category_handling}")
-    print(f"Overwrite: {overwrite_bool}")
+    print('Starting category remapping...')
 
-    try:
-        remap_detection_categories(
-            input_file=args.input_file,
-            output_file=args.output_file,
-            target_category_map=args.target_category_map_file, # Pass filename directly
-            extra_category_handling=args.extra_category_handling,
-            overwrite=overwrite_bool
-        )
-        # Success message is printed by the function if not overwriting an existing file or if successful
-    except Exception as e:
-        print(f"Error during category remapping: {e}")
-        sys.exit(1)
+    remap_detection_categories(
+        input_file=args.input_file,
+        output_file=args.output_file,
+        target_category_map=args.target_category_map_file, # Pass filename directly
+        extra_category_handling=args.extra_category_handling,
+        overwrite=overwrite_bool)
 
 if __name__ == '__main__':
     main()

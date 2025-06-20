@@ -10,6 +10,7 @@ each bounding box.
 #%% Imports and constants
 
 import os
+import argparse
 import json
 
 from tqdm import tqdm
@@ -146,16 +147,13 @@ if False:
 
 #%% Command-line driver
 
-import sys
-import argparse
-
 def main():
     """
     Command-line interface to generate crops from a COCO Camera Traps .json file.
     """
 
     parser = argparse.ArgumentParser(
-        description='Generate cropped images from a COCO Camera Traps .json file.'
+        description='Generate cropped images from a COCO Camera Traps .json file'
     )
     parser.add_argument(
         'cct_file',
@@ -170,40 +168,31 @@ def main():
     parser.add_argument(
         'output_dir',
         type=str,
-        help='Folder to write cropped images'
+        help='Folder to which we should write cropped images'
     )
     parser.add_argument(
         '--padding',
         type=int,
         default=0,
-        help='Pixels to expand each box before cropping (default: 0)'
+        help='Pixels to expand each box before cropping'
     )
     parser.add_argument(
         '--flat_output',
-        type=str,
-        default='true',
-        help="If 'false', preserve folder structure in output (default: 'true')"
+        action='store_true',
+        help='Flatten folder structure in output (preserves folder structure by default)'
     )
 
     args = parser.parse_args()
 
-    # Convert flat_output string to boolean
-    if args.flat_output.lower() == 'false':
-        flat_output = False
-    elif args.flat_output.lower() == 'true':
-        flat_output = True
-    else:
-        print("Error: --flat_output must be 'true' or 'false'")
-        sys.exit(1)
-
     generate_crops_from_cct(
-        args.cct_file,
-        args.image_dir,
-        args.output_dir,
+        cct_file=args.cct_file,
+        image_dir=args.image_dir,
+        output_dir=args.output_dir,
         padding=args.padding,
-        flat_output=flat_output
+        flat_output=args.flat_output
     )
-    print(f"Finished generating crops. Output written to: {args.output_dir}")
+
+    print(f'Generated crops in {args.output_dir}')
 
 if __name__ == '__main__':
     main()

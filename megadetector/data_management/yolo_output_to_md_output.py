@@ -40,6 +40,8 @@ import json
 import csv
 import os
 import re
+import sys
+import argparse
 
 from collections import defaultdict
 from tqdm import tqdm
@@ -461,10 +463,6 @@ if False:
 
 #%% Command-line driver
 
-import sys
-import argparse
-# json is already imported in the script
-
 def main():
     """
     Command-line interface to convert YOLOv5/YOLOv8 output (.json or .txt)
@@ -472,71 +470,75 @@ def main():
     """
 
     parser = argparse.ArgumentParser(
-        description="Converts YOLOv5 output (.json or .txt) to MD output format."
+        description='Converts YOLOv5 output (.json or .txt) to MD output format.'
     )
-    subparsers = parser.add_subparsers(dest='mode', required=True,
-                                     help="Mode of operation: 'json' for YOLO JSON output, 'txt' for YOLO TXT output.")
 
-    # --- 'json' mode subparser ---
-    parser_json = subparsers.add_parser('json', help="Convert YOLO-formatted .json results.")
+    # The first argument determines which series of additional arguments are supported, for
+    # json/txt input
+    subparsers = parser.add_subparsers(dest='mode', required=True,
+        help="Mode of operation: 'json' for YOLO JSON output, 'txt' for YOLO TXT output.")
+
+
+    ## 'json' mode subparser
+
+    parser_json = subparsers.add_parser('json', help='Convert YOLO-formatted .json results.')
+
     parser_json.add_argument(
         'yolo_json_file', type=str,
-        help="Path to the input YOLO-formatted .json results file."
+        help='Path to the input YOLO-formatted .json results file'
     )
     parser_json.add_argument(
         'image_folder', type=str,
-        help="Path to the image folder."
+        help='Path to the image folder'
     )
     parser_json.add_argument(
         'output_file', type=str,
-        help="Path to save the MD-formatted .json output."
+        help='Path to the MD-formatted .json output file'
     )
     parser_json.add_argument(
         'yolo_category_id_to_name_file', type=str,
-        help="Path to the .yml, .yaml, .json, or .txt file mapping YOLO category IDs to names."
+        help='Path to the .yml, .yaml, .json, or .txt file mapping YOLO category IDs to names'
     )
     parser_json.add_argument(
         '--detector_name', type=str, default='unknown',
-        help="Detector name to store in the output file (default: 'unknown')."
+        help="Detector name to store in the output file (default: 'unknown')"
     )
     parser_json.add_argument(
         '--image_id_to_relative_path_file', type=str, default=None,
-        help="Path to a .json file mapping image IDs to relative paths."
+        help='Path to a .json file mapping image IDs to relative paths'
     )
     parser_json.add_argument(
         '--offset_yolo_class_ids', type=str, default='true', choices=['true', 'false'],
-        help="Offset YOLO class IDs in the output (default: 'true')."
+        help="Offset YOLO class IDs in the output (default: 'true')"
     )
     parser_json.add_argument(
         '--truncate_to_standard_md_precision', type=str, default='true', choices=['true', 'false'],
-        help="Truncate coordinates and confidences to standard MD precision (default: 'true')."
-    )
-    parser_json.add_argument(
-        '--image_id_to_error_file', type=str, default=None,
-        help="Path to a .json file mapping image IDs to error strings for images that failed before detection."
+        help="Truncate coordinates and confidences to standard MD precision (default: 'true')"
     )
     parser_json.add_argument(
         '--convert_slashes', type=str, default='true', choices=['true', 'false'],
-        help="Convert backslashes to forward slashes in output file paths (default: 'true')."
+        help="Convert backslashes to forward slashes in output file paths (default: 'true')"
     )
 
-    # --- 'txt' mode subparser ---
-    parser_txt = subparsers.add_parser('txt', help="Convert YOLO-formatted .txt results from a folder.")
+
+    ## 'txt' mode subparser
+
+    parser_txt = subparsers.add_parser('txt', help='Convert YOLO-formatted .txt results from a folder')
     parser_txt.add_argument(
         'input_results_folder', type=str,
-        help="Path to the folder containing YOLO .txt output files."
+        help='Path to the folder containing YOLO .txt output files'
     )
     parser_txt.add_argument(
         'image_folder', type=str,
-        help="Path to the image folder."
+        help='Path to the image folder'
     )
     parser_txt.add_argument(
         'output_file', type=str,
-        help="Path to save the MD-formatted .json output."
+        help='Path to the MD-formatted .json  file output'
     )
     parser_txt.add_argument(
-        '--detector_tag', type=str, default='converted_from_yolo_format', # Default in function is None, but CLI can have a different one
-        help="Detector tag to store in the output file (default: 'converted_from_yolo_format')."
+        '--detector_tag', type=str, default=None,
+        help='Detector tag to store in the output file'
     )
     parser_txt.add_argument(
         '--truncate_to_standard_md_precision', type=str, default='true', choices=['true', 'false'],
@@ -546,6 +548,7 @@ def main():
     args = parser.parse_args()
 
     if args.mode == 'json':
+
         image_id_to_relative_path = None
         if args.image_id_to_relative_path_file:
             try:
@@ -553,15 +556,6 @@ def main():
                     image_id_to_relative_path = json.load(f)
             except Exception as e:
                 print(f"Error loading image_id_to_relative_path_file: {e}")
-                sys.exit(1)
-
-        image_id_to_error = None
-        if args.image_id_to_error_file:
-            try:
-                with open(args.image_id_to_error_file, 'r') as f:
-                    image_id_to_error = json.load(f)
-            except Exception as e:
-                print(f"Error loading image_id_to_error_file: {e}")
                 sys.exit(1)
 
         offset_yolo_class_ids = args.offset_yolo_class_ids.lower() == 'true'
@@ -577,34 +571,22 @@ def main():
             image_id_to_relative_path=image_id_to_relative_path,
             offset_yolo_class_ids=offset_yolo_class_ids,
             truncate_to_standard_md_precision=truncate_json,
-            image_id_to_error=image_id_to_error,
             convert_slashes=convert_slashes
         )
-        print(f"JSON mode: Successfully converted {args.yolo_json_file} to {args.output_file}")
+        print('Converted {} to {}'.format(args.yolo_json_file,args.output_file))
 
     elif args.mode == 'txt':
+
         truncate_txt = args.truncate_to_standard_md_precision.lower() == 'true'
-
-        # Ensure detector_tag is passed correctly, function default is None
-        detector_tag_to_pass = args.detector_tag
-        if detector_tag_to_pass == 'converted_from_yolo_format' and \
-           yolo_txt_output_to_md_output.__defaults__[0] is None: # Check if function default is actually None
-             # This logic is a bit complex for CLI; the function's default is None.
-             # The CLI default is 'converted_from_yolo_format'.
-             # If user specifies this default, it's fine. If they don't, and CLI default is used, it's fine.
-             # The main thing is to pass *something* or let the function use its internal default if arg is not set.
-             # The current argparse setup handles this by providing a default.
-             pass
-
 
         yolo_txt_output_to_md_output(
             input_results_folder=args.input_results_folder,
             image_folder=args.image_folder,
             output_file=args.output_file,
-            detector_tag=detector_tag_to_pass,
+            detector_tag=args.detector_tag,
             truncate_to_standard_md_precision=truncate_txt
         )
-        print(f"TXT mode: Successfully converted results from {args.input_results_folder} to {args.output_file}")
+        print('Converted results from {} to {}'.format(args.input_results_folder,args.output_file))
 
 if __name__ == '__main__':
     main()

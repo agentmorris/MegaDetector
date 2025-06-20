@@ -19,6 +19,8 @@ Currently supports only sequence-level labeling.
 
 import os
 import json
+import argparse
+
 import pandas as pd
 
 from dateutil import parser as dateparser
@@ -238,16 +240,12 @@ if False:
 
 #%% Command-line driver
 
-import sys
-import argparse
-import os # For os.sep
-
 def main():
     """
     Command-line interface to convert Camtrap DP to COCO.
     """
 
-    parser = argparse.ArgumentParser(description='Convert Camtrap DP to COCO format.')
+    parser = argparse.ArgumentParser(description='Convert Camtrap DP to COCO format')
     parser.add_argument('camtrap_dp_folder', type=str,
                         help='Input folder, containing a CamtrapDP package')
     parser.add_argument('--output_file', type=str, default=None,
@@ -257,14 +255,16 @@ def main():
 
     if args.output_file is None:
         # Default output file name: [camtrap_dp_folder]_coco.json
+        #
         # Remove trailing slash if present
         folder_name = args.camtrap_dp_folder.rstrip(os.sep)
         output_file = folder_name + '_coco.json'
     else:
         output_file = args.output_file
 
-    camtrap_dp_to_coco(args.camtrap_dp_folder, output_file)
-    print(f"Successfully converted Camtrap DP package at '{args.camtrap_dp_folder}' to COCO format at '{output_file}'")
+    camtrap_dp_to_coco(camtrap_dp_folder=args.camtrap_dp_folder, output_file=output_file)
+    print(f"Successfully converted Camtrap DP package at '{args.camtrap_dp_folder}' to " + \
+          f"COCO format at '{output_file}'")
 
 if __name__ == '__main__':
     main()
