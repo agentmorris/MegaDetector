@@ -133,6 +133,7 @@ convention = "google"
     # Coding conventions that differ from ruff's defaults
     "UP032",  # Use f-string instead of .format() call
     "UP007",  # Use X | Y for type unions
+    "UP045",  # Use X | None for optional parameters
     "UP015",  # Unnecessary open mode parameters (open(filename,'r'))
     "UP038",  # Use X | Y in isinstance call instead of (X, Y)
     "D200",   # One-line docstring should fit on one line
