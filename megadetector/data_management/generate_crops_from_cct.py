@@ -10,6 +10,7 @@ each bounding box.
 #%% Imports and constants
 
 import os
+import argparse
 import json
 
 from tqdm import tqdm
@@ -146,4 +147,52 @@ if False:
 
 #%% Command-line driver
 
-# TODO
+def main():
+    """
+    Command-line interface to generate crops from a COCO Camera Traps .json file.
+    """
+
+    parser = argparse.ArgumentParser(
+        description='Generate cropped images from a COCO Camera Traps .json file'
+    )
+    parser.add_argument(
+        'cct_file',
+        type=str,
+        help='COCO .json file to load data from'
+    )
+    parser.add_argument(
+        'image_dir',
+        type=str,
+        help='Folder where images are located'
+    )
+    parser.add_argument(
+        'output_dir',
+        type=str,
+        help='Folder to which we should write cropped images'
+    )
+    parser.add_argument(
+        '--padding',
+        type=int,
+        default=0,
+        help='Pixels to expand each box before cropping'
+    )
+    parser.add_argument(
+        '--flat_output',
+        action='store_true',
+        help='Flatten folder structure in output (preserves folder structure by default)'
+    )
+
+    args = parser.parse_args()
+
+    generate_crops_from_cct(
+        cct_file=args.cct_file,
+        image_dir=args.image_dir,
+        output_dir=args.output_dir,
+        padding=args.padding,
+        flat_output=args.flat_output
+    )
+
+    print(f'Generated crops in {args.output_dir}')
+
+if __name__ == '__main__':
+    main()

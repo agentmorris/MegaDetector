@@ -658,7 +658,7 @@ def yolo_to_coco(input_folder,
 
     # ...for each image result
 
-    # Clean up unecessary error fields
+    # Clean up unnecessary error fields
     for im in images:
         if 'error' in im and im['error'] is None:
             del im['error']

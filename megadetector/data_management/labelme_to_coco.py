@@ -8,10 +8,10 @@ Converts a folder of labelme-formatted .json files to COCO.
 
 #%% Constants and imports
 
-import json
 import os
-import uuid
 import sys
+import json
+import uuid
 import argparse
 
 from multiprocessing.pool import Pool, ThreadPool

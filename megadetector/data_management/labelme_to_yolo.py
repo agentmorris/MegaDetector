@@ -10,12 +10,14 @@ Create YOLO .txt files in a folder containing labelme .json files.
 
 import os
 import json
+import argparse
 
 from multiprocessing.pool import Pool, ThreadPool
 from functools import partial
 from tqdm import tqdm
 
 from megadetector.utils.path_utils import recursive_file_list
+from megadetector.utils.ct_utils import write_json
 
 
 #%% Main function
@@ -252,7 +254,7 @@ def labelme_folder_to_yolo(labelme_folder,
         finally:
             pool.close()
             pool.join()
-            print("Pool closed and joined for labelme conversion to YOLO")
+            print('Pool closed and joined for labelme conversion to YOLO')
 
     assert len(valid_labelme_files_relative) == len(image_results)
 
@@ -291,4 +293,66 @@ if False:
 
 #%% Command-line driver
 
-# TODO
+def main():
+    """
+    Command-line interface to convert Labelme JSON files to YOLO format
+    """
+
+    parser = argparse.ArgumentParser(
+        description='Convert a folder of Labelme .json files to YOLO .txt format'
+    )
+    parser.add_argument(
+        'labelme_folder',
+        type=str,
+        help='Folder of Labelme .json files to convert'
+    )
+    parser.add_argument(
+        '--output_category_file',
+        type=str,
+        default=None,
+        help='Path to save the generated category mapping (.json)'
+    )
+    parser.add_argument(
+        '--required_token',
+        type=str,
+        default=None,
+        help='Only process files containing this token as a key in the Labelme JSON dict'
+    )
+    parser.add_argument(
+        '--overwrite_behavior',
+        type=str,
+        default='overwrite',
+        choices=['skip', 'overwrite'],
+        help="Behavior if YOLO .txt files exist (default: 'overwrite')"
+    )
+    parser.add_argument(
+        '--n_workers',
+        type=int,
+        default=1,
+        help='Number of workers for parallel processing (default: 1)'
+    )
+    parser.add_argument(
+        '--use_processes',
+        action='store_true',
+        help='Use processes instead of threads for parallelization (defaults to threads)'
+    )
+
+    args = parser.parse_args()
+
+    results = labelme_folder_to_yolo(
+        labelme_folder=args.labelme_folder,
+        category_name_to_category_id=None,
+        required_token=args.required_token,
+        overwrite_behavior=args.overwrite_behavior,
+        relative_filenames_to_convert=None,
+        n_workers=args.n_workers,
+        use_threads=(not args.use_processes)
+    )
+
+    if args.output_category_file:
+        category_map = results['category_name_to_category_id']
+        write_json(args.output_category_file,category_map)
+        print(f'Saved category mapping to {args.output_category_file}')
+
+if __name__ == '__main__':
+    main()

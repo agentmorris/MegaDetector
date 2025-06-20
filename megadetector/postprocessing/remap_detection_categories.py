@@ -11,8 +11,9 @@ Currently only supports remapping detection categories, not classification categ
 
 #%% Constants and imports
 
-import json
 import os
+import json
+import argparse
 
 from tqdm import tqdm
 
@@ -167,4 +168,56 @@ if False:
 
 #%% Command-line driver
 
-# TODO
+def main():
+    """
+    Command-line interface for remapping detection categories in a MegaDetector results file
+    """
+
+    parser = argparse.ArgumentParser(
+        description='Remap detection categories in a MegaDetector .json results file'
+    )
+    parser.add_argument(
+        'input_file',
+        type=str,
+        help='Path to the MegaDetector .json results file to remap'
+    )
+    parser.add_argument(
+        'output_file',
+        type=str,
+        help='Path to save the remapped .json results file'
+    )
+    parser.add_argument(
+        'target_category_map_file',
+        type=str,
+        help="Path to a MegaDetector .json results file from which to take the target 'detection_categories' mapping"
+    )
+    parser.add_argument(
+        '--extra_category_handling',
+        type=str,
+        default='error',
+        choices=['error', 'drop_if_unused'],
+        help="How to handle source categories not in target map (default: 'error')"
+    )
+    parser.add_argument(
+        '--overwrite',
+        type=str,
+        default='false',
+        choices=['true', 'false'],
+        help="Overwrite output file if it exists (default: 'false')."
+    )
+
+    args = parser.parse_args()
+
+    overwrite_bool = (args.overwrite.lower() == 'true')
+
+    print('Starting category remapping...')
+
+    remap_detection_categories(
+        input_file=args.input_file,
+        output_file=args.output_file,
+        target_category_map=args.target_category_map_file, # Pass filename directly
+        extra_category_handling=args.extra_category_handling,
+        overwrite=overwrite_bool)
+
+if __name__ == '__main__':
+    main()

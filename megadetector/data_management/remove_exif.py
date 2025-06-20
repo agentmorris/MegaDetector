@@ -14,6 +14,7 @@ included in package-level dependency lists.  YMMV.
 
 import os
 import glob
+import argparse
 
 from multiprocessing.pool import Pool as Pool
 from tqdm import tqdm
@@ -106,4 +107,45 @@ def remove_exif(image_base_folder,recursive=True,n_processes=1):
 
 #%% Command-line driver
 
-## TODO
+def main():
+    """
+    Command-line interface to remove EXIF data from images.
+    """
+
+    parser = argparse.ArgumentParser(
+        description='Removes EXIF/IPTC/XMP metadata from images in a folder'
+    )
+    parser.add_argument(
+        'image_base_folder',
+        type=str,
+        help='Folder to process for EXIF removal'
+    )
+    parser.add_argument(
+        '--nonrecursive',
+        action='store_true',
+        help="Don't recurse into [image_base_folder] (default is recursive)"
+    )
+    parser.add_argument(
+        '--n_processes',
+        type=int,
+        default=1,
+        help='Number of concurrent processes for EXIF removal (default: 1)'
+    )
+
+    args = parser.parse_args()
+
+    recursive = (not args.nonrecursive)
+
+    print('Processing folder: {}'.format(args.image_base_folder))
+    if not os.path.isdir(args.image_base_folder):
+        raise ValueError('Folder not found at {}'.format(args.image_base_folder))
+
+    remove_exif(
+        image_base_folder=args.image_base_folder,
+        recursive=recursive,
+        n_processes=args.n_processes
+    )
+    print('Finished removing EXIF data')
+
+if __name__ == '__main__':
+    main()
