@@ -49,9 +49,15 @@ def write_yolo_dataset_file(yolo_dataset_file,
         class_list (list or str): an ordered list of class names (the first item will be class 0,
             etc.), or the name of a text file containing an ordered list of class names (one per
             line, starting from class zero).
-        train_folder_relative (str, optional): train folder name, used only to populate dataset.yaml
-        val_folder_relative (str, optional): val folder name, used only to populate dataset.yaml
-        test_folder_relative (str, optional): test folder name, used only to populate dataset.yaml
+        train_folder_relative (str, optional): train folder name, used only to
+            populate dataset.yaml.  Can also be a filename (e.g. a .txt file with image
+            files).
+        val_folder_relative (str, optional): val folder name, used only to
+            populate dataset.yaml.  Can also be a filename (e.g. a .txt file with image
+            files).
+        test_folder_relative (str, optional): test folder name, used only to
+            populate dataset.yaml.  Can also be a filename (e.g. a .txt file with image
+            files).
     """
 
     # Read class names
