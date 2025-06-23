@@ -36,7 +36,8 @@ from megadetector.data_management.cct_json_utils import write_object_with_serial
 debug_max_images = None
 
 minimal_exif_tags = \
-    ['DateTime','Model','Make','ExifImageWidth','ExifImageHeight','DateTimeOriginal','Orientation']
+    ['DateTime','Model','Make','ExifImageWidth','ExifImageHeight',
+     'DateTimeOriginal','Orientation', 'GPSInfo']
 
 
 #%% Options

@@ -23,7 +23,7 @@ import os
 import sys
 
 from functools import partial
-from multiprocessing.pool import ThreadPool
+from multiprocessing.pool import Pool, ThreadPool
 from operator import itemgetter
 from tqdm import tqdm
 
@@ -61,6 +61,9 @@ class IntegrityCheckOptions:
 
         #: Number of threads to use for parallelization, set to <= 1 to disable parallelization
         self.nThreads = 10
+
+        #: Whether to use threads (rather than processes for parallelization)
+        self.parallelizeWithThreads = True
 
         #: Enable additional debug output
         self.verbose = True
@@ -325,9 +328,18 @@ def integrity_check_json_db(json_file, options=None):
             print('Checking image existence and/or image sizes...')
 
         if options.nThreads is not None and options.nThreads > 1:
+
+            if options.parallelizeWithThreads:
+                worker_string = 'threads'
+            else:
+                worker_string = 'processes'
+
             if options.verbose:
-                print('Starting a pool of {} workers'.format(options.nThreads))
-            pool = ThreadPool(options.nThreads)
+                print('Starting a pool of {} {}'.format(options.nThreads,worker_string))
+            if options.parallelizeWithThreads:
+                pool = ThreadPool(options.nThreads)
+            else:
+                pool = Pool(options.nThreads)
             try:
                 results = list(tqdm(pool.imap(
                     partial(_check_image_existence_and_size,options=options), images),

@@ -1617,13 +1617,13 @@ def parallel_get_image_sizes(filenames,
             parallelization
         use_threads (bool, optional): whether to use threads (True) or processes (False) for
             parallelization
-        recursive (bool, optional): if [filenames] is a folder, whether to search recursively for images.
-            Ignored if [filenames] is a list.
+        recursive (bool, optional): if [filenames] is a folder, whether to search recursively
+            for images. Ignored if [filenames] is a list.
         verbose (bool, optional): enable additional debug output
 
     Returns:
         dict: a dict mapping filenames to (w,h) tuples; the value will be None for images that fail
-        to load.
+        to load.  Filenames will always be absolute.
     """
 
     if isinstance(filenames,str) and os.path.isdir(filenames):

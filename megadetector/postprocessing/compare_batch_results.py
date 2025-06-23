@@ -1832,9 +1832,12 @@ def find_equivalent_threshold(results_a,
     threshold_b = confidence_values_b[detection_cutoff_index]
 
     if verbose:
-        print('{} confidence values above threshold (A)'.format(len(confidence_values_a_above_threshold)))
-        confidence_values_b_above_threshold = [c for c in confidence_values_b if c >= threshold_b]
-        print('{} confidence values above threshold (B)'.format(len(confidence_values_b_above_threshold)))
+        print('{} confidence values above threshold (A)'.format(
+            len(confidence_values_a_above_threshold)))
+        confidence_values_b_above_threshold = \
+            [c for c in confidence_values_b if c >= threshold_b]
+        print('{} confidence values above threshold (B)'.format(
+            len(confidence_values_b_above_threshold)))
 
     return threshold_b
 
@@ -1868,7 +1871,10 @@ if False:
     detection_thresholds = [0.15,0.15]
     rendering_thresholds = None
 
-    results = n_way_comparison(filenames,options,detection_thresholds,rendering_thresholds=rendering_thresholds)
+    results = n_way_comparison(filenames,
+                               options,
+                               detection_thresholds,
+                               rendering_thresholds=rendering_thresholds)
 
     from megadetector.utils.path_utils import open_file
     open_file(results.html_output_file)
@@ -1980,7 +1986,10 @@ def main(): # noqa
     if args.use_processes:
         options.parallelize_rendering_with_threads = False
 
-    results = n_way_comparison(args.results_files,options,args.detection_thresholds,args.rendering_thresholds)
+    results = n_way_comparison(args.results_files,
+                               options,
+                               args.detection_thresholds,
+                               args.rendering_thresholds)
 
     if args.open_results:
         path_utils.open_file(results.html_output_file)
