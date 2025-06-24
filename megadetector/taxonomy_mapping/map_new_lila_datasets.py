@@ -15,10 +15,10 @@ import json
 # Created by get_lila_category_list.py
 input_lila_category_list_file = os.path.expanduser('~/lila/lila_categories_list/lila_dataset_to_categories.json')
 
-output_file = os.path.expanduser('~/lila/lila_additions_2025.03.24.csv')
+output_file = os.path.expanduser('~/lila/lila_additions_2025.06.23.csv')
 
 datasets_to_map = [
-    'UNSW Predators'
+    'Nkhotakota Camera Traps'
     ]
 
 
@@ -140,7 +140,7 @@ if False:
 
     #%%
 
-    q = 'dasyurus maculatus'
+    q = 'animalia'
 
     taxonomy_preference = 'inat'
     m = get_preferred_taxonomic_match(q,taxonomy_preference)
@@ -154,5 +154,4 @@ if False:
             # raise ValueError('')
         print(m.source)
         print(m.taxonomy_string)
-        # print(m.scientific_name); import clipboard; clipboard.copy(m.scientific_name)
         import clipboard; clipboard.copy(m.taxonomy_string)

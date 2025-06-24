@@ -241,6 +241,9 @@ def read_metadata_file_for_dataset(ds_name,
 
     """
 
+    if preferred_cloud is None:
+        preferred_cloud = 'gcp'
+
     assert preferred_cloud in lila_base_urls.keys()
 
     if json_url is None:

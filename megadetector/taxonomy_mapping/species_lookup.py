@@ -32,27 +32,18 @@ taxonomy_download_dir = os.path.expanduser('~/taxonomy')
 
 taxonomy_urls = {
     'GBIF': 'https://hosted-datasets.gbif.org/datasets/backbone/current/backbone.zip',
-    'iNaturalist': 'https://www.inaturalist.org/observations/inaturalist-dwca-with-taxa.zip'  # pylint: disable=line-too-long
+    'iNaturalist': 'https://www.inaturalist.org/taxa/inaturalist-taxonomy.dwca.zip'
 }
 
 files_to_unzip = {
-    # GBIF used to put everything in a "backbone" folder within the zipfile, but as of
-    # 12.2023, this is no longer the case.
-    # 'GBIF': ['backbone/Taxon.tsv', 'backbone/VernacularName.tsv'],
     'GBIF': ['Taxon.tsv', 'VernacularName.tsv'],
-    'iNaturalist': ['taxa.csv']
+    'iNaturalist': ['taxa.csv','VernacularNames-english.csv']
 }
 
-# As of 2020.05.12:
+# As of 2025.06.24:
 #
-# GBIF: ~777MB zipped, ~1.6GB taxonomy
-# iNat: ~2.2GB zipped, ~51MB taxonomy (most of the zipfile is observations)
-
-# As of 2023.12.29:
-#
-# GBIF: ~948MB zipped, ~2.2GB taxonomy
-# iNat: ~6.7GB zipped, ~62MB taxonomy (most of the zipfile is observations)
-
+# GBIF: 950MB zipped, 2.3GB of relevant content unzipped
+# iNat: 71MB zipped, 415MB of relevant content unzipped
 
 os.makedirs(taxonomy_download_dir, exist_ok=True)
 for taxonomy_name in taxonomy_urls:
@@ -83,7 +74,7 @@ gbif_scientific_to_taxon_id = None # : Dict[str, np.int64]
 
 # Initialization function
 
-def initialize_taxonomy_lookup(force_init=False) -> None:
+def initialize_taxonomy_lookup(force_init=False):
     """
     Initialize this module by doing the following:
 
@@ -92,7 +83,13 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
     * Builds a bunch of dictionaries and tables to facilitate lookup
     * Serializes those tables via pickle
     * Skips all of the above if the serialized pickle file already exists
+
+    Args:
+        force_init (bool, optional): force re-download and parsing of the source .zip files,
+            even if the cached .p file already exists
     """
+
+    #%%
 
     global inat_taxonomy,\
         gbif_taxonomy,\
@@ -109,7 +106,7 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
         gbif_scientific_to_taxon_id
 
 
-    ## Load serialized taxonomy info if we've already saved it
+    #%% Load serialized taxonomy info if we've already saved it
 
     if (not force_init) and (inat_taxonomy is not None):
         print('Skipping taxonomy re-init')
@@ -139,9 +136,8 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
         return
 
 
-    ## If we don't have serialized taxonomy info, create it from scratch.
+    #%% Download and unzip taxonomy files
 
-    # Download and unzip taxonomy files
     # taxonomy_name = list(taxonomy_urls.items())[0][0]; zip_url = list(taxonomy_urls.items())[0][1]
     for taxonomy_name, zip_url in taxonomy_urls.items():
 
@@ -189,21 +185,44 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
 
             # ...for each file that we need from this zipfile
 
-        # Remove the zipfile
-        # os.remove(zipfile_path)
-
     # ...for each taxonomy
 
 
-    # Create dataframes from each of the taxonomy files, and the GBIF common
-    # name file
+    #%% Create dataframes from each of the taxonomy/vernacular files
 
     # Load iNat taxonomy
     inat_taxonomy_file = os.path.join(taxonomy_download_dir, 'iNaturalist', 'taxa.csv')
     print('Loading iNat taxonomy from {}'.format(inat_taxonomy_file))
     inat_taxonomy = pd.read_csv(inat_taxonomy_file)
     inat_taxonomy['scientificName'] = inat_taxonomy['scientificName'].fillna('').str.strip()
-    inat_taxonomy['vernacularName'] = inat_taxonomy['vernacularName'].fillna('').str.strip()
+
+    # Delete columns we won't use.  The "taxonID" column is a non-int version of "ID"
+    inat_taxonomy = inat_taxonomy.drop(['identifier', 'taxonID', 'modified', 'references'], axis=1)
+
+    # The "parentNameUsageID" column in inat_taxonomy is a URL, like:
+    #
+    # https://www.inaturalist.org/taxa/71262
+    #
+    # Convert this column to be integer-valued, using only the last token of the URL
+    inat_taxonomy['parentNameUsageID'] = \
+        inat_taxonomy['parentNameUsageID'].str.split('/').str[-1].fillna(0).astype(int)
+
+    # Rename the "id" column to "taxonID"
+    inat_taxonomy = inat_taxonomy.rename(columns={'id': 'taxonID'})
+
+    assert 'id' not in inat_taxonomy.columns
+    assert 'taxonID' in inat_taxonomy.columns
+
+    # Load iNat common name mapping
+    inat_common_mapping_file = os.path.join(taxonomy_download_dir, 'iNaturalist', 'VernacularNames-english.csv')
+    inat_common_mapping = pd.read_csv(inat_common_mapping_file)
+    inat_common_mapping['vernacularName'] = inat_common_mapping['vernacularName'].fillna('').str.strip()
+
+    inat_common_mapping = inat_common_mapping.drop(['language','locality','countryCode',
+                                                    'source','lexicon','contributor','created'], axis=1)
+    assert 'id' in inat_common_mapping.columns
+    assert 'taxonID' not in inat_common_mapping.columns
+    assert 'vernacularName' in inat_common_mapping.columns
 
     # Load GBIF taxonomy
     gbif_taxonomy_file = os.path.join(taxonomy_download_dir, 'GBIF', 'Taxon.tsv')
@@ -211,12 +230,20 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
     gbif_taxonomy = pd.read_csv(gbif_taxonomy_file, sep='\t', encoding='utf-8',on_bad_lines='warn')
     gbif_taxonomy['scientificName'] = gbif_taxonomy['scientificName'].fillna('').str.strip()
     gbif_taxonomy['canonicalName'] = gbif_taxonomy['canonicalName'].fillna('').str.strip()
+    gbif_taxonomy['parentNameUsageID'] = gbif_taxonomy['parentNameUsageID'].fillna(-1).astype(int)
 
     # Remove questionable rows from the GBIF taxonomy
     gbif_taxonomy = gbif_taxonomy[~gbif_taxonomy['taxonomicStatus'].isin(['doubtful', 'misapplied'])]
     gbif_taxonomy = gbif_taxonomy.reset_index()
 
-    # Load GBIF vernacular name mapping
+    gbif_taxonomy = gbif_taxonomy.drop(['datasetID','acceptedNameUsageID','originalNameUsageID',
+                                        'scientificNameAuthorship','nameAccordingTo','namePublishedIn',
+                                        'taxonomicStatus','nomenclaturalStatus','taxonRemarks'], axis=1)
+
+    assert 'taxonID' in gbif_taxonomy.columns
+    assert 'scientificName' in gbif_taxonomy.columns
+
+    # Load GBIF common name mapping
     gbif_common_mapping = pd.read_csv(os.path.join(
         taxonomy_download_dir, 'GBIF', 'VernacularName.tsv'), sep='\t')
     gbif_common_mapping['vernacularName'] = gbif_common_mapping['vernacularName'].fillna('').str.strip()
@@ -224,6 +251,12 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
     # Only keep English mappings
     gbif_common_mapping = gbif_common_mapping.loc[gbif_common_mapping['language'] == 'en']
     gbif_common_mapping = gbif_common_mapping.reset_index()
+
+    gbif_common_mapping = gbif_common_mapping.drop(['language','country','countryCode','sex',
+                                                    'lifeStage','source'],axis=1)
+
+    assert 'taxonID' in gbif_common_mapping.columns
+    assert 'vernacularName' in gbif_common_mapping.columns
 
 
     # Convert everything to lowercase
@@ -235,23 +268,28 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
     inat_taxonomy = convert_df_to_lowercase(inat_taxonomy)
     gbif_taxonomy = convert_df_to_lowercase(gbif_taxonomy)
     gbif_common_mapping = convert_df_to_lowercase(gbif_common_mapping)
+    inat_common_mapping = convert_df_to_lowercase(inat_common_mapping)
 
 
-    # For each taxonomy table, create a mapping from taxon IDs to rows
+    ##%% For each taxonomy table, create a mapping from taxon IDs to rows
 
     inat_taxon_id_to_row = {}
     gbif_taxon_id_to_row = {}
 
     print('Building iNat taxonID --> row table')
     for i_row, row in tqdm(inat_taxonomy.iterrows(), total=len(inat_taxonomy)):
-        inat_taxon_id_to_row[row['taxonID']] = i_row
+        taxon_id = row['taxonID']
+        assert isinstance(taxon_id, int)
+        inat_taxon_id_to_row[taxon_id] = i_row
 
     print('Building GBIF taxonID --> row table')
     for i_row, row in tqdm(gbif_taxonomy.iterrows(), total=len(gbif_taxonomy)):
-        gbif_taxon_id_to_row[row['taxonID']] = i_row
+        taxon_id = row['taxonID']
+        assert isinstance(taxon_id, int)
+        gbif_taxon_id_to_row[taxon_id] = i_row
 
 
-    # Create name mapping dictionaries
+    ##%% Create name mapping dictionaries
 
     inat_taxon_id_to_vernacular = defaultdict(set)
     inat_vernacular_to_taxon_id = defaultdict(set)
@@ -268,31 +306,60 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
 
     print('Building lookup dictionaries for iNat taxonomy')
 
+    # iNat Scientific name mapping
+
     for i_row, row in tqdm(inat_taxonomy.iterrows(), total=len(inat_taxonomy)):
 
         taxon_id = row['taxonID']
-        vernacular_name = row['vernacularName']
+        assert isinstance(taxon_id,int)
+
         scientific_name = row['scientificName']
-
-        if len(vernacular_name) > 0:
-            inat_taxon_id_to_vernacular[taxon_id].add(vernacular_name)
-            inat_vernacular_to_taxon_id[vernacular_name].add(taxon_id)
-
         assert len(scientific_name) > 0
+
         inat_taxon_id_to_scientific[taxon_id].add(scientific_name)
         inat_scientific_to_taxon_id[scientific_name].add(taxon_id)
 
+    # iNat common name mapping
 
-    # Build GBIF dictionaries
+    inat_taxon_ids_in_vernacular_file_but_not_in_taxa_file = set()
+
+    for i_row, row in tqdm(inat_common_mapping.iterrows(), total=len(inat_common_mapping)):
+
+        taxon_id = row['id']
+        assert isinstance(taxon_id,int)
+
+        # This should never happen; we will assert() this at the end of the loop
+        if taxon_id not in inat_taxon_id_to_scientific:
+            inat_taxon_ids_in_vernacular_file_but_not_in_taxa_file.add(taxon_id)
+            continue
+
+        vernacular_name = row['vernacularName']
+
+        assert len(vernacular_name) > 0
+        inat_taxon_id_to_vernacular[taxon_id].add(vernacular_name)
+        inat_vernacular_to_taxon_id[vernacular_name].add(taxon_id)
+
+    assert len(inat_taxon_ids_in_vernacular_file_but_not_in_taxa_file) == 0
+
+
+    ##%% Build GBIF dictionaries
 
     print('Building lookup dictionaries for GBIF taxonomy')
+
+    # GBIF scientific name mapping
 
     for i_row, row in tqdm(gbif_taxonomy.iterrows(), total=len(gbif_taxonomy)):
 
         taxon_id = row['taxonID']
+        assert isinstance(taxon_id,int)
 
-        # The canonical name is the Latin name; the "scientific name"
-        # include the taxonomy name.
+        # The "canonical name" is the Latin name; the "scientific name"
+        # column includes other information.  For example:
+        #
+        # "scientificName": Schizophoria impressa (Hall, 1843)
+        # "canonicalName": Schizophoria impressa
+        #
+        # Also see:
         #
         # http://globalnames.org/docs/glossary/
 
@@ -307,12 +374,18 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
         gbif_taxon_id_to_scientific[taxon_id].add(scientific_name)
         gbif_scientific_to_taxon_id[scientific_name].add(taxon_id)
 
+    # GBIF common name mapping
+
+    gbif_taxon_ids_in_vernacular_file_but_not_in_taxa_file = set()
+
     for i_row, row in tqdm(gbif_common_mapping.iterrows(), total=len(gbif_common_mapping)):
 
         taxon_id = row['taxonID']
+        assert isinstance(taxon_id,int)
 
         # Don't include taxon IDs that were removed from the master table
         if taxon_id not in gbif_taxon_id_to_scientific:
+            gbif_taxon_ids_in_vernacular_file_but_not_in_taxa_file.add(taxon_id)
             continue
 
         vernacular_name = row['vernacularName']
@@ -321,8 +394,13 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
         gbif_taxon_id_to_vernacular[taxon_id].add(vernacular_name)
         gbif_vernacular_to_taxon_id[vernacular_name].add(taxon_id)
 
+    print('Finished GBIF common --> scientific mapping, failed to map {} of {} taxon IDs'.format(
+        len(gbif_taxon_ids_in_vernacular_file_but_not_in_taxa_file),
+        len(gbif_common_mapping)
+    ))
 
-    # Save everything to file
+
+    ##%% Save everything to file
 
     structures_to_serialize = [
         inat_taxonomy,
@@ -344,7 +422,10 @@ def initialize_taxonomy_lookup(force_init=False) -> None:
     if not os.path.isfile(serialized_structures_file):
         with open(serialized_structures_file, 'wb') as p:
             pickle.dump(structures_to_serialize, p)
-    print(' done')
+    print('...done')
+
+
+    #%%
 
 # ...def initialize_taxonomy_lookup(...)
 
@@ -412,7 +493,8 @@ def traverse_taxonomy(matching_rownums: Sequence[int],
         while True:
 
             taxon_id = current_row['taxonID']
-            vernacular_names = sorted(taxon_id_to_vernacular[taxon_id])  # sort for determinism, pylint: disable=line-too-long
+            # sort for determinism
+            vernacular_names = sorted(taxon_id_to_vernacular[taxon_id])
             match_details.append((taxon_id, current_row['taxonRank'],
                                   get_scientific_name_from_row(current_row),
                                   vernacular_names))
