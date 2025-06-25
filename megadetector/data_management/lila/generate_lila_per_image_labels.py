@@ -361,7 +361,11 @@ print('Read {} rows from {}'.format(len(df),output_file))
 
 #%% Do some post-hoc integrity checking
 
-# Takes ~10 minutes without using apply()
+
+# Takes ~5 minutes with apply(), or ~10 minutes without apply()
+#
+# Using apply() is faster, but more annoying to debug.
+use_pandas_apply_for_integrity_checking = True
 
 tqdm.pandas()
 
@@ -393,8 +397,7 @@ def _check_row(row):
     ds_name = row['dataset_name']
     dataset_name_to_locations[ds_name].add(row['location_id'])
 
-# Faster, but more annoying to debug
-if True:
+if use_pandas_apply_for_integrity_checking:
 
     df.progress_apply(_check_row, axis=1)
 
@@ -448,8 +451,9 @@ for ds_name in metadata_table.keys():
         empty_rows = empty_rows.sample(n=n_empty_images_per_dataset)
     images_to_download.extend(empty_rows.to_dict('records'))
 
+    # All LILA datasets have non-empty images
     if len(non_empty_rows) == 0:
-        print('No non-empty images available for {}'.format(ds_name))
+        raise ValueError('No non-empty images available for {}'.format(ds_name))
     elif len(non_empty_rows) > n_non_empty_images_per_dataset:
         non_empty_rows = non_empty_rows.sample(n=n_non_empty_images_per_dataset)
     images_to_download.extend(non_empty_rows.to_dict('records'))
@@ -463,7 +467,7 @@ print('Selected {} total images'.format(len(images_to_download)))
 
 # Expect a few errors for images with human or vehicle labels (or things like "ignore" that *could* be humans)
 
-preferred_cloud = 'aws'
+preferred_cloud = 'gcp'
 
 url_to_target_file = {}
 
@@ -483,6 +487,19 @@ for i_image,image in tqdm(enumerate(images_to_download),total=len(images_to_down
 
 download_results = parallel_download_urls(url_to_target_file,verbose=False,overwrite=True,
                                           n_workers=20,pool_type='thread')
+
+# 10-20 errors is normal; they should all be images that are labeled as "human"
+errors = []
+
+for r in download_results:
+    if r['status'] != 'success':
+        errors.append(r)
+
+assert len(download_results) == len(url_to_target_file)
+print('Errors on {} of {} downloads:\n'.format(len(errors),len(download_results)))
+
+for err in errors:
+    print(err['url'])
 
 
 #%% Write preview HTML
