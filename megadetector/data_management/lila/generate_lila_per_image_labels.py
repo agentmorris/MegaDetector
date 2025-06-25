@@ -87,7 +87,7 @@ for ds_name in metadata_table.keys():
 
 #%% Load taxonomy data
 
-taxonomy_df = read_lila_taxonomy_mapping(metadata_dir)
+taxonomy_df = read_lila_taxonomy_mapping(metadata_dir, force_download=True)
 
 
 #%% Build a dictionary that maps each [dataset,query] pair to the full taxonomic label set
@@ -115,8 +115,8 @@ header = ['dataset_name','url_gcp','url_aws','url_azure',
 
 taxonomy_levels_to_include = \
     ['kingdom','phylum','subphylum','superclass','class','subclass','infraclass','superorder','order',
-     'suborder','infraorder','superfamily','family','subfamily','tribe','genus','species','subspecies',
-     'variety']
+     'suborder','infraorder','superfamily','family','subfamily','tribe','genus','subgenus',
+     'species','subspecies','variety']
 
 header.extend(taxonomy_levels_to_include)
 
