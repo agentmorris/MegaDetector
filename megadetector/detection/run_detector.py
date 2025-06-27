@@ -84,21 +84,27 @@ model_string_to_model_version = {
     'mdv2':'v2.0.0',
     'mdv3':'v3.0.0',
     'mdv4':'v4.1.0',
-    'mdv5a':'v5a.0.0',
-    'mdv5b':'v5b.0.0',
+    # 'mdv5a':'v5a.0.0',
+    # 'mdv5b':'v5b.0.0',
+    # Repackaging of the same weights
+    'mdv5a':'v5a.0.1',
+    'mdv5b':'v5b.0.1',
     'v2':'v2.0.0',
     'v3':'v3.0.0',
     'v4':'v4.1.0',
     'v4.1':'v4.1.0',
-    'v5a.0.0':'v5a.0.0',
-    'v5b.0.0':'v5b.0.0',
+    # Repackaging of the same weights
+    # 'v5a.0.0':'v5a.0.0',
+    # 'v5b.0.0':'v5b.0.0',
+    'v5a.0.0':'v5a.0.1',
+    'v5b.0.0':'v5b.0.1',
     'redwood':'v1000.0.0-redwood',
     'spruce':'v1000.0.0-spruce',
     'cedar':'v1000.0.0-cedar',
     'larch':'v1000.0.0-larch',
     'default':'v5a.0.0',
-    'default-model':'v5a.0.0',
-    'megadetector':'v5a.0.0'
+    'default-model':'v5a.0.1',
+    'megadetector':'v5a.0.1'
 }
 
 model_url_base = 'http://localhost:8181/'
@@ -137,7 +143,8 @@ known_models = {
         'conservative_detection_threshold':0.05,
         'image_size':1280,
         'model_type':'yolov5',
-        'normalized_typical_inference_speed':1.0
+        'normalized_typical_inference_speed':1.0,
+        'md5':'ec1d7603ec8cf642d6e0cd008ba2be8c'
     },
     'v5b.0.0':
     {
@@ -146,29 +153,60 @@ known_models = {
         'conservative_detection_threshold':0.05,
         'image_size':1280,
         'model_type':'yolov5',
-        'normalized_typical_inference_speed':1.0
+        'normalized_typical_inference_speed':1.0,
+        'md5':'bc235e73f53c5c95e66ea0d1b2cbf542'
+    },
+    'v5a.0.1':
+    {
+        'url':'https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.1.pt',
+        'typical_detection_threshold':0.2,
+        'conservative_detection_threshold':0.05,
+        'image_size':1280,
+        'model_type':'yolov5',
+        'normalized_typical_inference_speed':1.0,
+        'md5':'60f8e7ec1308554df258ed1f4040bc4f'
+    },
+    'v5b.0.1':
+    {
+        'url':'https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.1.pt',
+        'typical_detection_threshold':0.2,
+        'conservative_detection_threshold':0.05,
+        'image_size':1280,
+        'model_type':'yolov5',
+        'normalized_typical_inference_speed':1.0,
+        'md5':'f17ed6fedfac2e403606a08c89984905'
     },
 
-    # Fake values for testing
+    # Fake values for testing, other than the MD5 hashes, which are legit
     'v1000.0.0-redwood':
     {
         'normalized_typical_inference_speed':2.0,
-        'url':model_url_base + 'md_v1000.0.0-redwood.pt'
+        'url':model_url_base + 'md_v1000.0.0-redwood.pt',
+        'md5':'74474b3aec9cf1a990da38b37ddf9197'
     },
     'v1000.0.0-spruce':
     {
         'normalized_typical_inference_speed':3.0,
-        'url':model_url_base + 'md_v1000.0.0-spruce.pt'
+        'url':model_url_base + 'md_v1000.0.0-spruce.pt',
+        'md5':'1c9d1d2b3ba54931881471fdd508e6f2'
     },
     'v1000.0.0-larch':
     {
         'normalized_typical_inference_speed':4.0,
-        'url':model_url_base + 'md_v1000.0.0-larch.pt'
+        'url':model_url_base + 'md_v1000.0.0-larch.pt',
+        'md5':'cab94ebd190c2278e12fb70ffd548b6d'
     },
     'v1000.0.0-cedar':
     {
         'normalized_typical_inference_speed':5.0,
-        'url':model_url_base + 'md_v1000.0.0-cedar.pt'
+        'url':model_url_base + 'md_v1000.0.0-cedar.pt',
+        'md5':'3d6472c9b95ba687b59ebe255f7c576b'
+    },
+    'v1000.0.0-sorrel':
+    {
+        'normalized_typical_inference_speed':6.0,
+        'url':model_url_base + 'md_v1000.0.0-sorrel.pt',
+        'md5':'4339a2c8af7a381f18ded7ac2a4df03e'
     }
 }
 
