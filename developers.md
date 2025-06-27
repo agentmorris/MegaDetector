@@ -37,11 +37,11 @@ I use comments to indicate the end of large code blocks, including functions.  I
 
 ```python
 def some_function(stuff):
-    
+
     # This is a short loop, so I wouldn't really include a closing comment here,
     # but imagine it's very long.
     for thing in stuff:
-        
+
         # This is a short loop, so I wouldn't really include a closing comment here,
         # but imagine it's very long.
         if isinstance(thing,str):
@@ -49,7 +49,7 @@ def some_function(stuff):
         else:
            print(str(thing))
         # ...if [thing] is a string
-    
+
     # ...for each thing
 
 # ...def some_function(...)
@@ -93,7 +93,7 @@ def some_function(records):
     for i_record,record in enumerate(records):
         if (important):
             records_of_interest.append(record)
-            
+
     # Print the important records
     for r in records_of_interest:
         print(str(r))
@@ -102,7 +102,7 @@ def some_function(records):
 
 ### Function and class header comment style (Google-style docstrings)
 
-Functions and classes should have Google-style docstrings.  Docstrings should always be multi-line, even for very short functions or methods.  The single-line summary often required at the top of Google-style docstrings is not required.  
+Functions and classes should have Google-style docstrings.  Docstrings should always be multi-line, even for very short functions or methods.  The single-line summary often required at the top of Google-style docstrings is not required.
 
 Arguments should be specified as `name (type): description` or, for arguments with default values, `name (type, optional): description`.
 
@@ -134,7 +134,7 @@ Example class:
 class ExampleClass:
     """
     This is an example class.
-    
+
     It describes the overall purpose and behavior of the class.
     """
 
@@ -199,11 +199,11 @@ def correct_spacing(param1, param2):
     """
 
     # Spaces around operator
-    result = param1 + param2 
-    
+    result = param1 + param2
+
     # Space after comma, no space inside brackets
     my_list = [1, 2, 3]
-    
+
     return result
 
 
@@ -247,7 +247,7 @@ if (a is not None) and (b > 4):
     do_things()
 ```
 
-   
+
 ### Naming conventions
 
 *   **`snake_case`** for functions, methods, variables, and module names
@@ -280,6 +280,16 @@ from PIL import Image
 
 from megadetector.utils import some_utility_function
 ```
+
+
+### Quotes
+
+Single quotes are preferred over double quotes when possible.
+
+
+### String formatting
+
+string.format() is preferred over f-strings when possible.
 
 
 ### Type hinting

@@ -799,6 +799,55 @@ def load_and_run_detector(model_file,
 # ...def load_and_run_detector()
 
 
+def _validate_zip_file(file_path, file_description='file'):
+    """
+    Validates that a .pt file is a valid zip file.
+
+    Args:
+        file_path (str): path to the file to validate
+        file_description (str): descriptive string for error messages
+
+    Returns:
+        bool: True if valid, False otherwise
+    """
+    try:
+        with zipfile.ZipFile(file_path, 'r') as zipf:
+            zipf.testzip()
+        return True
+    except (zipfile.BadZipFile, zipfile.LargeZipFile) as e:
+        print('{} {} appears to be corrupted (bad zip): {}'.format(
+            file_description.capitalize(), file_path, str(e)))
+        return False
+    except Exception as e:
+        print('Error validating {}: {}'.format(file_description, str(e)))
+        return False
+
+
+def _validate_md5_hash(file_path, expected_hash, file_description='file'):
+    """
+    Validates that a file has the expected MD5 hash.
+
+    Args:
+        file_path (str): path to the file to validate
+        expected_hash (str): expected MD5 hash
+        file_description (str): descriptive string for error messages
+
+    Returns:
+        bool: True if hash matches, False otherwise
+    """
+    try:
+        actual_hash = compute_file_hash(file_path, algorithm='md5').lower()
+        expected_hash = expected_hash.lower()
+        if actual_hash != expected_hash:
+            print('{} {} has incorrect hash. Expected: {}, Actual: {}'.format(
+                file_description.capitalize(), file_path, expected_hash, actual_hash))
+            return False
+        return True
+    except Exception as e:
+        print('Error computing hash for {}: {}'.format(file_description, str(e)))
+        return False
+
+
 def _download_model(model_name,force_download=False):
     """
     Downloads one of the known models to local temp space if it hasn't already been downloaded.
@@ -839,30 +888,18 @@ def _download_model(model_name,force_download=False):
             is_valid = True
 
             # Check whether the file is a valid zip file (.pt files are zip files in disguise)
-            try:
-                with zipfile.ZipFile(destination_filename, 'r') as zipf:
-                    zipf.testzip()
-            except (zipfile.BadZipFile, zipfile.LargeZipFile) as e:
-                print('Existing model file {} appears to be corrupted (bad zip): {}'.format(
-                    destination_filename, str(e)))
-                is_valid = False
-            except Exception as e:
-                print('Error validating existing model file {}: {}'.format(
-                    destination_filename, str(e)))
+            if not _validate_zip_file(destination_filename,
+                                      'existing model file'):
                 is_valid = False
 
             # Check MD5 hash if available
-            if is_valid and 'md5' in model_info and model_info['md5'] and model_info['md5'].strip():
-                expected_hash = model_info['md5'].lower()
-                try:
-                    actual_hash = compute_file_hash(destination_filename, algorithm='md5').lower()
-                    if actual_hash != expected_hash:
-                        print('Existing model file {} has incorrect hash, expected {}, actual: {}'.format(
-                            destination_filename, expected_hash, actual_hash))
-                        is_valid = False
-                except Exception as e:
-                    print('Error computing hash for existing model file {}: {}'.format(
-                        destination_filename, str(e)))
+            if is_valid and \
+                ('md5' in model_info) and \
+                (model_info['md5'] is not None) and \
+                (len(model_info['md5'].strip()) > 0):
+
+                if not _validate_md5_hash(destination_filename, model_info['md5'],
+                                          'existing model file'):
                     is_valid = False
 
             # If validation failed, delete the corrupted file and re-download
@@ -894,43 +931,31 @@ def _download_model(model_name,force_download=False):
     if local_file and local_file.endswith('.pt'):
 
         # Check if the downloaded file is a valid zip file
-        try:
-            with zipfile.ZipFile(local_file, 'r') as zipf:
-                zipf.testzip()
-        except (zipfile.BadZipFile, zipfile.LargeZipFile) as e:
-            print('Downloaded model file {} appears to be corrupted (bad zip): {}'.format(
-                local_file, str(e)))
+        if not _validate_zip_file(local_file, "downloaded model file"):
             # Clean up the corrupted download
             try:
                 os.remove(local_file)
             except Exception:
                 pass
             return None
-        except Exception as e:
-            print('Error validating downloaded model file {}: {}'.format(local_file, str(e)))
-            return None
 
         # Check MD5 hash if available
-        if 'md5' in model_info and model_info['md5'] and model_info['md5'].strip():
-            expected_hash = model_info['md5'].lower()
-            try:
-                actual_hash = compute_file_hash(local_file, algorithm='md5').lower()
-                if actual_hash != expected_hash:
-                    print('Downloaded model file {} has incorrect hash. Expected: {}, Actual: {}'.format(
-                        local_file, expected_hash, actual_hash))
-                    # Clean up the corrupted download
-                    try:
-                        os.remove(local_file)
-                    except Exception:
-                        pass
-                    return None
-            except Exception as e:
-                print('Error computing hash for downloaded model file {}: {}'.format(local_file, str(e)))
+        if ('md5' in model_info) and \
+            (model_info['md5'] is not None) and \
+            (len(model_info['md5'].strip()) > 0):
+
+            if not _validate_md5_hash(local_file, model_info['md5'], "downloaded model file"):
+                # Clean up the corrupted download
+                try:
+                    os.remove(local_file)
+                except Exception:
+                    pass
                 return None
 
     print('Model {} available at {}'.format(model_name,local_file))
     return local_file
 
+# ...def _download_model(...)
 
 def try_download_known_detector(detector_file,force_download=False,verbose=False):
     """
