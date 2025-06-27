@@ -770,7 +770,7 @@ def test_package_imports(package_name,exceptions=None,verbose=True):
             print(f"Failed to import module {modname}: {e}")
             raise
 
-    #%%
+
 def run_python_tests(options):
     """
     Runs Python-based (as opposed to CLI-based) package tests.
@@ -1531,6 +1531,8 @@ def run_cli_tests(options):
 
 def run_download_tests(options):
     """
+    Test automatic model downloads.
+
     Args:
         options (MDTestOptions): see MDTestOptions for details
     """
@@ -1554,7 +1556,8 @@ def run_download_tests(options):
                                          force_download=False,
                                          verbose=False)
         version_string = get_detector_version_from_model_file(fn, verbose=False)
-        assert version_string == model_name
+        # Make sure this is the same version we asked for, modulo the MDv5 re-releases
+        assert (version_string.replace('.0.1','.0.0') == model_name.replace('.0.1','.0.0'))
 
     # Make sure we can download models based on short names, e.g. "MDV5A"
     for model_name in model_string_to_model_version:
@@ -1568,6 +1571,53 @@ def run_download_tests(options):
                                          force_download=False,
                                          verbose=False)
         assert fn != model_name
+
+    # Test corruption handling for .pt files
+    print('Testing corruption handling for MDV5B')
+
+    # First ensure MDV5B is downloaded
+    mdv5b_file = try_download_known_detector('MDV5B',
+                                             force_download=False,
+                                             verbose=False)
+    assert mdv5b_file is not None
+    assert os.path.exists(mdv5b_file)
+    assert mdv5b_file.endswith('.pt')
+
+    # Get the original file size and MD5 hash for comparison
+    original_size = os.path.getsize(mdv5b_file)
+    from megadetector.utils.path_utils import compute_file_hash
+    original_hash = compute_file_hash(mdv5b_file, algorithm='md5')
+
+    # Deliberately corrupt the file by overwriting the first few bytes
+    print('Corrupting model file: {}'.format(mdv5b_file))
+    with open(mdv5b_file, 'r+b') as f:
+        f.write(b'CORRUPTED_FILE_DATA_XXXXXX')
+
+    # Verify the file is now corrupted (different hash)
+    corrupted_hash = compute_file_hash(mdv5b_file, algorithm='md5')
+    assert corrupted_hash != original_hash, 'File corruption verification failed'
+
+    # Try to download again; this should detect corruption and re-download
+    print('Testing corruption detection and re-download')
+    mdv5b_file_redownloaded = try_download_known_detector('MDV5B',
+                                                          force_download=False,
+                                                          verbose=True)
+
+    # Verify that the file was re-downloaded and is now valid
+    assert mdv5b_file_redownloaded is not None
+    assert os.path.exists(mdv5b_file_redownloaded)
+    assert mdv5b_file_redownloaded == mdv5b_file
+
+    # Verify that the file is back to its original state
+    new_size = os.path.getsize(mdv5b_file_redownloaded)
+    new_hash = compute_file_hash(mdv5b_file_redownloaded, algorithm='md5')
+
+    assert new_size == original_size, \
+        'Re-downloaded file size ({}) does not match original ({})'.format(new_size, original_size)
+    assert new_hash == original_hash, \
+        'Re-downloaded file hash ({}) does not match original ({})'.format(new_hash, original_hash)
+
+    print('Corruption handling test passed')
 
 # ...def run_download_tests()
 
@@ -1671,7 +1721,7 @@ if False:
 
     pass
 
-    #%%
+    #%% Test Prep
 
     options = MDTestOptions()
 
@@ -1702,18 +1752,26 @@ if False:
     # options.yolo_working_dir = '/mnt/c/git/yolov5-md'
     options = download_test_data(options)
 
-    #%%
+
+    #%% Environment prep
 
     import os
     if ('PYTHONPATH' not in os.environ) or \
        (options.yolo_working_dir is not None and options.yolo_working_dir not in os.environ['PYTHONPATH']):
         os.environ['PYTHONPATH'] += ';' + options.yolo_working_dir
 
-    #%%
+
+    #%% Run download tests
+
+    run_download_tests(options=options)
+
+
+    #%% Run all tests
 
     run_tests(options)
 
-    #%%
+
+    #%% Run YOLO inference tests
 
     yolo_inference_options_dict = {'input_folder': '/tmp/md-tests/md-test-images',
                                    'image_filename_list': None,
