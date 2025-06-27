@@ -373,13 +373,13 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
             assert not ('bbox' in anno and 'bbox_relative' in anno), \
                 "An annotation can't have both an absolute and a relative bounding box"
 
+            box_field = 'bbox'
             if 'bbox_relative' in anno:
                 box_field = 'bbox_relative'
                 assert (boxes_are_normalized is None) or (boxes_are_normalized), \
                     "An image can't have both absolute and relative bounding boxes"
                 boxes_are_normalized = True
             elif 'bbox' in anno:
-                box_field = 'bbox'
                 assert (boxes_are_normalized is None) or (not boxes_are_normalized), \
                     "An image can't have both absolute and relative bounding boxes"
                 boxes_are_normalized = False
