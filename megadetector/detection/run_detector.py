@@ -32,6 +32,7 @@ import time
 import json
 import warnings
 import tempfile
+import zipfile
 
 import humanfriendly
 from tqdm import tqdm
@@ -40,6 +41,7 @@ from megadetector.utils import path_utils as path_utils
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.utils.url_utils import download_url
 from megadetector.utils.ct_utils import parse_kvp_list
+from megadetector.utils.path_utils import compute_file_hash
 
 # ignoring all "PIL cannot read EXIF metainfo for the images" warnings
 warnings.filterwarnings('ignore', '(Possibly )?corrupt EXIF data', UserWarning)
@@ -102,7 +104,7 @@ model_string_to_model_version = {
     'spruce':'v1000.0.0-spruce',
     'cedar':'v1000.0.0-cedar',
     'larch':'v1000.0.0-larch',
-    'default':'v5a.0.0',
+    'default':'v5a.0.1',
     'default-model':'v5a.0.1',
     'megadetector':'v5a.0.1'
 }
@@ -823,10 +825,109 @@ def _download_model(model_name,force_download=False):
     if model_name.lower() not in known_models:
         print('Unrecognized downloadable model {}'.format(model_name))
         return None
-    url = known_models[model_name.lower()]['url']
+
+    model_info = known_models[model_name.lower()]
+    url = model_info['url']
     destination_filename = os.path.join(model_tempdir,url.split('/')[-1])
-    local_file = download_url(url, destination_filename=destination_filename, progress_updater=None,
-                     force_download=force_download, verbose=True)
+
+    # Check whether the file already exists, in which case we want to validate it
+    if os.path.exists(destination_filename) and not force_download:
+
+        # Only validate .pt files, not .pb files
+        if destination_filename.endswith('.pt'):
+
+            is_valid = True
+
+            # Check whether the file is a valid zip file (.pt files are zip files in disguise)
+            try:
+                with zipfile.ZipFile(destination_filename, 'r') as zipf:
+                    zipf.testzip()
+            except (zipfile.BadZipFile, zipfile.LargeZipFile) as e:
+                print('Existing model file {} appears to be corrupted (bad zip): {}'.format(
+                    destination_filename, str(e)))
+                is_valid = False
+            except Exception as e:
+                print('Error validating existing model file {}: {}'.format(
+                    destination_filename, str(e)))
+                is_valid = False
+
+            # Check MD5 hash if available
+            if is_valid and 'md5' in model_info and model_info['md5'] and model_info['md5'].strip():
+                expected_hash = model_info['md5'].lower()
+                try:
+                    actual_hash = compute_file_hash(destination_filename, algorithm='md5').lower()
+                    if actual_hash != expected_hash:
+                        print('Existing model file {} has incorrect hash, expected {}, actual: {}'.format(
+                            destination_filename, expected_hash, actual_hash))
+                        is_valid = False
+                except Exception as e:
+                    print('Error computing hash for existing model file {}: {}'.format(
+                        destination_filename, str(e)))
+                    is_valid = False
+
+            # If validation failed, delete the corrupted file and re-download
+            if not is_valid:
+                print('Deleting corrupted model file and re-downloading: {}'.format(
+                    destination_filename))
+                try:
+                    os.remove(destination_filename)
+                    # This should be a no-op at this point, but it can't hurt
+                    force_download = True
+                except Exception as e:
+                    print('Warning: failed to delete corrupted file {}: {}'.format(
+                        destination_filename, str(e)))
+                    # Continue with download attempt anyway, setting force_download to True
+                    force_download = True
+            else:
+                print('Model {} already exists and is valid at {}'.format(
+                    model_name, destination_filename))
+                return destination_filename
+
+    # Download the model
+    local_file = download_url(url,
+                              destination_filename=destination_filename,
+                              progress_updater=None,
+                              force_download=force_download,
+                              verbose=True)
+
+    # Validate the downloaded file if it's a .pt file
+    if local_file and local_file.endswith('.pt'):
+
+        # Check if the downloaded file is a valid zip file
+        try:
+            with zipfile.ZipFile(local_file, 'r') as zipf:
+                zipf.testzip()
+        except (zipfile.BadZipFile, zipfile.LargeZipFile) as e:
+            print('Downloaded model file {} appears to be corrupted (bad zip): {}'.format(
+                local_file, str(e)))
+            # Clean up the corrupted download
+            try:
+                os.remove(local_file)
+            except Exception:
+                pass
+            return None
+        except Exception as e:
+            print('Error validating downloaded model file {}: {}'.format(local_file, str(e)))
+            return None
+
+        # Check MD5 hash if available
+        if 'md5' in model_info and model_info['md5'] and model_info['md5'].strip():
+            expected_hash = model_info['md5'].lower()
+            try:
+                actual_hash = compute_file_hash(local_file, algorithm='md5').lower()
+                if actual_hash != expected_hash:
+                    print('Downloaded model file {} has incorrect hash. Expected: {}, Actual: {}'.format(
+                        local_file, expected_hash, actual_hash))
+                    # Clean up the corrupted download
+                    try:
+                        os.remove(local_file)
+                    except Exception:
+                        pass
+                    return None
+            except Exception as e:
+                print('Error computing hash for downloaded model file {}: {}'.format(local_file, str(e)))
+                return None
+
     print('Model {} available at {}'.format(model_name,local_file))
     return local_file
 
