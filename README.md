@@ -142,7 +142,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Fort Collins Science Center](https://www.usgs.gov/centers/fort-collins-science-center/), U.S. Geological Survey ([blog post](https://www.usgs.gov/centers/fort-collins-science-center/science/early-detection-and-rapid-response-tools-invasive-tegu))
 * [Ontario Ministry of Natural Resources](https://www.ontario.ca/page/ministry-natural-resources) ([post](https://www.facebook.com/ONresources/posts/artificial-intelligence-ai-to-the-rescueone-disadvantage-of-trail-cameras-and-ca/1012916944364710/))
 * [Loisaba Conservancy](https://www.loisaba.com/) ([blog post](https://www.loisaba.com/post/help-scientists-understand-how-an-invasive-cactus-affects-mammal-behaviour))
-
+* [Urban Rivers](https://urbanrivers.org/) ([blog post](https://www.morescode-analytics.com/2025/06/27/filtering-90-pct-blank-wildlife.html))
 * [Road Ecology Center](https://roadecology.ucdavis.edu/), University of California, Davis ([Wildlife Observer Network platform](https://roadecology.ucdavis.edu/research/projects/wildlife-observer-network))
 * [The Nature Conservancy in California](https://www.nature.org/en-us/about-us/where-we-work/united-states/california/) ([Animl platform](https://github.com/tnc-ca-geo/animl-frontend)) ([story](https://www.vision-systems.com/non-factory/environment-agriculture/article/14304433/the-nature-conservancy-brings-cameras-ai-to-invasive-species-prevention))
 * [San Diego Zoo Wildlife Alliance](https://science.sandiegozoo.org/)  ([Animl R package](https://github.com/conservationtechlab/animl))
