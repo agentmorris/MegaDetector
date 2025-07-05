@@ -137,6 +137,10 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Trapper](https://trapper-project.readthedocs.io/en/latest/overview.html) ([tutorial](https://trapper-project.readthedocs.io/en/latest/tutorial.html))
 * [BirdLife Malta](https://birdlifemalta.org/) ([tweet](https://x.com/BirdLife_Malta/status/1817456839862173783?t=S-KRiZ5R1-CoW8-tbYNjqQ&s=03)) ([LI post](https://www.linkedin.com/posts/birdlifemalta_worldnatureconservationday-shearwater-colony-activity-7223220656589463553-X2Mc/?utm_source=share&utm_medium=member_android))
 * [Endangered Landscapes and Seascapes Programme](https://www.endangeredlandscapes.org/), Cambridge Conservation Initiative ([blog post](https://www.endangeredlandscapes.org/news/ai-for-wildlife-monitoring-a-real-time-alert-system-for-bears-and-wild-boars-in-romanias-carpathian-mountains/))
+* [UK National Hedgehog Monitoring Programme](https://www.the-ies.org/analysis/lens-wild-innovations-wildlife-0) ([blog post](https://www.the-ies.org/analysis/lens-wild-innovations-wildlife-0))
+* [Fort Collins Science Center](https://www.usgs.gov/centers/fort-collins-science-center/), U.S. Geological Survey ([blog post](https://www.usgs.gov/centers/fort-collins-science-center/science/early-detection-and-rapid-response-tools-invasive-tegu))
+* [Ontario Ministry of Natural Resources](https://www.ontario.ca/page/ministry-natural-resources) ([post](https://www.facebook.com/ONresources/posts/artificial-intelligence-ai-to-the-rescueone-disadvantage-of-trail-cameras-and-ca/1012916944364710/))
+* [Loisaba Conservancy](https://www.loisaba.com/) ([blog post](https://www.loisaba.com/post/help-scientists-understand-how-an-invasive-cactus-affects-mammal-behaviour))
 
 * [Road Ecology Center](https://roadecology.ucdavis.edu/), University of California, Davis ([Wildlife Observer Network platform](https://roadecology.ucdavis.edu/research/projects/wildlife-observer-network))
 * [The Nature Conservancy in California](https://www.nature.org/en-us/about-us/where-we-work/united-states/california/) ([Animl platform](https://github.com/tnc-ca-geo/animl-frontend)) ([story](https://www.vision-systems.com/non-factory/environment-agriculture/article/14304433/the-nature-conservancy-brings-cameras-ai-to-invasive-species-prevention))
@@ -145,7 +149,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 
 Also see:
 
-* The [list of MD-related GUIs, platforms, and GitHub repos](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#is-there-a-gui) within the MegaDetector User Guide
+* The [list of MD-related GUIs, platforms, and GitHub repos](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#is-there-a-gui) within the MegaDetector User Guide... although you can never have too many lists, so here they are in a concise comma-separated list: [Wildlife Insights](https://wildlifeinsights.org/), [Animal Detect](https://www.animaldetect.com), [TrapTagger](https://wildeyeconservation.org/trap-tagger-about/), [WildTrax](https://www.wildtrax.ca/), [Agouti](https://agouti.eu/), [Trapper](https://trapper-project.readthedocs.io/en/latest/overview.html), [Camelot](https://camelotproject.org/), [WildePod](https://wildepod.org/), [wpsWatch](https://wildlabs.net/inventory/products/wpswatch), [TNC Animl](https://animl.camera/) ([code](https://github.com/tnc-ca-geo/animl-frontend)), [Wildlife Observer Network](https://roadecology.ucdavis.edu/research/projects/wildlife-observer-network), [Zooniverse ML Subject Assistant](https://subject-assistant.zooniverse.org/#/intro), [Dudek AI Image Toolkit](https://ait.dudek.com), [Zamba Cloud](https://github.com/drivendataorg/zamba), [OCAPI](https://www.terroiko.fr/ocapi/).
 
 * [Peter's map of AddaxAI (formerly EcoAssist) users](https://addaxdatascience.com/addaxai/) (who are also MegaDetector users!)
 
