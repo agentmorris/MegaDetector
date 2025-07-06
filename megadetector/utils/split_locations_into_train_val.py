@@ -64,8 +64,8 @@ def split_locations_into_train_val(location_to_category_counts,
         default_max_allowable_error (float, optional): the maximum allowable error for categories not
             present in [category_to_max_allowable_error].  Set to None (or >= 1.0) to disable hard
             constraints for categories not present in [category_to_max_allowable_error]
-        require_complete_coverage (bool, optional): require that every category appear in both train and
-            val
+        require_complete_coverage (bool, optional): require that every category appear in both train
+            and val
 
     Returns:
         tuple: A two-element tuple:

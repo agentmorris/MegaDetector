@@ -65,6 +65,7 @@ def _get_crop_filename(image_fn,crop_id):
     """
     Generate crop filenames in a consistent way.
     """
+
     if isinstance(crop_id,int):
         crop_id = str(crop_id).zfill(3)
     assert isinstance(crop_id,str)
@@ -77,7 +78,15 @@ def _generate_crops_for_single_image(crops_this_image,
                                      options):
     """
     Generate all the crops required for a single image.
+
+    Args:
+        crops_this_image (list of dict): list of dicts with at least keys
+            'image_fn_relative', 'crop_id'
+        input_folder (str): input folder (whole images)
+        output_folder (crops): output folder (crops)
+        options (CreateCropFolderOptions): cropping options
     """
+
     if len(crops_this_image) == 0:
         return
 
@@ -383,8 +392,8 @@ def create_crop_folder(input_file,
             det['crop_id'] = i_detection
 
             crop_info = {'image_fn_relative':image_fn_relative,
-                            'crop_id':i_detection,
-                            'detection':det}
+                         'crop_id':i_detection,
+                         'detection':det}
 
             crop_filename_relative = _get_crop_filename(image_fn_relative,
                                                         crop_info['crop_id'])

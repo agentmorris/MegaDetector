@@ -1229,7 +1229,7 @@ print('Generated {} instances for the crop folder (in file {})'.format(
     len(crop_instances['instances']),crop_instances_json))
 
 
-#%% Run classifier on crops
+#%% Run SpeciesNet on crops
 
 os.makedirs(chunk_folder,exist_ok=True)
 
@@ -1748,7 +1748,7 @@ open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_na
 
 #%% Possibly apply a custom taxa list (after smoothing)
 
-from megadetector.utils.wi_utils import restrict_to_taxa_list
+from megadetector.postprocessing.classification_postprocessing import restrict_to_taxa_list
 
 if (custom_taxa_list is not None) and (custom_taxa_stage == 'after_smoothing'):
 
