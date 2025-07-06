@@ -391,6 +391,7 @@ But we recognize that Python tools can be a bit daunting, so we're excited that 
 It's not quite as simple as "these platforms all run MegaDetector on your images", but to varying degrees, all of the following online platforms use MegaDetector:
 
 * [Wildlife Insights](https://wildlifeinsights.org/)
+* [Animal Detect](https://www.animaldetect.com)
 * [TrapTagger](https://wildeyeconservation.org/trap-tagger-about/)
 * [WildTrax](https://www.wildtrax.ca/)
 * [Agouti](https://agouti.eu/)
