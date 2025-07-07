@@ -67,6 +67,18 @@ if debug_max_images_per_dataset > 0:
     print('Running in debug mode')
     output_file = output_file.replace('.csv','_debug.csv')
 
+taxonomy_levels_to_include = \
+    ['kingdom','phylum','subphylum','superclass','class','subclass','infraclass','superorder','order',
+     'suborder','infraorder','superfamily','family','subfamily','tribe','genus','subgenus',
+     'species','subspecies','variety']
+
+def _clearnan(v):
+    if isinstance(v,float):
+        assert np.isnan(v)
+        v = ''
+    assert isinstance(v,str)
+    return v
+
 
 #%% Download and parse the metadata file
 
@@ -113,21 +125,9 @@ header = ['dataset_name','url_gcp','url_aws','url_azure',
           'image_id','sequence_id','location_id','frame_num',
           'original_label','scientific_name','common_name','datetime','annotation_level']
 
-taxonomy_levels_to_include = \
-    ['kingdom','phylum','subphylum','superclass','class','subclass','infraclass','superorder','order',
-     'suborder','infraorder','superfamily','family','subfamily','tribe','genus','subgenus',
-     'species','subspecies','variety']
-
 header.extend(taxonomy_levels_to_include)
 
 missing_annotations = set()
-
-def _clearnan(v):
-    if isinstance(v,float):
-        assert np.isnan(v)
-        v = ''
-    assert isinstance(v,str)
-    return v
 
 with open(output_file,'w',encoding='utf-8',newline='') as f:
 
@@ -608,11 +608,16 @@ The integer ID corresponding to the location_id column for this image
 
 ### frame_num
 
-The value of the frame_num column for this image
+The value of the frame_num column for this image, unless the original value was -1,
+in which case this is omitted.
 
 ### original_label
 
 The value of the original_label column for this image
+
+### common_name
+
+The value of the common_name column for this image, if not empty
 
 ### datetime
 
@@ -633,13 +638,16 @@ conversion is not a priority.
 
 """
 
-output_json_file = output_file.replace('.csv','.json')
+import csv
+import json
+import os
+from tqdm import tqdm
 
 print('Converting to JSON...')
 
-json_data = {}
+output_json_file = output_file.replace('.csv', '.json')
 
-tqdm.pandas()
+json_data = {}
 
 # Create mappings for datasets, sequences, and locations
 dataset_to_id = {}
@@ -665,71 +673,109 @@ json_data['base_urls'] = {
 
 json_data['images'] = []
 
-debug_max_json_conversion_rows = 10
+debug_max_json_conversion_rows = None
 
-for i_row, row in tqdm(df.iterrows(), total=len(df)):
+print('Counting rows in .csv file...')
 
-    if (debug_max_json_conversion_rows is not None) and (i_row > debug_max_json_conversion_rows):
-        break
+# Get total number of lines for progress bar (optional, but helpful for large files)
+def count_lines(filename):
+    with open(filename, 'r', encoding='utf-8') as f:
+        return sum(1 for line in f) - 1
 
-    # Datasets
-    dataset_name = row['dataset_name']
-    if dataset_name not in dataset_to_id:
-        dataset_to_id[dataset_name] = next_dataset_id
-        json_data['datasets'][str(next_dataset_id)] = dataset_name
-        next_dataset_id += 1
-    dataset_id = dataset_to_id[dataset_name]
+# total_rows = count_lines(output_file)
+total_rows = 24048623
+print('Total rows to process: {}'.format(total_rows))
 
-    # Sequences
-    sequence_id_str = row['sequence_id']
-    assert sequence_id_str.startswith(dataset_name + ' : ')
-    if sequence_id_str not in sequence_to_id:
-        sequence_to_id[sequence_id_str] = next_sequence_id
-        json_data['sequences'][str(next_sequence_id)] = sequence_id_str
-        next_sequence_id += 1
-    sequence_id = sequence_to_id[sequence_id_str]
+# Read CSV file line by line
+with open(output_file, 'r', encoding='utf-8') as csvfile:
 
-    # Locations
-    location_id_str = row['location_id']
-    assert location_id_str.startswith(dataset_name + ' : ')
-    if location_id_str not in location_to_id:
-        location_to_id[location_id_str] = next_location_id
-        json_data['locations'][str(next_location_id)] = location_id_str
-        next_location_id += 1
-    location_id = location_to_id[location_id_str]
+    reader = csv.DictReader(csvfile)
 
-    # Taxa
-    taxa_data = {level: _clearnan(row[level]) for level in taxonomy_levels_to_include}
-    taxa_tuple = tuple(taxa_data.items()) # use tuple for hashable key
-    if taxa_tuple not in taxa_to_id:
-        taxa_to_id[taxa_tuple] = next_taxa_id
-        json_data['taxa'][str(next_taxa_id)] = taxa_data
-        next_taxa_id += 1
-    taxa_id = taxa_to_id[taxa_tuple]
+    # Process each row
+    for i_row, row in enumerate(tqdm(reader, total=total_rows, desc="Processing rows")):
 
-    # Image path
-    url_gcp = row['url_gcp']
-    path = url_gcp.replace(json_data['base_urls']['gcp'], '')
+        if (debug_max_json_conversion_rows is not None) and (i_row >= debug_max_json_conversion_rows):
+            break
 
-    # Image data
-    image_entry = {
-        'dataset': dataset_id,
-        'path': path,
-        'seq': sequence_id,
-        'loc': location_id,
-        'frame_num': row['frame_num'],
-        'original_label': row['original_label'],
-        'common_name': _clearnan(row['common_name']),
-        'datetime': row['datetime'],
-        'ann_level': row['annotation_level'],
-        'taxon': taxa_id
-    }
-    json_data['images'].append(image_entry)
+        # Datasets
+        dataset_name = row['dataset_name']
+        if dataset_name not in dataset_to_id:
+            dataset_to_id[dataset_name] = next_dataset_id
+            json_data['datasets'][str(next_dataset_id)] = dataset_name
+            next_dataset_id += 1
+        dataset_id = dataset_to_id[dataset_name]
+
+        # Sequences
+        sequence_id_str = row['sequence_id']
+        assert sequence_id_str.startswith(dataset_name + ' : ')
+        if sequence_id_str not in sequence_to_id:
+            sequence_to_id[sequence_id_str] = next_sequence_id
+            json_data['sequences'][str(next_sequence_id)] = sequence_id_str
+            next_sequence_id += 1
+        sequence_id = sequence_to_id[sequence_id_str]
+
+        # Locations
+        location_id_str = row['location_id']
+        assert location_id_str.startswith(dataset_name) # + ' : ')
+        if location_id_str not in location_to_id:
+            location_to_id[location_id_str] = next_location_id
+            json_data['locations'][str(next_location_id)] = location_id_str
+            next_location_id += 1
+        location_id = location_to_id[location_id_str]
+
+        # Taxa
+        taxa_data = {level: _clearnan(row[level]) for level in taxonomy_levels_to_include}
+        taxa_tuple = tuple(taxa_data.items())  # use tuple for hashable key
+        if taxa_tuple not in taxa_to_id:
+            taxa_to_id[taxa_tuple] = next_taxa_id
+            json_data['taxa'][str(next_taxa_id)] = taxa_data
+            next_taxa_id += 1
+        taxa_id = taxa_to_id[taxa_tuple]
+
+        # Image path
+        url_gcp = row['url_gcp']
+        assert url_gcp.startswith(json_data['base_urls']['gcp'])
+        path = url_gcp.replace(json_data['base_urls']['gcp'], '')
+
+        common_name = _clearnan(row['common_name'])
+
+        frame_num = int(row['frame_num'])
+
+        # Image data
+        image_entry = {
+            'dataset': dataset_id,
+            'path': path,
+            'seq': sequence_id,
+            'loc': location_id,
+            'ann_level': row['annotation_level'],
+            'original_label': row['original_label'],
+            'datetime': row['datetime'],
+            'taxon': taxa_id
+        }
+
+        if frame_num >= 0:
+           image_entry['frame_num'] = frame_num
+
+        if len(common_name) > 0:
+            image_entry['common_name'] = common_name
+
+        json_data['images'].append(image_entry)
+
+    # ...for each line
+
+# ...with open(...)
 
 # Save the JSON data
+print('Saving JSON file...')
 with open(output_json_file, 'w', encoding='utf-8') as f:
     json.dump(json_data, f, indent=1)
 
 print(f'Converted to JSON and saved to {output_json_file}')
 print(f'JSON file size: {os.path.getsize(output_json_file)/(1024*1024*1024):.2f} GB')
 
+# Print summary statistics
+print(f'Total datasets: {len(json_data["datasets"])}')
+print(f'Total sequences: {len(json_data["sequences"])}')
+print(f'Total locations: {len(json_data["locations"])}')
+print(f'Total taxa: {len(json_data["taxa"])}')
+print(f'Total images: {len(json_data["images"])}')
