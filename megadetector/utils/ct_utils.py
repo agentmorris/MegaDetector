@@ -501,7 +501,7 @@ def split_list_into_n_chunks(L, n, chunk_strategy='greedy'): # noqa
         raise ValueError('Invalid chunk strategy: {}'.format(chunk_strategy))
 
 
-def sort_list_of_dicts_by_key(L,k,reverse=False): # noqa
+def sort_list_of_dicts_by_key(L, k, reverse=False, none_handling='smallest'): # noqa ("L" should be lowercase)
     """
     Sorts the list of dictionaries [L] by the key [k].
 
@@ -509,11 +509,25 @@ def sort_list_of_dicts_by_key(L,k,reverse=False): # noqa
         L (list): list of dictionaries to sort
         k (object, typically str): the sort key
         reverse (bool, optional): whether to sort in reverse (descending) order
+        none_handling (str, optional): how to handle None values. Options:
+            "smallest" - treat None as smaller than all other values (default)
+            "largest" - treat None as larger than all other values
+            "error" - raise error when None is compared with non-None
 
     Returns:
-        dict: sorted copy of [d]
+        list: sorted copy of [L]
     """
-    return sorted(L, key=lambda d: d[k], reverse=reverse)
+
+    if none_handling == 'error':
+        return sorted(L, key=lambda d: d[k], reverse=reverse)
+    elif none_handling == 'smallest':
+        # None values treated as smaller than other values: use tuple (is_not_none, value)
+        return sorted(L, key=lambda d: (d[k] is not None, d[k]), reverse=reverse)
+    elif none_handling == "largest":
+        # None values treated as larger than other values: use tuple (is_none, value)
+        return sorted(L, key=lambda d: (d[k] is None, d[k]), reverse=reverse)
+    else:
+        raise ValueError('Invalid none_handling value: {}'.format(none_handling))
 
 
 def sort_dictionary_by_key(d,reverse=False):
