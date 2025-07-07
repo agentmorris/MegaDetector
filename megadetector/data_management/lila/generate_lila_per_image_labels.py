@@ -682,8 +682,7 @@ def count_lines(filename):
     with open(filename, 'r', encoding='utf-8') as f:
         return sum(1 for line in f) - 1
 
-# total_rows = count_lines(output_file)
-total_rows = 24048623
+total_rows = count_lines(output_file)
 print('Total rows to process: {}'.format(total_rows))
 
 # Read CSV file line by line
