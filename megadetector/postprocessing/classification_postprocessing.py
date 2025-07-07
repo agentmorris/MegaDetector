@@ -121,8 +121,16 @@ class ClassificationSmoothingOptions:
         #: if this is True, we'll make a copy of the input dict before modifying.
         self.modify_in_place = False
 
+        #: Only include these categories in the smoothing process (None to use all categories)
+        self.detection_category_names_to_smooth = ['animal']
+
         #: Debug options
         self.break_at_image = None
+
+        ## Populated internally
+
+        #: #: Only include these categories in the smoothing process (None to use all categories)
+        self._detection_category_ids_to_smooth = None
 
 
 #%% Utility functions
@@ -147,6 +155,23 @@ def _sort_images_by_time(images):
     Returns a copy of [images], sorted by the 'datetime' field (ascending).
     """
     return sorted(images, key = lambda im: im['datetime'])
+
+
+def _detection_is_relevant_for_smoothing(det,options):
+    """
+    Determine whether [det] has classifications that might be meaningful for smoothing.
+    """
+
+    if ('classifications' not in det) or \
+        (det['conf'] < options.detection_confidence_threshold):
+        return False
+
+    # Ignore non-smoothed categories
+    if (options._detection_category_ids_to_smooth is not None) and \
+        (det['category'] not in options._detection_category_ids_to_smooth):
+        return False
+
+    return True
 
 
 def count_detections_by_classification_category(detections,options=None):
@@ -175,11 +200,13 @@ def count_detections_by_classification_category(detections,options=None):
     category_to_count = defaultdict(int)
 
     for det in detections:
-        if ('classifications' in det) and (det['conf'] >= options.detection_confidence_threshold):
-            # assert len(det['classifications']) == 1
-            c = det['classifications'][0]
-            if c[1] >= options.classification_confidence_threshold:
-                category_to_count[c[0]] += 1
+
+        if not _detection_is_relevant_for_smoothing(det,options):
+            continue
+
+        c = det['classifications'][0]
+        if c[1] >= options.classification_confidence_threshold:
+            category_to_count[c[0]] += 1
 
     category_to_count = {k: v for k, v in sorted(category_to_count.items(),
                                                  key=lambda item: item[1],
@@ -233,6 +260,8 @@ def _prepare_results_for_smoothing(input_file,options):
     Load results from [input_file] if necessary, prepare category descriptions
     for smoothing.  Adds pre-smoothing descriptions to every image if the options
     say we're supposed to do that.
+
+    May modify some fields in [options].
     """
 
     if isinstance(input_file,str):
@@ -255,6 +284,16 @@ def _prepare_results_for_smoothing(input_file,options):
     for s in options.other_category_names:
         if s in category_name_to_id:
             other_category_ids.append(category_name_to_id[s])
+
+    # Possibly update the list of category IDs we should smooth
+    if options.detection_category_names_to_smooth is None:
+        options._detection_category_ids_to_smooth = None
+    else:
+        detection_category_id_to_name = d['detection_categories']
+        detection_category_name_to_id = invert_dictionary(detection_category_id_to_name)
+        options._detection_category_ids_to_smooth = []
+        for category_name in options.detection_category_names_to_smooth:
+            options._detection_category_ids_to_smooth.append(detection_category_name_to_id[category_name])
 
     # Before we do anything else, get rid of everything but the top classification
     # for each detection, and remove the 'classifications' field from detections with
@@ -283,8 +322,9 @@ def _prepare_results_for_smoothing(input_file,options):
     # ...for each image
 
 
-    ## Clean up classification descriptions so we can test taxonomic relationships
-    ## by substring testing.
+    ## Clean up classification descriptions...
+
+    # ...so we can test taxonomic relationships by substring testing.
 
     classification_descriptions_clean = None
     classification_descriptions = None
@@ -395,8 +435,7 @@ def _smooth_classifications_for_list_of_detections(detections,
 
         for det in detections:
 
-            if ('classifications' not in det) or \
-                (det['conf'] < options.detection_confidence_threshold):
+            if not _detection_is_relevant_for_smoothing(det,options):
                 continue
 
             assert len(det['classifications']) == 1
@@ -450,8 +489,7 @@ def _smooth_classifications_for_list_of_detections(detections,
         # i_det = 0; det = detections[i_det]
         for i_det,det in enumerate(detections):
 
-            if ('classifications' not in det) or \
-                (det['conf'] < options.detection_confidence_threshold):
+            if not _detection_is_relevant_for_smoothing(det,options):
                 continue
 
             assert len(det['classifications']) == 1
@@ -532,8 +570,7 @@ def _smooth_classifications_for_list_of_detections(detections,
         # det = detections[3]
         for det in detections:
 
-            if ('classifications' not in det) or \
-                (det['conf'] < options.detection_confidence_threshold):
+            if not _detection_is_relevant_for_smoothing(det,options):
                 continue
 
             assert len(det['classifications']) == 1
@@ -660,8 +697,7 @@ def _smooth_classifications_for_list_of_detections(detections,
         # det = detections[0]
         for det in detections:
 
-            if ('classifications' not in det) or \
-                (det['conf'] < options.detection_confidence_threshold):
+            if not _detection_is_relevant_for_smoothing(det,options):
                 continue
 
             assert len(det['classifications']) == 1
@@ -719,7 +755,6 @@ def _smooth_classifications_for_list_of_detections(detections,
         # ...for each detection
 
     # ...if the dominant category is legit and we have taxonomic information available
-
 
     return {'n_other_classifications_changed_this_image':n_other_classifications_changed_this_image,
             'n_detections_flipped_this_image':n_detections_flipped_this_image,
@@ -894,8 +929,8 @@ def smooth_classification_results_sequence_level(input_file,
 
     Args:
         input_file (str or dict): MegaDetector-formatted classification results file to smooth
-          (or already-loaded results).  If you supply a dict, it's modified in place by default, but
-          a copy can be forced by setting options.modify_in_place=False.
+          (or already-loaded results).  If you supply a dict, it's copied by default, but
+          in-place modification is supported via options.modify_in_place.
         cct_sequence_information (str, dict, or list): COCO Camera Traps file containing sequence IDs for
           each image (or an already-loaded CCT-formatted dict, or just the 'images' list from a CCT dict).
         output_file (str, optional): .json file to write smoothed results
