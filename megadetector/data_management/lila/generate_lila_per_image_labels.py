@@ -638,11 +638,6 @@ conversion is not a priority.
 
 """
 
-import csv
-import json
-import os
-from tqdm import tqdm
-
 print('Converting to JSON...')
 
 output_json_file = output_file.replace('.csv', '.json')
@@ -678,11 +673,11 @@ debug_max_json_conversion_rows = None
 print('Counting rows in .csv file...')
 
 # Get total number of lines for progress bar (optional, but helpful for large files)
-def count_lines(filename):
+def _count_lines(filename):
     with open(filename, 'r', encoding='utf-8') as f:
         return sum(1 for line in f) - 1
 
-total_rows = count_lines(output_file)
+total_rows = _count_lines(output_file)
 print('Total rows to process: {}'.format(total_rows))
 
 # Read CSV file line by line
