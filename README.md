@@ -114,6 +114,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Wildlife Research](https://www.dfw.state.or.us/wildlife/research/index.asp), Oregon Department of Fish and Wildlife
 * [Wildlife Division](https://www.michigan.gov/dnr/about/contact/wildlife), Michigan Department of Natural Resources
 * [Kohl Wildlife Lab](https://kohlwildlifelab.com/), University of Georgia
+* [SPEC Lab](https://thespeclab.weebly.com/) and [Cherry Lab](https://www.ckwri.tamuk.edu/about/michael-j-cherry-phd), Caesar Kleberg Wildlife Research Institute, Texas A&M Kingsville
 * Ecology and Conservation of Amazonian Vertebrates Research Group, Federal University of Amapá
 * Department of Ecology, TU Berlin
 * Ghost Cat Analytics
