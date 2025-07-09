@@ -191,6 +191,10 @@ class YoloInferenceOptions:
         #: across calls, this can be set to False.
         self.append_job_id_to_symlink_folder = True
 
+        #: By default, we turn category ID 0 coming out of the YOLO .json file
+        #: into category 1 in the MD-formatted .json file.
+        self.offset_yolo_category_ids = True
+
     # ...def __init__()
 
 # ...YoloInferenceOptions()
@@ -957,7 +961,8 @@ def run_inference_with_yolo_val(options):
         yolo_category_id_to_name=options.yolo_category_id_to_name,
         detector_name=os.path.basename(model_filename),
         image_id_to_relative_path=image_id_to_relative_path,
-        image_id_to_error=image_id_to_error)
+        image_id_to_error=image_id_to_error,
+        offset_yolo_class_ids=options.offset_yolo_category_ids)
 
 
     ##%% Clean up
@@ -1058,6 +1063,9 @@ def main(): # noqa
     parser.add_argument(
         '--nonrecursive', action='store_true',
         help='disable recursive folder processing')
+    parser.add_argument(
+        '--no_offset_class_ids', action='store_true',
+        help='disable class ID offsetting')
 
     parser.add_argument(
         '--preview_yolo_command_only', action='store_true',
@@ -1113,6 +1121,7 @@ def main(): # noqa
     options.remove_yolo_results_folder = (not options.no_remove_yolo_results_folder)
     options.use_symlinks = (not options.no_use_symlinks)
     options.augment = (options.augment_enabled > 0)
+    options.offset_yolo_category_ids = (not options.no_offset_class_ids)
 
     del options.nonrecursive
     del options.no_remove_symlink_folder
@@ -1120,6 +1129,7 @@ def main(): # noqa
     del options.no_use_symlinks
     del options.augment_enabled
     del options.yolo_dataset_file
+    del options.no_offset_class_ids
 
     print(options.__dict__)
 

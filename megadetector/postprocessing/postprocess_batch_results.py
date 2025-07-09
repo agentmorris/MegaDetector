@@ -1001,13 +1001,16 @@ def process_batch_results(options):
             options.separate_detections_by_category = False
 
         ground_truth_indexed_db = IndexedJsonDb(
-            options.ground_truth_json_file, b_normalize_paths=True,
+            options.ground_truth_json_file,
+            b_normalize_paths=True,
             filename_replacements=options.ground_truth_filename_replacements)
 
         # Mark images in the ground truth as positive or negative
         n_negative, n_positive, n_unknown, n_ambiguous = _mark_detection_status(
-            ground_truth_indexed_db, negative_classes=options.negative_classes,
+            ground_truth_indexed_db,
+            negative_classes=options.negative_classes,
             unknown_classes=options.unlabeled_classes)
+
         print(f'Finished loading and indexing ground truth: {n_negative} '
               f'negative, {n_positive} positive, {n_unknown} unknown, '
               f'{n_ambiguous} ambiguous')

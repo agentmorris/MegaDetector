@@ -350,6 +350,8 @@ def safe_create_link(link_exists,link_new):
     and if it has a different target than [link_exists], removes and re-creates
     it.
 
+    Creates a *real* directory if necessary.
+
     Errors if [link_new] already exists but it's not a link.
 
     Args:
@@ -357,13 +359,20 @@ def safe_create_link(link_exists,link_new):
         link_new (str): the target of the (possibly-new) symlink
     """
 
+    # If the new file already exists...
     if os.path.exists(link_new) or os.path.islink(link_new):
+        # Error if it's not already a link
         assert os.path.islink(link_new)
+        # If it's already a link, and it points to the "exists" file,
+        # leave it alone, otherwise redirect it.
         if not os.readlink(link_new) == link_exists:
             os.remove(link_new)
             os.symlink(link_exists,link_new)
     else:
+        os.makedirs(os.path.dirname(link_new),exist_ok=True)
         os.symlink(link_exists,link_new)
+
+ # ...def safe_create_link(...)
 
 
 def remove_empty_folders(path, remove_root=False):

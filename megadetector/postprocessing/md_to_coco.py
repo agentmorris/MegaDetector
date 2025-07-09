@@ -74,9 +74,9 @@ def md_to_coco(md_results_file,
             data (e.g. EXIF metadata) will be propagated to COCO output
         include_failed_images (bool, optional): if this is True, failed images will be propagated to COCO output
             with a non-empty "failure" field and no other fields, otherwise failed images will be skipped.
-        include_annotations_without_bounding_boxes (bool, optional): if this is True, annotations with
-            only class labels (no bounding boxes) will be included in the output.  If this is False, empty
-            images will be represented with no annotations.
+        include_annotations_without_bounding_boxes (bool, optional): the only time we end up with
+            annotations without bounding boxes is when a detection has the category [empty_category_id];
+            this determines whether those annotations are included in the output.
         empty_category_id (str, optional): category ID reserved for the 'empty' class, should not be
             attached to any bounding boxes
         overwrite_behavior (str, optional): determines behavior if the output file exists ('skip' to skip conversion,
@@ -257,7 +257,7 @@ def md_to_coco(md_results_file,
             else:
 
                 # In very esoteric cases, we use the empty category (0) in MD-formatted output files
-                print('Warning: empty category ({}) used for annotation in file {}'.format(
+                print('Warning: empty category ({}) used for annotation for image {}'.format(
                     empty_category_id,im['file']))
                 pass
 
