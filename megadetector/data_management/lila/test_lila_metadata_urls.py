@@ -32,7 +32,7 @@ os.makedirs(metadata_dir,exist_ok=True)
 md_results_dir = os.path.join(lila_local_base,'md_results')
 os.makedirs(md_results_dir,exist_ok=True)
 
-md_results_keys = ['mdv4_results_raw','mdv5a_results_raw','mdv5b_results_raw',
+md_results_keys = ['mdv5a_results_raw','mdv5b_results_raw',
                    'md1000-redwood_results_raw','md_results_with_rde']
 
 preferred_cloud = None # 'gcp' # 'azure', 'aws'
@@ -54,7 +54,7 @@ print('Loaded metadata URLs for {} datasets'.format(len(metadata_table)))
 
 #%% Download and extract metadata and MD results for each dataset
 
-# Takes ~60 seconds if everything needs to be downloaded and unzipped
+# Takes ~10 minutes if everything needs to be downloaded and unzipped
 
 for ds_name in metadata_table.keys():
 
@@ -63,10 +63,12 @@ for ds_name in metadata_table.keys():
         read_metadata_file_for_dataset(ds_name=ds_name,
                                        metadata_dir=metadata_dir,
                                        metadata_table=metadata_table,
-                                       force_download=force_download)
+                                       force_download=force_download,
+                                       preferred_cloud=preferred_cloud)
 
     # Download MD results for this dataset
     for k in md_results_keys:
+
         md_results_url = metadata_table[ds_name][k]
         if md_results_url is None:
             metadata_table[ds_name][k + '_filename'] = None
@@ -75,7 +77,10 @@ for ds_name in metadata_table.keys():
                 read_metadata_file_for_dataset(ds_name=ds_name,
                                                metadata_dir=md_results_dir,
                                                json_url=md_results_url,
-                                               force_download=force_download)
+                                               force_download=force_download,
+                                               preferred_cloud=preferred_cloud)
+
+    # ...for each MD results file
 
 # ...for each dataset
 
@@ -121,9 +126,11 @@ for ds_name in metadata_table.keys():
 
         url_to_source[test_image_url] = ds_name + ' metadata ({})'.format(cloud)
 
+    # ...for each cloud
+
     # Grab an image from the MegaDetector results
 
-    # k = md_results_keys[2]
+    # k = md_results_keys[0]
     for k in md_results_keys:
         k_fn = k + '_filename'
         if metadata_table[ds_name][k_fn] is not None:
@@ -153,3 +160,6 @@ for i_url,url in enumerate(urls_to_test):
     if status_codes[i_url] != 200:
         print('Status {} for {} ({})'.format(
             status_codes[i_url],url,url_to_source[url]))
+
+print('Tested {} URLs'.format(len(urls_to_test)))
+

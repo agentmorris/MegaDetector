@@ -52,6 +52,8 @@ if False:
 
     df['used'] = False
 
+    n_dropped = 0
+
     # i_row = 0; row = df.iloc[i_row]; row
     for i_row,row in df.iterrows():
         ds_name = row['dataset_name']
@@ -60,7 +62,10 @@ if False:
         if mapping_name in used_category_mappings:
             df.loc[i_row,'used'] = True
         else:
+            n_dropped += 1
             print('Dropping unused mapping {}'.format(mapping_name))
+
+    print('Dropping {} of {} mappings'.format(n_dropped,len(df)))
 
     df = df[df.used]
     df = df.drop('used',axis=1)
@@ -71,28 +76,40 @@ if False:
     assert not os.path.isfile(release_taxonomy_file), \
         'File {} exists, delete it manually before proceeding'.format(release_taxonomy_file)
 
-    known_levels = ['stateofmatter', #noqa
-                        'kingdom',
-                        'phylum','subphylum',
-                        'superclass','class','subclass','infraclass',
-                        'superorder','order','parvorder','suborder','infraorder',
-                        'zoosection',
-                        'superfamily','family','subfamily','tribe',
-                        'genus',
-                        'species','subspecies','variety']
-
     levels_to_include = ['kingdom',
-                        'phylum','subphylum',
-                        'superclass','class','subclass','infraclass',
-                        'superorder','order','suborder','infraorder',
-                        'superfamily','family','subfamily','tribe',
-                        'genus',
-                        'species','subspecies','variety']
+                         'phylum',
+                         'subphylum',
+                         'superclass',
+                         'class',
+                         'subclass',
+                         'infraclass',
+                         'superorder',
+                         'order',
+                         'suborder',
+                         'infraorder',
+                         'superfamily',
+                         'family',
+                         'subfamily',
+                         'tribe',
+                         'genus',
+                         'subgenus',
+                         'species',
+                         'subspecies',
+                         'variety']
 
-    levels_to_exclude = ['stateofmatter','zoosection','parvorder','complex','epifamily']
+    levels_to_exclude = ['stateofmatter',
+                         'zoosection',
+                         'parvorder',
+                         'complex',
+                         'epifamily']
+
+    for x in [levels_to_include,levels_to_exclude]:
+        assert len(x) == len(set(x))
 
     for s in levels_to_exclude:
         assert s not in levels_to_include
+
+    known_levels = levels_to_include + levels_to_exclude
 
     levels_used = set()
 
@@ -103,17 +120,21 @@ if False:
             assert not isinstance(row['taxonomy_string'],str)
             continue
 
+        # This is a list of length-4 tuples that each look like:
+        #
+        # (41789, 'species', 'taxidea taxus', ['american badger'])
         taxonomic_match = eval(row['taxonomy_string'])
 
         # match_at_level = taxonomic_match[0]
         for match_at_level in taxonomic_match:
             assert len(match_at_level) == 4
+            # E.g. "species"
             levels_used.add(match_at_level[1])
 
     levels_used = [s for s in levels_used if isinstance(s,str)]
 
     for s in levels_used:
-        assert s in levels_to_exclude or s in levels_to_include, 'Unrecognized level {}'.format(s)
+        assert s in known_levels, 'Unrecognized level {}'.format(s)
 
     for s in levels_to_include:
         assert s in levels_used

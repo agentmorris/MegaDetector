@@ -82,9 +82,11 @@ print('Loaded metadata URLs for {} datasets'.format(len(metadata_table)))
 #%% Download and extract metadata for each dataset
 
 for ds_name in metadata_table.keys():
-    metadata_table[ds_name]['json_filename'] = read_metadata_file_for_dataset(ds_name=ds_name,
-                                                                         metadata_dir=metadata_dir,
-                                                                         metadata_table=metadata_table)
+    metadata_table[ds_name]['json_filename'] = \
+        read_metadata_file_for_dataset(ds_name=ds_name,
+                                       metadata_dir=metadata_dir,
+                                       metadata_table=metadata_table,
+                                       preferred_cloud=preferred_cloud)
 
 
 #%% Get category names and counts for each dataset

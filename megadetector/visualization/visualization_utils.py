@@ -378,7 +378,7 @@ def crop_image(detections, image, confidence_threshold=0.15, expansion=0):
 
         score = float(detection['conf'])
 
-        if score >= confidence_threshold:
+        if (confidence_threshold is None) or (score >= confidence_threshold):
 
             x1, y1, w_box, h_box = detection['bbox']
             ymin,xmin,ymax,xmax = y1, x1, y1 + h_box, x1 + w_box
@@ -588,7 +588,7 @@ def render_detection_bounding_boxes(detections,
 
         # Always render objects with a confidence of "None", this is typically used
         # for ground truth data.
-        if score is None or score >= rendering_threshold:
+        if (score is None) or (rendering_threshold is None) or (score >= rendering_threshold):
 
             x1, y1, w_box, h_box = detection['bbox']
             display_boxes.append([y1, x1, y1 + h_box, x1 + w_box])
@@ -669,10 +669,15 @@ def render_detection_bounding_boxes(detections,
     if verbose:
         print('Rendering {} of {} detections'.format(len(display_boxes),len(detections)))
 
-    draw_bounding_boxes_on_image(image, display_boxes, classes,
-                                 display_strs=display_strs, thickness=thickness,
-                                 expansion=expansion, colormap=colormap,
-                                 textalign=textalign, vtextalign=vtextalign,
+    draw_bounding_boxes_on_image(image,
+                                 display_boxes,
+                                 classes,
+                                 display_strs=display_strs,
+                                 thickness=thickness,
+                                 expansion=expansion,
+                                 colormap=colormap,
+                                 textalign=textalign,
+                                 vtextalign=vtextalign,
                                  label_font_size=label_font_size)
 
 # ...render_detection_bounding_boxes(...)
@@ -1166,10 +1171,15 @@ def draw_bounding_boxes_on_file(input_file,
         image = resize_image(image,target_size[0],target_size[1])
 
     render_detection_bounding_boxes(
-            detections, image, label_map=detector_label_map,
+            detections,
+            image,
+            label_map=detector_label_map,
             confidence_threshold=confidence_threshold,
-            thickness=thickness,expansion=expansion,colormap=colormap,
-            custom_strings=custom_strings,label_font_size=label_font_size)
+            thickness=thickness,
+            expansion=expansion,
+            colormap=colormap,
+            custom_strings=custom_strings,
+            label_font_size=label_font_size)
 
     if output_file is not None:
         image.save(output_file)
@@ -1212,8 +1222,13 @@ def draw_db_boxes_on_file(input_file,
     if classes is None:
         classes = [0] * len(boxes)
 
-    render_db_bounding_boxes(boxes, classes, image, original_size=None,
-                             label_map=label_map, thickness=thickness, expansion=expansion)
+    render_db_bounding_boxes(boxes,
+                             classes,
+                             image,
+                             original_size=None,
+                             label_map=label_map,
+                             thickness=thickness,
+                             expansion=expansion)
 
     image.save(output_file)
 
@@ -1299,14 +1314,14 @@ def gray_scale_fraction(image,crop_size=(0.1,0.1)):
 
 
 def _resize_relative_image(fn_relative,
-                          input_folder,
-                          output_folder,
-                          target_width,
-                          target_height,
-                          no_enlarge_width,
-                          verbose,
-                          quality,
-                          overwrite=True):
+                           input_folder,
+                           output_folder,
+                           target_width,
+                           target_height,
+                           no_enlarge_width,
+                           verbose,
+                           quality,
+                           overwrite=True):
     """
     Internal function for resizing an image from one folder to another,
     maintaining relative path.
@@ -1324,8 +1339,11 @@ def _resize_relative_image(fn_relative,
     try:
         _ = resize_image(input_fn_abs,
                          output_file=output_fn_abs,
-                         target_width=target_width, target_height=target_height,
-                         no_enlarge_width=no_enlarge_width, verbose=verbose, quality=quality)
+                         target_width=target_width,
+                         target_height=target_height,
+                         no_enlarge_width=no_enlarge_width,
+                         verbose=verbose,
+                         quality=quality)
         status = 'success'
         error = None
     except Exception as e:
@@ -1340,7 +1358,11 @@ def _resize_relative_image(fn_relative,
 
 
 def _resize_absolute_image(input_output_files,
-                          target_width,target_height,no_enlarge_width,verbose,quality):
+                           target_width,
+                           target_height,
+                           no_enlarge_width,
+                           verbose,
+                           quality):
     """
     Internal wrapper for resize_image used in the context of a batch resize operation.
     """
@@ -1560,7 +1582,8 @@ def resize_image_folder(input_folder,
                 quality=quality,
                 overwrite=overwrite)
 
-        results = list(tqdm(pool.imap(p, image_files_relative),total=len(image_files_relative)))
+        results = list(tqdm(pool.imap(p, image_files_relative),
+                            total=len(image_files_relative)))
 
     return results
 
@@ -1724,7 +1747,7 @@ def check_image_integrity(filename,modes=None):
         elif mode == 'skimage':
             try:
                 # This is not a standard dependency
-                from skimage import io as skimage_io # noqa
+                from skimage import io as skimage_io # type: ignore # noqa
             except Exception:
                 result[mode] = 'could not import skimage, run pip install scikit-image'
                 return result

@@ -67,6 +67,18 @@ if debug_max_images_per_dataset > 0:
     print('Running in debug mode')
     output_file = output_file.replace('.csv','_debug.csv')
 
+taxonomy_levels_to_include = \
+    ['kingdom','phylum','subphylum','superclass','class','subclass','infraclass','superorder','order',
+     'suborder','infraorder','superfamily','family','subfamily','tribe','genus','subgenus',
+     'species','subspecies','variety']
+
+def _clearnan(v):
+    if isinstance(v,float):
+        assert np.isnan(v)
+        v = ''
+    assert isinstance(v,str)
+    return v
+
 
 #%% Download and parse the metadata file
 
@@ -87,7 +99,7 @@ for ds_name in metadata_table.keys():
 
 #%% Load taxonomy data
 
-taxonomy_df = read_lila_taxonomy_mapping(metadata_dir)
+taxonomy_df = read_lila_taxonomy_mapping(metadata_dir, force_download=True)
 
 
 #%% Build a dictionary that maps each [dataset,query] pair to the full taxonomic label set
@@ -113,21 +125,9 @@ header = ['dataset_name','url_gcp','url_aws','url_azure',
           'image_id','sequence_id','location_id','frame_num',
           'original_label','scientific_name','common_name','datetime','annotation_level']
 
-taxonomy_levels_to_include = \
-    ['kingdom','phylum','subphylum','superclass','class','subclass','infraclass','superorder','order',
-     'suborder','infraorder','superfamily','family','subfamily','tribe','genus','species','subspecies',
-     'variety']
-
 header.extend(taxonomy_levels_to_include)
 
 missing_annotations = set()
-
-def _clearnan(v):
-    if isinstance(v,float):
-        assert np.isnan(v)
-        v = ''
-    assert isinstance(v,str)
-    return v
 
 with open(output_file,'w',encoding='utf-8',newline='') as f:
 
@@ -361,7 +361,10 @@ print('Read {} rows from {}'.format(len(df),output_file))
 
 #%% Do some post-hoc integrity checking
 
-# Takes ~10 minutes without using apply()
+# Takes ~5 minutes with apply(), or ~10 minutes without apply()
+#
+# Using apply() is faster, but more annoying to debug.
+use_pandas_apply_for_integrity_checking = True
 
 tqdm.pandas()
 
@@ -393,8 +396,7 @@ def _check_row(row):
     ds_name = row['dataset_name']
     dataset_name_to_locations[ds_name].add(row['location_id'])
 
-# Faster, but more annoying to debug
-if True:
+if use_pandas_apply_for_integrity_checking:
 
     df.progress_apply(_check_row, axis=1)
 
@@ -448,8 +450,9 @@ for ds_name in metadata_table.keys():
         empty_rows = empty_rows.sample(n=n_empty_images_per_dataset)
     images_to_download.extend(empty_rows.to_dict('records'))
 
+    # All LILA datasets have non-empty images
     if len(non_empty_rows) == 0:
-        print('No non-empty images available for {}'.format(ds_name))
+        raise ValueError('No non-empty images available for {}'.format(ds_name))
     elif len(non_empty_rows) > n_non_empty_images_per_dataset:
         non_empty_rows = non_empty_rows.sample(n=n_non_empty_images_per_dataset)
     images_to_download.extend(non_empty_rows.to_dict('records'))
@@ -463,7 +466,7 @@ print('Selected {} total images'.format(len(images_to_download)))
 
 # Expect a few errors for images with human or vehicle labels (or things like "ignore" that *could* be humans)
 
-preferred_cloud = 'aws'
+preferred_cloud = 'gcp'
 
 url_to_target_file = {}
 
@@ -483,6 +486,19 @@ for i_image,image in tqdm(enumerate(images_to_download),total=len(images_to_down
 
 download_results = parallel_download_urls(url_to_target_file,verbose=False,overwrite=True,
                                           n_workers=20,pool_type='thread')
+
+# 10-20 errors is normal; they should all be images that are labeled as "human"
+errors = []
+
+for r in download_results:
+    if r['status'] != 'success':
+        errors.append(r)
+
+assert len(download_results) == len(url_to_target_file)
+print('Errors on {} of {} downloads:\n'.format(len(errors),len(download_results)))
+
+for err in errors:
+    print(err['url'])
 
 
 #%% Write preview HTML
@@ -515,3 +531,245 @@ open_file(html_filename)
 zipped_output_file = zip_file(output_file,verbose=True,overwrite=True)
 
 print('Zipped {} to {}'.format(output_file,zipped_output_file))
+
+
+#%% Convert to .json
+
+"""
+The .csv file "output_file" (already loaded into the variable "df" at this point) has the following columns:
+
+dataset_name,url_gcp,url_aws,url_azure,image_id,sequence_id,location_id,frame_num,original_label,scientific_name,common_name,datetime,annotation_level,kingdom,phylum,subphylum,superclass,class,subclass,infraclass,superorder,order,suborder,infraorder,superfamily,family,subfamily,tribe,genus,subgenus,species,subspecies,variety
+
+Each row in the .csv represents an image.  The URL columns represent the location of that
+image on three different clouds; for a given image, the value of those columns differs only
+in the prefix.  The columns starting with "kingdom" represent a taxonomic wildlife identifier.  Not
+all rows have values in all of these columns; some rows represent non-wildlife images where all of these
+columns are blank.
+
+This cell converts this to a .json dictionary, with the following top-level keys:
+
+## datasets (dict)
+
+A dict mapping integer IDs to strings.
+
+Each unique value in the "dataset_name" column should become an element in this dict with a unique ID.
+
+## sequences (dict)
+
+A dict mapping integer IDs to strings.
+
+Each unique value in the "sequence_id" column should become an element in this dict with a unique ID.
+
+## locations (dict)
+
+A dict mapping integer IDs to strings.
+
+Each unique value in the "location_id" column should become an element in this dict with a unique ID.
+
+## base_urls (dict)
+
+This key should point to the following dict:
+
+{
+"gcp": "https://storage.googleapis.com/public-datasets-lila/",
+"aws": "http://us-west-2.opendata.source.coop.s3.amazonaws.com/agentmorris/lila-wildlife/",
+"azure": "https://lilawildlife.blob.core.windows.net/lila-wildlife/",
+}
+
+All values in the url_gcp, url_aws, and url_azure columns start with these values, respectively.
+
+## taxa (dict)
+
+A dict mapping integer IDs to dicts, where each dict has the fields:
+
+kingdom,phylum,subphylum,superclass,class,subclass,infraclass,superorder,order,suborder,infraorder,superfamily,family,subfamily,tribe,genus,subgenus,species,subspecies,variety
+
+The value of each of these fields in each row is either a string or None.
+
+## images (list)
+
+A list of images, where each image is a dict with the following fields:
+
+### dataset (int)
+
+The integer ID corresponding to the dataset_name column for this image
+
+### path (str)
+
+The suffix for this image's URL, which should be the same across the three URL columns.
+
+### seq (int)
+
+The integer ID corresponding to the sequence_id column for this image
+
+### loc (int)
+
+The integer ID corresponding to the location_id column for this image
+
+### frame_num
+
+The value of the frame_num column for this image, unless the original value was -1,
+in which case this is omitted.
+
+### original_label
+
+The value of the original_label column for this image
+
+### common_name
+
+The value of the common_name column for this image, if not empty
+
+### datetime
+
+The value of the datetime column for this image
+
+### ann_level
+
+The value of the annotation_level column for this image
+
+### taxon
+
+The integer ID corresponding to the taxonomic identifier columns for this image
+
+--
+
+The original .csv file is large (~15GB); this may impact the implementation of the .json conversion.  Speed of
+conversion is not a priority.
+
+"""
+
+print('Converting to JSON...')
+
+output_json_file = output_file.replace('.csv', '.json')
+
+json_data = {}
+
+# Create mappings for datasets, sequences, and locations
+dataset_to_id = {}
+sequence_to_id = {}
+location_to_id = {}
+taxa_to_id = {}
+
+next_dataset_id = 0
+next_sequence_id = 0
+next_location_id = 0
+next_taxa_id = 0
+
+json_data['datasets'] = {}
+json_data['sequences'] = {}
+json_data['locations'] = {}
+json_data['taxa'] = {}
+
+json_data['base_urls'] = {
+    "gcp": "https://storage.googleapis.com/public-datasets-lila/",
+    "aws": "http://us-west-2.opendata.source.coop.s3.amazonaws.com/agentmorris/lila-wildlife/",
+    "azure": "https://lilawildlife.blob.core.windows.net/lila-wildlife/",
+}
+
+json_data['images'] = []
+
+debug_max_json_conversion_rows = None
+
+print('Counting rows in .csv file...')
+
+# Get total number of lines for progress bar (optional, but helpful for large files)
+def _count_lines(filename):
+    with open(filename, 'r', encoding='utf-8') as f:
+        return sum(1 for line in f) - 1
+
+total_rows = _count_lines(output_file)
+print('Total rows to process: {}'.format(total_rows))
+
+# Read CSV file line by line
+with open(output_file, 'r', encoding='utf-8') as csvfile:
+
+    reader = csv.DictReader(csvfile)
+
+    # Process each row
+    for i_row, row in enumerate(tqdm(reader, total=total_rows, desc="Processing rows")):
+
+        if (debug_max_json_conversion_rows is not None) and (i_row >= debug_max_json_conversion_rows):
+            break
+
+        # Datasets
+        dataset_name = row['dataset_name']
+        if dataset_name not in dataset_to_id:
+            dataset_to_id[dataset_name] = next_dataset_id
+            json_data['datasets'][str(next_dataset_id)] = dataset_name
+            next_dataset_id += 1
+        dataset_id = dataset_to_id[dataset_name]
+
+        # Sequences
+        sequence_id_str = row['sequence_id']
+        assert sequence_id_str.startswith(dataset_name + ' : ')
+        if sequence_id_str not in sequence_to_id:
+            sequence_to_id[sequence_id_str] = next_sequence_id
+            json_data['sequences'][str(next_sequence_id)] = sequence_id_str
+            next_sequence_id += 1
+        sequence_id = sequence_to_id[sequence_id_str]
+
+        # Locations
+        location_id_str = row['location_id']
+        assert location_id_str.startswith(dataset_name) # + ' : ')
+        if location_id_str not in location_to_id:
+            location_to_id[location_id_str] = next_location_id
+            json_data['locations'][str(next_location_id)] = location_id_str
+            next_location_id += 1
+        location_id = location_to_id[location_id_str]
+
+        # Taxa
+        taxa_data = {level: _clearnan(row[level]) for level in taxonomy_levels_to_include}
+        taxa_tuple = tuple(taxa_data.items())  # use tuple for hashable key
+        if taxa_tuple not in taxa_to_id:
+            taxa_to_id[taxa_tuple] = next_taxa_id
+            json_data['taxa'][str(next_taxa_id)] = taxa_data
+            next_taxa_id += 1
+        taxa_id = taxa_to_id[taxa_tuple]
+
+        # Image path
+        url_gcp = row['url_gcp']
+        assert url_gcp.startswith(json_data['base_urls']['gcp'])
+        path = url_gcp.replace(json_data['base_urls']['gcp'], '')
+
+        common_name = _clearnan(row['common_name'])
+
+        frame_num = int(row['frame_num'])
+
+        # Image data
+        image_entry = {
+            'dataset': dataset_id,
+            'path': path,
+            'seq': sequence_id,
+            'loc': location_id,
+            'ann_level': row['annotation_level'],
+            'original_label': row['original_label'],
+            'datetime': row['datetime'],
+            'taxon': taxa_id
+        }
+
+        if frame_num >= 0:
+           image_entry['frame_num'] = frame_num
+
+        if len(common_name) > 0:
+            image_entry['common_name'] = common_name
+
+        json_data['images'].append(image_entry)
+
+    # ...for each line
+
+# ...with open(...)
+
+# Save the JSON data
+print('Saving JSON file...')
+with open(output_json_file, 'w', encoding='utf-8') as f:
+    json.dump(json_data, f, indent=1)
+
+print(f'Converted to JSON and saved to {output_json_file}')
+print(f'JSON file size: {os.path.getsize(output_json_file)/(1024*1024*1024):.2f} GB')
+
+# Print summary statistics
+print(f'Total datasets: {len(json_data["datasets"])}')
+print(f'Total sequences: {len(json_data["sequences"])}')
+print(f'Total locations: {len(json_data["locations"])}')
+print(f'Total taxa: {len(json_data["taxa"])}')
+print(f'Total images: {len(json_data["images"])}')

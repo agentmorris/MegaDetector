@@ -365,7 +365,11 @@ if False:
 
 #%% Command-line driver
 
-def main(): # noqa
+def main():
+    """
+    Command-line driver for convert_output_format(), which converts
+    json <--> csv.
+    """
 
     parser = argparse.ArgumentParser()
     parser.add_argument('input_path',type=str,

@@ -1022,7 +1022,7 @@ suspicious_detection_results = repeat_detections_core.find_repeat_detections(com
 
 # If you run this line, it will open the folder up in your file browser
 open_file(os.path.dirname(suspicious_detection_results.filterFile),
-                     attempt_to_open_in_wsl_host=True)
+          attempt_to_open_in_wsl_host=True)
 
 #
 # If you ran the previous cell, but then you change your mind and you don't want to do
@@ -1163,7 +1163,9 @@ for fn in [classifier_output_file_modular_crops,
     if os.path.exists(fn):
         print('**\nWarning, file {} exists, this is OK if you are resuming\n**\n'.format(fn))
 
-assert country_code is not None, 'Did you mean to specify a country code?'
+assert (custom_taxa_list is not None) or (country_code is not None), \
+    'Did you mean to specify a country code?'
+
 if country_code == 'USA' and state_code is None:
     print('*** Did you mean to specify a state code? ***')
 
@@ -1204,7 +1206,7 @@ assert os.path.isfile(detection_results_file_for_crop_folder)
 assert os.path.isdir(crop_folder)
 
 
-#%% Convert the detection results for the crops to predictions.json format
+#%% Convert detection results for the crops to predictions.json format
 
 # This will be the input to the ensemble when we run it on the crops.
 
@@ -1227,7 +1229,7 @@ print('Generated {} instances for the crop folder (in file {})'.format(
     len(crop_instances['instances']),crop_instances_json))
 
 
-#%% Run classifier on crops
+#%% Run SpeciesNet on crops
 
 os.makedirs(chunk_folder,exist_ok=True)
 
@@ -1746,7 +1748,7 @@ open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_na
 
 #%% Possibly apply a custom taxa list (after smoothing)
 
-from megadetector.utils.wi_utils import restrict_to_taxa_list
+from megadetector.postprocessing.classification_postprocessing import restrict_to_taxa_list
 
 if (custom_taxa_list is not None) and (custom_taxa_stage == 'after_smoothing'):
 

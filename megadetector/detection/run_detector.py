@@ -32,6 +32,7 @@ import time
 import json
 import warnings
 import tempfile
+import zipfile
 
 import humanfriendly
 from tqdm import tqdm
@@ -40,6 +41,7 @@ from megadetector.utils import path_utils as path_utils
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.utils.url_utils import download_url
 from megadetector.utils.ct_utils import parse_kvp_list
+from megadetector.utils.path_utils import compute_file_hash
 
 # ignoring all "PIL cannot read EXIF metainfo for the images" warnings
 warnings.filterwarnings('ignore', '(Possibly )?corrupt EXIF data', UserWarning)
@@ -84,21 +86,27 @@ model_string_to_model_version = {
     'mdv2':'v2.0.0',
     'mdv3':'v3.0.0',
     'mdv4':'v4.1.0',
-    'mdv5a':'v5a.0.0',
-    'mdv5b':'v5b.0.0',
+    # 'mdv5a':'v5a.0.0',
+    # 'mdv5b':'v5b.0.0',
+    # Repackaging of the same weights
+    'mdv5a':'v5a.0.1',
+    'mdv5b':'v5b.0.1',
     'v2':'v2.0.0',
     'v3':'v3.0.0',
     'v4':'v4.1.0',
     'v4.1':'v4.1.0',
-    'v5a.0.0':'v5a.0.0',
-    'v5b.0.0':'v5b.0.0',
+    # Repackaging of the same weights
+    # 'v5a.0.0':'v5a.0.0',
+    # 'v5b.0.0':'v5b.0.0',
+    'v5a.0.0':'v5a.0.1',
+    'v5b.0.0':'v5b.0.1',
     'redwood':'v1000.0.0-redwood',
     'spruce':'v1000.0.0-spruce',
     'cedar':'v1000.0.0-cedar',
     'larch':'v1000.0.0-larch',
-    'default':'v5a.0.0',
-    'default-model':'v5a.0.0',
-    'megadetector':'v5a.0.0'
+    'default':'v5a.0.1',
+    'default-model':'v5a.0.1',
+    'megadetector':'v5a.0.1'
 }
 
 model_url_base = 'http://localhost:8181/'
@@ -137,7 +145,8 @@ known_models = {
         'conservative_detection_threshold':0.05,
         'image_size':1280,
         'model_type':'yolov5',
-        'normalized_typical_inference_speed':1.0
+        'normalized_typical_inference_speed':1.0,
+        'md5':'ec1d7603ec8cf642d6e0cd008ba2be8c'
     },
     'v5b.0.0':
     {
@@ -146,29 +155,60 @@ known_models = {
         'conservative_detection_threshold':0.05,
         'image_size':1280,
         'model_type':'yolov5',
-        'normalized_typical_inference_speed':1.0
+        'normalized_typical_inference_speed':1.0,
+        'md5':'bc235e73f53c5c95e66ea0d1b2cbf542'
+    },
+    'v5a.0.1':
+    {
+        'url':'https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.1.pt',
+        'typical_detection_threshold':0.2,
+        'conservative_detection_threshold':0.05,
+        'image_size':1280,
+        'model_type':'yolov5',
+        'normalized_typical_inference_speed':1.0,
+        'md5':'60f8e7ec1308554df258ed1f4040bc4f'
+    },
+    'v5b.0.1':
+    {
+        'url':'https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.1.pt',
+        'typical_detection_threshold':0.2,
+        'conservative_detection_threshold':0.05,
+        'image_size':1280,
+        'model_type':'yolov5',
+        'normalized_typical_inference_speed':1.0,
+        'md5':'f17ed6fedfac2e403606a08c89984905'
     },
 
-    # Fake values for testing
+    # Fake values for testing, other than the MD5 hashes, which are legit
     'v1000.0.0-redwood':
     {
         'normalized_typical_inference_speed':2.0,
-        'url':model_url_base + 'md_v1000.0.0-redwood.pt'
+        'url':model_url_base + 'md_v1000.0.0-redwood.pt',
+        'md5':'74474b3aec9cf1a990da38b37ddf9197'
     },
     'v1000.0.0-spruce':
     {
         'normalized_typical_inference_speed':3.0,
-        'url':model_url_base + 'md_v1000.0.0-spruce.pt'
+        'url':model_url_base + 'md_v1000.0.0-spruce.pt',
+        'md5':'1c9d1d2b3ba54931881471fdd508e6f2'
     },
     'v1000.0.0-larch':
     {
         'normalized_typical_inference_speed':4.0,
-        'url':model_url_base + 'md_v1000.0.0-larch.pt'
+        'url':model_url_base + 'md_v1000.0.0-larch.pt',
+        'md5':'cab94ebd190c2278e12fb70ffd548b6d'
     },
     'v1000.0.0-cedar':
     {
         'normalized_typical_inference_speed':5.0,
-        'url':model_url_base + 'md_v1000.0.0-cedar.pt'
+        'url':model_url_base + 'md_v1000.0.0-cedar.pt',
+        'md5':'3d6472c9b95ba687b59ebe255f7c576b'
+    },
+    'v1000.0.0-sorrel':
+    {
+        'normalized_typical_inference_speed':6.0,
+        'url':model_url_base + 'md_v1000.0.0-sorrel.pt',
+        'md5':'4339a2c8af7a381f18ded7ac2a4df03e'
     }
 }
 
@@ -759,6 +799,55 @@ def load_and_run_detector(model_file,
 # ...def load_and_run_detector()
 
 
+def _validate_zip_file(file_path, file_description='file'):
+    """
+    Validates that a .pt file is a valid zip file.
+
+    Args:
+        file_path (str): path to the file to validate
+        file_description (str): descriptive string for error messages
+
+    Returns:
+        bool: True if valid, False otherwise
+    """
+    try:
+        with zipfile.ZipFile(file_path, 'r') as zipf:
+            zipf.testzip()
+        return True
+    except (zipfile.BadZipFile, zipfile.LargeZipFile) as e:
+        print('{} {} appears to be corrupted (bad zip): {}'.format(
+            file_description.capitalize(), file_path, str(e)))
+        return False
+    except Exception as e:
+        print('Error validating {}: {}'.format(file_description, str(e)))
+        return False
+
+
+def _validate_md5_hash(file_path, expected_hash, file_description='file'):
+    """
+    Validates that a file has the expected MD5 hash.
+
+    Args:
+        file_path (str): path to the file to validate
+        expected_hash (str): expected MD5 hash
+        file_description (str): descriptive string for error messages
+
+    Returns:
+        bool: True if hash matches, False otherwise
+    """
+    try:
+        actual_hash = compute_file_hash(file_path, algorithm='md5').lower()
+        expected_hash = expected_hash.lower()
+        if actual_hash != expected_hash:
+            print('{} {} has incorrect hash. Expected: {}, Actual: {}'.format(
+                file_description.capitalize(), file_path, expected_hash, actual_hash))
+            return False
+        return True
+    except Exception as e:
+        print('Error computing hash for {}: {}'.format(file_description, str(e)))
+        return False
+
+
 def _download_model(model_name,force_download=False):
     """
     Downloads one of the known models to local temp space if it hasn't already been downloaded.
@@ -785,13 +874,88 @@ def _download_model(model_name,force_download=False):
     if model_name.lower() not in known_models:
         print('Unrecognized downloadable model {}'.format(model_name))
         return None
-    url = known_models[model_name.lower()]['url']
+
+    model_info = known_models[model_name.lower()]
+    url = model_info['url']
     destination_filename = os.path.join(model_tempdir,url.split('/')[-1])
-    local_file = download_url(url, destination_filename=destination_filename, progress_updater=None,
-                     force_download=force_download, verbose=True)
+
+    # Check whether the file already exists, in which case we want to validate it
+    if os.path.exists(destination_filename) and not force_download:
+
+        # Only validate .pt files, not .pb files
+        if destination_filename.endswith('.pt'):
+
+            is_valid = True
+
+            # Check whether the file is a valid zip file (.pt files are zip files in disguise)
+            if not _validate_zip_file(destination_filename,
+                                      'existing model file'):
+                is_valid = False
+
+            # Check MD5 hash if available
+            if is_valid and \
+                ('md5' in model_info) and \
+                (model_info['md5'] is not None) and \
+                (len(model_info['md5'].strip()) > 0):
+
+                if not _validate_md5_hash(destination_filename, model_info['md5'],
+                                          'existing model file'):
+                    is_valid = False
+
+            # If validation failed, delete the corrupted file and re-download
+            if not is_valid:
+                print('Deleting corrupted model file and re-downloading: {}'.format(
+                    destination_filename))
+                try:
+                    os.remove(destination_filename)
+                    # This should be a no-op at this point, but it can't hurt
+                    force_download = True
+                except Exception as e:
+                    print('Warning: failed to delete corrupted file {}: {}'.format(
+                        destination_filename, str(e)))
+                    # Continue with download attempt anyway, setting force_download to True
+                    force_download = True
+            else:
+                print('Model {} already exists and is valid at {}'.format(
+                    model_name, destination_filename))
+                return destination_filename
+
+    # Download the model
+    local_file = download_url(url,
+                              destination_filename=destination_filename,
+                              progress_updater=None,
+                              force_download=force_download,
+                              verbose=True)
+
+    # Validate the downloaded file if it's a .pt file
+    if local_file and local_file.endswith('.pt'):
+
+        # Check if the downloaded file is a valid zip file
+        if not _validate_zip_file(local_file, "downloaded model file"):
+            # Clean up the corrupted download
+            try:
+                os.remove(local_file)
+            except Exception:
+                pass
+            return None
+
+        # Check MD5 hash if available
+        if ('md5' in model_info) and \
+            (model_info['md5'] is not None) and \
+            (len(model_info['md5'].strip()) > 0):
+
+            if not _validate_md5_hash(local_file, model_info['md5'], "downloaded model file"):
+                # Clean up the corrupted download
+                try:
+                    os.remove(local_file)
+                except Exception:
+                    pass
+                return None
+
     print('Model {} available at {}'.format(model_name,local_file))
     return local_file
 
+# ...def _download_model(...)
 
 def try_download_known_detector(detector_file,force_download=False,verbose=False):
     """
