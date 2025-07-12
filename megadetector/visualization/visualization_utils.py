@@ -247,8 +247,13 @@ def load_image(input_file, ignore_exif_rotation=False):
     return image
 
 
-def resize_image(image, target_width=-1, target_height=-1, output_file=None,
-                 no_enlarge_width=False, verbose=False, quality='keep'):
+def resize_image(image,
+                 target_width=-1,
+                 target_height=-1,
+                 output_file=None,
+                 no_enlarge_width=False,
+                 verbose=False,
+                 quality='keep'):
     """
     Resizes a PIL Image object to the specified width and height; does not resize
     in place. If either width or height are -1, resizes with aspect ratio preservation.
@@ -1373,8 +1378,11 @@ def _resize_absolute_image(input_output_files,
     try:
         _ = resize_image(input_fn_abs,
                          output_file=output_fn_abs,
-                         target_width=target_width, target_height=target_height,
-                         no_enlarge_width=no_enlarge_width, verbose=verbose, quality=quality)
+                         target_width=target_width,
+                         target_height=target_height,
+                         no_enlarge_width=no_enlarge_width,
+                         verbose=verbose,
+                         quality=quality)
         status = 'success'
         error = None
     except Exception as e:

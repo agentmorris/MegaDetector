@@ -37,6 +37,7 @@ def _process_single_image_for_resize(image_data,
                                      target_size,
                                      correct_size_image_handling,
                                      unavailable_image_handling,
+                                     no_enlarge_width,
                                      verbose):
     """
     Processes a single image: loads, resizes/copies, updates metadata, and scales annotations.
@@ -83,6 +84,8 @@ def _process_single_image_for_resize(image_data,
 
     image_is_already_target_size = \
         (input_w == target_size[0]) and (input_h == target_size[1])
+    if no_enlarge_width and (input_w < target_size[0]):
+        image_is_already_target_size = True
     preserve_original_size = \
         (target_size[0] == -1) and (target_size[1] == -1)
 
@@ -100,7 +103,8 @@ def _process_single_image_for_resize(image_data,
                 f'Unrecognized value {correct_size_image_handling} for correct_size_image_handling')
     else:
         try:
-            pil_im = resize_image(pil_im, target_size[0], target_size[1])
+            pil_im = resize_image(pil_im, target_size[0], target_size[1],
+                                  no_enlarge_width=no_enlarge_width)
             output_w = pil_im.width
             output_h = pil_im.height
             exif_preserving_save(pil_im, output_fn_abs)
@@ -146,6 +150,7 @@ def resize_coco_dataset(input_folder,
                         unavailable_image_handling='error',
                         n_workers=1,
                         pool_type='thread',
+                        no_enlarge_width=True,
                         verbose=False):
     """
     Given a COCO-formatted dataset (images in input_folder, data in input_filename), resizes
@@ -175,6 +180,9 @@ def resize_coco_dataset(input_folder,
             Defaults to 1 (no parallelization). If <= 1, processing is sequential.
         pool_type (str, optional): type of multiprocessing pool to use ('thread' or 'process').
             Defaults to 'thread'. Only used if n_workers > 1.
+        no_enlarge_width (bool, optional): if [no_enlarge_width] is True, and
+            [target width] is larger than the original image width, does not modify the image,
+            but still writes it
         verbose (bool, optional): enable additional debug output
 
     Returns:
@@ -221,6 +229,7 @@ def resize_coco_dataset(input_folder,
                 target_size=target_size,
                 correct_size_image_handling=correct_size_image_handling,
                 unavailable_image_handling=unavailable_image_handling,
+                no_enlarge_width=no_enlarge_width,
                 verbose=verbose
             )
             processed_results.append(result)
@@ -240,6 +249,7 @@ def resize_coco_dataset(input_folder,
                                        target_size=target_size,
                                        correct_size_image_handling=correct_size_image_handling,
                                        unavailable_image_handling=unavailable_image_handling,
+                                       no_enlarge_width=no_enlarge_width,
                                        verbose=verbose)
 
             processed_results = list(tqdm(pool.imap(p_process_image, image_annotation_tuples),
