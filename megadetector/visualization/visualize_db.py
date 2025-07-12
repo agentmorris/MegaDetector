@@ -496,11 +496,14 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         try:
             original_image = vis_utils.open_image(img_path)
             original_size = original_image.size
-            if (options.viz_size is None) or (options.viz_size[0] == -1 and options.viz_size[1] == -1):
+            if (options.viz_size is None) or \
+                (options.viz_size[0] == -1 and options.viz_size[1] == -1):
                 image = original_image
             else:
-                image = vis_utils.resize_image(original_image, options.viz_size[0],
-                                               options.viz_size[1])
+                image = vis_utils.resize_image(original_image,
+                                               options.viz_size[0],
+                                               options.viz_size[1],
+                                               no_enlarge_width=True)
         except Exception as e:
             print('Image {} failed to open, error: {}'.format(img_path, e))
             return False
