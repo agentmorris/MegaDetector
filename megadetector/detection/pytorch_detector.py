@@ -175,7 +175,7 @@ def _initialize_yolo_imports_for_model(model_file,
     return model_type
 
 
-def _clean_yolo_imports(verbose=False):
+def _clean_yolo_imports(verbose=False,aggressive_cleanup=False):
     """
     Remove all YOLO-related imports from sys.modules and sys.path, to allow a clean re-import
     of another YOLO library version.  The reason we jump through all these hoops, rather than
@@ -186,28 +186,60 @@ def _clean_yolo_imports(verbose=False):
 
     Args:
         verbose (bool, optional): enable additional debug output
+        aggressive_cleanup (bool, optional): err on the side of removing modules,
+            at least by ignoring whether they are/aren't in a site-packages folder.
+            By default, only modules in a folder that includes "site-packages" will
+            be considered for unloading.
     """
 
     modules_to_delete = []
     for module_name in sys.modules.keys():
         module = sys.modules[module_name]
+        if not hasattr(module,'__file__') or (module.__file__ is None):
+            continue
         try:
             module_file = module.__file__.replace('\\','/')
-            if 'site-packages' not in module_file:
-                continue
-            tokens = module_file.split('/')[-4:]
-            for token in tokens:
-                if 'yolov5' in token or 'yolov9' in token or 'ultralytics' in token:
+            if not aggressive_cleanup:
+                if 'site-packages' not in module_file:
+                    continue
+            tokens = module_file.split('/')
+
+            # For local path imports, a module filename we might want to unload
+            # might look like:
+            #
+            # c:/git/yolov9/models/common.py
+            #
+            # For pip imports, a module filename we might want to unload might
+            # look like:
+            #
+            # c:/users/user/miniforge3/envs/megadetector/lib/site-packages/yolov9/utils/__init__.py
+            first_token_to_check = len(tokens) - 4
+            for i_token,token in enumerate(tokens):
+                if i_token < first_token_to_check:
+                    continue
+                # Don't remove anything based on the environment name, which
+                # allows follows "envs" in the path
+                if (i_token > 1) and (tokens[i_token-1] == 'envs'):
+                    continue
+                if ('yolov5' in token) or ('yolov9' in token) or ('ultralytics' in token):
+                    if verbose:
+                        print('Module {} ({}) looks deletable'.format(module_name,module_file))
                     modules_to_delete.append(module_name)
                     break
-        except Exception:
+        except Exception as e:
+            if verbose:
+                print('Exception during module review: {}'.format(str(e)))
             pass
 
     for module_name in modules_to_delete:
         if module_name in sys.modules.keys():
-            module_file = module.__file__.replace('\\','/')
             if verbose:
-                print('clean_yolo_imports: deleting module {}: {}'.format(module_name,module_file))
+                try:
+                    module = sys.modules[module_name]
+                    module_file = module.__file__.replace('\\','/')
+                    print('clean_yolo_imports: deleting module {}: {}'.format(module_name,module_file))
+                except Exception:
+                    pass
             del sys.modules[module_name]
 
     paths_to_delete = []
