@@ -231,7 +231,7 @@ In any script or function that takes a model name, you can always say "default" 
 #### Short names
 
 * MDv5a
-* MDv5a
+* MDv5b
 
 #### Release notes
 
