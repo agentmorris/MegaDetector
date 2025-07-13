@@ -388,9 +388,13 @@ This contains:
 
 This repo uses `pytest` for testing; cd to the repo root and run:
 
-`pytest -v`
+`pytest -vv`
 
 ...to run tests.
+
+`pytest -vv -s -x`
+
+...will show output rather than eating it (-s) and quit after the first failure (-x).
 
 ### Running the most important tests
 
