@@ -206,12 +206,12 @@ def _clean_yolo_imports(verbose=False,aggressive_cleanup=False):
                     continue
             tokens = module_file.split('/')
 
-            # For local path imports, a module filename we might want to unload
-            # might look like:
+            # For local path imports, a module filename that should be unloaded might
+            # look like:
             #
             # c:/git/yolov9/models/common.py
             #
-            # For pip imports, a module filename we might want to unload could look like:
+            # For pip imports, a module filename that should be unloaded might look like:
             #
             # c:/users/user/miniforge3/envs/megadetector/lib/site-packages/yolov9/utils/__init__.py
             first_token_to_check = len(tokens) - 4
