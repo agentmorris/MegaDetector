@@ -193,7 +193,9 @@ def _clean_yolo_imports(verbose=False,aggressive_cleanup=False):
     """
 
     modules_to_delete = []
+
     for module_name in sys.modules.keys():
+
         module = sys.modules[module_name]
         if not hasattr(module,'__file__') or (module.__file__ is None):
             continue
@@ -204,13 +206,12 @@ def _clean_yolo_imports(verbose=False,aggressive_cleanup=False):
                     continue
             tokens = module_file.split('/')
 
-            # For local path imports, a module filename we might want to unload
-            # might look like:
+            # For local path imports, a module filename that should be unloaded might
+            # look like:
             #
             # c:/git/yolov9/models/common.py
             #
-            # For pip imports, a module filename we might want to unload might
-            # look like:
+            # For pip imports, a module filename that should be unloaded might look like:
             #
             # c:/users/user/miniforge3/envs/megadetector/lib/site-packages/yolov9/utils/__init__.py
             first_token_to_check = len(tokens) - 4
@@ -218,7 +219,7 @@ def _clean_yolo_imports(verbose=False,aggressive_cleanup=False):
                 if i_token < first_token_to_check:
                     continue
                 # Don't remove anything based on the environment name, which
-                # allows follows "envs" in the path
+                # always follows "envs" in the path
                 if (i_token > 1) and (tokens[i_token-1] == 'envs'):
                     continue
                 if ('yolov5' in token) or ('yolov9' in token) or ('ultralytics' in token):
@@ -231,7 +232,10 @@ def _clean_yolo_imports(verbose=False,aggressive_cleanup=False):
                 print('Exception during module review: {}'.format(str(e)))
             pass
 
+    # ...for each module in the global namespace
+
     for module_name in modules_to_delete:
+
         if module_name in sys.modules.keys():
             if verbose:
                 try:
@@ -241,6 +245,8 @@ def _clean_yolo_imports(verbose=False,aggressive_cleanup=False):
                 except Exception:
                     pass
             del sys.modules[module_name]
+
+    # ...for each module we want to remove from the global namespace
 
     paths_to_delete = []
 
