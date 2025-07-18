@@ -83,30 +83,46 @@ USE_MODEL_NATIVE_CLASSES = False
 #
 # Order matters here.
 model_string_to_model_version = {
+
+    # Specific model versions that might be expressed in a variety of ways
     'mdv2':'v2.0.0',
     'mdv3':'v3.0.0',
     'mdv4':'v4.1.0',
-    # 'mdv5a':'v5a.0.0',
-    # 'mdv5b':'v5b.0.0',
-    # Repackaging of the same weights
     'mdv5a':'v5a.0.1',
     'mdv5b':'v5b.0.1',
+
     'v2':'v2.0.0',
     'v3':'v3.0.0',
     'v4':'v4.1.0',
     'v4.1':'v4.1.0',
-    # Repackaging of the same weights
-    # 'v5a.0.0':'v5a.0.0',
-    # 'v5b.0.0':'v5b.0.0',
     'v5a.0.0':'v5a.0.1',
     'v5b.0.0':'v5b.0.1',
+
+    'mdv1000-redwood':'v1000.0.0-redwood',
+    'mdv1000-cedar':'v1000.0.0-cedar',
+    'mdv1000-larch':'v1000.0.0-larch',
+    'mdv1000-sorrel':'v1000.0.0-sorrel',
+    'mdv1000-spruce':'v1000.0.0-spruce',
+
+    'v1000-redwood':'v1000.0.0-redwood',
+    'v1000-cedar':'v1000.0.0-cedar',
+    'v1000-larch':'v1000.0.0-larch',
+    'v1000-sorrel':'v1000.0.0-sorrel',
+    'v1000-spruce':'v1000.0.0-spruce',
+
+    # Arguably less specific model versions
     'redwood':'v1000.0.0-redwood',
     'spruce':'v1000.0.0-spruce',
     'cedar':'v1000.0.0-cedar',
     'larch':'v1000.0.0-larch',
+
+    # Opinionated defaults
+    'mdv5':'v5a.0.1',
+    'md5':'v5a.0.1',
+    'mdv1000':'v1000.0.0-redwood',
+    'md1000':'v1000.0.0-redwood',
     'default':'v5a.0.1',
-    'default-model':'v5a.0.1',
-    'megadetector':'v5a.0.1'
+    'megadetector':'v5a.0.1',
 }
 
 model_url_base = 'http://localhost:8181/'

@@ -658,9 +658,9 @@ class PTDetector:
         #: aspect ratio".
         if model_metadata is not None and 'image_size' in model_metadata:
             self.default_image_size = model_metadata['image_size']
-            if verbose:
-                print('Loaded image size {} from model metadata'.format(self.default_image_size))
+            print('Loaded image size {} from model metadata'.format(self.default_image_size))
         else:
+            print('No image size available in model metadata, defaulting to 1280')
             self.default_image_size = 1280
 
         #: Either a string ('cpu','cuda:0') or a torch.device()
@@ -802,7 +802,7 @@ class PTDetector:
                 of the output object
             detection_threshold (float, optional): only detections above this confidence threshold
                 will be included in the return value
-            image_size (tuple, optional): image size to use for inference, only mess with this if
+            image_size (int, optional): image size to use for inference, only mess with this if
                 (a) you're using a model other than MegaDetector or (b) you know what you're getting into
             skip_image_resizing (bool, optional): whether to skip internal image resizing (and rely on
                 external resizing), only mess with this if (a) you're using a model other than MegaDetector

@@ -32,6 +32,7 @@ Operates in one of three modes, depending on whether ground truth labels/boxes a
 
 import json
 import os
+import re
 import random
 import copy
 import urllib
@@ -207,6 +208,9 @@ class BatchComparisonOptions:
         #: output page?
         self.parse_link_paths = True
 
+        #: Should we include a TOC?  TOC is always omitted if <=2 comparisons are performed.
+        self.include_toc = True
+
 # ...class BatchComparisonOptions
 
 
@@ -235,6 +239,12 @@ class PairwiseBatchComparisonResults:
         #: Values are dicts with fields 'im_a', 'im_b', 'sort_conf', and 'im_gt'
         self.categories_to_image_pairs = None
 
+        #: Short identifier for this comparison
+        self.comparison_short_name = None
+
+        #: Friendly identifier for this comparison
+        self.comparison_friendly_name = None
+
 # ...class PairwiseBatchComparisonResults
 
 
@@ -254,7 +264,7 @@ class BatchComparisonResults:
 # ...class BatchComparisonResults
 
 
-main_page_style_header = """<head>
+main_page_style_header = """<head><title>Results comparison</title>
     <style type="text/css">
     a { text-decoration: none; }
     body { font-family: segoe ui, calibri, "trebuchet ms", verdana, arial, sans-serif; }
@@ -1463,7 +1473,28 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
 
     html_output_string  = ''
 
-    html_output_string += '<p>Comparing <b>{}</b> (A, {}) to <b>{}</b> (B, {})</p>'.format(
+    def _sanitize_id_name(s, lower=True):
+        """
+        Remove characters in [s] that are not allowed in HTML id attributes
+        """
+
+        s = re.sub(r'[^a-zA-Z0-9_-]', '', s)
+        s = re.sub(r'^[^a-zA-Z]*', '', s)
+        if lower:
+            s = s.lower()
+        return s
+
+    comparison_short_name = '{}_vs_{}'.format(
+        _sanitize_id_name(pairwise_options.results_description_a),
+        _sanitize_id_name(pairwise_options.results_description_b))
+
+    comparison_friendly_name = '{} vs {}'.format(
+        pairwise_options.results_description_a,
+        pairwise_options.results_description_b
+    )
+
+    html_output_string += '<p id="{}">Comparing <b>{}</b> (A, {}) to <b>{}</b> (B, {})</p>'.format(
+        comparison_short_name,
         pairwise_options.results_description_a,color_string_a.lower(),
         pairwise_options.results_description_b,color_string_b.lower())
     html_output_string += '<div class="contentdiv">\n'
@@ -1515,6 +1546,8 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
 
     pairwise_results = PairwiseBatchComparisonResults()
 
+    pairwise_results.comparison_short_name = comparison_short_name
+    pairwise_results.comparison_friendly_name = comparison_friendly_name
     pairwise_results.html_content = html_output_string
     pairwise_results.pairwise_options = pairwise_options
     pairwise_results.categories_to_image_pairs = categories_to_image_pairs
@@ -1555,13 +1588,15 @@ def compare_batch_results(options):
     all_pairwise_results = []
 
     # i_comparison = 0; pairwise_options = pairwise_options_list[i_comparison]
-
     for i_comparison,pairwise_options in enumerate(pairwise_options_list):
+
         print('Running comparison {} of {}'.format(i_comparison,n_comparisons))
         pairwise_results = \
             _pairwise_compare_batch_results(options,i_comparison,pairwise_options)
         html_content += pairwise_results.html_content
         all_pairwise_results.append(pairwise_results)
+
+    # ...for each pairwise comparison
 
     html_output_string = main_page_header
     job_name_string = ''
@@ -1569,6 +1604,16 @@ def compare_batch_results(options):
         job_name_string = ' for {}'.format(options.job_name)
     html_output_string += '<h2>Comparison of results{}</h2>\n'.format(
         job_name_string)
+
+    if options.include_toc and (len(pairwise_options_list) > 2):
+        toc_string = '<p><b>Contents</b></p>\n'
+        toc_string += '<div class="contentdiv">\n'
+        for r in all_pairwise_results:
+            toc_string += '<a href="#{}">{}</a><br/>'.format(r.comparison_short_name,
+                                                            r.comparison_friendly_name)
+        toc_string += '</div>\n'
+        html_output_string += toc_string
+
     html_output_string += html_content
     html_output_string += main_page_footer
 

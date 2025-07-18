@@ -135,7 +135,9 @@ def _producer_func(q,
         assert isinstance(preprocessor,str)
         detector_options = deepcopy(detector_options)
         detector_options['preprocess_only'] = True
-        preprocessor = load_detector(preprocessor,detector_options=detector_options,verbose=verbose)
+        preprocessor = load_detector(preprocessor,
+                                     detector_options=detector_options,
+                                     verbose=verbose)
 
     for im_file in image_files:
 
@@ -209,7 +211,9 @@ def _consumer_func(q,
     start_time = time.time()
 
     if isinstance(model_file,str):
-        detector = load_detector(model_file,detector_options=detector_options,verbose=verbose)
+        detector = load_detector(model_file,
+                                 detector_options=detector_options,
+                                 verbose=verbose)
         elapsed = time.time() - start_time
         print('Loaded model (before queueing) in {}, printing updates every {} images'.format(
             humanfriendly.format_timespan(elapsed),n_queue_print))
@@ -323,7 +327,7 @@ def run_detector_with_image_queue(image_files,
         confidence_threshold (float): minimum confidence detection to include in
             output
         quiet (bool, optional): suppress per-image console printouts
-        image_size (tuple, optional): image size to use for inference, only mess with this
+        image_size (int, optional): image size to use for inference, only mess with this
             if (a) you're using a model other than MegaDetector or (b) you know what you're
             doing
         include_image_size (bool, optional): should we include image size in the output for each image?
@@ -500,7 +504,7 @@ def process_images(im_files,
         confidence_threshold (float): only detections above this threshold are returned
         use_image_queue (bool, optional): separate image loading onto a dedicated worker process
         quiet (bool, optional): suppress per-image printouts
-        image_size (tuple, optional): image size to use for inference, only mess with this
+        image_size (int, optional): image size to use for inference, only mess with this
             if (a) you're using a model other than MegaDetector or (b) you know what you're
             doing
         checkpoint_queue (Queue, optional): internal parameter used to pass image queues around
@@ -522,7 +526,9 @@ def process_images(im_files,
     if isinstance(detector, str):
 
         start_time = time.time()
-        detector = load_detector(detector,detector_options=detector_options,verbose=verbose)
+        detector = load_detector(detector,
+                                 detector_options=detector_options,
+                                 verbose=verbose)
         elapsed = time.time() - start_time
         print('Loaded model (batch level) in {}'.format(humanfriendly.format_timespan(elapsed)))
 
@@ -586,7 +592,7 @@ def process_image(im_file,
         image (Image, optional): previously-loaded image, if available, used when a worker
             thread is handling image loads
         quiet (bool, optional): suppress per-image printouts
-        image_size (tuple, optional): image size to use for inference, only mess with this
+        image_size (int, optional): image size to use for inference, only mess with this
             if (a) you're using a model other than MegaDetector or (b) you know what you're
             doing
         include_image_size (bool, optional): should we include image size in the output for each image?
@@ -719,7 +725,7 @@ def load_and_run_detector_batch(model_file,
         n_cores (int, optional): number of parallel worker to use, ignored if we're running on a GPU
         use_image_queue (bool, optional): use a dedicated worker for image loading
         quiet (bool, optional): disable per-image console output
-        image_size (tuple, optional): image size to use for inference, only mess with this
+        image_size (int, optional): image size to use for inference, only mess with this
             if (a) you're using a model other than MegaDetector or (b) you know what you're
             doing
         class_mapping_filename (str, optional): use a non-default class mapping supplied in a .json
@@ -796,17 +802,19 @@ def load_and_run_detector_batch(model_file,
 
     already_processed = set([i['file'] for i in results])
 
-    model_file = try_download_known_detector(model_file, force_download=force_model_download)
+    model_file = try_download_known_detector(model_file,
+                                             force_download=force_model_download,
+                                             verbose=verbose)
 
     print('GPU available: {}'.format(is_gpu_available(model_file)))
 
-    if n_cores > 1 and is_gpu_available(model_file):
+    if (n_cores > 1) and is_gpu_available(model_file):
 
         print('Warning: multiple cores requested, but a GPU is available; parallelization across ' + \
               'GPUs is not currently supported, defaulting to one GPU')
         n_cores = 1
 
-    if n_cores > 1 and use_image_queue:
+    if (n_cores > 1) and use_image_queue:
 
         print('Warning: multiple cores requested, but the image queue is enabled; parallelization ' + \
               'with the image queue is not currently supported, defaulting to one worker')
@@ -836,7 +844,9 @@ def load_and_run_detector_batch(model_file,
 
         # Load the detector
         start_time = time.time()
-        detector = load_detector(model_file,detector_options=detector_options,verbose=verbose)
+        detector = load_detector(model_file,
+                                 detector_options=detector_options,
+                                 verbose=verbose)
         elapsed = time.time() - start_time
         print('Loaded model in {}'.format(humanfriendly.format_timespan(elapsed)))
 
@@ -1095,7 +1105,7 @@ def write_results_to_file(results,
 
         if detector_file is not None:
             detector_filename = os.path.basename(detector_file)
-            detector_version = get_detector_version_from_filename(detector_filename)
+            detector_version = get_detector_version_from_filename(detector_filename,verbose=True)
             detector_metadata = get_detector_metadata_from_version_string(detector_version)
             info['detector'] = detector_filename
             info['detector_metadata'] = detector_metadata
@@ -1415,7 +1425,8 @@ def main(): # noqa
     # If the specified detector file is really the name of a known model, find
     # (and possibly download) that model
     args.detector_file = try_download_known_detector(args.detector_file,
-                                                     force_download=args.force_model_download)
+                                                     force_download=args.force_model_download,
+                                                     verbose=verbose)
 
     assert os.path.exists(args.detector_file), \
         'detector file {} does not exist'.format(args.detector_file)
