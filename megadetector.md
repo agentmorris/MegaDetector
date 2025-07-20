@@ -392,7 +392,7 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 
 * [Wildlife Insights](https://wildlifeinsights.org/)
 * [Animal Detect](https://www.animaldetect.com)
-* [TrapTagger](https://wildeyeconservation.org/trap-tagger-about/)
+* [TrapTagger](https://wildeyeconservation.org/traptagger/)
 * [WildTrax](https://www.wildtrax.ca/)
 * [Agouti](https://agouti.eu/)
 * [Trapper](https://trapper-project.readthedocs.io/en/latest/overview.html)
