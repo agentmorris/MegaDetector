@@ -98,6 +98,12 @@ model_string_to_model_version = {
     'v5a.0.0':'v5a.0.1',
     'v5b.0.0':'v5b.0.1',
 
+    'md1000-redwood':'v1000.0.0-redwood',
+    'md1000-cedar':'v1000.0.0-cedar',
+    'md1000-larch':'v1000.0.0-larch',
+    'md1000-sorrel':'v1000.0.0-sorrel',
+    'md1000-spruce':'v1000.0.0-spruce',
+
     'mdv1000-redwood':'v1000.0.0-redwood',
     'mdv1000-cedar':'v1000.0.0-cedar',
     'mdv1000-larch':'v1000.0.0-larch',
@@ -125,6 +131,7 @@ model_string_to_model_version = {
     'megadetector':'v5a.0.1',
 }
 
+# python -m http.server 8181
 model_url_base = 'http://localhost:8181/'
 assert model_url_base.endswith('/')
 

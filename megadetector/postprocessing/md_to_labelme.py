@@ -108,8 +108,13 @@ def get_labelme_dict_for_image(im,image_base_name=None,category_id_to_name=None,
 # ...def get_labelme_dict_for_image()
 
 
-def _write_output_for_image(im,image_base,extension_prefix,info,
-                            confidence_threshold,category_id_to_name,overwrite,
+def _write_output_for_image(im,
+                            image_base,
+                            extension_prefix,
+                            info,
+                            confidence_threshold,
+                            category_id_to_name,
+                            overwrite,
                             verbose=False):
 
     if 'failure' in im and im['failure'] is not None:
@@ -140,9 +145,14 @@ def _write_output_for_image(im,image_base,extension_prefix,info,
 
 
 
-def md_to_labelme(results_file,image_base,confidence_threshold=None,
-                  overwrite=False,extension_prefix='',n_workers=1,
-                  use_threads=False,bypass_image_size_read=False,
+def md_to_labelme(results_file,
+                  image_base,
+                  confidence_threshold=None,
+                  overwrite=False,
+                  extension_prefix='',
+                  n_workers=1,
+                  use_threads=False,
+                  bypass_image_size_read=False,
                   verbose=False):
     """
     For all the images in [results_file], write a .json file in labelme format alongside the
@@ -153,11 +163,12 @@ def md_to_labelme(results_file,image_base,confidence_threshold=None,
         image_base (str): folder of images; filenames in [results_file] should be relative to
             this folder
         confidence_threshold (float, optional): only detections at or above this confidence threshold
-            will be included in the output dict
+            will be included in the output dict.  If None, no threshold will be applied.
         overwrite (bool, optional): whether to overwrite existing output files; if this is False
             and the output file for an image exists, we'll skip that image
         extension_prefix (str, optional): if non-empty, "extension_prefix" will be inserted before the .json
-            extension
+            extension (typically used to generate multiple copies of labelme files representing different
+            MD thresholds)
         n_workers (int, optional): enables multiprocessing if > 1
         use_threads (bool, optional): if [n_workers] > 1, determines whether we parallelize via threads (True)
             or processes (False)

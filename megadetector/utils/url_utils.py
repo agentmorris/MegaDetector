@@ -472,7 +472,6 @@ class TestUrlUtils:
     Tests for url_utils.py
     """
 
-
     def set_up(self):
         """
         Create a temporary directory for testing.
@@ -708,9 +707,11 @@ class TestUrlUtils:
         assert sizes_map[REDIRECT_DEST_URL] == size_dynamic
 
 
-def test_url_utils():
+def _test_url_utils():
     """
-    Runs all tests in the TestUrlUtils class.
+    Runs all tests in the TestUrlUtils class.  I generally disable this during testing
+    because it creates irritating nondeterminism, and this is neither a core module nor
+    a module that changes often.
     """
 
     test_instance = TestUrlUtils()

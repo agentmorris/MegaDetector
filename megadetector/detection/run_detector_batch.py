@@ -350,6 +350,9 @@ def run_detector_with_image_queue(image_files,
     if loader_workers <= 0:
         loader_workers = 1
 
+    if detector_options is None:
+        detector_options = {}
+
     q = multiprocessing.JoinableQueue(max_queue_size)
     return_queue = multiprocessing.Queue(1)
 
@@ -531,6 +534,9 @@ def process_images(im_files,
                                  verbose=verbose)
         elapsed = time.time() - start_time
         print('Loaded model (batch level) in {}'.format(humanfriendly.format_timespan(elapsed)))
+
+    if detector_options is None:
+        detector_options = {}
 
     if use_image_queue:
 
@@ -750,6 +756,9 @@ def load_and_run_detector_batch(model_file,
     # Validate input arguments
     if n_cores is None or n_cores <= 0:
         n_cores = 1
+
+    if detector_options is None:
+        detector_options = {}
 
     if confidence_threshold is None:
         confidence_threshold=run_detector.DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
