@@ -132,8 +132,16 @@ model_string_to_model_version = {
 }
 
 # python -m http.server 8181
-model_url_base = 'http://localhost:8181/'
+model_url_base = 'https://github.com/agentmorris/MegaDetector/releases/download/v1000.0/'
 assert model_url_base.endswith('/')
+
+if os.environ.get('MD_MODEL_URL_BASE') is not None:
+    model_url_base = os.environ['MD_MODEL_URL_BASE']
+    print('Model URL base provided via environment variable: {}'.format(
+        model_url_base
+    ))
+    if not model_url_base.endswith('/'):
+        model_url_base += '/'
 
 # Maps canonical model version numbers to metadata
 known_models = {
@@ -201,36 +209,34 @@ known_models = {
         'normalized_typical_inference_speed':1.0,
         'md5':'f17ed6fedfac2e403606a08c89984905'
     },
-
-    # Fake values for testing, other than the MD5 hashes, which are legit
     'v1000.0.0-redwood':
     {
-        'normalized_typical_inference_speed':2.0,
         'url':model_url_base + 'md_v1000.0.0-redwood.pt',
+        'normalized_typical_inference_speed':1.0,
         'md5':'74474b3aec9cf1a990da38b37ddf9197'
     },
     'v1000.0.0-spruce':
     {
-        'normalized_typical_inference_speed':3.0,
         'url':model_url_base + 'md_v1000.0.0-spruce.pt',
+        'normalized_typical_inference_speed':12.7,
         'md5':'1c9d1d2b3ba54931881471fdd508e6f2'
     },
     'v1000.0.0-larch':
     {
-        'normalized_typical_inference_speed':4.0,
         'url':model_url_base + 'md_v1000.0.0-larch.pt',
+        'normalized_typical_inference_speed':2.4,
         'md5':'cab94ebd190c2278e12fb70ffd548b6d'
     },
     'v1000.0.0-cedar':
     {
-        'normalized_typical_inference_speed':5.0,
         'url':model_url_base + 'md_v1000.0.0-cedar.pt',
+        'normalized_typical_inference_speed':2.0,
         'md5':'3d6472c9b95ba687b59ebe255f7c576b'
     },
     'v1000.0.0-sorrel':
     {
-        'normalized_typical_inference_speed':6.0,
         'url':model_url_base + 'md_v1000.0.0-sorrel.pt',
+        'normalized_typical_inference_speed':7.0,
         'md5':'4339a2c8af7a381f18ded7ac2a4df03e'
     }
 }
@@ -944,11 +950,15 @@ def _download_model(model_name,force_download=False):
                 return destination_filename
 
     # Download the model
-    local_file = download_url(url,
-                              destination_filename=destination_filename,
-                              progress_updater=None,
-                              force_download=force_download,
-                              verbose=True)
+    try:
+        local_file = download_url(url,
+                                destination_filename=destination_filename,
+                                progress_updater=None,
+                                force_download=force_download,
+                                verbose=True)
+    except Exception as e:
+        print('Error downloading model {} from {}: {}'.format(model_name, url, str(e)))
+        raise
 
     # Validate the downloaded file if it's a .pt file
     if local_file and local_file.endswith('.pt'):
