@@ -408,7 +408,7 @@ chunk_file_base = path_join(filename_base,'file_chunks')
 os.makedirs(chunk_file_base,exist_ok=True)
 
 chunk_files = os.listdir(chunk_file_base)
-pattern = re.compile('chunk\d+.json')
+pattern = re.compile(r'chunk\d+.json')
 chunk_files = [fn for fn in chunk_files if pattern.match(fn)]
 
 if (not force_enumeration) and (len(chunk_files) > 0):

@@ -97,6 +97,8 @@ model_string_to_model_version = {
     'v4.1':'v4.1.0',
     'v5a.0.0':'v5a.0.1',
     'v5b.0.0':'v5b.0.1',
+    'v5a.0.1':'v5a.0.1',
+    'v5b.0.1':'v5b.0.1',
 
     'md1000-redwood':'v1000.0.0-redwood',
     'md1000-cedar':'v1000.0.0-cedar',
@@ -405,12 +407,17 @@ def get_detector_version_from_model_file(detector_filename,verbose=False):
        (version_string_based_on_model_file is not None):
 
         if version_string_based_on_filename != version_string_based_on_model_file:
-            print(
-                'Warning: model version string in file:' + \
-                 '\n\n{}\n\n...is:\n\n{}\n\n...but the filename implies:\n\n{}'.format(
-                os.path.basename(detector_filename),
-                version_string_based_on_model_file,
-                version_string_based_on_filename))
+            # This is a one-off special case where models were re-released with different filenames
+            if (version_string_based_on_filename in ('v5a.0.1','v5b.0.1')) and \
+                (version_string_based_on_model_file in ('v5a.0.0','v5b.0.0')):
+                pass
+            else:
+                print(
+                    'Warning: model version string in file:' + \
+                    '\n\n{}\n\n...is:\n\n{}\n\n...but the filename implies:\n\n{}'.format(
+                    os.path.basename(detector_filename),
+                    version_string_based_on_model_file,
+                    version_string_based_on_filename))
 
         return version_string_based_on_model_file
 
