@@ -398,7 +398,10 @@ Here are some other options to this script you might want to experiment with if 
 * `--augment`: enable image augmentation, which is roughly saying "think a little harder".  In general this will increase compute time by around 1.6x, and will slightly improve accuracy (but may require higher confidence thresholds).
 * `--image_size`: by default the package reads the default image size from the model itself; this option lets you run the model at an image size other than the default.  You would almost never use this option to run at a <i>smaller</i> size than the default, but increasing the image size may improve accuracy a bit, at the cost of some compute time.  Anecdotally, the models trained at 1280px yield higher accuracy when run at sizes up to at least 1600px.
 
-[process_video](https://megadetector.readthedocs.io/en/latest/detection.html#module-megadetector.detection.process_video) is the video equivalent of run_detector_batch: it runs MD on videos (typically a folder of videos), including options for time- or frame-based sampling, rendering videos with boxes, etc.
+Other useful modules in the [detection subpackage](https://megadetector.readthedocs.io/en/latest/detection.html):
+
+* [process_video](https://megadetector.readthedocs.io/en/latest/detection.html#module-megadetector.detection.process_video) is the video equivalent of run_detector_batch: it runs MD on videos (typically a folder of videos), including options for time- or frame-based sampling, rendering videos with boxes, etc.
+* [run_tiled_inference](https://megadetector.readthedocs.io/en/latest/detection.html#module-megadetector.detection.run_tiled_inference) breaks large images up into pieces closer to MD's native input size, runs MD separate on them, and stitches the results back together in a reasonable way.  I use this when I'm working on scenarios where very small animals are <i>just</i> out of MD's domain, but we have pixels to spare (e.g. we have 4k images).
 
 
 ### Postprocessing with the MD Python package
