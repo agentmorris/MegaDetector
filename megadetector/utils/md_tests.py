@@ -65,6 +65,9 @@ class MDTestOptions:
         #: Skip download tests
         self.skip_download_tests = False
 
+        #: Skip download tests for local URLs
+        self.skip_localhost_downloads = False
+
         #: Skip force-CPU tests
         self.skip_cpu_tests = False
 
@@ -1549,7 +1552,7 @@ def run_download_tests(options):
     # e.g. "v5a.0.0"
     for model_name in known_models:
         url = known_models[model_name]['url']
-        if 'localhost' in url:
+        if ('localhost' in url) and options.skip_localhost_downloads:
             continue
         print('Testing download for known model {}'.format(model_name))
         fn = try_download_known_detector(model_name,
@@ -1708,10 +1711,11 @@ def test_suite_entry_point():
     options.skip_video_rendering_tests = True
     options.cli_working_dir = None
     options.cli_test_pythonpath = None
-
     options.skip_download_tests = True
+    options.skip_localhost_downloads = True
 
     options = download_test_data(options)
+
     run_tests(options)
 
 
@@ -1738,6 +1742,9 @@ if False:
     options.max_coord_error = 0.01 # 0.001
     options.max_conf_error = 0.01 # 0.005
     options.skip_video_rendering_tests = True
+    options.skip_download_tests = False
+    options.skip_localhost_downloads = False
+
     # options.iou_threshold_for_file_comparison = 0.7
 
     options.cli_working_dir = r'c:\git\MegaDetector'
@@ -1755,10 +1762,14 @@ if False:
 
     #%% Environment prep
 
+    # Add the YOLO working dir to the PYTHONPATH if necessary
     import os
-    if ('PYTHONPATH' not in os.environ) or \
-       (options.yolo_working_dir is not None and options.yolo_working_dir not in os.environ['PYTHONPATH']):
-        os.environ['PYTHONPATH'] += ';' + options.yolo_working_dir
+    if (options.yolo_working_dir is not None) and \
+        (('PYTHONPATH' not in os.environ) or (options.yolo_working_dir not in os.environ['PYTHONPATH'])):
+        if ('PYTHONPATH' not in os.environ):
+            os.environ['PYTHONPATH'] = options.yolo_working_dir
+        else:
+            os.environ['PYTHONPATH'] = os.environ['PYTHONPATH'] + ';' + options.yolo_working_dir
 
 
     #%% Run download tests

@@ -226,6 +226,29 @@ In this section, we provide information about lots of MegaDetector versions.  Un
 
 In any script or function that takes a model name, you can always say "default" or "megadetector", in which case you'll always get the model that the MegaDetector developers consider to be the most accurate model available.  But you can also specify the "short name" for any of the models listed below.
 
+### MegaDetector v1000.0, 2025.07.23
+
+#### Short names
+
+* MDv1000-redwood
+* MDv1000-cedar
+* MDv1000-larch
+* MDv1000-sorrel
+* MDv1000-spruce
+
+#### Release notes
+
+This release includes five new MegaDetector models, under the model family name "MegaDetector v1000".  Detailed release notes are available [here](https://github.com/agentmorris/MegaDetector/blob/main/docs/release-notes/mdv1000-release.md).  Actually "detailed release notes" is an understatement, it's more like "a novella about MegaDetector".
+
+#### Download links
+
+* [MegaDetector v1000-redwood (.pt)](https://github.com/agentmorris/MegaDetector/releases/download/v1000.0/md_v1000.0.0-redwood.pt)
+* [MegaDetector v1000-cedar (.pt)](https://github.com/agentmorris/MegaDetector/releases/download/v1000.0/md_v1000.0.0-cedar.pt)
+* [MegaDetector v1000-larch (.pt)](https://github.com/agentmorris/MegaDetector/releases/download/v1000.0/md_v1000.0.0-larch.pt)
+* [MegaDetector v1000-sorrel (.pt)](https://github.com/agentmorris/MegaDetector/releases/download/v1000.0/md_v1000.0.0-sorrel.pt)
+* [MegaDetector v1000-spruce (.pt)](https://github.com/agentmorris/MegaDetector/releases/download/v1000.0/md_v1000.0.0-spruce.pt)
+
+
 ### MegaDetector v5.0, 2022.06.15
 
 #### Short names
@@ -250,8 +273,8 @@ See the [release page](https://github.com/agentmorris/MegaDetector/releases/tag/
 
 #### Download links
 
-* [MegaDetector v5a (.pt)](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt)
-* [MegaDetector v5b (.pt)](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.0.pt)
+* [MegaDetector v5a (.pt)](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.1.pt)
+* [MegaDetector v5b (.pt)](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.1.pt)
 
 ### MegaDetector v4.1, 2020.04.27
 
