@@ -537,6 +537,7 @@ These are not necessarily papers specifically about evaluating MegaDetector, but
 * WildEye, [MegaDetector Version 5 evaluation](https://wildeyeconservation.org/megadetector-version-5/), 2022. For MDv5a, they report 99.2% animal recall @ 97.26% precision; for MDv5b, they report 99.1% animal recall @ 98.76% precision.
 * Zampetti A, Mirante D, Palencia P, Santini L. [Towards an automated protocol for wildlife density estimation using camera-traps](https://besjournals.onlinelibrary.wiley.com/doi/10.1111/2041-210X.14450?af=R). Methods in Ecology and Evolution. 2024 Dec;15(12):2276-88. They report a precision of 98% at a recall of 90% for MDv5a.
 * Clarfeld LA, Sirén AP, Mulhall BM, Wilson TL, Bernier E, Farrell J, Lunde G, Hardy N, Gieder KD, Abrams R, Staats S. [Evaluating a tandem human-machine approach to labelling of wildlife in remote camera monitoring](https://www.sciencedirect.com/science/article/pii/S1574954123002868). Ecological Informatics. 2023 Aug 10:102257. They report a recall of 91.5% at a precision of 92.6% for MDv5a.
+* Pestell AJ, Rendall AR, Sinclair RD, Ritchie EG, Nguyen DT, Corva DM, Eichholtzer AC, Kouzani AZ, Driscoll DA. Smart camera traps and computer vision improve detections of small fauna. Ecosphere. 2025 Mar;16(3):e70220. They report 99% precision @ 98% recall for MDv5a.
 
 ### MDv4 evaluations
 
