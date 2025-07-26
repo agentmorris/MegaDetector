@@ -1875,6 +1875,9 @@ def taxonomy_info_to_taxonomy_string(taxonomy_info, include_taxon_id_and_common_
 
     Args:
         taxonomy_info (dict): dict in the format stored in, e.g., taxonomy_string_to_taxonomy_info
+        include_taxon_id_and_common_name (bool, optional): by default, this function returns a
+            five-token string of latin names; if this argument is True, it includes the leading
+            (GUID) and trailing (common name) tokens
 
     Returns:
         str: string in the format used as keys in, e.g., taxonomy_string_to_taxonomy_info
