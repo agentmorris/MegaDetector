@@ -1869,9 +1869,9 @@ country_code_to_country = None
 
 #%% Functions related to geofencing and taxonomy mapping
 
-def taxonomy_info_to_taxonomy_string(taxonomy_info):
+def taxonomy_info_to_taxonomy_string(taxonomy_info, include_taxon_id_and_common_name=False):
     """
-    Convert a taxonomy record in dict format to a semicolon-delimited string
+    Convert a taxonomy record in dict format to a five- or seven-token semicolon-delimited string
 
     Args:
         taxonomy_info (dict): dict in the format stored in, e.g., taxonomy_string_to_taxonomy_info
@@ -1879,11 +1879,16 @@ def taxonomy_info_to_taxonomy_string(taxonomy_info):
     Returns:
         str: string in the format used as keys in, e.g., taxonomy_string_to_taxonomy_info
     """
-    return taxonomy_info['class'] + ';' + \
+    s = taxonomy_info['class'] + ';' + \
         taxonomy_info['order'] + ';'  + \
         taxonomy_info['family'] + ';'  + \
         taxonomy_info['genus'] + ';'  + \
         taxonomy_info['species']
+
+    if include_taxon_id_and_common_name:
+        s = taxonomy_info['taxon_id'] + ';' + s + ';' + taxonomy_info['common_name']
+
+    return s
 
 
 def initialize_taxonomy_info(taxonomy_file,force_init=False,encoding='cp1252'):
@@ -2504,7 +2509,7 @@ if False:
     initialize_geofencing(geofencing_file, country_code_file, force_init=True)
     initialize_taxonomy_info(taxonomy_file, force_init=True, encoding=encoding)
 
-    from megadetector.utils.path_utils import open_file; open_file(geofencing_file)
+    # from megadetector.utils.path_utils import open_file; open_file(geofencing_file)
 
 
     #%% Generate a block list
@@ -2528,6 +2533,14 @@ if False:
 
     # import clipboard; clipboard.copy('\n'.join(rows))
     print(rows)
+
+
+    #%% Look up taxonomy info for a common name
+
+    common_name = 'domestic horse'
+    info = common_name_to_taxonomy_info[common_name]
+    s = taxonomy_info_to_taxonomy_string(info,include_taxon_id_and_common_name=True)
+    print(s)
 
 
     #%% Generate a block-except list
