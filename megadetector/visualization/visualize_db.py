@@ -321,7 +321,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         box_classes = []
         box_score_strings = []
 
-        # All the class labels we've seen for this image (with out without bboxes)
+        # All the class labels we've seen for this image (with or without bboxes)
         image_categories = set()
 
         extra_annotation_field_string = ''
@@ -368,6 +368,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
                 category_name = category_name.replace('"','')
                 category_name = '<a href="https://www.google.com/search?tbm=isch&q={}">{}</a>'.format(
                     category_name,category_name)
+
             image_categories.add(category_name)
 
             assert not ('bbox' in anno and 'bbox_relative' in anno), \
