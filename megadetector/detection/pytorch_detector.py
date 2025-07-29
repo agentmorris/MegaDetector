@@ -699,6 +699,7 @@ class PTDetector:
                 self.device = torch.device('cuda:0')
             try:
                 if torch.backends.mps.is_built and torch.backends.mps.is_available():
+                    print('Using MPS device')
                     self.device = 'mps'
             except AttributeError:
                 pass
@@ -991,16 +992,8 @@ class PTDetector:
                 nms_agnostic = False
                 nms_multi_label = True
 
-            # As of PyTorch 1.13.0.dev20220824, nms is not implemented for MPS.
-            #
-            # Send predictions back to the CPU for NMS.
-            if self.device == 'mps':
-                pred_nms = pred.cpu()
-            else:
-                pred_nms = pred
-
             # NMS
-            pred = non_max_suppression(prediction=pred_nms,
+            pred = non_max_suppression(prediction=pred,
                                        conf_thres=nms_conf_thres,
                                        iou_thres=nms_iou_thres,
                                        agnostic=nms_agnostic,
