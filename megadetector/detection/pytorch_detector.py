@@ -992,6 +992,13 @@ class PTDetector:
                 nms_agnostic = False
                 nms_multi_label = True
 
+            # Note to self: we used to do this on M1 devices, because NMS was
+            # not supported on Apple silicon.  Keeping this here because NMS
+            # can complicate testing, and it may be useful to temporarily move
+            # it back to the CPU for debugging in the future.
+            #
+            # pred = pred.cpu()
+
             # NMS
             pred = non_max_suppression(prediction=pred,
                                        conf_thres=nms_conf_thres,
