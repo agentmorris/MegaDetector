@@ -401,7 +401,9 @@ def output_files_are_identical(fn1,fn2,verbose=False):
 
         if fn1_image['file'] != fn2_image['file']:
             if verbose:
-                print('Filename difference at {}: {} vs {} '.format(i_image,fn1_image['file'],fn1_image['file']))
+                print('Filename difference at {}: {} vs {} '.format(i_image,
+                                                                    fn1_image['file'],
+                                                                    fn2_image['file']))
             return False
 
         if fn1_image != fn2_image:
@@ -430,6 +432,7 @@ def compare_detection_lists(detections_a,detections_b,options,bidirectional_comp
     Returns:
         dict: a dictionary with keys 'max_conf_error' and 'max_coord_error'.
     """
+
     from megadetector.utils.ct_utils import get_iou
 
     max_conf_error = 0
@@ -973,7 +976,7 @@ def run_python_tests(options):
         # Run again, with chunked inference and symlinks
 
         inference_output_file_yolo_val_checkpoints = insert_before_extension(inference_output_file_yolo_val,
-                                                                          'checkpoints')
+                                                                             'checkpoints')
         yolo_inference_options.output_file = inference_output_file_yolo_val_checkpoints
         yolo_inference_options.use_symlinks = True
         yolo_inference_options.checkpoint_frequency = 5
@@ -1241,7 +1244,7 @@ def run_cli_tests(options):
 
     checkpoint_string = ' --checkpoint_frequency 5'
     cmd = base_cmd + checkpoint_string
-    inference_output_file_checkpoint = insert_before_extension(inference_output_file,'_checkpoint')
+    inference_output_file_checkpoint = insert_before_extension(inference_output_file,'checkpoint')
     cmd = cmd.replace(inference_output_file,inference_output_file_checkpoint)
     cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
@@ -1256,7 +1259,7 @@ def run_cli_tests(options):
     print('\n** Running MD on a folder (with image queue but no preprocessing) (CLI) **\n')
 
     cmd = base_cmd + ' --use_image_queue'
-    inference_output_file_queue = insert_before_extension(inference_output_file,'_queue')
+    inference_output_file_queue = insert_before_extension(inference_output_file,'queue')
     cmd = cmd.replace(inference_output_file,inference_output_file_queue)
     cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
@@ -1269,7 +1272,7 @@ def run_cli_tests(options):
     print('\n** Running MD on a folder (with image queue and preprocessing) (CLI) **\n')
 
     cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue'
-    inference_output_file_queue = insert_before_extension(inference_output_file,'_queue')
+    inference_output_file_queue = insert_before_extension(inference_output_file,'preprocess_queue')
     cmd = cmd.replace(inference_output_file,inference_output_file_queue)
     cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
