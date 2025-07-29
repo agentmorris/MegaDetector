@@ -1282,9 +1282,9 @@ def run_cli_tests(options):
                                       fn2=inference_output_file_preprocess_queue,
                                       verbose=True)
 
-    ## Run again on multiple cores, make sure the results are the same
-
     if not options.skip_cpu_tests:
+
+        ## Run again on multiple cores, make sure the results are the same
 
         # First run again on the CPU on a single thread if necessary, so we get a file that
         # *should* be identical to the multicore version.

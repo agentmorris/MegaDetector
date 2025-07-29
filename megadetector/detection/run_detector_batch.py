@@ -5,7 +5,7 @@ run_detector_batch.py
 Module to run MegaDetector on lots of images, writing the results
 to a file in the MegaDetector results format.
 
-https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#megadetector-batch-output-format
+https://lila.science/megadetector-output-format
 
 This enables the results to be used in our post-processing pipeline; see postprocess_batch_results.py.
 
@@ -23,7 +23,7 @@ is not supported when using a GPU.
 
 The lack of GPU multiprocessing support might sound annoying, but in practice we
 run a gazillion MegaDetector images on multiple GPUs using this script, we just only use
-one GPU *per invocation of this script*.  Dividing a big batch of images into one chunk
+one GPU *per invocation of this script*.  Dividing a list of images into one chunk
 per GPU happens outside of this script.
 
 Does not have a command-line option to bind the process to a particular GPU, but you can
@@ -120,11 +120,22 @@ def _producer_func(q,
     """
     Producer function; only used when using the (optional) image queue.
 
-    Reads up to images from disk and puts them on the blocking queue for
-    processing.  Each image is queued as a tuple of [filename,Image].  Sends
-    "None" to the queue when finished.
+    Reads images from disk and puts, optionally preprocesses them (depending on whether "preprocessor"
+    is None, then puts them on the blocking queue for processing.  Each image is queued as a tuple of
+    [filename,Image].  Sends "None" to the queue when finished.
 
     The "detector" argument is only used for preprocessing.
+
+    Args:
+        q (Queue): multiprocessing queue to put loaded/preprocessed images into
+        image_files (list): list of image file paths to process
+        producer_id (int, optional): identifier for this producer worker (for logging)
+        preprocessor (str, optional): model file path/identifier for preprocessing, or None to skip preprocessing
+        detector_options (dict, optional): key/value pairs that are interpreted differently
+            by different detectors
+        verbose (bool, optional): enable additional debug output
+        image_size (int, optional): image size to use for preprocessing
+        augment (bool, optional): enable image augmentation during preprocessing
     """
 
     if verbose:
@@ -149,12 +160,14 @@ def _producer_func(q,
 
             if preprocessor is not None:
 
+                # The function name is a misnomer here; because preprocess_only=True,
+                # this is not generating detections (i.e., it's not running the model),
+                # it's just doing image preprocessing.
                 image_info = preprocessor.generate_detections_one_image(
                                                   image,
                                                   im_file,
                                                   detection_threshold=None,
                                                   image_size=image_size,
-                                                  skip_image_resizing=False,
                                                   augment=augment,
                                                   preprocess_only=True,
                                                   verbose=verbose)
@@ -173,6 +186,8 @@ def _producer_func(q,
             sys.stdout.flush()
 
         q.put([im_file,image,producer_id])
+
+    # ...for each image
 
     # This is a signal to the consumer function that a worker has finished
     q.put(None)
@@ -203,6 +218,22 @@ def _consumer_func(q,
 
     Pulls images from a blocking queue and processes them.  Returns when "None" has
     been read from each loader's queue.
+
+    Args:
+        q (Queue): multiprocessing queue to pull images from
+        return_queue (Queue): queue to put final results into
+        model_file (str or detector object): model file path/identifier or pre-loaded detector
+        confidence_threshold (float): only detections above this threshold are returned
+        loader_workers (int): number of producer workers (used to know when all are finished)
+        image_size (int, optional): image size to use for inference
+        include_image_size (bool, optional): include image dimensions in output
+        include_image_timestamp (bool, optional): include image timestamps in output
+        include_exif_data (bool, optional): include EXIF data in output
+        augment (bool, optional): enable image augmentation
+        detector_options (dict, optional): key/value pairs that are interpreted differently
+            by different detectors
+        preprocess_on_image_queue (bool, optional): whether images are already preprocessed on the queue
+        n_total_images (int, optional): total number of images expected (for progress bar)
     """
 
     if verbose:
@@ -252,15 +283,6 @@ def _consumer_func(q,
         im_file = r[0]
         image = r[1]
 
-        """
-        result['img_processed'] = img
-        result['img_original'] = img_original
-        result['target_shape'] = target_shape
-        result['scaling_shape'] = scaling_shape
-        result['letterbox_ratio'] = letterbox_ratio
-        result['letterbox_pad'] = letterbox_pad
-        """
-
         if pbar is not None:
             pbar.update(1)
 
@@ -278,12 +300,12 @@ def _consumer_func(q,
             results.append({'file': im_file,
                             'failure': image})
         elif preprocess_on_image_queue and (not isinstance(image,dict)):
-                print('Expected a dict, received an image of type {}'.format(type(image)))
-                results.append({'file': im_file,
+            print('Expected a dict, received an image of type {}'.format(type(image)))
+            results.append({'file': im_file,
                                 'failure': 'illegal image type'})
 
         else:
-            results.append(process_image(im_file=im_file,
+            results.append(_process_image(im_file=im_file,
                                          detector=detector,
                                          confidence_threshold=confidence_threshold,
                                          image=image,
@@ -292,8 +314,7 @@ def _consumer_func(q,
                                          include_image_size=include_image_size,
                                          include_image_timestamp=include_image_timestamp,
                                          include_exif_data=include_exif_data,
-                                         augment=augment,
-                                         skip_image_resizing=preprocess_on_image_queue))
+                                         augment=augment))
         if verbose:
             print('Processed image {}'.format(im_file)); sys.stdout.flush()
         q.task_done()
@@ -303,23 +324,21 @@ def _consumer_func(q,
 # ...def _consumer_func(...)
 
 
-def run_detector_with_image_queue(image_files,
-                                  model_file,
-                                  confidence_threshold,
-                                  quiet=False,
-                                  image_size=None,
-                                  include_image_size=False,
-                                  include_image_timestamp=False,
-                                  include_exif_data=False,
-                                  augment=False,
-                                  detector_options=None,
-                                  loader_workers=default_loaders,
-                                  preprocess_on_image_queue=default_preprocess_on_image_queue):
+def _run_detector_with_image_queue(image_files,
+                                   model_file,
+                                   confidence_threshold,
+                                   quiet=False,
+                                   image_size=None,
+                                   include_image_size=False,
+                                   include_image_timestamp=False,
+                                   include_exif_data=False,
+                                   augment=False,
+                                   detector_options=None,
+                                   loader_workers=default_loaders,
+                                   preprocess_on_image_queue=default_preprocess_on_image_queue):
     """
-    Driver function for the (optional) multiprocessing-based image queue; only used
-    when --use_image_queue is specified.  Starts a reader process to read images from disk, but
-    processes images in the  process from which this function is called (i.e., does not currently
-    spawn a separate consumer process).
+    Driver function for the (optional) multiprocessing-based image queue.  Spawns workers to read and
+    preprocess images, runs the consumer function in the calling process.
 
     Args:
         image_files (str): list of absolute paths to images
@@ -461,7 +480,7 @@ def run_detector_with_image_queue(image_files,
 
     return results
 
-# ...def run_detector_with_image_queue(...)
+# ...def _run_detector_with_image_queue(...)
 
 
 #%% Other support functions
@@ -483,7 +502,7 @@ def _chunks_by_number_of_chunks(ls, n):
 
 #%% Image processing functions
 
-def process_images(im_files,
+def _process_images(im_files,
                    detector,
                    confidence_threshold,
                    use_image_queue=False,
@@ -498,7 +517,8 @@ def process_images(im_files,
                    loader_workers=default_loaders,
                    preprocess_on_image_queue=default_preprocess_on_image_queue):
     """
-    Runs a detector (typically MegaDetector) over a list of image files on a single thread.
+    Runs a detector (typically MegaDetector) over a list of image files, possibly using multiple
+    image loading workers, but not using multiple inference workers.
 
     Args:
         im_files (list): paths to image files
@@ -523,7 +543,7 @@ def process_images(im_files,
 
     Returns:
         list: list of dicts, in which each dict represents detections on one image,
-        see the 'images' key in https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#batch-processing-api-output-format
+        see the 'images' key in https://lila.science/megadetector-output-format
     """
 
     if isinstance(detector, str):
@@ -533,14 +553,14 @@ def process_images(im_files,
                                  detector_options=detector_options,
                                  verbose=verbose)
         elapsed = time.time() - start_time
-        print('Loaded model (batch level) in {}'.format(humanfriendly.format_timespan(elapsed)))
+        print('Loaded model (process_images) in {}'.format(humanfriendly.format_timespan(elapsed)))
 
     if detector_options is None:
         detector_options = {}
 
     if use_image_queue:
 
-        run_detector_with_image_queue(im_files,
+        _run_detector_with_image_queue(im_files,
                                       detector,
                                       confidence_threshold,
                                       quiet=quiet,
@@ -557,7 +577,7 @@ def process_images(im_files,
 
         results = []
         for im_file in im_files:
-            result = process_image(im_file,
+            result = _process_image(im_file,
                                    detector,
                                    confidence_threshold,
                                    quiet=quiet,
@@ -573,10 +593,12 @@ def process_images(im_files,
 
         return results
 
-# ...def process_images(...)
+    # ...if we are/aren't using the image queue
+
+# ...def _process_images(...)
 
 
-def process_image(im_file,
+def _process_image(im_file,
                   detector,
                   confidence_threshold,
                   image=None,
@@ -585,7 +607,6 @@ def process_image(im_file,
                   include_image_size=False,
                   include_image_timestamp=False,
                   include_exif_data=False,
-                  skip_image_resizing=False,
                   augment=False):
     """
     Runs a detector (typically MegaDetector) on a single image file.
@@ -604,13 +625,11 @@ def process_image(im_file,
         include_image_size (bool, optional): should we include image size in the output for each image?
         include_image_timestamp (bool, optional): should we include image timestamps in the output for each image?
         include_exif_data (bool, optional): should we include EXIF data in the output for each image?
-        skip_image_resizing (bool, optional): whether to skip internal image resizing and rely on external resizing
         augment (bool, optional): enable image augmentation
 
     Returns:
         dict: dict representing detections on one image,
-        see the 'images' key in
-        https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#batch-processing-api-output-format
+        see the 'images' key in https://lila.science/megadetector-output-format
     """
 
     if not quiet:
@@ -635,8 +654,8 @@ def process_image(im_file,
                     im_file,
                     detection_threshold=confidence_threshold,
                     image_size=image_size,
-                    skip_image_resizing=skip_image_resizing,
                     augment=augment)
+
     except Exception as e:
         if not quiet:
             print('Image {} cannot be processed. Exception: {}'.format(im_file, e))
@@ -661,15 +680,19 @@ def process_image(im_file,
 
     return result
 
-# ...def process_image(...)
+# ...def _process_image(...)
 
 
 def _load_custom_class_mapping(class_mapping_filename):
     """
-    This is an experimental hack to allow the use of non-MD YOLOv5 models through
-    the same infrastructure; it disables the code that enforces MDv5-like class lists.
+    Allows the use of non-MD models, disables the code that enforces MD-like class lists.
 
-    Should be a .json file that maps int-strings to strings, or a YOLOv5 dataset.yaml file.
+    Args:
+        class_mapping_filename (str): .json file that maps int-strings to strings, or a YOLOv5
+            dataset.yaml file.
+
+    Returns:
+        dict: maps class IDs (int-strings) to class names
     """
 
     if class_mapping_filename is None:
@@ -836,7 +859,7 @@ def load_and_run_detector_batch(model_file,
         assert len(results) == 0, \
             'Using an image queue with results loaded from a checkpoint is not currently supported'
         assert n_cores <= 1
-        results = run_detector_with_image_queue(image_file_names,
+        results = _run_detector_with_image_queue(image_file_names,
                                                 model_file,
                                                 confidence_threshold,
                                                 quiet,
@@ -873,7 +896,7 @@ def load_and_run_detector_batch(model_file,
 
             count += 1
 
-            result = process_image(im_file,
+            result = _process_image(im_file,
                                    detector,
                                    confidence_threshold,
                                    quiet=quiet,
@@ -910,7 +933,7 @@ def load_and_run_detector_batch(model_file,
                 len(already_processed),n_images_all))
 
         # Divide images into chunks; we'll send one chunk to each worker process
-        image_batches = list(_chunks_by_number_of_chunks(image_file_names, n_cores))
+        image_chunks = list(_chunks_by_number_of_chunks(image_file_names, n_cores))
 
         pool = None
         try:
@@ -930,7 +953,7 @@ def load_and_run_detector_batch(model_file,
                                                  checkpoint_queue, results), daemon=True)
                 checkpoint_thread.start()
 
-                pool.map(partial(process_images,
+                pool.map(partial(_process_images,
                                  detector=detector,
                                  confidence_threshold=confidence_threshold,
                                  use_image_queue=False,
@@ -942,7 +965,7 @@ def load_and_run_detector_batch(model_file,
                                  include_exif_data=include_exif_data,
                                  augment=augment,
                                  detector_options=detector_options),
-                                 image_batches)
+                                 image_chunks)
 
                 checkpoint_queue.put(None)
 
@@ -950,7 +973,7 @@ def load_and_run_detector_batch(model_file,
 
                 # Multprocessing is enabled, but checkpointing is not
 
-                new_results = pool.map(partial(process_images,
+                new_results = pool.map(partial(_process_images,
                                                detector=detector,
                                                confidence_threshold=confidence_threshold,
                                                use_image_queue=False,
@@ -962,7 +985,7 @@ def load_and_run_detector_batch(model_file,
                                                include_exif_data=include_exif_data,
                                                augment=augment,
                                                detector_options=detector_options),
-                                               image_batches)
+                                               image_chunks)
 
                 new_results = list(itertools.chain.from_iterable(new_results))
 
@@ -1066,7 +1089,7 @@ def write_results_to_file(results,
     """
     Writes list of detection results to JSON output file. Format matches:
 
-    https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#batch-processing-api-output-format
+    https://lila.science/megadetector-output-format
 
     Args:
         results (list): list of dict, each dict represents detections on one image

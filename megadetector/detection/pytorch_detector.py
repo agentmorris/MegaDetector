@@ -454,14 +454,14 @@ def _initialize_yolo_imports(model_type='yolov5',
         try:
 
             # import pre- and post-processing functions from the YOLOv5 repo
-            from utils.general import non_max_suppression, xyxy2xywh # noqa
-            from utils.augmentations import letterbox # noqa
+            from utils.general import non_max_suppression, xyxy2xywh # type: ignore
+            from utils.augmentations import letterbox # type: ignore
 
             # scale_coords() is scale_boxes() in some YOLOv5 versions
             try:
-                from utils.general import scale_coords # noqa
+                from utils.general import scale_coords # type: ignore
             except ImportError:
-                from utils.general import scale_boxes as scale_coords
+                from utils.general import scale_boxes as scale_coords # type: ignore
             utils_imported = True
             imported_file = sys.modules[scale_coords.__module__].__file__
             if verbose:
@@ -593,6 +593,8 @@ def read_metadata_from_megadetector_model_file(model_file,
 
         return d
 
+    # ...with zipfile.Zipfile(...)
+
 # ...def read_metadata_from_megadetector_model_file(...)
 
 
@@ -606,10 +608,15 @@ require_non_default_compatibility_mode = False
 
 class PTDetector:
     """
-    Class that runs a PyTorch-based MegaDetector model.
+    Class that runs a PyTorch-based MegaDetector model.  Also used as a preprocessor
+    for images that will later be run through an instance of PTDetector.
     """
 
     def __init__(self, model_path, detector_options=None, verbose=False):
+        """
+        PTDetector constructor.  If detector_options['preprocess_only'] exists and is
+        True, this instance is being used as a preprocessor, so we don't load model weights.
+        """
 
         if verbose:
             print('Initializing PTDetector (verbose)')
@@ -637,6 +644,8 @@ class PTDetector:
                 else:
                     compatibility_mode = detector_options['compatibility_mode']
 
+        # This is a global option used only during testing, to make sure I'm hitting
+        # the cases where we are not using "classic" preprocessing.
         if require_non_default_compatibility_mode:
 
             print('### DEBUG: requiring non-default compatibility mode ###')
@@ -714,7 +723,7 @@ class PTDetector:
             # to be the same, so doing that externally doesn't seem *that* rude.
             if "Can't get attribute 'DetectionModel'" in str(e):
                 print('Forward-compatibility issue detected, patching')
-                from models import yolo
+                from models import yolo # type: ignore
                 yolo.DetectionModel = yolo.Model
                 self.model = PTDetector._load_model(model_path,
                                                     device=self.device,
@@ -737,9 +746,11 @@ class PTDetector:
         # There are two very slightly different ways to load the model, (1) using the
         # map_location=device parameter to torch.load and (2) calling .to(device) after
         # loading the model.  The former is what we did for a zillion years, but is not
-        # supported on Apple silicon at of 2029.09.  Switching to the latter causes
+        # supported on Apple silicon at of 2024.09.  Switching to the latter causes
         # very slight changes to the output, which always make me nervous, so I'm not
-        # doing a wholesale swap just yet.  Instead, we'll just do this on M1 hardware.
+        # doing a wholesale swap just yet.  Instead, when running in "classic" compatibility
+        # mode, we'll only use map_location on M1 hardware, where at least at some point
+        # there was not a choice.
         if 'classic' in compatibility_mode:
             use_map_location = (device != 'mps')
         else:
@@ -783,30 +794,162 @@ class PTDetector:
     # ...def _load_model(...)
 
 
+    def preprocess_image(self,
+                         img_original,
+                         image_id='unknown',
+                         image_size=None,
+                         verbose=False):
+        """
+        Prepare an image for detection, including scaling and letterboxing.
+
+        Args:
+            img_original (Image or np.array): the image on which we should run the detector, with
+                EXIF rotation already handled
+            image_id (str, optional): a path to identify the image; will be in the "file" field
+                of the output object
+            detection_threshold (float, optional): only detections above this confidence threshold
+                will be included in the return value
+            image_size (int, optional): image size (long side) to use for inference, or None to
+                use the default size specified at the time the model was loaded
+            verbose (bool, optional): enable additional debug output
+
+        Returns:
+            dict: dict with fields 'file' (filename) and 'img' (the preprocessed np.array); other
+            fields depend on the preprocessing applied by this detector.
+        """
+
+        # Prepare return dict
+        result = {'file': image_id }
+
+        img_original_pil = None
+
+        # If we were given a PIL image
+        if not isinstance(img_original,np.ndarray):
+            img_original_pil = img_original
+            img_original = np.asarray(img_original)
+
+        # PIL images are RGB already
+        # img_original = img_original[:, :, ::-1]
+
+        # Save the original shape for scaling boxes later
+        scaling_shape = img_original.shape
+
+        # If the caller is requesting a specific target size...
+        if image_size is not None:
+
+            assert isinstance(image_size,int)
+
+            if not self.printed_image_size_warning:
+                print('Using user-supplied image size {}'.format(image_size))
+                self.printed_image_size_warning = True
+
+        # Otherwise resize to self.default_image_size
+        else:
+
+            image_size = self.default_image_size
+            self.printed_image_size_warning = False
+
+        # ...if the caller has specified an image size
+
+        # In "classic mode", we only do the letterboxing resize, we don't do an
+        # additional initial resizing operation
+        if 'classic' in self.compatibility_mode:
+
+            resize_ratio = 1.0
+
+        # Resize the image so the long side matches the target image size.  This is not
+        # letterboxing (i.e., padding) yet, just resizing.
+        else:
+
+            use_ceil_for_resize = ('use_ceil_for_resize' in self.compatibility_mode)
+
+            h,w = img_original.shape[:2]
+            resize_ratio = image_size / max(h,w)
+
+            # Only resize if we have to
+            if resize_ratio != 1:
+
+                # Match what yolov5 does: use linear interpolation for upsizing;
+                # area interpolation for downsizing
+                if resize_ratio > 1:
+                    interpolation_method = cv2.INTER_LINEAR
+                else:
+                    interpolation_method = cv2.INTER_AREA
+
+                if use_ceil_for_resize:
+                    target_w = math.ceil(w * resize_ratio)
+                    target_h = math.ceil(h * resize_ratio)
+                else:
+                    target_w = int(w * resize_ratio)
+                    target_h = int(h * resize_ratio)
+
+                img_original = cv2.resize(
+                    img_original, (target_w, target_h),
+                    interpolation=interpolation_method)
+
+        if 'classic' in self.compatibility_mode:
+
+            letterbox_auto = True
+            letterbox_scaleup = True
+            target_shape = image_size
+
+        else:
+
+            letterbox_auto = False
+            letterbox_scaleup = False
+
+            # The padding to apply as a fraction of the stride size
+            pad = 0.5
+
+            # Resize to a multiple of the model stride
+            model_stride = int(self.model.stride.max())
+            max_dimension = max(img_original.shape)
+            normalized_shape = [img_original.shape[0] / max_dimension,
+                                img_original.shape[1] / max_dimension]
+            target_shape = np.ceil(((np.array(normalized_shape) * image_size) / model_stride) + \
+                                   pad).astype(int) * model_stride
+
+        # Now we letterbox, which is just padding, since we've already resized
+        img,letterbox_ratio,letterbox_pad = letterbox(img_original,
+                                                      new_shape=target_shape,
+                                                      stride=self.letterbox_stride,
+                                                      auto=letterbox_auto,
+                                                      scaleFill=False,
+                                                      scaleup=letterbox_scaleup)
+
+        result['img_processed'] = img
+        result['img_original'] = img_original
+        result['img_original_pil'] = img_original_pil
+        result['target_shape'] = target_shape
+        result['scaling_shape'] = scaling_shape
+        result['letterbox_ratio'] = letterbox_ratio
+        result['letterbox_pad'] = letterbox_pad
+        return result
+
+    # ...def preprocess_image(...)
+
+
     def generate_detections_one_image(self,
                                       img_original,
                                       image_id='unknown',
                                       detection_threshold=0.00001,
                                       image_size=None,
-                                      skip_image_resizing=False,
                                       augment=False,
                                       preprocess_only=False,
                                       verbose=False):
         """
-        Applies the detector to an image.
+        Run a detector on an image.
 
         Args:
-            img_original (Image): the PIL Image object (or numpy array) on which we should run the
-                detector, with EXIF rotation already handled
+            img_original (Image, np.array, or dict): the image on which we should run the detector, with
+                EXIF rotation already handled, or a dict representing a preprocessed image with associated
+                letterbox parameters
             image_id (str, optional): a path to identify the image; will be in the "file" field
                 of the output object
             detection_threshold (float, optional): only detections above this confidence threshold
                 will be included in the return value
-            image_size (int, optional): image size to use for inference, only mess with this if
-                (a) you're using a model other than MegaDetector or (b) you know what you're getting into
-            skip_image_resizing (bool, optional): whether to skip internal image resizing (and rely on
-                external resizing), only mess with this if (a) you're using a model other than MegaDetector
-                or (b) you know what you're getting into
+            image_size (int, optional): image size (long side) to use for inference, or None to
+                use the default size specified at the time the model was loaded
             augment (bool, optional): enable (implementation-specific) image augmentation
             preprocess_only (bool, optional): only run preprocessing, and return the preprocessed image
             verbose (bool, optional): enable additional debug output
@@ -826,8 +969,6 @@ class PTDetector:
         if preprocess_only:
             assert 'classic' in self.compatibility_mode, \
                 'Standalone preprocessing only supported in "classic" mode'
-            assert not skip_image_resizing, \
-                'skip_image_resizing and preprocess_only are exclusive'
 
         if detection_threshold is None:
 
@@ -835,140 +976,38 @@ class PTDetector:
 
         try:
 
-            # If the caller wants us to skip all the resizing operations...
-            if skip_image_resizing:
-
-                if isinstance(img_original,dict):
-                    image_info = img_original
-                    img = image_info['img_processed']
-                    scaling_shape = image_info['scaling_shape']
-                    letterbox_pad = image_info['letterbox_pad']
-                    letterbox_ratio = image_info['letterbox_ratio']
-                    img_original = image_info['img_original']
-                    img_original_pil = image_info['img_original_pil']
-                else:
-                    img = img_original
-
+            # If the image has already been preprocessed
+            if isinstance(img_original, dict):
+                assert not preprocess_only, \
+                    'Preprocessed image supplied when calling with preprocess_only=True'
+                image_info = img_original
             else:
-
-                img_original_pil = None
-                # If we were given a PIL image
-
-                if not isinstance(img_original,np.ndarray):
-                    img_original_pil = img_original
-                    img_original = np.asarray(img_original)
-
-                # PIL images are RGB already
-                # img_original = img_original[:, :, ::-1]
-
-                # Save the original shape for scaling boxes later
-                scaling_shape = img_original.shape
-
-                # If the caller is requesting a specific target size...
-                if image_size is not None:
-
-                    assert isinstance(image_size,int)
-
-                    if not self.printed_image_size_warning:
-                        print('Using user-supplied image size {}'.format(image_size))
-                        self.printed_image_size_warning = True
-
-                # Otherwise resize to self.default_image_size
-                else:
-
-                    image_size = self.default_image_size
-                    self.printed_image_size_warning = False
-
-                # ...if the caller has specified an image size
-
-                # In "classic mode", we only do the letterboxing resize, we don't do an
-                # additional initial resizing operation
-                if 'classic' in self.compatibility_mode:
-
-                    resize_ratio = 1.0
-
-                # Resize the image so the long side matches the target image size.  This is not
-                # letterboxing (i.e., padding) yet, just resizing.
-                else:
-
-                    use_ceil_for_resize = ('use_ceil_for_resize' in self.compatibility_mode)
-
-                    h,w = img_original.shape[:2]
-                    resize_ratio = image_size / max(h,w)
-
-                    # Only resize if we have to
-                    if resize_ratio != 1:
-
-                        # Match what yolov5 does: use linear interpolation for upsizing;
-                        # area interpolation for downsizing
-                        if resize_ratio > 1:
-                            interpolation_method = cv2.INTER_LINEAR
-                        else:
-                            interpolation_method = cv2.INTER_AREA
-
-                        if use_ceil_for_resize:
-                            target_w = math.ceil(w * resize_ratio)
-                            target_h = math.ceil(h * resize_ratio)
-                        else:
-                            target_w = int(w * resize_ratio)
-                            target_h = int(h * resize_ratio)
-
-                        img_original = cv2.resize(
-                            img_original, (target_w, target_h),
-                            interpolation=interpolation_method)
-
-                if 'classic' in self.compatibility_mode:
-
-                    letterbox_auto = True
-                    letterbox_scaleup = True
-                    target_shape = image_size
-
-                else:
-
-                    letterbox_auto = False
-                    letterbox_scaleup = False
-
-                    # The padding to apply as a fraction of the stride size
-                    pad = 0.5
-
-                    model_stride = int(self.model.stride.max())
-
-                    max_dimension = max(img_original.shape)
-                    normalized_shape = [img_original.shape[0] / max_dimension,
-                                        img_original.shape[1] / max_dimension]
-                    target_shape = np.ceil(np.array(normalized_shape) * image_size / model_stride + \
-                                           pad).astype(int) * model_stride
-
-                # Now we letterbox, which is just padding, since we've already resized.
-                img,letterbox_ratio,letterbox_pad = letterbox(img_original,
-                                                              new_shape=target_shape,
-                                                              stride=self.letterbox_stride,
-                                                              auto=letterbox_auto,
-                                                              scaleFill=False,
-                                                              scaleup=letterbox_scaleup)
-
+                image_info = self.preprocess_image(
+                    img_original=img_original,
+                    image_id=image_id,
+                    image_size=image_size,
+                    verbose=verbose)
                 if preprocess_only:
+                    return image_info
 
-                    assert 'file' in result
-                    result['img_processed'] = img
-                    result['img_original'] = img_original
-                    result['img_original_pil'] = img_original_pil
-                    result['target_shape'] = target_shape
-                    result['scaling_shape'] = scaling_shape
-                    result['letterbox_ratio'] = letterbox_ratio
-                    result['letterbox_pad'] = letterbox_pad
-                    return result
-
-            # ...are we doing resizing here, or were images already resized?
+            img = image_info['img_processed']
+            scaling_shape = image_info['scaling_shape']
+            letterbox_pad = image_info['letterbox_pad']
+            letterbox_ratio = image_info['letterbox_ratio']
+            img_original = image_info['img_original']
+            img_original_pil = image_info['img_original_pil']
 
             # Convert HWC to CHW (which is what the model expects).  The PIL Image is RGB already,
             # so we don't need to mess with the color channels.
             #
-            # TODO, this could be moved into the preprocessing loop
-
+            # TODO: this could be moved into the preprocessing loop, including the
+            # conversion to a Torch tensor.
             img = img.transpose((2, 0, 1)) # [::-1]
             img = np.ascontiguousarray(img)
             img = torch.from_numpy(img)
+
+            # At this point, we have to be on the inference worker, not on a
+            # preprocessing worker.
             img = img.to(self.device)
             img = img.half() if self.half_precision else img.float()
             img /= 255
