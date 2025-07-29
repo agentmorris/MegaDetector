@@ -1272,13 +1272,14 @@ def run_cli_tests(options):
     print('\n** Running MD on a folder (with image queue and preprocessing) (CLI) **\n')
 
     cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue'
-    inference_output_file_queue = insert_before_extension(inference_output_file,'preprocess_queue')
-    cmd = cmd.replace(inference_output_file,inference_output_file_queue)
+    inference_output_file_preprocess_queue = \
+        insert_before_extension(inference_output_file,'preprocess_queue')
+    cmd = cmd.replace(inference_output_file,inference_output_file_preprocess_queue)
     cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
 
     assert output_files_are_identical(fn1=inference_output_file,
-                                      fn2=inference_output_file_queue,
+                                      fn2=inference_output_file_preprocess_queue,
                                       verbose=True)
 
     ## Run again on multiple cores, make sure the results are the same
