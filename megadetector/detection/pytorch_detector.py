@@ -832,8 +832,15 @@ class PTDetector:
             verbose (bool, optional): enable additional debug output
 
         Returns:
-            dict: dict with fields 'file' (filename) and 'img' (the preprocessed np.array); other
-            fields depend on the preprocessing applied by this detector.
+            dict: dict with fields:
+                - file (filename)
+                - img (the preprocessed np.array)
+                - img_original (the input image before preprocessing, as an np.array)
+                - img_original_pil (the input image before preprocessing, as a PILImage)
+                - target_shape (the 2D shape to which the image was resized during preprocessing)
+                - scaling_shape (the 2D original size, for normalizing coordinates later)
+                - letterbox_ratio (letterbox parameter used for normalizing coordinates later)
+                - letterbox_pad (letterbox parameter used for normalizing coordinates later)
         """
 
         # Prepare return dict
