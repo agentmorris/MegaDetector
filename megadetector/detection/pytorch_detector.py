@@ -14,7 +14,6 @@ import math
 import zipfile
 import tempfile
 import shutil
-import traceback
 import uuid
 import json
 import inspect
@@ -24,7 +23,7 @@ import torch
 import numpy as np
 
 from megadetector.detection.run_detector import \
-    CONF_DIGITS, COORD_DIGITS, FAILURE_INFER, \
+    CONF_DIGITS, COORD_DIGITS, FAILURE_INFER, FAILURE_IMAGE_OPEN, \
     get_detector_version_from_model_file, \
     known_models
 from megadetector.utils.ct_utils import parse_bool_string
@@ -973,6 +972,288 @@ class PTDetector:
     # ...def preprocess_image(...)
 
 
+    def generate_detections_one_batch(self,
+                                      img_original,
+                                      image_id=None,
+                                      detection_threshold=0.00001,
+                                      image_size=None,
+                                      augment=False,
+                                      verbose=False):
+        """
+        Run a detector on a batch of images.
+
+        Args:
+            img_original (list): list of images (Image, np.array, or dict) on which we should run the detector, with
+                EXIF rotation already handled, or dicts representing preprocessed images with associated
+                letterbox parameters
+            image_id (list or None): list of paths to identify the images; will be in the "file" field
+                of the output objects. Should be None when img_original contains preprocessed dicts.
+            detection_threshold (float, optional): only detections above this confidence threshold
+                will be included in the return value
+            image_size (int, optional): image size (long side) to use for inference, or None to
+                use the default size specified at the time the model was loaded
+            augment (bool, optional): enable (implementation-specific) image augmentation
+            verbose (bool, optional): enable additional debug output
+
+        Returns:
+            list: a list of dictionaries, each with the following fields:
+                - 'file' (filename, always present)
+                - 'max_detection_conf' (removed from MegaDetector output files by default, but generated here)
+                - 'detections' (a list of detection objects containing keys 'category', 'conf', and 'bbox')
+                - 'failure' (a failure string, or None if everything went fine)
+        """
+
+        # Validate inputs
+        if not isinstance(img_original, list):
+            raise ValueError('img_original must be a list for batch processing')
+
+        if len(img_original) == 0:
+            return []
+
+        # Check input consistency
+        if isinstance(img_original[0], dict):
+            # All should be preprocessed dicts, image_id should be None
+            if image_id is not None:
+                raise ValueError('image_id must be None when img_original contains preprocessed dicts')
+            for i, img in enumerate(img_original):
+                if not isinstance(img, dict):
+                    raise ValueError(f'Mixed input types in batch: item {i} is not a dict, but item 0 is a dict')
+        else:
+            # All should be PIL/numpy, image_id should be a list
+            if image_id is None:
+                raise ValueError('image_id must be a list when img_original contains PIL/numpy images')
+            if not isinstance(image_id, list):
+                raise ValueError('image_id must be a list for batch processing')
+            if len(image_id) != len(img_original):
+                raise ValueError(
+                    'Length mismatch: img_original has {} items, image_id has {} items'.format(
+                    len(img_original),len(image_id)))
+            for i_img, img in enumerate(img_original):
+                if isinstance(img, dict):
+                    raise ValueError(
+                        'Mixed input types in batch: item {} is a dict, but item 0 is not a dict'.format(
+                            i_img))
+
+        if detection_threshold is None:
+            detection_threshold = 0.0
+
+        batch_size = len(img_original)
+        results = [None] * batch_size
+
+        # Preprocess all images, handling failures
+        preprocessed_images = []
+        preprocessing_failed_indices = set()
+
+        for i_img, img in enumerate(img_original):
+
+            try:
+                if isinstance(img, dict):
+                    # Already preprocessed
+                    image_info = img
+                    current_image_id = image_info['file']
+                else:
+                    # Need to preprocess
+                    current_image_id = image_id[i_img]
+                    image_info = self.preprocess_image(
+                        img_original=img,
+                        image_id=current_image_id,
+                        image_size=image_size,
+                        verbose=verbose)
+
+                preprocessed_images.append((i_img, image_info, current_image_id))
+
+            except Exception as e:
+                if verbose:
+                    print('Preprocessing failed for image {}: {}'.format(
+                        image_id[i_img] if image_id else f'index_{i_img}', str(e)))
+
+                preprocessing_failed_indices.add(i_img)
+                current_image_id = image_id[i_img] if image_id else f'index_{i_img}'
+                results[i_img] = {
+                    'file': current_image_id,
+                    'detections': None,
+                    'failure': FAILURE_IMAGE_OPEN
+                }
+
+        # ...for each image in this batch
+
+        # Group preprocessed images by actual processed image shape for batching
+        shape_groups = {}
+        for original_idx, image_info, current_image_id in preprocessed_images:
+            # Use the actual processed image shape for grouping, not target_shape
+            actual_shape = tuple(image_info['img_processed'].shape)
+            if actual_shape not in shape_groups:
+                shape_groups[actual_shape] = []
+            shape_groups[actual_shape].append((original_idx, image_info, current_image_id))
+
+        # Process each shape group as a batch
+        for target_shape, group_items in shape_groups.items():
+            try:
+                self._process_batch_group(group_items, results, detection_threshold, augment, verbose)
+            except Exception as e:
+                # If inference fails for the entire batch, mark all images in this batch as failed
+                if verbose:
+                    print('Batch inference failed for shape {}: {}'.format(target_shape, str(e)))
+
+                for original_idx, image_info, current_image_id in group_items:
+                    results[original_idx] = {
+                        'file': current_image_id,
+                        'detections': None,
+                        'failure': FAILURE_INFER
+                    }
+
+        return results
+
+    def _process_batch_group(self, group_items, results, detection_threshold, augment, verbose):
+        """
+        Process a group of images with the same target shape as a single batch.
+
+        Args:
+            group_items (list): List of (original_idx, image_info, current_image_id) tuples
+            results (list): Results list to populate (modified in place)
+            detection_threshold (float): Detection confidence threshold
+            augment (bool): Enable augmentation
+            verbose (bool): Enable verbose output
+
+        Returns:
+            list of dict: list of dictionaries the same length as group_items, with fields 'file',
+            'detections', 'max_detection_conf'.
+        """
+
+        if len(group_items) == 0:
+            return
+
+        # Extract batch data
+        batch_images = []
+        batch_scaling_shapes = []
+        batch_letterbox_pads = []
+        batch_img_originals = []
+        batch_indices = []
+        batch_image_ids = []
+
+        for original_idx, image_info, current_image_id in group_items:
+
+            img = image_info['img_processed']
+            scaling_shape = image_info['scaling_shape']
+            letterbox_pad = image_info['letterbox_pad']
+            img_original = image_info['img_original']
+
+            # Convert HWC to CHW and prepare tensor
+            img = img.transpose((2, 0, 1))
+            img = np.ascontiguousarray(img)
+            img = torch.from_numpy(img)
+
+            batch_images.append(img)
+            batch_scaling_shapes.append(scaling_shape)
+            batch_letterbox_pads.append(letterbox_pad)
+            batch_img_originals.append(img_original)
+            batch_indices.append(original_idx)
+            batch_image_ids.append(current_image_id)
+
+        # Stack images into a batch tensor
+        batch_tensor = torch.stack(batch_images)
+
+        # Move to device and convert to appropriate precision
+        batch_tensor = batch_tensor.to(self.device)
+        batch_tensor = batch_tensor.half() if self.half_precision else batch_tensor.float()
+        batch_tensor /= 255
+
+        # Run the model on the batch
+        pred = self.model(batch_tensor, augment=augment)[0]
+
+        # Configure NMS parameters
+        if 'classic' in self.compatibility_mode:
+            nms_conf_thres = detection_threshold
+            nms_iou_thres = 0.45
+            nms_agnostic = False
+            nms_multi_label = False
+        else:
+            nms_conf_thres = detection_threshold
+            nms_iou_thres = 0.6
+            nms_agnostic = False
+            nms_multi_label = True
+
+        # Apply NMS to the whole batch
+        pred = non_max_suppression(prediction=pred,
+                                   conf_thres=nms_conf_thres,
+                                   iou_thres=nms_iou_thres,
+                                   agnostic=nms_agnostic,
+                                   multi_label=nms_multi_label)
+
+        assert isinstance(pred, list)
+        assert len(pred) == len(batch_indices), f'Prediction length {len(pred)} != batch size {len(batch_indices)}'
+
+        # Process each image's detections
+        for _, (det, original_idx, scaling_shape, letterbox_pad, img_original, current_image_id) in enumerate(
+            zip(pred, batch_indices, batch_scaling_shapes,
+                batch_letterbox_pads, batch_img_originals, batch_image_ids,
+                strict=True)):
+
+            detections = []
+            max_conf = 0.0
+
+            if len(det) > 0:
+                # Prepare scaling parameters
+                gn = torch.tensor(scaling_shape)[[1, 0, 1, 0]]
+
+                if 'classic' in self.compatibility_mode:
+                    ratio = None
+                    ratio_pad = None
+                else:
+                    ratio = (img_original.shape[0]/scaling_shape[0], img_original.shape[1]/scaling_shape[1])
+                    ratio_pad = (ratio, letterbox_pad)
+
+                # Rescale boxes
+                if 'classic' in self.compatibility_mode:
+                    det[:, :4] = scale_coords(batch_tensor.shape[2:], det[:, :4], img_original.shape).round()
+                else:
+                    det[:, :4] = scale_coords(batch_tensor.shape[2:], det[:, :4], scaling_shape, ratio_pad).round()
+
+                # Process each detection
+                for *xyxy, conf, cls in reversed(det):
+                    if conf < detection_threshold:
+                        continue
+
+                    # Convert to YOLO format then to MD format
+                    xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()
+                    api_box = ct_utils.convert_yolo_to_xywh(xywh)
+
+                    if 'classic' in self.compatibility_mode:
+                        api_box = ct_utils.truncate_float_array(api_box, precision=COORD_DIGITS)
+                        conf = ct_utils.truncate_float(conf.tolist(), precision=CONF_DIGITS)
+                    else:
+                        api_box = ct_utils.round_float_array(api_box, precision=COORD_DIGITS)
+                        conf = ct_utils.round_float(conf.tolist(), precision=CONF_DIGITS)
+
+                    if not self.use_model_native_classes:
+                        cls = int(cls.tolist()) + 1
+                        if cls not in (1, 2, 3):
+                            raise KeyError(f'{cls} is not a valid class.')
+                    else:
+                        cls = int(cls.tolist())
+
+                    detections.append({
+                        'category': str(cls),
+                        'conf': conf,
+                        'bbox': api_box
+                    })
+                    max_conf = max(max_conf, conf)
+
+                # ...for each detection
+
+            # ...if there are > 0 detections
+
+            # Store result for this image
+            results[original_idx] = {
+                'file': current_image_id,
+                'detections': detections,
+                'max_detection_conf': max_conf
+            }
+
+        # ...for each image
+
+    # ...def _process_batch_group(...)
+
     def generate_detections_one_image(self,
                                       img_original,
                                       image_id='unknown',
@@ -981,7 +1262,7 @@ class PTDetector:
                                       augment=False,
                                       verbose=False):
         """
-        Run a detector on an image.
+        Run a detector on an image (wrapper around batch function).
 
         Args:
             img_original (Image, np.array, or dict): the image on which we should run the detector, with
@@ -1004,200 +1285,26 @@ class PTDetector:
                 - 'failure' (a failure string, or None if everything went fine)
         """
 
-        result = {'file': image_id }
-        detections = []
-        max_conf = 0.0
+        # Prepare batch inputs
+        if isinstance(img_original, dict):
+            batch_results = self.generate_detections_one_batch(
+                img_original=[img_original],
+                image_id=None,
+                detection_threshold=detection_threshold,
+                image_size=image_size,
+                augment=augment,
+                verbose=verbose)
+        else:
+            batch_results = self.generate_detections_one_batch(
+                img_original=[img_original],
+                image_id=[image_id],
+                detection_threshold=detection_threshold,
+                image_size=image_size,
+                augment=augment,
+                verbose=verbose)
 
-        if detection_threshold is None:
-
-            detection_threshold = 0
-
-        try:
-
-            # If the image has already been preprocessed
-            if isinstance(img_original, dict):
-                image_info = img_original
-            else:
-                image_info = self.preprocess_image(
-                    img_original=img_original,
-                    image_id=image_id,
-                    image_size=image_size,
-                    verbose=verbose)
-
-            # At this point, this is a numpy array, whether we were originally passed
-            # a PIL Image or a numpy array.
-            img = image_info['img_processed']
-            scaling_shape = image_info['scaling_shape']
-            letterbox_pad = image_info['letterbox_pad']
-            img_original = image_info['img_original']
-
-            # Unused, but available
-            # letterbox_ratio = image_info['letterbox_ratio']
-            # img_original_pil = image_info['img_original_pil']
-
-            # Convert HWC to CHW (which is what the model expects).  The PIL Image is RGB already,
-            # so we don't need to mess with the color channels.
-            #
-            # TODO: this could be moved into the preprocessing function, including the
-            # conversion to a Torch tensor.
-            img = img.transpose((2, 0, 1)) # [::-1]
-            img = np.ascontiguousarray(img)
-            img = torch.from_numpy(img)
-
-            # From this point forward, we have to be on the inference thread, not on a
-            # preprocessing worker, because we need access to the GPU.
-            img = img.to(self.device)
-            img = img.half() if self.half_precision else img.float()
-            img /= 255
-
-            # In practice this is always true
-            if len(img.shape) == 3:
-                img = torch.unsqueeze(img, 0)
-
-            # Run the model
-            pred = self.model(img,augment=augment)[0]
-
-            if 'classic' in self.compatibility_mode:
-                nms_conf_thres = detection_threshold
-                nms_iou_thres = 0.45
-                nms_agnostic = False
-                nms_multi_label = False
-            else:
-                nms_conf_thres = detection_threshold # 0.01
-                nms_iou_thres = 0.6
-                nms_agnostic = False
-                nms_multi_label = True
-
-            # Note to self: we used to do NMS on the CPU on M1 devices, because NMS was
-            # not supported on Apple silicon.  Keeping a commented-out reminder here,
-            # because NMS can complicate testing, and it may be useful to temporarily move
-            # it back to the CPU for debugging in the future.
-            #
-            # pred = pred.cpu()
-
-            # NMS
-            #
-            # At this point "pred" is a tensor of detections, with shape:
-            #
-            # [batch size, number of candidate detections, length of each detection tensor]
-            #
-            # The length of each detection tensor is (number of classes + 5).
-            #
-            # Each detection tensor is formatted as:
-            #
-            # [center_x, center_y, width, height, conf, ...]
-            #
-            # In addition to doing NMS, the non_max_suppression() function converts this to tensor to a list
-            # of detection tensors.  The length of the list is the batch size, and the size of each detection
-            # tensor is [nBoxes,6].  Each detection is formatted as [x0, y0, x1, y1, conf, category].  Detections
-            # within an image are sorted in descending order by confidence.  Pixel coordinates are still absolute.
-            pred = non_max_suppression(prediction=pred,
-                                       conf_thres=nms_conf_thres,
-                                       iou_thres=nms_iou_thres,
-                                       agnostic=nms_agnostic,
-                                       multi_label=nms_multi_label)
-
-            assert isinstance(pred,list)
-
-            # In practice this is [w,h,w,h] of the original image
-            gn = torch.tensor(scaling_shape)[[1, 0, 1, 0]]
-
-            if 'classic' in self.compatibility_mode:
-
-                ratio = None
-                ratio_pad = None
-
-            else:
-
-                # letterbox_pad is a 2-tuple specifying the padding that was added on each axis.
-                #
-                # ratio is a 2-tuple specifying the scaling that was applied to each dimension.
-                #
-                # The scale_boxes function expects a 2-tuple with these things combined.
-                ratio = (img_original.shape[0]/scaling_shape[0], img_original.shape[1]/scaling_shape[1])
-                ratio_pad = (ratio, letterbox_pad)
-
-            # This is a loop over detection batches (i.e., "pred" has length [batch size]).
-            #
-            # det is a torch.Tensor with size [nBoxes,6].  In practice the boxes are sorted
-            # in descending order by confidence.
-            #
-            # Columns are:
-            #
-            # x0,y0,x1,y1,confidence,class
-            #
-            # At this point, these are *non*-normalized values, referring to the size at which we
-            # ran inference (img.shape).
-            #
-            # det = pred[0]
-            for det in pred:
-
-                if len(det) == 0:
-                    continue
-
-                # Rescale boxes from img_size to im0 size, and undo the effect of padded letterboxing
-                if 'classic' in self.compatibility_mode:
-
-                    det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img_original.shape).round()
-
-                else:
-                    # After this scaling, each element of det is a box in x0,y0,x1,y1 format, referring to the
-                    # original pixel dimension of the image, followed by the class and confidence
-                    det[:, :4] = scale_coords(img.shape[2:], det[:, :4], scaling_shape, ratio_pad).round()
-
-                # Loop over detections
-                for *xyxy, conf, cls in reversed(det):
-
-                    if conf < detection_threshold:
-                        continue
-
-                    # Convert this box to normalized cx, cy, w, h (i.e., YOLO format)
-                    xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()
-
-                    # Convert from normalized cx/cy/w/h (i.e., YOLO format) to normalized
-                    # left/top/w/h (i.e., MD format)
-                    api_box = ct_utils.convert_yolo_to_xywh(xywh)
-
-                    if 'classic' in self.compatibility_mode:
-                        api_box = ct_utils.truncate_float_array(api_box, precision=COORD_DIGITS)
-                        conf = ct_utils.truncate_float(conf.tolist(), precision=CONF_DIGITS)
-                    else:
-                        api_box = ct_utils.round_float_array(api_box, precision=COORD_DIGITS)
-                        conf = ct_utils.round_float(conf.tolist(), precision=CONF_DIGITS)
-
-                    if not self.use_model_native_classes:
-                        # The MegaDetector output format's categories start at 1, but all YOLO-based
-                        # MD models have category numbers starting at 0.
-                        cls = int(cls.tolist()) + 1
-                        if cls not in (1, 2, 3):
-                            raise KeyError(f'{cls} is not a valid class.')
-                    else:
-                        cls = int(cls.tolist())
-
-                    detections.append({
-                        'category': str(cls),
-                        'conf': conf,
-                        'bbox': api_box
-                    })
-                    max_conf = max(max_conf, conf)
-
-                # ...for each detection in this batch
-
-            # ...for each detection batch
-
-        # ...try
-
-        except Exception as e:
-
-            result['failure'] = FAILURE_INFER
-            print('PTDetector: image {} failed during inference: {}\n'.format(image_id, str(e)))
-            # traceback.print_exc(e)
-            print(traceback.format_exc())
-
-        result['max_detection_conf'] = max_conf
-        result['detections'] = detections
-
-        return result
+        # Return the single result
+        return batch_results[0]
 
     # ...def generate_detections_one_image(...)
 
