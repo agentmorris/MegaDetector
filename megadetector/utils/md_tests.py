@@ -59,6 +59,9 @@ class MDTestOptions:
         #: Skip tests launched via Python functions (as opposed to CLIs)
         self.skip_python_tests = False
 
+        #: Skip module import tests
+        self.skip_import_tests = False
+
         #: Skip CLI tests
         self.skip_cli_tests = False
 
@@ -795,12 +798,14 @@ def run_python_tests(options):
 
     ## Import tests
 
-    print('\n** Running package import tests **\n')
-    test_package_imports('megadetector.visualization')
-    test_package_imports('megadetector.postprocessing')
-    test_package_imports('megadetector.postprocessing.repeat_detection_elimination')
-    test_package_imports('megadetector.utils',exceptions=['md_tests'])
-    test_package_imports('megadetector.data_management',exceptions=['lila','ocr_tools'])
+    if not options.skip_import_tests:
+
+        print('\n** Running package import tests **\n')
+        test_package_imports('megadetector.visualization')
+        test_package_imports('megadetector.postprocessing')
+        test_package_imports('megadetector.postprocessing.repeat_detection_elimination')
+        test_package_imports('megadetector.utils',exceptions=['md_tests'])
+        test_package_imports('megadetector.data_management',exceptions=['lila','ocr_tools'])
 
 
     ## Return early if we're not running torch-related tests
@@ -1232,10 +1237,45 @@ def run_cli_tests(options):
         options.default_model,image_folder,inference_output_file)
     cmd += ' --output_relative_filenames --quiet --include_image_size'
     cmd += ' --include_image_timestamp --include_exif_data'
+
+    base_cmd = cmd
+
     cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
 
-    base_cmd = cmd
+
+    ## Run again with "modern" postprocessing, make sure the results are *not* the same as classic
+
+    print('\n** Running MD on a folder (with modern preprocessing) (CLI) **\n')
+
+    inference_output_file_modern = insert_before_extension(inference_output_file,'modern')
+    cmd = cmd.replace(inference_output_file,inference_output_file_modern)
+    cmd += ' --detector_options {}'.format(dict_to_kvp_list({'compatibility_mode':'modern'}))
+    cmd_results = execute_and_print(cmd)
+
+    assert not output_files_are_identical(fn1=inference_output_file,
+                                          fn2=inference_output_file_modern,
+                                          verbose=True)
+
+
+    ## Run again with "modern" postprocessing and worker-side preprocessing,
+    ## make sure the results are the same as modern.
+
+    print('\n** Running MD on a folder (with worker-side modern preprocessing) (CLI) **\n')
+
+    inference_output_file_modern_worker_preprocessing = insert_before_extension(inference_output_file,'modern')
+    cmd = cmd.replace(inference_output_file,inference_output_file_modern_worker_preprocessing)
+    cmd += ' --detector_options {}'.format(dict_to_kvp_list({'compatibility_mode':'modern'}))
+    cmd += ' --use_image_queue --preprocess_on_image_queue'
+    cmd_results = execute_and_print(cmd)
+
+    assert not output_files_are_identical(fn1=inference_output_file,
+                                          fn2=inference_output_file_modern_worker_preprocessing,
+                                          verbose=True)
+
+    assert output_files_are_identical(fn1=inference_output_file_modern,
+                                      fn2=inference_output_file_modern_worker_preprocessing,
+                                      verbose=True)
 
 
     ## Run again with checkpointing enabled, make sure the results are the same
@@ -1268,6 +1308,8 @@ def run_cli_tests(options):
                                       fn2=inference_output_file_queue,
                                       verbose=True)
 
+
+    ## Run again with the image queue and worker-side preprocessing enabled, make sure the results are the same
 
     print('\n** Running MD on a folder (with image queue and preprocessing) (CLI) **\n')
 
@@ -1877,6 +1919,11 @@ def main(): # noqa
         '--skip_download_tests',
         action='store_true',
         help='Skip model download tests')
+
+    parser.add_argument(
+        '--skip_import_tests',
+        action='store_true',
+        help='Skip module import tests')
 
     parser.add_argument(
         '--skip_cpu_tests',

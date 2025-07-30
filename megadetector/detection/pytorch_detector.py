@@ -661,14 +661,16 @@ class PTDetector:
         if verbose or (not preprocess_only):
             print('Loading PT detector with compatibility mode {}'.format(compatibility_mode))
 
-        model_metadata = read_metadata_from_megadetector_model_file(model_path)
+        self.model_metadata = read_metadata_from_megadetector_model_file(model_path)
 
-        #: Image size passed to the letterbox() function; 1280 means "1280 on the long side, preserving
-        #: aspect ratio".
-        if model_metadata is not None and 'image_size' in model_metadata:
-            self.default_image_size = model_metadata['image_size']
+        #: Image size passed to the letterbox() function; 1280 means "1280 on the long side,
+        #: preserving aspect ratio".
+        if self.model_metadata is not None and 'image_size' in self.model_metadata:
+            self.default_image_size = self.model_metadata['image_size']
             print('Loaded image size {} from model metadata'.format(self.default_image_size))
         else:
+            # This is not the default for most YOLO models, but most of the time, if someone
+            # is loading a model here that does not have metadata, it's MDv5[ab].0.0
             print('No image size available in model metadata, defaulting to 1280')
             self.default_image_size = 1280
 
@@ -691,11 +693,26 @@ class PTDetector:
         #: "classic".
         self.compatibility_mode = compatibility_mode
 
-        #: Stride size passed to YOLOv5's letterbox() function
+        #: Stride size passed to the YOLO letterbox() function
         self.letterbox_stride = 32
 
-        if 'classic' in self.compatibility_mode:
+        # This is a convenient heuristic to determine the stride size without actually loading
+        # the model: the only models in the YOLO family with a stride size of 64 are the
+        # YOLOv5*6 and YOLOv5*6u models, which are 1280px models.
+        #
+        # See:
+        #
+        # github.com/ultralytics/ultralytics/issues/21544
+        #
+        # Note to self, though, if I decide later to require loading the model on preprocessing
+        # workers so I can more reliably choose a stride, this is the right way to determine the
+        # stride:
+        #
+        # self.letterbox_stride = int(self.model.stride.max())
+        if self.default_image_size == 1280:
             self.letterbox_stride = 64
+
+        print('Using model stride: {}'.format(self.letterbox_stride))
 
         #: Use half-precision inference... fixed by the model, generally don't mess with this
         self.half_precision = False
@@ -903,7 +920,24 @@ class PTDetector:
             pad = 0.5
 
             # Resize to a multiple of the model stride
-            model_stride = int(self.model.stride.max())
+            #
+            # This is how we would determine the stride if we knew the model had been loaded:
+            #
+            # model_stride = int(self.model.stride.max())
+            #
+            # ...but because we do this on preprocessing workers now, we try to avoid loading the model
+            # just for preprocessing, and we assume the stride was determined at the time the PTDetector
+            # object was created.
+            try:
+                model_stride = int(self.model.stride.max())
+                if model_stride != self.letterbox_stride:
+                    print('*** Warning: model stride is {}, stride at construction time was {} ***'.format(
+                        model_stride,self.letterbox_stride
+                    ))
+            except Exception:
+                pass
+
+            model_stride = self.letterbox_stride
             max_dimension = max(img_original.shape)
             normalized_shape = [img_original.shape[0] / max_dimension,
                                 img_original.shape[1] / max_dimension]
@@ -967,10 +1001,6 @@ class PTDetector:
         detections = []
         max_conf = 0.0
 
-        if preprocess_only:
-            assert 'classic' in self.compatibility_mode, \
-                'Standalone preprocessing only supported in "classic" mode'
-
         if detection_threshold is None:
 
             detection_threshold = 0
@@ -994,9 +1024,11 @@ class PTDetector:
             img = image_info['img_processed']
             scaling_shape = image_info['scaling_shape']
             letterbox_pad = image_info['letterbox_pad']
-            letterbox_ratio = image_info['letterbox_ratio']
             img_original = image_info['img_original']
-            img_original_pil = image_info['img_original_pil']
+
+            # Unused, but available
+            # letterbox_ratio = image_info['letterbox_ratio']
+            # img_original_pil = image_info['img_original_pil']
 
             # Convert HWC to CHW (which is what the model expects).  The PIL Image is RGB already,
             # so we don't need to mess with the color channels.
