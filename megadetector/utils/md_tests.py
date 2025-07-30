@@ -1214,7 +1214,10 @@ def run_cli_tests(options):
         if not gpu_available_via_cli:
             raise Exception('GPU execution is required, but not available')
 
-    # Make sure we can also pass an absolute path to a model file, instead of, e.g. "MDV5A"
+
+    ## Make sure we can also pass an absolute path to a model file, instead of, e.g. "MDV5A"
+
+    print('\n** Running MD on a single image (CLI) (with symbolic model name) **\n')
 
     from megadetector.detection.run_detector import try_download_known_detector
     model_file = try_download_known_detector(options.default_model,force_download=False,verbose=False)
@@ -1269,10 +1272,12 @@ def run_cli_tests(options):
     cmd += ' --use_image_queue --preprocess_on_image_queue'
     cmd_results = execute_and_print(cmd)
 
+    # This should not be the same as the "classic" results
     assert not output_files_are_identical(fn1=inference_output_file,
                                           fn2=inference_output_file_modern_worker_preprocessing,
                                           verbose=True)
 
+    # ...but it should be the same as the single-threaded "modern" results
     assert output_files_are_identical(fn1=inference_output_file_modern,
                                       fn2=inference_output_file_modern_worker_preprocessing,
                                       verbose=True)

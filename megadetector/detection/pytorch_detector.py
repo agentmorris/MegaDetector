@@ -839,9 +839,11 @@ class PTDetector:
         # Prepare return dict
         result = {'file': image_id }
 
+        # Store the PIL version of the original image, the caller may want to use
+        # it for metadata extraction later.
         img_original_pil = None
 
-        # If we were given a PIL image
+        # If we were given a PIL image, rather than a numpy array
         if not isinstance(img_original,np.ndarray):
             img_original_pil = img_original
             img_original = np.asarray(img_original)
@@ -970,7 +972,6 @@ class PTDetector:
                                       detection_threshold=0.00001,
                                       image_size=None,
                                       augment=False,
-                                      preprocess_only=False,
                                       verbose=False):
         """
         Run a detector on an image.
@@ -986,7 +987,6 @@ class PTDetector:
             image_size (int, optional): image size (long side) to use for inference, or None to
                 use the default size specified at the time the model was loaded
             augment (bool, optional): enable (implementation-specific) image augmentation
-            preprocess_only (bool, optional): only run preprocessing, and return the preprocessed image
             verbose (bool, optional): enable additional debug output
 
         Returns:
@@ -1009,8 +1009,6 @@ class PTDetector:
 
             # If the image has already been preprocessed
             if isinstance(img_original, dict):
-                assert not preprocess_only, \
-                    'Preprocessed image supplied when calling with preprocess_only=True'
                 image_info = img_original
             else:
                 image_info = self.preprocess_image(
@@ -1018,9 +1016,9 @@ class PTDetector:
                     image_id=image_id,
                     image_size=image_size,
                     verbose=verbose)
-                if preprocess_only:
-                    return image_info
 
+            # At this point, this is a numpy array, whether we were originally passed
+            # a PIL Image or a numpy array.
             img = image_info['img_processed']
             scaling_shape = image_info['scaling_shape']
             letterbox_pad = image_info['letterbox_pad']
@@ -1033,14 +1031,14 @@ class PTDetector:
             # Convert HWC to CHW (which is what the model expects).  The PIL Image is RGB already,
             # so we don't need to mess with the color channels.
             #
-            # TODO: this could be moved into the preprocessing loop, including the
+            # TODO: this could be moved into the preprocessing function, including the
             # conversion to a Torch tensor.
             img = img.transpose((2, 0, 1)) # [::-1]
             img = np.ascontiguousarray(img)
             img = torch.from_numpy(img)
 
-            # At this point, we have to be on the inference worker, not on a
-            # preprocessing worker.
+            # From this point forward, we have to be on the inference thread, not on a
+            # preprocessing worker, because we need access to the GPU.
             img = img.to(self.device)
             img = img.half() if self.half_precision else img.float()
             img /= 255
@@ -1063,19 +1061,36 @@ class PTDetector:
                 nms_agnostic = False
                 nms_multi_label = True
 
-            # Note to self: we used to do this on M1 devices, because NMS was
-            # not supported on Apple silicon.  Keeping this here because NMS
-            # can complicate testing, and it may be useful to temporarily move
+            # Note to self: we used to do NMS on the CPU on M1 devices, because NMS was
+            # not supported on Apple silicon.  Keeping a commented-out reminder here,
+            # because NMS can complicate testing, and it may be useful to temporarily move
             # it back to the CPU for debugging in the future.
             #
             # pred = pred.cpu()
 
             # NMS
+            #
+            # At this point "pred" is a tensor of detections, with shape:
+            #
+            # [batch size, number of candidate detections, length of each detection tensor]
+            #
+            # The length of each detection tensor is (number of classes + 5).
+            #
+            # Each detection tensor is formatted as:
+            #
+            # [center_x, center_y, width, height, conf, ...]
+            #
+            # In addition to doing NMS, the non_max_suppression() function converts this to tensor to a list
+            # of detection tensors.  The length of the list is the batch size, and the size of each detection
+            # tensor is [nBoxes,6].  Each detection is formatted as [x0, y0, x1, y1, conf, category].  Detections
+            # within an image are sorted in descending order by confidence.  Pixel coordinates are still absolute.
             pred = non_max_suppression(prediction=pred,
                                        conf_thres=nms_conf_thres,
                                        iou_thres=nms_iou_thres,
                                        agnostic=nms_agnostic,
                                        multi_label=nms_multi_label)
+
+            assert isinstance(pred,list)
 
             # In practice this is [w,h,w,h] of the original image
             gn = torch.tensor(scaling_shape)[[1, 0, 1, 0]]
@@ -1095,10 +1110,7 @@ class PTDetector:
                 ratio = (img_original.shape[0]/scaling_shape[0], img_original.shape[1]/scaling_shape[1])
                 ratio_pad = (ratio, letterbox_pad)
 
-            # This is a loop over detection batches, which will always be length 1 in our case,
-            # since we're not doing batch inference.
-            #
-            # det = pred[0]
+            # This is a loop over detection batches (i.e., "pred" has length [batch size]).
             #
             # det is a torch.Tensor with size [nBoxes,6].  In practice the boxes are sorted
             # in descending order by confidence.
@@ -1109,6 +1121,8 @@ class PTDetector:
             #
             # At this point, these are *non*-normalized values, referring to the size at which we
             # ran inference (img.shape).
+            #
+            # det = pred[0]
             for det in pred:
 
                 if len(det) == 0:
@@ -1162,7 +1176,7 @@ class PTDetector:
 
                 # ...for each detection in this batch
 
-            # ...for each detection batch (always one iteration)
+            # ...for each detection batch
 
         # ...try
 

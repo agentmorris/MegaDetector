@@ -145,6 +145,8 @@ def _producer_func(q,
     if preprocessor is not None:
         assert isinstance(preprocessor,str)
         detector_options = deepcopy(detector_options)
+        # Tell the detector object it's being loaded as a preprocessor, so it
+        # shouldn't actually load model weights.
         detector_options['preprocess_only'] = True
         preprocessor = load_detector(preprocessor,
                                      detector_options=detector_options,
@@ -160,17 +162,10 @@ def _producer_func(q,
 
             if preprocessor is not None:
 
-                # The function name is a misnomer here; because preprocess_only=True,
-                # this is not generating detections (i.e., it's not running the model),
-                # it's just doing image preprocessing.
-                image_info = preprocessor.generate_detections_one_image(
-                                                  image,
-                                                  im_file,
-                                                  detection_threshold=None,
-                                                  image_size=image_size,
-                                                  augment=augment,
-                                                  preprocess_only=True,
-                                                  verbose=verbose)
+                image_info = preprocessor.preprocess_image(image,
+                                                           image_id=im_file,
+                                                           image_size=image_size,
+                                                           verbose=verbose)
                 if 'failure' in image_info:
                     assert image_info['failure'] == run_detector.FAILURE_INFER
                     raise
@@ -665,6 +660,7 @@ def _process_image(im_file,
         }
         return result
 
+    # If this image has already been preprocessed
     if isinstance(image,dict):
         image = image['img_original_pil']
 
