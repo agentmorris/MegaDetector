@@ -75,7 +75,6 @@ from megadetector.utils.ct_utils import parse_kvp_list
 from megadetector.utils.ct_utils import split_list_into_n_chunks
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 from megadetector.visualization import visualization_utils as vis_utils
-from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.data_management import read_exif
 from megadetector.data_management.yolo_output_to_md_output import read_classes_from_yolo_dataset_file
 
@@ -929,6 +928,7 @@ def load_and_run_detector_batch(model_file,
         loader_workers (int, optional): number of loaders to use, only relevant when use_image_queue is True
         preprocess_on_image_queue (bool, optional): if the image queue is enabled, should it handle
             image loading and preprocessing (True), or just image loading (False)?
+        batch_size (int, optional): batch size for GPU processing, automatically set to 1 for CPU processing
 
     Returns:
         results: list of dicts; each dict represents detections on one image
@@ -1023,9 +1023,7 @@ def load_and_run_detector_batch(model_file,
         # For now, the image queue doesn't support batch processing
         if batch_size > 1:
             print('Warning: batch_size > 1 not yet supported with image queue, using batch_size=1')
-            effective_batch_size = 1
-        else:
-            effective_batch_size = batch_size
+            batch_size = 1
 
         results = _run_detector_with_image_queue(image_file_names,
                                                  model_file,
@@ -1070,7 +1068,7 @@ def load_and_run_detector_batch(model_file,
             # Use batch processing
             image_batches = _group_into_batches(images_to_process, batch_size)
 
-            for batch in tqdm(image_batches, desc='Processing batches'):
+            for batch in tqdm(image_batches):
                 batch_results = _process_batch(batch,
                                                detector,
                                                confidence_threshold,
@@ -1093,7 +1091,7 @@ def load_and_run_detector_batch(model_file,
         else:
 
             # Use non-batch processing
-            for im_file in tqdm(images_to_process, desc='Processing images'):
+            for im_file in tqdm(images_to_process):
 
                 image_count += 1
 

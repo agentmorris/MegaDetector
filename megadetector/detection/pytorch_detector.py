@@ -1131,6 +1131,7 @@ class PTDetector:
         batch_indices = []
         batch_image_ids = []
 
+        # For each image in this batch...
         for original_idx, image_info, current_image_id in group_items:
 
             img = image_info['img_processed']
@@ -1150,8 +1151,16 @@ class PTDetector:
             batch_indices.append(original_idx)
             batch_image_ids.append(current_image_id)
 
+        # ...for each image in this batch
+
         # Stack images into a batch tensor
         batch_tensor = torch.stack(batch_images)
+
+        # This is a useful printout I like to keep around, for *really* confirming that batch processing
+        # is actually happening.
+        if True:
+            if batch_tensor.shape[0] > 1:
+                print('*** Processing a batch of size {} ***'.format(batch_tensor.shape[0]))
 
         # Move to device and convert to appropriate precision
         batch_tensor = batch_tensor.to(self.device)
