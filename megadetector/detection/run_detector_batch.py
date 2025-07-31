@@ -75,6 +75,7 @@ from megadetector.utils.ct_utils import parse_kvp_list
 from megadetector.utils.ct_utils import split_list_into_n_chunks
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 from megadetector.visualization import visualization_utils as vis_utils
+from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.data_management import read_exif
 from megadetector.data_management.yolo_output_to_md_output import read_classes_from_yolo_dataset_file
 
@@ -495,6 +496,166 @@ def _chunks_by_number_of_chunks(ls, n):
         yield ls[i::n]
 
 
+#%% Batch processing helper functions
+
+def _group_into_batches(items, batch_size):
+    """
+    Group items into batches.
+
+    Args:
+        items (list): items to group into batches
+        batch_size (int): size of each batch
+
+    Returns:
+        list: list of batches, where each batch is a list of items
+    """
+
+    if batch_size <= 0:
+        raise ValueError('Batch size must be positive')
+
+    batches = []
+    for i in range(0, len(items), batch_size):
+        batch = items[i:i + batch_size]
+        batches.append(batch)
+
+    return batches
+
+
+def _process_batch(image_files_batch,
+                   detector,
+                   confidence_threshold,
+                   quiet=False,
+                   image_size=None,
+                   include_image_size=False,
+                   include_image_timestamp=False,
+                   include_exif_data=False,
+                   augment=False):
+    """
+    Process a batch of images using generate_detections_one_batch().  Does not necessarily return
+    results in the same order in which they were supplied; in particular, images that fail preprocessing
+    will be returned out of order.
+
+    Args:
+        image_files_batch (list): list of image file paths
+        detector: loaded detector object
+        confidence_threshold (float): confidence threshold for detections
+        quiet (bool, optional): suppress per-image output
+        image_size (int, optional): image size override
+        include_image_size (bool, optional): include image dimensions in results
+        include_image_timestamp (bool, optional): include image timestamps in results
+        include_exif_data (bool, optional): include EXIF data in results
+        augment (bool, optional): whether to use image augmentation
+
+    Returns:
+        list of dict: list of results for each image in the batch
+    """
+
+    # This will be the set of images we send for inference; it may be
+    # smaller than the input list (image_files_batch) if some images
+    # fail to load.  [valid_images] is a list of PIL Image objects.
+    valid_images = []
+    valid_image_filenames = []
+
+    batch_results = []
+
+    for i_image, im_file in enumerate(image_files_batch):
+
+        try:
+
+            image = vis_utils.load_image(im_file)
+            valid_images.append(image)
+            valid_image_filenames.append(im_file)
+
+        except Exception as e:
+
+            print('Image {} cannot be loaded: {}'.format(im_file,str(e)))
+
+            failed_result = {
+                'file': im_file,
+                'failure': run_detector.FAILURE_IMAGE_OPEN
+            }
+            batch_results.append(failed_result)
+
+    # ...for each image in the batch
+
+    assert len(valid_images) == len(valid_image_filenames)
+
+    valid_batch_results = []
+
+    # Process the batch if we have any valid images
+    if len(valid_images) > 0:
+
+        try:
+
+            batch_detections = \
+                detector.generate_detections_one_batch(valid_images, valid_image_filenames)
+
+            assert len(batch_detections) == len(valid_images)
+
+            # Apply confidence threshold and add metadata
+            for i_valid_image,image_result in enumerate(batch_detections):
+
+                assert valid_image_filenames[i_valid_image] == image_result['file']
+
+                if 'failure' not in image_result:
+
+                    # Apply confidence threshold
+                    image_result['detections'] = \
+                        [det for det in image_result['detections'] if det['conf'] >= confidence_threshold]
+
+                    image = valid_images[i_valid_image]
+
+                    if include_image_size:
+
+                        image_result['width'] = image.width
+                        image_result['height'] = image.height
+
+                    if include_image_timestamp:
+
+                        image_result['datetime'] = get_image_datetime(image)
+
+                    if include_exif_data:
+
+                        image_result['exif_metadata'] = read_exif.read_pil_exif(image,exif_options)
+
+                # ...if this image succeeded
+
+                # Failures here should be very rare; there's almost no reason an image would fail
+                # within a batch once it's been loaded
+                else:
+
+                    print('Warning: within-batch processing failure for image {}'.format(
+                        image_result['file']))
+
+                # Add to the list of results for the batch whether or not it succeeded
+                valid_batch_results.append(image_result)
+
+            # ...for each image in this batch
+
+        except Exception as e:
+
+            print('Batch processing failure for {} images: {}'.format(len(valid_images),str(e)))
+
+            # Throw out any successful results for this batch, this should almost never happen
+            valid_batch_results = []
+
+            for image_id in valid_image_filenames:
+                r = {'file':image_id,'failure': run_detector.FAILURE_INFER}
+                valid_batch_results.append(r)
+
+        # ...try/except
+
+        assert len(valid_batch_results) == len(valid_images)
+
+    # ...if we have valid images in this batch
+
+    batch_results.extend(valid_batch_results)
+
+    return batch_results
+
+# ...def _process_batch(...)
+
+
 #%% Image processing functions
 
 def _process_images(im_files,
@@ -731,7 +892,8 @@ def load_and_run_detector_batch(model_file,
                                 force_model_download=False,
                                 detector_options=None,
                                 loader_workers=default_loaders,
-                                preprocess_on_image_queue=default_preprocess_on_image_queue):
+                                preprocess_on_image_queue=default_preprocess_on_image_queue,
+                                batch_size=1):
     """
     Load a model file and run it on a list of images.
 
@@ -834,9 +996,11 @@ def load_and_run_detector_batch(model_file,
                                              force_download=force_model_download,
                                              verbose=verbose)
 
-    print('GPU available: {}'.format(is_gpu_available(model_file)))
+    gpu_available = is_gpu_available(model_file)
 
-    if (n_cores > 1) and is_gpu_available(model_file):
+    print('GPU available: {}'.format(gpu_available))
+
+    if (n_cores > 1) and gpu_available:
 
         print('Warning: multiple cores requested, but a GPU is available; parallelization across ' + \
               'GPUs is not currently supported, defaulting to one GPU')
@@ -855,18 +1019,26 @@ def load_and_run_detector_batch(model_file,
         assert len(results) == 0, \
             'Using an image queue with results loaded from a checkpoint is not currently supported'
         assert n_cores <= 1
+
+        # For now, the image queue doesn't support batch processing
+        if batch_size > 1:
+            print('Warning: batch_size > 1 not yet supported with image queue, using batch_size=1')
+            effective_batch_size = 1
+        else:
+            effective_batch_size = batch_size
+
         results = _run_detector_with_image_queue(image_file_names,
-                                                model_file,
-                                                confidence_threshold,
-                                                quiet,
-                                                image_size=image_size,
-                                                include_image_size=include_image_size,
-                                                include_image_timestamp=include_image_timestamp,
-                                                include_exif_data=include_exif_data,
-                                                augment=augment,
-                                                detector_options=detector_options,
-                                                loader_workers=loader_workers,
-                                                preprocess_on_image_queue=preprocess_on_image_queue)
+                                                 model_file,
+                                                 confidence_threshold,
+                                                 quiet,
+                                                 image_size=image_size,
+                                                 include_image_size=include_image_size,
+                                                 include_image_timestamp=include_image_timestamp,
+                                                 include_exif_data=include_exif_data,
+                                                 augment=augment,
+                                                 detector_options=detector_options,
+                                                 loader_workers=loader_workers,
+                                                 preprocess_on_image_queue=preprocess_on_image_queue)
 
     elif n_cores <= 1:
 
@@ -878,38 +1050,69 @@ def load_and_run_detector_batch(model_file,
         elapsed = time.time() - start_time
         print('Loaded model in {}'.format(humanfriendly.format_timespan(elapsed)))
 
-        # This is only used for console reporting, so it's OK that it doesn't
-        # include images we might have loaded from a previous checkpoint
-        count = 0
+        if (batch_size > 1) and (not gpu_available):
+            print('Batch size of {} requested, but no GPU is available, using batch size 1'.format(
+                batch_size))
+            batch_size = 1
 
-        for im_file in tqdm(image_file_names):
+        # Filter out already processed images
+        images_to_process = [im_file for im_file in image_file_names
+                             if im_file not in already_processed]
 
-            # Will not add additional entries not in the starter checkpoint
-            if im_file in already_processed:
-                if not quiet:
-                    print('Bypassing image {}'.format(im_file))
-                continue
+        if len(images_to_process) != len(image_file_names):
+            print('Bypassing {} images that have already been processed'.format(
+                len(image_file_names) - len(images_to_process)))
 
-            count += 1
+        image_count = 0
 
-            result = _process_image(im_file,
-                                   detector,
-                                   confidence_threshold,
-                                   quiet=quiet,
-                                   image_size=image_size,
-                                   include_image_size=include_image_size,
-                                   include_image_timestamp=include_image_timestamp,
-                                   include_exif_data=include_exif_data,
-                                   augment=augment)
-            results.append(result)
+        if (batch_size > 1):
 
-            # Write a checkpoint if necessary
-            if (checkpoint_frequency != -1) and ((count % checkpoint_frequency) == 0):
+            # Use batch processing
+            image_batches = _group_into_batches(images_to_process, batch_size)
 
-                print('Writing a new checkpoint after having processed {} images since '
-                      'last restart'.format(count))
+            for batch in tqdm(image_batches, desc='Processing batches'):
+                batch_results = _process_batch(batch,
+                                               detector,
+                                               confidence_threshold,
+                                               quiet=quiet,
+                                               image_size=image_size,
+                                               include_image_size=include_image_size,
+                                               include_image_timestamp=include_image_timestamp,
+                                               include_exif_data=include_exif_data,
+                                               augment=augment)
 
-                _write_checkpoint(checkpoint_path, results)
+                results.extend(batch_results)
+                image_count += len(batch)
+
+                # Write a checkpoint if necessary
+                if (checkpoint_frequency != -1) and ((image_count % checkpoint_frequency) == 0):
+                    print('Writing a new checkpoint after having processed {} images since '
+                          'last restart'.format(image_count))
+                    _write_checkpoint(checkpoint_path, results)
+
+        else:
+
+            # Use non-batch processing
+            for im_file in tqdm(images_to_process, desc='Processing images'):
+
+                image_count += 1
+
+                result = _process_image(im_file,
+                                       detector,
+                                       confidence_threshold,
+                                       quiet=quiet,
+                                       image_size=image_size,
+                                       include_image_size=include_image_size,
+                                       include_image_timestamp=include_image_timestamp,
+                                       include_exif_data=include_exif_data,
+                                       augment=augment)
+                results.append(result)
+
+                # Write a checkpoint if necessary
+                if (checkpoint_frequency != -1) and ((image_count % checkpoint_frequency) == 0):
+                    print('Writing a new checkpoint after having processed {} images since '
+                          'last restart'.format(image_count))
+                    _write_checkpoint(checkpoint_path, results)
 
     else:
 
@@ -1433,6 +1636,11 @@ def main(): # noqa
         metavar='KEY=VALUE',
         default='',
         help='Detector-specific options, as a space-separated list of key-value pairs')
+    parser.add_argument(
+        '--batch_size',
+        type=int,
+        default=1,
+        help='Batch size for GPU inference (default 1). CPU inference will ignore this and use batch_size=1.')
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -1679,7 +1887,8 @@ def main(): # noqa
                                           force_model_download=False,
                                           detector_options=detector_options,
                                           loader_workers=args.loader_workers,
-                                          preprocess_on_image_queue=args.preprocess_on_image_queue)
+                                          preprocess_on_image_queue=args.preprocess_on_image_queue,
+                                          batch_size=args.batch_size)
 
     elapsed = time.time() - start_time
     images_per_second = len(results) / elapsed
