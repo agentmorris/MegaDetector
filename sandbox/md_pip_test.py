@@ -2,7 +2,7 @@
 
  md-pip-test.py
 
- Basic test driver to validate a pip install of the MD PyPI package.  
+ Basic test driver to validate a pip install of the MD PyPI package.
 
  The main test driver - which tests both Python and CLI invocation of
  most modules - is in utils/md_tests.py.
