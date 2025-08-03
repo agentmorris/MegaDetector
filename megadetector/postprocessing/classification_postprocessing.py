@@ -505,7 +505,6 @@ def _smooth_classifications_for_list_of_detections(detections,
 
             # If we're doing taxonomic processing, at this stage, don't turn children
             # into parents; we'll likely turn parents into children in the next stage.
-
             if process_taxonomic_rules:
 
                 most_common_category_description = \
@@ -612,10 +611,22 @@ def _smooth_classifications_for_list_of_detections(detections,
                 if len(category_description_candidate_child) == 0:
                     continue
 
+                # This handles a case that doesn't come up with "pure" SpeciesNet results;
+                # if two categories have different IDs but the same "clean" description, this
+                # means they're different common names for the same species, which we use
+                # for things like "white-tailed deer buck" and "white-tailed deer fawn".
+                #
+                # Currently we don't support smoothing those predictions, because it's not a
+                # parent/child relationship.
+                if category_description_candidate_child == \
+                    category_description_this_classification:
+                    continue
+
                 # As long as we're using "clean" descriptions, parent/child taxonomic
                 # relationships are defined by a substring relationship
                 is_child = category_description_this_classification in \
                     category_description_candidate_child
+
                 if not is_child:
                     continue
 
