@@ -1273,7 +1273,7 @@ def run_cli_tests(options):
 
     ## Run again with the image queue enabled
 
-    print('\n** Running MD on a folder (with image queue but no preprocessing) (CLI) **\n')
+    print('\n** Running MD on a folder (with image queue but consumer-side preprocessing) (CLI) **\n')
 
     cmd = base_cmd + ' --use_image_queue'
     inference_output_file_queue = insert_before_extension(inference_output_file,'queue')
@@ -1288,7 +1288,7 @@ def run_cli_tests(options):
 
     ## Run again with the image queue and worker-side preprocessing enabled
 
-    print('\n** Running MD on a folder (with image queue and preprocessing) (CLI) **\n')
+    print('\n** Running MD on a folder (with image queue and worker-side preprocessing) (CLI) **\n')
 
     cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue'
     inference_output_file_preprocess_queue = \
@@ -1323,16 +1323,18 @@ def run_cli_tests(options):
     print('\n** Running MD on a folder (with worker-side preprocessing and batched inference) (CLI) **\n')
 
     batch_string = ' --batch_size {}'.format(options.alternative_batch_size)
-    cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue' + batch_string
+
+    # I reduce the number of loader workers here to force batching to actually appen; with a small
+    # number of images and a few that are intentionally corrupt, with the default number of loader
+    # workers we end up with batches that are mostly just one image.
+    cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue --loader_workers 2' + batch_string
     inference_output_file_queue_batch = \
         insert_before_extension(inference_output_file,'preprocess_queue_batch')
     cmd = cmd.replace(inference_output_file,inference_output_file_queue_batch)
     cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
     cmd_results = execute_and_print(cmd)
 
-    assert output_files_are_identical(fn1=inference_output_file,
-                                      fn2=inference_output_file_queue_batch,
-                                      verbose=True)
+    compare_results(inference_output_file,inference_output_file_queue_batch,batch_options)
 
 
     ## Run again with checkpointing enabled

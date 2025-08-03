@@ -206,7 +206,8 @@ def _consumer_func(q,
                    augment=False,
                    detector_options=None,
                    preprocess_on_image_queue=default_preprocess_on_image_queue,
-                   n_total_images=None
+                   n_total_images=None,
+                   batch_size=1
                    ):
     """
     Consumer function; only used when using the (optional) image queue.
@@ -229,6 +230,7 @@ def _consumer_func(q,
             by different detectors
         preprocess_on_image_queue (bool, optional): whether images are already preprocessed on the queue
         n_total_images (int, optional): total number of images expected (for progress bar)
+        batch_size (int, optional): batch size for GPU inference
     """
 
     if verbose:
@@ -258,29 +260,58 @@ def _consumer_func(q,
         # TODO: in principle I should close this pbar
         pbar = tqdm(total=n_total_images)
 
+    # Batch processing state
+    if batch_size > 1:
+        current_batch_files = []
+
     while True:
 
         r = q.get()
 
         # Is this the last image in one of the producer queues?
         if r is None:
+
             n_queues_finished += 1
             q.task_done()
+
+            # Process any remaining images before checking whether we're done
+            if (batch_size > 1) and (len(current_batch_files) > 0):
+                batch_results = _process_batch(current_batch_files,
+                                               detector,
+                                               confidence_threshold,
+                                               quiet=True,
+                                               image_size=image_size,
+                                               include_image_size=include_image_size,
+                                               include_image_timestamp=include_image_timestamp,
+                                               include_exif_data=include_exif_data,
+                                               augment=augment)
+                results.extend(batch_results)
+
+                if pbar is not None:
+                    pbar.update(len(current_batch_files))
+
+                n_images_processed += len(current_batch_files)
+                current_batch_files = []
+
             if verbose:
                 print('Consumer thread: {} of {} queues finished'.format(
                     n_queues_finished,loader_workers))
+
+            # Was this the last worker to finish?
             if n_queues_finished == loader_workers:
                 return_queue.put(results)
                 return
             else:
                 continue
-        n_images_processed += 1
+
+        # ...if we pulled the sentinel signal (None) telling us that a worker finished
+
+        # At this point, we have a real image (i.e., not a worker-finished sentinel) to process
+
         im_file = r[0]
         image = r[1]
 
-        if pbar is not None:
-            pbar.update(1)
-
+        # This block is sometimes useful for debugging, so I'm leaving it here, but if'd out
         if False:
             if verbose or ((n_images_processed % n_queue_print) == 1):
                 elapsed = time.time() - start_time
@@ -290,28 +321,85 @@ def _consumer_func(q,
                                                               im_file))
                 sys.stdout.flush()
 
+        # Handle failed images immediately (don't batch them)
+        #
+        # Loader workers communicate failures by passing a string to
+        # the consumer, rather than an image.
         if isinstance(image,str):
-            # This is how the producer function communicates read errors
+
             results.append({'file': im_file,
                             'failure': image})
+            n_images_processed += 1
+
+            if pbar is not None:
+                pbar.update(1)
+
+        # This is a catastrophic internal failure; preprocessing workers should
+        # be passing the consumer dicts that represent processed images
         elif preprocess_on_image_queue and (not isinstance(image,dict)):
+
             print('Expected a dict, received an image of type {}'.format(type(image)))
             results.append({'file': im_file,
-                                'failure': 'illegal image type'})
+                            'failure': 'illegal image type'})
+            n_images_processed += 1
+
+            if pbar is not None:
+                pbar.update(1)
 
         else:
-            results.append(_process_image(im_file=im_file,
-                                         detector=detector,
-                                         confidence_threshold=confidence_threshold,
-                                         image=image,
-                                         quiet=True,
-                                         image_size=image_size,
-                                         include_image_size=include_image_size,
-                                         include_image_timestamp=include_image_timestamp,
-                                         include_exif_data=include_exif_data,
-                                         augment=augment))
+
+            # At this point, "image" is either an image (if the producer workers are only
+            # doing loading) or a dict (if the producer workers are doing preprocessing)
+
+            if batch_size > 1:
+
+                # Add to current batch
+                current_batch_files.append(im_file)
+
+                # Process batch when full
+                if len(current_batch_files) >= batch_size:
+                    batch_results = _process_batch(current_batch_files,
+                                                   detector,
+                                                   confidence_threshold,
+                                                   quiet=True,
+                                                   image_size=image_size,
+                                                   include_image_size=include_image_size,
+                                                   include_image_timestamp=include_image_timestamp,
+                                                   include_exif_data=include_exif_data,
+                                                   augment=augment)
+                    results.extend(batch_results)
+
+                    if pbar is not None:
+                        pbar.update(len(current_batch_files))
+
+                    n_images_processed += len(current_batch_files)
+                    current_batch_files = []
+            else:
+
+                # Process single image
+                result = _process_image(im_file=im_file,
+                                        detector=detector,
+                                        confidence_threshold=confidence_threshold,
+                                        image=image,
+                                        quiet=True,
+                                        image_size=image_size,
+                                        include_image_size=include_image_size,
+                                        include_image_timestamp=include_image_timestamp,
+                                        include_exif_data=include_exif_data,
+                                        augment=augment)
+                results.append(result)
+                n_images_processed += 1
+
+                if pbar is not None:
+                    pbar.update(1)
+
+            # ...if we are/aren't doing batch processing
+
+        # ...whether we received a string (indicating failure) or an image from the loader worker
+
         if verbose:
             print('Processed image {}'.format(im_file)); sys.stdout.flush()
+
         q.task_done()
 
     # ...while True (consumer loop)
@@ -330,7 +418,8 @@ def _run_detector_with_image_queue(image_files,
                                    augment=False,
                                    detector_options=None,
                                    loader_workers=default_loaders,
-                                   preprocess_on_image_queue=default_preprocess_on_image_queue):
+                                   preprocess_on_image_queue=default_preprocess_on_image_queue,
+                                   batch_size=1):
     """
     Driver function for the (optional) multiprocessing-based image queue.  Spawns workers to read and
     preprocess images, runs the consumer function in the calling process.
@@ -422,7 +511,8 @@ def _run_detector_with_image_queue(image_files,
                                                           augment,
                                                           detector_options,
                                                           preprocess_on_image_queue,
-                                                          n_total_images))
+                                                          n_total_images,
+                                                          batch_size))
         else:
             consumer = Process(target=_consumer_func,args=(q,
                                                            return_queue,
@@ -436,7 +526,8 @@ def _run_detector_with_image_queue(image_files,
                                                            augment,
                                                            detector_options,
                                                            preprocess_on_image_queue,
-                                                           n_total_images))
+                                                           n_total_images,
+                                                           batch_size))
         consumer.daemon = True
         consumer.start()
     else:
@@ -452,7 +543,8 @@ def _run_detector_with_image_queue(image_files,
                        augment,
                        detector_options,
                        preprocess_on_image_queue,
-                       n_total_images)
+                       n_total_images,
+                       batch_size)
 
     for i_producer,producer in enumerate(producers):
         producer.join()
@@ -1020,10 +1112,7 @@ def load_and_run_detector_batch(model_file,
             'Using an image queue with results loaded from a checkpoint is not currently supported'
         assert n_cores <= 1
 
-        # For now, the image queue doesn't support batch processing
-        if batch_size > 1:
-            print('Warning: batch_size > 1 not yet supported with image queue, using batch_size=1')
-            batch_size = 1
+        # Image queue now supports batch processing
 
         results = _run_detector_with_image_queue(image_file_names,
                                                  model_file,
@@ -1036,7 +1125,8 @@ def load_and_run_detector_batch(model_file,
                                                  augment=augment,
                                                  detector_options=detector_options,
                                                  loader_workers=loader_workers,
-                                                 preprocess_on_image_queue=preprocess_on_image_queue)
+                                                 preprocess_on_image_queue=preprocess_on_image_queue,
+                                                 batch_size=batch_size)
 
     elif n_cores <= 1:
 
