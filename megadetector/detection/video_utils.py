@@ -30,7 +30,7 @@ default_fourcc = 'h264'
 
 #%% Path utilities
 
-VIDEO_EXTENSIONS = ('.mp4','.avi','.mpeg','.mpg','.mov','.mkv')
+VIDEO_EXTENSIONS = ('.mp4','.avi','.mpeg','.mpg','.mov','.mkv','.flv')
 
 def is_video_file(s,video_extensions=VIDEO_EXTENSIONS):
     """
