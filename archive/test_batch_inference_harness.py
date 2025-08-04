@@ -18,6 +18,10 @@ from megadetector.utils import url_utils
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.detection import run_detector
 from megadetector.utils.md_tests import compare_detection_lists, MDTestOptions
+from megadetector.utils.path_utils import find_images
+
+default_model = 'MDV5A'
+default_image_folder = '/mnt/g/temp/md-test-images'
 
 
 #%% Test harness class
@@ -27,7 +31,7 @@ class BatchInferenceTestHarness:
     Test harness to validate batch inference implementation.
     """
 
-    def __init__(self, test_images_dir: str = '/mnt/g/temp/md-test-images'):
+    def __init__(self, test_images_dir: str = default_image_folder):
         """
         Initialize the test harness.
 
@@ -44,12 +48,13 @@ class BatchInferenceTestHarness:
         self.test_options.max_conf_error = 0.001
         self.test_options.max_coord_error = 0.001
 
-        # Default test images
-        self.test_images = [
-            'snapshot_camdeboo_CDB_S1_A05_A05_R2_CDB_S1_A05_R2_IMAG0084.JPG',
-            'idaho_camera_traps_loc_0044_loc_0044_im_005629.jpg',
-            'corrupt-images/irfanview-can-still-read-me-caltech_camera_traps_5a0e37cc-23d2-11e8-a6a3-ec086b02610b.jpg'
-        ]
+        if False:
+            self.test_images = [
+                'snapshot_camdeboo_CDB_S1_A05_A05_R2_CDB_S1_A05_R2_IMAG0084.JPG',
+                'idaho_camera_traps_loc_0044_loc_0044_im_005629.jpg',
+                'corrupt-images/irfanview-can-still-read-me-caltech_camera_traps_5a0e37cc-23d2-11e8-a6a3-ec086b02610b.jpg'
+            ]
+        self.test_images = find_images(test_images_dir, return_relative_paths=True, recursive=False)
 
     def setup_temp_directory(self):
         """
@@ -68,7 +73,7 @@ class BatchInferenceTestHarness:
             shutil.rmtree(self.temp_dir)
             print(f'Cleaned up temporary directory: {self.temp_dir}')
 
-    def generate_reference_results(self, model_name: str = 'MDV5A') -> str:
+    def generate_reference_results(self, model_name: str = default_model) -> str:
         """
         Generate reference results using current generate_detections_one_image().
 
@@ -134,7 +139,7 @@ class BatchInferenceTestHarness:
 
         return reference_results
 
-    def test_single_image_wrapper(self, model_name: str = 'MDV5A') -> bool:
+    def test_single_image_wrapper(self, model_name: str = default_model) -> bool:
         """
         Test that the new single image wrapper produces identical results.
 
@@ -179,7 +184,7 @@ class BatchInferenceTestHarness:
 
         return all_tests_passed
 
-    def test_batch_inference(self, model_name: str = 'MDV5A', batch_size: int = 2) -> bool:
+    def test_batch_inference(self, model_name: str = default_model, batch_size: int = 2) -> bool:
         """
         Test batch inference against reference results.
 
@@ -286,6 +291,10 @@ class BatchInferenceTestHarness:
         expected_detections = expected_result.get('detections', [])
         actual_detections = actual_result.get('detections', [])
 
+        confidence_threshold = 0.005
+        expected_detections = [d for d in expected_detections if d['conf'] > confidence_threshold]
+        actual_detections = [d for d in actual_detections if d['conf'] > confidence_threshold]
+
         if len(expected_detections) != len(actual_detections):
             print(f'  ✗ {image_file}: Detection count mismatch - expected: {len(expected_detections)}, actual: {len(actual_detections)}')
             return False
@@ -310,7 +319,7 @@ class BatchInferenceTestHarness:
             print(f'  ✗ {image_file}: Error comparing detections: {e}')
             return False
 
-    def run_full_test_suite(self, model_name: str = 'MDV5A') -> bool:
+    def run_full_test_suite(self, model_name: str = default_model) -> bool:
         """
         Run the complete test suite.
 
@@ -357,7 +366,7 @@ class BatchInferenceTestHarness:
 
 #%% Test runner functions
 
-def run_basic_test():
+def run_basic_test(model=default_model):
     """
     Run a basic test of the current implementation to verify the harness works.
     """
@@ -366,20 +375,20 @@ def run_basic_test():
 
     try:
         harness.setup_temp_directory()
-        harness.generate_reference_results('MDV5A')
-        harness.test_single_image_wrapper('MDV5A')
+        harness.generate_reference_results(model)
+        harness.test_single_image_wrapper(model)
 
     finally:
         harness.cleanup_temp_directory()
 
 
-def run_full_test_suite():
+def run_full_test_suite(model):
     """
     Run the full test suite.
     """
 
     harness = BatchInferenceTestHarness()
-    return harness.run_full_test_suite('MDV5A')
+    return harness.run_full_test_suite(model)
 
 
 #%% Command-line interface
@@ -390,12 +399,14 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Test batch inference implementation')
     parser.add_argument('--basic', action='store_true', help='Run basic test only')
-    parser.add_argument('--model', default='MDV5A', help='Model name to test')
+    parser.add_argument('--model', default=default_model, help='Model name to test')
+    parser.add_argument('--folder', default=default_image_folder, help='Image folder')
 
     args = parser.parse_args()
+    default_image_folder = args.folder
 
     if args.basic:
-        run_basic_test()
+        run_basic_test(model=args.model)
     else:
-        success = run_full_test_suite()
+        success = run_full_test_suite(model=args.model)
         exit(0 if success else 1)

@@ -18,6 +18,7 @@ import sys
 from typing import List, Dict, Any, Optional
 
 from megadetector.utils.md_tests import compare_detection_lists, MDTestOptions
+from megadetector.utils.process_utils import execute_and_print
 
 
 #%% Test harness class
@@ -39,7 +40,7 @@ class BatchCLIIntegrationTest:
         self.reference_results_file = None
         self.temp_dir = None
         self.model_name = 'MDV5A'
-        
+
         # Test options for comparison
         self.test_options = MDTestOptions()
         self.test_options.max_conf_error = 0.001
@@ -68,7 +69,7 @@ class BatchCLIIntegrationTest:
             shutil.rmtree(self.temp_dir)
             print(f'Cleaned up temporary directory: {self.temp_dir}')
 
-    def _run_detector_batch(self, batch_size: int = 1, 
+    def _run_detector_batch(self, batch_size: int = 1,
                            use_image_queue: bool = False,
                            ncores: int = 1) -> str:
         """
@@ -84,12 +85,14 @@ class BatchCLIIntegrationTest:
         """
 
         output_file = os.path.join(
-            self.temp_dir, 
+            self.temp_dir,
             f'results_batch{batch_size}_queue{use_image_queue}_cores{ncores}.json'
         )
 
+        # executable_command = sys.executable
+        executable_command = 'python'
         cmd = [
-            sys.executable, self.detector_script,
+            executable_command, self.detector_script,
             self.model_name,
             self.test_images_dir,
             output_file,
@@ -107,14 +110,23 @@ class BatchCLIIntegrationTest:
         if ncores != 1:
             cmd.extend(['--ncores', str(ncores)])
 
-        print(f'Running command: {" ".join(cmd)}')
+        cmd = ' '.join(cmd)
+
+        print('Running command: {}'.format(cmd))
 
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            # result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            result_dict = execute_and_print(cmd,
+                                            print_output=True,
+                                            encoding=None,
+                                            errors=None,
+                                            env=None,
+                                            verbose=False,
+                                            catch_exceptions=False,
+                                            echo_command=False)
+
             print(f'Command completed successfully')
-            if result.stdout.strip():
-                print(f'stdout: {result.stdout.strip()}')
-            
+
             return output_file
 
         except subprocess.CalledProcessError as e:
@@ -162,7 +174,7 @@ class BatchCLIIntegrationTest:
         with open(results_file, 'r') as f:
             return json.load(f)
 
-    def compare_results_files(self, expected_file: str, actual_file: str, 
+    def compare_results_files(self, expected_file: str, actual_file: str,
                              test_name: str) -> bool:
         """
         Compare two results files for identical detection results.
@@ -222,8 +234,8 @@ class BatchCLIIntegrationTest:
 
         return all_match
 
-    def _compare_single_result(self, expected_result: Dict[str, Any], 
-                              actual_result: Dict[str, Any], 
+    def _compare_single_result(self, expected_result: Dict[str, Any],
+                              actual_result: Dict[str, Any],
                               file_path: str) -> bool:
         """
         Compare two single image results.
@@ -423,12 +435,13 @@ class BatchCLIIntegrationTest:
 
 #%% Test runner functions
 
-def run_basic_cli_test():
+def run_basic_cli_test(harness=None):
     """
     Run a basic test to verify current CLI works.
     """
 
-    harness = BatchCLIIntegrationTest()
+    if harness is None:
+        harness = BatchCLIIntegrationTest()
 
     try:
         harness.setup_temp_directory()
@@ -439,12 +452,13 @@ def run_basic_cli_test():
         harness.cleanup_temp_directory()
 
 
-def run_full_cli_test_suite():
+def run_full_cli_test_suite(harness=None):
     """
     Run the full CLI integration test suite.
     """
 
-    harness = BatchCLIIntegrationTest()
+    if harness is None:
+        harness = BatchCLIIntegrationTest()
     return harness.run_full_test_suite()
 
 
@@ -460,8 +474,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    harness = BatchCLIIntegrationTest()
+    harness.model_name = args.model
+
     if args.basic:
-        run_basic_cli_test()
+        run_basic_cli_test(harness)
     else:
-        success = run_full_cli_test_suite()
+        success = run_full_cli_test_suite(harness)
         exit(0 if success else 1)
