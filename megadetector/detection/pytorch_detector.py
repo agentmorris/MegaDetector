@@ -835,7 +835,7 @@ class PTDetector:
                 - file (filename)
                 - img (the preprocessed np.array)
                 - img_original (the input image before preprocessing, as an np.array)
-                - img_original_pil (the input image before preprocessing, as a PILImage)
+                - img_original_pil (the input image before preprocessing, as a PIL Image)
                 - target_shape (the 2D shape to which the image was resized during preprocessing)
                 - scaling_shape (the 2D original size, for normalizing coordinates later)
                 - letterbox_ratio (letterbox parameter used for normalizing coordinates later)
@@ -987,7 +987,7 @@ class PTDetector:
                 EXIF rotation already handled, or dicts representing preprocessed images with associated
                 letterbox parameters
             image_id (list or None): list of paths to identify the images; will be in the "file" field
-                of the output objects. Should be None when img_original contains preprocessed dicts.
+                of the output objects. Will be ignored when img_original contains preprocessed dicts.
             detection_threshold (float, optional): only detections above this confidence threshold
                 will be included in the return value
             image_size (int, optional): image size (long side) to use for inference, or None to
@@ -1007,19 +1007,24 @@ class PTDetector:
         if not isinstance(img_original, list):
             raise ValueError('img_original must be a list for batch processing')
 
+        if verbose:
+            print('generate_detections_one_batch: processing a batch of size {}'.format(len(img_original)))
+
         if len(img_original) == 0:
             return []
 
         # Check input consistency
         if isinstance(img_original[0], dict):
-            # All should be preprocessed dicts, image_id should be None
-            if image_id is not None:
-                raise ValueError('image_id must be None when img_original contains preprocessed dicts')
+            # All items in img_original should be preprocessed dicts
+            if verbose:
+                print('This batch contains preprocessed dicts')
             for i, img in enumerate(img_original):
                 if not isinstance(img, dict):
                     raise ValueError(f'Mixed input types in batch: item {i} is not a dict, but item 0 is a dict')
         else:
-            # All should be PIL/numpy, image_id should be a list
+            # All items in img_original should be PIL/numpy images, and image_id should be a list of strings
+            if verbose:
+                print('This batch contains unprocessed images')
             if image_id is None:
                 raise ValueError('image_id must be a list when img_original contains PIL/numpy images')
             if not isinstance(image_id, list):
@@ -1085,6 +1090,10 @@ class PTDetector:
             if actual_shape not in shape_groups:
                 shape_groups[actual_shape] = []
             shape_groups[actual_shape].append((original_idx, image_info, current_image_id))
+
+        if verbose and len(shape_groups) > 1:
+            print('generate_detections_one_batch: batch of size {} split into {} shape-group batches'.\
+                  format(len(preprocessed_images), len(shape_groups)))
 
         # Process each shape group as a batch
         for target_shape, group_items in shape_groups.items():
@@ -1156,11 +1165,9 @@ class PTDetector:
         # Stack images into a batch tensor
         batch_tensor = torch.stack(batch_images)
 
-        # This is a useful printout I like to keep around, for *really* confirming that batch processing
-        # is actually happening.
-        if True:
+        if verbose:
             if batch_tensor.shape[0] > 1:
-                print('*** Processing a batch of size {} ***'.format(batch_tensor.shape[0]))
+                print('_process_batch_group: processing a batch of size {}'.format(batch_tensor.shape[0]))
 
         # Move to device and convert to appropriate precision
         batch_tensor = batch_tensor.to(self.device)

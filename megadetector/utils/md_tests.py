@@ -1804,7 +1804,8 @@ def run_tests(options):
 
 def test_suite_entry_point():
     """
-    Main entry point for the numerical test suite.
+    This is the entry point when running tests via pytest; we run a subset of
+    tests in this environment, e.g. we don't run CLI or video tests.
     """
 
     options = MDTestOptions()
