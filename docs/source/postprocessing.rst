@@ -29,7 +29,15 @@ postprocessing.create\_crop\_folder module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: main
 
+.. sphinx_argparse_cli::
+   :module: megadetector.postprocessing.create_crop_folder
+   :func: main
+   :hook:
+   :prog: create_crop_folder
+   :no_default_values:
+   
 postprocessing.classification\_postprocessing module
 ----------------------------------------------------
 

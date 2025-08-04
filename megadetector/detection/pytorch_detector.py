@@ -14,7 +14,6 @@ import math
 import zipfile
 import tempfile
 import shutil
-import traceback
 import uuid
 import json
 import inspect
@@ -24,7 +23,7 @@ import torch
 import numpy as np
 
 from megadetector.detection.run_detector import \
-    CONF_DIGITS, COORD_DIGITS, FAILURE_INFER, \
+    CONF_DIGITS, COORD_DIGITS, FAILURE_INFER, FAILURE_IMAGE_OPEN, \
     get_detector_version_from_model_file, \
     known_models
 from megadetector.utils.ct_utils import parse_bool_string
@@ -454,14 +453,14 @@ def _initialize_yolo_imports(model_type='yolov5',
         try:
 
             # import pre- and post-processing functions from the YOLOv5 repo
-            from utils.general import non_max_suppression, xyxy2xywh # noqa
-            from utils.augmentations import letterbox # noqa
+            from utils.general import non_max_suppression, xyxy2xywh # type: ignore
+            from utils.augmentations import letterbox # type: ignore
 
             # scale_coords() is scale_boxes() in some YOLOv5 versions
             try:
-                from utils.general import scale_coords # noqa
+                from utils.general import scale_coords # type: ignore
             except ImportError:
-                from utils.general import scale_boxes as scale_coords
+                from utils.general import scale_boxes as scale_coords # type: ignore
             utils_imported = True
             imported_file = sys.modules[scale_coords.__module__].__file__
             if verbose:
@@ -593,6 +592,8 @@ def read_metadata_from_megadetector_model_file(model_file,
 
         return d
 
+    # ...with zipfile.Zipfile(...)
+
 # ...def read_metadata_from_megadetector_model_file(...)
 
 
@@ -606,10 +607,15 @@ require_non_default_compatibility_mode = False
 
 class PTDetector:
     """
-    Class that runs a PyTorch-based MegaDetector model.
+    Class that runs a PyTorch-based MegaDetector model.  Also used as a preprocessor
+    for images that will later be run through an instance of PTDetector.
     """
 
     def __init__(self, model_path, detector_options=None, verbose=False):
+        """
+        PTDetector constructor.  If detector_options['preprocess_only'] exists and is
+        True, this instance is being used as a preprocessor, so we don't load model weights.
+        """
 
         if verbose:
             print('Initializing PTDetector (verbose)')
@@ -637,6 +643,8 @@ class PTDetector:
                 else:
                     compatibility_mode = detector_options['compatibility_mode']
 
+        # This is a global option used only during testing, to make sure I'm hitting
+        # the cases where we are not using "classic" preprocessing.
         if require_non_default_compatibility_mode:
 
             print('### DEBUG: requiring non-default compatibility mode ###')
@@ -652,14 +660,16 @@ class PTDetector:
         if verbose or (not preprocess_only):
             print('Loading PT detector with compatibility mode {}'.format(compatibility_mode))
 
-        model_metadata = read_metadata_from_megadetector_model_file(model_path)
+        self.model_metadata = read_metadata_from_megadetector_model_file(model_path)
 
-        #: Image size passed to the letterbox() function; 1280 means "1280 on the long side, preserving
-        #: aspect ratio".
-        if model_metadata is not None and 'image_size' in model_metadata:
-            self.default_image_size = model_metadata['image_size']
+        #: Image size passed to the letterbox() function; 1280 means "1280 on the long side,
+        #: preserving aspect ratio".
+        if self.model_metadata is not None and 'image_size' in self.model_metadata:
+            self.default_image_size = self.model_metadata['image_size']
             print('Loaded image size {} from model metadata'.format(self.default_image_size))
         else:
+            # This is not the default for most YOLO models, but most of the time, if someone
+            # is loading a model here that does not have metadata, it's MDv5[ab].0.0
             print('No image size available in model metadata, defaulting to 1280')
             self.default_image_size = 1280
 
@@ -682,11 +692,26 @@ class PTDetector:
         #: "classic".
         self.compatibility_mode = compatibility_mode
 
-        #: Stride size passed to YOLOv5's letterbox() function
+        #: Stride size passed to the YOLO letterbox() function
         self.letterbox_stride = 32
 
-        if 'classic' in self.compatibility_mode:
+        # This is a convenient heuristic to determine the stride size without actually loading
+        # the model: the only models in the YOLO family with a stride size of 64 are the
+        # YOLOv5*6 and YOLOv5*6u models, which are 1280px models.
+        #
+        # See:
+        #
+        # github.com/ultralytics/ultralytics/issues/21544
+        #
+        # Note to self, though, if I decide later to require loading the model on preprocessing
+        # workers so I can more reliably choose a stride, this is the right way to determine the
+        # stride:
+        #
+        # self.letterbox_stride = int(self.model.stride.max())
+        if self.default_image_size == 1280:
             self.letterbox_stride = 64
+
+        print('Using model stride: {}'.format(self.letterbox_stride))
 
         #: Use half-precision inference... fixed by the model, generally don't mess with this
         self.half_precision = False
@@ -715,7 +740,7 @@ class PTDetector:
             # to be the same, so doing that externally doesn't seem *that* rude.
             if "Can't get attribute 'DetectionModel'" in str(e):
                 print('Forward-compatibility issue detected, patching')
-                from models import yolo
+                from models import yolo # type: ignore
                 yolo.DetectionModel = yolo.Model
                 self.model = PTDetector._load_model(model_path,
                                                     device=self.device,
@@ -738,9 +763,11 @@ class PTDetector:
         # There are two very slightly different ways to load the model, (1) using the
         # map_location=device parameter to torch.load and (2) calling .to(device) after
         # loading the model.  The former is what we did for a zillion years, but is not
-        # supported on Apple silicon at of 2029.09.  Switching to the latter causes
+        # supported on Apple silicon at of 2024.09.  Switching to the latter causes
         # very slight changes to the output, which always make me nervous, so I'm not
-        # doing a wholesale swap just yet.  Instead, we'll just do this on M1 hardware.
+        # doing a wholesale swap just yet.  Instead, when running in "classic" compatibility
+        # mode, we'll only use map_location on M1 hardware, where at least at some point
+        # there was not a choice.
         if 'classic' in compatibility_mode:
             use_map_location = (device != 'mps')
         else:
@@ -784,286 +811,427 @@ class PTDetector:
     # ...def _load_model(...)
 
 
-    def generate_detections_one_image(self,
-                                      img_original,
-                                      image_id='unknown',
-                                      detection_threshold=0.00001,
-                                      image_size=None,
-                                      skip_image_resizing=False,
-                                      augment=False,
-                                      preprocess_only=False,
-                                      verbose=False):
+    def preprocess_image(self,
+                         img_original,
+                         image_id='unknown',
+                         image_size=None,
+                         verbose=False):
         """
-        Applies the detector to an image.
+        Prepare an image for detection, including scaling and letterboxing.
 
         Args:
-            img_original (Image): the PIL Image object (or numpy array) on which we should run the
-                detector, with EXIF rotation already handled
+            img_original (Image or np.array): the image on which we should run the detector, with
+                EXIF rotation already handled
             image_id (str, optional): a path to identify the image; will be in the "file" field
                 of the output object
             detection_threshold (float, optional): only detections above this confidence threshold
                 will be included in the return value
-            image_size (int, optional): image size to use for inference, only mess with this if
-                (a) you're using a model other than MegaDetector or (b) you know what you're getting into
-            skip_image_resizing (bool, optional): whether to skip internal image resizing (and rely on
-                external resizing), only mess with this if (a) you're using a model other than MegaDetector
-                or (b) you know what you're getting into
-            augment (bool, optional): enable (implementation-specific) image augmentation
-            preprocess_only (bool, optional): only run preprocessing, and return the preprocessed image
+            image_size (int, optional): image size (long side) to use for inference, or None to
+                use the default size specified at the time the model was loaded
             verbose (bool, optional): enable additional debug output
 
         Returns:
-            dict: a dictionary with the following fields:
+            dict: dict with fields:
+                - file (filename)
+                - img (the preprocessed np.array)
+                - img_original (the input image before preprocessing, as an np.array)
+                - img_original_pil (the input image before preprocessing, as a PIL Image)
+                - target_shape (the 2D shape to which the image was resized during preprocessing)
+                - scaling_shape (the 2D original size, for normalizing coordinates later)
+                - letterbox_ratio (letterbox parameter used for normalizing coordinates later)
+                - letterbox_pad (letterbox parameter used for normalizing coordinates later)
+        """
+
+        # Prepare return dict
+        result = {'file': image_id }
+
+        # Store the PIL version of the original image, the caller may want to use
+        # it for metadata extraction later.
+        img_original_pil = None
+
+        # If we were given a PIL image, rather than a numpy array
+        if not isinstance(img_original,np.ndarray):
+            img_original_pil = img_original
+            img_original = np.asarray(img_original)
+
+        # PIL images are RGB already
+        # img_original = img_original[:, :, ::-1]
+
+        # Save the original shape for scaling boxes later
+        scaling_shape = img_original.shape
+
+        # If the caller is requesting a specific target size...
+        if image_size is not None:
+
+            assert isinstance(image_size,int)
+
+            if not self.printed_image_size_warning:
+                print('Using user-supplied image size {}'.format(image_size))
+                self.printed_image_size_warning = True
+
+        # Otherwise resize to self.default_image_size
+        else:
+
+            image_size = self.default_image_size
+            self.printed_image_size_warning = False
+
+        # ...if the caller has specified an image size
+
+        # In "classic mode", we only do the letterboxing resize, we don't do an
+        # additional initial resizing operation
+        if 'classic' in self.compatibility_mode:
+
+            resize_ratio = 1.0
+
+        # Resize the image so the long side matches the target image size.  This is not
+        # letterboxing (i.e., padding) yet, just resizing.
+        else:
+
+            use_ceil_for_resize = ('use_ceil_for_resize' in self.compatibility_mode)
+
+            h,w = img_original.shape[:2]
+            resize_ratio = image_size / max(h,w)
+
+            # Only resize if we have to
+            if resize_ratio != 1:
+
+                # Match what yolov5 does: use linear interpolation for upsizing;
+                # area interpolation for downsizing
+                if resize_ratio > 1:
+                    interpolation_method = cv2.INTER_LINEAR
+                else:
+                    interpolation_method = cv2.INTER_AREA
+
+                if use_ceil_for_resize:
+                    target_w = math.ceil(w * resize_ratio)
+                    target_h = math.ceil(h * resize_ratio)
+                else:
+                    target_w = int(w * resize_ratio)
+                    target_h = int(h * resize_ratio)
+
+                img_original = cv2.resize(
+                    img_original, (target_w, target_h),
+                    interpolation=interpolation_method)
+
+        if 'classic' in self.compatibility_mode:
+
+            letterbox_auto = True
+            letterbox_scaleup = True
+            target_shape = image_size
+
+        else:
+
+            letterbox_auto = False
+            letterbox_scaleup = False
+
+            # The padding to apply as a fraction of the stride size
+            pad = 0.5
+
+            # Resize to a multiple of the model stride
+            #
+            # This is how we would determine the stride if we knew the model had been loaded:
+            #
+            # model_stride = int(self.model.stride.max())
+            #
+            # ...but because we do this on preprocessing workers now, we try to avoid loading the model
+            # just for preprocessing, and we assume the stride was determined at the time the PTDetector
+            # object was created.
+            try:
+                model_stride = int(self.model.stride.max())
+                if model_stride != self.letterbox_stride:
+                    print('*** Warning: model stride is {}, stride at construction time was {} ***'.format(
+                        model_stride,self.letterbox_stride
+                    ))
+            except Exception:
+                pass
+
+            model_stride = self.letterbox_stride
+            max_dimension = max(img_original.shape)
+            normalized_shape = [img_original.shape[0] / max_dimension,
+                                img_original.shape[1] / max_dimension]
+            target_shape = np.ceil(((np.array(normalized_shape) * image_size) / model_stride) + \
+                                   pad).astype(int) * model_stride
+
+        # Now we letterbox, which is just padding, since we've already resized
+        img,letterbox_ratio,letterbox_pad = letterbox(img_original,
+                                                      new_shape=target_shape,
+                                                      stride=self.letterbox_stride,
+                                                      auto=letterbox_auto,
+                                                      scaleFill=False,
+                                                      scaleup=letterbox_scaleup)
+
+        result['img_processed'] = img
+        result['img_original'] = img_original
+        result['img_original_pil'] = img_original_pil
+        result['target_shape'] = target_shape
+        result['scaling_shape'] = scaling_shape
+        result['letterbox_ratio'] = letterbox_ratio
+        result['letterbox_pad'] = letterbox_pad
+        return result
+
+    # ...def preprocess_image(...)
+
+
+    def generate_detections_one_batch(self,
+                                      img_original,
+                                      image_id=None,
+                                      detection_threshold=0.00001,
+                                      image_size=None,
+                                      augment=False,
+                                      verbose=False):
+        """
+        Run a detector on a batch of images.
+
+        Args:
+            img_original (list): list of images (Image, np.array, or dict) on which we should run the detector, with
+                EXIF rotation already handled, or dicts representing preprocessed images with associated
+                letterbox parameters
+            image_id (list or None): list of paths to identify the images; will be in the "file" field
+                of the output objects. Will be ignored when img_original contains preprocessed dicts.
+            detection_threshold (float, optional): only detections above this confidence threshold
+                will be included in the return value
+            image_size (int, optional): image size (long side) to use for inference, or None to
+                use the default size specified at the time the model was loaded
+            augment (bool, optional): enable (implementation-specific) image augmentation
+            verbose (bool, optional): enable additional debug output
+
+        Returns:
+            list: a list of dictionaries, each with the following fields:
                 - 'file' (filename, always present)
                 - 'max_detection_conf' (removed from MegaDetector output files by default, but generated here)
                 - 'detections' (a list of detection objects containing keys 'category', 'conf', and 'bbox')
                 - 'failure' (a failure string, or None if everything went fine)
         """
 
-        result = {'file': image_id }
-        detections = []
-        max_conf = 0.0
+        # Validate inputs
+        if not isinstance(img_original, list):
+            raise ValueError('img_original must be a list for batch processing')
 
-        if preprocess_only:
-            assert 'classic' in self.compatibility_mode, \
-                'Standalone preprocessing only supported in "classic" mode'
-            assert not skip_image_resizing, \
-                'skip_image_resizing and preprocess_only are exclusive'
+        if verbose:
+            print('generate_detections_one_batch: processing a batch of size {}'.format(len(img_original)))
+
+        if len(img_original) == 0:
+            return []
+
+        # Check input consistency
+        if isinstance(img_original[0], dict):
+            # All items in img_original should be preprocessed dicts
+            if verbose:
+                print('This batch contains preprocessed dicts')
+            for i, img in enumerate(img_original):
+                if not isinstance(img, dict):
+                    raise ValueError(f'Mixed input types in batch: item {i} is not a dict, but item 0 is a dict')
+        else:
+            # All items in img_original should be PIL/numpy images, and image_id should be a list of strings
+            if verbose:
+                print('This batch contains unprocessed images')
+            if image_id is None:
+                raise ValueError('image_id must be a list when img_original contains PIL/numpy images')
+            if not isinstance(image_id, list):
+                raise ValueError('image_id must be a list for batch processing')
+            if len(image_id) != len(img_original):
+                raise ValueError(
+                    'Length mismatch: img_original has {} items, image_id has {} items'.format(
+                    len(img_original),len(image_id)))
+            for i_img, img in enumerate(img_original):
+                if isinstance(img, dict):
+                    raise ValueError(
+                        'Mixed input types in batch: item {} is a dict, but item 0 is not a dict'.format(
+                            i_img))
 
         if detection_threshold is None:
+            detection_threshold = 0.0
 
-            detection_threshold = 0
+        batch_size = len(img_original)
+        results = [None] * batch_size
 
-        try:
+        # Preprocess all images, handling failures
+        preprocessed_images = []
+        preprocessing_failed_indices = set()
 
-            # If the caller wants us to skip all the resizing operations...
-            if skip_image_resizing:
+        for i_img, img in enumerate(img_original):
 
-                if isinstance(img_original,dict):
-                    image_info = img_original
-                    img = image_info['img_processed']
-                    scaling_shape = image_info['scaling_shape']
-                    letterbox_pad = image_info['letterbox_pad']
-                    letterbox_ratio = image_info['letterbox_ratio']
-                    img_original = image_info['img_original']
-                    img_original_pil = image_info['img_original_pil']
+            try:
+                if isinstance(img, dict):
+                    # Already preprocessed
+                    image_info = img
+                    current_image_id = image_info['file']
                 else:
-                    img = img_original
+                    # Need to preprocess
+                    current_image_id = image_id[i_img]
+                    image_info = self.preprocess_image(
+                        img_original=img,
+                        image_id=current_image_id,
+                        image_size=image_size,
+                        verbose=verbose)
 
-            else:
+                preprocessed_images.append((i_img, image_info, current_image_id))
 
-                img_original_pil = None
-                # If we were given a PIL image
+            except Exception as e:
+                if verbose:
+                    print('Preprocessing failed for image {}: {}'.format(
+                        image_id[i_img] if image_id else f'index_{i_img}', str(e)))
 
-                if not isinstance(img_original,np.ndarray):
-                    img_original_pil = img_original
-                    img_original = np.asarray(img_original)
+                preprocessing_failed_indices.add(i_img)
+                current_image_id = image_id[i_img] if image_id else f'index_{i_img}'
+                results[i_img] = {
+                    'file': current_image_id,
+                    'detections': None,
+                    'failure': FAILURE_IMAGE_OPEN
+                }
 
-                # PIL images are RGB already
-                # img_original = img_original[:, :, ::-1]
+        # ...for each image in this batch
 
-                # Save the original shape for scaling boxes later
-                scaling_shape = img_original.shape
+        # Group preprocessed images by actual processed image shape for batching
+        shape_groups = {}
+        for original_idx, image_info, current_image_id in preprocessed_images:
+            # Use the actual processed image shape for grouping, not target_shape
+            actual_shape = tuple(image_info['img_processed'].shape)
+            if actual_shape not in shape_groups:
+                shape_groups[actual_shape] = []
+            shape_groups[actual_shape].append((original_idx, image_info, current_image_id))
 
-                # If the caller is requesting a specific target size...
-                if image_size is not None:
+        if verbose and len(shape_groups) > 1:
+            print('generate_detections_one_batch: batch of size {} split into {} shape-group batches'.\
+                  format(len(preprocessed_images), len(shape_groups)))
 
-                    assert isinstance(image_size,int)
+        # Process each shape group as a batch
+        for target_shape, group_items in shape_groups.items():
+            try:
+                self._process_batch_group(group_items, results, detection_threshold, augment, verbose)
+            except Exception as e:
+                # If inference fails for the entire batch, mark all images in this batch as failed
+                if verbose:
+                    print('Batch inference failed for shape {}: {}'.format(target_shape, str(e)))
 
-                    if not self.printed_image_size_warning:
-                        print('Using user-supplied image size {}'.format(image_size))
-                        self.printed_image_size_warning = True
+                for original_idx, image_info, current_image_id in group_items:
+                    results[original_idx] = {
+                        'file': current_image_id,
+                        'detections': None,
+                        'failure': FAILURE_INFER
+                    }
 
-                # Otherwise resize to self.default_image_size
-                else:
+        return results
 
-                    image_size = self.default_image_size
-                    self.printed_image_size_warning = False
+    def _process_batch_group(self, group_items, results, detection_threshold, augment, verbose):
+        """
+        Process a group of images with the same target shape as a single batch.
 
-                # ...if the caller has specified an image size
+        Args:
+            group_items (list): List of (original_idx, image_info, current_image_id) tuples
+            results (list): Results list to populate (modified in place)
+            detection_threshold (float): Detection confidence threshold
+            augment (bool): Enable augmentation
+            verbose (bool): Enable verbose output
 
-                # In "classic mode", we only do the letterboxing resize, we don't do an
-                # additional initial resizing operation
-                if 'classic' in self.compatibility_mode:
+        Returns:
+            list of dict: list of dictionaries the same length as group_items, with fields 'file',
+            'detections', 'max_detection_conf'.
+        """
 
-                    resize_ratio = 1.0
+        if len(group_items) == 0:
+            return
 
-                # Resize the image so the long side matches the target image size.  This is not
-                # letterboxing (i.e., padding) yet, just resizing.
-                else:
+        # Extract batch data
+        batch_images = []
+        batch_scaling_shapes = []
+        batch_letterbox_pads = []
+        batch_img_originals = []
+        batch_indices = []
+        batch_image_ids = []
 
-                    use_ceil_for_resize = ('use_ceil_for_resize' in self.compatibility_mode)
+        # For each image in this batch...
+        for original_idx, image_info, current_image_id in group_items:
 
-                    h,w = img_original.shape[:2]
-                    resize_ratio = image_size / max(h,w)
+            img = image_info['img_processed']
+            scaling_shape = image_info['scaling_shape']
+            letterbox_pad = image_info['letterbox_pad']
+            img_original = image_info['img_original']
 
-                    # Only resize if we have to
-                    if resize_ratio != 1:
-
-                        # Match what yolov5 does: use linear interpolation for upsizing;
-                        # area interpolation for downsizing
-                        if resize_ratio > 1:
-                            interpolation_method = cv2.INTER_LINEAR
-                        else:
-                            interpolation_method = cv2.INTER_AREA
-
-                        if use_ceil_for_resize:
-                            target_w = math.ceil(w * resize_ratio)
-                            target_h = math.ceil(h * resize_ratio)
-                        else:
-                            target_w = int(w * resize_ratio)
-                            target_h = int(h * resize_ratio)
-
-                        img_original = cv2.resize(
-                            img_original, (target_w, target_h),
-                            interpolation=interpolation_method)
-
-                if 'classic' in self.compatibility_mode:
-
-                    letterbox_auto = True
-                    letterbox_scaleup = True
-                    target_shape = image_size
-
-                else:
-
-                    letterbox_auto = False
-                    letterbox_scaleup = False
-
-                    # The padding to apply as a fraction of the stride size
-                    pad = 0.5
-
-                    model_stride = int(self.model.stride.max())
-
-                    max_dimension = max(img_original.shape)
-                    normalized_shape = [img_original.shape[0] / max_dimension,
-                                        img_original.shape[1] / max_dimension]
-                    target_shape = np.ceil(np.array(normalized_shape) * image_size / model_stride + \
-                                           pad).astype(int) * model_stride
-
-                # Now we letterbox, which is just padding, since we've already resized.
-                img,letterbox_ratio,letterbox_pad = letterbox(img_original,
-                                                              new_shape=target_shape,
-                                                              stride=self.letterbox_stride,
-                                                              auto=letterbox_auto,
-                                                              scaleFill=False,
-                                                              scaleup=letterbox_scaleup)
-
-                if preprocess_only:
-
-                    assert 'file' in result
-                    result['img_processed'] = img
-                    result['img_original'] = img_original
-                    result['img_original_pil'] = img_original_pil
-                    result['target_shape'] = target_shape
-                    result['scaling_shape'] = scaling_shape
-                    result['letterbox_ratio'] = letterbox_ratio
-                    result['letterbox_pad'] = letterbox_pad
-                    return result
-
-            # ...are we doing resizing here, or were images already resized?
-
-            # Convert HWC to CHW (which is what the model expects).  The PIL Image is RGB already,
-            # so we don't need to mess with the color channels.
-            #
-            # TODO, this could be moved into the preprocessing loop
-
-            img = img.transpose((2, 0, 1)) # [::-1]
+            # Convert HWC to CHW and prepare tensor
+            img = img.transpose((2, 0, 1))
             img = np.ascontiguousarray(img)
             img = torch.from_numpy(img)
-            img = img.to(self.device)
-            img = img.half() if self.half_precision else img.float()
-            img /= 255
 
-            # In practice this is always true
-            if len(img.shape) == 3:
-                img = torch.unsqueeze(img, 0)
+            batch_images.append(img)
+            batch_scaling_shapes.append(scaling_shape)
+            batch_letterbox_pads.append(letterbox_pad)
+            batch_img_originals.append(img_original)
+            batch_indices.append(original_idx)
+            batch_image_ids.append(current_image_id)
 
-            # Run the model
-            pred = self.model(img,augment=augment)[0]
+        # ...for each image in this batch
 
-            if 'classic' in self.compatibility_mode:
-                nms_conf_thres = detection_threshold
-                nms_iou_thres = 0.45
-                nms_agnostic = False
-                nms_multi_label = False
-            else:
-                nms_conf_thres = detection_threshold # 0.01
-                nms_iou_thres = 0.6
-                nms_agnostic = False
-                nms_multi_label = True
+        # Stack images into a batch tensor
+        batch_tensor = torch.stack(batch_images)
 
-            # Note to self: we used to do this on M1 devices, because NMS was
-            # not supported on Apple silicon.  Keeping this here because NMS
-            # can complicate testing, and it may be useful to temporarily move
-            # it back to the CPU for debugging in the future.
-            #
-            # pred = pred.cpu()
+        if verbose:
+            if batch_tensor.shape[0] > 1:
+                print('_process_batch_group: processing a batch of size {}'.format(batch_tensor.shape[0]))
 
-            # NMS
-            pred = non_max_suppression(prediction=pred,
-                                       conf_thres=nms_conf_thres,
-                                       iou_thres=nms_iou_thres,
-                                       agnostic=nms_agnostic,
-                                       multi_label=nms_multi_label)
+        # Move to device and convert to appropriate precision
+        batch_tensor = batch_tensor.to(self.device)
+        batch_tensor = batch_tensor.half() if self.half_precision else batch_tensor.float()
+        batch_tensor /= 255
 
-            # In practice this is [w,h,w,h] of the original image
-            gn = torch.tensor(scaling_shape)[[1, 0, 1, 0]]
+        # Run the model on the batch
+        pred = self.model(batch_tensor, augment=augment)[0]
 
-            if 'classic' in self.compatibility_mode:
+        # Configure NMS parameters
+        if 'classic' in self.compatibility_mode:
+            nms_conf_thres = detection_threshold
+            nms_iou_thres = 0.45
+            nms_agnostic = False
+            nms_multi_label = False
+        else:
+            nms_conf_thres = detection_threshold
+            nms_iou_thres = 0.6
+            nms_agnostic = False
+            nms_multi_label = True
 
-                ratio = None
-                ratio_pad = None
+        # Apply NMS to the whole batch
+        pred = non_max_suppression(prediction=pred,
+                                   conf_thres=nms_conf_thres,
+                                   iou_thres=nms_iou_thres,
+                                   agnostic=nms_agnostic,
+                                   multi_label=nms_multi_label)
 
-            else:
+        assert isinstance(pred, list)
+        assert len(pred) == len(batch_indices), f'Prediction length {len(pred)} != batch size {len(batch_indices)}'
 
-                # letterbox_pad is a 2-tuple specifying the padding that was added on each axis.
-                #
-                # ratio is a 2-tuple specifying the scaling that was applied to each dimension.
-                #
-                # The scale_boxes function expects a 2-tuple with these things combined.
-                ratio = (img_original.shape[0]/scaling_shape[0], img_original.shape[1]/scaling_shape[1])
-                ratio_pad = (ratio, letterbox_pad)
+        # Process each image's detections
+        for _, (det, original_idx, scaling_shape, letterbox_pad, img_original, current_image_id) in enumerate(
+            zip(pred, batch_indices, batch_scaling_shapes,
+                batch_letterbox_pads, batch_img_originals, batch_image_ids,
+                strict=True)):
 
-            # This is a loop over detection batches, which will always be length 1 in our case,
-            # since we're not doing batch inference.
-            #
-            # det = pred[0]
-            #
-            # det is a torch.Tensor with size [nBoxes,6].  In practice the boxes are sorted
-            # in descending order by confidence.
-            #
-            # Columns are:
-            #
-            # x0,y0,x1,y1,confidence,class
-            #
-            # At this point, these are *non*-normalized values, referring to the size at which we
-            # ran inference (img.shape).
-            for det in pred:
+            detections = []
+            max_conf = 0.0
 
-                if len(det) == 0:
-                    continue
+            if len(det) > 0:
+                # Prepare scaling parameters
+                gn = torch.tensor(scaling_shape)[[1, 0, 1, 0]]
 
-                # Rescale boxes from img_size to im0 size, and undo the effect of padded letterboxing
                 if 'classic' in self.compatibility_mode:
-
-                    det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img_original.shape).round()
-
+                    ratio = None
+                    ratio_pad = None
                 else:
-                    # After this scaling, each element of det is a box in x0,y0,x1,y1 format, referring to the
-                    # original pixel dimension of the image, followed by the class and confidence
-                    det[:, :4] = scale_coords(img.shape[2:], det[:, :4], scaling_shape, ratio_pad).round()
+                    ratio = (img_original.shape[0]/scaling_shape[0], img_original.shape[1]/scaling_shape[1])
+                    ratio_pad = (ratio, letterbox_pad)
 
-                # Loop over detections
+                # Rescale boxes
+                if 'classic' in self.compatibility_mode:
+                    det[:, :4] = scale_coords(batch_tensor.shape[2:], det[:, :4], img_original.shape).round()
+                else:
+                    det[:, :4] = scale_coords(batch_tensor.shape[2:], det[:, :4], scaling_shape, ratio_pad).round()
+
+                # Process each detection
                 for *xyxy, conf, cls in reversed(det):
-
                     if conf < detection_threshold:
                         continue
 
-                    # Convert this box to normalized cx, cy, w, h (i.e., YOLO format)
+                    # Convert to YOLO format then to MD format
                     xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()
-
-                    # Convert from normalized cx/cy/w/h (i.e., YOLO format) to normalized
-                    # left/top/w/h (i.e., MD format)
                     api_box = ct_utils.convert_yolo_to_xywh(xywh)
 
                     if 'classic' in self.compatibility_mode:
@@ -1074,8 +1242,6 @@ class PTDetector:
                         conf = ct_utils.round_float(conf.tolist(), precision=CONF_DIGITS)
 
                     if not self.use_model_native_classes:
-                        # The MegaDetector output format's categories start at 1, but all YOLO-based
-                        # MD models have category numbers starting at 0.
                         cls = int(cls.tolist()) + 1
                         if cls not in (1, 2, 3):
                             raise KeyError(f'{cls} is not a valid class.')
@@ -1089,23 +1255,72 @@ class PTDetector:
                     })
                     max_conf = max(max_conf, conf)
 
-                # ...for each detection in this batch
+                # ...for each detection
 
-            # ...for each detection batch (always one iteration)
+            # ...if there are > 0 detections
 
-        # ...try
+            # Store result for this image
+            results[original_idx] = {
+                'file': current_image_id,
+                'detections': detections,
+                'max_detection_conf': max_conf
+            }
 
-        except Exception as e:
+        # ...for each image
 
-            result['failure'] = FAILURE_INFER
-            print('PTDetector: image {} failed during inference: {}\n'.format(image_id, str(e)))
-            # traceback.print_exc(e)
-            print(traceback.format_exc())
+    # ...def _process_batch_group(...)
 
-        result['max_detection_conf'] = max_conf
-        result['detections'] = detections
+    def generate_detections_one_image(self,
+                                      img_original,
+                                      image_id='unknown',
+                                      detection_threshold=0.00001,
+                                      image_size=None,
+                                      augment=False,
+                                      verbose=False):
+        """
+        Run a detector on an image (wrapper around batch function).
 
-        return result
+        Args:
+            img_original (Image, np.array, or dict): the image on which we should run the detector, with
+                EXIF rotation already handled, or a dict representing a preprocessed image with associated
+                letterbox parameters
+            image_id (str, optional): a path to identify the image; will be in the "file" field
+                of the output object
+            detection_threshold (float, optional): only detections above this confidence threshold
+                will be included in the return value
+            image_size (int, optional): image size (long side) to use for inference, or None to
+                use the default size specified at the time the model was loaded
+            augment (bool, optional): enable (implementation-specific) image augmentation
+            verbose (bool, optional): enable additional debug output
+
+        Returns:
+            dict: a dictionary with the following fields:
+                - 'file' (filename, always present)
+                - 'max_detection_conf' (removed from MegaDetector output files by default, but generated here)
+                - 'detections' (a list of detection objects containing keys 'category', 'conf', and 'bbox')
+                - 'failure' (a failure string, or None if everything went fine)
+        """
+
+        # Prepare batch inputs
+        if isinstance(img_original, dict):
+            batch_results = self.generate_detections_one_batch(
+                img_original=[img_original],
+                image_id=None,
+                detection_threshold=detection_threshold,
+                image_size=image_size,
+                augment=augment,
+                verbose=verbose)
+        else:
+            batch_results = self.generate_detections_one_batch(
+                img_original=[img_original],
+                image_id=[image_id],
+                detection_threshold=detection_threshold,
+                image_size=image_size,
+                augment=augment,
+                verbose=verbose)
+
+        # Return the single result
+        return batch_results[0]
 
     # ...def generate_detections_one_image(...)
 

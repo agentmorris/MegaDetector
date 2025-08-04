@@ -100,9 +100,9 @@ def some_function(records):
 ```
 
 
-### Function and class header comment style (Google-style docstrings)
+### Function and class header comment style
 
-Functions and classes should have Google-style docstrings.  Docstrings should always be multi-line, even for very short functions or methods.  The single-line summary often required at the top of Google-style docstrings is not required.
+Functions and classes should have Google-style docstrings.  Docstrings should always be multi-line, even for very short functions or methods.  The single-line summary often required at the top of Google-style docstrings is not required.  Type hints are discouraged; types will be specified in the parameter and return argument descriptions.
 
 Arguments should be specified as `name (type): description` or, for arguments with default values, `name (type, optional): description`.
 
@@ -111,20 +111,21 @@ Class attributes should be documented with inline comments, specifically using t
 Example function:
 
 ```python
-def example_function(param1: int, param2: str) -> bool:
+def example_function(param1, param2):
     """
     This is an example function.  The description does not need
     to start with a single blank line.
 
     Args:
-        param1 (int): The first parameter, an integer.
-        param2 (str): The second parameter, a string.
+        param1 (int): the first parameter, description starts with a 
+            lowercase letter and does not usually end with a period
+        param2 (str): the second parameter, a string
 
     Returns:
-        A boolean value indicating success or failure.
+        bool: whether this function succeeded
     """
 
-    # Function implementation
+    # function implementation
     return True
 ```
 
@@ -138,7 +139,7 @@ class ExampleClass:
     It describes the overall purpose and behavior of the class.
     """
 
-    def __init__(self, attr1: int, attr2: str):
+    def __init__(self, attr1, attr2):
         """
         Initializes ExampleClass.
         """
@@ -231,7 +232,7 @@ long_variable_name = \
     some_other_value
 
 if condition1 and condition2 and \
-    condition3 or condition4):
+    (condition3 or condition4):
     # code
     pass
 ```
@@ -239,23 +240,28 @@ if condition1 and condition2 and \
 
 ### Parens
 
-Prefer explicit parens in compounded conditions, e.g.:
+Prefer explicit parens in compounded conditions or expressions; assume the reader does not know Python's order of operations.  For example:
 
 
 ```python
 if (a is not None) and (b > 4):
     do_things()
+    
+x = ((a * b) / 8) + 2
+
+y = (c - d) - 7
 ```
 
 
 ### Naming conventions
 
-*   **`snake_case`** for functions, methods, variables, and module names
-    *   Example: `def calculate_area(radius):`, `image_width = 100`, `import data_utils`
-*   **`CamelCase`** for class names
-    *   Example: `class ImageProcessor:`
-*   **`UPPER_SNAKE_CASE`** for constants
-    *   Example: `MAX_ITERATIONS = 1000`, `DEFAULT_THRESHOLD = 0.5`
+* **`snake_case`** for functions, methods, variables, and module names
+  *   Example: `def calculate_area(radius):`, `image_width = 100`, `import data_utils`
+* **`CamelCase`** for class names
+  *   Example: `class ImageProcessor:`
+* **`UPPER_SNAKE_CASE`** for constants
+  *   Example: `MAX_ITERATIONS = 1000`, `DEFAULT_THRESHOLD = 0.5`
+* loop index variables should be descriptive, e.g. use "i_image" rather than "i" as an index variable
 
 
 ### Imports
@@ -282,6 +288,11 @@ from megadetector.utils import some_utility_function
 ```
 
 
+### Miscellaneous
+
+* Avoid yield and zip wherever possible (I know they are Pythonic, but I find them impossible to read)
+
+
 ### Quotes
 
 Single quotes are preferred over double quotes when possible.
@@ -294,28 +305,7 @@ string.format() is preferred over f-strings when possible.
 
 ### Type hinting
 
-Type hinting is encouraged for new code, but not required and not enforced retroactively.  Use standard Python type hints (PEP 484).
-
-Example:
-
-```python
-def process_data(data: List[Dict[str, any]], threshold: float = 0.5) -> Optional[str]:
-    """
-    Processes a list of data dictionaries.
-
-    Args:
-        data (list): A list of dictionaries
-        threshold (float): A float threshold for processing
-
-    Returns:
-        str: an optional string, or None if processing fails
-    """
-
-    if not data:
-        return None
-
-    return "processed"
-```
+Type hinting is discouraged.  
 
 
 ## Linting
@@ -362,6 +352,7 @@ cd ~/git/MegaDetector
 markdown-link-validator .
 ```
 
+
 ## Testing
 
 ### Test data
@@ -384,6 +375,7 @@ This contains:
 * Modules should have a cell called `#%% Tests`.  This should be the last cell in each module.  Functions within that cell should start with `test_`.
 * Tests that require temporary folders should create them using `ct_utils.make_test_folder()`, which keeps temporary folders under a `megadetector/tests` folder within the system temp folder.  Temporary folders should be cleaned up after tests are complete.
 
+
 ### Running all tests
 
 This repo uses `pytest` for testing; cd to the repo root and run:
@@ -396,6 +388,7 @@ This repo uses `pytest` for testing; cd to the repo root and run:
 
 ...will show output rather than eating it (-s) and quit after the first failure (-x).
 
+
 ### Running the most important tests
 
 The most important tests - the ones about actually running models - are in md_tests.py.  These are run by the automated test suite, but to run them manually, you can do something like:
@@ -407,6 +400,7 @@ python c:\git\MegaDetector\megadetector\utils\md_tests.py --cli_working_dir "c:\
 ```
 
 This also tests the CLI entry points, which pytest does not.
+
 
 ## Docs
 
