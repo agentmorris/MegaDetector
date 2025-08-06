@@ -1851,12 +1851,15 @@ def find_equivalent_threshold(results_a,
 
         return confidence_values, images_above_threshold
 
+    # ...def _get_confidence_values_for_results(...)
+
     confidence_values_a,images_above_threshold_a = \
         _get_confidence_values_for_results(results_a['images'],
                                           category_ids_to_consider_a,
                                           threshold_a)
 
-    # ...def _get_confidence_values_for_results(...)
+    # Not necessary, but facilitates debugging
+    confidence_values_a = sorted(confidence_values_a)
 
     if verbose:
         print('For result set A, considering {} of {} images'.format(
@@ -1869,12 +1872,28 @@ def find_equivalent_threshold(results_a,
     if verbose:
         print('For result set B, considering {} of {} images'.format(
             len(confidence_values_b),len(results_b['images'])))
+
     confidence_values_b = sorted(confidence_values_b)
 
+    # Find the threshold that produces the same fraction of detections for results_b
     target_detection_fraction = len(confidence_values_a_above_threshold) / len(confidence_values_a)
 
-    detection_cutoff_index = round((1.0-target_detection_fraction) * len(confidence_values_b))
+    # How many detections do we want in results_b?
+    target_number_of_detections = round(len(confidence_values_b) * target_detection_fraction)
+
+    # How many non-detections do we want in results_b?
+    target_number_of_non_detections = len(confidence_values_b) - target_number_of_detections
+    detection_cutoff_index = max(target_number_of_non_detections,0)
     threshold_b = confidence_values_b[detection_cutoff_index]
+
+    confidence_values_b_above_threshold = [c for c in confidence_values_b if c >= threshold_b]
+    confidence_values_b_above_reference_threshold = [c for c in confidence_values_b if c >= threshold_a]
+
+    # Special case: if the number of detections above the selected threshold is the same as the
+    # number above the reference threshold, use the reference threshold
+    if len(confidence_values_b_above_threshold) == len(confidence_values_b_above_reference_threshold):
+        print('Detection count for reference threshold matches target threshold')
+        threshold_b = threshold_a
 
     if verbose:
         print('{} confidence values above threshold (A)'.format(
