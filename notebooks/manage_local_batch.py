@@ -1845,7 +1845,7 @@ options.split_folders = True
 options.make_folder_relative = True
 
 # Reminder: 'n_from_bottom' with a parameter of zero is the same as 'bottom'
-options.split_folder_mode = 'bottom'  # 'top', 'n_from_top', 'n_from_bottom'
+options.split_folder_mode = 'bottom'  # 'bottom', 'n_from_top', 'n_from_bottom'
 options.split_folder_param = 0
 options.overwrite_json_files = False
 options.confidence_threshold = 0.01
