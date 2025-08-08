@@ -32,6 +32,8 @@ from megadetector.utils.ct_utils import make_temp_folder
 from megadetector.utils.ct_utils import is_list_sorted
 from megadetector.utils import path_utils
 from megadetector.visualization import visualization_utils as vis_utils
+from megadetector.postprocessing.validate_batch_results import \
+    validate_batch_results, ValidateBatchResultsOptions
 
 from speciesnet import SpeciesNetClassifier
 from speciesnet.utils import BBox
@@ -876,29 +878,48 @@ def main():
                         help='Output file for results (JSON format)')
 
     # Optional arguments
-    parser.add_argument('--detector_model', default=DEFAULT_DETECTOR_MODEL,
+    parser.add_argument('--detector_model',
+                        default=DEFAULT_DETECTOR_MODEL,
                         help='MegaDetector model identifier')
-    parser.add_argument('--classification_model', default=DEFAULT_CLASSIFIER_MODEL,
+    parser.add_argument('--classification_model',
+                        default=DEFAULT_CLASSIFIER_MODEL,
                         help='SpeciesNet classifier model identifier')
-    parser.add_argument('--detector_batch_size', type=int, default=DEFAULT_DETECTOR_BATCH_SIZE,
+    parser.add_argument('--detector_batch_size',
+                        type=int,
+                        default=DEFAULT_DETECTOR_BATCH_SIZE,
                         help='Batch size for MegaDetector inference')
-    parser.add_argument('--classifier_batch_size', type=int, default=DEFAULT_CLASSIFIER_BATCH_SIZE,
+    parser.add_argument('--classifier_batch_size',
+                        type=int,
+                        default=DEFAULT_CLASSIFIER_BATCH_SIZE,
                         help='Batch size for SpeciesNet classification')
-    parser.add_argument('--loader_workers', type=int, default=DEFAULT_LOADER_WORKERS,
+    parser.add_argument('--loader_workers',
+                        type=int,
+                        default=DEFAULT_LOADER_WORKERS,
                         help='Number of worker threads for preprocessing')
-    parser.add_argument('--detection_confidence_threshold', type=float, default=DEFAULT_DETECTION_CONFIDENCE_THRESHOLD,
+    parser.add_argument('--detection_confidence_threshold',
+                        type=float,
+                        default=DEFAULT_DETECTION_CONFIDENCE_THRESHOLD,
                         help='Confidence threshold for detections to classify')
-    parser.add_argument('--intermediate_file_folder', default=None,
+    parser.add_argument('--intermediate_file_folder',
+                        default=None,
                         help='Folder for intermediate files (default: system temp)')
-    parser.add_argument('--keep_intermediate_files', action='store_true',
+    parser.add_argument('--keep_intermediate_files',
+                        action='store_true',
                         help='Keep intermediate files for debugging')
-    parser.add_argument('--norollup', action='store_true',
+    parser.add_argument('--norollup',
+                        action='store_true',
                         help='Disable taxonomic rollup')
-    parser.add_argument('--country', default=None,
+    parser.add_argument('--country',
+                        default=None,
                         help='Country code (ISO 3166-1 alpha-3) for geofencing')
-    parser.add_argument('--admin1_region', '--state', default=None,
+    parser.add_argument('--admin1_region', '--state',
+                        default=None,
                         help='Admin1 region/state code for geofencing')
-    parser.add_argument('--verbose', action='store_true',
+    parser.add_argument('--detections_file',
+                        default=None,
+                        help='Path to existing MegaDetector output file (skips detection step)')
+    parser.add_argument('--verbose',
+                        action='store_true',
                         help='Enable verbose output')
 
     if len(sys.argv[1:]) == 0:
@@ -935,17 +956,28 @@ def main():
     print('Output file: {}'.format(args.output_file))
     print('Intermediate files: {}'.format(temp_folder))
 
-    detector_output_file = os.path.join(temp_folder, 'detector_output.json')
+    # Determine detector output file path
+    if args.detections_file:
+        detector_output_file = args.detections_file
+        print('Using existing detections file: {}'.format(detector_output_file))
+        validation_options = ValidateBatchResultsOptions()
+        validation_options.check_image_existence = True
+        validation_options.relative_path_base = args.source
+        validation_options.raise_errors = True
+        validate_batch_results(detector_output_file,options=validation_options)
+        print('Validated detections file')
+    else:
+        detector_output_file = os.path.join(temp_folder, 'detector_output.json')
 
-    # Run MegaDetector
-    _run_detection_step(
-        source_folder=args.source,
-        detector_output_file=detector_output_file,
-        detector_model=args.detector_model,
-        detector_batch_size=args.detector_batch_size,
-        detection_confidence_threshold=DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD,
-        detector_worker_threads=args.loader_workers,
-    )
+        # Run MegaDetector
+        _run_detection_step(
+            source_folder=args.source,
+            detector_output_file=detector_output_file,
+            detector_model=args.detector_model,
+            detector_batch_size=args.detector_batch_size,
+            detection_confidence_threshold=DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD,
+            detector_worker_threads=args.loader_workers,
+        )
 
     # Run SpeciesNet classification
     _run_classification_step(
@@ -967,7 +999,9 @@ def main():
     print('Results written to: {}'.format(args.output_file))
 
     # Clean up intermediate files if requested
-    if (not args.keep_intermediate_files) and (not args.intermediate_file_folder):
+    if (not args.keep_intermediate_files) and \
+       (not args.intermediate_file_folder) and \
+       (not args.detections_file):
         try:
             os.remove(detector_output_file)
         except Exception as e:

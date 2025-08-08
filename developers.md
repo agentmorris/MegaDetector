@@ -394,9 +394,7 @@ This repo uses `pytest` for testing; cd to the repo root and run:
 The most important tests - the ones about actually running models - are in md_tests.py.  These are run by the automated test suite, but to run them manually, you can do something like:
 
 ```bash
-set PYTHONPATH=c:\git\MegaDetector;c:\git\yolov5-md
-mamba activate megadetector
-python c:\git\MegaDetector\megadetector\utils\md_tests.py --cli_working_dir "c:\git\MegaDetector" --cli_test_pythonpath "c:\git\MegaDetector;c:\git\yolov5-md" --max_coord_error 0.01 --max_conf_error 0.01 --skip_cpu_tests --skip_video_tests --skip_download_tests
+python -m megadetector.utils.md_tests --max_coord_error 0.01 --max_conf_error 0.01 --skip_download_tests --skip_cpu_tests --skip_video_tests
 ```
 
 This also tests the CLI entry points, which pytest does not.
