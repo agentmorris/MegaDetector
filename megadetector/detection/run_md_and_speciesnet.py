@@ -14,6 +14,8 @@ import multiprocessing
 import os
 import sys
 import time
+
+from tqdm import tqdm
 from multiprocessing import JoinableQueue, Process, Queue
 
 import humanfriendly
@@ -411,7 +413,7 @@ def _process_classification_batch(batch: CropBatch,
         batch (CropBatch): batch of crops to process
         classifier (SpeciesNetClassifier): classifier instance
         all_results (dict): dictionary to store results in, modified in-place with format:
-            {image_file: {detection_index: {'classifications': [[class_name, score], ...]}
+            {image_file: {detection_index: {'predictions': [[class_name, score], ...]}
             or {image_file: {detection_index: {'failure': error_message}}}.
         enable_rollup (bool): whether to apply rollup
         taxonomy_map (dict): taxonomy mapping for rollup
@@ -465,17 +467,41 @@ def _process_classification_batch(batch: CropBatch,
             }
             continue
 
-        # Extract classification results
+        # Extract classification results; this is a dict with keys "classes"
+        # and "scores", each of which points to a list.
         classifications = result['classifications']
         classes = classifications['classes']
         scores = classifications['scores']
 
-        # Apply rollup and/or geofencing if enabled
-        final_classes = classes
-        final_scores = scores
+        classification_was_geofenced = False
 
-        # Possibly apply rollup
-        if enable_rollup:
+        predicted_class = classes[0]
+        predicted_score = scores[0]
+
+        # Possibly apply geofencing
+        if country:
+
+            geofence_result = geofence_animal_classification(
+                labels=classes,
+                scores=scores,
+                country=country,
+                admin1_region=admin1_region,
+                taxonomy_map=taxonomy_map,
+                geofence_map=geofence_map,
+                enable_geofence=True
+            )
+
+            geofenced_class, geofenced_score, prediction_source = geofence_result
+
+            if prediction_source != 'classifier':
+                classification_was_geofenced = True
+                predicted_class = geofenced_class
+                predicted_score = geofenced_score
+
+        # ...if we might need to apply geofencing
+
+        # Possibly apply rollup; this was already done if geofencing was applied
+        if enable_rollup and (not classification_was_geofenced):
 
             rollup_result = roll_up_labels_to_first_matching_level(
                 labels=classes,
@@ -490,44 +516,25 @@ def _process_classification_batch(batch: CropBatch,
             )
 
             if rollup_result is not None:
-                rolled_up_class, rolled_up_score, _ = rollup_result
-                # Replace the top prediction with rolled-up result
-                final_classes = [rolled_up_class] + classes[1:]
-                final_scores = [rolled_up_score] + scores[1:]
+                rolled_up_class, rolled_up_score, prediction_source = rollup_result
+                if rolled_up_class != predicted_class:
+                    predicted_class = rolled_up_class
+                    predicted_score = rolled_up_score
 
-        # Possibly apply geofencing
-        if country:
-
-            geofence_result = geofence_animal_classification(
-                labels=final_classes,
-                scores=final_scores,
-                country=country,
-                admin1_region=admin1_region,
-                taxonomy_map=taxonomy_map,
-                geofence_map=geofence_map,
-                enable_geofence=True
-            )
-
-            if geofence_result is not None:
-                geofenced_class, geofenced_score, _ = geofence_result
-                # Replace the top prediction with geofenced result
-                final_classes = [geofenced_class] + final_classes[1:]
-                final_scores = [geofenced_score] + final_scores[1:]
+        # ...if we might need to apply taxonomic rollup
 
         # For now, we'll store category names as strings; these will be assigned to integer
         # IDs before writing results to file later.
-        classification_pairs = []
-        assert len(final_classes) == len(final_scores)
-        for i_classification in range(0, len(final_classes)):
-            classification_pairs.append([final_classes[i_classification],
-                                         final_scores[i_classification]])
+        classification = [predicted_class,predicted_score]
 
-        # Classification pairs is a list of (str,float) tuples; sort the list in descending
-        # order by score.
-        classification_pairs.sort(key=lambda x: x[1], reverse=True)
+        # Also report raw model classifications
+        raw_classifications = []
+        for i_class in range(0,len(classes)):
+            raw_classifications.append([classes[i_class],scores[i_class]])
 
         all_results[metadata.image_file][detection_index] = {
-            'classifications': classification_pairs
+            'classifications': [classification],
+            'raw_classifications': raw_classifications
         }
 
     # ...for each result in this batch
@@ -636,6 +643,7 @@ def _run_classification_step(detector_results_file: str,
         enable_rollup (bool, optional): whether to apply taxonomic rollup
         country (str, optional): country code for geofencing
         admin1_region (str, optional): admin1 region (typically a state code) for geofencing
+        top_n_scores (int, optional): maximum number of scores to include for each detection
     """
 
     print('Starting SpeciesNet classification step...')
@@ -682,9 +690,12 @@ def _run_classification_step(detector_results_file: str,
                              enable_rollup, country, admin1_region))
     consumer.start()
 
-    # Populate image queue
-    for image_data in images:
-        image_queue.put(image_data)
+    # This will block every time the queue reaches its maximum depth, so for
+    # very small jobs, this will not be a useful progress bar.
+    with tqdm(total=len(images)) as pbar:
+        for image_data in images:
+            image_queue.put(image_data)
+            pbar.update()
 
     # Send sentinel signals to producers
     for _ in range(classifier_worker_threads):
@@ -705,15 +716,53 @@ def _run_classification_step(detector_results_file: str,
 
     print('Finished waiting for workers')
 
-    # Build classification categories mapping and convert class names to IDs
-    next_category_id = 0
-    common_name_to_id = {}
+    class CategoryState:
+        """
+        Helper class to manage classification category IDs.
+        """
 
-    # Maps string-ints to common names, as per format standard
-    classification_categories = {}
+        def __init__(self):
 
-    # Maps string-ints to latin taxonomy strings, as per format standard
-    classification_category_descriptions = {}
+            self.next_category_id = 0
+
+            # Maps common name to string-int IDs
+            self.common_name_to_id = {}
+
+            # Maps string-ints to common names, as per format standard
+            self.classification_categories = {}
+
+            # Maps string-ints to latin taxonomy strings, as per format standard
+            self.classification_category_descriptions = {}
+
+        def _get_category_id(self, class_name):
+            """
+            Get an integer-valued category ID for the 7-token string [class_name],
+            creating a new one if necessary.
+            """
+
+            # E.g.:
+            #
+            # "cb553c4e-42c9-4fe0-9bd0-da2d6ed5bfa1;mammalia;carnivora;canidae;urocyon;littoralis;island fox"
+            tokens = class_name.split(';')
+            assert len(tokens) == 7
+            taxonomy_string = ';'.join(tokens[1:6])
+            common_name = tokens[6]
+            if len(common_name) == 0:
+                common_name = taxonomy_string
+
+            if common_name not in self.common_name_to_id:
+                self.common_name_to_id[common_name] = str(self.next_category_id)
+                self.classification_categories[str(self.next_category_id)] = common_name
+                self.classification_category_descriptions[str(self.next_category_id)] = taxonomy_string
+                self.next_category_id += 1
+
+            category_id = self.common_name_to_id[common_name]
+
+            return category_id
+
+    # ...class CategoryState
+
+    category_state = CategoryState()
 
     # Merge classification results back into detector results with proper category IDs
     for image_data in images:
@@ -743,40 +792,38 @@ def _run_classification_step(detector_results_file: str,
                     else:
                         image_data['failure'] += ';' + result['failure']
                 else:
+
                     # Convert class names to category IDs
                     classification_pairs = []
+                    raw_classification_pairs = []
 
                     scores = [x[1] for x in result['classifications']]
                     assert is_list_sorted(scores, reverse=True)
 
-                    # Only report the requested number of scores per category
+                    # Only report the requested number of scores per detection
                     if len(result['classifications']) > top_n_scores:
                         result['classifications'] = \
                             result['classifications'][0:top_n_scores]
 
+                    if len(result['raw_classifications']) > top_n_scores:
+                        result['raw_classifications'] = \
+                            result['raw_classifications'][0:top_n_scores]
+
                     for class_name, score in result['classifications']:
 
-                        # E.g.:
-                        #
-                        # "cb553c4e-42c9-4fe0-9bd0-da2d6ed5bfa1;mammalia;carnivora;canidae;urocyon;littoralis;island fox"
-                        tokens = class_name.split(';')
-                        assert len(tokens) == 7
-                        taxonomy_string = ';'.join(tokens[1:6])
-                        common_name = tokens[6]
-                        if len(common_name) == 0:
-                            common_name = taxonomy_string
-
-                        if common_name not in common_name_to_id:
-                            common_name_to_id[common_name] = str(next_category_id)
-                            classification_categories[str(next_category_id)] = common_name
-                            classification_category_descriptions[str(next_category_id)] = taxonomy_string
-                            next_category_id += 1
-                        category_id = common_name_to_id[common_name]
+                        category_id = category_state._get_category_id(class_name)
                         score = round_float(score, precision=CONF_DIGITS)
                         classification_pairs.append([category_id, score])
 
+                    for class_name, score in result['raw_classifications']:
+
+                        category_id = category_state._get_category_id(class_name)
+                        score = round_float(score, precision=CONF_DIGITS)
+                        raw_classification_pairs.append([category_id, score])
+
                     # Add classifications to the detection
                     detection['classifications'] = classification_pairs
+                    detection['raw_classifications'] = raw_classification_pairs
 
                 # ...if this classification contains a failure
 
@@ -795,8 +842,10 @@ def _run_classification_step(detector_results_file: str,
         '%Y-%m-%d %H:%M:%S')
 
     # Add classification category mapping
-    detector_results['classification_categories'] = classification_categories
-    detector_results['classification_category_descriptions'] = classification_category_descriptions
+    detector_results['classification_categories'] = \
+        category_state.classification_categories
+    detector_results['classification_category_descriptions'] = \
+        category_state.classification_category_descriptions
 
     # Write results
     write_json(merged_results_file, detector_results)

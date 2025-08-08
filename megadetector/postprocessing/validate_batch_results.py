@@ -190,7 +190,7 @@ def validate_batch_results(json_filename,options=None):
                                 'Image {} has an illegal classification category: {}'.format(file,c[0])
                             try:
                                 _ = int(c[0])
-                            except Exception as e:
+                            except Exception:
                                 raise ValueError('Image {} has an illegal classification category: {}'.format(
                                     file,c[0]))
                             assert isinstance(c[1],float) or isinstance(c[1], int)
