@@ -42,8 +42,8 @@ dependencies = [
   # The next two lines are the difference between this package and the main package.
   # "ultralytics-yolov5 == 0.1.1",
   # "yolov9pip == 0.0.4",
-  "python-dateutil"
-  
+  "python-dateutil",
+  "pytest",
   # Let ultralytics-yolov5 install torch
   # "torch >= 2.0.1",
   # "torchvision >= 0.15.2",  
