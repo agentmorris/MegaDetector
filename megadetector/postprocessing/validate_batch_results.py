@@ -172,7 +172,9 @@ def validate_batch_results(json_filename,options=None):
             file = im['file']
 
             if 'detections' in im and im['detections'] is not None:
+
                 for det in im['detections']:
+
                     assert 'category' in det, 'Image {} has a detection with no category'.format(file)
                     assert 'conf' in det, 'Image {} has a detection with no confidence'.format(file)
                     assert isinstance(det['conf'],float), \
@@ -181,6 +183,21 @@ def validate_batch_results(json_filename,options=None):
                     assert det['category'] in d['detection_categories'], \
                         'Image {} has a detection with an unmapped category {}'.format(
                             file,det['category'])
+
+                    if 'classifications' in det and det['classifications'] is not None:
+                        for c in det['classifications']:
+                            assert isinstance(c[0],str), \
+                                'Image {} has an illegal classification category: {}'.format(file,c[0])
+                            try:
+                                _ = int(c[0])
+                            except Exception as e:
+                                raise ValueError('Image {} has an illegal classification category: {}'.format(
+                                    file,c[0]))
+                            assert isinstance(c[1],float) or isinstance(c[1], int)
+
+                # ...for each detection
+
+            # ...if this image has a detections field
 
             if options.check_image_existence:
 

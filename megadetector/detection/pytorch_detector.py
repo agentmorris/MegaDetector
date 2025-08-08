@@ -1016,15 +1016,11 @@ class PTDetector:
         # Check input consistency
         if isinstance(img_original[0], dict):
             # All items in img_original should be preprocessed dicts
-            if verbose:
-                print('This batch contains preprocessed dicts')
             for i, img in enumerate(img_original):
                 if not isinstance(img, dict):
                     raise ValueError(f'Mixed input types in batch: item {i} is not a dict, but item 0 is a dict')
         else:
             # All items in img_original should be PIL/numpy images, and image_id should be a list of strings
-            if verbose:
-                print('This batch contains unprocessed images')
             if image_id is None:
                 raise ValueError('image_id must be a list when img_original contains PIL/numpy images')
             if not isinstance(image_id, list):

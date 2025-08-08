@@ -1498,9 +1498,16 @@ def write_results_to_file(results,
 
     # Sort detections in descending order by confidence; not required by the format, but
     # convenient for consistency
-    for r in results:
-        if ('detections' in r) and (r['detections'] is not None):
-            r['detections'] = sort_list_of_dicts_by_key(r['detections'], 'conf', reverse=True)
+    for im in results:
+        if ('detections' in im) and (im['detections'] is not None):
+            im['detections'] = sort_list_of_dicts_by_key(im['detections'], 'conf', reverse=True)
+
+    for im in results:
+        if 'failure' in im:
+            if 'detections' in im:
+                assert im['detections'] is None, 'Illegal failure/detection combination'
+            else:
+                im['detections'] = None
 
     final_output = {
         'images': results,
