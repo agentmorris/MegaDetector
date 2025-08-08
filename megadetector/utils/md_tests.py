@@ -592,9 +592,16 @@ def compare_results(inference_output_file,
         expected_image_results = filename_to_results_expected[fn]
 
         if 'failure' in actual_image_results:
+            # We allow some variation in how failures are represented
             assert 'failure' in expected_image_results and \
-                'detections' not in actual_image_results and \
-                'detections' not in expected_image_results
+                (
+                    ('detections' not in actual_image_results) or \
+                    (actual_image_results['detections'] is None)
+                ) and \
+                (
+                    ('detections' not in expected_image_results) or \
+                    (expected_image_results['detections'] is None)
+                )
             continue
         assert 'failure' not in expected_image_results
 

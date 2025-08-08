@@ -142,16 +142,12 @@ def _crop_producer_func(image_queue: JoinableQueue,
     if verbose:
         print('Classification producer starting: ID {}'.format(producer_id))
 
-    # Load classifier
-    #
-    # TODO: this is just being used as a preprocessor; it should not load the full model
-    # to the GPU.  We may need to modify SpeciesNetClassifier to support cpu-only loading
-    # when an instance is just being used for preprocessing.
+    # Load classifier; this is just being used as a preprocessor, so we force device=cpu.
     #
     # There are a number of reasons loading the model might fail; note to self: *don't*
     # catch Exceptions here.  This should be a catastrophic failure that stops the whole
     # process.
-    classifier = SpeciesNetClassifier(classifier_model)
+    classifier = SpeciesNetClassifier(classifier_model, device='cpu')
     if verbose:
         print('Classification producer {}: loaded classifier'.format(producer_id))
 

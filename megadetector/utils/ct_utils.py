@@ -1658,6 +1658,8 @@ def test_string_parsing():
     assert not parse_bool_string("false")
     assert not parse_bool_string("False")
     assert not parse_bool_string(" FALSE ")
+    assert parse_bool_string("1", strict=False)
+    assert not parse_bool_string("0", strict=False)
     assert parse_bool_string(True) is True # Test with existing bool
     assert parse_bool_string(False) is False
     try:
@@ -1666,7 +1668,7 @@ def test_string_parsing():
     except ValueError:
         pass
     try:
-        parse_bool_string("1") # Should not parse to True
+        parse_bool_string("1",strict=True)
         raise AssertionError("ValueError not raised for '1'")
     except ValueError:
         pass
