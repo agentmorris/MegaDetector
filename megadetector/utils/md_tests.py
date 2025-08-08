@@ -175,7 +175,7 @@ def get_expected_results_filename(gpu_is_available,
         model_string (str, optional): the model for which we're retrieving expected results
         test_type (str, optional): the test type we're running ("image" or "video")
         augment (bool, optional): whether we're running this test with image augmentation
-        options (MDTestOptiosn, optional): additional control flow options
+        options (MDTestOptions, optional): additional control flow options
 
     Returns:
         str: relative filename of the results file we should use (within the test
@@ -211,7 +211,11 @@ def get_expected_results_filename(gpu_is_available,
     if augment:
         aug_string = 'augment-'
 
-    fn = '{}-{}{}-{}-{}.json'.format(model_string,aug_string,test_type,hw_string,pt_string)
+    # We only have a single set of video results
+    if test_type == 'image':
+        fn = '{}-{}{}-{}-{}.json'.format(model_string,aug_string,test_type,hw_string,pt_string)
+    else:
+        fn = '{}-{}.json'.format(model_string,test_type)
 
     from megadetector.utils.path_utils import insert_before_extension
 
@@ -885,11 +889,32 @@ def run_python_tests(options):
         return
 
 
+    ## Run again with a batch size > 1
+
+    print('\n** Running MD on a folder of images with batch size > 1 (module) **\n')
+
+    from megadetector.utils.path_utils import insert_before_extension
+
+    inference_output_file_batch = insert_before_extension(inference_output_file,'batch')
+    from megadetector.detection import run_detector_batch
+    run_detector_batch.verbose = True
+    results = load_and_run_detector_batch(options.default_model,
+                                          image_file_names,
+                                          quiet=True,
+                                          batch_size=options.alternative_batch_size,
+                                          detector_options=copy(options.detector_options))
+    run_detector_batch.verbose = False
+    _ = write_results_to_file(results,
+                              inference_output_file_batch,
+                              relative_path_base=image_folder,
+                              detector_file=options.default_model)
+
+    compare_results(inference_output_file_batch,expected_results_file,options)
+
+
     ## Run and verify again with augmentation enabled
 
     print('\n** Running MD on images with augmentation (module) **\n')
-
-    from megadetector.utils.path_utils import insert_before_extension
 
     inference_output_file_augmented = insert_before_extension(inference_output_file,'augmented')
     results = load_and_run_detector_batch(options.default_model,
@@ -1024,6 +1049,9 @@ def run_python_tests(options):
 
         ## Video test (single video)
 
+        # This test just checks non-crashing-ness; we will test correctness in the next
+        # test (which runs a folder of videos)
+
         print('\n** Running MD on a single video (module) **\n')
 
         from megadetector.detection.process_video import ProcessVideoOptions, process_video
@@ -1090,9 +1118,12 @@ def run_python_tests(options):
         video_options.verbose = True
         video_options.fourcc = options.video_fourcc
         # video_options.rendering_confidence_threshold = None
-        # video_options.json_confidence_threshold = 0.005
-        video_options.frame_sample = 10
         video_options.n_cores = options.n_cores_for_video_tests
+
+        video_options.json_confidence_threshold = 0.05
+        video_options.include_all_processed_frames = False
+        video_options.time_sample = 2
+
 
         # Force frame extraction to disk, since that's how we generated our expected results file
         video_options.force_on_disk_frame_extraction = True
@@ -1847,12 +1878,14 @@ if False:
 
     #%% Test Prep
 
+    from megadetector.utils.md_tests import MDTestOptions, download_test_data
+
     options = MDTestOptions()
 
     options.disable_gpu = False
     options.cpu_execution_is_error = False
-    options.skip_video_tests = False
-    options.skip_python_tests = False
+    options.skip_video_tests = True
+    options.skip_python_tests = True
     options.skip_cli_tests = False
     options.scratch_dir = None
     options.test_data_url = 'https://lila.science/public/md-test-package.zip'
@@ -1861,18 +1894,19 @@ if False:
     options.warning_mode = False
     options.max_coord_error = 0.01 # 0.001
     options.max_conf_error = 0.01 # 0.005
+    options.skip_cpu_tests = True
     options.skip_video_rendering_tests = True
-    options.skip_download_tests = False
+    options.skip_download_tests = True
     options.skip_localhost_downloads = False
 
     # options.iou_threshold_for_file_comparison = 0.7
 
-    options.cli_working_dir = r'c:\git\MegaDetector'
+    # options.cli_working_dir = r'c:\git\MegaDetector'
     # When running in the cameratraps-detector environment
     # options.cli_test_pythonpath = r'c:\git\MegaDetector;c:\git\yolov5-md'
 
     # When running in the MegaDetector environment
-    options.cli_test_pythonpath = r'c:\git\MegaDetector'
+    # options.cli_test_pythonpath = r'c:\git\MegaDetector'
 
     # options.cli_working_dir = os.path.expanduser('~')
     # options.yolo_working_dir = r'c:\git\yolov5-md'
@@ -1894,11 +1928,13 @@ if False:
 
     #%% Run download tests
 
+    from megadetector.utils.md_tests import run_download_tests
     run_download_tests(options=options)
 
 
     #%% Run all tests
 
+    from megadetector.utils.md_tests import run_tests
     run_tests(options)
 
 

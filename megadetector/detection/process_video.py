@@ -140,7 +140,8 @@ class ProcessVideoOptions:
         #: [frame_sample] and [time_sample].
         self.frames_to_extract = None
 
-        # Sample frames every N seconds.  Mutually exclusive with [frame_sample] and [frames_to_extract].
+        #: Sample frames every N seconds.  Mutually exclusive with [frame_sample] and
+        #: [frames_to_extract].
         self.time_sample = None
 
         #: Number of workers to use for parallelization; set to <= 1 to disable parallelization
@@ -177,7 +178,7 @@ class ProcessVideoOptions:
 
         #: When processing a folder of videos, should we include just a single representative
         #: frame result for each video (default), or every frame that was processed?
-        self.include_all_processed_frames = False
+        self.include_all_processed_frames = True
 
         #: Detector-specific options
         self.detector_options = None
@@ -374,7 +375,7 @@ def process_video(options):
 
     if options.model_file == 'no_detection' and not options.keep_extracted_frames:
         print('Warning: you asked for no detection, but did not specify keep_extracted_frames, this is a no-op')
-        return
+        return None
 
     # Track whether frame and rendering folders were created by this script
     caller_provided_frame_output_folder = (options.frame_folder is not None)
@@ -382,13 +383,14 @@ def process_video(options):
 
     frame_output_folder = None
     frame_filenames = None
+    frame_results = None
 
     # If we should re-use existing results, and the output file exists, don't bother running MD
     if (options.reuse_results_if_available and os.path.isfile(options.output_json_file)):
 
             print('Loading results from {}'.format(options.output_json_file))
             with open(options.output_json_file,'r') as f:
-                results = json.load(f)
+                frame_results = json.load(f)
 
     # Run MD in memory if we don't need to generate frames
     #
@@ -422,7 +424,7 @@ def process_video(options):
 
         frame_results['results'] = _add_frame_numbers_to_results(frame_results['results'])
 
-        run_detector_batch.write_results_to_file(
+        frame_results = run_detector_batch.write_results_to_file(
             frame_results['results'],
             options.output_json_file,
             relative_path_base=None,
@@ -471,7 +473,7 @@ def process_video(options):
             if options.verbose:
                 print('Running MD for {}'.format(options.input_video_file))
 
-            results = run_detector_batch.load_and_run_detector_batch(
+            frame_results = run_detector_batch.load_and_run_detector_batch(
                 options.model_file,
                 image_file_names,
                 confidence_threshold=options.json_confidence_threshold,
@@ -482,10 +484,10 @@ def process_video(options):
                 image_size=options.image_size,
                 detector_options=options.detector_options)
 
-            results = _add_frame_numbers_to_results(results)
+            frame_results = _add_frame_numbers_to_results(frame_results)
 
-            run_detector_batch.write_results_to_file(
-                results,
+            frame_results = run_detector_batch.write_results_to_file(
+                frame_results,
                 options.output_json_file,
                 relative_path_base=frame_output_folder,
                 detector_file=options.model_file,
@@ -526,7 +528,7 @@ def process_video(options):
             # render at 3fps
             rendering_fs = fs / options.frame_sample
         elif options.time_sample is not None:
-            rendering_fs = options.time_sample
+            rendering_fs = 1.0 / options.time_sample
 
 
         ## Render the output video
@@ -548,7 +550,9 @@ def process_video(options):
 
     _clean_up_extracted_frames(options, frame_output_folder, frame_filenames)
 
-# ...process_video()
+    return frame_results
+
+# ...def process_video()
 
 
 def process_video_folder(options):
@@ -798,12 +802,15 @@ def process_video_folder(options):
 
             if options.rendering_fs is not None:
                 rendering_fs = options.rendering_fs
-            elif options.frame_sample is None:
+            elif options.frame_sample is None and options.time_sample is None:
                 rendering_fs = video_fs
-            else:
+            elif options.frame_sample is not None:
                 # If the original video was 30fps and we sampled every 10th frame,
                 # render at 3fps
                 rendering_fs = video_fs / options.frame_sample
+            else:
+                assert options.time_sample is not None
+                rendering_fs = 1.0 / options.time_sample
 
             input_video_file_relative = os.path.relpath(input_video_file_abs,options.input_video_file)
             video_frame_output_folder = os.path.join(rendering_output_dir,input_video_file_relative)
@@ -860,6 +867,7 @@ def options_to_command(options):
 
     :meta private:
     """
+
     cmd = 'python process_video.py'
     cmd += ' "' + options.model_file + '"'
     cmd += ' "' + options.input_video_file + '"'
@@ -930,10 +938,16 @@ if False:
 
     #%% Process a folder of videos
 
+    import os
+
+    from megadetector.detection.process_video import \
+        process_video_folder, ProcessVideoOptions, options_to_command
+
+    from megadetector.detection import pytorch_detector
+    pytorch_detector.require_non_default_compatibility_mode = False
+
     model_file = 'MDV5A'
-    # input_dir = r'g:\temp\test-videos'
-    # input_dir = r'G:\temp\md-test-package\md-test-images\video-samples'
-    input_dir = os.path.expanduser('~/AppData/Local/Temp/md-tests/md-test-images/video-samples')
+    input_dir = r"G:\temp\md-test-images\video-samples"
     assert os.path.isdir(input_dir)
 
     output_base = r'g:\temp\video_test'
@@ -941,13 +955,14 @@ if False:
 
     frame_folder = os.path.join(output_base,'frames')
     rendering_folder = os.path.join(output_base,'rendered-frames')
-    output_json_file = os.path.join(output_base,'video-test.json')
+    output_json_file = os.path.join(output_base,'mdv5a-video.json')
     output_video_folder = os.path.join(output_base,'output_videos')
 
 
     print('Processing folder {}'.format(input_dir))
 
     options = ProcessVideoOptions()
+    options.json_confidence_threshold = 0.05
     options.model_file = model_file
     options.input_video_file = input_dir
     options.output_video_file = output_video_folder
@@ -956,11 +971,12 @@ if False:
     options.reuse_frames_if_available = False
     options.reuse_results_if_available = False
     options.quality = None # 90
-    options.frame_sample = 10
+    # options.frame_sample = 10
+    options.time_sample = 2
     options.max_width = None # 1280
     options.n_cores = 4
     options.verbose = True
-    options.render_output_video = False
+    options.render_output_video = True
     options.frame_folder = frame_folder
     options.frame_rendering_folder = rendering_folder
     options.keep_extracted_frames = False
@@ -969,7 +985,7 @@ if False:
     options.force_rendered_frame_folder_deletion = False
     options.fourcc = 'mp4v'
     options.force_on_disk_frame_extraction = False
-    # options.rendering_confidence_threshold = 0.15
+    options.rendering_confidence_threshold = 0.15
 
     cmd = options_to_command(options); print(cmd)
 
@@ -979,7 +995,10 @@ if False:
 
     #%% Process a single video
 
-    fn = r'g:\temp\test-videos\person_and_dog\DSCF0056.AVI'
+    from megadetector.detection.process_video import \
+        process_video, ProcessVideoOptions, options_to_command
+
+    fn = r'G:\temp\md-test-images\video-samples\gratuitous-subfolder\IMG_0012.mp4'
     assert os.path.isfile(fn)
     model_file = 'MDV5A'
     input_video_file = fn
