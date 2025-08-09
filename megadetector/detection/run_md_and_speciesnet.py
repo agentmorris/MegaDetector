@@ -22,7 +22,7 @@ from multiprocessing import JoinableQueue, Process, Queue
 import humanfriendly
 
 from megadetector.detection import run_detector_batch
-from megadetector.detection.video_utils import find_videos
+from megadetector.detection.video_utils import find_videos, run_callback_on_frames, is_video_file
 from megadetector.detection.run_detector_batch import load_and_run_detector_batch
 from megadetector.detection.run_detector import DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
 from megadetector.detection.run_detector import CONF_DIGITS
@@ -35,6 +35,9 @@ from megadetector.utils import path_utils
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.postprocessing.validate_batch_results import \
     validate_batch_results, ValidateBatchResultsOptions
+from megadetector.detection.process_video import \
+    process_video_folder, ProcessVideoOptions
+from megadetector.postprocessing.combine_batch_outputs import combine_batch_output_files
 
 from speciesnet import SpeciesNetClassifier
 from speciesnet.utils import BBox
@@ -47,11 +50,13 @@ from speciesnet.geofence_utils import geofence_animal_classification
 
 DEFAULT_DETECTOR_MODEL = 'MDV5A'
 DEFAULT_CLASSIFIER_MODEL = 'kaggle:google/speciesnet/pyTorch/v4.0.1a'
-DEFAULT_DETECTION_CONFIDENCE_THRESHOLD = 0.1
+DEFAULT_DETECTION_CONFIDENCE_THRESHOLD_FOR_CLASSIFICATION = 0.1
+DEFAULT_DETECTION_CONFIDENCE_THRESHOLD_FOR_OUTPUT = DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
 DEFAULT_DETECTOR_BATCH_SIZE = 1
 DEFAULT_CLASSIFIER_BATCH_SIZE = 8
 DEFAULT_LOADER_WORKERS = 4
 MAX_QUEUE_SIZE_IMAGES_PER_WORKER = 10
+DEAFULT_SECONDS_PER_VIDEO_FRAME = 1.0
 
 # Max number of classification scores to include per detection
 DEFAULT_TOP_N_SCORES = 2
@@ -121,6 +126,259 @@ class CropBatch:
 
 #%% Support functions for classification
 
+def _process_image_detections(file_path: str,
+                              absolute_file_path: str,
+                              detection_results: dict,
+                              classifier: 'SpeciesNetClassifier',
+                              detection_confidence_threshold: float,
+                              batch_queue: Queue):
+    """
+    Process detections from a single image.
+
+    Args:
+        file_path (str): relative path to the image file
+        absolute_file_path (str): absolute path to the image file
+        detection_results (dict): detection results for this image
+        classifier (SpeciesNetClassifier): classifier instance for preprocessing
+        detection_confidence_threshold (float): classify detections above this threshold
+        batch_queue (Queue): queue to send crops to
+    """
+
+    detections = detection_results['detections']
+
+    # Load the image
+    try:
+        image = vis_utils.load_image(absolute_file_path)
+        original_width, original_height = image.size
+    except Exception as e:
+        print('Warning: failed to load image {}: {}'.format(file_path, str(e)))
+
+        # Send failure information to consumer
+        failure_metadata = CropMetadata(
+            image_file=file_path,
+            detection_index=-1,  # -1 indicates whole-image failure
+            bbox=[],
+            original_width=0,
+            original_height=0
+        )
+        batch_queue.put(('failure',
+                         'Failed to load image: {}'.format(str(e)),
+                         failure_metadata))
+        return
+
+    # Process each detection above threshold
+    for detection_index, detection in enumerate(detections):
+
+        conf = detection['conf']
+        if conf < detection_confidence_threshold:
+            continue
+
+        bbox = detection['bbox']
+        assert len(bbox) == 4
+
+        # Convert normalized bbox to BBox object for SpeciesNet
+        speciesnet_bbox = BBox(
+            xmin=bbox[0],
+            ymin=bbox[1],
+            width=bbox[2],
+            height=bbox[3]
+        )
+
+        # Preprocess the crop
+        try:
+            preprocessed_crop = classifier.preprocess(
+                image,
+                bboxes=[speciesnet_bbox],
+                resize=True
+            )
+
+            if preprocessed_crop is not None:
+                metadata = CropMetadata(
+                    image_file=file_path,
+                    detection_index=detection_index,
+                    bbox=bbox,
+                    original_width=original_width,
+                    original_height=original_height
+                )
+
+                # Send individual crop immediately to consumer
+                batch_queue.put(('crop', preprocessed_crop, metadata))
+
+        except Exception as e:
+            print('Warning: failed to preprocess crop from {}, detection {}: {}'.format(
+                file_path, detection_index, str(e)))
+
+            # Send failure information to consumer
+            failure_metadata = CropMetadata(
+                image_file=file_path,
+                detection_index=detection_index,
+                bbox=bbox,
+                original_width=original_width,
+                original_height=original_height
+            )
+            batch_queue.put(('failure',
+                             'Failed to preprocess crop: {}'.format(str(e)),
+                             failure_metadata))
+
+    # ...for each detection in this image
+
+# ...def _process_image_detections(...)
+
+
+def _process_video_detections(file_path: str,
+                              absolute_file_path: str,
+                              detection_results: dict,
+                              classifier: 'SpeciesNetClassifier',
+                              detection_confidence_threshold: float,
+                              batch_queue: Queue):
+    """
+    Process detections from a single video.
+
+    Args:
+        file_path (str): relative path to the video file
+        absolute_file_path (str): absolute path to the video file
+        detection_results (dict): detection results for this video
+        classifier (SpeciesNetClassifier): classifier instance for preprocessing
+        detection_confidence_threshold (float): classify detections above this threshold
+        batch_queue (Queue): queue to send crops to
+    """
+
+    detections = detection_results['detections']
+
+    # Find frames with above-threshold detections
+    frames_with_detections = set()
+    frame_to_detections = {}
+
+    for detection_index, detection in enumerate(detections):
+        conf = detection['conf']
+        if conf < detection_confidence_threshold:
+            continue
+
+        frame_number = detection['frame_number']
+        frames_with_detections.add(frame_number)
+
+        if frame_number not in frame_to_detections:
+            frame_to_detections[frame_number] = []
+        frame_to_detections[frame_number].append((detection_index, detection))
+
+    if len(frames_with_detections) == 0:
+        return
+
+    frames_to_process = sorted(list(frames_with_detections))
+
+    # Define callback for processing each frame
+    def frame_callback(frame_array, frame_id):
+        """
+        Callback to process a single frame.
+
+        Args:
+            frame_array (numpy.ndarray): frame data in PIL format
+            frame_id (str): frame identifier like "frame0006.jpg"
+        """
+
+        # Extract frame number from frame_id (e.g., "frame0006.jpg" -> 6)
+        import re
+        match = re.match(r'frame(\d+)\.jpg', frame_id)
+        if not match:
+            print('Warning: could not parse frame number from {}'.format(frame_id))
+            return
+        frame_number = int(match.group(1))
+
+        if frame_number not in frame_to_detections:
+            return
+
+        # Convert numpy array to PIL Image
+        from PIL import Image
+        if frame_array.dtype != 'uint8':
+            frame_array = (frame_array * 255).astype('uint8')
+        frame_image = Image.fromarray(frame_array)
+        original_width, original_height = frame_image.size
+
+        # Process each detection in this frame
+        for detection_index, detection in frame_to_detections[frame_number]:
+
+            bbox = detection['bbox']
+            assert len(bbox) == 4
+
+            # Convert normalized bbox to BBox object for SpeciesNet
+            speciesnet_bbox = BBox(
+                xmin=bbox[0],
+                ymin=bbox[1],
+                width=bbox[2],
+                height=bbox[3]
+            )
+
+            # Preprocess the crop
+            try:
+
+                preprocessed_crop = classifier.preprocess(
+                    frame_image,
+                    bboxes=[speciesnet_bbox],
+                    resize=True
+                )
+
+                if preprocessed_crop is not None:
+                    metadata = CropMetadata(
+                        image_file=file_path,
+                        detection_index=detection_index,
+                        bbox=bbox,
+                        original_width=original_width,
+                        original_height=original_height
+                    )
+
+                    # Send individual crop immediately to consumer
+                    batch_queue.put(('crop', preprocessed_crop, metadata))
+
+            except Exception as e:
+
+                print('Warning: failed to preprocess crop from {}, detection {}: {}'.format(
+                    file_path, detection_index, str(e)))
+
+                # Send failure information to consumer
+                failure_metadata = CropMetadata(
+                    image_file=file_path,
+                    detection_index=detection_index,
+                    bbox=bbox,
+                    original_width=original_width,
+                    original_height=original_height
+                )
+                batch_queue.put(('failure',
+                                 'Failed to preprocess crop: {}'.format(str(e)),
+                                 failure_metadata))
+
+            # ...try/except
+
+        # ...for each detection
+
+    # ...def frame_callback(...)
+
+    # Process the video frames
+    try:
+        run_callback_on_frames(
+            input_video_file=absolute_file_path,
+            frame_callback=frame_callback,
+            frames_to_process=frames_to_process,
+            verbose=verbose
+        )
+    except Exception as e:
+        print('Warning: failed to process video {}: {}'.format(file_path, str(e)))
+
+        # Send failure information to consumer for the whole video
+        failure_metadata = CropMetadata(
+            image_file=file_path,
+            detection_index=-1,  # -1 indicates whole-file failure
+            bbox=[],
+            original_width=0,
+            original_height=0
+        )
+        batch_queue.put(('failure',
+                         'Failed to process video: {}'.format(str(e)),
+                         failure_metadata))
+    # ...try/except
+
+# ...def _process_video_detections(...)
+
+
 def _crop_producer_func(image_queue: JoinableQueue,
                         batch_queue: Queue,
                         classifier_model: str,
@@ -130,16 +388,16 @@ def _crop_producer_func(image_queue: JoinableQueue,
     """
     Producer function for classification workers.
 
-    Reads images from [image_queue], crops detections above a threshold,
+    Reads images and videos from [image_queue], crops detections above a threshold,
     preprocesses them, and sends individual crops to [batch_queue].
     See the documentation of _crop_consumer_func to for the format of the
     tuples placed on batch_queue.
 
     Args:
-        image_queue (JoinableQueue): queue containing detection_results dicts
+        image_queue (JoinableQueue): queue containing detection_results dicts (for both images and videos)
         batch_queue (Queue): queue to put individual crops into
         classifier_model (str): classifier model identifier to load in this process
-        detection_confidence_threshold (float): minimum confidence for detections to process
+        detection_confidence_threshold (float): classify detections above this threshold
         source_folder (str): source folder to resolve relative paths
         producer_id (int, optional): identifier for this producer worker
     """
@@ -166,103 +424,47 @@ def _crop_producer_func(image_queue: JoinableQueue,
             image_queue.task_done()
             break
 
-        image_file = detection_results['file']
+        file_path = detection_results['file']
 
-        # Skip images that failed at the detection stage
+        # Skip files that failed at the detection stage
         if 'failure' in detection_results:
             image_queue.task_done()
             continue
 
-        # Skip images with no detections
+        # Skip files with no detections
         detections = detection_results['detections']
         if len(detections) == 0:
             image_queue.task_done()
             continue
 
-        # Load the image
-        try:
-            # The image_file from detection results is relative to source folder
-            absolute_image_path = os.path.join(source_folder, image_file)
-            image = vis_utils.load_image(absolute_image_path)
-            original_width, original_height = image.size
-        except Exception as e:
-            print('Warning: failed to load image {}: {}'.format(image_file, str(e)))
+        # Determine if this is an image or video
+        absolute_file_path = os.path.join(source_folder, file_path)
+        is_video = is_video_file(file_path)
 
-            # Send failure information to consumer
-            failure_metadata = CropMetadata(
-                image_file=image_file,
-                detection_index=-1,  # -1 indicates whole-image failure
-                bbox=[],
-                original_width=0,
-                original_height=0
+        if is_video:
+            # Process video
+            _process_video_detections(
+                file_path=file_path,
+                absolute_file_path=absolute_file_path,
+                detection_results=detection_results,
+                classifier=classifier,
+                detection_confidence_threshold=detection_confidence_threshold,
+                batch_queue=batch_queue
             )
-            batch_queue.put(('failure',
-                             'Failed to load image: {}'.format(str(e)),
-                             failure_metadata))
-            image_queue.task_done()
-            continue
-
-        # Process each detection above threshold
-        for detection_index, detection in enumerate(detections):
-
-            conf = detection['conf']
-            if conf < detection_confidence_threshold:
-                continue
-
-            bbox = detection['bbox']
-            assert len(bbox) == 4
-
-            # Convert normalized bbox to BBox object for SpeciesNet
-            speciesnet_bbox = BBox(
-                xmin=bbox[0],
-                ymin=bbox[1],
-                width=bbox[2],
-                height=bbox[3]
+        else:
+            # Process image
+            _process_image_detections(
+                file_path=file_path,
+                absolute_file_path=absolute_file_path,
+                detection_results=detection_results,
+                classifier=classifier,
+                detection_confidence_threshold=detection_confidence_threshold,
+                batch_queue=batch_queue
             )
-
-            # Preprocess the crop
-            try:
-                preprocessed_crop = classifier.preprocess(
-                    image,
-                    bboxes=[speciesnet_bbox],
-                    resize=True
-                )
-
-                if preprocessed_crop is not None:
-                    metadata = CropMetadata(
-                        image_file=image_file,
-                        detection_index=detection_index,
-                        bbox=bbox,
-                        original_width=original_width,
-                        original_height=original_height
-                    )
-
-                    # Send individual crop immediately to consumer
-                    batch_queue.put(('crop', preprocessed_crop, metadata))
-
-            except Exception as e:
-                print('Warning: failed to preprocess crop from {}, detection {}: {}'.format(
-                    image_file, detection_index, str(e)))
-
-                # Send failure information to consumer
-                failure_metadata = CropMetadata(
-                    image_file=image_file,
-                    detection_index=detection_index,
-                    bbox=bbox,
-                    original_width=original_width,
-                    original_height=original_height
-                )
-                batch_queue.put(('failure',
-                                 'Failed to preprocess crop: {}'.format(
-                                     str(e)),
-                                 failure_metadata))
-                continue
-
-        # ...for each detection in this image
 
         image_queue.task_done()
 
-    # ...while(we still have images to process)
+    # ...while(we still have items to process)
 
     # Send sentinel to indicate this producer is done
     batch_queue.put(None)
@@ -552,7 +754,11 @@ def _run_detection_step(source_folder: str,
                         detector_model: str = DEFAULT_DETECTOR_MODEL,
                         detector_batch_size: int = DEFAULT_DETECTOR_BATCH_SIZE,
                         detection_confidence_threshold: float = DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD,
-                        detector_worker_threads: int = DEFAULT_LOADER_WORKERS) -> str:
+                        detector_worker_threads: int = DEFAULT_LOADER_WORKERS,
+                        skip_images: bool = False,
+                        skip_video: bool = False,
+                        frame_sample: int = None,
+                        time_sample: float = None) -> str:
     """
     Run MegaDetector on all images/videos in [source_folder].
 
@@ -564,59 +770,101 @@ def _run_detection_step(source_folder: str,
         detection_confidence_threshold (float, optional): confidence threshold for detections
             (to include in the output file)
         detector_worker_threads (int, optional): number of workers to use for preprocessing
+        skip_images (bool, optional): ignore images, only process videos
+        skip_video (bool, optional): ignore videos, only process images
+        frame_sample (int, optional): sample every Nth frame from videos
+        time_sample (float, optional): sample frames every N seconds from videos
     """
 
     print('Starting detection step...')
 
+    # Validate arguments
+    assert not (frame_sample is None and time_sample is None), \
+        'Must specify either frame_sample or time_sample'
+
     # Find image and video files
-    image_files = path_utils.find_images(source_folder, recursive=True,
-                                         return_relative_paths=False)
-    video_files = find_videos(source_folder, recursive=True,
-                              return_relative_paths=False)
+    if not skip_images:
+        image_files = path_utils.find_images(source_folder, recursive=True,
+                                             return_relative_paths=False)
+    else:
+        image_files = []
+
+    if not skip_video:
+        video_files = find_videos(source_folder, recursive=True,
+                                  return_relative_paths=False)
+    else:
+        video_files = []
 
     if len(image_files) == 0 and len(video_files) == 0:
         raise ValueError(
             'No images or videos found in {}'.format(source_folder))
 
-    # For now, we only handle images
+    print('Found {} images and {} videos'.format(len(image_files), len(video_files)))
+
+    files_to_merge = []
+
+    # Process images if any
+    if len(image_files) > 0:
+        print('Running MegaDetector on {} images...'.format(len(image_files)))
+
+        image_results = load_and_run_detector_batch(
+            model_file=detector_model,
+            image_file_names=image_files,
+            checkpoint_path=None,
+            confidence_threshold=detection_confidence_threshold,
+            checkpoint_frequency=-1,
+            results=None,
+            n_cores=0,
+            use_image_queue=True,
+            quiet=True,
+            image_size=None,
+            batch_size=detector_batch_size,
+            include_image_size=False,
+            include_image_timestamp=False,
+            include_exif_data=False,
+            loader_workers=detector_worker_threads,
+            preprocess_on_image_queue=True
+        )
+
+        # Write image results to temporary file
+        image_output_file = detector_output_file.replace('.json', '_images.json')
+        write_results_to_file(image_results,
+                              image_output_file,
+                              relative_path_base=source_folder,
+                              detector_file=detector_model)
+
+        print('Image detection results written to {}'.format(image_output_file))
+        files_to_merge.append(image_output_file)
+
+    # Process videos if any
     if len(video_files) > 0:
-        print('Warning: found {} videos, but video processing is not yet supported'.format(
-            len(video_files)))
+        print('Running MegaDetector on {} videos...'.format(len(video_files)))
 
-    if len(image_files) == 0:
-        raise ValueError('No supported image files found')
+        # Set up video processing options
+        video_options = ProcessVideoOptions()
+        video_options.model_file = detector_model
+        video_options.input_video_file = source_folder
+        video_options.output_json_file = detector_output_file.replace('.json', '_videos.json')
+        video_options.json_confidence_threshold = detection_confidence_threshold
+        video_options.frame_sample = frame_sample
+        video_options.time_sample = time_sample
 
-    print('Found {} images'.format(len(image_files)))
+        # Process videos
+        process_video_folder(video_options)
 
-    # Run MegaDetector
-    print('Running MegaDetector on {} images...'.format(len(image_files)))
+        print('Video detection results written to {}'.format(video_options.output_json_file))
+        files_to_merge.append(video_options.output_json_file)
 
-    results = load_and_run_detector_batch(
-        model_file=detector_model,
-        image_file_names=image_files,
-        checkpoint_path=None,
-        confidence_threshold=detection_confidence_threshold,
-        checkpoint_frequency=-1,
-        results=None,
-        n_cores=0,
-        use_image_queue=True,
-        quiet=True,
-        image_size=None,
-        batch_size=detector_batch_size,
-        include_image_size=False,
-        include_image_timestamp=False,
-        include_exif_data=False,
-        loader_workers=detector_worker_threads,
-        preprocess_on_image_queue=True
-    )
-
-    # Write results to temporary file
-    write_results_to_file(results,
-                          detector_output_file,
-                          relative_path_base=source_folder,
-                          detector_file=detector_model)
-
-    print('MegaDetector results written to {}'.format(detector_output_file))
+    # Merge results if we have both images and videos
+    if len(files_to_merge) > 1:
+        print('Merging image and video detection results...')
+        combine_batch_output_files(files_to_merge, detector_output_file)
+        print('Merged detection results written to {}'.format(detector_output_file))
+    elif len(files_to_merge) == 1:
+        # Just rename the single file
+        if files_to_merge[0] != detector_output_file:
+            os.rename(files_to_merge[0], detector_output_file)
+        print('Detection results written to {}'.format(detector_output_file))
 
 # ...def _run_detection_step(...)
 
@@ -627,7 +875,8 @@ def _run_classification_step(detector_results_file: str,
                              classifier_model: str = DEFAULT_CLASSIFIER_MODEL,
                              classifier_batch_size: int = DEFAULT_CLASSIFIER_BATCH_SIZE,
                              classifier_worker_threads: int = DEFAULT_LOADER_WORKERS,
-                             detection_confidence_threshold: float = DEFAULT_DETECTION_CONFIDENCE_THRESHOLD,
+                             detection_confidence_threshold: float = \
+                                DEFAULT_DETECTION_CONFIDENCE_THRESHOLD_FOR_CLASSIFICATION,
                              enable_rollup: bool = True,
                              country: str = None,
                              admin1_region: str = None,
@@ -642,7 +891,7 @@ def _run_classification_step(detector_results_file: str,
         classifier_model (str, optional): classifier model identifier
         classifier_batch_size (int, optional): batch size for classification
         classifier_worker_threads (int, optional): number of worker threads
-        detection_confidence_threshold (float, optional): minimum confidence for detections to classify
+        detection_confidence_threshold (float, optional): classify detections above this threshold
         enable_rollup (bool, optional): whether to apply taxonomic rollup
         country (str, optional): country code for geofencing
         admin1_region (str, optional): admin1 region (typically a state code) for geofencing
@@ -856,7 +1105,6 @@ def _run_classification_step(detector_results_file: str,
     if verbose:
         print('Classification results written to {}'.format(merged_results_file))
 
-
 # ...def _run_classification_step(...)
 
 
@@ -897,10 +1145,14 @@ def main():
                         type=int,
                         default=DEFAULT_LOADER_WORKERS,
                         help='Number of worker threads for preprocessing')
-    parser.add_argument('--detection_confidence_threshold',
+    parser.add_argument('--detection_confidence_threshold_for_classification',
                         type=float,
-                        default=DEFAULT_DETECTION_CONFIDENCE_THRESHOLD,
-                        help='Confidence threshold for detections to classify')
+                        default=DEFAULT_DETECTION_CONFIDENCE_THRESHOLD_FOR_CLASSIFICATION,
+                        help='Classifiy detections above this threshold')
+    parser.add_argument('--detection_confidence_threshold_for_output',
+                        type=float,
+                        default=DEFAULT_DETECTION_CONFIDENCE_THRESHOLD_FOR_OUTPUT,
+                        help='Include detections above this threshold in the output')
     parser.add_argument('--intermediate_file_folder',
                         default=None,
                         help='Folder for intermediate files (default: system temp)')
@@ -919,9 +1171,25 @@ def main():
     parser.add_argument('--detections_file',
                         default=None,
                         help='Path to existing MegaDetector output file (skips detection step)')
+    parser.add_argument('--skip_video',
+                        action='store_true',
+                        help='Ignore videos, only process images')
+    parser.add_argument('--skip_images',
+                        action='store_true',
+                        help='Ignore images, only process videos')
+    parser.add_argument('--frame_sample',
+                        type=int,
+                        default=None,
+                        help='Sample every Nth frame from videos (mutually exclusive with --time_sample)')
+    parser.add_argument('--time_sample',
+                        type=float,
+                        default=None,
+                        help='Sample frames every N seconds from videos (default {})'.\
+                            format(DEAFULT_SECONDS_PER_VIDEO_FRAME) + \
+                            ' (mutually exclusive with --frame_sample)')
     parser.add_argument('--verbose',
                         action='store_true',
-                        help='Enable verbose output')
+                        help='Enable additional debug output')
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -943,6 +1211,14 @@ def main():
 
     if args.admin1_region and not args.country:
         raise ValueError('--admin1_region requires --country to be specified')
+
+    if args.skip_images and args.skip_video:
+        raise ValueError('Cannot skip both images and videos')
+
+    if (args.frame_sample is not None) and (args.time_sample is not None):
+        raise ValueError('--frame_sample and --time_sample are mutually exclusive')
+    if (args.frame_sample is None) and (args.time_sample is None):
+        args.time_sample = DEAFULT_SECONDS_PER_VIDEO_FRAME
 
     # Set up intermediate file folder
     if args.intermediate_file_folder:
@@ -976,11 +1252,15 @@ def main():
             detector_output_file=detector_output_file,
             detector_model=args.detector_model,
             detector_batch_size=args.detector_batch_size,
-            detection_confidence_threshold=DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD,
+            detection_confidence_threshold=args.detection_confidence_threshold_for_output,
             detector_worker_threads=args.loader_workers,
+            skip_images=args.skip_images,
+            skip_video=args.skip_video,
+            frame_sample=args.frame_sample,
+            time_sample=args.time_sample
         )
 
-    # Run SpeciesNet classification
+    # Run SpeciesNet
     _run_classification_step(
         detector_results_file=detector_output_file,
         merged_results_file=args.output_file,
@@ -988,7 +1268,7 @@ def main():
         classifier_model=args.classification_model,
         classifier_batch_size=args.classifier_batch_size,
         classifier_worker_threads=args.loader_workers,
-        detection_confidence_threshold=args.detection_confidence_threshold,
+        detection_confidence_threshold=args.detection_confidence_threshold_for_classification,
         enable_rollup=(not args.norollup),
         country=args.country,
         admin1_region=args.admin1_region,
