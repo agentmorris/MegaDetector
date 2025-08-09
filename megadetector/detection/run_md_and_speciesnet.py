@@ -36,7 +36,7 @@ from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.postprocessing.validate_batch_results import \
     validate_batch_results, ValidateBatchResultsOptions
 from megadetector.detection.process_video import \
-    process_video_folder, ProcessVideoOptions
+    process_videos, ProcessVideoOptions
 from megadetector.postprocessing.combine_batch_outputs import combine_batch_output_files
 
 from speciesnet import SpeciesNetClassifier
@@ -850,7 +850,7 @@ def _run_detection_step(source_folder: str,
         video_options.time_sample = time_sample
 
         # Process videos
-        process_video_folder(video_options)
+        process_videos(video_options)
 
         print('Video detection results written to {}'.format(video_options.output_json_file))
         files_to_merge.append(video_options.output_json_file)
