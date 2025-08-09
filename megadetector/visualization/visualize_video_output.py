@@ -12,7 +12,6 @@ detector output file.
 import argparse
 import os
 import random
-import sys
 import cv2
 
 from tqdm import tqdm
@@ -20,9 +19,7 @@ from PIL import Image
 import numpy as np
 
 from megadetector.data_management.annotations.annotation_constants import detector_bbox_category_id_to_name
-from megadetector.detection.run_detector import get_typical_confidence_threshold_from_results
 from megadetector.detection.video_utils import run_callback_on_frames, default_fourcc, is_video_file
-from megadetector.utils.ct_utils import get_max_conf
 from megadetector.utils.path_utils import path_is_abs
 from megadetector.utils.wi_utils import load_md_or_speciesnet_file
 from megadetector.visualization.visualization_utils import render_detection_bounding_boxes
@@ -66,23 +63,66 @@ class VideoVisualizationOptions:
         #: Fourcc codec specification for video encoding
         self.fourcc = default_fourcc
 
+        #: Skip frames before first and after last above-threshold detection
+        self.trim_to_detections = False
+
 # ...class VideoVisualizationOptions
 
 
 #%% Support functions
 
-def _get_video_output_framerate(video_entry, original_framerate):
+def _get_video_output_framerate(video_entry, original_framerate, rendering_fs='auto'):
     """
     Calculate the appropriate output frame rate for a video based on detection frame numbers.
 
     Args:
         video_entry (dict): video entry from results file containing detections
         original_framerate (float): original frame rate of the video
+        rendering_fs (str or float): 'auto' for automatic calculation, negative float for
+            speedup factor, positive float for explicit fps
 
     Returns:
         float: calculated output frame rate
     """
 
+    if rendering_fs != 'auto':
+
+        if float(rendering_fs) < 0:
+
+            # Negative value means speedup factor
+            speedup_factor = abs(float(rendering_fs))
+            if ('detections' not in video_entry) or (len(video_entry['detections']) == 0):
+                # This is a bit arbitrary, but a reasonable thing to do when we have no basis
+                # to determine the output frame rate
+                return original_framerate * speedup_factor
+
+            frame_numbers = []
+            for detection in video_entry['detections']:
+                if 'frame_number' in detection:
+                    frame_numbers.append(detection['frame_number'])
+
+            if len(frame_numbers) < 2:
+                # This is a bit arbitrary, but a reasonable thing to do when we have no basis
+                # to determine the output frame rate
+                return original_framerate * speedup_factor
+
+            frame_numbers = sorted(set(frame_numbers))
+            first_interval = frame_numbers[1] - frame_numbers[0]
+
+            # Calculate base output frame rate based on first interval, then apply speedup
+            base_output_fps = original_framerate / first_interval
+            return base_output_fps * speedup_factor
+
+        else:
+
+            # Positive value means explicit fps
+            return float(rendering_fs)
+
+        # ...if we're using an explicit/speedup-based frame rate
+
+    # ...if we aren't in "auto" frame rate mode
+
+    # Auto mode
     if 'detections' not in video_entry or len(video_entry['detections']) == 0:
         return original_framerate
 
@@ -103,12 +143,15 @@ def _get_video_output_framerate(video_entry, original_framerate):
     return output_fps
 
 
-def _get_frames_to_process(video_entry):
+def _get_frames_to_process(video_entry, confidence_threshold, trim_to_detections=False):
     """
     Get list of frame numbers that have detections for this video.
 
     Args:
         video_entry (dict): video entry from results file
+        confidence_threshold (float): minimum confidence for detections to be considered
+        trim_to_detections (bool): if True, only include frames between first and last
+            above-threshold detections (inclusive)
 
     Returns:
         list: sorted list of unique frame numbers to process
@@ -122,7 +165,37 @@ def _get_frames_to_process(video_entry):
         if 'frame_number' in detection:
             frame_numbers.append(detection['frame_number'])
 
-    return sorted(set(frame_numbers))
+    frame_numbers = sorted(set(frame_numbers))
+
+    if trim_to_detections and (len(frame_numbers) > 0):
+
+        # Find first and last frames with above-threshold detections
+
+        above_threshold_frames = set()
+        for detection in video_entry['detections']:
+            if detection['conf'] >= confidence_threshold:
+                above_threshold_frames.add(detection['frame_number'])
+
+        if len(above_threshold_frames) > 0:
+
+            above_threshold_frames = sorted(list(above_threshold_frames))
+            first_detection_frame = above_threshold_frames[0]
+            last_detection_frame = above_threshold_frames[-1]
+
+            # Return all frames between first and last above-threshold detections (inclusive)
+            trimmed_frames = []
+            for frame_num in frame_numbers:
+                if (first_detection_frame <= frame_num) and (frame_num <= last_detection_frame):
+                    trimmed_frames.append(frame_num)
+            return trimmed_frames
+
+        else:
+            # No above-threshold detections, return empty list
+            return []
+
+    # ...if we're supposed to be trimming to non-empty frames
+
+    return frame_numbers
 
 
 def _get_detections_for_frame(video_entry, frame_number, confidence_threshold):
@@ -203,17 +276,14 @@ def _process_video(video_entry,
     os.makedirs(os.path.dirname(output_video_path), exist_ok=True)
 
     # Get frames to process
-    frames_to_process = _get_frames_to_process(video_entry)
+    frames_to_process = _get_frames_to_process(video_entry, options.confidence_threshold, options.trim_to_detections)
     if len(frames_to_process) == 0:
         result['error'] = 'No frames with detections to process'
         return result
 
     # Determine output frame rate
     original_framerate = video_entry['frame_rate']
-    if options.rendering_fs == 'auto':
-        output_framerate = _get_video_output_framerate(video_entry, original_framerate)
-    else:
-        output_framerate = float(options.rendering_fs)
+    output_framerate = _get_video_output_framerate(video_entry, original_framerate, options.rendering_fs)
 
     # Storage for rendered frames
     rendered_frames = []
@@ -406,7 +476,7 @@ def visualize_video_output(detector_output_path, out_dir, video_dir, options=Non
     failed = len(results) - successful
     total_frames = sum(r['frames_processed'] for r in results if r['success'])
 
-    print(f'\nProcessing complete:')
+    print('\nProcessing complete:')
     print(f'  Successfully processed: {successful} videos')
     print(f'  Failed: {failed} videos')
     print(f'  Total frames rendered: {total_frames}')
@@ -419,6 +489,9 @@ def visualize_video_output(detector_output_path, out_dir, video_dir, options=Non
 #%% Command-line driver
 
 def main():
+    """
+    Command-line driver for visualize_video_output
+    """
 
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -471,13 +544,19 @@ def main():
         '--rendering_fs',
         default='auto',
         help='Frame rate for output videos. Use "auto" to calculate based on '
-             'detection frame intervals, or specify a float value for fps')
+             'detection frame intervals, positive float for explicit fps, '
+             'or negative float for speedup factor (e.g. -2.0 = 2x faster)')
 
     parser.add_argument(
         '--fourcc',
         type=str,
         default=default_fourcc,
         help='Fourcc codec specification for video encoding')
+
+    parser.add_argument(
+        '--trim_to_detections',
+        action='store_true',
+        help='Skip frames before first and after last above-threshold detection')
 
     args = parser.parse_args()
 
@@ -489,6 +568,7 @@ def main():
     options.classification_confidence_threshold = args.classification_confidence_threshold
     options.rendering_fs = args.rendering_fs
     options.fourcc = args.fourcc
+    options.trim_to_detections = args.trim_to_detections
 
     # Run visualization
     visualize_video_output(
