@@ -2,7 +2,8 @@
 
 run_md_and_speciesnet.py
 
-Script to run MegaDetector followed by SpeciesNet classifier on images and videos.
+Script to run MegaDetector and SpeciesNet on a folder of images and/or videos.
+Runs MD first, then runs SpeciesNet on every above-threshold crop.
 
 """
 

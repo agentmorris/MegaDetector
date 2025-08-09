@@ -228,7 +228,10 @@ def run_callback_on_frames(input_video_file,
     Args:
         input_video_file (str): video file to process
         frame_callback (function): callback to run on frames, should take an np.array and a string and
-            return a single value.  callback should expect PIL-formatted (RGB) images.
+            return a single value.  callback should expect two arguments: (1) a numpy array with image
+            data, in the typical PIL image orientation/channel order, and (2) a string identifier
+            for the frame, typically something like "frame0006.jpg" (even though it's not a JPEG
+            image, this is just an identifier for the frame).
         every_n_frames (float, optional): sample every Nth frame starting from the first frame;
             if this is None or 1, every frame is processed.  If this is a negative value, it's
             interpreted as a sampling rate in seconds, which is rounded to the nearest frame sampling
