@@ -229,8 +229,9 @@ def validate_batch_results(json_filename,options=None):
                 if 'frame_rate' not in im:
                     raise ValueError('Video without frame rate: {}'.format(im['file']))
                 if im['frame_rate'] < 0:
-                    raise ValueError('Video with illegal frame rate {}: {}'.format(
-                        str(im['frame_rate']),im['file']))
+                    if 'failure' not in im:
+                        raise ValueError('Video with illegal frame rate {}: {}'.format(
+                            str(im['frame_rate']),im['file']))
                 if 'detections' in im and im['detections'] is not None:
                     for det in im['detections']:
                         if 'frame_number' not in det:
