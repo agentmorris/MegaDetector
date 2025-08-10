@@ -238,7 +238,7 @@ def run_callback_on_frames(input_video_file,
             data, in the typical PIL image orientation/channel order, and (2) a string identifier
             for the frame, typically something like "frame0006.jpg" (even though it's not a JPEG
             image, this is just an identifier for the frame).
-        every_n_frames (float, optional): sample every Nth frame starting from the first frame;
+        every_n_frames (int or float, optional): sample every Nth frame starting from the first frame;
             if this is None or 1, every frame is processed.  If this is a negative value, it's
             interpreted as a sampling rate in seconds, which is rounded to the nearest frame sampling
             rate. Mutually exclusive with frames_to_process.
@@ -280,12 +280,21 @@ def run_callback_on_frames(input_video_file,
         frame_filenames = []
         results = []
 
-        if (every_n_frames is not None) and (every_n_frames < 0):
-            every_n_seconds = abs(every_n_frames)
-            every_n_frames = int(every_n_seconds * frame_rate)
-            if verbose:
-                print('Interpreting a time sampling rate of {} hz as a frame interval of {}'.format(
-                    every_n_seconds,every_n_frames))
+        if (every_n_frames is not None):
+
+            if (every_n_frames < 0):
+                every_n_seconds = abs(every_n_frames)
+                every_n_frames = int(every_n_seconds * frame_rate)
+                if verbose:
+                    print('Interpreting a time sampling rate of {} hz as a frame interval of {}'.format(
+                        every_n_seconds,every_n_frames))
+            # 0 and 1 both mean "process every frame"
+            elif every_n_frames == 0:
+                every_n_frames = 1
+            elif every_n_frames > 0:
+                every_n_frames = int(every_n_frames)
+
+        # ...if every_n_frames was supplied
 
         # frame_number = 0
         for frame_number in range(0,n_frames):
@@ -367,7 +376,7 @@ def run_callback_on_frames_for_folder(input_video_folder,
             data, in the typical PIL image orientation/channel order, and (2) a string identifier
             for the frame, typically something like "frame0006.jpg" (even though it's not a JPEG
             image, this is just an identifier for the frame).
-        every_n_frames (int, optional): sample every Nth frame starting from the first frame;
+        every_n_frames (int or float, optional): sample every Nth frame starting from the first frame;
             if this is None or 1, every frame is processed.  If this is a negative value, it's
             interpreted as a sampling rate in seconds, which is rounded to the nearest frame
             sampling rate.
@@ -770,7 +779,8 @@ def video_folder_to_frames(input_folder,
                            quality=None,
                            max_width=None,
                            frames_to_extract=None,
-                           allow_empty_videos=False):
+                           allow_empty_videos=False,
+                           relative_paths_to_process=None):
     """
     For every video file in input_folder, creates a folder within output_folder_base, and
     renders frame of that video to images in that folder.
@@ -783,9 +793,9 @@ def video_folder_to_frames(input_folder,
         overwrite (bool, optional): whether to overwrite existing frame images
         n_threads (int, optional): number of concurrent workers to use; set to <= 1 to disable
             parallelism
-        every_n_frames (int, optional): sample every Nth frame starting from the first frame;
-            if this is None or 1, every frame is extracted.  If this is a negative value, it's
-            interpreted as a sampling rate in seconds, which is rounded to the nearest frame
+        every_n_frames (int or float, optional): sample every Nth frame starting from the first
+            frame; if this is None or 1, every frame is extracted.  If this is a negative value,
+            it's interpreted as a sampling rate in seconds, which is rounded to the nearest frame
             sampling rate.  Mutually exclusive with frames_to_extract.
         verbose (bool, optional): enable additional debug console output
         parallelization_uses_threads (bool, optional): whether to use threads (True) or
@@ -793,14 +803,16 @@ def video_folder_to_frames(input_folder,
         quality (int, optional): JPEG quality for frame output, from 0-100.  Defaults
             to the opencv default (typically 95).
         max_width (int, optional): resize frames to be no wider than [max_width]
-        frames_to_extract (list of int, optional): extract this specific set of frames from
-            each video; mutually exclusive with every_n_frames.  If all values are beyond
-            the length of a video, no frames are extracted. Can also be a single int,
-            specifying a single frame number.  In the special case where frames_to_extract
-            is [], this function still reads video frame rates and verifies that videos
-            are readable, but no frames are extracted.
-        allow_empty_videos (bool, optional): Just print a warning if a video appears to have no
+        frames_to_extract (list of int): extract this specific set of frames from each video;
+            mutually exclusive with every_n_frames.  If all values are beyond the length of a
+            video, no frames are extracted. Can also be a single int, specifying a single frame
+            number.  In the special case where frames_to_extract is [], this function still reads
+            video frame rates and verifies that videos are readable, but no frames are extracted.
+            This should only be a list of lists of ints when relative_paths_to_process is not None.
+        allow_empty_videos (bool, optional): just print a warning if a video appears to have no
             frames (by default, this is an error).
+        relative_paths_to_process (list, optional): only process the relative paths on this
+            list
 
     Returns:
         tuple: a length-3 tuple containing:
@@ -810,16 +822,20 @@ def video_folder_to_frames(input_folder,
             - list of video filenames
     """
 
-    # Recursively enumerate video files
-    if verbose:
-        print('Enumerating videos in {}'.format(input_folder))
-    input_files_full_paths = find_videos(input_folder,recursive=recursive)
-    if verbose:
-        print('Found {} videos in folder {}'.format(len(input_files_full_paths),input_folder))
-    if len(input_files_full_paths) == 0:
-        return [],[],[]
+    # Enumerate video files if necessary
+    if relative_paths_to_process is None:
+        if verbose:
+            print('Enumerating videos in {}'.format(input_folder))
+        input_files_full_paths = find_videos(input_folder,recursive=recursive)
+        if verbose:
+            print('Found {} videos in folder {}'.format(len(input_files_full_paths),input_folder))
+        if len(input_files_full_paths) == 0:
+            return [],[],[]
 
-    input_files_relative_paths = [os.path.relpath(s,input_folder) for s in input_files_full_paths]
+        input_files_relative_paths = [os.path.relpath(s,input_folder) for s in input_files_full_paths]
+    else:
+        input_files_relative_paths = relative_paths_to_process
+
     input_files_relative_paths = [s.replace('\\','/') for s in input_files_relative_paths]
 
     os.makedirs(output_folder_base,exist_ok=True)

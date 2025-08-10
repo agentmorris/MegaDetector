@@ -523,7 +523,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
 
         return True
 
-    # ...def render_image_info
+    # ...def render_image_info(...)
 
     print('Rendering images')
     start_time = time.time()
@@ -590,7 +590,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
 
     return html_output_file,image_db
 
-# def visualize_db(...)
+# ...def visualize_db(...)
 
 
 #%% Command-line driver
@@ -604,8 +604,10 @@ def _args_to_object(args, obj):
         if not n.startswith('_'):
             setattr(obj, n, v)
 
-
-def main(): # noqa
+def main():
+    """
+    Command-line driver for visualize_db
+    """
 
     parser = argparse.ArgumentParser()
     parser.add_argument('db_path', action='store', type=str,
@@ -643,20 +645,3 @@ def main(): # noqa
 
 if __name__ == '__main__':
     main()
-
-
-#%% Interactive driver
-
-if False:
-
-    #%%
-
-    db_path = r'e:\wildlife_data\missouri_camera_traps\missouri_camera_traps_set1.json'
-    output_dir = r'e:\wildlife_data\missouri_camera_traps\preview'
-    image_base_dir = r'e:\wildlife_data\missouri_camera_traps'
-
-    options = DbVizOptions()
-    options.num_to_visualize = 100
-
-    html_output_file, db = visualize_db(db_path,output_dir,image_base_dir,options)
-    # os.startfile(html_output_file)
