@@ -1190,12 +1190,13 @@ class PTDetector:
 
         assert isinstance(pred, list)
         assert len(pred) == len(batch_metadata), \
-            f'Prediction length {len(pred)} != batch size {len(batch_metadata)}'
+            print('Mismatch between prediction length {} and batch size {}'.format(
+                   len(pred),len(batch_metadata)))
 
         # Process each image's detections
-        for i_detection, det in enumerate(pred):
+        for i_image, det in enumerate(pred):
 
-            metadata = batch_metadata[i_detection]
+            metadata = batch_metadata[i_image]
             original_idx = metadata['original_idx']
             current_image_id = metadata['current_image_id']
             scaling_shape = metadata['scaling_shape']
