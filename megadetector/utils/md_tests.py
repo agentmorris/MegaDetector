@@ -145,7 +145,6 @@ class MDTestOptions:
         self.n_cores_for_video_tests = 2
 
         #: Batch size to use when testing batches of size > 1
-        print('**** RANDOM BATCH SIZE *****')
         self.alternative_batch_size = 3
 
     # ...def __init__()
@@ -914,9 +913,6 @@ def run_python_tests(options):
         expected_results_file = get_expected_results_filename(is_gpu_available(verbose=False),
                                                               options=options)
         compare_results(inference_output_file_batch,expected_results_file,options)
-
-        print('************* early return *************')
-        return
 
         ## Run and verify again with augmentation enabled
 
@@ -1794,8 +1790,7 @@ def test_suite_entry_point():
     options.cli_test_pythonpath = None
     options.skip_download_tests = True
     options.skip_localhost_downloads = True
-    print('**** skipping import tests ****')
-    options.skip_import_tests = True
+    options.skip_import_tests = False
 
     options = download_test_data(options)
 

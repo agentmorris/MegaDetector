@@ -107,6 +107,8 @@ exif_options = read_exif.ReadExifOptions()
 exif_options.processing_library = 'pil'
 exif_options.byte_handling = 'convert_to_string'
 
+randomize_batch_order_during_testing = False
+
 
 #%% Support functions for multiprocessing
 
@@ -1200,21 +1202,15 @@ def load_and_run_detector_batch(model_file,
 
         if (batch_size > 1):
 
-            randomize_batch_order_during_testing = False
-            if randomize_batch_order_during_testing:
-                # During testing, randomize the order of images_to_process to help detect
-                # non-deterministic batching issues
-                if ('PYTEST_CURRENT_TEST' in os.environ):
-                    print('PyTest detected: randomizing batch order')
-                    random.seed(int(time.time()))
-                    debug_seed = random.randint(0, 2**31 - 1)
-                    print('Debug seed: {}'.format(debug_seed))
-                    random.seed(debug_seed)
-                    random.shuffle(images_to_process)
-
-            random.seed(10)
-            # random.seed(697310412)
-            random.shuffle(images_to_process)
+            # During testing, randomize the order of images_to_process to help detect
+            # non-deterministic batching issues
+            if randomize_batch_order_during_testing and ('PYTEST_CURRENT_TEST' in os.environ):
+                print('PyTest detected: randomizing batch order')
+                random.seed(int(time.time()))
+                debug_seed = random.randint(0, 2**31 - 1)
+                print('Debug seed: {}'.format(debug_seed))
+                random.seed(debug_seed)
+                random.shuffle(images_to_process)
 
             # Use batch processing
             image_batches = _group_into_batches(images_to_process, batch_size)
@@ -1262,6 +1258,8 @@ def load_and_run_detector_batch(model_file,
                     print('Writing a new checkpoint after having processed {} images since '
                           'last restart'.format(image_count))
                     _write_checkpoint(checkpoint_path, results)
+
+        # ...if the batch size is > 1
 
     else:
 
