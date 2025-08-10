@@ -1161,10 +1161,12 @@ class PTDetector:
             if batch_tensor.shape[0] > 1:
                 print('_process_batch_group: processing a batch of size {}'.format(batch_tensor.shape[0]))
 
-        # Move to device and convert to appropriate precision
+        batch_tensor = batch_tensor.float()
+        batch_tensor /= 255.0
+
         batch_tensor = batch_tensor.to(self.device)
-        batch_tensor = batch_tensor.half() if self.half_precision else batch_tensor.float()
-        batch_tensor /= 255
+        if self.half_precision:
+            batch_tensor = batch_tensor.half()
 
         # Run the model on the batch
         pred = self.model(batch_tensor, augment=augment)[0]
@@ -1181,12 +1183,35 @@ class PTDetector:
             nms_agnostic = False
             nms_multi_label = True
 
-        # Apply NMS to the whole batch
-        pred = non_max_suppression(prediction=pred,
-                                   conf_thres=nms_conf_thres,
-                                   iou_thres=nms_iou_thres,
-                                   agnostic=nms_agnostic,
-                                   multi_label=nms_multi_label)
+        single_image_nms = False
+
+        if single_image_nms:
+
+            # Apply NMS to each image individually for consistency with single-image processing
+            nms_results = []
+            for i_image in range(pred.shape[0]):
+                # Extract predictions for this single image and add batch dimension
+                single_pred = pred[i_image:i_image+1]  # Keep batch dimension
+
+                # Apply NMS to this individual image
+                single_result = non_max_suppression(prediction=single_pred,
+                                                conf_thres=nms_conf_thres,
+                                                iou_thres=nms_iou_thres,
+                                                agnostic=nms_agnostic,
+                                                multi_label=nms_multi_label)
+
+                # Extract the single result (NMS returns a list)
+                nms_results.append(single_result[0])
+
+            pred = nms_results
+
+        else:
+
+             pred = non_max_suppression(prediction=pred,
+                                        conf_thres=nms_conf_thres,
+                                        iou_thres=nms_iou_thres,
+                                        agnostic=nms_agnostic,
+                                        multi_label=nms_multi_label)
 
         assert isinstance(pred, list)
         assert len(pred) == len(batch_metadata), \
@@ -1207,6 +1232,7 @@ class PTDetector:
             max_conf = 0.0
 
             if len(det) > 0:
+
                 # Prepare scaling parameters
                 gn = torch.tensor(scaling_shape)[[1, 0, 1, 0]]
 
