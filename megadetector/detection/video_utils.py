@@ -737,6 +737,25 @@ def video_to_frames(input_video_file,
 # ...def video_to_frames(...)
 
 
+def _video_to_frames_with_per_video_frames(args):
+    """
+    Wrapper function to handle extracting a different list of frames for
+    each video in a multiprocessing context.
+
+    Takes a tuple of (relative_fn, frames_for_this_video, other_args),
+    where (other_args) contains the arguments that are the same for each
+    iteration.
+    """
+
+    relative_fn, frames_for_this_video, other_args = args
+    (input_folder, output_folder_base, every_n_frames, overwrite, verbose,
+     quality, max_width, allow_empty_videos) = other_args
+
+    return _video_to_frames_for_folder(relative_fn, input_folder, output_folder_base,
+                                       every_n_frames, overwrite, verbose, quality, max_width,
+                                       frames_for_this_video, allow_empty_videos)
+
+
 def _video_to_frames_for_folder(relative_fn,input_folder,output_folder_base,
                                 every_n_frames,overwrite,verbose,quality,max_width,
                                 frames_to_extract,allow_empty_videos):
@@ -878,29 +897,31 @@ def video_folder_to_frames(input_folder,
         pool = None
         results = None
         try:
+
             if parallelization_uses_threads:
                 print('Starting a worker pool with {} threads'.format(n_threads))
                 pool = ThreadPool(n_threads)
             else:
                 print('Starting a worker pool with {} processes'.format(n_threads))
                 pool = Pool(n_threads)
+
             if isinstance(frames_to_extract, dict):
-                # For dict case, we need to pass different frames for each video
-                def process_video_with_frames(relative_fn):
-                    frames_for_this_video = frames_to_extract.get(relative_fn, [])
-                    return _video_to_frames_for_folder(relative_fn,
-                                                       input_folder,
-                                                       output_folder_base,
-                                                       every_n_frames,
-                                                       overwrite,
-                                                       verbose,
-                                                       quality,
-                                                       max_width,
-                                                       frames_for_this_video,
-                                                       allow_empty_videos)
-                results = list(tqdm(pool.imap(process_video_with_frames, input_files_relative_paths),
-                                    total=len(input_files_relative_paths)))
+
+                # For the dict case, we need to extract different frames from each video.
+
+                # These arguments are the same for every iteration
+                other_args = (input_folder, output_folder_base, every_n_frames, overwrite,
+                              verbose, quality, max_width, allow_empty_videos)
+
+                # The filename and list of frames to extract vary with each iteration
+                args_for_pool = [(relative_fn, frames_to_extract.get(relative_fn, []), other_args)
+                                 for relative_fn in input_files_relative_paths]
+
+                results = list(tqdm(pool.imap(_video_to_frames_with_per_video_frames, args_for_pool),
+                                    total=len(args_for_pool)))
+
             else:
+
                 process_video_with_options = partial(_video_to_frames_for_folder,
                                                      input_folder=input_folder,
                                                      output_folder_base=output_folder_base,
@@ -913,11 +934,17 @@ def video_folder_to_frames(input_folder,
                                                      allow_empty_videos=allow_empty_videos)
                 results = list(tqdm(pool.imap(process_video_with_options, input_files_relative_paths),
                                     total=len(input_files_relative_paths)))
+
             # ...if we need to pass different frames for each video
+
         finally:
+
             pool.close()
             pool.join()
-            print("Pool closed and joined for video processing")
+            print('Pool closed and joined for video processing')
+
+        # ...try/finally
+
         frame_filenames_by_video = [x[0] for x in results]
         fs_by_video = [x[1] for x in results]
 
