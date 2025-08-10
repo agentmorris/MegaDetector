@@ -143,9 +143,9 @@ def process_videos(options):
 
     def frame_callback(image_np,image_id):
         return detector.generate_detections_one_image(image_np,
-                                                        image_id,
-                                                        detection_threshold=options.json_confidence_threshold,
-                                                        augment=options.augment)
+                                                      image_id,
+                                                      detection_threshold=options.json_confidence_threshold,
+                                                      augment=options.augment)
 
     """
     [md_results] will be dict with keys 'video_filenames' (list of str), 'frame_rates' (list of floats),
@@ -196,6 +196,7 @@ def process_videos(options):
         im = {}
         im['file'] = video_fn
         im['frame_rate'] = video_frame_rates[i_video]
+        im['frames_processed'] = []
 
         if isinstance(results_this_video,dict):
 
@@ -213,9 +214,17 @@ def process_videos(options):
                 assert results_one_frame['file'].startswith(video_fn)
 
                 frame_number = _filename_to_frame_number(results_one_frame['file'])
+
+                assert frame_number not in im['frames_processed'], \
+                    'Received the same frame twice for video {}'.format(im['file'])
+
+                im['frames_processed'].append(frame_number)
+
                 for det in results_one_frame['detections']:
                     det['frame_number'] = frame_number
 
+                # This is a no-op if there were no above-threshold detections
+                # in this frame
                 im['detections'].extend(results_one_frame['detections'])
 
             # ...for each frame
@@ -225,6 +234,8 @@ def process_videos(options):
         video_list_md_format.append(im)
 
     # ...for each video
+
+    im['frames_processed'] = sorted(im['frames_processed'])
 
     run_detector_batch.write_results_to_file(
         video_list_md_format,

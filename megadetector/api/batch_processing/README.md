@@ -20,7 +20,7 @@ Example output with both detection and classification results:
     "info": {
 
         // Required
-        "format_version": "1.4",
+        "format_version": "1.5",
         
         // All other "info" fields are optional
         "detector": "md_v4.1.0.pb",
@@ -101,12 +101,15 @@ Example output with both detection and classification results:
             ]
         },
         // Videos appear in the same format as images, with the addition of the
-        // "frame_rate" field (for the file) and the "frame_number" field (for each 
-        // detection).  For videos, "frame_rate" and "frame_number" are required fields.
+        // "frame_rate" and "frames_processed" fields (for the file), and the 
+        // "frame_number" field (for each detection).  All three of these fields
+        // are required for videos.
         //
         // frame_rate should be greater than zero, and can be int- or float-valued.  
         //
         // frame_number should be int-valued, and greater than or equal to zero.
+        //
+        // frames_processed should be a list of ints.
         //
         // Detections are typically included for just one representative
         // frame for each detection category, but detections may also be reported for
@@ -114,6 +117,7 @@ Example output with both detection and classification results:
         {
             "file": "path/from/base/dir/video_with_person.mp4",
             "frame_rate": 20,
+            "frames_processed" : [0, 20, 40, 60],
             "detections": [
                 {
                     "category": "2",
@@ -143,7 +147,8 @@ Example output with both detection and classification results:
         },
         {
             // This file was not processed.  "failure" should be a string in this case, indicating 
-            // the reason for failure.  "detections" can be null or omitted in this case.
+            // the reason for failure.  "detections" can be null or omitted in this case; it should *not*
+            // be an empty list.
             "file": "/path/from/base/dir2/corrupted_image_0.jpg",
             "failure": "Failure image access",
             "detections": null

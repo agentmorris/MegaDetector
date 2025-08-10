@@ -160,12 +160,27 @@ def _get_frames_to_process(video_entry, confidence_threshold, trim_to_detections
     if 'detections' not in video_entry:
         return []
 
-    frame_numbers = []
-    for detection in video_entry['detections']:
-        if 'frame_number' in detection:
-            frame_numbers.append(detection['frame_number'])
+    if 'frames_processed' in video_entry:
+        frame_numbers = set(video_entry['frames_processed'])
+    else:
+        frame_numbers = set()
 
-    frame_numbers = sorted(set(frame_numbers))
+    for detection in video_entry['detections']:
+
+        if 'frame_number' in detection:
+            # If this file includes the list of frames processed (required as of format
+            # version 1.5), every frame with detections should be included in that list
+            if 'frames_processed' in video_entry:
+                if detection['frame_number'] not in frame_numbers:
+                    print('Warning: frames_processed field present in {}, but frame {} is missing'.\
+                          format(video_entry['file'],detection['frame_number']))
+            frame_numbers.add(detection['frame_number'])
+        else:
+            print('Warning: detections in {} lack frame numbers'.format(video_entry['file']))
+
+    # ...for each detection
+
+    frame_numbers = sorted(list(frame_numbers))
 
     if trim_to_detections and (len(frame_numbers) > 0):
 
@@ -215,6 +230,7 @@ def _get_detections_for_frame(video_entry, frame_number, confidence_threshold):
         return []
 
     frame_detections = []
+
     for detection in video_entry['detections']:
         if ((detection['frame_number'] == frame_number) and
             (detection['conf'] >= confidence_threshold)):
@@ -276,14 +292,18 @@ def _process_video(video_entry,
     os.makedirs(os.path.dirname(output_video_path), exist_ok=True)
 
     # Get frames to process
-    frames_to_process = _get_frames_to_process(video_entry, options.confidence_threshold, options.trim_to_detections)
+    frames_to_process = _get_frames_to_process(video_entry,
+                                               options.confidence_threshold,
+                                               options.trim_to_detections)
     if len(frames_to_process) == 0:
         result['error'] = 'No frames with detections to process'
         return result
 
     # Determine output frame rate
     original_framerate = video_entry['frame_rate']
-    output_framerate = _get_video_output_framerate(video_entry, original_framerate, options.rendering_fs)
+    output_framerate = _get_video_output_framerate(video_entry,
+                                                   original_framerate,
+                                                   options.rendering_fs)
 
     # Storage for rendered frames
     rendered_frames = []
@@ -403,7 +423,10 @@ def _process_video(video_entry,
 
 #%% Main function
 
-def visualize_video_output(detector_output_path, out_dir, video_dir, options=None):
+def visualize_video_output(detector_output_path,
+                           out_dir,
+                           video_dir,
+                           options=None):
     """
     Renders videos with bounding boxes based on detector output.
 

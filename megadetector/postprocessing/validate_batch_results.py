@@ -224,6 +224,11 @@ def validate_batch_results(json_filename,options=None):
                 if not isinstance(im['detections'],list):
                     raise ValueError('Invalid detections list for image {}'.format(im['file']))
 
+            if is_video_file(im['file']) and (format_version >= 1.5):
+
+                if 'frames_processed' not in im:
+                    raise ValueError('Video without frames_processed field: {}'.format(im['file']))
+
             if is_video_file(im['file']) and (format_version >= 1.4):
 
                 if 'frame_rate' not in im:
