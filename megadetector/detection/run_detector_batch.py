@@ -1212,8 +1212,8 @@ def load_and_run_detector_batch(model_file,
                     random.seed(debug_seed)
                     random.shuffle(images_to_process)
 
-            # random.seed(10)
-            random.seed(697310412)
+            random.seed(10)
+            # random.seed(697310412)
             random.shuffle(images_to_process)
 
             # Use batch processing

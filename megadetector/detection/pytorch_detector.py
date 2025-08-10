@@ -28,6 +28,7 @@ from megadetector.detection.run_detector import \
     known_models
 from megadetector.utils.ct_utils import parse_bool_string
 from megadetector.utils import ct_utils
+import torchvision
 
 # We support a few ways of accessing the YOLOv5 dependencies:
 #
@@ -1173,45 +1174,21 @@ class PTDetector:
 
         # Configure NMS parameters
         if 'classic' in self.compatibility_mode:
-            nms_conf_thres = detection_threshold
             nms_iou_thres = 0.45
-            nms_agnostic = False
-            nms_multi_label = False
         else:
-            nms_conf_thres = detection_threshold
             nms_iou_thres = 0.6
-            nms_agnostic = False
-            nms_multi_label = True
 
-        single_image_nms = False
+        pred = self.nms(prediction=pred,
+                        conf_thres=detection_threshold,
+                        iou_thres=nms_iou_thres)
 
-        if single_image_nms:
-
-            # Apply NMS to each image individually for consistency with single-image processing
-            nms_results = []
-            for i_image in range(pred.shape[0]):
-                # Extract predictions for this single image and add batch dimension
-                single_pred = pred[i_image:i_image+1]  # Keep batch dimension
-
-                # Apply NMS to this individual image
-                single_result = non_max_suppression(prediction=single_pred,
-                                                conf_thres=nms_conf_thres,
-                                                iou_thres=nms_iou_thres,
-                                                agnostic=nms_agnostic,
-                                                multi_label=nms_multi_label)
-
-                # Extract the single result (NMS returns a list)
-                nms_results.append(single_result[0])
-
-            pred = nms_results
-
-        else:
-
-             pred = non_max_suppression(prediction=pred,
-                                        conf_thres=nms_conf_thres,
-                                        iou_thres=nms_iou_thres,
-                                        agnostic=nms_agnostic,
-                                        multi_label=nms_multi_label)
+        # For posterity
+        if False:
+            pred = non_max_suppression(prediction=pred,
+                                       conf_thres=detection_threshold,
+                                       iou_thres=nms_iou_thres,
+                                       agnostic=False,
+                                       multi_label=False)
 
         assert isinstance(pred, list)
         assert len(pred) == len(batch_metadata), \
@@ -1348,6 +1325,118 @@ class PTDetector:
         return batch_results[0]
 
     # ...def generate_detections_one_image(...)
+
+    def nms(self, prediction, conf_thres=0.25, iou_thres=0.45, max_det=300):
+        """
+        Non-maximum suppression (a warapper around torchvision.ops.nms())
+
+        Args:
+            prediction (torch.Tensor): Model predictions with shape [batch_size, num_anchors, num_classes + 5]
+                Format: [x_center, y_center, width, height, objectness, class1_conf, class2_conf, ...]
+                Coordinates are normalized to input image size.
+            conf_thres (float): Confidence threshold for filtering detections
+            iou_thres (float): IoU threshold for NMS
+            max_det (int): Maximum number of detections per image
+
+        Returns:
+            list: List of tensors, one per image in batch. Each tensor has shape [N, 6] where:
+                  - N is the number of detections for that image
+                  - Columns are [x1, y1, x2, y2, confidence, class_id]
+                  - Coordinates are in absolute pixels relative to input image size
+                  - class_id is the integer class index (0-based)
+        """
+
+        batch_size = prediction.shape[0]
+        num_classes = prediction.shape[2] - 5
+        output = []
+
+        # Process each image in the batch
+        for img_idx in range(batch_size):
+
+            x = prediction[img_idx]  # Shape: [num_anchors, num_classes + 5]
+
+            # Filter by objectness confidence
+            obj_conf = x[:, 4]
+            valid_detections = obj_conf > conf_thres
+            x = x[valid_detections]
+
+            if x.shape[0] == 0:
+                # No detections for this image
+                output.append(torch.zeros((0, 6), device=prediction.device))
+                continue
+
+            # Convert box coordinates from [x_center, y_center, w, h] to [x1, y1, x2, y2]
+            box = x[:, :4].clone()
+            box[:, 0] = x[:, 0] - x[:, 2] / 2.0  # x1 = center_x - width/2
+            box[:, 1] = x[:, 1] - x[:, 3] / 2.0  # y1 = center_y - height/2
+            box[:, 2] = x[:, 0] + x[:, 2] / 2.0  # x2 = center_x + width/2
+            box[:, 3] = x[:, 1] + x[:, 3] / 2.0  # y2 = center_y + height/2
+
+            # Get class predictions: multiply objectness by class probabilities
+            class_conf = x[:, 5:] * x[:, 4:5]  # shape: [N, num_classes]
+
+            # For each detection, take the class with highest confidence (single-label)
+            best_class_conf, best_class_idx = class_conf.max(1, keepdim=True)
+
+            # Filter by class confidence threshold
+            conf_mask = best_class_conf.view(-1) > conf_thres
+            if conf_mask.sum() == 0:
+                # No detections pass confidence threshold
+                output.append(torch.zeros((0, 6), device=prediction.device))
+                continue
+
+            box = box[conf_mask]
+            best_class_conf = best_class_conf[conf_mask]
+            best_class_idx = best_class_idx[conf_mask]
+
+            # Prepare for NMS: group detections by class
+            unique_classes = best_class_idx.unique()
+            final_detections = []
+
+            for class_id in unique_classes:
+
+                class_mask = (best_class_idx == class_id).view(-1)
+                class_boxes = box[class_mask]
+                class_scores = best_class_conf[class_mask].view(-1)
+
+                if class_boxes.shape[0] == 0:
+                    continue
+
+                # Apply NMS for this class
+                keep_indices = torchvision.ops.nms(class_boxes, class_scores, iou_thres)
+
+                if len(keep_indices) > 0:
+                    kept_boxes = class_boxes[keep_indices]
+                    kept_scores = class_scores[keep_indices]
+                    kept_classes = torch.full((len(keep_indices), 1), class_id.item(),
+                                            device=prediction.device, dtype=torch.float)
+
+                    # Combine: [x1, y1, x2, y2, conf, class]
+                    class_detections = torch.cat([kept_boxes, kept_scores.unsqueeze(1), kept_classes], 1)
+                    final_detections.append(class_detections)
+
+            # ...for each category
+
+            if final_detections:
+
+                # Combine all classes and sort by confidence
+                all_detections = torch.cat(final_detections, 0)
+                conf_sort_indices = all_detections[:, 4].argsort(descending=True)
+                all_detections = all_detections[conf_sort_indices]
+
+                # Limit to max_det
+                if all_detections.shape[0] > max_det:
+                    all_detections = all_detections[:max_det]
+
+                output.append(all_detections)
+            else:
+                output.append(torch.zeros((0, 6), device=prediction.device))
+
+        # ...for each image in the batch
+
+        return output
+
+    # ...def nms(...)
 
 # ...class PTDetector
 
