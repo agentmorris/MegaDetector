@@ -214,8 +214,6 @@ def get_expected_results_filename(gpu_is_available,
     else:
         fn = '{}-{}.json'.format(model_string,test_type)
 
-    from megadetector.utils.path_utils import insert_before_extension
-
     if options is not None and options.scratch_dir is not None:
         fn = os.path.join(options.scratch_dir,fn)
 

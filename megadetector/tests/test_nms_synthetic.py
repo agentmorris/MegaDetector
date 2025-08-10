@@ -13,10 +13,7 @@ This is an AI-generated test module.
 
 #%% Imports
 
-import sys
 import torch
-import numpy as np
-from pathlib import Path
 
 from megadetector.detection.pytorch_detector import nms
 
@@ -28,7 +25,8 @@ def calculate_iou_boxes(box1, box2):
     Calculate IoU between two boxes in [x1, y1, x2, y2] format.
 
     Args:
-        box1, box2: torch.Tensor or list of [x1, y1, x2, y2]
+        box1: torch.Tensor or list of [x1, y1, x2, y2]
+        box2: torch.Tensor or list of [x1, y1, x2, y2]
 
     Returns:
         float: IoU value between 0 and 1
@@ -190,16 +188,24 @@ def test_nms_functionality():
     # Both scenario 1 and 1b should have exactly 1 detection each
     total_high_overlap_boxes = len(scenario1_boxes) + len(scenario1b_boxes)
     if total_high_overlap_boxes != 2:
-        print(f"ERROR: Expected 2 detections in high-overlap scenarios (1 each), got {total_high_overlap_boxes}")
+        print("Error: expected 2 detections in high-overlap scenarios (1 each), got {}".format(
+            total_high_overlap_boxes
+        ))
         print(f"  Scenario 1: {len(scenario1_boxes)} boxes")
         print(f"  Scenario 1b: {len(scenario1b_boxes)} boxes")
-        assert False
-    elif len(scenario1_boxes) == 1 and scenario1_boxes[0][3] < 0.7:  # Should be the high-confidence box (0.8 * 0.9 = 0.72)
-        print(f"ERROR: Wrong box kept in scenario 1. Expected conf > 0.7, got {scenario1_boxes[0][3]}")
-        assert False
-    elif len(scenario1b_boxes) == 1 and scenario1b_boxes[0][3] < 0.8:  # Should be the high-confidence box (0.9 * 0.9 = 0.81)
-        print(f"ERROR: Wrong box kept in scenario 1b. Expected conf > 0.8, got {scenario1b_boxes[0][3]}")
-        assert False
+        raise AssertionError()
+    # Should be the high-confidence box (0.8 * 0.9 = 0.72)
+    elif len(scenario1_boxes) == 1 and scenario1_boxes[0][3] < 0.7:
+        print("Error: wrong box kept in scenario 1. Expected conf > 0.7, got {}".format(
+            scenario1_boxes[0][3]
+        ))
+        raise AssertionError()
+    # Should be the high-confidence box (0.9 * 0.9 = 0.81)
+    elif len(scenario1b_boxes) == 1 and scenario1b_boxes[0][3] < 0.8:
+        print("Error: wrong box kept in scenario 1b. Expected conf > 0.8, got {}".format(
+            scenario1b_boxes[0][3]
+        ))
+        raise AssertionError()
     else:
         print("✓ Scenarios 1 & 1b passed: High-confidence boxes kept, low-confidence overlapping boxes suppressed")
 
@@ -221,11 +227,11 @@ def test_nms_functionality():
 
             # If IoU > threshold, suppression should have occurred
             if iou_1 <= 0.5:
-                print(f"ERROR: Scenario 1 IoU {iou_1:.3f} is too low - test setup is invalid!")
-                assert False
+                print(f"Error: scenario 1 IoU {iou_1:.3f} is too low - test setup is invalid!")
+                raise AssertionError()
             elif iou_1b <= 0.5:
-                print(f"ERROR: Scenario 1b IoU {iou_1b:.3f} is too low - test setup is invalid!")
-                assert False
+                print(f"Error: scenario 1b IoU {iou_1b:.3f} is too low - test setup is invalid!")
+                raise AssertionError()
             else:
                 print("    ✓ High IoU confirmed - suppression was correct")
 
@@ -239,8 +245,8 @@ def test_nms_functionality():
             scenario2_boxes.append((i, center_x, center_y, conf))
 
     if len(scenario2_boxes) != 2:
-        print(f"ERROR: Expected 2 detections in scenario 2 area, got {len(scenario2_boxes)}")
-        assert False
+        print(f"Error: expected 2 detections in scenario 2 area, got {len(scenario2_boxes)}")
+        raise AssertionError()
     else:
         print("✓ Scenario 2 passed: Both non-overlapping boxes kept")
 
@@ -254,9 +260,11 @@ def test_nms_functionality():
             scenario3_boxes.append((i, center_x, center_y, conf, int(cls)))
 
     classes_found = set(box[4] for box in scenario3_boxes)
-    if len(scenario3_boxes) != 2 or len(classes_found) != 2:
-        print(f"ERROR: Expected 2 detections of different classes in scenario 3, got {len(scenario3_boxes)} detections of classes {classes_found}")
-        assert False
+    if (len(scenario3_boxes) != 2) or (len(classes_found) != 2):
+        print("Error: expected 2 detections of different classes , got {} detections of classes {}".format(
+            len(scenario3_boxes),classes_found
+        ))
+        raise AssertionError()
     else:
         print("✓ Scenario 3 passed: Both different-class boxes kept")
 
@@ -292,7 +300,7 @@ def test_nms_functionality():
                 print("✓ Scenario 4 passed: Multiple boxes kept due to low IoU (< 0.5)")
             else:
                 print(f"ERROR: Scenario 4 failed - boxes with IoU {max_iou:.3f} > 0.5 were not suppressed!")
-                assert False
+                raise AssertionError()
 
     # Create a scenario that requires IoU calculation
     print("\n=== COMPREHENSIVE IoU VALIDATION TEST ===")
@@ -313,14 +321,14 @@ def test_nms_functionality():
 
     if test_detections.shape[0] != 1:
         print(f"Error Two identical boxes should result in 1 detection, got {test_detections.shape[0]}")
-        assert False
+        raise AssertionError()
     else:
         # Verify it kept the higher confidence box
         kept_conf = test_detections[0, 4].item()
         expected_conf = 0.9 * 0.9  # objectness * class_conf
         if abs(kept_conf - expected_conf) > 0.01:
             print(f"ERROR: Wrong box kept. Expected conf ≈ {expected_conf:.3f}, got {kept_conf:.3f}")
-            assert False
+            raise AssertionError()
         else:
             print("✓ Identical boxes test passed: Higher confidence box kept")
 
