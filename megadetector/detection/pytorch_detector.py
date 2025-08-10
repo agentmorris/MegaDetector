@@ -1134,31 +1134,27 @@ class PTDetector:
 
         # Extract batch data
         batch_images = []
-        batch_scaling_shapes = []
-        batch_letterbox_pads = []
-        batch_img_originals = []
-        batch_indices = []
-        batch_image_ids = []
+        batch_metadata = []
 
         # For each image in this batch...
         for original_idx, image_info, current_image_id in group_items:
 
             img = image_info['img_processed']
-            scaling_shape = image_info['scaling_shape']
-            letterbox_pad = image_info['letterbox_pad']
-            img_original = image_info['img_original']
 
             # Convert HWC to CHW and prepare tensor
-            img = img.transpose((2, 0, 1))
-            img = np.ascontiguousarray(img)
-            img = torch.from_numpy(img)
+            img_tensor = img.transpose((2, 0, 1))
+            img_tensor = np.ascontiguousarray(img_tensor)
+            img_tensor = torch.from_numpy(img_tensor)
+            batch_images.append(img_tensor)
 
-            batch_images.append(img)
-            batch_scaling_shapes.append(scaling_shape)
-            batch_letterbox_pads.append(letterbox_pad)
-            batch_img_originals.append(img_original)
-            batch_indices.append(original_idx)
-            batch_image_ids.append(current_image_id)
+            metadata = {
+                'original_idx': original_idx,
+                'current_image_id': current_image_id,
+                'scaling_shape': image_info['scaling_shape'],
+                'letterbox_pad': image_info['letterbox_pad'],
+                'img_original': image_info['img_original']
+            }
+            batch_metadata.append(metadata)
 
         # ...for each image in this batch
 
@@ -1197,13 +1193,18 @@ class PTDetector:
                                    multi_label=nms_multi_label)
 
         assert isinstance(pred, list)
-        assert len(pred) == len(batch_indices), f'Prediction length {len(pred)} != batch size {len(batch_indices)}'
+        assert len(pred) == len(batch_metadata), \
+            f'Prediction length {len(pred)} != batch size {len(batch_metadata)}'
 
         # Process each image's detections
-        for _, (det, original_idx, scaling_shape, letterbox_pad, img_original, current_image_id) in enumerate(
-            zip(pred, batch_indices, batch_scaling_shapes,
-                batch_letterbox_pads, batch_img_originals, batch_image_ids,
-                strict=True)):
+        for i_detection, det in enumerate(pred):
+
+            metadata = batch_metadata[i_detection]
+            original_idx = metadata['original_idx']
+            current_image_id = metadata['current_image_id']
+            scaling_shape = metadata['scaling_shape']
+            letterbox_pad = metadata['letterbox_pad']
+            img_original = metadata['img_original']
 
             detections = []
             max_conf = 0.0
@@ -1216,7 +1217,8 @@ class PTDetector:
                     ratio = None
                     ratio_pad = None
                 else:
-                    ratio = (img_original.shape[0]/scaling_shape[0], img_original.shape[1]/scaling_shape[1])
+                    ratio = (img_original.shape[0]/scaling_shape[0],
+                             img_original.shape[1]/scaling_shape[1])
                     ratio_pad = (ratio, letterbox_pad)
 
                 # Rescale boxes
