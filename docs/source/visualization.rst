@@ -60,3 +60,19 @@ visualization.visualize\_detector\_output module
    :hook:
    :prog: visualize_detector_output
    :no_default_values:
+
+visualization.visualize\_video\_output module
+----------------------------------------------
+
+.. automodule:: megadetector.visualization.visualize_video_output
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.visualization.visualize_video_output
+   :func: main
+   :hook:
+   :prog: visualize_video_output
+   :no_default_values:

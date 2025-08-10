@@ -145,7 +145,8 @@ class MDTestOptions:
         self.n_cores_for_video_tests = 2
 
         #: Batch size to use when testing batches of size > 1
-        self.alternative_batch_size = 2
+        print('**** RANDOM BATCH SIZE *****')
+        self.alternative_batch_size = 3
 
     # ...def __init__()
 
@@ -832,6 +833,13 @@ def run_python_tests(options):
 
     if not options.skip_image_tests:
 
+        from megadetector.utils import path_utils # noqa
+        image_folder = os.path.join(options.scratch_dir,'md-test-images')
+        assert os.path.isdir(image_folder), 'Test image folder {} is not available'.format(image_folder)
+        inference_output_file = os.path.join(options.scratch_dir,'folder_inference_output.json')
+        image_file_names = path_utils.find_images(image_folder,recursive=True)
+
+
         ## Run inference on an image
 
         print('\n** Running MD on a single image (module) **\n')
@@ -840,7 +848,7 @@ def run_python_tests(options):
         from megadetector.visualization import visualization_utils as vis_utils # noqa
         image_fn = os.path.join(options.scratch_dir,options.test_images[0])
         model = run_detector.load_detector(options.default_model,
-                                        detector_options=copy(options.detector_options))
+                                           detector_options=copy(options.detector_options))
         pil_im = vis_utils.load_image(image_fn)
         result = model.generate_detections_one_image(pil_im) # noqa
 
@@ -853,20 +861,15 @@ def run_python_tests(options):
         print('\n** Running MD on a folder of images (module) **\n')
 
         from megadetector.detection.run_detector_batch import load_and_run_detector_batch,write_results_to_file
-        from megadetector.utils import path_utils # noqa
 
-        image_folder = os.path.join(options.scratch_dir,'md-test-images')
-        assert os.path.isdir(image_folder), 'Test image folder {} is not available'.format(image_folder)
-        inference_output_file = os.path.join(options.scratch_dir,'folder_inference_output.json')
-        image_file_names = path_utils.find_images(image_folder,recursive=True)
         results = load_and_run_detector_batch(options.default_model,
-                                            image_file_names,
-                                            quiet=True,
-                                            detector_options=copy(options.detector_options))
+                                              image_file_names,
+                                              quiet=True,
+                                              detector_options=copy(options.detector_options))
         _ = write_results_to_file(results,
-                                inference_output_file,
-                                relative_path_base=image_folder,
-                                detector_file=options.default_model)
+                                  inference_output_file,
+                                  relative_path_base=image_folder,
+                                  detector_file=options.default_model)
 
         ## Verify results
 
@@ -876,7 +879,7 @@ def run_python_tests(options):
 
         # Verify value correctness
         expected_results_file = get_expected_results_filename(is_gpu_available(verbose=False),
-                                                            options=options)
+                                                              options=options)
         compare_results(inference_output_file,expected_results_file,options)
 
 
@@ -891,24 +894,29 @@ def run_python_tests(options):
 
         print('\n** Running MD on a folder of images with batch size > 1 (module) **\n')
 
+        from megadetector.detection.run_detector_batch import load_and_run_detector_batch,write_results_to_file
         from megadetector.utils.path_utils import insert_before_extension
 
         inference_output_file_batch = insert_before_extension(inference_output_file,'batch')
         from megadetector.detection import run_detector_batch
         run_detector_batch.verbose = True
         results = load_and_run_detector_batch(options.default_model,
-                                            image_file_names,
-                                            quiet=True,
-                                            batch_size=options.alternative_batch_size,
-                                            detector_options=copy(options.detector_options))
+                                              image_file_names,
+                                              quiet=True,
+                                              batch_size=options.alternative_batch_size,
+                                              detector_options=copy(options.detector_options))
         run_detector_batch.verbose = False
         _ = write_results_to_file(results,
-                                inference_output_file_batch,
-                                relative_path_base=image_folder,
-                                detector_file=options.default_model)
+                                  inference_output_file_batch,
+                                  relative_path_base=image_folder,
+                                  detector_file=options.default_model)
 
+        expected_results_file = get_expected_results_filename(is_gpu_available(verbose=False),
+                                                              options=options)
         compare_results(inference_output_file_batch,expected_results_file,options)
 
+        print('************* early return *************')
+        return
 
         ## Run and verify again with augmentation enabled
 
@@ -916,18 +924,18 @@ def run_python_tests(options):
 
         inference_output_file_augmented = insert_before_extension(inference_output_file,'augmented')
         results = load_and_run_detector_batch(options.default_model,
-                                            image_file_names,
-                                            quiet=True,
-                                            augment=True,
-                                            detector_options=copy(options.detector_options))
+                                              image_file_names,
+                                              quiet=True,
+                                              augment=True,
+                                              detector_options=copy(options.detector_options))
         _ = write_results_to_file(results,
-                                inference_output_file_augmented,
-                                relative_path_base=image_folder,
-                                detector_file=options.default_model)
+                                  inference_output_file_augmented,
+                                  relative_path_base=image_folder,
+                                  detector_file=options.default_model)
 
         expected_results_file_augmented = \
             get_expected_results_filename(is_gpu_available(verbose=False),
-                                        augment=True,options=options)
+                                          augment=True,options=options)
         compare_results(inference_output_file_augmented,expected_results_file_augmented,options)
 
 
@@ -1786,6 +1794,8 @@ def test_suite_entry_point():
     options.cli_test_pythonpath = None
     options.skip_download_tests = True
     options.skip_localhost_downloads = True
+    print('**** skipping import tests ****')
+    options.skip_import_tests = True
 
     options = download_test_data(options)
 

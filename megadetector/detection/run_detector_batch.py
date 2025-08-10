@@ -44,6 +44,7 @@ import sys
 import time
 import copy
 import shutil
+import random
 import warnings
 import itertools
 import humanfriendly
@@ -626,8 +627,8 @@ def _group_into_batches(items, batch_size):
         raise ValueError('Batch size must be positive')
 
     batches = []
-    for i in range(0, len(items), batch_size):
-        batch = items[i:i + batch_size]
+    for i_item in range(0, len(items), batch_size):
+        batch = items[i_item:i_item + batch_size]
         batches.append(batch)
 
     return batches
@@ -1198,6 +1199,21 @@ def load_and_run_detector_batch(model_file,
         image_count = 0
 
         if (batch_size > 1):
+
+            randomize_batch_order_during_testing = False
+            if randomize_batch_order_during_testing:
+                # During testing, randomize the order of images_to_process to help detect
+                # non-deterministic batching issues
+                if ('PYTEST_CURRENT_TEST' in os.environ):
+                    print('PyTest detected: randomizing batch order')
+                    random.seed(int(time.time()))
+                    debug_seed = random.randint(0, 2**31 - 1)
+                    print('Debug seed: {}'.format(debug_seed))
+                    random.seed(debug_seed)
+                    random.shuffle(images_to_process)
+
+            random.seed(697310412)
+            random.shuffle(images_to_process)
 
             # Use batch processing
             image_batches = _group_into_batches(images_to_process, batch_size)

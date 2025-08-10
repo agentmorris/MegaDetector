@@ -39,11 +39,16 @@ from megadetector.detection.process_video import \
     process_videos, ProcessVideoOptions
 from megadetector.postprocessing.combine_batch_outputs import combine_batch_output_files
 
-from speciesnet import SpeciesNetClassifier
-from speciesnet.utils import BBox
-from speciesnet.ensemble import SpeciesNetEnsemble
-from speciesnet.geofence_utils import roll_up_labels_to_first_matching_level
-from speciesnet.geofence_utils import geofence_animal_classification
+# We aren't taking an explicit dependency on the speciesnet package yet,
+# so we wrap this in a try/except so sphinx can still document this module.
+try:
+    from speciesnet import SpeciesNetClassifier
+    from speciesnet.utils import BBox
+    from speciesnet.ensemble import SpeciesNetEnsemble
+    from speciesnet.geofence_utils import roll_up_labels_to_first_matching_level
+    from speciesnet.geofence_utils import geofence_animal_classification
+except Exception:
+    pass
 
 
 #%% Constants

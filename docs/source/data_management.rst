@@ -120,14 +120,6 @@ data\_management.labelme\_to\_coco module
    :prog: labelme_to_coco
    :no_default_values:
 
-data\_management.labelme\_to\_yolo module
------------------------------------------
-
-.. automodule:: megadetector.data_management.labelme_to_yolo
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 data\_management.rename\_images module
 -----------------------------------------
 
@@ -160,6 +152,13 @@ data\_management.remove\_exif module
    :show-inheritance:
    :exclude-members: main
 
+.. sphinx_argparse_cli::
+   :module: megadetector.data_management.remove_exif
+   :func: main
+   :hook:
+   :prog: remove_exif
+   :no_default_values:
+
 data\_management.read\_exif module
 ----------------------------------
 
@@ -176,23 +175,6 @@ data\_management.read\_exif module
    :prog: read_exif
    :no_default_values:
 
-
-data\_management.resize\_coco\_dataset module
----------------------------------------------
-
-.. automodule:: megadetector.data_management.resize_coco_dataset
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-data\_management.wi\_download\_csv\_to\_coco module
----------------------------------------------------
-
-.. automodule:: megadetector.data_management.wi_download_csv_to_coco
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 data\_management.speciesnet\_to\_md module
 ------------------------------------------
 
@@ -208,22 +190,6 @@ data\_management.speciesnet\_to\_md module
    :hook:
    :prog: speciesnet_to_md
    :no_default_values:
-
-data\_management.yolo\_output\_to\_md\_output module
-----------------------------------------------------
-
-.. automodule:: megadetector.data_management.yolo_output_to_md_output
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-data\_management.yolo\_to\_coco module
---------------------------------------
-
-.. automodule:: megadetector.data_management.yolo_to_coco
-   :members:
-   :undoc-members:
-   :show-inheritance:
    
 data\_management.mewc\_to\_md module
 -----------------------------------------
@@ -240,4 +206,108 @@ data\_management.mewc\_to\_md module
    :hook:
    :prog: mewc_to_md
    :no_default_values:
+
+data\_management.camtrap\_dp\_to\_coco module
+----------------------------------------------
+
+.. automodule:: megadetector.data_management.camtrap_dp_to_coco
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.data_management.camtrap_dp_to_coco
+   :func: main
+   :hook:
+   :prog: camtrap_dp_to_coco
+   :no_default_values:
+
+data\_management.remap\_coco\_categories module
+------------------------------------------------
+
+.. automodule:: megadetector.data_management.remap_coco_categories
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.data_management.remap_coco_categories
+   :func: main
+   :hook:
+   :prog: remap_coco_categories
+   :no_default_values:
+
+data\_management.yolo\_output\_to\_md\_output module
+-----------------------------------------------------
+
+.. automodule:: megadetector.data_management.yolo_output_to_md_output
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.data_management.yolo_output_to_md_output
+   :func: main
+   :hook:
+   :prog: yolo_output_to_md_output
+   :no_default_values:
+
+data\_management.yolo\_to\_coco module
+---------------------------------------
+
+.. automodule:: megadetector.data_management.yolo_to_coco
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.data_management.yolo_to_coco
+   :func: main
+   :hook:
+   :prog: yolo_to_coco
+   :no_default_values:
+
+data\_management.labelme\_to\_yolo module
+------------------------------------------
+
+.. automodule:: megadetector.data_management.labelme_to_yolo
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.data_management.labelme_to_yolo
+   :func: main
+   :hook:
+   :prog: labelme_to_yolo
+   :no_default_values:
+
+data\_management.resize\_coco\_dataset module
+----------------------------------------------
+
+.. automodule:: megadetector.data_management.resize_coco_dataset
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.data_management.resize_coco_dataset
+   :func: main
+   :hook:
+   :prog: resize_coco_dataset
+   :no_default_values:
+
+data\_management.wi\_download\_csv\_to\_coco module
+----------------------------------------------------
+
+.. automodule:: megadetector.data_management.wi_download_csv_to_coco
+   :members:
+   :undoc-members:
+   :show-inheritance:
    
