@@ -53,8 +53,8 @@ class MDTestOptions:
         #: Skip tests related to video processing
         self.skip_video_tests = False
 
-        #: Skip tests related to video rendering
-        self.skip_video_rendering_tests = False
+        #: Skip tests related to still image processing
+        self.skip_image_tests = False
 
         #: Skip tests launched via Python functions (as opposed to CLIs)
         self.skip_python_tests = False
@@ -108,9 +108,6 @@ class MDTestOptions:
         #: If this is None, we'll skip that test.
         self.yolo_working_dir = None
 
-        #: fourcc code to use for video tests that involve rendering video
-        self.video_fourcc = 'mp4v'
-
         #: Default model to use for testing (filename, URL, or well-known model string)
         self.default_model = 'MDV5A'
 
@@ -148,7 +145,7 @@ class MDTestOptions:
         self.n_cores_for_video_tests = 2
 
         #: Batch size to use when testing batches of size > 1
-        self.alternative_batch_size = 2
+        self.alternative_batch_size = 3
 
     # ...def __init__()
 
@@ -175,7 +172,7 @@ def get_expected_results_filename(gpu_is_available,
         model_string (str, optional): the model for which we're retrieving expected results
         test_type (str, optional): the test type we're running ("image" or "video")
         augment (bool, optional): whether we're running this test with image augmentation
-        options (MDTestOptiosn, optional): additional control flow options
+        options (MDTestOptions, optional): additional control flow options
 
     Returns:
         str: relative filename of the results file we should use (within the test
@@ -211,12 +208,11 @@ def get_expected_results_filename(gpu_is_available,
     if augment:
         aug_string = 'augment-'
 
-    fn = '{}-{}{}-{}-{}.json'.format(model_string,aug_string,test_type,hw_string,pt_string)
-
-    from megadetector.utils.path_utils import insert_before_extension
-
-    if test_type == 'video':
-        fn = insert_before_extension(fn,'frames')
+    # We only have a single set of video results
+    if test_type == 'image':
+        fn = '{}-{}{}-{}-{}.json'.format(model_string,aug_string,test_type,hw_string,pt_string)
+    else:
+        fn = '{}-{}.json'.format(model_string,test_type)
 
     if options is not None and options.scratch_dir is not None:
         fn = os.path.join(options.scratch_dir,fn)
@@ -312,7 +308,6 @@ def download_test_data(options=None):
     options.all_test_files = test_files
     options.test_images = [fn for fn in test_files if os.path.splitext(fn.lower())[1] in ('.jpg','.jpeg','.png')]
     options.test_videos = [fn for fn in test_files if os.path.splitext(fn.lower())[1] in ('.mp4','.avi')]
-    options.test_videos = [fn for fn in options.test_videos if 'rendered' not in fn]
     options.test_videos = [fn for fn in options.test_videos if \
                            os.path.isfile(os.path.join(scratch_dir,fn))]
 
@@ -573,7 +568,9 @@ def compare_results(inference_output_file,
     filename_to_results_expected = {im['file'].replace('\\','/'):im for im in expected_results['images']}
 
     assert len(filename_to_results) == len(filename_to_results_expected), \
-        'Error: expected {} files in results, found {}'.format(
+        'Error: comparing expected file {} to actual file {}, expected {} files in results, found {}'.format(
+            expected_results_file,
+            inference_output_file,
             len(filename_to_results_expected),
             len(filename_to_results))
 
@@ -592,9 +589,16 @@ def compare_results(inference_output_file,
         expected_image_results = filename_to_results_expected[fn]
 
         if 'failure' in actual_image_results:
+            # We allow some variation in how failures are represented
             assert 'failure' in expected_image_results and \
-                'detections' not in actual_image_results and \
-                'detections' not in expected_image_results
+                (
+                    ('detections' not in actual_image_results) or \
+                    (actual_image_results['detections'] is None)
+                ) and \
+                (
+                    ('detections' not in expected_image_results) or \
+                    (expected_image_results['detections'] is None)
+                )
             continue
         assert 'failure' not in expected_image_results
 
@@ -823,236 +827,246 @@ def run_python_tests(options):
     pytorch_detector.require_non_default_compatibility_mode = True
 
 
-    ## Run inference on an image
+    if not options.skip_image_tests:
 
-    print('\n** Running MD on a single image (module) **\n')
-
-    from megadetector.detection import run_detector
-    from megadetector.visualization import visualization_utils as vis_utils # noqa
-    image_fn = os.path.join(options.scratch_dir,options.test_images[0])
-    model = run_detector.load_detector(options.default_model,
-                                       detector_options=copy(options.detector_options))
-    pil_im = vis_utils.load_image(image_fn)
-    result = model.generate_detections_one_image(pil_im) # noqa
-
-    if options.python_test_depth <= 1:
-        return
+        from megadetector.utils import path_utils # noqa
+        image_folder = os.path.join(options.scratch_dir,'md-test-images')
+        assert os.path.isdir(image_folder), 'Test image folder {} is not available'.format(image_folder)
+        inference_output_file = os.path.join(options.scratch_dir,'folder_inference_output.json')
+        image_file_names = path_utils.find_images(image_folder,recursive=True)
 
 
-    ## Run inference on a folder
+        ## Run inference on an image
 
-    print('\n** Running MD on a folder of images (module) **\n')
+        print('\n** Running MD on a single image (module) **\n')
 
-    from megadetector.detection.run_detector_batch import load_and_run_detector_batch,write_results_to_file
-    from megadetector.utils import path_utils # noqa
+        from megadetector.detection import run_detector
+        from megadetector.visualization import visualization_utils as vis_utils # noqa
+        image_fn = os.path.join(options.scratch_dir,options.test_images[0])
+        model = run_detector.load_detector(options.default_model,
+                                           detector_options=copy(options.detector_options))
+        pil_im = vis_utils.load_image(image_fn)
+        result = model.generate_detections_one_image(pil_im) # noqa
 
-    image_folder = os.path.join(options.scratch_dir,'md-test-images')
-    assert os.path.isdir(image_folder), 'Test image folder {} is not available'.format(image_folder)
-    inference_output_file = os.path.join(options.scratch_dir,'folder_inference_output.json')
-    image_file_names = path_utils.find_images(image_folder,recursive=True)
-    results = load_and_run_detector_batch(options.default_model,
-                                          image_file_names,
-                                          quiet=True,
-                                          detector_options=copy(options.detector_options))
-    _ = write_results_to_file(results,
-                              inference_output_file,
-                              relative_path_base=image_folder,
-                              detector_file=options.default_model)
-
-    ## Verify results
-
-    # Verify format correctness
-    from megadetector.postprocessing.validate_batch_results import validate_batch_results #noqa
-    validate_batch_results(inference_output_file)
-
-    # Verify value correctness
-    expected_results_file = get_expected_results_filename(is_gpu_available(verbose=False),
-                                                          options=options)
-    compare_results(inference_output_file,expected_results_file,options)
+        if options.python_test_depth <= 1:
+            return
 
 
-    # Make note of this filename, we will use it again later
-    inference_output_file_standard_inference = inference_output_file
+        ## Run inference on a folder
 
-    if options.python_test_depth <= 2:
-        return
+        print('\n** Running MD on a folder of images (module) **\n')
 
+        from megadetector.detection.run_detector_batch import load_and_run_detector_batch,write_results_to_file
 
-    ## Run and verify again with augmentation enabled
+        results = load_and_run_detector_batch(options.default_model,
+                                              image_file_names,
+                                              quiet=True,
+                                              detector_options=copy(options.detector_options))
+        _ = write_results_to_file(results,
+                                  inference_output_file,
+                                  relative_path_base=image_folder,
+                                  detector_file=options.default_model)
 
-    print('\n** Running MD on images with augmentation (module) **\n')
+        ## Verify results
 
-    from megadetector.utils.path_utils import insert_before_extension
+        # Verify format correctness
+        from megadetector.postprocessing.validate_batch_results import validate_batch_results #noqa
+        validate_batch_results(inference_output_file)
 
-    inference_output_file_augmented = insert_before_extension(inference_output_file,'augmented')
-    results = load_and_run_detector_batch(options.default_model,
-                                          image_file_names,
-                                          quiet=True,
-                                          augment=True,
-                                          detector_options=copy(options.detector_options))
-    _ = write_results_to_file(results,
-                              inference_output_file_augmented,
-                              relative_path_base=image_folder,
-                              detector_file=options.default_model)
-
-    expected_results_file_augmented = \
-        get_expected_results_filename(is_gpu_available(verbose=False),
-                                      augment=True,options=options)
-    compare_results(inference_output_file_augmented,expected_results_file_augmented,options)
+        # Verify value correctness
+        expected_results_file = get_expected_results_filename(is_gpu_available(verbose=False),
+                                                              options=options)
+        compare_results(inference_output_file,expected_results_file,options)
 
 
-    ## Postprocess results
+        # Make note of this filename, we will use it again later
+        inference_output_file_standard_inference = inference_output_file
 
-    print('\n** Post-processing results (module) **\n')
-
-    from megadetector.postprocessing.postprocess_batch_results import \
-        PostProcessingOptions,process_batch_results
-    postprocessing_options = PostProcessingOptions()
-
-    postprocessing_options.md_results_file = inference_output_file
-    postprocessing_options.output_dir = os.path.join(options.scratch_dir,'postprocessing_output')
-    postprocessing_options.image_base_dir = image_folder
-
-    postprocessing_results = process_batch_results(postprocessing_options)
-    assert os.path.isfile(postprocessing_results.output_html_file), \
-        'Postprocessing output file {} not found'.format(postprocessing_results.output_html_file)
+        if options.python_test_depth <= 2:
+            return
 
 
-    ## Partial RDE test
+        ## Run again with a batch size > 1
 
-    print('\n** Testing RDE (module) **\n')
+        print('\n** Running MD on a folder of images with batch size > 1 (module) **\n')
 
-    from megadetector.postprocessing.repeat_detection_elimination.repeat_detections_core import \
-        RepeatDetectionOptions, find_repeat_detections
-
-    rde_options = RepeatDetectionOptions()
-    rde_options.occurrenceThreshold = 2
-    rde_options.confidenceMin = 0.001
-    rde_options.outputBase = os.path.join(options.scratch_dir,'rde_working_dir')
-    rde_options.imageBase = image_folder
-    rde_output_file = inference_output_file.replace('.json','_filtered.json')
-    assert rde_output_file != inference_output_file
-    rde_results = find_repeat_detections(inference_output_file, rde_output_file, rde_options)
-    assert os.path.isfile(rde_results.filterFile),\
-        'Could not find RDE output file {}'.format(rde_results.filterFile)
-
-
-    ## Run inference on a folder (with YOLOv5 val script)
-
-    if options.yolo_working_dir is None:
-
-        print('Skipping YOLO val inference tests, no YOLO folder supplied')
-
-    else:
-
-        print('\n** Running YOLO val inference test (module) **\n')
-
-        from megadetector.detection.run_inference_with_yolov5_val import \
-            YoloInferenceOptions, run_inference_with_yolo_val
+        from megadetector.detection.run_detector_batch import load_and_run_detector_batch,write_results_to_file
         from megadetector.utils.path_utils import insert_before_extension
 
-        inference_output_file_yolo_val = os.path.join(options.scratch_dir,'folder_inference_output_yolo_val.json')
+        inference_output_file_batch = insert_before_extension(inference_output_file,'batch')
+        from megadetector.detection import run_detector_batch
+        run_detector_batch.verbose = True
+        results = load_and_run_detector_batch(options.default_model,
+                                              image_file_names,
+                                              quiet=True,
+                                              batch_size=options.alternative_batch_size,
+                                              detector_options=copy(options.detector_options))
+        run_detector_batch.verbose = False
+        _ = write_results_to_file(results,
+                                  inference_output_file_batch,
+                                  relative_path_base=image_folder,
+                                  detector_file=options.default_model)
 
-        yolo_inference_options = YoloInferenceOptions()
-        yolo_inference_options.input_folder = os.path.join(options.scratch_dir,'md-test-images')
-        yolo_inference_options.output_file = inference_output_file_yolo_val
-        yolo_inference_options.yolo_working_folder = options.yolo_working_dir
-        yolo_inference_options.model_filename = options.default_model
-        yolo_inference_options.augment = False
-        yolo_inference_options.overwrite_handling = 'overwrite'
-        from megadetector.detection.run_detector import DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
-        yolo_inference_options.conf_thres = DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
+        expected_results_file = get_expected_results_filename(is_gpu_available(verbose=False),
+                                                              options=options)
+        compare_results(inference_output_file_batch,expected_results_file,options)
 
-        run_inference_with_yolo_val(yolo_inference_options)
+        ## Run and verify again with augmentation enabled
 
-        ## Confirm this matches the standard inference path
+        print('\n** Running MD on images with augmentation (module) **\n')
 
-        if False:
-            # TODO: compare_results() isn't quite ready for this yet
-            compare_results(inference_output_file=inference_output_file_yolo_val,
-                            expected_results_file=inference_output_file_standard_inference,
-                            options=options)
+        inference_output_file_augmented = insert_before_extension(inference_output_file,'augmented')
+        results = load_and_run_detector_batch(options.default_model,
+                                              image_file_names,
+                                              quiet=True,
+                                              augment=True,
+                                              detector_options=copy(options.detector_options))
+        _ = write_results_to_file(results,
+                                  inference_output_file_augmented,
+                                  relative_path_base=image_folder,
+                                  detector_file=options.default_model)
 
-        # Run again, without symlinks this time
+        expected_results_file_augmented = \
+            get_expected_results_filename(is_gpu_available(verbose=False),
+                                          augment=True,options=options)
+        compare_results(inference_output_file_augmented,expected_results_file_augmented,options)
 
-        inference_output_file_yolo_val_no_links = insert_before_extension(inference_output_file_yolo_val,
-                                                                          'no-links')
-        yolo_inference_options.output_file = inference_output_file_yolo_val_no_links
-        yolo_inference_options.use_symlinks = False
-        run_inference_with_yolo_val(yolo_inference_options)
 
-        # Run again, with chunked inference and symlinks
+        ## Postprocess results
 
-        inference_output_file_yolo_val_checkpoints = insert_before_extension(inference_output_file_yolo_val,
-                                                                             'checkpoints')
-        yolo_inference_options.output_file = inference_output_file_yolo_val_checkpoints
-        yolo_inference_options.use_symlinks = True
-        yolo_inference_options.checkpoint_frequency = 5
-        run_inference_with_yolo_val(yolo_inference_options)
+        print('\n** Post-processing results (module) **\n')
 
-        # Run again, with chunked inference and no symlinks
+        from megadetector.postprocessing.postprocess_batch_results import \
+            PostProcessingOptions,process_batch_results
+        postprocessing_options = PostProcessingOptions()
 
-        inference_output_file_yolo_val_checkpoints_no_links = \
-            insert_before_extension(inference_output_file_yolo_val,'checkpoints-no-links')
-        yolo_inference_options.output_file = inference_output_file_yolo_val_checkpoints_no_links
-        yolo_inference_options.use_symlinks = False
-        yolo_inference_options.checkpoint_frequency = 5
-        run_inference_with_yolo_val(yolo_inference_options)
+        postprocessing_options.md_results_file = inference_output_file
+        postprocessing_options.output_dir = os.path.join(options.scratch_dir,'postprocessing_output')
+        postprocessing_options.image_base_dir = image_folder
 
-        fn1 = inference_output_file_yolo_val
+        postprocessing_results = process_batch_results(postprocessing_options)
+        assert os.path.isfile(postprocessing_results.output_html_file), \
+            'Postprocessing output file {} not found'.format(postprocessing_results.output_html_file)
 
-        output_files_to_compare = [
-            inference_output_file_yolo_val_no_links,
-            inference_output_file_yolo_val_checkpoints,
-            inference_output_file_yolo_val_checkpoints_no_links
-            ]
 
-        for fn2 in output_files_to_compare:
-            assert output_files_are_identical(fn1, fn2, verbose=True)
+        ## Partial RDE test
 
-    # ...if we need to run the YOLO val inference tests
+        print('\n** Testing RDE (module) **\n')
 
+        from megadetector.postprocessing.repeat_detection_elimination.repeat_detections_core import \
+            RepeatDetectionOptions, find_repeat_detections
+
+        rde_options = RepeatDetectionOptions()
+        rde_options.occurrenceThreshold = 2
+        rde_options.confidenceMin = 0.001
+        rde_options.outputBase = os.path.join(options.scratch_dir,'rde_working_dir')
+        rde_options.imageBase = image_folder
+        rde_output_file = inference_output_file.replace('.json','_filtered.json')
+        assert rde_output_file != inference_output_file
+        rde_results = find_repeat_detections(inference_output_file, rde_output_file, rde_options)
+        assert os.path.isfile(rde_results.filterFile),\
+            'Could not find RDE output file {}'.format(rde_results.filterFile)
+
+
+        ## Run inference on a folder (with YOLOv5 val script)
+
+        if options.yolo_working_dir is None:
+
+            print('Skipping YOLO val inference tests, no YOLO folder supplied')
+
+        else:
+
+            print('\n** Running YOLO val inference test (module) **\n')
+
+            from megadetector.detection.run_inference_with_yolov5_val import \
+                YoloInferenceOptions, run_inference_with_yolo_val
+            from megadetector.utils.path_utils import insert_before_extension
+
+            inference_output_file_yolo_val = os.path.join(options.scratch_dir,'folder_inference_output_yolo_val.json')
+
+            yolo_inference_options = YoloInferenceOptions()
+            yolo_inference_options.input_folder = os.path.join(options.scratch_dir,'md-test-images')
+            yolo_inference_options.output_file = inference_output_file_yolo_val
+            yolo_inference_options.yolo_working_folder = options.yolo_working_dir
+            yolo_inference_options.model_filename = options.default_model
+            yolo_inference_options.augment = False
+            yolo_inference_options.overwrite_handling = 'overwrite'
+            from megadetector.detection.run_detector import DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
+            yolo_inference_options.conf_thres = DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
+
+            run_inference_with_yolo_val(yolo_inference_options)
+
+            ## Confirm this matches the standard inference path
+
+            if False:
+                # TODO: compare_results() isn't quite ready for this yet
+                compare_results(inference_output_file=inference_output_file_yolo_val,
+                                expected_results_file=inference_output_file_standard_inference,
+                                options=options)
+
+            # Run again, without symlinks this time
+
+            inference_output_file_yolo_val_no_links = insert_before_extension(inference_output_file_yolo_val,
+                                                                            'no-links')
+            yolo_inference_options.output_file = inference_output_file_yolo_val_no_links
+            yolo_inference_options.use_symlinks = False
+            run_inference_with_yolo_val(yolo_inference_options)
+
+            # Run again, with chunked inference and symlinks
+
+            inference_output_file_yolo_val_checkpoints = insert_before_extension(inference_output_file_yolo_val,
+                                                                                'checkpoints')
+            yolo_inference_options.output_file = inference_output_file_yolo_val_checkpoints
+            yolo_inference_options.use_symlinks = True
+            yolo_inference_options.checkpoint_frequency = 5
+            run_inference_with_yolo_val(yolo_inference_options)
+
+            # Run again, with chunked inference and no symlinks
+
+            inference_output_file_yolo_val_checkpoints_no_links = \
+                insert_before_extension(inference_output_file_yolo_val,'checkpoints-no-links')
+            yolo_inference_options.output_file = inference_output_file_yolo_val_checkpoints_no_links
+            yolo_inference_options.use_symlinks = False
+            yolo_inference_options.checkpoint_frequency = 5
+            run_inference_with_yolo_val(yolo_inference_options)
+
+            fn1 = inference_output_file_yolo_val
+
+            output_files_to_compare = [
+                inference_output_file_yolo_val_no_links,
+                inference_output_file_yolo_val_checkpoints,
+                inference_output_file_yolo_val_checkpoints_no_links
+                ]
+
+            for fn2 in output_files_to_compare:
+                assert output_files_are_identical(fn1, fn2, verbose=True)
+
+        # ...if we need to run the YOLO val inference tests
+
+    # ...if we're not skipping image tests
 
     if not options.skip_video_tests:
 
         ## Video test (single video)
 
+        # This test just checks non-crashing-ness; we will test correctness in the next
+        # test (which runs a folder of videos)
+
         print('\n** Running MD on a single video (module) **\n')
 
-        from megadetector.detection.process_video import ProcessVideoOptions, process_video
+        from megadetector.detection.process_video import ProcessVideoOptions, process_videos
         from megadetector.utils.path_utils import insert_before_extension
 
         video_options = ProcessVideoOptions()
         video_options.model_file = options.default_model
         video_options.input_video_file = os.path.join(options.scratch_dir,options.test_videos[0])
         video_options.output_json_file = os.path.join(options.scratch_dir,'single_video_output.json')
-        video_options.output_video_file = os.path.join(options.scratch_dir,'video_scratch/rendered_video.mp4')
-        video_options.frame_folder = os.path.join(options.scratch_dir,'video_scratch/frame_folder')
-        video_options.frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder')
-
-        video_options.render_output_video = (not options.skip_video_rendering_tests)
-
-        # video_options.keep_rendered_frames = False
-        # video_options.keep_extracted_frames = False
-        video_options.force_extracted_frame_folder_deletion = True
-        video_options.force_rendered_frame_folder_deletion = True
-        # video_options.reuse_results_if_available = False
-        # video_options.reuse_frames_if_available = False
-        video_options.recursive = True
-        video_options.verbose = False
-        video_options.fourcc = options.video_fourcc
-        # video_options.rendering_confidence_threshold = None
-        # video_options.json_confidence_threshold = 0.005
         video_options.frame_sample = 10
         video_options.n_cores = options.n_cores_for_video_tests
-        # video_options.debug_max_frames = -1
-        # video_options.class_mapping_filename = None
         video_options.detector_options = copy(options.detector_options)
 
-        _ = process_video(video_options)
+        _ = process_videos(video_options)
 
-        assert os.path.isfile(video_options.output_video_file), \
-            'Python video test failed to render output video file'
         assert os.path.isfile(video_options.output_json_file), \
             'Python video test failed to render output .json file'
 
@@ -1061,7 +1075,7 @@ def run_python_tests(options):
 
         print('\n** Running MD on a folder of videos (module) **\n')
 
-        from megadetector.detection.process_video import ProcessVideoOptions, process_video_folder
+        from megadetector.detection.process_video import ProcessVideoOptions, process_videos
         from megadetector.utils.path_utils import insert_before_extension
 
         video_options = ProcessVideoOptions()
@@ -1070,43 +1084,16 @@ def run_python_tests(options):
                                                       os.path.dirname(options.test_videos[0]))
         video_options.output_json_file = os.path.join(options.scratch_dir,'video_folder_output.json')
         video_options.output_video_file = None
-        video_options.frame_folder = os.path.join(options.scratch_dir,'video_scratch/frame_folder')
-        video_options.frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder')
-        video_options.render_output_video = False
-        video_options.keep_rendered_frames = False
-        video_options.keep_extracted_frames = False
-        video_options.force_extracted_frame_folder_deletion = True
-        video_options.force_rendered_frame_folder_deletion = True
-        video_options.reuse_results_if_available = False
-        video_options.reuse_frames_if_available = False
         video_options.recursive = True
         video_options.verbose = True
-        video_options.fourcc = options.video_fourcc
-        # video_options.rendering_confidence_threshold = None
-        # video_options.json_confidence_threshold = 0.005
-        video_options.frame_sample = 10
         video_options.n_cores = options.n_cores_for_video_tests
-
-        # Force frame extraction to disk, since that's how we generated our expected results file
-        video_options.force_on_disk_frame_extraction = True
-        # video_options.debug_max_frames = -1
-        # video_options.class_mapping_filename = None
-
-        # Use quality == None, because we can't control whether YOLOv5 has patched cm2.imread,
-        # and therefore can't rely on using the quality parameter
-        video_options.quality = None
-        video_options.max_width = None
+        video_options.json_confidence_threshold = 0.05
+        video_options.time_sample = 2
         video_options.detector_options = copy(options.detector_options)
-
-        video_options.keep_extracted_frames = True
-        _ = process_video_folder(video_options)
+        _ = process_videos(video_options)
 
         assert os.path.isfile(video_options.output_json_file), \
             'Python video test failed to render output .json file'
-
-        frame_output_file = insert_before_extension(video_options.output_json_file,'frames')
-        assert os.path.isfile(frame_output_file)
-
 
         ## Verify results
 
@@ -1114,30 +1101,12 @@ def run_python_tests(options):
             get_expected_results_filename(is_gpu_available(verbose=False),test_type='video',options=options)
         assert os.path.isfile(expected_results_file)
 
-        compare_results(frame_output_file,expected_results_file,options)
-
-
-        ## Run again, this time in memory, and make sure the results are *almost* the same
-
-        # They won't be quite the same, because the on-disk path goes through a jpeg intermediate
-
-        print('\n** Running MD on a folder of videos (in memory) (module) **\n')
-
-        video_options.output_json_file = insert_before_extension(video_options.output_json_file,'in-memory')
-        video_options.force_on_disk_frame_extraction = False
-        _ = process_video_folder(video_options)
-
-        frame_output_file_in_memory = insert_before_extension(video_options.output_json_file,'frames')
-        assert os.path.isfile(frame_output_file_in_memory)
-
         from copy import deepcopy
         options_loose = deepcopy(options)
         options_loose.max_conf_error = 0.05
         options_loose.max_coord_error = 0.01
 
-        compare_results(inference_output_file=frame_output_file,
-                        expected_results_file=frame_output_file_in_memory,
-                        options=options_loose)
+        compare_results(video_options.output_json_file,expected_results_file,options_loose)
 
     # ...if we're not skipping video tests
 
@@ -1193,451 +1162,443 @@ def run_cli_tests(options):
         return
 
 
-    ## Run inference on an image
+    if not options.skip_image_tests:
 
-    print('\n** Running MD on a single image (CLI) **\n')
+        ## Run inference on an image
 
-    image_fn = os.path.join(options.scratch_dir,options.test_images[0])
-    output_dir = os.path.join(options.scratch_dir,'single_image_test')
-    if options.cli_working_dir is None:
-        cmd = 'python -m megadetector.detection.run_detector'
-    else:
-        cmd = 'python megadetector/detection/run_detector.py'
-    cmd += ' "{}" --image_file "{}" --output_dir "{}"'.format(
-        options.default_model,image_fn,output_dir)
-    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
-    cmd_results = execute_and_print(cmd)
+        print('\n** Running MD on a single image (CLI) **\n')
 
-    if options.cpu_execution_is_error:
-        gpu_available_via_cli = False
-        for s in cmd_results['output']:
-            if 'GPU available: True' in s:
-                gpu_available_via_cli = True
-                break
-        if not gpu_available_via_cli:
-            raise Exception('GPU execution is required, but not available')
-
-
-    ## Make sure we can also pass an absolute path to a model file, instead of, e.g. "MDV5A"
-
-    print('\n** Running MD on a single image (CLI) (with symbolic model name) **\n')
-
-    from megadetector.detection.run_detector import try_download_known_detector
-    model_file = try_download_known_detector(options.default_model,force_download=False,verbose=False)
-    cmd = cmd.replace(options.default_model,model_file)
-    cmd_results = execute_and_print(cmd)
-
-
-    ## Run inference on a folder
-
-    print('\n** Running MD on a folder (CLI) **\n')
-
-    image_folder = os.path.join(options.scratch_dir,'md-test-images')
-    assert os.path.isdir(image_folder), 'Test image folder {} is not available'.format(image_folder)
-    inference_output_file = os.path.join(options.scratch_dir,'folder_inference_output.json')
-    if options.cli_working_dir is None:
-        cmd = 'python -m megadetector.detection.run_detector_batch'
-    else:
-        cmd = 'python megadetector/detection/run_detector_batch.py'
-    cmd += ' "{}" "{}" "{}" --recursive'.format(
-        options.default_model,image_folder,inference_output_file)
-    cmd += ' --output_relative_filenames --quiet --include_image_size'
-    cmd += ' --include_image_timestamp --include_exif_data'
-
-    base_cmd = cmd
-
-    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
-    cmd_results = execute_and_print(cmd)
-
-
-    ## Run again with a batch size > 1
-
-    print('\n** Running MD on a folder (with a batch size > 1) (CLI) **\n')
-
-    batch_string = ' --batch_size {}'.format(options.alternative_batch_size)
-    cmd = base_cmd + batch_string
-    inference_output_file_batch = insert_before_extension(inference_output_file,'batch')
-    cmd = cmd.replace(inference_output_file,inference_output_file_batch)
-    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
-    cmd_results = execute_and_print(cmd)
-
-    # Use compare_results() here rather than output_files_are_identical(), because
-    # batch inference may introduce very small differences. Override the default tolerance,
-    # though, because these differences should be very small compared to, e.g., differences
-    # across library versions.
-    batch_options = copy(options)
-    batch_options.max_coord_error = 0.01
-    batch_options.max_conf_error = 0.01
-    compare_results(inference_output_file,inference_output_file_batch,batch_options)
-
-
-    ## Run again with the image queue enabled
-
-    print('\n** Running MD on a folder (with image queue but consumer-side preprocessing) (CLI) **\n')
-
-    cmd = base_cmd + ' --use_image_queue'
-    inference_output_file_queue = insert_before_extension(inference_output_file,'queue')
-    cmd = cmd.replace(inference_output_file,inference_output_file_queue)
-    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
-    cmd_results = execute_and_print(cmd)
-
-    assert output_files_are_identical(fn1=inference_output_file,
-                                      fn2=inference_output_file_queue,
-                                      verbose=True)
-
-
-    ## Run again with the image queue and worker-side preprocessing enabled
-
-    print('\n** Running MD on a folder (with image queue and worker-side preprocessing) (CLI) **\n')
-
-    cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue'
-    inference_output_file_preprocess_queue = \
-        insert_before_extension(inference_output_file,'preprocess_queue')
-    cmd = cmd.replace(inference_output_file,inference_output_file_preprocess_queue)
-    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
-    cmd_results = execute_and_print(cmd)
-
-    assert output_files_are_identical(fn1=inference_output_file,
-                                      fn2=inference_output_file_preprocess_queue,
-                                      verbose=True)
-
-
-    ## Run again with the image queue and worker-side preprocessing
-
-    print('\n** Running MD on a folder (with image queue and preprocessing) (CLI) **\n')
-
-    cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue'
-    inference_output_file_preprocess_queue = \
-        insert_before_extension(inference_output_file,'preprocess_queue')
-    cmd = cmd.replace(inference_output_file,inference_output_file_preprocess_queue)
-    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
-    cmd_results = execute_and_print(cmd)
-
-    assert output_files_are_identical(fn1=inference_output_file,
-                                      fn2=inference_output_file_preprocess_queue,
-                                      verbose=True)
-
-
-    ## Run again with the worker-side preprocessing and an alternative batch size
-
-    print('\n** Running MD on a folder (with worker-side preprocessing and batched inference) (CLI) **\n')
-
-    batch_string = ' --batch_size {}'.format(options.alternative_batch_size)
-
-    # I reduce the number of loader workers here to force batching to actually appen; with a small
-    # number of images and a few that are intentionally corrupt, with the default number of loader
-    # workers we end up with batches that are mostly just one image.
-    cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue --loader_workers 2' + batch_string
-    inference_output_file_queue_batch = \
-        insert_before_extension(inference_output_file,'preprocess_queue_batch')
-    cmd = cmd.replace(inference_output_file,inference_output_file_queue_batch)
-    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
-    cmd_results = execute_and_print(cmd)
-
-    compare_results(inference_output_file,inference_output_file_queue_batch,batch_options)
-
-
-    ## Run again with checkpointing enabled
-
-    print('\n** Running MD on a folder (with checkpoints) (CLI) **\n')
-
-    checkpoint_string = ' --checkpoint_frequency 5'
-    cmd = base_cmd + checkpoint_string
-    inference_output_file_checkpoint = insert_before_extension(inference_output_file,'checkpoint')
-    cmd = cmd.replace(inference_output_file,inference_output_file_checkpoint)
-    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
-    cmd_results = execute_and_print(cmd)
-
-    assert output_files_are_identical(fn1=inference_output_file,
-                                      fn2=inference_output_file_checkpoint,
-                                      verbose=True)
-
-
-    ## Run again with "modern" postprocessing, make sure the results are *not* the same as classic
-
-    print('\n** Running MD on a folder (with modern preprocessing) (CLI) **\n')
-
-    inference_output_file_modern = insert_before_extension(inference_output_file,'modern')
-    cmd = base_cmd
-    cmd = cmd.replace(inference_output_file,inference_output_file_modern)
-    cmd += ' --detector_options {}'.format(dict_to_kvp_list({'compatibility_mode':'modern'}))
-    cmd_results = execute_and_print(cmd)
-
-    assert not output_files_are_identical(fn1=inference_output_file,
-                                          fn2=inference_output_file_modern,
-                                          verbose=True)
-
-
-    ## Run again with "modern" postprocessing and worker-side preprocessing,
-    ## make sure the results are the same as modern.
-
-    print('\n** Running MD on a folder (with worker-side modern preprocessing) (CLI) **\n')
-
-    inference_output_file_modern_worker_preprocessing = insert_before_extension(inference_output_file,'modern')
-    cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue'
-    cmd = cmd.replace(inference_output_file,inference_output_file_modern_worker_preprocessing)
-    cmd += ' --detector_options {}'.format(dict_to_kvp_list({'compatibility_mode':'modern'}))
-    cmd_results = execute_and_print(cmd)
-
-    # This should not be the same as the "classic" results
-    assert not output_files_are_identical(fn1=inference_output_file,
-                                          fn2=inference_output_file_modern_worker_preprocessing,
-                                          verbose=True)
-
-    # ...but it should be the same as the single-threaded "modern" results
-    assert output_files_are_identical(fn1=inference_output_file_modern,
-                                      fn2=inference_output_file_modern_worker_preprocessing,
-                                      verbose=True)
-
-
-    if not options.skip_cpu_tests:
-
-        ## Run again on multiple cores
-
-        # First run again on the CPU on a single thread if necessary, so we get a file that
-        # *should* be identical to the multicore version.
-        gpu_available = is_gpu_available(verbose=False)
-
-        cuda_visible_devices = None
-        if 'CUDA_VISIBLE_DEVICES' in os.environ:
-            cuda_visible_devices = os.environ['CUDA_VISIBLE_DEVICES']
-        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-
-        # If we already ran on the CPU, no need to run again
-        if not gpu_available:
-
-            inference_output_file_cpu = inference_output_file
-
+        image_fn = os.path.join(options.scratch_dir,options.test_images[0])
+        output_dir = os.path.join(options.scratch_dir,'single_image_test')
+        if options.cli_working_dir is None:
+            cmd = 'python -m megadetector.detection.run_detector'
         else:
-
-            print('\n** Running MD on a folder (single CPU) (CLI) **\n')
-
-            inference_output_file_cpu = insert_before_extension(inference_output_file,'cpu')
-            cmd = base_cmd
-            cmd = cmd.replace(inference_output_file,inference_output_file_cpu)
-            cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
-            cmd_results = execute_and_print(cmd)
-
-        print('\n** Running MD on a folder (multiple CPUs) (CLI) **\n')
-
-        cpu_string = ' --ncores {}'.format(options.n_cores_for_multiprocessing_tests)
-        cmd = base_cmd + cpu_string
-        inference_output_file_cpu_multicore = insert_before_extension(inference_output_file,'multicore')
-        cmd = cmd.replace(inference_output_file,inference_output_file_cpu_multicore)
+            cmd = 'python megadetector/detection/run_detector.py'
+        cmd += ' "{}" --image_file "{}" --output_dir "{}"'.format(
+            options.default_model,image_fn,output_dir)
         cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
         cmd_results = execute_and_print(cmd)
 
-        if cuda_visible_devices is not None:
-            print('Restoring CUDA_VISIBLE_DEVICES')
-            os.environ['CUDA_VISIBLE_DEVICES'] = cuda_visible_devices
-        else:
-            del os.environ['CUDA_VISIBLE_DEVICES']
-
-        assert output_files_are_identical(fn1=inference_output_file_cpu,
-                                          fn2=inference_output_file_cpu_multicore,
-                                          verbose=True)
-
-    # ...if we're not skipping the force-cpu tests
+        if options.cpu_execution_is_error:
+            gpu_available_via_cli = False
+            for s in cmd_results['output']:
+                if 'GPU available: True' in s:
+                    gpu_available_via_cli = True
+                    break
+            if not gpu_available_via_cli:
+                raise Exception('GPU execution is required, but not available')
 
 
-    ## Postprocessing
+        ## Make sure we can also pass an absolute path to a model file, instead of, e.g. "MDV5A"
 
-    print('\n** Testing post-processing (CLI) **\n')
+        print('\n** Running MD on a single image (CLI) (with symbolic model name) **\n')
 
-    postprocessing_output_dir = os.path.join(options.scratch_dir,'postprocessing_output_cli')
-
-    if options.cli_working_dir is None:
-        cmd = 'python -m megadetector.postprocessing.postprocess_batch_results'
-    else:
-        cmd = 'python megadetector/postprocessing/postprocess_batch_results.py'
-    cmd += ' "{}" "{}"'.format(
-        inference_output_file,postprocessing_output_dir)
-    cmd += ' --image_base_dir "{}"'.format(image_folder)
-    cmd_results = execute_and_print(cmd)
-
-
-    ## RDE
-
-    print('\n** Running RDE (CLI) **\n')
-
-    rde_output_dir = os.path.join(options.scratch_dir,'rde_output_cli')
-
-    if options.cli_working_dir is None:
-        cmd = 'python -m megadetector.postprocessing.repeat_detection_elimination.find_repeat_detections'
-    else:
-        cmd = 'python  megadetector/postprocessing/repeat_detection_elimination/find_repeat_detections.py'
-    cmd += ' "{}"'.format(inference_output_file)
-    cmd += ' --imageBase "{}"'.format(image_folder)
-    cmd += ' --outputBase "{}"'.format(rde_output_dir)
-    cmd += ' --occurrenceThreshold 1' # Use an absurd number here to make sure we get some suspicious detections
-    cmd_results = execute_and_print(cmd)
-
-    # Find the latest filtering folder
-    filtering_output_dir = os.listdir(rde_output_dir)
-    filtering_output_dir = [fn for fn in filtering_output_dir if fn.startswith('filtering_')]
-    filtering_output_dir = [os.path.join(rde_output_dir,fn) for fn in filtering_output_dir]
-    filtering_output_dir = [fn for fn in filtering_output_dir if os.path.isdir(fn)]
-    filtering_output_dir = sorted(filtering_output_dir)[-1]
-
-    print('Using RDE filtering folder {}'.format(filtering_output_dir))
-
-    filtered_output_file = inference_output_file.replace('.json','_filtered.json')
-
-    if options.cli_working_dir is None:
-        cmd = 'python -m megadetector.postprocessing.repeat_detection_elimination.remove_repeat_detections'
-    else:
-        cmd = 'python  megadetector/postprocessing/repeat_detection_elimination/remove_repeat_detections.py'
-    cmd += ' "{}" "{}" "{}"'.format(inference_output_file,filtered_output_file,filtering_output_dir)
-    cmd_results = execute_and_print(cmd)
-
-    assert os.path.isfile(filtered_output_file), \
-        'Could not find RDE output file {}'.format(filtered_output_file)
-
-
-    ## Run inference on a folder (tiled)
-
-    # This is a rather esoteric code path that I turn off when I'm testing some
-    # features that it doesn't include yet, particularly compatibility mode
-    # control.
-    skip_tiling_tests = True
-
-    if skip_tiling_tests:
-
-        print('### DEBUG: skipping tiling tests ###')
-
-    else:
-        print('\n** Running tiled inference (CLI) **\n')
-
-        image_folder = os.path.join(options.scratch_dir,'md-test-images')
-        tiling_folder = os.path.join(options.scratch_dir,'tiling-folder')
-        inference_output_file_tiled = os.path.join(options.scratch_dir,'folder_inference_output_tiled.json')
-        if options.cli_working_dir is None:
-            cmd = 'python -m megadetector.detection.run_tiled_inference'
-        else:
-            cmd = 'python megadetector/detection/run_tiled_inference.py'
-        cmd += ' "{}" "{}" "{}" "{}"'.format(
-            options.default_model,image_folder,tiling_folder,inference_output_file_tiled)
-        cmd += ' --overwrite_handling overwrite'
+        from megadetector.detection.run_detector import try_download_known_detector
+        model_file = try_download_known_detector(options.default_model,force_download=False,verbose=False)
+        cmd = cmd.replace(options.default_model,model_file)
         cmd_results = execute_and_print(cmd)
 
-        with open(inference_output_file_tiled,'r') as f:
+
+        ## Run inference on a folder
+
+        print('\n** Running MD on a folder (CLI) **\n')
+
+        image_folder = os.path.join(options.scratch_dir,'md-test-images')
+        assert os.path.isdir(image_folder), 'Test image folder {} is not available'.format(image_folder)
+        inference_output_file = os.path.join(options.scratch_dir,'folder_inference_output.json')
+        if options.cli_working_dir is None:
+            cmd = 'python -m megadetector.detection.run_detector_batch'
+        else:
+            cmd = 'python megadetector/detection/run_detector_batch.py'
+        cmd += ' "{}" "{}" "{}" --recursive'.format(
+            options.default_model,image_folder,inference_output_file)
+        cmd += ' --output_relative_filenames --quiet --include_image_size'
+        cmd += ' --include_image_timestamp --include_exif_data'
+
+        base_cmd = cmd
+
+        cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+        cmd_results = execute_and_print(cmd)
+
+
+        ## Run again with a batch size > 1
+
+        print('\n** Running MD on a folder (with a batch size > 1) (CLI) **\n')
+
+        batch_string = ' --batch_size {}'.format(options.alternative_batch_size)
+        cmd = base_cmd + batch_string
+        inference_output_file_batch = insert_before_extension(inference_output_file,'batch')
+        cmd = cmd.replace(inference_output_file,inference_output_file_batch)
+        cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+        cmd_results = execute_and_print(cmd)
+
+        # Use compare_results() here rather than output_files_are_identical(), because
+        # batch inference may introduce very small differences. Override the default tolerance,
+        # though, because these differences should be very small compared to, e.g., differences
+        # across library versions.
+        batch_options = copy(options)
+        batch_options.max_coord_error = 0.01
+        batch_options.max_conf_error = 0.01
+        compare_results(inference_output_file,inference_output_file_batch,batch_options)
+
+
+        ## Run again with the image queue enabled
+
+        print('\n** Running MD on a folder (with image queue but consumer-side preprocessing) (CLI) **\n')
+
+        cmd = base_cmd + ' --use_image_queue'
+        inference_output_file_queue = insert_before_extension(inference_output_file,'queue')
+        cmd = cmd.replace(inference_output_file,inference_output_file_queue)
+        cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+        cmd_results = execute_and_print(cmd)
+
+        assert output_files_are_identical(fn1=inference_output_file,
+                                        fn2=inference_output_file_queue,
+                                        verbose=True)
+
+
+        ## Run again with the image queue and worker-side preprocessing enabled
+
+        print('\n** Running MD on a folder (with image queue and worker-side preprocessing) (CLI) **\n')
+
+        cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue'
+        inference_output_file_preprocess_queue = \
+            insert_before_extension(inference_output_file,'preprocess_queue')
+        cmd = cmd.replace(inference_output_file,inference_output_file_preprocess_queue)
+        cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+        cmd_results = execute_and_print(cmd)
+
+        assert output_files_are_identical(fn1=inference_output_file,
+                                        fn2=inference_output_file_preprocess_queue,
+                                        verbose=True)
+
+
+        ## Run again with the image queue and worker-side preprocessing
+
+        print('\n** Running MD on a folder (with image queue and preprocessing) (CLI) **\n')
+
+        cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue'
+        inference_output_file_preprocess_queue = \
+            insert_before_extension(inference_output_file,'preprocess_queue')
+        cmd = cmd.replace(inference_output_file,inference_output_file_preprocess_queue)
+        cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+        cmd_results = execute_and_print(cmd)
+
+        assert output_files_are_identical(fn1=inference_output_file,
+                                        fn2=inference_output_file_preprocess_queue,
+                                        verbose=True)
+
+
+        ## Run again with the worker-side preprocessing and an alternative batch size
+
+        print('\n** Running MD on a folder (with worker-side preprocessing and batched inference) (CLI) **\n')
+
+        batch_string = ' --batch_size {}'.format(options.alternative_batch_size)
+
+        # I reduce the number of loader workers here to force batching to actually appen; with a small
+        # number of images and a few that are intentionally corrupt, with the default number of loader
+        # workers we end up with batches that are mostly just one image.
+        cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue --loader_workers 2' + batch_string
+        inference_output_file_queue_batch = \
+            insert_before_extension(inference_output_file,'preprocess_queue_batch')
+        cmd = cmd.replace(inference_output_file,inference_output_file_queue_batch)
+        cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+        cmd_results = execute_and_print(cmd)
+
+        compare_results(inference_output_file,inference_output_file_queue_batch,batch_options)
+
+
+        ## Run again with checkpointing enabled
+
+        print('\n** Running MD on a folder (with checkpoints) (CLI) **\n')
+
+        checkpoint_string = ' --checkpoint_frequency 5'
+        cmd = base_cmd + checkpoint_string
+        inference_output_file_checkpoint = insert_before_extension(inference_output_file,'checkpoint')
+        cmd = cmd.replace(inference_output_file,inference_output_file_checkpoint)
+        cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+        cmd_results = execute_and_print(cmd)
+
+        assert output_files_are_identical(fn1=inference_output_file,
+                                        fn2=inference_output_file_checkpoint,
+                                        verbose=True)
+
+
+        ## Run again with "modern" postprocessing, make sure the results are *not* the same as classic
+
+        print('\n** Running MD on a folder (with modern preprocessing) (CLI) **\n')
+
+        inference_output_file_modern = insert_before_extension(inference_output_file,'modern')
+        cmd = base_cmd
+        cmd = cmd.replace(inference_output_file,inference_output_file_modern)
+        cmd += ' --detector_options {}'.format(dict_to_kvp_list({'compatibility_mode':'modern'}))
+        cmd_results = execute_and_print(cmd)
+
+        assert not output_files_are_identical(fn1=inference_output_file,
+                                            fn2=inference_output_file_modern,
+                                            verbose=True)
+
+
+        ## Run again with "modern" postprocessing and worker-side preprocessing,
+        ## make sure the results are the same as modern.
+
+        print('\n** Running MD on a folder (with worker-side modern preprocessing) (CLI) **\n')
+
+        inference_output_file_modern_worker_preprocessing = insert_before_extension(inference_output_file,'modern')
+        cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue'
+        cmd = cmd.replace(inference_output_file,inference_output_file_modern_worker_preprocessing)
+        cmd += ' --detector_options {}'.format(dict_to_kvp_list({'compatibility_mode':'modern'}))
+        cmd_results = execute_and_print(cmd)
+
+        # This should not be the same as the "classic" results
+        assert not output_files_are_identical(fn1=inference_output_file,
+                                            fn2=inference_output_file_modern_worker_preprocessing,
+                                            verbose=True)
+
+        # ...but it should be the same as the single-threaded "modern" results
+        assert output_files_are_identical(fn1=inference_output_file_modern,
+                                        fn2=inference_output_file_modern_worker_preprocessing,
+                                        verbose=True)
+
+
+        if not options.skip_cpu_tests:
+
+            ## Run again on multiple cores
+
+            # First run again on the CPU on a single thread if necessary, so we get a file that
+            # *should* be identical to the multicore version.
+            gpu_available = is_gpu_available(verbose=False)
+
+            cuda_visible_devices = None
+            if 'CUDA_VISIBLE_DEVICES' in os.environ:
+                cuda_visible_devices = os.environ['CUDA_VISIBLE_DEVICES']
+            os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
+            # If we already ran on the CPU, no need to run again
+            if not gpu_available:
+
+                inference_output_file_cpu = inference_output_file
+
+            else:
+
+                print('\n** Running MD on a folder (single CPU) (CLI) **\n')
+
+                inference_output_file_cpu = insert_before_extension(inference_output_file,'cpu')
+                cmd = base_cmd
+                cmd = cmd.replace(inference_output_file,inference_output_file_cpu)
+                cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+                cmd_results = execute_and_print(cmd)
+
+            print('\n** Running MD on a folder (multiple CPUs) (CLI) **\n')
+
+            cpu_string = ' --ncores {}'.format(options.n_cores_for_multiprocessing_tests)
+            cmd = base_cmd + cpu_string
+            inference_output_file_cpu_multicore = insert_before_extension(inference_output_file,'multicore')
+            cmd = cmd.replace(inference_output_file,inference_output_file_cpu_multicore)
+            cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+            cmd_results = execute_and_print(cmd)
+
+            if cuda_visible_devices is not None:
+                print('Restoring CUDA_VISIBLE_DEVICES')
+                os.environ['CUDA_VISIBLE_DEVICES'] = cuda_visible_devices
+            else:
+                del os.environ['CUDA_VISIBLE_DEVICES']
+
+            assert output_files_are_identical(fn1=inference_output_file_cpu,
+                                            fn2=inference_output_file_cpu_multicore,
+                                            verbose=True)
+
+        # ...if we're not skipping the force-cpu tests
+
+
+        ## Postprocessing
+
+        print('\n** Testing post-processing (CLI) **\n')
+
+        postprocessing_output_dir = os.path.join(options.scratch_dir,'postprocessing_output_cli')
+
+        if options.cli_working_dir is None:
+            cmd = 'python -m megadetector.postprocessing.postprocess_batch_results'
+        else:
+            cmd = 'python megadetector/postprocessing/postprocess_batch_results.py'
+        cmd += ' "{}" "{}"'.format(
+            inference_output_file,postprocessing_output_dir)
+        cmd += ' --image_base_dir "{}"'.format(image_folder)
+        cmd_results = execute_and_print(cmd)
+
+
+        ## RDE
+
+        print('\n** Running RDE (CLI) **\n')
+
+        rde_output_dir = os.path.join(options.scratch_dir,'rde_output_cli')
+
+        if options.cli_working_dir is None:
+            cmd = 'python -m megadetector.postprocessing.repeat_detection_elimination.find_repeat_detections'
+        else:
+            cmd = 'python  megadetector/postprocessing/repeat_detection_elimination/find_repeat_detections.py'
+        cmd += ' "{}"'.format(inference_output_file)
+        cmd += ' --imageBase "{}"'.format(image_folder)
+        cmd += ' --outputBase "{}"'.format(rde_output_dir)
+        cmd += ' --occurrenceThreshold 1' # Use an absurd number here to make sure we get some suspicious detections
+        cmd_results = execute_and_print(cmd)
+
+        # Find the latest filtering folder
+        filtering_output_dir = os.listdir(rde_output_dir)
+        filtering_output_dir = [fn for fn in filtering_output_dir if fn.startswith('filtering_')]
+        filtering_output_dir = [os.path.join(rde_output_dir,fn) for fn in filtering_output_dir]
+        filtering_output_dir = [fn for fn in filtering_output_dir if os.path.isdir(fn)]
+        filtering_output_dir = sorted(filtering_output_dir)[-1]
+
+        print('Using RDE filtering folder {}'.format(filtering_output_dir))
+
+        filtered_output_file = inference_output_file.replace('.json','_filtered.json')
+
+        if options.cli_working_dir is None:
+            cmd = 'python -m megadetector.postprocessing.repeat_detection_elimination.remove_repeat_detections'
+        else:
+            cmd = 'python  megadetector/postprocessing/repeat_detection_elimination/remove_repeat_detections.py'
+        cmd += ' "{}" "{}" "{}"'.format(inference_output_file,filtered_output_file,filtering_output_dir)
+        cmd_results = execute_and_print(cmd)
+
+        assert os.path.isfile(filtered_output_file), \
+            'Could not find RDE output file {}'.format(filtered_output_file)
+
+
+        ## Run inference on a folder (tiled)
+
+        # This is a rather esoteric code path that I turn off when I'm testing some
+        # features that it doesn't include yet, particularly compatibility mode
+        # control.
+        skip_tiling_tests = True
+
+        if skip_tiling_tests:
+
+            print('### DEBUG: skipping tiling tests ###')
+
+        else:
+            print('\n** Running tiled inference (CLI) **\n')
+
+            image_folder = os.path.join(options.scratch_dir,'md-test-images')
+            tiling_folder = os.path.join(options.scratch_dir,'tiling-folder')
+            inference_output_file_tiled = os.path.join(options.scratch_dir,'folder_inference_output_tiled.json')
+            if options.cli_working_dir is None:
+                cmd = 'python -m megadetector.detection.run_tiled_inference'
+            else:
+                cmd = 'python megadetector/detection/run_tiled_inference.py'
+            cmd += ' "{}" "{}" "{}" "{}"'.format(
+                options.default_model,image_folder,tiling_folder,inference_output_file_tiled)
+            cmd += ' --overwrite_handling overwrite'
+            cmd_results = execute_and_print(cmd)
+
+            with open(inference_output_file_tiled,'r') as f:
+                results_from_file = json.load(f) # noqa
+
+
+        ## Run inference on a folder (augmented, w/YOLOv5 val script)
+
+        if options.yolo_working_dir is None:
+
+            print('Bypassing YOLOv5 val tests, no yolo folder supplied')
+
+        else:
+
+            print('\n** Running YOLOv5 val tests (CLI) **\n')
+
+            image_folder = os.path.join(options.scratch_dir,'md-test-images')
+            yolo_results_folder = os.path.join(options.scratch_dir,'yolo-output-folder')
+            yolo_symlink_folder = os.path.join(options.scratch_dir,'yolo-symlink_folder')
+            inference_output_file_yolo_val = os.path.join(options.scratch_dir,'folder_inference_output_yolo_val.json')
+            if options.cli_working_dir is None:
+                cmd = 'python -m megadetector.detection.run_inference_with_yolov5_val'
+            else:
+                cmd = 'python megadetector/detection/run_inference_with_yolov5_val.py'
+            cmd += ' "{}" "{}" "{}"'.format(
+                options.default_model,image_folder,inference_output_file_yolo_val)
+            cmd += ' --yolo_working_folder "{}"'.format(options.yolo_working_dir)
+            cmd += ' --yolo_results_folder "{}"'.format(yolo_results_folder)
+            cmd += ' --symlink_folder "{}"'.format(yolo_symlink_folder)
+            cmd += ' --augment_enabled 1'
+            # cmd += ' --no_use_symlinks'
+            cmd += ' --overwrite_handling overwrite'
+            cmd_results = execute_and_print(cmd)
+
+            # Run again with checkpointing, make sure the outputs are identical
+            cmd += ' --checkpoint_frequency 5'
+            inference_output_file_yolo_val_checkpoint = \
+                os.path.join(options.scratch_dir,'folder_inference_output_yolo_val_checkpoint.json')
+            assert inference_output_file_yolo_val_checkpoint != inference_output_file_yolo_val
+            cmd = cmd.replace(inference_output_file_yolo_val,inference_output_file_yolo_val_checkpoint)
+            cmd_results = execute_and_print(cmd)
+
+            assert output_files_are_identical(fn1=inference_output_file_yolo_val,
+                                            fn2=inference_output_file_yolo_val_checkpoint,
+                                            verbose=True)
+
+
+        ## Run inference on a folder (with MDV5B, so we can do a comparison)
+
+        print('\n** Running MDv5b (CLI) **\n')
+
+        image_folder = os.path.join(options.scratch_dir,'md-test-images')
+        inference_output_file_alt = os.path.join(options.scratch_dir,'folder_inference_output_alt.json')
+        if options.cli_working_dir is None:
+            cmd = 'python -m megadetector.detection.run_detector_batch'
+        else:
+            cmd = 'python megadetector/detection/run_detector_batch.py'
+        cmd += ' "{}" "{}" "{}" --recursive'.format(
+            options.alt_model,image_folder,inference_output_file_alt)
+        cmd += ' --output_relative_filenames --quiet --include_image_size'
+        cmd += ' --include_image_timestamp --include_exif_data'
+        cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+        cmd_results = execute_and_print(cmd)
+
+        with open(inference_output_file_alt,'r') as f:
             results_from_file = json.load(f) # noqa
 
 
-    ## Run inference on a folder (augmented, w/YOLOv5 val script)
+        ## Compare the two files
 
-    if options.yolo_working_dir is None:
-
-        print('Bypassing YOLOv5 val tests, no yolo folder supplied')
-
-    else:
-
-        print('\n** Running YOLOv5 val tests (CLI) **\n')
-
+        comparison_output_folder = os.path.join(options.scratch_dir,'results_comparison')
         image_folder = os.path.join(options.scratch_dir,'md-test-images')
-        yolo_results_folder = os.path.join(options.scratch_dir,'yolo-output-folder')
-        yolo_symlink_folder = os.path.join(options.scratch_dir,'yolo-symlink_folder')
-        inference_output_file_yolo_val = os.path.join(options.scratch_dir,'folder_inference_output_yolo_val.json')
+        results_files_string = '"{}" "{}"'.format(
+            inference_output_file,inference_output_file_alt)
         if options.cli_working_dir is None:
-            cmd = 'python -m megadetector.detection.run_inference_with_yolov5_val'
+            cmd = 'python -m megadetector.postprocessing.compare_batch_results'
         else:
-            cmd = 'python megadetector/detection/run_inference_with_yolov5_val.py'
-        cmd += ' "{}" "{}" "{}"'.format(
-            options.default_model,image_folder,inference_output_file_yolo_val)
-        cmd += ' --yolo_working_folder "{}"'.format(options.yolo_working_dir)
-        cmd += ' --yolo_results_folder "{}"'.format(yolo_results_folder)
-        cmd += ' --symlink_folder "{}"'.format(yolo_symlink_folder)
-        cmd += ' --augment_enabled 1'
-        # cmd += ' --no_use_symlinks'
-        cmd += ' --overwrite_handling overwrite'
+            cmd = 'python megadetector/postprocessing/compare_batch_results.py'
+        cmd += ' "{}" "{}" {}'.format(comparison_output_folder,image_folder,results_files_string)
         cmd_results = execute_and_print(cmd)
 
-        # Run again with checkpointing, make sure the outputs are identical
-        cmd += ' --checkpoint_frequency 5'
-        inference_output_file_yolo_val_checkpoint = \
-            os.path.join(options.scratch_dir,'folder_inference_output_yolo_val_checkpoint.json')
-        assert inference_output_file_yolo_val_checkpoint != inference_output_file_yolo_val
-        cmd = cmd.replace(inference_output_file_yolo_val,inference_output_file_yolo_val_checkpoint)
-        cmd_results = execute_and_print(cmd)
+        assert cmd_results['status'] == 0, 'Error generating comparison HTML'
+        assert os.path.isfile(os.path.join(comparison_output_folder,'index.html')), \
+            'Failed to generate comparison HTML'
 
-        assert output_files_are_identical(fn1=inference_output_file_yolo_val,
-                                          fn2=inference_output_file_yolo_val_checkpoint,
-                                          verbose=True)
+    # ...if we're not skipping image tests
+
 
     if not options.skip_video_tests:
 
         ## Video test
 
-        print('\n** Testing video rendering (CLI) **\n')
+        print('\n** Testing video processing (CLI) **\n')
 
-        video_inference_output_file = os.path.join(options.scratch_dir,'video_inference_output.json')
-        output_video_file = os.path.join(options.scratch_dir,'video_scratch/cli_rendered_video.mp4')
-        frame_folder = os.path.join(options.scratch_dir,'video_scratch/frame_folder_cli')
-        frame_rendering_folder = os.path.join(options.scratch_dir,'video_scratch/rendered_frame_folder_cli')
-
-        video_fn = os.path.join(options.scratch_dir,options.test_videos[-1])
-        assert os.path.isfile(video_fn), 'Could not find video file {}'.format(video_fn)
-
-        output_dir = os.path.join(options.scratch_dir,'single_video_test_cli')
+        video_inference_output_file = os.path.join(options.scratch_dir,'video_folder_output_cli.json')
         if options.cli_working_dir is None:
             cmd = 'python -m megadetector.detection.process_video'
         else:
             cmd = 'python megadetector/detection/process_video.py'
-        cmd += ' "{}" "{}"'.format(options.default_model,video_fn)
-        cmd += ' --frame_folder "{}" --frame_rendering_folder "{}" --output_json_file "{}" --output_video_file "{}"'.format( #noqa
-            frame_folder,frame_rendering_folder,video_inference_output_file,output_video_file)
-        cmd += ' --fourcc {}'.format(options.video_fourcc)
-        cmd += ' --force_extracted_frame_folder_deletion --force_rendered_frame_folder_deletion'
+
+        cmd += ' "{}" "{}"'.format(options.default_model,options.scratch_dir)
+        cmd += ' --output_json_file "{}"'.format(video_inference_output_file)
         cmd += ' --n_cores {}'.format(options.n_cores_for_video_tests)
         cmd += ' --frame_sample 4'
         cmd += ' --verbose'
         cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
 
-        if not options.skip_video_rendering_tests:
-            cmd += ' --render_output_video'
-
         cmd_results = execute_and_print(cmd)
 
     # ...if we're not skipping video tests
-
-
-    ## Run inference on a folder (with MDV5B, so we can do a comparison)
-
-    print('\n** Running MDv5b (CLI) **\n')
-
-    image_folder = os.path.join(options.scratch_dir,'md-test-images')
-    inference_output_file_alt = os.path.join(options.scratch_dir,'folder_inference_output_alt.json')
-    if options.cli_working_dir is None:
-        cmd = 'python -m megadetector.detection.run_detector_batch'
-    else:
-        cmd = 'python megadetector/detection/run_detector_batch.py'
-    cmd += ' "{}" "{}" "{}" --recursive'.format(
-        options.alt_model,image_folder,inference_output_file_alt)
-    cmd += ' --output_relative_filenames --quiet --include_image_size'
-    cmd += ' --include_image_timestamp --include_exif_data'
-    cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
-    cmd_results = execute_and_print(cmd)
-
-    with open(inference_output_file_alt,'r') as f:
-        results_from_file = json.load(f) # noqa
-
-
-    ## Compare the two files
-
-    comparison_output_folder = os.path.join(options.scratch_dir,'results_comparison')
-    image_folder = os.path.join(options.scratch_dir,'md-test-images')
-    results_files_string = '"{}" "{}"'.format(
-        inference_output_file,inference_output_file_alt)
-    if options.cli_working_dir is None:
-        cmd = 'python -m megadetector.postprocessing.compare_batch_results'
-    else:
-        cmd = 'python megadetector/postprocessing/compare_batch_results.py'
-    cmd += ' "{}" "{}" {}'.format(comparison_output_folder,image_folder,results_files_string)
-    cmd_results = execute_and_print(cmd)
-
-    assert cmd_results['status'] == 0, 'Error generating comparison HTML'
-    assert os.path.isfile(os.path.join(comparison_output_folder,'index.html')), \
-        'Failed to generate comparison HTML'
 
     print('\n*** Finished CLI tests ***\n')
 
@@ -1826,6 +1787,7 @@ def test_suite_entry_point():
     options.cli_test_pythonpath = None
     options.skip_download_tests = True
     options.skip_localhost_downloads = True
+    options.skip_import_tests = False
 
     options = download_test_data(options)
 
@@ -1840,12 +1802,14 @@ if False:
 
     #%% Test Prep
 
+    from megadetector.utils.md_tests import MDTestOptions, download_test_data
+
     options = MDTestOptions()
 
     options.disable_gpu = False
     options.cpu_execution_is_error = False
-    options.skip_video_tests = False
-    options.skip_python_tests = False
+    options.skip_video_tests = True
+    options.skip_python_tests = True
     options.skip_cli_tests = False
     options.scratch_dir = None
     options.test_data_url = 'https://lila.science/public/md-test-package.zip'
@@ -1854,18 +1818,19 @@ if False:
     options.warning_mode = False
     options.max_coord_error = 0.01 # 0.001
     options.max_conf_error = 0.01 # 0.005
+    options.skip_cpu_tests = True
     options.skip_video_rendering_tests = True
-    options.skip_download_tests = False
+    options.skip_download_tests = True
     options.skip_localhost_downloads = False
 
     # options.iou_threshold_for_file_comparison = 0.7
 
-    options.cli_working_dir = r'c:\git\MegaDetector'
+    # options.cli_working_dir = r'c:\git\MegaDetector'
     # When running in the cameratraps-detector environment
     # options.cli_test_pythonpath = r'c:\git\MegaDetector;c:\git\yolov5-md'
 
     # When running in the MegaDetector environment
-    options.cli_test_pythonpath = r'c:\git\MegaDetector'
+    # options.cli_test_pythonpath = r'c:\git\MegaDetector'
 
     # options.cli_working_dir = os.path.expanduser('~')
     # options.yolo_working_dir = r'c:\git\yolov5-md'
@@ -1887,11 +1852,13 @@ if False:
 
     #%% Run download tests
 
+    from megadetector.utils.md_tests import run_download_tests
     run_download_tests(options=options)
 
 
     #%% Run all tests
 
+    from megadetector.utils.md_tests import run_tests
     run_tests(options)
 
 
@@ -1963,9 +1930,14 @@ def main(): # noqa
         help='Directory for temporary storage (defaults to system temp dir)')
 
     parser.add_argument(
+        '--skip_image_tests',
+        action='store_true',
+        help='Skip tests related to still images')
+
+    parser.add_argument(
         '--skip_video_tests',
         action='store_true',
-        help='Skip tests related to video (which can be slow)')
+        help='Skip tests related to video')
 
     parser.add_argument(
         '--skip_video_rendering_tests',
@@ -2097,35 +2069,3 @@ def main(): # noqa
 if __name__ == '__main__':
     main()
 
-
-#%% Scrap
-
-if False:
-
-    pass
-
-    #%%
-
-    import sys; sys.path.append(r'c:\git\yolov5-md')
-
-    #%%
-
-    fn1 = r"G:\temp\md-test-package\mdv5a-video-cpu-pt1.10.1.frames.json"
-    fn2 = r"G:\temp\md-test-package\mdv5a-video-gpu-pt1.10.1.frames.json"
-    fn3 = r"G:\temp\md-test-package\mdv5a-video-cpu-pt2.x.frames.json"
-    fn4 = r"G:\temp\md-test-package\mdv5a-video-gpu-pt2.x.frames.json"
-
-    assert all([os.path.isfile(fn) for fn in [fn1,fn2,fn3,fn4]])
-    print(output_files_are_identical(fn1,fn1,verbose=False))
-    print(output_files_are_identical(fn1,fn2,verbose=False))
-    print(output_files_are_identical(fn1,fn3,verbose=False))
-
-    #%%
-
-    fn1 = r"G:\temp\md-test-package\mdv5a-image-gpu-pt1.10.1.json"
-    fn2 = r"G:\temp\md-test-package\mdv5a-augment-image-gpu-pt1.10.1.json"
-    print(output_files_are_identical(fn1,fn2,verbose=True))
-
-    fn1 = r"G:\temp\md-test-package\mdv5a-image-cpu-pt1.10.1.json"
-    fn2 = r"G:\temp\md-test-package\mdv5a-augment-image-cpu-pt1.10.1.json"
-    print(output_files_are_identical(fn1,fn2,verbose=True))

@@ -103,6 +103,22 @@ detection.run\_tiled\_inference module
    :prog: run_tiled_inference
    :no_default_values:
 
+detection.run\_md\_and\_speciesnet module
+-----------------------------------------
+
+.. automodule:: megadetector.detection.run_md_and_speciesnet
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.detection.run_md_and_speciesnet
+   :func: main
+   :hook:
+   :prog: run_md_and_speciesnet
+   :no_default_values:
+
 detection.video\_utils module
 -----------------------------
 

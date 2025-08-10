@@ -983,13 +983,15 @@ def dict_to_kvp_list(d,
     return s
 
 
-def parse_bool_string(s):
+def parse_bool_string(s, strict=False):
     """
     Convert the strings "true" or "false" to boolean values.  Case-insensitive, discards
     leading and trailing whitespace.  If s is already a bool, returns s.
 
     Args:
         s (str or bool): the string to parse, or the bool to return
+        strict (bool, optional): only allow "true" or "false", otherwise
+            handles "1", "0", "yes", and "no".
 
     Returns:
         bool: the parsed value
@@ -997,10 +999,17 @@ def parse_bool_string(s):
 
     if isinstance(s,bool):
         return s
-    s = s.lower().strip()
-    if s == 'true':
+    s = str(s).lower().strip()
+
+    if strict:
+        false_strings = ('false')
+        true_strings = ('true')
+    else:
+        false_strings = ('no', 'false', 'f', 'n', '0')
+        true_strings = ('yes', 'true', 't', 'y', '1')
+    if s in true_strings:
         return True
-    elif s == 'false':
+    elif s in false_strings:
         return False
     else:
         raise ValueError('Cannot parse bool from string {}'.format(str(s)))
@@ -1649,6 +1658,8 @@ def test_string_parsing():
     assert not parse_bool_string("false")
     assert not parse_bool_string("False")
     assert not parse_bool_string(" FALSE ")
+    assert parse_bool_string("1", strict=False)
+    assert not parse_bool_string("0", strict=False)
     assert parse_bool_string(True) is True # Test with existing bool
     assert parse_bool_string(False) is False
     try:
@@ -1657,7 +1668,7 @@ def test_string_parsing():
     except ValueError:
         pass
     try:
-        parse_bool_string("1") # Should not parse to True
+        parse_bool_string("1",strict=True)
         raise AssertionError("ValueError not raised for '1'")
     except ValueError:
         pass

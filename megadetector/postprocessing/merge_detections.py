@@ -186,7 +186,8 @@ def merge_detections(source_files,target_file,output_file,options=None):
 
             image_filename = source_im['file']
 
-            assert image_filename in fn_to_image, 'Image {} not in target image set'.format(image_filename)
+            assert image_filename in fn_to_image, \
+                'Image {} not in target image set'.format(image_filename)
             target_im = fn_to_image[image_filename]
 
             if 'detections' not in source_im or source_im['detections'] is None:
@@ -294,10 +295,15 @@ def merge_detections(source_files,target_file,output_file,options=None):
 
     print('Saved merged results to {}'.format(output_file))
 
+# ...def merge_detections(...)
+
 
 #%% Command-line driver
 
-def main(): # noqa
+def main():
+    """
+    Command-line driver for merge_detections.py
+    """
 
     default_options = MergeDetectionsOptions()
 
@@ -305,7 +311,7 @@ def main(): # noqa
         description='Merge detections from one or more MegaDetector results files into an existing reuslts file')
     parser.add_argument(
         'source_files',
-        nargs="+",
+        nargs='+',
         help='Path to source .json file(s) to merge from')
     parser.add_argument(
         'target_file',
@@ -325,11 +331,11 @@ def main(): # noqa
         default=default_options.min_detection_size,
         type=float,
         help='Ignore detections with an area smaller than this (as a fraction of ' + \
-              'image size) (default {})'.format(
-              default_options.min_detection_size))
+             'image size) (default {})'.format(
+             default_options.min_detection_size))
     parser.add_argument(
         '--source_confidence_thresholds',
-        nargs="+",
+        nargs='+',
         type=float,
         default=default_options.source_confidence_thresholds,
         help='List of thresholds for each source file (default {}). '.format(
@@ -340,19 +346,18 @@ def main(): # noqa
         '--target_confidence_threshold',
         type=float,
         default=default_options.target_confidence_threshold,
-        help='Don\'t merge if target file\'s detection confidence is already higher ' + \
-             'than this (default {}). '.format(
-             default_options.target_confidence_threshold))
+        help="Do not merge if target file detection confidence is already higher " + \
+             "than this (default {})".format(default_options.target_confidence_threshold))
     parser.add_argument(
         '--categories_to_include',
         type=int,
-        nargs="+",
+        nargs='+',
         default=None,
         help='List of numeric detection category IDs to include')
     parser.add_argument(
         '--categories_to_exclude',
         type=int,
-        nargs="+",
+        nargs='+',
         default=None,
         help='List of numeric detection categories to include')
     parser.add_argument(
@@ -387,4 +392,3 @@ def main(): # noqa
 
 if __name__ == '__main__':
     main()
-

@@ -44,6 +44,7 @@ import sys
 import time
 import copy
 import shutil
+import random
 import warnings
 import itertools
 import humanfriendly
@@ -105,6 +106,8 @@ verbose = False
 exif_options = read_exif.ReadExifOptions()
 exif_options.processing_library = 'pil'
 exif_options.byte_handling = 'convert_to_string'
+
+randomize_batch_order_during_testing = True
 
 
 #%% Support functions for multiprocessing
@@ -626,8 +629,8 @@ def _group_into_batches(items, batch_size):
         raise ValueError('Batch size must be positive')
 
     batches = []
-    for i in range(0, len(items), batch_size):
-        batch = items[i:i + batch_size]
+    for i_item in range(0, len(items), batch_size):
+        batch = items[i_item:i_item + batch_size]
         batches.append(batch)
 
     return batches
@@ -1199,6 +1202,16 @@ def load_and_run_detector_batch(model_file,
 
         if (batch_size > 1):
 
+            # During testing, randomize the order of images_to_process to help detect
+            # non-deterministic batching issues
+            if randomize_batch_order_during_testing and ('PYTEST_CURRENT_TEST' in os.environ):
+                print('PyTest detected: randomizing batch order')
+                random.seed(int(time.time()))
+                debug_seed = random.randint(0, 2**31 - 1)
+                print('Debug seed: {}'.format(debug_seed))
+                random.seed(debug_seed)
+                random.shuffle(images_to_process)
+
             # Use batch processing
             image_batches = _group_into_batches(images_to_process, batch_size)
 
@@ -1245,6 +1258,8 @@ def load_and_run_detector_batch(model_file,
                     print('Writing a new checkpoint after having processed {} images since '
                           'last restart'.format(image_count))
                     _write_checkpoint(checkpoint_path, results)
+
+        # ...if the batch size is > 1
 
     else:
 
@@ -1463,7 +1478,7 @@ def write_results_to_file(results,
 
         info = {
             'detection_completion_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'format_version': '1.4'
+            'format_version': '1.5'
         }
 
         if detector_file is not None:
@@ -1498,9 +1513,16 @@ def write_results_to_file(results,
 
     # Sort detections in descending order by confidence; not required by the format, but
     # convenient for consistency
-    for r in results:
-        if ('detections' in r) and (r['detections'] is not None):
-            r['detections'] = sort_list_of_dicts_by_key(r['detections'], 'conf', reverse=True)
+    for im in results:
+        if ('detections' in im) and (im['detections'] is not None):
+            im['detections'] = sort_list_of_dicts_by_key(im['detections'], 'conf', reverse=True)
+
+    for im in results:
+        if 'failure' in im:
+            if 'detections' in im:
+                assert im['detections'] is None, 'Illegal failure/detection combination'
+            else:
+                im['detections'] = None
 
     final_output = {
         'images': results,

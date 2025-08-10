@@ -200,10 +200,16 @@ def _add_frame_numbers_to_results(results):
     """
     Given the 'images' list from a set of MD results that was generated on video frames,
     add a 'frame_number' field to each image, and return the list, sorted by frame number.
+    Also modifies "results" in place.
 
     Args:
         results (list): list of image dicts
     """
+
+    # This indicate that this was a failure for a single video
+    if isinstance(results,dict):
+        assert 'failure' in results
+        return results
 
     # Add video-specific fields to the results
     for im in results:
@@ -228,8 +234,11 @@ def run_callback_on_frames(input_video_file,
     Args:
         input_video_file (str): video file to process
         frame_callback (function): callback to run on frames, should take an np.array and a string and
-            return a single value.  callback should expect PIL-formatted (RGB) images.
-        every_n_frames (float, optional): sample every Nth frame starting from the first frame;
+            return a single value.  callback should expect two arguments: (1) a numpy array with image
+            data, in the typical PIL image orientation/channel order, and (2) a string identifier
+            for the frame, typically something like "frame0006.jpg" (even though it's not a JPEG
+            image, this is just an identifier for the frame).
+        every_n_frames (int or float, optional): sample every Nth frame starting from the first frame;
             if this is None or 1, every frame is processed.  If this is a negative value, it's
             interpreted as a sampling rate in seconds, which is rounded to the nearest frame sampling
             rate. Mutually exclusive with frames_to_process.
@@ -243,8 +252,10 @@ def run_callback_on_frames(input_video_file,
 
     Returns:
         dict: dict with keys 'frame_filenames' (list), 'frame_rate' (float), 'results' (list).
-        'frame_filenames' are synthetic filenames (e.g. frame000000.jpg); 'results' are
-        in the same format used in the 'images' array in the MD results format.
+        'frame_filenames' are synthetic filenames (e.g. frame000000.jpg). Elements in
+        'results' are whatever is returned by the callback, typically dicts in the same format used in
+        the 'images' array in the MD results format.  [frame_filenames] and [results] both have
+        one element per processed frame.
     """
 
     assert os.path.isfile(input_video_file), 'File {} not found'.format(input_video_file)
@@ -255,64 +266,88 @@ def run_callback_on_frames(input_video_file,
     if (frames_to_process is not None) and (every_n_frames is not None):
         raise ValueError('frames_to_process and every_n_frames are mutually exclusive')
 
-    vidcap = cv2.VideoCapture(input_video_file)
-    n_frames = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
-    frame_rate = vidcap.get(cv2.CAP_PROP_FPS)
+    vidcap = None
 
-    if verbose:
-        print('Video {} contains {} frames at {} Hz'.format(input_video_file,n_frames,frame_rate))
+    try:
 
-    frame_filenames = []
-    results = []
+        vidcap = cv2.VideoCapture(input_video_file)
+        n_frames = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
+        frame_rate = vidcap.get(cv2.CAP_PROP_FPS)
 
-    if (every_n_frames is not None) and (every_n_frames < 0):
-        every_n_seconds = abs(every_n_frames)
-        every_n_frames = int(every_n_seconds * frame_rate)
         if verbose:
-            print('Interpreting a time sampling rate of {} hz as a frame interval of {}'.format(
-                every_n_seconds,every_n_frames))
+            print('Video {} contains {} frames at {} Hz'.format(input_video_file,n_frames,frame_rate))
 
-    # frame_number = 0
-    for frame_number in range(0,n_frames):
+        frame_filenames = []
+        results = []
 
-        success,image = vidcap.read()
+        if (every_n_frames is not None):
 
-        if not success:
-            assert image is None
-            if verbose:
-                print('Read terminating at frame {} of {}'.format(frame_number,n_frames))
-            break
+            if (every_n_frames < 0):
+                every_n_seconds = abs(every_n_frames)
+                every_n_frames = int(every_n_seconds * frame_rate)
+                if verbose:
+                    print('Interpreting a time sampling rate of {} hz as a frame interval of {}'.format(
+                        every_n_seconds,every_n_frames))
+            # 0 and 1 both mean "process every frame"
+            elif every_n_frames == 0:
+                every_n_frames = 1
+            elif every_n_frames > 0:
+                every_n_frames = int(every_n_frames)
 
-        if every_n_frames is not None:
-            if frame_number % every_n_frames != 0:
-                continue
+        # ...if every_n_frames was supplied
 
-        if frames_to_process is not None:
-            if frame_number > max(frames_to_process):
+        # frame_number = 0
+        for frame_number in range(0,n_frames):
+
+            success,image = vidcap.read()
+
+            if not success:
+                assert image is None
+                if verbose:
+                    print('Read terminating at frame {} of {}'.format(frame_number,n_frames))
                 break
-            if frame_number not in frames_to_process:
-                continue
 
-        frame_filename_relative = _frame_number_to_filename(frame_number)
-        frame_filenames.append(frame_filename_relative)
+            if every_n_frames is not None:
+                if (frame_number % every_n_frames) != 0:
+                    continue
 
-        image_np = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        frame_results = frame_callback(image_np,frame_filename_relative)
-        results.append(frame_results)
+            if frames_to_process is not None:
+                if frame_number > max(frames_to_process):
+                    break
+                if frame_number not in frames_to_process:
+                    continue
 
-    # ...for each frame
+            frame_filename_relative = _frame_number_to_filename(frame_number)
+            frame_filenames.append(frame_filename_relative)
 
-    if len(frame_filenames) == 0:
-        if allow_empty_videos:
-            print('Warning: found no frames in file {}'.format(input_video_file))
-        else:
-            raise Exception('Error: found no frames in file {}'.format(input_video_file))
+            # Convert from OpenCV conventions to PIL conventions
+            image_np = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    if verbose:
-        print('\nProcessed {} of {} frames for {}'.format(
-            len(frame_filenames),n_frames,input_video_file))
+            # Run the callback
+            frame_results = frame_callback(image_np,frame_filename_relative)
 
-    vidcap.release()
+            results.append(frame_results)
+
+        # ...for each frame
+
+        if len(frame_filenames) == 0:
+            if allow_empty_videos:
+                print('Warning: found no frames in file {}'.format(input_video_file))
+            else:
+                raise Exception('Error: found no frames in file {}'.format(input_video_file))
+
+        if verbose:
+            print('\nProcessed {} of {} frames for {}'.format(
+                len(frame_filenames),n_frames,input_video_file))
+
+    finally:
+
+        if vidcap is not None:
+            try:
+                vidcap.release()
+            except Exception:
+                pass
+
     to_return = {}
     to_return['frame_filenames'] = frame_filenames
     to_return['frame_rate'] = frame_rate
@@ -328,7 +363,8 @@ def run_callback_on_frames_for_folder(input_video_folder,
                                       every_n_frames=None,
                                       verbose=False,
                                       allow_empty_videos=False,
-                                      recursive=True):
+                                      recursive=True,
+                                      files_to_process_relative=None):
     """
     Calls the function frame_callback(np.array,image_id) on all (or selected) frames in
     all videos in [input_video_folder].
@@ -336,8 +372,11 @@ def run_callback_on_frames_for_folder(input_video_folder,
     Args:
         input_video_folder (str): video folder to process
         frame_callback (function): callback to run on frames, should take an np.array and a string and
-            return a single value.  callback should expect PIL-formatted (RGB) images.
-        every_n_frames (int, optional): sample every Nth frame starting from the first frame;
+            return a single value.  callback should expect two arguments: (1) a numpy array with image
+            data, in the typical PIL image orientation/channel order, and (2) a string identifier
+            for the frame, typically something like "frame0006.jpg" (even though it's not a JPEG
+            image, this is just an identifier for the frame).
+        every_n_frames (int or float, optional): sample every Nth frame starting from the first frame;
             if this is None or 1, every frame is processed.  If this is a negative value, it's
             interpreted as a sampling rate in seconds, which is rounded to the nearest frame
             sampling rate.
@@ -345,43 +384,76 @@ def run_callback_on_frames_for_folder(input_video_folder,
         allow_empty_videos (bool, optional): Just print a warning if a video appears to have no
             frames (by default, this is an error).
         recursive (bool, optional): recurse into [input_video_folder]
+        files_to_process_relative (list, optional): only process specific relative paths
 
     Returns:
         dict: dict with keys 'video_filenames' (list of str), 'frame_rates' (list of floats),
         'results' (list of list of dicts). 'video_filenames' will contain *relative* filenames.
+        'results' is a list (one element per video) of lists (one element per frame) of whatever the
+        callback returns, typically (but not necessarily) dicts in the MD results format.
+
+        For failed videos, the frame rate will be represented by -1, and "results"
+        will be a dict with at least the key "failure".
     """
 
     to_return = {'video_filenames':[],'frame_rates':[],'results':[]}
 
-    # Recursively enumerate video files
-    input_files_full_paths = find_videos(input_video_folder,
-                                         recursive=recursive,
-                                         convert_slashes=True,
-                                         return_relative_paths=False)
-    print('Found {} videos in folder {}'.format(len(input_files_full_paths),input_video_folder))
+    if files_to_process_relative is not None:
+        input_files_full_paths = \
+            [os.path.join(input_video_folder,fn) for fn in files_to_process_relative]
+        input_files_full_paths = [fn.replace('\\','/') for fn in input_files_full_paths]
+    else:
+        # Recursively enumerate video files
+        input_files_full_paths = find_videos(input_video_folder,
+                                            recursive=recursive,
+                                            convert_slashes=True,
+                                            return_relative_paths=False)
+
+    print('Processing {} videos from folder {}'.format(len(input_files_full_paths),input_video_folder))
 
     if len(input_files_full_paths) == 0:
+        print('No videos to process')
         return to_return
 
     # Process each video
 
     # video_fn_abs = input_files_full_paths[0]
     for video_fn_abs in tqdm(input_files_full_paths):
-        video_results = run_callback_on_frames(input_video_file=video_fn_abs,
-                                               frame_callback=frame_callback,
-                                               every_n_frames=every_n_frames,
-                                               verbose=verbose,
-                                               frames_to_process=None,
-                                               allow_empty_videos=allow_empty_videos)
 
-        """
-        dict: dict with keys 'frame_filenames' (list), 'frame_rate' (float), 'results' (list).
-            'frame_filenames' are synthetic filenames (e.g. frame000000.jpg); 'results' are
-            in the same format used in the 'images' array in the MD results format.
-        """
         video_filename_relative = os.path.relpath(video_fn_abs,input_video_folder)
         video_filename_relative = video_filename_relative.replace('\\','/')
         to_return['video_filenames'].append(video_filename_relative)
+
+        try:
+
+            # video_results is a dict with fields:
+            #
+            # frame_rate
+            #
+            # results (list of objects returned by the callback, typically dicts in the MD
+            # per-image format)
+            #
+            # frame_filenames (list of frame IDs, i.e. synthetic filenames)
+            video_results = run_callback_on_frames(input_video_file=video_fn_abs,
+                                                   frame_callback=frame_callback,
+                                                   every_n_frames=every_n_frames,
+                                                   verbose=verbose,
+                                                   frames_to_process=None,
+                                                   allow_empty_videos=allow_empty_videos)
+
+        except Exception as e:
+
+            print('Warning: error processing video {}: {}'.format(
+                video_fn_abs,str(e)
+            ))
+            to_return['frame_rates'].append(-1.0)
+            failure_result = {}
+            failure_result['failure'] = 'Failure processing video: {}'.format(str(e))
+            to_return['results'].append(failure_result)
+            continue
+
+        # ...try/except
+
         to_return['frame_rates'].append(video_results['frame_rate'])
         for r in video_results['results']:
             assert r['file'].startswith('frame')
@@ -665,6 +737,25 @@ def video_to_frames(input_video_file,
 # ...def video_to_frames(...)
 
 
+def _video_to_frames_with_per_video_frames(args):
+    """
+    Wrapper function to handle extracting a different list of frames for
+    each video in a multiprocessing context.
+
+    Takes a tuple of (relative_fn, frames_for_this_video, other_args),
+    where (other_args) contains the arguments that are the same for each
+    iteration.
+    """
+
+    relative_fn, frames_for_this_video, other_args = args
+    (input_folder, output_folder_base, every_n_frames, overwrite, verbose,
+     quality, max_width, allow_empty_videos) = other_args
+
+    return _video_to_frames_for_folder(relative_fn, input_folder, output_folder_base,
+                                       every_n_frames, overwrite, verbose, quality, max_width,
+                                       frames_for_this_video, allow_empty_videos)
+
+
 def _video_to_frames_for_folder(relative_fn,input_folder,output_folder_base,
                                 every_n_frames,overwrite,verbose,quality,max_width,
                                 frames_to_extract,allow_empty_videos):
@@ -708,7 +799,8 @@ def video_folder_to_frames(input_folder,
                            quality=None,
                            max_width=None,
                            frames_to_extract=None,
-                           allow_empty_videos=False):
+                           allow_empty_videos=False,
+                           relative_paths_to_process=None):
     """
     For every video file in input_folder, creates a folder within output_folder_base, and
     renders frame of that video to images in that folder.
@@ -721,9 +813,9 @@ def video_folder_to_frames(input_folder,
         overwrite (bool, optional): whether to overwrite existing frame images
         n_threads (int, optional): number of concurrent workers to use; set to <= 1 to disable
             parallelism
-        every_n_frames (int, optional): sample every Nth frame starting from the first frame;
-            if this is None or 1, every frame is extracted.  If this is a negative value, it's
-            interpreted as a sampling rate in seconds, which is rounded to the nearest frame
+        every_n_frames (int or float, optional): sample every Nth frame starting from the first
+            frame; if this is None or 1, every frame is extracted.  If this is a negative value,
+            it's interpreted as a sampling rate in seconds, which is rounded to the nearest frame
             sampling rate.  Mutually exclusive with frames_to_extract.
         verbose (bool, optional): enable additional debug console output
         parallelization_uses_threads (bool, optional): whether to use threads (True) or
@@ -731,14 +823,17 @@ def video_folder_to_frames(input_folder,
         quality (int, optional): JPEG quality for frame output, from 0-100.  Defaults
             to the opencv default (typically 95).
         max_width (int, optional): resize frames to be no wider than [max_width]
-        frames_to_extract (list of int, optional): extract this specific set of frames from
-            each video; mutually exclusive with every_n_frames.  If all values are beyond
-            the length of a video, no frames are extracted. Can also be a single int,
-            specifying a single frame number.  In the special case where frames_to_extract
-            is [], this function still reads video frame rates and verifies that videos
-            are readable, but no frames are extracted.
-        allow_empty_videos (bool, optional): Just print a warning if a video appears to have no
+        frames_to_extract (int, list of int, or dict, optional): extract this specific set of frames
+            from each video; mutually exclusive with every_n_frames.  If all values are beyond the
+            length of a video, no frames are extracted. Can also be a single int, specifying a single
+            frame number.  In the special case where frames_to_extract is [], this function still
+            reads video frame rates and verifies that videos are readable, but no frames are
+            extracted. Can be a dict mapping relative paths to lists of frame numbers to extract different
+            frames from each video.
+        allow_empty_videos (bool, optional): just print a warning if a video appears to have no
             frames (by default, this is an error).
+        relative_paths_to_process (list, optional): only process the relative paths on this
+            list
 
     Returns:
         tuple: a length-3 tuple containing:
@@ -748,16 +843,21 @@ def video_folder_to_frames(input_folder,
             - list of video filenames
     """
 
-    # Recursively enumerate video files
-    if verbose:
-        print('Enumerating videos in {}'.format(input_folder))
-    input_files_full_paths = find_videos(input_folder,recursive=recursive)
-    if verbose:
-        print('Found {} videos in folder {}'.format(len(input_files_full_paths),input_folder))
-    if len(input_files_full_paths) == 0:
-        return [],[],[]
+    # Enumerate video files if necessary
+    if relative_paths_to_process is None:
+        if verbose:
+            print('Enumerating videos in {}'.format(input_folder))
+        input_files_full_paths = find_videos(input_folder,recursive=recursive)
+        if verbose:
+            print('Found {} videos in folder {}'.format(len(input_files_full_paths),input_folder))
+        if len(input_files_full_paths) == 0:
+            return [],[],[]
 
-    input_files_relative_paths = [os.path.relpath(s,input_folder) for s in input_files_full_paths]
+        input_files_relative_paths = [os.path.relpath(s,input_folder) for s in input_files_full_paths]
+    else:
+        input_files_relative_paths = relative_paths_to_process
+        input_files_full_paths = [os.path.join(input_folder,fn) for fn in input_files_relative_paths]
+
     input_files_relative_paths = [s.replace('\\','/') for s in input_files_relative_paths]
 
     os.makedirs(output_folder_base,exist_ok=True)
@@ -766,10 +866,17 @@ def video_folder_to_frames(input_folder,
     fs_by_video = []
 
     if n_threads == 1:
+
         # For each video
         #
         # input_fn_relative = input_files_relative_paths[0]
         for input_fn_relative in tqdm(input_files_relative_paths):
+
+            # If frames_to_extract is a dict, get the specific frames for this video
+            if isinstance(frames_to_extract, dict):
+                frames_for_this_video = frames_to_extract.get(input_fn_relative, [])
+            else:
+                frames_for_this_video = frames_to_extract
 
             frame_filenames,fs = \
                 _video_to_frames_for_folder(input_fn_relative,
@@ -780,39 +887,68 @@ def video_folder_to_frames(input_folder,
                                             verbose,
                                             quality,
                                             max_width,
-                                            frames_to_extract,
+                                            frames_for_this_video,
                                             allow_empty_videos)
             frame_filenames_by_video.append(frame_filenames)
             fs_by_video.append(fs)
+
     else:
+
         pool = None
         results = None
         try:
+
             if parallelization_uses_threads:
                 print('Starting a worker pool with {} threads'.format(n_threads))
                 pool = ThreadPool(n_threads)
             else:
                 print('Starting a worker pool with {} processes'.format(n_threads))
                 pool = Pool(n_threads)
-            process_video_with_options = partial(_video_to_frames_for_folder,
-                                                 input_folder=input_folder,
-                                                 output_folder_base=output_folder_base,
-                                                 every_n_frames=every_n_frames,
-                                                 overwrite=overwrite,
-                                                 verbose=verbose,
-                                                 quality=quality,
-                                                 max_width=max_width,
-                                                 frames_to_extract=frames_to_extract,
-                                                 allow_empty_videos=allow_empty_videos)
-            results = list(tqdm(pool.imap(
-                partial(process_video_with_options),input_files_relative_paths),
-                                total=len(input_files_relative_paths)))
+
+            if isinstance(frames_to_extract, dict):
+
+                # For the dict case, we need to extract different frames from each video.
+
+                # These arguments are the same for every iteration
+                other_args = (input_folder, output_folder_base, every_n_frames, overwrite,
+                              verbose, quality, max_width, allow_empty_videos)
+
+                # The filename and list of frames to extract vary with each iteration
+                args_for_pool = [(relative_fn, frames_to_extract.get(relative_fn, []), other_args)
+                                 for relative_fn in input_files_relative_paths]
+
+                results = list(tqdm(pool.imap(_video_to_frames_with_per_video_frames, args_for_pool),
+                                    total=len(args_for_pool)))
+
+            else:
+
+                process_video_with_options = partial(_video_to_frames_for_folder,
+                                                     input_folder=input_folder,
+                                                     output_folder_base=output_folder_base,
+                                                     every_n_frames=every_n_frames,
+                                                     overwrite=overwrite,
+                                                     verbose=verbose,
+                                                     quality=quality,
+                                                     max_width=max_width,
+                                                     frames_to_extract=frames_to_extract,
+                                                     allow_empty_videos=allow_empty_videos)
+                results = list(tqdm(pool.imap(process_video_with_options, input_files_relative_paths),
+                                    total=len(input_files_relative_paths)))
+
+            # ...if we need to pass different frames for each video
+
         finally:
+
             pool.close()
             pool.join()
-            print("Pool closed and joined for video processing")
+            print('Pool closed and joined for video processing')
+
+        # ...try/finally
+
         frame_filenames_by_video = [x[0] for x in results]
         fs_by_video = [x[1] for x in results]
+
+    # ...if we're working on a single thread vs. multiple workers
 
     return frame_filenames_by_video,fs_by_video,input_files_full_paths
 
@@ -901,8 +1037,7 @@ def frame_results_to_video_results(input_file,
                     options.non_video_behavior))
 
         # Attach video-specific fields to the output, specifically attach the frame
-        # number to both the video and each detection.  Only the frame number for the
-        # canonical detection will end up in the video-level output file.
+        # number to both the video and each detection.
         frame_number = _filename_to_frame_number(fn)
         im['frame_number'] = frame_number
         for detection in im['detections']:

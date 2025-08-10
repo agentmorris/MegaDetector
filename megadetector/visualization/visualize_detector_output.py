@@ -397,7 +397,7 @@ def main(): # noqa
         '--category_names_to_blur', default=None, type=str,
         help='Comma-separated list of category names to blur (or a single category name, typically "person")')
     parser.add_argument(
-        '--classification_confidence', type=float, default=0.1,
+        '--classification_confidence', type=float, default=0.3,
         help='If classification results are present, render results above this threshold')
 
     if len(sys.argv[1:]) == 0:

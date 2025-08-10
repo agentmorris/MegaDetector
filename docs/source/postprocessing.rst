@@ -101,7 +101,6 @@ postprocessing.detector\_calibration module
    :members:
    :undoc-members:
    :show-inheritance:
-   :exclude-members: main
 
 postprocessing.convert\_output\_format module
 ---------------------------------------------
@@ -135,7 +134,6 @@ postprocessing.md\_to\_coco module
    :prog: md_to_coco
    :no_default_values:
 
-
 postprocessing.md\_to\_labelme module
 -----------------------------------------------------------
 
@@ -168,7 +166,6 @@ postprocessing.md\_to\_wi module
    :prog: md_to_wi
    :no_default_values:
 
-
 postprocessing.merge\_detections module
 ---------------------------------------
 
@@ -176,6 +173,14 @@ postprocessing.merge\_detections module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.postprocessing.merge_detections
+   :func: main
+   :hook:
+   :prog: merge_detections
+   :no_default_values:
 
 postprocessing.postprocess\_batch\_results module
 -------------------------------------------------
@@ -201,6 +206,14 @@ postprocessing.remap\_detection\_categories module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.postprocessing.remap_detection_categories
+   :func: main
+   :hook:
+   :prog: remap_detection_categories
+   :no_default_values:
 
 postprocessing.render\_detection\_confusion\_matrix module
 ----------------------------------------------------------
@@ -249,6 +262,7 @@ postprocessing.top\_folders\_to\_bottom module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: main
    
 .. sphinx_argparse_cli::
    :module: megadetector.postprocessing.top_folders_to_bottom
@@ -257,13 +271,14 @@ postprocessing.top\_folders\_to\_bottom module
    :prog: top_folders_to_bottom
    :no_default_values:
 
-postprocessing.generate\_csv\_report
-------------------------------------
+postprocessing.generate\_csv\_report module
+---------------------------------------------
 
 .. automodule:: megadetector.postprocessing.generate_csv_report
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: main
    
 .. sphinx_argparse_cli::
    :module: megadetector.postprocessing.generate_csv_report
