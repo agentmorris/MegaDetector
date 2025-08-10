@@ -1,24 +1,27 @@
-#!/usr/bin/env python3
-
 """
+
 Test script for validating NMS functionality with synthetic data.
 
 This script creates synthetic detection scenarios where we know exactly which
 boxes should be suppressed by NMS, allowing us to verify the correctness of
 the NMS implementation.
+
+This is an AI-generated test module.
+
 """
+
+
+#%% Imports
 
 import sys
 import torch
 import numpy as np
 from pathlib import Path
 
-# Add the current directory to path so we can import megadetector
-repo_root = Path(__file__).parent
-sys.path.append(str(repo_root))
+from megadetector.detection.pytorch_detector import nms
 
-from megadetector.detection.pytorch_detector import PTDetector
 
+#%% Support functions
 
 def calculate_iou_boxes(box1, box2):
     """
@@ -30,6 +33,7 @@ def calculate_iou_boxes(box1, box2):
     Returns:
         float: IoU value between 0 and 1
     """
+
     if isinstance(box1, list):
         box1 = torch.tensor(box1, dtype=torch.float)
     if isinstance(box2, list):
@@ -129,119 +133,27 @@ def create_synthetic_predictions():
     return predictions
 
 
+#%% Main test function
+
 def test_nms_functionality():
     """
     Test the NMS function with synthetic data to verify correct behavior.
     """
+
     print("Testing NMS functionality with synthetic data...")
-
-    # Create a dummy detector instance (we only need the NMS method)
-    class DummyDetector:
-        def nms(self, prediction, conf_thres=0.25, iou_thres=0.45, max_det=300):
-            # Import the actual NMS method from PTDetector
-            # We can't instantiate PTDetector without a model file, so we'll copy the method
-            return PTDetector.nms(self, prediction, conf_thres, iou_thres, max_det)
-
-    # Actually, let's just copy the NMS method directly for testing
-    def test_nms(prediction, conf_thres=0.25, iou_thres=0.45, max_det=300):
-        """Copy of the NMS method for testing purposes."""
-        batch_size = prediction.shape[0]
-        num_classes = prediction.shape[2] - 5
-        output = []
-
-        # Process each image in the batch
-        for img_idx in range(batch_size):
-            x = prediction[img_idx]  # Shape: [num_anchors, num_classes + 5]
-
-            # Filter by objectness confidence
-            obj_conf = x[:, 4]
-            valid_detections = obj_conf > conf_thres
-            x = x[valid_detections]
-
-            if x.shape[0] == 0:
-                output.append(torch.zeros((0, 6), device=prediction.device))
-                continue
-
-            # Convert box coordinates from [x_center, y_center, w, h] to [x1, y1, x2, y2]
-            box = x[:, :4].clone()
-            box[:, 0] = x[:, 0] - x[:, 2] / 2.0  # x1 = center_x - width/2
-            box[:, 1] = x[:, 1] - x[:, 3] / 2.0  # y1 = center_y - height/2
-            box[:, 2] = x[:, 0] + x[:, 2] / 2.0  # x2 = center_x + width/2
-            box[:, 3] = x[:, 1] + x[:, 3] / 2.0  # y2 = center_y + height/2
-
-            # Get class predictions: multiply objectness by class probabilities
-            class_conf = x[:, 5:] * x[:, 4:5]  # shape: [N, num_classes]
-
-            # For each detection, take the class with highest confidence (single-label)
-            best_class_conf, best_class_idx = class_conf.max(1, keepdim=True)
-
-            # Filter by class confidence threshold
-            conf_mask = best_class_conf.view(-1) > conf_thres
-            if conf_mask.sum() == 0:
-                output.append(torch.zeros((0, 6), device=prediction.device))
-                continue
-
-            box = box[conf_mask]
-            best_class_conf = best_class_conf[conf_mask]
-            best_class_idx = best_class_idx[conf_mask]
-
-            # Prepare for NMS: group detections by class
-            unique_classes = best_class_idx.unique()
-            final_detections = []
-
-            for class_id in unique_classes:
-                class_mask = (best_class_idx == class_id).view(-1)
-                class_boxes = box[class_mask]
-                class_scores = best_class_conf[class_mask].view(-1)
-
-                if class_boxes.shape[0] == 0:
-                    continue
-
-                # Apply NMS for this class
-                import torchvision
-                keep_indices = torchvision.ops.nms(class_boxes, class_scores, iou_thres)
-
-                if len(keep_indices) > 0:
-                    kept_boxes = class_boxes[keep_indices]
-                    kept_scores = class_scores[keep_indices]
-                    kept_classes = torch.full((len(keep_indices), 1), class_id.item(),
-                                            device=prediction.device, dtype=torch.float)
-
-                    # Combine: [x1, y1, x2, y2, conf, class]
-                    class_detections = torch.cat([kept_boxes, kept_scores.unsqueeze(1), kept_classes], 1)
-                    final_detections.append(class_detections)
-
-            if final_detections:
-                # Combine all classes and sort by confidence
-                all_detections = torch.cat(final_detections, 0)
-                conf_sort_indices = all_detections[:, 4].argsort(descending=True)
-                all_detections = all_detections[conf_sort_indices]
-
-                # Limit to max_det
-                if all_detections.shape[0] > max_det:
-                    all_detections = all_detections[:max_det]
-
-                output.append(all_detections)
-            else:
-                output.append(torch.zeros((0, 6), device=prediction.device))
-
-        return output
 
     # Generate synthetic predictions
     predictions = create_synthetic_predictions()
     print(f"Created synthetic predictions with shape: {predictions.shape}")
 
     # Run NMS with IoU threshold = 0.5 and confidence threshold = 0.3
-    results = test_nms(predictions, conf_thres=0.3, iou_thres=0.5, max_det=300)
+    results = nms(predictions, conf_thres=0.3, iou_thres=0.5, max_det=300)
 
     print(f"NMS returned {len(results)} batch results")
     detections = results[0]  # Get results for first (and only) image
     print(f"Number of detections after NMS: {detections.shape[0]}")
 
-    # Analyze results
-    if detections.shape[0] == 0:
-        print("ERROR: No detections returned!")
-        return False
+    assert detections.shape[0] != 0
 
     print("\nDetections after NMS:")
     print("Format: [x1, y1, x2, y2, confidence, class_id]")
@@ -255,14 +167,8 @@ def test_nms_functionality():
               f"size={width:.1f}x{height:.1f}, conf={conf:.3f}, class={int(cls)}")
 
     # Verify expected results
-    success = True
 
-    # Test 1: Should have around 6-8 detections (we added more scenarios)
-    if detections.shape[0] < 6 or detections.shape[0] > 9:
-        print(f"ERROR: Expected 6-9 detections, got {detections.shape[0]}")
-        success = False
-
-    # Test 2: Verify that high-confidence boxes are kept over low-confidence overlapping ones
+    # Verify that high-confidence boxes are kept over low-confidence overlapping ones
     # Look for the scenario 1 boxes (around center 100,100 area)
     scenario1_boxes = []
     for i, det in enumerate(detections):
@@ -272,7 +178,7 @@ def test_nms_functionality():
         if 80 <= center_x <= 130 and 80 <= center_y <= 130 and int(cls) == 0:
             scenario1_boxes.append((i, center_x, center_y, conf))
 
-    # Test 2b: Check scenario 1b (around center 200,100 area)
+    # Check scenario 1b (around center 200,100 area)
     scenario1b_boxes = []
     for i, det in enumerate(detections):
         x1, y1, x2, y2, conf, cls = det
@@ -287,17 +193,17 @@ def test_nms_functionality():
         print(f"ERROR: Expected 2 detections in high-overlap scenarios (1 each), got {total_high_overlap_boxes}")
         print(f"  Scenario 1: {len(scenario1_boxes)} boxes")
         print(f"  Scenario 1b: {len(scenario1b_boxes)} boxes")
-        success = False
+        assert False
     elif len(scenario1_boxes) == 1 and scenario1_boxes[0][3] < 0.7:  # Should be the high-confidence box (0.8 * 0.9 = 0.72)
         print(f"ERROR: Wrong box kept in scenario 1. Expected conf > 0.7, got {scenario1_boxes[0][3]}")
-        success = False
+        assert False
     elif len(scenario1b_boxes) == 1 and scenario1b_boxes[0][3] < 0.8:  # Should be the high-confidence box (0.9 * 0.9 = 0.81)
         print(f"ERROR: Wrong box kept in scenario 1b. Expected conf > 0.8, got {scenario1b_boxes[0][3]}")
-        success = False
+        assert False
     else:
         print("✓ Scenarios 1 & 1b passed: High-confidence boxes kept, low-confidence overlapping boxes suppressed")
 
-        # Let's verify the IoU for the highly overlapping boxes in scenario 1 & 1b
+        # Verify IoU calculations and ensure suppression actually works
         if len(scenario1_boxes) == 1 and len(scenario1b_boxes) == 1:
             # Calculate what the IoU would have been between the boxes that were supposed to overlap
             # Scenario 1: Box A (100,100,80x80) vs Box B (105,105,80x80)
@@ -313,10 +219,17 @@ def test_nms_functionality():
             print(f"    Theoretical IoU for scenario 1 boxes: {iou_1:.3f}")
             print(f"    Theoretical IoU for scenario 1b boxes: {iou_1b:.3f}")
 
-            if iou_1 > 0.5 and iou_1b > 0.5:
+            # If IoU > threshold, suppression should have occurred
+            if iou_1 <= 0.5:
+                print(f"ERROR: Scenario 1 IoU {iou_1:.3f} is too low - test setup is invalid!")
+                assert False
+            elif iou_1b <= 0.5:
+                print(f"ERROR: Scenario 1b IoU {iou_1b:.3f} is too low - test setup is invalid!")
+                assert False
+            else:
                 print("    ✓ High IoU confirmed - suppression was correct")
 
-    # Test 3: Verify scenario 2 - both non-overlapping boxes should be kept
+    # Verify scenario 2 - both non-overlapping boxes should be kept
     scenario2_boxes = []
     for i, det in enumerate(detections):
         x1, y1, x2, y2, conf, cls = det
@@ -327,11 +240,11 @@ def test_nms_functionality():
 
     if len(scenario2_boxes) != 2:
         print(f"ERROR: Expected 2 detections in scenario 2 area, got {len(scenario2_boxes)}")
-        success = False
+        assert False
     else:
         print("✓ Scenario 2 passed: Both non-overlapping boxes kept")
 
-    # Test 4: Verify scenario 3 - different classes should both be kept
+    # Verify scenario 3 - different classes should both be kept
     scenario3_boxes = []
     for i, det in enumerate(detections):
         x1, y1, x2, y2, conf, cls = det
@@ -343,11 +256,11 @@ def test_nms_functionality():
     classes_found = set(box[4] for box in scenario3_boxes)
     if len(scenario3_boxes) != 2 or len(classes_found) != 2:
         print(f"ERROR: Expected 2 detections of different classes in scenario 3, got {len(scenario3_boxes)} detections of classes {classes_found}")
-        success = False
+        assert False
     else:
         print("✓ Scenario 3 passed: Both different-class boxes kept")
 
-    # Test 5: Verify scenario 4 - cascading overlapping boxes (only highest confidence should remain)
+    # Verify scenario 4 - cascading overlapping boxes (only highest confidence should remain)
     scenario4_boxes = []
     for i, det in enumerate(detections):
         x1, y1, x2, y2, conf, cls = det
@@ -360,41 +273,55 @@ def test_nms_functionality():
     for i, (det_idx, cx, cy, conf) in enumerate(scenario4_boxes):
         print(f"  Box {i}: center=({cx:.1f}, {cy:.1f}), conf={conf:.3f}")
 
-    # Let's check IoU between the boxes to understand why some weren't suppressed
+    # Check IoU between remaining boxes to ensure proper suppression
     if len(scenario4_boxes) >= 2:
+        max_iou = 0
         for i in range(len(scenario4_boxes)):
             for j in range(i+1, len(scenario4_boxes)):
                 det1 = detections[scenario4_boxes[i][0]]
                 det2 = detections[scenario4_boxes[j][0]]
                 iou = calculate_iou_boxes(det1[:4], det2[:4])
                 print(f"  IoU between box {i} and box {j}: {iou:.3f}")
+                max_iou = max(max_iou, iou)
 
         if len(scenario4_boxes) == 1:
             print("✓ Scenario 4 passed: Only highest confidence box kept")
         else:
-            # This might be OK if IoU < threshold, let's check
-            max_iou = 0
-            for i in range(len(scenario4_boxes)):
-                for j in range(i+1, len(scenario4_boxes)):
-                    det1 = detections[scenario4_boxes[i][0]]
-                    det2 = detections[scenario4_boxes[j][0]]
-                    iou = calculate_iou_boxes(det1[:4], det2[:4])
-                    max_iou = max(max_iou, iou)
-
+            # This is only OK if IoU < threshold
             if max_iou < 0.5:  # Our IoU threshold
                 print("✓ Scenario 4 passed: Multiple boxes kept due to low IoU (< 0.5)")
             else:
-                print(f"⚠ Scenario 4: Expected suppression but max IoU {max_iou:.3f} > 0.5")
-                # Don't fail the test as this might be due to imprecise synthetic data
+                print(f"ERROR: Scenario 4 failed - boxes with IoU {max_iou:.3f} > 0.5 were not suppressed!")
+                assert False
 
-    if success:
-        print("\n✅ All NMS tests passed! The NMS function is working correctly.")
+    # Create a scenario that requires IoU calculation
+    print("\n=== COMPREHENSIVE IoU VALIDATION TEST ===")
+
+    # Create two identical boxes that should definitely be suppressed
+    identical_box_a = [100, 100, 50, 50, 0.9, 0.9, 0.05, 0.05]  # High confidence
+    identical_box_b = [100, 100, 50, 50, 0.9, 0.7, 0.1, 0.1]    # Lower confidence
+
+    test_predictions = torch.zeros(1, 5, 8)  # Small batch for focused test
+    test_predictions[0, 0, :] = torch.tensor(identical_box_a)
+    test_predictions[0, 1, :] = torch.tensor(identical_box_b)
+
+    # Run NMS on this simple case
+    test_results = nms(test_predictions, conf_thres=0.3, iou_thres=0.5, max_det=300)
+    test_detections = test_results[0]
+
+    print(f"Identical boxes test: Input 2 identical boxes, got {test_detections.shape[0]} detections")
+
+    if test_detections.shape[0] != 1:
+        print(f"Error Two identical boxes should result in 1 detection, got {test_detections.shape[0]}")
+        assert False
     else:
-        print("\n❌ Some NMS tests failed. Please check the implementation.")
+        # Verify it kept the higher confidence box
+        kept_conf = test_detections[0, 4].item()
+        expected_conf = 0.9 * 0.9  # objectness * class_conf
+        if abs(kept_conf - expected_conf) > 0.01:
+            print(f"ERROR: Wrong box kept. Expected conf ≈ {expected_conf:.3f}, got {kept_conf:.3f}")
+            assert False
+        else:
+            print("✓ Identical boxes test passed: Higher confidence box kept")
 
-    return success
-
-
-if __name__ == "__main__":
-    success = test_nms_functionality()
-    sys.exit(0 if success else 1)
+    print("\n✅ NMS tests passed")

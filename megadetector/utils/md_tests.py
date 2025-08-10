@@ -216,9 +216,6 @@ def get_expected_results_filename(gpu_is_available,
 
     from megadetector.utils.path_utils import insert_before_extension
 
-    if test_type == 'video':
-        fn = insert_before_extension(fn,'frames')
-
     if options is not None and options.scratch_dir is not None:
         fn = os.path.join(options.scratch_dir,fn)
 
@@ -573,7 +570,9 @@ def compare_results(inference_output_file,
     filename_to_results_expected = {im['file'].replace('\\','/'):im for im in expected_results['images']}
 
     assert len(filename_to_results) == len(filename_to_results_expected), \
-        'Error: expected {} files in results, found {}'.format(
+        'Error: comparing expected file {} to actual file {}, expected {} files in results, found {}'.format(
+            expected_results_file,
+            inference_output_file,
             len(filename_to_results_expected),
             len(filename_to_results))
 
@@ -2072,35 +2071,3 @@ def main(): # noqa
 if __name__ == '__main__':
     main()
 
-
-#%% Scrap
-
-if False:
-
-    pass
-
-    #%%
-
-    import sys; sys.path.append(r'c:\git\yolov5-md')
-
-    #%%
-
-    fn1 = r"G:\temp\md-test-package\mdv5a-video-cpu-pt1.10.1.frames.json"
-    fn2 = r"G:\temp\md-test-package\mdv5a-video-gpu-pt1.10.1.frames.json"
-    fn3 = r"G:\temp\md-test-package\mdv5a-video-cpu-pt2.x.frames.json"
-    fn4 = r"G:\temp\md-test-package\mdv5a-video-gpu-pt2.x.frames.json"
-
-    assert all([os.path.isfile(fn) for fn in [fn1,fn2,fn3,fn4]])
-    print(output_files_are_identical(fn1,fn1,verbose=False))
-    print(output_files_are_identical(fn1,fn2,verbose=False))
-    print(output_files_are_identical(fn1,fn3,verbose=False))
-
-    #%%
-
-    fn1 = r"G:\temp\md-test-package\mdv5a-image-gpu-pt1.10.1.json"
-    fn2 = r"G:\temp\md-test-package\mdv5a-augment-image-gpu-pt1.10.1.json"
-    print(output_files_are_identical(fn1,fn2,verbose=True))
-
-    fn1 = r"G:\temp\md-test-package\mdv5a-image-cpu-pt1.10.1.json"
-    fn2 = r"G:\temp\md-test-package\mdv5a-augment-image-cpu-pt1.10.1.json"
-    print(output_files_are_identical(fn1,fn2,verbose=True))

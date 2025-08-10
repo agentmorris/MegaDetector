@@ -107,7 +107,7 @@ exif_options = read_exif.ReadExifOptions()
 exif_options.processing_library = 'pil'
 exif_options.byte_handling = 'convert_to_string'
 
-randomize_batch_order_during_testing = False
+randomize_batch_order_during_testing = True
 
 
 #%% Support functions for multiprocessing
