@@ -412,6 +412,7 @@ def run_callback_on_frames_for_folder(input_video_folder,
     print('Processing {} videos from folder {}'.format(len(input_files_full_paths),input_video_folder))
 
     if len(input_files_full_paths) == 0:
+        print('No videos to process')
         return to_return
 
     # Process each video
@@ -803,12 +804,13 @@ def video_folder_to_frames(input_folder,
         quality (int, optional): JPEG quality for frame output, from 0-100.  Defaults
             to the opencv default (typically 95).
         max_width (int, optional): resize frames to be no wider than [max_width]
-        frames_to_extract (list of int): extract this specific set of frames from each video;
-            mutually exclusive with every_n_frames.  If all values are beyond the length of a
-            video, no frames are extracted. Can also be a single int, specifying a single frame
-            number.  In the special case where frames_to_extract is [], this function still reads
-            video frame rates and verifies that videos are readable, but no frames are extracted.
-            This should only be a list of lists of ints when relative_paths_to_process is not None.
+        frames_to_extract (int, list of int, or dict, optional): extract this specific set of frames
+            from each video; mutually exclusive with every_n_frames.  If all values are beyond the
+            length of a video, no frames are extracted. Can also be a single int, specifying a single
+            frame number.  In the special case where frames_to_extract is [], this function still
+            reads video frame rates and verifies that videos are readable, but no frames are
+            extracted. Can be a dict mapping relative paths to lists of frame numbers to extract different
+            frames from each video.
         allow_empty_videos (bool, optional): just print a warning if a video appears to have no
             frames (by default, this is an error).
         relative_paths_to_process (list, optional): only process the relative paths on this
@@ -835,6 +837,7 @@ def video_folder_to_frames(input_folder,
         input_files_relative_paths = [os.path.relpath(s,input_folder) for s in input_files_full_paths]
     else:
         input_files_relative_paths = relative_paths_to_process
+        input_files_full_paths = [os.path.join(input_folder,fn) for fn in input_files_relative_paths]
 
     input_files_relative_paths = [s.replace('\\','/') for s in input_files_relative_paths]
 
@@ -844,10 +847,17 @@ def video_folder_to_frames(input_folder,
     fs_by_video = []
 
     if n_threads == 1:
+
         # For each video
         #
         # input_fn_relative = input_files_relative_paths[0]
         for input_fn_relative in tqdm(input_files_relative_paths):
+
+            # If frames_to_extract is a dict, get the specific frames for this video
+            if isinstance(frames_to_extract, dict):
+                frames_for_this_video = frames_to_extract.get(input_fn_relative, [])
+            else:
+                frames_for_this_video = frames_to_extract
 
             frame_filenames,fs = \
                 _video_to_frames_for_folder(input_fn_relative,
@@ -858,11 +868,13 @@ def video_folder_to_frames(input_folder,
                                             verbose,
                                             quality,
                                             max_width,
-                                            frames_to_extract,
+                                            frames_for_this_video,
                                             allow_empty_videos)
             frame_filenames_by_video.append(frame_filenames)
             fs_by_video.append(fs)
+
     else:
+
         pool = None
         results = None
         try:
@@ -872,25 +884,44 @@ def video_folder_to_frames(input_folder,
             else:
                 print('Starting a worker pool with {} processes'.format(n_threads))
                 pool = Pool(n_threads)
-            process_video_with_options = partial(_video_to_frames_for_folder,
-                                                 input_folder=input_folder,
-                                                 output_folder_base=output_folder_base,
-                                                 every_n_frames=every_n_frames,
-                                                 overwrite=overwrite,
-                                                 verbose=verbose,
-                                                 quality=quality,
-                                                 max_width=max_width,
-                                                 frames_to_extract=frames_to_extract,
-                                                 allow_empty_videos=allow_empty_videos)
-            results = list(tqdm(pool.imap(
-                partial(process_video_with_options),input_files_relative_paths),
-                                total=len(input_files_relative_paths)))
+            if isinstance(frames_to_extract, dict):
+                # For dict case, we need to pass different frames for each video
+                def process_video_with_frames(relative_fn):
+                    frames_for_this_video = frames_to_extract.get(relative_fn, [])
+                    return _video_to_frames_for_folder(relative_fn,
+                                                       input_folder,
+                                                       output_folder_base,
+                                                       every_n_frames,
+                                                       overwrite,
+                                                       verbose,
+                                                       quality,
+                                                       max_width,
+                                                       frames_for_this_video,
+                                                       allow_empty_videos)
+                results = list(tqdm(pool.imap(process_video_with_frames, input_files_relative_paths),
+                                    total=len(input_files_relative_paths)))
+            else:
+                process_video_with_options = partial(_video_to_frames_for_folder,
+                                                     input_folder=input_folder,
+                                                     output_folder_base=output_folder_base,
+                                                     every_n_frames=every_n_frames,
+                                                     overwrite=overwrite,
+                                                     verbose=verbose,
+                                                     quality=quality,
+                                                     max_width=max_width,
+                                                     frames_to_extract=frames_to_extract,
+                                                     allow_empty_videos=allow_empty_videos)
+                results = list(tqdm(pool.imap(process_video_with_options, input_files_relative_paths),
+                                    total=len(input_files_relative_paths)))
+            # ...if we need to pass different frames for each video
         finally:
             pool.close()
             pool.join()
             print("Pool closed and joined for video processing")
         frame_filenames_by_video = [x[0] for x in results]
         fs_by_video = [x[1] for x in results]
+
+    # ...if we're working on a single thread vs. multiple workers
 
     return frame_filenames_by_video,fs_by_video,input_files_full_paths
 

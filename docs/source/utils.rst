@@ -103,9 +103,25 @@ utils.wi\_utils module
    :show-inheritance:
 
 utils.write\_html\_image\_list module
------------------------------------------
+-------------------------------------
 
 .. automodule:: megadetector.utils.write_html_image_list
    :members:
    :undoc-members:
    :show-inheritance:
+
+utils.extract\_frames\_from\_video module
+-----------------------------------------
+
+.. automodule:: megadetector.utils.extract_frames_from_video
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.utils.extract_frames_from_video
+   :func: main
+   :hook:
+   :prog: extract_frames_from_video
+   :no_default_values:
