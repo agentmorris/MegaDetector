@@ -207,7 +207,7 @@ def test_nms_functionality():
         ))
         raise AssertionError()
     else:
-        print("✓ Scenarios 1 & 1b passed: High-confidence boxes kept, low-confidence overlapping boxes suppressed")
+        print("Scenarios 1 & 1b passed: High-confidence boxes kept, low-confidence overlapping boxes suppressed")
 
         # Verify IoU calculations and ensure suppression actually works
         if len(scenario1_boxes) == 1 and len(scenario1b_boxes) == 1:
@@ -233,7 +233,7 @@ def test_nms_functionality():
                 print(f"Error: scenario 1b IoU {iou_1b:.3f} is too low - test setup is invalid!")
                 raise AssertionError()
             else:
-                print("    ✓ High IoU confirmed - suppression was correct")
+                print("    High IoU confirmed - suppression was correct")
 
     # Verify scenario 2 - both non-overlapping boxes should be kept
     scenario2_boxes = []
@@ -248,7 +248,7 @@ def test_nms_functionality():
         print(f"Error: expected 2 detections in scenario 2 area, got {len(scenario2_boxes)}")
         raise AssertionError()
     else:
-        print("✓ Scenario 2 passed: Both non-overlapping boxes kept")
+        print("Scenario 2 passed: Both non-overlapping boxes kept")
 
     # Verify scenario 3 - different classes should both be kept
     scenario3_boxes = []
@@ -266,7 +266,7 @@ def test_nms_functionality():
         ))
         raise AssertionError()
     else:
-        print("✓ Scenario 3 passed: Both different-class boxes kept")
+        print("Scenario 3 passed: Both different-class boxes kept")
 
     # Verify scenario 4 - cascading overlapping boxes (only highest confidence should remain)
     scenario4_boxes = []
@@ -293,11 +293,11 @@ def test_nms_functionality():
                 max_iou = max(max_iou, iou)
 
         if len(scenario4_boxes) == 1:
-            print("✓ Scenario 4 passed: Only highest confidence box kept")
+            print("Scenario 4 passed: Only highest confidence box kept")
         else:
             # This is only OK if IoU < threshold
             if max_iou < 0.5:  # Our IoU threshold
-                print("✓ Scenario 4 passed: Multiple boxes kept due to low IoU (< 0.5)")
+                print("Scenario 4 passed: Multiple boxes kept due to low IoU (< 0.5)")
             else:
                 print(f"ERROR: Scenario 4 failed - boxes with IoU {max_iou:.3f} > 0.5 were not suppressed!")
                 raise AssertionError()
@@ -330,6 +330,6 @@ def test_nms_functionality():
             print(f"ERROR: Wrong box kept. Expected conf ≈ {expected_conf:.3f}, got {kept_conf:.3f}")
             raise AssertionError()
         else:
-            print("✓ Identical boxes test passed: Higher confidence box kept")
+            print("Identical boxes test passed: Higher confidence box kept")
 
-    print("\n✅ NMS tests passed")
+    print("\nNMS tests passed")
