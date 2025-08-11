@@ -552,7 +552,7 @@ def render_detection_bounding_boxes(detections,
         custom_strings (list of str, optional): optional set of strings to append to detection labels, should
             have the same length as [detections].  Appended before any classification labels.
         box_sort_order (str, optional): sorting scheme for detection boxes, can be None, "confidence", or
-            "reverse_confidence".
+            "reverse_confidence".  "confidence" puts the highest-confidence boxes on top.
         verbose (bool, optional): enable additional debug output
     """
 

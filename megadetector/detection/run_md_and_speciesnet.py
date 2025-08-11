@@ -868,6 +868,9 @@ def _run_detection_step(source_folder: str,
     elif len(files_to_merge) == 1:
         # Just rename the single file
         if files_to_merge[0] != detector_output_file:
+            if os.path.isfile(detector_output_file):
+                print('Detector file {} exists, over-writing'.format(detector_output_file))
+                os.remove(detector_output_file)
             os.rename(files_to_merge[0], detector_output_file)
         print('Detection results written to {}'.format(detector_output_file))
 
@@ -1119,6 +1122,10 @@ def main():
     """
     Command-line driver for run_md_and_speciesnet.py
     """
+
+    if 'speciesnet' not in sys.modules:
+        print('It looks like the speciesnet package is not available, try "pip install speciesnet"')
+        sys.exit(-1)
 
     parser = argparse.ArgumentParser(
         description='Run MegaDetector and SpeciesNet on a folder of images/videos',

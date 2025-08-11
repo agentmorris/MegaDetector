@@ -40,6 +40,8 @@ def combine_batch_output_files(input_files,
     Merges the list of MD results files [input_files] into a single
     dictionary, optionally writing the result to [output_file].
 
+    Always overwrites [output_file] if it exists.
+
     Args:
         input_files (list of str): paths to JSON detection files
         output_file (str, optional): path to write merged JSON

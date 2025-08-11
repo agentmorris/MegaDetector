@@ -28,6 +28,8 @@ from megadetector.utils.wi_utils import load_md_or_speciesnet_file
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.visualization.visualization_utils import blur_detections
 
+default_box_sort_order = 'confidence'
+
 
 #%% Constants
 
@@ -49,7 +51,7 @@ def _render_image(entry,
                   out_dir,
                   images_dir,
                   output_image_width,
-                  box_sort_order=None,
+                  box_sort_order=default_box_sort_order,
                   category_names_to_blur=None):
     """
     Internal function for rendering a single image.
@@ -153,7 +155,7 @@ def visualize_detector_output(detector_output_path,
                               parallelize_rendering=False,
                               parallelize_rendering_n_cores=10,
                               parallelize_rendering_with_threads=True,
-                              box_sort_order=None,
+                              box_sort_order=default_box_sort_order,
                               category_names_to_blur=None):
     """
     Draws bounding boxes on images given the output of a detector.
