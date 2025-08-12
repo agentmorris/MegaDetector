@@ -70,3 +70,6 @@ docs/source/_static
 .gemini*
 .mcp.json
 
+# Miscellaneous
+task-viewer.html
+

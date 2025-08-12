@@ -14,7 +14,7 @@ Release notes, July 2025
       * [Boxes in the sky](#boxes-in-the-sky)
       * [Reptiles](#reptiles)
       * [Weak spots I didn't know we had until I started fixing the others](#weak-spots-i-didnt-know-we-had-until-i-started-fixing-the-others)
-      * [Stuff I didn't manage to fix this time around](#stuff-i-didnt-manage-to-fix-this-time-around)
+      * [Stuff I didn't manage to fix this time around](#stuff-i-didnt-work-on-this-time-around)
 * [Toward a new training dataset](#toward-a-new-training-dataset)
   * [Fixing data and annotating new data](#fixing-data-and-annotating-new-data)
   * [Filling gaps, especially reptiles](#filling-gaps-especially-reptiles)

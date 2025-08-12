@@ -205,7 +205,7 @@ MegaClassifier outputs 100+ categories, but we usually don't care about all of t
 
 ##### Specify the target categories that we care about
 
-Use the [label specification syntax](#label-specification-syntax) to specify the taxa and/or dataset classes that constitute each target category. If using the CSV format, convert it to the JSON specification syntax using `python csv_to_json.py`.
+Use the [label specification syntax](#megaclassifier-label-specification-syntax) to specify the taxa and/or dataset classes that constitute each target category. If using the CSV format, convert it to the JSON specification syntax using `python csv_to_json.py`.
 
 ##### Build a mapping from desired target categories to MegaClassifier labels
 

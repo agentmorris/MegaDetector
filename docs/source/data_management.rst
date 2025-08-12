@@ -207,6 +207,38 @@ data\_management.mewc\_to\_md module
    :prog: mewc_to_md
    :no_default_values:
 
+data\_management.zamba\_to\_md module
+-----------------------------------------
+
+.. automodule:: megadetector.data_management.zamba_to_md
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.data_management.zamba_to_md
+   :func: main
+   :hook:
+   :prog: zamba_to_md
+   :no_default_values:
+
+data\_management.animl\_to\_md module
+-----------------------------------------
+
+.. automodule:: megadetector.data_management.animl_to_md
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.data_management.animl_to_md
+   :func: main
+   :hook:
+   :prog: animl_to_md
+   :no_default_values:
+
 data\_management.camtrap\_dp\_to\_coco module
 ----------------------------------------------
 

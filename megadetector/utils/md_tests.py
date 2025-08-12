@@ -1295,7 +1295,7 @@ def run_cli_tests(options):
 
         batch_string = ' --batch_size {}'.format(options.alternative_batch_size)
 
-        # I reduce the number of loader workers here to force batching to actually appen; with a small
+        # I reduce the number of loader workers here to force batching to actually append; with a small
         # number of images and a few that are intentionally corrupt, with the default number of loader
         # workers we end up with batches that are mostly just one image.
         cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue --loader_workers 2' + batch_string

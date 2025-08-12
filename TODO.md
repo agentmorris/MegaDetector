@@ -50,6 +50,45 @@ E2
 !feature
 
 
+## Allow excluding blanks in postprocessing
+
+Currently when I drive postprocessing via manage_local_batch, I use a somewhat hacky approach to skipping the rendering of blank images, which still leaves empty links to those images.  Instead, allow excluding blanks during process_batch_results.  See the "render_animals_only" variable in manage_local_batch.
+
+P2
+
+E1
+
+!feature
+
+
+## Better handling of long filenames in manage_local_batch
+
+manage_local_batch can end up generating previews with very long filenames, which is not important under Linux, but can blow past the archaic filename length restriction that still exists by default in Windows.  Windows actually supports long filenames fine now, but applications - particularly browsers - clip filenames to the historical limit; typically this results in failed images when loading a the HTML output locally.
+
+Address this by:
+
+* Reducing filename length in manage_local_batch wherever possible
+* Adding a secondary filename length check in the OSError exception handler in postprocessing, and use something shorter than a GUID in that case
+* Catching this case in postprocessing and at least printing a warning
+
+P3
+
+E2
+
+!feature
+
+
+## Allow a single confidence threshold in compare_batch_results
+
+compare_batch_results takes a dict of class --> threshold mappings for each file being compared.  Allow this to be a float (rather than a dict) that applies to all categories.  The dict already supports a "default" entry, so just take the float value and stick it in a dict as {'default':new_threshold}.
+
+P4
+
+E0
+
+!feature
+
+
 ## Add checkpointing to run_detector_batch when using the image queue
 
 run_detector_batch currently does not support checkpointing when --use_image_queue is enabled.  Add checkpointing support when --use_image_queue is enabled. This is P4 because in practice, when using manage_local_batch to create and run jobs, the user can just use lots of tasks in lieu of checkpointing.
@@ -192,7 +231,9 @@ E3
 
 The [docs page](https://megadetector.readthedocs.io/en/latest/) is complete and up to date, but it could use a design review, updates to a more modern theme, and the addition of some more detailed information that is currently in the MegaDetector User's Guide.  This is vague, I know, but basically "take a close look at the docs page and make it nicer".  For my two cents, I like the styles used by [contextily](https://contextily.readthedocs.io/en/latest) and [pybowler](https://pybowler.io/docs/basics-usage).
 
-P2
+Lots of the information from the [MDv1000 release notes](https://github.com/agentmorris/MegaDetector/blob/main/docs/release-notes/mdv1000-release.md) could be re-used for the docs page, especially from the [section about the Python package](https://github.com/agentmorris/MegaDetector/blob/main/docs/release-notes/mdv1000-release.md#formally-introducing-the-md-python-package).
+
+P0
 
 E2
 
@@ -476,13 +517,24 @@ E0
 !maintenance
 
 
-## Add Mac testing to GitHub actions
+## Add Python 3.13 testing to GitHub actions
 
-The GitHub actions integration in the MD repo currently tests on Windows and Linux.  Add MacOS support.
+The MD package supports Python <= 3.13, and test pass locally on 3.13 on Linux and Windows (I have not tested 3.13 on Mac).  Add 3.13 to the [GitHub Actions workflow spec](https://github.com/agentmorris/MegaDetector/blob/main/.github/workflows/pytest-workflow.yml).  If it fails, keep this issue in place and bump the effort level.
 
 P1
 
-E1
+E0
+
+!testing
+
+
+## Add Mac testing to GitHub actions
+
+The GitHub actions integration in the MD repo currently tests on Windows and Linux.  Add MacOS support.  The tests are [already in place](https://github.com/agentmorris/MegaDetector/actions/workflows/pytest-workflow-macos.yml); they were failing at some point, and I disabled them, but I have tested locally on Macs and I don't see any reason not to re-enable them.  If they fail, keep this issue in place and bump the effort level.
+
+P1
+
+E0
 
 !testing
 
@@ -774,7 +826,9 @@ E0
 
 For a zillion years, in pytorch_detector, we loaded MD like this (on non-Apple devices):
 
-`checkpoint = torch.load(model_pt_path, map_location=device, weights_only=False)`
+```python
+checkpoint = torch.load(model_pt_path, map_location=device, weights_only=False)
+```
 
 We still do this in the "classic" compatibility mode (which is the default).  In the "modern" compatibility mode, we do this:
 
@@ -789,9 +843,11 @@ This task is two-fold:
 * Assess whether map_location is supported on Apple silicon in recent versions of PyTorch, so we can eliminate the special case
 * Assess whether there is a performance/memory consumption benefit/cost to using map_plication. 
 
-P1
+P0
 
 E3
+
+!maintenance
 
 
 ## Remove support for torch 1.x loading
@@ -847,6 +903,18 @@ P1
 E1
 
 !admin
+
+
+## Load class names from detector files if available
+
+Currently we assume MegaDetector classes in run_detector_batch, and we allow custom class mappings via --class_mapping_filename.  Long ago, class names weren't stored in YOLO-style detectors, now they are, so, optionally load class names from detectors.  This doesn't really matter when using MegaDetector, but it removes the hassle of using --class_mapping_filename when using non-MD detectors.
+
+P3
+
+E1
+
+!feature
+
 
 ## Address module-level globals in run_detector_batch and run_detector
 

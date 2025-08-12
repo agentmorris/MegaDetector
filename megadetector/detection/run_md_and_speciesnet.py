@@ -1160,7 +1160,7 @@ def main():
     parser.add_argument('--detection_confidence_threshold_for_classification',
                         type=float,
                         default=DEFAULT_DETECTION_CONFIDENCE_THRESHOLD_FOR_CLASSIFICATION,
-                        help='Classifiy detections above this threshold')
+                        help='Classify detections above this threshold')
     parser.add_argument('--detection_confidence_threshold_for_output',
                         type=float,
                         default=DEFAULT_DETECTION_CONFIDENCE_THRESHOLD_FOR_OUTPUT,
