@@ -250,7 +250,7 @@ E2
 
 run_detector_batch supports checkpointing, so crashes/reboots/etc. won't cause data loss during long inference jobs. process_video does not yet have this kind of checkpointing functionality.  This is not a huge deal, since in practice you would break large tasks into multiple calls to process_video(), but it would be nice to simplify this, even for large jobs.
 
-P2
+P1
 
 E2
 
@@ -325,6 +325,17 @@ P1
 E2
 
 !testing
+
+
+## Add checkpointing to run_speciesnet_and_md
+
+run_speciesnet_and_md does not currently have the same checkpointing support that run_detector_batch has.  The core functionality is there for the detection step, because it's built in to run_detector_batch, but this needs to be exposed to the CLI.  Equivalent functionality needs to be added for the classification step.
+
+P0
+
+E1
+
+!feature
 
 
 ## Add classification smoothing to run_speciesnet_and_md
