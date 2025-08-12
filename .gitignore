@@ -68,3 +68,5 @@ docs/source/_static
 .aider*
 .claude*
 .gemini*
+.mcp.json
+
