@@ -18,11 +18,19 @@ Any amount of whitespace is allowed between each item within an issue.
 
 The section called "title" can contain a title for the page, otherwise it will default to "task viewer"
 
+This file is viewable at:
+
+https://dmorris.net/task-viewer/?file=https://raw.githubusercontent.com/agentmorris/MegaDetector/refs/heads/main/TODO.md
 
 
 # Title
 
 MegaDetector issue list
+
+
+# Header
+
+This page tracks work items related to [MegaDetector](https://github.com/agentmorris/MegaDetector).  If you're interested in trying your hand at any of these, create a new [issue](https://github.com/agentmorris/MegaDetector/issues) on the MegaDetector repo, or <a href="mailto:agentmorris+megadetector@gmail.com">email me</a>!
 
 
 # Issues
