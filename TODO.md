@@ -598,7 +598,8 @@ E1
 
 The wi_utils module, which is used for classification postprocessing, depends on a taxonomy file that is slightly different from the one used by the public SpeciesNet release.  There's no good reason for that, it's just a historical artifact.  Fix this.
 
-P0
+P1
+
 E0
 
 !maintenance
@@ -688,7 +689,7 @@ E3
 
 Change manage_local_batch to read datetime during inference, rather than doing a separate EXIF read step.
 
-P0
+P2
 
 E0
 
