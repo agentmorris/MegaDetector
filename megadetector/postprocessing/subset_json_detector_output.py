@@ -221,7 +221,7 @@ def remove_classification_categories_below_count(data, options):
     classification_category_ids_to_keep = set()
 
     for classification_category_id in classification_category_id_to_count:
-        if classification_category_id_to_count[classification_category_id] > \
+        if classification_category_id_to_count[classification_category_id] >= \
             options.remove_classification_categories_below_count:
                 classification_category_ids_to_keep.add(classification_category_id)
 
@@ -235,7 +235,6 @@ def remove_classification_categories_below_count(data, options):
     if n_categories_removed == 0:
         return data
 
-
     # Filter the category list
     output_classification_categories = {}
     for category_id in data['classification_categories']:
@@ -244,7 +243,6 @@ def remove_classification_categories_below_count(data, options):
                 data['classification_categories'][category_id]
     data['classification_categories'] = output_classification_categories
     assert len(data['classification_categories']) == len(classification_category_ids_to_keep)
-
 
     # If necessary, filter the category descriptions
     if 'classification_category_descriptions' in data:
