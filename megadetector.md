@@ -394,6 +394,7 @@ But we recognize that Python tools can be a bit daunting, so we're excited that 
 ### GUI tools for running MegaDetector locally
 
 * [AddaxAI](https://addaxdatascience.com/addaxai/) is a GUI-based tool for running MegaDetector and a variety of species classifiers; also supports a number of postprocessing functions (e.g. folder separation).  This is how most users run MegaDetector.  AddaxAI worried about all the Python stuff in this repo, so that you don't have to.
+* [BoquilaHUB](https://boquila.org/hub) is a GUI-based tool for running MegaDetector and a variety of species classifiers
 * [CamTrap Detector](https://github.com/bencevans/camtrap-detector) is a GUI-based tool for running MegaDetector (supports MDv5)
 * [MegaDetector-GUI](https://github.com/petargyurov/megadetector-gui) is a GUI-based tool for running MegaDetector in Windows environments (MDv4 only as far as we know)
 
