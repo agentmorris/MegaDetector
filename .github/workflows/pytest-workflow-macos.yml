@@ -26,7 +26,9 @@ jobs:
         # pip install -r requirements.txt || echo "No requirements.txt found"
         # pip install -r requirements-dev.txt || echo "No requirements-dev.txt found"
         pip install -e . || echo "No pyproject.toml found"
-    
+    - name: Enable MPS fallback
+      run: |
+        echo "PYTORCH_ENABLE_MPS_FALLBACK=1" >> $GITHUB_ENV
     - name: Run tests with pytest
       run: |
         pytest -vv

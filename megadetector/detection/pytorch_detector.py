@@ -901,11 +901,6 @@ class PTDetector:
             except Exception as e:
                 if "'weights_only' is an invalid keyword" in str(e):
                     checkpoint = torch.load(model_pt_path, map_location=device)
-                elif device == 'mps':
-                    # Try again without mps
-                    print('MPS model loading failed, trying again with cpu:\n{}\n'.format(str(e)))
-                    device = 'cpu'
-                    checkpoint = torch.load(model_pt_path, map_location=device, weights_only=False)
                 else:
                     raise
         else:
