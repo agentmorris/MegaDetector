@@ -883,15 +883,31 @@ class PTDetector:
         if verbose:
             print(f'Using PyTorch version {torch.__version__}')
 
-        try:
-            checkpoint = torch.load(model_pt_path, map_location=device, weights_only=False)
-        # For a transitional period, we want to support torch 1.1x, where the weights_only
-        # parameter doesn't exist
-        except Exception as e:
-            if "'weights_only' is an invalid keyword" in str(e):
-                checkpoint = torch.load(model_pt_path, map_location=device)
-            else:
-                raise
+        # I get quirky errors when loading YOLOv5 models on MPS hardware using
+        # map_location, but this is the recommended method, so I'm using it everywhere
+        # other than MPS devices.
+        use_map_location = (device != 'mps')
+
+        if use_map_location:
+            try:
+                checkpoint = torch.load(model_pt_path, map_location=device, weights_only=False)
+            # For a transitional period, we want to support torch 1.1x, where the weights_only
+            # parameter doesn't exist
+            except Exception as e:
+                if "'weights_only' is an invalid keyword" in str(e):
+                    checkpoint = torch.load(model_pt_path, map_location=device)
+                else:
+                    raise
+        else:
+            try:
+                checkpoint = torch.load(model_pt_path, weights_only=False)
+            # For a transitional period, we want to support torch 1.1x, where the weights_only
+            # parameter doesn't exist
+            except Exception as e:
+                if "'weights_only' is an invalid keyword" in str(e):
+                    checkpoint = torch.load(model_pt_path)
+                else:
+                    raise
 
         # Compatibility fix that allows us to load older YOLOv5 models with
         # newer versions of YOLOv5/PT
