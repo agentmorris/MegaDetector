@@ -894,12 +894,18 @@ class PTDetector:
 
         if use_map_location:
             try:
+
                 checkpoint = torch.load(model_pt_path, map_location=device, weights_only=False)
             # For a transitional period, we want to support torch 1.1x, where the weights_only
             # parameter doesn't exist
             except Exception as e:
                 if "'weights_only' is an invalid keyword" in str(e):
                     checkpoint = torch.load(model_pt_path, map_location=device)
+                elif device == 'mps':
+                    # Try again without mps
+                    print('MPS model loading failed, trying again with cpu:\n{}\n'.format(str(e)))
+                    device = 'cpu'
+                    checkpoint = torch.load(model_pt_path, map_location=device, weights_only=False)
                 else:
                     raise
         else:
