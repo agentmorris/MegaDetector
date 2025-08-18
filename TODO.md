@@ -789,15 +789,15 @@ E0
 !feature
 
 
-## Revisit use_map_location in pytorch_detector
+## Revisit use_map_location on MPS devices in pytorch_detector
 
-For a zillion years, in pytorch_detector, we loaded MD like this (on non-Apple devices):
+In pytorch_detector, we load MD like this on non-Apple (i.e., non-MPS) devices:
 
 ```python
 checkpoint = torch.load(model_pt_path, map_location=device, weights_only=False)
 ```
 
-We still do this in the "classic" compatibility mode (which is the default).  In the "modern" compatibility mode, we do this:
+...but on MPS devices, this leads to errors about 16 vs 32 bit models, so we do this:
 
 ```python
 checkpoint = torch.load(model_pt_path, weights_only=False)`
@@ -808,9 +808,11 @@ model.to(device)
 This task is two-fold:
 
 * Assess whether map_location is supported on Apple silicon in recent versions of PyTorch, so we can eliminate the special case
-* Assess whether there is a performance/memory consumption benefit/cost to using map_plication. 
+* Assess whether there is a performance/memory consumption benefit/cost to using map_location. 
 
-P0
+I last tried switching to use_map_location on mps devices on 2025.08.18, it did not go well.  Dropping this to P3.
+
+P3
 
 E3
 
