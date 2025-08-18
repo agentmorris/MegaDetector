@@ -21,14 +21,16 @@ import argparse
 from megadetector.detection import run_detector_batch
 from megadetector.utils.ct_utils import args_to_object
 from megadetector.utils.ct_utils import dict_to_kvp_list, parse_kvp_list
-from megadetector.utils.ct_utils import split_list_into_fixed_size_chunks
 from megadetector.detection.video_utils import _filename_to_frame_number
 from megadetector.detection.video_utils import find_videos
 from megadetector.detection.video_utils import run_callback_on_frames_for_folder
 from megadetector.detection.run_detector import load_detector
-from megadetector.detection.run_detector_batch import write_checkpoint, load_checkpoint
 from megadetector.postprocessing.validate_batch_results import \
         ValidateBatchResultsOptions, validate_batch_results
+
+# Notes to self re: upcoming work on checkpointing
+from megadetector.utils.ct_utils import split_list_into_fixed_size_chunks # noqa
+from megadetector.detection.run_detector_batch import write_checkpoint, load_checkpoint # noqa
 
 
 #%% Classes
