@@ -878,16 +878,19 @@ class PTDetector:
 
         # There are two very slightly different ways to load the model, (1) using the
         # map_location=device parameter to torch.load and (2) calling .to(device) after
-        # loading the model.  The former is what we did for a zillion years, but is not
+        # loading the model.  The former is what we did for a zillion years, but was not
         # supported on Apple silicon at of 2024.09.  Switching to the latter causes
         # very slight changes to the output, which always make me nervous, so I'm not
         # doing a wholesale swap just yet.  Instead, when running in "classic" compatibility
         # mode, we'll only use map_location on M1 hardware, where at least at some point
         # there was not a choice.
-        if 'classic' in compatibility_mode:
-            use_map_location = (device != 'mps')
+        if False:
+            if 'classic' in compatibility_mode:
+                use_map_location = (device != 'mps')
+            else:
+                use_map_location = False
         else:
-            use_map_location = False
+            use_map_location = True
 
         if use_map_location:
             try:
