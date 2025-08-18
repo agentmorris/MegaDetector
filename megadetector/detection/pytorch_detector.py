@@ -1123,9 +1123,6 @@ class PTDetector:
         if not isinstance(img_original, list):
             raise ValueError('img_original must be a list for batch processing')
 
-        if verbose:
-            print('generate_detections_one_batch: processing a batch of size {}'.format(len(img_original)))
-
         if len(img_original) == 0:
             return []
 
@@ -1180,9 +1177,8 @@ class PTDetector:
                 preprocessed_images.append((i_img, image_info, current_image_id))
 
             except Exception as e:
-                if verbose:
-                    print('Preprocessing failed for image {}: {}'.format(
-                        image_id[i_img] if image_id else f'index_{i_img}', str(e)))
+                print('Warning: preprocessing failed for image {}: {}'.format(
+                    image_id[i_img] if image_id else f'index_{i_img}', str(e)))
 
                 preprocessing_failed_indices.add(i_img)
                 current_image_id = image_id[i_img] if image_id else f'index_{i_img}'
@@ -1203,18 +1199,14 @@ class PTDetector:
                 shape_groups[actual_shape] = []
             shape_groups[actual_shape].append((original_idx, image_info, current_image_id))
 
-        if verbose and len(shape_groups) > 1:
-            print('generate_detections_one_batch: batch of size {} split into {} shape-group batches'.\
-                  format(len(preprocessed_images), len(shape_groups)))
-
         # Process each shape group as a batch
         for target_shape, group_items in shape_groups.items():
+
             try:
                 self._process_batch_group(group_items, results, detection_threshold, augment, verbose)
             except Exception as e:
                 # If inference fails for the entire batch, mark all images in this batch as failed
-                if verbose:
-                    print('Batch inference failed for shape {}: {}'.format(target_shape, str(e)))
+                print('Warning: batch inference failed for shape {}: {}'.format(target_shape, str(e)))
 
                 for original_idx, image_info, current_image_id in group_items:
                     results[original_idx] = {
@@ -1223,7 +1215,11 @@ class PTDetector:
                         'failure': FAILURE_INFER
                     }
 
+        # ...for each shape group
         return results
+
+    # ...def generate_detections_one_batch(...)
+
 
     def _process_batch_group(self, group_items, results, detection_threshold, augment, verbose):
         """
@@ -1272,10 +1268,6 @@ class PTDetector:
 
         # Stack images into a batch tensor
         batch_tensor = torch.stack(batch_images)
-
-        if verbose:
-            if batch_tensor.shape[0] > 1:
-                print('_process_batch_group: processing a batch of size {}'.format(batch_tensor.shape[0]))
 
         batch_tensor = batch_tensor.float()
         batch_tensor /= 255.0

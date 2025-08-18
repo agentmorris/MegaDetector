@@ -89,17 +89,6 @@ E0
 !feature
 
 
-## Add checkpointing to run_detector_batch when using the image queue
-
-run_detector_batch currently does not support checkpointing when --use_image_queue is enabled.  Add checkpointing support when --use_image_queue is enabled. This is P4 because in practice, when using manage_local_batch to create and run jobs, the user can just use lots of tasks in lieu of checkpointing.
-
-P4
-
-E2
-
-!feature
-
-
 ## Add classification support to compare_batch_results
 
 compare_batch_results supports comparing detections, but not species classifications.  Add support for species classification results.
