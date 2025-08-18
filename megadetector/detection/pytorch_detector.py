@@ -27,6 +27,7 @@ from megadetector.detection.run_detector import \
     get_detector_version_from_model_file, \
     known_models
 from megadetector.utils.ct_utils import parse_bool_string
+from megadetector.utils.ct_utils import is_running_in_gha
 from megadetector.utils import ct_utils
 import torchvision
 
@@ -840,16 +841,9 @@ class PTDetector:
                 self.device = torch.device('cuda:0')
             try:
                 if torch.backends.mps.is_built and torch.backends.mps.is_available():
-
-                    running_in_gha = False
-                    if ('GITHUB_ACTIONS' in os.environ):
-                        if os.environ['GITHUB_ACTIONS'] == True:
-                            running_in_gha = True
-                        else:
-                            if isinstance(os.environ['GITHUB_ACTIONS'],str) and \
-                                os.environ['GITHUB_ACTIONS'].lower() == ('true'):
-                                running_in_gha = True
-                    if running_in_gha:
+                    # MPS inference fails on GitHub runners as of 2025.08.  This is
+                    # independent of model size.  So, we disable MPS when running in GHA.
+                    if is_running_in_gha():
                         print('GitHub actions detected, bypassing MPS backend')
                     else:
                         print('Using MPS device')

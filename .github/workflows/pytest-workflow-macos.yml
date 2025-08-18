@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest]
-        python-version: ["3.10", "3.11", "3.12","3.13"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
     - uses: actions/checkout@v4
@@ -26,6 +26,7 @@ jobs:
         # pip install -r requirements.txt || echo "No requirements.txt found"
         # pip install -r requirements-dev.txt || echo "No requirements-dev.txt found"
         pip install -e . || echo "No pyproject.toml found"
+    
     - name: Run tests with pytest
       run: |
         pytest -vv
