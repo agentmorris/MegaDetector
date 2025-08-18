@@ -840,10 +840,23 @@ class PTDetector:
                 self.device = torch.device('cuda:0')
             try:
                 if torch.backends.mps.is_built and torch.backends.mps.is_available():
-                    print('Using MPS device')
-                    self.device = 'mps'
+
+                    running_in_gha = False
+                    if ('GITHUB_ACTIONS' in os.environ):
+                        if os.environ['GITHUB_ACTIONS'] == True:
+                            running_in_gha = True
+                        else:
+                            if isinstance(os.environ['GITHUB_ACTIONS'],str) and \
+                                os.environ['GITHUB_ACTIONS'].lower() == ('true'):
+                                running_in_gha = True
+                    if running_in_gha:
+                        print('GitHub actions detected, bypassing MPS backend')
+                    else:
+                        print('Using MPS device')
+                        self.device = 'mps'
             except AttributeError:
                 pass
+
         try:
             self.model = PTDetector._load_model(model_path,
                                                 device=self.device,
@@ -894,7 +907,6 @@ class PTDetector:
 
         if use_map_location:
             try:
-
                 checkpoint = torch.load(model_pt_path, map_location=device, weights_only=False)
             # For a transitional period, we want to support torch 1.1x, where the weights_only
             # parameter doesn't exist
