@@ -506,17 +506,6 @@ E0
 !maintenance
 
 
-## Add Python 3.13 testing to GitHub actions
-
-The MD package supports Python <= 3.13, and test pass locally on 3.13 on Linux and Windows (I have not tested 3.13 on Mac).  Add 3.13 to the [GitHub Actions workflow spec](https://github.com/agentmorris/MegaDetector/blob/main/.github/workflows/pytest-workflow.yml).  If it fails, keep this issue in place and bump the effort level.
-
-P1
-
-E0
-
-!testing
-
-
 ## Add Mac testing to GitHub actions
 
 The GitHub actions integration in the MD repo currently tests on Windows and Linux.  Add MacOS support.  The tests are [already in place](https://github.com/agentmorris/MegaDetector/actions/workflows/pytest-workflow-macos.yml); they were failing at some point, and I disabled them, but I have tested locally on Macs and I don't see any reason not to re-enable them.  If they fail, keep this issue in place and bump the effort level.
