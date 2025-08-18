@@ -436,7 +436,7 @@ def _consumer_func(q,
             if _should_write_checkpoint():
                 print('Consumer: writing checkpoint after {} images'.format(
                     n_images_processed))
-                _write_checkpoint(checkpoint_path, results)
+                write_checkpoint(checkpoint_path, results)
                 last_checkpoint_count = n_images_processed
 
         # ...whether we received a string (indicating failure) or an image from the loader worker
@@ -1261,7 +1261,7 @@ def load_and_run_detector_batch(model_file,
                 if (checkpoint_frequency != -1) and ((image_count % checkpoint_frequency) == 0):
                     print('Writing a new checkpoint after having processed {} images since '
                           'last restart'.format(image_count))
-                    _write_checkpoint(checkpoint_path, results)
+                    write_checkpoint(checkpoint_path, results)
 
         else:
 
@@ -1285,7 +1285,7 @@ def load_and_run_detector_batch(model_file,
                 if (checkpoint_frequency != -1) and ((image_count % checkpoint_frequency) == 0):
                     print('Writing a new checkpoint after having processed {} images since '
                           'last restart'.format(image_count))
-                    _write_checkpoint(checkpoint_path, results)
+                    write_checkpoint(checkpoint_path, results)
 
         # ...if the batch size is > 1
 
@@ -1404,12 +1404,18 @@ def _checkpoint_queue_handler(checkpoint_path, checkpoint_frequency, checkpoint_
             print('Writing a new checkpoint after having processed {} images since '
                     'last restart'.format(result_count))
 
-            _write_checkpoint(checkpoint_path, results)
+            write_checkpoint(checkpoint_path, results)
 
 
-def _write_checkpoint(checkpoint_path, results):
+def write_checkpoint(checkpoint_path, results):
     """
-    Writes the 'images' field in the dict 'results' to a json checkpoint file.
+    Writes the object in [results] to a json checkpoint file, as a dict with the
+    key "checkpoint".  First backs up the checkpoint file if it exists, in case we
+    crash while writing the file.
+
+    Args:
+        checkpoint_path (str): the file to write the checkpoint to
+        results (object): the object we should write
     """
 
     assert checkpoint_path is not None
@@ -1422,11 +1428,41 @@ def _write_checkpoint(checkpoint_path, results):
         shutil.copyfile(checkpoint_path,checkpoint_tmp_path)
 
     # Write the new checkpoint
-    ct_utils.write_json(checkpoint_path, {'images': results}, force_str=True)
+    ct_utils.write_json(checkpoint_path, {'checkpoint': results}, force_str=True)
 
     # Remove the backup checkpoint if it exists
     if checkpoint_tmp_path is not None:
-        os.remove(checkpoint_tmp_path)
+        try:
+            os.remove(checkpoint_tmp_path)
+        except Exception as e:
+            print('Warning: error removing backup checkpoint file {}:\n{}'.format(
+                checkpoint_tmp_path,str(e)))
+
+
+def load_checkpoint(checkpoint_path):
+    """
+    Loads results from a checkpoint file.  A checkpoint file is always a dict
+    with the key "checkpoint".
+
+    Args:
+        checkpoint_path (str): the .json file to load
+
+    Returns:
+        object: object retrieved from the checkpoint, typically a list of results
+    """
+
+    print('Loading previous results from checkpoint file {}'.format(checkpoint_path))
+
+    with open(checkpoint_path, 'r') as f:
+        checkpoint_data = json.load(f)
+
+    if 'checkpoint' not in checkpoint_data:
+        raise ValueError('Checkpoint file {} is missing "checkpoint" field'.format(checkpoint_path))
+
+    results = checkpoint_data['checkpoint']
+    print('Restored {} entries from the checkpoint {}'.format(len(results),checkpoint_path))
+
+    return results
 
 
 def get_image_datetime(image):
@@ -1613,8 +1649,6 @@ if False:
         cmd += ' --output_relative_filenames'
     if include_max_conf:
         cmd += ' --include_max_conf'
-    if quiet:
-        cmd += ' --quiet'
     if image_size is not None:
         cmd += ' --image_size {}'.format(image_size)
     if use_image_queue:
@@ -1905,16 +1939,7 @@ def main(): # noqa
                 checkpoint_file = os.path.join(output_dir,checkpoint_file_relative)
         else:
             checkpoint_file = args.resume_from_checkpoint
-        assert os.path.exists(checkpoint_file), \
-            'File at resume_from_checkpoint specified does not exist'
-        with open(checkpoint_file) as f:
-            print('Loading previous results from checkpoint file {}'.format(
-                checkpoint_file))
-            saved = json.load(f)
-        assert 'images' in saved, \
-            'The checkpoint file does not have the correct fields; cannot be restored'
-        results = saved['images']
-        print('Restored {} entries from the checkpoint'.format(len(results)))
+        results = load_checkpoint(checkpoint_file)
     else:
         results = []
 
@@ -2030,16 +2055,6 @@ def main(): # noqa
             assert not os.path.isfile(checkpoint_path), \
                 f'Checkpoint path {checkpoint_path} already exists, delete or move it before ' + \
                 're-using the same checkpoint path, or specify --allow_checkpoint_overwrite'
-
-
-        # Confirm that we can write to the checkpoint path; this avoids issues where
-        # we crash after several thousand images.
-        #
-        # But actually, commenting this out for now... the scenario where we are resuming from a
-        # checkpoint, then immediately overwrite that checkpoint with empty data is higher-risk
-        # than the annoyance of crashing a few minutes after starting a job.
-        if False:
-            ct_utils.write_json(checkpoint_path, {'images': []}, indent=None)
 
         print('The checkpoint file will be written to {}'.format(checkpoint_path))
 

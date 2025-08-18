@@ -21,9 +21,12 @@ import argparse
 from megadetector.detection import run_detector_batch
 from megadetector.utils.ct_utils import args_to_object
 from megadetector.utils.ct_utils import dict_to_kvp_list, parse_kvp_list
+from megadetector.utils.ct_utils import split_list_into_fixed_size_chunks
 from megadetector.detection.video_utils import _filename_to_frame_number
+from megadetector.detection.video_utils import find_videos
 from megadetector.detection.video_utils import run_callback_on_frames_for_folder
 from megadetector.detection.run_detector import load_detector
+from megadetector.detection.run_detector_batch import write_checkpoint, load_checkpoint
 from megadetector.postprocessing.validate_batch_results import \
         ValidateBatchResultsOptions, validate_batch_results
 
@@ -81,6 +84,17 @@ class ProcessVideoOptions:
 
         #: Detector-specific options
         self.detector_options = None
+
+        #: Write a checkpoint file (to resume processing later) every N videos;
+        #: set to -1 (default) to disable checkpointing
+        self.checkpoint_frequency = -1
+
+        #: Path to checkpoint file; None (default) for auto-generation based on output filename
+        self.checkpoint_path = None
+
+        #: Resume from a checkpoint file, or "auto" to use the most recent checkpoint in the
+        #: output directory
+        self.resume_from_checkpoint = None
 
 # ...class ProcessVideoOptions
 
@@ -165,12 +179,15 @@ def process_videos(options):
             '{} is neither a file nor a folder'.format(options.input_video_file)
 
         video_folder = options.input_video_file
+
         md_results = run_callback_on_frames_for_folder(input_video_folder=options.input_video_file,
                                                        frame_callback=frame_callback,
                                                        every_n_frames=every_n_frames_param,
                                                        verbose=options.verbose,
                                                        recursive=options.recursive,
                                                        allow_empty_videos=options.allow_empty_videos)
+
+    # ...whether we're processing a file or a folder
 
     print('Finished running MD on videos')
 
@@ -405,6 +422,28 @@ def main(): # noqa
         metavar='KEY=VALUE',
         default='',
         help='Detector-specific options, as a space-separated list of key-value pairs')
+
+    parser.add_argument(
+        '--checkpoint_frequency',
+        type=int,
+        default=default_options.checkpoint_frequency,
+        help='Write a checkpoint file (to resume processing later) every N videos; ' + \
+             'set to -1 to disable checkpointing (default {})'.format(
+                 default_options.checkpoint_frequency))
+
+    parser.add_argument(
+        '--checkpoint_path',
+        type=str,
+        default=None,
+        help='Path to checkpoint file; defaults to a file in the same directory ' + \
+             'as the output file')
+
+    parser.add_argument(
+        '--resume_from_checkpoint',
+        type=str,
+        default=None,
+        help='Resume from a specific checkpoint file, or "auto" to resume from the ' + \
+             'most recent checkpoint in the output directory')
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()

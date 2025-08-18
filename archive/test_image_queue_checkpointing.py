@@ -58,7 +58,7 @@ def test_basic_checkpointing():
             "--use_image_queue",
             "--checkpoint_frequency", "3",
             "--checkpoint_path", checkpoint_file,
-            "--quiet"
+            "--verbose"
         ]
 
         print(f"Running: {' '.join(cmd)}")
@@ -79,7 +79,9 @@ def test_basic_checkpointing():
             results = json.load(f)
 
         if 'images' not in results or len(results['images']) == 0:
-            print("No images found in results")
+            print("No images found in results file {} (output file {})".format(
+                checkpoint_file,output_file))
+            raise AssertionError()
             return False
 
         print(f"Successfully processed {len(results['images'])} images")
@@ -117,7 +119,7 @@ def test_controlled_interruption():
             "--use_image_queue",
             "--checkpoint_frequency", "3",
             "--checkpoint_path", checkpoint_file,
-            "--quiet"
+            "--verbose"
         ]
 
         print(f"Running interrupted job: {' '.join(cmd1)}")
@@ -150,7 +152,7 @@ def test_controlled_interruption():
                     "python", "megadetector/detection/run_detector_batch.py",
                     "MDV5A", small_test_dir, output_file,
                     "--use_image_queue", "--checkpoint_frequency", "3",
-                    "--checkpoint_path", checkpoint_file, "--quiet"
+                    "--checkpoint_path", checkpoint_file, "--verbose"
                 ]
 
                 try:
@@ -173,11 +175,11 @@ def test_controlled_interruption():
         with open(checkpoint_file, 'r') as f:
             checkpoint_data = json.load(f)
 
-        if 'images' not in checkpoint_data:
-            print("Checkpoint file missing 'images' field")
+        if 'checkpoint' not in checkpoint_data:
+            print("Checkpoint file missing 'checkpoint' field")
             return False
 
-        num_checkpointed = len(checkpoint_data['images'])
+        num_checkpointed = len(checkpoint_data['checkpoint'])
         print(f"Found {num_checkpointed} images in checkpoint")
 
         if num_checkpointed == 0:
@@ -193,7 +195,7 @@ def test_controlled_interruption():
             "--use_image_queue",
             "--checkpoint_frequency", "3",
             "--resume_from_checkpoint", checkpoint_file,
-            "--quiet"
+            "--verbose"
         ]
 
         print(f"Running resume job: {' '.join(cmd2)}")
@@ -327,7 +329,7 @@ def test_batch_processing():
             "--batch_size", "4",
             "--checkpoint_frequency", "7",
             "--checkpoint_path", checkpoint_file,
-            "--quiet"
+            "--verbose"
         ]
 
         print(f"Running batch test: {' '.join(cmd)}")
@@ -381,14 +383,10 @@ def main():
     results = {}
 
     for test_name, test_func in tests:
-        try:
-            print(f"\n{'='*20} {test_name} {'='*20}")
-            results[test_name] = test_func()
-            status = "PASSED" if results[test_name] else "FAILED"
-            print(f"{test_name}: {status}")
-        except Exception as e:
-            print(f"{test_name}: ERROR - {str(e)}")
-            results[test_name] = False
+        print(f"\n{'='*20} {test_name} {'='*20}")
+        results[test_name] = test_func()
+        status = "PASSED" if results[test_name] else "FAILED"
+        print(f"{test_name}: {status}")
 
     # Summary
     print(f"\n{'='*50}")
