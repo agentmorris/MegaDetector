@@ -141,9 +141,6 @@ class MDTestOptions:
         #: Number of cores to use for multi-CPU inference tests
         self.n_cores_for_multiprocessing_tests = 2
 
-        #: Number of cores to use for multi-CPU video tests
-        self.n_cores_for_video_tests = 2
-
         #: Batch size to use when testing batches of size > 1
         self.alternative_batch_size = 3
 
@@ -1062,7 +1059,6 @@ def run_python_tests(options):
         video_options.input_video_file = os.path.join(options.scratch_dir,options.test_videos[0])
         video_options.output_json_file = os.path.join(options.scratch_dir,'single_video_output.json')
         video_options.frame_sample = 10
-        video_options.n_cores = options.n_cores_for_video_tests
         video_options.detector_options = copy(options.detector_options)
 
         _ = process_videos(video_options)
@@ -1086,7 +1082,6 @@ def run_python_tests(options):
         video_options.output_video_file = None
         video_options.recursive = True
         video_options.verbose = True
-        video_options.n_cores = options.n_cores_for_video_tests
         video_options.json_confidence_threshold = 0.05
         video_options.time_sample = 2
         video_options.detector_options = copy(options.detector_options)
@@ -1591,9 +1586,9 @@ def run_cli_tests(options):
 
         cmd += ' "{}" "{}"'.format(options.default_model,options.scratch_dir)
         cmd += ' --output_json_file "{}"'.format(video_inference_output_file)
-        cmd += ' --n_cores {}'.format(options.n_cores_for_video_tests)
         cmd += ' --frame_sample 4'
         cmd += ' --verbose'
+        cmd += ' --recursive'
         cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
 
         cmd_results = execute_and_print(cmd)

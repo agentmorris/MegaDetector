@@ -245,11 +245,11 @@ def process_videos(options):
 
         # ...was this a failed video?
 
+        im['frames_processed'] = sorted(im['frames_processed'])
+
         video_list_md_format.append(im)
 
     # ...for each video
-
-    im['frames_processed'] = sorted(im['frames_processed'])
 
     run_detector_batch.write_results_to_file(
         video_list_md_format,
