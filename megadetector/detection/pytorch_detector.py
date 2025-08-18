@@ -883,42 +883,15 @@ class PTDetector:
         if verbose:
             print(f'Using PyTorch version {torch.__version__}')
 
-        # There are two very slightly different ways to load the model, (1) using the
-        # map_location=device parameter to torch.load and (2) calling .to(device) after
-        # loading the model.  The former is what we did for a zillion years, but was not
-        # supported on Apple silicon at of 2024.09.  Switching to the latter causes
-        # very slight changes to the output, which always make me nervous, so I'm not
-        # doing a wholesale swap just yet.  Instead, when running in "classic" compatibility
-        # mode, we'll only use map_location on M1 hardware, where at least at some point
-        # there was not a choice.
-        if False:
-            if 'classic' in compatibility_mode:
-                use_map_location = (device != 'mps')
+        try:
+            checkpoint = torch.load(model_pt_path, map_location=device, weights_only=False)
+        # For a transitional period, we want to support torch 1.1x, where the weights_only
+        # parameter doesn't exist
+        except Exception as e:
+            if "'weights_only' is an invalid keyword" in str(e):
+                checkpoint = torch.load(model_pt_path, map_location=device)
             else:
-                use_map_location = False
-        else:
-            use_map_location = True
-
-        if use_map_location:
-            try:
-                checkpoint = torch.load(model_pt_path, map_location=device, weights_only=False)
-            # For a transitional period, we want to support torch 1.1x, where the weights_only
-            # parameter doesn't exist
-            except Exception as e:
-                if "'weights_only' is an invalid keyword" in str(e):
-                    checkpoint = torch.load(model_pt_path, map_location=device)
-                else:
-                    raise
-        else:
-            try:
-                checkpoint = torch.load(model_pt_path, weights_only=False)
-            # For a transitional period, we want to support torch 1.1x, where the weights_only
-            # parameter doesn't exist
-            except Exception as e:
-                if "'weights_only' is an invalid keyword" in str(e):
-                    checkpoint = torch.load(model_pt_path)
-                else:
-                    raise
+                raise
 
         # Compatibility fix that allows us to load older YOLOv5 models with
         # newer versions of YOLOv5/PT
@@ -927,10 +900,9 @@ class PTDetector:
             if t is torch.nn.Upsample and not hasattr(m, 'recompute_scale_factor'):
                 m.recompute_scale_factor = None
 
-        if use_map_location:
-            model = checkpoint['model'].float().fuse().eval()
-        else:
-            model = checkpoint['model'].float().fuse().eval().to(device)
+        # Calling .to(device) should no longer be necessary now that we're using map_location=device
+        # model = checkpoint['model'].float().fuse().eval().to(device)
+        model = checkpoint['model'].float().fuse().eval()
 
         return model
 
