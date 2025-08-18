@@ -36,6 +36,7 @@ from tqdm import tqdm
 from megadetector.utils.ct_utils import is_iterable
 from megadetector.utils.ct_utils import make_test_folder
 from megadetector.utils.ct_utils import sort_dictionary_by_value
+from megadetector.utils.ct_utils import environment_is_wsl
 
 # Should all be lower-case
 IMG_EXTENSIONS = ('.jpg', '.jpeg', '.gif', '.png', '.tif', '.tiff', '.bmp')
@@ -622,21 +623,7 @@ def is_executable(filename):
     return which(filename) is not None
 
 
-#%% Platform-independent way to open files in their associated application
-
-def environment_is_wsl():
-    """
-    Determines whether we're running in WSL.
-
-    Returns:
-        True if we're running in WSL.
-    """
-
-    if sys.platform not in ('linux','posix'):
-        return False
-    platform_string = ' '.join(platform.uname()).lower()
-    return 'microsoft' in platform_string and 'wsl' in platform_string
-
+#%% WSL utilities
 
 def wsl_path_to_windows_path(filename, failure_behavior='none'):
     r"""
@@ -730,6 +717,8 @@ def windows_path_to_wsl_path(filename, failure_behavior='none'):
 
 # ...def window_path_to_wsl_path(...)
 
+
+#%% Platform-independent file openers
 
 def open_file_in_chrome(filename):
     """

@@ -27,6 +27,7 @@ from megadetector.detection.run_detector import \
     get_detector_version_from_model_file, \
     known_models
 from megadetector.utils.ct_utils import parse_bool_string
+from megadetector.utils.ct_utils import is_running_in_gha
 from megadetector.utils import ct_utils
 import torchvision
 
@@ -840,10 +841,16 @@ class PTDetector:
                 self.device = torch.device('cuda:0')
             try:
                 if torch.backends.mps.is_built and torch.backends.mps.is_available():
-                    print('Using MPS device')
-                    self.device = 'mps'
+                    # MPS inference fails on GitHub runners as of 2025.08.  This is
+                    # independent of model size.  So, we disable MPS when running in GHA.
+                    if is_running_in_gha():
+                        print('GitHub actions detected, bypassing MPS backend')
+                    else:
+                        print('Using MPS device')
+                        self.device = 'mps'
             except AttributeError:
                 pass
+
         try:
             self.model = PTDetector._load_model(model_path,
                                                 device=self.device,
@@ -876,18 +883,10 @@ class PTDetector:
         if verbose:
             print(f'Using PyTorch version {torch.__version__}')
 
-        # There are two very slightly different ways to load the model, (1) using the
-        # map_location=device parameter to torch.load and (2) calling .to(device) after
-        # loading the model.  The former is what we did for a zillion years, but is not
-        # supported on Apple silicon at of 2024.09.  Switching to the latter causes
-        # very slight changes to the output, which always make me nervous, so I'm not
-        # doing a wholesale swap just yet.  Instead, when running in "classic" compatibility
-        # mode, we'll only use map_location on M1 hardware, where at least at some point
-        # there was not a choice.
-        if 'classic' in compatibility_mode:
-            use_map_location = (device != 'mps')
-        else:
-            use_map_location = False
+        # I get quirky errors when loading YOLOv5 models on MPS hardware using
+        # map_location, but this is the recommended method, so I'm using it everywhere
+        # other than MPS devices.
+        use_map_location = (device != 'mps')
 
         if use_map_location:
             try:
@@ -917,10 +916,9 @@ class PTDetector:
             if t is torch.nn.Upsample and not hasattr(m, 'recompute_scale_factor'):
                 m.recompute_scale_factor = None
 
-        if use_map_location:
-            model = checkpoint['model'].float().fuse().eval()
-        else:
-            model = checkpoint['model'].float().fuse().eval().to(device)
+        # Calling .to(device) should no longer be necessary now that we're using map_location=device
+        # model = checkpoint['model'].float().fuse().eval().to(device)
+        model = checkpoint['model'].float().fuse().eval()
 
         return model
 

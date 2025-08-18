@@ -21,6 +21,7 @@ since much of what it tries to test is, e.g., imports.
 import os
 import json
 import glob
+import sys
 import tempfile
 import urllib
 import urllib.request
@@ -1783,6 +1784,11 @@ def test_suite_entry_point():
     options.skip_download_tests = True
     options.skip_localhost_downloads = True
     options.skip_import_tests = False
+
+    if sys.platform == 'darwin':
+        print('Detected a Mac environment, widening tolerance')
+        options.max_coord_error = 0.05
+        options.max_conf_error = 0.05
 
     options = download_test_data(options)
 

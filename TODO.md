@@ -506,17 +506,6 @@ E0
 !maintenance
 
 
-## Add Mac testing to GitHub actions
-
-The GitHub actions integration in the MD repo currently tests on Windows and Linux.  Add MacOS support.  The tests are [already in place](https://github.com/agentmorris/MegaDetector/actions/workflows/pytest-workflow-macos.yml); they were failing at some point, and I disabled them, but I have tested locally on Macs and I don't see any reason not to re-enable them.  If they fail, keep this issue in place and bump the effort level.
-
-P1
-
-E0
-
-!testing
-
-
 ## Graceful handling of augmentation for MDv1000-cedar
 
 MDv1000-cedar does not support image augmentation.  It's not important to add it; the entire point of MDv1000-cedar is for compute-constrained scenarios.  Right now, though, it crashes unhelpfully.  Handle this more gracefully.
