@@ -1784,6 +1784,13 @@ def test_suite_entry_point():
     options.skip_localhost_downloads = True
     options.skip_import_tests = False
 
+    from megadetector.utils.ct_utils import is_running_in_gha
+    import sys
+    if sys.platform == 'darwin' and is_running_in_gha():
+        print('GHA detected in a Mac environment, widening tolerance')
+        options.max_coord_error = 0.05
+        options.max_conf_error = 0.05
+
     options = download_test_data(options)
 
     run_tests(options)

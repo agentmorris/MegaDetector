@@ -16,6 +16,8 @@ import builtins
 import datetime
 import tempfile
 import shutil
+import platform
+import sys
 import uuid
 
 import jsonpickle
@@ -1060,7 +1062,7 @@ def is_sphinx_build():
     Determine whether we are running in the context of our Sphinx build.
 
     Returns:
-        bool: whether we're running a Sphinx build
+        bool: True if we're running a Sphinx build
     """
 
     is_sphinx = hasattr(builtins, '__sphinx_build__')
@@ -1072,7 +1074,7 @@ def is_running_in_gha():
     Determine whether we are running on a GitHub Actions runner.
 
     Returns:
-        bool: whether we're running in a GHA runner
+        bool: True if we're running in a GHA runner
     """
 
     running_in_gha = False
@@ -1087,6 +1089,21 @@ def is_running_in_gha():
             running_in_gha = True
 
     return running_in_gha
+
+
+def environment_is_wsl():
+    """
+    Determines whether we're running in WSL.
+
+    Returns:
+        True if we're running in WSL
+    """
+
+    if sys.platform not in ('linux','posix'):
+        return False
+    platform_string = ' '.join(platform.uname()).lower()
+    return 'microsoft' in platform_string and 'wsl' in platform_string
+
 
 
 #%% Tests
