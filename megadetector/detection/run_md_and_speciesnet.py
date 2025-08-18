@@ -31,6 +31,7 @@ from megadetector.utils.ct_utils import round_float
 from megadetector.utils.ct_utils import write_json
 from megadetector.utils.ct_utils import make_temp_folder
 from megadetector.utils.ct_utils import is_list_sorted
+from megadetector.utils.ct_utils import is_sphinx_build
 from megadetector.utils import path_utils
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.postprocessing.validate_batch_results import \
@@ -1125,7 +1126,8 @@ def main():
 
     if 'speciesnet' not in sys.modules:
         print('It looks like the speciesnet package is not available, try "pip install speciesnet"')
-        sys.exit(-1)
+        if not is_sphinx_build():
+            sys.exit(-1)
 
     parser = argparse.ArgumentParser(
         description='Run MegaDetector and SpeciesNet on a folder of images/videos',

@@ -22,10 +22,15 @@ from megadetector.detection import run_detector_batch
 from megadetector.utils.ct_utils import args_to_object
 from megadetector.utils.ct_utils import dict_to_kvp_list, parse_kvp_list
 from megadetector.detection.video_utils import _filename_to_frame_number
+from megadetector.detection.video_utils import find_videos
 from megadetector.detection.video_utils import run_callback_on_frames_for_folder
 from megadetector.detection.run_detector import load_detector
 from megadetector.postprocessing.validate_batch_results import \
         ValidateBatchResultsOptions, validate_batch_results
+
+# Notes to self re: upcoming work on checkpointing
+from megadetector.utils.ct_utils import split_list_into_fixed_size_chunks # noqa
+from megadetector.detection.run_detector_batch import write_checkpoint, load_checkpoint # noqa
 
 
 #%% Classes
@@ -68,16 +73,6 @@ class ProcessVideoOptions:
         #: Sample frames every N seconds.  Mutually exclusive with [frame_sample]
         self.time_sample = None
 
-        #: Number of workers to use for parallelization; set to <= 1 to disable parallelization
-        self.n_cores = 1
-
-        #: For debugging only, stop processing after a certain number of frames.
-        self.debug_max_frames = -1
-
-        #: File containing non-standard categories, typically only used if you're running a non-MD
-        #: detector.
-        self.class_mapping_filename = None
-
         #: Run the model at this image size (don't mess with this unless you know what you're
         #: getting into)... if you just want to pass smaller frames to MD, use max_width
         self.image_size = None
@@ -91,6 +86,17 @@ class ProcessVideoOptions:
 
         #: Detector-specific options
         self.detector_options = None
+
+        #: Write a checkpoint file (to resume processing later) every N videos;
+        #: set to -1 (default) to disable checkpointing
+        self.checkpoint_frequency = -1
+
+        #: Path to checkpoint file; None (default) for auto-generation based on output filename
+        self.checkpoint_path = None
+
+        #: Resume from a checkpoint file, or "auto" to use the most recent checkpoint in the
+        #: output directory
+        self.resume_from_checkpoint = None
 
 # ...class ProcessVideoOptions
 
@@ -137,7 +143,7 @@ def process_videos(options):
         every_n_frames_param = options.frame_sample
 
     if options.verbose:
-        print('Running MegaDetector for folder {}'.format(options.input_video_file))
+        print('Processing videos from input source {}'.format(options.input_video_file))
 
     detector = load_detector(options.model_file,detector_options=options.detector_options)
 
@@ -145,7 +151,9 @@ def process_videos(options):
         return detector.generate_detections_one_image(image_np,
                                                       image_id,
                                                       detection_threshold=options.json_confidence_threshold,
-                                                      augment=options.augment)
+                                                      augment=options.augment,
+                                                      image_size=options.image_size,
+                                                      verbose=options.verbose)
 
     """
     [md_results] will be dict with keys 'video_filenames' (list of str), 'frame_rates' (list of floats),
@@ -164,7 +172,8 @@ def process_videos(options):
                                                        frame_callback=frame_callback,
                                                        every_n_frames=every_n_frames_param,
                                                        verbose=options.verbose,
-                                                       files_to_process_relative=[video_bn])
+                                                       files_to_process_relative=[video_bn],
+                                                       allow_empty_videos=options.allow_empty_videos)
 
     else:
 
@@ -172,10 +181,15 @@ def process_videos(options):
             '{} is neither a file nor a folder'.format(options.input_video_file)
 
         video_folder = options.input_video_file
+
         md_results = run_callback_on_frames_for_folder(input_video_folder=options.input_video_file,
                                                        frame_callback=frame_callback,
                                                        every_n_frames=every_n_frames_param,
-                                                       verbose=options.verbose)
+                                                       verbose=options.verbose,
+                                                       recursive=options.recursive,
+                                                       allow_empty_videos=options.allow_empty_videos)
+
+    # ...whether we're processing a file or a folder
 
     print('Finished running MD on videos')
 
@@ -231,11 +245,11 @@ def process_videos(options):
 
         # ...was this a failed video?
 
+        im['frames_processed'] = sorted(im['frames_processed'])
+
         video_list_md_format.append(im)
 
     # ...for each video
-
-    im['frames_processed'] = sorted(im['frames_processed'])
 
     run_detector_batch.write_results_to_file(
         video_list_md_format,
@@ -276,14 +290,8 @@ def options_to_command(options):
         cmd += ' --output_json_file' + ' "' + options.output_json_file + '"'
     if options.json_confidence_threshold is not None:
         cmd += ' --json_confidence_threshold ' + str(options.json_confidence_threshold)
-    if options.n_cores is not None:
-        cmd += ' --n_cores ' + str(options.n_cores)
     if options.frame_sample is not None:
         cmd += ' --frame_sample ' + str(options.frame_sample)
-    if options.debug_max_frames is not None:
-        cmd += ' --debug_max_frames ' + str(options.debug_max_frames)
-    if options.class_mapping_filename is not None:
-        cmd += ' --class_mapping_filename ' + str(options.class_mapping_filename)
     if options.verbose:
         cmd += ' --verbose'
     if options.detector_options is not None and len(options.detector_options) > 0:
@@ -384,13 +392,6 @@ def main(): # noqa
                             'below this threshold (default {})'.format(
                                 default_options.json_confidence_threshold))
 
-    parser.add_argument('--n_cores', type=int,
-                        default=default_options.n_cores,
-                        help='Number of cores to use for frame separation and detection. '\
-                            'If using a GPU, this option will be respected for frame separation but '\
-                            'ignored for detection.  Only relevant to frame separation when processing '\
-                            'a folder.  Default {}.'.format(default_options.n_cores))
-
     parser.add_argument('--frame_sample', type=int,
                         default=None, help='process every Nth frame (defaults to every frame), mutually exclusive '\
                             'with --time_sample.')
@@ -399,17 +400,6 @@ def main(): # noqa
                         default=None, help='process frames every N seconds; this is converted to a '\
                             'frame sampling rate, so it may not be exactly the requested interval in seconds. '\
                             'mutually exclusive with --frame_sample')
-
-    parser.add_argument('--debug_max_frames', type=int,
-                        default=-1, help='Trim to N frames for debugging (impacts model execution, '\
-                            'not frame rendering)')
-
-    parser.add_argument('--class_mapping_filename',
-                        type=str,
-                        default=None, help='Use a non-default class mapping, supplied in a .json file '\
-                            'with a dictionary mapping int-strings to strings.  This will also disable '\
-                            'the addition of "1" to all category IDs, so your class mapping should start '\
-                            'at zero.')
 
     parser.add_argument('--verbose', action='store_true',
                         help='Enable additional debug output')
@@ -434,6 +424,28 @@ def main(): # noqa
         metavar='KEY=VALUE',
         default='',
         help='Detector-specific options, as a space-separated list of key-value pairs')
+
+    parser.add_argument(
+        '--checkpoint_frequency',
+        type=int,
+        default=default_options.checkpoint_frequency,
+        help='Write a checkpoint file (to resume processing later) every N videos; ' + \
+             'set to -1 to disable checkpointing (default {})'.format(
+                 default_options.checkpoint_frequency))
+
+    parser.add_argument(
+        '--checkpoint_path',
+        type=str,
+        default=None,
+        help='Path to checkpoint file; defaults to a file in the same directory ' + \
+             'as the output file')
+
+    parser.add_argument(
+        '--resume_from_checkpoint',
+        type=str,
+        default=None,
+        help='Resume from a specific checkpoint file, or "auto" to resume from the ' + \
+             'most recent checkpoint in the output directory')
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()

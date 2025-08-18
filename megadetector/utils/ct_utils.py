@@ -1053,6 +1053,20 @@ def make_test_folder(subfolder=None):
                             append_guid=True)
 
 
+#%% Environment utilities
+
+def is_sphinx_build():
+    """
+    Determine whether we are running in the context of our Sphinx build.
+
+    Returns:
+        bool: whether we're running a Sphinx build.
+    """
+
+    is_sphinx = hasattr(builtins, '__sphinx_build__')
+    return is_sphinx
+
+
 #%% Tests
 
 def test_write_json():
