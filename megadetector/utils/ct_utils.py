@@ -1064,7 +1064,7 @@ def is_sphinx_build():
     """
 
     is_sphinx = hasattr(builtins, '__sphinx_build__')
-    return builtins
+    return is_sphinx
 
 
 #%% Tests
