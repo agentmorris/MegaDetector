@@ -587,7 +587,7 @@ def separate_detections_into_folders(options):
             # token = tokens[0]
             for token in tokens:
                 subtokens = token.split('=')
-                assert len(subtokens) == 2 and is_float(subtokens[1]), \
+                assert (len(subtokens) == 2) and (is_float(subtokens[1])), \
                     'Illegal classification threshold {}'.format(token)
                 classification_thresholds[subtokens[0]] = float(subtokens[1])
 

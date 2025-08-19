@@ -809,8 +809,9 @@ def _run_detection_step(source_folder: str,
 
     files_to_merge = []
 
-    # Process images if any
+    # Process images if necessary
     if len(image_files) > 0:
+
         print('Running MegaDetector on {} images...'.format(len(image_files)))
 
         image_results = load_and_run_detector_batch(
@@ -842,8 +843,11 @@ def _run_detection_step(source_folder: str,
         print('Image detection results written to {}'.format(image_output_file))
         files_to_merge.append(image_output_file)
 
-    # Process videos if any
+    # ...if we had images to process
+
+    # Process videos if necessary
     if len(video_files) > 0:
+
         print('Running MegaDetector on {} videos...'.format(len(video_files)))
 
         # Set up video processing options
@@ -854,12 +858,15 @@ def _run_detection_step(source_folder: str,
         video_options.json_confidence_threshold = detection_confidence_threshold
         video_options.frame_sample = frame_sample
         video_options.time_sample = time_sample
+        video_options.recursive = True
 
         # Process videos
         process_videos(video_options)
 
         print('Video detection results written to {}'.format(video_options.output_json_file))
         files_to_merge.append(video_options.output_json_file)
+
+    # ...if we had videos to process
 
     # Merge results if we have both images and videos
     if len(files_to_merge) > 1:
@@ -953,7 +960,7 @@ def _run_classification_step(detector_results_file: str,
 
     # This will block every time the queue reaches its maximum depth, so for
     # very small jobs, this will not be a useful progress bar.
-    with tqdm(total=len(images)) as pbar:
+    with tqdm(total=len(images),desc='Classification') as pbar:
         for image_data in images:
             image_queue.put(image_data)
             pbar.update()
@@ -1107,6 +1114,8 @@ def _run_classification_step(detector_results_file: str,
         category_state.classification_categories
     detector_results['classification_category_descriptions'] = \
         category_state.classification_category_descriptions
+
+    print('Writing output file')
 
     # Write results
     write_json(merged_results_file, detector_results)

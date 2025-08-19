@@ -27,6 +27,7 @@ from megadetector.visualization import visualization_utils as vis_utils
 
 default_fourcc = 'h264'
 
+video_progress_bar_description = 'Processing video'
 
 #%% Path utilities
 
@@ -418,7 +419,7 @@ def run_callback_on_frames_for_folder(input_video_folder,
     # Process each video
 
     # video_fn_abs = input_files_full_paths[0]
-    for video_fn_abs in tqdm(input_files_full_paths):
+    for video_fn_abs in tqdm(input_files_full_paths,desc=video_progress_bar_description):
 
         video_filename_relative = os.path.relpath(video_fn_abs,input_video_folder)
         video_filename_relative = video_filename_relative.replace('\\','/')
@@ -870,7 +871,7 @@ def video_folder_to_frames(input_folder,
         # For each video
         #
         # input_fn_relative = input_files_relative_paths[0]
-        for input_fn_relative in tqdm(input_files_relative_paths):
+        for input_fn_relative in tqdm(input_files_relative_paths,desc='Video to frames'):
 
             # If frames_to_extract is a dict, get the specific frames for this video
             if isinstance(frames_to_extract, dict):
@@ -918,7 +919,7 @@ def video_folder_to_frames(input_folder,
                                  for relative_fn in input_files_relative_paths]
 
                 results = list(tqdm(pool.imap(_video_to_frames_with_per_video_frames, args_for_pool),
-                                    total=len(args_for_pool)))
+                                    total=len(args_for_pool),desc='Video to frames'))
 
             else:
 
@@ -933,7 +934,7 @@ def video_folder_to_frames(input_folder,
                                                      frames_to_extract=frames_to_extract,
                                                      allow_empty_videos=allow_empty_videos)
                 results = list(tqdm(pool.imap(process_video_with_options, input_files_relative_paths),
-                                    total=len(input_files_relative_paths)))
+                                    total=len(input_files_relative_paths),desc='Video to frames'))
 
             # ...if we need to pass different frames for each video
 
