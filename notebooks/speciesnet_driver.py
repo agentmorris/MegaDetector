@@ -17,8 +17,8 @@ import json
 import stat
 
 from megadetector.utils.path_utils import insert_before_extension
-from megadetector.utils.wi_utils import generate_md_results_from_predictions_json
-from megadetector.utils.wi_utils import generate_instances_json_from_folder
+from megadetector.utils.wi_taxonomy_utils import generate_md_results_from_predictions_json
+from megadetector.utils.wi_taxonomy_utils import generate_instances_json_from_folder
 from megadetector.utils.ct_utils import split_list_into_fixed_size_chunks
 
 import clipboard # noqa
@@ -124,7 +124,7 @@ else:
 
 #%% Possibly split here into multiple batches
 
-from megadetector.utils.wi_utils import split_instances_into_n_batches
+from megadetector.utils.wi_taxonomy_utils import split_instances_into_n_batches
 
 if n_batches > 1:
 
@@ -147,7 +147,7 @@ detector_cmd = '\n\n'.join(detector_commands)
 
 #%% Validate detector results
 
-from megadetector.utils.wi_utils import validate_predictions_file
+from megadetector.utils.wi_taxonomy_utils import validate_predictions_file
 _ = validate_predictions_file(detector_output_file_modular,instances_json)
 
 
@@ -249,7 +249,7 @@ classifier_cmd = '\n\n'.join([classifier_init_cmd,classifier_script_file])
 
 #%% Merge classification results batches
 
-from megadetector.utils.wi_utils import merge_prediction_json_files
+from megadetector.utils.wi_taxonomy_utils import merge_prediction_json_files
 
 merge_prediction_json_files(input_prediction_files=chunk_prediction_files,
                             output_prediction_file=classifier_output_file_modular)
@@ -257,7 +257,7 @@ merge_prediction_json_files(input_prediction_files=chunk_prediction_files,
 
 #%% Validate classification results
 
-from megadetector.utils.wi_utils import validate_predictions_file
+from megadetector.utils.wi_taxonomy_utils import validate_predictions_file
 _ = validate_predictions_file(classifier_output_file_modular,instances_json)
 
 
@@ -283,13 +283,13 @@ ensemble_cmd = '\n\n'.join(ensemble_commands)
 
 #%% Validate ensemble results
 
-from megadetector.utils.wi_utils import validate_predictions_file
+from megadetector.utils.wi_taxonomy_utils import validate_predictions_file
 _ = validate_predictions_file(ensemble_output_file_modular,instances_json)
 
 
 #%% Generate a list of corrections made by geofencing, and counts
 
-from megadetector.utils.wi_utils import find_geofence_adjustments, \
+from megadetector.utils.wi_taxonomy_utils import find_geofence_adjustments, \
     generate_geofence_adjustment_html_summary
 
 rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular,
@@ -346,7 +346,7 @@ print('Loaded results for {} images with {} failures'.format(
 
 #%% Possibly apply a custom species list
 
-from megadetector.utils.wi_utils import restrict_to_taxa_list
+from megadetector.utils.wi_taxonomy_utils import restrict_to_taxa_list
 
 if custom_taxa_list is not None:
 

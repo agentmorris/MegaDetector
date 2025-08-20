@@ -42,7 +42,7 @@ import pandas as pd
 
 from copy import deepcopy
 
-from megadetector.utils.wi_utils import load_md_or_speciesnet_file
+from megadetector.utils.wi_taxonomy_utils import load_md_or_speciesnet_file
 from megadetector.utils.ct_utils import get_max_conf
 from megadetector.utils.ct_utils import is_list_sorted
 from megadetector.detection.run_detector import \

@@ -850,6 +850,24 @@ def isnan(v):
         return False
 
 
+def compare_values_nan_equal(v0,v1):
+    """
+    Utility function for comparing two values when we want to return True if both
+    values are NaN.
+
+    Args:
+        v0 (object): the first value to compare
+        v1 (object): the second value to compare
+
+    Returns:
+        bool: True if v0 == v1, or if both v0 and v1 are NaN
+    """
+
+    if isinstance(v0,float) and isinstance(v1,float) and np.isnan(v0) and np.isnan(v1):
+        return True
+    return v0 == v1
+
+
 def sets_overlap(set1, set2):
     """
     Determines whether two sets overlap.

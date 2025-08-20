@@ -10,7 +10,7 @@ Converts the MD .json format to the WI predictions.json format.
 
 import sys
 import argparse
-from megadetector.utils.wi_utils import generate_predictions_json_from_md_results
+from megadetector.utils.wi_taxonomy_utils import generate_predictions_json_from_md_results
 
 
 #%% Command-line driver

@@ -24,7 +24,7 @@ from collections.abc import Mapping
 import pandas as pd
 
 from megadetector.utils import ct_utils
-from megadetector.utils.wi_utils import load_md_or_speciesnet_file
+from megadetector.utils.wi_taxonomy_utils import load_md_or_speciesnet_file
 
 
 #%% Functions for loading .json results into a Pandas DataFrame, and writing back to .json

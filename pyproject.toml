@@ -154,7 +154,8 @@ convention = "google"
 "megadetector/detection/run_inference_with_yolov5_val.py" = ["E501"]
 "megadetector/postprocessing/compare_batch_results.py" = ["E501"]
 "megadetector/postprocessing/postprocess_batch_results.py" = ["E501"]
-"megadetector/utils/wi_utils.py" = ["E501"]
+"megadetector/utils/wi_platform_utils.py" = ["E501"]
+"megadetector/utils/wi_taxonomy_utils.py" = ["E501"]
 
 # This file has lots of tests that open a file and does something with it
 # on the same line.
