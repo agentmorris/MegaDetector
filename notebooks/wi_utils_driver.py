@@ -6,60 +6,58 @@ Utility cells to work with the wi_taxonomy_utils module.
 
 """
 
-#%% Shared cell to initialize geofencing and taxonomy information
+#%% Imports and constants
 
-from megadetector.utils.wi_taxonomy_utils import species_allowed_in_country # noqa
-from megadetector.utils.wi_taxonomy_utils import initialize_geofencing, initialize_taxonomy_info # noqa
-from megadetector.utils.wi_taxonomy_utils import _species_string_to_canonical_species_string # noqa
-from megadetector.utils.wi_taxonomy_utils import generate_csv_rows_for_species # noqa
-from megadetector.utils.wi_taxonomy_utils import _generate_csv_rows_to_block_all_countries_except # noqa
-
-from megadetector.utils.wi_taxonomy_utils import taxonomy_string_to_geofencing_rules # noqa
-from megadetector.utils.wi_taxonomy_utils import taxonomy_string_to_taxonomy_info # noqa
-from megadetector.utils.wi_taxonomy_utils import common_name_to_taxonomy_info # noqa
-from megadetector.utils.wi_taxonomy_utils import binomial_name_to_taxonomy_info # noqa
-from megadetector.utils.wi_taxonomy_utils import country_to_country_code # noqa
-from megadetector.utils.wi_taxonomy_utils import country_code_to_country # noqa
+import os
 
 model_base = os.path.expanduser('~/models/speciesnet')
 geofencing_file = os.path.join(model_base,'crop','geofence_release.2025.02.27.0702.json')
 country_code_file = os.path.join(model_base,'country-codes.csv')
-# encoding = 'cp1252'; taxonomy_file = r'g:\temp\taxonomy_mapping-' + encoding + '.json'
-encoding = None; taxonomy_file = os.path.join(model_base,'taxonomy_mapping.json')
+taxonomy_file = os.path.join(model_base,'crop','taxonomy_release.txt')
 
-initialize_geofencing(geofencing_file, country_code_file, force_init=True)
-initialize_taxonomy_info(taxonomy_file, force_init=True, encoding=encoding)
+for fn in [geofencing_file,country_code_file,taxonomy_file]:
+    assert os.path.isfile(fn)
 
-# from megadetector.utils.path_utils import open_file; open_file(geofencing_file)
+
+#%% Initialize taxonomy functions
+
+from megadetector.utils.wi_taxonomy_utils import TaxonomyHandler
+
+taxonomy_handler = TaxonomyHandler(taxonomy_file=taxonomy_file,
+                                   geofencing_file=geofencing_file,
+                                   country_code_file=country_code_file)
 
 
 #%% Generate a block list
 
+from megadetector.utils.wi_taxonomy_utils import taxonomy_info_to_taxonomy_string
+
 taxon_name = 'cercopithecidae'
-taxonomy_info = binomial_name_to_taxonomy_info[taxon_name]
+taxonomy_info = taxonomy_handler.binomial_name_to_taxonomy_info[taxon_name]
 taxonomy_string_short = taxonomy_info_to_taxonomy_string(taxonomy_info)
 assert len(taxonomy_string_short.split(';')) == 5
 
 block_list = 'ATG,BHS,BRB,BLZ,CAN,CRI,CUB,DMA,DOM,SLV,GRD,GTM,HTI,HND,JAM,' + \
-                'MEX,NIC,PAN,KNA,LCA,VCT,TTO,USA,ARG,BOL,BRA,CHL,COL,ECU,GUY,PRY,PER,' + \
-                'SUR,URY,VEN,ALB,AND,ARM,AUT,AZE,BLR,BEL,BIH,BGR,HRV,CYP,CZE,DNK,EST,FIN,' + \
-                'FRA,GEO,DEU,GRC,HUN,ISL,IRL,ITA,KAZ,XKX,LVA,LIE,LTU,LUX,MLT,MDA,MCO,MNE,' + \
-                'NLD,MKD,NOR,POL,PRT,ROU,RUS,SMR,SRB,SVK,SVN,ESP,SWE,CHE,TUR,UKR,GBR,VAT,AUS'
+             'MEX,NIC,PAN,KNA,LCA,VCT,TTO,USA,ARG,BOL,BRA,CHL,COL,ECU,GUY,PRY,PER,' + \
+             'SUR,URY,VEN,ALB,AND,ARM,AUT,AZE,BLR,BEL,BIH,BGR,HRV,CYP,CZE,DNK,EST,FIN,' + \
+             'FRA,GEO,DEU,GRC,HUN,ISL,IRL,ITA,KAZ,XKX,LVA,LIE,LTU,LUX,MLT,MDA,MCO,MNE,' + \
+             'NLD,MKD,NOR,POL,PRT,ROU,RUS,SMR,SRB,SVK,SVN,ESP,SWE,CHE,TUR,UKR,GBR,VAT,AUS'
 
-rows = generate_csv_rows_for_species(species_string=taxonomy_string_short,
-                                        allow_countries=None,
-                                        block_countries=block_list,
-                                        allow_states=None,
-                                        block_states=None)
+rows = taxonomy_handler.generate_csv_rows_for_species(species_string=taxonomy_string_short,
+                                                      allow_countries=None,
+                                                      block_countries=block_list,
+                                                      allow_states=None,
+                                                      block_states=None)
 
 # import clipboard; clipboard.copy('\n'.join(rows))
-print(rows)
+for s in rows:
+    print(s)
 
 
 #%% Look up taxonomy info for a common name
 
 common_name = 'domestic horse'
-info = common_name_to_taxonomy_info[common_name]
+info = taxonomy_handler.common_name_to_taxonomy_info[common_name]
 s = taxonomy_info_to_taxonomy_string(info,include_taxon_id_and_common_name=True)
 print(s)
 
@@ -68,46 +66,59 @@ print(s)
 
 block_except_list = 'ALB,AND,ARM,AUT,AZE,BEL,BGR,BIH,BLR,CHE,CYP,CZE,DEU,DNK,ESP,EST,FIN,FRA,GBR,GEO,GRC,HRV,HUN,IRL,IRN,IRQ,ISL,ISR,ITA,KAZ,LIE,LTU,LUX,LVA,MDA,MKD,MLT,MNE,NLD,NOR,POL,PRT,ROU,RUS,SMR,SRB,SVK,SVN,SWE,TUR,UKR,UZB'
 species = 'eurasian badger'
-species_string = _species_string_to_canonical_species_string(species)
-rows = _generate_csv_rows_to_block_all_countries_except(species_string,block_except_list)
+species_string = taxonomy_handler.species_string_to_canonical_species_string(species)
+rows = taxonomy_handler.generate_csv_rows_to_block_all_countries_except(species_string,block_except_list)
 
 # import clipboard; clipboard.copy('\n'.join(rows))
-print(rows)
+
+for s in rows:
+    print(s)
 
 
 #%% Generate an allow-list
 
 taxon_name = 'potoroidae'
-taxonomy_info = binomial_name_to_taxonomy_info[taxon_name]
+taxonomy_info = taxonomy_handler.binomial_name_to_taxonomy_info[taxon_name]
 taxonomy_string_short = taxonomy_info_to_taxonomy_string(taxonomy_info)
 assert len(taxonomy_string_short.split(';')) == 5
 
-rows = generate_csv_rows_for_species(species_string=taxonomy_string_short,
-                                        allow_countries=['AUS'],
-                                        block_countries=None,
-                                        allow_states=None,
-                                        block_states=None)
+rows = taxonomy_handler.generate_csv_rows_for_species(species_string=taxonomy_string_short,
+                                                     allow_countries=['AUS'],
+                                                     block_countries=None,
+                                                     allow_states=None,
+                                                     block_states=None)
 
 # import clipboard; clipboard.copy('\n'.join(rows))
-print(rows)
+
+for s in rows:
+    print(s)
 
 
-#%% Test the effects of geofence changes
+#%% Determine whether a species is allowed in a country
 
-species = 'canis lupus dingo'
+taxon = 'canis lupus dingo'
 country = 'guatemala'
-species_allowed_in_country(species,country,state=None,return_status=False)
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
+taxonomy_string = taxonomy_handler.species_string_to_canonical_species_string(taxon)
+taxonomy_info = taxonomy_handler.taxonomy_string_to_taxonomy_info[taxonomy_string]
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {}: {}'.format(taxon,common_name,country,allowed))
 
+taxon = 'coyote'
+country = 'united states of america'
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
+taxonomy_string = taxonomy_handler.species_string_to_canonical_species_string(taxon)
+taxonomy_info = taxonomy_handler.taxonomy_string_to_taxonomy_info[taxonomy_string]
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {}: {}'.format(taxon,common_name,country,allowed))
 
-#%% Geofencing lookups
-
-# This can be a latin or common name
 taxon = 'potoroidae'
-# print(common_name_to_taxonomy_info[taxon])
-
-# This can be a name or country code
 country = 'AUS'
-print(species_allowed_in_country(taxon, country))
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
+taxonomy_string = taxonomy_handler.species_string_to_canonical_species_string(taxon)
+taxonomy_info = taxonomy_handler.taxonomy_string_to_taxonomy_info[taxonomy_string]
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {}: {}'.format(taxon,common_name,country,allowed))
 
 
 #%% Bulk geofence lookups
@@ -143,7 +154,7 @@ if True:
     country ='guatemala'
     state = None
 
-if True:
+if False:
 
     # Make sure some PNW species are allowed in the right states
     all_species = \
@@ -176,7 +187,7 @@ if True:
     state = 'WA'
     # state = 'MT'
 
-if True:
+if False:
 
     all_species = ['ammospermophilus harrisii']
     country = 'USA'
@@ -184,9 +195,78 @@ if True:
 
 for species in all_species:
 
-    taxonomy_info = binomial_name_to_taxonomy_info[species]
-    allowed = species_allowed_in_country(species, country, state=state, return_status=True)
+    taxonomy_info = taxonomy_handler.binomial_name_to_taxonomy_info[species]
+    allowed = taxonomy_handler.species_allowed_in_country(
+        species, country, state=state, return_status=True)
     state_string = ''
     if state is not None:
         state_string = ' ({})'.format(state)
     print('{} ({}) for {}{}: {}'.format(taxonomy_info['common_name'],species,country,state_string,allowed))
+
+
+#%% Compare the SpeciesNet release taxonomy file to the .json WI taxonomy file
+
+"""
+At some point I grabbed the WI taxonomy and stored in a .json file mapping five-
+to seven-token IDs.  wi_taxonomy_utils took a dependency on that file, and before
+porting wi_taxonomy_utils over to the SpeciesNet release taxonomy, I want to double-check
+that they exist in the same universe.
+
+tl;dr: they are in the same universe.  Differences are just changes to GUIDs or common names.
+"""
+
+import os
+import json
+
+from tqdm import tqdm
+
+speciesnet_model_folder = os.path.expanduser('~/models/speciesnet/crop')
+release_taxonomy_file = os.path.join(speciesnet_model_folder,'taxonomy_release.txt')
+
+with open(release_taxonomy_file,'r') as f:
+    release_taxonomy_lines = f.readlines()
+release_taxonomy_lines = [s.strip() for s in release_taxonomy_lines]
+
+print('Read {} lines from release taxonomy file'.format(len(release_taxonomy_lines)))
+
+json_taxonomy_file = os.path.join(speciesnet_model_folder,'..','taxonomy_mapping.json')
+
+with open(json_taxonomy_file,'r') as f:
+    json_taxonomy = json.load(f)
+
+print('Read {} lines from json taxonomy file'.format(len(json_taxonomy)))
+
+all_seven_token_ids = set()
+
+for five_token_id in json_taxonomy.keys():
+    assert len(five_token_id.split(';')) == 5
+    seven_token_id = json_taxonomy[five_token_id]
+    assert len(seven_token_id.split(';')) == 7
+    assert five_token_id in seven_token_id
+    all_seven_token_ids.add(seven_token_id
+                            )
+# release_taxonomy_line = release_taxonomy_lines[0]
+
+speciesnet_taxa_not_in_wi_taxonomy_as_seven_token_ids = []
+speciesnet_taxa_not_in_wi_taxonomy_as_five_token_ids = []
+
+for release_taxonomy_line in release_taxonomy_lines:
+    tokens = release_taxonomy_line.split(';')
+    assert len(tokens) == 7
+    five_token_id = ';'.join(tokens[1:-1])
+    if release_taxonomy_line not in all_seven_token_ids:
+        speciesnet_taxa_not_in_wi_taxonomy_as_seven_token_ids.append(release_taxonomy_line)
+    if five_token_id not in json_taxonomy:
+        speciesnet_taxa_not_in_wi_taxonomy_as_five_token_ids.append(release_taxonomy_line)
+
+print('{} of {} SpeciesNet taxa don\'t match the WI taxonomy file exactly:'.format(
+    len(speciesnet_taxa_not_in_wi_taxonomy_as_seven_token_ids),len(release_taxonomy_lines)))
+
+for s in speciesnet_taxa_not_in_wi_taxonomy_as_seven_token_ids:
+    print(s)
+
+print('\n{} of {} SpeciesNet taxa don\'t match the WI taxonomy file even as five-token IDs:'.format(
+    len(speciesnet_taxa_not_in_wi_taxonomy_as_five_token_ids),len(release_taxonomy_lines)))
+
+for s in speciesnet_taxa_not_in_wi_taxonomy_as_five_token_ids:
+    print(s)

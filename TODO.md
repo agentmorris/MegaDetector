@@ -379,7 +379,7 @@ E1
 !feature
 !speciesnet
 !name[run_speciesnet_and_md-smoothing]
-!also-see[wi_utils_taxonomy]
+
 
 ## Output format refinements
 
@@ -615,30 +615,6 @@ E2
 
 !testing
 !maintenance
-
-
-## Clean up the use of module-level globals in wi_utils
-
-The wi_utils module, which is used for classification postprocessing, has some pretty icky module-level globals.  These are self-contained and relatively easy to fix.
-
-P2
-
-E1
-
-!maintenance
-
-
-## Migrate wi_utils to use taxonomy_release.txt
-
-The wi_utils module, which is used for classification postprocessing, depends on a taxonomy file that is slightly different from the one used by the public SpeciesNet release.  There's no good reason for that, it's just a historical artifact.  Fix this.
-
-P1
-
-E0
-
-!maintenance
-!name[wi_utils_taxonomy]
-!also-see[run_speciesnet_and_md-smoothing]
 
 
 ## Populate the "summary_report" field
