@@ -1141,7 +1141,8 @@ def restrict_to_taxa_list(taxa_list,
         if s.strip().startswith('#'):
             continue
         tokens = s.split(',')
-        assert len(tokens) <= 2
+        # We allow additional columns now
+        # assert len(tokens) <= 2
         binomial_name = tokens[0]
         assert len(binomial_name.split(' ')) in (1,2,3), \
             'Illegal binomial name in species list: {}'.format(binomial_name)

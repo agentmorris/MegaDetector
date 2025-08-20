@@ -1201,6 +1201,10 @@ class TaxonomyHandler:
             else:
                 self.binomial_name_to_taxonomy_info[binomial_name] = taxon_info
 
+            taxon_info['binomial_name'] = binomial_name
+
+        # ...for each taxonomy string in the file
+
         print('Created {} records in taxonomy_string_to_taxonomy_info'.format(len(self.taxonomy_string_to_taxonomy_info)))
         print('Created {} records in common_name_to_taxonomy_info'.format(len(self.common_name_to_taxonomy_info)))
 
@@ -1445,12 +1449,7 @@ class TaxonomyHandler:
             ValueError: if [species] is not in our dictionary
         """
 
-        assert self.taxonomy_string_to_geofencing_rules is not None, \
-            'Initialize geofencing prior to species lookup'
-        assert self.taxonomy_string_to_taxonomy_info is not None, \
-            'Initialize taxonomy lookup prior to species lookup'
-
-        species = species.lower()
+        species = species.lower().strip()
 
         # Turn "species" into a taxonomy string
 
@@ -1471,6 +1470,26 @@ class TaxonomyHandler:
         return taxonomy_string
 
     # ...def species_string_to_canonical_species_string(...)
+
+
+    def species_string_to_taxonomy_info(self,species):
+        """
+        Convert a string that may be a 5-token species string, a binomial name,
+        or a common name into a taxonomic info dictionary, using taxonomic lookup.
+
+        Args:
+            species (str): 5-token species string, binomial name, or common name
+
+        Returns:
+            dict: taxonomy information
+
+        Raises:
+            ValueError: if [species] is not in our dictionary
+        """
+
+        species = species.lower().strip()
+        canonical_string = self.species_string_to_canonical_species_string(species)
+        return self.taxonomy_string_to_taxonomy_info[canonical_string]
 
 
     def species_allowed_in_country(self, species, country, state=None, return_status=False):

@@ -99,24 +99,21 @@ for s in rows:
 taxon = 'canis lupus dingo'
 country = 'guatemala'
 allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
-taxonomy_string = taxonomy_handler.species_string_to_canonical_species_string(taxon)
-taxonomy_info = taxonomy_handler.taxonomy_string_to_taxonomy_info[taxonomy_string]
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
 common_name = taxonomy_info['common_name']
 print('{} ({}) in {}: {}'.format(taxon,common_name,country,allowed))
 
 taxon = 'coyote'
 country = 'united states of america'
 allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
-taxonomy_string = taxonomy_handler.species_string_to_canonical_species_string(taxon)
-taxonomy_info = taxonomy_handler.taxonomy_string_to_taxonomy_info[taxonomy_string]
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
 common_name = taxonomy_info['common_name']
 print('{} ({}) in {}: {}'.format(taxon,common_name,country,allowed))
 
 taxon = 'potoroidae'
 country = 'AUS'
 allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
-taxonomy_string = taxonomy_handler.species_string_to_canonical_species_string(taxon)
-taxonomy_info = taxonomy_handler.taxonomy_string_to_taxonomy_info[taxonomy_string]
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
 common_name = taxonomy_info['common_name']
 print('{} ({}) in {}: {}'.format(taxon,common_name,country,allowed))
 
@@ -270,3 +267,57 @@ print('\n{} of {} SpeciesNet taxa don\'t match the WI taxonomy file even as five
 
 for s in speciesnet_taxa_not_in_wi_taxonomy_as_five_token_ids:
     print(s)
+
+
+#%% Bulk species lookup: init
+
+# A text file with common names.  Lines with commas are interpreted as
+# speciesnet_common_name,original_common_name
+input_fn = os.path.expanduser('common_name_list.txt')
+assert os.path.isfile(input_fn)
+
+
+#%% Bulk species lookup: iterative lookup
+
+with open(input_fn,'r') as f:
+    input_lines = f.readlines()
+input_lines = [s.strip().lower() for s in input_lines]
+
+output_lines = []
+
+for input_line in input_lines:
+
+    if ',' in input_line:
+        tokens = input_line.split(',')
+        speciesnet_common_name = tokens[0]
+        original_common_name = tokens[1]
+    else:
+        speciesnet_common_name = input_line
+        original_common_name = input_line
+
+
+    try:
+        taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(speciesnet_common_name)
+        assert speciesnet_common_name == taxonomy_info['common_name']
+        binomial_name = taxonomy_info['binomial_name']
+        s = '{},{},{}'.format(binomial_name,speciesnet_common_name,original_common_name)
+    except ValueError:
+        s = '# {}'.format(original_common_name)
+    output_lines.append(s)
+
+print('Unmatched names:')
+
+for s in output_lines:
+    if s.startswith('#'):
+        print(s.replace('# ',''))
+
+
+#%% Bulk species lookup: write output
+
+from megadetector.utils.path_utils import insert_before_extension
+
+output_fn = insert_before_extension(input_fn,'speciesnet')
+
+with open(output_fn,'w') as f:
+    for s in output_lines:
+        f.write(s + '\n')
