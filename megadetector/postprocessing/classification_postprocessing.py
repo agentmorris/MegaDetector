@@ -25,14 +25,14 @@ from megadetector.utils.ct_utils import sort_dictionary_by_value
 from megadetector.utils.ct_utils import sort_dictionary_by_key
 from megadetector.utils.ct_utils import invert_dictionary
 
-from megadetector.utils.wi_utils import clean_taxonomy_string
-from megadetector.utils.wi_utils import taxonomy_level_index
-from megadetector.utils.wi_utils import taxonomy_level_string_to_index
+from megadetector.utils.wi_taxonomy_utils import clean_taxonomy_string
+from megadetector.utils.wi_taxonomy_utils import taxonomy_level_index
+from megadetector.utils.wi_taxonomy_utils import taxonomy_level_string_to_index
 
-from megadetector.utils.wi_utils import non_taxonomic_prediction_strings
-from megadetector.utils.wi_utils import human_prediction_string
-from megadetector.utils.wi_utils import animal_prediction_string
-from megadetector.utils.wi_utils import blank_prediction_string # noqa
+from megadetector.utils.wi_taxonomy_utils import non_taxonomic_prediction_strings
+from megadetector.utils.wi_taxonomy_utils import human_prediction_string
+from megadetector.utils.wi_taxonomy_utils import animal_prediction_string
+from megadetector.utils.wi_taxonomy_utils import blank_prediction_string # noqa
 
 
 #%% Options classes
@@ -1141,7 +1141,8 @@ def restrict_to_taxa_list(taxa_list,
         if s.strip().startswith('#'):
             continue
         tokens = s.split(',')
-        assert len(tokens) <= 2
+        # We allow additional columns now
+        # assert len(tokens) <= 2
         binomial_name = tokens[0]
         assert len(binomial_name.split(' ')) in (1,2,3), \
             'Illegal binomial name in species list: {}'.format(binomial_name)

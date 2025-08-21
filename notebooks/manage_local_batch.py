@@ -94,8 +94,8 @@ from megadetector.utils.path_utils import path_join
 from megadetector.utils.path_utils import write_list_to_file
 from megadetector.utils.path_utils import open_file
 
-from megadetector.utils.wi_utils import generate_md_results_from_predictions_json
-from megadetector.utils.wi_utils import generate_instances_json_from_folder
+from megadetector.utils.wi_taxonomy_utils import generate_md_results_from_predictions_json
+from megadetector.utils.wi_taxonomy_utils import generate_instances_json_from_folder
 
 
 ## Inference options
@@ -1210,7 +1210,7 @@ assert os.path.isdir(crop_folder)
 
 # This will be the input to the ensemble when we run it on the crops.
 
-from megadetector.utils.wi_utils import generate_predictions_json_from_md_results
+from megadetector.utils.wi_taxonomy_utils import generate_predictions_json_from_md_results
 
 generate_predictions_json_from_md_results(md_results_file=detection_results_file_for_crop_folder,
                                           predictions_json_file=crop_detections_predictions_file,
@@ -1385,7 +1385,7 @@ for s in per_gpu_scripts:
 
 #%% Merge crop classification result batches
 
-from megadetector.utils.wi_utils import merge_prediction_json_files
+from megadetector.utils.wi_taxonomy_utils import merge_prediction_json_files
 
 merge_prediction_json_files(input_prediction_files=chunk_prediction_files,
                             output_prediction_file=classifier_output_file_modular_crops)
@@ -1393,7 +1393,7 @@ merge_prediction_json_files(input_prediction_files=chunk_prediction_files,
 
 ##%% Validate crop classification results
 
-from megadetector.utils.wi_utils import validate_predictions_file
+from megadetector.utils.wi_taxonomy_utils import validate_predictions_file
 _ = validate_predictions_file(classifier_output_file_modular_crops,crop_instances_json)
 
 
@@ -1424,13 +1424,13 @@ print('Ensemble command you should run now:\n\n{}'.format(ensemble_cmd))
 
 #%% Validate ensemble results (still crops)
 
-from megadetector.utils.wi_utils import validate_predictions_file
+from megadetector.utils.wi_taxonomy_utils import validate_predictions_file
 _ = validate_predictions_file(ensemble_output_file_modular_crops,crop_instances_json)
 
 
 ##%% Generate a list of corrections made by geofencing, and counts (still crops)
 
-from megadetector.utils.wi_utils import find_geofence_adjustments, \
+from megadetector.utils.wi_taxonomy_utils import find_geofence_adjustments, \
     generate_geofence_adjustment_html_summary
 
 rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular_crops,

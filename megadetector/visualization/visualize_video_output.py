@@ -21,7 +21,7 @@ import numpy as np
 from megadetector.data_management.annotations.annotation_constants import detector_bbox_category_id_to_name
 from megadetector.detection.video_utils import run_callback_on_frames, default_fourcc, is_video_file
 from megadetector.utils.path_utils import path_is_abs
-from megadetector.utils.wi_utils import load_md_or_speciesnet_file
+from megadetector.utils.wi_taxonomy_utils import load_md_or_speciesnet_file
 from megadetector.visualization.visualization_utils import render_detection_bounding_boxes
 
 

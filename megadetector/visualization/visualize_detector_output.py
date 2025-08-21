@@ -25,7 +25,7 @@ from megadetector.utils.ct_utils import get_max_conf
 from megadetector.utils import write_html_image_list
 from megadetector.utils.path_utils import path_is_abs
 from megadetector.utils.path_utils import open_file
-from megadetector.utils.wi_utils import load_md_or_speciesnet_file
+from megadetector.utils.wi_taxonomy_utils import load_md_or_speciesnet_file
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.visualization.visualization_utils import blur_detections
 
