@@ -637,7 +637,7 @@ def _find_matches_in_directory(dir_name_and_rows, options):
 
         if 'max_detection_conf' not in row or 'detections' not in row or \
             row['detections'] is None:
-            print('Skipping row {}'.format(i_directory_row))
+            # print('Skipping row {}'.format(i_directory_row))
             continue
 
         # Don't bother checking images with no detections above threshold

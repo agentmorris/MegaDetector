@@ -25,14 +25,14 @@ from megadetector.utils.ct_utils import sort_dictionary_by_value
 from megadetector.utils.ct_utils import sort_dictionary_by_key
 from megadetector.utils.ct_utils import invert_dictionary
 
-from megadetector.utils.wi_utils import clean_taxonomy_string
-from megadetector.utils.wi_utils import taxonomy_level_index
-from megadetector.utils.wi_utils import taxonomy_level_string_to_index
+from megadetector.utils.wi_taxonomy_utils import clean_taxonomy_string
+from megadetector.utils.wi_taxonomy_utils import taxonomy_level_index
+from megadetector.utils.wi_taxonomy_utils import taxonomy_level_string_to_index
 
-from megadetector.utils.wi_utils import non_taxonomic_prediction_strings
-from megadetector.utils.wi_utils import human_prediction_string
-from megadetector.utils.wi_utils import animal_prediction_string
-from megadetector.utils.wi_utils import blank_prediction_string # noqa
+from megadetector.utils.wi_taxonomy_utils import non_taxonomic_prediction_strings
+from megadetector.utils.wi_taxonomy_utils import human_prediction_string
+from megadetector.utils.wi_taxonomy_utils import animal_prediction_string
+from megadetector.utils.wi_taxonomy_utils import blank_prediction_string # noqa
 
 
 #%% Options classes
@@ -1100,7 +1100,8 @@ def restrict_to_taxa_list(taxa_list,
                           input_file,
                           output_file,
                           allow_walk_down=False,
-                          add_pre_filtering_description=True):
+                          add_pre_filtering_description=True,
+                          allow_redundant_latin_names=False):
     """
     Given a prediction file in MD .json format, likely without having had
     a geofence applied, apply a custom taxa list.
@@ -1123,6 +1124,10 @@ def restrict_to_taxa_list(taxa_list,
         add_pre_filtering_description (bool, optional): should we add a new metadata
             field that summarizes each image's classifications prior to taxonomic
             restriction?
+        allow_redundant_latin_names (bool, optional): if False, we'll raise an Exception
+            if the same latin name appears twice in the taxonomy list; if True, we'll
+            just print a warning and ignore all entries other than the first for this
+            latin name
     """
 
     ##%% Read target taxa list
@@ -1137,11 +1142,14 @@ def restrict_to_taxa_list(taxa_list,
     taxa_list = [s for s in taxa_list if len(s) > 0]
 
     target_latin_to_common = {}
+
     for s in taxa_list:
+
         if s.strip().startswith('#'):
             continue
         tokens = s.split(',')
-        assert len(tokens) <= 2
+        # We allow additional columns now
+        # assert len(tokens) <= 2
         binomial_name = tokens[0]
         assert len(binomial_name.split(' ')) in (1,2,3), \
             'Illegal binomial name in species list: {}'.format(binomial_name)
@@ -1149,8 +1157,16 @@ def restrict_to_taxa_list(taxa_list,
             common_name = tokens[1].strip().lower()
         else:
             common_name = None
-        assert binomial_name not in target_latin_to_common
+        if binomial_name in target_latin_to_common:
+            error_string = 'scientific name {} appears multiple times in the taxonomy list'.format(
+                    binomial_name)
+            if allow_redundant_latin_names:
+                print('Warning: {}'.format(error_string))
+            else:
+                raise ValueError(error_string)
         target_latin_to_common[binomial_name] = common_name
+
+    # ...for each line in the taxonomy file
 
 
     ##%% Read taxonomy file

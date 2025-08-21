@@ -3,7 +3,7 @@
 speciesnet_to_md.py
 
 Converts the WI (SpeciesNet) predictions.json format to MD .json format.  This is just a
-command-line wrapper around utils.wi_utils.generate_md_results_from_predictions_json.
+command-line wrapper around utils.wi_taxonomy_utils.generate_md_results_from_predictions_json.
 
 """
 
@@ -11,7 +11,7 @@ command-line wrapper around utils.wi_utils.generate_md_results_from_predictions_
 
 import sys
 import argparse
-from megadetector.utils.wi_utils import generate_md_results_from_predictions_json
+from megadetector.utils.wi_taxonomy_utils import generate_md_results_from_predictions_json
 
 
 #%% Command-line driver

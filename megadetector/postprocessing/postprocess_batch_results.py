@@ -47,7 +47,7 @@ from tqdm import tqdm
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.visualization import plot_utils
 from megadetector.utils.write_html_image_list import write_html_image_list
-from megadetector.utils.wi_utils import load_md_or_speciesnet_file
+from megadetector.utils.wi_taxonomy_utils import load_md_or_speciesnet_file
 from megadetector.utils import path_utils
 from megadetector.utils.ct_utils import args_to_object
 from megadetector.utils.ct_utils import sets_overlap

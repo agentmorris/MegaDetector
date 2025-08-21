@@ -94,10 +94,18 @@ utils.gpu\_test module
    :undoc-members:
    :show-inheritance:
 
-utils.wi\_utils module
+utils.wi\_taxonomy\_utils module
 ---------------------------
 
-.. automodule:: megadetector.utils.wi_utils
+.. automodule:: megadetector.utils.wi_taxonomy_utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+utils.wi\_platform\_utils module
+---------------------------
+
+.. automodule:: megadetector.utils.wi_platform_utils
    :members:
    :undoc-members:
    :show-inheritance:
