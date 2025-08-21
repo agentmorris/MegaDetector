@@ -298,6 +298,7 @@ class SequenceOptions:
     """
 
     def __init__(self):
+
         #: Images separated by <= this duration will be grouped into the same sequence.
         self.episode_interval_seconds = 60.0
 
