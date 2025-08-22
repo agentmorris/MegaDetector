@@ -271,53 +271,99 @@ for s in speciesnet_taxa_not_in_wi_taxonomy_as_five_token_ids:
 
 #%% Bulk species lookup: init
 
-# A text file with common names.  Lines with commas are interpreted as
-# speciesnet_common_name,original_common_name
-input_fn = os.path.expanduser('common_name_list.txt')
+import os
+from megadetector.utils.path_utils import insert_before_extension
+
+# A .csv file with columns:
+#
+# latin,common,original_latin,original_common
+#
+# Typically latin and common are empty when we start
+# this process.  Often one of the other columns is empty as well.
+input_fn = 'g:/temp/ID_specieslist_speciesnet.csv'
+output_fn = insert_before_extension(input_fn,'out')
 assert os.path.isfile(input_fn)
+
+required_columns = ('latin','common','original_latin','original_common')
 
 
 #%% Bulk species lookup: iterative lookup
 
-with open(input_fn,'r') as f:
-    input_lines = f.readlines()
-input_lines = [s.strip().lower() for s in input_lines]
+import pandas as pd
+from megadetector.utils.ct_utils import is_empty
 
-output_lines = []
+df = pd.read_csv(input_fn)
 
-for input_line in input_lines:
+for s in required_columns:
+    assert s in df.columns
 
-    if ',' in input_line:
-        tokens = input_line.split(',')
-        speciesnet_common_name = tokens[0]
-        original_common_name = tokens[1]
-    else:
-        speciesnet_common_name = input_line
-        original_common_name = input_line
+failed_matches = []
 
+# i_row = 0; row = df.iloc[i_row]
+for i_row,row in df.iterrows():
 
-    try:
-        taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(speciesnet_common_name)
-        assert speciesnet_common_name == taxonomy_info['common_name']
-        binomial_name = taxonomy_info['binomial_name']
-        s = '{},{},{}'.format(binomial_name,speciesnet_common_name,original_common_name)
-    except ValueError:
-        s = '# {}'.format(original_common_name)
-    output_lines.append(s)
+    if ((not is_empty(row['latin'])) or (not is_empty(row['common']))):
+        assert ((not is_empty(row['latin'])) and (not is_empty(row['common']))), \
+            'If one of the SpeciesNet names is populated, both shoudld be'
 
-print('Unmatched names:')
+    if not is_empty(row['latin']):
+        taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(row['latin'])
+        assert taxonomy_info['binomial_name'] == row['latin']
+        assert taxonomy_info['common_name'] == row['common']
+        continue
 
-for s in output_lines:
-    if s.startswith('#'):
-        print(s.replace('# ',''))
+    if not is_empty(row['common']):
+        taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(row['common'])
+        assert taxonomy_info['binomial_name'] == row['latin']
+        assert taxonomy_info['common_name'] == row['common']
+        continue
 
+    if not is_empty(row['original_latin']):
 
-#%% Bulk species lookup: write output
+        latin_match = False
 
-from megadetector.utils.path_utils import insert_before_extension
+        try:
+            taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(row['original_latin'])
+            latin_match = True
+        except Exception:
+            pass
 
-output_fn = insert_before_extension(input_fn,'speciesnet')
+        if latin_match:
+            latin = taxonomy_info['binomial_name']
+            common = taxonomy_info['common_name']
+            print('Mapped {} ({}) to {} ({})'.format(
+                row['original_latin'],row['original_common'],
+                latin,common))
+            df.loc[i_row, 'latin'] = latin
+            df.loc[i_row, 'common'] = common
+            continue
 
-with open(output_fn,'w') as f:
-    for s in output_lines:
-        f.write(s + '\n')
+    if not is_empty(row['original_common']):
+
+        common_match = False
+
+        try:
+            taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(row['original_common'])
+            common_match = True
+        except Exception:
+            pass
+
+        if common_match:
+            latin = taxonomy_info['binomial_name']
+            common = taxonomy_info['common_name']
+            print('Mapped {} ({}) to {} ({})'.format(
+                row['original_latin'],row['original_common'],
+                latin,common))
+            df.loc[i_row, 'latin'] = latin
+            df.loc[i_row, 'common'] = common
+            continue
+
+    failed_matches.append((row['original_latin'],row['original_common']))
+
+# ...for each row
+
+for failed_match in failed_matches:
+    print('No match for {} ({})'.format(
+        failed_match[0],failed_match[1]))
+
+df.to_csv(output_fn,index=False)
