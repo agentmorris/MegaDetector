@@ -81,8 +81,8 @@ class ProcessVideoOptions:
         self.augment = False
 
         #: By default, a video with no frames (or no frames retrievable with the current parameters)
-        #: is treated as a failure; this causes it to be treated as a video with no detections.
-        self.allow_empty_videos = False
+        #: is silently stored as a failure; this causes it to halt execution.
+        self.exit_on_empty_video = False
 
         #: Detector-specific options
         self.detector_options = None
@@ -134,6 +134,14 @@ def process_videos(options):
     # Check for incompatible options
     _validate_video_options(options)
 
+    if options.output_json_file is None:
+        video_file = options.input_video_file.replace('\\','/')
+        if video_file.endswith('/'):
+            video_file = video_file[:-1]
+        options.output_json_file = video_file + '.json'
+        print('Output file not specified, defaulting to {}'.format(
+            options.output_json_file))
+
     assert options.output_json_file.endswith('.json'), \
         'Illegal output file {}'.format(options.output_json_file)
 
@@ -173,7 +181,7 @@ def process_videos(options):
                                                        every_n_frames=every_n_frames_param,
                                                        verbose=options.verbose,
                                                        files_to_process_relative=[video_bn],
-                                                       allow_empty_videos=options.allow_empty_videos)
+                                                       error_on_empty_video=options.exit_on_empty_video)
 
     else:
 
@@ -187,7 +195,7 @@ def process_videos(options):
                                                        every_n_frames=every_n_frames_param,
                                                        verbose=options.verbose,
                                                        recursive=options.recursive,
-                                                       allow_empty_videos=options.allow_empty_videos)
+                                                       error_on_empty_video=options.exit_on_empty_video)
 
     # ...whether we're processing a file or a folder
 
@@ -414,9 +422,10 @@ def main(): # noqa
                         action='store_true',
                         help='Enable image augmentation')
 
-    parser.add_argument('--allow_empty_videos',
+    parser.add_argument('--exit_on_empty_video',
                         action='store_true',
-                        help='By default, videos with no retrievable frames cause an error, this makes it a warning')
+                        help=('By default, videos with no retrievable frames are stored as failures; this' \
+                              'causes them to halt execution'))
 
     parser.add_argument(
         '--detector_options',
