@@ -101,6 +101,99 @@ def find_videos(dirname,
     return find_video_strings(files)
 
 
+#%% Shared function for opening videos
+
+DEFAULT_BACKEND = -1
+
+# This is the order in which we'll try to open backends.
+#
+# In general, the defaults are as follows, though they vary depending
+# on what's installed:
+#
+# Windows: CAP_DSHOW or CAP_MSMF
+# Linux: CAP_FFMPEG
+# macOS: CAP_AVFOUNDATION
+#
+# Technically if the default fails, we may try the same backend again, but this
+# is rare, and it's not worth the complexity of figuring out what the system
+# default is.
+backend_id_to_name = {
+    DEFAULT_BACKEND:'default',
+    cv2.CAP_FFMPEG: 'CAP_FFMPEG',
+    cv2.CAP_DSHOW: 'CAP_DSHOW',
+    cv2.CAP_MSMF: 'CAP_MSMF',
+    cv2.CAP_AVFOUNDATION: 'CAP_AVFOUNDATION',
+    cv2.CAP_GSTREAMER: 'CAP_GSTREAMER'
+}
+
+def open_video(video_path,verbose=False):
+    """
+    Open the video at [video_path], trying multiple OpenCV backends if necessary.
+
+    Args:
+        video_path (str): the file to open
+        verbose (bool, optional): enable additional debug output
+
+    Returns:
+        (cv2.VideoCapture,image): a tuple containing (a) the open video capture device
+        (or None if no backends succeeded) and (b) the first frame of the video (or None)
+    """
+
+    if not os.path.isfile(video_path):
+        print('Video file {} not found'.format(video_path))
+        return None,None
+
+    backend_ids = backend_id_to_name.keys()
+
+    for backend_id in backend_ids:
+
+        backend_name = backend_id_to_name[backend_id]
+        if verbose:
+            print('Trying backend {}'.format(backend_name))
+
+        try:
+            if backend_id == DEFAULT_BACKEND:
+                vidcap = cv2.VideoCapture(video_path)
+            else:
+                vidcap = cv2.VideoCapture(video_path, backend_id)
+        except Exception as e:
+            if verbose:
+                print('Warning: error opening {} with backend {}: {}'.format(
+                    video_path,backend_name,str(e)))
+            continue
+
+        if not vidcap.isOpened():
+            if verbose:
+                print('Warning: isOpened() is False for {} with backend {}'.format(
+                    video_path,backend_name))
+            try:
+                vidcap.release()
+            except Exception:
+                pass
+            continue
+
+        success, image = vidcap.read()
+        if success and (image is not None):
+            if verbose:
+                print('Successfully opened {} with backend: {}'.format(
+                    video_path,backend_name))
+            return vidcap,image
+
+        print('Warning: failed to open {} with backend {}'.format(
+            video_path,backend_name))
+        try:
+            vidcap.release()
+        except Exception:
+            pass
+
+    # ...for each backend
+
+    print('Error: failed to open {} with any backend'.format(video_path))
+    return None,None
+
+# ...def open_video(...)
+
+
 #%% Functions for rendering frames to video and vice-versa
 
 # http://tsaith.github.io/combine-images-into-a-video-with-python-3-and-opencv-3.html
@@ -146,21 +239,32 @@ def frames_to_video(images, fs, output_file_name, codec_spec=default_fourcc):
     cv2.destroyAllWindows()
 
 
-def get_video_fs(input_video_file):
+def get_video_fs(input_video_file,verbose=False):
     """
     Retrieves the frame rate of [input_video_file].
 
     Args:
         input_video_file (str): video file for which we want the frame rate
+        verbose (bool, optional): enable additional debug output
 
     Returns:
-        float: the frame rate of [input_video_file]
+        float: the frame rate of [input_video_file], or None if no frame
+            rate could be extracted
     """
 
-    assert os.path.isfile(input_video_file), 'File {} not found'.format(input_video_file)
-    vidcap = cv2.VideoCapture(input_video_file)
+    assert os.path.isfile(input_video_file), \
+        'File {} not found'.format(input_video_file)
+    vidcap,_ = open_video(input_video_file,verbose=verbose)
+    if vidcap is None:
+        if verbose:
+            print('Failed to get frame rate for {}'.format(input_video_file))
+        return None
     fs = vidcap.get(cv2.CAP_PROP_FPS)
-    vidcap.release()
+    try:
+        vidcap.release()
+    except Exception as e:
+        print('Warning: error closing video handle for {}: {}'.format(
+            input_video_file,str(e)))
     return fs
 
 
@@ -249,7 +353,7 @@ def run_callback_on_frames(input_video_file,
             of the video, no frames are extracted.  Can also be a single int, specifying
             a single frame number.
         allow_empty_videos (bool, optional): Just print a warning if a video appears to have no
-            frames (by default, this is an error).
+            frames (by default, this raises an Exception).
 
     Returns:
         dict: dict with keys 'frame_filenames' (list), 'frame_rate' (float), 'results' (list).
@@ -271,7 +375,7 @@ def run_callback_on_frames(input_video_file,
 
     try:
 
-        vidcap = cv2.VideoCapture(input_video_file)
+        vidcap,image = open_video(input_video_file,verbose=verbose)
         n_frames = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
         frame_rate = vidcap.get(cv2.CAP_PROP_FPS)
 
@@ -300,7 +404,11 @@ def run_callback_on_frames(input_video_file,
         # frame_number = 0
         for frame_number in range(0,n_frames):
 
-            success,image = vidcap.read()
+            # We've already read the first frame, when we opened the video
+            if frame_number != 0:
+                success,image = vidcap.read()
+            else:
+                success = True
 
             if not success:
                 assert image is None
@@ -363,9 +471,9 @@ def run_callback_on_frames_for_folder(input_video_folder,
                                       frame_callback,
                                       every_n_frames=None,
                                       verbose=False,
-                                      allow_empty_videos=False,
                                       recursive=True,
-                                      files_to_process_relative=None):
+                                      files_to_process_relative=None,
+                                      error_on_empty_video=False):
     """
     Calls the function frame_callback(np.array,image_id) on all (or selected) frames in
     all videos in [input_video_folder].
@@ -382,10 +490,10 @@ def run_callback_on_frames_for_folder(input_video_folder,
             interpreted as a sampling rate in seconds, which is rounded to the nearest frame
             sampling rate.
         verbose (bool, optional): enable additional debug console output
-        allow_empty_videos (bool, optional): Just print a warning if a video appears to have no
-            frames (by default, this is an error).
         recursive (bool, optional): recurse into [input_video_folder]
         files_to_process_relative (list, optional): only process specific relative paths
+        error_on_empty_video (bool, optional): by default, videos with errors or no valid frames
+            are silently stored as failures; this turns them into exceptions
 
     Returns:
         dict: dict with keys 'video_filenames' (list of str), 'frame_rates' (list of floats),
@@ -440,18 +548,21 @@ def run_callback_on_frames_for_folder(input_video_folder,
                                                    every_n_frames=every_n_frames,
                                                    verbose=verbose,
                                                    frames_to_process=None,
-                                                   allow_empty_videos=allow_empty_videos)
+                                                   allow_empty_videos=False)
 
         except Exception as e:
 
-            print('Warning: error processing video {}: {}'.format(
-                video_fn_abs,str(e)
-            ))
-            to_return['frame_rates'].append(-1.0)
-            failure_result = {}
-            failure_result['failure'] = 'Failure processing video: {}'.format(str(e))
-            to_return['results'].append(failure_result)
-            continue
+            if (not error_on_empty_video):
+                print('Warning: error processing video {}: {}'.format(
+                    video_fn_abs,str(e)
+                ))
+                to_return['frame_rates'].append(-1.0)
+                failure_result = {}
+                failure_result['failure'] = 'Failure processing video: {}'.format(str(e))
+                to_return['results'].append(failure_result)
+                continue
+            else:
+                raise
 
         # ...try/except
 
