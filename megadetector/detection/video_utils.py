@@ -103,7 +103,9 @@ def find_videos(dirname,
 
 #%% Shared function for opening videos
 
-# This is the order in which we'll try to open backends
+DEFAULT_BACKEND = -1
+
+# This is the order in which we'll try to open backends.
 #
 # In general, the defaults are as follows, though they vary depending
 # on what's installed:
@@ -111,7 +113,12 @@ def find_videos(dirname,
 # Windows: CAP_DSHOW or CAP_MSMF
 # Linux: CAP_FFMPEG
 # macOS: CAP_AVFOUNDATION
+#
+# Technically if the default fails, we may try the same backend again, but this
+# is rare, and it's not worth the complexity of figuring out what the system
+# default is.
 backend_id_to_name = {
+    DEFAULT_BACKEND:'default',
     cv2.CAP_FFMPEG: 'CAP_FFMPEG',
     cv2.CAP_DSHOW: 'CAP_DSHOW',
     cv2.CAP_MSMF: 'CAP_MSMF',
@@ -145,7 +152,10 @@ def open_video(video_path,verbose=False):
             print('Trying backend {}'.format(backend_name))
 
         try:
-            vidcap = cv2.VideoCapture(video_path, backend_id)
+            if backend_id == DEFAULT_BACKEND:
+                vidcap = cv2.VideoCapture(video_path)
+            else:
+                vidcap = cv2.VideoCapture(video_path, backend_id)
         except Exception as e:
             if verbose:
                 print('Warning: error opening {} with backend {}: {}'.format(
