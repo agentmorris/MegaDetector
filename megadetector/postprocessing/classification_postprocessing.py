@@ -33,6 +33,7 @@ from megadetector.utils.wi_taxonomy_utils import taxonomy_level_string_to_index
 from megadetector.utils.wi_taxonomy_utils import non_taxonomic_prediction_strings
 from megadetector.utils.wi_taxonomy_utils import human_prediction_string
 from megadetector.utils.wi_taxonomy_utils import animal_prediction_string
+from megadetector.utils.wi_taxonomy_utils import is_taxonomic_prediction_string
 from megadetector.utils.wi_taxonomy_utils import blank_prediction_string # noqa
 
 
@@ -1103,6 +1104,7 @@ def restrict_to_taxa_list(taxa_list,
                           allow_walk_down=False,
                           add_pre_filtering_description=True,
                           allow_redundant_latin_names=True,
+                          protected_common_names=None,
                           verbose=True):
     """
     Given a prediction file in MD .json format, likely without having had
@@ -1127,6 +1129,9 @@ def restrict_to_taxa_list(taxa_list,
             if the same latin name appears twice in the taxonomy list; if True, we'll
             just print a warning and ignore all entries other than the first for this
             latin name
+        protected_common_names (list, optional): these categories should be
+            unmodified, even if they aren't used, or have the same taxonomic
+            description as other categories
         verbose (bool, optional): enable additional debug output
     """
 
@@ -1451,9 +1456,20 @@ def restrict_to_taxa_list(taxa_list,
         assert len(input_taxon_tokens) == 7, \
             'Illegal taxonomy string: {}'.format(input_taxon_string)
 
-        # Don't mess with blank/no-cv-result/animal/human
-        if (input_taxon_string in non_taxonomic_prediction_strings) or \
+        # Don't mess with blank/no-cv-result/human (or "animal", which is really "unknown")
+        if (not is_taxonomic_prediction_string(input_taxon_string)) or \
            (input_taxon_string == human_prediction_string):
+            if verbose:
+                print('Not messing with non-taxonomic category {}'.format(input_taxon_string))
+            input_category_id_to_output_taxon_string[input_category_id] = \
+                input_taxon_string
+            continue
+
+        # Don't mess with protected categories
+        common_name = input_taxon_tokens[-1]
+        if (protected_common_names is not None) and (common_name in protected_common_names):
+            if verbose:
+                print('Not messing with protected category {}'.format(common_name))
             input_category_id_to_output_taxon_string[input_category_id] = \
                 input_taxon_string
             continue
@@ -1544,10 +1560,6 @@ def restrict_to_taxa_list(taxa_list,
 
     for input_category_id in input_category_id_to_output_taxon_string:
 
-        original_common_name = \
-            input_category_id_to_common_name[input_category_id]
-        original_taxon_string = \
-            input_category_id_to_taxonomy_string[input_category_id]
         output_taxon_string = \
             input_category_id_to_output_taxon_string[input_category_id]
 
@@ -1567,11 +1579,17 @@ def restrict_to_taxa_list(taxa_list,
         input_category_id_to_output_category_id[input_category_id] = \
             output_category_id
 
+        # Sometimes-useful debug printouts
         if False:
+            original_common_name = \
+              input_category_id_to_common_name[input_category_id]
+
+            original_taxon_string = \
+                input_category_id_to_taxonomy_string[input_category_id]
+
             print('Mapping {} ({}) to:\n{} ({})\n'.format(
                 original_common_name,original_taxon_string,
                 output_common_name,output_taxon_string))
-        if False:
             print('Mapping {} to {}'.format(
                 original_common_name,output_common_name,))
 

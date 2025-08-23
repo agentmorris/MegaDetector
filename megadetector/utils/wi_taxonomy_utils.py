@@ -180,8 +180,10 @@ def taxonomy_level_index(s):
     if len(tokens) == 7:
         tokens = tokens[1:-1]
 
+    # Anything without a class is considered non-taxonomic
     if len(tokens[0]) == 0:
         return 0
+
     # WI taxonomy strings start at class, so we'll never return 1 (kingdom) or 2 (phylum)
     elif len(tokens[1]) == 0:
         return 3
@@ -196,6 +198,22 @@ def taxonomy_level_index(s):
         return 7
     else:
         return 8
+
+
+def is_taxonomic_prediction_string(s):
+    """
+    Determines whether [s] is a classification string that has taxonomic properties; this
+    does not include, e.g., blanks/vehicles/no cv result.  It also excludes "animal".
+
+    Args:
+        s (str): a five- or seven-token taxonomic string
+
+    Returns:
+        bool: whether [s] is a taxonomic category
+    """
+
+    return (taxonomy_level_index(s) > 0)
+
 
 
 def get_kingdom(prediction_string):
