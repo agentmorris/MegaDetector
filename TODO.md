@@ -61,6 +61,17 @@ E1
 !feature
 
 
+## Add descriptions to all tqdm progress bars
+
+Particularly when running manage_local_batch, there are a lot of progress bars that run without clear indications of what's happening at each step.  Add descriptions to all progress bars to address this.
+
+P2
+
+E0
+
+!maintenance
+
+
 ## Better handling of long filenames in manage_local_batch
 
 manage_local_batch can end up generating previews with very long filenames, which is not important under Linux, but can blow past the archaic filename length restriction that still exists by default in Windows.  Windows actually supports long filenames fine now, but applications - particularly browsers - clip filenames to the historical limit; typically this results in failed images when loading a the HTML output locally.
@@ -170,11 +181,11 @@ E2
 
 In certain Apple silicon environments, MD produces incorrect results.  This is not specific to MD, this is a bug in YOLOv5.  See [this issue](https://github.com/ultralytics/yolov5/issues/12654) and [this question](https://github.com/ultralytics/yolov5/issues/12645) on the YOLOv5 repo for details and status.  The work item here is to:
 
-* Assess the scope of this bug (all Apple silicon?  Just M1?)
+* Assess the scope of this bug (all Apple silicon?  Just M1?  Has it been naturally resolved in M1 environments via recent PyTorch releases?)
 * Assess whether this impacts MDv1000 models
 * Consider disabling accelerated inference on Apple silicon for impacted models
 
-P1
+P0
 
 E2
 
@@ -324,9 +335,9 @@ E1
 !feature
 
 
-## Reduce complexity of test results
+## Reduce complexity of reference results
 
-MD's test harness relies on .json files with pre-generated results for MDv5a and MDv5b, for a test set of images and videos.  Because output varies slightly between PyTorch versions and between hardware environments, I have a number of results files.  This has gotten too complicated; remove most of the results files and increase the allowed tolerance during testing.
+MD's test harness relies on .json files with pre-generated results for MDv5a and MDv5b, for a reference set of images and videos.  Because output varies slightly between PyTorch versions and between hardware environments, I have a number of results files.  This has gotten too complicated; remove most of the results files and increase the allowed tolerance during testing.
 
 P1
 

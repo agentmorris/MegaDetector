@@ -16,6 +16,7 @@ Functions for postprocessing species classification results, particularly:
 import os
 import json
 import copy
+import pandas as pd
 
 from collections import defaultdict
 from tqdm import tqdm
@@ -1101,16 +1102,14 @@ def restrict_to_taxa_list(taxa_list,
                           output_file,
                           allow_walk_down=False,
                           add_pre_filtering_description=True,
-                          allow_redundant_latin_names=False):
+                          allow_redundant_latin_names=True,
+                          verbose=True):
     """
     Given a prediction file in MD .json format, likely without having had
     a geofence applied, apply a custom taxa list.
 
     Args:
-        taxa_list (str or list): list of latin names, or a text file containing
-            a list of latin names.  Optionally may contain a second (comma-delimited)
-            column containing common names, used only for debugging.  Latin names
-            must exist in the SpeciesNet taxonomy.
+        taxa_list (str): .csv file with at least the columns "latin" and "common".
         speciesnet_taxonomy_file (str): taxonomy filename, in the same format used for
             model release (with 7-token taxonomy entries)
         input_file (str): .json file to read, in MD format.  This can be None, in which
@@ -1128,45 +1127,54 @@ def restrict_to_taxa_list(taxa_list,
             if the same latin name appears twice in the taxonomy list; if True, we'll
             just print a warning and ignore all entries other than the first for this
             latin name
+        verbose (bool, optional): enable additional debug output
     """
 
     ##%% Read target taxa list
 
-    if isinstance(taxa_list,str):
-        assert os.path.isfile(taxa_list), \
-            'Could not find taxa list file {}'.format(taxa_list)
-        with open(taxa_list,'r') as f:
-            taxa_list = f.readlines()
+    taxa_list_df = pd.read_csv(taxa_list)
 
-    taxa_list = [s.strip().lower() for s in taxa_list]
-    taxa_list = [s for s in taxa_list if len(s) > 0]
+    required_columns = ('latin','common')
+    for s in required_columns:
+        assert s in taxa_list_df.columns, \
+            'Required column {} missing from taxonomy list file {}'.format(
+                s,taxa_list)
 
+    # Convert the "latin" and "common" columns in taxa_list_df to lowercase
+    taxa_list_df['latin'] = taxa_list_df['latin'].str.lower()
+    taxa_list_df['common'] = taxa_list_df['common'].str.lower()
+
+    # Remove rows from taxa_list_df where the "latin" column is nan,
+    # printing a warning for each row (with a string representation of the whole row)
+    for i_row,row in taxa_list_df.iterrows():
+        if pd.isna(row['latin']):
+            if verbose:
+                print('Warning: Skipping row with empty "latin" column in {}:\n{}\n'.format(
+                    taxa_list,str(row.to_dict())))
+            taxa_list_df.drop(index=i_row, inplace=True)
+
+    # Convert all NaN values in the "common" column to empty strings
+    taxa_list_df['common'] = taxa_list_df['common'].fillna('')
+
+    # Create a dictionary mapping latin names to common names
     target_latin_to_common = {}
 
-    for s in taxa_list:
-
-        if s.strip().startswith('#'):
-            continue
-        tokens = s.split(',')
-        # We allow additional columns now
-        # assert len(tokens) <= 2
-        binomial_name = tokens[0]
-        assert len(binomial_name.split(' ')) in (1,2,3), \
-            'Illegal binomial name in species list: {}'.format(binomial_name)
-        if len(tokens) > 0:
-            common_name = tokens[1].strip().lower()
-        else:
-            common_name = None
-        if binomial_name in target_latin_to_common:
-            error_string = 'scientific name {} appears multiple times in the taxonomy list'.format(
-                    binomial_name)
+    for i_row,row in taxa_list_df.iterrows():
+        latin = row['latin']
+        common = row['common']
+        assert len(latin.split(' ')) in (1,2,3), \
+            'Illegal binomial name {} in taxaonomy list {}'.format(
+                latin,taxa_list)
+        if latin in target_latin_to_common:
+            error_string = \
+                'scientific name {} appears multiple times in the taxonomy list'.format(
+                latin)
             if allow_redundant_latin_names:
-                print('Warning: {}'.format(error_string))
+                if verbose:
+                    print('Warning: {}'.format(error_string))
             else:
                 raise ValueError(error_string)
-        target_latin_to_common[binomial_name] = common_name
-
-    # ...for each line in the taxonomy file
+        target_latin_to_common[latin] = common
 
 
     ##%% Read taxonomy file
@@ -1185,7 +1193,7 @@ def restrict_to_taxa_list(taxa_list,
     def _insert_taxonomy_string(s):
 
         tokens = s.split(';')
-        assert len(tokens) == 7
+        assert len(tokens) == 7, 'Illegal taxonomy string {}'.format(s)
 
         guid = tokens[0] # noqa
         class_name = tokens[1]
@@ -1196,20 +1204,24 @@ def restrict_to_taxa_list(taxa_list,
         common_name = tokens[6]
 
         if len(class_name) == 0:
-            assert common_name in ('animal','vehicle','blank')
+            assert common_name in ('animal','vehicle','blank'), \
+                'Illegal common name {}'.format(common_name)
             return
 
         if len(species) > 0:
-            assert all([len(s) > 0 for s in [genus,family,order]])
+            assert all([len(s) > 0 for s in [genus,family,order]]), \
+                'Higher-level taxa missing for {}: {},{},{}'.format(s,genus,family,order)
             binomial_name = genus + ' ' + species
             if binomial_name not in speciesnet_latin_name_to_taxon_string:
                 speciesnet_latin_name_to_taxon_string[binomial_name] = s
         elif len(genus) > 0:
-            assert all([len(s) > 0 for s in [family,order]])
+            assert all([len(s) > 0 for s in [family,order]]), \
+                'Higher-level taxa missing for {}: {},{}'.format(s,family,order)
             if genus not in speciesnet_latin_name_to_taxon_string:
                 speciesnet_latin_name_to_taxon_string[genus] = s
         elif len(family) > 0:
-            assert len(order) > 0
+            assert len(order) > 0, \
+                'Higher-level taxa missing for {}: {}'.format(order)
             if family not in speciesnet_latin_name_to_taxon_string:
                 speciesnet_latin_name_to_taxon_string[family] = s
         elif len(order) > 0:
@@ -1260,7 +1272,8 @@ def restrict_to_taxa_list(taxa_list,
                 for i_copy_token in range(1,i_token+1):
                     new_tokens[i_copy_token] = tokens[i_copy_token]
                 new_tokens[-1] = test_token + ' species'
-                assert new_tokens[-2] == ''
+                assert new_tokens[-2] == '', \
+                    'Illegal taxonomy string {}'.format(taxon_string)
                 new_taxon_string = ';'.join(new_tokens)
                 # assert new_taxon_string not in new_taxon_strings
                 new_taxon_string_to_missing_tokens[new_taxon_string].append(test_token)
@@ -1269,14 +1282,19 @@ def restrict_to_taxa_list(taxa_list,
 
     # ...for each taxon
 
-    print('Found {} taxa that need to be inserted to make the taxonomy valid:\n'.format(
-        len(new_taxon_string_to_missing_tokens)))
-
     new_taxon_string_to_missing_tokens = \
         sort_dictionary_by_key(new_taxon_string_to_missing_tokens)
-    for taxon_string in new_taxon_string_to_missing_tokens:
-        missing_taxa = ','.join(new_taxon_string_to_missing_tokens[taxon_string])
-        print('{} ({})'.format(taxon_string,missing_taxa))
+
+    if verbose:
+
+        print('Found {} taxa that need to be inserted to make the taxonomy valid, showing only mammals and birds here:\n'.format(
+            len(new_taxon_string_to_missing_tokens)))
+
+        for taxon_string in new_taxon_string_to_missing_tokens:
+            if 'mammalia' not in taxon_string and 'aves' not in taxon_string:
+                continue
+            missing_taxa = ','.join(new_taxon_string_to_missing_tokens[taxon_string])
+            print('{} ({})'.format(taxon_string,missing_taxa))
 
     for new_taxon_string in new_taxon_string_to_missing_tokens:
         _insert_taxonomy_string(new_taxon_string)
@@ -1298,7 +1316,7 @@ def restrict_to_taxa_list(taxa_list,
             n_failed_mappings += 1
 
     if n_failed_mappings > 0:
-        raise ValueError('Cannot continue with geofence generation')
+        raise ValueError('Cannot continue with taxonomic restriction')
 
 
     ##%% For the allow-list, map each parent taxon to a set of allowable child taxa
@@ -1312,7 +1330,8 @@ def restrict_to_taxa_list(taxa_list,
 
         taxon_string = speciesnet_latin_name_to_taxon_string[latin_name]
         tokens = taxon_string.split(';')
-        assert len(tokens) == 7
+        assert len(tokens) == 7, \
+            'Illegal taxonomy string'.format(taxon_string)
 
         # Remove GUID and common mame
         #
@@ -1324,24 +1343,84 @@ def restrict_to_taxa_list(taxa_list,
         # If this is a species
         if len(tokens[-1]) > 0:
             binomial_name = tokens[-2] + ' ' + tokens[-1]
-            assert binomial_name == latin_name
+            assert binomial_name == latin_name, \
+                'Binomial/latin mismatch: {} vs {}'.format(binomial_name,latin_name)
+            # If this already exists, it should only allow "None"
+            if binomial_name in allowed_parent_taxon_to_child_taxa:
+                assert len(allowed_parent_taxon_to_child_taxa[binomial_name]) == 1, \
+                    'Species-level entry {} has multiple children'.format(binomial_name)
+                assert None in allowed_parent_taxon_to_child_taxa[binomial_name], \
+                    'Species-level entry {} has non-None children'.format(binomial_name)
             allowed_parent_taxon_to_child_taxa[binomial_name].add(None)
             child_taxon = binomial_name
 
-        # The first candidate parent is the genus
+        # The first level that can ever be a parent taxon is the genus level
         parent_token_index = len(tokens) - 2
 
+        # Walk up from genus to family
         while(parent_token_index >= 0):
 
+            # "None" is our leaf node marker, we should never have ''
+            if child_taxon is not None:
+                assert len(child_taxon) > 0
+
             parent_taxon = tokens[parent_token_index]
-            allowed_parent_taxon_to_child_taxa[parent_taxon].add(child_taxon)
-            child_taxon = parent_taxon
+
+            # Don't create entries for blank taxa
+            if (len(parent_taxon) > 0):
+
+                create_child = True
+
+                # This is the lowest-level taxon in this entry
+                if (child_taxon is None):
+
+                    # ...but we don't want to remove existing children from any parents
+                    if (parent_taxon in allowed_parent_taxon_to_child_taxa) and \
+                       (len(allowed_parent_taxon_to_child_taxa[parent_taxon]) > 0):
+                        if verbose:
+                            existing_children_string = str(allowed_parent_taxon_to_child_taxa[parent_taxon])
+                            print('Not creating empty child for parent {} (already has children {})'.format(
+                                parent_taxon,existing_children_string))
+                        create_child = False
+
+                # If we're adding a new child entry, clear out any leaf node markers
+                else:
+
+                    if (parent_taxon in allowed_parent_taxon_to_child_taxa) and \
+                       (None in allowed_parent_taxon_to_child_taxa[parent_taxon]):
+
+                        assert len(allowed_parent_taxon_to_child_taxa[parent_taxon]) == 1, \
+                            'Illlegal parent/child configuration'
+
+                        if verbose:
+                            print('Un-marking parent {} as a leaf node because of child {}'.format(
+                                parent_taxon,child_taxon))
+
+                        allowed_parent_taxon_to_child_taxa[parent_taxon] = set()
+
+                if create_child:
+                    allowed_parent_taxon_to_child_taxa[parent_taxon].add(child_taxon)
+
+                # If we haven't hit a non-empty taxon yet, don't update "child_taxon"
+                assert len(parent_taxon) > 0
+                child_taxon = parent_taxon
+
+            # ...if we have a non-empty taxon
+
             parent_token_index -= 1
+
+        # ...for each taxonomic level
 
     # ...for each allowed latin name
 
     allowed_parent_taxon_to_child_taxa = \
         sort_dictionary_by_key(allowed_parent_taxon_to_child_taxa)
+
+    for parent_taxon in allowed_parent_taxon_to_child_taxa:
+        # "None" should only ever appear alone; this marks a leaf node with no children
+        if None in allowed_parent_taxon_to_child_taxa[parent_taxon]:
+            assert len(allowed_parent_taxon_to_child_taxa[parent_taxon]) == 1, \
+                '"None" should only appear alone in a child taxon list'
 
 
     ##%% If we were just validating the custom taxa file, we're done
@@ -1369,7 +1448,8 @@ def restrict_to_taxa_list(taxa_list,
 
         input_taxon_string = input_category_id_to_taxonomy_string[input_category_id]
         input_taxon_tokens = input_taxon_string.split(';')
-        assert len(input_taxon_tokens) == 7
+        assert len(input_taxon_tokens) == 7, \
+            'Illegal taxonomy string: {}'.format(input_taxon_string)
 
         # Don't mess with blank/no-cv-result/animal/human
         if (input_taxon_string in non_taxonomic_prediction_strings) or \
@@ -1403,19 +1483,23 @@ def restrict_to_taxa_list(taxa_list,
                 test_index -= 1
                 continue
 
-            assert test_taxon_name in speciesnet_latin_name_to_taxon_string
+            assert test_taxon_name in speciesnet_latin_name_to_taxon_string, \
+                '{} should be a substring of {}'.format(test_taxon_name,
+                                                        speciesnet_latin_name_to_taxon_string)
 
             # Is this taxon allowed according to the custom species list?
             if test_taxon_name in allowed_parent_taxon_to_child_taxa:
 
                 allowed_child_taxa = allowed_parent_taxon_to_child_taxa[test_taxon_name]
-                assert allowed_child_taxa is not None
+                assert allowed_child_taxa is not None, \
+                    'allowed_child_taxa should not be None: {}'.format(test_taxon_name)
 
                 # If this is the lowest-level allowable token or there is not a
                 # unique child, don't walk any further, even if walking down
                 # is enabled.
-                if (None in allowed_child_taxa):
-                    assert len(allowed_child_taxa) == 1
+                if None in allowed_child_taxa:
+                    assert len(allowed_child_taxa) == 1, \
+                        '"None" should not be listed as a child taxa with other child taxa'
 
                 if (None in allowed_child_taxa) or (len(allowed_child_taxa) > 1):
                     target_taxon = test_taxon_name
@@ -1427,8 +1511,12 @@ def restrict_to_taxa_list(taxa_list,
                     while ((next(iter(allowed_child_taxa)) is not None) and \
                           (len(allowed_child_taxa) == 1)):
                         candidate_taxon = next(iter(allowed_child_taxa))
-                        assert candidate_taxon in allowed_parent_taxon_to_child_taxa
-                        assert candidate_taxon in speciesnet_latin_name_to_taxon_string
+                        assert candidate_taxon in allowed_parent_taxon_to_child_taxa, \
+                            '{} should be a subset of {}'.format(
+                                candidate_taxon,allowed_parent_taxon_to_child_taxa)
+                        assert candidate_taxon in speciesnet_latin_name_to_taxon_string, \
+                            '{} should be a subset of {}'.format(
+                                candidate_taxon,speciesnet_latin_name_to_taxon_string)
                         allowed_child_taxa = \
                             allowed_parent_taxon_to_child_taxa[candidate_taxon]
                     target_taxon = candidate_taxon
@@ -1493,7 +1581,8 @@ def restrict_to_taxa_list(taxa_list,
     ##%% Remap all category labels
 
     assert len(set(output_taxon_string_to_category_id.keys())) == \
-           len(set(output_taxon_string_to_category_id.values()))
+           len(set(output_taxon_string_to_category_id.values())), \
+           'Category ID/value non-uniqueness error'
 
     output_category_id_to_taxon_string = \
         invert_dictionary(output_taxon_string_to_category_id)

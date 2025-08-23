@@ -398,7 +398,10 @@ if custom_taxa_list is not None:
 
     # Validate the species list
     from megadetector.postprocessing.classification_postprocessing import restrict_to_taxa_list
-    restrict_to_taxa_list(custom_taxa_list,taxonomy_file,None,None)
+    restrict_to_taxa_list(taxa_list=custom_taxa_list,
+                          speciesnet_taxonomy_file=taxonomy_file,
+                          input_file=None,
+                          output_file=None)
 
 
 #%% Enumerate files
@@ -1397,7 +1400,7 @@ from megadetector.utils.wi_taxonomy_utils import validate_predictions_file
 _ = validate_predictions_file(classifier_output_file_modular_crops,crop_instances_json)
 
 
-##%% Run geofencing (still crops)
+##%% Run rollup (and possibly geofencing) (still crops)
 
 # It doesn't matter here which environment we use, and there's no need to add the CUDA prefix
 ensemble_commands = []
@@ -1438,6 +1441,11 @@ rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular_cr
 
 geofence_footer = generate_geofence_adjustment_html_summary(rollup_pair_to_count)
 
+# If we didn't run geofencing, there should have been no geofence adjustments
+if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
+    assert len(rollup_pair_to_count) == 0
+    assert len(geofence_footer) == 0
+
 
 ##%% Convert output file to MD format (still crops)
 
@@ -1446,8 +1454,6 @@ assert os.path.isfile(ensemble_output_file_modular_crops)
 generate_md_results_from_predictions_json(predictions_json_file=ensemble_output_file_modular_crops,
                                           md_results_file=ensemble_output_file_crops_md_format,
                                           base_folder=crop_folder+'/')
-
-# from megadetector.utils.path_utils import open_file; open_file(ensemble_output_file_md_format)
 
 
 ##%% Bring those crop-level results back to image level
@@ -1500,6 +1506,8 @@ from megadetector.postprocessing.classification_postprocessing import restrict_t
 
 if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
 
+    print('Restricting to custom taxonomy list: {}'.format(custom_taxa_list))
+
     taxa_list = custom_taxa_list
     speciesnet_taxonomy_file = taxonomy_file
     restrict_to_taxa_list(taxa_list=taxa_list,
@@ -1507,6 +1515,10 @@ if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
                           input_file=ensemble_output_file_image_level_md_format,
                           output_file=custom_taxa_output_file,
                           allow_walk_down=custom_taxa_allow_walk_down)
+
+else:
+
+    print('No custom taxonomy list supplied, skipping taxonomic restriction step')
 
 pre_smoothing_file = ensemble_output_file_image_level_md_format
 if os.path.isfile(custom_taxa_output_file):
