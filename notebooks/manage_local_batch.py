@@ -97,6 +97,7 @@ from megadetector.utils.path_utils import open_file
 from megadetector.utils.wi_taxonomy_utils import generate_md_results_from_predictions_json
 from megadetector.utils.wi_taxonomy_utils import generate_instances_json_from_folder
 
+from megadetector.postprocessing.classification_postprocessing import restrict_to_taxa_list
 
 ## Inference options
 
@@ -397,11 +398,11 @@ if custom_taxa_list is not None:
     assert custom_taxa_stage in ('before_smoothing','after_smoothing')
 
     # Validate the species list
-    from megadetector.postprocessing.classification_postprocessing import restrict_to_taxa_list
     restrict_to_taxa_list(taxa_list=custom_taxa_list,
                           speciesnet_taxonomy_file=taxonomy_file,
                           input_file=None,
-                          output_file=None)
+                          output_file=None,
+                          use_original_common_names_if_available=True)
 
 
 #%% Enumerate files
@@ -1502,8 +1503,6 @@ print('Loaded results for {} images with {} failures'.format(
 
 #%% Possibly apply a custom taxa list (before smoothing)
 
-from megadetector.postprocessing.classification_postprocessing import restrict_to_taxa_list
-
 if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
 
     print('Restricting to custom taxonomy list: {}'.format(custom_taxa_list))
@@ -1514,7 +1513,8 @@ if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
                           speciesnet_taxonomy_file=speciesnet_taxonomy_file,
                           input_file=ensemble_output_file_image_level_md_format,
                           output_file=custom_taxa_output_file,
-                          allow_walk_down=custom_taxa_allow_walk_down)
+                          allow_walk_down=custom_taxa_allow_walk_down,
+                          use_original_common_names_if_available=True)
 
 else:
 
@@ -1760,8 +1760,6 @@ open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_na
 
 #%% Possibly apply a custom taxa list (after smoothing)
 
-from megadetector.postprocessing.classification_postprocessing import restrict_to_taxa_list
-
 if (custom_taxa_list is not None) and (custom_taxa_stage == 'after_smoothing'):
 
     taxa_list = custom_taxa_list
@@ -1773,7 +1771,8 @@ if (custom_taxa_list is not None) and (custom_taxa_stage == 'after_smoothing'):
                           speciesnet_taxonomy_file=speciesnet_taxonomy_file,
                           input_file=sequence_smoothed_classification_file,
                           output_file=custom_taxa_output_file,
-                          allow_walk_down=custom_taxa_allow_walk_down)
+                          allow_walk_down=custom_taxa_allow_walk_down,
+                          use_original_common_names_if_available=True)
 
 
 #%% Preview (post-custom_taxa-smoothing)

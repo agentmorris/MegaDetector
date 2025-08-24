@@ -13,7 +13,6 @@ Functions for postprocessing species classification results, particularly:
 
 #%% Constants and imports
 
-import os
 import json
 import copy
 import pandas as pd
@@ -22,6 +21,7 @@ from collections import defaultdict
 from tqdm import tqdm
 
 from megadetector.utils.ct_utils import is_list_sorted
+from megadetector.utils.ct_utils import is_empty
 from megadetector.utils.ct_utils import sort_dictionary_by_value
 from megadetector.utils.ct_utils import sort_dictionary_by_key
 from megadetector.utils.ct_utils import invert_dictionary
@@ -30,7 +30,6 @@ from megadetector.utils.wi_taxonomy_utils import clean_taxonomy_string
 from megadetector.utils.wi_taxonomy_utils import taxonomy_level_index
 from megadetector.utils.wi_taxonomy_utils import taxonomy_level_string_to_index
 
-from megadetector.utils.wi_taxonomy_utils import non_taxonomic_prediction_strings
 from megadetector.utils.wi_taxonomy_utils import human_prediction_string
 from megadetector.utils.wi_taxonomy_utils import animal_prediction_string
 from megadetector.utils.wi_taxonomy_utils import is_taxonomic_prediction_string
@@ -1105,6 +1104,7 @@ def restrict_to_taxa_list(taxa_list,
                           add_pre_filtering_description=True,
                           allow_redundant_latin_names=True,
                           protected_common_names=None,
+                          use_original_common_names_if_available=True,
                           verbose=True):
     """
     Given a prediction file in MD .json format, likely without having had
@@ -1132,6 +1132,9 @@ def restrict_to_taxa_list(taxa_list,
         protected_common_names (list, optional): these categories should be
             unmodified, even if they aren't used, or have the same taxonomic
             description as other categories
+        use_original_common_names_if_available (bool, optional): if an "original_common"
+            column is present in [taxa_list], use those common names instead of the ones
+            in the taxonomy file
         verbose (bool, optional): enable additional debug output
     """
 
@@ -1165,11 +1168,21 @@ def restrict_to_taxa_list(taxa_list,
     target_latin_to_common = {}
 
     for i_row,row in taxa_list_df.iterrows():
+
         latin = row['latin']
         common = row['common']
+
+        if use_original_common_names_if_available and \
+            ('original_common' in row) and \
+            (not is_empty(row['original_common'])):
+                common = row['original_common'].strip().lower()
+
+        # Valid latin names have either one token (e.g. "canidae"),
+        # two tokens (e.g. "bos taurus"), or three tokens (e.g. "canis lupus familiaris")
         assert len(latin.split(' ')) in (1,2,3), \
             'Illegal binomial name {} in taxaonomy list {}'.format(
                 latin,taxa_list)
+
         if latin in target_latin_to_common:
             error_string = \
                 'scientific name {} appears multiple times in the taxonomy list'.format(
@@ -1179,7 +1192,10 @@ def restrict_to_taxa_list(taxa_list,
                     print('Warning: {}'.format(error_string))
             else:
                 raise ValueError(error_string)
+
         target_latin_to_common[latin] = common
+
+    # ...for each row in the custom taxonomy list
 
 
     ##%% Read taxonomy file
@@ -1226,7 +1242,7 @@ def restrict_to_taxa_list(taxa_list,
                 speciesnet_latin_name_to_taxon_string[genus] = s
         elif len(family) > 0:
             assert len(order) > 0, \
-                'Higher-level taxa missing for {}: {}'.format(order)
+                'Higher-level taxa missing for {}: {}'.format(s,order)
             if family not in speciesnet_latin_name_to_taxon_string:
                 speciesnet_latin_name_to_taxon_string[family] = s
         elif len(order) > 0:
@@ -1249,11 +1265,18 @@ def restrict_to_taxa_list(taxa_list,
 
     # In theory any taxon that appears as the parent of another taxon should
     # also be in the taxonomy, but this isn't always true, so we fix it here.
-
     new_taxon_string_to_missing_tokens = defaultdict(list)
+
+    # While we're making this loop, also see whether we need to store any custom
+    # common name mappings based on the taxonomy list.
+    speciesnet_latin_name_to_output_common_name = {}
 
     # latin_name = next(iter(speciesnet_latin_name_to_taxon_string.keys()))
     for latin_name in speciesnet_latin_name_to_taxon_string.keys():
+
+        if latin_name in target_latin_to_common:
+            speciesnet_latin_name_to_output_common_name[latin_name] = \
+                target_latin_to_common[latin_name]
 
         if 'no cv result' in latin_name:
             continue
@@ -1292,8 +1315,8 @@ def restrict_to_taxa_list(taxa_list,
 
     if verbose:
 
-        print('Found {} taxa that need to be inserted to make the taxonomy valid, showing only mammals and birds here:\n'.format(
-            len(new_taxon_string_to_missing_tokens)))
+        print(f'Found {len(new_taxon_string_to_missing_tokens)} taxa that need to be inserted to ' + \
+              'make the taxonomy valid, showing only mammals and birds here:\n')
 
         for taxon_string in new_taxon_string_to_missing_tokens:
             if 'mammalia' not in taxon_string and 'aves' not in taxon_string:
@@ -1336,7 +1359,7 @@ def restrict_to_taxa_list(taxa_list,
         taxon_string = speciesnet_latin_name_to_taxon_string[latin_name]
         tokens = taxon_string.split(';')
         assert len(tokens) == 7, \
-            'Illegal taxonomy string'.format(taxon_string)
+            'Illegal taxonomy string {}'.format(taxon_string)
 
         # Remove GUID and common mame
         #
@@ -1467,7 +1490,9 @@ def restrict_to_taxa_list(taxa_list,
 
         # Don't mess with protected categories
         common_name = input_taxon_tokens[-1]
-        if (protected_common_names is not None) and (common_name in protected_common_names):
+
+        if (protected_common_names is not None) and \
+            (common_name in protected_common_names):
             if verbose:
                 print('Not messing with protected category {}'.format(common_name))
             input_category_id_to_output_taxon_string[input_category_id] = \
@@ -1554,6 +1579,8 @@ def restrict_to_taxa_list(taxa_list,
 
     ##%% Build the new tables
 
+    speciesnet_taxon_string_to_latin_name = invert_dictionary(speciesnet_latin_name_to_taxon_string)
+
     input_category_id_to_output_category_id = {}
     output_taxon_string_to_category_id = {}
     output_category_id_to_common_name = {}
@@ -1564,6 +1591,17 @@ def restrict_to_taxa_list(taxa_list,
             input_category_id_to_output_taxon_string[input_category_id]
 
         output_common_name = output_taxon_string.split(';')[-1]
+
+        # Possibly substitute a custom common name
+        if output_taxon_string in speciesnet_taxon_string_to_latin_name:
+
+            speciesnet_latin_name = speciesnet_taxon_string_to_latin_name[output_taxon_string]
+
+            if speciesnet_latin_name in speciesnet_latin_name_to_output_common_name:
+                custom_common_name = speciesnet_latin_name_to_output_common_name[speciesnet_latin_name]
+                if custom_common_name != output_common_name:
+                    print('Substituting common name {} for {}'.format(custom_common_name,output_common_name))
+                    output_common_name = custom_common_name
 
         # Do we need to create a new output category?
         if output_taxon_string not in output_taxon_string_to_category_id:
@@ -1596,7 +1634,7 @@ def restrict_to_taxa_list(taxa_list,
     # ...for each category
 
 
-    ##%% Remap all category labels
+    #%% Remap all category labels
 
     assert len(set(output_taxon_string_to_category_id.keys())) == \
            len(set(output_taxon_string_to_category_id.values())), \
