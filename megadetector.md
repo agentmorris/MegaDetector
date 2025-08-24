@@ -391,25 +391,15 @@ Many of our users either use our Python tools to run MegaDetector or have us run
 
 But we recognize that Python tools can be a bit daunting, so we're excited that a variety of tools allow you to run MegaDetector in a GUI have emerged from the community.  We're interested in users' perspectives on all of these tools, so if you find them useful - or if you know of others - [let us know](mailto:cameratraps@lila.science), and thank those developers!
 
-### GUI tools for running MegaDetector locally
+### Local tools that run MegaDetector (and other models)
 
 * [AddaxAI](https://addaxdatascience.com/addaxai/) is a GUI-based tool for running MegaDetector and a variety of species classifiers; also supports a number of postprocessing functions (e.g. folder separation).  This is how most users run MegaDetector.  AddaxAI worried about all the Python stuff in this repo, so that you don't have to.
+* [DeepFaune](https://www.deepfaune.cnrs.fr/en/)
 * [BoquilaHUB](https://boquila.org/hub) is a GUI-based tool for running MegaDetector and a variety of species classifiers
 * [CamTrap Detector](https://github.com/bencevans/camtrap-detector) is a GUI-based tool for running MegaDetector (supports MDv5)
 * [MegaDetector-GUI](https://github.com/petargyurov/megadetector-gui) is a GUI-based tool for running MegaDetector in Windows environments (MDv4 only as far as we know)
 
  
-### Interactive demos/APIs
-
-* [Hendry Lydecker](https://github.com/hlydecker) set up a [Hugging Face app](https://huggingface.co/spaces/hlydecker/MegaDetector_v5) for running MDv5
-* [Ben Evans](https://bencevans.io/) set up a [Web-based MegaDetector demo](https://replicate.com/bencevans/megadetector) at [replicate.com](https://replicate.com)
-
-
-### Thick-client tools that leverage MegaDetector
-
-* [DeepFaune](https://www.deepfaune.cnrs.fr/en/)
-
-
 ### Cloud-based platforms that leverage MegaDetector
 
 It's not quite as simple as "these platforms all run MegaDetector on your images", but to varying degrees, all of the following online platforms use MegaDetector:
@@ -429,6 +419,12 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 * [Dudek AI Image Toolkit](https://ait.dudek.com)
 * [Zamba Cloud](https://github.com/drivendataorg/zamba)
 * [OCAPI](https://www.terroiko.fr/ocapi/)
+
+
+### Interactive demos/APIs
+
+* [Hendry Lydecker](https://github.com/hlydecker) set up a [Hugging Face app](https://huggingface.co/spaces/hlydecker/MegaDetector_v5) for running MDv5
+* [Ben Evans](https://bencevans.io/) set up a [Web-based MegaDetector demo](https://replicate.com/bencevans/megadetector) at [replicate.com](https://replicate.com)
 
 
 ### Other ways of running MegaDetector that don't fit easily into one of those categories
