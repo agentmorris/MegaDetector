@@ -341,24 +341,34 @@ Often we interact with users who could easily keep up with their image load on t
 
 We don't typically recommend running MegaDetector on embedded devices, although <a href="https://www.electromaker.io/project/view/whats-destroying-my-yard-pest-detection-with-raspberry-pi">some folks have done it</a>!  More commonly, for embedded scenarios, it probably makes sense to use MegaDetector to generate bounding boxes on lots of images from your specific ecosystem, then use those boxes to train a smaller model that fits your embedded device's compute budget.
 
+
 ### Benchmark timings
 
 These results are based on a test batch of around 13,000 images from the public <a href="https://lila.science/datasets/snapshot-karoo">Snapshot Karoo</a> and <a href="http://lila.science/datasets/idaho-camera-traps/">Idaho Camera Traps</a> datasets.  These were chosen to be "typical", and anecdotally they are, though FWIW we have seen very high-resolution images that run around 30% slower than these, and very low-resolution images (typically video frames) that run around 100% faster than these.</i>
 
 Some of these results were measured by "team MegaDetector", and some are user-reported; YMMV.  
   
-#### Timing results for MDv5
+#### Timing results for MDv5 and MDv1000-redwood
 
-* An <a href="https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4090/">RTX 4090</a> processes around 17.6 images per second, or around 1,500,000 images per day (for MDv5)
-* An <a href="https://www.nvidia.com/en-us/geforce/graphics-cards/30-series/rtx-3090-3090ti/">RTX 3090</a> processes around 11.4 images per second, or around 985,000 images per day (for MDv5)
-* An <a href="https://www.nvidia.com/en-us/geforce/graphics-cards/30-series/rtx-3080-3080ti/">RTX 3080</a> processes around 9.5 images per second, or around 820,800 images per day (for MDv5)
-* A desktop <a href="https://www.nvidia.com/en-us/geforce/graphics-cards/30-series/rtx-3050/">RTX 3050</a> processes around 4.2 images per second, or around 363,000 images per day (for MDv5)
-* A laptop  <a href="https://www.nvidia.com/en-us/geforce/graphics-cards/30-series/rtx-3050/">RTX 3050</a> processes around 3.0 images per second, or around 250,000 images per day (for MDv5)
-* A <a href="https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/quadro-pascal-p2000-data-sheet-us-nvidia-704443-r2-web.pdf">Quadro P2000</a> processes around 2.1 images per second, or around 180,000 images per day (for MDv5)
-* A 2024 M3 MacBook Pro (18 GPU cores) averages around 4.61 images per second, or around 398,000 images per day (for MDv5)
-* A 2020 M1 MacBook Pro (8 GPU cores) averages around 1.85 images per second, or around 160,000 images per day (for MDv5)
-* An Intel Core i7-12700 CPU processes around 0.5 images per second on a single core (43,000 images per day) (multi-core performance is... complicated) (for MDv5)
-* An Intel Core i7-13700K CPU processes around 0.8 images per second on a single core (69,000 images per day) (multi-core performance is... complicated) (for MDv5)
+* An <a href="https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4090/">RTX 4090</a> processes around 17.6 images per second, or around 1,500,000 images per day (for MDv5/MDv1000-redwood)
+* An <a href="https://www.nvidia.com/en-us/geforce/graphics-cards/30-series/rtx-3090-3090ti/">RTX 3090</a> processes around 11.4 images per second, or around 985,000 images per day (for MDv5/MDv1000-redwood)
+* An <a href="https://www.nvidia.com/en-us/geforce/graphics-cards/30-series/rtx-3080-3080ti/">RTX 3080</a> processes around 9.5 images per second, or around 820,800 images per day (for MDv5/MDv1000-redwood)
+* A desktop <a href="https://www.nvidia.com/en-us/geforce/graphics-cards/30-series/rtx-3050/">RTX 3050</a> processes around 4.2 images per second, or around 363,000 images per day (for MDv5/MDv1000-redwood)
+* A laptop  <a href="https://www.nvidia.com/en-us/geforce/graphics-cards/30-series/rtx-3050/">RTX 3050</a> processes around 3.0 images per second, or around 250,000 images per day (for MDv5/MDv1000-redwood)
+* A <a href="https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/quadro-pascal-p2000-data-sheet-us-nvidia-704443-r2-web.pdf">Quadro P2000</a> processes around 2.1 images per second, or around 180,000 images per day (for MDv5/MDv1000-redwood)
+* A 2024 M3 MacBook Pro (18 GPU cores) averages around 4.61 images per second, or around 398,000 images per day (for MDv5/MDv1000-redwood)
+* A 2020 M1 MacBook Pro (8 GPU cores) averages around 1.85 images per second, or around 160,000 images per day (for MDv5/MDv1000-redwood)
+* An Intel Core i7-12700 CPU processes around 0.5 images per second on a single core (43,000 images per day) (multi-core performance is... complicated) (for MDv5/MDv1000-redwood)
+* An Intel Core i7-13700K CPU processes around 0.8 images per second on a single core (69,000 images per day) (multi-core performance is... complicated) (for MDv5/MDv1000-redwood)
+
+#### Timing results for other MDv1000 models
+
+We haven't had a chance to gather benchmark timing results for MDv1000 models other than MDv1000-redwood; we hope to add them here.
+
+But you will get a very good estimate of how long it will take to run other MDv1000 models if you take the corresponding MDv5/MDv1000-redwood results, and scale them according to the "FLOPS" column in the [MDv1000 release notes](https://github.com/agentmorris/MegaDetector/blob/main/docs/release-notes/mdv1000-release.md#introducing-mdv1000).  E.g. the previous section says that an Intel i7-13700K can process around 69,000 images per day through MDv5 or MDv1000-redwood.  MDv1000-cedar is around 2x as fast according to the release notes, so that would be around 138,000 images per day.   This is a little more complicated on a GPU, where MDv1000-cedar is likely more than 2x as fast.
+
+That said, any time I write that a smaller model is faster, I also want to attach a caveat.  The release notes also recommend that you should use the largest model you can use: saving <i>compute</i> time in order to have slightly less accurate results that cost you more <i>human</i> time later is almost never worth it.  If you have a GPU, there's almost no scenario where you want to use anything other than MDv5 or MDv1000-redwood, and even if you don't have a GPU, it's a relatively niche scenario where you want to use less accurate models.  Even with the faster models, you still have to walk away from your desk to run a batch of images, and once you've done that, it's <i>usually</i> worth just letting it run a little longer to get more accurate results.
+
 
 #### Timing results for MDv4
 

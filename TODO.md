@@ -517,6 +517,16 @@ E0
 !maintenance
 
 
+## Benchmark timing results for MDv1000 models other than MDv1000-redwood
+
+The MegaDetector User Guide includes benchmark timing results for MDv5, MDv1000-redwood, and MDv4.  Add benchmark timing results for other MDv1000 models.
+
+P2
+
+E0
+
+!docs
+
 ## Graceful handling of augmentation for MDv1000-cedar
 
 MDv1000-cedar does not support image augmentation.  It's not important to add it; the entire point of MDv1000-cedar is for compute-constrained scenarios.  Right now, though, it crashes unhelpfully.  Handle this more gracefully.

@@ -273,7 +273,7 @@ Overall, this step didn't hurt, but I am not doing a thorough assessment of how 
 
 <i>Finally</i>, links to models (with MDv4 and MDv5 for comparison)...
 
-| model name | architecture | <i>normalized</i> animal AP.5:.95 | input size | FLOPs (B) | ILMS |
+| model name | architecture | <i>normalized</i> animal AP.5:.95 | input size | FLOPS (B) | ILMS |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | [MDv1000-redwood](https://github.com/agentmorris/MegaDetector/releases/download/v1000.0/md_v1000.0.0-redwood.pt) | YOLOv5x6 | 1.009 | 1280 | 209.8 | GPL |
 | [MDv5a](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.1.pt) | YOLOv5x6 | 1.000<br/>(by definition)  | 1280| 209.8 | GPL |
@@ -290,7 +290,7 @@ Definitions for the columns in that table:
 * <b>architecture</b>: the AI model architecture this model is based on.
 * <b>normalized animal AP.5:.95</b>: "AP.5:.95" is common measure of accuracy for object detection models; the values presented in this table are <i>normalized using MDv5a as a reference value</i>.  Specifically, this is the AP.5:.95 value, just for the animal class, as computed by the [review_object_detection_metrics](https://github.com/rafaelpadilla/review_object_detection_metrics) package.  Values for other categories and using other metrics (e.g. AP50, AP75) follow the same trend, so, keeping it simple: higher is better.
 * <b>input size</b>: the pixel size at which the model was trained and the size at which it will run by default (on the long side, typically the width).
-* <b>FLOPs</b>: the number of floating-point operations (in billions) required to run one image through the model (higher number == slower model).  These values are provided by the developers of each architecture.  Because MDv1000-sorrel is trained at larger size than the default size, it will run slower than what is reported by the developer, so for that model, I'm extrapolating from the reported number for the default size.  The others are all trained at their default size.
+* <b>FLOPS</b>: the number of floating-point operations (in billions) required to run one image through the model (higher number == slower model).  These values are provided by the developers of each architecture.  Because MDv1000-sorrel is trained at larger size than the default size, it will run slower than what is reported by the developer, so for that model, I'm extrapolating from the reported number for the default size.  The others are all trained at their default size.
 * <b>ILMS</b>: an acronym I just made up for "inference license that makes sense".  It's above my pay grade to tell you what the applicable license is if you, e.g., export the weights to another format and use your own code to run it; I'm just capturing the license of the default inference code.
 
 <b>Why not release absolute accuracy numbers?</b>
