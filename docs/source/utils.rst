@@ -95,7 +95,7 @@ utils.gpu\_test module
    :show-inheritance:
 
 utils.wi\_taxonomy\_utils module
----------------------------
+--------------------------------
 
 .. automodule:: megadetector.utils.wi_taxonomy_utils
    :members:
@@ -103,7 +103,7 @@ utils.wi\_taxonomy\_utils module
    :show-inheritance:
 
 utils.wi\_platform\_utils module
----------------------------
+--------------------------------
 
 .. automodule:: megadetector.utils.wi_platform_utils
    :members:
