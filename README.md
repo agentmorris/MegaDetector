@@ -112,7 +112,6 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [TROPECOLNET project](https://www.anabenitezlopez.com/research/global-change-biology/tropecolnet/), Museo Nacional de Ciencias Naturales
 * [Wildlife Coexistence Lab](https://wildlife.forestry.ubc.ca/), University of British Columbia
 * [Wildlife Research](https://www.dfw.state.or.us/wildlife/research/index.asp), Oregon Department of Fish and Wildlife
-* [Wildlife Division](https://www.michigan.gov/dnr/about/contact/wildlife), Michigan Department of Natural Resources
 * [Kohl Wildlife Lab](https://kohlwildlifelab.com/), University of Georgia
 * [SPEC Lab](https://thespeclab.weebly.com/) and [Cherry Lab](https://www.ckwri.tamuk.edu/about/michael-j-cherry-phd), Caesar Kleberg Wildlife Research Institute, Texas A&M Kingsville
 * Ecology and Conservation of Amazonian Vertebrates Research Group, Federal University of Amapá
@@ -148,6 +147,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [The Nature Conservancy in California](https://www.nature.org/en-us/about-us/where-we-work/united-states/california/) ([Animl platform](https://github.com/tnc-ca-geo/animl-frontend)) ([story](https://www.vision-systems.com/non-factory/environment-agriculture/article/14304433/the-nature-conservancy-brings-cameras-ai-to-invasive-species-prevention))
 * [San Diego Zoo Wildlife Alliance](https://science.sandiegozoo.org/)  ([Animl R package](https://github.com/conservationtechlab/animl))
 * [TerrOïko](https://www.terroiko.fr/) ([OCAPI platform](https://www.terroiko.fr/ocapi))
+* [Wildlife Division](https://www.michigan.gov/dnr/about/contact/wildlife), Michigan Department of Natural Resources ([blog post](https://www.michigan.gov/dnr/about/newsroom/releases/2025/08/18/dnr-researchers-to-test-trail-cameras-in-elk-survey))
 
 Also see:
 
