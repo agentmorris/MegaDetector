@@ -159,7 +159,9 @@ class YoloInferenceOptions:
         #: These are deliberately offset from the standard MD categories; YOLOv5
         #: needs categories IDs to start at 0.
         #:
-        #: This can also be a string that points to a YOLO dataset.yaml file.
+        #: This can also be a string that points to any class mapping file supported
+        #: by read_classes_from_yolo_dataset_file(): a YOLO dataset.yaml file, a text
+        #: file with a list of classes, or a .json file with an ID --> name dict
         self.yolo_category_id_to_name = {0:'animal',1:'person',2:'vehicle'}
 
         #: What should we do if the output file already exists?

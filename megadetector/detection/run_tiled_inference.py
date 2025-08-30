@@ -907,7 +907,10 @@ if False:
 
 #%% Command-line driver
 
-def main(): # noqa
+def main():
+    """
+    Command-line driver for run_tiled_inference
+    """
 
     parser = argparse.ArgumentParser(
         description='Chop a folder of images up into tiles, run MD on the tiles, and stitch the results together')
@@ -956,7 +959,7 @@ def main(): # noqa
         '--detector_options',
         type=str,
         default=None,
-        help=('A list of detector options (key-value pairs) to '))
+        help=('A list of detector options (key-value pairs)'))
 
     # detector_options = parse_kvp_list(args.detector_options)
 
