@@ -528,7 +528,8 @@ def find_images(dirname,
 def clean_filename(filename,
                    allow_list=VALID_FILENAME_CHARS,
                    char_limit=CHAR_LIMIT,
-                   force_lower= False):
+                   force_lower=False,
+                   remove_trailing_leading_whitespace=True):
     r"""
     Removes non-ASCII and other invalid filename characters (on any
     reasonable OS) from a filename, then optionally trims to a maximum length.
@@ -544,10 +545,26 @@ def clean_filename(filename,
         char_limit (int, optional): maximum allowable filename length, if None will skip this
             step
         force_lower (bool, optional): convert the resulting filename to lowercase
-
+        remove_trailing_leading_whitespace (bool, optional): remove trailing and
+            leading whitespace from each component of a path, e.g. does not allow
+            a/b/c /d.jpg
     Returns:
         str: cleaned version of [filename]
     """
+
+    if remove_trailing_leading_whitespace:
+
+        # Best effort to preserve the original separator
+        separator = '/'
+        if '\\' in filename:
+            separator = '\\'
+
+        filename = filename.replace('\\','/')
+        components = filename.split('/')
+        clean_components = [c.strip() for c in components]
+        filename = separator.join(clean_components)
+        if separator == '\\':
+            filename = filename.replace('/','\\')
 
     # keep only valid ascii chars
     cleaned_filename = (unicodedata.normalize('NFKD', filename)
@@ -565,7 +582,8 @@ def clean_filename(filename,
 def clean_path(pathname,
                allow_list=VALID_PATH_CHARS,
                char_limit=CHAR_LIMIT,
-               force_lower=False):
+               force_lower=False,
+               remove_trailing_leading_whitespace=True):
     """
     Removes non-ASCII and other invalid path characters (on any reasonable
     OS) from a path, then optionally trims to a maximum length.
@@ -576,13 +594,20 @@ def clean_path(pathname,
         char_limit (int, optional): maximum allowable filename length, if None will skip this
             step
         force_lower (bool, optional): convert the resulting filename to lowercase
+        remove_trailing_leading_whitespace (bool, optional): remove trailing and
+            leading whitespace from each component of a path, e.g. does not allow
+            a/b/c /d.jpg
 
     Returns:
         str: cleaned version of [filename]
     """
 
-    return clean_filename(pathname, allow_list=allow_list,
-                          char_limit=char_limit, force_lower=force_lower)
+    return clean_filename(pathname,
+                          allow_list=allow_list,
+                          char_limit=char_limit,
+                          force_lower=force_lower,
+                          remove_trailing_leading_whitespace=\
+                            remove_trailing_leading_whitespace)
 
 
 def flatten_path(pathname,separator_chars=SEPARATOR_CHARS,separator_char_replacement='~'):

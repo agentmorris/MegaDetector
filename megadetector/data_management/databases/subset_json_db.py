@@ -18,13 +18,20 @@ import json
 import argparse
 
 from tqdm import tqdm
-from megadetector.utils import ct_utils
 from copy import copy
+
+from megadetector.utils import ct_utils
+from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 
 
 #%% Functions
 
-def subset_json_db(input_json, query, output_json=None, ignore_case=False, verbose=False):
+def subset_json_db(input_json,
+                   query,
+                   output_json=None,
+                   ignore_case=False,
+                   remap_categories=True,
+                   verbose=False):
     """
     Given a json file (or dictionary already loaded from a json file), produce a new
     database containing only the images whose filenames contain the string 'query',
@@ -36,6 +43,8 @@ def subset_json_db(input_json, query, output_json=None, ignore_case=False, verbo
             contain this string.  If this is a list, test for exact matches.
         output_json (str, optional): file to write the resulting .json file to
         ignore_case (bool, optional): whether to perform a case-insensitive search for [query]
+        remap_categories (bool, optional): trim the category list to only the categores used
+            in the subset
         verbose (bool, optional): enable additional debug output
 
     Returns:
@@ -91,6 +100,52 @@ def subset_json_db(input_json, query, output_json=None, ignore_case=False, verbo
     output_data = copy(input_data)
     output_data['images'] = images
     output_data['annotations'] = annotations
+
+    # Remap categories if necessary
+    if remap_categories:
+
+        category_ids_used = set()
+        for ann in annotations:
+            category_ids_used.add(ann['category_id'])
+
+        if verbose:
+            print('Keeping {} of {} categories'.format(
+                len(category_ids_used),len(input_data['categories'])))
+
+        input_category_id_to_output_category_id = {}
+
+        next_category_id = 0
+
+        # Build mappings from old to new category IDs
+        for input_category_id in category_ids_used:
+            assert isinstance(input_category_id,int), \
+                'Illegal category ID {}'.format(input_category_id)
+            output_category_id = next_category_id
+            next_category_id = next_category_id + 1
+            input_category_id_to_output_category_id[input_category_id] = output_category_id
+
+        # Modify the annotations
+        for ann in annotations:
+            assert ann['category_id'] in input_category_id_to_output_category_id
+            ann['category_id'] = input_category_id_to_output_category_id[ann['category_id']]
+
+        output_categories = []
+
+        # Re-write the category table
+        for cat in input_data['categories']:
+
+            if cat['id'] in input_category_id_to_output_category_id:
+
+                # There may be non-required fields, so don't just create an empty dict
+                # and copy the name/id field, keep the original dict other than "id"
+                output_category = copy(cat)
+                output_category['id'] = input_category_id_to_output_category_id[cat['id']]
+                output_categories.append(output_category)
+
+        output_categories = sort_list_of_dicts_by_key(output_categories,'id')
+        output_data['categories'] = output_categories
+
+    # ...if we need to remap categories
 
     # Write the output file if requested
     if output_json is not None:

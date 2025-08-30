@@ -22,6 +22,7 @@ from functools import partial
 from inspect import signature
 
 from megadetector.utils import path_utils
+from megadetector.utils.path_utils import clean_path
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 from megadetector.visualization import visualization_utils as vis_utils
 
@@ -592,7 +593,7 @@ def video_to_frames(input_video_file,
                     quality=None,
                     max_width=None,
                     frames_to_extract=None,
-                    allow_empty_videos=False):
+                    allow_empty_videos=True):
     """
     Renders frames from [input_video_file] to .jpg files in [output_folder].
 
@@ -618,8 +619,8 @@ def video_to_frames(input_video_file,
             a single frame number.  In the special case where frames_to_extract
             is [], this function still reads video frame rates and verifies that videos
             are readable, but no frames are extracted.
-        allow_empty_videos (bool, optional): Just print a warning if a video appears to have no
-            frames (by default, this is an error).
+        allow_empty_videos (bool, optional): Just print a warning if a video appears to have
+            no frames (by default, this is an error).
 
     Returns:
         tuple: length-2 tuple containing (list of frame filenames,frame rate)
@@ -883,7 +884,14 @@ def _video_to_frames_for_folder(relative_fn,input_folder,output_folder_base,
 
     # Create the target output folder
     output_folder_video = os.path.join(output_folder_base,relative_fn)
-    os.makedirs(output_folder_video,exist_ok=True)
+    try:
+        os.makedirs(output_folder_video,exist_ok=True)
+    except Exception:
+        output_folder_clean = clean_path(output_folder_video)
+        print('Warning: failed to create folder {}, trying {}'.format(
+            output_folder_video,output_folder_clean))
+        output_folder_video = output_folder_clean
+        os.makedirs(output_folder_video,exist_ok=True)
 
     # Render frames
     # input_video_file = input_fn_absolute; output_folder = output_folder_video

@@ -280,8 +280,9 @@ from megadetector.utils.path_utils import insert_before_extension
 #
 # Typically latin and common are empty when we start
 # this process.  Often one of the other columns is empty as well.
-input_fn = 'g:/temp/ID_specieslist_speciesnet.csv'
-output_fn = insert_before_extension(input_fn,'out')
+# input_fn = 'c:/git/agentmorrisprivate/taxonomy-lists/seattleish-camera-traps_speciesnet.csv'
+input_fn = 'c:/git/agentmorrisprivate/taxonomy-lists/snapshot_serengeti_input.csv'
+output_fn = insert_before_extension(input_fn,'speciesnet',separator='_')
 assert os.path.isfile(input_fn)
 
 required_columns = ('latin','common','original_latin','original_common')
@@ -289,10 +290,20 @@ required_columns = ('latin','common','original_latin','original_common')
 
 #%% Bulk species lookup: iterative lookup
 
+assert taxonomy_handler is not None
+
 import pandas as pd
 from megadetector.utils.ct_utils import is_empty
 
 df = pd.read_csv(input_fn)
+
+input_length = len(df)
+
+# Remove rows where is_empty(x) is true for every column in the row
+df = df[~df.apply(lambda row: all(is_empty(val) for val in row), axis=1)]
+
+n_empty = input_length - len(df)
+print('Removed {} empty rows (of {})'.format(n_empty,input_length))
 
 for s in required_columns:
     assert s in df.columns
@@ -304,7 +315,7 @@ for i_row,row in df.iterrows():
 
     if ((not is_empty(row['latin'])) or (not is_empty(row['common']))):
         assert ((not is_empty(row['latin'])) and (not is_empty(row['common']))), \
-            'If one of the SpeciesNet names is populated, both shoudld be'
+            'If one of the SpeciesNet names is populated, both should be'
 
     if not is_empty(row['latin']):
         taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(row['latin'])

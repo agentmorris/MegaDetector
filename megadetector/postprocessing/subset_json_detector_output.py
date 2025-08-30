@@ -83,6 +83,9 @@ class SubsetJsonDetectorOutputOptions:
     def __init__(self):
 
         #: Only process files containing the token 'query'
+        #:
+        #: Does not support general regexes, but supports ^ as a special case
+        #: regex-like notation for "starts with"
         self.query = None
 
         #: Replace 'query' with 'replacement' if 'replacement' is not None.  If 'query' is None,
