@@ -22,6 +22,7 @@ for fn in [geofencing_file,country_code_file,taxonomy_file]:
 #%% Initialize taxonomy functions
 
 from megadetector.utils.wi_taxonomy_utils import TaxonomyHandler
+from megadetector.utils.wi_taxonomy_utils import taxonomy_info_to_taxonomy_string
 
 taxonomy_handler = TaxonomyHandler(taxonomy_file=taxonomy_file,
                                    geofencing_file=geofencing_file,
@@ -30,18 +31,12 @@ taxonomy_handler = TaxonomyHandler(taxonomy_file=taxonomy_file,
 
 #%% Generate a block list
 
-from megadetector.utils.wi_taxonomy_utils import taxonomy_info_to_taxonomy_string
-
-taxon_name = 'cercopithecidae'
+taxon_name = 'sciurus vulgaris'
 taxonomy_info = taxonomy_handler.binomial_name_to_taxonomy_info[taxon_name]
 taxonomy_string_short = taxonomy_info_to_taxonomy_string(taxonomy_info)
 assert len(taxonomy_string_short.split(';')) == 5
 
-block_list = 'ATG,BHS,BRB,BLZ,CAN,CRI,CUB,DMA,DOM,SLV,GRD,GTM,HTI,HND,JAM,' + \
-             'MEX,NIC,PAN,KNA,LCA,VCT,TTO,USA,ARG,BOL,BRA,CHL,COL,ECU,GUY,PRY,PER,' + \
-             'SUR,URY,VEN,ALB,AND,ARM,AUT,AZE,BLR,BEL,BIH,BGR,HRV,CYP,CZE,DNK,EST,FIN,' + \
-             'FRA,GEO,DEU,GRC,HUN,ISL,IRL,ITA,KAZ,XKX,LVA,LIE,LTU,LUX,MLT,MDA,MCO,MNE,' + \
-             'NLD,MKD,NOR,POL,PRT,ROU,RUS,SMR,SRB,SVK,SVN,ESP,SWE,CHE,TUR,UKR,GBR,VAT,AUS'
+block_list = 'USA'
 
 rows = taxonomy_handler.generate_csv_rows_for_species(species_string=taxonomy_string_short,
                                                       allow_countries=None,
@@ -56,7 +51,7 @@ for s in rows:
 
 #%% Look up taxonomy info for a common name
 
-common_name = 'domestic horse'
+common_name = 'sika deer'
 info = taxonomy_handler.common_name_to_taxonomy_info[common_name]
 s = taxonomy_info_to_taxonomy_string(info,include_taxon_id_and_common_name=True)
 print(s)
@@ -94,28 +89,209 @@ for s in rows:
     print(s)
 
 
+#%% Generate a block+allow list
+
+common_name = 'sika deer'
+info = taxonomy_handler.common_name_to_taxonomy_info[common_name]
+taxon_name = info['binomial_name']
+taxonomy_info = taxonomy_handler.binomial_name_to_taxonomy_info[taxon_name]
+taxonomy_string_short = taxonomy_info_to_taxonomy_string(taxonomy_info)
+assert len(taxonomy_string_short.split(';')) == 5
+
+rows = taxonomy_handler.generate_csv_rows_for_species(species_string=taxonomy_string_short,
+                                                     allow_countries=None,
+                                                     block_countries=None,
+                                                     allow_states=['NJ','DE'],
+                                                     block_states=['OH','NY'])
+
+# import clipboard; clipboard.copy('\n'.join(rows))
+
+for s in rows:
+    print(s)
+
+
 #%% Determine whether a species is allowed in a country
+
+taxon = 'pittidae'
+country = 'canada'
+state = None
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+taxon = 'pittidae'
+country = 'india'
+state = None
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+
+taxon = 'hippopotamidae'
+country = 'canada'
+state = None
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+taxon = 'hippopotamidae'
+country = 'colombia'
+state = None
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+taxon = 'capreolus capreolus'
+country = 'united states of america'
+state = None
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+taxon = 'capreolus capreolus'
+country = 'france'
+state = None
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+taxon = 'meles meles'
+country = 'united states of america'
+state = None
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+taxon = 'meles meles'
+country = 'france'
+state = None
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+taxon = 'capreolus'
+country = 'united states of america'
+state = None
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+taxon = 'capreolus'
+country = 'france'
+state = None
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
 
 taxon = 'canis lupus dingo'
 country = 'guatemala'
+state = None
 allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
 taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
 common_name = taxonomy_info['common_name']
-print('{} ({}) in {}: {}'.format(taxon,common_name,country,allowed))
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
 
-taxon = 'coyote'
-country = 'united states of america'
+taxon = 'canis lupus dingo'
+country = 'australia'
+state = None
 allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
 taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
 common_name = taxonomy_info['common_name']
-print('{} ({}) in {}: {}'.format(taxon,common_name,country,allowed))
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+taxon = 'macropodidae'
+country = 'united states of america'
+state = None
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+taxon = 'macropodidae'
+country = 'AUS'
+state = None
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+taxon = 'potoroidae'
+country = 'united states of america'
+state = None
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
 
 taxon = 'potoroidae'
 country = 'AUS'
+state = None
 allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,return_status=False)
 taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
 common_name = taxonomy_info['common_name']
-print('{} ({}) in {}: {}'.format(taxon,common_name,country,allowed))
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+taxon = 'sika deer'
+country = 'china'
+state = None
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=state,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+taxon = 'sika deer'
+country = 'USA'
+state = 'OH'
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=state,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+taxon = 'sciurus vulgaris'
+country = 'USA'
+state = None
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=state,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+taxon = 'sciurus vulgaris'
+country = 'RUS'
+state = None
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=state,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+
+#%% Geofence updates
+
+repo_root = 'c:/git/cameratrapai'
+script_file = os.path.join(repo_root,'speciesnet/scripts/build_geofence_release.py')
+geofence_base_file = os.path.join(repo_root,'data/geofence_base.json')
+geofence_fixes_file = os.path.join(repo_root,'data/geofence_fixes.csv')
+taxonomy_file = os.path.join(repo_root,'data/model_package/always_crop_99710272_22x8_v12_epoch_00148.labels.txt')
+output_file = os.path.join(repo_root,'data/model_package/geofence_release_updated.json')
+
+assert os.path.isfile(geofence_base_file)
+assert os.path.isfile(geofence_fixes_file)
+assert os.path.isfile(taxonomy_file)
+assert os.path.isfile(script_file)
+
+cmd = f'python "{script_file}" --base "{geofence_base_file}" --fixes "{geofence_fixes_file}" --output "{output_file}" --trim "{taxonomy_file}"'
+cmd = cmd.replace('\\','/')
+print(cmd)
+# import clipboard; clipboard.copy(cmd)
 
 
 #%% Bulk geofence lookups
