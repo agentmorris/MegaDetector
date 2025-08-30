@@ -571,9 +571,11 @@ E0
 !feature
 
 
-## Revive syn API
+## Revive synchronous (real-time) API
 
 The Flask-based API for serving MD was retired to the archive folder a few months ago for lack of maintenance, but it turns out that some folks were using it.  The short version of this work item is to bring it out of the archive folder and make sure it doesn't mess up linting and testing.  The stretch goal is to take a look at it and update it for how one would do this in 2025, and to make a nice demo out of it.  I'm assigning an effort level just for the short-term goal.
+
+Whenever we tackle this, also bump gunicorn to >= 23 to address dependabot issues.
 
 P3
 
