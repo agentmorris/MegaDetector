@@ -95,7 +95,7 @@ include = ["megadetector*"]
 [tool.ruff]
 ignore = ["D212"]
 line-length = 120
-target-version = "py312"
+target-version = "py39"
 include = ["megadetector/**/*.py"]
 exclude = ["megadetector/api/batch_processing/api_core/**/*.py",
 		   "megadetector/classification/**/*.py",

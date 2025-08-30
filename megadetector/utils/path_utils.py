@@ -1578,6 +1578,7 @@ class TestPathUtils:
         """
 
         self.test_dir = make_test_folder(subfolder='megadetector/path_utils_tests')
+        print('Using temporary folder {} for path utils testing'.format(self.test_dir))
         os.makedirs(self.test_dir, exist_ok=True)
 
 
@@ -1801,7 +1802,11 @@ class TestPathUtils:
         ])
         folders_non_recursive_abs = folder_list(folder_list_dir, recursive=False,
                                                 return_relative_paths=False)
-        assert sorted(folders_non_recursive_abs) == expected_folders_non_recursive_abs
+        assert sorted(folders_non_recursive_abs) == expected_folders_non_recursive_abs, \
+            'Non-recursive folder list failured, expected:\n\n{}\n\nFound:\n\n{}'.format(
+                str(expected_folders_non_recursive_abs),
+                str(folders_non_recursive_abs)
+            )
 
         # Test non-recursive, relative paths
         expected_folders_non_recursive_rel = sorted(['subdir1', 'subdir2'])
@@ -2139,7 +2144,17 @@ class TestPathUtils:
         assert clean_filename("test*file?.txt", char_limit=10) == "testfile.t"
         assert clean_filename("TestFile.TXT", force_lower=True) == "testfile.txt"
         assert clean_filename("file:with<illegal>chars.txt") == "filewithillegalchars.txt"
-        assert clean_filename(" accented_name_éà.txt") == " accented_name_ea.txt"
+
+        s = " accented_name_éà.txt"
+
+        assert clean_filename(s,
+                              remove_trailing_leading_whitespace=False) == " accented_name_ea.txt", \
+            'clean_filename with remove_trailing_leading_whitespace=False: {}'.format(
+                clean_filename(s, remove_trailing_leading_whitespace=False))
+
+        assert clean_filename(s, remove_trailing_leading_whitespace=True) == "accented_name_ea.txt", \
+            'clean_filename with remove_trailing_leading_whitespace=False: {}'.format(
+                clean_filename(s, remove_trailing_leading_whitespace=True))
 
         # Separators are not allowed by default in clean_filename
         assert clean_filename("path/to/file.txt") == "pathtofile.txt"
@@ -2469,7 +2484,13 @@ class TestPathUtils:
         un_tar_dir = os.path.join(self.test_dir, "un_tar_contents")
         os.makedirs(un_tar_dir, exist_ok=True)
         with tarfile.open(output_tar_path, 'r:gz') as tf:
-            tf.extractall(path=un_tar_dir)
+            # The "filter" option was added as of Python 3.12, and *not* specifying
+            # filter=None will change behavior as of Python 3.14.  We want the unmodified
+            # behavior, but we want to support Python <3.12, so we do a version check.
+            if sys.version_info >= (3, 12):
+                tf.extractall(path=un_tar_dir, filter=None)
+            else:
+                tf.extractall(path=un_tar_dir)
 
         expected_untarred_file1 = os.path.join(un_tar_dir, os.path.relpath(file1_path, self.test_dir))
         expected_untarred_file2 = os.path.join(un_tar_dir, os.path.relpath(file2_path, self.test_dir))
@@ -2643,7 +2664,9 @@ def test_path_utils():
 
     test_instance = TestPathUtils()
     test_instance.set_up()
+
     try:
+
         test_instance.test_is_image_file()
         test_instance.test_find_image_strings()
         test_instance.test_find_images()
@@ -2668,5 +2691,7 @@ def test_path_utils():
         test_instance.test_add_files_to_single_tar_file()
         test_instance.test_parallel_zip_individual_files_and_folders()
         test_instance.test_compute_file_hash()
+
     finally:
+
         test_instance.tear_down()
