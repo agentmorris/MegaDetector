@@ -39,6 +39,19 @@ Priorities range from 0 (urgent) to 4 (likely will never get done).  Effort rang
 
 # Issues
 
+## Handle legacy setup.py issues
+
+Three dependencies - yolov9pip, pyqtree, and clipboard - give this warning during pip installation:
+
+DEPRECATION: Building 'yolov9pip' using the legacy setup.py bdist_wheel mechanism, which will be removed in a future version. pip 25.3 will enforce this behaviour change. A possible replacement is to use the standardized build interface by setting the `--use-pep517` option, (possibly combined with `--no-build-isolation`), or adding a `pyproject.toml` file to the source tree of 'yolov9pip'. Discussion can be found at https://github.com/pypa/pip/issues/6334
+
+P2
+
+E2
+
+!maintenance
+
+
 ## Support video in postprocessing
 
 postprocess_batch_results currently has no support for video.  When run on a .json file that points to videos, extract frames in a sensible way to generate previews.
@@ -339,7 +352,7 @@ E1
 
 MD's test harness relies on .json files with pre-generated results for MDv5a and MDv5b, for a reference set of images and videos.  Because output varies slightly between PyTorch versions and between hardware environments, I have a number of results files.  This has gotten too complicated; remove most of the results files and increase the allowed tolerance during testing.
 
-P1
+P0
 
 E1
 
@@ -350,7 +363,7 @@ E1
 
 MD's test harness only has results for MDv5, so it tests the not-crashing-ness of the other models, but it does not test correctness.  Add test results for other MD1000 models.
 
-P1
+P0
 
 E1
 
