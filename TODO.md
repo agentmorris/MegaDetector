@@ -41,7 +41,7 @@ Priorities range from 0 (urgent) to 4 (likely will never get done).  Effort rang
 
 ## Handle legacy setup.py issues
 
-Three dependencies - yolov9pip, pyqtree, and clipboard - give this warning during pip installation:
+Three dependencies - yolov9pip, pyqtree, and clipboard - give this warning during pip installation:<br/><br/>
 
 DEPRECATION: Building 'yolov9pip' using the legacy setup.py bdist_wheel mechanism, which will be removed in a future version. pip 25.3 will enforce this behaviour change. A possible replacement is to use the standardized build interface by setting the `--use-pep517` option, (possibly combined with `--no-build-isolation`), or adding a `pyproject.toml` file to the source tree of 'yolov9pip'. Discussion can be found at https://github.com/pypa/pip/issues/6334
 
@@ -321,7 +321,6 @@ E2
 
 !docs
 !testing
-
 
 
 ## Formal evaluation of image size, augmentation, preprocessing mode
