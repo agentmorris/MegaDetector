@@ -305,6 +305,9 @@ class SequenceOptions:
         #: How to handle invalid datetimes: 'error' or 'none'
         self.datetime_conversion_failure_behavior = 'none'
 
+        #: Enable additional debug output
+        self.verbose = False
+
 
 #%% Functions
 
@@ -331,7 +334,9 @@ def write_object_with_serialized_datetimes(d,json_fn):
         json.dump(d,f,indent=1,default=json_serialize_datetime)
 
 
-def parse_datetimes_from_cct_image_list(images,conversion_failure_behavior='error'):
+def parse_datetimes_from_cct_image_list(images,
+                                        conversion_failure_behavior='error',
+                                        verbose=False):
     """
     Given the "images" field from a COCO camera traps dictionary, converts all
     string-formatted datetime fields to Python datetimes, making reasonable assumptions
@@ -342,6 +347,7 @@ def parse_datetimes_from_cct_image_list(images,conversion_failure_behavior='erro
         conversion_failure_behavior (str, optional): determines what happens on a failed
             conversion; can be "error" (raise an error), "str" (leave as a string), or
             "none" (convert to None)
+        verbose (bool, optional): enable additional debug output
 
     Returns:
         images: the input list, with datetimes converted (after modifying in place)
@@ -359,14 +365,17 @@ def parse_datetimes_from_cct_image_list(images,conversion_failure_behavior='erro
             dt = dateutil.parser.parse(im['datetime'])
             im['datetime'] = dt
         except Exception as e:
-            s = 'could not parse datetime {}: {}'.format(str(im['datetime']),str(e))
+            s = 'could not parse datetime {} from {}: {}'.format(
+                str(im['datetime']),im['file_name'],str(e))
             if conversion_failure_behavior == 'error':
                 raise ValueError(s)
             elif conversion_failure_behavior == 'str':
-                print('Warning: {}'.format(s))
+                if verbose:
+                    print('Warning: {}'.format(s))
                 pass
             elif conversion_failure_behavior == 'none':
-                print('Warning: {}'.format(s))
+                if verbose:
+                    print('Warning: {}'.format(s))
                 im['datetime'] = None
 
     # ...for each image
@@ -450,7 +459,8 @@ def create_sequences(image_info,options=None):
 
     # Modifies the images in place
     _ = parse_datetimes_from_cct_image_list(image_info,
-            conversion_failure_behavior=options.datetime_conversion_failure_behavior)
+            conversion_failure_behavior=options.datetime_conversion_failure_behavior,
+            verbose=options.verbose)
 
     n_invalid_datetimes = 0
     for im in image_info:
@@ -505,7 +515,7 @@ def create_sequences(image_info,options=None):
                 delta = (im['datetime'] - previous_datetime).total_seconds()
 
             # Start a new sequence if necessary, including the case where this datetime is invalid
-            if delta is None or delta > options.episode_interval_seconds or invalid_datetime:
+            if (delta is None) or (delta > options.episode_interval_seconds) or (invalid_datetime):
                 next_frame_number = 0
                 current_sequence_id = 'location_{}_sequence_index_{}'.format(
                     location,str(next_sequence_number).zfill(5))

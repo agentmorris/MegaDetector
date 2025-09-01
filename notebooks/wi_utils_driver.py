@@ -445,7 +445,7 @@ for s in speciesnet_taxa_not_in_wi_taxonomy_as_five_token_ids:
     print(s)
 
 
-#%% Bulk species lookup: init
+#%% Taxonomy mapping (init)
 
 import os
 from megadetector.utils.path_utils import insert_before_extension
@@ -457,14 +457,15 @@ from megadetector.utils.path_utils import insert_before_extension
 # Typically latin and common are empty when we start
 # this process.  Often one of the other columns is empty as well.
 # input_fn = 'c:/git/agentmorrisprivate/taxonomy-lists/seattleish-camera-traps_speciesnet.csv'
-input_fn = 'c:/git/agentmorrisprivate/taxonomy-lists/snapshot_serengeti_input.csv'
+# input_fn = 'c:/git/agentmorrisprivate/taxonomy-lists/snapshot_serengeti_input.csv'
+input_fn = 'c:/git/agentmorrisprivate/taxonomy-lists/fstop_input.csv'
 output_fn = insert_before_extension(input_fn,'speciesnet',separator='_')
 assert os.path.isfile(input_fn)
 
 required_columns = ('latin','common','original_latin','original_common')
 
 
-#%% Bulk species lookup: iterative lookup
+#%% Taxonmy mapping (iterative lookup)
 
 assert taxonomy_handler is not None
 
