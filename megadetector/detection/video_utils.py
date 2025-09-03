@@ -1098,6 +1098,9 @@ class FrameToVideoOptions:
         #: Are frame rates required?
         self.frame_rates_are_required = False
 
+        #: Enable additional debug output
+        self.verbose = False
+
 
 def frame_results_to_video_results(input_file,
                                    output_file,
@@ -1184,9 +1187,14 @@ def frame_results_to_video_results(input_file,
 
         if (video_filename_to_frame_rate is not None):
 
-            if options.frame_rates_are_required:
-                assert video_name in video_filename_to_frame_rate, \
-                    'Could not determine frame rate for {}'.format(video_name)
+            if video_name not in video_filename_to_frame_rate:
+
+                s = 'Could not determine frame rate for {}'.format(video_name)
+                if options.frame_rates_are_required:
+                    raise ValueError(s)
+                elif options.verbose:
+                    print('Warning: {}'.format(s))
+
             if video_name in video_filename_to_frame_rate:
                 im_out['frame_rate'] = video_filename_to_frame_rate[video_name]
 

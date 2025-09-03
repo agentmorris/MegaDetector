@@ -324,6 +324,10 @@ taxonomy_file = path_join(speciesnet_model_file,'taxonomy_release.txt')
 # sequence.
 allow_same_family_smoothing = False
 
+# Only relevant if you have a .json file you want to use to provide sequence information
+# to the sequence-level smoothing process.  Typically only used for LILA-related jobs.
+cct_formatted_json = None
+
 
 #%% Derived variables, constant validation, path setup
 
@@ -1160,6 +1164,10 @@ else:
     detector_output_file_md_format = combined_api_output_file
 
 assert os.path.isdir(speciesnet_model_file)
+
+if os.path.isdir(crop_folder):
+    print(f'*** Warning: crop folder {crop_folder} exists, if you create new '
+           'crops in an existing folder, odd things can happen ***')
 os.makedirs(crop_folder,exist_ok=True)
 
 for fn in [classifier_output_file_modular_crops,
@@ -1580,17 +1588,23 @@ open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_na
 # import clipboard; clipboard.copy(ppresults.output_html_file)
 
 
-#%% Build sequences from either EXIF info or folder structure
+#%% Build sequences
+
+# ...from EXIF info, folder structure, or an existing .json file
 
 # How should we determine sequence information?
 
 # Use 'exif' for most image (non-video) cases
-sequence_method = 'exif'
+# sequence_method = 'exif'
 
-# Use 'folder when leaf node folders are sequences, typically when each folder really represents
-# frames from a single video.
+# Use 'folder' when leaf node folders are sequences, typically when each folder really
+# represents frames from a single video.
 # sequence_method = 'folder'
 
+# Use 'json' when you already have a CCT-formatted .json file that has the fields
+# "seq_id", "seq_num_frames", and "frame_num".  In this case, cct_formatted_json
+# should be set to a valid .json file above.
+sequence_method = 'json'
 
 ##%% If we're building sequence information based on EXIF data
 
@@ -1667,11 +1681,9 @@ if sequence_method == 'exif':
 
 ##%% If we're building sequence information based on folder structure
 
-else:
+elif sequence_method == 'folder':
 
-    assert sequence_method == 'folder'
     pass
-
 
     ##%% Read the list of filenames
 
@@ -1708,6 +1720,22 @@ else:
 
     print('Extracted {} sequences from {} images'.format(
         len(folder_name_to_images),len(d['images'])))
+
+
+##%% If we're loading sequence information from an existing json file
+
+else:
+
+    assert sequence_method == 'json'
+    assert cct_formatted_json is not None
+    print('Loading sequence information from {}'.format(cct_formatted_json))
+
+    with open(cct_formatted_json,'r') as f:
+        cct_dict = json.load(f)
+        for im in cct_dict['images']:
+            for field_name in ('seq_id','seq_num_frames','frame_num'):
+                assert field_name in im, 'Image {} is missing field {}'.format(
+                    im['file_name'],field_name)
 
 
 ##%% Sequence-level smoothing

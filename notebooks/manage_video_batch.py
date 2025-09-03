@@ -299,7 +299,30 @@ if False:
     # ...for each video
 
 
-    #%% Render one or more sample videos...
+    #%% Render one or more sample videos from videos (as opposed to from frames)
+
+    ## Imports
+
+    from megadetector.visualization.visualize_video_output import \
+        VideoVisualizationOptions, visualize_video_output
+
+    video_options = VideoVisualizationOptions()
+
+    video_options.confidence_threshold = 0.2
+    video_options.sample = 10
+    video_options.random_seed = 0
+    video_options.classification_confidence_threshold = 0.5
+    video_options.rendering_fs = 'auto'
+    video_options.fourcc = 'h264'
+    video_options.trim_to_detections = True
+
+    visualize_video_output(video_output_filename,
+                           out_dir='/path/to/preview/folder',
+                           video_dir=input_folder,
+                           options=video_options)
+
+
+    #%% Render one or more sample videos from frames...
 
     # ...while we still have the frames and detections around
 

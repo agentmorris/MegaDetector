@@ -1015,6 +1015,10 @@ def smooth_classification_results_sequence_level(input_file,
 
         detections_this_sequence = []
         for image_filename in image_filenames_this_sequence:
+            if image_filename not in image_fn_to_classification_results:
+                print('Warning: {} in sequence list but not in results'.format(
+                    image_filename))
+                continue
             im = image_fn_to_classification_results[image_filename]
             if 'detections' not in im or im['detections'] is None:
                 continue
