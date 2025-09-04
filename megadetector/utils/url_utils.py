@@ -2,7 +2,7 @@
 
 url_utils.py
 
-Frequently-used functions for downloading or manipulating URLs
+Frequently-used functions for downloading, manipulating, or serving URLs
 
 """
 
@@ -16,6 +16,9 @@ import urllib.error
 import requests
 import shutil
 import pytest
+import socketserver
+import threading
+import http.server
 
 from functools import partial
 from tqdm import tqdm
@@ -451,6 +454,93 @@ def get_url_sizes(urls,n_workers=1,pool_type='thread',timeout=None,verbose=False
                 print('Pool closed and joined for URL size checks')
 
     return url_to_size
+
+
+#%%  Singleton HTTP server
+
+class QuietHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
+    """
+    SimpleHTTPRequestHandler sublcass that suppresses console printouts
+    """
+    def __init__(self, *args, directory=None, **kwargs):
+        super().__init__(*args, directory=directory, **kwargs)
+
+    def log_message(self, format, *args): # noqa
+        pass
+
+
+class SingletonHTTPServer:
+    """
+    HTTP server that runs on a local port, serving a particular local folder.  Runs as a
+    singleton, so starting a server in a new folder closes the previous server.  I use this
+    primarily to serve MD/SpeciesNet previews from manage_local_batch, which can exceed
+    the 260-character filename length limitation imposed by browser on Windows, so really the
+    point here is just to remove characters from the URL.
+    """
+
+    _server = None
+    _thread = None
+
+    @classmethod
+    def start_server(cls, directory, port=8000, host='localhost'):
+        """
+        Start or restart the HTTP server with a specific directory
+
+        Args:
+            directory (str): the root folder served by the server
+            port (int, optional): the port on which to create the server
+            host (str, optional): the host on which to listen, typically
+                either "localhost" (default) or "0.0.0.0"
+
+        Returns:
+            str: URL to the running host
+        """
+
+        # Stop the existing server instance if necessary
+        cls.stop_server()
+
+        # Create new server
+        handler = partial(QuietHTTPRequestHandler, directory=directory)
+        cls._server = socketserver.TCPServer((host, port), handler)
+
+        # Start server in daemon thread (dies when parent process dies)
+        cls._thread = threading.Thread(target=cls._server.serve_forever)
+        cls._thread.daemon = True
+        cls._thread.start()
+
+        print(f"Serving {directory} at http://{host}:{port}")
+        return f"http://{host}:{port}"
+
+
+    @classmethod
+    def stop_server(cls):
+        """
+        Stop the current server (if one is running)
+        """
+
+        if cls._server:
+            cls._server.shutdown()
+            cls._server.server_close()
+            cls._server = None
+        if cls._thread:
+            cls._thread.join(timeout=1)
+            cls._thread = None
+
+
+    @classmethod
+    def is_running(cls):
+        """
+        Check whether the server is currently running.
+
+        Returns:
+            bool: True if the server is running
+        """
+
+        return (cls._server is not None) and \
+            (cls._thread is not None) and \
+            (cls._thread.is_alive())
+
+# ...class SingletonHTTPServer
 
 
 #%% Tests

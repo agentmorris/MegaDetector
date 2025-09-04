@@ -99,6 +99,8 @@ from megadetector.utils.wi_taxonomy_utils import generate_instances_json_from_fo
 
 from megadetector.postprocessing.classification_postprocessing import restrict_to_taxa_list
 
+from megadetector.utils.url_utils import SingletonHTTPServer
+
 ## Inference options
 
 # To specify a non-default confidence threshold for including detections in the .json file
@@ -952,7 +954,7 @@ preview_options.output_dir = preview_folder
 print('Generating pre-RDE preview in {}'.format(preview_folder))
 ppresults = process_batch_results(preview_options)
 open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
-# import clipboard; clipboard.copy(ppresults.output_html_file)
+# SingletonHTTPServer.start_server(preview_folder,port=8000); open_file('http://localhost:8000')
 
 
 #%% Repeat detection elimination, phase 1
@@ -1070,7 +1072,7 @@ preview_options.output_dir = preview_folder
 print('Generating post-RDE preview in {}'.format(preview_folder))
 ppresults = process_batch_results(preview_options)
 open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
-# import clipboard; clipboard.copy(ppresults.output_html_file)
+# SingletonHTTPServer.start_server(preview_folder,port=8000); open_file('http://localhost:8000')
 
 
 #%% SpeciesNet derived constants
@@ -1550,7 +1552,7 @@ preview_options.footer_text = geofence_footer
 print('Generating post-classification preview in {}'.format(preview_folder))
 ppresults = process_batch_results(preview_options)
 open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
-# import clipboard; clipboard.copy(ppresults.output_html_file)
+# SingletonHTTPServer.start_server(preview_folder,port=8000); open_file('http://localhost:8000')
 
 
 #%% Within-image classification smoothing
@@ -1585,7 +1587,7 @@ preview_options.output_dir = preview_folder
 print('Generating post-within-image-smoothing preview in {}'.format(preview_folder))
 ppresults = process_batch_results(preview_options)
 open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
-# import clipboard; clipboard.copy(ppresults.output_html_file)
+# SingletonHTTPServer.start_server(preview_folder,port=8000); open_file('http://localhost:8000')
 
 
 #%% Build sequences
@@ -1783,7 +1785,7 @@ preview_options.footer_text = geofence_footer
 print('Generating post-sequence-smoothing preview in {}'.format(preview_folder))
 ppresults = process_batch_results(preview_options)
 open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
-# import clipboard; clipboard.copy(ppresults.output_html_file)
+# SingletonHTTPServer.start_server(preview_folder,port=8000); open_file('http://localhost:8000')
 
 
 #%% Possibly apply a custom taxa list (after smoothing)
@@ -1822,7 +1824,7 @@ if (custom_taxa_list is not None) and (custom_taxa_stage == 'after_smoothing'):
     print('Generating post-sequence-smoothing preview in {}'.format(preview_folder))
     ppresults = process_batch_results(preview_options)
     open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
-    # import clipboard; clipboard.copy(ppresults.output_html_file)
+    # SingletonHTTPServer.start_server(preview_folder,port=8000); open_file('http://localhost:8000')
 
 
 #%% Remove unused categories
