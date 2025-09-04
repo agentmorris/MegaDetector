@@ -51,7 +51,7 @@ script):
   but possibly several days of unattended compute time, depending on the size of your job.
 
 * Then when the jobs are done, back to the interactive environment!  I run the next few cells,
-  which make sure the job finished OK, and the cell called "Post-processing (pre-RDE)", which
+  which make sure the job finished OK, and the cell called "Preview (pre-RDE)", which
   generates an HTML preview of the results.  You are very plausibly done at this point, and can ignore
   all the remaining cells.  If you want to do things like repeat detection elimination, or running
   a classifier, or splitting your results file up in specialized ways, there are cells for all of those
@@ -929,7 +929,7 @@ with open(combined_api_output_file,'w') as f:
 print('\nWrote results to {}'.format(combined_api_output_file))
 
 
-#%% Post-processing (pre-RDE)
+#%% Preview (pre-RDE)
 
 """
 NB: I almost never run this cell.  This preview the results *before* repeat detection
@@ -1054,7 +1054,7 @@ remove_repeat_detections.remove_repeat_detections(
     )
 
 
-#%% Post-processing (post-RDE)
+#%% Preview (post-RDE)
 
 preview_options = deepcopy(preview_options_base)
 preview_options.image_base_dir = input_path

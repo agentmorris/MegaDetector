@@ -67,6 +67,10 @@ class VideoVisualizationOptions:
         #: Skip frames before first and after last above-threshold detection
         self.trim_to_detections = False
 
+        #: By default, output videos use the same extension as input videos,
+        #: use this to force a particular extension
+        self.output_extension = None
+
 # ...class VideoVisualizationOptions
 
 
@@ -287,10 +291,16 @@ def _process_video(video_entry,
         result['error'] = 'Video not found: {}'.format(input_video_path)
         return result
 
-    # Create output path preserving directory structure
-    rel_path = video_entry['file']
-    output_video_path = os.path.join(out_dir, rel_path)
-    os.makedirs(os.path.dirname(output_video_path), exist_ok=True)
+    output_fn_relative = video_entry['file']
+
+    if options.output_extension is not None:
+        ext = options.output_extension
+        if not ext.startswith('.'):
+            ext = '.' + ext
+        output_fn_relative = os.path.splitext(output_fn_relative)[0] + ext
+
+    output_fn_abs = os.path.join(out_dir, output_fn_relative)
+    os.makedirs(os.path.dirname(output_fn_abs), exist_ok=True)
 
     # Get frames to process
     frames_to_process = _get_frames_to_process(video_entry,
@@ -392,10 +402,10 @@ def _process_video(video_entry,
 
             # Create VideoWriter
             fourcc = cv2.VideoWriter_fourcc(*options.fourcc)
-            video_writer = cv2.VideoWriter(output_video_path, fourcc, output_framerate, (width, height))
+            video_writer = cv2.VideoWriter(output_fn_abs, fourcc, output_framerate, (width, height))
 
             if not video_writer.isOpened():
-                result['error'] = 'Failed to open video writer for {}'.format(output_video_path)
+                result['error'] = 'Failed to open video writer for {}'.format(output_fn_abs)
                 return result
 
             # Write frames

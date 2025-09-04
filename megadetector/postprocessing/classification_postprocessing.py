@@ -130,7 +130,7 @@ class ClassificationSmoothingOptions:
 
         ## Populated internally
 
-        #: #: Only include these categories in the smoothing process (None to use all categories)
+        #: Only include these categories in the smoothing process (None to use all categories)
         self._detection_category_ids_to_smooth = None
 
 
