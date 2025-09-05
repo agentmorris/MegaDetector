@@ -2,7 +2,7 @@
 
 manage_local_batch.py
 
-Semi-automated process for managing a local MegaDetector (and, optionally, SpeciesNet job,
+Semi-automated process for managing a local MegaDetector (and, optionally, SpeciesNet) job,
 including standard postprocessing steps.
 
 This script is not intended to be run from top to bottom like a typical Python script,
@@ -14,49 +14,49 @@ Some general notes on using this script, which I run in VS Code or Spyder, thoug
 will be the same if you are reading this in Jupyter Notebook (using the .ipynb version of the
 script):
 
+* This script assumes you have set up a Python environment with the MegaDetector python package,
+  and that you're running in that environment.  The MegaDetector User Guide has a lot more detail,
+  but the gist of the setup is:
+
+  mamba create -n megadetector python=3.11 pip -y
+  mamba activate megadetector
+  pip install --upgrade megadetector
+
+  ...and if you'll be running SpeciesNet also:
+
+  pip install --upgrade speciesnet
+
 * Typically when I have a MegaDetector job to run, I make a copy of this script.  Let's
   say I'm running a job for an organization called "bibblebop"; I have a big folder of
   job-specific copies of this script, and I might save a new one called "bibblebop-2023-07-26.py"
   (the filename doesn't matter, it just helps me keep these organized).
 
 * There are three variables you need to set in this script before you start running code:
-  "input_path", "organization_name_short", and "job_date".  You will get a sensible error if you forget
-  to set any of these.  In this case I might set those to "/data/bibblebobcamerastuff",
-  "bibblebop", and "2023-07-26", respectively.
-
-* The defaults assume you want to split the job into two tasks (this is the default because I have
-  two GPUs).  Nothing bad will happen if you do this on a zero-GPU or single-GPU machine, but if you
-  want everything to run in one logical task, change "n_gpus" and "n_jobs" to 1 (instead of 2).
+  "input_path", "organization_name_short", and "job_date".  You will get a sensible error if you
+  forget to set any of these.  In this case I might set those to "c:/data/camera-trap-stuff",
+  "dancorp", and "2023-07-26", respectively.
 
 * After setting the required variables, I run the first few cells - up to and including the one
   called "Generate commands" - which collectively take basically zero seconds.  After you run the
   "Generate commands" cell, you will have a folder that looks something like:
 
-    ~/postprocessing/bibblebop/bibblebop-2023-07-06-mdv5a/
-
-  On Windows, this typically means:
-
-    c:/users/[username]/postprocessing/bibblebop/bibblebop-2023-07-06-mdv5a/
+   c:/users/dan/postprocessing/dancorp/dancorp-2023-07-06-mdv5a/
 
   Everything related to this job - scripts, outputs, intermediate stuff - will be in this folder.
-  Specifically, after the "Generate commands" cell, you'll have scripts in that folder called something
-  like:
+  Specifically, after the "Generate commands" cell, you'll have scripts in that folder called
+  something like:
 
-  run_chunk_000_gpu_00.sh (or .bat on Windows)
+  run_chunk_000_gpu_00.bat (or .sh on Linux)
 
   Personally, I like to run that script directly in a command prompt (I just leave VS Code or
   Spyder open, though it's OK if that window gets shut down while MD is running).
 
-  At this point, once you get the hang of it, you've invested about zero seconds of human time,
-  but possibly several days of unattended compute time, depending on the size of your job.
-
 * Then when the jobs are done, back to the interactive environment!  I run the next few cells,
-  which make sure the job finished OK, and the cell called "Preview (pre-RDE)", which
-  generates an HTML preview of the results.  You are very plausibly done at this point, and can ignore
+  which make sure the job finished.  You are very plausibly done at this point, and can ignore
   all the remaining cells.  If you want to do things like repeat detection elimination, or running
-  a classifier, or splitting your results file up in specialized ways, there are cells for all of those
-  things, but now you're in power-user territory, so I'm going to leave this guide here.  Email
-  cameratraps@lila.science with questions about the fancy stuff.
+  a classifier, or making fancy preview pages, or splitting your results file up in specialized ways,
+  there are cells for all of those things, but now you're in power-user territory, so I'm going to
+  end this guide here. Email cameratraps@lila.science with questions about the fancy stuff.
 
 """
 
@@ -100,18 +100,19 @@ from megadetector.utils.wi_taxonomy_utils import generate_instances_json_from_fo
 from megadetector.postprocessing.classification_postprocessing import restrict_to_taxa_list
 
 from megadetector.utils.url_utils import SingletonHTTPServer
+from megadetector.utils.url_utils import download_url
 
 ## Inference options
 
-# To specify a non-default confidence threshold for including detections in the .json file
-json_threshold = None
+# Should we allow the cell in this notebook that runs the MD tasks to execute?
+#
+# Set to False by default, i.e. I normally run the MD tasks at the command prompt.
+run_tasks_in_notebook = False
 
 # Turn warnings into errors if more than this many images are missing
 max_tolerable_failed_images = 100
 
-# Should we supply the --image_queue_option to run_detector_batch.py?  I only set this
-# when I have a very slow drive and a comparably fast GPU.  When this is enabled, checkpointing
-# is not supported within a job, so I set n_jobs to a large number (typically 100).
+# Should we supply the --image_queue_option to run_detector_batch?
 use_image_queue = True
 
 # If we are using an image queue (worker pool), should that include image preprocessing
@@ -128,11 +129,7 @@ default_gpu_number = 0
 quiet_mode = True
 
 # Specify a target image size when running MD... strongly recommended to leave this at "None"
-#
-# When using augmented inference, if you leave this at "None", run_inference_with_yolov5_val.py
-# will use its default size, which is 1280 * 1.3, which is almost always what you want.  If you
-# are using augmentation outside of run_inference_with_yolov5_val.py, you probably want to set
-# this explicitly.
+# unless you want to live at the cutting edge.
 image_size = None
 
 # Should we include image size, timestamp, and/or EXIF data in MD output?
@@ -148,15 +145,18 @@ detector_options = None
 # Only relevant when running on CPU
 ncores = 1
 
-# If False, we'll load chunk files with file lists if they exist
+# If False, we'll load chunk list files if they exist.  Only relevant when
+# re-starting this script after an earlier attempt.
 force_enumeration = False
 
-# Prefer threads on Windows, processes on Linux
-parallelization_defaults_to_threads = False
+# If this is None, we'll prefer threads on Windows, processes on Linux.
+parallelization_defaults_to_threads = None
 
 # This is for things like image rendering, not for MegaDetector
-default_workers_for_parallel_tasks = 30
+default_workers_for_parallel_tasks = 20
 
+# Whether to over-write existing results files; only relevant if re-running this
+# script after an earlier attempt.
 overwrite_handling = 'skip' # 'skip', 'error', or 'overwrite'
 
 # The function used to get camera names from image paths, used only for repeat
@@ -166,19 +166,6 @@ overwrite_handling = 'skip' # 'skip', 'error', or 'overwrite'
 relative_path_to_location = image_file_to_camera_folder
 
 # OS-specific script line continuation character (modified later if we're running on Windows)
-slcc = '\\'
-
-# OS-specific script comment character (modified later if we're running on Windows)
-scc = '#'
-
-# OS-specific script extension (modified later if we're running on Windows)
-script_extension = '.sh'
-
-# Stuff we stick into scripts to ensure early termination if there's an error
-script_header = '#!/bin/bash\n\nset -e\n'
-
-# Include this after each command in a .sh/.bat file
-command_suffix = ''
 
 if os.name == 'nt':
 
@@ -187,15 +174,34 @@ if os.name == 'nt':
     scc = 'REM'
     script_extension = '.bat'
 
+    # Include this after each command in a .sh/.bat file
     command_suffix = 'if %errorlevel% neq 0 exit /b %errorlevel%\n'
 
     # My experience has been that Python multiprocessing is flaky on Windows, so
     # default to threads on Windows
-    parallelization_defaults_to_threads = True
-    default_workers_for_parallel_tasks = 10
+    if parallelization_defaults_to_threads is None:
+        parallelization_defaults_to_threads = True
+
+else:
+
+    # Force scripts to exit immediately if there's an error
+    script_header = '#!/bin/bash\n\nset -e\n'
+    slcc = '\\'
+    scc = '#'
+    script_extension = '.sh'
+    command_suffix = ''
+
+    if parallelization_defaults_to_threads is None:
+        parallelization_defaults_to_threads = False
 
 
 ## Constants related to using YOLOv5's val.py
+
+# You can almost definitely ignore this section.
+#
+# If you set use_yolo_inference_scripts to True, we'll use "yolo val" to run
+# MD.  This is almost never a good idea, I only use this for esoteric
+# reference data jobs.
 
 # Should we use YOLOv5's val.py instead of run_detector_batch.py?
 use_yolo_inference_scripts = False
@@ -225,6 +231,11 @@ augment = False
 
 
 ## Constants related to tiled inference
+
+# You can almost definitely ignore this section.
+#
+# Setting use_tiled_inference to True enables a highly experimental mode where
+# we chop each image up into smaller images before running MD.
 
 use_tiled_inference = False
 
@@ -277,13 +288,14 @@ job_date = None # '2025-01-01'
 model_file = 'MDV5A' # 'MDV5A', 'MDV5B', 'MDV4', 'MDv1000-redwood'
 
 # Number of jobs to split data into, typically equal to the number of available GPUs, though
-# when using an image loading queue, I typically use ~100 jobs per GPU;  those serve as de
+# when using an image loading queue, I typically use ~10 jobs per GPU;  those serve as de
 # facto checkpoints.
-n_jobs = 100
-n_gpus = 2
+n_jobs = 10
+n_gpus = 1
 
 # Set to "None" when using an image loading queue, which doesn't currently support
-# checkpointing.  Don't worry, this will be assert()'d in the next cell.
+# checkpointing.  If you are using multiple jobs, which is the default, there's almost
+# no reason to enable checkpointing.
 checkpoint_frequency = None
 
 # Local root folder where we do all our MegaDetector work; results and
@@ -295,14 +307,11 @@ job_tag = None
 
 # SpeciesNet-related variables
 
-speciesnet_model_file = os.path.expanduser('~/models/speciesnet/crop')
+# Set to None to use the default SpeciesNet model file
+speciesnet_model_file = None # os.path.expanduser('~/models/speciesnet/crop')
 
 country_code = None
 state_code = None
-
-speciesnet_folder = os.path.expanduser('~/git/cameratrapai')
-speciesnet_detector_environment_name = 'speciesnet' #'speciesnet-package-pytorch'
-speciesnet_classifier_environment_name = 'speciesnet' # 'speciesnet-package-tf'
 
 # Can be None to run the classifier in a single chunk
 max_images_per_chunk = None
@@ -315,10 +324,16 @@ custom_taxa_list = None
 # 'before_smoothing' or 'after_smoothing'.
 custom_taxa_stage = 'before_smoothing'
 
+# If custom_taxa_list is not None, should we propagate labels *down* the taxonomy tree?
+# E.g. if your custom list says there's only one carnivore in your ecosystem, should we
+# turn *every* carnivore prediction (including "order carnivora") into that taxon?
 custom_taxa_allow_walk_down = False
 
 # Only necessary when using a custom taxonomy list
-taxonomy_file = path_join(speciesnet_model_file,'taxonomy_release.txt')
+#
+# If this is None, the notebook will try to download this file from a standard
+# location.
+taxonomy_file = None # path_join(postprocessing_base,'taxonomy_release.txt')
 
 # Setting this to True says that if I have two predicted species in the same family
 # in a sequence, I will force them all to be the more common species.  Don't set this
@@ -338,6 +353,8 @@ input_path = input_path.replace('\\','/')
 assert not (input_path.endswith('/') or input_path.endswith('\\'))
 assert os.path.isdir(input_path), 'Could not find input folder {}'.format(input_path)
 assert job_date is not None and organization_name_short != 'organization'
+
+preview_options_base.image_base_dir = input_path
 
 if job_tag is None:
     job_description_string = ''
@@ -399,9 +416,24 @@ if custom_taxa_list is not None:
 
     assert os.path.isfile(custom_taxa_list), \
         'Could not find custom taxa file {}'.format(custom_taxa_list)
-    assert os.path.isfile(taxonomy_file), \
-        'Could not find taxonomy file {}'.format(taxonomy_file)
     assert custom_taxa_stage in ('before_smoothing','after_smoothing')
+
+    if taxonomy_file is None:
+        local_taxonomy_file = os.path.join(filename_base,'taxonomy_release.txt')
+        if os.path.isfile(local_taxonomy_file):
+            print('Found previously-downloaded taxonomy file at {}'.format(local_taxonomy_file))
+            taxonomy_file = local_taxonomy_file
+        else:
+            taxonomy_file_url = \
+                'https://lila.science/speciesnet-taxonomy-file'
+            print('Attempting to download taxonomy file from {}'.format(taxonomy_file_url))
+            download_url(taxonomy_file_url,
+                         destination_filename=local_taxonomy_file,
+                         progress_updater=True,
+                         force_download=False,
+                         verbose=True,
+                         escape_spaces=True)
+            taxonomy_file = local_taxonomy_file
 
     # Validate the species list
     restrict_to_taxa_list(taxa_list=custom_taxa_list,
@@ -546,22 +578,16 @@ for i_task,task in enumerate(task_info):
         if not remove_yolo_intermediate_results:
             remove_yolo_results_string = '--no_remove_yolo_results_folder'
 
-        confidence_threshold_string = ''
-        if json_threshold is not None:
-            confidence_threshold_string = '--conf_thres {}'.format(json_threshold)
-        else:
-            confidence_threshold_string = '--conf_thres {}'.format(DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD)
-
         cmd = ''
 
         device_string = '--device {}'.format(gpu_number)
 
         overwrite_handling_string = '--overwrite_handling {}'.format(overwrite_handling)
 
-        cmd += f'python run_inference_with_yolov5_val.py "{model_file}" "{chunk_file}" "{output_fn}" '
+        cmd += f'python -m megadetector.detection.run_inference_with_yolov5_val "{model_file}" "{chunk_file}" "{output_fn}" '
         cmd += f'{image_size_string} {augment_string} '
         cmd += f'{symlink_folder_string} {yolo_results_folder_string} {remove_yolo_results_string} '
-        cmd += f'{remove_symlink_folder_string} {confidence_threshold_string} {device_string} '
+        cmd += f'{remove_symlink_folder_string} {device_string} '
         cmd += f'{overwrite_handling_string} {batch_string} {write_yolo_debug_output_string}'
 
         if yolo_working_dir is not None:
@@ -586,7 +612,8 @@ for i_task,task in enumerate(task_info):
         else:
             cuda_string = f'CUDA_VISIBLE_DEVICES={gpu_number} '
 
-        cmd = f'{cuda_string} python run_tiled_inference.py "{model_file}" "{input_path}" "{tiling_folder}" "{output_fn}"'
+        cmd = f'{cuda_string} python -m megadetector.detection.run_tiled_inference '
+        cmd += f'"{model_file}" "{input_path}" "{tiling_folder}" "{output_fn}"'
 
         cmd += f' --image_list "{chunk_file}"'
         cmd += f' --overwrite_handling {overwrite_handling}'
@@ -631,12 +658,11 @@ for i_task,task in enumerate(task_info):
         if quiet_mode:
             quiet_string = '--quiet'
 
-        confidence_threshold_string = ''
-        if json_threshold is not None:
-            confidence_threshold_string = '--threshold {}'.format(json_threshold)
-
         overwrite_handling_string = '--overwrite_handling {}'.format(overwrite_handling)
-        cmd = f'{cuda_string} python run_detector_batch.py "{model_file}" "{chunk_file}" "{output_fn}" {checkpoint_frequency_string} {checkpoint_path_string} {use_image_queue_string} {ncores_string} {quiet_string} {image_size_string} {confidence_threshold_string} {overwrite_handling_string}'
+        cmd = f'{cuda_string} python -m megadetector.detection.run_detector_batch '
+        cmd += f'"{model_file}" "{chunk_file}" "{output_fn}"'
+        cmd += f'{checkpoint_frequency_string} {checkpoint_path_string} {use_image_queue_string}'
+        cmd += f'{ncores_string} {quiet_string} {image_size_string} {overwrite_handling_string}'
 
         if include_image_size:
             cmd += ' --include_image_size'
@@ -646,7 +672,8 @@ for i_task,task in enumerate(task_info):
             cmd += ' --include_exif_data'
         if augment:
             if image_size is None:
-                print('\n** Warning: you are using --augment with the default image size, you may want to use a larger image size **\n')
+                print('\n** Warning: you are using --augment with the default image size, '
+                      'you may want to use a larger image size **\n')
             cmd += ' --augment'
 
         if detector_options is not None:
@@ -701,10 +728,12 @@ for i_task,task in enumerate(task_info):
 
 # Write out a script for each GPU that runs all of the commands associated with
 # that GPU.
+scripts_to_run = []
 for gpu_number in gpu_to_scripts:
 
     gpu_script_file = path_join(filename_base,'run_all_for_gpu_{}{}'.format(
         str(gpu_number).zfill(2),script_extension))
+    scripts_to_run.append(gpu_script_file)
 
     with open(gpu_script_file,'w') as f:
 
@@ -727,11 +756,15 @@ for gpu_number in gpu_to_scripts:
 
 # ...for each GPU
 
+print('Scripts you probably want to run now:\n')
+for s in scripts_to_run:
+    print(s)
+
 
 #%% Run the tasks
 
 r"""
-tl;dr: I almost never run this cell.
+tl;dr: I almost never run this cell, i.e. "run_tasks_in_notebook" is almost always set to False.
 
 Long version...
 
@@ -744,11 +777,6 @@ batch files called, e.g.:
 c:\users\[username]\postprocessing\[organization]\[job_name]\run_chunk_000_gpu_00.bat
 c:\users\[username]\postprocessing\[organization]\[job_name]\run_chunk_001_gpu_01.bat
 
-Those batch files expect to be run from the "detection" folder of the MegaDetector repo,
-typically:
-
-c:\git\MegaDetector\megadetector\detection
-
 All of that said, you don't *have* to do this at the command line.  The following cell
 runs these scripts programmatically, so if you set "run_tasks_in_notebook" to "True"
 and run this cell, you can run MegaDetector without leaving this notebook.
@@ -757,8 +785,6 @@ One downside of the programmatic approach is that this cell doesn't yet parallel
 multiple processes, so the tasks will run serially.  This only matters if you have
 multiple GPUs.
 """
-
-run_tasks_in_notebook = False
 
 if run_tasks_in_notebook:
 
@@ -773,11 +799,6 @@ if run_tasks_in_notebook:
 
         checkpoint_filename = chunk_file.replace('.json','_checkpoint.json')
 
-        if json_threshold is not None:
-            confidence_threshold = json_threshold
-        else:
-            confidence_threshold = DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
-
         if checkpoint_frequency is not None and checkpoint_frequency > 0:
             cp_freq_arg = checkpoint_frequency
         else:
@@ -787,11 +808,11 @@ if run_tasks_in_notebook:
         results = load_and_run_detector_batch(model_file=model_file,
                                               image_file_names=chunk_file,
                                               checkpoint_path=checkpoint_filename,
-                                              confidence_threshold=confidence_threshold,
                                               checkpoint_frequency=cp_freq_arg,
                                               results=None,
                                               n_cores=ncores,
-                                              use_image_queue=use_image_queue,
+                                              # Minimize the risk of IPython process issues
+                                              use_image_queue=False,
                                               quiet=quiet_mode,
                                               image_size=image_size)
         elapsed = time.time() - start_time
@@ -802,7 +823,7 @@ if run_tasks_in_notebook:
         # This will write absolute paths to the file, we'll fix this later
         write_results_to_file(results, output_fn, detector_file=model_file)
 
-        if checkpoint_frequency is not None and checkpoint_frequency > 0:
+        if (checkpoint_frequency is not None) and (checkpoint_frequency > 0):
             if os.path.isfile(checkpoint_filename):
                 os.remove(checkpoint_filename)
                 print('Deleted checkpoint file {}'.format(checkpoint_filename))
@@ -851,9 +872,8 @@ for i_task,task in tqdm(enumerate(task_info),total=len(task_info)):
     # im = task_results['images'][0]
     for im in task_results['images']:
 
-        # Most of the time, inference result files use absolute paths, but it's
-        # getting annoying to make sure that's *always* true, so handle both here.
-        # E.g., when using tiled inference, paths will be relative.
+        # For paths to be relative.  The only semi-common scenario when this
+        # won't already be the case is when we're using tiled inference.
         if not os.path.isabs(im['file']):
             fn = path_join(input_path,im['file'])
             im['file'] = fn
@@ -934,26 +954,22 @@ print('\nWrote results to {}'.format(combined_api_output_file))
 #%% Preview (pre-RDE)
 
 """
-NB: I almost never run this cell.  This preview the results *before* repeat detection
+NB: I almost never run this cell.  This previews the results *before* repeat detection
 elimination (RDE), but since I'm essentially always doing RDE, I'm basically never
 interested in this preview.  There is a similar cell below for previewing results
 *after* RDE, which I almost always run.
 """
 
 preview_options = deepcopy(preview_options_base)
-preview_options.image_base_dir = input_path
 
 preview_folder = path_join(postprocessing_output_folder,
     base_task_name + '_{:.3f}'.format(preview_options.confidence_threshold))
-
-os.makedirs(preview_folder, exist_ok=True)
-
 preview_options.md_results_file = combined_api_output_file
 preview_options.output_dir = preview_folder
 
 print('Generating pre-RDE preview in {}'.format(preview_folder))
 ppresults = process_batch_results(preview_options)
-open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
+open_file(ppresults.output_html_file, attempt_to_open_in_wsl_host=True, browser_name='chrome')
 # SingletonHTTPServer.start_server(preview_folder,port=8000); open_file('http://localhost:8000')
 
 
@@ -1059,13 +1075,9 @@ remove_repeat_detections.remove_repeat_detections(
 #%% Preview (post-RDE)
 
 preview_options = deepcopy(preview_options_base)
-preview_options.image_base_dir = input_path
 
 preview_folder = path_join(postprocessing_output_folder,
     base_task_name + '_{}_{:.3f}'.format(rde_string, preview_options.confidence_threshold))
-
-os.makedirs(preview_folder, exist_ok=True)
-
 preview_options.md_results_file = filtered_output_filename
 preview_options.output_dir = preview_folder
 
@@ -1119,9 +1131,6 @@ classifier_output_file_modular_crops = \
 # (...if we're breaking classification into chunks).
 chunk_folder = path_join(filename_base,'classifier_chunks')
 
-# The .sh file we'll use to launch the classifier
-classifier_script_file = path_join(filename_base,'run_all_classifier_chunks.sh')
-
 
 ## Ensemble constants
 
@@ -1164,8 +1173,6 @@ if filtered_output_filename is not None and os.path.isfile(filtered_output_filen
 else:
     print('It looks like you didn\'t do RDE, using raw MD output for classification')
     detector_output_file_md_format = combined_api_output_file
-
-assert os.path.isdir(speciesnet_model_file)
 
 if os.path.isdir(crop_folder):
     print(f'*** Warning: crop folder {crop_folder} exists, if you create new '
@@ -1220,8 +1227,10 @@ assert os.path.isfile(detection_results_file_for_crop_folder)
 assert os.path.isdir(crop_folder)
 
 
-#%% Convert detection results for the crops to predictions.json format
+#%% Convert crop metadata to SpeciesNet input format
 
+# Convert detection results for the crops to predictions.json format
+#
 # This will be the input to the ensemble when we run it on the crops.
 
 from megadetector.utils.wi_taxonomy_utils import generate_predictions_json_from_md_results
@@ -1231,7 +1240,7 @@ generate_predictions_json_from_md_results(md_results_file=detection_results_file
                                           base_folder=crop_folder)
 
 
-##%% Generate a new instances.json file for the crops
+# Generate a new instances.json file for the crops
 
 crop_instances = generate_instances_json_from_folder(folder=crop_folder,
                                                      country=country_code,
@@ -1324,8 +1333,9 @@ for i_chunk,chunk in enumerate(chunks):
     chunk_prediction_files.append(chunk_predictions_json)
 
     chunk_script = path_join(chunk_folder,'run_chunk_{}{}'.format(i_chunk,script_extension))
-    cmd = 'python speciesnet/scripts/run_model.py --classifier_only --model "{}"'.format(
-        speciesnet_model_file)
+    cmd = 'python -m speciesnet.scripts.run_model --classifier_only'
+    if speciesnet_model_file is not None:
+        cmd += ' --model "{}"'.format(speciesnet_model_file)
     cmd += ' --instances_json "{}"'.format(chunk_instances_json)
     cmd += ' --predictions_json "{}"'.format(chunk_predictions_json)
     cmd += ' --detections_json "{}"'.format(chunk_detections_json)
@@ -1337,7 +1347,7 @@ for i_chunk,chunk in enumerate(chunks):
 
     with open(chunk_script_file,'w') as f:
         # This writes, e.g. "set -e"
-        if script_header is not None and len(script_header) > 0:
+        if (script_header is not None) and (len(script_header) > 0):
             f.write(script_header + '\n')
         f.write(cuda_prefix + cmd)
 
@@ -1358,21 +1368,11 @@ for gpu_number in gpu_to_classifier_scripts:
         str(gpu_number).zfill(2),script_extension))
     per_gpu_scripts.append(gpu_script_file)
 
-    if os.name == 'nt':
-        prepare_conda_environment_cmd = 'call'
-    else:
-        prepare_conda_environment_cmd = 'eval "$(conda shell.bash hook)" && '
-
-    classifier_init_cmd = f'cd {speciesnet_folder} && {prepare_conda_environment_cmd} conda activate {speciesnet_classifier_environment_name}'
-
     with open(gpu_script_file,'w') as f:
 
         # This writes, e.g. "set -e"
-        if script_header is not None and len(script_header) > 0:
+        if (script_header is not None) and (len(script_header) > 0):
             f.write(script_header)
-
-        # Change folder/environment
-        f.write(classifier_init_cmd + '\n')
 
         for script_name in gpu_to_classifier_scripts[gpu_number]:
 
@@ -1397,7 +1397,9 @@ for s in per_gpu_scripts:
 # import clipboard; clipboard.copy(per_gpu_scripts[0])
 
 
-#%% Merge crop classification result batches
+#%% Prepare rollup/geofencing script
+
+##%%# Merge crop classification result batches
 
 from megadetector.utils.wi_taxonomy_utils import merge_prediction_json_files
 
@@ -1415,9 +1417,10 @@ _ = validate_predictions_file(classifier_output_file_modular_crops,crop_instance
 
 # It doesn't matter here which environment we use, and there's no need to add the CUDA prefix
 ensemble_commands = []
-ensemble_commands.append(f'cd {speciesnet_folder} && conda activate {speciesnet_detector_environment_name}')
 
-cmd = 'python speciesnet/scripts/run_model.py --ensemble_only --model "{}"'.format(speciesnet_model_file)
+cmd = 'python -m speciesnet.scripts.run_model --ensemble_only'
+if speciesnet_model_file is not None:
+        cmd += ' --model "{}"'.format(speciesnet_model_file)
 cmd += ' --instances_json "{}"'.format(crop_instances_json)
 cmd += ' --classifications_json "{}"'.format(classifier_output_file_modular_crops)
 cmd += ' --detections_json "{}"'.format(crop_detections_predictions_file)
@@ -1436,7 +1439,9 @@ ensemble_cmd = '\n\n'.join(ensemble_commands)
 print('Ensemble command you should run now:\n\n{}'.format(ensemble_cmd))
 
 
-#%% Validate ensemble results (still crops)
+#%% Validate ensemble results and bring crop results back to image level
+
+##%% Validate ensemble results (still crops)
 
 from megadetector.utils.wi_taxonomy_utils import validate_predictions_file
 _ = validate_predictions_file(ensemble_output_file_modular_crops,crop_instances_json)
@@ -1511,6 +1516,22 @@ print('Loaded results for {} images with {} failures'.format(
     len(images_in_folder),n_failures))
 
 
+#%% Preview (post-classification, pre-smoothing/pre-custom-taxa)
+
+preview_options = deepcopy(preview_options_base)
+
+preview_folder = path_join(postprocessing_output_folder,
+    base_task_name + '_{}_classification'.format(preview_options.confidence_threshold))
+preview_options.md_results_file = ensemble_output_file_image_level_md_format
+preview_options.output_dir = preview_folder
+preview_options.footer_text = geofence_footer
+
+print('Generating post-classification preview in {}'.format(preview_folder))
+ppresults = process_batch_results(preview_options)
+open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
+# SingletonHTTPServer.start_server(preview_folder,port=8000); open_file('http://localhost:8000')
+
+
 #%% Possibly apply a custom taxa list (before smoothing)
 
 if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
@@ -1535,24 +1556,22 @@ if os.path.isfile(custom_taxa_output_file):
     pre_smoothing_file = custom_taxa_output_file
 
 
-#%% Preview (post-classification, pre-smoothing)
+#%% Preview (post-custom-taxa, pre-smoothing)
 
-preview_options = deepcopy(preview_options_base)
-preview_options.image_base_dir = input_path
+if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
 
-preview_folder = path_join(postprocessing_output_folder,
-    base_task_name + '_{}_classification'.format(preview_options.confidence_threshold))
+    preview_options = deepcopy(preview_options_base)
 
-os.makedirs(preview_folder, exist_ok=True)
+    preview_folder = path_join(postprocessing_output_folder,
+        base_task_name + '_{}_customtaxa'.format(preview_options.confidence_threshold))
+    preview_options.md_results_file = pre_smoothing_file
+    preview_options.output_dir = preview_folder
+    preview_options.footer_text = geofence_footer
 
-preview_options.md_results_file = pre_smoothing_file
-preview_options.output_dir = preview_folder
-preview_options.footer_text = geofence_footer
-
-print('Generating post-classification preview in {}'.format(preview_folder))
-ppresults = process_batch_results(preview_options)
-open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
-# SingletonHTTPServer.start_server(preview_folder,port=8000); open_file('http://localhost:8000')
+    print('Generating post-classification preview in {}'.format(preview_folder))
+    ppresults = process_batch_results(preview_options)
+    open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
+    # SingletonHTTPServer.start_server(preview_folder,port=8000); open_file('http://localhost:8000')
 
 
 #%% Within-image classification smoothing
@@ -1574,13 +1593,9 @@ _ = smooth_classification_results_image_level(input_file=pre_smoothing_file,
 #%% Preview (post-within-image smoothing)
 
 preview_options = deepcopy(preview_options_base)
-preview_options.image_base_dir = input_path
 
 preview_folder = path_join(postprocessing_output_folder,
     base_task_name + '_{}_within-image-smoothing'.format(preview_options.confidence_threshold))
-
-os.makedirs(preview_folder, exist_ok=True)
-
 preview_options.md_results_file = classifier_output_path_within_image_smoothing
 preview_options.output_dir = preview_folder
 
@@ -1592,12 +1607,12 @@ open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_na
 
 #%% Build sequences
 
-# ...from EXIF info, folder structure, or an existing .json file
+# ...from EXIF timestamps, folder structure, or an existing .json file
 
 # How should we determine sequence information?
 
 # Use 'exif' for most image (non-video) cases
-# sequence_method = 'exif'
+sequence_method = 'exif'
 
 # Use 'folder' when leaf node folders are sequences, typically when each folder really
 # represents frames from a single video.
@@ -1606,7 +1621,7 @@ open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_na
 # Use 'json' when you already have a CCT-formatted .json file that has the fields
 # "seq_id", "seq_num_frames", and "frame_num".  In this case, cct_formatted_json
 # should be set to a valid .json file above.
-sequence_method = 'json'
+# sequence_method = 'json'
 
 ##%% If we're building sequence information based on EXIF data
 
@@ -1740,7 +1755,7 @@ else:
                     im['file_name'],field_name)
 
 
-##%% Sequence-level smoothing
+#%% Sequence-level smoothing
 
 from megadetector.postprocessing.classification_postprocessing import \
     smooth_classification_results_sequence_level, \
@@ -1771,13 +1786,9 @@ _ = smooth_classification_results_sequence_level(input_file=input_file_for_seque
 #%% Preview (post-sequence-smoothing)
 
 preview_options = deepcopy(preview_options_base)
-preview_options.image_base_dir = input_path
 
 preview_folder = path_join(postprocessing_output_folder,
     base_task_name + '_{}_sequence-smoothing'.format(preview_options.confidence_threshold))
-
-os.makedirs(preview_folder, exist_ok=True)
-
 preview_options.md_results_file = sequence_smoothed_classification_file
 preview_options.output_dir = preview_folder
 preview_options.footer_text = geofence_footer
@@ -1810,13 +1821,9 @@ if (custom_taxa_list is not None) and (custom_taxa_stage == 'after_smoothing'):
 if (custom_taxa_list is not None) and (custom_taxa_stage == 'after_smoothing'):
 
     preview_options = deepcopy(preview_options_base)
-    preview_options.image_base_dir = input_path
 
     preview_folder = path_join(postprocessing_output_folder,
         base_task_name + '_{}_custom_taxa'.format(preview_options.confidence_threshold))
-
-    os.makedirs(preview_folder, exist_ok=True)
-
     preview_options.md_results_file = custom_taxa_output_file
     preview_options.output_dir = preview_folder
     preview_options.footer_text = geofence_footer
