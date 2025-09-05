@@ -1,4 +1,4 @@
-# Overview
+# Repeat detection elimination overview
 
 We like to think MegaDetector is pretty good at what it does, but we admit it's not perfect: inevitably, we see some "false positives", i.e. pesky branches, piles of snow, or roadside litter that our model thinks is an animal.  As with <i>all</i> object detection models, you can reduce your false positive rate by raising your detection threshold, but if you raise it too high, you risk missing objects you care about.
 
