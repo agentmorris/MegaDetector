@@ -21,7 +21,7 @@ from megadetector.utils.path_utils import is_image_file
 
 #%% Directory enumeration functions
 
-def create_plain_index(root, dirs, files, dirname=None):
+def _create_plain_index(root, dirs, files, dirname=None):
     """
     Creates the fairly plain HTML folder index including a preview of a single image file,
     if any is present.
@@ -40,6 +40,7 @@ def create_plain_index(root, dirs, files, dirname=None):
 
     if dirname is None:
         dirname = root or '/'
+    dirname = dirname.replace('\\','/')
 
     html = "<!DOCTYPE html>\n"
     html += "<html lang='en'><head>"
@@ -104,13 +105,14 @@ def create_plain_index(root, dirs, files, dirname=None):
     html += "</body></html>\n"
     return html
 
-# ...def create_plain_index(...)
+# ...def _create_plain_index(...)
 
 
-def traverse_and_create_index(dir,
-                              overwrite_files=False,
-                              template_fun=create_plain_index,
-                              basepath=None):
+def create_html_index(dir,
+                      overwrite=False,
+                      template_fun=_create_plain_index,
+                      basepath=None,
+                      recursive=True):
     """
     Recursively traverses the local directory [dir] and generates a index
     file for each folder using [template_fun] to generate the HTML output.
@@ -118,12 +120,13 @@ def traverse_and_create_index(dir,
 
     Args:
         dir (str): directory to process
-        overwrite_files (bool, optional): whether to over-write existing index file
+        overvwrite (bool, optional): whether to over-write existing index file
         template_fun (func, optional): function taking three arguments (string,
             list of string, list of string) representing the current root, the list of folders,
             and the list of files.  Should return the HTML source of the index file.
         basepath (str, optional): if not None, the name used for each subfolder in [dir]
             in the output files will be relative to [basepath]
+        recursive (bool, optional): recurse into subfolders
     """
 
     print('Traversing {}'.format(dir))
@@ -141,7 +144,7 @@ def traverse_and_create_index(dir,
         # Output is written to file *root*/index.html
         output_file = os.path.join(root, "index.html")
 
-        if not overwrite_files and os.path.isfile(output_file):
+        if (not overwrite) and os.path.isfile(output_file):
             print('Skipping {}, file exists'.format(output_file))
             continue
 
@@ -157,7 +160,10 @@ def traverse_and_create_index(dir,
         with open(output_file, 'wt') as fi:
             fi.write(html)
 
-# ...def traverse_and_create_index(...)
+        if not recursive:
+            break
+
+# ...def create_html_index(...)
 
 
 #%% Command-line driver
@@ -171,7 +177,7 @@ def main(): # noqa
     parser.add_argument("--basepath", type=str,
                         help='Folder names will be printed relative to basepath, if specified',
                         default=None)
-    parser.add_argument("--enable_overwrite", action='store_true', default=False,
+    parser.add_argument("--overwrite", action='store_true', default=False,
                         help='If set, the script will overwrite existing index.html files.')
 
     if len(sys.argv[1:]) == 0:
@@ -182,9 +188,9 @@ def main(): # noqa
 
     assert os.path.isdir(args.directory), "{} is not a valid directory".format(args.directory)
 
-    traverse_and_create_index(args.directory,
-                              overwrite_files=args.enable_overwrite,
-                              basepath=args.basepath)
+    create_html_index(args.directory,
+                      overwrite=args.overwrite,
+                      basepath=args.basepath)
 
 if __name__ == '__main__':
     main()

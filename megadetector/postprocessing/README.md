@@ -6,7 +6,7 @@ Modules in this folder include...
 
 ## postprocess_batch_results.py
 
-Renders an HTML page that previews the results in a MegaDetector results file. We use this to help new users get a sense of whether MegaDetector worked well on their images, and in particular to quickly assess whether MegaDetector is missing anything.  You can see a sample of the output of this script [here](https://lila.science/public/snapshot_safari_public/snapshot-safari-kar-2022-00-00-v5a.0.0_0.200/).  If ground truth is not provided, the sampled images are divided into links called `non-detections`, `animal`, `person`, etc.; if ground truth (in CCT format) is provided, results are divided into true/false positives/negatives, and a precision-recall curve is plotted. 
+Renders an HTML page that previews the results in a MegaDetector results file. We use this to help new users get a sense of whether MegaDetector worked well on their images, and in particular to quickly assess whether MegaDetector is missing anything.  You can see a sample of the output of this script [here](https://lilawildlife.blob.core.windows.net/lila-wildlife/previews/snapshot-safari/snapshot-safari_KAR_mdv5a.0.0_results.filtered_rde_0.150_0.850_15_0.200/index.html).  If ground truth is not provided, the sampled images are divided into links called `non-detections`, `animal`, `person`, etc.; if ground truth (in CCT format) is provided, results are divided into true/false positives/negatives, and a precision-recall curve is plotted. 
 
 
 ## separate_detections_into_folders.py
