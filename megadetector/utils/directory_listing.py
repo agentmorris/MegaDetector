@@ -120,7 +120,7 @@ def create_html_index(dir,
 
     Args:
         dir (str): directory to process
-        overvwrite (bool, optional): whether to over-write existing index file
+        overwrite (bool, optional): whether to over-write existing index file
         template_fun (func, optional): function taking three arguments (string,
             list of string, list of string) representing the current root, the list of folders,
             and the list of files.  Should return the HTML source of the index file.
