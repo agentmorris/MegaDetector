@@ -2,12 +2,8 @@
 
 convert_output_format.py
 
-Converts between file formats output by our batch processing API.  Currently
-supports json <--> csv conversion, but this should be the landing place for any
-conversion - including between hypothetical alternative .json versions - that we support
-in the future.
-
-The .csv format is largely obsolete, don't use it unless you're super-duper sure you need it.
+Converts between file .json and .csv representations of MD output.  The .csv format is
+largely obsolete, don't use it unless you're super-duper sure you need it.
 
 """
 
@@ -15,13 +11,16 @@ The .csv format is largely obsolete, don't use it unless you're super-duper sure
 
 import argparse
 import json
-import csv
 import sys
 import os
 
 from tqdm import tqdm
+from collections import defaultdict
+
+import pandas as pd
 
 from megadetector.postprocessing.load_api_results import load_api_results_csv
+from megadetector.utils.wi_taxonomy_utils import load_md_or_speciesnet_file
 from megadetector.data_management.annotations import annotation_constants
 from megadetector.utils import ct_utils
 
@@ -35,15 +34,12 @@ def convert_json_to_csv(input_path,
                         min_confidence=None,
                         omit_bounding_boxes=False,
                         output_encoding=None,
-                        overwrite=True):
+                        overwrite=True,
+                        verbose=False):
     """
     Converts a MD results .json file to a totally non-standard .csv format.
 
     If [output_path] is None, will convert x.json to x.csv.
-
-    TODO: this function should obviously be using Pandas or some other sensible structured
-    representation of tabular data.  Even a list of dicts.  This implementation is quite
-    brittle and depends on adding fields to every row in exactly the right order.
 
     Args:
         input_path (str): the input .json file to convert
@@ -57,7 +53,7 @@ def convert_json_to_csv(input_path,
         output_encoding (str, optional): encoding to use for the .csv file
         overwrite (bool, optional): whether to overwrite an existing .csv file; if this is False and
             the output file exists, no-ops and returns
-
+        verbose (bool, optional): enable additional debug output
     """
 
     if output_path is None:
@@ -68,36 +64,28 @@ def convert_json_to_csv(input_path,
         return
 
     print('Loading json results from {}...'.format(input_path))
-    json_output = json.load(open(input_path))
+    json_output = load_md_or_speciesnet_file(input_path,
+                                             verbose=verbose)
 
-    rows = []
+    def clean_category_name(s):
+        return s.replace(',','_').replace(' ','_').lower()
 
-    fixed_columns = ['image_path', 'max_confidence', 'detections']
+    # Create column names for max detection confidences
+    detection_category_id_to_max_conf_column_name = {}
+    for category_id in json_output['detection_categories'].keys():
+        category_name = clean_category_name(json_output['detection_categories'][category_id])
+        detection_category_id_to_max_conf_column_name[category_id] = \
+            'max_conf_' + category_name
 
-    # We add an output column for each class other than 'empty',
-    # containing the maximum probability of  that class for each image
-    # n_non_empty_detection_categories = len(annotation_constants.annotation_bbox_categories) - 1
-    n_non_empty_detection_categories = annotation_constants.NUM_DETECTOR_CATEGORIES
-    detection_category_column_names = []
-    assert annotation_constants.detector_bbox_category_id_to_name[0] == 'empty'
-    for cat_id in range(1,n_non_empty_detection_categories+1):
-        cat_name = annotation_constants.detector_bbox_category_id_to_name[cat_id]
-        detection_category_column_names.append('max_conf_' + cat_name)
+    classification_category_id_to_max_conf_column_name = {}
 
-    n_classification_categories = 0
-
+    # Create column names for max classification confidences (if necessary)
     if 'classification_categories' in json_output.keys():
-        classification_category_id_to_name = json_output['classification_categories']
-        classification_category_ids = list(classification_category_id_to_name.keys())
-        classification_category_id_to_column_number = {}
-        classification_category_column_names = []
-        for i_category,category_id in enumerate(classification_category_ids):
-            category_name = classification_category_id_to_name[category_id].\
-                replace(' ','_').replace(',','')
-            classification_category_column_names.append('max_classification_conf_' + category_name)
-            classification_category_id_to_column_number[category_id] = i_category
 
-        n_classification_categories = len(classification_category_ids)
+        for category_id in json_output['classification_categories'].keys():
+            category_name = clean_category_name(json_output['classification_categories'][category_id])
+            classification_category_id_to_max_conf_column_name[category_id] = \
+                'max_classification_conf_' + category_name
 
     # There are several .json fields for which we add .csv columns; other random bespoke fields
     # will be ignored.
@@ -117,26 +105,43 @@ def convert_json_to_csv(input_path,
     if len(optional_fields_present) > 0:
         print('Found {} optional fields'.format(len(optional_fields_present)))
 
-    expected_row_length = len(fixed_columns) + len(detection_category_column_names) + \
-        n_classification_categories + len(optional_fields_present)
-
     print('Formatting results...')
+
+    output_records = []
 
     # i_image = 0; im = json_output['images'][i_image]
     for im in tqdm(json_output['images']):
 
-        image_id = im['file']
+        output_record = {}
+        output_records.append(output_record)
+
+        output_record['image_path'] = im['file']
+        output_record['max_confidence'] = ''
+        output_record['detections'] = ''
+
+        for field_name in optional_fields_present:
+            output_record[field_name] = ''
+            if field_name in im:
+                output_record[field_name] = im[field_name]
+
+        for detection_category_id in detection_category_id_to_max_conf_column_name:
+            column_name = detection_category_id_to_max_conf_column_name[detection_category_id]
+            output_record[column_name] = 0
+
+        for classification_category_id in classification_category_id_to_max_conf_column_name:
+            column_name = classification_category_id_to_max_conf_column_name[classification_category_id]
+            output_record[column_name] = 0
 
         if 'failure' in im and im['failure'] is not None:
-            row = [image_id, 'failure', im['failure']]
-            rows.append(row)
+            output_record['max_confidence'] = 'failure'
+            output_record['detections'] = im['failure']
             # print('Skipping failed image {} ({})'.format(im['file'],im['failure']))
             continue
 
         max_conf = ct_utils.get_max_conf(im)
+        detection_category_id_to_max_conf = defaultdict(float)
+        classification_category_id_to_max_conf = defaultdict(float)
         detections = []
-        max_detection_category_probabilities = [None] * n_non_empty_detection_categories
-        max_classification_category_probabilities = [0] * n_classification_categories
 
         # d = im['detections'][0]
         for d in im['detections']:
@@ -155,31 +160,24 @@ def convert_json_to_csv(input_path,
             xmax = input_bbox[0] + input_bbox[2]
             ymax = input_bbox[1] + input_bbox[3]
             output_detection = [ymin, xmin, ymax, xmax]
-
             output_detection.append(d['conf'])
-
-            # Category 0 is empty, for which we don't have a column, so the max
-            # confidence for category N goes in column N-1
-            detection_category_id = int(d['category'])
-            assert detection_category_id > 0 and detection_category_id <= \
-                n_non_empty_detection_categories
-            detection_category_column = detection_category_id - 1
-            detection_category_max = max_detection_category_probabilities[detection_category_column]
-            if detection_category_max is None or d['conf'] > detection_category_max:
-                max_detection_category_probabilities[detection_category_column] = d['conf']
-
-            output_detection.append(detection_category_id)
+            output_detection.append(int(d['category']))
             detections.append(output_detection)
 
+            detection_category_id = d['category']
+            detection_category_max = detection_category_id_to_max_conf[detection_category_id]
+            if d['conf'] > detection_category_max:
+                detection_category_id_to_max_conf[detection_category_id] = d['conf']
+
             if 'classifications' in d:
-                assert n_classification_categories > 0,\
-                    'Oops, I have classification results, but no classification metadata'
+
                 for c in d['classifications']:
-                    category_id = c[0]
-                    p = c[1]
-                    category_index = classification_category_id_to_column_number[category_id]
-                    if (max_classification_category_probabilities[category_index] < p):
-                        max_classification_category_probabilities[category_index] = p
+                    classification_category_id = c[0]
+                    classification_conf = c[1]
+                    classification_category_max = \
+                        classification_category_id_to_max_conf[classification_category_id]
+                    if classification_conf > classification_category_max:
+                        classification_category_id_to_max_conf[classification_category_id] = d['conf']
 
                 # ...for each classification
 
@@ -191,40 +189,36 @@ def convert_json_to_csv(input_path,
         if not omit_bounding_boxes:
             detection_string = json.dumps(detections)
 
-        row = [image_id, max_conf, detection_string]
-        row.extend(max_detection_category_probabilities)
-        row.extend(max_classification_category_probabilities)
+        output_record['detections'] = detection_string
+        output_record['max_confidence'] = max_conf
 
-        for field_name in optional_fields_present:
-            if field_name not in im:
-                row.append('')
-            else:
-                row.append(str(im[field_name]))
+        for detection_category_id in detection_category_id_to_max_conf_column_name:
+            column_name = detection_category_id_to_max_conf_column_name[detection_category_id]
+            output_record[column_name] = \
+                detection_category_id_to_max_conf[detection_category_id]
 
-        assert len(row) == expected_row_length
-        rows.append(row)
+        for classification_category_id in classification_category_id_to_max_conf_column_name:
+            column_name = classification_category_id_to_max_conf_column_name[classification_category_id]
+            output_record[column_name] = \
+                classification_category_id_to_max_conf[classification_category_id]
 
     # ...for each image
 
     print('Writing to csv...')
 
-    with open(output_path, 'w', newline='', encoding=output_encoding) as f:
-        writer = csv.writer(f, delimiter=',')
-        header = fixed_columns
-        header.extend(detection_category_column_names)
-        if n_classification_categories > 0:
-            header.extend(classification_category_column_names)
-        for field_name in optional_fields_present:
-            header.append(field_name)
-        writer.writerow(header)
-        writer.writerows(rows)
+    df = pd.DataFrame(output_records)
+
+    if omit_bounding_boxes:
+        df = df.drop('detections',axis=1)
+    df.to_csv(output_path,index=False,header=True)
 
 # ...def convert_json_to_csv(...)
 
 
 def convert_csv_to_json(input_path,output_path=None,overwrite=True):
     """
-    Convert .csv to .json.  If output_path is None, will convert x.csv to x.json.
+    Convert .csv to .json.  If output_path is None, will convert x.csv to x.json.  This
+    supports a largely obsolete .csv format, there's almost no reason you want to do this.
 
     Args:
         input_path (str): .csv filename to convert to .json

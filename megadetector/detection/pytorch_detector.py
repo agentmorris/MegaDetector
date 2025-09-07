@@ -305,7 +305,7 @@ def _initialize_yolo_imports(model_type='yolov5',
 
     # The point of this function is to make the appropriate version
     # of the following functions available at module scope
-    # global non_max_suppression
+    global non_max_suppression
     global xyxy2xywh
     global letterbox
     global scale_coords
@@ -328,7 +328,7 @@ def _initialize_yolo_imports(model_type='yolov5',
     if try_yolov5_import and not utils_imported:
 
         try:
-            # from yolov5.utils.general import non_max_suppression # noqa
+            # from yolov5.utils.general import non_max_suppression # type: ignore
             from yolov5.utils.general import xyxy2xywh # noqa
             from yolov5.utils.augmentations import letterbox # noqa
             try:
@@ -380,7 +380,12 @@ def _initialize_yolo_imports(model_type='yolov5',
 
         try:
 
-            # from ultralytics.utils.ops import non_max_suppression # type: ignore # noqa
+            # The non_max_suppression() function moved from the ops module to the nms module
+            # in mid-2025
+            try:
+                from ultralytics.utils.ops import non_max_suppression # type: ignore # noqa
+            except Exception:
+                from ultralytics.utils.nms import non_max_suppression # type: ignore # noqa
             from ultralytics.utils.ops import xyxy2xywh # type: ignore # noqa
 
             # In the ultralytics package, scale_boxes and scale_coords both exist;
@@ -1286,18 +1291,23 @@ class PTDetector:
         else:
             nms_iou_thres = 0.6
 
-        pred = nms(prediction=pred,
-                   conf_thres=detection_threshold,
-                   iou_thres=nms_iou_thres)
+        use_library_nms = False
 
-        # For posterity, the syntax for invoking the ultralytics implementation of NMS
-        """
-        pred = non_max_suppression(prediction=pred,
-                                   conf_thres=detection_threshold,
-                                   iou_thres=nms_iou_thres,
-                                   agnostic=False,
-                                   multi_label=False)
-        """
+        # Model output format changed in recent ultralytics packages, and the nms implementation
+        # in this module hasn't been updated to handle that format yet.
+        if (yolo_model_type_imported is not None) and (yolo_model_type_imported == 'ultralytics'):
+            use_library_nms = True
+
+        if use_library_nms:
+            pred = non_max_suppression(prediction=pred,
+                                    conf_thres=detection_threshold,
+                                    iou_thres=nms_iou_thres,
+                                    agnostic=False,
+                                    multi_label=False)
+        else:
+            pred = nms(prediction=pred,
+                    conf_thres=detection_threshold,
+                    iou_thres=nms_iou_thres)
 
         assert isinstance(pred, list)
         assert len(pred) == len(batch_metadata), \
