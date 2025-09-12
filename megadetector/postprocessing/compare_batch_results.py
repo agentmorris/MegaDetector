@@ -152,7 +152,7 @@ class BatchComparisonOptions:
         self.target_width = 800
 
         #: Number of workers to use for rendering, or <=1 to disable parallelization
-        self.n_rendering_workers = 20
+        self.n_rendering_workers = 10
 
         #: Random seed for image sampling (not used if max_images_per_category is None)
         self.random_seed = 0

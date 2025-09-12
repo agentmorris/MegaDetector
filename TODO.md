@@ -124,6 +124,17 @@ E2
 !feature
 
 
+## Add process-based parallelization in compare_batch_results
+
+compare_batch_results supports thread-based parallelization for rendering, but not process-based parallelization.  This is just an issue of slightly refactoring a local function to be a module-level function.
+
+P3
+
+E0
+
+!feature
+
+
 ## Multi-GPU inference in run_detector_batch
 
 run_detector_batch only supports single-GPU (or single-/multi-CPU) inference.  Add multi-GPU inference.  This is P3 because in practice, when using manage_local_batch to create and run jobs, multi-GPU inference is handled naturally by breaking the task up into multiple lists of images.
