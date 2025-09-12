@@ -211,6 +211,10 @@ class BatchComparisonOptions:
         #: Should we include a TOC?  TOC is always omitted if <=2 comparisons are performed.
         self.include_toc = True
 
+        #: Should we return the mapping from categories (e.g. "common detections") to image
+        #: pairs?  Makes the return dict much larger, but allows post-hoc exploration.
+        self.return_images_by_category = False
+
 # ...class BatchComparisonOptions
 
 
@@ -1593,6 +1597,8 @@ def compare_batch_results(options):
         print('Running comparison {} of {}'.format(i_comparison,n_comparisons))
         pairwise_results = \
             _pairwise_compare_batch_results(options,i_comparison,pairwise_options)
+        if not options.return_images_by_category:
+            pairwise_results.categories_to_image_pairs = None
         html_content += pairwise_results.html_content
         all_pairwise_results.append(pairwise_results)
 
