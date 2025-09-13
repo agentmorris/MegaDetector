@@ -183,7 +183,7 @@ class BatchComparisonOptions:
         #: Should we show category names (instead of numbers) on detected boxes?
         self.show_category_names_on_detected_boxes = True
 
-        #: List of PairwiseBatchComparisonOptions that defines the comparisons we'll render.
+        #: List of PairwiseBatchComparisonOptions that defines the comparisons we'll render
         self.pairwise_options = []
 
         #: Only process images whose file names contain this token
@@ -228,7 +228,7 @@ class PairwiseBatchComparisonResults:
         #: String of HTML content suitable for rendering to an HTML file
         self.html_content = None
 
-        #: Possibly-modified version of the PairwiseBatchComparisonOptions supplied as input.
+        #: Possibly-modified version of the PairwiseBatchComparisonOptions supplied as input
         self.pairwise_options = None
 
         #: A dictionary with keys representing category names; in the no-ground-truth case, for example,
@@ -299,7 +299,8 @@ def _render_image_pair(fn,image_pairs,category_folder,options,pairwise_options):
     """
 
     input_image_path = os.path.join(options.image_folder,fn)
-    assert os.path.isfile(input_image_path), 'Image {} does not exist'.format(input_image_path)
+    assert os.path.isfile(input_image_path), \
+        'Image {} does not exist'.format(input_image_path)
 
     im = visualization_utils.open_image(input_image_path)
     image_pair = image_pairs[fn]
@@ -632,11 +633,21 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
     os.makedirs(options.output_folder,exist_ok=True)
 
 
+    # Just in case the user provided a single category instead of a list
+    # for category_names_to_include
+    if options.category_names_to_include is not None:
+        if isinstance(options.category_names_to_include,str):
+            options.category_names_to_include = [options.category_names_to_include]
+
     ##%% Load both result sets
 
+    if options.verbose:
+        print('Loading {}'.format(pairwise_options.results_filename_a))
     with open(pairwise_options.results_filename_a,'r') as f:
         results_a = json.load(f)
 
+    if options.verbose:
+        print('Loading {}'.format(pairwise_options.results_filename_b))
     with open(pairwise_options.results_filename_b,'r') as f:
         results_b = json.load(f)
 
@@ -657,6 +668,17 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
     detection_category_id_to_name = detection_categories_a
     detection_category_name_to_id = invert_dictionary(detection_categories_a)
     options.detection_category_id_to_name = detection_category_id_to_name
+
+    category_name_to_id_a = invert_dictionary(detection_categories_a)
+    category_name_to_id_b = invert_dictionary(detection_categories_b)
+    category_ids_to_include_a = []
+    category_ids_to_include_b = []
+
+    for category_name in options.category_names_to_include:
+        if category_name in category_name_to_id_a:
+            category_ids_to_include_a.append(category_name_to_id_a[category_name])
+        if category_name in category_name_to_id_b:
+            category_ids_to_include_b.append(category_name_to_id_b[category_name])
 
     if pairwise_options.results_description_a is None:
         if 'detector' not in results_a['info']:
@@ -683,7 +705,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
     filename_to_image_b = {im['file']:im for im in images_b}
 
 
-    ##%% Make sure they represent the same set of images
+    ##%% Make sure the two result sets represent the same set of images
 
     filenames_a = [im['file'] for im in images_a]
     filenames_b_set = set([im['file'] for im in images_b])
@@ -918,7 +940,8 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
                 pairwise_options.detection_thresholds_b['default']
 
     # fn = filenames_to_compare[0]
-    for i_file,fn in tqdm(enumerate(filenames_to_compare),total=len(filenames_to_compare)):
+    for i_file,fn in tqdm(enumerate(filenames_to_compare),
+                          total=len(filenames_to_compare)):
 
         if fn not in filename_to_image_b:
 
@@ -1004,26 +1027,10 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
                     categories_above_threshold_b.add(category_id)
 
             if invalid_category_error:
-
                 continue
 
             # Should we be restricting the comparison to only certain categories?
             if options.category_names_to_include is not None:
-
-                # Just in case the user provided a single category instead of a list
-                if isinstance(options.category_names_to_include,str):
-                    options.category_names_to_include = [options.category_names_to_include]
-
-                category_name_to_id_a = invert_dictionary(detection_categories_a)
-                category_name_to_id_b = invert_dictionary(detection_categories_b)
-                category_ids_to_include_a = []
-                category_ids_to_include_b = []
-
-                for category_name in options.category_names_to_include:
-                    if category_name in category_name_to_id_a:
-                        category_ids_to_include_a.append(category_name_to_id_a[category_name])
-                    if category_name in category_name_to_id_b:
-                        category_ids_to_include_b.append(category_name_to_id_b[category_name])
 
                 # Restrict the categories we treat as above-threshold to the set we're supposed
                 # to be using
@@ -1291,7 +1298,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             max_conf_b = _maxempty([det['conf'] for det in im_b['detections']])
             sort_conf = max(max_conf_a,max_conf_b)
 
-    # ...what kind of ground truth (if any) do we have?
+        # ...what kind of ground truth (if any) do we have?
 
         assert comparison_category is not None
         categories_to_image_pairs[comparison_category][fn] = im_pair
@@ -1317,7 +1324,11 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
     local_output_folder = os.path.join(options.output_folder,'cmp_' + \
                                        str(output_index).zfill(3))
 
-    def render_detection_comparisons(category,image_pairs,image_filenames):
+    def _render_detection_comparisons(category,image_pairs,image_filenames):
+        """
+        Render all the detection results pairs for the sampled images in a
+        particular category (e.g. all the "common detections").
+        """
 
         print('Rendering detections for category {}'.format(category))
 
@@ -1340,7 +1351,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
 
         return output_image_paths
 
-    # ...def render_detection_comparisons()
+    # ...def _render_detection_comparisons()
 
     if len(options.colormap_a) > 1:
         color_string_a = str(options.colormap_a)
@@ -1375,7 +1386,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
 
         input_image_absolute_paths = [os.path.join(options.image_folder,fn) for fn in image_filenames]
 
-        category_image_output_paths = render_detection_comparisons(category,
+        category_image_output_paths = _render_detection_comparisons(category,
                                                             image_pairs,image_filenames)
 
         category_html_filename = os.path.join(local_output_folder,
@@ -1473,6 +1484,8 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             print("Pool closed and joined for comparison rendering")
         except Exception:
             pass
+
+
     ##%% Write the top-level HTML file content
 
     html_output_string  = ''
@@ -1595,6 +1608,7 @@ def compare_batch_results(options):
     for i_comparison,pairwise_options in enumerate(pairwise_options_list):
 
         print('Running comparison {} of {}'.format(i_comparison,n_comparisons))
+        pairwise_options.verbose = options.verbose
         pairwise_results = \
             _pairwise_compare_batch_results(options,i_comparison,pairwise_options)
         if not options.return_images_by_category:
