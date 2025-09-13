@@ -136,7 +136,7 @@ class BatchComparisonOptions:
         #: Colormap to use for detections in file B (maps detection categories to colors)
         self.colormap_b = ['RoyalBlue']
 
-        #: Process-based parallelization isn't supported yet; this must be "True"
+        #: Whether to render images with threads (True) or processes (False)
         self.parallelize_rendering_with_threads = True
 
         #: List of filenames to include in the comparison, or None to use all files
