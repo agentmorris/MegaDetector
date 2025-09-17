@@ -156,6 +156,12 @@ class SubsetJsonDetectorOutputOptions:
         #: to be contiguous.  Set to 1 to remove empty categories only.
         self.remove_classification_categories_below_count = None
 
+        #: Remove detections above a threshold size (as a fraction of the image size)
+        self.maximum_detection_size = None
+
+        #: Remove detections below a threshold size (as a fraction of the image size)
+        self.minimum_detection_size = None
+
 # ...class SubsetJsonDetectorOutputOptions
 
 
@@ -272,6 +278,71 @@ def remove_classification_categories_below_count(data, options):
     return data
 
 # ...def remove_classification_categories_below_count(...)
+
+
+def subset_json_detector_output_by_size(data, options):
+    """
+    Remove detections above or below threshold sizes (as a fraction
+    of the image size).
+
+    Args:
+        data (dict): data loaded from a MD results file
+        options (SubsetJsonDetectorOutputOptions): parameters for subsetting
+
+    Returns:
+        dict: Possibly-modified version of [data] (also modifies in place)
+    """
+
+    if (options.maximum_detection_size is None) and \
+        (options.minimum_detection_size is None):
+        return data
+
+    if options.maximum_detection_size is None:
+        options.maximum_detection_size = 1000
+
+    if options.minimum_detection_size is None:
+        options.minimum_detection_size = -1000
+
+    print('Subsetting by size ({} <--> {})'.format(
+        options.minimum_detection_size,
+        options.maximum_detection_size))
+
+    images_in = data['images']
+    images_out = []
+
+    # im = images_in[0]
+    for i_image, im in tqdm(enumerate(images_in), total=len(images_in)):
+
+        # Always keep failed images; if the caller wants to remove these, they
+        # will use remove_failed_images
+        if ('detections' not in im) or (im['detections'] is None):
+            images_out.append(im)
+            continue
+
+        detections_to_keep = []
+
+        for det in im['detections']:
+
+            # [x_min, y_min, width_of_box, height_of_box]
+            detection_size = det['bbox'][2] * det['bbox'][3]
+
+            if (detection_size >= options.minimum_detection_size) and \
+               (detection_size <= options.maximum_detection_size):
+                detections_to_keep.append(det)
+
+        im['detections'] = detections_to_keep
+
+        images_out.append(im)
+
+    # ...for each image
+
+    data['images'] = images_out
+    print('done, found {} matches (of {})'.format(
+            len(data['images']),len(images_in)))
+
+    return data
+
+# ...def subset_json_detector_output_by_size(...)
 
 
 def subset_json_detector_output_by_confidence(data, options):
@@ -674,6 +745,11 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
 
         data = subset_json_detector_output_by_list(data, options)
 
+    if (options.maximum_detection_size is not None) or \
+        (options.minimum_detection_size is not None):
+
+        data = subset_json_detector_output_by_size(data, options)
+
     if not options.split_folders:
 
         _write_detection_results(data, output_filename, options)
@@ -837,6 +913,10 @@ def main(): # noqa
                         help='Replace [query] with this')
     parser.add_argument('--confidence_threshold', type=float, default=None,
                         help='Remove detections below this confidence level')
+    parser.add_argument('--maximum_detection_size', type=float, default=None,
+                        help='Remove detections above this size (as a fraction of the image size)')
+    parser.add_argument('--minimum_detection_size', type=float, default=None,
+                        help='Remove detections below this size (as a fraction of the image size)')
     parser.add_argument('--keep_files_in_list', type=str, default=None,
                         help='Keep only files in this list, which can be a .json results file or a folder.' + \
                              ' Assumes that the input .json file contains relative paths when comparing to a folder.')
