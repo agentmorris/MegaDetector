@@ -847,6 +847,7 @@ class PTDetector:
         if not force_cpu:
             if torch.cuda.is_available():
                 self.device = torch.device('cuda:0')
+                print('GPU available: True')
             try:
                 if torch.backends.mps.is_built and torch.backends.mps.is_available():
                     # MPS inference fails on GitHub runners as of 2025.08.  This is
@@ -855,9 +856,15 @@ class PTDetector:
                         print('GitHub actions detected, bypassing MPS backend')
                     else:
                         print('Using MPS device')
+                        print('GPU available: True')
                         self.device = 'mps'
+                else:
+                    print('GPU available: False')
             except AttributeError:
+                print('GPU available: False')
                 pass
+        else:
+            print('GPU available: False')
 
         try:
             self.model = PTDetector._load_model(model_path,
