@@ -183,7 +183,7 @@ class BatchComparisonOptions:
         #: Should we show category names (instead of numbers) on detected boxes?
         self.show_category_names_on_detected_boxes = True
 
-        #: List of PairwiseBatchComparisonOptions that defines the comparisons we'll render.
+        #: List of PairwiseBatchComparisonOptions that defines the comparisons we'll render
         self.pairwise_options = []
 
         #: Only process images whose file names contain this token
@@ -197,7 +197,7 @@ class BatchComparisonOptions:
         self.verbose = False
 
         #: Separate out the "clean TP" and "clean TN" categories, only relevant when GT is
-        #: available.
+        #: available
         self.include_clean_categories = True
 
         #: When rendering to the output table, optionally write alternative strings
