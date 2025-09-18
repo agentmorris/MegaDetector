@@ -197,7 +197,7 @@ class BatchComparisonOptions:
         self.verbose = False
 
         #: Separate out the "clean TP" and "clean TN" categories, only relevant when GT is
-        #: available.
+        #: available
         self.include_clean_categories = True
 
         #: When rendering to the output table, optionally write alternative strings

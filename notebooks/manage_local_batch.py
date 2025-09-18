@@ -236,7 +236,6 @@ augment = False
 #
 # Setting use_tiled_inference to True enables a highly experimental mode where
 # we chop each image up into smaller images before running MD.
-
 use_tiled_inference = False
 
 # Should we delete tiles after each job?  Only set this to False for debugging;
@@ -245,6 +244,8 @@ remove_tiles = True
 tile_size = (1280,1280)
 tile_overlap = 0.2
 
+# Specify folder for temporary tile storage, default is to use the postprocessing folder
+tiling_folder_base = None
 
 ## Constants related to preview generation
 
@@ -381,8 +382,6 @@ if use_image_queue:
         'compatibility_mode=modern' in detector_options:
         raise NotImplementedError('Standalone preprocessing is not yet supported for "modern" preprocessing')
 if use_tiled_inference:
-    assert not augment, \
-        'Augmentation is not supported when using tiled inference'
     assert not use_yolo_inference_scripts, \
         'Using the YOLO inference script is not supported when using tiled inference'
     assert checkpoint_frequency is None, \
@@ -604,7 +603,9 @@ for i_task,task in enumerate(task_info):
 
     elif use_tiled_inference:
 
-        tiling_folder = path_join(filename_base,'tile_cache','tile_cache_{}'.format(
+        if tiling_folder_base is None:
+            tiling_folder_base = filename_base
+        tiling_folder = path_join(tiling_folder_base,'tile_cache','tile_cache_{}'.format(
             str(i_task).zfill(3)))
 
         if os.name == 'nt':
@@ -618,8 +619,14 @@ for i_task,task in enumerate(task_info):
         cmd += f' --image_list "{chunk_file}"'
         cmd += f' --overwrite_handling {overwrite_handling}'
 
+        if augment:
+            cmd += ' --augment'
+
         if not remove_tiles:
             cmd += ' --no_remove_tiles'
+
+        if image_size is not None:
+            cmd += ' --inference_size {}'.format(image_size)
 
         # If we're using non-default tile sizes
         if tile_size is not None and (tile_size[0] > 0 or tile_size[1] > 0):
@@ -627,6 +634,11 @@ for i_task,task in enumerate(task_info):
 
         if tile_overlap is not None:
             cmd += f' --tile_overlap {tile_overlap}'
+
+        if image_queue_loader_workers is not None:
+            cmd += ' --loader_workers {}'.format(image_queue_loader_workers)
+
+        cmd += ' --n_patch_extraction_workers 4'
 
     else:
 
