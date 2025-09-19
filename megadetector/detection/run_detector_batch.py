@@ -94,20 +94,29 @@ max_queue_size = 10
 # How often should we print progress when using the image queue?
 n_queue_print = 1000
 
-# TODO: it's a little sloppy that these are module-level globals, but in practice it
-# doesn't really matter, so I'm not in a big rush to move these to options until I do
-# a larger cleanup of all the long argument lists in this module.
-#
-# Should the consumer loop run on its own process, or here in the main process?
-run_separate_consumer_process = False
-use_threads_for_queue = False
-verbose = False
-
+# Only used if --include_exif_data or --include_image_timestamp are supplied
 exif_options = read_exif.ReadExifOptions()
 exif_options.processing_library = 'pil'
 exif_options.byte_handling = 'convert_to_string'
 
+# Only relevant when we're running our test harness; because bugs in batch
+# inference are dependent on batch grouping, we randomize batch grouping
+# during testing to maximize the probability that latent bugs come up
+# eventually.
 randomize_batch_order_during_testing = True
+
+# TODO: it's a little sloppy that the following are module-level globals, but in practice it
+# doesn't really matter, so I'm not in a big rush to move these to options until I do
+# a larger cleanup of all the long argument lists in this module.
+
+# Should the consumer loop run on its own process, or here in the main process?
+run_separate_consumer_process = False
+
+# Should we use threads (rather than processes) for the data loading workers?
+use_threads_for_queue = False
+
+# Enable additional debug output
+verbose = False
 
 
 #%% Support functions for multiprocessing
@@ -736,7 +745,9 @@ def _process_batch(image_items_batch,
         try:
 
             batch_detections = \
-                detector.generate_detections_one_batch(valid_images, valid_image_filenames, verbose=verbose)
+                detector.generate_detections_one_batch(valid_images,
+                                                       valid_image_filenames,
+                                                       verbose=verbose)
 
             assert len(batch_detections) == len(valid_images)
 
@@ -1050,7 +1061,8 @@ def load_and_run_detector_batch(model_file,
                                 detector_options=None,
                                 loader_workers=default_loaders,
                                 preprocess_on_image_queue=default_preprocess_on_image_queue,
-                                batch_size=1):
+                                batch_size=1,
+                                verbose_output=False):
     """
     Load a model file and run it on a list of images.
 
@@ -1087,6 +1099,7 @@ def load_and_run_detector_batch(model_file,
         preprocess_on_image_queue (bool, optional): if the image queue is enabled, should it handle
             image loading and preprocessing (True), or just image loading (False)?
         batch_size (int, optional): batch size for GPU processing, automatically set to 1 for CPU processing
+        verbose_output (bool, optional): enable additional debug output
 
     Returns:
         results: list of dicts; each dict represents detections on one image
@@ -1108,6 +1121,11 @@ def load_and_run_detector_batch(model_file,
 
     if class_mapping_filename is not None:
         _load_custom_class_mapping(class_mapping_filename)
+
+    global verbose
+    if verbose_output:
+        print('Enabling verbose output')
+        verbose = True
 
     # Handle the case where image_file_names is not yet actually a list
     if isinstance(image_file_names,str):
@@ -1866,11 +1884,7 @@ def main(): # noqa
 
     args = parser.parse_args()
 
-    global verbose
     global use_threads_for_queue
-
-    if args.verbose:
-        verbose = True
     if args.use_threads_for_queue:
         use_threads_for_queue = True
 
@@ -2087,7 +2101,8 @@ def main(): # noqa
                                           detector_options=detector_options,
                                           loader_workers=args.loader_workers,
                                           preprocess_on_image_queue=args.preprocess_on_image_queue,
-                                          batch_size=args.batch_size)
+                                          batch_size=args.batch_size,
+                                          verbose_output=args.verbose)
 
     elapsed = time.time() - start_time
     images_per_second = len(results) / elapsed

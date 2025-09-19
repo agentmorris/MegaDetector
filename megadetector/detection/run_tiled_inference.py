@@ -39,7 +39,7 @@ from torchvision import ops
 from megadetector.detection.run_inference_with_yolov5_val import \
     YoloInferenceOptions,run_inference_with_yolo_val
 from megadetector.detection.run_detector_batch import \
-    load_and_run_detector_batch,write_results_to_file
+    load_and_run_detector_batch,write_results_to_file,default_loaders
 from megadetector.detection.run_detector import \
     try_download_known_detector, CONF_DIGITS, COORD_DIGITS
 from megadetector.utils import path_utils
@@ -406,7 +406,9 @@ def run_tiled_inference(model_file,
                         detector_options=None,
                         use_image_queue=True,
                         preprocess_on_image_queue=True,
-                        inference_size=None):
+                        loader_workers=default_loaders,
+                        inference_size=None,
+                        verbose=False):
     """
     Runs inference using [model_file] on the images in [image_folder], fist splitting each image up
     into tiles of size [tile_size_x] x [tile_size_y], writing those tiles to [tiling_folder],
@@ -451,16 +453,17 @@ def run_tiled_inference(model_file,
         image_list (list, optional): .json file containing a list of specific images to process.  If
             this is supplied, and the paths are absolute, [image_folder] will be ignored. If this is supplied,
             and the paths are relative, they should be relative to [image_folder]
-        augment (bool, optional): apply test-time augmentation, only relevant if yolo_inference_options
-            is None
+        augment (bool, optional): apply test-time augmentation
         detector_options (dict, optional): parameters to pass to run_detector, only relevant if
             yolo_inference_options is None
         use_image_queue (bool, optional): whether to use a loader worker queue, only relevant if
             yolo_inference_options is None
         preprocess_on_image_queue (bool, optional): whether the image queue should also be responsible
             for preprocessing
+        loader_workers (int, optional): number of preprocessing loader workers to use
         inference_size (int, optional): override the default inference image size, only relevant if
             yolo_inference_options is None
+        verbose (bool, optional): enable additional debug output
 
     Returns:
         dict: MD-formatted results dictionary, identical to what's written to [output_file]
@@ -522,7 +525,8 @@ def run_tiled_inference(model_file,
 
     all_image_patch_info = None
 
-    print('Extracting patches from {} images'.format(len(image_files_relative)))
+    print('Extracting patches from {} images on {} workers'.format(
+        len(image_files_relative),n_patch_extraction_workers))
 
     n_workers = n_patch_extraction_workers
 
@@ -632,7 +636,9 @@ def run_tiled_inference(model_file,
                                                         detector_options=detector_options,
                                                         use_image_queue=use_image_queue,
                                                         preprocess_on_image_queue=preprocess_on_image_queue,
-                                                        image_size=inference_size)
+                                                        image_size=inference_size,
+                                                        verbose_output=verbose,
+                                                        loader_workers=loader_workers)
 
         patch_level_output_file = os.path.join(tiling_folder,folder_name + '_patch_level_results.json')
 
@@ -847,12 +853,12 @@ if False:
         yolo_inference_options.yolo_working_folder = os.path.expanduser('~/git/yolov5')
 
     run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
-                            tile_size_x=tile_size_x, tile_size_y=tile_size_y,
-                            tile_overlap=tile_overlap,
-                            checkpoint_path=checkpoint_path,
-                            checkpoint_frequency=checkpoint_frequency,
-                            remove_tiles=remove_tiles,
-                            yolo_inference_options=yolo_inference_options)
+                        tile_size_x=tile_size_x, tile_size_y=tile_size_y,
+                        tile_overlap=tile_overlap,
+                        checkpoint_path=checkpoint_path,
+                        checkpoint_frequency=checkpoint_frequency,
+                        remove_tiles=remove_tiles,
+                        yolo_inference_options=yolo_inference_options)
 
 
     #%% Run tiled inference (generate a command)
@@ -931,6 +937,14 @@ def main():
         action='store_true',
         help='Tiles are removed by default; this option suppresses tile deletion')
     parser.add_argument(
+        '--augment',
+        action='store_true',
+        help='Enable test-time augmentation')
+    parser.add_argument(
+        '--verbose',
+        action='store_true',
+        help='Enable additional debug output')
+    parser.add_argument(
         '--tile_size_x',
         type=int,
         default=default_tile_size[0],
@@ -960,6 +974,21 @@ def main():
         type=str,
         default=None,
         help=('A list of detector options (key-value pairs)'))
+    parser.add_argument(
+        '--inference_size',
+        type=int,
+        default=None,
+        help=('Run inference at a non-default size'))
+    parser.add_argument(
+        '--n_patch_extraction_workers',
+        type=int,
+        default=1,
+        help=('Number of workers to use for patch extraction'))
+    parser.add_argument(
+        '--loader_workers',
+        type=int,
+        default=default_loaders,
+        help=('Number of workers to use for image loading and preprocessing (0 to disable)'))
 
     # detector_options = parse_kvp_list(args.detector_options)
 
@@ -987,11 +1016,23 @@ def main():
 
     remove_tiles = (not args.no_remove_tiles)
 
-    run_tiled_inference(model_file, args.image_folder, args.tiling_folder, args.output_file,
-                        tile_size_x=args.tile_size_x, tile_size_y=args.tile_size_y,
+    use_image_queue = (args.loader_workers > 0)
+
+    run_tiled_inference(model_file,
+                        args.image_folder,
+                        args.tiling_folder,
+                        args.output_file,
+                        tile_size_x=args.tile_size_x,
+                        tile_size_y=args.tile_size_y,
                         tile_overlap=args.tile_overlap,
                         remove_tiles=remove_tiles,
-                        image_list=args.image_list)
+                        image_list=args.image_list,
+                        augment=args.augment,
+                        inference_size=args.inference_size,
+                        verbose=args.verbose,
+                        n_patch_extraction_workers=args.n_patch_extraction_workers,
+                        loader_workers=args.loader_workers,
+                        use_image_queue=use_image_queue)
 
 if __name__ == '__main__':
     main()
