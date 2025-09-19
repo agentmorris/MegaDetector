@@ -859,6 +859,9 @@ class PTDetector:
             except AttributeError:
                 pass
 
+        # AddaxAI depends on this printout, don't remove it
+        print('PTDetector using device {}'.format(str(self.device).lower()))
+
         try:
             self.model = PTDetector._load_model(model_path,
                                                 device=self.device,
