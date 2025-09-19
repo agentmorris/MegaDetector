@@ -361,24 +361,15 @@ E1
 !feature
 
 
-## Reduce complexity of reference results
+## Reference result updates
 
-MD's test harness relies on .json files with pre-generated results for MDv5a and MDv5b, for a reference set of images and videos.  Because output varies slightly between PyTorch versions and between hardware environments, I have a number of results files.  This has gotten too complicated; remove most of the results files and increase the allowed tolerance during testing.
-
-P0
-
-E1
-
-!testing
-
-
-## Add test results for MD1000 models
-
-MD's test harness only has results for MDv5, so it tests the not-crashing-ness of the other models, but it does not test correctness.  Add test results for other MD1000 models.
+* Reduce complexity of reference results: MD's test harness relies on .json files with pre-generated results for MDv5a and MDv5b, for a reference set of images and videos.  Because output varies slightly between PyTorch versions and between hardware environments, I have a number of results files.  This has gotten too complicated; remove most of the results files and increase the allowed tolerance during testing.
+* Add test results for MD1000 models: MD's test harness only has results for MDv5, so it tests the not-crashing-ness of the other models, but it does not test correctness.  Add test results for other MD1000 models.
+* Vehicle images: none of the test images include vehicles; add vehicle images to testing, including human/vehicle and animal/vehicle images
 
 P0
 
-E1
+E2
 
 !testing
 
