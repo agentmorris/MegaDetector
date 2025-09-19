@@ -148,6 +148,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [San Diego Zoo Wildlife Alliance](https://science.sandiegozoo.org/)  ([Animl R package](https://github.com/conservationtechlab/animl))
 * [TerrOïko](https://www.terroiko.fr/) ([OCAPI platform](https://www.terroiko.fr/ocapi))
 * [Wildlife Division](https://www.michigan.gov/dnr/about/contact/wildlife), Michigan Department of Natural Resources ([blog post](https://www.michigan.gov/dnr/about/newsroom/releases/2025/08/18/dnr-researchers-to-test-trail-cameras-in-elk-survey))
+* [Cleveland Metroparks](https://www.clevelandmetroparks.com/) ([presentation](https://www.clevelandmetroparks.com/getmedia/d4978f4b-5641-4e6b-ac16-b29e9e3d43d1/AI_8_21_25.pdf))
 
 Also see:
 
