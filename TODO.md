@@ -39,6 +39,20 @@ Priorities range from 0 (urgent) to 4 (likely will never get done).  Effort rang
 
 # Issues
 
+## Remove dependency on ultralytics NMS for ultralytics models
+
+The [Ultralytics NMS function](https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/nms.py) has some significant limitations, most notably it produces incorrect behavior when a non-configurable timeout is exceeded.  I.e., it just bails after ~2 seconds, which can lead to missed objects if random stuff happens on the machine.  Consequently, there is a custom NMS function in pytorch_detector that replaces this for MDv5, MDv1000-redwood, and MDv1000-cedar.  However, the ultralytics models (sorrel, larch) produce output in a different format that is not supported by the custom NMS function, so currently we fall back to the ultralytics NMS implementation for these models.
+
+I got to a working nms() function that would support both import formats, but it still requires some cleanup.  The working version is in [archive/misc/pytorch_detector_universal_nms.py](https://github.com/agentmorris/MegaDetector/blob/main/archive/misc/pytorch_detector_universal_nms.py).  This needs to be manually merged into pytorch_detector.py, and tested.
+
+Fix this, and remove the ultralytics NMS import.  Before removing this item, consider whether the remaining functions that are still imported from the ultralytics/YOLO libraries are worth it, or whether we can (finally) remove those imports.  This is the only significant utility function that is still imported.
+
+P1
+
+E1
+
+!maintenance
+
 ## Handle legacy setup.py issues
 
 Three dependencies - yolov9pip, pyqtree, and clipboard - give this warning during pip installation:<br/><br/>

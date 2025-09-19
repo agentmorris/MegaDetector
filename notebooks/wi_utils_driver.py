@@ -555,3 +555,30 @@ for failed_match in failed_matches:
         failed_match[0],failed_match[1]))
 
 df.to_csv(output_fn,index=False)
+
+
+#%% Find non-species geofencing rules
+
+import json
+
+geofencing_file = os.path.join(model_base,'crop','geofence_release.2025.02.27.0702.json')
+
+non_species_rules = set()
+
+# geofence_base.json only contains species-level results
+# geofencing_file = 'c:/git/cameratrapai/data/geofence_base.json'
+
+with open(geofencing_file,'r') as f:
+    geofence_dict = json.load(f)
+
+for taxon in geofence_dict.keys():
+    tokens = taxon.split(';')
+    assert len(tokens) == 5
+    for token in tokens:
+        if len(token) == 0:
+            non_species_rules.add(taxon)
+            break
+
+print('Found {} non-species-level rules (of {})'.format(
+    len(non_species_rules),len(geofence_dict)))
+

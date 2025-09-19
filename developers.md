@@ -8,6 +8,7 @@
 * [Markdown link validation](#markdown-link-validation)
 * [Tests](#tests)
 * [Docs](#docs)
+* [Issue tracking](#issue-tracking)
 
 
 ## Coding conventions
@@ -410,3 +411,10 @@ mamba activate megadetector-docs
 cd docs
 make clean && make html
 ```
+
+
+## Issue tracking
+
+Users can report issues/request features via GitHub Issues.  Once an issue is actively being worked on, we use GitHub Issues to track it.  
+
+However, inactive issues (i.e., the "TODO list") is in [TODO.md](TODO.md), which can be viewed [here](https://dmorris.net/task-viewer/?file=https://raw.githubusercontent.com/agentmorris/MegaDetector/refs/heads/main/TODO.md).  
