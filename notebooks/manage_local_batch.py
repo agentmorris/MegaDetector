@@ -1058,7 +1058,7 @@ suspicious_detection_results = repeat_detections_core.find_repeat_detections(com
 
 ## DELETE THE VALID DETECTIONS ##
 
-# If you run this line, it will open the folder up in your file browser
+# Running this line will open the folder up in your file browser
 open_file(os.path.dirname(suspicious_detection_results.filterFile),
           attempt_to_open_in_wsl_host=True)
 

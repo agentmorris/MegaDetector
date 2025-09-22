@@ -754,6 +754,7 @@ def generate_instances_json_from_folder(folder,
 
     assert os.path.isdir(folder)
 
+    print('Enumerating images in {}'.format(folder))
     image_files_abs = find_images(folder,recursive=True,return_relative_paths=False)
 
     if tokens_to_ignore is not None:
