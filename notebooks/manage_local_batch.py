@@ -1247,9 +1247,9 @@ assert os.path.isdir(crop_folder)
 
 from megadetector.utils.wi_taxonomy_utils import generate_predictions_json_from_md_results
 
-generate_predictions_json_from_md_results(md_results_file=detection_results_file_for_crop_folder,
-                                          predictions_json_file=crop_detections_predictions_file,
-                                          base_folder=crop_folder)
+_ generate_predictions_json_from_md_results(md_results_file=detection_results_file_for_crop_folder,
+                                            predictions_json_file=crop_detections_predictions_file,
+                                            base_folder=crop_folder)
 
 
 # Generate a new instances.json file for the crops
