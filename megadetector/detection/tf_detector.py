@@ -138,8 +138,8 @@ class TFDetector:
                                       image_id,
                                       detection_threshold,
                                       image_size=None,
-                                      skip_image_resizing=False,
-                                      augment=False):
+                                      augment=False,
+                                      verbose=False):
         """
         Runs the detector on an image.
 
@@ -152,10 +152,9 @@ class TFDetector:
             image_size (tuple, optional): image size to use for inference, only mess with this
                 if (a) you're using a model other than MegaDetector or (b) you know what you're
                 doing
-            skip_image_resizing (bool, optional): whether to skip internal image resizing (and rely on external
-                resizing).  Not currently supported, but included here for compatibility with PTDetector.
             augment (bool, optional): enable image augmentation.  Not currently  supported, but included
                 here for compatibility with PTDetector.
+            verbose (bool, optional): enable additional debug output
 
         Returns:
             dict: a dictionary with the following fields:
@@ -166,7 +165,6 @@ class TFDetector:
         """
 
         assert image_size is None, 'Image sizing not supported for TF detectors'
-        assert not skip_image_resizing, 'Image sizing not supported for TF detectors'
         assert not augment, 'Image augmentation is not supported for TF detectors'
 
         if detection_threshold is None:

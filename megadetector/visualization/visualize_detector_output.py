@@ -428,6 +428,7 @@ def main(): # noqa
         category_names_to_blur=category_names_to_blur)
 
     if (args.html_output_file is not None) and args.open_html_output_file:
+        print('Opening output file {}'.format(args.html_output_file))
         open_file(args.html_output_file)
 
 if __name__ == '__main__':
