@@ -1247,7 +1247,7 @@ assert os.path.isdir(crop_folder)
 
 from megadetector.utils.wi_taxonomy_utils import generate_predictions_json_from_md_results
 
-_ generate_predictions_json_from_md_results(md_results_file=detection_results_file_for_crop_folder,
+_ = generate_predictions_json_from_md_results(md_results_file=detection_results_file_for_crop_folder,
                                             predictions_json_file=crop_detections_predictions_file,
                                             base_folder=crop_folder)
 
@@ -1551,9 +1551,8 @@ if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
     print('Restricting to custom taxonomy list: {}'.format(custom_taxa_list))
 
     taxa_list = custom_taxa_list
-    speciesnet_taxonomy_file = taxonomy_file
     restrict_to_taxa_list(taxa_list=taxa_list,
-                          speciesnet_taxonomy_file=speciesnet_taxonomy_file,
+                          speciesnet_taxonomy_file=taxonomy_file,
                           input_file=ensemble_output_file_image_level_md_format,
                           output_file=custom_taxa_output_file,
                           allow_walk_down=custom_taxa_allow_walk_down,
@@ -1816,12 +1815,11 @@ open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_na
 if (custom_taxa_list is not None) and (custom_taxa_stage == 'after_smoothing'):
 
     taxa_list = custom_taxa_list
-    speciesnet_taxonomy_file = taxonomy_file
     custom_taxa_output_file = insert_before_extension(
         sequence_smoothed_classification_file,'custom-species')
 
     restrict_to_taxa_list(taxa_list=taxa_list,
-                          speciesnet_taxonomy_file=speciesnet_taxonomy_file,
+                          speciesnet_taxonomy_file=taxonomy_file,
                           input_file=sequence_smoothed_classification_file,
                           output_file=custom_taxa_output_file,
                           allow_walk_down=custom_taxa_allow_walk_down,
