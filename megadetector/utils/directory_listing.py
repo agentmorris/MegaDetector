@@ -129,6 +129,9 @@ def create_html_index(dir,
         recursive (bool, optional): recurse into subfolders
     """
 
+    if template_fun is None:
+        template_fun = _create_plain_index
+
     print('Traversing {}'.format(dir))
 
     # Make sure we remove the trailing /
