@@ -47,7 +47,6 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Blackbird Environmental](https://blackbirdenv.com/)
 * [Camelot](https://camelotproject.org/)
 * [Canadian Parks and Wilderness Society (CPAWS) Northern Alberta Chapter](https://cpawsnab.org/)
-* [Conservation X Labs](https://conservationxlabs.com/)
 * [Czech University of Life Sciences Prague](https://www.czu.cz/en)
 * [Dudek Camera Trap AI Image Toolkit (AIT)](https://ait.dudek.com/)
 * [EcoLogic Consultants Ltd.](https://www.consult-ecologic.com/)
@@ -149,6 +148,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [TerrOïko](https://www.terroiko.fr/) ([OCAPI platform](https://www.terroiko.fr/ocapi))
 * [Wildlife Division](https://www.michigan.gov/dnr/about/contact/wildlife), Michigan Department of Natural Resources ([blog post](https://www.michigan.gov/dnr/about/newsroom/releases/2025/08/18/dnr-researchers-to-test-trail-cameras-in-elk-survey))
 * [Cleveland Metroparks](https://www.clevelandmetroparks.com/) ([presentation](https://www.clevelandmetroparks.com/getmedia/d4978f4b-5641-4e6b-ac16-b29e9e3d43d1/AI_8_21_25.pdf))
+* [Conservation X Labs](https://conservationxlabs.com/) ([story](https://news.mongabay.com/2025/09/turning-camera-traps-into-real-time-sentinels-interview-with-conservation-x-labs-dante-wasmuht/))
 
 Also see:
 
