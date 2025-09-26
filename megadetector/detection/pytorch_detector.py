@@ -17,6 +17,7 @@ import shutil
 import uuid
 import json
 import inspect
+import traceback
 
 import cv2
 import torch
@@ -755,11 +756,14 @@ class PTDetector:
         force_cpu = False
         use_model_native_classes = False
         compatibility_mode = default_compatibility_mode
+        force_cpu_nms = False
 
         if detector_options is not None:
 
             if 'force_cpu' in detector_options:
                 force_cpu = parse_bool_string(detector_options['force_cpu'])
+            if 'force_cpu_nms' in detector_options:
+                force_cpu_nms = parse_bool_string(detector_options['force_cpu_nms'])
             if 'use_model_native_classes' in detector_options:
                 use_model_native_classes = parse_bool_string(detector_options['use_model_native_classes'])
             if 'compatibility_mode' in detector_options:
@@ -801,16 +805,20 @@ class PTDetector:
         #: Either a string ('cpu','cuda:0') or a torch.device()
         self.device = 'cpu'
 
-        #: Have we already printed a warning about using a non-standard image size?
+        #: Ensure that some messages are only printed once
         #:
         #: :meta private:
-        self.printed_image_size_warning = False
+        self.one_time_messages_printed = set()
 
         #: If this is False, we assume the underlying model is producing class indices in the
         #: set (0,1,2) (and we assert() on this), and we add 1 to get to the backwards-compatible
         #: MD classes (1,2,3) before generating output.  If this is True, we use whatever
         #: indices the model provides
         self.use_model_native_classes = use_model_native_classes
+
+        #: Should we force NMS to run on the CPU?  On MPS devices, NMS will run on the CPU
+        #: whether or not this is set; I typically only use this for debugging.
+        self.force_cpu_nms = force_cpu_nms
 
         #: This allows us to maintain backwards compatibility across a set of changes to the
         #: way this class does inference.  Currently should start with either "default" or
@@ -990,15 +998,14 @@ class PTDetector:
 
             assert isinstance(image_size,int)
 
-            if not self.printed_image_size_warning:
+            if 'user_supplied_image_size' not in self.one_time_messages_printed:
                 print('Using user-supplied image size {}'.format(image_size))
-                self.printed_image_size_warning = True
+                self.one_time_messages_printed.add('user_supplied_image_size')
 
         # Otherwise resize to self.default_image_size
         else:
 
             image_size = self.default_image_size
-            self.printed_image_size_warning = False
 
         # ...if the caller has specified an image size
 
@@ -1215,7 +1222,9 @@ class PTDetector:
                 self._process_batch_group(group_items, results, detection_threshold, augment, verbose)
             except Exception as e:
                 # If inference fails for the entire batch, mark all images in this batch as failed
-                print('Warning: batch inference failed for shape {}: {}'.format(target_shape, str(e)))
+                print('Warning: batch inference failed for shape {}: {}\n'.format(
+                    target_shape, str(e)))
+                traceback.print_exc()
 
                 for original_idx, image_info, current_image_id in group_items:
                     results[original_idx] = {
@@ -1302,15 +1311,51 @@ class PTDetector:
             use_library_nms = True
 
         if use_library_nms:
+
             pred = non_max_suppression(prediction=pred,
-                                    conf_thres=detection_threshold,
-                                    iou_thres=nms_iou_thres,
-                                    agnostic=False,
-                                    multi_label=False)
+                                       conf_thres=detection_threshold,
+                                       iou_thres=nms_iou_thres,
+                                       agnostic=False,
+                                       multi_label=False)
+
         else:
+
+            # Do we need to move the data to the CPU for NMS?
+            cpu_nms = False
+
+            device_type = ''
+            try:
+                device_type = self.device.type
+            except Exception as e:
+                print('Warning: error retrieving device type: {}'.format(str(e)))
+
+            if (self.device != 'cpu') and (self.force_cpu_nms or ('mps' in device_type)):
+                cpu_nms = True
+
+            if cpu_nms:
+                if 'cpu_nms' not in self.one_time_messages_printed:
+                    print('Moving data to CPU for NMS')
+                    self.one_time_messages_printed.add('cpu_nms')
+                pred = pred.cpu()
+
             pred = nms(prediction=pred,
-                    conf_thres=detection_threshold,
-                    iou_thres=nms_iou_thres)
+                       conf_thres=detection_threshold,
+                       iou_thres=nms_iou_thres)
+
+            # If we moved data to the CPU for NMS, move it back.  Outside of debug
+            # scenarios, if we moved data to the CPU for NMS, that means we are on an
+            # MPS device.
+            #
+            # It's not clear that this is optimal; there are some more numeric
+            # operations in preprocessing that are likely faster on the accelerator, but
+            # it's unclear whether this is worth the cost of sending data back.  I do this
+            # because YOLOv5 does this, but I haven't benchmarked the tradeoffs.
+            move_data_back_to_device_after_cpu_nms = True
+            if cpu_nms and move_data_back_to_device_after_cpu_nms:
+                for i_pred,p in enumerate(pred):
+                    pred[i_pred] = p.to(self.device)
+
+        # ...are we using library NMS, or our this module's NMS?
 
         assert isinstance(pred, list)
         assert len(pred) == len(batch_metadata), \

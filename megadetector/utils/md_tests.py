@@ -126,6 +126,9 @@ class MDTestOptions:
         #: Detector options passed to PTDetector
         self.detector_options = {'compatibility_mode':'classic-test'}
 
+        # Useful when I want to simulate NMS as it happens on MPS devices
+        # self.detector_options['force_cpu_nms'] = True
+
         #: Used to drive a series of tests (typically with a low value for
         #: python_test_depth) over a folder of models.
         self.model_folder = None
