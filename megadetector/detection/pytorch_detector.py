@@ -1325,7 +1325,7 @@ class PTDetector:
 
             device_type = 'cpu'
             try:
-                device_type = str(self.device)
+                device_type = str(self.device).lower()
             except Exception as e:
                 print('Warning: error retrieving device type: {}'.format(str(e)))
 
