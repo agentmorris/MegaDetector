@@ -266,7 +266,7 @@ def read_pil_exif(im,options=None):
 
             # Convert to strings, e.g. 'GPSTimeStamp'
             gps_info = {}
-            for int_tag, v in gps_info_raw.items():
+            for int_tag,v in gps_info_raw.items():
                 assert isinstance(int_tag,int)
                 if int_tag in ExifTags.GPSTAGS:
                     gps_info[ExifTags.GPSTAGS[int_tag]] = v
