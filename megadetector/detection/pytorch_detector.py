@@ -1323,13 +1323,13 @@ class PTDetector:
             # Do we need to move the data to the CPU for NMS?
             cpu_nms = False
 
-            device_type = ''
+            device_type = 'cpu'
             try:
-                device_type = self.device.type
+                device_type = str(self.device)
             except Exception as e:
                 print('Warning: error retrieving device type: {}'.format(str(e)))
 
-            if (self.device != 'cpu') and (self.force_cpu_nms or ('mps' in device_type)):
+            if (device_type != 'cpu') and (self.force_cpu_nms or ('mps' in device_type)):
                 cpu_nms = True
 
             if cpu_nms:
