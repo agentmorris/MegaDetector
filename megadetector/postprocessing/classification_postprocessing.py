@@ -1498,7 +1498,8 @@ def restrict_to_taxa_list(taxa_list,
         if (protected_common_names is not None) and \
             (common_name in protected_common_names):
             if verbose:
-                print('Not messing with protected category {}'.format(common_name))
+                print('Not messing with protected category {}:\n{}'.format(
+                    common_name,input_taxon_string))
             input_category_id_to_output_taxon_string[input_category_id] = \
                 input_taxon_string
             continue
@@ -1578,12 +1579,13 @@ def restrict_to_taxa_list(taxa_list,
             output_taxon_string = speciesnet_latin_name_to_taxon_string[target_taxon]
         input_category_id_to_output_taxon_string[input_category_id] = output_taxon_string
 
-    # ...for each category
+    # ...for each category (mapping input category IDs to output taxon strings)
 
 
-    ##%% Build the new tables
+    ##%% Map input category IDs to output category IDs
 
-    speciesnet_taxon_string_to_latin_name = invert_dictionary(speciesnet_latin_name_to_taxon_string)
+    speciesnet_taxon_string_to_latin_name = \
+        invert_dictionary(speciesnet_latin_name_to_taxon_string)
 
     input_category_id_to_output_category_id = {}
     output_taxon_string_to_category_id = {}
@@ -1604,7 +1606,8 @@ def restrict_to_taxa_list(taxa_list,
             if speciesnet_latin_name in speciesnet_latin_name_to_output_common_name:
                 custom_common_name = speciesnet_latin_name_to_output_common_name[speciesnet_latin_name]
                 if custom_common_name != output_common_name:
-                    print('Substituting common name {} for {}'.format(custom_common_name,output_common_name))
+                    if verbose:
+                        print('Substituting common name {} for {}'.format(custom_common_name,output_common_name))
                     output_common_name = custom_common_name
 
         # Do we need to create a new output category?
@@ -1625,20 +1628,16 @@ def restrict_to_taxa_list(taxa_list,
         if False:
             original_common_name = \
               input_category_id_to_common_name[input_category_id]
-
             original_taxon_string = \
                 input_category_id_to_taxonomy_string[input_category_id]
-
             print('Mapping {} ({}) to:\n{} ({})\n'.format(
                 original_common_name,original_taxon_string,
                 output_common_name,output_taxon_string))
-            print('Mapping {} to {}'.format(
-                original_common_name,output_common_name,))
 
-    # ...for each category
+    # ...for each category (mapping input category IDs to output category IDs)
 
 
-    #%% Remap all category labels
+    ##%% Remap all category labels
 
     assert len(set(output_taxon_string_to_category_id.keys())) == \
            len(set(output_taxon_string_to_category_id.values())), \
