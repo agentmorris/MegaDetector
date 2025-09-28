@@ -207,7 +207,8 @@ def write_download_commands(image_records_to_download,
                             download_dir_base,
                             force_download=False,
                             n_download_workers=25,
-                            download_command_file_base=None):
+                            download_command_file_base=None,
+                            flatten_images=True):
     """
     Given a list of dicts with at least the field 'location' (a gs:// URL), prepare a set of "gcloud
     storage" commands to download images, and write those to a series of .sh scripts, along with one
@@ -218,7 +219,8 @@ def write_download_commands(image_records_to_download,
     image_records_to_download can also be a dict mapping IDs to lists of records.
 
     Args:
-        image_records_to_download (list of dict): list of dicts with at least the field 'location'
+        image_records_to_download (list of dict): list of dicts with at least the field 'location'.
+            Can also be a dict whose values are lists of record dicts.
         download_dir_base (str): local destination folder
         force_download (bool, optional): include gs commands even if the target file exists
         n_download_workers (int, optional): number of scripts to write (that's our hacky way
@@ -226,19 +228,42 @@ def write_download_commands(image_records_to_download,
         download_command_file_base (str, optional): path of the .sh script we should write, defaults
             to "download_wi_images.sh" in the destination folder.  Individual worker scripts will
             have a number added, e.g. download_wi_images_00.sh.
+        flatten_images (bool, optional): if True, each image will be downloaded as just
+            [GUID].JPG, i.e. the deployment prefix will be excluded.
     """
 
-    if isinstance(image_records_to_download,dict):
+    ##%% Input validation
 
+    # If a dict is provided, assume it maps image GUIDs to lists of records, flatten to a list
+    if isinstance(image_records_to_download,dict):
         all_image_records = []
         for k in image_records_to_download:
             records_this_image = image_records_to_download[k]
             all_image_records.extend(records_this_image)
-        return write_download_commands(all_image_records,
-                                       download_dir_base=download_dir_base,
-                                       force_download=force_download,
-                                       n_download_workers=n_download_workers,
-                                       download_command_file_base=download_command_file_base)
+        image_records_to_download = all_image_records
+
+    assert isinstance(image_records_to_download,list), \
+        'Illegal image record list format {}'.format(type(image_records_to_download))
+    assert isinstance(image_records_to_download[0],dict), \
+        'Illegal image record format {}'.format(type(image_records_to_download[0]))
+
+
+    ##%% Validate image uniquness if necessary
+
+    if flatten_images:
+
+        bn_to_url = {}
+        for image_record in image_records_to_download:
+            url = image_record['location']
+            assert url.startswith('gs://'), 'Illegal URL {}'.format(url)
+            bn = url.split('/')[-1]
+            if bn in bn_to_url:
+                assert bn_to_url[bn] == url, "Duplicate image URLs, can't flatten names"
+            bn_to_url[bn] = url
+        print('Validated image basename uniquness')
+
+    # ...if we're supposed to flatten output filenames
+
 
     ##%% Make list of gcloud storage commands
 
@@ -256,9 +281,12 @@ def write_download_commands(image_records_to_download,
         if url in downloaded_urls:
             continue
 
-        assert url.startswith('gs://')
+        assert url.startswith('gs://'), 'Illegal URL {}'.format(url)
 
-        relative_path = url.replace('gs://','')
+        if flatten_images:
+            relative_path = url.split('/')[-1]
+        else:
+            relative_path = url.replace('gs://','')
         abs_path = os.path.join(download_dir_base,relative_path)
 
         # Skip files that already exist
