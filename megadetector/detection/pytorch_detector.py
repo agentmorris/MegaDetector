@@ -1310,6 +1310,18 @@ class PTDetector:
         if (yolo_model_type_imported is not None) and (yolo_model_type_imported == 'ultralytics'):
             use_library_nms = True
 
+        device_type = 'cpu'
+        try:
+            device_type = str(self.device).lower()
+        except Exception as e:
+            print('Warning: error retrieving device type: {}'.format(str(e)))
+
+        if 'mps' in device_type:
+            if 'mps_library_nms' not in self.one_time_messages_printed:
+                    print('MPS detected: using library NMS')
+                    self.one_time_messages_printed.add('mps_library_nms')
+            use_library_nms = True
+
         if use_library_nms:
 
             pred = non_max_suppression(prediction=pred,
@@ -1322,12 +1334,6 @@ class PTDetector:
 
             # Do we need to move the data to the CPU for NMS?
             cpu_nms = False
-
-            device_type = 'cpu'
-            try:
-                device_type = str(self.device).lower()
-            except Exception as e:
-                print('Warning: error retrieving device type: {}'.format(str(e)))
 
             if (device_type != 'cpu') and (self.force_cpu_nms or ('mps' in device_type)):
                 cpu_nms = True
