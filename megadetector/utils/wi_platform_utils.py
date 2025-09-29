@@ -219,6 +219,7 @@ def write_prefix_download_command(image_records,
         image_records (list of dict): list of dicts with at least the field 'location'.
             Can also be a dict whose values are lists of record dicts.
         download_dir_base (str): local destination folder
+        force_download (bool, optional): overwrite existing files
         download_command_file (str, optional): path of the .sh script we should write, defaults
             to "download_wi_images_with_prefix.sh" in the destination folder.
     """
