@@ -34,6 +34,27 @@ def is_float(s):
     return True
 
 
+def is_int(s):
+    """
+    Checks whether [s] is an object (typically a string) that can be cast to a int
+
+    Args:
+        s (object): object to evaluate
+
+    Returns:
+        bool: True if s successfully casts to a int, otherwise False
+    """
+
+    if s is None:
+        return False
+
+    try:
+        _ = int(s)
+    except ValueError:
+        return False
+    return True
+
+
 def human_readable_to_bytes(size):
     """
     Given a human-readable byte string (e.g. 2G, 10GB, 30MB, 20KB),

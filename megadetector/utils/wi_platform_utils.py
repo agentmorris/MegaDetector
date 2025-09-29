@@ -24,9 +24,13 @@ from multiprocessing.pool import Pool, ThreadPool
 from functools import partial
 
 from megadetector.utils.path_utils import insert_before_extension
+from megadetector.utils.path_utils import path_join
+
 from megadetector.utils.ct_utils import split_list_into_n_chunks
 from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.utils.ct_utils import compare_values_nan_equal
+
+from megadetector.utils.string_utils import is_int
 
 from megadetector.utils.wi_taxonomy_utils import is_valid_prediction_string
 from megadetector.utils.wi_taxonomy_utils import no_cv_result_prediction_string
@@ -68,7 +72,7 @@ def read_sequences_from_download_bundle(download_folder):
     assert len(sequence_list_files) == 1, \
         'Could not find sequences.csv in {}'.format(download_folder)
 
-    sequence_list_file = os.path.join(download_folder,sequence_list_files[0])
+    sequence_list_file = path_join(download_folder,sequence_list_files[0])
 
     df = pd.read_csv(sequence_list_file)
     sequence_records = df.to_dict('records')
@@ -104,7 +108,7 @@ def read_images_from_download_bundle(download_folder):
     image_list_files = \
         [fn for fn in image_list_files if fn.startswith('images_') and fn.endswith('.csv')]
     image_list_files = \
-        [os.path.join(download_folder,fn) for fn in image_list_files]
+        [path_join(download_folder,fn) for fn in image_list_files]
     print('Found {} image list files'.format(len(image_list_files)))
 
 
@@ -203,12 +207,90 @@ def find_images_in_identify_tab(download_folder_with_identify,download_folder_ex
 # ...def find_images_in_identify_tab(...)
 
 
-def write_download_commands(image_records_to_download,
+def write_prefix_download_command(image_records,
+                                  download_dir_base,
+                                  force_download=False,
+                                  download_command_file=None):
+    """
+    Write a .sh script to download all images (using gcloud) from the longest common URL
+    prefix in the images represented in [image_records].
+
+    Args:
+        image_records (list of dict): list of dicts with at least the field 'location'.
+            Can also be a dict whose values are lists of record dicts.
+        download_dir_base (str): local destination folder
+        download_command_file (str, optional): path of the .sh script we should write, defaults
+            to "download_wi_images_with_prefix.sh" in the destination folder.
+    """
+
+    ##%% Input validation
+
+    # If a dict is provided, assume it maps image GUIDs to lists of records, flatten to a list
+    if isinstance(image_records,dict):
+        all_image_records = []
+        for k in image_records:
+            records_this_image = image_records[k]
+            all_image_records.extend(records_this_image)
+        image_records = all_image_records
+
+    assert isinstance(image_records,list), \
+        'Illegal image record list format {}'.format(type(image_records))
+    assert isinstance(image_records[0],dict), \
+        'Illegal image record format {}'.format(type(image_records[0]))
+
+    urls = [r['location'] for r in image_records]
+
+    # "urls" is a list of URLs starting with gs://.  Find the highest-level folder
+    # that is common to all URLs in the list.  For example, if the list is:
+    #
+    # gs://a/b/c
+    # gs://a/b/d
+    #
+    # The result should be:
+    #
+    # gs://a/b
+    common_prefix = os.path.commonprefix(urls)
+
+    # Remove the gs:// prefix if it's still there
+    if common_prefix.startswith('gs://'):
+        common_prefix = common_prefix[len('gs://'):]
+
+    # Ensure the common prefix ends with a '/' if it's not empty
+    if (len(common_prefix) > 0) and (not common_prefix.endswith('/')):
+        common_prefix = os.path.dirname(common_prefix) + '/'
+
+    print('Longest common prefix: {}'.format(common_prefix))
+
+    if download_command_file is None:
+        download_command_file = \
+            path_join(download_dir_base,'download_wi_images_with_prefix.sh')
+
+    os.makedirs(download_dir_base,exist_ok=True)
+
+    with open(download_command_file,'w',newline='\n') as f:
+        # The --no-clobber flag prevents overwriting existing files
+        # The -r flag is for recursive download
+        # The gs:// prefix is added back for the gcloud command
+        no_clobber_string = ''
+        if not force_download:
+            no_clobber_string = '--no-clobber'
+
+        cmd = 'gcloud storage cp -r {} "gs://{}" "{}"'.format(
+            no_clobber_string,common_prefix,download_dir_base)
+        print('Writing download command:\n{}'.format(cmd))
+        f.write(cmd + '\n')
+
+    print('Download script written to {}'.format(download_command_file))
+
+# ...def write_prefix_download_command(...)
+
+
+def write_download_commands(image_records,
                             download_dir_base,
                             force_download=False,
                             n_download_workers=25,
                             download_command_file_base=None,
-                            flatten_images=True):
+                            image_flattening='deployment'):
     """
     Given a list of dicts with at least the field 'location' (a gs:// URL), prepare a set of "gcloud
     storage" commands to download images, and write those to a series of .sh scripts, along with one
@@ -216,10 +298,8 @@ def write_download_commands(image_records_to_download,
 
     gcloud commands will use relative paths.
 
-    image_records_to_download can also be a dict mapping IDs to lists of records.
-
     Args:
-        image_records_to_download (list of dict): list of dicts with at least the field 'location'.
+        image_records (list of dict): list of dicts with at least the field 'location'.
             Can also be a dict whose values are lists of record dicts.
         download_dir_base (str): local destination folder
         force_download (bool, optional): include gs commands even if the target file exists
@@ -228,54 +308,92 @@ def write_download_commands(image_records_to_download,
         download_command_file_base (str, optional): path of the .sh script we should write, defaults
             to "download_wi_images.sh" in the destination folder.  Individual worker scripts will
             have a number added, e.g. download_wi_images_00.sh.
-        flatten_images (bool, optional): if True, each image will be downloaded as just
-            [GUID].JPG, i.e. the deployment prefix will be excluded.
+        image_flattening (str, optional): if 'none', relative paths will be preserved
+            representing the entire URL for each image.  Can be 'guid' (just download to
+            [GUID].JPG) or 'deployment' (download to [deployment]/[GUID].JPG).
     """
 
     ##%% Input validation
 
     # If a dict is provided, assume it maps image GUIDs to lists of records, flatten to a list
-    if isinstance(image_records_to_download,dict):
+    if isinstance(image_records,dict):
         all_image_records = []
-        for k in image_records_to_download:
-            records_this_image = image_records_to_download[k]
+        for k in image_records:
+            records_this_image = image_records[k]
             all_image_records.extend(records_this_image)
-        image_records_to_download = all_image_records
+        image_records = all_image_records
 
-    assert isinstance(image_records_to_download,list), \
-        'Illegal image record list format {}'.format(type(image_records_to_download))
-    assert isinstance(image_records_to_download[0],dict), \
-        'Illegal image record format {}'.format(type(image_records_to_download[0]))
+    assert isinstance(image_records,list), \
+        'Illegal image record list format {}'.format(type(image_records))
+    assert isinstance(image_records[0],dict), \
+        'Illegal image record format {}'.format(type(image_records[0]))
 
 
-    ##%% Validate image uniquness if necessary
+    ##%% Map URLs to relative paths
 
-    if flatten_images:
+    # URLs look like:
+    #
+    # gs://145625555_2004881_2323_name__main/deployment/2241000/prod/directUpload/5fda0ddd-511e-46ca-95c1-302b3c71f8ea.JPG
+    if image_flattening is None:
+        image_flattening = 'none'
+    image_flattening = image_flattening.lower().strip()
 
-        bn_to_url = {}
-        for image_record in image_records_to_download:
-            url = image_record['location']
-            assert url.startswith('gs://'), 'Illegal URL {}'.format(url)
-            bn = url.split('/')[-1]
-            if bn in bn_to_url:
-                assert bn_to_url[bn] == url, "Duplicate image URLs, can't flatten names"
-            bn_to_url[bn] = url
-        print('Validated image basename uniquness')
+    assert image_flattening in ('none','guid','deployment'), \
+        'Illegal image flattening strategy {}'.format(image_flattening)
 
-    # ...if we're supposed to flatten output filenames
+    url_to_relative_path = {}
+
+    for image_record in image_records:
+
+        url = image_record['location']
+        assert url.startswith('gs://'), 'Illegal URL {}'.format(url)
+
+        relative_path = None
+
+        if image_flattening == 'none':
+            relative_path = url.replace('gs://','')
+        elif image_flattening == 'guid':
+            relative_path = url.split('/')[-1]
+        else:
+            assert image_flattening == 'deployment'
+            tokens = url.split('/')
+            found_deployment_id = False
+            for i_token,token in enumerate(tokens):
+                if token == 'deployment':
+                    assert i_token < (len(tokens)-1)
+                    deployment_id_string = tokens[i_token + 1]
+                    deployment_id_string = deployment_id_string.replace('_thumb','')
+                    assert is_int(deployment_id_string), \
+                        'Illegal deployment ID {}'.format(deployment_id_string)
+                    image_id = url.split('/')[-1]
+                    relative_path = deployment_id_string + '/' + image_id
+                    found_deployment_id = True
+                    break
+            assert found_deployment_id, \
+                'Could not find deployment ID in record {}'.format(str(image_record))
+
+        assert relative_path is not None
+
+        if url in url_to_relative_path:
+            assert url_to_relative_path[url] == relative_path, \
+                'URL path mapping error'
+        else:
+            url_to_relative_path[url] = relative_path
+
+    # ...for each image record
 
 
     ##%% Make list of gcloud storage commands
 
     if download_command_file_base is None:
-        download_command_file_base = os.path.join(download_dir_base,'download_wi_images.sh')
+        download_command_file_base = path_join(download_dir_base,'download_wi_images.sh')
 
     commands = []
     skipped_urls = []
     downloaded_urls = set()
 
-    # image_record = image_records_to_download[0]
-    for image_record in tqdm(image_records_to_download):
+    # image_record = image_records[0]
+    for image_record in tqdm(image_records):
 
         url = image_record['location']
         if url in downloaded_urls:
@@ -283,13 +401,10 @@ def write_download_commands(image_records_to_download,
 
         assert url.startswith('gs://'), 'Illegal URL {}'.format(url)
 
-        if flatten_images:
-            relative_path = url.split('/')[-1]
-        else:
-            relative_path = url.replace('gs://','')
-        abs_path = os.path.join(download_dir_base,relative_path)
+        relative_path = url_to_relative_path[url]
+        abs_path = path_join(download_dir_base,relative_path)
 
-        # Skip files that already exist
+        # Optionally skip files that already exist
         if (not force_download) and (os.path.isfile(abs_path)):
             skipped_urls.append(url)
             continue
@@ -299,7 +414,7 @@ def write_download_commands(image_records_to_download,
         commands.append(command)
 
     print('Generated {} commands for {} image records'.format(
-        len(commands),len(image_records_to_download)))
+        len(commands),len(image_records)))
 
     print('Skipped {} URLs'.format(len(skipped_urls)))
 
