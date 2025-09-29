@@ -94,10 +94,10 @@ max_queue_size = 10
 # How often should we print progress when using the image queue?
 n_queue_print = 1000
 
-# Only used if --include_exif_data or --include_image_timestamp are supplied
-exif_options = read_exif.ReadExifOptions()
-exif_options.processing_library = 'pil'
-exif_options.byte_handling = 'convert_to_string'
+# Only used if --include_exif_tags or --include_image_timestamp are supplied
+exif_options_base = read_exif.ReadExifOptions()
+exif_options_base.processing_library = 'pil'
+exif_options_base.byte_handling = 'convert_to_string'
 
 # Only relevant when we're running our test harness; because bugs in batch
 # inference are dependent on batch grouping, we randomize batch grouping
@@ -208,7 +208,7 @@ def _consumer_func(q,
                    image_size=None,
                    include_image_size=False,
                    include_image_timestamp=False,
-                   include_exif_data=False,
+                   include_exif_tags=None,
                    augment=False,
                    detector_options=None,
                    preprocess_on_image_queue=default_preprocess_on_image_queue,
@@ -232,7 +232,7 @@ def _consumer_func(q,
         image_size (int, optional): image size to use for inference
         include_image_size (bool, optional): include image dimensions in output
         include_image_timestamp (bool, optional): include image timestamps in output
-        include_exif_data (bool, optional): include EXIF data in output
+        include_exif_tags (str, optional): comma-separated list of EXIF tags to include in output
         augment (bool, optional): enable image augmentation
         detector_options (dict, optional): key/value pairs that are interpreted differently
             by different detectors
@@ -334,7 +334,7 @@ def _consumer_func(q,
                                                        image_size=image_size,
                                                        include_image_size=include_image_size,
                                                        include_image_timestamp=include_image_timestamp,
-                                                       include_exif_data=include_exif_data,
+                                                       include_exif_tags=include_exif_tags,
                                                        augment=augment)
                         results.extend(batch_results)
 
@@ -411,7 +411,7 @@ def _consumer_func(q,
                                                    image_size=image_size,
                                                    include_image_size=include_image_size,
                                                    include_image_timestamp=include_image_timestamp,
-                                                   include_exif_data=include_exif_data,
+                                                   include_exif_tags=include_exif_tags,
                                                    augment=augment)
                     results.extend(batch_results)
 
@@ -431,7 +431,7 @@ def _consumer_func(q,
                                         image_size=image_size,
                                         include_image_size=include_image_size,
                                         include_image_timestamp=include_image_timestamp,
-                                        include_exif_data=include_exif_data,
+                                        include_exif_tags=include_exif_tags,
                                         augment=augment)
                 results.append(result)
                 n_images_processed += 1
@@ -464,7 +464,7 @@ def _run_detector_with_image_queue(image_files,
                                    image_size=None,
                                    include_image_size=False,
                                    include_image_timestamp=False,
-                                   include_exif_data=False,
+                                   include_exif_tags=None,
                                    augment=False,
                                    detector_options=None,
                                    loader_workers=default_loaders,
@@ -487,7 +487,7 @@ def _run_detector_with_image_queue(image_files,
             doing
         include_image_size (bool, optional): should we include image size in the output for each image?
         include_image_timestamp (bool, optional): should we include image timestamps in the output for each image?
-        include_exif_data (bool, optional): should we include EXIF data in the output for each image?
+        include_exif_tags (str, optional): comma-separated list of EXIF tags to include in output
         augment (bool, optional): enable image augmentation
         detector_options (dict, optional): key/value pairs that are interpreted differently
             by different detectors
@@ -562,7 +562,7 @@ def _run_detector_with_image_queue(image_files,
                                                           image_size,
                                                           include_image_size,
                                                           include_image_timestamp,
-                                                          include_exif_data,
+                                                          include_exif_tags,
                                                           augment,
                                                           detector_options,
                                                           preprocess_on_image_queue,
@@ -579,7 +579,7 @@ def _run_detector_with_image_queue(image_files,
                                                            image_size,
                                                            include_image_size,
                                                            include_image_timestamp,
-                                                           include_exif_data,
+                                                           include_exif_tags,
                                                            augment,
                                                            detector_options,
                                                            preprocess_on_image_queue,
@@ -598,7 +598,7 @@ def _run_detector_with_image_queue(image_files,
                        image_size,
                        include_image_size,
                        include_image_timestamp,
-                       include_exif_data,
+                       include_exif_tags,
                        augment,
                        detector_options,
                        preprocess_on_image_queue,
@@ -680,7 +680,7 @@ def _process_batch(image_items_batch,
                    image_size=None,
                    include_image_size=False,
                    include_image_timestamp=False,
-                   include_exif_data=False,
+                   include_exif_tags=None,
                    augment=False):
     """
     Process a batch of images using generate_detections_one_batch().  Does not necessarily return
@@ -695,7 +695,7 @@ def _process_batch(image_items_batch,
         image_size (int, optional): image size override
         include_image_size (bool, optional): include image dimensions in results
         include_image_timestamp (bool, optional): include image timestamps in results
-        include_exif_data (bool, optional): include EXIF data in results
+        include_exif_tags (str, optional): comma-separated list of EXIF tags to include in output
         augment (bool, optional): whether to use image augmentation
 
     Returns:
@@ -762,12 +762,13 @@ def _process_batch(image_items_batch,
                     image_result['detections'] = \
                         [det for det in image_result['detections'] if det['conf'] >= confidence_threshold]
 
-                    if include_image_size or include_image_timestamp or include_exif_data:
+                    if include_image_size or include_image_timestamp or (include_exif_tags is not None):
 
                         image = valid_images[i_valid_image]
 
                         # If this was preprocessed by the producer thread, pull out the PIL version
                         if isinstance(image,dict):
+
                             image = image['img_original_pil']
 
                         if include_image_size:
@@ -779,9 +780,12 @@ def _process_batch(image_items_batch,
 
                             image_result['datetime'] = get_image_datetime(image)
 
-                        if include_exif_data:
+                        if include_exif_tags is not None:
 
-                            image_result['exif_metadata'] = read_exif.read_pil_exif(image,exif_options)
+                            exif_options = copy.copy(exif_options_base)
+                            exif_options.tags_to_include = include_exif_tags
+                            image_result['exif_metadata'] = read_exif.read_pil_exif(
+                                image,exif_options)
 
                     # ...if we need to store metadata
 
@@ -834,7 +838,7 @@ def _process_images(im_files,
                    checkpoint_queue=None,
                    include_image_size=False,
                    include_image_timestamp=False,
-                   include_exif_data=False,
+                   include_exif_tags=None,
                    augment=False,
                    detector_options=None,
                    loader_workers=default_loaders,
@@ -856,7 +860,7 @@ def _process_images(im_files,
         checkpoint_queue (Queue, optional): internal parameter used to pass image queues around
         include_image_size (bool, optional): should we include image size in the output for each image?
         include_image_timestamp (bool, optional): should we include image timestamps in the output for each image?
-        include_exif_data (bool, optional): should we include EXIF data in the output for each image?
+        include_exif_tags (str, optional): comma-separated list of EXIF tags to include in output
         augment (bool, optional): enable image augmentation
         detector_options (dict, optional): key/value pairs that are interpreted differently
             by different detectors
@@ -890,7 +894,7 @@ def _process_images(im_files,
                                       image_size=image_size,
                                       include_image_size=include_image_size,
                                       include_image_timestamp=include_image_timestamp,
-                                      include_exif_data=include_exif_data,
+                                      include_exif_tags=include_exif_tags,
                                       augment=augment,
                                       detector_options=detector_options,
                                       loader_workers=loader_workers,
@@ -907,7 +911,7 @@ def _process_images(im_files,
                                    image_size=image_size,
                                    include_image_size=include_image_size,
                                    include_image_timestamp=include_image_timestamp,
-                                   include_exif_data=include_exif_data,
+                                   include_exif_tags=include_exif_tags,
                                    augment=augment)
 
             if checkpoint_queue is not None:
@@ -929,7 +933,7 @@ def _process_image(im_file,
                    image_size=None,
                    include_image_size=False,
                    include_image_timestamp=False,
-                   include_exif_data=False,
+                   include_exif_tags=False,
                    augment=False):
     """
     Runs a detector (typically MegaDetector) on a single image file.
@@ -947,7 +951,7 @@ def _process_image(im_file,
             doing
         include_image_size (bool, optional): should we include image size in the output for each image?
         include_image_timestamp (bool, optional): should we include image timestamps in the output for each image?
-        include_exif_data (bool, optional): should we include EXIF data in the output for each image?
+        include_exif_tags (str, optional): comma-separated list of EXIF tags to include in output
         augment (bool, optional): enable image augmentation
 
     Returns:
@@ -1000,7 +1004,9 @@ def _process_image(im_file,
     if include_image_timestamp:
         result['datetime'] = get_image_datetime(image)
 
-    if include_exif_data:
+    if include_exif_tags is not None:
+        exif_options = copy.copy(exif_options_base)
+        exif_options.tags_to_include = include_exif_tags
         result['exif_metadata'] = read_exif.read_pil_exif(image,exif_options)
 
     return result
@@ -1055,7 +1061,7 @@ def load_and_run_detector_batch(model_file,
                                 class_mapping_filename=None,
                                 include_image_size=False,
                                 include_image_timestamp=False,
-                                include_exif_data=False,
+                                include_exif_tags=None,
                                 augment=False,
                                 force_model_download=False,
                                 detector_options=None,
@@ -1088,7 +1094,7 @@ def load_and_run_detector_batch(model_file,
             file or YOLOv5 dataset.yaml file
         include_image_size (bool, optional): should we include image size in the output for each image?
         include_image_timestamp (bool, optional): should we include image timestamps in the output for each image?
-        include_exif_data (bool, optional): should we include EXIF data in the output for each image?
+        include_exif_tags (str, optional): comma-separated list of EXIF tags to include in output
         augment (bool, optional): enable image augmentation
         force_model_download (bool, optional): force downloading the model file if
             a named model (e.g. "MDV5A") is supplied, even if the local file already
@@ -1207,7 +1213,7 @@ def load_and_run_detector_batch(model_file,
                           image_size=image_size,
                           include_image_size=include_image_size,
                           include_image_timestamp=include_image_timestamp,
-                          include_exif_data=include_exif_data,
+                          include_exif_tags=include_exif_tags,
                           augment=augment,
                           detector_options=detector_options,
                           loader_workers=loader_workers,
@@ -1269,7 +1275,7 @@ def load_and_run_detector_batch(model_file,
                                                image_size=image_size,
                                                include_image_size=include_image_size,
                                                include_image_timestamp=include_image_timestamp,
-                                               include_exif_data=include_exif_data,
+                                               include_exif_tags=include_exif_tags,
                                                augment=augment)
 
                 results.extend(batch_results)
@@ -1295,7 +1301,7 @@ def load_and_run_detector_batch(model_file,
                                        image_size=image_size,
                                        include_image_size=include_image_size,
                                        include_image_timestamp=include_image_timestamp,
-                                       include_exif_data=include_exif_data,
+                                       include_exif_tags=include_exif_tags,
                                        augment=augment)
                 results.append(result)
 
@@ -1354,7 +1360,7 @@ def load_and_run_detector_batch(model_file,
                                  checkpoint_queue=checkpoint_queue,
                                  include_image_size=include_image_size,
                                  include_image_timestamp=include_image_timestamp,
-                                 include_exif_data=include_exif_data,
+                                 include_exif_tags=include_exif_tags,
                                  augment=augment,
                                  detector_options=detector_options),
                                  image_chunks)
@@ -1374,7 +1380,7 @@ def load_and_run_detector_batch(model_file,
                                                image_size=image_size,
                                                include_image_size=include_image_size,
                                                include_image_timestamp=include_image_timestamp,
-                                               include_exif_data=include_exif_data,
+                                               include_exif_tags=include_exif_tags,
                                                augment=augment,
                                                detector_options=detector_options),
                                                image_chunks)
@@ -1495,7 +1501,7 @@ def get_image_datetime(image):
         returns None if EXIF datetime is not available.
     """
 
-    exif_tags = read_exif.read_pil_exif(image,exif_options)
+    exif_tags = read_exif.read_pil_exif(image,exif_options_base)
 
     try:
         datetime_str = exif_tags['DateTimeOriginal']
@@ -1654,7 +1660,7 @@ if False:
     class_mapping_filename = None
     include_image_size = True
     include_image_timestamp = True
-    include_exif_data = True
+    include_exif_tags = None
     overwrite_handling = None
 
     # Generate a command line
@@ -1689,8 +1695,8 @@ if False:
         cmd += ' --include_image_size'
     if include_image_timestamp:
         cmd += ' --include_image_timestamp'
-    if include_exif_data:
-        cmd += ' --include_exif_data'
+    if include_exif_tags is not None:
+        cmd += ' --include_exif_tags "{}"'.format(include_exif_tags)
     if overwrite_handling is not None:
         cmd += ' --overwrite_handling {}'.format(overwrite_handling)
 
@@ -1837,9 +1843,10 @@ def main(): # noqa
         help='Include image datetime (if available) in output file'
     )
     parser.add_argument(
-        '--include_exif_data',
-        action='store_true',
-        help='Include available EXIF data in output file'
+        '--include_exif_tags',
+        type=str,
+        default=None,
+        help='Command-separated list of EXIF tags to include in output, or "all" to include all tags'
     )
     parser.add_argument(
         '--overwrite_handling',
@@ -1878,6 +1885,12 @@ def main(): # noqa
         action='store_true',
         help=argparse.SUPPRESS)
 
+    # This argument is deprecated in favor use --include_exif_tags
+    parser.add_argument(
+        '--include_exif_data',
+        action='store_true',
+        help=argparse.SUPPRESS)
+
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()
@@ -1887,6 +1900,10 @@ def main(): # noqa
     global use_threads_for_queue
     if args.use_threads_for_queue:
         use_threads_for_queue = True
+
+    # Support the legacy --include_exif_data flag
+    if args.include_exif_data and (args.include_exif_tags is None):
+        args.include_exif_tags = 'all'
 
     detector_options = parse_kvp_list(args.detector_options)
 
@@ -2094,7 +2111,7 @@ def main(): # noqa
                                           class_mapping_filename=args.class_mapping_filename,
                                           include_image_size=args.include_image_size,
                                           include_image_timestamp=args.include_image_timestamp,
-                                          include_exif_data=args.include_exif_data,
+                                          include_exif_tags=args.include_exif_tags,
                                           augment=args.augment,
                                           # Don't download the model *again*
                                           force_model_download=False,
