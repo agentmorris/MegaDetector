@@ -828,7 +828,7 @@ def _run_detection_step(source_folder: str,
             batch_size=detector_batch_size,
             include_image_size=False,
             include_image_timestamp=False,
-            include_exif_data=False,
+            include_exif_tags=None,
             loader_workers=detector_worker_threads,
             preprocess_on_image_queue=True
         )

@@ -210,6 +210,8 @@ def read_pil_exif(im,options=None):
     if exif_info is None:
         return exif_tags
 
+    # Read all standard EXIF tags; if necessary, we'll filter later to a restricted
+    # list of tags.
     for k, v in exif_info.items():
         assert isinstance(k,str) or isinstance(k,int), \
             'Invalid EXIF key {}'.format(str(k))
@@ -221,6 +223,7 @@ def read_pil_exif(im,options=None):
 
     exif_ifd_tags = _get_exif_ifd(exif_info)
 
+    # Read tags that are only available via offset
     for k in exif_ifd_tags.keys():
         v = exif_ifd_tags[k]
         if k in exif_tags:
@@ -266,7 +269,7 @@ def read_pil_exif(im,options=None):
 
             # Convert to strings, e.g. 'GPSTimeStamp'
             gps_info = {}
-            for int_tag,v in enumerate(gps_info_raw.keys()):
+            for int_tag,v in gps_info_raw.items():
                 assert isinstance(int_tag,int)
                 if int_tag in ExifTags.GPSTAGS:
                     gps_info[ExifTags.GPSTAGS[int_tag]] = v
@@ -276,10 +279,14 @@ def read_pil_exif(im,options=None):
             exif_tags['GPSInfo'] = gps_info
 
         except Exception as e:
+
             if options.verbose:
                 print('Warning: error reading GPS info: {}'.format(str(e)))
 
     # ...if we think there might be GPS tags in this image
+
+    # Filter tags if necessary
+    exif_tags = _filter_tags(exif_tags,options)
 
     return exif_tags
 
@@ -337,10 +344,16 @@ def _filter_tags(tags,options):
     if options.tags_to_include is None and options.tags_to_exclude is None:
         return tags
     if options.tags_to_include is not None:
+        if isinstance(options.tags_to_include,str):
+            if options.tags_to_include == 'all':
+                return tags
         assert options.tags_to_exclude is None, "tags_to_include and tags_to_exclude are incompatible"
+        tags_to_include = options.tags_to_include.split(',')
+        # Case-insensitive matching
+        tags_to_include = [s.lower() for s in tags_to_include]
         tags_to_return = {}
         for tag_name in tags.keys():
-            if tag_name in options.tags_to_include:
+            if str(tag_name).lower() in tags_to_include:
                 tags_to_return[tag_name] = tags[tag_name]
         return tags_to_return
     if options.tags_to_exclude is not None:
