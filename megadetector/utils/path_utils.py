@@ -1095,6 +1095,9 @@ def parallel_delete_files(input_files,
         verbose (bool, optional): enable additional debug console output
     """
 
+    if len(input_files) == 0:
+        return
+
     n_workers = min(max_workers, len(input_files))
 
     if use_threads:
