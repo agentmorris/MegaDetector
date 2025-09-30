@@ -122,7 +122,7 @@ def read_images_from_download_bundle(download_folder):
         print('Reading images from list file {}'.format(
             os.path.basename(image_list_file)))
 
-        df = pd.read_csv(image_list_file)
+        df = pd.read_csv(image_list_file,low_memory=False)
 
         # i_row = 0; row = df.iloc[i_row]
         for i_row,row in tqdm(df.iterrows(),total=len(df)):
