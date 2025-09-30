@@ -1046,6 +1046,73 @@ def parallel_copy_files(input_file_to_output_file,
 # ...def parallel_copy_files(...)
 
 
+#%% File deletion functions
+
+def delete_file(input_file, verbose=False):
+    """
+    Deletes a single file.
+
+    Args:
+        input_file (str): file to delete
+        verbose (bool, optional): enable additional debug console output
+
+    Returns:
+        bool: True if file was deleted successfully, False otherwise
+    """
+
+    try:
+        if verbose:
+            print('Deleting file {}'.format(input_file))
+
+        if os.path.isfile(input_file):
+            os.remove(input_file)
+            return True
+        else:
+            if verbose:
+                print('File {} does not exist'.format(input_file))
+            return False
+
+    except Exception as e:
+        if verbose:
+            print('Error deleting file {}: {}'.format(input_file, str(e)))
+        return False
+
+# ...def delete_file(...)
+
+
+def parallel_delete_files(input_files,
+                          max_workers=16,
+                          use_threads=True,
+                          verbose=False):
+    """
+    Deletes one or more files in parallel.
+
+    Args:
+        input_files (list): list of files to delete
+        max_workers (int, optional): number of concurrent workers, set to <= 1 to disable parallelism
+        use_threads (bool, optional): whether to use threads (True) or processes (False); ignored if
+            max_workers <= 1
+        verbose (bool, optional): enable additional debug console output
+    """
+
+    if len(input_files) == 0:
+        return
+
+    n_workers = min(max_workers, len(input_files))
+
+    if use_threads:
+        pool = ThreadPool(n_workers)
+    else:
+        pool = Pool(n_workers)
+
+    with tqdm(total=len(input_files)) as pbar:
+        for i, _ in enumerate(pool.imap_unordered(partial(delete_file, verbose=verbose),
+                                                  input_files)):
+            pbar.update()
+
+# ...def parallel_delete_files(...)
+
+
 #%% File size functions
 
 def get_file_sizes(base_dir, convert_slashes=True):
