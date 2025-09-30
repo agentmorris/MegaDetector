@@ -329,7 +329,7 @@ def _initialize_yolo_imports(model_type='yolov5',
     if try_yolov5_import and not utils_imported:
 
         try:
-            # from yolov5.utils.general import non_max_suppression # type: ignore
+            from yolov5.utils.general import non_max_suppression # type: ignore
             from yolov5.utils.general import xyxy2xywh # noqa
             from yolov5.utils.augmentations import letterbox # noqa
             try:
@@ -350,7 +350,7 @@ def _initialize_yolo_imports(model_type='yolov5',
 
         try:
 
-            # from yolov9.utils.general import non_max_suppression # noqa
+            from yolov9.utils.general import non_max_suppression # noqa
             from yolov9.utils.general import xyxy2xywh # noqa
             from yolov9.utils.augmentations import letterbox # noqa
             from yolov9.utils.general import scale_boxes as scale_coords # noqa
@@ -463,7 +463,7 @@ def _initialize_yolo_imports(model_type='yolov5',
         try:
 
             # import pre- and post-processing functions from the YOLOv5 repo
-            # from utils.general import non_max_suppression # type: ignore
+            from utils.general import non_max_suppression # type: ignore
             from utils.general import xyxy2xywh # type: ignore
             from utils.augmentations import letterbox # type: ignore
 
