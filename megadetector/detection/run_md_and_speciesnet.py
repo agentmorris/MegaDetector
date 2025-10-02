@@ -929,9 +929,11 @@ def _run_classification_step(detector_results_file: str,
         top_n_scores (int, optional): maximum number of scores to include for each detection
     """
 
-    print('Starting SpeciesNet classification step...')
+    print('Starting classification step...')
 
     # Load MegaDetector results
+    print('Reading detection results from {}'.format(detector_results_file))
+
     with open(detector_results_file, 'r') as f:
         detector_results = json.load(f)
 
@@ -1272,15 +1274,19 @@ def main():
     print('Intermediate files: {}'.format(temp_folder))
 
     # Determine detector output file path
-    if args.detections_file:
+    if args.detections_file is not None:
         detector_output_file = args.detections_file
-        print('Using existing detections file: {}'.format(detector_output_file))
-        validation_options = ValidateBatchResultsOptions()
-        validation_options.check_image_existence = True
-        validation_options.relative_path_base = args.source
-        validation_options.raise_errors = True
-        validate_batch_results(detector_output_file,options=validation_options)
-        print('Validated detections file')
+        validate_detection_file = False
+        if validate_detection_file:
+            print('Using existing detections file: {}'.format(detector_output_file))
+            validation_options = ValidateBatchResultsOptions()
+            validation_options.check_image_existence = True
+            validation_options.relative_path_base = args.source
+            validation_options.raise_errors = True
+            validate_batch_results(detector_output_file,options=validation_options)
+            print('Validated detections file')
+        else:
+            print('Bypassing validation of {}'.format(args.detections_file))
     else:
         detector_output_file = os.path.join(temp_folder, 'detector_output.json')
 
