@@ -109,10 +109,10 @@ class CropBatch:
     """
 
     def __init__(self):
-        # List of preprocessed images
+        #: List of preprocessed images
         self.crops = []
 
-        # List of CropMetadata objects
+        #: List of CropMetadata objects
         self.metadata = []
 
     def add_crop(self, crop_data, metadata):
@@ -192,6 +192,7 @@ def _process_image_detections(file_path: str,
 
         # Preprocess the crop
         try:
+
             preprocessed_crop = classifier.preprocess(
                 image,
                 bboxes=[speciesnet_bbox],
@@ -199,6 +200,7 @@ def _process_image_detections(file_path: str,
             )
 
             if preprocessed_crop is not None:
+
                 metadata = CropMetadata(
                     image_file=file_path,
                     detection_index=detection_index,
@@ -207,10 +209,11 @@ def _process_image_detections(file_path: str,
                     original_height=original_height
                 )
 
-                # Send individual crop immediately to consumer
+                # Send individual crop to the consumer
                 batch_queue.put(('crop', preprocessed_crop, metadata))
 
         except Exception as e:
+
             print('Warning: failed to preprocess crop from {}, detection {}: {}'.format(
                 file_path, detection_index, str(e)))
 
@@ -225,6 +228,8 @@ def _process_image_detections(file_path: str,
             batch_queue.put(('failure',
                              'Failed to preprocess crop: {}'.format(str(e)),
                              failure_metadata))
+
+        # ...try/except
 
     # ...for each detection in this image
 
@@ -256,6 +261,7 @@ def _process_video_detections(file_path: str,
     frame_to_detections = {}
 
     for detection_index, detection in enumerate(detections):
+
         conf = detection['conf']
         if conf < detection_confidence_threshold:
             continue
@@ -266,6 +272,8 @@ def _process_video_detections(file_path: str,
         if frame_number not in frame_to_detections:
             frame_to_detections[frame_number] = []
         frame_to_detections[frame_number].append((detection_index, detection))
+
+    # ...for each detection in this video
 
     if len(frames_with_detections) == 0:
         return
@@ -290,6 +298,7 @@ def _process_video_detections(file_path: str,
             return
         frame_number = int(match.group(1))
 
+        # Only process frames for which we have detection results
         if frame_number not in frame_to_detections:
             return
 
@@ -360,13 +369,16 @@ def _process_video_detections(file_path: str,
 
     # Process the video frames
     try:
+
         run_callback_on_frames(
             input_video_file=absolute_file_path,
             frame_callback=frame_callback,
             frames_to_process=frames_to_process,
             verbose=verbose
         )
+
     except Exception as e:
+
         print('Warning: failed to process video {}: {}'.format(file_path, str(e)))
 
         # Send failure information to consumer for the whole video
@@ -448,6 +460,7 @@ def _crop_producer_func(image_queue: JoinableQueue,
         is_video = is_video_file(file_path)
 
         if is_video:
+
             # Process video
             _process_video_detections(
                 file_path=file_path,
@@ -457,7 +470,9 @@ def _crop_producer_func(image_queue: JoinableQueue,
                 detection_confidence_threshold=detection_confidence_threshold,
                 batch_queue=batch_queue
             )
+
         else:
+
             # Process image
             _process_image_detections(
                 file_path=file_path,
@@ -571,7 +586,7 @@ def _crop_consumer_func(batch_queue: Queue,
         item_type, data, metadata = item
 
         if metadata.image_file not in all_results:
-                all_results[metadata.image_file] = {}
+            all_results[metadata.image_file] = {}
 
         # We should never be processing the same detetion twice
         assert metadata.detection_index not in all_results[metadata.image_file]
