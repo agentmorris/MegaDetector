@@ -61,7 +61,18 @@ DEFAULT_DETECTION_CONFIDENCE_THRESHOLD_FOR_OUTPUT = DEFAULT_OUTPUT_CONFIDENCE_TH
 DEFAULT_DETECTOR_BATCH_SIZE = 1
 DEFAULT_CLASSIFIER_BATCH_SIZE = 8
 DEFAULT_LOADER_WORKERS = 4
-MAX_QUEUE_SIZE_IMAGES_PER_WORKER = 10
+
+# This determines the maximum number of images that can get read from disk
+# on each of the producer workers before blocking.  The actual size of the queue
+# will be MAX_IMAGE_QUEUE_SIZE_PER_WORKER * n_workers.  This is only used for
+# the classification step.
+MAX_IMAGE_QUEUE_SIZE_PER_WORKER = 10
+
+# This determines the maximum number of crops that can accumulate in the queue
+# used to communicate between the producers (which read and crop images) and the
+# consumer (which runs the classifier).  This is only used for the classification step.
+MAX_BATCH_QUEUE_SIZE = 300
+
 DEAFULT_SECONDS_PER_VIDEO_FRAME = 1.0
 
 # Max number of classification scores to include per detection
@@ -70,6 +81,11 @@ DEFAULT_TOP_N_SCORES = 2
 # Unless --norollup is specified, roll up taxonomic levels until the
 # cumulative confidence is above this value
 ROLLUP_TARGET_CONFIDENCE = 0.5
+
+# When the called supplies an existing MD results file, should we validate it before
+# starting classification?  This tends
+VALIDATE_DETECTION_FILE = False
+
 
 verbose = False
 
@@ -109,10 +125,10 @@ class CropBatch:
     """
 
     def __init__(self):
-        # List of preprocessed images
+        #: List of preprocessed images
         self.crops = []
 
-        # List of CropMetadata objects
+        #: List of CropMetadata objects
         self.metadata = []
 
     def add_crop(self, crop_data, metadata):
@@ -192,6 +208,7 @@ def _process_image_detections(file_path: str,
 
         # Preprocess the crop
         try:
+
             preprocessed_crop = classifier.preprocess(
                 image,
                 bboxes=[speciesnet_bbox],
@@ -199,6 +216,7 @@ def _process_image_detections(file_path: str,
             )
 
             if preprocessed_crop is not None:
+
                 metadata = CropMetadata(
                     image_file=file_path,
                     detection_index=detection_index,
@@ -207,10 +225,11 @@ def _process_image_detections(file_path: str,
                     original_height=original_height
                 )
 
-                # Send individual crop immediately to consumer
+                # Send individual crop to the consumer
                 batch_queue.put(('crop', preprocessed_crop, metadata))
 
         except Exception as e:
+
             print('Warning: failed to preprocess crop from {}, detection {}: {}'.format(
                 file_path, detection_index, str(e)))
 
@@ -225,6 +244,8 @@ def _process_image_detections(file_path: str,
             batch_queue.put(('failure',
                              'Failed to preprocess crop: {}'.format(str(e)),
                              failure_metadata))
+
+        # ...try/except
 
     # ...for each detection in this image
 
@@ -256,6 +277,7 @@ def _process_video_detections(file_path: str,
     frame_to_detections = {}
 
     for detection_index, detection in enumerate(detections):
+
         conf = detection['conf']
         if conf < detection_confidence_threshold:
             continue
@@ -266,6 +288,8 @@ def _process_video_detections(file_path: str,
         if frame_number not in frame_to_detections:
             frame_to_detections[frame_number] = []
         frame_to_detections[frame_number].append((detection_index, detection))
+
+    # ...for each detection in this video
 
     if len(frames_with_detections) == 0:
         return
@@ -290,6 +314,7 @@ def _process_video_detections(file_path: str,
             return
         frame_number = int(match.group(1))
 
+        # Only process frames for which we have detection results
         if frame_number not in frame_to_detections:
             return
 
@@ -360,13 +385,16 @@ def _process_video_detections(file_path: str,
 
     # Process the video frames
     try:
+
         run_callback_on_frames(
             input_video_file=absolute_file_path,
             frame_callback=frame_callback,
             frames_to_process=frames_to_process,
             verbose=verbose
         )
+
     except Exception as e:
+
         print('Warning: failed to process video {}: {}'.format(file_path, str(e)))
 
         # Send failure information to consumer for the whole video
@@ -448,6 +476,7 @@ def _crop_producer_func(image_queue: JoinableQueue,
         is_video = is_video_file(file_path)
 
         if is_video:
+
             # Process video
             _process_video_detections(
                 file_path=file_path,
@@ -457,7 +486,9 @@ def _crop_producer_func(image_queue: JoinableQueue,
                 detection_confidence_threshold=detection_confidence_threshold,
                 batch_queue=batch_queue
             )
+
         else:
+
             # Process image
             _process_image_detections(
                 file_path=file_path,
@@ -571,9 +602,9 @@ def _crop_consumer_func(batch_queue: Queue,
         item_type, data, metadata = item
 
         if metadata.image_file not in all_results:
-                all_results[metadata.image_file] = {}
+            all_results[metadata.image_file] = {}
 
-        # We should never be processing the same detetion twice
+        # We should never be processing the same detection twice
         assert metadata.detection_index not in all_results[metadata.image_file]
 
         if item_type == 'failure':
@@ -601,6 +632,7 @@ def _crop_consumer_func(batch_queue: Queue,
 
     # ...while (we have items to process)
 
+    # Send all the results at once back to the main process
     results_queue.put(all_results)
 
     if verbose:
@@ -914,9 +946,11 @@ def _run_classification_step(detector_results_file: str,
         top_n_scores (int, optional): maximum number of scores to include for each detection
     """
 
-    print('Starting SpeciesNet classification step...')
+    print('Starting classification step...')
 
     # Load MegaDetector results
+    print('Reading detection results from {}'.format(detector_results_file))
+
     with open(detector_results_file, 'r') as f:
         detector_results = json.load(f)
 
@@ -936,10 +970,22 @@ def _run_classification_step(detector_results_file: str,
         print('Set multiprocessing start method to spawn (was {})'.format(
             original_start_method))
 
-    # Set up multiprocessing queues
-    max_queue_size = classifier_worker_threads * MAX_QUEUE_SIZE_IMAGES_PER_WORKER
-    image_queue = JoinableQueue(max_queue_size)
-    batch_queue = Queue()
+    ## Set up multiprocessing queues
+
+    # This queue receives lists of image filenames (and associated detection results)
+    # from the "main" thread (the one you're reading right now).  Items are pulled off
+    # of this queue by producer workers (on _crop_producer_func), where the corresponding
+    # images are loaded from disk and preprocessed into crops.
+    image_queue = JoinableQueue(maxsize= \
+                                classifier_worker_threads * MAX_IMAGE_QUEUE_SIZE_PER_WORKER)
+
+    # This queue receives cropped images from producers (on _crop_producer_func); those
+    # crops are pulled off of this queue by the consumer (on _crop_consumer_func).
+    batch_queue = Queue(maxsize=MAX_BATCH_QUEUE_SIZE)
+
+    # This is not really used as a queue, rather it's just used to send all the results
+    # at once from the consumer process to the main process (the one you're reading right
+    # now).
     results_queue = Queue()
 
     # Start producer workers
@@ -951,7 +997,9 @@ def _run_classification_step(detector_results_file: str,
         p.start()
         producers.append(p)
 
-    # Start consumer worker
+
+    ## Start consumer worker
+
     consumer = Process(target=_crop_consumer_func,
                        args=(batch_queue, results_queue, classifier_model,
                              classifier_batch_size, classifier_worker_threads,
@@ -974,15 +1022,22 @@ def _run_classification_step(detector_results_file: str,
 
     print('Finished waiting for input queue')
 
-    # Wait for results
+
+    ## Wait for results
+
     classification_results = results_queue.get()
 
-    # Clean up processes
+
+    ## Clean up processes
+
     for p in producers:
         p.join()
     consumer.join()
 
     print('Finished waiting for workers')
+
+
+    ## Format results and write output
 
     class CategoryState:
         """
@@ -1257,15 +1312,18 @@ def main():
     print('Intermediate files: {}'.format(temp_folder))
 
     # Determine detector output file path
-    if args.detections_file:
+    if args.detections_file is not None:
         detector_output_file = args.detections_file
-        print('Using existing detections file: {}'.format(detector_output_file))
-        validation_options = ValidateBatchResultsOptions()
-        validation_options.check_image_existence = True
-        validation_options.relative_path_base = args.source
-        validation_options.raise_errors = True
-        validate_batch_results(detector_output_file,options=validation_options)
-        print('Validated detections file')
+        if VALIDATE_DETECTION_FILE:
+            print('Using existing detections file: {}'.format(detector_output_file))
+            validation_options = ValidateBatchResultsOptions()
+            validation_options.check_image_existence = True
+            validation_options.relative_path_base = args.source
+            validation_options.raise_errors = True
+            validate_batch_results(detector_output_file,options=validation_options)
+            print('Validated detections file')
+        else:
+            print('Bypassing validation of {}'.format(args.detections_file))
     else:
         detector_output_file = os.path.join(temp_folder, 'detector_output.json')
 
