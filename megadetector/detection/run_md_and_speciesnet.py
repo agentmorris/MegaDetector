@@ -82,6 +82,11 @@ DEFAULT_TOP_N_SCORES = 2
 # cumulative confidence is above this value
 ROLLUP_TARGET_CONFIDENCE = 0.5
 
+# When the called supplies an existing MD results file, should we validate it before
+# starting classification?  This tends
+VALIDATE_DETECTION_FILE = False
+
+
 verbose = False
 
 
@@ -1309,8 +1314,7 @@ def main():
     # Determine detector output file path
     if args.detections_file is not None:
         detector_output_file = args.detections_file
-        validate_detection_file = False
-        if validate_detection_file:
+        if VALIDATE_DETECTION_FILE:
             print('Using existing detections file: {}'.format(detector_output_file))
             validation_options = ValidateBatchResultsOptions()
             validation_options.check_image_existence = True
