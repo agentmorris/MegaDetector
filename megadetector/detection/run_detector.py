@@ -79,6 +79,10 @@ DEFAULT_DETECTOR_LABEL_MAP = {
 # models other than MegaDetector.
 USE_MODEL_NATIVE_CLASSES = False
 
+# Detection threshold to recommend to callers when all other mechanisms for choosing
+# a model-specific threshold fail
+fallback_detection_threshold = 0.2
+
 # Maps a variety of strings that might occur in filenames to canonical version numbers.
 #
 # Order matters here.
@@ -215,7 +219,8 @@ known_models = {
     {
         'url':model_url_base + 'md_v1000.0.0-redwood.pt',
         'normalized_typical_inference_speed':1.0,
-        'md5':'74474b3aec9cf1a990da38b37ddf9197'
+        'md5':'74474b3aec9cf1a990da38b37ddf9197',
+        'typical_detection_threshold':0.3
     },
     'v1000.0.0-spruce':
     {
@@ -515,19 +520,34 @@ def get_typical_confidence_threshold_from_results(results):
         with open(results,'r') as f:
             results = json.load(f)
 
+    default_threshold = None
+
+    # Best case: the .json file tells us the default threshold
     if 'detector_metadata' in results['info'] and \
         'typical_detection_threshold' in results['info']['detector_metadata']:
         default_threshold = results['info']['detector_metadata']['typical_detection_threshold']
+    # Worst case: we don't even know what detector this is
     elif ('detector' not in results['info']) or (results['info']['detector'] is None):
         print('Warning: detector version not available in results file, using MDv5 defaults')
         detector_metadata = get_detector_metadata_from_version_string('v5a.0.0')
         default_threshold = detector_metadata['typical_detection_threshold']
+    # We know what detector this is, but it doesn't have a default threshold
+    # in the .json file
     else:
         print('Warning: detector metadata not available in results file, inferring from MD version')
-        detector_filename = results['info']['detector']
-        detector_version = get_detector_version_from_filename(detector_filename)
-        detector_metadata = get_detector_metadata_from_version_string(detector_version)
-        default_threshold = detector_metadata['typical_detection_threshold']
+        try:
+            detector_filename = results['info']['detector']
+            detector_version = get_detector_version_from_filename(detector_filename)
+            detector_metadata = get_detector_metadata_from_version_string(detector_version)
+            if 'typical_detection_threshold' in detector_metadata:
+                default_threshold = detector_metadata['typical_detection_threshold']
+        except Exception:
+            pass
+
+    if default_threshold is None:
+        print('Could not determine threshold, using fallback threshold of {}'.format(
+            fallback_detection_threshold))
+        default_threshold = fallback_detection_threshold
 
     return default_threshold
 

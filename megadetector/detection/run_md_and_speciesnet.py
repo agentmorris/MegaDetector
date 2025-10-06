@@ -62,17 +62,19 @@ DEFAULT_DETECTOR_BATCH_SIZE = 1
 DEFAULT_CLASSIFIER_BATCH_SIZE = 8
 DEFAULT_LOADER_WORKERS = 4
 
-# This determines the maximum number of images that can get read from disk
-# on each of the producer workers before blocking.  The actual size of the queue
+# This determines the maximum number of image filenames that can be assigned to
+# each of the producer workers before blocking.  The actual size of the queue
 # will be MAX_IMAGE_QUEUE_SIZE_PER_WORKER * n_workers.  This is only used for
 # the classification step.
-MAX_IMAGE_QUEUE_SIZE_PER_WORKER = 10
+MAX_IMAGE_QUEUE_SIZE_PER_WORKER = 30
 
 # This determines the maximum number of crops that can accumulate in the queue
 # used to communicate between the producers (which read and crop images) and the
 # consumer (which runs the classifier).  This is only used for the classification step.
 MAX_BATCH_QUEUE_SIZE = 300
 
+# Default interval between frames we should process when processing video.
+# This is only used for the detection step.
 DEAFULT_SECONDS_PER_VIDEO_FRAME = 1.0
 
 # Max number of classification scores to include per detection
@@ -168,6 +170,12 @@ def _process_image_detections(file_path: str,
 
     detections = detection_results['detections']
 
+    # Don't bother loading images that have no above-threshold detections
+    detections_above_threshold = \
+        [d for d in detections if d['conf'] >= detection_confidence_threshold]
+    if len(detections_above_threshold) == 0:
+        return
+
     # Load the image
     try:
         image = vis_utils.load_image(absolute_file_path)
@@ -189,6 +197,11 @@ def _process_image_detections(file_path: str,
         return
 
     # Process each detection above threshold
+    #
+    # detection_index needs to index into the original list of detections
+    # (this is how classification results will be associated with detections
+    # later), so iterate over "detections" here, rather than
+    # "detections_above_threshold".
     for detection_index, detection in enumerate(detections):
 
         conf = detection['conf']
@@ -1146,7 +1159,7 @@ def _run_classification_step(detector_results_file: str,
 
                     # Add classifications to the detection
                     detection['classifications'] = classification_pairs
-                    detection['raw_classifications'] = raw_classification_pairs
+                    # detection['raw_classifications'] = raw_classification_pairs
 
                 # ...if this classification contains a failure
 
