@@ -743,6 +743,7 @@ def read_exif_from_folder(input_folder,
         list: list of dicts, each of which contains EXIF information for one images.  Fields include at least:
             * 'file_name': the relative path to the image
             * 'exif_tags': a dict of EXIF tags whose exact format depends on [options.processing_library].
+            * 'status' and 'error': only populated when reading EXIF information for an image fails
     """
 
     if options is None:

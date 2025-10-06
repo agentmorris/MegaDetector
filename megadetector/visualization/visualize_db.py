@@ -196,7 +196,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         assert(os.path.isfile(db_path))
         print('Loading database from {}...'.format(db_path))
         image_db = json.load(open(db_path))
-        print('...done')
+        print('...done, loaded {} images'.format(len(image_db['images'])))
     elif isinstance(db_path,dict):
         print('Using previously-loaded DB')
         image_db = db_path

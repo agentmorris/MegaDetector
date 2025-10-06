@@ -355,7 +355,9 @@ def parse_datetimes_from_cct_image_list(images,
 
     assert isinstance(images,list)
 
-    for im in images:
+    print('Parsing datetimes from CCT image list...')
+
+    for im in tqdm(images):
 
         if 'datetime' not in im:
             continue
@@ -445,6 +447,7 @@ def create_sequences(image_info,options=None):
         to_return = image_info
 
     elif isinstance(image_info,str):
+        print('Reading image information from {}'.format(image_info))
         with open(image_info,'r') as f:
             d = json.load(f)
             to_return = d
