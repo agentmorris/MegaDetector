@@ -1159,7 +1159,7 @@ def _run_classification_step(detector_results_file: str,
 
                     # Add classifications to the detection
                     detection['classifications'] = classification_pairs
-                    detection['raw_classifications'] = raw_classification_pairs
+                    # detection['raw_classifications'] = raw_classification_pairs
 
                 # ...if this classification contains a failure
 
