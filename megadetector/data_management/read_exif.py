@@ -339,30 +339,67 @@ def _filter_tags(tags,options):
     dict.
     """
 
+    ## No-op cases
+
     if options is None:
         return tags
-    if options.tags_to_include is None and options.tags_to_exclude is None:
+
+    if (options.tags_to_include is None) and (options.tags_to_exclude is None):
         return tags
+
+    ## If we're including specific tags
+
     if options.tags_to_include is not None:
-        if isinstance(options.tags_to_include,str):
-            if options.tags_to_include == 'all':
+
+        assert options.tags_to_exclude is None, \
+            "tags_to_include and tags_to_exclude are incompatible"
+
+        tags_to_include = options.tags_to_include
+
+        if isinstance(tags_to_include,str):
+
+            # Special case:return all tags
+            if tags_to_include == 'all':
                 return tags
-        assert options.tags_to_exclude is None, "tags_to_include and tags_to_exclude are incompatible"
-        tags_to_include = options.tags_to_include.split(',')
+
+            # Otherwise convert string to list
+            tags_to_include = tags_to_include.split(',')
+
         # Case-insensitive matching
-        tags_to_include = [s.lower() for s in tags_to_include]
+        tags_to_include = [s.lower().strip() for s in tags_to_include]
+
         tags_to_return = {}
+
         for tag_name in tags.keys():
-            if str(tag_name).lower() in tags_to_include:
+            if str(tag_name).strip().lower() in tags_to_include:
                 tags_to_return[tag_name] = tags[tag_name]
+
         return tags_to_return
+
+    ## If we're excluding specific tags
+
     if options.tags_to_exclude is not None:
-        assert options.tags_to_include is None, "tags_to_include and tags_to_exclude are incompatible"
+
+        assert options.tags_to_include is None, \
+            "tags_to_include and tags_to_exclude are incompatible"
+
+        tags_to_exclude = options.tags_to_exclude
+
+        # Convert string to list
+        if isinstance(tags_to_exclude,str):
+            tags_to_exclude = tags_to_exclude.split(',')
+
+        # Case-insensitive matching
+        tags_to_exclude = [s.lower().strip() for s in tags_to_exclude]
+
         tags_to_return = {}
         for tag_name in tags.keys():
-            if tag_name not in options.tags_to_exclude:
+            if str(tag_name).strip().lower() not in options.tags_to_exclude:
                 tags_to_return[tag_name] = tags[tag_name]
+
         return tags_to_return
+
+# ...def _filter_tags(...)
 
 
 def read_exif_tags_for_image(file_path,options=None):
@@ -394,8 +431,10 @@ def read_exif_tags_for_image(file_path,options=None):
 
         except Exception as e:
             if options.verbose:
-                print('Read failure for image {}: {}'.format(
+                print('PIL EXIF read failure for image {}: {}'.format(
                     file_path,str(e)))
+                import traceback
+                traceback.print_exc()
             result['status'] = 'read_failure'
             result['error'] = str(e)
 

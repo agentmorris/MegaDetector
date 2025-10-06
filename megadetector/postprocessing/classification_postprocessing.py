@@ -1168,7 +1168,7 @@ def restrict_to_taxa_list(taxa_list,
     # Convert all NaN values in the "common" column to empty strings
     taxa_list_df['common'] = taxa_list_df['common'].fillna('')
 
-    # Create a dictionary mapping latin names to common names
+    # Create a dictionary mapping source Latin names to target common names
     target_latin_to_common = {}
 
     for i_row,row in taxa_list_df.iterrows():
@@ -1332,7 +1332,7 @@ def restrict_to_taxa_list(taxa_list,
         _insert_taxonomy_string(new_taxon_string)
 
 
-    ##%% Make sure all species on the allow-list are in the taxonomy
+    ##%% Make sure all taxa on the allow-list are in the taxonomy
 
     n_failed_mappings = 0
 
