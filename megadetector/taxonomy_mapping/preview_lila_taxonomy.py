@@ -16,7 +16,7 @@ import os
 import pandas as pd
 
 # lila_taxonomy_file = r"c:\git\agentmorrisprivate\lila-taxonomy\lila-taxonomy-mapping.csv"
-lila_taxonomy_file = os.path.expanduser('~/lila/lila_additions_2025.06.23.csv')
+lila_taxonomy_file = os.path.expanduser('~/lila/lila_additions_2025.10.07.csv')
 
 preview_base = os.path.expanduser('~/lila/lila_taxonomy_preview')
 os.makedirs(preview_base,exist_ok=True)
@@ -56,11 +56,6 @@ def taxonomy_string_to_level(taxonomy_string):
     return level
 
 
-#%% Read the taxonomy mapping file
-
-df = pd.read_csv(lila_taxonomy_file)
-
-
 #%% Prepare taxonomy lookup
 
 from megadetector.taxonomy_mapping.species_lookup import \
@@ -95,20 +90,29 @@ taxonomy_preference = 'inat'
 # i_row = 0; row = df.iloc[i_row]
 for i_row,row in tqdm(df.iterrows(),total=len(df)):
 
-    sn = row['scientific_name']
-    if not isinstance(sn,str):
-        continue
+    try:
 
-    m = get_preferred_taxonomic_match(sn,taxonomy_preference)
-    assert m.scientific_name == sn
+        sn = row['scientific_name']
+        if not isinstance(sn,str):
+            continue
 
-    ts = row['taxonomy_string']
-    assert m.taxonomy_string[0:50] == ts[0:50], 'Mismatch for {}:\n\n{}\n\n{}\n'.format(
-        row['dataset_name'],ts,m.taxonomy_string)
+        m = get_preferred_taxonomic_match(sn,taxonomy_preference)
+        assert m.scientific_name == sn
 
-    if ts != m.taxonomy_string:
-        n_taxonomy_changes += 1
-        df.loc[i_row,'taxonomy_string'] = m.taxonomy_string
+        ts = row['taxonomy_string']
+        assert m.taxonomy_string[0:50] == ts[0:50], 'Mismatch for {}:\n\n{}\n\n{}\n'.format(
+            row['dataset_name'],ts,m.taxonomy_string)
+
+        if ts != m.taxonomy_string:
+            n_taxonomy_changes += 1
+            df.loc[i_row,'taxonomy_string'] = m.taxonomy_string
+
+    except Exception as e:
+
+        print('Error at row {}: {}'.format(i_row,str(e)))
+        raise
+
+# ...for each row
 
 print('\nMade {} taxonomy changes'.format(n_taxonomy_changes))
 
@@ -324,6 +328,11 @@ for i_row,row in df.iterrows():
 
 
 #%% Download sample images for all scientific names
+
+# You might have to do this:
+#
+# pip install python-magic
+# pip install python-magic-bin
 
 # Takes ~1 minute per 10 rows
 

@@ -355,7 +355,7 @@ print('\nProcessed {} datasets'.format(len(metadata_table)))
 
 #%% Read the .csv back
 
-df = pd.read_csv(output_file)
+df = pd.read_csv(output_file, low_memory=False)
 print('Read {} rows from {}'.format(len(df),output_file))
 
 
@@ -425,6 +425,8 @@ os.makedirs(preview_folder,exist_ok=True)
 
 
 #%% Choose images to download
+
+# Takes ~60 seconds
 
 np.random.seed(0)
 images_to_download = []
@@ -533,7 +535,7 @@ zipped_output_file = zip_file(output_file,verbose=True,overwrite=True)
 print('Zipped {} to {}'.format(output_file,zipped_output_file))
 
 
-#%% Convert to .json
+#%% Experimental: convert to .json
 
 """
 The .csv file "output_file" (already loaded into the variable "df" at this point) has the following columns:

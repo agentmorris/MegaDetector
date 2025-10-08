@@ -162,4 +162,3 @@ for i_url,url in enumerate(urls_to_test):
             status_codes[i_url],url,url_to_source[url]))
 
 print('Tested {} URLs'.format(len(urls_to_test)))
-

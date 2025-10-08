@@ -560,6 +560,7 @@ def get_taxonomic_info(query: str) -> List[Dict[str, Any]]:
     Main entry point: get taxonomic matches from both taxonomies for [query],
     which may be a scientific or common name.
     """
+
     query = query.strip().lower()
     # print("Finding taxonomy information for: {0}".format(query))
 
@@ -682,6 +683,35 @@ hyphenated_terms = ['crowned', 'backed', 'throated', 'tailed', 'headed', 'cheeke
                     'fronted', 'bellied', 'spotted', 'eared', 'collared', 'breasted',
                     'necked']
 
+def pop_levels(m, n_levels=1):
+    """
+    Remove [n_levels] levels from the bottom of the TaxonomicMatch object m, typically used to remove
+    silly subgenera.
+    """
+
+    v = eval(m.taxonomy_string)
+    assert v[0][1] == m.taxonomic_level
+    assert v[0][2] == m.scientific_name
+    popped_v = v[n_levels:]
+    taxonomic_level = popped_v[0][1]
+    scientific_name = popped_v[0][2]
+    common_name = popped_v[0][3]
+    if len(common_name) == 0:
+        common_name = ''
+    else:
+        common_name = common_name[0]
+    taxonomy_string = str(popped_v)
+    source = m.source
+    return TaxonomicMatch(scientific_name=scientific_name,
+                          common_name=common_name,
+                          taxonomic_level=taxonomic_level,
+                          source=source,
+                          taxonomy_string=taxonomy_string,
+                          match=None)
+
+# ...def pop_levels(...)
+
+
 def get_preferred_taxonomic_match(query: str, taxonomy_preference = 'inat', retry=True) -> TaxonomicMatch:
     """
     Wrapper for _get_preferred_taxonomic_match, but expressing a variety of heuristics
@@ -704,6 +734,17 @@ def get_preferred_taxonomic_match(query: str, taxonomy_preference = 'inat', retr
     for s in hyphenated_terms:
         query = query.replace(' ' + s,'-' + s)
     m,query = _get_preferred_taxonomic_match(query=query,taxonomy_preference=taxonomy_preference)
+
+    if (len(m.scientific_name) > 0) or (not retry):
+        return m
+
+    query = query.replace(' species','')
+    query = query.replace(' order','')
+    query = query.replace(' genus','')
+    query = query.replace(' family','')
+    query = query.replace(' subfamily','')
+    m,query = _get_preferred_taxonomic_match(query=query,taxonomy_preference=taxonomy_preference)
+
     return m
 
 
@@ -887,8 +928,16 @@ def _get_preferred_taxonomic_match(query: str, taxonomy_preference = 'inat') -> 
 
     taxonomy_string = str(match)
 
-    return TaxonomicMatch(scientific_name, common_name, taxonomic_level, source,
-                          taxonomy_string, match),query
+    m = TaxonomicMatch(scientific_name, common_name, taxonomic_level, source,
+                        taxonomy_string, match)
+
+    if (m.taxonomic_level == 'subgenus' and \
+        match[1][1] == 'genus' and \
+        match[1][2] == m.scientific_name):
+        print('Removing redundant subgenus {}'.format(scientific_name))
+        m = pop_levels(m,1)
+
+    return m,query
 
 # ...def _get_preferred_taxonomic_match()
 

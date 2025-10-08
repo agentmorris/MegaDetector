@@ -15,10 +15,10 @@ import json
 # Created by get_lila_category_list.py
 input_lila_category_list_file = os.path.expanduser('~/lila/lila_categories_list/lila_dataset_to_categories.json')
 
-output_file = os.path.expanduser('~/lila/lila_additions_2025.06.23.csv')
+output_file = os.path.expanduser('~/lila/lila_additions_2025.10.07.csv')
 
 datasets_to_map = [
-    'Nkhotakota Camera Traps'
+    'California Small Animals'
     ]
 
 
@@ -128,6 +128,52 @@ output_df.to_csv(output_file, index=None, header=True)
 # from megadetector.utils.path_utils import open_file; open_file(output_file)
 
 
+#%% Remap missing entries in the .csv file
+
+# ...typically because I made a change to the mapping code.
+
+from megadetector.utils.path_utils import insert_before_extension
+from megadetector.utils.ct_utils import is_empty
+
+remapped_file = insert_before_extension(output_file,'remapped')
+
+df = pd.read_csv(output_file)
+
+for i_row,row in df.iterrows():
+
+    # Do we need to map this row?
+    if is_empty(row['source']):
+
+        query = row['query']
+        print('Mapping {}'.format(query))
+
+        taxonomic_match = get_preferred_taxonomic_match(query,taxonomy_preference=taxonomy_preference)
+
+        if (taxonomic_match.source == taxonomy_preference):
+
+            source = taxonomic_match.source
+            taxonomy_level = taxonomic_match.taxonomic_level
+            scientific_name = taxonomic_match.scientific_name
+            common_name  = taxonomic_match.common_name
+            taxonomy_string = taxonomic_match.taxonomy_string
+
+            # Write source, taxonomy_level, scientific_name, common_name, and taxonomy_string
+            # to the corresponding columns in the current row in df
+            df.loc[i_row, 'source'] = source
+            df.loc[i_row, 'taxonomy_level'] = taxonomy_level
+            df.loc[i_row, 'scientific_name'] = scientific_name
+            df.loc[i_row, 'common_name'] = common_name
+            df.loc[i_row, 'taxonomy_string'] = taxonomy_string
+
+        # ...if we found a match
+
+    # ...do we need to map this row?
+
+# ...for each row
+
+df.to_csv(remapped_file, index=None, header=True)
+
+
 #%% Manual lookup
 
 if False:
@@ -140,11 +186,19 @@ if False:
 
     #%%
 
-    q = 'animalia'
+    from megadetector.taxonomy_mapping.species_lookup import pop_levels
+
+    # Use this when an iNat match includes an empty subgenus with the same name as the genus
+    n_levels_to_pop = 0
+    q = 'sus scrofa'
 
     taxonomy_preference = 'inat'
     m = get_preferred_taxonomic_match(q,taxonomy_preference)
+    if n_levels_to_pop > 0:
+        m = pop_levels(m,n_levels_to_pop)
+
     # print(m.scientific_name); import clipboard; clipboard.copy(m.scientific_name)
+    # common_name = eval(m.__dict__['taxonomy_string'])[0][-1][0]; print(common_name); clipboard.copy(common_name)
 
     if (m is None) or (len(m.taxonomy_string) == 0):
         print('No match')
@@ -155,3 +209,5 @@ if False:
         print(m.source)
         print(m.taxonomy_string)
         import clipboard; clipboard.copy(m.taxonomy_string)
+
+
