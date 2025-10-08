@@ -16,6 +16,7 @@ import random
 from megadetector.data_management.lila.lila_common import \
     read_lila_metadata, read_metadata_file_for_dataset
 from megadetector.utils.url_utils import parallel_download_urls
+from megadetector.utils.path_utils import open_file
 
 n_empty_images_per_dataset = 1
 n_non_empty_images_per_dataset = 1
@@ -183,5 +184,4 @@ for r in download_results:
 
 #%% Open the test test
 
-from megadetector.utils.path_utils import open_file
 open_file(output_dir)
