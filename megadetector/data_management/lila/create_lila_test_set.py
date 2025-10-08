@@ -50,6 +50,8 @@ for ds_name in metadata_table.keys():
 
 # Takes ~60 seconds
 
+empty_category_names = ['empty','blank']
+
 # ds_name = (list(metadata_table.keys()))[0]
 for ds_name in metadata_table.keys():
 
@@ -65,10 +67,22 @@ for ds_name in metadata_table.keys():
 
     ## Find empty images
 
-    if 'empty' not in category_name_to_id:
+    empty_category_present = False
+    for category_name in category_name_to_id:
+        if category_name in empty_category_names:
+            empty_category_present = True
+            break
+    if not empty_category_present:
         empty_annotations_to_download = []
     else:
-        empty_category_id = category_name_to_id['empty']
+        empty_category_id = None
+        for category_name in empty_category_names:
+            if category_name in category_name_to_id:
+                if empty_category_id is not None:
+                    print('Warning: multiple empty categories in dataset {}'.format(ds_name))
+                else:
+                    empty_category_id = category_name_to_id[category_name]
+        assert empty_category_id is not None
         empty_annotations = [ann for ann in d['annotations'] if ann['category_id'] == empty_category_id]
         try:
             empty_annotations_to_download = random.sample(empty_annotations,n_empty_images_per_dataset)
@@ -165,3 +179,9 @@ download_results = parallel_download_urls(url_to_target_file,
 # r = download_results[0]
 for r in download_results:
    assert r['status'] in ('skipped','success')
+
+
+#%% Open the test test
+
+from megadetector.utils.path_utils import open_file
+open_file(output_dir)
