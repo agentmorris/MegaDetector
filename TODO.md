@@ -7,7 +7,7 @@ This file documents open work items.  Each level-2 heading is a work item.  Ever
 * An effort level designated as E[N].  Effort ranges from 0 to 4, 4 being the most effort
 * At least one tag, indicated as !tag-name.  
 
-Tags can be arbitrary strings, but the most common tags are !feature, !maintenance, !bug, !docs, and !admin.  !admin basically means "this involves a decision by the repo maintainer(s), it's not really a work item".
+Tags can be arbitrary strings, but the most common tags are !feature, !maintenance, !bug, !docs, !lila, and !admin.  !admin basically means "this involves a decision by the repo maintainer(s), it's not really a work item".
 
 Special tags include:
 
@@ -97,6 +97,21 @@ P2
 E0
 
 !maintenance
+
+
+## Taxonomy mapping error
+
+Running this (during the taxonomy mapping process):
+
+`python -m megadetector.taxonomy_mapping.taxonomy_csv_checker lila-taxonomy/lila-taxonomy-mapping.csv`
+
+...currently returns two errors about ambiguous parents.  Figure out why.
+
+P3
+
+E2
+
+!lila
 
 
 ## Better handling of long filenames in manage_local_batch
