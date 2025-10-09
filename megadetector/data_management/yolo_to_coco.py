@@ -23,6 +23,7 @@ from megadetector.utils.path_utils import find_images
 from megadetector.utils.path_utils import recursive_file_list
 from megadetector.utils.path_utils import find_image_strings
 from megadetector.utils.ct_utils import invert_dictionary
+from megadetector.utils.ct_utils import write_json
 from megadetector.visualization.visualization_utils import open_image
 from megadetector.data_management.yolo_output_to_md_output import \
     read_classes_from_yolo_dataset_file
@@ -674,8 +675,7 @@ def yolo_to_coco(input_folder,
 
     if output_file is not None:
         print('Writing to {}'.format(output_file))
-        with open(output_file,'w') as f:
-            json.dump(d,f,indent=1)
+        write_json(output_file,d)
 
     return d
 
