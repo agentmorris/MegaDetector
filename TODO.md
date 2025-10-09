@@ -652,7 +652,7 @@ E2
 
 ## Explore compiled PyTorch
 
-[torch.compile](https://pytorch.org/tutorials/intermediate/torch_compile_tutorial.html) was introduced in 2023, but I haven't evaluated it for MegaDetector (or SpeciesNet).  Evaluate it.
+[torch.compile](https://pytorch.org/tutorials/intermediate/torch_compile_tutorial.html) was introduced in 2023, but I haven't evaluated it for MegaDetector (or SpeciesNet).  Evaluate it for both MegaDetector and SpeciesNet.
 
 P2
 
