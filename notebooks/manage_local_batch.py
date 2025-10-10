@@ -480,9 +480,7 @@ else:
     all_images = [fn for fn in all_images if not \
                   (fn.startswith('$RECYCLE') or fn.startswith('System Volume Information'))]
 
-    print('')
-
-    print('Enumerated {} image files in {}'.format(len(all_images),input_path))
+    print('\nEnumerated {} image files in {}'.format(len(all_images),input_path))
 
 
 #%% Divide images into chunks
