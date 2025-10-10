@@ -418,6 +418,7 @@ if custom_taxa_list is not None:
     assert custom_taxa_stage in ('before_smoothing','after_smoothing')
 
     if taxonomy_file is None:
+
         local_taxonomy_file = os.path.join(filename_base,'taxonomy_release.txt')
         if os.path.isfile(local_taxonomy_file):
             print('Found previously-downloaded taxonomy file at {}'.format(local_taxonomy_file))
