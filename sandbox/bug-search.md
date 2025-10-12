@@ -17,6 +17,7 @@
   - Division by zero possibilities
   - Other obvious issues that might have escaped testing
 - **Important**: Do NOT flag assertions as bugs. Assertions represent intentional assumptions and constraints. If the code asserts something (e.g., `assert len(fields) == 7`), the author is deliberately imposing that limitation and is aware of the consequences.
+- **Important**: Do NOT flag issues in code within `if False:` blocks. These are interactive driver sections that are intentionally disabled and not meant to execute.
 
 **Process**:
 1. Ask user if they want to review the next unchecked file
@@ -84,18 +85,18 @@
 - [x] megadetector/data_management/generate_crops_from_cct.py
 - [x] megadetector/data_management/get_image_sizes.py
 - [x] megadetector/data_management/labelme_to_coco.py
-- [ ] megadetector/data_management/labelme_to_yolo.py
-- [ ] megadetector/data_management/mewc_to_md.py
-- [ ] megadetector/data_management/ocr_tools.py
-- [ ] megadetector/data_management/read_exif.py
-- [ ] megadetector/data_management/remap_coco_categories.py
-- [ ] megadetector/data_management/remove_exif.py
-- [ ] megadetector/data_management/rename_images.py
-- [ ] megadetector/data_management/resize_coco_dataset.py
-- [ ] megadetector/data_management/speciesnet_to_md.py
-- [ ] megadetector/data_management/wi_download_csv_to_coco.py
-- [ ] megadetector/data_management/yolo_output_to_md_output.py
-- [ ] megadetector/data_management/yolo_to_coco.py
+- [x] megadetector/data_management/labelme_to_yolo.py
+- [x] megadetector/data_management/mewc_to_md.py
+- [x] megadetector/data_management/ocr_tools.py
+- [x] megadetector/data_management/read_exif.py
+- [x] megadetector/data_management/remap_coco_categories.py
+- [x] megadetector/data_management/remove_exif.py
+- [x] megadetector/data_management/rename_images.py
+- [x] megadetector/data_management/resize_coco_dataset.py
+- [x] megadetector/data_management/speciesnet_to_md.py
+- [x] megadetector/data_management/wi_download_csv_to_coco.py
+- [x] megadetector/data_management/yolo_output_to_md_output.py
+- [x] megadetector/data_management/yolo_to_coco.py
 - [ ] megadetector/data_management/zamba_to_md.py
 
 ### data_management/annotations
@@ -256,3 +257,62 @@
 - **FIXED** (by user): Line 426 - Function parameter `recursive` was being ignored; always passed `recursive=True` to find_images(). Now properly uses the parameter value.
 - **FIXED** (by user): Lines 355-358 - Added None check before calling pool.close() and pool.join() in finally block to prevent AttributeError if pool creation fails
 - **FIXED** (by user): Line 503 - Typo "sortec_categories" corrected to "sorted_categories" in interactive driver
+
+### megadetector/data_management/labelme_to_yolo.py
+- **FIXED** (by user): Lines 255-258 - Added None check before calling pool.close() and pool.join() in finally block to prevent AttributeError if pool creation fails
+- **FIXED**: Lines 110-124 - Division by zero when im_width or im_height is 1. Added separate checks for 1-pixel-wide and 1-pixel-tall images; sets corresponding relative coordinates to 0.0 in each case.
+- **FIXED** (by user): Removed interactive driver section (if False block) that had incorrect variable assignment
+
+### megadetector/data_management/mewc_to_md.py
+- Line 156: Unhandled ValueError if snip_id token cannot be converted to int
+- Line 143: Unused variable (ext) with # noqa comment
+- Lines 80, 274: Unnecessary del statements for variables going out of scope
+- User chose not to fix these issues
+
+### megadetector/data_management/ocr_tools.py
+- **FIXED** (by user): Lines 269-277 - Duplicate code block removed (same x/y/w/h assignments repeated twice)
+- **FIXED** (by user): Lines 652-656 - Added None check before calling pool.close() and pool.join() in finally block to prevent AttributeError if pool creation fails
+- Lines 730-732: Unreachable code after raise Exception in if False block (ignored per review guidelines)
+
+### megadetector/data_management/read_exif.py
+- **FIXED** (by user): Line 397 - Wrong variable used in filter; was checking against `options.tags_to_exclude` instead of the lowercase-normalized `tags_to_exclude` list, breaking case-insensitive matching
+- **FIXED** (by user): Lines 637-640 - Added None check before calling pool.close() and pool.join() in finally block to prevent AttributeError if pool creation fails
+- **FIXED** (by user): Line 780 - Wrong library name check; was checking for 'exif' instead of 'exiftool', so exiftool availability was never validated
+
+### megadetector/data_management/remap_coco_categories.py
+- **FIXED** (by user): Line 129 - Wrong return value; was returning `input_data` instead of `output_data` (though they pointed to the same object, this was confusing and likely a copy-paste error)
+- Line 78: Missing KeyError handling if input_category_name_to_output_category_name contains a category name not in the input COCO data
+- User chose not to fix remaining issue
+
+### megadetector/data_management/remove_exif.py
+- **FIXED** (by user): Lines 80-84 - Missing slash in glob pattern; user switched from problematic `glob.glob(image_base_folder + "*/**")` to `recursive_file_list()` for proper file enumeration
+- **FIXED** (by user): Lines 101-108 - Added None check before calling pool.close() and pool.join() in finally block to prevent AttributeError if pool creation fails
+- Line 71: Bare except clause catches all exceptions including system exits (ignored per user request)
+
+### megadetector/data_management/rename_images.py
+- **FIXED** (by user): Lines 31-32 - Incorrect docstring copy-pasted from another function; described COCO/labelme format conversion instead of image renaming. Now correctly describes the image copying/renaming functionality.
+- **FIXED** (by user): Line 59 - Duplicate 'DateTime' tag in tags_to_include list (appeared twice); removed duplicate
+- **FIXED** (by user): Lines 113-117 - Critical bug where parallel_copy_files() was called inside the for loop, running once per image with a single-file dict each time, completely defeating parallelization. Dedented to run after loop builds complete dictionary.
+
+### megadetector/data_management/resize_coco_dataset.py
+- **FIXED** (by user): Lines 239, 260-263 - Added None check and initialization before calling pool.close() and pool.join() in finally block to prevent AttributeError if pool creation fails
+- **FIXED**: Lines 68-71 - Directory creation could fail for flat datasets where output_fn_abs has no directory component (os.path.dirname returns empty string). Added length check before makedirs call.
+- Lines 127-128: Division by zero if input image has zero width or height (ignored per user request)
+
+### megadetector/data_management/speciesnet_to_md.py
+- No bugs found. Simple command-line wrapper with correct function call.
+
+### megadetector/data_management/wi_download_csv_to_coco.py
+- Line 126: Missing NaN check for common_name before string operations (ignored per user request)
+
+### megadetector/data_management/yolo_output_to_md_output.py
+- **FIXED** (by user): Line 190 - Typo "Duplication image IDs" corrected to "Duplicate image IDs"
+- Line 405: IndexError if user forgot to use --save-conf with YOLO (row only has 5 elements, not 6) (ignored per user request)
+- Line 401: KeyError if YOLO output contains category IDs outside hardcoded map {0:1, 1:2, 2:3} (ignored per user request)
+- Lines 297-300: Division by zero if image has zero width or height (ignored per user request)
+
+### megadetector/data_management/yolo_to_coco.py
+- **FIXED** (by user): Lines 202, 217-220 - Added None check and initialization before calling pool.close() and pool.join() in validate_yolo_dataset's finally block
+- **FIXED**: Lines 597, 612-616 - Added try/finally block with None check for pool cleanup in yolo_to_coco function's parallel processing section
+- **FIXED** (by user): Line 301 - Added isinstance check to avoid TypeError when class_name_file is a list
+- **FIXED** (by user): Lines 179-195 - Fixed blank line validation by stripping lines immediately after reading; eliminated redundant class_names variable
