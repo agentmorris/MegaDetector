@@ -292,7 +292,8 @@ def labelme_to_coco(input_folder,
 
     # Enumerate images
     print('Enumerating images in {}'.format(input_folder))
-    image_filenames_relative = path_utils.find_images(input_folder,recursive=recursive,
+    image_filenames_relative = path_utils.find_images(input_folder,
+                                                      recursive=recursive,
                                                       return_relative_paths=True,
                                                       convert_slashes=True)
 
@@ -352,9 +353,10 @@ def labelme_to_coco(input_folder,
                     allow_new_categories=False
                     ),image_filenames_relative), total=len(image_filenames_relative)))
         finally:
-            pool.close()
-            pool.join()
-            print("Pool closed and joined for labelme file processing")
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print("Pool closed and joined for labelme file processing")
 
     images = []
     annotations = []
@@ -423,7 +425,9 @@ def find_empty_labelme_files(input_folder,recursive=True):
             - images_with_non_empty_json_files: a list of images in [input_folder] associated with .json
               files that have at least one box
     """
-    image_filenames_relative = path_utils.find_images(input_folder,recursive=True,
+
+    image_filenames_relative = path_utils.find_images(input_folder,
+                                                      recursive=recursive,
                                                       return_relative_paths=True)
 
     images_with_empty_json_files = []
@@ -500,7 +504,7 @@ if False:
     options.bFindUnusedImages = True
     options.bRequireLocation = False
 
-    sortec_categories, _, error_info = integrity_check_json_db.integrity_check_json_db(output_file,options)
+    sorted_categories, _, error_info = integrity_check_json_db.integrity_check_json_db(output_file,options)
 
 
     #%% Preview

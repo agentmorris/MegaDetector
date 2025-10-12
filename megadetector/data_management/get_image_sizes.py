@@ -75,7 +75,7 @@ def get_image_sizes(filenames,image_prefix=None,output_file=None,
         image_prefix (str, optional): optional prefix to add to images to get to full paths;
             useful when [filenames] contains relative files, in which case [image_prefix] is the
             base folder for the source images.
-        output_file (str, optional): a .json file to write the imgae sizes
+        output_file (str, optional): a .json file to write the image sizes
         n_workers (int, optional): number of parallel workers to use, set to <=1 to
             disable parallelization
         use_threads (bool, optional): whether to use threads (True) or processes (False)
@@ -88,8 +88,10 @@ def get_image_sizes(filenames,image_prefix=None,output_file=None,
     """
 
     if output_file is not None:
-        assert os.path.isdir(os.path.dirname(output_file)), \
-            'Illegal output file {}, parent folder does not exist'.format(output_file)
+        output_dir = os.path.dirname(output_file)
+        if len(output_dir) > 0:
+            assert os.path.isdir(output_dir), \
+                'Illegal output file {}, parent folder does not exist'.format(output_file)
 
     if isinstance(filenames,str) and os.path.isfile(filenames):
         with open(filenames,'r') as f:
@@ -128,38 +130,6 @@ def get_image_sizes(filenames,image_prefix=None,output_file=None,
             json.dump(all_results,f,indent=1)
 
     return all_results
-
-
-#%% Interactive driver
-
-if False:
-
-    pass
-
-    #%%
-
-    # List images in a test folder
-    base_dir = r'c:\temp\test_images'
-    image_list_file = os.path.join(base_dir,'images.json')
-    relative_image_list_file = os.path.join(base_dir,'images_relative.json')
-    image_size_file = os.path.join(base_dir,'image_sizes.json')
-    from megadetector.utils import path_utils
-    image_names = path_utils.find_images(base_dir,recursive=True)
-
-    with open(image_list_file,'w') as f:
-        json.dump(image_names,f,indent=1)
-
-    relative_image_names = []
-    for s in image_names:
-        relative_image_names.append(os.path.relpath(s,base_dir))
-
-    with open(relative_image_list_file,'w') as f:
-        json.dump(relative_image_names,f,indent=1)
-
-
-    #%%
-
-    get_image_sizes(relative_image_list_file,image_size_file,image_prefix=base_dir,n_threads=4)
 
 
 #%% Command-line driver
