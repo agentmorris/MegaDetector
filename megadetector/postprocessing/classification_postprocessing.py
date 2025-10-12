@@ -919,6 +919,9 @@ def smooth_classification_results_image_level(input_file,output_file=None,option
 
     if output_file is not None:
         print('Writing results after image-level smoothing to:\n{}'.format(output_file))
+        output_dir = os.path.dirname(output_file)
+        if len(output_dir) > 0:
+            os.makedirs(output_dir, exist_ok=True)
         with open(output_file,'w') as f:
             json.dump(d,f,indent=1)
 
@@ -1093,6 +1096,9 @@ def smooth_classification_results_sequence_level(input_file,
     if output_file is not None:
         print('Writing sequence-smoothed classification results to {}'.format(
             output_file))
+        output_dir = os.path.dirname(output_file)
+        if len(output_dir) > 0:
+            os.makedirs(output_dir, exist_ok=True)
         with open(output_file,'w') as f:
             json.dump(d,f,indent=1)
 
@@ -1682,6 +1688,9 @@ def restrict_to_taxa_list(taxa_list,
 
     ##%% Write output
 
+    output_dir = os.path.dirname(output_file)
+    if len(output_dir) > 0:
+        os.makedirs(output_dir, exist_ok=True)
     with open(output_file,'w') as f:
         json.dump(output_data,f,indent=1)
 

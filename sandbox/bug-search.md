@@ -134,9 +134,9 @@
 ### postprocessing
 - [x] megadetector/postprocessing/add_max_conf.py
 - [x] megadetector/postprocessing/categorize_detections_by_size.py
-- [ ] megadetector/postprocessing/classification_postprocessing.py
-- [ ] megadetector/postprocessing/combine_batch_outputs.py
-- [ ] megadetector/postprocessing/compare_batch_results.py
+- [x] megadetector/postprocessing/classification_postprocessing.py
+- [x] megadetector/postprocessing/combine_batch_outputs.py
+- [x] megadetector/postprocessing/compare_batch_results.py
 - [ ] megadetector/postprocessing/convert_output_format.py
 - [ ] megadetector/postprocessing/create_crop_folder.py
 - [ ] megadetector/postprocessing/detector_calibration.py
@@ -399,3 +399,20 @@
 - **FIXED**: Lines 160-163 - Directory creation could fail if output directory doesn't exist. Added check for output directory and creation with makedirs before writing output file.
 - Line 80: max() of empty sequence if category_keys is empty (ignored per user request).
 - Line 106: Potential KeyError if malformed data has None detections without a failure key (ignored per user request).
+
+### megadetector/postprocessing/classification_postprocessing.py
+- **FIXED** (by user): Line 451 - Wrong variable used in debug print; was using `classification_descriptions[c[1]]` instead of `most_common_category` variable that was already defined.
+- **FIXED** (by user): Line 423 - Debug code `from IPython import embed; embed()` left in production code; user commented it out.
+- **FIXED**: Lines 922-924, 1099-1101, 1691-1693 - Missing directory creation for three output files. Added `import os` at line 16, then added checks for output directory existence before writing files in smooth_classification_results_image_level(), smooth_classification_results_sequence_level(), and restrict_to_taxa_list().
+
+### megadetector/postprocessing/combine_batch_outputs.py
+- **FIXED** (by user): Line 206-207 - Resource leak where file opened with `json.load(open(fn))` was never closed. Changed to use context manager `with open(fn,'r') as f:`.
+- **FIXED** (by user): Line 218 - Inefficient code using `detections.extend([d])` to add single element. Changed to `detections.append(d)`.
+
+### megadetector/postprocessing/compare_batch_results.py
+- **FIXED**: Lines 355-360 - Length mismatch between gt_boxes and gt_categories; gt_boxes only included annotations with bboxes, but gt_categories included ALL annotations, causing assertion failure on line 367. Changed to initialize both as empty lists and append to both only when 'bbox' is present in annotation.
+- **FIXED** (by user): Lines 477, 489 - Typos in comments: "mistakse" corrected to "mistakes".
+- **FIXED** (by user): Line 817 - Wrong variable used; was using gt_filenames (list) instead of gt_filenames_set (set) for membership check.
+- **FIXED** (by user): Lines 1680-1681 - Orphaned string literal not part of assertion; fixed with backslash continuation to make string part of assert message.
+- **FIXED** (by user): Lines 1183-1193 - Duplicate code block removed.
+- Lines 674-681: Missing None check before iterating options.category_names_to_include (default is None per line 145) - Not fixed; user wants to think about this issue.
