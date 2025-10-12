@@ -111,11 +111,11 @@ def _check_image_existence_and_size(image,options=None):
         # width, height = Image.open(file_path).size
         try:
             pil_im = open_image(file_path)
+            width,height = pil_im.size
+            pil_im.close()
         except Exception as e:
             s = 'Error opening {}: {}'.format(file_path,str(e))
             return s
-
-        width,height = pil_im.size
         if (not (width == image['width'] and height == image['height'])):
             s = 'Size mismatch for image {}: {} (reported {},{}, actual {},{})'.format(
                     image['id'], file_path, image['width'], image['height'], width, height)

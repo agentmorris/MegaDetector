@@ -97,43 +97,43 @@
 - [x] megadetector/data_management/wi_download_csv_to_coco.py
 - [x] megadetector/data_management/yolo_output_to_md_output.py
 - [x] megadetector/data_management/yolo_to_coco.py
-- [ ] megadetector/data_management/zamba_to_md.py
+- [x] megadetector/data_management/zamba_to_md.py
 
 ### data_management/annotations
-- [ ] megadetector/data_management/annotations/annotation_constants.py
+- [SKIPPED] megadetector/data_management/annotations/annotation_constants.py
 
 ### data_management/databases
-- [ ] megadetector/data_management/databases/add_width_and_height_to_db.py
-- [ ] megadetector/data_management/databases/combine_coco_camera_traps_files.py
-- [ ] megadetector/data_management/databases/integrity_check_json_db.py
-- [ ] megadetector/data_management/databases/subset_json_db.py
+- [x] megadetector/data_management/databases/add_width_and_height_to_db.py
+- [x] megadetector/data_management/databases/combine_coco_camera_traps_files.py
+- [x] megadetector/data_management/databases/integrity_check_json_db.py
+- [x] megadetector/data_management/databases/subset_json_db.py
 
 ### data_management/lila
-- [ ] megadetector/data_management/lila/create_lila_blank_set.py
-- [ ] megadetector/data_management/lila/create_lila_test_set.py
-- [ ] megadetector/data_management/lila/create_links_to_md_results_files.py
-- [ ] megadetector/data_management/lila/download_lila_subset.py
-- [ ] megadetector/data_management/lila/generate_lila_per_image_labels.py
-- [ ] megadetector/data_management/lila/get_lila_annotation_counts.py
-- [ ] megadetector/data_management/lila/get_lila_image_counts.py
-- [ ] megadetector/data_management/lila/lila_common.py
-- [ ] megadetector/data_management/lila/test_lila_metadata_urls.py
+- [SKIPPED] megadetector/data_management/lila/create_lila_blank_set.py
+- [SKIPPED] megadetector/data_management/lila/create_lila_test_set.py
+- [SKIPPED] megadetector/data_management/lila/create_links_to_md_results_files.py
+- [x] megadetector/data_management/lila/download_lila_subset.py
+- [x] megadetector/data_management/lila/generate_lila_per_image_labels.py
+- [SKIPPED] megadetector/data_management/lila/get_lila_annotation_counts.py
+- [SKIPPED] megadetector/data_management/lila/get_lila_image_counts.py
+- [x] megadetector/data_management/lila/lila_common.py
+- [SKIPPED] megadetector/data_management/lila/test_lila_metadata_urls.py
 
 ### detection
-- [ ] megadetector/detection/change_detection.py
-- [ ] megadetector/detection/process_video.py
-- [ ] megadetector/detection/pytorch_detector.py
-- [ ] megadetector/detection/run_detector.py
-- [ ] megadetector/detection/run_detector_batch.py
-- [ ] megadetector/detection/run_inference_with_yolov5_val.py
-- [ ] megadetector/detection/run_md_and_speciesnet.py
-- [ ] megadetector/detection/run_tiled_inference.py
-- [ ] megadetector/detection/tf_detector.py
-- [ ] megadetector/detection/video_utils.py
+- [x] megadetector/detection/change_detection.py
+- [x] megadetector/detection/process_video.py
+- [x] megadetector/detection/pytorch_detector.py
+- [x] megadetector/detection/run_detector.py
+- [x] megadetector/detection/run_detector_batch.py
+- [x] megadetector/detection/run_inference_with_yolov5_val.py
+- [x] megadetector/detection/run_md_and_speciesnet.py
+- [x] megadetector/detection/run_tiled_inference.py
+- [x] megadetector/detection/tf_detector.py
+- [x] megadetector/detection/video_utils.py
 
 ### postprocessing
-- [ ] megadetector/postprocessing/add_max_conf.py
-- [ ] megadetector/postprocessing/categorize_detections_by_size.py
+- [x] megadetector/postprocessing/add_max_conf.py
+- [x] megadetector/postprocessing/categorize_detections_by_size.py
 - [ ] megadetector/postprocessing/classification_postprocessing.py
 - [ ] megadetector/postprocessing/combine_batch_outputs.py
 - [ ] megadetector/postprocessing/compare_batch_results.py
@@ -316,3 +316,86 @@
 - **FIXED**: Lines 597, 612-616 - Added try/finally block with None check for pool cleanup in yolo_to_coco function's parallel processing section
 - **FIXED** (by user): Line 301 - Added isinstance check to avoid TypeError when class_name_file is a list
 - **FIXED** (by user): Lines 179-195 - Fixed blank line validation by stripping lines immediately after reading; eliminated redundant class_names variable
+
+### megadetector/data_management/zamba_to_md.py
+- Line 126: KeyError if top_k_label doesn't match extracted category names (ignored per user request)
+- After line 93: No validation that category_names is non-empty (ignored per user request)
+- Lines 123-124: No NaN handling for labels/probabilities from CSV (ignored per user request)
+
+### megadetector/data_management/databases/add_width_and_height_to_db.py
+- Line 60: PIL Image not explicitly closed, but becomes eligible for garbage collection immediately (ignored per user request)
+
+### megadetector/data_management/databases/combine_coco_camera_traps_files.py
+- **FIXED** (by user): Line 133 - TypeError when seq_id is integer; added str() cast
+- **FIXED** (by user): Line 146 - TypeError when im['id'] is integer; added str() cast
+- **FIXED** (by user): Line 155 - TypeError when ann['image_id'] is integer; added str() cast
+- **FIXED** (by user): Line 156 - TypeError when ann['id'] is integer; added str() cast
+
+### megadetector/data_management/databases/integrity_check_json_db.py
+- **FIXED**: Lines 113-115 - PIL Image not closed after getting size; added pil_im.close() call
+
+### megadetector/data_management/databases/subset_json_db.py
+- **FIXED**: Lines 154-157 - Directory creation could fail for output files in current directory (os.path.dirname returns empty string). Added length check before makedirs call.
+
+### megadetector/data_management/lila/download_lila_subset.py
+- No bugs found. Simple example script with straightforward logic.
+
+### megadetector/data_management/lila/generate_lila_per_image_labels.py
+- **FIXED** (by user): Lines 151-153 - Wasteful loop where category_id_to_name dict was recreated identically for each category (outer loop variable shadowed by comprehension). Removed pointless loop.
+- **FIXED** (by user): Line 738 - Type conversion error where int() would fail on string "3.0" from CSV. Added float() conversion first: int(float(row['frame_num'])).
+
+### megadetector/data_management/lila/lila_common.py
+- **FIXED** (by user): Line 117 - Wrong file being read; was reading from URL instead of local taxonomy_filename downloaded on line 114. Changed to read from local file.
+- **FIXED** (by user): Line 68 - force_download parameter ignored; if CSV existed, function returned without checking force_download. Added check: `if os.path.exists(wi_taxonomy_csv_path) and (not force_download)`.
+
+### megadetector/detection/change_detection.py
+- **FIXED** (by user): Line 473 - Extra quotes in print statement would print literal quote marks around error message. Removed extra quotes.
+- **FIXED**: Lines 831-832 - Division by zero if no images were processed (total_images == 0). Added check: `if total_images > 0:` before percentage calculation.
+
+### megadetector/detection/process_video.py
+- **FIXED** (by user): Line 306 - Missing space in command line construction; would concatenate with previous argument. Added leading space: `cmd += ' --detector_options {}'`.
+
+### megadetector/detection/pytorch_detector.py
+- **FIXED** (by user): Lines 114-117 - Logic error in model type preference; when `prefer_model_type_source == 'table'`, was using file metadata instead of table. Swapped: table → model_type_from_model_version, file → model_type_from_model_file_metadata.
+- **FIXED** (by user): Line 376 - Typo in error message: "is not installed, but . " → "is not installed. "
+- **FIXED** (by user): Lines 1316-1318 - Invalid use of print() in assert statement; print() returns None which would cause assert to always fail. Changed to use string message in assert.
+
+### megadetector/detection/run_detector.py
+- **FIXED**: Lines 869-873 - Incomplete zip validation; testzip() return value was not checked. Now checks if corrupt_file is not None and prints error with corrupt file name before returning False.
+- **FIXED**: Lines 761-765 - KeyError in collision handling; after modifying fn with prefix on line 764, line 765 tried to increment that prefixed key which doesn't exist in dict. Now saves original fn before modifying it.
+
+### megadetector/detection/run_detector_batch.py
+- **FIXED** (by user): Lines 890-902 - Missing return statement in _process_images when use_image_queue is True; was calling _run_detector_with_image_queue but not returning its results. Now assigns to results and returns it.
+- Line 2125: Division by zero if elapsed is 0 (theoretically possible if inference is instantaneous) (ignored per user request).
+
+### megadetector/detection/run_inference_with_yolov5_val.py
+- **FIXED**: Line 354 - Directory creation could fail for output files in current directory (os.path.dirname returns empty string). Added length check before makedirs call.
+- Lines 711-713: IndexError if category list is empty; accessing category_ids[0] and category_ids[-1] without checking if list is non-empty (ignored per user request).
+
+### megadetector/detection/run_md_and_speciesnet.py
+- **FIXED** (by user): Line 79 - Typo in constant name: DEAFULT_SECONDS_PER_VIDEO_FRAME → DEFAULT_SECONDS_PER_VIDEO_FRAME. Propagated to lines 1268, 1274, 1311, 1470.
+- **FIXED** (by user): Line 579 - Incorrect logic for enable_rollup check; was checking `enable_rollup is not None` for a boolean parameter, causing ensemble to load even when rollup disabled. Changed to `if enable_rollup or (country is not None)`.
+
+### megadetector/detection/run_tiled_inference.py
+- **FIXED** (by user): Line 513 - Orphaned string that should have been part of a ValueError; changed to proper `raise ValueError(...)`.
+- **FIXED** (by user): Line 624/626 - Wrong variable used in nested loop; was using undefined `im` instead of loop variable `patch_info`. Changed line 624 to use `patch_info['error']` and line 626 to use `patch_info['patches']`.
+- **FIXED** (by user): Line 955 - Wrong default value for tile_size_y; was using `default_tile_size[0]` (x dimension) instead of `default_tile_size[1]` (y dimension).
+
+### megadetector/detection/tf_detector.py
+- **FIXED** (by user): Line 45 - Typo in docstring: "path to .pdb file" corrected to "path to .pb file" (protobuf model file, not Python debugger file).
+- Line 51: TF session never closed; no cleanup method or destructor provided (ignored per user request).
+- Lines 52-55: No error handling for missing tensors when loading graph (ignored per user request).
+
+### megadetector/detection/video_utils.py
+- **FIXED**: Line 224 - Directory creation could fail for output files in current directory (os.path.dirname returns empty string). Added length check before makedirs call.
+- **FIXED** (by user): Line 228 - Debug code `cv2.imshow('video',frame)` was left in; would cause problems in headless environments. Commented out.
+- **FIXED** (by user): Line 300 - Typo in error message: "Filename {} does contain a valid frame number" corrected to "does not contain".
+- **FIXED** (by user): Lines 1062-1064 - Pool cleanup without None check in finally block. Added `if pool is not None:` check before calling pool.close() and pool.join().
+
+### megadetector/postprocessing/add_max_conf.py
+- **FIXED**: Lines 49-51 - Directory creation could fail if output directory doesn't exist. Added check for output directory and creation with makedirs before writing output file.
+
+### megadetector/postprocessing/categorize_detections_by_size.py
+- **FIXED**: Lines 160-163 - Directory creation could fail if output directory doesn't exist. Added check for output directory and creation with makedirs before writing output file.
+- Line 80: max() of empty sequence if category_keys is empty (ignored per user request).
+- Line 106: Potential KeyError if malformed data has None detections without a failure key (ignored per user request).

@@ -152,7 +152,8 @@ def subset_json_db(input_json,
         if verbose:
             print('Writing output .json to {}'.format(output_json))
         output_dir = os.path.dirname(output_json)
-        os.makedirs(output_dir,exist_ok=True)
+        if len(output_dir) > 0:
+            os.makedirs(output_dir,exist_ok=True)
         ct_utils.write_json(output_json, output_data)
 
     if verbose:

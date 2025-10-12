@@ -65,7 +65,7 @@ def read_wildlife_insights_taxonomy_mapping(metadata_dir, force_download=False):
 
     wi_taxonomy_csv_path = os.path.join(metadata_dir,wildlife_insights_taxonomy_local_csv_filename)
 
-    if os.path.exists(wi_taxonomy_csv_path):
+    if os.path.exists(wi_taxonomy_csv_path) and (not force_download):
         df = pd.read_csv(wi_taxonomy_csv_path)
     else:
         wi_taxonomy_json_path = os.path.join(metadata_dir,wildlife_insights_taxonomy_local_json_filename)
@@ -114,7 +114,7 @@ def read_lila_taxonomy_mapping(metadata_dir, force_download=False):
     download_url(lila_taxonomy_mapping_url, taxonomy_filename,
                  force_download=force_download)
 
-    df = pd.read_csv(lila_taxonomy_mapping_url)
+    df = pd.read_csv(taxonomy_filename)
 
     return df
 

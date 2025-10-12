@@ -13,6 +13,7 @@ Functions for postprocessing species classification results, particularly:
 
 #%% Constants and imports
 
+import os
 import json
 import copy
 import pandas as pd
@@ -420,7 +421,7 @@ def _smooth_classifications_for_list_of_detections(detections,
 
     if verbose_debug_enabled:
         _print_counts_with_names(category_to_count,classification_descriptions)
-        from IPython import embed; embed()
+        # from IPython import embed; embed()
 
 
     ## Possibly change "other" classifications to the most common category
@@ -448,7 +449,7 @@ def _smooth_classifications_for_list_of_detections(detections,
                 if verbose_debug_enabled:
                     print('Replacing {} with {}'.format(
                         classification_descriptions[c[0]],
-                        classification_descriptions[c[1]]))
+                        most_common_category))
 
                 n_other_classifications_changed_this_image += 1
                 c[0] = most_common_category

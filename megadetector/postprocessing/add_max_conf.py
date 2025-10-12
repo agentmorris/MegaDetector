@@ -46,6 +46,10 @@ def add_max_conf(input_file,output_file):
         else:
             im['max_detection_conf'] = max_conf
 
+    output_dir = os.path.dirname(output_file)
+    if len(output_dir) > 0:
+        os.makedirs(output_dir, exist_ok=True)
+
     with open(output_file,'w') as f:
         json.dump(d,f,indent=1)
 

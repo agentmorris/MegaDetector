@@ -303,7 +303,7 @@ def options_to_command(options):
     if options.verbose:
         cmd += ' --verbose'
     if options.detector_options is not None and len(options.detector_options) > 0:
-        cmd += '--detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+        cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
 
     return cmd
 

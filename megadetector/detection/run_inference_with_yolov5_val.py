@@ -351,7 +351,9 @@ def run_inference_with_yolo_val(options):
         else:
             raise ValueError('Unknown output handling method {}'.format(options.overwrite_handling))
 
-    os.makedirs(os.path.dirname(options.output_file),exist_ok=True)
+    output_dir = os.path.dirname(options.output_file)
+    if len(output_dir) > 0:
+        os.makedirs(output_dir, exist_ok=True)
 
     if options.input_folder is not None:
         options.input_folder = options.input_folder.replace('\\','/')

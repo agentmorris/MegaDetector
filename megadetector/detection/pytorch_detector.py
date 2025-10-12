@@ -112,9 +112,9 @@ def _get_model_type_for_model(model_file,
             print('Warning: model type from model version is {}, from file metadata is {}'.format(
                 model_type_from_model_version,model_type_from_model_file_metadata))
             if prefer_model_type_source == 'table':
-                model_type = model_type_from_model_file_metadata
-            else:
                 model_type = model_type_from_model_version
+            else:
+                model_type = model_type_from_model_file_metadata
 
     elif model_type_from_model_file_metadata is not None:
 
@@ -373,7 +373,7 @@ def _initialize_yolo_imports(model_type='yolov5',
         except Exception:
 
             print('It looks like you are trying to run a model that requires the ultralytics package, '
-                  'but the ultralytics package is not installed, but .  For licensing reasons, this '
+                  'but the ultralytics package is not installed.  For licensing reasons, this '
                   'is not installed by default with the MegaDetector Python package.  Run '
                   '"pip install ultralytics" to install it, and try again.')
             raise
@@ -1314,8 +1314,8 @@ class PTDetector:
 
         assert isinstance(pred, list)
         assert len(pred) == len(batch_metadata), \
-            print('Mismatch between prediction length {} and batch size {}'.format(
-                   len(pred),len(batch_metadata)))
+            'Mismatch between prediction length {} and batch size {}'.format(
+                   len(pred),len(batch_metadata))
 
         # Process each image's detections
         for i_image, det in enumerate(pred):
