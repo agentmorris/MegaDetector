@@ -152,7 +152,6 @@ def folder_list(base_dir,
     folders = []
 
     if recursive:
-        folders = []
         for root, dirs, _ in os.walk(base_dir):
             for d in dirs:
                 folders.append(os.path.join(root, d))
@@ -370,7 +369,9 @@ def safe_create_link(link_exists,link_new):
             os.remove(link_new)
             os.symlink(link_exists,link_new)
     else:
-        os.makedirs(os.path.dirname(link_new),exist_ok=True)
+        link_new_dir = os.path.dirname(link_new)
+        if len(link_new_dir) > 0:
+            os.makedirs(link_new_dir,exist_ok=True)
         os.symlink(link_exists,link_new)
 
  # ...def safe_create_link(...)
@@ -988,7 +989,9 @@ def _copy_file(input_output_tuple,overwrite=True,verbose=False,move=False):
     if verbose:
         print('{} to {}'.format(action_string,target_fn))
 
-    os.makedirs(os.path.dirname(target_fn),exist_ok=True)
+    target_dir = os.path.dirname(target_fn)
+    if len(target_dir) > 0:
+        os.makedirs(target_dir,exist_ok=True)
     if move:
         shutil.move(source_fn, target_fn)
     else:
@@ -1038,10 +1041,11 @@ def parallel_copy_files(input_file_to_output_file,
                                                     input_output_tuples)):
                 pbar.update()
     finally:
-        pool.close()
-        pool.join()
-        if verbose:
-            print("Pool closed and joined parallel file copying")
+        if pool is not None:
+            pool.close()
+            pool.join()
+            if verbose:
+                print("Pool closed and joined parallel file copying")
 
 # ...def parallel_copy_files(...)
 
@@ -1100,15 +1104,24 @@ def parallel_delete_files(input_files,
 
     n_workers = min(max_workers, len(input_files))
 
-    if use_threads:
-        pool = ThreadPool(n_workers)
-    else:
-        pool = Pool(n_workers)
+    pool = None
 
-    with tqdm(total=len(input_files)) as pbar:
-        for i, _ in enumerate(pool.imap_unordered(partial(delete_file, verbose=verbose),
-                                                  input_files)):
-            pbar.update()
+    try:
+        if use_threads:
+            pool = ThreadPool(n_workers)
+        else:
+            pool = Pool(n_workers)
+
+        with tqdm(total=len(input_files)) as pbar:
+            for i, _ in enumerate(pool.imap_unordered(partial(delete_file, verbose=verbose),
+                                                    input_files)):
+                pbar.update()
+    finally:
+        if pool is not None:
+            pool.close()
+            pool.join()
+            if verbose:
+                print('Pool closed and joined for file deletion')
 
 # ...def parallel_delete_files(...)
 
@@ -1185,8 +1198,6 @@ def parallel_get_file_sizes(filenames,
         dict: dictionary mapping filenames to file sizes in bytes
     """
 
-    n_workers = min(max_workers,len(filenames))
-
     folder_name = None
 
     if isinstance(filenames,str):
@@ -1204,23 +1215,37 @@ def parallel_get_file_sizes(filenames,
 
         assert is_iterable(filenames), '[filenames] argument is neither a folder nor an iterable'
 
+    n_workers = min(max_workers,len(filenames))
+
     if verbose:
         print('Creating worker pool')
 
-    if use_threads:
-        pool_string = 'thread'
-        pool = ThreadPool(n_workers)
-    else:
-        pool_string = 'process'
-        pool = Pool(n_workers)
+    pool = None
 
-    if verbose:
-        print('Created a {} pool of {} workers'.format(
-            pool_string,n_workers))
+    try:
 
-    # This returns (filename,size) tuples
-    get_size_results = list(tqdm(pool.imap(
-        partial(_get_file_size,verbose=verbose),filenames), total=len(filenames)))
+        if use_threads:
+            pool_string = 'thread'
+            pool = ThreadPool(n_workers)
+        else:
+            pool_string = 'process'
+            pool = Pool(n_workers)
+
+        if verbose:
+            print('Created a {} pool of {} workers'.format(
+                pool_string,n_workers))
+
+        # This returns (filename,size) tuples
+        get_size_results = list(tqdm(pool.imap(
+            partial(_get_file_size,verbose=verbose),filenames), total=len(filenames)))
+
+    finally:
+
+        if pool is not None:
+            pool.close()
+            pool.join()
+            if verbose:
+                print('Pool closed and join for file size collection')
 
     to_return = {}
     for r in get_size_results:
@@ -1275,6 +1300,8 @@ def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compress_
 
     return output_fn
 
+# ...def zip_file(...)
+
 
 def add_files_to_single_tar_file(input_files, output_fn, arc_name_base,
                                  overwrite=False, verbose=False, mode='x'):
@@ -1314,6 +1341,8 @@ def add_files_to_single_tar_file(input_files, output_fn, arc_name_base,
             tarf.add(input_fn_abs,arcname=input_fn_relative)
 
     return output_fn
+
+# ...def add_files_to_single_tar_file(...)
 
 
 def zip_files_into_single_zipfile(input_files,
@@ -1359,6 +1388,8 @@ def zip_files_into_single_zipfile(input_files,
 
     return output_fn
 
+# ...def zip_files_into_single_zipfile(...)
+
 
 def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, compress_level=9):
     """
@@ -1382,7 +1413,7 @@ def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, com
     if not overwrite:
         if os.path.isfile(output_fn):
             print('Zip file {} exists, skipping'.format(output_fn))
-            return
+            return output_fn
 
     if verbose:
         print('Zipping {} to {} (compression level {})'.format(
@@ -1399,6 +1430,8 @@ def zip_folder(input_folder, output_fn=None, overwrite=False, verbose=False, com
                        compress_type=zipfile.ZIP_DEFLATED)
 
     return output_fn
+
+# ...def zip_folder(...)
 
 
 def parallel_zip_files(input_files,
@@ -1428,11 +1461,22 @@ def parallel_zip_files(input_files,
     else:
         pool = Pool(n_workers)
 
-    with tqdm(total=len(input_files)) as pbar:
-        for i,_ in enumerate(pool.imap_unordered(partial(zip_file,
-          output_fn=None,overwrite=overwrite,verbose=verbose,compress_level=compress_level),
-          input_files)):
-            pbar.update()
+    try:
+
+        with tqdm(total=len(input_files)) as pbar:
+            for i,_ in enumerate(pool.imap_unordered(partial(zip_file,
+            output_fn=None,overwrite=overwrite,verbose=verbose,compress_level=compress_level),
+            input_files)):
+                pbar.update()
+
+    finally:
+
+        pool.close()
+        pool.join()
+        if verbose:
+            print('Pool closed and joined for parallel zipping')
+
+# ...def parallel_zip_files(...)
 
 
 def parallel_zip_folders(input_folders,
@@ -1462,12 +1506,23 @@ def parallel_zip_folders(input_folders,
     else:
         pool = Pool(n_workers)
 
-    with tqdm(total=len(input_folders)) as pbar:
-        for i,_ in enumerate(pool.imap_unordered(
-                partial(zip_folder,overwrite=overwrite,
-                        compress_level=compress_level,verbose=verbose),
-                input_folders)):
-            pbar.update()
+    try:
+
+        with tqdm(total=len(input_folders)) as pbar:
+            for i,_ in enumerate(pool.imap_unordered(
+                    partial(zip_folder,overwrite=overwrite,
+                            compress_level=compress_level,verbose=verbose),
+                    input_folders)):
+                pbar.update()
+
+    finally:
+
+        pool.close()
+        pool.join()
+        if verbose:
+            print('Pool closed and joined for parallel folder zipping')
+
+# ...def parallel_zip_folders(...)
 
 
 def zip_each_file_in_folder(folder_name,
@@ -1509,6 +1564,8 @@ def zip_each_file_in_folder(folder_name,
     parallel_zip_files(input_files=input_files,max_workers=max_workers,
                        use_threads=use_threads,compress_level=compress_level,
                        overwrite=overwrite,verbose=verbose)
+
+# ...def zip_each_file_in_folder(...)
 
 
 def unzip_file(input_file, output_folder=None):
@@ -1617,9 +1674,20 @@ def parallel_compute_file_hashes(filenames,
         else:
             pool = Pool(n_workers)
 
-        results = list(tqdm(pool.imap(
-            partial(compute_file_hash,algorithm=algorithm,allow_failures=True),
-            filenames), total=len(filenames)))
+        try:
+
+            results = list(tqdm(pool.imap(
+                partial(compute_file_hash,algorithm=algorithm,allow_failures=True),
+                filenames), total=len(filenames)))
+
+        finally:
+
+            pool.close()
+            pool.join()
+            if verbose:
+                print('Pool closed and joined for parallel zipping')
+
+    # ...if we are/aren't parallelizing
 
     assert len(filenames) == len(results), 'Internal error in parallel_compute_file_hashes'
 

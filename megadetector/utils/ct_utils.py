@@ -565,7 +565,7 @@ def sort_dictionary_by_value(d,sort_values=None,reverse=False):
         reverse (bool, optional): whether to sort in reverse (descending) order
 
     Returns:
-        dict: sorted copy of [d
+        dict: sorted copy of [d]
     """
 
     if sort_values is None:
@@ -1025,8 +1025,10 @@ def parse_bool_string(s, strict=False):
     s = str(s).lower().strip()
 
     if strict:
-        false_strings = ('false')
-        true_strings = ('true')
+        # Fun fact: ('false') (rather than ('false,')) creates a string,
+        # not a tuple.
+        false_strings = ('false',)
+        true_strings = ('true',)
     else:
         false_strings = ('no', 'false', 'f', 'n', '0')
         true_strings = ('yes', 'true', 't', 'y', '1')

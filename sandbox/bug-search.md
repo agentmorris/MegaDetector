@@ -155,29 +155,29 @@
 - [x] megadetector/postprocessing/validate_batch_results.py
 
 ### postprocessing/repeat_detection_elimination
-- [ ] megadetector/postprocessing/repeat_detection_elimination/find_repeat_detections.py
-- [ ] megadetector/postprocessing/repeat_detection_elimination/remove_repeat_detections.py
-- [ ] megadetector/postprocessing/repeat_detection_elimination/repeat_detections_core.py
+- [x] megadetector/postprocessing/repeat_detection_elimination/find_repeat_detections.py
+- [x] megadetector/postprocessing/repeat_detection_elimination/remove_repeat_detections.py
+- [x] megadetector/postprocessing/repeat_detection_elimination/repeat_detections_core.py
 
 ### taxonomy_mapping
-- [ ] megadetector/taxonomy_mapping/map_lila_taxonomy_to_wi_taxonomy.py
-- [ ] megadetector/taxonomy_mapping/map_new_lila_datasets.py
-- [ ] megadetector/taxonomy_mapping/prepare_lila_taxonomy_release.py
-- [ ] megadetector/taxonomy_mapping/preview_lila_taxonomy.py
-- [ ] megadetector/taxonomy_mapping/retrieve_sample_image.py
-- [ ] megadetector/taxonomy_mapping/simple_image_download.py
-- [ ] megadetector/taxonomy_mapping/species_lookup.py
-- [ ] megadetector/taxonomy_mapping/taxonomy_csv_checker.py
-- [ ] megadetector/taxonomy_mapping/taxonomy_graph.py
-- [ ] megadetector/taxonomy_mapping/validate_lila_category_mappings.py
+- [SKIPPED] megadetector/taxonomy_mapping/map_lila_taxonomy_to_wi_taxonomy.py
+- [SKIPPED] megadetector/taxonomy_mapping/map_new_lila_datasets.py
+- [SKIPPED] megadetector/taxonomy_mapping/prepare_lila_taxonomy_release.py
+- [SKIPPED] megadetector/taxonomy_mapping/preview_lila_taxonomy.py
+- [SKIPPED] megadetector/taxonomy_mapping/retrieve_sample_image.py
+- [SKIPPED] megadetector/taxonomy_mapping/simple_image_download.py
+- [SKIPPED] megadetector/taxonomy_mapping/species_lookup.py
+- [SKIPPED] megadetector/taxonomy_mapping/taxonomy_csv_checker.py
+- [SKIPPED] megadetector/taxonomy_mapping/taxonomy_graph.py
+- [SKIPPED] megadetector/taxonomy_mapping/validate_lila_category_mappings.py
 
 ### utils
-- [ ] megadetector/utils/ct_utils.py
-- [ ] megadetector/utils/directory_listing.py
-- [ ] megadetector/utils/extract_frames_from_video.py
-- [ ] megadetector/utils/gpu_test.py
-- [ ] megadetector/utils/md_tests.py
-- [ ] megadetector/utils/path_utils.py
+- [x] megadetector/utils/ct_utils.py
+- [x] megadetector/utils/directory_listing.py
+- [x] megadetector/utils/extract_frames_from_video.py
+- [x] megadetector/utils/gpu_test.py
+- [x] megadetector/utils/md_tests.py
+- [x] megadetector/utils/path_utils.py
 - [ ] megadetector/utils/process_utils.py
 - [ ] megadetector/utils/split_locations_into_train_val.py
 - [ ] megadetector/utils/string_utils.py
@@ -488,3 +488,46 @@
 - **FIXED** (by user): Line 42 - Typo in docstring; "validate_bach_results" corrected to "validate_batch_results".
 - Lines 178-186: Inconsistent error handling using assert statements instead of raise ValueError() like the rest of the function; assertions can be disabled with python -O. User chose to skip.
 - Line 328: No output from command-line driver; validation results are never printed or reported to user. User chose to skip.
+
+### megadetector/postprocessing/repeat_detection_elimination/find_repeat_detections.py
+- No bugs found. Simple command-line driver with straightforward argparse setup.
+
+### megadetector/postprocessing/repeat_detection_elimination/remove_repeat_detections.py
+- **FIXED** (by user): Line 40 - Logic error where filtering_dir was asserted to be a directory on line 40, but then checked if it was a file on line 42, making that code path unreachable. Changed assertion to check os.path.exists() instead of os.path.isdir(), allowing filtering_dir to be either a file or directory as intended.
+
+### megadetector/postprocessing/repeat_detection_elimination/repeat_detections_core.py
+- **FIXED** (by user): Line 872 - Incomplete bounding box comparison; was comparing only first 3 elements `[0:3]` (x, y, width) instead of all 4 elements (x, y, width, height). Changed to `[0:4]` to compare complete bounding box.
+- **FIXED** (by user): Line 1152 - Resource leak where `open(detection_index_file_name, 'r').read()` opened file without context manager. Changed to use `with open(...) as f:` to ensure file is closed.
+- **FIXED** (by user): Line 1385 - Resource leak where `open(candidate_detection_file, 'r').read()` opened file without context manager. Changed to use `with open(...) as f:` to ensure file is closed.
+
+### megadetector/utils/ct_utils.py
+- **FIXED** (by user): Line 568 - Incomplete docstring; missing closing bracket in "sorted copy of [d". Added closing bracket to make it "sorted copy of [d]".
+- **FIXED** (by user): Lines 1028-1029 - Incorrect tuple definition in parse_bool_string(); `false_strings = ('false')` and `true_strings = ('true')` were strings not tuples (missing trailing commas), causing substring matching instead of exact matching. Changed to `('false',)` and `('true',)` with trailing commas to create proper single-element tuples.
+
+### megadetector/utils/directory_listing.py
+- No bugs found. Clean HTML directory listing generator with proper context manager usage.
+
+### megadetector/utils/extract_frames_from_video.py
+- No bugs found. Clean frame extraction utility with proper error checking and resource management.
+
+### megadetector/utils/gpu_test.py
+- **FIXED** (by user): Line 37 - Missing return value in torch_test(); was returning None when PyTorch import failed, but docstring specified return type int. Changed to return 0.
+- **FIXED** (by user): Line 74 - Incorrect docstring in tf_test(); said "The number of CUDA devices reported by PyTorch" instead of "TensorFlow" (copy-paste error). Corrected to say "TensorFlow".
+- **FIXED** (by user): Line 82 - Missing return value in tf_test(); was returning None when TensorFlow import failed, but docstring specified return type int. Changed to return 0.
+
+### megadetector/utils/md_tests.py
+- **FIXED** (by user): Line 389 - Copy-paste error in output_files_are_identical(); was comparing `len(fn1_results['images'])` to itself instead of to `len(fn2_results['images'])`, causing comparison to always succeed. Changed second reference to fn2_results to properly detect file count mismatches.
+- **FIXED** (by user): Lines 1272-1285 - Duplicate test block removed and replaced with different test variation. Was exact duplicate of lines 1256-1269 (running with image queue and worker-side preprocessing), changed to test image queue WITHOUT worker-side preprocessing, writing to inference_output_file_no_preprocess_queue.
+
+### megadetector/utils/path_utils.py (lines 1-1634)
+- **FIXED** (by user): Line 154 - Redundant assignment; `folders = []` was initialized on line 152, then immediately reassigned to `[]` again at the start of the recursive block. Removed redundant assignment.
+- **FIXED**: Lines 372-374 - Directory creation issue in safe_create_link(); `os.path.dirname(link_new)` returns empty string for files in current directory, causing makedirs to fail or create incorrect structure. Added check `if len(link_new_dir) > 0:` before makedirs.
+- **FIXED**: Lines 992-994 - Directory creation issue in _copy_file(); `os.path.dirname(target_fn)` returns empty string for files in current directory. Added check `if len(target_dir) > 0:` before makedirs.
+- **FIXED** (by user): Lines 1040-1043 - Pool cleanup without None check in parallel_copy_files(); if pool creation failed, finally block would crash trying to call close()/join() on None. Added `if pool is not None:` check.
+- **FIXED** (by user): Lines 1103-1118 - Missing pool cleanup in parallel_delete_files(); created pool but never called close() or join(), leaking resources. Wrapped in try/finally with None check.
+- **FIXED** (by user): Line 1214 - Type error in parallel_get_file_sizes(); `len(filenames)` was called at line 1188 before checking if filenames was a string. If filenames was a folder path string, would calculate wrong n_workers. Moved n_workers calculation to after filenames type check and conversion.
+- **FIXED** (by user): Lines 1219-1244 - Missing pool cleanup in parallel_get_file_sizes(); created pool but never closed or joined it. Wrapped in try/finally with None check.
+- **FIXED** (by user): Line 1412 - Inconsistent return value in zip_folder(); returned `None` instead of `output_fn` when file exists and not overwriting. All other branches return `output_fn`, breaking docstring contract. Changed to `return output_fn`.
+- **FIXED** (by user): Lines 1455-1473 - Missing pool cleanup in parallel_zip_files(); created pool but never closed or joined it. Wrapped in try/finally.
+- **FIXED** (by user): Lines 1500-1519 - Missing pool cleanup in parallel_zip_folders(); created pool but never closed or joined it. Wrapped in try/finally.
+- **FIXED** (by user): Lines 1669-1684 - Missing pool cleanup in parallel_compute_file_hashes(); created pool but never closed or joined it. Wrapped in try/finally.

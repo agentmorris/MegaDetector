@@ -55,6 +55,10 @@ class FrameExtractionOptions:
         #: must be a folder when this is specified.
         self.detector_output_file = None
 
+    # ...def __init__(...)
+
+# ...class FrameExtractionOptions
+
 
 #%% Core functions
 
