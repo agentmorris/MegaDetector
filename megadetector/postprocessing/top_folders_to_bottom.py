@@ -45,7 +45,12 @@ class TopFoldersToBottomOptions:
     Options used to parameterize top_folders_to_bottom()
     """
 
-    def __init__(self,input_folder,output_folder,copy=True,n_threads=1):
+    def __init__(self,
+                 input_folder,
+                 output_folder,
+                 copy=True,
+                 n_threads=1,
+                 overwrite=False):
 
         #: Whether to copy (True) vs. move (False) false when re-organizing
         self.copy = copy
@@ -60,7 +65,7 @@ class TopFoldersToBottomOptions:
         self.output_folder = output_folder
 
         #: If this is False and an output file exists, throw an error
-        self.overwrite = False
+        self.overwrite = overwrite
 
 
 #%% Main functions
@@ -130,6 +135,7 @@ def top_folders_to_bottom(options):
         options (TopFoldersToBottomOptions): See TopFoldersToBottomOptions for parameter details.
 
     """
+
     os.makedirs(options.output_folder,exist_ok=True)
 
     # Enumerate input folder
@@ -167,10 +173,15 @@ def top_folders_to_bottom(options):
 
         print('Starting a pool with {} threads'.format(options.n_threads))
         pool = ThreadPool(options.n_threads)
-        process_file_with_options = partial(_process_file, options=options)
-        _ = list(tqdm(pool.imap(process_file_with_options, relative_files), total=len(relative_files)))
+        try:
+            process_file_with_options = partial(_process_file, options=options)
+            _ = list(tqdm(pool.imap(process_file_with_options, relative_files), total=len(relative_files)))
+        finally:
+            pool.close()
+            pool.join()
+            print('Pool closed and join for folder inversion')
 
-# ...def top_folders_to_bottom()
+# ...def top_folders_to_bottom(...)
 
 
 #%% Interactive driver
@@ -192,7 +203,7 @@ if False:
 
 #%% Command-line driver
 
-# python top_folders_to_bottom.py "g:\temp\separated_images" "g:\temp\separated_images_inverted" --n_threads 100
+# python top_folders_to_bottom.py "g:\temp\separated_images" "g:\temp\separated_images_inverted" --n_threads 10
 
 def main(): # noqa
 
@@ -215,7 +226,11 @@ def main(): # noqa
 
     # Convert to an options object
     options = TopFoldersToBottomOptions(
-        args.input_folder,args.output_folder,copy=args.copy,n_threads=args.n_threads)
+        args.input_folder,
+        args.output_folder,
+        copy=args.copy,
+        n_threads=args.n_threads,
+        overwrite=args.overwrite)
 
     top_folders_to_bottom(options)
 

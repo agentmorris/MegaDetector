@@ -149,10 +149,10 @@
 - [x] megadetector/postprocessing/postprocess_batch_results.py
 - [x] megadetector/postprocessing/remap_detection_categories.py
 - [x] megadetector/postprocessing/render_detection_confusion_matrix.py
-- [ ] megadetector/postprocessing/separate_detections_into_folders.py
-- [ ] megadetector/postprocessing/subset_json_detector_output.py
-- [ ] megadetector/postprocessing/top_folders_to_bottom.py
-- [ ] megadetector/postprocessing/validate_batch_results.py
+- [x] megadetector/postprocessing/separate_detections_into_folders.py
+- [x] megadetector/postprocessing/subset_json_detector_output.py
+- [x] megadetector/postprocessing/top_folders_to_bottom.py
+- [x] megadetector/postprocessing/validate_batch_results.py
 
 ### postprocessing/repeat_detection_elimination
 - [ ] megadetector/postprocessing/repeat_detection_elimination/find_repeat_detections.py
@@ -471,3 +471,20 @@
 ### megadetector/postprocessing/render_detection_confusion_matrix.py
 - **FIXED** (by user): Lines 255-258 - Pool cleanup without None check in finally block; added `if pool is not None:` check before calling pool.close() and pool.join().
 - **FIXED** (by user): Lines 384-396 - Critical indentation bug where lines 384-389 were inside the detection loop instead of after it. This caused predicted_category_name to be set repeatedly during loop instead of once after processing all detections. Dedented lines 391-396 to run after the loop completes.
+
+### megadetector/postprocessing/separate_detections_into_folders.py
+- **FIXED** (by user): Line 497 - Resource leak where file opened with `json.load(open())` was never closed. Changed to use context manager.
+- **FIXED** (by user): Lines 620-627 - Pool cleanup without finally block; wrapped pool operations in try/finally to ensure pool.close() and pool.join() are called even if exception occurs.
+- **FIXED** (by user): Line 739 - Wrong default value for box_expansion argument; was using `default_line_thickness` (8) instead of `default_box_expansion` (3). Changed to correct default.
+
+### megadetector/postprocessing/subset_json_detector_output.py
+- **FIXED** (by user): Line 436 - Missing return value in subset_json_detector_output_by_list(); was returning None instead of data when options.keep_files_in_list is None, breaking the chain of subsetting operations.
+
+### megadetector/postprocessing/top_folders_to_bottom.py
+- **FIXED** (by user): Lines 169-176 - Pool cleanup without try/finally block; wrapped pool operations in try/finally to ensure pool.close() and pool.join() are called even if exception occurs.
+- **FIXED** (by user): Lines 48-53, 68, 217-222 - Command-line argument --overwrite ignored; added overwrite parameter to __init__ method and passed args.overwrite when creating options object.
+
+### megadetector/postprocessing/validate_batch_results.py
+- **FIXED** (by user): Line 42 - Typo in docstring; "validate_bach_results" corrected to "validate_batch_results".
+- Lines 178-186: Inconsistent error handling using assert statements instead of raise ValueError() like the rest of the function; assertions can be disabled with python -O. User chose to skip.
+- Line 328: No output from command-line driver; validation results are never printed or reported to user. User chose to skip.

@@ -433,7 +433,7 @@ def subset_json_detector_output_by_list(data, options):
     """
 
     if options.keep_files_in_list is None:
-        return
+        return data
 
     files_to_keep = None
 
