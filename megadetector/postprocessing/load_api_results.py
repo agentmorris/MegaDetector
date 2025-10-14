@@ -140,10 +140,6 @@ def write_api_results(detection_results_table, other_fields, out_path):
         print('Warning: error removing max_detection_conf from output')
         pass
 
-    output_dir = os.path.dirname(out_path)
-    if len(output_dir) > 0:
-        os.makedirs(output_dir, exist_ok=True)
-
     write_json(out_path,fields)
 
     print('Finished writing detection results to {}'.format(out_path))

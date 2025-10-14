@@ -28,6 +28,7 @@ from functools import partial
 
 from megadetector.visualization.visualization_utils import open_image
 from megadetector.utils.ct_utils import round_float
+from megadetector.utils.ct_utils import write_json
 from megadetector.detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP, FAILURE_IMAGE_OPEN
 
 output_precision = 3
@@ -36,8 +37,11 @@ default_confidence_threshold = 0.15
 
 #%% Functions
 
-def get_labelme_dict_for_image(im,image_base_name=None,category_id_to_name=None,
-                               info=None,confidence_threshold=None):
+def get_labelme_dict_for_image(im,
+                               image_base_name=None,
+                               category_id_to_name=None,
+                               info=None,
+                               confidence_threshold=None):
     """
     For the given image struct in MD results format, reformat the detections into
     labelme format.
@@ -60,7 +64,7 @@ def get_labelme_dict_for_image(im,image_base_name=None,category_id_to_name=None,
     if image_base_name is None:
         image_base_name = os.path.basename(im['file'])
 
-    if category_id_to_name:
+    if category_id_to_name is None:
         category_id_to_name = DEFAULT_DETECTOR_LABEL_MAP
 
     if confidence_threshold is None:
@@ -138,8 +142,7 @@ def _write_output_for_image(im,
                                              info=info,
                                              confidence_threshold=confidence_threshold)
 
-    with open(json_path,'w') as f:
-        json.dump(output_dict,f,indent=1)
+    write_json(json_path,output_dict)
 
 # ...def write_output_for_image(...)
 
@@ -256,9 +259,10 @@ def md_to_labelme(results_file,
                     md_results['images']),
                     total=len(md_results['images'])))
         finally:
-            pool.close()
-            pool.join()
-            print("Pool closed and joined for labelme file writes")
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print("Pool closed and joined for labelme file writes")
 
     # ...for each image
 

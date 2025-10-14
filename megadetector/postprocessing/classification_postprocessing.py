@@ -13,7 +13,6 @@ Functions for postprocessing species classification results, particularly:
 
 #%% Constants and imports
 
-import os
 import json
 import copy
 import pandas as pd
@@ -26,6 +25,7 @@ from megadetector.utils.ct_utils import is_empty
 from megadetector.utils.ct_utils import sort_dictionary_by_value
 from megadetector.utils.ct_utils import sort_dictionary_by_key
 from megadetector.utils.ct_utils import invert_dictionary
+from megadetector.utils.ct_utils import write_json
 
 from megadetector.utils.wi_taxonomy_utils import clean_taxonomy_string
 from megadetector.utils.wi_taxonomy_utils import taxonomy_level_index
@@ -919,11 +919,7 @@ def smooth_classification_results_image_level(input_file,output_file=None,option
 
     if output_file is not None:
         print('Writing results after image-level smoothing to:\n{}'.format(output_file))
-        output_dir = os.path.dirname(output_file)
-        if len(output_dir) > 0:
-            os.makedirs(output_dir, exist_ok=True)
-        with open(output_file,'w') as f:
-            json.dump(d,f,indent=1)
+        write_json(output_file,d)
 
     return d
 
@@ -1096,11 +1092,7 @@ def smooth_classification_results_sequence_level(input_file,
     if output_file is not None:
         print('Writing sequence-smoothed classification results to {}'.format(
             output_file))
-        output_dir = os.path.dirname(output_file)
-        if len(output_dir) > 0:
-            os.makedirs(output_dir, exist_ok=True)
-        with open(output_file,'w') as f:
-            json.dump(d,f,indent=1)
+        write_json(output_file,d)
 
     return d
 
@@ -1688,10 +1680,7 @@ def restrict_to_taxa_list(taxa_list,
 
     ##%% Write output
 
-    output_dir = os.path.dirname(output_file)
-    if len(output_dir) > 0:
-        os.makedirs(output_dir, exist_ok=True)
-    with open(output_file,'w') as f:
-        json.dump(output_data,f,indent=1)
+    write_json(output_file,output_data)
+
 
 # ...def restrict_to_taxa_list(...)

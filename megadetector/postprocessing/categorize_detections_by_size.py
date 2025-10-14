@@ -9,11 +9,12 @@ above one or more size thresholds.
 
 #%% Constants and imports
 
-import os
 import json
 
 from collections import defaultdict
 from tqdm import tqdm
+
+from megadetector.utils.ct_utils import write_json
 
 
 #%% Support classes
@@ -158,11 +159,7 @@ def categorize_detections_by_size(input_file,output_file=None,options=None):
         print('Found {} detections in category {}'.format(category_count,category_name))
 
     if output_file is not None:
-        output_dir = os.path.dirname(output_file)
-        if len(output_dir) > 0:
-            os.makedirs(output_dir, exist_ok=True)
-        with open(output_file,'w') as f:
-            json.dump(data,f,indent=1)
+        write_json(output_file,data)
 
     return data
 

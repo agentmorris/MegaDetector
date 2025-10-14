@@ -241,7 +241,10 @@ def write_json(path,
     elif force_str:
         default_handler = str
 
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    # Create the parent directory if necessary
+    parent_dir = os.path.dirname(path)
+    if len(parent_dir) > 0:
+        os.makedirs(parent_dir, exist_ok=True)
 
     with open(path, 'w', newline='\n', encoding=encoding) as f:
         json.dump(content, f, indent=indent, default=default_handler, ensure_ascii=ensure_ascii)

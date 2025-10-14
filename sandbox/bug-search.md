@@ -142,13 +142,13 @@
 - [x] megadetector/postprocessing/detector_calibration.py
 - [x] megadetector/postprocessing/generate_csv_report.py
 - [x] megadetector/postprocessing/load_api_results.py
-- [ ] megadetector/postprocessing/md_to_coco.py
-- [ ] megadetector/postprocessing/md_to_labelme.py
-- [ ] megadetector/postprocessing/md_to_wi.py
-- [ ] megadetector/postprocessing/merge_detections.py
-- [ ] megadetector/postprocessing/postprocess_batch_results.py
-- [ ] megadetector/postprocessing/remap_detection_categories.py
-- [ ] megadetector/postprocessing/render_detection_confusion_matrix.py
+- [x] megadetector/postprocessing/md_to_coco.py
+- [x] megadetector/postprocessing/md_to_labelme.py
+- [x] megadetector/postprocessing/md_to_wi.py
+- [x] megadetector/postprocessing/merge_detections.py
+- [x] megadetector/postprocessing/postprocess_batch_results.py
+- [x] megadetector/postprocessing/remap_detection_categories.py
+- [x] megadetector/postprocessing/render_detection_confusion_matrix.py
 - [ ] megadetector/postprocessing/separate_detections_into_folders.py
 - [ ] megadetector/postprocessing/subset_json_detector_output.py
 - [ ] megadetector/postprocessing/top_folders_to_bottom.py
@@ -441,3 +441,33 @@
 - **FIXED** (by user): Lines 142-146 - Missing output directory creation in write_api_results(); added directory creation check before writing. Also replaced json.dump with write_json() utility function.
 - Line 181: No error handling for json.loads() in load_api_results_csv() when deserializing detections; would fail on NaN or malformed JSON. User chose not to fix (deprecated function).
 - **FIXED** (by user): Lines 217-221 - Missing output directory creation in write_api_results_csv(); added directory creation check before writing CSV.
+
+### megadetector/postprocessing/md_to_coco.py
+- Lines 184-186: PIL image not explicitly closed after reading dimensions; resource leak if many images accumulate before garbage collection. User chose to skip (images are eligible for GC immediately, only issue if processing very large batches before GC runs).
+- **FIXED** (by user): Line 299 - Missing output directory creation; changed to use write_json() utility function which handles directory creation. Also updated write_json() in ct_utils.py (lines 244-247) to include directory creation for all future callers.
+
+### megadetector/postprocessing/md_to_labelme.py
+- **FIXED** (by user): Line 63 - Logic error with inverted condition; was checking `if category_id_to_name:` which set default ONLY when parameter was provided. Changed to `if category_id_to_name is None:` to properly set default when not provided.
+- **FIXED** (by user): Line 141 - Missing output directory creation; changed to use write_json() utility function which handles directory creation.
+- Line 219: PIL image not explicitly closed after reading dimensions; same resource leak issue as md_to_coco.py. User chose not to fix.
+- **FIXED** (by user): Lines 259-262 - Pool cleanup without None check; added `if pool is not None:` before calling pool.close() and pool.join().
+
+### megadetector/postprocessing/md_to_wi.py
+- **FIXED** (by user): Line 37 - Command-line argument ignored; was passing hardcoded `base_folder=None` instead of `base_folder=args.base_folder`, causing user's --base_folder argument to be ignored.
+
+### megadetector/postprocessing/merge_detections.py
+- **FIXED** (by user): Line 124/293 - Directory creation issue; removed explicit os.makedirs() call that would fail for files without directory component. Changed line 293 to use write_json() which handles directory creation internally.
+- **FIXED** (by user): Line 310 - Typo in help text; "reuslts" corrected to "results".
+- **FIXED** (by user): Line 362 - Wrong help text; --categories_to_exclude parameter had help text saying "to include" instead of "to exclude".
+
+### megadetector/postprocessing/postprocess_batch_results.py
+- **FIXED** (by user): Lines 1907-1911 - Logic error in classification category counting; was initializing new categories to 0 instead of 1, causing all counts to be off by one (too low). Changed line 1908 from `= 0` to `= 1`.
+- Lines 1252-1255: Division by zero in precision/recall/F1 calculation if no predictions at threshold, no ground truth positives, or both precision and recall are 0. User chose to skip.
+- Line 470: PIL image not explicitly closed after reading; resource leak if many images accumulate before garbage collection. User chose to skip (same reasoning as previous PIL image issues).
+
+### megadetector/postprocessing/remap_detection_categories.py
+- **FIXED** (by user): Line 137 - Missing output directory creation; changed to use write_json() utility function which handles directory creation.
+
+### megadetector/postprocessing/render_detection_confusion_matrix.py
+- **FIXED** (by user): Lines 255-258 - Pool cleanup without None check in finally block; added `if pool is not None:` check before calling pool.close() and pool.join().
+- **FIXED** (by user): Lines 384-396 - Critical indentation bug where lines 384-389 were inside the detection loop instead of after it. This caused predicted_category_name to be set repeatedly during loop instead of once after processing all detections. Dedented lines 391-396 to run after the loop completes.

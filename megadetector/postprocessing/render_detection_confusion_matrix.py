@@ -252,9 +252,10 @@ def render_detection_confusion_matrix(ground_truth_file,
                                     md_formatted_results['images']),
                                     total=len(md_formatted_results['images'])))
         finally:
-            pool.close()
-            pool.join()
-            print("Pool closed and joined for confusion matrix rendering")
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print("Pool closed and joined for confusion matrix rendering")
 
     else:
 
@@ -369,11 +370,15 @@ def render_detection_confusion_matrix(ground_truth_file,
 
         # If there were no detections at all, call this image empty
         if len(results_im['detections']) == 0:
+
             predicted_category_name = empty_category_name
+
         # Otherwise look for above-threshold detections
         else:
+
             results_category_name_to_confidence = defaultdict(int)
             for det in results_im['detections']:
+
                 category_name = results_category_id_to_name[det['category']]
                 detection_threshold = confidence_thresholds['default']
                 if category_name in confidence_thresholds:
@@ -381,12 +386,15 @@ def render_detection_confusion_matrix(ground_truth_file,
                 if det['conf'] > detection_threshold:
                     results_category_name_to_confidence[category_name] = max(
                         results_category_name_to_confidence[category_name],det['conf'])
-                # If there were no detections above threshold
-                if len(results_category_name_to_confidence) == 0:
-                    predicted_category_name = empty_category_name
-                else:
-                    predicted_category_name = max(results_category_name_to_confidence,
-                        key=results_category_name_to_confidence.get)
+
+            # ...for each detection
+
+            # If there were no detections above threshold
+            if len(results_category_name_to_confidence) == 0:
+                predicted_category_name = empty_category_name
+            else:
+                predicted_category_name = max(results_category_name_to_confidence,
+                    key=results_category_name_to_confidence.get)
 
         ground_truth_category_index = gt_category_name_to_category_index[ground_truth_category_name]
         predicted_category_index = gt_category_name_to_category_index[predicted_category_name]
@@ -396,7 +404,7 @@ def render_detection_confusion_matrix(ground_truth_file,
 
         confusion_matrix[ground_truth_category_index,predicted_category_index] += 1
 
-    # ...for each file
+    # ...for each ground truth file
 
     plt.ioff()
 
