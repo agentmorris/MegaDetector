@@ -22,7 +22,8 @@ import pandas as pd
 from megadetector.postprocessing.load_api_results import load_api_results_csv
 from megadetector.utils.wi_taxonomy_utils import load_md_or_speciesnet_file
 from megadetector.data_management.annotations import annotation_constants
-from megadetector.utils import ct_utils
+from megadetector.utils.ct_utils import get_max_conf
+from megadetector.utils.ct_utils import write_json
 
 CONF_DIGITS = 3
 
@@ -138,7 +139,7 @@ def convert_json_to_csv(input_path,
             # print('Skipping failed image {} ({})'.format(im['file'],im['failure']))
             continue
 
-        max_conf = ct_utils.get_max_conf(im)
+        max_conf = get_max_conf(im)
         detection_category_id_to_max_conf = defaultdict(float)
         classification_category_id_to_max_conf = defaultdict(float)
         detections = []
@@ -177,7 +178,8 @@ def convert_json_to_csv(input_path,
                     classification_category_max = \
                         classification_category_id_to_max_conf[classification_category_id]
                     if classification_conf > classification_category_max:
-                        classification_category_id_to_max_conf[classification_category_id] = d['conf']
+                        classification_category_id_to_max_conf[classification_category_id] = \
+                            classification_conf
 
                 # ...for each classification
 
@@ -210,7 +212,7 @@ def convert_json_to_csv(input_path,
 
     if omit_bounding_boxes:
         df = df.drop('detections',axis=1)
-    df.to_csv(output_path,index=False,header=True)
+    df.to_csv(output_path,index=False,header=True,encoding=output_encoding)
 
 # ...def convert_json_to_csv(...)
 
@@ -295,7 +297,7 @@ def convert_csv_to_json(input_path,output_path=None,overwrite=True):
     json_out['classification_categories'] = classification_categories
     json_out['images'] = images
 
-    json.dump(json_out,open(output_path,'w'),indent=1)
+    write_json(output_path,json_out)
 
 # ...def convert_csv_to_json(...)
 
@@ -372,7 +374,7 @@ def main():
                         help='Output filename ending in .json or .csv (defaults to ' + \
                              'input file, with .json/.csv replaced by .csv/.json)')
     parser.add_argument('--omit_bounding_boxes',action='store_true',
-                        help='Output bounding box text from .csv output (large and usually not useful)')
+                        help='Omit bounding box text from .csv output (large and usually not useful)')
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()

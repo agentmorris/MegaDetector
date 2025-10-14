@@ -137,11 +137,11 @@
 - [x] megadetector/postprocessing/classification_postprocessing.py
 - [x] megadetector/postprocessing/combine_batch_outputs.py
 - [x] megadetector/postprocessing/compare_batch_results.py
-- [ ] megadetector/postprocessing/convert_output_format.py
-- [ ] megadetector/postprocessing/create_crop_folder.py
-- [ ] megadetector/postprocessing/detector_calibration.py
-- [ ] megadetector/postprocessing/generate_csv_report.py
-- [ ] megadetector/postprocessing/load_api_results.py
+- [x] megadetector/postprocessing/convert_output_format.py
+- [x] megadetector/postprocessing/create_crop_folder.py
+- [x] megadetector/postprocessing/detector_calibration.py
+- [x] megadetector/postprocessing/generate_csv_report.py
+- [x] megadetector/postprocessing/load_api_results.py
 - [ ] megadetector/postprocessing/md_to_coco.py
 - [ ] megadetector/postprocessing/md_to_labelme.py
 - [ ] megadetector/postprocessing/md_to_wi.py
@@ -415,4 +415,29 @@
 - **FIXED** (by user): Line 817 - Wrong variable used; was using gt_filenames (list) instead of gt_filenames_set (set) for membership check.
 - **FIXED** (by user): Lines 1680-1681 - Orphaned string literal not part of assertion; fixed with backslash continuation to make string part of assert message.
 - **FIXED** (by user): Lines 1183-1193 - Duplicate code block removed.
-- Lines 674-681: Missing None check before iterating options.category_names_to_include (default is None per line 145) - Not fixed; user wants to think about this issue.
+- **FIXED** (by user): Lines 678-687 - Missing None check before iterating options.category_names_to_include; added check to populate all category IDs when None, otherwise filter by specified categories.
+
+### megadetector/postprocessing/convert_output_format.py
+- **FIXED** (by user): Line 180-181 - Wrong variable used for classification confidence; was storing detection confidence (d['conf']) instead of classification_conf when updating max.
+- **FIXED** (by user): Line 213 - Unused output_encoding parameter; now properly passed to df.to_csv().
+- **FIXED** (by user): Line 298 - Resource leak where json.dump opened file without context manager; changed to use write_json() utility function.
+- **FIXED** (by user): Line 375 - Typo in help text; changed "Output" to "Omit" to match parameter name omit_bounding_boxes.
+
+### megadetector/postprocessing/create_crop_folder.py
+- **FIXED**: Lines 172-174 - Directory creation could fail for output files in current directory (os.path.dirname returns empty string). Added length check before makedirs call.
+- **FIXED**: Lines 350-352 - Same directory creation issue in create_crop_folder function. Added length check before makedirs call.
+- **FIXED** (by user): Lines 262-264 - n_skipped_detections variable was initialized but never incremented. Added increment when skip_detection is True.
+- **FIXED** (by user): Line 606 - Missing colon in print statement for consistency with surrounding lines. Changed "Input image folder {}" to "Input image folder: {}".
+
+### megadetector/postprocessing/detector_calibration.py
+- Lines 530-531: Division by zero when plotting categories with no samples (samples_this_category empty). Would create weights arrays with len(x)=0 causing division by zero. User chose to skip.
+
+### megadetector/postprocessing/generate_csv_report.py
+- **FIXED** (by user): Lines 253-257 - NameError when datetime_source not provided; datetime_string was undefined if filename_to_datetime_string was None. Added initialization: `datetime_string = ''` before the conditional block.
+- **FIXED** (by user): Lines 387-392 - IndexError if no output records generated; accessing output_records[0] would fail on empty list. Added check for `len(output_records) == 0` with warning message.
+- **FIXED** (by user): Lines 394-397 - Missing output directory creation; added check for output directory existence with length check before makedirs call.
+
+### megadetector/postprocessing/load_api_results.py
+- **FIXED** (by user): Lines 142-146 - Missing output directory creation in write_api_results(); added directory creation check before writing. Also replaced json.dump with write_json() utility function.
+- Line 181: No error handling for json.loads() in load_api_results_csv() when deserializing detections; would fail on NaN or malformed JSON. User chose not to fix (deprecated function).
+- **FIXED** (by user): Lines 217-221 - Missing output directory creation in write_api_results_csv(); added directory creation check before writing CSV.

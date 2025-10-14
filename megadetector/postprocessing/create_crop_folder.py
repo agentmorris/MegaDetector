@@ -169,7 +169,9 @@ def crop_results_to_image_results(image_results_file_with_crop_ids,
         'Could not find image-level input file {}'.format(image_results_file_with_crop_ids)
     assert os.path.isfile(crop_results_file), \
         'Could not find crop results file {}'.format(crop_results_file)
-    os.makedirs(os.path.dirname(output_file),exist_ok=True)
+    output_dir = os.path.dirname(output_file)
+    if len(output_dir) > 0:
+        os.makedirs(output_dir,exist_ok=True)
 
 
     ##%% Read input files
@@ -259,7 +261,11 @@ def crop_results_to_image_results(image_results_file_with_crop_ids,
                                 detections_without_classification_handling
                         ))
 
-                if not skip_detection:
+                if skip_detection:
+
+                    n_skipped_detections += 1
+
+                else:
 
                     crop_results_this_detection = crop_filename_to_results[crop_filename_relative]
 
@@ -340,8 +346,11 @@ def create_crop_folder(input_file,
     assert os.path.isfile(input_file), 'Input file {} not found'.format(input_file)
     assert os.path.isdir(input_folder), 'Input folder {} not found'.format(input_folder)
     os.makedirs(output_folder,exist_ok=True)
+
     if output_file is not None:
-        os.makedirs(os.path.dirname(output_file),exist_ok=True)
+        output_dir = os.path.dirname(output_file)
+        if len(output_dir) > 0:
+            os.makedirs(output_dir,exist_ok=True)
 
 
     ##%% Read input
@@ -599,7 +608,7 @@ def main():
 
     print('Starting crop folder creation...')
     print('Input MD results: {}'.format(args.input_file))
-    print('Input image folder {}'.format(args.input_folder))
+    print('Input image folder: {}'.format(args.input_folder))
     print('Output crop folder: {}'.format(args.output_folder))
 
     if args.output_file:
