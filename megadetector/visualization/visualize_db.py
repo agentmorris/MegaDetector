@@ -145,12 +145,12 @@ class DbVizOptions:
 
 def _image_filename_to_path(image_file_name, image_base_dir, pathsep_replacement=''):
     """
-    Translates the file name in an image entry in the json database to a path, possibly doing
-    some manipulation of path separators.
+    Translates the file name in an image entry in the json database to an absolute path, possibly
+    doing some manipulation of path separators.
     """
 
     if len(pathsep_replacement) > 0:
-        image_file_name = os.path.normpath(image_file_name).replace(os.pathsep,pathsep_replacement)
+        image_file_name = os.path.normpath(image_file_name).replace(os.sep,pathsep_replacement)
     return os.path.join(image_base_dir, image_file_name)
 
 
@@ -158,7 +158,8 @@ def _image_filename_to_path(image_file_name, image_base_dir, pathsep_replacement
 
 def visualize_db(db_path, output_dir, image_base_dir, options=None):
     """
-    Writes images and html to output_dir to visualize the annotations in a .json file.
+    Writes images and html to output_dir to visualize the images and annotations in a
+    COCO-formatted .json file.
 
     Args:
         db_path (str or dict): the .json filename to load, or a previously-loaded database
@@ -176,9 +177,11 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
 
     # Consistency checking for fields with specific format requirements
 
-    # This should be a list, but if someone specifies a string, do a reasonable thing
+    # These should be a lists, but if someone specifies a string, do a reasonable thing
     if isinstance(options.extra_image_fields_to_print,str):
         options.extra_image_fields_to_print = [options.extra_image_fields_to_print]
+    if isinstance(options.extra_annotation_fields_to_print,str):
+        options.extra_annotation_fields_to_print = [options.extra_annotation_fields_to_print]
 
     if not options.parallelize_rendering_with_threads:
         print('Warning: process-based parallelization is not yet supported by visualize_db')
@@ -312,8 +315,9 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         if image_base_dir.startswith('http'):
             img_path = image_base_dir + img_relative_path
         else:
-            img_path = os.path.join(image_base_dir,
-                                    _image_filename_to_path(img_relative_path, image_base_dir))
+            img_path = _image_filename_to_path(image_file_name=img_relative_path,
+                                               image_base_dir=image_base_dir,
+                                               pathsep_replacement=options.pathsep_replacement)
 
         annos_i = df_anno.loc[df_anno['image_id'] == img_id, :] # all annotations on this image
 

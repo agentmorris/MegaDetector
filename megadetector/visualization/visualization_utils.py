@@ -1272,7 +1272,7 @@ def gray_scale_fraction(image,crop_size=(0.1,0.1)):
     if crop_size[0] > 0 or crop_size[1] > 0:
 
         assert (crop_size[0] + crop_size[1]) < 1.0, \
-            print('Illegal crop size: {}'.format(str(crop_size)))
+            'Illegal crop size: {}'.format(str(crop_size))
 
         top_crop_pixels = int(image.height * crop_size[0])
         bottom_crop_pixels = int(image.height * crop_size[1])
@@ -1391,7 +1391,9 @@ def _resize_absolute_image(input_output_files,
         status = 'error'
         error = str(e)
 
-    return {'input_fn':input_fn_abs,'output_fn':output_fn_abs,status:'status',
+    return {'input_fn':input_fn_abs,
+            'output_fn':output_fn_abs,
+            'status':status,
             'error':error}
 
 # ..._resize_absolute_image(...)
@@ -1460,6 +1462,7 @@ def resize_images(input_file_to_output_file,
         pool = None
 
         try:
+
             if pool_type == 'thread':
                 pool = ThreadPool(n_workers); poolstring = 'threads'
             else:
@@ -1477,10 +1480,13 @@ def resize_images(input_file_to_output_file,
                     quality=quality)
 
             results = list(tqdm(pool.imap(p, input_output_file_pairs),total=len(input_output_file_pairs)))
+
         finally:
-            pool.close()
-            pool.join()
-            print("Pool closed and joined for image resizing")
+
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print('Pool closed and joined for image resizing')
 
     return results
 
@@ -1680,8 +1686,13 @@ def parallel_get_image_sizes(filenames,
         else:
             pool = Pool(n_workers)
 
-        results = list(tqdm(pool.imap(
-            partial(get_image_size,verbose=verbose),filenames), total=len(filenames)))
+        try:
+            results = list(tqdm(pool.imap(
+                partial(get_image_size,verbose=verbose),filenames), total=len(filenames)))
+        finally:
+            pool.close()
+            pool.join()
+            print('Pool closed and joined for image size retrieval')
 
     assert len(filenames) == len(results), 'Internal error in parallel_get_image_sizes'
 

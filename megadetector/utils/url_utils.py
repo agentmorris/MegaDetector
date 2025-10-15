@@ -132,7 +132,8 @@ def download_url(url,
         if verbose:
             print('Downloading file {} to {}'.format(os.path.basename(url_no_sas),destination_filename),end='')
         target_dir = os.path.dirname(destination_filename)
-        os.makedirs(target_dir,exist_ok=True)
+        if len(target_dir) > 0:
+            os.makedirs(target_dir,exist_ok=True)
         urllib.request.urlretrieve(url, destination_filename, progress_updater)
         assert(os.path.isfile(destination_filename))
         n_bytes = os.path.getsize(destination_filename)
@@ -800,8 +801,9 @@ class TestUrlUtils:
 def _test_url_utils():
     """
     Runs all tests in the TestUrlUtils class.  I generally disable this during testing
-    because it creates irritating nondeterminism, and this is neither a core module nor
-    a module that changes often.
+    because it creates irritating nondeterminism (because it depends on downloading
+    stuff from the Internet), and this is neither a core module nor a module that changes
+    often.
     """
 
     test_instance = TestUrlUtils()

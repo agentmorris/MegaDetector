@@ -178,21 +178,21 @@
 - [x] megadetector/utils/gpu_test.py
 - [x] megadetector/utils/md_tests.py
 - [x] megadetector/utils/path_utils.py
-- [ ] megadetector/utils/process_utils.py
-- [ ] megadetector/utils/split_locations_into_train_val.py
-- [ ] megadetector/utils/string_utils.py
-- [ ] megadetector/utils/url_utils.py
-- [ ] megadetector/utils/wi_platform_utils.py
-- [ ] megadetector/utils/wi_taxonomy_utils.py
-- [ ] megadetector/utils/write_html_image_list.py
+- [x] megadetector/utils/process_utils.py
+- [x] megadetector/utils/split_locations_into_train_val.py
+- [x] megadetector/utils/string_utils.py
+- [x] megadetector/utils/url_utils.py
+- [SKIPPED] megadetector/utils/wi_platform_utils.py
+- [x] megadetector/utils/wi_taxonomy_utils.py
+- [x] megadetector/utils/write_html_image_list.py
 
 ### visualization
-- [ ] megadetector/visualization/plot_utils.py
-- [ ] megadetector/visualization/render_images_with_thumbnails.py
-- [ ] megadetector/visualization/visualization_utils.py
-- [ ] megadetector/visualization/visualize_db.py
-- [ ] megadetector/visualization/visualize_detector_output.py
-- [ ] megadetector/visualization/visualize_video_output.py
+- [x] megadetector/visualization/plot_utils.py
+- [x] megadetector/visualization/render_images_with_thumbnails.py
+- [x] megadetector/visualization/visualization_utils.py
+- [x] megadetector/visualization/visualize_db.py
+- [x] megadetector/visualization/visualize_detector_output.py
+- [x] megadetector/visualization/visualize_video_output.py
 
 ---
 
@@ -531,3 +531,56 @@
 - **FIXED** (by user): Lines 1455-1473 - Missing pool cleanup in parallel_zip_files(); created pool but never closed or joined it. Wrapped in try/finally.
 - **FIXED** (by user): Lines 1500-1519 - Missing pool cleanup in parallel_zip_folders(); created pool but never closed or joined it. Wrapped in try/finally.
 - **FIXED** (by user): Lines 1669-1684 - Missing pool cleanup in parallel_compute_file_hashes(); created pool but never closed or joined it. Wrapped in try/finally.
+
+### megadetector/utils/process_utils.py
+- No bugs found. Clean process execution utility with proper resource management.
+
+### megadetector/utils/split_locations_into_train_val.py
+- **FIXED** (by user): Line 224 - Dead code; `random_seed = min_error_seed` was assigned but never used afterwards. Removed unused assignment.
+- **FIXED** (by user): Lines 226-229 - Redundant sort operation; `category_to_val_fraction` was sorted by its own values (val fractions), then immediately re-sorted by `category_id_to_count`, completely replacing the first sort's ordering. Removed the first redundant sort.
+
+### megadetector/utils/string_utils.py
+- No bugs found. Clean string utilities with proper error handling and comprehensive test coverage.
+
+### megadetector/utils/url_utils.py
+- **FIXED** (by user): Lines 134-136 - Directory creation issue in download_url(); `os.path.dirname(destination_filename)` returns empty string for files in current directory. Added check `if len(target_dir) > 0:` before makedirs.
+
+### megadetector/utils/wi_taxonomy_utils.py
+- **FIXED** (by user): Lines 346-364 - IndexError risk in generate_whole_image_detections_for_classifications(); while loop incremented i_score without bounds checking when ignoring blank classifications. If all classifications were blank/no_cv_result, i_score would exceed list length causing IndexError. Added check inside loop: if i_score >= len(classes), print warning, reset i_score to 0, and break.
+- **FIXED** (by user): Line 477 - Missing parameter in round_floats_in_nested_dict() call; was passing `max_decimals` as positional argument but function requires named parameter `decimal_places=max_decimals`.
+- **FIXED**: Line 740-742 - Directory creation issue in generate_predictions_json_from_md_results(); `os.path.dirname(predictions_json_file)` returns empty string for files in current directory. Added check `if len(output_dir) > 0:` before makedirs.
+- **FIXED**: Lines 816-818 - Directory creation issue in generate_instances_json_from_folder(); `os.path.dirname(output_file)` returns empty string for files in current directory. Added check `if len(output_dir) > 0:` before makedirs.
+- **FIXED**: Lines 900-902 - Directory creation issue in merge_prediction_json_files(); `os.path.dirname(output_prediction_file)` returns empty string for files in current directory. Added check `if len(output_dir) > 0:` before makedirs.
+
+### megadetector/utils/write_html_image_list.py
+- **FIXED** (by user): Line 188 - Malformed HTML structure; was missing `<head>` and `</head>` tags around title element. Changed from `'<html>{}<body>\n'` to `'<html><head>{}</head><body>\n'` to match structure at line 138.
+- **FIXED** (by user): Line 113 - Dead code; variable `text_style` was assigned but never used (line 114 directly used `options['defaultTextStyle']`). Removed unused assignment.
+
+### megadetector/visualization/plot_utils.py
+- **FIXED** (by user): Lines 129-133 - Wrong parameter names in matplotlib set() call; was using `x_label`, `y_label`, `x_lim`, `y_lim` with underscores, but matplotlib expects `xlabel`, `ylabel`, `xlim`, `ylim` without underscores. Removed broken try/except block and kept correct method calls.
+- **FIXED** (by user): Lines 173-176 - Missing None check for series_labels parameter; function signature allows `series_labels=None` but line 178 accessed `series_labels[i]` without checking. Added check: `if series_labels is None:` to generate default label.
+- **FIXED**: Line 186 - Wrong tick labels for sparse ticks; when setting ticks at positions [0, 20, 40, ...], was passing all col_labels instead of every 20th element. Matplotlib only uses first N labels where N = number of ticks, causing tick at position 20 to get col_labels[1] instead of col_labels[20]. Changed to `col_labels[::20]` to properly slice.
+
+### megadetector/visualization/render_images_with_thumbnails.py
+- Lines 105-106: Missing empty list check; accesses `secondary_image_bounding_box_list[0]` without checking if list is empty, would cause IndexError. User chose to skip (function implicitly requires at least one secondary image).
+- **FIXED** (by user): Lines 188-190 - Missing output directory creation; `output_image.save(output_image_filename)` would fail with FileNotFoundError if parent directory doesn't exist. Added check for directory length before makedirs.
+
+### megadetector/visualization/visualization_utils.py
+- **FIXED** (by user): Line 1275 - Invalid use of print() in assert statement; `assert ..., print('Illegal crop size...')` would always fail with "AssertionError: None" because print() returns None. Removed print() call and used string directly.
+- **FIXED** (by user): Lines 1394-1397 - Syntax error in _resize_absolute_image(); had `status:'status'` (swapped key and value) instead of `'status':status` in return dict. Fixed to proper dict syntax.
+- **FIXED** (by user): Lines 1486-1489 - Missing None check before pool cleanup in resize_images(); added `if pool is not None:` check in finally block before calling pool.close() and pool.join().
+- **FIXED** (by user): Lines 1689-1695 - Missing pool cleanup in parallel_get_image_sizes(); wrapped pool.imap() in try/finally block with pool.close() and pool.join() to prevent resource leak.
+
+### megadetector/visualization/visualize_db.py
+- **FIXED** (by user): Line 153 - Wrong path separator constant; was using `os.pathsep` (path entry separator like ':' or ';') instead of `os.sep` (directory separator like '/' or '\\'). The pathsep_replacement feature now works correctly.
+- **FIXED** (by user): Lines 315-317 - Double base directory join; was calling `_image_filename_to_path()` which already does `os.path.join(image_base_dir, filename)`, then joining with image_base_dir again, creating malformed paths like `/data/images/data/images/file.jpg`. Also wasn't passing `options.pathsep_replacement` parameter. Fixed to single call with all three parameters.
+- **FIXED** (by user): Lines 182-183 - Missing type conversion for `extra_annotation_fields_to_print` parameter; function handled string-to-list conversion for `extra_image_fields_to_print` but not for `extra_annotation_fields_to_print`, causing substring matching instead of list membership when user passed a string. Added matching conversion check.
+
+### megadetector/visualization/visualize_detector_output.py
+- No bugs found. Clean implementation with proper resource management, pool cleanup, and error handling.
+
+### megadetector/visualization/visualize_video_output.py
+- **FIXED** (by user): Lines 303-305 - Directory creation issue; `os.path.dirname(output_fn_abs)` returns empty string for files in current directory. Added check `if len(parent_dir) > 0:` before makedirs.
+- Lines 195-197: Missing KeyError check in trim_to_detections; accesses `detection['frame_number']` without checking if key exists, while lines 175-184 do check. User chose to skip (malformed data scenario).
+- Lines 240-242: Missing KeyError check in _get_detections_for_frame(); accesses `detection['frame_number']` without checking if key exists. User chose to skip (malformed data scenario).
+- **FIXED** (by user): Lines 211-246 - Missing video writer cleanup; if exception occurred during frame writing, `video_writer.release()` was never called. Added try/finally block with None check and nested try/except around release() for extra safety.
