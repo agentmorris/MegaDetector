@@ -65,7 +65,9 @@ def _process_single_image_for_resize(image_data,
             return None, None
 
     output_fn_abs = os.path.join(output_folder, input_fn_relative)
-    os.makedirs(os.path.dirname(output_fn_abs), exist_ok=True)
+    output_dir = os.path.dirname(output_fn_abs)
+    if len(output_dir) > 0:
+        os.makedirs(output_dir, exist_ok=True)
 
     if verbose:
         print('Resizing {} to {}'.format(input_fn_abs,output_fn_abs))
@@ -235,6 +237,9 @@ def resize_coco_dataset(input_folder,
             processed_results.append(result)
 
     else:
+
+        pool = None
+
         try:
 
             assert pool_type in ('process', 'thread'), f'Illegal pool type {pool_type}'
@@ -257,9 +262,10 @@ def resize_coco_dataset(input_folder,
                                         desc=f"Resizing images with {pool_type} pool"))
 
         finally:
-            pool.close()
-            pool.join()
-            print(f"{pool_type.capitalize()} pool closed and joined.")
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print('Pool closed and joined for COCO dataset resizing')
 
     new_images_list = []
     new_annotations_list = []

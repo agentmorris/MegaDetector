@@ -23,7 +23,8 @@ from collections.abc import Mapping
 
 import pandas as pd
 
-from megadetector.utils import ct_utils
+from megadetector.utils.ct_utils import get_max_conf
+from megadetector.utils.ct_utils import write_json
 from megadetector.utils.wi_taxonomy_utils import load_md_or_speciesnet_file
 
 
@@ -85,7 +86,7 @@ def load_api_results(api_output_path: str, normalize_paths: bool = True,
     # add them, because our unofficial internal dataframe format includes this.
     for im in detection_results['images']:
         if 'max_detection_conf' not in im:
-            im['max_detection_conf'] = ct_utils.get_max_conf(im)
+            im['max_detection_conf'] = get_max_conf(im)
 
     # Pack the json output into a Pandas DataFrame
     detection_results = pd.DataFrame(detection_results['images'])
@@ -139,8 +140,7 @@ def write_api_results(detection_results_table, other_fields, out_path):
         print('Warning: error removing max_detection_conf from output')
         pass
 
-    with open(out_path, 'w') as f:
-        json.dump(fields, f, indent=1)
+    write_json(out_path,fields)
 
     print('Finished writing detection results to {}'.format(out_path))
 
@@ -213,6 +213,10 @@ def write_api_results_csv(detection_results, filename):
     """
 
     print('Writing detection results to {}'.format(filename))
+
+    output_dir = os.path.dirname(filename)
+    if len(output_dir) > 0:
+        os.makedirs(output_dir, exist_ok=True)
 
     detection_results.to_csv(filename, index=False)
 

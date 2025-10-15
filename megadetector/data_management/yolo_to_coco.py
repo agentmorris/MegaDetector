@@ -176,8 +176,8 @@ def load_yolo_class_list(class_name_file):
 
         with open(class_name_file,'r') as f:
             lines = f.readlines()
+        lines = [s.strip() for s in lines]
         assert len(lines) > 0, 'Empty class name file {}'.format(class_name_file)
-        class_names = [s.strip() for s in lines]
         assert len(lines[0]) > 0, 'Empty class name file {} (empty first line)'.format(class_name_file)
 
         # Blank lines should only appear at the end
@@ -190,7 +190,7 @@ def load_yolo_class_list(class_name_file):
                     class_name_file))
 
         category_id_to_name = {}
-        for i_category_id,category_name in enumerate(class_names):
+        for i_category_id,category_name in enumerate(lines):
             assert len(category_name) > 0
             category_id_to_name[i_category_id] = category_name
 
@@ -388,9 +388,10 @@ def validate_yolo_dataset(input_folder,
             label_results = list(tqdm(pool.imap(p, label_files),
                                     total=len(label_files)))
         finally:
-            pool.close()
-            pool.join()
-            print("Pool closed and joined for label file validation")
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print("Pool closed and joined for label file validation")
 
     assert len(label_results) == len(label_files)
 
@@ -471,7 +472,8 @@ def yolo_to_coco(input_folder,
     input_folder = input_folder.replace('\\','/')
 
     assert os.path.isdir(input_folder)
-    assert os.path.isfile(class_name_file)
+    if isinstance(class_name_file,str):
+        assert os.path.isfile(class_name_file)
 
     assert empty_image_handling in \
         ('no_annotations','empty_annotations','skip','error'), \
@@ -592,19 +594,26 @@ def yolo_to_coco(input_folder,
 
         assert pool_type in ('process','thread'), 'Illegal pool type {}'.format(pool_type)
 
-        if pool_type == 'thread':
-            pool = ThreadPool(n_workers)
-        else:
-            pool = Pool(n_workers)
+        pool = None
+        try:
+            if pool_type == 'thread':
+                pool = ThreadPool(n_workers)
+            else:
+                pool = Pool(n_workers)
 
-        print('Starting a {} pool of {} workers'.format(pool_type,n_workers))
+            print('Starting a {} pool of {} workers'.format(pool_type,n_workers))
 
-        p = partial(_process_image,
-                    input_folder=input_folder,
-                    category_id_to_name=category_id_to_name,
-                    label_folder=label_folder)
-        image_results = list(tqdm(pool.imap(p, image_files_abs),
-                                  total=len(image_files_abs)))
+            p = partial(_process_image,
+                        input_folder=input_folder,
+                        category_id_to_name=category_id_to_name,
+                        label_folder=label_folder)
+            image_results = list(tqdm(pool.imap(p, image_files_abs),
+                                      total=len(image_files_abs)))
+        finally:
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print('Pool closed and joined for YOLO to COCO conversion')
 
 
     assert len(image_results) == len(image_files_abs)

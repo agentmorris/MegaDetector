@@ -76,7 +76,7 @@ MAX_BATCH_QUEUE_SIZE = 300
 
 # Default interval between frames we should process when processing video.
 # This is only used for the detection step.
-DEAFULT_SECONDS_PER_VIDEO_FRAME = 1.0
+DEFAULT_SECONDS_PER_VIDEO_FRAME = 1.0
 
 # Max number of classification scores to include per detection
 DEFAULT_TOP_N_SCORES = 2
@@ -576,7 +576,7 @@ def _crop_consumer_func(batch_queue: Queue,
     taxonomy_map = {}
     geofence_map = {}
 
-    if (enable_rollup is not None) or (country is not None):
+    if (enable_rollup) or (country is not None):
 
         # Note to self: there are a number of reasons loading the ensemble
         # could fail here; don't catch this exception, this should be a
@@ -1265,15 +1265,16 @@ class RunMDSpeciesNetOptions:
         #: Sample frames every N seconds from videos
         #:
         #: Mutually exclusive with frame_sample
-        self.time_sample = DEAFULT_SECONDS_PER_VIDEO_FRAME
+        self.time_sample = DEFAULT_SECONDS_PER_VIDEO_FRAME
 
         #: Enable additional debug output
         self.verbose = False
 
         if self.time_sample is None and self.frame_sample is None:
-            self.time_sample = DEAFULT_SECONDS_PER_VIDEO_FRAME
+            self.time_sample = DEFAULT_SECONDS_PER_VIDEO_FRAME
 
 # ...class RunMDSpeciesNetOptions
+
 
 #%% Main function
 
@@ -1307,7 +1308,7 @@ def run_md_and_speciesnet(options):
     if (options.frame_sample is not None) and (options.time_sample is not None):
         raise ValueError('--frame_sample and --time_sample are mutually exclusive')
     if (options.frame_sample is None) and (options.time_sample is None):
-        options.time_sample = DEAFULT_SECONDS_PER_VIDEO_FRAME
+        options.time_sample = DEFAULT_SECONDS_PER_VIDEO_FRAME
 
     # Set up intermediate file folder
     if options.intermediate_file_folder:
@@ -1466,7 +1467,7 @@ def main():
                         type=float,
                         default=None,
                         help='Sample frames every N seconds from videos (default {})'.\
-                            format(DEAFULT_SECONDS_PER_VIDEO_FRAME) + \
+                            format(DEFAULT_SECONDS_PER_VIDEO_FRAME) + \
                             ' (mutually exclusive with --frame_sample)')
     parser.add_argument('--verbose',
                         action='store_true',

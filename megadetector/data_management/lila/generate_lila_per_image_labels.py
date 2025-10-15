@@ -21,7 +21,7 @@ import os
 import json
 import pandas as pd
 import numpy as np
-import dateparser
+import dateparser # type: ignore
 import csv
 
 from collections import defaultdict
@@ -148,7 +148,6 @@ with open(output_file,'w',encoding='utf-8',newline='') as f:
             data = json.load(f)
 
         categories = data['categories']
-        category_ids = [c['id'] for c in categories]
         for c in categories:
             category_id_to_name = {c['id']:c['name'] for c in categories}
 
@@ -735,7 +734,8 @@ with open(output_file, 'r', encoding='utf-8') as csvfile:
 
         common_name = _clearnan(row['common_name'])
 
-        frame_num = int(row['frame_num'])
+        # Convert to float first in case this appears in the .csv file as, e.g. "3.0"
+        frame_num = int(float(row['frame_num']))
 
         # Image data
         image_entry = {

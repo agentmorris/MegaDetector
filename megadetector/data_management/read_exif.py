@@ -394,7 +394,7 @@ def _filter_tags(tags,options):
 
         tags_to_return = {}
         for tag_name in tags.keys():
-            if str(tag_name).strip().lower() not in options.tags_to_exclude:
+            if str(tag_name).strip().lower() not in tags_to_exclude:
                 tags_to_return[tag_name] = tags[tag_name]
 
         return tags_to_return
@@ -634,9 +634,10 @@ def _populate_exif_for_images(image_base,images,options=None):
             results = list(tqdm(pool.imap(partial(_populate_exif_data,image_base=image_base,
                                             options=options),images),total=len(images)))
         finally:
-            pool.close()
-            pool.join()
-            print("Pool closed and joined for EXIF extraction")
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print("Pool closed and joined for EXIF extraction")
 
     return results
 
@@ -751,9 +752,11 @@ def read_exif_from_folder(input_folder,
 
     # Validate options
     if options.tags_to_include is not None:
-        assert options.tags_to_exclude is None, "tags_to_include and tags_to_exclude are incompatible"
+        assert options.tags_to_exclude is None, \
+            "tags_to_include and tags_to_exclude are incompatible"
     if options.tags_to_exclude is not None:
-        assert options.tags_to_include is None, "tags_to_include and tags_to_exclude are incompatible"
+        assert options.tags_to_include is None, \
+            "tags_to_include and tags_to_exclude are incompatible"
 
     if input_folder is None:
         input_folder = ''
@@ -777,7 +780,7 @@ def read_exif_from_folder(input_folder,
             print('Could not write to file {}'.format(output_file))
             raise
 
-    if options.processing_library == 'exif':
+    if options.processing_library == 'exiftool':
         assert is_executable(options.exiftool_command_name), 'exiftool not available'
 
     if filenames is None:

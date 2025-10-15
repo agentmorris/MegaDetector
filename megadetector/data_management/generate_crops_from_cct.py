@@ -72,7 +72,7 @@ def generate_crops_from_cct(cct_file,image_dir,output_dir,padding=0,flat_output=
     # im = d['images'][0]
     for im in tqdm(d['images']):
 
-        input_image_fn = os.path.join(os.path.join(image_dir,im['file_name']))
+        input_image_fn = os.path.join(image_dir,im['file_name'])
         assert os.path.isfile(input_image_fn), 'Could not find image {}'.format(input_image_fn)
 
         if im['id'] not in image_id_to_boxes:
@@ -102,15 +102,17 @@ def generate_crops_from_cct(cct_file,image_dir,output_dir,padding=0,flat_output=
 
             xmin = max(xmin,0)
             ymin = max(ymin,0)
-            xmax = min(xmax,img.width-1)
-            ymax = min(ymax,img.height-1)
+            # PIL's crop() method uses exclusive upper bounds for the right and lower
+            # edges, hence "img.width" rather than "img.width-1" here.
+            xmax = min(xmax,img.width)
+            ymax = min(ymax,img.height)
 
             crop = img.crop(box=[xmin, ymin, xmax, ymax])
 
             output_fn = os.path.splitext(im['file_name'])[0].replace('\\','/')
             if flat_output:
                 output_fn = output_fn.replace('/','_')
-            output_fn = output_fn + '_crop' + str(i_ann).zfill(3) + '_id_' + ann['id']
+            output_fn = output_fn + '_crop' + str(i_ann).zfill(3) + '_id_' + str(ann['id'])
             output_fn = output_fn + '.jpg'
 
             output_full_path = os.path.join(output_dir,output_fn)

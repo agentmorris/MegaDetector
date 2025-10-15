@@ -869,7 +869,7 @@ def _update_detection_table(repeat_detection_results, options, output_file_name=
                 detection_to_modify = row_detections[instance.i_detection]
 
                 # Make sure the bounding box matches
-                assert (instance_bbox[0:3] == detection_to_modify['bbox'][0:3])
+                assert (instance_bbox[0:4] == detection_to_modify['bbox'][0:4])
 
                 # Make the probability negative, if it hasn't been switched by
                 # another bounding box
@@ -1149,7 +1149,8 @@ def find_repeat_detections(input_filename, output_file_name=None, options=None):
 
         # Load the filtering file
         detection_index_file_name = options.filterFileToLoad
-        s_in = open(detection_index_file_name, 'r').read()
+        with open(detection_index_file_name, 'r') as f:
+            s_in = f.read()
         detection_info = jsonpickle.decode(s_in)
         filtering_base_dir = os.path.dirname(options.filterFileToLoad)
         suspicious_detections = detection_info['suspicious_detections']
@@ -1382,7 +1383,8 @@ def find_repeat_detections(input_filename, output_file_name=None, options=None):
 
                 # candidate_detection_file = all_candidate_detection_files[0]
                 for candidate_detection_file in all_candidate_detection_files:
-                    s = open(candidate_detection_file, 'r').read()
+                    with open(candidate_detection_file, 'r') as f:
+                        s = f.read()
                     candidate_detections_this_file = jsonpickle.decode(s)
                     all_candidate_detections.append(candidate_detections_this_file)
 

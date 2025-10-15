@@ -42,7 +42,7 @@ class TFDetector:
         input and output tensor handles.
 
         Args:
-            model_path (str): path to .pdb file
+            model_path (str): path to .pb file
             detector_options (dict, optional): key-value pairs that control detector
                 options; currently not used by TFDetector
         """

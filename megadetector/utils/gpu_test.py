@@ -34,7 +34,7 @@ def torch_test():
     except Exception as e: #noqa
         print('PyTorch unavailable, not running PyTorch tests.  PyTorch import error was:\n{}'.format(
             str(e)))
-        return
+        return 0
 
     print('Torch version: {}'.format(str(torch.__version__)))
     print('CUDA available (according to PyTorch): {}'.format(torch.cuda.is_available()))
@@ -71,17 +71,17 @@ def tf_test():
     Print diagnostic information about TF/CUDA status.
 
     Returns:
-        int: The number of CUDA devices reported by PyTorch.
+        int: The number of CUDA devices reported by TensorFlow.
     """
 
     try:
-        import tensorflow as tf
+        import tensorflow as tf # type: ignore
     except Exception as e: #noqa
         print('TensorFlow unavailable, not running TF tests.  TF import error was:\n{}'.format(
             str(e)))
-        return
+        return 0
 
-    from tensorflow.python.platform import build_info as build
+    from tensorflow.python.platform import build_info as build # type: ignore
     print(f"TF version: {tf.__version__}")
 
     if 'cuda_version' not in build.build_info:
@@ -94,7 +94,7 @@ def tf_test():
         print(f"CuDNN build version reported by TensorFlow: {build.build_info['cudnn_version']}")
 
     try:
-        from tensorflow.python.compiler.tensorrt import trt_convert as trt
+        from tensorflow.python.compiler.tensorrt import trt_convert as trt # type: ignore
         print("Linked TensorRT version: {}".format(trt.trt_utils._pywrap_py_utils.get_linked_tensorrt_version()))
     except Exception:
         print('Could not probe TensorRT version')

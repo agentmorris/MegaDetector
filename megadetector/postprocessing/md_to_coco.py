@@ -22,6 +22,7 @@ from tqdm import tqdm
 
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.utils.path_utils import insert_before_extension
+from megadetector.utils.ct_utils import write_json
 
 default_confidence_threshold = 0.15
 
@@ -296,9 +297,7 @@ def md_to_coco(md_results_file,
     if verbose:
         print('Writing COCO output file...')
 
-    if coco_output_file is not None:
-        with open(coco_output_file,'w') as f:
-            json.dump(output_dict,f,indent=1)
+    write_json(coco_output_file,output_dict)
 
     return output_dict
 

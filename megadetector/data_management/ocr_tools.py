@@ -271,11 +271,6 @@ def crop_to_solid_region(rough_crop,crop_location,options=None):
     w = max_x-min_x
     h = max_y-min_y
 
-    x = min_x
-    y = min_y
-    w = max_x-min_x
-    h = max_y-min_y
-
     # Crop the image
     crop_np = rough_crop_np[y:y+h,x:x+w]
 
@@ -650,9 +645,10 @@ def get_datetimes_for_folder(folder_name,output_file=None,n_to_sample=-1,options
                 partial(try_get_datetime_from_image,options=options),image_file_names),
                 total=len(image_file_names)))
         finally:
-            pool.close()
-            pool.join()
-            print("Pool closed and joined for datetime extraction")
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print("Pool closed and joined for datetime extraction")
 
     filename_to_results = {}
 
@@ -728,8 +724,8 @@ if False:
 
         if 'text_results' not in results:
             raise Exception('no results available for {} ({})'.format(i_fn,fn))
-            print('Skipping {}, no results'.format(i_fn))
-            continue
+            # print('Skipping {}, no results'.format(i_fn))
+            # continue
 
         s = ' '.join([x[0] for x in results['text_results']])
 

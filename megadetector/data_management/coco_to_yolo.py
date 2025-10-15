@@ -81,7 +81,7 @@ def write_yolo_dataset_file(yolo_dataset_file,
         if val_folder_relative is not None:
             f.write('val: {}\n'.format(val_folder_relative))
         if test_folder_relative is not None:
-            f.write('val: {}\n'.format(test_folder_relative))
+            f.write('test: {}\n'.format(test_folder_relative))
 
         f.write('\n')
 
@@ -454,12 +454,13 @@ def coco_to_yolo(input_image_folder,
                 # Category IDs should range from 0..N-1
                 assert i_class in yolo_id_to_name
                 f.write(yolo_id_to_name[i_class] + '\n')
+    else:
+        class_list_filename = None
 
     if image_id_to_output_image_json_file is not None:
         print('Writing image ID mapping to {}'.format(image_id_to_output_image_json_file))
         with open(image_id_to_output_image_json_file,'w') as f:
             json.dump(image_id_to_output_image_name,f,indent=1)
-
 
     if (output_folder == input_image_folder) and (not create_image_and_label_folders):
         print('Creating annotation files (not copying images, input and output folder are the same)')

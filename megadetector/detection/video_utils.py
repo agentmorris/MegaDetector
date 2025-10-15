@@ -221,11 +221,13 @@ def frames_to_video(images, fs, output_file_name, codec_spec=default_fourcc):
         print('Warning: no frames to render')
         return
 
-    os.makedirs(os.path.dirname(output_file_name),exist_ok=True)
+    output_dir = os.path.dirname(output_file_name)
+    if len(output_dir) > 0:
+        os.makedirs(output_dir, exist_ok=True)
 
     # Determine the width and height from the first image
     frame = cv2.imread(images[0])
-    cv2.imshow('video',frame)
+    # cv2.imshow('video',frame)
     height, width, channels = frame.shape
 
     # Define the codec and create VideoWriter object
@@ -297,7 +299,7 @@ def _filename_to_frame_number(filename):
     try:
         frame_number = int(frame_number)
     except Exception:
-        raise ValueError('Filename {} does contain a valid frame number'.format(filename))
+        raise ValueError('Filename {} does not contain a valid frame number'.format(filename))
 
     return frame_number
 
@@ -1059,9 +1061,10 @@ def video_folder_to_frames(input_folder,
 
         finally:
 
-            pool.close()
-            pool.join()
-            print('Pool closed and joined for video processing')
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print('Pool closed and joined for video processing')
 
         # ...try/finally
 

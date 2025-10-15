@@ -28,8 +28,9 @@ def rename_images(input_folder,
                   read_exif_options=None,
                   n_copy_workers=8):
     """
-    For the given image struct in COCO format and associated list of annotations, reformats the
-    detections into labelme format.
+    Copies images from a possibly-nested folder structure to a flat folder structure,
+    including EXIF timestamps in each filename.  Loosely equivalent to camtrapR's
+    imageRename() function.
 
     Args:
         input_folder (str): the folder to search for images, always recursive
@@ -56,8 +57,9 @@ def rename_images(input_folder,
     if read_exif_options is None:
         read_exif_options = ReadExifOptions()
 
-    read_exif_options.tags_to_include = ['DateTime','Model','Make','ExifImageWidth','ExifImageHeight','DateTime',
-                                         'DateTimeOriginal']
+    read_exif_options.tags_to_include = ['DateTime','Model',
+                                         'Make','ExifImageWidth',
+                                         'ExifImageHeight','DateTimeOriginal']
     read_exif_options.verbose = False
 
     exif_info = read_exif_from_folder(input_folder=input_folder,
@@ -104,17 +106,21 @@ def rename_images(input_folder,
     if not dry_run:
 
         input_fn_abs_to_output_fn_abs = {}
+
         for input_fn_relative in input_fn_relative_to_output_fn_relative:
+
             output_fn_relative = input_fn_relative_to_output_fn_relative[input_fn_relative]
             input_fn_abs = os.path.join(input_folder,input_fn_relative)
             output_fn_abs = os.path.join(output_folder,output_fn_relative)
             input_fn_abs_to_output_fn_abs[input_fn_abs] = output_fn_abs
 
-            parallel_copy_files(input_file_to_output_file=input_fn_abs_to_output_fn_abs,
-                                max_workers=n_copy_workers,
-                                use_threads=True,
-                                overwrite=True,
-                                verbose=verbose)
+        parallel_copy_files(input_file_to_output_file=input_fn_abs_to_output_fn_abs,
+                            max_workers=n_copy_workers,
+                            use_threads=True,
+                            overwrite=True,
+                            verbose=verbose)
+
+    # ...if this is not a dry run
 
     return input_fn_relative_to_output_fn_relative
 
@@ -129,13 +135,14 @@ if False:
 
     #%% Configure options
 
-    input_folder = r'G:\camera_traps\camera_trap_videos\2024.05.25\cam3'
-    output_folder = r'G:\camera_traps\camera_trap_videos\2024.05.25\cam3_flat'
+    input_folder = r'G:\camera_traps\camera_trap_images\2018.05.04'
+    output_folder = r'g:\temp\rename-test-out'
     dry_run = False
     verbose = True
     read_exif_options = ReadExifOptions()
-    read_exif_options.tags_to_include = ['DateTime','Model','Make','ExifImageWidth','ExifImageHeight','DateTime',
-                               'DateTimeOriginal']
+    read_exif_options.tags_to_include = ['DateTime','Model','Make',
+                                         'ExifImageWidth','ExifImageHeight',
+                                         'DateTimeOriginal']
     read_exif_options.n_workers = 8
     read_exif_options.verbose = verbose
     n_copy_workers = 8

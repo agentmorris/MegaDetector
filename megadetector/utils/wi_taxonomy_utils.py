@@ -311,7 +311,8 @@ def taxonomy_info_to_taxonomy_string(taxonomy_info, include_taxon_id_and_common_
 def generate_whole_image_detections_for_classifications(classifications_json_file,
                                                         detections_json_file,
                                                         ensemble_json_file=None,
-                                                        ignore_blank_classifications=True):
+                                                        ignore_blank_classifications=True,
+                                                        verbose=True):
     """
     Given a set of classification results in SpeciesNet format that were likely run on
     already-cropped images, generate a file of [fake] detections in SpeciesNet format in which each
@@ -324,6 +325,7 @@ def generate_whole_image_detections_for_classifications(classifications_json_fil
             and classfications
         ignore_blank_classifications (bool, optional): use non-top classifications when
             the top classification is "blank" or "no CV result"
+        verbose (bool, optional): enable additional debug output
 
     Returns:
         dict: the contents of [detections_json_file]
@@ -336,16 +338,37 @@ def generate_whole_image_detections_for_classifications(classifications_json_fil
     output_predictions = []
     ensemble_predictions = []
 
-    # prediction = predictions[0]
-    for prediction in predictions:
+    # i_prediction = 0; prediction = predictions[i_prediction]
+    for i_prediction,prediction in enumerate(predictions):
 
         output_prediction = {}
         output_prediction['filepath'] = prediction['filepath']
         i_score = 0
+
         if ignore_blank_classifications:
+
             while (prediction['classifications']['classes'][i_score] in \
                    (blank_prediction_string,no_cv_result_prediction_string)):
+
                 i_score += 1
+                if (i_score >= len(prediction['classifications']['classes'])):
+
+                    if verbose:
+
+                        print('Ignoring blank classifications, but ' + \
+                              'image {} has no non-blank values'.format(
+                                i_prediction))
+
+                    # Just use the first one
+                    i_score = 0
+                    break
+
+                # ...if we passed the last prediction
+
+            # ...iterate over classes within this prediction
+
+        # ...if we're supposed to ignore blank classifications
+
         top_classification = prediction['classifications']['classes'][i_score]
         top_classification_score = prediction['classifications']['scores'][i_score]
         if is_animal_classification(top_classification):
@@ -450,8 +473,8 @@ def generate_md_results_from_predictions_json(predictions_json_file,
 
     # Round floating-point values (confidence scores, coordinates) to a
     # reasonable number of decimal places
-    if max_decimals is not None and max_decimals > 0:
-        round_floats_in_nested_dict(predictions)
+    if (max_decimals is not None) and (max_decimals > 0):
+        round_floats_in_nested_dict(predictions, decimal_places=max_decimals)
 
     predictions = predictions['predictions']
     assert isinstance(predictions,list)
@@ -714,7 +737,9 @@ def generate_predictions_json_from_md_results(md_results_file,
 
     # ...for each image
 
-    os.makedirs(os.path.dirname(predictions_json_file),exist_ok=True)
+    output_dir = os.path.dirname(predictions_json_file)
+    if len(output_dir) > 0:
+        os.makedirs(output_dir,exist_ok=True)
     with open(predictions_json_file,'w') as f:
         json.dump(output_dict,f,indent=1)
 
@@ -788,7 +813,9 @@ def generate_instances_json_from_folder(folder,
     to_return = {'instances':instances}
 
     if output_file is not None:
-        os.makedirs(os.path.dirname(output_file),exist_ok=True)
+        output_dir = os.path.dirname(output_file)
+        if len(output_dir) > 0:
+            os.makedirs(output_dir,exist_ok=True)
         with open(output_file,'w') as f:
             json.dump(to_return,f,indent=1)
 
@@ -870,7 +897,9 @@ def merge_prediction_json_files(input_prediction_files,output_prediction_file):
 
     output_dict = {'predictions':predictions}
 
-    os.makedirs(os.path.dirname(output_prediction_file),exist_ok=True)
+    output_dir = os.path.dirname(output_prediction_file)
+    if len(output_dir) > 0:
+        os.makedirs(output_dir,exist_ok=True)
     with open(output_prediction_file,'w') as f:
         json.dump(output_dict,f,indent=1)
 

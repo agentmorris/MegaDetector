@@ -13,8 +13,9 @@ included in package-level dependency lists.  YMMV.
 #%% Imports and constants
 
 import os
-import glob
 import argparse
+
+from megadetector.utils.path_utils import recursive_file_list
 
 from multiprocessing.pool import Pool as Pool
 from tqdm import tqdm
@@ -77,7 +78,10 @@ def remove_exif(image_base_folder,recursive=True,n_processes=1):
 
     assert os.path.isdir(image_base_folder), \
         'Could not find folder {}'.format(image_base_folder)
-    all_files = [f for f in glob.glob(image_base_folder+ "*/**", recursive=recursive)]
+    all_files = recursive_file_list(image_base_folder,
+                                    recursive=True,
+                                    return_relative_paths=False,
+                                    convert_slashes=True)
     image_files = [s for s in all_files if \
                    (s.lower().endswith('.jpg') or s.lower().endswith('.jpeg'))]
 
@@ -98,9 +102,10 @@ def remove_exif(image_base_folder,recursive=True,n_processes=1):
             pool = Pool(n_processes)
             _ = list(tqdm(pool.imap(remove_exif_from_image,image_files),total=len(image_files)))
         finally:
-            pool.close()
-            pool.join()
-            print("Pool closed and joined for EXIF removal")
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print("Pool closed and joined for EXIF removal")
 
 # ...remove_exif(...)
 

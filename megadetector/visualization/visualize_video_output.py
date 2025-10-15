@@ -300,7 +300,9 @@ def _process_video(video_entry,
         output_fn_relative = os.path.splitext(output_fn_relative)[0] + ext
 
     output_fn_abs = os.path.join(out_dir, output_fn_relative)
-    os.makedirs(os.path.dirname(output_fn_abs), exist_ok=True)
+    parent_dir = os.path.dirname(output_fn_abs)
+    if len(parent_dir) > 0:
+        os.makedirs(parent_dir, exist_ok=True)
 
     # Get frames to process
     frames_to_process = _get_frames_to_process(video_entry,
@@ -395,6 +397,8 @@ def _process_video(video_entry,
     # Write output video
     if len(rendered_frames) > 0:
 
+        video_writer = None
+
         try:
 
             # Get frame dimensions
@@ -412,7 +416,6 @@ def _process_video(video_entry,
             for frame in rendered_frames:
                 video_writer.write(frame)
 
-            video_writer.release()
             result['success'] = True
             result['frames_processed'] = len(rendered_frames)
 
@@ -420,6 +423,15 @@ def _process_video(video_entry,
 
             result['error'] = 'Error writing output video: {}'.format(str(e))
             return result
+
+        finally:
+
+            if video_writer is not None:
+                try:
+                    video_writer.release()
+                except Exception as e:
+                    print('Warning: failed to release video writer for file {}: {}'.format(
+                        video_entry['file'],str(e)))
 
         # ...try/except
 
