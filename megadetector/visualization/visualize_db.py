@@ -102,10 +102,6 @@ class DbVizOptions:
         #: :meta private:
         self.multiple_categories_tag = '*multiple*'
 
-        #: We sometimes flatten image directories by replacing a path separator with
-        #: another character.  Leave blank for the typical case where this isn't necessary.
-        self.pathsep_replacement = '' # '~'
-
         #: Parallelize rendering across multiple workers
         self.parallelize_rendering = False
 
@@ -139,19 +135,6 @@ class DbVizOptions:
         #: Optionally apply a confidence threshold; this requires that [confidence_field_name]
         #: be present in all detections.
         self.confidence_threshold = None
-
-
-#%% Helper functions
-
-def _image_filename_to_path(image_file_name, image_base_dir, pathsep_replacement=''):
-    """
-    Translates the file name in an image entry in the json database to an absolute path, possibly
-    doing some manipulation of path separators.
-    """
-
-    if len(pathsep_replacement) > 0:
-        image_file_name = os.path.normpath(image_file_name).replace(os.sep,pathsep_replacement)
-    return os.path.join(image_base_dir, image_file_name)
 
 
 #%% Core functions
@@ -315,9 +298,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         if image_base_dir.startswith('http'):
             img_path = image_base_dir + img_relative_path
         else:
-            img_path = _image_filename_to_path(image_file_name=img_relative_path,
-                                               image_base_dir=image_base_dir,
-                                               pathsep_replacement=options.pathsep_replacement)
+            img_path = os.path.join(image_base_dir,img_relative_path).replace('\\','/')
 
         annos_i = df_anno.loc[df_anno['image_id'] == img_id, :] # all annotations on this image
 
@@ -411,7 +392,8 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         img_id_string = str(img_id).lower()
         file_name = '{}_gt.jpg'.format(os.path.splitext(img_id_string)[0])
 
-        # Replace characters that muck up image links
+        # Replace characters that muck up image links, including flattening file
+        # separators.
         illegal_characters = ['/','\\',':','\t','#',' ','%']
         for c in illegal_characters:
             file_name = file_name.replace(c,'~')
@@ -629,9 +611,6 @@ def main():
                         help='Only include images with bounding boxes (defaults to false)')
     parser.add_argument('--random_seed', action='store', type=int, default=None,
                         help='Random seed for image selection')
-    parser.add_argument('--pathsep_replacement', action='store', type=str, default='',
-                        help='Replace path separators in relative filenames with another ' + \
-                             'character (frequently ~)')
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()
