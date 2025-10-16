@@ -262,7 +262,7 @@ def detect_motion(prev_image_path,
     curr_image = cv2.imread(str(curr_image_path))
 
     if curr_image is None:
-        print(f"Could not read image: {curr_image_path}")
+        print(f'Could not read image: {curr_image_path}')
         return to_return, motion_state
 
     # Read previous image if available (used for frame diff mode)
@@ -270,7 +270,7 @@ def detect_motion(prev_image_path,
     if prev_image_path is not None:
         prev_image = cv2.imread(str(prev_image_path))
         if prev_image is None:
-            print(f"Could not read image: {prev_image_path}")
+            print(f'Could not read image: {prev_image_path}')
             return to_return, motion_state
 
 
@@ -470,10 +470,10 @@ def process_camera_folder(folder_path, options=None):
     image_files = find_images(folder_path, recursive=True, return_relative_paths=False)
 
     if len(image_files) == 0:
-        print(f'"No images found in {folder_path}"')
+        print(f'No images found in {folder_path}')
         return pd.DataFrame()
 
-    print(f"Processing {len(image_files)} images in {camera_name}")
+    print(f'Processing {len(image_files)} images in {camera_name}')
 
     # Initialize results
     results = []
@@ -527,7 +527,7 @@ def process_camera_folder(folder_path, options=None):
         diff_percentage = motion_result['diff_percentage']
 
         # Format regions as semicolon-separated list of "x,y,w,h"
-        regions_str = ';'.join([f"{x},{y},{w},{h}" for x, y, w, h in regions])
+        regions_str = ';'.join([f'{x},{y},{w},{h}' for x, y, w, h in regions])
 
         # Add result for current image
         results.append({
@@ -587,9 +587,9 @@ def process_folders(folders, options=None, output_csv=None):
                 try:
                     folder_results = future.result()
                     all_results.append(folder_results)
-                    print(f"Finished processing {folder}")
+                    print(f'Finished processing {folder}')
                 except Exception as e:
-                    print(f"Error processing {folder}: {e}")
+                    print(f'Error processing {folder}: {e}')
 
     # Combine all results
     if all_results:
@@ -598,7 +598,7 @@ def process_folders(folders, options=None, output_csv=None):
         # Save to CSV if requested
         if output_csv:
             combined_results.to_csv(output_csv, index=False)
-            print(f"Results saved to {output_csv}")
+            print(f'Results saved to {output_csv}')
 
         return combined_results
     else:
@@ -656,7 +656,7 @@ def create_change_previews(motion_results, output_folder, num_samples=10, random
         prev_image = cv2.imread(prev_image_path)
 
         if curr_image is None or prev_image is None:
-            print(f"Could not read images: {prev_image_path} or {curr_image_path}")
+            print(f'Could not read images: {prev_image_path} or {curr_image_path}')
             continue
 
         # Ensure that both images have the same dimensions
@@ -675,7 +675,7 @@ def create_change_previews(motion_results, output_folder, num_samples=10, random
         # Add details at the bottom
         camera = row['camera']
         diff_pct = row['diff_percentage']
-        info_text = f"Camera: {camera} | Change: {diff_pct:.2f}%"
+        info_text = f'Camera: {camera} | Change: {diff_pct:.2f}%'
         cv2.putText(combined, info_text, (10, combined.shape[0] - 10), font, 0.7, (0, 255, 0), 2)
 
         # Draw bounding boxes on the 'after' image if regions exist
@@ -690,12 +690,12 @@ def create_change_previews(motion_results, output_folder, num_samples=10, random
                                     (curr_image.shape[1] + x + w, y + h),
                                     (0, 0, 255), 2)
                     except ValueError:
-                        print(f"Invalid region format: {region}")
+                        print(f'Invalid region format: {region}')
 
         # Save the combined image
         camera_name = Path(curr_image_path).parent.name
         image_name = Path(curr_image_path).name
-        output_path = output_folder / f"preview_{camera_name}_{image_name}"
+        output_path = output_folder / f'preview_{camera_name}_{image_name}'
         cv2.imwrite(str(output_path), combined)
 
         preview_paths.append(str(output_path))
@@ -708,7 +708,11 @@ def create_change_previews(motion_results, output_folder, num_samples=10, random
 
 #%% Command-line driver
 
-def main(): # noqa
+def main():
+    """
+    Command-line driver
+    """
+
     parser = argparse.ArgumentParser(description='Detect motion in timelapse camera images')
     parser.add_argument('--root_dir', required=True, help='Root directory containing camera folders')
     parser.add_argument('--output_csv', default=None, help='Optional output CSV file')
@@ -801,7 +805,7 @@ def main(): # noqa
     root_dir = Path(args.root_dir)
     camera_folders = [f for f in root_dir.iterdir() if f.is_dir()]
 
-    print(f"Found {len(camera_folders)} camera folders")
+    print(f'Found {len(camera_folders)} camera folders')
 
     # Process all folders
     results = process_folders(
@@ -817,16 +821,20 @@ def main(): # noqa
             args.preview_folder,
             num_samples=args.num_previews
         )
-        print(f"Created {len(preview_paths)} preview images in {args.preview_folder}")
+        print(f'Created {len(preview_paths)} preview images in {args.preview_folder}')
 
-    print("Motion detection completed")
+    print('Motion detection completed')
 
     # Display summary
     motion_detected_count = results['motion_detected'].sum()
     total_images = len(results)
-    print(f"Motion detected in {motion_detected_count} out of {total_images} images "
-          f"({motion_detected_count/total_images*100:.2f}%)")
+    if total_images > 0:
+        print(f'Motion detected in {motion_detected_count} out of {total_images} images '
+              f'({motion_detected_count/total_images*100:.2f}%)')
+    else:
+        print('No images were processed')
 
+# ...def main(...)
 
 if __name__ == "__main__":
     main()

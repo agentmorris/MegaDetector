@@ -185,6 +185,9 @@ def render_images_with_thumbnails(
     # ...for each crop
 
     # Write output image to disk
+    parent_dir = os.path.dirname(output_image_filename)
+    if len(parent_dir) > 0:
+        os.makedirs(parent_dir,exist_ok=True)
     output_image.save(output_image_filename)
 
 # ...def render_images_with_thumbnails(...)

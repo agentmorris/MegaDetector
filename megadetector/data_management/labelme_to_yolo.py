@@ -107,10 +107,21 @@ def labelme_file_to_yolo_file(labelme_file,
         minx_abs = max(minx_abs,0.0)
         miny_abs = max(miny_abs,0.0)
 
-        minx_rel = minx_abs / (im_width-1)
-        maxx_rel = maxx_abs / (im_width-1)
-        miny_rel = miny_abs / (im_height-1)
-        maxy_rel = maxy_abs / (im_height-1)
+        # Handle degenerate cases where image is one pixel wide
+        if im_width == 1:
+            minx_rel = 0.0
+            maxx_rel = 0.0
+        else:
+            minx_rel = minx_abs / (im_width-1)
+            maxx_rel = maxx_abs / (im_width-1)
+
+        # Handle degenerate cases where image is one pixel tall
+        if im_height == 1:
+            miny_rel = 0.0
+            maxy_rel = 0.0
+        else:
+            miny_rel = miny_abs / (im_height-1)
+            maxy_rel = maxy_abs / (im_height-1)
 
         assert maxx_rel >= minx_rel
         assert maxy_rel >= miny_rel
@@ -252,9 +263,10 @@ def labelme_folder_to_yolo(labelme_folder,
                         valid_labelme_files_abs),
                         total=len(valid_labelme_files_abs)))
         finally:
-            pool.close()
-            pool.join()
-            print('Pool closed and joined for labelme conversion to YOLO')
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print('Pool closed and joined for labelme conversion to YOLO')
 
     assert len(valid_labelme_files_relative) == len(image_results)
 
@@ -269,27 +281,6 @@ def labelme_folder_to_yolo(labelme_folder,
 
 # ...def labelme_folder_to_yolo(...)
 
-
-#%% Interactive driver
-
-if False:
-
-    pass
-
-    #%%
-
-    labelme_file = os.path.expanduser('~/tmp/labels/x.json')
-    required_token = 'saved_by_labelme'
-    category_name_to_category_id = {'animal':0}
-    labelme_folder = os.path.expanduser('~/tmp/labels')
-
-    #%%
-
-    category_name_to_category_id = \
-        labelme_folder_to_yolo(labelme_folder,
-                               category_name_to_category_id=category_name_to_category_id,
-                               required_token=required_token,
-                               overwrite_behavior='overwrite')
 
 #%% Command-line driver
 

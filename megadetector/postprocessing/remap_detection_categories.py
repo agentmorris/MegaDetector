@@ -18,6 +18,7 @@ import argparse
 from tqdm import tqdm
 
 from megadetector.utils.ct_utils import invert_dictionary
+from megadetector.utils.ct_utils import write_json
 
 
 #%% Main function
@@ -132,13 +133,15 @@ def remap_detection_categories(input_file,
         for det in im['detections']:
             det['category'] = input_category_id_to_output_category_id[det['category']]
 
+    # ...for each image
+
     input_data['detection_categories'] = target_category_map
 
-    with open(output_file,'w') as f:
-        json.dump(input_data,f,indent=1)
-
+    write_json(output_file,input_data)
 
     print('Saved remapped results to {}'.format(output_file))
+
+# ...def remap_detection_categories(...)
 
 
 #%% Interactive driver

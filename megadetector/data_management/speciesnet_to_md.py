@@ -33,9 +33,9 @@ def main(): # noqa
 
     args = parser.parse_args()
 
-    generate_md_results_from_predictions_json(args.predictions_json_file,
-                                              args.md_results_file,
-                                              args.base_folder)
+    generate_md_results_from_predictions_json(predictions_json_file=args.predictions_json_file,
+                                              md_results_file=args.md_results_file,
+                                              base_folder=args.base_folder)
 
 if __name__ == '__main__':
     main()

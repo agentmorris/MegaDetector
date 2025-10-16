@@ -494,7 +494,8 @@ def separate_detections_into_folders(options):
 
     # Load detection results
     print('Loading detection results')
-    results = json.load(open(options.results_file))
+    with open(options.results_file,'r') as f:
+        results = json.load(f)
     images = results['images']
 
     for im in images:
@@ -618,8 +619,13 @@ def separate_detections_into_folders(options):
 
         print('Starting a pool with {} threads'.format(options.n_threads))
         pool = ThreadPool(options.n_threads)
-        process_detections_with_options = partial(_process_detections, options=options)
-        _ = list(tqdm(pool.imap(process_detections_with_options, images), total=len(images)))
+        try:
+            process_detections_with_options = partial(_process_detections, options=options)
+            _ = list(tqdm(pool.imap(process_detections_with_options, images), total=len(images)))
+        finally:
+            pool.close()
+            pool.join()
+            print('Pool closed and joined for folder separation')
 
     if options.remove_empty_folders:
         print('Removing empty folders from {}'.format(options.base_output_folder))
@@ -736,7 +742,7 @@ def main(): # noqa
                         help='Line thickness (in pixels) for rendering, only meaningful if ' + \
                              'using render_boxes (defaults to {})'.format(
                              default_line_thickness))
-    parser.add_argument('--box_expansion', type=int, default=default_line_thickness,
+    parser.add_argument('--box_expansion', type=int, default=default_box_expansion,
                         help='Box expansion (in pixels) for rendering, only meaningful if ' + \
                              'using render_boxes (defaults to {})'.format(
                              default_box_expansion))

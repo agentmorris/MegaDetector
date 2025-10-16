@@ -353,10 +353,11 @@ def _render_image_pair(fn,image_pairs,category_folder,options,pairwise_options):
         im_gt = image_pair['im_gt']
         annotations_gt = image_pair['annotations_gt']
         gt_boxes = []
+        gt_categories = []
         for ann in annotations_gt:
             if 'bbox' in ann:
                 gt_boxes.append(ann['bbox'])
-        gt_categories = [ann['category_id'] for ann in annotations_gt]
+                gt_categories.append(ann['category_id'])
 
         if len(gt_boxes) > 0:
 
@@ -474,7 +475,7 @@ def _result_types_to_comparison_category(result_types_present_a,
                 ('tp' not in result_types_present_b):
                 return 'clean_tp_a_only'
         # Otherwise, TPs are cases where one model has only TPs, and the other model
-        # has any mistakse
+        # has any mistakes
         if ('fn' in result_types_present_b) or ('fp' in result_types_present_b):
             return 'tp_a_only'
 
@@ -486,7 +487,7 @@ def _result_types_to_comparison_category(result_types_present_a,
                 ('tp' not in result_types_present_a):
                 return 'clean_tp_b_only'
         # Otherwise, TPs are cases where one model has only TPs, and the other model
-        # has any mistakse
+        # has any mistakes
         if ('fn' in result_types_present_a) or ('fp' in result_types_present_a):
             return 'tp_b_only'
 
@@ -674,11 +675,17 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
     category_ids_to_include_a = []
     category_ids_to_include_b = []
 
-    for category_name in options.category_names_to_include:
-        if category_name in category_name_to_id_a:
-            category_ids_to_include_a.append(category_name_to_id_a[category_name])
-        if category_name in category_name_to_id_b:
-            category_ids_to_include_b.append(category_name_to_id_b[category_name])
+    # If we're supposed to be including all categories, we don't actually need to
+    # populate category_ids_to_include_a/b, but we're doing this for future-proofing.
+    if options.category_names_to_include is None:
+        category_ids_to_include_a = sorted(list(category_name_to_id_a.values()))
+        category_ids_to_include_b = sorted(list(category_name_to_id_b.values()))
+    else:
+        for category_name in options.category_names_to_include:
+            if category_name in category_name_to_id_a:
+                category_ids_to_include_a.append(category_name_to_id_a[category_name])
+            if category_name in category_name_to_id_b:
+                category_ids_to_include_b.append(category_name_to_id_b[category_name])
 
     if pairwise_options.results_description_a is None:
         if 'detector' not in results_a['info']:
@@ -814,7 +821,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             print('Warning: {} files are only available in the ground truth (not in MD results)'.format(
                 len(filenames_only_in_gt)))
 
-        filenames_only_in_results = gt_filenames_set.difference(gt_filenames)
+        filenames_only_in_results = filenames_to_compare_set.difference(gt_filenames_set)
         if len(filenames_only_in_results) > 0:
             print('Warning: {} files are only available in the MD results (not in ground truth)'.format(
                 len(filenames_only_in_results)))
@@ -1177,13 +1184,6 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             if 'tn' in result_types_present_a or 'tn' in result_types_present_b:
                 assert len(result_types_present_a) == 1
                 assert len(result_types_present_b) == 1
-
-            # If either model has a TP or FN, the other has to have a TP or FN, since
-            # there was something in the GT
-            if ('tp' in result_types_present_a) or ('fn' in result_types_present_a):
-                assert 'tp' in result_types_present_b or 'fn' in result_types_present_b
-            if ('tp' in result_types_present_b) or ('fn' in result_types_present_b):
-                assert 'tp' in result_types_present_a or 'fn' in result_types_present_a
 
             # If either model has a TP or FN, the other has to have a TP or FN, since
             # there was something in the GT
@@ -1677,8 +1677,8 @@ def n_way_comparison(filenames,
         '[detection_thresholds] should be the same length as [filenames]'
 
     if rendering_thresholds is not None:
-        assert len(rendering_thresholds) == len(filenames)
-        '[rendering_thresholds] should be the same length as [filenames]'
+        assert len(rendering_thresholds) == len(filenames), \
+            '[rendering_thresholds] should be the same length as [filenames]'
     else:
         rendering_thresholds = [(x*0.6666) for x in detection_thresholds]
 
@@ -1932,32 +1932,54 @@ def find_equivalent_threshold(results_a,
 
 if False:
 
+    #%% Prepare test files
+
+    from megadetector.utils.path_utils import insert_before_extension
+
+    model_names = ['mdv5a','mdv5b']
+    image_folder = 'g:/temp/md-test-images'
+    output_filename_base = os.path.join(image_folder,'comparison_test.json')
+
+    output_filenames = []
+
+    commands = []
+
+    for model_name in model_names:
+        output_filename = insert_before_extension(output_filename_base,model_name)
+        output_filenames.append(output_filename)
+        cmd = 'python -m megadetector.detection.run_detector_batch'
+        cmd += ' {} {} {} --recursive --output_relative_filenames'.format(
+            model_name, image_folder,output_filename)
+        commands.append(cmd)
+
+    cmd = '\n\n'.join(commands)
+    print(cmd)
+    import clipboard
+    clipboard.copy(cmd)
+
+
     #%% Test two-way comparison
 
     options = BatchComparisonOptions()
 
     options.parallelize_rendering_with_threads = True
 
-    options.job_name = 'BCT'
+    options.job_name = 'md-test-images'
     options.output_folder = r'g:\temp\comparisons'
-    options.image_folder = r'g:\camera_traps\camera_trap_images'
+    options.image_folder = image_folder
     options.max_images_per_category = 100
     options.sort_by_confidence = True
 
     options.pairwise_options = []
 
     results_base = os.path.expanduser('~/postprocessing/bellevue-camera-traps')
-    filenames = [
-        os.path.join(results_base,r'bellevue-camera-traps-2023-12-05-v5a.0.0\combined_api_outputs\bellevue-camera-traps-2023-12-05-v5a.0.0_detections.json'),
-        os.path.join(results_base,r'bellevue-camera-traps-2023-12-05-aug-v5a.0.0\combined_api_outputs\bellevue-camera-traps-2023-12-05-aug-v5a.0.0_detections.json')
-        ]
 
     detection_thresholds = [0.15,0.15]
     rendering_thresholds = None
 
-    results = n_way_comparison(filenames,
-                               options,
-                               detection_thresholds,
+    results = n_way_comparison(filenames=output_filenames,
+                               options=options,
+                               detection_thresholds=detection_thresholds,
                                rendering_thresholds=rendering_thresholds)
 
     from megadetector.utils.path_utils import open_file

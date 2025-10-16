@@ -1889,8 +1889,9 @@ def process_batch_results(options):
             if options.include_classification_category_report:
 
                 # TODO: it's only for silly historical reasons that we re-read
-                # the input file in this case; we're not currently carrying the json
-                # representation around, only the Pandas representation.
+                # the input file in this case; because this module has used Pandas
+                # forever, we're not currently carrying the json representation around,
+                # only the Pandas representation.
 
                 print('Generating classification category report')
 
@@ -1905,7 +1906,7 @@ def process_batch_results(options):
                             if ('classifications' in det) and (len(det['classifications']) > 0):
                                 class_id = det['classifications'][0][0]
                                 if class_id not in classification_category_to_count:
-                                    classification_category_to_count[class_id] = 0
+                                    classification_category_to_count[class_id] = 1
                                 else:
                                     classification_category_to_count[class_id] = \
                                         classification_category_to_count[class_id] + 1

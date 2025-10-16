@@ -39,7 +39,7 @@ typical_keys = ['classification_categories',
 
 class ValidateBatchResultsOptions:
     """
-    Options controlling the behavior of validate_bach_results()
+    Options controlling the behavior of validate_batch_results()
     """
 
     def __init__(self):

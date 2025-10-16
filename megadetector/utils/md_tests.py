@@ -386,7 +386,7 @@ def output_files_are_identical(fn1,fn2,verbose=False):
     fn2_results['images'] = \
          sorted(fn2_results['images'], key=lambda d: d['file'])
 
-    if len(fn1_results['images']) != len(fn1_results['images']):
+    if len(fn1_results['images']) != len(fn2_results['images']):
         if verbose:
             print('{} images in {}, {} images in {}'.format(
                 len(fn1_results['images']),fn1,
@@ -1249,8 +1249,8 @@ def run_cli_tests(options):
         cmd_results = execute_and_print(cmd)
 
         assert output_files_are_identical(fn1=inference_output_file,
-                                        fn2=inference_output_file_queue,
-                                        verbose=True)
+                                          fn2=inference_output_file_queue,
+                                          verbose=True)
 
 
         ## Run again with the image queue and worker-side preprocessing enabled
@@ -1265,24 +1265,24 @@ def run_cli_tests(options):
         cmd_results = execute_and_print(cmd)
 
         assert output_files_are_identical(fn1=inference_output_file,
-                                        fn2=inference_output_file_preprocess_queue,
-                                        verbose=True)
+                                          fn2=inference_output_file_preprocess_queue,
+                                          verbose=True)
 
 
-        ## Run again with the image queue and worker-side preprocessing
+        ## Run again with the image queue but no worker-side preprocessing
 
-        print('\n** Running MD on a folder (with image queue and preprocessing) (CLI) **\n')
+        print('\n** Running MD on a folder (with image queue but no worker-side preprocessing) (CLI) **\n')
 
-        cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue'
-        inference_output_file_preprocess_queue = \
-            insert_before_extension(inference_output_file,'preprocess_queue')
-        cmd = cmd.replace(inference_output_file,inference_output_file_preprocess_queue)
+        cmd = base_cmd + ' --use_image_queue'
+        inference_output_file_no_preprocess_queue = \
+            insert_before_extension(inference_output_file,'no_preprocess_queue')
+        cmd = cmd.replace(inference_output_file,inference_output_file_no_preprocess_queue)
         cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
         cmd_results = execute_and_print(cmd)
 
         assert output_files_are_identical(fn1=inference_output_file,
-                                        fn2=inference_output_file_preprocess_queue,
-                                        verbose=True)
+                                          fn2=inference_output_file_no_preprocess_queue,
+                                          verbose=True)
 
 
         ## Run again with the worker-side preprocessing and an alternative batch size
@@ -1316,8 +1316,8 @@ def run_cli_tests(options):
         cmd_results = execute_and_print(cmd)
 
         assert output_files_are_identical(fn1=inference_output_file,
-                                        fn2=inference_output_file_checkpoint,
-                                        verbose=True)
+                                          fn2=inference_output_file_checkpoint,
+                                          verbose=True)
 
 
         ## Run again with "modern" postprocessing, make sure the results are *not* the same as classic
@@ -1331,8 +1331,8 @@ def run_cli_tests(options):
         cmd_results = execute_and_print(cmd)
 
         assert not output_files_are_identical(fn1=inference_output_file,
-                                            fn2=inference_output_file_modern,
-                                            verbose=True)
+                                              fn2=inference_output_file_modern,
+                                              verbose=True)
 
 
         ## Run again with "modern" postprocessing and worker-side preprocessing,
@@ -1348,13 +1348,13 @@ def run_cli_tests(options):
 
         # This should not be the same as the "classic" results
         assert not output_files_are_identical(fn1=inference_output_file,
-                                            fn2=inference_output_file_modern_worker_preprocessing,
-                                            verbose=True)
+                                              fn2=inference_output_file_modern_worker_preprocessing,
+                                              verbose=True)
 
         # ...but it should be the same as the single-threaded "modern" results
         assert output_files_are_identical(fn1=inference_output_file_modern,
-                                        fn2=inference_output_file_modern_worker_preprocessing,
-                                        verbose=True)
+                                          fn2=inference_output_file_modern_worker_preprocessing,
+                                          verbose=True)
 
 
         if not options.skip_cpu_tests:

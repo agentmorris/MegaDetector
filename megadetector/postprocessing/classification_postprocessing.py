@@ -25,6 +25,7 @@ from megadetector.utils.ct_utils import is_empty
 from megadetector.utils.ct_utils import sort_dictionary_by_value
 from megadetector.utils.ct_utils import sort_dictionary_by_key
 from megadetector.utils.ct_utils import invert_dictionary
+from megadetector.utils.ct_utils import write_json
 
 from megadetector.utils.wi_taxonomy_utils import clean_taxonomy_string
 from megadetector.utils.wi_taxonomy_utils import taxonomy_level_index
@@ -420,7 +421,7 @@ def _smooth_classifications_for_list_of_detections(detections,
 
     if verbose_debug_enabled:
         _print_counts_with_names(category_to_count,classification_descriptions)
-        from IPython import embed; embed()
+        # from IPython import embed; embed()
 
 
     ## Possibly change "other" classifications to the most common category
@@ -448,7 +449,7 @@ def _smooth_classifications_for_list_of_detections(detections,
                 if verbose_debug_enabled:
                     print('Replacing {} with {}'.format(
                         classification_descriptions[c[0]],
-                        classification_descriptions[c[1]]))
+                        most_common_category))
 
                 n_other_classifications_changed_this_image += 1
                 c[0] = most_common_category
@@ -918,8 +919,7 @@ def smooth_classification_results_image_level(input_file,output_file=None,option
 
     if output_file is not None:
         print('Writing results after image-level smoothing to:\n{}'.format(output_file))
-        with open(output_file,'w') as f:
-            json.dump(d,f,indent=1)
+        write_json(output_file,d)
 
     return d
 
@@ -1092,8 +1092,7 @@ def smooth_classification_results_sequence_level(input_file,
     if output_file is not None:
         print('Writing sequence-smoothed classification results to {}'.format(
             output_file))
-        with open(output_file,'w') as f:
-            json.dump(d,f,indent=1)
+        write_json(output_file,d)
 
     return d
 
@@ -1681,7 +1680,7 @@ def restrict_to_taxa_list(taxa_list,
 
     ##%% Write output
 
-    with open(output_file,'w') as f:
-        json.dump(output_data,f,indent=1)
+    write_json(output_file,output_data)
+
 
 # ...def restrict_to_taxa_list(...)

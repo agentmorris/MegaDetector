@@ -231,7 +231,6 @@ class IndexedJsonDb:
 
         # Image ID --> annotations
         # Each image can potentially multiple annotations, hence using lists
-        self.image_id_to_annotations = {}
         self.image_id_to_annotations = defaultdict(list)
         for ann in self.db['annotations']:
             self.image_id_to_annotations[ann['image_id']].append(ann)

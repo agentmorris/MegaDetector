@@ -263,8 +263,10 @@ def main(): # noqa
         else:
             row['number_of_objects'] = 1
 
+        assert isinstance(im['datetime'],str)
+
         row['uncertainty'] = None
-        row['timestamp'] = im['datetime']; assert isinstance(im['datetime'],str)
+        row['timestamp'] = im['datetime']
         row['highlighted'] = 0
         row['age'] = None
         row['sex'] = None
@@ -275,6 +277,8 @@ def main(): # noqa
 
         assert len(row) == len(images_fields)
         rows.append(row)
+
+    # ...for each image
 
     df = pd.DataFrame(rows)
 

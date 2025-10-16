@@ -64,7 +64,7 @@ def cct_to_md(input_filename,output_filename=None):
         d = json.load(f)
 
     for s in ['annotations','images','categories']:
-        assert s in d.keys(), 'Cannot find category {} in input file, is this a CCT file?'.format(s)
+        assert s in d.keys(), 'Cannot find key {} in input file, is this a CCT file?'.format(s)
 
 
     ## Prepare metadata
@@ -149,10 +149,11 @@ def cct_to_md(input_filename,output_filename=None):
 
     results['images'] = images_out
 
-    with open(output_filename,'w') as f:
-        json.dump(results, f, indent=1)
+    if output_filename is not None:
+        with open(output_filename,'w') as f:
+            json.dump(results, f, indent=1)
 
-    return output_filename
+    return results
 
 # ...cct_to_md()
 

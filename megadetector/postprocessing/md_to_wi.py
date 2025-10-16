@@ -10,6 +10,7 @@ Converts the MD .json format to the WI predictions.json format.
 
 import sys
 import argparse
+
 from megadetector.utils.wi_taxonomy_utils import generate_predictions_json_from_md_results
 
 
@@ -34,7 +35,7 @@ def main(): # noqa
 
     generate_predictions_json_from_md_results(args.md_results_file,
                                               args.predictions_json_file,
-                                              base_folder=None)
+                                              base_folder=args.base_folder)
 
 if __name__ == '__main__':
     main()

@@ -67,8 +67,11 @@ def animl_results_to_md_results(input_file,output_file=None):
             im['file'] = row['file']
             filename_to_results[im['file']] = im
 
-        assert isinstance(row['category'],int),'Invalid category identifier in row {}'.format(im['file'])
-        detection_category_id = str(row['category'])
+        # Pandas often reads integer columns as float64, so check integer-ness
+        # rather than just isinstance(..., int)
+        assert pd.notna(row['category']) and float(row['category']).is_integer(), \
+            'Invalid category identifier in row {} (file: {})'.format(i_row, im['file'])
+        detection_category_id = str(int(row['category']))
         assert detection_category_id in detection_category_id_to_name,\
             'Unrecognized detection category ID {}'.format(detection_category_id)
 

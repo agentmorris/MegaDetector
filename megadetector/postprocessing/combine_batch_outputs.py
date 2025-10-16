@@ -203,7 +203,8 @@ def combine_api_shard_files(input_files, output_file=None):
     input_lists = []
     print('Loading input files')
     for fn in input_files:
-        input_lists.append(json.load(open(fn)))
+        with open(fn,'r') as f:
+            input_lists.append(json.load(f))
 
     detections = []
     # detection_list = input_lists[0]
@@ -214,7 +215,7 @@ def combine_api_shard_files(input_files, output_file=None):
             assert 'file' in d
             assert 'max_detection_conf' in d
             assert 'detections' in d
-            detections.extend([d])
+            detections.append(d)
 
     print('Writing output')
     if output_file is not None:

@@ -23,6 +23,7 @@ import os
 from tqdm import tqdm
 
 from megadetector.utils.ct_utils import get_iou
+from megadetector.utils.ct_utils import write_json
 
 
 #%% Structs
@@ -120,8 +121,6 @@ def merge_detections(source_files,target_file,output_file,options=None):
         assert os.path.isfile(fn), 'Could not find source file {}'.format(fn)
 
     assert os.path.isfile(target_file)
-
-    os.makedirs(os.path.dirname(output_file),exist_ok=True)
 
     with open(target_file,'r') as f:
         output_data = json.load(f)
@@ -290,8 +289,7 @@ def merge_detections(source_files,target_file,output_file,options=None):
 
     # ...for each source file
 
-    with open(output_file,'w') as f:
-        json.dump(output_data,f,indent=1)
+    write_json(output_file,output_data)
 
     print('Saved merged results to {}'.format(output_file))
 
@@ -308,7 +306,7 @@ def main():
     default_options = MergeDetectionsOptions()
 
     parser = argparse.ArgumentParser(
-        description='Merge detections from one or more MegaDetector results files into an existing reuslts file')
+        description='Merge detections from one or more MegaDetector results files into an existing results file')
     parser.add_argument(
         'source_files',
         nargs='+',
@@ -359,7 +357,7 @@ def main():
         type=int,
         nargs='+',
         default=None,
-        help='List of numeric detection categories to include')
+        help='List of numeric detection categories to exclude')
     parser.add_argument(
         '--merge_empty_only',
         action='store_true',

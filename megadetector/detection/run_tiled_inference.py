@@ -510,9 +510,9 @@ def run_tiled_inference(model_file,
                 try:
                     fn_relative = os.path.relpath(fn,image_folder)
                 except ValueError:
-                    'Illegal absolute path supplied to run_tiled_inference, {} is outside of {}'.format(
-                        fn,image_folder)
-                    raise
+                    raise ValueError(
+                        'Illegal absolute path supplied to run_tiled_inference, {} is outside of {}'.format(
+                        fn,image_folder))
                 assert not fn_relative.startswith('..'), \
                     'Illegal absolute path supplied to run_tiled_inference, {} is outside of {}'.format(
                         fn,image_folder)
@@ -619,12 +619,12 @@ def run_tiled_inference(model_file,
     else:
 
         patch_file_names = []
-        for im in all_image_patch_info:
+        for patch_info in all_image_patch_info:
             # If there was a patch generation error, don't run inference
             if patch_info['error'] is not None:
-                assert im['image_fn'] in images_with_patch_errors
+                assert patch_info['image_fn'] in images_with_patch_errors
                 continue
-            for patch in im['patches']:
+            for patch in patch_info['patches']:
                 patch_file_names.append(patch['patch_fn'])
 
         inference_results = load_and_run_detector_batch(model_file,
@@ -952,7 +952,7 @@ def main():
     parser.add_argument(
         '--tile_size_y',
         type=int,
-        default=default_tile_size[0],
+        default=default_tile_size[1],
         help=('Tile height (defaults to {})'.format(default_tile_size[1])))
     parser.add_argument(
         '--tile_overlap',

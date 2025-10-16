@@ -110,7 +110,6 @@ def write_html_image_list(filename=None,images=None,options=None):
         if 'linkTarget' not in image_info:
             image_info['linkTarget'] = ''
         if 'textStyle' not in image_info:
-            text_style = options['defaultTextStyle']
             image_info['textStyle'] = options['defaultTextStyle']
         images[i_image] = image_info
 
@@ -185,7 +184,7 @@ def write_html_image_list(filename=None,images=None,options=None):
     if len(options['pageTitle']) > 0:
         title_string = '<title>{}</title>'.format(options['pageTitle'])
 
-    f_html.write('<html>{}<body>\n'.format(title_string))
+    f_html.write('<html><head>{}</head><body>\n'.format(title_string))
 
     f_html.write(options['headerHtml'])
 

@@ -126,18 +126,15 @@ def plot_precision_recall_curve(precisions,
     ax.step(recalls, precisions, color='b', alpha=0.2, where='post')
     ax.fill_between(recalls, precisions, alpha=0.2, color='b', step='post')
 
-    try:
-        ax.set(x_label='Recall', y_label='Precision', title=title)
-        ax.set(x_lim=xlim, y_lim=ylim)
-    #
-    except Exception:
-        ax.set_xlabel('Recall')
-        ax.set_ylabel('Precision')
-        ax.set_title(title)
-        ax.set_xlim(xlim[0],xlim[1])
-        ax.set_ylim(ylim[0],ylim[1])
+    ax.set_xlabel('Recall')
+    ax.set_ylabel('Precision')
+    ax.set_title(title)
+    ax.set_xlim(xlim[0],xlim[1])
+    ax.set_ylim(ylim[0],ylim[1])
 
     return fig
+
+# ...def plot_precision_recall_curve(...)
 
 
 def plot_stacked_bar_chart(data,
@@ -174,17 +171,21 @@ def plot_stacked_bar_chart(data,
 
     # stacked bar charts are made with each segment starting from a y position
     cumulative_size = np.zeros(num_columns)
-    for i, row_data in enumerate(data):
-        ax.bar(ind, row_data, bottom=cumulative_size, label=series_labels[i],
-               color=colors[i])
+    for i_row, row_data in enumerate(data):
+        if series_labels is None:
+            label = 'series_{}'.format(str(i_row).zfill(2))
+        else:
+            label = series_labels[i_row]
+        ax.bar(ind, row_data, bottom=cumulative_size, label=label,
+               color=colors[i_row])
         cumulative_size += row_data
 
-    if col_labels and len(col_labels) < 25:
+    if (col_labels is not None) and (len(col_labels) < 25):
         ax.set_xticks(ind)
         ax.set_xticklabels(col_labels, rotation=90)
-    elif col_labels:
+    elif (col_labels is not None):
         ax.set_xticks(list(range(0, len(col_labels), 20)))
-        ax.set_xticklabels(col_labels, rotation=90)
+        ax.set_xticklabels(col_labels[::20], rotation=90)
 
     if x_label is not None:
         ax.set_xlabel(x_label)
@@ -201,6 +202,8 @@ def plot_stacked_bar_chart(data,
     ax.legend(loc='center left', bbox_to_anchor=(0.99, 0.5), frameon=False)
 
     return fig
+
+# ...def plot_stacked_bar_chart(...)
 
 
 def calibration_ece(true_scores, pred_scores, num_bins):
@@ -245,10 +248,17 @@ def calibration_ece(true_scores, pred_scores, num_bins):
     ece = np.abs(accs - confs) @ weights
     return accs, confs, ece
 
+# ...def calibration_ece(...)
 
-def plot_calibration_curve(true_scores, pred_scores, num_bins,
-                           name='calibration', plot_perf=True, plot_hist=True,
-                           ax=None, **fig_kwargs):
+
+def plot_calibration_curve(true_scores,
+                           pred_scores,
+                           num_bins,
+                           name='calibration',
+                           plot_perf=True,
+                           plot_hist=True,
+                           ax=None,
+                           **fig_kwargs):
     """
     Plots a calibration curve.
 
@@ -295,3 +305,5 @@ def plot_calibration_curve(true_scores, pred_scores, num_bins,
         fig.legend(loc='upper left', bbox_to_anchor=(0.15, 0.85))
 
     return ax.figure
+
+# ...def plot_calibration_curve(...)

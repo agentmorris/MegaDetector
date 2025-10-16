@@ -126,6 +126,7 @@ def generate_csv_report(md_results_file,
                                                      recursive=True)
 
         else:
+
             assert os.path.isfile(datetime_source), \
                 'datetime source {} is neither a folder nor a file'.format(datetime_source)
 
@@ -153,11 +154,14 @@ def generate_csv_report(md_results_file,
                     print('Warning: a MD results file was supplied as the datetime source, but it does not appear '
                           'to contain datetime information.')
 
+        # ...if datetime_source is a folder/file
+
         assert all_exif_results is not None
 
         filename_to_datetime_string = {}
 
         for exif_result in all_exif_results:
+
             datetime_string = unknown_datetime_tag
             if ('exif_tags' in exif_result) and \
                (exif_result['exif_tags'] is not None) and \
@@ -168,6 +172,8 @@ def generate_csv_report(md_results_file,
                 else:
                     assert isinstance(datetime_string,str), 'Unrecognized datetime format'
             filename_to_datetime_string[exif_result['file_name']] = datetime_string
+
+        # ...for each exif result
 
         image_files = [im['file'] for im in results['images']]
         image_files_set = set(image_files)
@@ -250,11 +256,10 @@ def generate_csv_report(md_results_file,
         base_record['filename'] = im['file'].replace('\\','/')
 
         # Datetime (if necessary)
+        datetime_string = ''
         if filename_to_datetime_string is not None:
             if im['file'] in filename_to_datetime_string:
                 datetime_string = filename_to_datetime_string[im['file']]
-            else:
-                datetime_string = ''
         base_record['datetime'] = datetime_string
 
         for s in ['detection_category','max_detection_confidence',
@@ -383,13 +388,22 @@ def generate_csv_report(md_results_file,
     # ...for each image
 
     # Make sure every record has the same columns
-    column_names = output_records[0].keys()
-    for record in output_records:
-        assert record.keys() == column_names
 
-    # Write to .csv
-    df = pd.DataFrame(output_records)
-    df.to_csv(output_file,header=True,index=False)
+    if len(output_records) == 0:
+        print('Warning: no output records generated')
+    else:
+        column_names = output_records[0].keys()
+        for record in output_records:
+            assert record.keys() == column_names
+
+        # Create folder for output file if necessary
+        output_dir = os.path.dirname(output_file)
+        if len(output_dir) > 0:
+            os.makedirs(output_dir, exist_ok=True)
+
+        # Write to .csv
+        df = pd.DataFrame(output_records)
+        df.to_csv(output_file,header=True,index=False)
 
     # from megadetector.utils.path_utils import open_file; open_file(output_file)
 

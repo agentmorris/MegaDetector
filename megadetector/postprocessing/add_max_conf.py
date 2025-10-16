@@ -18,7 +18,8 @@ import json
 import sys
 import argparse
 
-from megadetector.utils import ct_utils
+from megadetector.utils.ct_utils import get_max_conf
+from megadetector.utils.ct_utils import write_json
 
 
 #%% Main function
@@ -39,15 +40,14 @@ def add_max_conf(input_file,output_file):
 
     for im in d['images']:
 
-        max_conf = ct_utils.get_max_conf(im)
+        max_conf = get_max_conf(im)
 
         if 'max_detection_conf' in im:
             assert abs(max_conf - im['max_detection_conf']) < 0.00001
         else:
             im['max_detection_conf'] = max_conf
 
-    with open(output_file,'w') as f:
-        json.dump(d,f,indent=1)
+    write_json(output_file,d)
 
 
 #%% Driver

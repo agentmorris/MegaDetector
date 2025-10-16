@@ -126,7 +126,7 @@ def remap_coco_categories(input_data,
         with open(output_file,'w') as f:
             json.dump(output_data,f,indent=1)
 
-    return input_data
+    return output_data
 
 # ...def remap_coco_categories(...)
 

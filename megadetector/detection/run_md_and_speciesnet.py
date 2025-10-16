@@ -32,6 +32,7 @@ from megadetector.utils.ct_utils import write_json
 from megadetector.utils.ct_utils import make_temp_folder
 from megadetector.utils.ct_utils import is_list_sorted
 from megadetector.utils.ct_utils import is_sphinx_build
+from megadetector.utils.ct_utils import args_to_object
 from megadetector.utils import path_utils
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.postprocessing.validate_batch_results import \
@@ -75,7 +76,7 @@ MAX_BATCH_QUEUE_SIZE = 300
 
 # Default interval between frames we should process when processing video.
 # This is only used for the detection step.
-DEAFULT_SECONDS_PER_VIDEO_FRAME = 1.0
+DEFAULT_SECONDS_PER_VIDEO_FRAME = 1.0
 
 # Max number of classification scores to include per detection
 DEFAULT_TOP_N_SCORES = 2
@@ -575,7 +576,7 @@ def _crop_consumer_func(batch_queue: Queue,
     taxonomy_map = {}
     geofence_map = {}
 
-    if (enable_rollup is not None) or (country is not None):
+    if (enable_rollup) or (country is not None):
 
         # Note to self: there are a number of reasons loading the ensemble
         # could fail here; don't catch this exception, this should be a
@@ -1194,6 +1195,196 @@ def _run_classification_step(detector_results_file: str,
 # ...def _run_classification_step(...)
 
 
+#%% Options class
+
+class RunMDSpeciesNetOptions:
+    """
+    Class controlling the behavior of run_md_and_speciesnet()
+    """
+
+    def __init__(self):
+
+        #: Folder containing images and/or videos to process
+        self.source = None
+
+        #: Output file for results (JSON format)
+        self.output_file = None
+
+        #: MegaDetector model identifier (MDv5a, MDv5b, MDv1000-redwood, etc.)
+        self.detector_model = DEFAULT_DETECTOR_MODEL
+
+        #: SpeciesNet classifier model identifier (e.g. kaggle:google/speciesnet/pyTorch/v4.0.1a)
+        self.classification_model = DEFAULT_CLASSIFIER_MODEL
+
+        #: Batch size for MegaDetector inference
+        self.detector_batch_size = DEFAULT_DETECTOR_BATCH_SIZE
+
+        #: Batch size for SpeciesNet classification
+        self.classifier_batch_size = DEFAULT_CLASSIFIER_BATCH_SIZE
+
+        #: Number of worker threads for preprocessing
+        self.loader_workers = DEFAULT_LOADER_WORKERS
+
+        #: Classify detections above this threshold
+        self.detection_confidence_threshold_for_classification = \
+            DEFAULT_DETECTION_CONFIDENCE_THRESHOLD_FOR_CLASSIFICATION
+
+        #: Include detections above this threshold in the output
+        self.detection_confidence_threshold_for_output = \
+            DEFAULT_DETECTION_CONFIDENCE_THRESHOLD_FOR_OUTPUT
+
+        #: Folder for intermediate files (default: system temp)
+        self.intermediate_file_folder = None
+
+        #: Keep intermediate files (e.g. detection-only results file)
+        self.keep_intermediate_files = False
+
+        #: Disable taxonomic rollup
+        self.norollup = False
+
+        #: Country code (ISO 3166-1 alpha-3) for geofencing (default None, no geoferencing)
+        self.country = None
+
+        #: Admin1 region/state code for geofencing
+        self.admin1_region = None
+
+        #: Path to existing MegaDetector output file (skips detection step)
+        self.detections_file = None
+
+        #: Ignore videos, only process images
+        self.skip_video = False
+
+        #: Ignore images, only process videos
+        self.skip_images = False
+
+        #: Sample every Nth frame from videos
+        #:
+        #: Mutually exclusive with time_sample
+        self.frame_sample = None
+
+        #: Sample frames every N seconds from videos
+        #:
+        #: Mutually exclusive with frame_sample
+        self.time_sample = DEFAULT_SECONDS_PER_VIDEO_FRAME
+
+        #: Enable additional debug output
+        self.verbose = False
+
+        if self.time_sample is None and self.frame_sample is None:
+            self.time_sample = DEFAULT_SECONDS_PER_VIDEO_FRAME
+
+# ...class RunMDSpeciesNetOptions
+
+
+#%% Main function
+
+def run_md_and_speciesnet(options):
+    """
+    Main entry point, runs MegaDetector and SpeciesNet on a folder.  See
+    RunMDSpeciesNetOptions for available arguments.
+
+    Args:
+        options (RunMDSpeciesNetOptions): options controlling MD and SN inference
+    """
+
+    # Set global verbose flag
+    global verbose
+    verbose = options.verbose
+
+    # Also set the run_detector_batch verbose flag
+    run_detector_batch.verbose = verbose
+
+    # Validate arguments
+    if not os.path.isdir(options.source):
+        raise ValueError(
+            'Source folder does not exist: {}'.format(options.source))
+
+    if (options.admin1_region is not None) and (options.country is None):
+        raise ValueError('--admin1_region requires --country to be specified')
+
+    if options.skip_images and options.skip_video:
+        raise ValueError('Cannot skip both images and videos')
+
+    if (options.frame_sample is not None) and (options.time_sample is not None):
+        raise ValueError('--frame_sample and --time_sample are mutually exclusive')
+    if (options.frame_sample is None) and (options.time_sample is None):
+        options.time_sample = DEFAULT_SECONDS_PER_VIDEO_FRAME
+
+    # Set up intermediate file folder
+    if options.intermediate_file_folder:
+        temp_folder = options.intermediate_file_folder
+        os.makedirs(temp_folder, exist_ok=True)
+    else:
+        temp_folder = make_temp_folder(subfolder='run_md_and_speciesnet')
+
+    start_time = time.time()
+
+    print('Processing folder: {}'.format(options.source))
+    print('Output file: {}'.format(options.output_file))
+    print('Intermediate files: {}'.format(temp_folder))
+
+    # Determine detector output file path
+    if options.detections_file is not None:
+        detector_output_file = options.detections_file
+        if VALIDATE_DETECTION_FILE:
+            print('Using existing detections file: {}'.format(detector_output_file))
+            validation_options = ValidateBatchResultsOptions()
+            validation_options.check_image_existence = True
+            validation_options.relative_path_base = options.source
+            validation_options.raise_errors = True
+            validate_batch_results(detector_output_file,options=validation_options)
+            print('Validated detections file')
+        else:
+            print('Bypassing validation of {}'.format(options.detections_file))
+    else:
+        detector_output_file = os.path.join(temp_folder, 'detector_output.json')
+
+        # Run MegaDetector
+        _run_detection_step(
+            source_folder=options.source,
+            detector_output_file=detector_output_file,
+            detector_model=options.detector_model,
+            detector_batch_size=options.detector_batch_size,
+            detection_confidence_threshold=options.detection_confidence_threshold_for_output,
+            detector_worker_threads=options.loader_workers,
+            skip_images=options.skip_images,
+            skip_video=options.skip_video,
+            frame_sample=options.frame_sample,
+            time_sample=options.time_sample
+        )
+
+    # Run SpeciesNet
+    _run_classification_step(
+        detector_results_file=detector_output_file,
+        merged_results_file=options.output_file,
+        source_folder=options.source,
+        classifier_model=options.classification_model,
+        classifier_batch_size=options.classifier_batch_size,
+        classifier_worker_threads=options.loader_workers,
+        detection_confidence_threshold=options.detection_confidence_threshold_for_classification,
+        enable_rollup=(not options.norollup),
+        country=options.country,
+        admin1_region=options.admin1_region,
+    )
+
+    elapsed_time = time.time() - start_time
+    print(
+        'Processing complete in {}'.format(humanfriendly.format_timespan(elapsed_time)))
+    print('Results written to: {}'.format(options.output_file))
+
+    # Clean up intermediate files if requested
+    if (not options.keep_intermediate_files) and \
+       (not options.intermediate_file_folder) and \
+       (not options.detections_file):
+        try:
+            os.remove(detector_output_file)
+        except Exception as e:
+            print('Warning: error removing temporary output file {}: {}'.format(
+                detector_output_file, str(e)))
+
+# ...def run_md_and_speciesnet(...)
+
+
 #%% Command-line driver
 
 def main():
@@ -1249,7 +1440,7 @@ def main():
                         help='Folder for intermediate files (default: system temp)')
     parser.add_argument('--keep_intermediate_files',
                         action='store_true',
-                        help='Keep intermediate files for debugging')
+                        help='Keep intermediate files (e.g. detection-only results file)')
     parser.add_argument('--norollup',
                         action='store_true',
                         help='Disable taxonomic rollup')
@@ -1276,7 +1467,7 @@ def main():
                         type=float,
                         default=None,
                         help='Sample frames every N seconds from videos (default {})'.\
-                            format(DEAFULT_SECONDS_PER_VIDEO_FRAME) + \
+                            format(DEFAULT_SECONDS_PER_VIDEO_FRAME) + \
                             ' (mutually exclusive with --frame_sample)')
     parser.add_argument('--verbose',
                         action='store_true',
@@ -1288,100 +1479,10 @@ def main():
 
     args = parser.parse_args()
 
-    # Set global verbose flag
-    global verbose
-    verbose = args.verbose
+    options = RunMDSpeciesNetOptions()
+    args_to_object(args,options)
 
-    # Also set the run_detector_batch verbose flag
-    run_detector_batch.verbose = verbose
-
-    # Validate arguments
-    if not os.path.isdir(args.source):
-        raise ValueError(
-            'Source folder does not exist: {}'.format(args.source))
-
-    if args.admin1_region and not args.country:
-        raise ValueError('--admin1_region requires --country to be specified')
-
-    if args.skip_images and args.skip_video:
-        raise ValueError('Cannot skip both images and videos')
-
-    if (args.frame_sample is not None) and (args.time_sample is not None):
-        raise ValueError('--frame_sample and --time_sample are mutually exclusive')
-    if (args.frame_sample is None) and (args.time_sample is None):
-        args.time_sample = DEAFULT_SECONDS_PER_VIDEO_FRAME
-
-    # Set up intermediate file folder
-    if args.intermediate_file_folder:
-        temp_folder = args.intermediate_file_folder
-        os.makedirs(temp_folder, exist_ok=True)
-    else:
-        temp_folder = make_temp_folder(subfolder='run_md_and_speciesnet')
-
-    start_time = time.time()
-
-    print('Processing folder: {}'.format(args.source))
-    print('Output file: {}'.format(args.output_file))
-    print('Intermediate files: {}'.format(temp_folder))
-
-    # Determine detector output file path
-    if args.detections_file is not None:
-        detector_output_file = args.detections_file
-        if VALIDATE_DETECTION_FILE:
-            print('Using existing detections file: {}'.format(detector_output_file))
-            validation_options = ValidateBatchResultsOptions()
-            validation_options.check_image_existence = True
-            validation_options.relative_path_base = args.source
-            validation_options.raise_errors = True
-            validate_batch_results(detector_output_file,options=validation_options)
-            print('Validated detections file')
-        else:
-            print('Bypassing validation of {}'.format(args.detections_file))
-    else:
-        detector_output_file = os.path.join(temp_folder, 'detector_output.json')
-
-        # Run MegaDetector
-        _run_detection_step(
-            source_folder=args.source,
-            detector_output_file=detector_output_file,
-            detector_model=args.detector_model,
-            detector_batch_size=args.detector_batch_size,
-            detection_confidence_threshold=args.detection_confidence_threshold_for_output,
-            detector_worker_threads=args.loader_workers,
-            skip_images=args.skip_images,
-            skip_video=args.skip_video,
-            frame_sample=args.frame_sample,
-            time_sample=args.time_sample
-        )
-
-    # Run SpeciesNet
-    _run_classification_step(
-        detector_results_file=detector_output_file,
-        merged_results_file=args.output_file,
-        source_folder=args.source,
-        classifier_model=args.classification_model,
-        classifier_batch_size=args.classifier_batch_size,
-        classifier_worker_threads=args.loader_workers,
-        detection_confidence_threshold=args.detection_confidence_threshold_for_classification,
-        enable_rollup=(not args.norollup),
-        country=args.country,
-        admin1_region=args.admin1_region,
-    )
-
-    elapsed_time = time.time() - start_time
-    print(
-        'Processing complete in {}'.format(humanfriendly.format_timespan(elapsed_time)))
-    print('Results written to: {}'.format(args.output_file))
-
-    # Clean up intermediate files if requested
-    if (not args.keep_intermediate_files) and \
-       (not args.intermediate_file_folder) and \
-       (not args.detections_file):
-        try:
-            os.remove(detector_output_file)
-        except Exception as e:
-            print('Warning: error removing temporary output file {}: {}'.format(
-                detector_output_file, str(e)))
+    run_md_and_speciesnet(options)
 
 # ...def main(...)
 

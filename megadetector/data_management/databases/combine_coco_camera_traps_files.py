@@ -130,7 +130,7 @@ def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
         for im in input_dict['images']:
 
             if 'seq_id' in im:
-                im['seq_id'] = index_string + im['seq_id']
+                im['seq_id'] = index_string + str(im['seq_id'])
             if 'location' in im:
                 im['location'] = index_string + im['location']
 
@@ -143,7 +143,7 @@ def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
                     print('Redundant image {}'.format(im_file))
 
             # Create a unique ID
-            im['id'] = index_string + im['id']
+            im['id'] = index_string + str(im['id'])
             filename_to_image[im_file] = im
 
         # ...for each image
@@ -152,8 +152,8 @@ def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
         # Same for annotations
         for ann in input_dict['annotations']:
 
-            ann['image_id'] = index_string + ann['image_id']
-            ann['id'] = index_string + ann['id']
+            ann['image_id'] = index_string + str(ann['image_id'])
+            ann['id'] = index_string + str(ann['id'])
             assert ann['category_id'] in old_cat_id_to_new_cat_id
             ann['category_id'] = old_cat_id_to_new_cat_id[ann['category_id']]
 

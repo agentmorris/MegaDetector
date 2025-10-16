@@ -221,13 +221,9 @@ def split_locations_into_train_val(location_to_category_counts,
     weighted_average_error,weighted_category_errors,category_to_val_fraction = \
         compute_seed_errors(min_error_seed)
 
-    random_seed = min_error_seed
-
-    category_to_val_fraction = sort_dictionary_by_value(category_to_val_fraction,reverse=True)
     category_to_val_fraction = sort_dictionary_by_value(category_to_val_fraction,
                                                         sort_values=category_id_to_count,
                                                         reverse=True)
-
 
     print('Val fractions by category:\n')
 

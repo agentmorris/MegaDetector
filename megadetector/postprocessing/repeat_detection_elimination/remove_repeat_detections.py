@@ -37,7 +37,7 @@ def remove_repeat_detections(input_file,output_file,filtering_dir):
     """
 
     assert os.path.isfile(input_file), "Can't find file {}".format(input_file)
-    assert os.path.isdir(filtering_dir), "Can't find folder {}".format(filtering_dir)
+    assert os.path.exists(filtering_dir), "Can't find input file/folder {}".format(filtering_dir)
     options = repeat_detections_core.RepeatDetectionOptions()
     if os.path.isfile(filtering_dir):
         options.filterFileToLoad = filtering_dir

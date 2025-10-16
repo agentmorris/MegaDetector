@@ -887,7 +887,7 @@ def _process_images(im_files,
 
     if use_image_queue:
 
-        _run_detector_with_image_queue(im_files,
+        results = _run_detector_with_image_queue(im_files,
                                       detector,
                                       confidence_threshold,
                                       quiet=quiet,
@@ -899,6 +899,7 @@ def _process_images(im_files,
                                       detector_options=detector_options,
                                       loader_workers=loader_workers,
                                       preprocess_on_image_queue=preprocess_on_image_queue)
+        return results
 
     else:
 

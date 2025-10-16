@@ -13,8 +13,7 @@ check out run_detector_batch.py**.
 That said, this script (run_detector.py) is a good way to test our detector on a handful of images
 and get super-satisfying, graphical results.
 
-If you would like to *not* use the GPU on the machine, set the environment
-variable CUDA_VISIBLE_DEVICES to "-1".
+If you would like to *not* use the GPU, set the environment variable CUDA_VISIBLE_DEVICES to "-1".
 
 This script will only consider detections with > 0.005 confidence at all times.
 The threshold you provide is only for rendering the results. If you need to
@@ -566,7 +565,7 @@ def is_gpu_available(model_file):
     """
 
     if model_file.endswith('.pb'):
-        import tensorflow.compat.v1 as tf
+        import tensorflow.compat.v1 as tf # type: ignore
         gpu_available = tf.test.is_gpu_available()
         print('TensorFlow version:', tf.__version__)
         print('tf.test.is_gpu_available:', gpu_available)
@@ -761,8 +760,9 @@ def load_and_run_detector(model_file,
         fn = '{}{}{}'.format(name, DETECTION_FILENAME_INSERT, '.jpg')
         if fn in output_filename_collision_counts:
             n_collisions = output_filename_collision_counts[fn]
+            fn_original = fn
             fn = '{:0>4d}'.format(n_collisions) + '_' + fn
-            output_filename_collision_counts[fn] += 1
+            output_filename_collision_counts[fn_original] += 1
         else:
             output_filename_collision_counts[fn] = 0
         fn = os.path.join(output_dir, fn)
@@ -867,7 +867,11 @@ def _validate_zip_file(file_path, file_description='file'):
     """
     try:
         with zipfile.ZipFile(file_path, 'r') as zipf:
-            zipf.testzip()
+            corrupt_file = zipf.testzip()
+            if corrupt_file is not None:
+                print('{} {} contains at least one corrupt file: {}'.format(
+                    file_description.capitalize(), file_path, corrupt_file))
+                return False
         return True
     except (zipfile.BadZipFile, zipfile.LargeZipFile) as e:
         print('{} {} appears to be corrupted (bad zip): {}'.format(
