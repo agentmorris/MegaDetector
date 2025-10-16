@@ -1682,5 +1682,4 @@ def restrict_to_taxa_list(taxa_list,
 
     write_json(output_file,output_data)
 
-
 # ...def restrict_to_taxa_list(...)
