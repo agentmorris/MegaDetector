@@ -1344,7 +1344,6 @@ for i_chunk,chunk in enumerate(chunks):
 
     chunk_prediction_files.append(chunk_predictions_json)
 
-    chunk_script = path_join(chunk_folder,'run_chunk_{}{}'.format(i_chunk,script_extension))
     cmd = 'python -m speciesnet.scripts.run_model --classifier_only'
     if speciesnet_model_file is not None:
         cmd += ' --model "{}"'.format(speciesnet_model_file)
