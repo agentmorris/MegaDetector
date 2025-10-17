@@ -29,7 +29,7 @@ from operator import attrgetter
 from datetime import datetime
 from itertools import compress
 
-import pyqtree
+import fastquadtree.pyqtree as pyqtree
 
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool

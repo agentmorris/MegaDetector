@@ -17,7 +17,7 @@ dependencies:
 - matplotlib
 - opencv
 - requests
-- pyqtree
+- fastquadtree
 - scikit-learn
 - pandas
 - python-dateutil
