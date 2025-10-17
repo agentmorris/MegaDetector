@@ -44,7 +44,7 @@ dependencies:
   - matplotlib>=3.8.0
   - opencv>=4.8.0
   - requests>=2.31.0
-  - fastquadtree>=1.0.0
+  - fastquadtree>=1.1.2,<2.0
   - scikit-learn>=1.3.1
   - pandas>=2.1.1
   
