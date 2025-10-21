@@ -1202,301 +1202,353 @@ if country_code == 'USA' and state_code is None:
     print('*** Did you mean to specify a state code? ***')
 
 
-#%% Generate instances.json
+#%% Major fork here, depending on whether we are running in the notebook
 
-# ...for the original images.
+if run_tasks_in_notebook:
 
-instances = generate_instances_json_from_folder(folder=input_path,
-                                                country=country_code,
-                                                admin1_region=state_code,
-                                                output_file=instances_json,
-                                                filename_replacements=None)
-
-print('Generated {} instances'.format(len(instances['instances'])))
+    pass
 
 
-#%% Generate crop dataset
+    #%% Run SpeciesNet here in the notebook
 
-from megadetector.postprocessing.create_crop_folder import \
-    CreateCropFolderOptions, create_crop_folder
+    from megadetector.detection.run_md_and_speciesnet import \
+        RunMDSpeciesNetOptions, run_md_and_speciesnet
 
-create_crop_folder_options = CreateCropFolderOptions()
-create_crop_folder_options.n_workers = 8
-create_crop_folder_options.pool_type = 'process'
-if parallelization_defaults_to_threads:
-    create_crop_folder_options.pool_type = 'thread'
+    md_speciesnet_options = RunMDSpeciesNetOptions()
 
-create_crop_folder(input_file=detector_output_file_md_format,
-                   input_folder=input_path,
-                   output_folder=crop_folder,
-                   output_file=detection_results_file_with_crop_ids,
-                   crops_output_file=detection_results_file_for_crop_folder,
-                   options=create_crop_folder_options)
+    md_speciesnet_options.source = input_path
+    md_speciesnet_options.output_file = ensemble_output_file_image_level_md_format
+    md_speciesnet_options.classifier_batch_size = classifier_batch_size
+    md_speciesnet_options.skip_video = True
+    md_speciesnet_options.verbose = True
 
-assert os.path.isfile(detection_results_file_with_crop_ids)
-assert os.path.isfile(detection_results_file_for_crop_folder)
-assert os.path.isdir(crop_folder)
+    md_speciesnet_options.detections_file = detector_output_file_md_format
 
-
-#%% Convert crop metadata to SpeciesNet input format
-
-# Convert detection results for the crops to predictions.json format
-#
-# This will be the input to the ensemble when we run it on the crops.
-
-from megadetector.utils.wi_taxonomy_utils import generate_predictions_json_from_md_results
-
-_ = generate_predictions_json_from_md_results(md_results_file=detection_results_file_for_crop_folder,
-                                              predictions_json_file=crop_detections_predictions_file,
-                                              base_folder=crop_folder)
-
-
-# Generate a new instances.json file for the crops
-
-crop_instances = generate_instances_json_from_folder(folder=crop_folder,
-                                                     country=country_code,
-                                                     admin1_region=state_code,
-                                                     output_file=crop_instances_json,
-                                                     filename_replacements=None)
-
-print('Generated {} instances for the crop folder (in file {})'.format(
-    len(crop_instances['instances']),crop_instances_json))
-
-
-#%% Run SpeciesNet on crops
-
-os.makedirs(chunk_folder,exist_ok=True)
-
-print('Reading crop instances json...')
-
-with open(crop_instances_json,'r') as f:
-    crop_instances_dict = json.load(f)
-
-crop_instances = crop_instances_dict['instances']
-
-if max_images_per_chunk is None:
-    chunks = split_list_into_n_chunks(crop_instances,n_gpus)
-else:
-    chunks = split_list_into_fixed_size_chunks(crop_instances,max_images_per_chunk)
-print('Split {} crop instances into {} chunks'.format(len(crop_instances),len(chunks)))
-
-chunk_scripts = []
-
-print('Reading detection results...')
-
-with open(crop_detections_predictions_file,'r') as f:
-    detections = json.load(f)
-
-detection_filepath_to_instance = {p['filepath']:p for p in detections['predictions']}
-
-chunk_prediction_files = []
-
-gpu_to_classifier_scripts = defaultdict(list)
-
-# i_chunk = 0; chunk = chunks[i_chunk]
-for i_chunk,chunk in enumerate(chunks):
-
-    if n_gpus > 1:
-        gpu_number = i_chunk % n_gpus
-    else:
-        gpu_number = default_gpu_number
-
-    if default_gpu_number is not None:
-        if os.name == 'nt':
-            cuda_prefix = f'set CUDA_VISIBLE_DEVICES={gpu_number} & '
-        else:
-            cuda_prefix = f'CUDA_VISIBLE_DEVICES={gpu_number} '
-    else:
-        cuda_prefix = ''
-
-    chunk_str = str(i_chunk).zfill(3)
-
-    chunk_instances_json = path_join(chunk_folder,'crop_instances_chunk_{}.json'.format(
-        chunk_str))
-    chunk_instances_dict = {'instances':chunk}
-    with open(chunk_instances_json,'w') as f:
-        json.dump(chunk_instances_dict,f,indent=1)
-
-    chunk_detections_json = path_join(chunk_folder,'detections_chunk_{}.json'.format(
-        chunk_str))
-
-    detection_predictions_this_chunk = []
-
-    images_this_chunk = [instance['filepath'] for instance in chunk]
-
-    for image_fn in images_this_chunk:
-        assert image_fn in detection_filepath_to_instance
-        detection_predictions_this_chunk.append(detection_filepath_to_instance[image_fn])
-
-    detection_predictions_dict = {'predictions':detection_predictions_this_chunk}
-
-    with open(chunk_detections_json,'w') as f:
-        json.dump(detection_predictions_dict,f,indent=1)
-
-    chunk_files = [instance['filepath'] for instance in chunk]
-
-    chunk_predictions_json = path_join(chunk_folder,'predictions_chunk_{}.json'.format(
-        chunk_str))
-
-    if os.path.isfile(chunk_predictions_json):
-        print('Warning: chunk output file {} exists'.format(chunk_predictions_json))
-
-    chunk_prediction_files.append(chunk_predictions_json)
-
-    cmd = 'python -m speciesnet.scripts.run_model --classifier_only'
     if speciesnet_model_file is not None:
-        cmd += ' --model "{}"'.format(speciesnet_model_file)
-    cmd += ' --instances_json "{}"'.format(chunk_instances_json)
-    cmd += ' --predictions_json "{}"'.format(chunk_predictions_json)
-    cmd += ' --detections_json "{}"'.format(chunk_detections_json)
+        md_speciesnet_options.classification_model = speciesnet_model_file
 
-    if classifier_batch_size is not None:
-       cmd += ' --batch_size {}'.format(classifier_batch_size)
+    # Enable geofencing if (a) we have a country code and (b) we're not immediately
+    # applying a custom taxa list
+    enable_geofence = True
+    if country_code is None:
+        enable_geofence = False
+    if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
+        enable_geofence = False
 
-    chunk_script_file = path_join(chunk_folder,'run_chunk_{}{}'.format(chunk_str,script_extension))
+    if enable_geofence:
+        md_speciesnet_options.country = country_code
 
-    with open(chunk_script_file,'w') as f:
-        # This writes, e.g. "set -e"
-        if (script_header is not None) and (len(script_header) > 0):
-            f.write(script_header + '\n')
-        f.write(cuda_prefix + cmd)
+    if state_code is not None:
+        md_speciesnet_options.admin1_region = state_code
 
-    st = os.stat(chunk_script_file)
-    os.chmod(chunk_script_file, st.st_mode | stat.S_IEXEC)
+    run_md_and_speciesnet(md_speciesnet_options)
 
-    gpu_to_classifier_scripts[gpu_number].append(chunk_script_file)
+    assert os.path.isfile(ensemble_output_file_image_level_md_format)
 
-# ...for each chunk
 
-per_gpu_scripts = []
+#%% The next few cells set up the command line tools to run SpeciesNet
 
-# Write out a script for each GPU that runs all of the commands associated with
-# that GPU.
-for gpu_number in gpu_to_classifier_scripts:
+if not run_tasks_in_notebook:
 
-    gpu_script_file = path_join(filename_base,'run_classifier_for_gpu_{}{}'.format(
-        str(gpu_number).zfill(2),script_extension))
-    per_gpu_scripts.append(gpu_script_file)
+    pass
 
-    with open(gpu_script_file,'w') as f:
+    #%% Generate instances.json
 
-        # This writes, e.g. "set -e"
-        if (script_header is not None) and (len(script_header) > 0):
-            f.write(script_header)
+    # ...for the original images.
 
-        for script_name in gpu_to_classifier_scripts[gpu_number]:
+    instances = generate_instances_json_from_folder(folder=input_path,
+                                                    country=country_code,
+                                                    admin1_region=state_code,
+                                                    output_file=instances_json,
+                                                    filename_replacements=None)
 
-            s = script_name
-            # When calling a series of batch files on Windows from within a batch file, you need to
-            # use "call", or only the first will be executed.  No, it doesn't make sense.
+    print('Generated {} instances'.format(len(instances['instances'])))
+
+
+    #%% Generate crop dataset
+
+    from megadetector.postprocessing.create_crop_folder import \
+        CreateCropFolderOptions, create_crop_folder
+
+    create_crop_folder_options = CreateCropFolderOptions()
+    create_crop_folder_options.n_workers = 8
+    create_crop_folder_options.pool_type = 'process'
+    if parallelization_defaults_to_threads:
+        create_crop_folder_options.pool_type = 'thread'
+
+    create_crop_folder(input_file=detector_output_file_md_format,
+                       input_folder=input_path,
+                       output_folder=crop_folder,
+                       output_file=detection_results_file_with_crop_ids,
+                       crops_output_file=detection_results_file_for_crop_folder,
+                       options=create_crop_folder_options)
+
+    assert os.path.isfile(detection_results_file_with_crop_ids)
+    assert os.path.isfile(detection_results_file_for_crop_folder)
+    assert os.path.isdir(crop_folder)
+
+
+    #%% Convert crop metadata to SpeciesNet input format
+
+    # Convert detection results for the crops to predictions.json format
+    #
+    # This will be the input to the ensemble when we run it on the crops.
+
+    from megadetector.utils.wi_taxonomy_utils import generate_predictions_json_from_md_results
+
+    _ = generate_predictions_json_from_md_results(md_results_file=detection_results_file_for_crop_folder,
+                                                predictions_json_file=crop_detections_predictions_file,
+                                                base_folder=crop_folder)
+
+
+    # Generate a new instances.json file for the crops
+
+    crop_instances = generate_instances_json_from_folder(folder=crop_folder,
+                                                        country=country_code,
+                                                        admin1_region=state_code,
+                                                        output_file=crop_instances_json,
+                                                        filename_replacements=None)
+
+    print('Generated {} instances for the crop folder (in file {})'.format(
+        len(crop_instances['instances']),crop_instances_json))
+
+
+    #%% Run SpeciesNet on crops
+
+    os.makedirs(chunk_folder,exist_ok=True)
+
+    print('Reading crop instances json...')
+
+    with open(crop_instances_json,'r') as f:
+        crop_instances_dict = json.load(f)
+
+    crop_instances = crop_instances_dict['instances']
+
+    if max_images_per_chunk is None:
+        chunks = split_list_into_n_chunks(crop_instances,n_gpus)
+    else:
+        chunks = split_list_into_fixed_size_chunks(crop_instances,max_images_per_chunk)
+    print('Split {} crop instances into {} chunks'.format(len(crop_instances),len(chunks)))
+
+    chunk_scripts = []
+
+    print('Reading detection results...')
+
+    with open(crop_detections_predictions_file,'r') as f:
+        detections = json.load(f)
+
+    detection_filepath_to_instance = {p['filepath']:p for p in detections['predictions']}
+
+    chunk_prediction_files = []
+
+    gpu_to_classifier_scripts = defaultdict(list)
+
+    # i_chunk = 0; chunk = chunks[i_chunk]
+    for i_chunk,chunk in enumerate(chunks):
+
+        if n_gpus > 1:
+            gpu_number = i_chunk % n_gpus
+        else:
+            gpu_number = default_gpu_number
+
+        if default_gpu_number is not None:
             if os.name == 'nt':
-                s = 'call ' + s
-            f.write(s + '\n')
+                cuda_prefix = f'set CUDA_VISIBLE_DEVICES={gpu_number} & '
+            else:
+                cuda_prefix = f'CUDA_VISIBLE_DEVICES={gpu_number} '
+        else:
+            cuda_prefix = ''
 
-        f.write('echo "Finished all commands for GPU {}"'.format(gpu_number))
+        chunk_str = str(i_chunk).zfill(3)
 
-    st = os.stat(gpu_script_file)
-    os.chmod(gpu_script_file, st.st_mode | stat.S_IEXEC)
+        chunk_instances_json = path_join(chunk_folder,'crop_instances_chunk_{}.json'.format(
+            chunk_str))
+        chunk_instances_dict = {'instances':chunk}
+        with open(chunk_instances_json,'w') as f:
+            json.dump(chunk_instances_dict,f,indent=1)
 
-# ...for each GPU
+        chunk_detections_json = path_join(chunk_folder,'detections_chunk_{}.json'.format(
+            chunk_str))
 
-print('\nClassification scripts you should run now:')
-for s in per_gpu_scripts:
-    print(s)
+        detection_predictions_this_chunk = []
 
-# import clipboard; clipboard.copy(per_gpu_scripts[0])
+        images_this_chunk = [instance['filepath'] for instance in chunk]
 
+        for image_fn in images_this_chunk:
+            assert image_fn in detection_filepath_to_instance
+            detection_predictions_this_chunk.append(detection_filepath_to_instance[image_fn])
 
-#%% Prepare rollup/geofencing script
+        detection_predictions_dict = {'predictions':detection_predictions_this_chunk}
 
-##%%# Merge crop classification result batches
+        with open(chunk_detections_json,'w') as f:
+            json.dump(detection_predictions_dict,f,indent=1)
 
-from megadetector.utils.wi_taxonomy_utils import merge_prediction_json_files
+        chunk_files = [instance['filepath'] for instance in chunk]
 
-merge_prediction_json_files(input_prediction_files=chunk_prediction_files,
-                            output_prediction_file=classifier_output_file_modular_crops)
+        chunk_predictions_json = path_join(chunk_folder,'predictions_chunk_{}.json'.format(
+            chunk_str))
 
+        if os.path.isfile(chunk_predictions_json):
+            print('Warning: chunk output file {} exists'.format(chunk_predictions_json))
 
-##%% Validate crop classification results
+        chunk_prediction_files.append(chunk_predictions_json)
 
-from megadetector.utils.wi_taxonomy_utils import validate_predictions_file
-_ = validate_predictions_file(classifier_output_file_modular_crops,crop_instances_json)
+        cmd = 'python -m speciesnet.scripts.run_model --classifier_only'
+        if speciesnet_model_file is not None:
+            cmd += ' --model "{}"'.format(speciesnet_model_file)
+        cmd += ' --instances_json "{}"'.format(chunk_instances_json)
+        cmd += ' --predictions_json "{}"'.format(chunk_predictions_json)
+        cmd += ' --detections_json "{}"'.format(chunk_detections_json)
 
+        if classifier_batch_size is not None:
+            cmd += ' --batch_size {}'.format(classifier_batch_size)
 
-##%% Run rollup (and possibly geofencing) (still crops)
+        chunk_script_file = path_join(chunk_folder,'run_chunk_{}{}'.format(chunk_str,script_extension))
 
-# It doesn't matter here which environment we use, and there's no need to add the CUDA prefix
-ensemble_commands = []
+        with open(chunk_script_file,'w') as f:
+            # This writes, e.g. "set -e"
+            if (script_header is not None) and (len(script_header) > 0):
+                f.write(script_header + '\n')
+            f.write(cuda_prefix + cmd)
 
-cmd = 'python -m speciesnet.scripts.run_model --ensemble_only'
-if speciesnet_model_file is not None:
-        cmd += ' --model "{}"'.format(speciesnet_model_file)
-cmd += ' --instances_json "{}"'.format(crop_instances_json)
-cmd += ' --classifications_json "{}"'.format(classifier_output_file_modular_crops)
-cmd += ' --detections_json "{}"'.format(crop_detections_predictions_file)
-cmd += ' --predictions_json "{}"'.format(ensemble_output_file_modular_crops)
+        st = os.stat(chunk_script_file)
+        os.chmod(chunk_script_file, st.st_mode | stat.S_IEXEC)
 
-# Currently we only skip the geofence if we're imminently going to apply a custom taxa
-# list, otherwise the smoothing is quite messy.
-if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
-    cmd += ' --nogeofence'
+        gpu_to_classifier_scripts[gpu_number].append(chunk_script_file)
 
-ensemble_commands.append(cmd)
+    # ...for each chunk
 
-ensemble_cmd = '\n\n'.join(ensemble_commands)
-# print(ensemble_cmd); clipboard.copy(ensemble_cmd)
+    per_gpu_scripts = []
 
-print('Ensemble command you should run now:\n\n{}'.format(ensemble_cmd))
+    # Write out a script for each GPU that runs all of the commands associated with
+    # that GPU.
+    for gpu_number in gpu_to_classifier_scripts:
 
+        gpu_script_file = path_join(filename_base,'run_classifier_for_gpu_{}{}'.format(
+            str(gpu_number).zfill(2),script_extension))
+        per_gpu_scripts.append(gpu_script_file)
 
-#%% Validate ensemble results and bring crop results back to image level
+        with open(gpu_script_file,'w') as f:
 
-##%% Validate ensemble results (still crops)
+            # This writes, e.g. "set -e"
+            if (script_header is not None) and (len(script_header) > 0):
+                f.write(script_header)
 
-from megadetector.utils.wi_taxonomy_utils import validate_predictions_file
-_ = validate_predictions_file(ensemble_output_file_modular_crops,crop_instances_json)
+            for script_name in gpu_to_classifier_scripts[gpu_number]:
 
+                s = script_name
+                # When calling a series of batch files on Windows from within a batch file, you need to
+                # use "call", or only the first will be executed.  No, it doesn't make sense.
+                if os.name == 'nt':
+                    s = 'call ' + s
+                f.write(s + '\n')
 
-##%% Generate a list of corrections made by geofencing, and counts (still crops)
+            f.write('echo "Finished all commands for GPU {}"'.format(gpu_number))
 
-from megadetector.utils.wi_taxonomy_utils import find_geofence_adjustments, \
-    generate_geofence_adjustment_html_summary
+        st = os.stat(gpu_script_file)
+        os.chmod(gpu_script_file, st.st_mode | stat.S_IEXEC)
 
-rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular_crops,
-                                                 use_latin_names=False)
+    # ...for each GPU
 
-geofence_footer = generate_geofence_adjustment_html_summary(rollup_pair_to_count)
+    print('\nClassification scripts you should run now:')
+    for s in per_gpu_scripts:
+        print(s)
 
-# If we didn't run geofencing, there should have been no geofence adjustments
-if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
-    assert len(rollup_pair_to_count) == 0
-    assert len(geofence_footer) == 0
-
-
-##%% Convert output file to MD format (still crops)
-
-assert os.path.isfile(ensemble_output_file_modular_crops)
-
-generate_md_results_from_predictions_json(predictions_json_file=ensemble_output_file_modular_crops,
-                                          md_results_file=ensemble_output_file_crops_md_format,
-                                          base_folder=crop_folder+'/')
-
-
-##%% Bring those crop-level results back to image level
-
-from megadetector.postprocessing.create_crop_folder import crop_results_to_image_results
-
-assert '_crops' in ensemble_output_file_crops_md_format
-
-crop_results_to_image_results(
-    image_results_file_with_crop_ids=detection_results_file_with_crop_ids,
-    crop_results_file=ensemble_output_file_crops_md_format,
-    output_file=ensemble_output_file_image_level_md_format)
-
-assert os.path.isfile(ensemble_output_file_image_level_md_format)
+    # import clipboard; clipboard.copy(per_gpu_scripts[0])
 
 
-##%% Confirm that all the right images are in the classification results
+    #%% Prepare rollup/geofencing script
+
+    ##%%# Merge crop classification result batches
+
+    from megadetector.utils.wi_taxonomy_utils import merge_prediction_json_files
+
+    merge_prediction_json_files(input_prediction_files=chunk_prediction_files,
+                                output_prediction_file=classifier_output_file_modular_crops)
+
+
+    ##%% Validate crop classification results
+
+    from megadetector.utils.wi_taxonomy_utils import validate_predictions_file
+    _ = validate_predictions_file(classifier_output_file_modular_crops,crop_instances_json)
+
+
+    ##%% Run rollup (and possibly geofencing) (still crops)
+
+    # It doesn't matter here which environment we use, and there's no need to add the CUDA prefix
+    ensemble_commands = []
+
+    cmd = 'python -m speciesnet.scripts.run_model --ensemble_only'
+    if speciesnet_model_file is not None:
+            cmd += ' --model "{}"'.format(speciesnet_model_file)
+    cmd += ' --instances_json "{}"'.format(crop_instances_json)
+    cmd += ' --classifications_json "{}"'.format(classifier_output_file_modular_crops)
+    cmd += ' --detections_json "{}"'.format(crop_detections_predictions_file)
+    cmd += ' --predictions_json "{}"'.format(ensemble_output_file_modular_crops)
+
+    # Currently we only skip the geofence if we're imminently going to apply a custom taxa
+    # list, otherwise the smoothing is quite messy.
+    if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
+        cmd += ' --nogeofence'
+
+    ensemble_commands.append(cmd)
+
+    ensemble_cmd = '\n\n'.join(ensemble_commands)
+    # print(ensemble_cmd); clipboard.copy(ensemble_cmd)
+
+    print('Ensemble command you should run now:\n\n{}'.format(ensemble_cmd))
+
+
+    #%% Validate ensemble results and bring crop results back to image level
+
+    ##%% Validate ensemble results (still crops)
+
+    from megadetector.utils.wi_taxonomy_utils import validate_predictions_file
+    _ = validate_predictions_file(ensemble_output_file_modular_crops,crop_instances_json)
+
+
+    ##%% Generate a list of corrections made by geofencing, and counts (still crops)
+
+    from megadetector.utils.wi_taxonomy_utils import find_geofence_adjustments, \
+        generate_geofence_adjustment_html_summary
+
+    rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular_crops,
+                                                    use_latin_names=False)
+
+    geofence_footer = generate_geofence_adjustment_html_summary(rollup_pair_to_count)
+
+    # If we didn't run geofencing, there should have been no geofence adjustments
+    if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
+        assert len(rollup_pair_to_count) == 0
+        assert len(geofence_footer) == 0
+
+
+    ##%% Convert output file to MD format (still crops)
+
+    assert os.path.isfile(ensemble_output_file_modular_crops)
+
+    generate_md_results_from_predictions_json(predictions_json_file=ensemble_output_file_modular_crops,
+                                            md_results_file=ensemble_output_file_crops_md_format,
+                                            base_folder=crop_folder+'/')
+
+
+    ##%% Bring those crop-level results back to image level
+
+    from megadetector.postprocessing.create_crop_folder import crop_results_to_image_results
+
+    assert '_crops' in ensemble_output_file_crops_md_format
+
+    crop_results_to_image_results(
+        image_results_file_with_crop_ids=detection_results_file_with_crop_ids,
+        crop_results_file=ensemble_output_file_crops_md_format,
+        output_file=ensemble_output_file_image_level_md_format)
+
+    assert os.path.isfile(ensemble_output_file_image_level_md_format)
+
+# ...are we running SpeciesNet in the notebook?
+
+
+#%% Confirm that all the right images are in the classification results
 
 import json
 from megadetector.utils.path_utils import find_images
@@ -1977,10 +2029,10 @@ location_names = set()
 for relative_path in tqdm(image_filenames):
 
     # Use the standard replacement function
-    location_name = relative_path_to_location(relative_path)
+    # location_name = relative_path_to_location(relative_path)
 
     # Use a custom replacement function
-    # location_name = custom_relative_path_to_location(relative_path)
+    location_name = custom_relative_path_to_location(relative_path)
 
     location_names.add(location_name)
 

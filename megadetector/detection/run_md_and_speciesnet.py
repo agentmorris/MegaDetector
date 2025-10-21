@@ -1090,7 +1090,10 @@ def _run_classification_step(detector_results_file: str,
             if common_name not in self.common_name_to_id:
                 self.common_name_to_id[common_name] = str(self.next_category_id)
                 self.classification_categories[str(self.next_category_id)] = common_name
-                self.classification_category_descriptions[str(self.next_category_id)] = taxonomy_string
+                # Store the full seven-token string, rather than the shortened five-token string, for
+                # compatibility with what is expected by the classification_postprocessing module.
+                # self.classification_category_descriptions[str(self.next_category_id)] = taxonomy_string
+                self.classification_category_descriptions[str(self.next_category_id)] = class_name
                 self.next_category_id += 1
 
             category_id = self.common_name_to_id[common_name]
