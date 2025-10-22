@@ -637,7 +637,7 @@ def _populate_exif_for_images(image_base,images,options=None):
             if pool is not None:
                 pool.close()
                 pool.join()
-                print("Pool closed and joined for EXIF extraction")
+                print('Pool closed and joined for EXIF extraction')
 
     return results
 

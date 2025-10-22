@@ -1398,7 +1398,7 @@ def load_and_run_detector_batch(model_file,
             if pool is not None:
                 pool.close()
                 pool.join()
-                print("Pool closed and joined for multi-core inference")
+                print('Pool closed and joined for multi-core inference')
 
     # ...if we're running (1) with image queue, (2) on one core, or (3) on multiple cores
 

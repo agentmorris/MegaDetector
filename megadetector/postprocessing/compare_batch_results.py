@@ -1481,7 +1481,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
         try:
             pool.close()
             pool.join()
-            print("Pool closed and joined for comparison rendering")
+            print('Pool closed and joined for comparison rendering')
         except Exception:
             pass
 

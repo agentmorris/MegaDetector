@@ -1414,7 +1414,7 @@ def find_repeat_detections(input_filename, output_file_name=None, options=None):
             try:
                 pool.close()
                 pool.join()
-                print("Pool closed and joined for RDE comparisons")
+                print('Pool closed and joined for RDE comparisons')
             except Exception as e:
                 print('Warning: error closing RDE comparison pool: {}'.format(str(e)))
 
@@ -1627,7 +1627,7 @@ def find_repeat_detections(input_filename, output_file_name=None, options=None):
                 if pool is not None:
                     pool.close()
                     pool.join()
-                    print("Pool closed and joined for RDE rendering")
+                    print('Pool closed and joined for RDE rendering')
 
         else:
 

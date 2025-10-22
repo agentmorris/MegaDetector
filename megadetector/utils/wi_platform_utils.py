@@ -610,7 +610,7 @@ def parallel_push_results_for_images(payloads,
         finally:
             pool.close()
             pool.join()
-            print("Pool closed and joined for WI result uploads")
+            print('Pool closed and joined for WI result uploads')
 
         assert len(results) == len(payloads)
         return results

@@ -14,6 +14,9 @@ import os
 import random
 import cv2
 
+from multiprocessing.pool import ThreadPool
+from multiprocessing.pool import Pool
+from functools import partial
 from tqdm import tqdm
 from PIL import Image
 import numpy as np
@@ -81,6 +84,15 @@ class VideoVisualizationOptions:
 
         #: Don't render videos below this length
         self.min_output_length_seconds = None
+
+        #: Enable parallel processing of videos
+        self.parallelize_rendering = True
+
+        #: Number of concurrent workers (None = default based on CPU count)
+        self.parallelize_rendering_n_cores = 8
+
+        #: Use threads (True) vs processes (False) for parallelization
+        self.parallelize_rendering_with_threads = True
 
 # ...class VideoVisualizationOptions
 
@@ -527,19 +539,57 @@ def visualize_video_output(detector_output_path,
     # Process each video
     results = []
 
-    for video_entry in tqdm(video_entries, desc='Processing videos'):
-        result = _process_video(
-            video_entry,
-            detector_label_map,
-            classification_label_map,
-            options,
-            video_dir,
-            out_dir
-        )
-        results.append(result)
+    if options.parallelize_rendering:
 
-        if not result['success']:
-            print('Warning: Failed to process {}: {}'.format(result['file'],result['error']))
+        if options.parallelize_rendering_with_threads:
+            worker_string = 'threads'
+        else:
+            worker_string = 'processes'
+
+        pool = None
+
+        try:
+
+            if options.parallelize_rendering_n_cores is None:
+                if options.parallelize_rendering_with_threads:
+                    pool = ThreadPool()
+                else:
+                    pool = Pool()
+            else:
+                if options.parallelize_rendering_with_threads:
+                    pool = ThreadPool(options.parallelize_rendering_n_cores)
+                else:
+                    pool = Pool(options.parallelize_rendering_n_cores)
+                print('Processing videos with {} {}'.format(options.parallelize_rendering_n_cores,
+                                                            worker_string))
+            results = list(tqdm(pool.imap(
+                                 partial(_process_video,
+                                         detector_label_map=detector_label_map,
+                                         classification_label_map=classification_label_map,
+                                         options=options,
+                                         video_dir=video_dir,
+                                         out_dir=out_dir),
+                                 video_entries), total=len(video_entries), desc='Processing videos'))
+        finally:
+
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print('Pool closed and joined for video output visualization')
+
+    else:
+
+        for video_entry in tqdm(video_entries, desc='Processing videos'):
+
+            result = _process_video(
+                video_entry,
+                detector_label_map,
+                classification_label_map,
+                options,
+                video_dir,
+                out_dir
+            )
+            results.append(result)
 
     # ...for each video
 
