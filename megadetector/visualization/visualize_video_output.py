@@ -71,6 +71,17 @@ class VideoVisualizationOptions:
         #: use this to force a particular extension
         self.output_extension = None
 
+        #: By default, relative paths are preserved in the output folder; this
+        #: flattens the output structure.
+        self.flatten_output = False
+
+        #: When flatten_output is True, path separators will be replaced with this
+        #: string.
+        self.path_separator_replacement = '#'
+
+        #: Don't render videos below this length
+        self.min_output_length_seconds = None
+
 # ...class VideoVisualizationOptions
 
 
@@ -262,7 +273,8 @@ def _process_video(video_entry,
         out_dir (str): output directory
 
     Returns:
-        dict: processing result information
+        dict: processing result information, with at least keys 'file, 'error', 'success',
+        'frames_processed'.
     """
 
     result = {
@@ -293,6 +305,11 @@ def _process_video(video_entry,
 
     output_fn_relative = video_entry['file']
 
+    if options.flatten_output:
+        output_fn_relative = output_fn_relative.replace('\\','/')
+        output_fn_relative = \
+            output_fn_relative.replace('/',options.path_separator_replacement)
+
     if options.output_extension is not None:
         ext = options.output_extension
         if not ext.startswith('.'):
@@ -317,6 +334,15 @@ def _process_video(video_entry,
     output_framerate = _get_video_output_framerate(video_entry,
                                                    original_framerate,
                                                    options.rendering_fs)
+
+    # Bail early if this video is below the output length limit
+    if options.min_output_length_seconds is not None:
+        output_length = len(frames_to_process) / output_framerate
+        if output_length < options.min_output_length_seconds:
+            print('Skipping video {}, {}s is below minimum length ({}s)'.format(
+                video_entry['file'],output_length,options.min_output_length_seconds))
+            result['error'] = 'Skipped, below minimum length'
+            return result
 
     # Storage for rendered frames
     rendered_frames = []
