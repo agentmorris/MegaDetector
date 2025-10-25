@@ -55,11 +55,22 @@ E1
 
 ## Handle legacy setup.py issues
 
-Three dependencies - yolov9pip, pyqtree, and clipboard - give this warning during pip installation:<br/><br/>
+Two dependencies - yolov9pip and clipboard - give this warning during pip installation:<br/><br/>
 
 DEPRECATION: Building 'yolov9pip' using the legacy setup.py bdist_wheel mechanism, which will be removed in a future version. pip 25.3 will enforce this behaviour change. A possible replacement is to use the standardized build interface by setting the `--use-pep517` option, (possibly combined with `--no-build-isolation`), or adding a `pyproject.toml` file to the source tree of 'yolov9pip'. Discussion can be found at https://github.com/pypa/pip/issues/6334
 
 P2
+
+E2
+
+!maintenance
+
+
+## Remove pyqtree shim in repeat_detections_core
+
+The [repeat_detections_core](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/repeat_detection_elimination/repeat_detections_core.py) module originally used [pyqtree](https://github.com/karimbahgat/Pyqtree), which was later replaced with the pyqtree-compatible API provided by [fastquadtree](https://github.com/Elan456/fastquadtree).  According to the fastquadtree docs, using its native API (rather than the pyqtree shim) offers a performance benefit, so consider replacing the shim with the native API in repeat_detections_core.
+
+P3
 
 E2
 
@@ -210,7 +221,7 @@ E2
 
 ## RDE refactor
 
-repeat_detections_core is pretty messy, and it has some really bizarre properties right now, like the fact that when you run the main function a second time to apply a set of changes after the manual review step, it repeats all the folder-separation stuff it did the first time, which is brittle and silly.  This requires not quite a total re-write, but a significant cleanup.
+[repeat_detections_core](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/repeat_detection_elimination/repeat_detections_core.py) is pretty messy, and it has some really bizarre properties right now, like the fact that when you run the main function a second time to apply a set of changes after the manual review step, it repeats all the folder-separation stuff it did the first time, which is brittle and silly.  This requires not quite a total re-write, but a significant cleanup.
 
 P3
 
@@ -864,7 +875,7 @@ E0
 
 ## Remove unnecessary null failures from RDE output
 
-repeat_detections_core adds an unnecessary "failure" field (set to null) for all successful images.  This is not a violation of the format spec, but it's silly.  This happens because this script goes through a pandas dataframe after an intermediate, then converts rows back to dicts before exporting.  Fix this.  The easiest fix is to just remove these prior to export.
+[repeat_detections_core](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/repeat_detection_elimination/repeat_detections_core.py) adds an unnecessary "failure" field (set to null) for all successful images.  This is not a violation of the format spec, but it's silly.  This happens because this script goes through a pandas dataframe after an intermediate, then converts rows back to dicts before exporting.  Fix this.  The easiest fix is to just remove these prior to export.
 
 P3
 
