@@ -356,7 +356,7 @@ def labelme_to_coco(input_folder,
             if pool is not None:
                 pool.close()
                 pool.join()
-                print("Pool closed and joined for labelme file processing")
+                print('Pool closed and joined for labelme file processing')
 
     images = []
     annotations = []

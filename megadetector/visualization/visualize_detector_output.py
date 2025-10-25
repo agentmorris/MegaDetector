@@ -292,7 +292,7 @@ def visualize_detector_output(detector_output_path,
             if pool is not None:
                 pool.close()
                 pool.join()
-                print("Pool closed and joined for detector output visualization")
+                print('Pool closed and joined for detector output visualization')
 
     else:
 

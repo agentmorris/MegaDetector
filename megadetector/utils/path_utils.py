@@ -1045,7 +1045,7 @@ def parallel_copy_files(input_file_to_output_file,
             pool.close()
             pool.join()
             if verbose:
-                print("Pool closed and joined parallel file copying")
+                print('Pool closed and joined for parallel file copying')
 
 # ...def parallel_copy_files(...)
 

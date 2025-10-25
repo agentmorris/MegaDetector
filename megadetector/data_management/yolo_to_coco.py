@@ -391,7 +391,7 @@ def validate_yolo_dataset(input_folder,
             if pool is not None:
                 pool.close()
                 pool.join()
-                print("Pool closed and joined for label file validation")
+                print('Pool closed and joined for label file validation')
 
     assert len(label_results) == len(label_files)
 

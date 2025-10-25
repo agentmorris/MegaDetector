@@ -347,7 +347,7 @@ def integrity_check_json_db(json_file, options=None):
             finally:
                 pool.close()
                 pool.join()
-                print("Pool closed and joined for image size checks")
+                print('Pool closed and joined for image size checks')
         else:
             results = []
             for im in tqdm(images):

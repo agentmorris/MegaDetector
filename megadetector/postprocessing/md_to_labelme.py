@@ -262,7 +262,7 @@ def md_to_labelme(results_file,
             if pool is not None:
                 pool.close()
                 pool.join()
-                print("Pool closed and joined for labelme file writes")
+                print('Pool closed and joined for labelme file writes')
 
     # ...for each image
 

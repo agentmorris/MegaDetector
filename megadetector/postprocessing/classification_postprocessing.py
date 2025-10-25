@@ -1461,7 +1461,7 @@ def restrict_to_taxa_list(taxa_list,
         return
 
 
-    ##%% Map all predictions that exist in this dataset...
+    #%% Map all predictions that exist in this dataset...
 
     # ...to the prediction we should generate.
 
@@ -1505,16 +1505,21 @@ def restrict_to_taxa_list(taxa_list,
 
         # Remove GUID and common mame
 
-        # This is now always class/order/family/genus/species
+        # This is always class/order/family/genus/species
         input_taxon_tokens = input_taxon_tokens[1:-1]
+        assert len(input_taxon_tokens) == 5
 
+
+        # Start at the species level (the last element in input_taxon_tokens),
+        # and see whether each taxon is allowed
         test_index = len(input_taxon_tokens) - 1
         target_taxon = None
 
-        # Start at the species level, and see whether each taxon is allowed
         while((test_index >= 0) and (target_taxon is None)):
 
-            # Species are represented as binomial names
+            # Species are represented as binomial names, i.e. when test_index is 4,
+            # test_taxon_name will have two tokens (e.g. "canis lupus"), otherwise
+            # test_taxon_name will have one token (e.g. "canis", or "aves")
             if (test_index == (len(input_taxon_tokens) - 1)) and \
                 (len(input_taxon_tokens[-1]) > 0):
                 test_taxon_name = \
@@ -1529,8 +1534,7 @@ def restrict_to_taxa_list(taxa_list,
                 continue
 
             assert test_taxon_name in speciesnet_latin_name_to_taxon_string, \
-                '{} should be a substring of {}'.format(test_taxon_name,
-                                                        speciesnet_latin_name_to_taxon_string)
+                '{} not found in taxonomy table'.format(test_taxon_name)
 
             # Is this taxon allowed according to the custom species list?
             if test_taxon_name in allowed_parent_taxon_to_child_taxa:
@@ -1581,7 +1585,7 @@ def restrict_to_taxa_list(taxa_list,
     # ...for each category (mapping input category IDs to output taxon strings)
 
 
-    ##%% Map input category IDs to output category IDs
+    #%% Map input category IDs to output category IDs
 
     speciesnet_taxon_string_to_latin_name = \
         invert_dictionary(speciesnet_latin_name_to_taxon_string)

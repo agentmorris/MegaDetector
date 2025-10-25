@@ -255,7 +255,7 @@ def render_detection_confusion_matrix(ground_truth_file,
             if pool is not None:
                 pool.close()
                 pool.join()
-                print("Pool closed and joined for confusion matrix rendering")
+                print('Pool closed and joined for confusion matrix rendering')
 
     else:
 

@@ -457,7 +457,7 @@ def create_crop_folder(input_file,
             if pool is not None:
                 pool.close()
                 pool.join()
-                print("Pool closed and joined for crop folder creation")
+                print('Pool closed and joined for crop folder creation')
 
     # ...if we're using parallel processing
 

@@ -123,7 +123,7 @@ def get_image_sizes(filenames,image_prefix=None,output_file=None,
         finally:
             pool.close()
             pool.join()
-            print("Pool closed and joined for image size reads")
+            print('Pool closed and joined for image size reads')
 
     if output_file is not None:
         with open(output_file,'w') as f:

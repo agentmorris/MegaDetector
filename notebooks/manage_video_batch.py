@@ -185,6 +185,7 @@ for fn in low_frame_videos:
 import json
 from megadetector.detection.video_utils import \
     frame_results_to_video_results, FrameToVideoOptions
+from megadetector.utils.path_utils import zip_file
 
 # Load video frame rates if necessary
 if video_filename_relative_to_fs is None:
@@ -204,6 +205,9 @@ frame_results_to_video_results(frame_level_output_filename,
                                video_output_filename,
                                video_filename_to_frame_rate=video_filename_relative_to_fs,
                                options=options)
+
+# Zip the result
+zip_file(video_output_filename)
 
 
 #%% Confirm that the videos in the .json file are what we expect them to be
@@ -227,7 +231,7 @@ if False:
 
     pass
 
-    #%% Render all detections to videos
+    #%% Render all detections to videos (from the already-extracted frames)
 
     from megadetector.visualization.visualize_detector_output import visualize_detector_output
     from megadetector.utils.path_utils import insert_before_extension
@@ -301,136 +305,28 @@ if False:
 
     #%% Render one or more sample videos from videos (as opposed to from frames)
 
-    ## Imports
-
     from megadetector.visualization.visualize_video_output import \
         VideoVisualizationOptions, visualize_video_output
 
     video_options = VideoVisualizationOptions()
 
     video_options.confidence_threshold = 0.2
-    video_options.sample = 10
+    video_options.sample = 500
     video_options.random_seed = 0
     video_options.classification_confidence_threshold = 0.5
     video_options.rendering_fs = 'auto'
     video_options.fourcc = 'h264'
     video_options.trim_to_detections = True
 
-    visualize_video_output(video_output_filename,
-                           out_dir='/path/to/preview/folder',
-                           video_dir=input_folder,
-                           options=video_options)
+    video_options.flatten_output = True
+    video_options.min_output_length_seconds = 5
+    video_options.parallelize_rendering_with_threads = \
+        parallelization_uses_threads
 
-
-    #%% Render one or more sample videos from frames...
-
-    # ...while we still have the frames and detections around
-
-    ## Imports
-
-    from megadetector.visualization import visualize_detector_output
-    from megadetector.detection.video_utils import frames_to_video
-    from megadetector.detection.video_utils import get_video_fs
-
-
-    ## Constants and paths
-
-    confidence_threshold = 0.2
-    input_fs = 30
-
-    frame_level_output_filename = '/a/b/c/blah_detections.filtered_rde_0.150_0.850_10_1.000.json'
-    video_fn_relative = '4.10cam6/IMG_0022.MP4'
-    output_video_base = os.path.expanduser('~/tmp/video_preview')
-
-
-    ## Determine input frame rate
-
-    input_video_abs = os.path.join(input_folder,video_fn_relative)
-    assert os.path.isfile(input_video_abs)
-    input_fs = get_video_fs(input_video_abs)
-
-
-    ## Determine output frame rate
-
-    if every_n_frames > 0:
-        output_fs = input_fs / every_n_frames
-    else:
-        output_fs = (1.0/abs(every_n_frames))
-
-
-    ## Filename handling
-
-    video_fn_relative = video_fn_relative.replace('\\','/')
-    video_fn_flat = video_fn_relative.replace('/','#')
-    video_name = os.path.splitext(video_fn_flat)[0]
-    output_video = os.path.join(output_video_base,'{}_detections.mp4'.format(video_name))
-
-
-    rendered_detections_folder = os.path.join(output_video_base,'rendered_detections_{}'.format(video_name))
-    os.makedirs(rendered_detections_folder,exist_ok=True)
-
-
-    ## Find frames corresponding to this video
-
-    with open(frame_level_output_filename,'r') as f:
-        frame_results = json.load(f)
-
-    frame_results_this_video = []
-
-    # im = frame_results['images'][0]
-    for im in frame_results['images']:
-        if im['file'].replace('\\','/').startswith(video_fn_relative):
-            frame_results_this_video.append(im)
-
-    assert len(frame_results_this_video) > 0, \
-        'No frame results matched {}'.format(video_fn_relative)
-    print('Found {} matching frame results'.format(len(frame_results_this_video)))
-
-    frame_results['images'] = frame_results_this_video
-
-    frames_json = os.path.join(rendered_detections_folder,video_fn_flat + '.json')
-
-    with open(frames_json,'w') as f:
-        json.dump(frame_results,f,indent=1)
-
-
-    ## Render detections on those frames
-
-    detected_frame_files = visualize_detector_output.visualize_detector_output(
-        detector_output_path=frames_json,
-        out_dir=rendered_detections_folder,
-        images_dir=frame_folder_base,
-        confidence_threshold=confidence_threshold,
-        preserve_path_structure=True,
-        output_image_width=-1)
-
-
-    ## Render the output video
-
-    codec_spec = 'h264'
-    # codec_spec = 'mp4v'
-    frames_to_video(detected_frame_files, output_fs, output_video, codec_spec=codec_spec)
-
-    # from megadetector.utils.path_utils import open_file; open_file(output_video)
-
-
-    #%% Test a possibly-broken video
-
-    fn = '/datadrive/tmp/video.AVI'
-
-    fs = video_utils.get_video_fs(fn)
-    print(fs)
-
-    tmpfolder = '/home/user/tmp/frametmp'
-    os.makedirs(tmpfolder,exist_ok=True)
-
-    video_utils.video_to_frames(fn, tmpfolder, verbose=True, every_n_frames=10)
-
-
-    #%% List videos in a folder
-
-    input_folder = '/datadrive/tmp/organization/data'
-    video_filenames = video_utils.find_videos(input_folder,recursive=True)
+    _ = visualize_video_output(video_output_filename,
+                               out_dir='c:/temp/video-samples',
+                               video_dir=input_folder,
+                               options=video_options)
 
 
     #%% Estimate the extracted size of a folder by sampling a few videos

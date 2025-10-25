@@ -648,7 +648,7 @@ def get_datetimes_for_folder(folder_name,output_file=None,n_to_sample=-1,options
             if pool is not None:
                 pool.close()
                 pool.join()
-                print("Pool closed and joined for datetime extraction")
+                print('Pool closed and joined for datetime extraction')
 
     filename_to_results = {}
 

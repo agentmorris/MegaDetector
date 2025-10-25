@@ -275,7 +275,7 @@ def parallel_download_urls(url_to_target_file,
             if pool:
                 pool.close()
                 pool.join()
-                print("Pool closed and joined for parallel URL downloads")
+                print('Pool closed and joined for parallel URL downloads')
 
     return results
 

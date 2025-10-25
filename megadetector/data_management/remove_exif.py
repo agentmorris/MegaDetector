@@ -105,7 +105,7 @@ def remove_exif(image_base_folder,recursive=True,n_processes=1):
             if pool is not None:
                 pool.close()
                 pool.join()
-                print("Pool closed and joined for EXIF removal")
+                print('Pool closed and joined for EXIF removal')
 
 # ...remove_exif(...)
 
