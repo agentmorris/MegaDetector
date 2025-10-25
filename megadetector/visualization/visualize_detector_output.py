@@ -460,20 +460,20 @@ if False:
     parallelize_rendering_with_threads = False
 
     _ = visualize_detector_output(detector_output_path,
-                              out_dir,
-                              images_dir,
-                              confidence_threshold,
-                              sample,
-                              output_image_width,
-                              random_seed,
-                              render_detections_only,
-                              classification_confidence_threshold,
-                              html_output_file,
-                              html_output_options,
-                              preserve_path_structure,
-                              parallelize_rendering,
-                              parallelize_rendering_n_cores,
-                              parallelize_rendering_with_threads)
+                                  out_dir,
+                                  images_dir,
+                                  confidence_threshold,
+                                  sample,
+                                  output_image_width,
+                                  random_seed,
+                                  render_detections_only,
+                                  classification_confidence_threshold,
+                                  html_output_file,
+                                  html_output_options,
+                                  preserve_path_structure,
+                                  parallelize_rendering,
+                                  parallelize_rendering_n_cores,
+                                  parallelize_rendering_with_threads)
 
     from megadetector.utils.path_utils import open_file
     open_file(html_output_file)
