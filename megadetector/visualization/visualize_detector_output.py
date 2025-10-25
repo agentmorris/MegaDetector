@@ -231,7 +231,7 @@ def visualize_detector_output(detector_output_path,
     num_images = len(images)
     print(f'Detector output file contains {num_images} entries.')
 
-    if (sample > 0) and (num_images > sample):
+    if (sample is not None) and (sample > 0) and (num_images > sample):
 
         if random_seed is not None:
             images = sorted(images, key=lambda x: x['file'])
