@@ -232,15 +232,11 @@ E2
  
 ## Incorrect results in some Mac environments
 
-In certain Apple silicon environments, MD produces incorrect results.  This is not specific to MD, this is a bug in YOLOv5.  See [this issue](https://github.com/ultralytics/yolov5/issues/12654) and [this question](https://github.com/ultralytics/yolov5/issues/12645) on the YOLOv5 repo for details and status.  The work item here is to:
-
-* Assess the scope of this bug (all Apple silicon?  Just M1?  Has it been naturally resolved in M1 environments via recent PyTorch releases?)
-* Assess whether this impacts MDv1000 models
-* Consider disabling accelerated inference on Apple silicon for impacted models
+In certain Apple silicon environments, MD produces incorrect results.  This is not specific to MD, this is a bug in YOLOv5.  See [this issue](https://github.com/ultralytics/yolov5/issues/12654) and [this question](https://github.com/ultralytics/yolov5/issues/12645) on the YOLOv5 repo for details and status.  As of 2025.10.29, this appears to be limited to a very narrow range of M1 Pro silicon (not M2/M3/M4, not M1 non-Pro, and not even all M1 Pro machines).  Because it's so rare, and because M1s are slowly disappearing from the universe, the goal here is not so much to fix it, rather to reliably identify this issue and disable MPS acceleration on impacted machines. but it's so rare that although it's reliably reproducible where it occurs, I don't have an easy way to identify impacted machines.
 
 P0
 
-E2
+E3
 
 !bug
 
