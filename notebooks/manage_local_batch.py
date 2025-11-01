@@ -1545,6 +1545,8 @@ if not run_tasks_in_notebook:
 
     assert os.path.isfile(ensemble_output_file_image_level_md_format)
 
+    #%%
+
 # ...are we running SpeciesNet in the notebook?
 
 
