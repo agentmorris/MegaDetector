@@ -1629,7 +1629,7 @@ from megadetector.postprocessing.classification_postprocessing import \
 
 if remove_classifications_from_non_animals:
 
-    output_file = insert_before_extension(pre_smoothing_file,'animal_classification_only')
+    output_file = insert_before_extension(pre_smoothing_file,'animal_classifications_only')
 
     remove_classifications_from_non_animal_detections(pre_smoothing_file,output_file)
     pre_smoothing_file = output_file
