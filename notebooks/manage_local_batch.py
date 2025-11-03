@@ -346,6 +346,9 @@ allow_same_family_smoothing = False
 # to the sequence-level smoothing process.  Typically only used for LILA-related jobs.
 cct_formatted_json = None
 
+# Should we remove SpeciesNet classifications from non-animal detections?
+remove_classifications_from_non_animals = True
+
 
 #%% Derived variables, constant validation, path setup
 
@@ -1545,6 +1548,8 @@ if not run_tasks_in_notebook:
 
     assert os.path.isfile(ensemble_output_file_image_level_md_format)
 
+    #%%
+
 # ...are we running SpeciesNet in the notebook?
 
 
@@ -1615,6 +1620,19 @@ else:
 pre_smoothing_file = ensemble_output_file_image_level_md_format
 if os.path.isfile(custom_taxa_output_file):
     pre_smoothing_file = custom_taxa_output_file
+
+
+#%% Possibly remove SpeciesNet results from non-animal detections
+
+from megadetector.postprocessing.classification_postprocessing import \
+    remove_classifications_from_non_animal_detections
+
+if remove_classifications_from_non_animals:
+
+    output_file = insert_before_extension(pre_smoothing_file,'animal_classifications_only')
+
+    remove_classifications_from_non_animal_detections(pre_smoothing_file,output_file)
+    pre_smoothing_file = output_file
 
 
 #%% Preview (post-custom-taxa, pre-smoothing)

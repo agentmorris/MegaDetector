@@ -1099,6 +1099,69 @@ def smooth_classification_results_sequence_level(input_file,
 # ...smooth_classification_results_sequence_level(...)
 
 
+def remove_classifications_from_non_animal_detections(input_file,
+                                                      output_file,
+                                                      animal_category_names=None):
+    """
+    Remove classifications from non-animal detections in a MD .json file,
+    optionally writing the results to a new .json file
+
+    Args:
+        input_file (str): the MD-formatted .json file to process
+        output_file (str, optional): the output file to write the modified results
+        animal_category_names (list, optional): the detection category names that should
+            be treated as animals (defaults to just 'animal').
+
+    Returns:
+        dict: the modified results
+    """
+
+    if animal_category_names is None:
+        animal_category_names = ['animal']
+    animal_category_names = set(animal_category_names)
+
+    with open(input_file,'r') as f:
+        d = json.load(f)
+
+    category_id_to_name = d['detection_categories']
+
+    n_classifications_removed = 0
+    n_detections = 0
+
+    # im = d['images'][0]
+    for im in d['images']:
+
+        if ('detections' not in im) or (im['detections'] is None):
+            continue
+
+        n_detections += len(im['detections'])
+
+        for det in im['detections']:
+
+            if 'classifications' not in det:
+                continue
+            category_id = det['category']
+            category_name = category_id_to_name[category_id]
+            if category_name not in animal_category_names:
+                del det['classifications']
+                n_classifications_removed += 1
+                continue
+
+        # ...for each detection
+
+    # ...for each image
+
+    print('Removed classifications from {} of {} detections'.format(
+        n_classifications_removed,n_detections))
+
+    if output_file is not None:
+        write_json(output_file,d)
+
+    return d
+
+# ...def remove_classifications_from_non_animal_detections(...)
+
+
 def restrict_to_taxa_list(taxa_list,
                           speciesnet_taxonomy_file,
                           input_file,

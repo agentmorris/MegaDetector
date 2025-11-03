@@ -147,7 +147,7 @@ class SubsetJsonDetectorOutputOptions:
         #: Set to >0 during testing to limit the number of images that get processed.
         self.debug_max_images = -1
 
-        #: Keep only files in this list, which can be a .json results file or a folder.
+        #: Keep only files in this list, which can be a list, a .json results file, or a folder.
         #
         #: Assumes that the input .json file contains relative paths when comparing to a folder.
         self.keep_files_in_list = None
@@ -437,7 +437,9 @@ def subset_json_detector_output_by_list(data, options):
 
     files_to_keep = None
 
-    if os.path.isfile(options.keep_files_in_list):
+    if isinstance(options.keep_files_in_list,list):
+        files_to_keep = options.keep_files_in_list
+    elif os.path.isfile(options.keep_files_in_list):
         with open(options.keep_files_in_list,'r') as f:
             d = json.load(f)
         files_to_keep = [im['file'] for im in d['images']]
@@ -457,6 +459,9 @@ def subset_json_detector_output_by_list(data, options):
         fn = im['file'].replace('\\','/')
         if fn in files_to_keep_set:
             images_to_keep.append(im)
+
+    print('Subsetting by list kept {} of {} files (expected {})'.format(
+        len(images_to_keep),len(data['images']),len(files_to_keep)))
 
     data['images'] = images_to_keep
 
