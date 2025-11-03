@@ -661,7 +661,7 @@ E2
 
 [torch.compile](https://pytorch.org/tutorials/intermediate/torch_compile_tutorial.html) was introduced in 2023, but I haven't evaluated it for MegaDetector (or SpeciesNet).  Evaluate it for both MegaDetector and SpeciesNet.
 
-P2
+P0
 
 E3
 
