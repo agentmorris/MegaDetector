@@ -252,9 +252,18 @@ E2
 !integration
 
 
+## Tiled inference optimization
+
+[run_tiled_inference.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_tiled_inference.py) currently creates tiles and writes them to disk, then runs the tiles through run_detector_batch lik any other folder of images.  This approach requires a lot of extra disk space, and requires writing every pixel to disk.  This was useful during development, but now that this feature is stable, it would be better to do the tiling in memory.
+
+P3
+E2
+
+!feature
+
 ## Tiled inference exploration
 
-Though the MD package has support for running inference on small patches and stitching the results together via run_tiled_inference.py, [SAHI](https://github.com/obss/sahi), does the same thing, only with far more thought.  It would be useful to do a thorough evaluation of SAHI applied to MD, to compare the results against run_tiled_inference, and assess the scenarios where tiled inference makes sense, particularly for small objects in high-resolution images (e.g. finding geckos, or faraway ungulates).
+Though the MD package has support for running inference on small patches and stitching the results together via [run_tiled_inference.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_tiled_inference.py), [SAHI](https://github.com/obss/sahi), does the same thing, only with far more thought.  It would be useful to do a thorough evaluation of SAHI applied to MD, to compare the results against run_tiled_inference, and assess the scenarios where tiled inference makes sense, particularly for small objects in high-resolution images (e.g. finding geckos, or faraway ungulates).
 
 P2
 
@@ -661,7 +670,7 @@ E2
 
 [torch.compile](https://pytorch.org/tutorials/intermediate/torch_compile_tutorial.html) was introduced in 2023, but I haven't evaluated it for MegaDetector (or SpeciesNet).  Evaluate it for both MegaDetector and SpeciesNet.
 
-P2
+P0
 
 E3
 
