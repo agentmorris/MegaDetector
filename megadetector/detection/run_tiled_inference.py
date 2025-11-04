@@ -31,6 +31,10 @@ import uuid
 import sys
 import argparse
 
+from multiprocessing.pool import ThreadPool
+from multiprocessing.pool import Pool
+from functools import partial
+
 from tqdm import tqdm
 
 import torch
@@ -56,7 +60,7 @@ nms_iou_threshold = 0.45
 default_tile_size = [1280,1280]
 
 default_n_patch_extraction_workers = 1
-parallelization_uses_threads = False
+default_pool_type = 'thread'
 
 
 #%% Support functions
@@ -408,7 +412,8 @@ def run_tiled_inference(model_file,
                         preprocess_on_image_queue=True,
                         loader_workers=default_loaders,
                         inference_size=None,
-                        verbose=False):
+                        verbose=False,
+                        pool_type=None):
     """
     Runs inference using [model_file] on the images in [image_folder], fist splitting each image up
     into tiles of size [tile_size_x] x [tile_size_y], writing those tiles to [tiling_folder],
@@ -464,6 +469,7 @@ def run_tiled_inference(model_file,
         inference_size (int, optional): override the default inference image size, only relevant if
             yolo_inference_options is None
         verbose (bool, optional): enable additional debug output
+        pool_type (str, optional): 'thread' or 'process', or None to use the default (threads)
 
     Returns:
         dict: MD-formatted results dictionary, identical to what's written to [output_file]
@@ -482,6 +488,10 @@ def run_tiled_inference(model_file,
     patch_size = [tile_size_x,tile_size_y]
     patch_stride = (round(patch_size[0]*(1.0-tile_overlap)),
                     round(patch_size[1]*(1.0-tile_overlap)))
+
+    if pool_type is None:
+        pool_type = default_pool_type
+    assert pool_type in ('thread','process'), 'Illegal pool type {}'.format(pool_type)
 
     if tiling_folder is None:
         tiling_folder = \
@@ -543,10 +553,6 @@ def run_tiled_inference(model_file,
 
     else:
 
-        from multiprocessing.pool import ThreadPool
-        from multiprocessing.pool import Pool
-        from functools import partial
-
         pool = None
         try:
             if n_workers > len(image_files_relative):
@@ -555,7 +561,7 @@ def run_tiled_inference(model_file,
                       format(n_workers,len(image_files_relative),len(image_files_relative)))
                 n_workers = len(image_files_relative)
 
-            if parallelization_uses_threads:
+            if pool_type == 'thread':
                 pool = ThreadPool(n_workers); poolstring = 'threads'
             else:
                 pool = Pool(n_workers); poolstring = 'processes'
