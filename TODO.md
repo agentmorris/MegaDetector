@@ -714,6 +714,17 @@ E2
 !feature
 
 
+## Allow threaded worker pool in run_detector_batch
+
+Currently the worker pool in run_detector_batch uses processes.  This is the right thing 99% of the time, but when using IPython on Windows, this doesn't always work right.  Most analogous functions elsewhere in the repo support threads instead, add that here too.
+
+P3
+
+E1
+
+!feature
+
+
 ## Standardize multiprocessing parameters
 
 Many functions in this repo take parameters to indicate (a) a number of parallel workers and (b) whether to use threads or processes.  The number of workers is variously called "n_cores", "n_workers", "n_threads", etc., and the flag to indicate threads vs. processes is variously called "use_threads", "parallelize_with_threads", "pool_type", "worker_type", etc.  Standardize these.  The actual implementations are quite standardized already, it's just the parameter naming that is inconsistent.
