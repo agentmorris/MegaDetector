@@ -465,7 +465,7 @@ assert os.path.isfile(input_fn)
 required_columns = ('latin','common','original_latin','original_common')
 
 
-#%% Taxonmy mapping (iterative lookup)
+#%% Taxonomy mapping (iterative lookup)
 
 assert taxonomy_handler is not None
 
