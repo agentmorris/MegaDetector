@@ -17,7 +17,6 @@ dependencies:
 - matplotlib
 - opencv
 - requests
-- fastquadtree
 - scikit-learn
 - pandas
 - python-dateutil
@@ -28,6 +27,7 @@ dependencies:
 - pytorch::torchvision
 - pip
 - pip:
+  - fastquadtree
   - sphinx-argparse-cli
   - myst-parser
   - linkify-it-py
