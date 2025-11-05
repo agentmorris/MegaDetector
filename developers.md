@@ -289,11 +289,6 @@ from megadetector.utils import some_utility_function
 ```
 
 
-### Miscellaneous
-
-* Avoid yield and zip wherever possible (I know they are Pythonic, but I find them impossible to read)
-
-
 ### Quotes
 
 Single quotes are preferred over double quotes when possible.
@@ -306,7 +301,13 @@ string.format() is preferred over f-strings when possible.
 
 ### Type hinting
 
-Type hinting is discouraged.  
+Type hinting is discouraged; docstrings are the source of truth wrt typing.
+
+
+### Miscellaneous
+
+* Avoid yield and zip wherever possible (I know they are Pythonic, but I find them impossible to read).
+* Use assertions liberally, more assertions are better than fewer, and crashing is always better than doing odd things.  All assert() statements should have an explanatory string (i.e., don't use bare asserts).
 
 
 ## Linting

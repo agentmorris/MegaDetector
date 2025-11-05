@@ -74,6 +74,10 @@ class IntegrityCheckOptions:
         #: If True, error if the 'info' field is not present
         self.requireInfo = False
 
+        #: Validate that boxes have positive width/height values, can be 'error',
+        #: 'warning', or None
+        self.validateBoxes = None
+
 
 #%% Functions
 
@@ -387,9 +391,40 @@ def integrity_check_json_db(json_file, options=None):
             n_boxes += 1
 
         ann_id = ann['id']
+        image_id = ann['image_id']
+
+        if ('bbox' in ann) and (options.validateBoxes is not None):
+
+            assert options.validateBoxes in ('error','warning'), \
+                'Illegal value {} for validateBoxes'.format(options.validateBoxes)
+
+            annotation_string = str(ann['bbox'])
+
+            # We'll allow aribtrary metadata to be tacked on to the end of boxes
+            s = ''
+            if len(ann['bbox']) < 4:
+                s += 'Annotation error: illegal bounding box in annotation {} for image {}: {}\n'.format(
+                        ann_id,image_id,annotation_string)
+            if ann['bbox'][2] < 0:
+                s += 'Annotation error: negative width in annotation {} for image {}: {}\n'.format(
+                        ann_id,image_id,annotation_string)
+            if ann['bbox'][3] < 0:
+                s += 'Annotation error: negative height in annotation {} for image {}: {}\n'.format(
+                        ann_id,image_id,annotation_string)
+            if len(s) > 0:
+                if options.validateBoxes == 'error':
+                    raise ValueError(s)
+                else:
+                    print('Warning: {}'.format(s))
+                    im = image_id_to_image[image_id]
+                    validation_errors.append((im['file_name'],s))
+
+        # ...if we're supposed to validate boxes
 
         # Confirm ID uniqueness
-        assert ann_id not in ann_id_to_ann
+        assert ann_id not in ann_id_to_ann, \
+            'Duplicate annotation ID {}'.format(ann_id)
+
         ann_id_to_ann[ann_id] = ann
 
         # Confirm validity
