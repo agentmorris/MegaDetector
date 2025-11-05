@@ -973,3 +973,12 @@ P3
 E0
 
 !maintenance
+
+
+## Python 3.14 support
+
+Python 3.14 is enabled on a [branch](https://github.com/agentmorris/MegaDetector/tree/py314-support).  Tests pass with no changes to code on all of my personal Windows and Linux machines, but fail on Windows on the GitHub Actions runner ([failed run](https://github.com/agentmorris/MegaDetector/actions/runs/19089542677/job/54536961503)).  Figure out what's up with this.
+
+P0
+
+E1
