@@ -923,7 +923,7 @@ def load_md_or_speciesnet_file(fn,verbose=True):
     with open(fn,'r') as f:
         detector_output = json.load(f)
 
-    # If this is a SpeicesNet file, convert to MD format
+    # If this is a SpeciesNet file, convert to MD format
     if 'predictions' in detector_output:
 
         if verbose:

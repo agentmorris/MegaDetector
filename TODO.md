@@ -5,7 +5,7 @@ This file documents open work items.  Each level-2 heading is a work item.  Ever
 * A description (this is all text between the item name and the priority).  This can use arbitrary markdown.
 * A priority designated as P[N], on a line by itself.  Priority ranges from 0 to 4, 0 being highest priority.
 * An effort level designated as E[N].  Effort ranges from 0 to 4, 4 being the most effort
-* At least one tag, indicated as !tag-name.  
+* At least one tag, indicated as !tag-name.
 
 Tags can be arbitrary strings, but the most common tags are !feature, !maintenance, !bug, !docs, !lila, and !admin.  !admin basically means "this involves a decision by the repo maintainer(s), it's not really a work item".
 
@@ -32,7 +32,7 @@ MegaDetector issue list
 
 This page tracks work items related to [MegaDetector](https://github.com/agentmorris/MegaDetector).  If you're interested in trying your hand at any of these, create a new [issue](https://github.com/agentmorris/MegaDetector/issues) on the MegaDetector repo, or <a href="mailto:agentmorris+megadetector@gmail.com">email me</a>!
 
-This is just a task list; once a task is in progress, it will be tracked via GitHub Issues.  GitHub Issues is also still the right place for users to raise issues or ask questions.  GitHub Issues is just not, IMHO, a very practical "TODO list".   
+This is just a task list; once a task is in progress, it will be tracked via GitHub Issues.  GitHub Issues is also still the right place for users to raise issues or ask questions.  GitHub Issues is just not, IMHO, a very practical "TODO list".
 
 Priorities range from 0 (urgent) to 4 (likely will never get done).  Effort ranges from 0 (less than an hour while watching football) to 4 (mega-big).
 
@@ -198,7 +198,7 @@ E2
 
 
 ## Add postprocessing parameters to output files
- 
+
 In [repeat detection elimination](https://github.com/agentmorris/MegaDetector/tree/main/api/megadetector/postprocessing/repeat_detection_elimination) and [sequence-based classification smoothing](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/classification_postprocessing.py), write the smoothing parameters into the output file.
 
 P3
@@ -229,7 +229,7 @@ E2
 
 !maintenance
 
- 
+
 ## Incorrect results in some Mac environments
 
 In certain Apple silicon environments, MD produces incorrect results.  This is not specific to MD, this is a bug in YOLOv5.  See [this issue](https://github.com/ultralytics/yolov5/issues/12654) and [this question](https://github.com/ultralytics/yolov5/issues/12645) on the YOLOv5 repo for details and status.  As of 2025.10.29, this appears to be limited to a very narrow range of M1 Pro silicon (not M2/M3/M4, not M1 non-Pro, and not even all M1 Pro machines).  Because it's so rare, and because M1s are slowly disappearing from the universe, the goal here is not so much to fix it, rather to reliably identify this issue and disable MPS acceleration on impacted machines. but it's so rare that although it's reliably reproducible where it occurs, I don't have an easy way to identify impacted machines.
@@ -254,7 +254,7 @@ E2
 
 ## Tiled inference optimization
 
-[run_tiled_inference.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_tiled_inference.py) currently creates tiles and writes them to disk, then runs the tiles through run_detector_batch lik any other folder of images.  This approach requires a lot of extra disk space, and requires writing every pixel to disk.  This was useful during development, but now that this feature is stable, it would be better to do the tiling in memory.
+[run_tiled_inference.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_tiled_inference.py) currently creates tiles and writes them to disk, then runs the tiles through run_detector_batch like any other folder of images.  This approach requires a lot of extra disk space, and requires writing every pixel to disk.  This was useful during development, but now that this feature is stable, it would be better to do the tiling in memory.
 
 P3
 E2
@@ -321,7 +321,7 @@ E1
 !docs
 
 
-## Document fine-tuning 
+## Document fine-tuning
 
 I don't generally encourage fine-tuning MD (it's almost always more work than it's worth), but there is a time and place for it, and it would be useful to document (a) how to do this and (b) when it's useful.  This would include some discussion of how bounding boxes come to be, including how to derive them from MD results.  This can point to the [tegu detection](https://github.com/agentmorris/usgs-tegus) and [goanna detection](https://github.com/agentmorris/unsw-goannas) projects as examples (both are fine-tuned MD models).
 
@@ -398,6 +398,7 @@ E1
 * Add test results for MD1000 models: MD's test harness only has results for MDv5, so it tests the not-crashing-ness of the other models, but it does not test correctness.  Add test results for other MD1000 models.
 * Vehicle images: none of the test images include vehicles; add vehicle images to testing, including human/vehicle and animal/vehicle images
 * Images with lat/lon information in EXIF metadata; make sure EXIF extraction (especially GPS location) is working correctly.
+* The "magic zebra image" that causes problems on M1 Pro machines
 
 P0
 
@@ -454,7 +455,7 @@ This requires not just updating the output format and rev'ing the version number
 * Actually doing this throughout the repo
 * Updating the files in the test dataset
 * Updating the format validator
- 
+
 P2
 
 E3
@@ -867,7 +868,7 @@ model.to(device)
 This task is two-fold:
 
 * Assess whether map_location is supported on Apple silicon in recent versions of PyTorch, so we can eliminate the special case
-* Assess whether there is a performance/memory consumption benefit/cost to using map_location. 
+* Assess whether there is a performance/memory consumption benefit/cost to using map_location.
 
 I last tried switching to use_map_location on mps devices on 2025.08.18, it did not go well.  Dropping this to P3.
 
