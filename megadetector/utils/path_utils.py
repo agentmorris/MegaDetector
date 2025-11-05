@@ -1938,7 +1938,7 @@ class TestPathUtils:
         folders_non_recursive_abs = folder_list(folder_list_dir, recursive=False,
                                                 return_relative_paths=False)
         assert sorted(folders_non_recursive_abs) == expected_folders_non_recursive_abs, \
-            'Non-recursive folder list failured, expected:\n\n{}\n\nFound:\n\n{}'.format(
+            'Non-recursive folder list failed, expected:\n\n{}\n\nFound:\n\n{}'.format(
                 str(expected_folders_non_recursive_abs),
                 str(folders_non_recursive_abs)
             )

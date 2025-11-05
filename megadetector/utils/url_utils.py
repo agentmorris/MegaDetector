@@ -461,7 +461,7 @@ def get_url_sizes(urls,n_workers=1,pool_type='thread',timeout=None,verbose=False
 
 class QuietHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     """
-    SimpleHTTPRequestHandler sublcass that suppresses console printouts
+    SimpleHTTPRequestHandler subclass that suppresses console printouts
     """
     def __init__(self, *args, directory=None, **kwargs):
         super().__init__(*args, directory=directory, **kwargs)
