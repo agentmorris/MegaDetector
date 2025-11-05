@@ -957,3 +957,18 @@ P4
 E2
 
 !maintenance
+
+
+## Modern preprocessing with image queue in notebook
+
+manage_local_batch contains a check indicating that preprocess_on_image_queue is incompatible with "modern" compatibility mode, look for:
+
+"Standalone preprocessing is not yet supported for "modern" preprocessing"
+
+I'm not sure these are still incompatible; double-check on this.
+
+P3
+
+E0
+
+!maintenance
