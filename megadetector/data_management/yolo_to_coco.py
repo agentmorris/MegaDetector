@@ -78,7 +78,9 @@ def _process_image(fn_abs,input_folder,category_id_to_name,label_folder):
 
     # Is there an annotation file for this image?
     if label_folder is not None:
-        assert input_folder in fn_abs
+        assert input_folder in fn_abs, \
+            'Annotation file {} is not inside folder {}'.format(
+                fn_abs,input_folder)
         label_file_abs_base = fn_abs.replace(input_folder,label_folder)
     else:
         label_file_abs_base = fn_abs
@@ -102,7 +104,9 @@ def _process_image(fn_abs,input_folder,category_id_to_name,label_folder):
                 continue
 
             tokens = s.split()
-            assert len(tokens) == 5
+            assert len(tokens) == 5, \
+                'Illegal line in annotation file {}:\n{}'.format(
+                    annotation_file,s)
             category_id = int(tokens[0])
             assert category_id in category_id_to_name, \
                 'Unrecognized category ID {} in annotation file {}'.format(
@@ -169,7 +173,8 @@ def load_yolo_class_list(class_name_file):
         return category_id_to_name
 
     ext = os.path.splitext(class_name_file)[1][1:]
-    assert ext in ('yml','txt','yaml','data'), 'Unrecognized class name file type {}'.format(
+    assert ext in ('yml','txt','yaml','data'), \
+        'Unrecognized class name file type {}'.format(
         class_name_file)
 
     if ext in ('txt','data'):
@@ -177,8 +182,10 @@ def load_yolo_class_list(class_name_file):
         with open(class_name_file,'r') as f:
             lines = f.readlines()
         lines = [s.strip() for s in lines]
-        assert len(lines) > 0, 'Empty class name file {}'.format(class_name_file)
-        assert len(lines[0]) > 0, 'Empty class name file {} (empty first line)'.format(class_name_file)
+        assert len(lines) > 0, \
+            'Empty class name file {}'.format(class_name_file)
+        assert len(lines[0]) > 0, \
+            'Empty class name file {} (empty first line)'.format(class_name_file)
 
         # Blank lines should only appear at the end
         b_found_blank = False
@@ -191,12 +198,14 @@ def load_yolo_class_list(class_name_file):
 
         category_id_to_name = {}
         for i_category_id,category_name in enumerate(lines):
-            assert len(category_name) > 0
+            assert len(category_name) > 0, \
+                'Empty category name in file {}'.format(class_name_file)
             category_id_to_name[i_category_id] = category_name
 
     else:
 
-        assert ext in ('yml','yaml')
+        assert ext in ('yml','yaml'), \
+            'Illegal class name file extension for {}'.fomat(class_name_file)
         category_id_to_name = read_classes_from_yolo_dataset_file(class_name_file)
 
     return category_id_to_name
@@ -240,7 +249,9 @@ def validate_label_file(label_file,category_id_to_name=None,verbose=False):
         try:
 
             tokens = s.split()
-            assert len(tokens) == 5, '{} tokens'.format(len(tokens))
+            assert len(tokens) == 5, \
+                'YOLO label lines should have five tokens, found {} on line {} of file {}'.format(
+                    len(tokens),i_line,label_file)
 
             if category_id_to_name is not None:
                 category_id = int(tokens[0])
@@ -317,9 +328,11 @@ def validate_yolo_dataset(input_folder,
     """
 
     # Validate arguments
-    assert os.path.isdir(input_folder), 'Could not find input folder {}'.format(input_folder)
+    assert os.path.isdir(input_folder), \
+        'Could not find input folder {}'.format(input_folder)
     if n_workers > 1:
-        assert pool_type in ('thread','process'), 'Illegal pool type {}'.format(pool_type)
+        assert pool_type in ('thread','process'), \
+            'Illegal pool type {}'.format(pool_type)
 
     category_id_to_name = load_yolo_class_list(class_name_file)
 
@@ -371,7 +384,8 @@ def validate_yolo_dataset(input_folder,
 
     else:
 
-        assert pool_type in ('process','thread'), 'Illegal pool type {}'.format(pool_type)
+        assert pool_type in ('process','thread'), \
+            'Illegal pool type {}'.format(pool_type)
 
         pool = None
         try:
@@ -393,7 +407,9 @@ def validate_yolo_dataset(input_folder,
                 pool.join()
                 print('Pool closed and joined for label file validation')
 
-    assert len(label_results) == len(label_files)
+    assert len(label_results) == len(label_files), \
+        'Mismatch: {} results for {} files'.format(
+            len(label_results),len(label_files))
 
     validation_results = {}
     validation_results['image_files_without_label_files'] = image_files_without_label_files
@@ -420,7 +436,10 @@ def yolo_to_coco(input_folder,
                  exclude_string=None,
                  include_string=None,
                  overwrite_handling='overwrite',
-                 label_folder=None):
+                 label_folder=None,
+                 supercategory=None,
+                 force_integer_ids=False,
+                 include_area=False):
     """
     Converts a YOLO-formatted dataset to a COCO-formatted dataset.
 
@@ -462,6 +481,12 @@ def yolo_to_coco(input_folder,
         overwrite_handling (bool, optional): behavior if output_file exists ('load', 'overwrite', or
             'error')
         label_folder (str, optional): label folder, if different from the image folder
+        supercategory (str, optional): populate the 'supercategory' field, currently only supports
+            None (don't populate) or a single supercategory for the whole dataset.  This is mostly
+            only here because RF-DETR requires something to be populated in this field.
+        force_integer_ids (bool, optional): force image IDs to be integers
+        include_area (bool, optional): add the "area" field for boxes
+
 
     Returns:
         dict: COCO-formatted data, the same as what's written to [output_file]
@@ -471,9 +496,12 @@ def yolo_to_coco(input_folder,
 
     input_folder = input_folder.replace('\\','/')
 
-    assert os.path.isdir(input_folder)
+    assert os.path.isdir(input_folder), \
+        'Input folder {} does not exist or is not a folder'.format(input_folder)
+
     if isinstance(class_name_file,str):
-        assert os.path.isfile(class_name_file)
+        assert os.path.isfile(class_name_file), \
+            'Class name file {} does not exist or is not a file'.format(class_name_file)
 
     assert empty_image_handling in \
         ('no_annotations','empty_annotations','skip','error'), \
@@ -520,7 +548,6 @@ def yolo_to_coco(input_folder,
     print('Enumerating images...')
 
     image_files_abs = find_images(input_folder,recursive=recursive,convert_slashes=True)
-    assert not any(['\\' in fn for fn in image_files_abs])
 
     n_files_original = len(image_files_abs)
 
@@ -539,6 +566,10 @@ def yolo_to_coco(input_folder,
     for category_id in category_id_to_name:
         categories.append({'id':category_id,'name':category_id_to_name[category_id]})
 
+    if supercategory is not None:
+        for cat in categories:
+            cat['supercategory'] = supercategory
+
     info = {}
     info['version'] = '1.0'
     info['description'] = 'Converted from YOLO format'
@@ -553,7 +584,8 @@ def yolo_to_coco(input_folder,
         # image_file_abs = image_files_abs[0]
         for image_file_abs in tqdm(image_files_abs):
             if label_folder is not None:
-                assert input_folder in image_file_abs
+                assert input_folder in image_file_abs, \
+                    'File {} is not in folder {}'.format(image_file_abs,input_folder)
                 label_file_abs_base = image_file_abs.replace(input_folder,label_folder)
             else:
                 label_file_abs_base = image_file_abs
@@ -592,7 +624,8 @@ def yolo_to_coco(input_folder,
 
     else:
 
-        assert pool_type in ('process','thread'), 'Illegal pool type {}'.format(pool_type)
+        assert pool_type in ('process','thread'), \
+            'Illegal pool type {}'.format(pool_type)
 
         pool = None
         try:
@@ -616,7 +649,9 @@ def yolo_to_coco(input_folder,
                 print('Pool closed and joined for YOLO to COCO conversion')
 
 
-    assert len(image_results) == len(image_files_abs)
+    assert len(image_results) == len(image_files_abs), \
+        'Result count mismatch: {} results for {} image files'.format(
+            len(image_results),len(image_files_abs))
 
 
     ## Re-assembly of results into a COCO dict
@@ -626,14 +661,41 @@ def yolo_to_coco(input_folder,
     images = []
     annotations = []
 
+    input_id_to_output_id = None
+    if force_integer_ids:
+        input_id_to_output_id = {}
+
     for image_result in tqdm(image_results):
 
         im = image_result[0]
         annotations_this_image = image_result[1]
 
+        # If we're supposed to include area values
+        if include_area:
+            for ann in annotations_this_image:
+                if 'bbox' not in ann:
+                    continue
+                s = 'Illegal bounding box {} for image {}'.format(
+                    str(ann['bbox']),im['file_name'])
+                # coco_bbox = [absolute_x_min, absolute_y_min, absolute_width, absolute_height]
+                assert len(ann['bbox']) == 4, s
+                assert ann['bbox'][2] >= 0, s
+                assert ann['bbox'][3] >= 0, s
+                ann['area'] = ann['bbox'][2] * ann['bbox'][3]
+
+        # If we need to constraint image IDs to be integers
+        if force_integer_ids:
+            input_id = im['id']
+            output_id = len(input_id_to_output_id)
+            input_id_to_output_id[input_id] = output_id
+            im['id'] = output_id
+            for ann in annotations_this_image:
+                ann['image_id'] = im['id']
+
         # If we have annotations for this image
         if len(annotations_this_image) > 0:
-            assert im['error'] is None
+            assert im['error'] is None, \
+                "We shouldn't have errors for images that have annotations"
             images.append(im)
             for ann in annotations_this_image:
                 annotations.append(ann)
@@ -654,17 +716,21 @@ def yolo_to_coco(input_folder,
             elif empty_image_handling == 'no_annotations':
                 images.append(im)
             elif empty_image_handling == 'empty_annotations':
-                assert empty_category_id  is not None
+                assert empty_category_id  is not None, \
+                    'An empty category ID must be supplied if we are including empty annotations'
                 ann = {}
                 ann['id'] = im['id'] + '_0'
                 ann['image_id'] = im['id']
                 ann['category_id'] = empty_category_id
                 ann['sequence_level_annotation'] = False
                 # This would also be a reasonable thing to do, but it's not the convention
-                # we're adopting.
+                # we're adopting, i.e. we are not including fake boxes for annotations
+                # on empty images.
                 # ann['bbox'] = [0,0,0,0]
                 annotations.append(ann)
                 images.append(im)
+
+        # ...if we do/don't have annotations for this image
 
     # ...for each image result
 

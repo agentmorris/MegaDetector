@@ -944,6 +944,28 @@ E1
 !feature
 
 
+## Move COCO formatting bells and whistles out of yolo_to_coco
+
+In a round of updates to yolo_to_coco, I added several parameters that are really just COCO postprocessing, i.e. they are not really specific to conversion from YOLO.  Specifically, I added the parameters "supercategory", "force_integer_ids", and "include_area".  These should be moved to a more general COCO postprocessing script.  These are specifically related to preparing COCO files for RF-DETR training.
+
+P3
+
+E1
+
+!feature
+
+
+## Add explanatory strings for every assertion
+
+Add explanatory strings for every assert() statement in the repo.
+
+P2
+
+E0
+
+!maintenance
+
+
 ## Address module-level globals in run_detector_batch and run_detector
 
 The DEFAULT_DETECTOR_LABEL_MAP module-level global variable in run_detector_batch is used to pass custom class mappings around; this is rare and not very important, but sloppy.
@@ -957,3 +979,4 @@ P4
 E2
 
 !maintenance
+
