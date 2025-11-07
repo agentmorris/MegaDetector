@@ -81,7 +81,6 @@ from megadetector.utils.ct_utils import split_list_into_fixed_size_chunks
 
 from megadetector.detection.run_detector_batch import load_and_run_detector_batch
 from megadetector.detection.run_detector_batch import write_results_to_file
-from megadetector.detection.run_detector import DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
 from megadetector.detection.run_detector import estimate_md_images_per_second
 from megadetector.detection.run_detector import get_detector_version_from_model_file
 
@@ -1224,6 +1223,9 @@ if run_tasks_in_notebook:
     md_speciesnet_options.classifier_batch_size = classifier_batch_size
     md_speciesnet_options.skip_video = True
     md_speciesnet_options.verbose = True
+
+    # This is not necessary in VS Code, but it's necessary in Spyder
+    md_speciesnet_options.worker_type = 'thread'
 
     md_speciesnet_options.detections_file = detector_output_file_md_format
 

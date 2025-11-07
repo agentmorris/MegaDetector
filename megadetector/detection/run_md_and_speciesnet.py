@@ -18,6 +18,7 @@ import time
 
 from tqdm import tqdm
 from multiprocessing import JoinableQueue, Process, Queue
+from threading import Thread
 
 import humanfriendly
 
@@ -432,7 +433,8 @@ def _crop_producer_func(image_queue: JoinableQueue,
                         classifier_model: str,
                         detection_confidence_threshold: float,
                         source_folder: str,
-                        producer_id: int = -1):
+                        producer_id: int = -1,
+                        preloaded_classifier: 'SpeciesNetClassifier' = None):
     """
     Producer function for classification workers.
 
@@ -448,6 +450,8 @@ def _crop_producer_func(image_queue: JoinableQueue,
         detection_confidence_threshold (float): classify detections above this threshold
         source_folder (str): source folder to resolve relative paths
         producer_id (int, optional): identifier for this producer worker
+        preloaded_classifier (SpeciesNetClassifier, optional): pre-loaded classifier instance
+            (for thread-based workers, to avoid loading models in threads)
     """
 
     if verbose:
@@ -455,12 +459,19 @@ def _crop_producer_func(image_queue: JoinableQueue,
 
     # Load classifier; this is just being used as a preprocessor, so we force device=cpu.
     #
-    # There are a number of reasons loading the model might fail; note to self: *don't*
-    # catch Exceptions here.  This should be a catastrophic failure that stops the whole
-    # process.
-    classifier = SpeciesNetClassifier(classifier_model, device='cpu')
-    if verbose:
-        print('Classification producer {}: loaded classifier'.format(producer_id))
+    # When using threads, we pre-load the classifier in the main thread to avoid PyTorch FX
+    # issues with loading models in worker threads.
+    if preloaded_classifier is not None:
+        classifier = preloaded_classifier
+        if verbose:
+            print('Classification producer {}: using pre-loaded classifier'.format(producer_id))
+    else:
+        # There are a number of reasons loading the model might fail; note to self: *don't*
+        # catch Exceptions here.  This should be a catastrophic failure that stops the whole
+        # process.
+        classifier = SpeciesNetClassifier(classifier_model, device='cpu')
+        if verbose:
+            print('Classification producer {}: loaded classifier'.format(producer_id))
 
     while True:
 
@@ -533,7 +544,8 @@ def _crop_consumer_func(batch_queue: Queue,
                         num_producers: int,
                         enable_rollup: bool,
                         country: str = None,
-                        admin1_region: str = None):
+                        admin1_region: str = None,
+                        preloaded_classifier: 'SpeciesNetClassifier' = None):
     """
     Consumer function for classification inference.
 
@@ -553,20 +565,29 @@ def _crop_consumer_func(batch_queue: Queue,
         enable_rollup (bool): whether to apply taxonomic rollup
         country (str, optional): country code for geofencing
         admin1_region (str, optional): admin1 region for geofencing
+        preloaded_classifier (SpeciesNetClassifier, optional): pre-loaded classifier instance
+            (for thread-based workers, to avoid loading models in threads)
     """
 
     if verbose:
         print('Classification consumer starting')
 
     # Load classifier
-    try:
-        classifier = SpeciesNetClassifier(classifier_model)
+    # When using threads, we pre-load the classifier in the main thread to avoid PyTorch FX
+    # issues with loading models in worker threads.
+    if preloaded_classifier is not None:
+        classifier = preloaded_classifier
         if verbose:
-            print('Classification consumer: loaded classifier')
-    except Exception as e:
-        print('Classification consumer: failed to load classifier: {}'.format(str(e)))
-        results_queue.put({})
-        return
+            print('Classification consumer: using pre-loaded classifier')
+    else:
+        try:
+            classifier = SpeciesNetClassifier(classifier_model)
+            if verbose:
+                print('Classification consumer: loaded classifier')
+        except Exception as e:
+            print('Classification consumer: failed to load classifier: {}'.format(str(e)))
+            results_queue.put({})
+            return
 
     all_results = {}  # image_file -> {detection_index -> classification_result}
     current_batch = CropBatch()
@@ -942,7 +963,8 @@ def _run_classification_step(detector_results_file: str,
                              enable_rollup: bool = True,
                              country: str = None,
                              admin1_region: str = None,
-                             top_n_scores: int = DEFAULT_TOP_N_SCORES):
+                             top_n_scores: int = DEFAULT_TOP_N_SCORES,
+                             worker_type: str = 'process'):
     """
     Run SpeciesNet classification on detections from MegaDetector results.
 
@@ -958,6 +980,7 @@ def _run_classification_step(detector_results_file: str,
         country (str, optional): country code for geofencing
         admin1_region (str, optional): admin1 region (typically a state code) for geofencing
         top_n_scores (int, optional): maximum number of scores to include for each detection
+        worker_type (str, optional): type of worker parallelization ("thread" or "process")
     """
 
     print('Starting classification step...')
@@ -978,11 +1001,12 @@ def _run_classification_step(detector_results_file: str,
     print('Using SpeciesNet classifier: {}'.format(classifier_model))
 
     # Set multiprocessing start method to 'spawn' for CUDA compatibility
-    original_start_method = multiprocessing.get_start_method()
-    if original_start_method != 'spawn':
-        multiprocessing.set_start_method('spawn', force=True)
-        print('Set multiprocessing start method to spawn (was {})'.format(
-            original_start_method))
+    if worker_type == 'process':
+        original_start_method = multiprocessing.get_start_method()
+        if original_start_method != 'spawn':
+            multiprocessing.set_start_method('spawn', force=True)
+            print('Set multiprocessing start method to spawn (was {})'.format(
+                original_start_method))
 
     ## Set up multiprocessing queues
 
@@ -1002,22 +1026,37 @@ def _run_classification_step(detector_results_file: str,
     # now).
     results_queue = Queue()
 
+    WorkerClass = Thread if worker_type == 'thread' else Process
+
+    # When using threads, pre-load classifiers in the main thread to avoid PyTorch FX issues
+    # with loading models in worker threads. When using processes, pass None and let each
+    # process load its own classifier.
+    if worker_type == 'thread':
+        # Producer classifier (CPU only, used for preprocessing)
+        producer_classifier = SpeciesNetClassifier(classifier_model, device='cpu')
+        # Consumer classifier (GPU if available, used for inference)
+        consumer_classifier = SpeciesNetClassifier(classifier_model)
+    else:
+        producer_classifier = None
+        consumer_classifier = None
+
     # Start producer workers
     producers = []
     for i_worker in range(classifier_worker_threads):
-        p = Process(target=_crop_producer_func,
-                    args=(image_queue, batch_queue, classifier_model,
-                          detection_confidence_threshold, source_folder, i_worker))
+        p = WorkerClass(target=_crop_producer_func,
+                        args=(image_queue, batch_queue, classifier_model,
+                              detection_confidence_threshold, source_folder, i_worker,
+                              producer_classifier))
         p.start()
         producers.append(p)
 
 
     ## Start consumer worker
 
-    consumer = Process(target=_crop_consumer_func,
-                       args=(batch_queue, results_queue, classifier_model,
-                             classifier_batch_size, classifier_worker_threads,
-                             enable_rollup, country, admin1_region))
+    consumer = WorkerClass(target=_crop_consumer_func,
+                           args=(batch_queue, results_queue, classifier_model,
+                                 classifier_batch_size, classifier_worker_threads,
+                                 enable_rollup, country, admin1_region, consumer_classifier))
     consumer.start()
 
     # This will block every time the queue reaches its maximum depth, so for
@@ -1273,6 +1312,9 @@ class RunMDSpeciesNetOptions:
         #: Enable additional debug output
         self.verbose = False
 
+        #: Worker type for parallelization; should be "thread" or "process"
+        self.worker_type = 'process'
+
         if self.time_sample is None and self.frame_sample is None:
             self.time_sample = DEFAULT_SECONDS_PER_VIDEO_FRAME
 
@@ -1312,6 +1354,9 @@ def run_md_and_speciesnet(options):
         raise ValueError('--frame_sample and --time_sample are mutually exclusive')
     if (options.frame_sample is None) and (options.time_sample is None):
         options.time_sample = DEFAULT_SECONDS_PER_VIDEO_FRAME
+
+    if options.worker_type not in ('thread','process'):
+        raise ValueError('Unknown worker type {}'.format(options.worker_type))
 
     # Set up intermediate file folder
     if options.intermediate_file_folder:
@@ -1368,6 +1413,7 @@ def run_md_and_speciesnet(options):
         enable_rollup=(not options.norollup),
         country=options.country,
         admin1_region=options.admin1_region,
+        worker_type=options.worker_type
     )
 
     elapsed_time = time.time() - start_time
