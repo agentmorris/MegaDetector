@@ -398,7 +398,7 @@ E1
 * Add test results for MD1000 models: MD's test harness only has results for MDv5, so it tests the not-crashing-ness of the other models, but it does not test correctness.  Add test results for other MD1000 models.
 * Vehicle images: none of the test images include vehicles; add vehicle images to testing, including human/vehicle and animal/vehicle images
 * Images with lat/lon information in EXIF metadata; make sure EXIF extraction (especially GPS location) is working correctly.
-* The "magic zebra image" that causes problems on M1 Pro machines
+* The "magic zebra image" that causes problems on M1 Pro machines; this should be called out as a dedicated single-command test case
 
 P0
 
