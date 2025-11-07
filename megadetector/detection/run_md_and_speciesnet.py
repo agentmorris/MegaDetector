@@ -1026,7 +1026,7 @@ def _run_classification_step(detector_results_file: str,
     # now).
     results_queue = Queue()
 
-    WorkerClass = Thread if worker_type == 'thread' else Process
+    WorkerClass = Thread if worker_type == 'thread' else Process # noqa
 
     # When using threads, pre-load classifiers in the main thread to avoid PyTorch FX issues
     # with loading models in worker threads. When using processes, pass None and let each
