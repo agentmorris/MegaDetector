@@ -409,37 +409,13 @@ E2
 
 ## Test coverage improvements
 
-This is a placeholder for generally evaluating md_tests and the pytest harness, and deciding which scripts need additional testing.  Effort is highly variable; for example, adding tests for run_speciesnet_and_md is important and very easy.  Adding tests for postprocess_batch_results that actually verify correctness is a pain.  This work item almost certainly starts with asking AI what modules are not covered (or poorly covered) by tests.
+This is a placeholder for generally evaluating md_tests and the pytest harness, and deciding which scripts need additional testing.  Effort is highly variable; for example, adding tests for run_md_and_speciesnet is important and very easy.  Adding tests for postprocess_batch_results that actually verify correctness is a pain.  This work item almost certainly starts with asking AI what modules are not covered (or poorly covered) by tests.
 
 P1
 
 E2
 
 !testing
-
-
-## Add checkpointing to run_speciesnet_and_md
-
-run_speciesnet_and_md does not currently have the same checkpointing support that run_detector_batch has.  The core functionality is there for the detection step, because it's built in to run_detector_batch, but this needs to be exposed to the CLI.  Equivalent functionality needs to be added for the classification step.
-
-P0
-
-E1
-
-!feature
-
-
-## Add classification smoothing to run_speciesnet_and_md
-
-run_speciesnet_and_md does not currently incorporate sequence-/image-level classification smoothing.  Add this.
-
-P0
-
-E1
-
-!feature
-!speciesnet
-!name[run_speciesnet_and_md-smoothing]
 
 
 ## Output format refinements
@@ -655,6 +631,27 @@ E1
 
 !maintenance
 !admin
+
+
+## run_md_and_speciesnet improvements
+
+I'm treating all of the following as a single work item, because they're easier to tackle in a single session.
+
+* run_md_and_speciesnet does not currently have the same checkpointing support that run_detector_batch has.  The core functionality is there for the detection step, because it's built in to run_detector_batch, but this needs to be exposed to the CLI.  Equivalent functionality needs to be added for the classification step.
+* run_speciesnet_and_md does not currently incorporate sequence-/image-level classification smoothing.  Add this.  The core functionality already exists, it just needs to be added to run_md_and_speciesnet.
+* Add other options from run_detector_batch (e.g. image_size, augment, detector options).  No new functionality needs to be added, these can just be passed through to run_detector_batch.
+* Add support for custom taxonomy lists.  The core functionality already exists, it just needs to be added to run_md_and_speciesnet.
+* GPU utilization is not where I would like it to be during the classification step, though I have not compared it to run_model.  See whether GPU utilization goes up if I disable geofencing/rollup; if it does, push those back to the main process (which is currently just sitting idle) rather than the consumer process.
+* Add tests for run_md_and_speciesnet.
+
+Create new work items for anything from this list that doesn't get done.
+
+P0
+
+E1
+
+!feature
+
 
 ## Update Colab
 
