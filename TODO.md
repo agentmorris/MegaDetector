@@ -234,9 +234,13 @@ E2
 
 In certain Apple silicon environments, MD produces incorrect results.  This is not specific to MD, this is a bug in YOLOv5.  See [this issue](https://github.com/ultralytics/yolov5/issues/12654) and [this question](https://github.com/ultralytics/yolov5/issues/12645) on the YOLOv5 repo for details and status.  As of 2025.10.29, this appears to be limited to a very narrow range of M1 Pro silicon (not M2/M3/M4, not M1 non-Pro, and not even all M1 Pro machines).  Because it's so rare, and because M1s are slowly disappearing from the universe, the goal here is not so much to fix it, rather to reliably identify this issue and disable MPS acceleration on impacted machines. but it's so rare that although it's reliably reproducible where it occurs, I don't have an easy way to identify impacted machines.
 
+This was a P0 E3, but as of 2025.11.07, it appears that this issue is resolved by upgrading to the most recent version of MacOS and to PyTorch 2.9.  Reducing to E1 because the only items left to do here is to  put a finer point on the minimum required OS/PyTorch versions for MPS inference.
+
 P0
 
-E3
+S-5
+
+E1
 
 !bug
 
@@ -402,7 +406,7 @@ E1
 
 P0
 
-E2
+E1
 
 !testing
 
@@ -449,7 +453,7 @@ It's not clear what exactly will happen when this is deprecated.  The action ite
 
 P0
 
-E2
+E1
 
 !maintenance
 
@@ -494,6 +498,8 @@ YOLOv5 tells me that it's "fusing layers" twice during startup.  A little part o
 P0
 
 E1
+
+S-5
 
 !bug
 
@@ -996,7 +1002,7 @@ E0
 
 ## Python 3.14 support
 
-Python 3.14 is enabled on a [branch](https://github.com/agentmorris/MegaDetector/tree/py314-support).  Tests pass with no changes to code on all of my personal Windows and Linux machines, but fail on Windows on the GitHub Actions runner ([failed run](https://github.com/agentmorris/MegaDetector/actions/runs/19089542677/job/54536961503)).  Figure out what's up with this.
+Python 3.14 is enabled on a [branch](https://github.com/agentmorris/MegaDetector/tree/py314-support).  Tests pass with no changes to code on all of my personal Windows and Linux machines, but fail on Windows on the GitHub Actions runner ([failed run](https://github.com/agentmorris/MegaDetector/actions/runs/19089542677/job/54536961503)).  Figure out what's up with this, and create a new work item that reflects whatever changes are required for Python 3.14 support.
 
 P0
 
