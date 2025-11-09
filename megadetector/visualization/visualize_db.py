@@ -111,7 +111,7 @@ class DbVizOptions:
 
         #: Number of workers to use for parallelization; ignored if parallelize_rendering
         #: is False
-        self.parallelize_rendering_n_cores = 25
+        self.parallelize_rendering_n_cores = 16
 
         #: Should we show absolute (True) or relative (False) paths for each image?
         self.show_full_paths = False

@@ -114,8 +114,11 @@ class PostProcessingOptions:
         #: Typically used to preview sets with lots of empties, where you don't want to
         #: subset but also don't want to render 100,000 empty images.
         #:
+        #: Example strings that are valid for this option:
+        #:
         #: detections, non_detections
         #: detections_animal, detections_person, detections_vehicle
+        #: tn, tp, fn, fp
         self.rendering_bypass_sets = []
 
         #: If this is None, choose a confidence threshold based on the detector version.
@@ -199,7 +202,7 @@ class PostProcessingOptions:
         self.parallelize_rendering = False
 
         #: Number of threads/processes to use for rendering parallelization
-        self.parallelize_rendering_n_cores = 25
+        self.parallelize_rendering_n_cores = 16
 
         #: Whether to use threads (True) or processes (False) for rendering parallelization
         self.parallelize_rendering_with_threads = True
