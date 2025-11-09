@@ -1018,6 +1018,10 @@ def parallel_copy_files(input_file_to_output_file,
         move (bool, optional): move instead of copying
     """
 
+    if len(input_file_to_output_file) == 0:
+        print('Warning: parallel_copy_files called with an empty copy list')
+        return
+
     n_workers = min(max_workers,len(input_file_to_output_file))
 
     # Package the dictionary as a set of 2-tuples
