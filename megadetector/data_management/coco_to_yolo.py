@@ -532,6 +532,7 @@ def coco_to_yolo(input_image_folder,
                         s = '{} {} {} {} {}'.format(bbox[0],bbox[1],bbox[2],bbox[3],bbox[4])
                         f.write(s + '\n')
 
+        # ...if there are boxes for this image
 
     # ...for each image
 

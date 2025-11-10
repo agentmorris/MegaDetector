@@ -16,6 +16,7 @@ import cv2
 
 from io import BytesIO
 from PIL import Image, ImageFile, ImageFont, ImageDraw, ImageFilter
+from PIL.ExifTags import TAGS
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
 from tqdm import tqdm
@@ -89,6 +90,8 @@ DEFAULT_COLORS = [
     'Teal', 'Thistle', 'Tomato', 'Turquoise', 'Violet', 'Wheat', 'White',
     'WhiteSmoke', 'Yellow', 'YellowGreen'
 ]
+
+pil_tag_name_to_id = {v: k for k, v in TAGS.items()}
 
 
 #%% Functions
@@ -171,7 +174,27 @@ def open_image(input_file, ignore_exif_rotation=False):
 # ...def open_image(...)
 
 
-def exif_preserving_save(pil_image,output_file,quality='keep',default_quality=85,verbose=False):
+def _remove_exif_tags(pil_image, tags_to_remove):
+    """
+    Remove a set of tags by name from [pil_image]
+    """
+
+    exif = pil_image.getexif()
+    if exif is not None:
+        for tag_name in tags_to_remove:
+            if tag_name in pil_tag_name_to_id:
+                exif.pop(pil_tag_name_to_id[tag_name], None)
+    return exif
+
+# ..._remove_exif_tags
+
+
+def exif_preserving_save(pil_image,
+                         output_file,
+                         quality='keep',
+                         default_quality=85,
+                         verbose=False,
+                         tags_to_exclude=None):
     """
     Saves [pil_image] to [output_file], making a moderate attempt to preserve EXIF
     data and JPEG quality.  Neither is guaranteed.
@@ -191,10 +214,20 @@ def exif_preserving_save(pil_image,output_file,quality='keep',default_quality=85
         default_quality (int, optional): determines output quality when quality == 'keep' and we are
             saving a non-JPEG source to a JPEG file
         verbose (bool, optional): enable additional debug console output
+        tags_to_exclude (list, optional): tags to exclude from the output file
     """
 
     # Read EXIF metadata
-    exif = pil_image.info['exif'] if ('exif' in pil_image.info) else None
+    # exif = pil_image.info['exif'] if ('exif' in pil_image.info) else None
+    exif = pil_image.getexif()
+
+    if isinstance(tags_to_exclude,str):
+        tags_to_exclude = [tags_to_exclude]
+
+    # Optionally remove some tags
+    if (exif is not None) and (tags_to_exclude is not None):
+        exif = _remove_exif_tags(pil_image,
+                                 tags_to_remove=tags_to_exclude)
 
     # Quality preservation is only supported for JPEG sources.
     if pil_image.format != "JPEG":

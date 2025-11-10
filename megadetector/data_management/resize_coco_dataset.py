@@ -109,7 +109,9 @@ def _process_single_image_for_resize(image_data,
                                   no_enlarge_width=no_enlarge_width)
             output_w = pil_im.width
             output_h = pil_im.height
-            exif_preserving_save(pil_im, output_fn_abs)
+            # We've already applied the rotation at the time we loaded the image, so don't
+            # write the orientation tag.
+            exif_preserving_save(pil_im, output_fn_abs, tags_to_exclude=('Orientation',))
         except Exception as e:
             if unavailable_image_handling == 'error':
                 raise Exception('Could not resize image {}: {}'.format(
