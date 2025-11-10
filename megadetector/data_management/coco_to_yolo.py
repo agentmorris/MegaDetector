@@ -108,7 +108,8 @@ def coco_to_yolo(input_image_folder,
                  category_names_to_exclude=None,
                  category_names_to_include=None,
                  write_output=True,
-                 flatten_paths=False):
+                 flatten_paths=False,
+                 empty_image_handling='write_empty'):
     """
     Converts a COCO-formatted dataset to a YOLO-formatted dataset, optionally flattening the
     dataset to a single folder in the process.
@@ -162,6 +163,9 @@ def coco_to_yolo(input_image_folder,
             file is written regardless of the value of write_output.
         flatten_paths (bool, optional): replace /'s in image filenames with [path_replacement_char],
             which ensures that the output folder is a single flat folder.
+        empty_image_handling (str, optional): whether to omit .txt files for images with no
+            annotations ('omit') or write empty .txt files ('write_empty').  Both are generally considered
+            valid YOLO.
 
     Returns:
         dict: information about the coco --> yolo mapping, containing at least the fields:
@@ -173,6 +177,9 @@ def coco_to_yolo(input_image_folder,
     """
 
     ## Validate input
+
+    assert empty_image_handling in ('omit','write_empty'), \
+        'Unrecognized value for empty_image_handling: {}'.format(empty_image_handling)
 
     if category_names_to_include is not None and category_names_to_exclude is not None:
         raise ValueError('category_names_to_include and category_names_to_exclude are mutually exclusive')
@@ -508,16 +515,7 @@ def coco_to_yolo(input_image_folder,
         bboxes = output_info['bboxes']
 
         # Write the annotation file if necessary
-        #
-        # Only write an annotation file if there are bounding boxes.  Images with
-        # no .txt files are treated as hard negatives, at least by YOLOv5:
-        #
-        # https://github.com/ultralytics/yolov5/issues/3218
-        #
-        # I think this is also true for images with empty .txt files, but
-        # I'm using the convention suggested on that issue, i.e. hard
-        # negatives are expressed as images without .txt files.
-        if len(bboxes) > 0:
+        if (len(bboxes) > 0) or (empty_image_handling == 'write_empty'):
 
             n_boxes_written += len(bboxes)
             label_files_written.append(dest_txt)
