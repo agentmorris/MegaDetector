@@ -773,6 +773,8 @@ print('Scripts you probably want to run now:\n')
 for s in scripts_to_run:
     print(s)
 
+# import clipboard; clipboard.copy(scripts_to_run[0])
+
 
 #%% Run the tasks
 
