@@ -773,8 +773,12 @@ print('Scripts you probably want to run now:\n')
 for s in scripts_to_run:
     print(s)
 
+# import clipboard; clipboard.copy(scripts_to_run[0])
+
 
 #%% Run the tasks
+
+run_tasks_in_notebook = True
 
 r"""
 tl;dr: I almost never run this cell, i.e. "run_tasks_in_notebook" is almost always set to False.
@@ -803,6 +807,8 @@ if run_tasks_in_notebook:
 
     assert not use_yolo_inference_scripts, \
         'If you want to use the YOLOv5 inference scripts, you can\'t run the model interactively (yet)'
+    assert not use_tiled_inference, \
+        'If you want to use tiled inference, you can\'t run the model interactively (yet)'
 
     # i_task = 0; task = task_info[i_task]
     for i_task,task in enumerate(task_info):
@@ -827,7 +833,9 @@ if run_tasks_in_notebook:
                                               # Minimize the risk of IPython process issues
                                               use_image_queue=False,
                                               quiet=quiet_mode,
-                                              image_size=image_size)
+                                              image_size=image_size,
+                                              augment=augment,
+                                              detector_options=detector_options)
         elapsed = time.time() - start_time
 
         print('Task {}: finished inference for {} images in {}'.format(

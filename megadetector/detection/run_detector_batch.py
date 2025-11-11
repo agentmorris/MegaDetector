@@ -1101,7 +1101,8 @@ def load_and_run_detector_batch(model_file,
             a named model (e.g. "MDV5A") is supplied, even if the local file already
             exists
         detector_options (dict, optional): key/value pairs that are interpreted differently
-            by different detectors
+            by different detectors.  Can also be a list of k=v pairs, or a comma-delimited
+            string containing a list of k=v pairs.
         loader_workers (int, optional): number of loaders to use, only relevant when use_image_queue is True
         preprocess_on_image_queue (bool, optional): if the image queue is enabled, should it handle
             image loading and preprocessing (True), or just image loading (False)?
@@ -1113,11 +1114,16 @@ def load_and_run_detector_batch(model_file,
     """
 
     # Validate input arguments
-    if n_cores is None or n_cores <= 0:
+    if (n_cores is None) or (n_cores <= 0):
         n_cores = 1
 
     if detector_options is None:
         detector_options = {}
+    elif isinstance(detector_options,list):
+        detector_options = parse_kvp_list(detector_options)
+    elif isinstance(detector_options,str):
+        detector_options = parse_kvp_list(detector_options.split(','))
+    assert isinstance(detector_options,dict)
 
     if confidence_threshold is None:
         confidence_threshold=run_detector.DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD

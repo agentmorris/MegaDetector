@@ -920,7 +920,7 @@ def parse_kvp(s,kv_separator='='):
     """
 
     items = s.split(kv_separator)
-    assert len(items) > 1, 'Illegal key-value pair'
+    assert len(items) > 1, 'Illegal key-value pair: {}'.format(s)
     key = items[0].strip()
     if len(items) > 1:
         value = kv_separator.join(items[1:]).strip()
