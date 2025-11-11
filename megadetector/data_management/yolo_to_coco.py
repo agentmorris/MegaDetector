@@ -439,7 +439,9 @@ def yolo_to_coco(input_folder,
                  label_folder=None,
                  supercategory=None,
                  force_integer_ids=False,
-                 include_area=False):
+                 include_area=False,
+                 include_crowd=False,
+                 invalid_annotation_handling='error'):
     """
     Converts a YOLO-formatted dataset to a COCO-formatted dataset.
 
@@ -484,8 +486,12 @@ def yolo_to_coco(input_folder,
         supercategory (str, optional): populate the 'supercategory' field, currently only supports
             None (don't populate) or a single supercategory for the whole dataset.  This is mostly
             only here because RF-DETR requires something to be populated in this field.
-        force_integer_ids (bool, optional): force image IDs to be integers
+        force_integer_ids (bool, optional): force image and annotation IDs to be integers
         include_area (bool, optional): add the "area" field for boxes
+        include_crowd (bool, optional): include the "iscrowd" field (always 0) for annotations
+        invalid_annotation_handling (str, optional): how to handle invalid annotations, e.g.
+            negative-height bounding boxes.  Can be 'error', 'warn', or 'exclude'.  'exclude'
+            implies 'warn'.
 
 
     Returns:
@@ -505,7 +511,9 @@ def yolo_to_coco(input_folder,
 
     assert empty_image_handling in \
         ('no_annotations','empty_annotations','skip','error'), \
-            'Unrecognized empty image handling spec: {}'.format(empty_image_handling)
+         'Unrecognized empty image handling spec: {}'.format(empty_image_handling)
+
+    assert invalid_annotation_handling in ('error','warn','exclude')
 
     if (output_file is not None) and os.path.isfile(output_file):
 
@@ -670,20 +678,42 @@ def yolo_to_coco(input_folder,
         im = image_result[0]
         annotations_this_image = image_result[1]
 
-        # If we're supposed to include area values
-        if include_area:
-            for ann in annotations_this_image:
-                if 'bbox' not in ann:
-                    continue
+        skip_image = False
+
+        # Validate annotations
+        for ann in annotations_this_image:
+            if 'bbox' not in ann:
+                continue
+            # coco_bbox = [absolute_x_min, absolute_y_min, absolute_width, absolute_height]
+            box_is_valid = True
+            if len(ann['bbox']) != 4:
+                box_is_valid = False
+            elif ann['bbox'][2] < 0:
+                box_is_valid = False
+            elif ann['bbox'][3] < 0:
+                box_is_valid = False
+
+            if not box_is_valid:
+
                 s = 'Illegal bounding box {} for image {}'.format(
                     str(ann['bbox']),im['file_name'])
-                # coco_bbox = [absolute_x_min, absolute_y_min, absolute_width, absolute_height]
-                assert len(ann['bbox']) == 4, s
-                assert ann['bbox'][2] >= 0, s
-                assert ann['bbox'][3] >= 0, s
+                if invalid_annotation_handling == 'error':
+                    raise ValueError(s)
+                if invalid_annotation_handling in ('warn','exclude'):
+                    print('Warning: {}'.format(s))
+                if invalid_annotation_handling == 'exclude':
+                    skip_image = True
+                    break
+
+            if include_area:
                 ann['area'] = ann['bbox'][2] * ann['bbox'][3]
 
-        # If we need to constraint image IDs to be integers
+        # ...for each annotation
+
+        if skip_image:
+            continue
+
+        # If we need to constrain image IDs to be integers
         if force_integer_ids:
             input_id = im['id']
             output_id = len(input_id_to_output_id)
@@ -698,6 +728,8 @@ def yolo_to_coco(input_folder,
                 "We shouldn't have errors for images that have annotations"
             images.append(im)
             for ann in annotations_this_image:
+                if include_crowd:
+                    ann['iscrowd'] = 0
                 annotations.append(ann)
 
         # If this image failed to read
@@ -719,6 +751,8 @@ def yolo_to_coco(input_folder,
                 assert empty_category_id  is not None, \
                     'An empty category ID must be supplied if we are including empty annotations'
                 ann = {}
+                if include_crowd:
+                    ann['iscrowd'] = 0
                 ann['id'] = im['id'] + '_0'
                 ann['image_id'] = im['id']
                 ann['category_id'] = empty_category_id
@@ -733,6 +767,14 @@ def yolo_to_coco(input_folder,
         # ...if we do/don't have annotations for this image
 
     # ...for each image result
+
+    # Create integer IDs for annotations if necessary
+    #
+    # Annotation IDs don't really mean anything, so just assign incrementing
+    # integers.
+    if force_integer_ids:
+        for i_ann,ann in enumerate(annotations):
+            ann['id'] = i_ann
 
     # Clean up unnecessary error fields
     for im in images:
