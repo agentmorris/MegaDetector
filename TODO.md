@@ -616,17 +616,6 @@ E0
 !maintenance
 
 
-## Handle warnings about project.license at build time
-
-Building the megadetector and megadetector-utils packages yield the warning described in [this setuptools issue](https://github.com/pypa/setuptools/issues/4903).  Fix that.
-
-P1
-
-E0
-
-!maintenance
-
-
 ## Remove complex MKL requirements
 
 The dependencies currently specify an old version of MKL (2024.0) for all non-Darwin platforms, because of an incompatibility between some versions of MKL and some versions of PyTorch, described in [this PyTorch issue](https://github.com/pytorch/pytorch/issues/123097).  We can remove this quirky dependency if we require PyTorch >= 2.5, which at some point becomes a good idea anyway, supporting ancient versions of PyTorch complicates testing.  The action item here is mostly to think through the implications of requiring PyTorch >= 2.5.
