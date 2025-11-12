@@ -1,6 +1,6 @@
 [build-system]
 requires = [
-  "setuptools>61"
+  "setuptools>=77"
 ]
 
 [project]
@@ -9,7 +9,7 @@ version = "10.0.14"
 description = "Utility code associated with the MegaDetector project."
 readme = "README-package-utils.md"
 requires-python = ">=3.9,<3.14"
-license = {file = "LICENSE"}
+license = "MIT"
 keywords = ["camera traps", "conservation", "wildlife", "ai", "megadetector"]
 authors = [
   {name = "Your friendly neighborhood MegaDetector team", email = "cameratraps@lila.science" }
