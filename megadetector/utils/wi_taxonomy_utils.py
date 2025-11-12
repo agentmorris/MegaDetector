@@ -432,9 +432,6 @@ def generate_md_results_from_predictions_json(predictions_json_file,
     files use absolute paths, so this function optionally removes the leading string
     [base_folder] from all file names.
 
-    Currently just applies the top classification category to every detection.  If the top
-    classification is "blank", writes an empty detection list.
-
     Uses the classification from the "prediction" field if it's available, otherwise
     uses the "classifications" field.
 
@@ -570,9 +567,9 @@ def generate_md_results_from_predictions_json(predictions_json_file,
 
                 if class_to_assign == blank_prediction_string:
 
-                    # This is a scenario that's not captured well by the MD format: a blank prediction
-                    # with detections present.  But, for now, don't do anything special here, just making
-                    # a note of this.
+                    # We have a blank prediction with detections present.  For now, don't do anything
+                    # special here, just making a note of this, in case I want to handle this differently
+                    # later.
                     if len(im_out['detections']) > 0:
                         pass
 
@@ -627,7 +624,10 @@ def generate_md_results_from_predictions_json(predictions_json_file,
     # Fix the 'unknown' category
     if len(all_unknown_detections) > 0:
 
-        max_detection_category_id = max([int(x) for x in detection_category_id_to_name.keys()])
+        if len(detection_category_id_to_name) == 0:
+            max_detection_category_id = -1
+        else:
+            max_detection_category_id = max([int(x) for x in detection_category_id_to_name.keys()])
         unknown_category_id = str(max_detection_category_id + 1)
         detection_category_id_to_name[unknown_category_id] = 'unknown'
 

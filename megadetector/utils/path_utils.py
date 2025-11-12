@@ -1631,11 +1631,11 @@ def compute_file_hash(file_path, algorithm='sha256', allow_failures=True):
 
 
 def parallel_compute_file_hashes(filenames,
-                               max_workers=16,
-                               use_threads=True,
-                               recursive=True,
-                               algorithm='sha256',
-                               verbose=False):
+                                 max_workers=16,
+                                 use_threads=True,
+                                 recursive=True,
+                                 algorithm='sha256',
+                                 verbose=False):
     """
     Compute file hashes for a list or folder of images.
 

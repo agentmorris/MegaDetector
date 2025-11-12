@@ -1541,8 +1541,8 @@ if not run_tasks_in_notebook:
     assert os.path.isfile(ensemble_output_file_modular_crops)
 
     generate_md_results_from_predictions_json(predictions_json_file=ensemble_output_file_modular_crops,
-                                            md_results_file=ensemble_output_file_crops_md_format,
-                                            base_folder=crop_folder+'/')
+                                              md_results_file=ensemble_output_file_crops_md_format,
+                                              base_folder=crop_folder+'/')
 
 
     ##%% Bring those crop-level results back to image level

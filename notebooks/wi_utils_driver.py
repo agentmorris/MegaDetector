@@ -581,4 +581,3 @@ for taxon in geofence_dict.keys():
 
 print('Found {} non-species-level rules (of {})'.format(
     len(non_species_rules),len(geofence_dict)))
-
