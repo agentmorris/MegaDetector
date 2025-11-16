@@ -34,7 +34,8 @@ from megadetector.utils.ct_utils import make_temp_folder
 from megadetector.utils.ct_utils import is_list_sorted
 from megadetector.utils.ct_utils import is_sphinx_build
 from megadetector.utils.ct_utils import args_to_object
-from megadetector.utils import path_utils
+from megadetector.utils.path_utils import find_images
+from megadetector.utils.path_utils import test_file_write
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.postprocessing.validate_batch_results import \
     validate_batch_results, ValidateBatchResultsOptions
@@ -83,15 +84,109 @@ DEFAULT_SECONDS_PER_VIDEO_FRAME = 1.0
 DEFAULT_TOP_N_SCORES = 2
 
 # Unless --norollup is specified, roll up taxonomic levels until the
-# cumulative confidence is above this value
-ROLLUP_TARGET_CONFIDENCE = 0.5
+# cumulative confidence is above this value.  Only relevant when
+# geofencing is disabled, otherwise the default speciesnet library
+# constants are used.
+DEFAULT_ROLLUP_TARGET_CONFIDENCE = 0.65
 
 # When the called supplies an existing MD results file, should we validate it before
-# starting classification?  This tends
+# starting classification?
 VALIDATE_DETECTION_FILE = False
 
-
 verbose = False
+
+
+#%% Main options class
+
+class RunMDSpeciesNetOptions:
+    """
+    Class controlling the behavior of run_md_and_speciesnet()
+    """
+
+    def __init__(self):
+
+        #: Folder containing images and/or videos to process
+        self.source = None
+
+        #: Output file for results (JSON format)
+        self.output_file = None
+
+        #: What to do if the output file exists ('overwrite', 'error', 'skip')
+        self.overwrite_handling = 'overwrite'
+
+        #: MegaDetector model identifier (MDv5a, MDv5b, MDv1000-redwood, etc.)
+        self.detector_model = DEFAULT_DETECTOR_MODEL
+
+        #: SpeciesNet classifier model identifier (e.g. kaggle:google/speciesnet/pyTorch/v4.0.1a)
+        self.classification_model = DEFAULT_CLASSIFIER_MODEL
+
+        #: Batch size for MegaDetector inference
+        self.detector_batch_size = DEFAULT_DETECTOR_BATCH_SIZE
+
+        #: Batch size for SpeciesNet classification
+        self.classifier_batch_size = DEFAULT_CLASSIFIER_BATCH_SIZE
+
+        #: Number of worker threads for preprocessing
+        self.loader_workers = DEFAULT_LOADER_WORKERS
+
+        #: Classify detections above this threshold
+        self.detection_confidence_threshold_for_classification = \
+            DEFAULT_DETECTION_CONFIDENCE_THRESHOLD_FOR_CLASSIFICATION
+
+        #: Include detections above this threshold in the output
+        self.detection_confidence_threshold_for_output = \
+            DEFAULT_DETECTION_CONFIDENCE_THRESHOLD_FOR_OUTPUT
+
+        #: Folder for intermediate files (default: system temp)
+        self.intermediate_file_folder = None
+
+        #: Keep intermediate files (e.g. detection-only results file)
+        self.keep_intermediate_files = False
+
+        #: Disable taxonomic rollup
+        self.norollup = False
+
+        #: Target confidence threshold for taxonomic rollup
+        self.rollup_target_confidence = DEFAULT_ROLLUP_TARGET_CONFIDENCE
+
+        #: Country code (ISO 3166-1 alpha-3) for geofencing (default None, no geoferencing)
+        self.country = None
+
+        #: Admin1 region/state code for geofencing
+        self.admin1_region = None
+
+        #: Path to existing MegaDetector output file (skips detection step)
+        self.detections_file = None
+
+        #: Ignore videos, only process images
+        self.skip_video = False
+
+        #: Ignore images, only process videos
+        self.skip_images = False
+
+        #: Sample every Nth frame from videos
+        #:
+        #: Mutually exclusive with time_sample
+        self.frame_sample = None
+
+        #: Sample frames every N seconds from videos
+        #:
+        #: Mutually exclusive with frame_sample
+        self.time_sample = DEFAULT_SECONDS_PER_VIDEO_FRAME
+
+        #: Enable additional debug output
+        self.verbose = False
+
+        #: Worker type for parallelization; should be "thread" or "process"
+        self.worker_type = 'process'
+
+        #: Include raw (pre-rollup/geofence) classification scores in output
+        self.include_raw_classifications = False
+
+        if self.time_sample is None and self.frame_sample is None:
+            self.time_sample = DEFAULT_SECONDS_PER_VIDEO_FRAME
+
+# ...class RunMDSpeciesNetOptions
 
 
 #%% Support classes
@@ -545,7 +640,8 @@ def _crop_consumer_func(batch_queue: Queue,
                         enable_rollup: bool,
                         country: str = None,
                         admin1_region: str = None,
-                        preloaded_classifier: 'SpeciesNetClassifier' = None):
+                        preloaded_classifier: 'SpeciesNetClassifier' = None,
+                        rollup_target_confidence: float = DEFAULT_ROLLUP_TARGET_CONFIDENCE):
     """
     Consumer function for classification inference.
 
@@ -567,6 +663,8 @@ def _crop_consumer_func(batch_queue: Queue,
         admin1_region (str, optional): admin1 region for geofencing
         preloaded_classifier (SpeciesNetClassifier, optional): pre-loaded classifier instance
             (for thread-based workers, to avoid loading models in threads)
+        rollup_target_confidence (float, optional): target confidence threshold for taxonomic
+            rollup.  Ignored if enable_rollup is False.
     """
 
     if verbose:
@@ -624,7 +722,7 @@ def _crop_consumer_func(batch_queue: Queue,
                     _process_classification_batch(
                         current_batch, classifier, all_results,
                         enable_rollup, taxonomy_map, geofence_map,
-                        country, admin1_region
+                        country, admin1_region, rollup_target_confidence
                     )
                 break
             continue
@@ -659,7 +757,7 @@ def _crop_consumer_func(batch_queue: Queue,
                 _process_classification_batch(
                     current_batch, classifier, all_results,
                     enable_rollup, taxonomy_map, geofence_map,
-                    country, admin1_region
+                    country, admin1_region, rollup_target_confidence
                 )
                 current_batch = CropBatch()
 
@@ -683,7 +781,9 @@ def _process_classification_batch(batch: CropBatch,
                                   taxonomy_map: dict,
                                   geofence_map: dict,
                                   country: str = None,
-                                  admin1_region: str = None):
+                                  admin1_region: str = None,
+                                  rollup_target_confidence: float =
+                                    DEFAULT_ROLLUP_TARGET_CONFIDENCE):
     """
     Run a batch of crops through the classifier.
 
@@ -698,6 +798,8 @@ def _process_classification_batch(batch: CropBatch,
         geofence_map (dict): geofence mapping
         country (str, optional): country code for geofencing
         admin1_region (str, optional): admin1 region for geofencing
+        rollup_target_confidence (float, optional): target confidence threshold for
+            taxonomic rollup, ignored if enable_rollup is False
     """
 
     if len(batch) == 0:
@@ -728,6 +830,7 @@ def _process_classification_batch(batch: CropBatch,
 
     for i_result in range(0, len(batch_results)):
 
+        filepath = filepaths[i_result]
         result = batch_results[i_result]
         metadata = batch.metadata[i_result]
 
@@ -739,7 +842,7 @@ def _process_classification_batch(batch: CropBatch,
         # Handle classification failure
         if 'failures' in result:
             print('*** Classification failure for image: {} ***'.format(
-                filepaths[i_result]))
+                filepath))
             all_results[metadata.image_file][detection_index] = {
                 'failure': 'Failure classification: SpeciesNet classifier failed'
             }
@@ -786,8 +889,8 @@ def _process_classification_batch(batch: CropBatch,
                 scores=scores,
                 country=country,
                 admin1_region=admin1_region,
-                target_taxonomy_levels=['species','genus','family', 'order','class', 'kingdom'],
-                non_blank_threshold=ROLLUP_TARGET_CONFIDENCE,
+                target_taxonomy_levels=['species','genus','family','order','class','kingdom'],
+                non_blank_threshold=rollup_target_confidence,
                 taxonomy_map=taxonomy_map,
                 geofence_map=geofence_map,
                 enable_geofence=(country is not None)
@@ -795,9 +898,8 @@ def _process_classification_batch(batch: CropBatch,
 
             if rollup_result is not None:
                 rolled_up_class, rolled_up_score, prediction_source = rollup_result
-                if rolled_up_class != predicted_class:
-                    predicted_class = rolled_up_class
-                    predicted_score = rolled_up_score
+                predicted_class = rolled_up_class
+                predicted_score = rolled_up_score
 
         # ...if we might need to apply taxonomic rollup
 
@@ -857,8 +959,8 @@ def _run_detection_step(source_folder: str,
 
     # Find image and video files
     if not skip_images:
-        image_files = path_utils.find_images(source_folder, recursive=True,
-                                             return_relative_paths=False)
+        image_files = find_images(source_folder, recursive=True,
+                                  return_relative_paths=False)
     else:
         image_files = []
 
@@ -964,7 +1066,9 @@ def _run_classification_step(detector_results_file: str,
                              country: str = None,
                              admin1_region: str = None,
                              top_n_scores: int = DEFAULT_TOP_N_SCORES,
-                             worker_type: str = 'process'):
+                             worker_type: str = 'process',
+                             include_raw_classifications: bool = False,
+                             rollup_target_confidence: float = DEFAULT_ROLLUP_TARGET_CONFIDENCE):
     """
     Run SpeciesNet classification on detections from MegaDetector results.
 
@@ -981,6 +1085,10 @@ def _run_classification_step(detector_results_file: str,
         admin1_region (str, optional): admin1 region (typically a state code) for geofencing
         top_n_scores (int, optional): maximum number of scores to include for each detection
         worker_type (str, optional): type of worker parallelization ("thread" or "process")
+        include_raw_classifications (bool, optional): include raw (pre-rollup/geofence)
+            classification scores in output
+        rollup_target_confidence (float, optional): target confidence threshold for taxonomic
+            rollup.  Ignored if enable_rollup is False.
     """
 
     print('Starting classification step...')
@@ -1056,7 +1164,8 @@ def _run_classification_step(detector_results_file: str,
     consumer = WorkerClass(target=_crop_consumer_func,
                            args=(batch_queue, results_queue, classifier_model,
                                  classifier_batch_size, classifier_worker_threads,
-                                 enable_rollup, country, admin1_region, consumer_classifier))
+                                 enable_rollup, country, admin1_region, consumer_classifier,
+                                 rollup_target_confidence))
     consumer.start()
 
     # This will block every time the queue reaches its maximum depth, so for
@@ -1202,7 +1311,8 @@ def _run_classification_step(detector_results_file: str,
 
                     # Add classifications to the detection
                     detection['classifications'] = classification_pairs
-                    # detection['raw_classifications'] = raw_classification_pairs
+                    if include_raw_classifications:
+                        detection['raw_classifications'] = raw_classification_pairs
 
                 # ...if this classification contains a failure
 
@@ -1235,90 +1345,6 @@ def _run_classification_step(detector_results_file: str,
         print('Classification results written to {}'.format(merged_results_file))
 
 # ...def _run_classification_step(...)
-
-
-#%% Options class
-
-class RunMDSpeciesNetOptions:
-    """
-    Class controlling the behavior of run_md_and_speciesnet()
-    """
-
-    def __init__(self):
-
-        #: Folder containing images and/or videos to process
-        self.source = None
-
-        #: Output file for results (JSON format)
-        self.output_file = None
-
-        #: MegaDetector model identifier (MDv5a, MDv5b, MDv1000-redwood, etc.)
-        self.detector_model = DEFAULT_DETECTOR_MODEL
-
-        #: SpeciesNet classifier model identifier (e.g. kaggle:google/speciesnet/pyTorch/v4.0.1a)
-        self.classification_model = DEFAULT_CLASSIFIER_MODEL
-
-        #: Batch size for MegaDetector inference
-        self.detector_batch_size = DEFAULT_DETECTOR_BATCH_SIZE
-
-        #: Batch size for SpeciesNet classification
-        self.classifier_batch_size = DEFAULT_CLASSIFIER_BATCH_SIZE
-
-        #: Number of worker threads for preprocessing
-        self.loader_workers = DEFAULT_LOADER_WORKERS
-
-        #: Classify detections above this threshold
-        self.detection_confidence_threshold_for_classification = \
-            DEFAULT_DETECTION_CONFIDENCE_THRESHOLD_FOR_CLASSIFICATION
-
-        #: Include detections above this threshold in the output
-        self.detection_confidence_threshold_for_output = \
-            DEFAULT_DETECTION_CONFIDENCE_THRESHOLD_FOR_OUTPUT
-
-        #: Folder for intermediate files (default: system temp)
-        self.intermediate_file_folder = None
-
-        #: Keep intermediate files (e.g. detection-only results file)
-        self.keep_intermediate_files = False
-
-        #: Disable taxonomic rollup
-        self.norollup = False
-
-        #: Country code (ISO 3166-1 alpha-3) for geofencing (default None, no geoferencing)
-        self.country = None
-
-        #: Admin1 region/state code for geofencing
-        self.admin1_region = None
-
-        #: Path to existing MegaDetector output file (skips detection step)
-        self.detections_file = None
-
-        #: Ignore videos, only process images
-        self.skip_video = False
-
-        #: Ignore images, only process videos
-        self.skip_images = False
-
-        #: Sample every Nth frame from videos
-        #:
-        #: Mutually exclusive with time_sample
-        self.frame_sample = None
-
-        #: Sample frames every N seconds from videos
-        #:
-        #: Mutually exclusive with frame_sample
-        self.time_sample = DEFAULT_SECONDS_PER_VIDEO_FRAME
-
-        #: Enable additional debug output
-        self.verbose = False
-
-        #: Worker type for parallelization; should be "thread" or "process"
-        self.worker_type = 'process'
-
-        if self.time_sample is None and self.frame_sample is None:
-            self.time_sample = DEFAULT_SECONDS_PER_VIDEO_FRAME
-
-# ...class RunMDSpeciesNetOptions
 
 
 #%% Main function
@@ -1369,7 +1395,27 @@ def run_md_and_speciesnet(options):
 
     print('Processing folder: {}'.format(options.source))
     print('Output file: {}'.format(options.output_file))
-    print('Intermediate files: {}'.format(temp_folder))
+    print('Intermediate file folder: {}'.format(temp_folder))
+
+    assert options.overwrite_handling in ('overwrite','error','skip'), \
+        'Unknown overwrite_handling value {}'.format(options.overwrite_handling)
+
+    if os.path.isdir(options.output_file):
+        raise ValueError('Output file {} exists, but is a directory'.format(
+            options.output_file))
+    if os.path.isfile(options.output_file):
+        if options.overwrite_handling == 'overwrite':
+            print('Over-writing existing output file {}'.format(options.output_file))
+        elif options.overwrite_handling == 'error':
+            raise ValueError('Output file {} exists, and overwrite_handling is "error"'.format(
+                options.output_file))
+        elif options.ovwrite_handling == 'skip':
+            print('Bypassing proecssing: output file {} exists, and overwrite_handling is "skip"'.format(
+                options.output_file))
+            return
+
+    # Verify that we can create the output file
+    test_file_write(options.output_file)
 
     # Determine detector output file path
     if options.detections_file is not None:
@@ -1413,7 +1459,9 @@ def run_md_and_speciesnet(options):
         enable_rollup=(not options.norollup),
         country=options.country,
         admin1_region=options.admin1_region,
-        worker_type=options.worker_type
+        worker_type=options.worker_type,
+        include_raw_classifications=options.include_raw_classifications,
+        rollup_target_confidence=options.rollup_target_confidence
     )
 
     elapsed_time = time.time() - start_time
@@ -1493,6 +1541,12 @@ def main():
     parser.add_argument('--norollup',
                         action='store_true',
                         help='Disable taxonomic rollup')
+    parser.add_argument('--rollup_target_confidence',
+                        type=float,
+                        default=DEFAULT_ROLLUP_TARGET_CONFIDENCE,
+                        help='Target confidence threshold for taxonomic rollup ' + \
+                             f'(default {DEFAULT_ROLLUP_TARGET_CONFIDENCE}), only ' + \
+                             'used when geofencing is disabled')
     parser.add_argument('--country',
                         default=None,
                         help='Country code (ISO 3166-1 alpha-3) for geofencing')
@@ -1521,6 +1575,9 @@ def main():
     parser.add_argument('--verbose',
                         action='store_true',
                         help='Enable additional debug output')
+    parser.add_argument('--include_raw_classifications',
+                        action='store_true',
+                        help='Include raw (pre-rollup/geofence) classification scores in output')
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()

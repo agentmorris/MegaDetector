@@ -446,6 +446,40 @@ def path_join(*paths, convert_slashes=True):
         return joined_path
 
 
+def test_file_write(fn, overwrite=True):
+    """
+    Writes an empty file to [fn], used to test that we have
+    appropriate permissions.  If [fn] exists and overwrite is False,
+    this function errors.  Creates the directory containing [fn] if
+    necessary.  Does not delete the test file.
+
+    Args:
+        fn (str): the filename to which we should perform a test write
+        overwrite (bool, optional): if [fn] exists, whether we should
+            overwrite (True) or error (False)
+
+    Returns:
+        bool: currently always returns True or errors
+    """
+
+    if os.path.isfile(fn) and (not overwrite):
+        raise ValueError(
+            'test_write_file: target file {} exists'.format(fn))
+    if os.path.isdir(fn):
+        raise ValueError(
+            'test_write_file: target file {} is a directory'.format(fn))
+
+    target_dir = os.path.dirname(fn)
+    if len(target_dir) > 0:
+        os.makedirs(target_dir,exist_ok=True)
+
+    # Create an empty file at the destination "fn"
+    with open(fn, 'w') as f:
+        f.write('')
+
+    return True
+
+
 #%% Image-related path functions
 
 def is_image_file(s, img_extensions=IMG_EXTENSIONS):

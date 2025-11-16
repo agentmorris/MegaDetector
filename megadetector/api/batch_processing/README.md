@@ -46,7 +46,7 @@ Example output with both detection and classification results:
     // Category names can be arbitrary, but downstream tools may take a particular dependency 
     // on the name "animal", so using "animal" (rather than, e.g., "animals" or "wildlife")
     // is recommended.  Use of the category ID "0" is discouraged, as this is informally reserved
-    // for an "empty" category.
+    // for an "empty" category.  Detection category names don't have to be unique.
     "detection_categories": {
         "1": "animal",
         "2": "person",
@@ -54,6 +54,7 @@ Example output with both detection and classification results:
     },
     // classification_categories is optional; if present, category IDs must be 
     // non-negative string-formatted ints.  Category IDs are not required to be contiguous.
+	// Classification category names don't have to be unique.	
     "classification_categories": {
         "0": "fox",
         "1": "elk",

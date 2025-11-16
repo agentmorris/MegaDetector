@@ -97,17 +97,24 @@ def is_valid_taxonomy_string(s):
     return isinstance(s,str) and (len(s.split(';')) == 5) and (s == s.lower())
 
 
-def clean_taxonomy_string(s):
+def clean_taxonomy_string(s, truncate_multiple_description_strings=True):
     """
     If [s] is a seven-token prediction string, trim the GUID and common name to produce
     a "clean" taxonomy string.  Else if [s] is a five-token string, return it.  Else error.
 
     Args:
         s (str): the seven- or five-token taxonomy/prediction string to clean
+        truncate_multiple_description_strings (bool, optional): we use | to delimit
+            multiple descriptions in the same string; if this is True, clean and
+            return just the first, else error.
 
     Returns:
         str: the five-token taxonomy string
     """
+
+    if truncate_multiple_description_strings:
+        tokens = s.split('|')
+        s = tokens[0]
 
     if is_valid_taxonomy_string(s):
         return s

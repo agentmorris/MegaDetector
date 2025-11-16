@@ -270,7 +270,10 @@ preview_options_base.parallelize_rendering_with_threads = parallelization_defaul
 preview_options_base.additional_image_fields_to_display = \
     {'pre_smoothing_description':'pre-smoothing labels',
      'pre_filtering_description':'pre-filtering labels',
+     'post_filtering_description':'post-filtering labels',
      'top_classification_common_name':'top class'}
+preview_options_base.category_name_to_sort_weight = \
+    {'animal':1,'blank':1,'unknown':1,'unreliable':1,'mammal':1}
 
 if render_animals_only:
     preview_options_base.rendering_bypass_sets = \
@@ -1243,6 +1246,7 @@ if run_tasks_in_notebook:
     # Enable geofencing if (a) we have a country code and (b) we're not immediately
     # applying a custom taxa list
     enable_geofence = True
+
     if country_code is None:
         enable_geofence = False
     if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
@@ -1250,9 +1254,8 @@ if run_tasks_in_notebook:
 
     if enable_geofence:
         md_speciesnet_options.country = country_code
-
-    if state_code is not None:
-        md_speciesnet_options.admin1_region = state_code
+        if state_code is not None:
+            md_speciesnet_options.admin1_region = state_code
 
     run_md_and_speciesnet(md_speciesnet_options)
 
@@ -1412,6 +1415,7 @@ if not run_tasks_in_notebook:
         cmd += ' --instances_json "{}"'.format(chunk_instances_json)
         cmd += ' --predictions_json "{}"'.format(chunk_predictions_json)
         cmd += ' --detections_json "{}"'.format(chunk_detections_json)
+        cmd += ' --ignore_existing_predictions'
 
         if classifier_batch_size is not None:
             cmd += ' --batch_size {}'.format(classifier_batch_size)
@@ -1498,6 +1502,7 @@ if not run_tasks_in_notebook:
     cmd += ' --classifications_json "{}"'.format(classifier_output_file_modular_crops)
     cmd += ' --detections_json "{}"'.format(crop_detections_predictions_file)
     cmd += ' --predictions_json "{}"'.format(ensemble_output_file_modular_crops)
+    cmd += ' --ignore_existing_predictions'
 
     # Currently we only skip the geofence if we're imminently going to apply a custom taxa
     # list, otherwise the smoothing is quite messy.
