@@ -24,6 +24,7 @@ import tarfile
 import webbrowser
 import subprocess
 import re
+import pytest
 
 from zipfile import ZipFile
 from datetime import datetime
@@ -446,6 +447,7 @@ def path_join(*paths, convert_slashes=True):
         return joined_path
 
 
+@pytest.mark.skip(reason="This is not a test function")
 def test_file_write(fn, overwrite=True):
     """
     Writes an empty file to [fn], used to test that we have
