@@ -1022,7 +1022,7 @@ options.otherDetectionsThreshold = options.confidenceMin
 
 options.bRenderDetectionTiles = True
 options.maxOutputImageWidth = 2000
-options.detectionTilesMaxCrops = 100
+options.detectionTilesMaxCrops = 80
 
 # options.lineThickness = 5
 # options.boxExpansion = 8
@@ -1886,6 +1886,8 @@ preview_folder = path_join(postprocessing_output_folder,
 preview_options.md_results_file = sequence_smoothed_classification_file
 preview_options.output_dir = preview_folder
 preview_options.footer_text = geofence_footer
+preview_options.category_name_to_sort_weight = \
+    {'animal':1,'blank':1,'unknown':1,'unreliable':1,'mammal':1,'no cv result':1}
 
 print('Generating post-sequence-smoothing preview in {}'.format(preview_folder))
 ppresults = process_batch_results(preview_options)

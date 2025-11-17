@@ -221,7 +221,8 @@ class PostProcessingOptions:
         #: In practice this is used to push generic categories like "blank", "animal",
         #: and "unreliable" to the bottom of the list, like:
         #:
-        #: options.category_name_to_sort_weight = {'animal':1,'blank':1,'unknown':1,'unreliable':1,'mammal':1}
+        #: options.category_name_to_sort_weight = \
+        #:     {'animal':1,'blank':1,'unknown':1,'unreliable':1,'mammal':1,'no cv result':1}
         self.category_name_to_sort_weight = {}
 
         #: Should we split individual pages up into smaller pages if there are more than
