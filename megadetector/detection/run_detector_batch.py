@@ -112,9 +112,6 @@ randomize_batch_order_during_testing = True
 # Should the consumer loop run on its own process, or here in the main process?
 run_separate_consumer_process = False
 
-# Should we use threads (rather than processes) for the data loading workers?
-use_threads_for_queue = False
-
 # Enable additional debug output
 verbose = False
 
@@ -471,7 +468,8 @@ def _run_detector_with_image_queue(image_files,
                                    preprocess_on_image_queue=default_preprocess_on_image_queue,
                                    batch_size=1,
                                    checkpoint_path=None,
-                                   checkpoint_frequency=-1):
+                                   checkpoint_frequency=-1,
+                                   use_threads_for_queue=False):
     """
     Driver function for the (optional) multiprocessing-based image queue.  Spawns workers to read and
     preprocess images, runs the consumer function in the calling process.
@@ -497,6 +495,8 @@ def _run_detector_with_image_queue(image_files,
         batch_size (int, optional): batch size for GPU processing
         checkpoint_path (str, optional): path to write checkpoint files, None disables checkpointing
         checkpoint_frequency (int, optional): write checkpoint every N images, -1 disables checkpointing
+        use_threads_for_queue (bool, optional): use threads (rather than processes) for the data
+            loading workers
 
     Returns:
         list: list of dicts in the format returned by process_image()
@@ -842,7 +842,8 @@ def _process_images(im_files,
                    augment=False,
                    detector_options=None,
                    loader_workers=default_loaders,
-                   preprocess_on_image_queue=default_preprocess_on_image_queue):
+                   preprocess_on_image_queue=default_preprocess_on_image_queue,
+                   use_threads_for_queue=False):
     """
     Runs a detector (typically MegaDetector) over a list of image files, possibly using multiple
     image loading workers, but not using multiple inference workers.
@@ -867,6 +868,8 @@ def _process_images(im_files,
         loader_workers (int, optional): number of loaders to use (only relevant when using image queue)
         preprocess_on_image_queue (bool, optional): if the image queue is enabled, should it handle
             image loading and preprocessing (True), or just image loading (False)?
+        use_threads_for_queue (bool, optional): use threads (rather than processes) for the data
+            loading workers
 
     Returns:
         list: list of dicts, in which each dict represents detections on one image,
@@ -898,7 +901,8 @@ def _process_images(im_files,
                                       augment=augment,
                                       detector_options=detector_options,
                                       loader_workers=loader_workers,
-                                      preprocess_on_image_queue=preprocess_on_image_queue)
+                                      preprocess_on_image_queue=preprocess_on_image_queue,
+                                      use_threads_for_queue=use_threads_for_queue)
         return results
 
     else:
@@ -1069,7 +1073,8 @@ def load_and_run_detector_batch(model_file,
                                 loader_workers=default_loaders,
                                 preprocess_on_image_queue=default_preprocess_on_image_queue,
                                 batch_size=1,
-                                verbose_output=False):
+                                verbose_output=False,
+                                use_threads_for_queue=False):
     """
     Load a model file and run it on a list of images.
 
@@ -1108,6 +1113,8 @@ def load_and_run_detector_batch(model_file,
             image loading and preprocessing (True), or just image loading (False)?
         batch_size (int, optional): batch size for GPU processing, automatically set to 1 for CPU processing
         verbose_output (bool, optional): enable additional debug output
+        use_threads_for_queue (bool, optional): use threads (rather than processes) for the data
+            loading workers
 
     Returns:
         results: list of dicts; each dict represents detections on one image
@@ -1227,7 +1234,8 @@ def load_and_run_detector_batch(model_file,
                           preprocess_on_image_queue=preprocess_on_image_queue,
                           batch_size=batch_size,
                           checkpoint_path=checkpoint_path,
-                          checkpoint_frequency=checkpoint_frequency)
+                          checkpoint_frequency=checkpoint_frequency,
+                          use_threads_for_queue=use_threads_for_queue)
 
         # Merge new results with existing results from checkpoint
         results.extend(new_results)
@@ -1369,7 +1377,8 @@ def load_and_run_detector_batch(model_file,
                                  include_image_timestamp=include_image_timestamp,
                                  include_exif_tags=include_exif_tags,
                                  augment=augment,
-                                 detector_options=detector_options),
+                                 detector_options=detector_options,
+                                 use_threads_for_queue=use_threads_for_queue),
                                  image_chunks)
 
                 checkpoint_queue.put(None)
@@ -1389,7 +1398,8 @@ def load_and_run_detector_batch(model_file,
                                                include_image_timestamp=include_image_timestamp,
                                                include_exif_tags=include_exif_tags,
                                                augment=augment,
-                                               detector_options=detector_options),
+                                               detector_options=detector_options,
+                                               use_threads_for_queue=use_threads_for_queue),
                                                image_chunks)
 
                 new_results = list(itertools.chain.from_iterable(new_results))
@@ -1904,10 +1914,6 @@ def main(): # noqa
 
     args = parser.parse_args()
 
-    global use_threads_for_queue
-    if args.use_threads_for_queue:
-        use_threads_for_queue = True
-
     # Support the legacy --include_exif_data flag
     if args.include_exif_data and (args.include_exif_tags is None):
         args.include_exif_tags = 'all'
@@ -2126,7 +2132,8 @@ def main(): # noqa
                                           loader_workers=args.loader_workers,
                                           preprocess_on_image_queue=args.preprocess_on_image_queue,
                                           batch_size=args.batch_size,
-                                          verbose_output=args.verbose)
+                                          verbose_output=args.verbose,
+                                          use_threads_for_queue=args.use_threads_for_queue)
 
     elapsed = time.time() - start_time
     images_per_second = len(results) / elapsed

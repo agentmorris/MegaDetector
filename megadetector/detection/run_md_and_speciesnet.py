@@ -64,6 +64,7 @@ DEFAULT_DETECTION_CONFIDENCE_THRESHOLD_FOR_OUTPUT = DEFAULT_OUTPUT_CONFIDENCE_TH
 DEFAULT_DETECTOR_BATCH_SIZE = 1
 DEFAULT_CLASSIFIER_BATCH_SIZE = 8
 DEFAULT_LOADER_WORKERS = 4
+DEFAULT_WORKER_TYPE = 'thread'
 
 # This determines the maximum number of image filenames that can be assigned to
 # each of the producer workers before blocking.  The actual size of the queue
@@ -178,7 +179,7 @@ class RunMDSpeciesNetOptions:
         self.verbose = False
 
         #: Worker type for parallelization; should be "thread" or "process"
-        self.worker_type = 'process'
+        self.worker_type = DEFAULT_WORKER_TYPE
 
         #: Include raw (pre-rollup/geofence) classification scores in output
         self.include_raw_classifications = False
@@ -930,6 +931,7 @@ def _run_detection_step(source_folder: str,
                         detector_batch_size: int = DEFAULT_DETECTOR_BATCH_SIZE,
                         detection_confidence_threshold: float = DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD,
                         detector_worker_threads: int = DEFAULT_LOADER_WORKERS,
+                        worker_type: str = DEFAULT_WORKER_TYPE,
                         skip_images: bool = False,
                         skip_video: bool = False,
                         frame_sample: int = None,
@@ -945,6 +947,7 @@ def _run_detection_step(source_folder: str,
         detection_confidence_threshold (float, optional): confidence threshold for detections
             (to include in the output file)
         detector_worker_threads (int, optional): number of workers to use for preprocessing
+        worker_type (str, optional): type of worker parallelization ("thread" or "process")
         skip_images (bool, optional): ignore images, only process videos
         skip_video (bool, optional): ignore videos, only process images
         frame_sample (int, optional): sample every Nth frame from videos
@@ -983,6 +986,8 @@ def _run_detection_step(source_folder: str,
 
         print('Running MegaDetector on {} images...'.format(len(image_files)))
 
+        use_threads_for_queue = (worker_type == 'thread')
+
         image_results = load_and_run_detector_batch(
             model_file=detector_model,
             image_file_names=image_files,
@@ -999,7 +1004,8 @@ def _run_detection_step(source_folder: str,
             include_image_timestamp=False,
             include_exif_tags=None,
             loader_workers=detector_worker_threads,
-            preprocess_on_image_queue=True
+            preprocess_on_image_queue=True,
+            use_threads_for_queue=use_threads_for_queue
         )
 
         # Write image results to temporary file
@@ -1066,7 +1072,7 @@ def _run_classification_step(detector_results_file: str,
                              country: str = None,
                              admin1_region: str = None,
                              top_n_scores: int = DEFAULT_TOP_N_SCORES,
-                             worker_type: str = 'process',
+                             worker_type: str = DEFAULT_WORKER_TYPE,
                              include_raw_classifications: bool = False,
                              rollup_target_confidence: float = DEFAULT_ROLLUP_TARGET_CONFIDENCE):
     """
@@ -1444,7 +1450,8 @@ def run_md_and_speciesnet(options):
             skip_images=options.skip_images,
             skip_video=options.skip_video,
             frame_sample=options.frame_sample,
-            time_sample=options.time_sample
+            time_sample=options.time_sample,
+            worker_type=options.worker_type
         )
 
     # Run SpeciesNet
