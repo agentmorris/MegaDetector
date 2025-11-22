@@ -77,6 +77,9 @@ Example output with both detection and classification results:
     // The "images" array is required, but can be empty.
     "images": [
         {
+            // Paths are typically relative paths, but absolute paths
+            // are valid as well.  Forward slashes are preferred,
+            // regardless of OS, but backslashes are valid as well.
             "file": "path/from/base/dir/image_with_animal.jpg",
             // "detections" should be present for any image that was 
             // successfully processed.  I.e., a lack of detections
