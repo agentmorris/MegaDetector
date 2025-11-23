@@ -88,6 +88,16 @@ E2
 !feature
 
 
+## Simplify command-line execution of run_md_and_speciesnet in manage_local_batch
+
+In manage_local_batch.py, when we're not running SpeciesNet directly in the notebook, we first write all the crops to disk, then do a complicated series of transformations to use run_model.py.  This code was written before run_md_and_speciesnet existed; simplify all of this into a single cell that just generates a script to run run_md_and_speciesnet.
+
+P1
+
+E1
+
+!feature
+
 ## Allow excluding blanks in postprocessing
 
 Currently when I drive postprocessing via manage_local_batch, I use a somewhat hacky approach to skipping the rendering of blank images, which still leaves empty links to those images.  Instead, allow excluding blanks during process_batch_results.  See the "render_animals_only" variable in manage_local_batch.
