@@ -1637,6 +1637,7 @@ def restrict_to_taxa_list(taxa_list,
                 elif not allow_walk_down:
                     target_taxon = test_taxon_name
                 else:
+                    candidate_taxon = None
                     # If there's a unique child, walk back *down* the allowable
                     # taxa until we run out of unique children
                     while ((next(iter(allowed_child_taxa)) is not None) and \
@@ -1650,6 +1651,7 @@ def restrict_to_taxa_list(taxa_list,
                                 candidate_taxon,speciesnet_latin_name_to_taxon_string)
                         allowed_child_taxa = \
                             allowed_parent_taxon_to_child_taxa[candidate_taxon]
+                    assert candidate_taxon is not None
                     target_taxon = candidate_taxon
 
             # ...if this is an allowed taxon
@@ -1873,7 +1875,10 @@ def combine_redundant_classification_categories(input_file,
                len(d['classification_categories'])
 
         # Sort descriptions by count overall, so we can sort by description within categories later
-        description_to_count = defaultdict(int)
+        description_to_count = {}
+        for description in d['classification_category_descriptions'].values():
+            description_to_count[description] = 0
+
         for im in d['images']:
             if 'detections' not in im or im['detections'] is None:
                 continue
@@ -1889,7 +1894,7 @@ def combine_redundant_classification_categories(input_file,
             # ...for each detection
         # ...for each image
 
-        # This is just a debug convenience
+        # Sorting here is just a debug convenience
         description_to_count = sort_dictionary_by_value(description_to_count,
                                                         reverse=True)
 
@@ -1905,6 +1910,7 @@ def combine_redundant_classification_categories(input_file,
 
         for output_category_id in output_category_id_to_descriptions:
             descriptions = output_category_id_to_descriptions[output_category_id]
+            # If this output category combines multiple input categories
             if len(descriptions) > 1:
                 # Sort "descriptions" in descending order by the corresponding values
                 # in description_to_count

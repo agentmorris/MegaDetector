@@ -220,7 +220,6 @@ def is_taxonomic_prediction_string(s):
     return (taxonomy_level_index(s) > 0)
 
 
-
 def get_kingdom(prediction_string):
     """
     Return the kingdom field from a WI prediction string
