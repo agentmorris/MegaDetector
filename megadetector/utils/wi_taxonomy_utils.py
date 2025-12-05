@@ -123,7 +123,7 @@ def clean_taxonomy_string(s, truncate_multiple_description_strings=True):
         assert len(tokens) == 7
         return ';'.join(tokens[1:-1])
     else:
-        raise ValueError('Invalid taxonomy string')
+        raise ValueError('Invalid taxonomy string: {}'.format(s))
 
 
 taxonomy_level_names = \

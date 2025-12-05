@@ -1227,6 +1227,13 @@ def restrict_to_taxa_list(taxa_list,
 
     taxa_list_df = pd.read_csv(taxa_list)
 
+    # Convert NaN values to empty strings
+    taxa_list_df = taxa_list_df.fillna('')
+
+    # Strip string values
+    string_cols = taxa_list_df.select_dtypes(include=['object']).columns
+    taxa_list_df[string_cols] = taxa_list_df[string_cols].apply(lambda col: col.str.strip())
+
     required_columns = ('latin','common')
     for s in required_columns:
         assert s in taxa_list_df.columns, \
@@ -1240,14 +1247,11 @@ def restrict_to_taxa_list(taxa_list,
     # Remove rows from taxa_list_df where the "latin" column is nan,
     # printing a warning for each row (with a string representation of the whole row)
     for i_row,row in taxa_list_df.iterrows():
-        if pd.isna(row['latin']):
+        if len(row['latin']) == 0:
             if verbose:
                 print('Warning: Skipping row with empty "latin" column in {}:\n{}\n'.format(
                     taxa_list,str(row.to_dict())))
             taxa_list_df.drop(index=i_row, inplace=True)
-
-    # Convert all NaN values in the "common" column to empty strings
-    taxa_list_df['common'] = taxa_list_df['common'].fillna('')
 
     # Create a dictionary mapping source Latin names to target common names
     target_latin_to_common = {}
@@ -1313,7 +1317,7 @@ def restrict_to_taxa_list(taxa_list,
         assert len(tokens) == 7, 'Illegal taxonomy string {}'.format(s)
 
         # guid = tokens[0] # noqa
-        tokens[0] = 'GUID'
+        tokens[0] = 'guid'
         class_name = tokens[1]
         order = tokens[2]
         family = tokens[3]
@@ -1385,7 +1389,7 @@ def restrict_to_taxa_list(taxa_list,
             # Do we need to make up a taxon for this token?
             if test_token not in speciesnet_latin_name_to_taxon_string:
                 new_tokens = [''] * 7
-                new_tokens[0] = 'GUID'
+                new_tokens[0] = 'guid'
                 for i_copy_token in range(1,i_token+1):
                     new_tokens[i_copy_token] = tokens[i_copy_token]
                 new_tokens[-1] = test_token + ' species'
