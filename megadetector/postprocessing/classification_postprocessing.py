@@ -1223,7 +1223,7 @@ def restrict_to_taxa_list(taxa_list,
             same common name
     """
 
-    ##%% Read target taxa list
+    #%% Read target taxa list
 
     taxa_list_df = pd.read_csv(taxa_list)
 
@@ -1283,31 +1283,45 @@ def restrict_to_taxa_list(taxa_list,
     # ...for each row in the custom taxonomy list
 
 
-    ##%% Read taxonomy file
+    #%% Read taxonomy file
 
     with open(speciesnet_taxonomy_file,'r') as f:
         speciesnet_taxonomy_list = f.readlines()
     speciesnet_taxonomy_list = [s.strip() for s in \
                                 speciesnet_taxonomy_list if len(s.strip()) > 0]
 
-    # Maps the latin name of every taxon to the corresponding full taxon string
+    # Maps the latin name of every taxon to the corresponding full taxon string,
+    # excluding the GUID.
     #
     # For species, the key is a binomial name
     speciesnet_latin_name_to_taxon_string = {}
     speciesnet_common_name_to_taxon_string = {}
 
     def _insert_taxonomy_string(s):
+        """
+        Insert the latin  name represented by [s] into
+        speciesnet_latin_name_to_taxon_string.  The latin name is
+        the lowest-level non-empty token (or the genus+species if all
+        tokens are populated).
+
+        Also inserts into speciesnet_common_name_to_taxon_string.
+
+        Sets GUIDs to a uniform value to simplify matching later.
+        """
 
         tokens = s.split(';')
         assert len(tokens) == 7, 'Illegal taxonomy string {}'.format(s)
 
-        guid = tokens[0] # noqa
+        # guid = tokens[0] # noqa
+        tokens[0] = 'GUID'
         class_name = tokens[1]
         order = tokens[2]
         family = tokens[3]
         genus = tokens[4]
         species = tokens[5]
         common_name = tokens[6]
+
+        s = ';'.join(tokens)
 
         if len(class_name) == 0:
             assert common_name in ('animal','vehicle','blank'), \
@@ -1341,27 +1355,19 @@ def restrict_to_taxa_list(taxa_list,
             if common_name not in speciesnet_common_name_to_taxon_string:
                 speciesnet_common_name_to_taxon_string[common_name] = s
 
+    # Insert everything from the taxonomy .txt file into our taxonomy dicts
     for s in speciesnet_taxonomy_list:
-
         _insert_taxonomy_string(s)
 
 
-    ##%% Make sure all parent taxa are represented in the taxonomy
+    #%% Make sure all parent taxa are represented in the taxonomy
 
     # In theory any taxon that appears as the parent of another taxon should
     # also be in the taxonomy, but this isn't always true, so we fix it here.
     new_taxon_string_to_missing_tokens = defaultdict(list)
 
-    # While we're making this loop, also see whether we need to store any custom
-    # common name mappings based on the taxonomy list.
-    speciesnet_latin_name_to_output_common_name = {}
-
     # latin_name = next(iter(speciesnet_latin_name_to_taxon_string.keys()))
     for latin_name in speciesnet_latin_name_to_taxon_string.keys():
-
-        if latin_name in target_latin_to_common:
-            speciesnet_latin_name_to_output_common_name[latin_name] = \
-                target_latin_to_common[latin_name]
 
         if 'no cv result' in latin_name:
             continue
@@ -1370,7 +1376,6 @@ def restrict_to_taxa_list(taxa_list,
         tokens = taxon_string.split(';')
 
         # Don't process GUID, species, or common name
-        # i_token = 6
         for i_token in range(1,len(tokens)-2):
 
             test_token = tokens[i_token]
@@ -1379,9 +1384,8 @@ def restrict_to_taxa_list(taxa_list,
 
             # Do we need to make up a taxon for this token?
             if test_token not in speciesnet_latin_name_to_taxon_string:
-
                 new_tokens = [''] * 7
-                new_tokens[0] = 'fake_guid'
+                new_tokens[0] = 'GUID'
                 for i_copy_token in range(1,i_token+1):
                     new_tokens[i_copy_token] = tokens[i_copy_token]
                 new_tokens[-1] = test_token + ' species'
@@ -1409,11 +1413,27 @@ def restrict_to_taxa_list(taxa_list,
             missing_taxa = ','.join(new_taxon_string_to_missing_tokens[taxon_string])
             print('{} ({})'.format(taxon_string,missing_taxa))
 
+        print('')
+
     for new_taxon_string in new_taxon_string_to_missing_tokens:
         _insert_taxonomy_string(new_taxon_string)
 
+    del new_taxon_string_to_missing_tokens
 
-    ##%% Make sure all taxa on the allow-list are in the taxonomy
+
+    #%% Store custom common name mappings based on the taxonomy list
+
+    speciesnet_latin_name_to_output_common_name = {}
+
+    # latin_name = next(iter(speciesnet_latin_name_to_taxon_string.keys()))
+    for latin_name in speciesnet_latin_name_to_taxon_string.keys():
+
+        if latin_name in target_latin_to_common:
+            speciesnet_latin_name_to_output_common_name[latin_name] = \
+                target_latin_to_common[latin_name]
+
+
+    #%% Make sure all taxa on the allow-list are in the taxonomy
 
     n_failed_mappings = 0
 
@@ -1432,7 +1452,7 @@ def restrict_to_taxa_list(taxa_list,
         raise ValueError('Cannot continue with taxonomic restriction')
 
 
-    ##%% For the allow-list, map each parent taxon to a set of allowable child taxa
+    #%% For the allow-list, map each parent taxon to a set of allowable child taxa
 
     # Maps parent names to all allowed child names, or None if this is the
     # lowest-level allowable taxon on this path
@@ -1536,7 +1556,7 @@ def restrict_to_taxa_list(taxa_list,
                 '"None" should only appear alone in a child taxon list'
 
 
-    ##%% If we were just validating the custom taxa file, we're done
+    #%% If we were just validating the custom taxa file, we're done
 
     if input_file is None:
         print('Finished validating custom taxonomy list')
@@ -1590,7 +1610,6 @@ def restrict_to_taxa_list(taxa_list,
         # This is always class/order/family/genus/species
         input_taxon_tokens = input_taxon_tokens[1:-1]
         assert len(input_taxon_tokens) == 5
-
 
         # Start at the species level (the last element in input_taxon_tokens),
         # and see whether each taxon is allowed
@@ -1668,6 +1687,15 @@ def restrict_to_taxa_list(taxa_list,
 
     # ...for each category (mapping input category IDs to output taxon strings)
 
+    if verbose:
+        for input_category_id in input_category_id_to_output_taxon_string:
+            common_name = input_category_id_to_common_name[input_category_id]
+            output_taxon_string = input_category_id_to_output_taxon_string[input_category_id]
+            print('Mapping {} ({}) to\n{}\n'.format(
+                input_category_id,
+                common_name,
+                output_taxon_string))
+
 
     #%% Map input category IDs to output category IDs
 
@@ -1677,6 +1705,8 @@ def restrict_to_taxa_list(taxa_list,
     input_category_id_to_output_category_id = {}
     output_taxon_string_to_category_id = {}
     output_category_id_to_common_name = {}
+
+    substitutions_printed = set()
 
     for input_category_id in input_category_id_to_output_taxon_string:
 
@@ -1694,7 +1724,11 @@ def restrict_to_taxa_list(taxa_list,
                 custom_common_name = speciesnet_latin_name_to_output_common_name[speciesnet_latin_name]
                 if custom_common_name != output_common_name:
                     if verbose:
-                        print('Substituting common name {} for {}'.format(custom_common_name,output_common_name))
+                        substitution_name = custom_common_name + ' --> ' + output_common_name
+                        if substitution_name not in substitutions_printed:
+                            substitutions_printed.add(substitution_name)
+                            print('Substituting common name {} for {}'.format(
+                                custom_common_name,output_common_name))
                     output_common_name = custom_common_name
 
         # Do we need to create a new output category?
@@ -1724,7 +1758,7 @@ def restrict_to_taxa_list(taxa_list,
     # ...for each category (mapping input category IDs to output category IDs)
 
 
-    ##%% Remap all category labels
+    #%% Remap all category labels
 
     assert len(set(output_taxon_string_to_category_id.keys())) == \
            len(set(output_taxon_string_to_category_id.values())), \
@@ -1780,7 +1814,7 @@ def restrict_to_taxa_list(taxa_list,
         output_category_id_to_taxon_string
 
 
-    ##%% Write output
+    #%% Write output
 
     write_json(output_file,output_data)
 
