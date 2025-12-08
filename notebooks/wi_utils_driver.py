@@ -18,6 +18,14 @@ taxonomy_file = os.path.join(model_base,'crop','taxonomy_release.txt')
 for fn in [geofencing_file,country_code_file,taxonomy_file]:
     assert os.path.isfile(fn)
 
+us_state_codes = [
+    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+    'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+    'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+    'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
+    'DC'
+]
 
 #%% Initialize taxonomy functions
 
@@ -70,9 +78,40 @@ for s in rows:
     print(s)
 
 
+#%% Generate a block-except list
+
+block_except_list = 'AUS'
+species = 'potoroidae'
+species_string = taxonomy_handler.species_string_to_canonical_species_string(species)
+rows = taxonomy_handler.generate_csv_rows_to_block_all_countries_except(species_string,block_except_list)
+
+# import clipboard; clipboard.copy('\n'.join(rows))
+
+for s in rows:
+    print(s)
+
+
+#%% Generate a block-except list for states
+
+block_states_except = ['NJ','DE']
+
+species = 'sika deer'
+species_string = taxonomy_handler.species_string_to_canonical_species_string(species)
+
+rows = []
+
+for state_code in us_state_codes:
+    if state_code in block_states_except:
+        row = species_string + ',allow,USA,' + state_code
+    else:
+        row = species_string + ',block,USA,' + state_code
+    rows.append(row)
+
+# import clipboard; clipboard.copy('\n'.join(rows))
+
 #%% Generate an allow-list
 
-taxon_name = 'potoroidae'
+taxon_name = 'species_to_allow'
 taxonomy_info = taxonomy_handler.binomial_name_to_taxonomy_info[taxon_name]
 taxonomy_string_short = taxonomy_info_to_taxonomy_string(taxonomy_info)
 assert len(taxonomy_string_short.split(';')) == 5

@@ -1378,7 +1378,7 @@ class TaxonomyHandler:
         """
         Generate rows in the format expected by geofence_fixes.csv, representing a list of
         allow and block rules to block all countries currently allowed for this species
-        except [allow_countries], and add allow rules these countries.
+        except [block_except_list], and add allow rules for these countries.
 
         Args:
             species_string (str): five-token taxonomy string
@@ -1424,8 +1424,8 @@ class TaxonomyHandler:
                 countries_to_allow.append(country)
 
         rows = self.generate_csv_rows_for_species(species_string,
-                                             allow_countries=countries_to_allow,
-                                             block_countries=countries_to_block)
+                                                  allow_countries=countries_to_allow,
+                                                  block_countries=countries_to_block)
 
         return rows
 
@@ -1631,31 +1631,73 @@ class TaxonomyHandler:
         # Now let's see whether we have to deal with any regional rules.
         #
         # Right now regional rules only exist for the US.
-        if (country_code == 'USA') and ('USA' in geofencing_rules_this_species[rule_type]):
+        if (country_code == 'USA'):
 
-            if state is None:
+            usa_blocked = False
+            usa_allowed = False
+            state_blocked = False
+            state_allowed = False
+            other_states_blocked = False
+            other_states_allowed = False
 
-                state_list = geofencing_rules_this_species[rule_type][country_code]
-                if len(state_list) > 0:
-                    assert status.startswith('allow')
-                    status = 'allow_no_state'
+            for rule_type in ('block','allow'):
 
-            else:
+                if rule_type not in geofencing_rules_this_species:
+                    continue
 
-                state_list = geofencing_rules_this_species[rule_type][country_code]
+                if (country_code in geofencing_rules_this_species[rule_type]):
 
-                if state in state_list:
-                    # If the state is on the list, do what the list says
-                    if rule_type == 'allow':
-                        status = 'allow_on_state_allow_list'
+                    state_list = geofencing_rules_this_species[rule_type][country_code]
+
+                    # If this rule doesn't have any associated states, it applies
+                    # to the whole country
+                    if len(state_list) == 0:
+                        if rule_type == 'block':
+                            usa_blocked = True
+                        else:
+                            assert rule_type == 'allow'
+                            usa_allowed = True
+                        continue
+
+                    if state is not None:
+
+                        # We have a state, and a list of states for this rule
+                        if state in state_list:
+                            if rule_type == 'block':
+                                state_blocked = True
+                            else:
+                                state_allowed = True
+                        else:
+                            if rule_type == 'block':
+                                other_states_blocked = True
+                            else:
+                                other_states_allowed = True
+
                     else:
-                        status = 'block_on_state_block_list'
-                else:
-                    # If the state is not on the list, do the opposite of what the list says
-                    if rule_type == 'allow':
-                        status = 'block_not_on_state_allow_list'
-                    else:
-                        status = 'allow_not_on_state_block_list'
+
+                        # We have a list of states for this rule, but no state to apply it to
+                        #
+                        # Treat this as allowing the whole country
+                        usa_allowed = True
+
+                # ...if we have a USA rule of this type
+
+            # ...for block/allow
+
+            if usa_blocked:
+                status = 'block_usa_wide'
+            elif usa_allowed:
+                status = 'allow_usa_wide'
+            elif state_blocked:
+                status = 'block_by_state'
+            elif state_allowed:
+                status = 'allow_by_state'
+            elif other_states_blocked:
+                status = 'allow_other_states_blocked'
+            elif other_states_allowed:
+                status = 'block_other_states_allowed'
+
+        # ...if the country code we're analyzing is "USA"
 
         if return_status:
             return status
@@ -1726,9 +1768,9 @@ class TaxonomyHandler:
                 if len(tokens) > 1:
                     state_code = tokens[1]
                 allowed = self.species_allowed_in_country(species=taxon,
-                                                     country=country_code,
-                                                     state=state_code,
-                                                     return_status=False)
+                                                          country=country_code,
+                                                          state=state_code,
+                                                          return_status=False)
                 if allowed:
                     n_allowed += 1
                     df.loc[taxon,region] = 1
