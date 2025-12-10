@@ -23,8 +23,8 @@ This document shows you how to run these scripts.
 
 The instructions on this page assume that:
 
-1. You've followed the [MegaDetector environment setup instructions], and that you're at your Mambaforge prompt, in the root folder of the MegaDetector repo.
-2. You have a .json file that was produced by [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector_batch.py). 
+1. You've followed the [MegaDetector environment setup instructions](https://github.com/agentmorris/MegaDetector/blob/main/megadetector.md#install-the-megadetector-python-package), and you're at your Miniforge prompt.
+2. You have a .json file that was produced by [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector_batch.py) (or by [AddaxAI](https://addaxdatascience.com/addaxai/)). 
 3. Your images are organized such that all the images from the same camera are in the same folder. For example, if you have images in `c:\my_images\2019\B1`, everything in `B1` comes from the same caemra.  This matters because we won't even compare images in this folder to images in `c:\my_images\2019\A1`.
 
 It's OK if a "camera" folder is some distance away from the bottom of your folder hierarchy.  So, for example, if the folders `c:\my_images\2019\B1\RECNYX100` and `c:\my_images\2019\B1\RECNYX101` are from the same camera, that's OK.  If you do nothing special about this, nothing bad will happen, though you will lose some opportunity to find repeat detections that span those two folders.  We won't get into this in detail on this page, but in this case, you can use the `--nDirLevelsFromLeaf` option to tell the scripts that you want to call the `B1` folder a camera in this case (one folder level up from the bottom), rather than the lowest-level folders.
