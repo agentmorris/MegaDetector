@@ -805,6 +805,11 @@ def run_tiled_inference(model_file,
 
     print('Saving image-level results (after NMS) to {}'.format(output_file))
 
+    # Create the output directory if necessary
+    parent_dir = os.path.dirname(output_file)
+    if len(parent_dir) > 0:
+        os.makedirs(parent_dir, exist_ok=True)
+
     with open(output_file,'w') as f:
         json.dump(image_level_results,f,indent=1)
 
