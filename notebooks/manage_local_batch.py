@@ -1313,17 +1313,17 @@ if not run_tasks_in_notebook:
     from megadetector.utils.wi_taxonomy_utils import generate_predictions_json_from_md_results
 
     _ = generate_predictions_json_from_md_results(md_results_file=detection_results_file_for_crop_folder,
-                                                predictions_json_file=crop_detections_predictions_file,
-                                                base_folder=crop_folder)
+                                                  predictions_json_file=crop_detections_predictions_file,
+                                                  base_folder=crop_folder)
 
 
     # Generate a new instances.json file for the crops
 
     crop_instances = generate_instances_json_from_folder(folder=crop_folder,
-                                                        country=country_code,
-                                                        admin1_region=state_code,
-                                                        output_file=crop_instances_json,
-                                                        filename_replacements=None)
+                                                         country=country_code,
+                                                         admin1_region=state_code,
+                                                         output_file=crop_instances_json,
+                                                         filename_replacements=None)
 
     print('Generated {} instances for the crop folder (in file {})'.format(
         len(crop_instances['instances']),crop_instances_json))
