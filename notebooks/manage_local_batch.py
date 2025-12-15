@@ -1975,7 +1975,8 @@ data = None
 from megadetector.postprocessing.subset_json_detector_output import \
     subset_json_detector_output, SubsetJsonDetectorOutputOptions
 
-input_filename = filtered_output_filename
+# input_filename = output_fn_abs
+input_filename = '/a/b/c/file.json'
 output_base = path_join(combined_api_output_folder,base_task_name + '_json_subsets')
 
 print('Processing file {} to {}'.format(input_filename,output_base))
