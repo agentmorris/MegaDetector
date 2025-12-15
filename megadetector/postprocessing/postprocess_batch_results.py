@@ -54,6 +54,7 @@ from megadetector.utils.ct_utils import args_to_object
 from megadetector.utils.ct_utils import sets_overlap
 from megadetector.utils.ct_utils import sort_dictionary_by_value
 from megadetector.utils.ct_utils import sort_dictionary_by_key
+from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.data_management.cct_json_utils import CameraTrapJsonUtils
 from megadetector.data_management.cct_json_utils import IndexedJsonDb
 from megadetector.postprocessing.load_api_results import load_api_results
@@ -247,6 +248,10 @@ class PostProcessingOptions:
         #: If classification results are present, should we include a summary of
         #: classification categories?
         self.include_classification_category_report = True
+
+        #: The category/count summary typically only includes category names, this
+        #: flag includes descriptions (typically taxonomic strings) as well.
+        self.include_category_descriptions_with_global_counts = False
 
     # ...__init__()
 
@@ -1597,8 +1602,11 @@ def process_batch_results(options):
             index_page += '<h3>Images of specific classes</h3><br/><div class="contentdiv">'
             # Add links to all available classes
             for cname in sorted(classname_to_idx.keys()):
+                cname_print_string = cname
+                if len(cname_print_string) == 0:
+                    cname_print_string = '[no name available]'
                 index_page += '<a href="class_{0}.html">{0}</a> ({1})<br>'.format(
-                    cname,
+                    cname_print_string,
                     len(images_html['class_{}'.format(cname)]))
             index_page += '</div>'
 
@@ -1936,8 +1944,11 @@ def process_batch_results(options):
                     category_names_printed.add(cname)
                     ccount = len(images_html['class_{}'.format(cname)])
                     if ccount > 0:
+                        cname_print_string = cname.lower()
+                        if len(cname_print_string) == 0:
+                            cname_print_string = '[no name available]'
                         index_page += '<a href="class_{}.html">{}</a> ({})<br/>\n'.format(
-                            cname, cname.lower(), ccount)
+                            cname, cname_print_string, ccount)
 
                 # ...for every category in this sort weight group
 
@@ -1961,6 +1972,15 @@ def process_batch_results(options):
                 d = load_md_or_speciesnet_file(options.md_results_file)
 
                 category_name_to_count = {}
+
+                include_category_descriptions_with_global_counts = \
+                    options.include_category_descriptions_with_global_counts
+                if 'classification_category_descriptions' not in d:
+                    include_category_descriptions_with_global_counts = False
+                else:
+                    category_id_to_name = d['classification_categories']
+                    category_name_to_id = invert_dictionary(category_id_to_name)
+                    category_id_to_description = d['classification_category_descriptions']
 
                 # im = d['images'][0]
                 for im in d['images']:
@@ -1992,7 +2012,12 @@ def process_batch_results(options):
 
                 for category_name in category_name_to_count.keys():
                     count = category_name_to_count[category_name]
-                    category_count_html = '{}: {}<br>\n'.format(category_name,count)
+                    category_count_html = '{}: {}'.format(category_name,count)
+                    if include_category_descriptions_with_global_counts:
+                        category_id = category_name_to_id[category_name]
+                        category_description = category_id_to_description[category_id]
+                        category_count_html += ' ({})'.format(category_description)
+                    category_count_html += '<br/>\n'
                     category_count_footer += category_count_html
 
                 category_count_footer += '</div>\n'

@@ -565,7 +565,9 @@ def generate_md_results_from_predictions_json(predictions_json_file,
                 class_to_assign = None
                 im_out['top_classification_common_name'] = top_classification_common_name
                 class_to_assign = im_in['prediction']
-                if convert_homo_species_to_human and class_to_assign.endswith('homo species'):
+                if convert_homo_species_to_human and \
+                    (('hominidae;homo' in class_to_assign) or \
+                     ('homo species') in class_to_assign):
                     class_to_assign = human_prediction_string
                 class_confidence = im_in['prediction_score']
 
