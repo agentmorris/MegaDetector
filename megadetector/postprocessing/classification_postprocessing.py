@@ -28,6 +28,9 @@ from megadetector.utils.ct_utils import sort_dictionary_by_key
 from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.utils.ct_utils import write_json
 
+from megadetector.postprocessing.validate_batch_results import \
+    validate_batch_results, ValidateBatchResultsOptions
+
 from megadetector.utils.wi_taxonomy_utils import clean_taxonomy_string
 from megadetector.utils.wi_taxonomy_utils import taxonomy_level_index
 from megadetector.utils.wi_taxonomy_utils import taxonomy_level_string_to_index
@@ -1829,12 +1832,200 @@ def restrict_to_taxa_list(taxa_list,
 # ...def restrict_to_taxa_list(...)
 
 
+def merge_classification_categories(target_file,
+                                    source_file,
+                                    output_file=None):
+    """
+    Modify the classification categories in [source file] to be compatible
+    with the categories in [target_file], optionally writing a new file.
+    Uses only category names, does not use category descriptions to decide
+    whether to merge categories.  Behavior is undefined if multiple source
+    categories have the same name.  Does not look at detection categories at
+    all.
+
+    Args:
+        target_file (str or dict): target .json file, in MD format (or an
+            already-loaded dict)
+        source_file (str): .json file to modify, in MD format (or an
+            already-loaded dict)
+        output_file (str, optional): .json file to which we should write a
+            modified version of [source_file]
+
+    Returns:
+        dict: remapped MD-formatted dict
+    """
+
+    ##%% Read input files
+
+    if isinstance(target_file,dict):
+        target_d = copy.deepcopy(target_file)
+    else:
+        assert os.path.isfile(target_file), \
+            'Could not find target file {}'.format(target_file)
+        with open(target_file,'r') as f:
+            target_d = json.load(f)
+
+    if isinstance(source_file,dict):
+        source_d = copy.deepcopy(source_file)
+    else:
+        assert os.path.isfile(source_file), \
+            'Could not find source file {}'.format(source_file)
+        with open (source_file,'r') as f:
+            source_d = json.load(f)
+
+
+    ##%% Map categories
+
+    target_category_id_to_name = {}
+    target_category_name_to_id = {}
+
+    input_category_id_to_output_category_id = {}
+
+    if 'classification_categories' in target_d:
+
+        target_category_id_to_name = target_d['classification_categories']
+        target_category_name_to_id = invert_dictionary(target_category_id_to_name)
+
+    if 'classification_categories' not in source_d:
+
+        print('Warning: merge_classification_categories called with no source classifications.')
+        print('This is legal, but this is a no-op.')
+
+    else:
+
+        for source_category_id in source_d['classification_categories']:
+
+            assert source_category_id not in input_category_id_to_output_category_id
+
+            category_name = source_d['classification_categories'][source_category_id]
+
+            # Does the target file have a category with the same name?
+            if category_name in target_category_name_to_id:
+
+                target_category_id = target_category_name_to_id[category_name]
+                input_category_id_to_output_category_id[source_category_id] = \
+                    target_category_id
+
+                print('Mapping category ID for existing category {} ({} to {})'.format(
+                    category_name,source_category_id,target_category_id))
+
+                # Print a warning if the descriptions don't match
+                if 'classification_category_descriptions' in target_d and \
+                    'classification_category_descriptions' in source_d:
+
+                    target_description = \
+                        target_d['classification_category_descriptions'][target_category_id]
+                    source_description = \
+                        source_d['classification_category_descriptions'][source_category_id]
+
+                    # If both descriptions look like SpeciesNet taxon strings, omit the GUID from
+                    # the descriptions for comparison
+                    if len(target_description.split(';')) == 7 and \
+                       len(source_description.split(';')) == 7:
+                       target_description = ';'.join((target_description.split(';'))[1:])
+                       source_description = ';'.join((source_description.split(';'))[1:])
+
+                    if target_description != source_description:
+                        print('Warning: merging categories for {} with different descriptions:'.format(
+                            category_name))
+                        print('Source {}: {}'.format(source_category_id,source_description))
+                        print('Target {}: {}'.format(target_category_id,target_description))
+
+            else:
+
+                # Create a new category
+
+                target_category_ids = list(target_category_id_to_name.keys())
+                if len(target_category_ids) == 0:
+                    new_category_id = '0'
+                else:
+                    target_category_ids = [int(x) for x in target_category_ids]
+                    new_category_id = str(max(target_category_ids)+1)
+
+                print('Creating a new category for {} ({})'.format(category_name,new_category_id))
+
+                target_category_id_to_name[new_category_id] = category_name
+                target_category_name_to_id = invert_dictionary(target_category_id_to_name)
+
+                input_category_id_to_output_category_id[source_category_id] = new_category_id
+
+                # Add the description only if the target file has descriptions
+                if 'classification_category_descriptions' in target_d and \
+                    'classification_category_descriptions' in source_d:
+                    target_d['classification_category_descriptions'][new_category_id] = \
+                        source_d['classification_category_descriptions'][source_category_id]
+
+            # ...if we do/don't have a matching target category name
+
+        # ...for each source category
+
+    # ...if the source file has classifications
+
+
+    ##%% Modify images
+
+    for im in source_d['images']:
+
+        if 'detections' not in im or im['detections'] is None:
+            continue
+
+        for det in im['detections']:
+
+            if 'classifications' not in det:
+                continue
+
+            for classification in det['classifications']:
+                original_category = classification[0]
+                new_category = input_category_id_to_output_category_id[original_category]
+                classification[0] = new_category
+
+            # ...for each classification
+
+        # ...for each detection
+
+    # ...for each image
+
+
+    ##%% Copy output categories
+
+    source_d['classification_categories'] = target_d['classification_categories']
+    if 'classification_category_descriptions' in target_d:
+        source_d['classification_category_descriptions'] = \
+            target_d['classification_category_descriptions']
+    else:
+        if 'classification_category_descriptions' in source_d:
+            del source_d['classification_category_descriptions']
+
+
+    ##%% Validate output
+
+    validation_options = ValidateBatchResultsOptions()
+    validation_options.check_image_existence = False
+    validation_options.raise_errors = True
+    _ = validate_batch_results(json_filename=source_d,options=validation_options)
+
+
+    ##%% Write output if necessary
+
+    if output_file is not None:
+        write_json(output_file,source_d)
+
+    return source_d
+
+# ...def merge_classification_categories(...)
+
+
 def combine_redundant_classification_categories(input_file,
                                                 output_file=None,
                                                 classification_threshold=0.5):
     """
+    If [input_file] contains multiple categories with the same category name,
+    merges each equivalence class into a single category, optionally writing the results
+    to [output_file].
+
     Args:
-        input_file (str): .json file to read, in MD format
+        input_file (str or dict): .json file to read, in MD format (or an
+            already-loaded dict)
         output_file (str): .json file to write, in MD format
         classification_threshold (float, optional): only used when sorting
             descriptions by count
@@ -1845,11 +2036,13 @@ def combine_redundant_classification_categories(input_file,
 
     ##%% Read input file and list categories
 
-    assert os.path.isfile(input_file), \
-        'Input file {} not found'.format(input_file)
-
-    with open(input_file,'r') as f:
-        d = json.load(f)
+    if isinstance(input_file,dict):
+        d = input_file
+    else:
+        assert os.path.isfile(input_file), \
+            'Input file {} not found'.format(input_file)
+        with open(input_file,'r') as f:
+            d = json.load(f)
 
     input_category_name_to_ids = defaultdict(list)
 

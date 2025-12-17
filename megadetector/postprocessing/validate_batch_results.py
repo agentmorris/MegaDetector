@@ -72,7 +72,7 @@ def validate_batch_results(json_filename,options=None):
     Verify that [json_filename] is a valid MD output file.  Currently errors on invalid files.
 
     Args:
-        json_filename (str): the filename to validate
+        json_filename (str or dict): the filename to validate, or an already loaded results dict
         options (ValidateBatchResultsOptions, optional): all the parameters used to control this
             process, see ValidateBatchResultsOptions for details
 
@@ -85,17 +85,23 @@ def validate_batch_results(json_filename,options=None):
 
     """
 
+    validation_results = {}
+
     if options is None:
         options = ValidateBatchResultsOptions()
 
-    if options.verbose:
-        print('Loading results from {}'.format(json_filename))
+    if isinstance(json_filename,str):
+        if options.verbose:
+            print('Loading results from {}'.format(json_filename))
+        validation_results['filename'] = json_filename
+        with open(json_filename,'r') as f:
+            d = json.load(f)
+    else:
+        validation_results['filename'] = None
+        assert isinstance(json_filename,dict), \
+            'json_filename must be a filename or dict'
+        d = json_filename
 
-    with open(json_filename,'r') as f:
-        d = json.load(f)
-
-    validation_results = {}
-    validation_results['filename'] = json_filename
     validation_results['warnings'] = []
     validation_results['errors'] = []
 
@@ -188,6 +194,9 @@ def validate_batch_results(json_filename,options=None):
                         for c in det['classifications']:
                             assert isinstance(c[0],str), \
                                 'Image {} has an illegal classification category: {}'.format(file,c[0])
+                            assert c[0] in d['classification_categories'], \
+                                'Classification category {} appears in an image, but not in the category list'.format(
+                                    c[0])
                             try:
                                 _ = int(c[0])
                             except Exception:
