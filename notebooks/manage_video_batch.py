@@ -42,7 +42,8 @@ n_workers = 8
 # * Setting every_n_frames to -2.0 yields a frame rate of 0.5 fps
 # * Setting every_n_frames to -0.5 yields a frame rate of 2.0 fps
 #
-every_n_frames = 10
+# Default to 3fps
+every_n_frames = -0.333333333333
 
 video_filename_relative_to_fs = None
 
