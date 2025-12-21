@@ -317,6 +317,7 @@ if False:
     video_options.classification_confidence_threshold = 0.5
     video_options.rendering_fs = 'auto'
     video_options.fourcc = 'h264'
+    video_options.output_extension = 'mp4'
     video_options.trim_to_detections = True
 
     video_options.flatten_output = True
@@ -324,10 +325,13 @@ if False:
     video_options.parallelize_rendering_with_threads = \
         parallelization_uses_threads
 
-    _ = visualize_video_output(video_output_filename,
-                               out_dir='c:/temp/video-samples',
-                               video_dir=input_folder,
-                               options=video_options)
+    # Prepends filename with
+    video_options.include_category_names_in_filenames = 'start'
+
+    results = visualize_video_output(video_output_filename,
+                                     out_dir='c:/temp/video-samples',
+                                     video_dir=input_folder,
+                                     options=video_options)
 
 
     #%% Estimate the extracted size of a folder by sampling a few videos

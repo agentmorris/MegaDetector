@@ -24,6 +24,8 @@ import numpy as np
 from megadetector.data_management.annotations.annotation_constants import detector_bbox_category_id_to_name
 from megadetector.detection.video_utils import run_callback_on_frames, default_fourcc, is_video_file
 from megadetector.utils.path_utils import path_is_abs
+from megadetector.utils.path_utils import clean_filename
+from megadetector.utils.path_utils import insert_before_extension
 from megadetector.utils.wi_taxonomy_utils import load_md_or_speciesnet_file
 from megadetector.visualization.visualization_utils import render_detection_bounding_boxes
 
@@ -37,6 +39,8 @@ DEFAULT_DETECTOR_LABEL_MAP = {
 
 DEFAULT_CLASSIFICATION_THRESHOLD = 0.4
 DEFAULT_DETECTION_THRESHOLD = 0.15
+
+NO_FRAMES_STRING = 'No frames with detections to process'
 
 
 #%% Classes
@@ -72,7 +76,7 @@ class VideoVisualizationOptions:
 
         #: By default, output videos use the same extension as input videos,
         #: use this to force a particular extension
-        self.output_extension = None
+        self.output_extension = None # 'mp4'
 
         #: By default, relative paths are preserved in the output folder; this
         #: flattens the output structure.
@@ -94,6 +98,10 @@ class VideoVisualizationOptions:
         #: Use threads (True) vs processes (False) for parallelization
         self.parallelize_rendering_with_threads = True
 
+        #: Should we include classification category names in the output filenames?
+        #: Helps for finding showcase videos.  Can be "start", "end", or None.
+        self.include_category_names_in_filenames = None
+
 # ...class VideoVisualizationOptions
 
 
@@ -104,7 +112,8 @@ def _get_video_output_framerate(video_entry, original_framerate, rendering_fs='a
     Calculate the appropriate output frame rate for a video based on detection frame numbers.
 
     Args:
-        video_entry (dict): video entry from results file containing detections
+        video_entry (dict): video entry from results file, typically containing the key
+            'detections'
         original_framerate (float): original frame rate of the video
         rendering_fs (str or float): 'auto' for automatic calculation, negative float for
             speedup factor, positive float for explicit fps
@@ -267,6 +276,53 @@ def _get_detections_for_frame(video_entry, frame_number, confidence_threshold):
     return frame_detections
 
 
+def _get_classification_names(video_entry,classification_label_map,options):
+    """
+    Return the set of above-threshold classification category names in [video_entry].
+
+    video_entry (dict): video entry from results file, typically containing keys
+            'file', 'detections', and 'frame_rate'
+        detector_label_map (dict): mapping of detection category IDs to names
+        classification_label_map (dict): mapping of classification category IDs to names
+        options (VideoVisualizationOptions): processing options
+
+    Returns:
+        set: the above-threshold classification category names for this video,
+        an empty set if no above-threshold classifications are present
+    """
+
+    classification_names = set()
+
+    if ('detections' not in video_entry) or (video_entry['detections'] is None):
+        return classification_names
+
+    for det in video_entry['detections']:
+
+        if det['conf'] < options.confidence_threshold:
+            continue
+
+        if 'classifications' not in det:
+            continue
+
+        for classification in det['classifications']:
+
+            classification_category_id = classification[0]
+            classification_conf = classification[1]
+            if classification_conf < options.classification_confidence_threshold:
+                continue
+            classification_category_name = classification_label_map[classification_category_id]
+            classification_category_name = clean_filename(classification_category_name,force_lower=True)
+            classification_names.add(classification_category_name)
+
+        # ...for each classification
+
+    # ...for each detection
+
+    return classification_names
+
+# ...def _get_classification_names(...)
+
+
 def _process_video(video_entry,
                    detector_label_map,
                    classification_label_map,
@@ -277,7 +333,8 @@ def _process_video(video_entry,
     Process a single video, rendering detections on frames and creating output video.
 
     Args:
-        video_entry (dict): video entry from results file
+        video_entry (dict): video entry from results file, typically containing keys
+            'file', 'detections', and 'frame_rate'
         detector_label_map (dict): mapping of detection category IDs to names
         classification_label_map (dict): mapping of classification category IDs to names
         options (VideoVisualizationOptions): processing options
@@ -328,6 +385,17 @@ def _process_video(video_entry,
             ext = '.' + ext
         output_fn_relative = os.path.splitext(output_fn_relative)[0] + ext
 
+    if options.include_category_names_in_filenames is not None:
+        category_names = _get_classification_names(video_entry,classification_label_map,options)
+        if len(category_names) > 0:
+            category_names = '_'.join(sorted(list(category_names)))
+        else:
+            category_names = 'none'
+        if options.include_category_names_in_filenames == 'start':
+            output_fn_relative = category_names + '_' + output_fn_relative
+        else:
+            output_fn_relative = insert_before_extension(output_fn_relative,category_names)
+
     output_fn_abs = os.path.join(out_dir, output_fn_relative)
     parent_dir = os.path.dirname(output_fn_abs)
     if len(parent_dir) > 0:
@@ -338,7 +406,7 @@ def _process_video(video_entry,
                                                options.confidence_threshold,
                                                options.trim_to_detections)
     if len(frames_to_process) == 0:
-        result['error'] = 'No frames with detections to process'
+        result['error'] = NO_FRAMES_STRING
         return result
 
     # Determine output frame rate
@@ -594,13 +662,26 @@ def visualize_video_output(detector_output_path,
     # ...for each video
 
     # Print summary
-    successful = sum(1 for r in results if r['success'])
-    failed = len(results) - successful
+    n_empty = 0
+    n_failed = 0
+    n_successful = 0
+    for r in results:
+        if r['success']:
+            assert r['error'] is None
+            n_successful += 1
+        else:
+            assert r['error'] is not None
+            if NO_FRAMES_STRING in r['error']:
+                n_empty += 1
+            else:
+                n_failed += 1
+
     total_frames = sum(r['frames_processed'] for r in results if r['success'])
 
     print('\nProcessing complete:')
-    print(f'  Successfully processed: {successful} videos')
-    print(f'  Failed: {failed} videos')
+    print(f'  Successfully processed: {n_successful} videos')
+    print(f'  No above-threshold detections: {n_empty} videos')
+    print(f'  Failed: {n_failed} videos')
     print(f'  Total frames rendered: {total_frames}')
 
     return results
