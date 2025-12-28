@@ -1129,7 +1129,7 @@ def render_db_bounding_boxes(boxes,
 
         display_boxes.append([ymin, xmin, ymax, xmax])
 
-        if label_map:
+        if (label_map is not None) and (int(clss) in label_map):
             clss = label_map[int(clss)]
 
         display_str = str(clss)
@@ -1171,7 +1171,8 @@ def draw_bounding_boxes_on_file(input_file,
                                 label_font_size=DEFAULT_LABEL_FONT_SIZE,
                                 custom_strings=None,
                                 target_size=None,
-                                ignore_exif_rotation=False):
+                                ignore_exif_rotation=False,
+                                quality=None):
     """
     Renders detection bounding boxes on an image loaded from file, optionally writing the results to
     a new image file.
@@ -1198,6 +1199,7 @@ def draw_bounding_boxes_on_file(input_file,
             see resize_image() for documentation.  If None or (-1,-1), uses the original image size.
         ignore_exif_rotation (bool, optional): don't rotate the loaded pixels,
             even if we are loading a JPEG and that JPEG says it should be rotated.
+        quality (int, optional): jpeg quality to use for output (None to use PIL default)
 
     Returns:
         PIL.Image.Image: loaded and modified image
@@ -1220,9 +1222,14 @@ def draw_bounding_boxes_on_file(input_file,
             label_font_size=label_font_size)
 
     if output_file is not None:
-        image.save(output_file)
+        if quality is None:
+            image.save(output_file)
+        else:
+            image.save(output_file,quality=quality)
 
     return image
+
+# ...def draw_bounding_boxes_on_file(...)
 
 
 def draw_db_boxes_on_file(input_file,
@@ -1232,7 +1239,8 @@ def draw_db_boxes_on_file(input_file,
                           label_map=None,
                           thickness=DEFAULT_BOX_THICKNESS,
                           expansion=0,
-                          ignore_exif_rotation=False):
+                          ignore_exif_rotation=False,
+                          quality=None):
     """
     Render COCO-formatted bounding boxes (in absolute coordinates) on an image loaded from file,
     writing the results to a new image file.
@@ -1250,6 +1258,7 @@ def draw_db_boxes_on_file(input_file,
             detection
         ignore_exif_rotation (bool, optional): don't rotate the loaded pixels,
             even if we are loading a JPEG and that JPEG says it should be rotated
+        quality (int, optional): jpeg quality to use for output (None to use PIL default)
 
     Returns:
         PIL.Image.Image: the loaded and modified image
@@ -1268,7 +1277,10 @@ def draw_db_boxes_on_file(input_file,
                              thickness=thickness,
                              expansion=expansion)
 
-    image.save(output_file)
+    if quality is None:
+        image.save(output_file)
+    else:
+        image.save(output_file,quality=quality)
 
     return image
 
