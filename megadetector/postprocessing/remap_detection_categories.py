@@ -13,7 +13,6 @@ Currently only supports remapping detection categories, not classification categ
 
 import os
 import json
-import argparse
 
 from tqdm import tqdm
 
