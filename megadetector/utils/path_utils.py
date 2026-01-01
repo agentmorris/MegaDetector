@@ -283,7 +283,9 @@ def insert_before_extension(filename, s=None, separator='.'):
     if s is None or len(s) == 0:
         s = datetime.now().strftime('%Y.%m.%d.%H.%M.%S')
     name, ext = os.path.splitext(filename)
-    return f'{name}{separator}{s}{ext}'
+    output_string = f'{name}{separator}{s}{ext}'
+    assert output_string != filename, 'Input and output filenames are identical'
+    return output_string
 
 
 def split_path(path):

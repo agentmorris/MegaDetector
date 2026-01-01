@@ -208,13 +208,6 @@ postprocessing.remap\_detection\_categories module
    :show-inheritance:
    :exclude-members: main
 
-.. sphinx_argparse_cli::
-   :module: megadetector.postprocessing.remap_detection_categories
-   :func: main
-   :hook:
-   :prog: remap_detection_categories
-   :no_default_values:
-
 postprocessing.render\_detection\_confusion\_matrix module
 ----------------------------------------------------------
 

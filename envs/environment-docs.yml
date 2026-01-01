@@ -9,7 +9,7 @@ dependencies:
 - sphinx
 - sphinx-mdinclude
 - sphinx_rtd_theme
-- numpy
+- numpy<2.0
 - Pillow
 - tqdm
 - jsonpickle

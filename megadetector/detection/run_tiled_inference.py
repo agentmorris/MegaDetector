@@ -338,7 +338,12 @@ def in_place_nms(md_results, iou_thres=0.45, verbose=True):
 # ...in_place_nms()
 
 
-def _extract_tiles_for_image(fn_relative,image_folder,tiling_folder,patch_size,patch_stride,overwrite):
+def _extract_tiles_for_image(fn_relative,
+                             image_folder,
+                             tiling_folder,
+                             patch_size,
+                             patch_stride,
+                             overwrite):
     """
     Private function to extract tiles for a single image.
 
@@ -352,7 +357,8 @@ def _extract_tiles_for_image(fn_relative,image_folder,tiling_folder,patch_size,p
     error = None
     patches = []
 
-    image_name = path_utils.clean_filename(fn_relative,char_limit=None,force_lower=True)
+    image_name = path_utils.clean_filename(
+        fn_relative,char_limit=None,force_lower=True)
 
     try:
 
@@ -368,10 +374,12 @@ def _extract_tiles_for_image(fn_relative,image_folder,tiling_folder,patch_size,p
         # patch_xy = patch_boundaries[0]
         for patch_xy in patch_boundaries:
 
-            patch_info = extract_patch_from_image(im,patch_xy,patch_size,
-                                     patch_folder=tiling_folder,
-                                     image_name=image_name,
-                                     overwrite=overwrite)
+            patch_info = extract_patch_from_image(im,
+                                                  patch_xy,
+                                                  patch_size,
+                                                  patch_folder=tiling_folder,
+                                                  image_name=image_name,
+                                                  overwrite=overwrite)
             patch_info['source_fn'] = fn_relative
             patches.append(patch_info)
 
@@ -432,8 +440,9 @@ def run_tiled_inference(model_file,
     Optionally removes the temporary tiles.
 
     if yolo_inference_options is supplied, it should be an instance of YoloInferenceOptions; in
-    this case the model will be run with run_inference_with_yolov5_val.  This is typically used to
-    run the model with test-time augmentation.
+    this case the model will be run with run_inference_with_yolov5_val.  The following members
+    in the YoloInference options object will be over-written by the corresponding parameters to
+    this function: input_folder, model_filename, output_file.
 
     Args:
         model_file (str): model filename (ending in .pt), or a well-known model name (e.g. "MDV5A")
@@ -505,8 +514,11 @@ def run_tiled_inference(model_file,
     if image_list is None:
 
         print('Enumerating images in {}'.format(image_folder))
-        image_files_relative = path_utils.find_images(image_folder, recursive=True, return_relative_paths=True)
-        assert len(image_files_relative) > 0, 'No images found in folder {}'.format(image_folder)
+        image_files_relative = path_utils.find_images(image_folder,
+                                                      recursive=True,
+                                                      return_relative_paths=True)
+        assert len(image_files_relative) > 0, 'No images found in folder {}'.format(
+            image_folder)
 
     else:
 
@@ -547,7 +559,11 @@ def run_tiled_inference(model_file,
         # fn_relative = image_files_relative[0]
         for fn_relative in tqdm(image_files_relative):
             image_patch_info = \
-                _extract_tiles_for_image(fn_relative,image_folder,tiling_folder,patch_size,patch_stride,
+                _extract_tiles_for_image(fn_relative,
+                                         image_folder,
+                                         tiling_folder,
+                                         patch_size,
+                                         patch_stride,
                                          overwrite=overwrite_tiles)
             all_image_patch_info.append(image_patch_info)
 
@@ -605,7 +621,12 @@ def run_tiled_inference(model_file,
     # When running with run_inference_with_yolov5_val, we'll pass the folder
     if yolo_inference_options is not None:
 
-        patch_level_output_file = os.path.join(tiling_folder,folder_name + '_patch_level_results.json')
+        patch_level_output_file = os.path.join(tiling_folder,
+                                               folder_name + '_patch_level_results.json')
+
+        if yolo_inference_options.augment != augment:
+            print('Warning: augment parameter is {}, but yolo options augment says {}'.format(
+                augment,yolo_inference_options.augment))
 
         if yolo_inference_options.model_filename is None:
             yolo_inference_options.model_filename = model_file
@@ -618,6 +639,10 @@ def run_tiled_inference(model_file,
         yolo_inference_options.output_file = patch_level_output_file
 
         run_inference_with_yolo_val(yolo_inference_options)
+        if yolo_inference_options.preview_yolo_command_only:
+            print('Previewed YOLO command, exiting')
+            return None
+
         with open(patch_level_output_file,'r') as f:
             patch_level_results = json.load(f)
 
@@ -646,7 +671,8 @@ def run_tiled_inference(model_file,
                                                         verbose_output=verbose,
                                                         loader_workers=loader_workers)
 
-        patch_level_output_file = os.path.join(tiling_folder,folder_name + '_patch_level_results.json')
+        patch_level_output_file = os.path.join(tiling_folder,
+                                               folder_name + '_patch_level_results.json')
 
         patch_level_results = write_results_to_file(inference_results,
                                                     patch_level_output_file,
