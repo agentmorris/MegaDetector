@@ -57,11 +57,15 @@ E1
 
 Two dependencies - yolov9pip and clipboard - give this warning during pip installation:<br/><br/>
 
-DEPRECATION: Building 'yolov9pip' using the legacy setup.py bdist_wheel mechanism, which will be removed in a future version. pip 25.3 will enforce this behaviour change. A possible replacement is to use the standardized build interface by setting the `--use-pep517` option, (possibly combined with `--no-build-isolation`), or adding a `pyproject.toml` file to the source tree of 'yolov9pip'. Discussion can be found at https://github.com/pypa/pip/issues/6334
+DEPRECATION: Building 'yolov9pip' using the legacy setup.py bdist_wheel mechanism, which will be removed in a future version. pip 25.3 will enforce this behaviour change. A possible replacement is to use the standardized build interface by setting the `--use-pep517` option, (possibly combined with `--no-build-isolation`), or adding a `pyproject.toml` file to the source tree of 'yolov9pip'. Discussion can be found [here](https://github.com/pypa/pip/issues/6334).
+
+The yolov9pip part of this is a moot issue if I decide to remove the yolov9pip dependency, and the clipboard dependency is just for development.  Hence P2.
 
 P2
 
 E2
+
+!also-see[remove-yolov9-dependency]
 
 !maintenance
 
@@ -167,7 +171,7 @@ E0
 
 compare_batch_results supports comparing detections, but not species classifications.  Add support for species classification results.
 
-P3
+P1
 
 E2
 
@@ -275,6 +279,7 @@ E2
 
 !feature
 
+
 ## Tiled inference exploration
 
 Though the MD package has support for running inference on small patches and stitching the results together via [run_tiled_inference.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_tiled_inference.py), [SAHI](https://github.com/obss/sahi), does the same thing, only with far more thought.  It would be useful to do a thorough evaluation of SAHI applied to MD, to compare the results against run_tiled_inference, and assess the scenarios where tiled inference makes sense, particularly for small objects in high-resolution images (e.g. finding geckos, or faraway ungulates).
@@ -315,7 +320,7 @@ E2
 
 ## Organize COCO and iNat boxes for future training
 
-MDv5a used COCO and iNat boxes; MDv5b and MD1000 do not.  Overall performance on camera trap images is better without COCO and iNat data, but there are some scenarios where the inclusion of this data improves performance, and even more scenarios where it improves detection.  I would like to re-create the equivalent of MDv5b for the MDv1000 family, which requires curating the human/animal/vehicle subset of COCO, and the "animals that might plausibly appear in camera trap images" subset of the [iNat 2017 challenge dataset](https://www.inaturalist.org/projects/inat-2017-challenge-dataset).  The latter is somewhat involved; conceptually, it includes, e.g., mammals, but not whales, and maybe not bats (at least as they might appear in iNat data), and it includes reptiles, but not, e.g., tiny geckos.
+MDv5a used COCO and iNat boxes; MDv5b and MD1000 do not.  Overall performance on camera trap images is better without COCO and iNat data, but there are some scenarios where the inclusion of this data improves accuracy, and even more scenarios where it improves "vibes" (i.e., creates less annoying types of false positives).  I would like to re-create the equivalent of MDv5b for the MDv1000 family, which requires curating the human/animal/vehicle subset of COCO, and the "animals that might plausibly appear in camera trap images" subset of the [iNat 2017 challenge dataset](https://www.inaturalist.org/projects/inat-2017-challenge-dataset).  The latter is somewhat involved; conceptually, it includes, e.g., mammals, but not whales, and maybe not bats (at least as they might appear in iNat data), and it includes reptiles, but not, e.g., tiny geckos.
 
 P1
 
@@ -399,9 +404,11 @@ E2
 
 visualize_video_output renders videos with MD/classifier results.  Currently there is no support for controlling the size or quality of output videos.
 
+Bumped from E1 to E3 when I realized that this is mostly a limitation of OpenCV; adding quality support would mostly require re-rendering with ffmpeg.
+
 P3
 
-E1
+E3
 
 !feature
 
@@ -434,9 +441,10 @@ E2
 
 ## Output format refinements
 
-There are a few things I'd like to do to clean up the output format:
+There are a few things I'd like to do to clean up the output format the next time I rev the version:
 
 * Require that detections get sorted in descending order by confidence
+* Assess whether unique classification category names should be required
 * Make a decision on whether "detections" should be absent or null when "failure" is present
 * Make a decision on whether "failure" should be absent or null when detections are present
 
@@ -481,7 +489,7 @@ E2
 
 ## Re-evaluate "modern" postprocessing
 
-At the time I added the "modern" postprocessing approach, it super-duper agreed with yolov5’s val.py; add a test back to make sure this is still the case.
+At the time I added the "modern" postprocessing approach, it super-duper agreed with yolov5’s val.py; add a test back to make sure this is still the case.  Also assess whether it accuracy is better with "classic" or "modern" preprocessing on the MD val set, for all the models that matter.
 
 P2
 
@@ -492,7 +500,7 @@ E2
 
 ## Support batch inference for video
 
-run_detector_batch supports batch inference (for GPUs); process_video does not.  It's OK if we support batching within a video, but not across videos if that significantly simplifies implementation.
+run_detector_batch supports batch inference (for GPUs); process_video does not.  The requirement is only to support batching within a video, it's OK if an incomplete batch runs at the end of each video if it simplifies implementation.
 
 P2
 
@@ -663,7 +671,7 @@ E1
 
 Nothing is "wrong" with the [MegaDetector Colab](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/megadetector_colab.ipynb), but it hasn't been updated in a while.  It doesn't mention MDv1000 or SpeciesNet; it would be helpful to just give the Colab a once-over, make sure it's still in good shape, and add optional cells that demonstrate MDv1000 use and SpeciesNet inference (via run_md_and_speciesnet).
 
-P1
+P0
 
 E2
 
@@ -762,7 +770,7 @@ E1
 
 ## Standardized cast consistency in docs for CLI arguments
 
-There is inconsistent casing in CLI arguments, fix this
+There is inconsistent casing in CLI arguments, fix this.
 
 P4
 
@@ -928,11 +936,13 @@ E2
 
 ## Consider removing yolov9-pip dependency
 
-The megadetector package takes a dependency on yolov9pip, even though I don't think a lot of people will use MDv1000-cedar.  It would simplify installation if we removed this dependency, and asked users to install yolov9pip when they want to use MDv1000-cedar, like we do for MDv1000-larch.
+The megadetector package takes a dependency on yolov9pip, even though I don't think a lot of people will use MDv1000-cedar.  It would simplify installation if we removed this dependency, and asked users to install yolov9pip when they want to use MDv1000-cedar, like we do for MDv1000-larch.  The action item here is just to sit and think about this (E1), then do it if I decide to do it (E0).
 
 P1
 
 E1
+
+!name[remove-yolov9-dependency]
 
 !admin
 
@@ -991,9 +1001,9 @@ manage_local_batch contains a check indicating that preprocess_on_image_queue is
 
 "Standalone preprocessing is not yet supported for "modern" preprocessing"
 
-I'm not sure these are still incompatible; double-check on this.
+I'm not sure these are still incompatible; double-check on this.  This is P3 in as much as it concerns the notebook, P1 because I'm increasingly using "modern" preprocessing and want to make sure it's compatible with all the same options that "classic" preprocessing supports.
 
-P3
+P1
 
 E0
 
