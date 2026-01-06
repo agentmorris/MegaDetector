@@ -57,11 +57,15 @@ E1
 
 Two dependencies - yolov9pip and clipboard - give this warning during pip installation:<br/><br/>
 
-DEPRECATION: Building 'yolov9pip' using the legacy setup.py bdist_wheel mechanism, which will be removed in a future version. pip 25.3 will enforce this behaviour change. A possible replacement is to use the standardized build interface by setting the `--use-pep517` option, (possibly combined with `--no-build-isolation`), or adding a `pyproject.toml` file to the source tree of 'yolov9pip'. Discussion can be found at https://github.com/pypa/pip/issues/6334
+DEPRECATION: Building 'yolov9pip' using the legacy setup.py bdist_wheel mechanism, which will be removed in a future version. pip 25.3 will enforce this behaviour change. A possible replacement is to use the standardized build interface by setting the `--use-pep517` option, (possibly combined with `--no-build-isolation`), or adding a `pyproject.toml` file to the source tree of 'yolov9pip'. Discussion can be found [here](https://github.com/pypa/pip/issues/6334).
+
+The yolov9pip part of this is a moot issue if I decide to remove the yolov9pip dependency, and the clipboard dependency is just for development.  Hence P2.
 
 P2
 
 E2
+
+!also-see[remove-yolov9-dependency]
 
 !maintenance
 
@@ -87,6 +91,16 @@ E2
 
 !feature
 
+
+## Simplify command-line execution of run_md_and_speciesnet in manage_local_batch
+
+In manage_local_batch.py, when we're not running SpeciesNet directly in the notebook, we first write all the crops to disk, then do a complicated series of transformations to use run_model.py.  This code was written before run_md_and_speciesnet existed; simplify all of this into a single cell that just generates a script to run run_md_and_speciesnet.
+
+P1
+
+E1
+
+!feature
 
 ## Allow excluding blanks in postprocessing
 
@@ -157,7 +171,7 @@ E0
 
 compare_batch_results supports comparing detections, but not species classifications.  Add support for species classification results.
 
-P3
+P1
 
 E2
 
@@ -234,9 +248,13 @@ E2
 
 In certain Apple silicon environments, MD produces incorrect results.  This is not specific to MD, this is a bug in YOLOv5.  See [this issue](https://github.com/ultralytics/yolov5/issues/12654) and [this question](https://github.com/ultralytics/yolov5/issues/12645) on the YOLOv5 repo for details and status.  As of 2025.10.29, this appears to be limited to a very narrow range of M1 Pro silicon (not M2/M3/M4, not M1 non-Pro, and not even all M1 Pro machines).  Because it's so rare, and because M1s are slowly disappearing from the universe, the goal here is not so much to fix it, rather to reliably identify this issue and disable MPS acceleration on impacted machines. but it's so rare that although it's reliably reproducible where it occurs, I don't have an easy way to identify impacted machines.
 
+This was a P0 E3, but as of 2025.11.07, it appears that this issue is resolved by upgrading to the most recent version of MacOS and to PyTorch 2.9.  Reducing to E1 because the only items left to do here is to  put a finer point on the minimum required OS/PyTorch versions for MPS inference.
+
 P0
 
-E3
+S-5
+
+E1
 
 !bug
 
@@ -260,6 +278,7 @@ P3
 E2
 
 !feature
+
 
 ## Tiled inference exploration
 
@@ -301,7 +320,7 @@ E2
 
 ## Organize COCO and iNat boxes for future training
 
-MDv5a used COCO and iNat boxes; MDv5b and MD1000 do not.  Overall performance on camera trap images is better without COCO and iNat data, but there are some scenarios where the inclusion of this data improves performance, and even more scenarios where it improves detection.  I would like to re-create the equivalent of MDv5b for the MDv1000 family, which requires curating the human/animal/vehicle subset of COCO, and the "animals that might plausibly appear in camera trap images" subset of the [iNat 2017 challenge dataset](https://www.inaturalist.org/projects/inat-2017-challenge-dataset).  The latter is somewhat involved; conceptually, it includes, e.g., mammals, but not whales, and maybe not bats (at least as they might appear in iNat data), and it includes reptiles, but not, e.g., tiny geckos.
+MDv5a used COCO and iNat boxes; MDv5b and MD1000 do not.  Overall performance on camera trap images is better without COCO and iNat data, but there are some scenarios where the inclusion of this data improves accuracy, and even more scenarios where it improves "vibes" (i.e., creates less annoying types of false positives).  I would like to re-create the equivalent of MDv5b for the MDv1000 family, which requires curating the human/animal/vehicle subset of COCO, and the "animals that might plausibly appear in camera trap images" subset of the [iNat 2017 challenge dataset](https://www.inaturalist.org/projects/inat-2017-challenge-dataset).  The latter is somewhat involved; conceptually, it includes, e.g., mammals, but not whales, and maybe not bats (at least as they might appear in iNat data), and it includes reptiles, but not, e.g., tiny geckos.
 
 P1
 
@@ -385,9 +404,11 @@ E2
 
 visualize_video_output renders videos with MD/classifier results.  Currently there is no support for controlling the size or quality of output videos.
 
+Bumped from E1 to E3 when I realized that this is mostly a limitation of OpenCV; adding quality support would mostly require re-rendering with ffmpeg.
+
 P3
 
-E1
+E3
 
 !feature
 
@@ -398,18 +419,18 @@ E1
 * Add test results for MD1000 models: MD's test harness only has results for MDv5, so it tests the not-crashing-ness of the other models, but it does not test correctness.  Add test results for other MD1000 models.
 * Vehicle images: none of the test images include vehicles; add vehicle images to testing, including human/vehicle and animal/vehicle images
 * Images with lat/lon information in EXIF metadata; make sure EXIF extraction (especially GPS location) is working correctly.
-* The "magic zebra image" that causes problems on M1 Pro machines
+* The "magic zebra image" that causes problems on M1 Pro machines; this should be called out as a dedicated single-command test case
 
 P0
 
-E2
+E1
 
 !testing
 
 
 ## Test coverage improvements
 
-This is a placeholder for generally evaluating md_tests and the pytest harness, and deciding which scripts need additional testing.  Effort is highly variable; for example, adding tests for run_speciesnet_and_md is important and very easy.  Adding tests for postprocess_batch_results that actually verify correctness is a pain.  This work item almost certainly starts with asking AI what modules are not covered (or poorly covered) by tests.
+This is a placeholder for generally evaluating md_tests and the pytest harness, and deciding which scripts need additional testing.  Effort is highly variable; for example, adding tests for run_md_and_speciesnet is important and very easy.  Adding tests for postprocess_batch_results that actually verify correctness is a pain.  This work item almost certainly starts with asking AI what modules are not covered (or poorly covered) by tests.
 
 P1
 
@@ -418,35 +439,12 @@ E2
 !testing
 
 
-## Add checkpointing to run_speciesnet_and_md
-
-run_speciesnet_and_md does not currently have the same checkpointing support that run_detector_batch has.  The core functionality is there for the detection step, because it's built in to run_detector_batch, but this needs to be exposed to the CLI.  Equivalent functionality needs to be added for the classification step.
-
-P0
-
-E1
-
-!feature
-
-
-## Add classification smoothing to run_speciesnet_and_md
-
-run_speciesnet_and_md does not currently incorporate sequence-/image-level classification smoothing.  Add this.
-
-P0
-
-E1
-
-!feature
-!speciesnet
-!name[run_speciesnet_and_md-smoothing]
-
-
 ## Output format refinements
 
-There are a few things I'd like to do to clean up the output format:
+There are a few things I'd like to do to clean up the output format the next time I rev the version:
 
 * Require that detections get sorted in descending order by confidence
+* Assess whether unique classification category names should be required
 * Make a decision on whether "detections" should be absent or null when "failure" is present
 * Make a decision on whether "failure" should be absent or null when detections are present
 
@@ -471,7 +469,11 @@ YOLO5 depends on the [pkg_resources](https://setuptools.pypa.io/en/latest/pkg_re
 
 It's not clear what exactly will happen when this is deprecated.  The action item here is to assess that, and do something about it.
 
-P0
+In 2025.01.06, I reviewed this and dropped it from P0 to P1, and elevated the effort from E1 to E2.  pkg_resources isn't used much in the ultralytics-yolov5 package, but it's also not used in an esoteric corner of the package that will never be imported during normal MD use.  Specifically, it's imported in utils/general.py and loggers/__init__.py.  Both would be easy to replace with newer dependencies, but given that the repo from which this package was built is way out of date, and that there are a few other tiny things I'd love to fix anyway (e.g. the NMS timeout issue), the "right" solution would be to create a new package called something like "md-ultralytics-yolov5", fix all the things I want to fix (including the pkg_resources issue), and take a dependency on that.  But that's a hassle, so I won't do that unless this stops working.
+
+For posterity, the repo from which the [ultralytics-yolov5](https://pypi.org/project/ultralytics-yolov5) package builds is the [AushExcel/yolov5](https://github.com/AyushExel/yolov5) repo.  I created a snapshot of this repo at [agentmorris/ultralytics-yolov5](https://github.com/agentmorris/ultralytics-yolov5).  If this becomes a breaking issue, that's the repo from which I will create a new package.
+
+P1
 
 E2
 
@@ -491,7 +493,7 @@ E2
 
 ## Re-evaluate "modern" postprocessing
 
-At the time I added the "modern" postprocessing approach, it super-duper agreed with yolov5’s val.py; add a test back to make sure this is still the case.
+At the time I added the "modern" postprocessing approach, it super-duper agreed with yolov5’s val.py; add a test back to make sure this is still the case.  Also assess whether it accuracy is better with "classic" or "modern" preprocessing on the MD val set, for all the models that matter.
 
 P2
 
@@ -502,7 +504,7 @@ E2
 
 ## Support batch inference for video
 
-run_detector_batch supports batch inference (for GPUs); process_video does not.  It's OK if we support batching within a video, but not across videos if that significantly simplifies implementation.
+run_detector_batch supports batch inference (for GPUs); process_video does not.  The requirement is only to support batching within a video, it's OK if an incomplete batch runs at the end of each video if it simplifies implementation.
 
 P2
 
@@ -518,6 +520,8 @@ YOLOv5 tells me that it's "fusing layers" twice during startup.  A little part o
 P0
 
 E1
+
+S-5
 
 !bug
 
@@ -634,17 +638,6 @@ E0
 !maintenance
 
 
-## Handle warnings about project.license at build time
-
-Building the megadetector and megadetector-utils packages yield the warning described in [this setuptools issue](https://github.com/pypa/setuptools/issues/4903).  Fix that.
-
-P1
-
-E0
-
-!maintenance
-
-
 ## Remove complex MKL requirements
 
 The dependencies currently specify an old version of MKL (2024.0) for all non-Darwin platforms, because of an incompatibility between some versions of MKL and some versions of PyTorch, described in [this PyTorch issue](https://github.com/pytorch/pytorch/issues/123097).  We can remove this quirky dependency if we require PyTorch >= 2.5, which at some point becomes a good idea anyway, supporting ancient versions of PyTorch complicates testing.  The action item here is mostly to think through the implications of requiring PyTorch >= 2.5.
@@ -656,11 +649,33 @@ E1
 !maintenance
 !admin
 
+
+## run_md_and_speciesnet improvements
+
+I'm treating all of the following as a single work item, because they're easier to tackle in a single session.
+
+* run_md_and_speciesnet does not currently have the same checkpointing support that run_detector_batch has.  The core functionality is there for the detection step, because it's built in to run_detector_batch, but this needs to be exposed to the CLI.  Equivalent functionality needs to be added for the classification step.
+* run_speciesnet_and_md does not currently incorporate sequence-/image-level classification smoothing.  Add this.  The core functionality already exists, it just needs to be added to run_md_and_speciesnet.
+* Add other options from run_detector_batch (e.g. image_size, augment, detector options).  No new functionality needs to be added, these can just be passed through to run_detector_batch.
+* Add support for custom taxonomy lists.  The core functionality already exists, it just needs to be added to run_md_and_speciesnet.
+* GPU utilization is not where I would like it to be during the classification step, though I have not compared it to run_model.  See whether GPU utilization goes up if I disable geofencing/rollup; if it does, push those back to the main process (which is currently just sitting idle) rather than the consumer process.
+* Run one-time testing of run_md_and_speciesnet against run_model.
+* Add permanent tests for run_md_and_speciesnet.
+
+Create new work items for anything from this list that doesn't get done.
+
+P0
+
+E1
+
+!feature
+
+
 ## Update Colab
 
 Nothing is "wrong" with the [MegaDetector Colab](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/megadetector_colab.ipynb), but it hasn't been updated in a while.  It doesn't mention MDv1000 or SpeciesNet; it would be helpful to just give the Colab a once-over, make sure it's still in good shape, and add optional cells that demonstrate MDv1000 use and SpeciesNet inference (via run_md_and_speciesnet).
 
-P1
+P0
 
 E2
 
@@ -759,7 +774,7 @@ E1
 
 ## Standardized cast consistency in docs for CLI arguments
 
-There is inconsistent casing in CLI arguments, fix this
+There is inconsistent casing in CLI arguments, fix this.
 
 P4
 
@@ -925,11 +940,13 @@ E2
 
 ## Consider removing yolov9-pip dependency
 
-The megadetector package takes a dependency on yolov9pip, even though I don't think a lot of people will use MDv1000-cedar.  It would simplify installation if we removed this dependency, and asked users to install yolov9pip when they want to use MDv1000-cedar, like we do for MDv1000-larch.
+The megadetector package takes a dependency on yolov9pip, even though I don't think a lot of people will use MDv1000-cedar.  It would simplify installation if we removed this dependency, and asked users to install yolov9pip when they want to use MDv1000-cedar, like we do for MDv1000-larch.  The action item here is just to sit and think about this (E1), then do it if I decide to do it (E0).
 
 P1
 
 E1
+
+!name[remove-yolov9-dependency]
 
 !admin
 
@@ -945,6 +962,28 @@ E1
 !feature
 
 
+## Move COCO formatting bells and whistles out of yolo_to_coco
+
+In a round of updates to yolo_to_coco, I added several parameters that are really just COCO postprocessing, i.e. they are not really specific to conversion from YOLO.  Specifically, I added the parameters "supercategory", "force_integer_ids", and "include_area".  These should be moved to a more general COCO postprocessing script.  These are specifically related to preparing COCO files for RF-DETR training.
+
+P3
+
+E1
+
+!feature
+
+
+## Add explanatory strings for every assertion
+
+Add explanatory strings for every assert() statement in the repo.
+
+P2
+
+E0
+
+!maintenance
+
+
 ## Address module-level globals in run_detector_batch and run_detector
 
 The DEFAULT_DETECTOR_LABEL_MAP module-level global variable in run_detector_batch is used to pass custom class mappings around; this is rare and not very important, but sloppy.
@@ -958,3 +997,31 @@ P4
 E2
 
 !maintenance
+
+
+## Modern preprocessing with image queue in notebook
+
+manage_local_batch contains a check indicating that preprocess_on_image_queue is incompatible with "modern" compatibility mode, look for:
+
+"Standalone preprocessing is not yet supported for "modern" preprocessing"
+
+I'm not sure these are still incompatible; double-check on this.  This is P3 in as much as it concerns the notebook, P1 because I'm increasingly using "modern" preprocessing and want to make sure it's compatible with all the same options that "classic" preprocessing supports.
+
+P1
+
+E0
+
+!maintenance
+
+
+## Python 3.14 support
+
+Python 3.14 is enabled on a [branch](https://github.com/agentmorris/MegaDetector/tree/py314-support).  Tests pass with no changes to code on all of my personal Windows and Linux machines, but fail on Windows on the GitHub Actions runner ([failed run](https://github.com/agentmorris/MegaDetector/actions/runs/19089542677/job/54536961503)).  Figure out what's up with this, and create a new work item that reflects whatever changes are required for Python 3.14 support.
+
+P0
+
+E1
+
+!maintenance
+
+

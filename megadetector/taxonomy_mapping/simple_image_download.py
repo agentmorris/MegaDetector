@@ -81,13 +81,15 @@ def scan_webpage(webpage, extensions, timer):
             object_raw = webpage[new_line + 1:buffer]
         else:
             object_raw = webpage[new_line + 1:SCANNER_COUNTER]
-        if any(extension in object_raw for extension in extensions):
+        if any(extension in object_raw for extension in extensions) or 'tbn0' in object_raw:
             found = True
             break
         counter += 1
     if found:
         object_ready = check_webpage(object_raw)
         return object_ready
+    else:
+        pass
 
 
 #%% Main class
@@ -152,7 +154,7 @@ class Downloader:
             SCANNER_COUNTER = -1
             url = urls_[i]
             path = self.generate_dir(search[i])
-            raw_html = self._download_page(url) # Download the entire page from the google Picture search
+            raw_html = self._download_page(url)
             for _ in range(limit+1):
                 webpage_url = scan_webpage(raw_html, self._extensions, timer)
                 if webpage_url:
@@ -172,7 +174,12 @@ class Downloader:
             print('==='*15 + ' < ' + 'NO PICTURES FOUND' + ' > ' + '==='*15)
         return cache_out
 
-    def download(self, keywords=None, limit=1, verbose=False, cache=True, download_cache=False,
+    def download(self,
+                 keywords=None,
+                 limit=1,
+                 verbose=False,
+                 cache=True,
+                 download_cache=False,
                  timer=None):
         if not download_cache:
             content = self.search_urls(keywords, limit, verbose, cache, timer)

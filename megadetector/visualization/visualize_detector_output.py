@@ -58,9 +58,13 @@ def _render_image(entry,
     Internal function for rendering a single image.
     """
 
-    rendering_result = {'failed_image':False,'missing_image':False,
-                        'skipped_image':False,'annotated_image_path':None,
-                        'max_conf':None,'file':entry['file']}
+    rendering_result = {'failed_image':False,
+                        'missing_image':False,
+                        'skipped_image':False,
+                        'annotated_image_path':None,
+                        'max_conf':None,
+                        'image_filename_in_abs':None,
+                        'file':entry['file']}
 
     image_id = entry['file']
 
@@ -89,6 +93,8 @@ def _render_image(entry,
         print(f'Image {image_id} not found')
         rendering_result['missing_image'] = True
         return rendering_result
+
+    rendering_result['image_filename_in_abs'] = image_filename_in_abs
 
     # Load the image
     image = vis_utils.open_image(image_filename_in_abs)
@@ -157,7 +163,8 @@ def visualize_detector_output(detector_output_path,
                               parallelize_rendering_n_cores=10,
                               parallelize_rendering_with_threads=True,
                               box_sort_order=default_box_sort_order,
-                              category_names_to_blur=None):
+                              category_names_to_blur=None,
+                              link_images_to_originals=False):
     """
     Draws bounding boxes on images given the output of a detector.
 
@@ -196,6 +203,8 @@ def visualize_detector_output(detector_output_path,
             "reverse_confidence"
         category_names_to_blur (list of str, optional): category names for which we should blur detections,
             most commonly ['person']
+        link_images_to_originals (bool, optional): include a link from every rendered image back to
+            the corresponding original image
 
     Returns:
         list: list of paths to annotated images
@@ -298,11 +307,18 @@ def visualize_detector_output(detector_output_path,
 
         for entry in tqdm(images):
 
-            rendering_result = _render_image(entry,detector_label_map,classification_label_map,
-                                            confidence_threshold,classification_confidence_threshold,
-                                            render_detections_only,preserve_path_structure,out_dir,
-                                            images_dir,output_image_width,box_sort_order,
-                                            category_names_to_blur=category_names_to_blur)
+            rendering_result = _render_image(entry,
+                                             detector_label_map,
+                                             classification_label_map,
+                                             confidence_threshold,
+                                             classification_confidence_threshold,
+                                             render_detections_only,
+                                             preserve_path_structure,
+                                             out_dir,
+                                             images_dir,
+                                             output_image_width,
+                                             box_sort_order,
+                                             category_names_to_blur=category_names_to_blur)
             rendering_results.append(rendering_result)
 
     # ...for each image
@@ -337,10 +353,13 @@ def visualize_detector_output(detector_output_path,
              'font-family:verdana,arial,calibri;font-size:80%;' + \
                  'text-align:left;margin-top:20;margin-bottom:5'
             d['title'] = '{} (max conf: {})'.format(r['file'],r['max_conf'])
+            if link_images_to_originals:
+                d['linkTarget'] = r['image_filename_in_abs']
             html_image_info.append(d)
 
-        _ = write_html_image_list.write_html_image_list(html_output_file,html_image_info,
-                                                    options=html_output_options)
+        _ = write_html_image_list.write_html_image_list(html_output_file,
+                                                        html_image_info,
+                                                        options=html_output_options)
 
     return annotated_image_paths
 

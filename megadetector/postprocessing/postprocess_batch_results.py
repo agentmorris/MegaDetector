@@ -35,6 +35,7 @@ from enum import IntEnum
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
 from functools import partial
+from collections import defaultdict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -52,6 +53,8 @@ from megadetector.utils import path_utils
 from megadetector.utils.ct_utils import args_to_object
 from megadetector.utils.ct_utils import sets_overlap
 from megadetector.utils.ct_utils import sort_dictionary_by_value
+from megadetector.utils.ct_utils import sort_dictionary_by_key
+from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.data_management.cct_json_utils import CameraTrapJsonUtils
 from megadetector.data_management.cct_json_utils import IndexedJsonDb
 from megadetector.postprocessing.load_api_results import load_api_results
@@ -114,8 +117,11 @@ class PostProcessingOptions:
         #: Typically used to preview sets with lots of empties, where you don't want to
         #: subset but also don't want to render 100,000 empty images.
         #:
+        #: Example strings that are valid for this option:
+        #:
         #: detections, non_detections
         #: detections_animal, detections_person, detections_vehicle
+        #: tn, tp, fn, fp
         self.rendering_bypass_sets = []
 
         #: If this is None, choose a confidence threshold based on the detector version.
@@ -199,14 +205,26 @@ class PostProcessingOptions:
         self.parallelize_rendering = False
 
         #: Number of threads/processes to use for rendering parallelization
-        self.parallelize_rendering_n_cores = 25
+        self.parallelize_rendering_n_cores = 16
 
         #: Whether to use threads (True) or processes (False) for rendering parallelization
         self.parallelize_rendering_with_threads = True
 
-        #: When classification results are present, should be sort alphabetically by class name (False)
-        #: or in descending order by frequency (True)?
+        #: When classification results are present, should be sort alphabetically by class
+        #: name (False) or in descending order by frequency (True)?
         self.sort_classification_results_by_count = False
+
+        #: When classification results are present, use this dictionary to push some
+        #: categories to the bottom of the list.  Larger numbers == later groups.
+        #: Default sort weight is zero.  Line breaks will separate equal sort weights.
+        #: Sort weights must be integers.
+        #:
+        #: In practice this is used to push generic categories like "blank", "animal",
+        #: and "unreliable" to the bottom of the list, like:
+        #:
+        #: options.category_name_to_sort_weight = \
+        #:     {'animal':1,'blank':1,'unknown':1,'unreliable':1,'mammal':1,'no cv result':1}
+        self.category_name_to_sort_weight = {}
 
         #: Should we split individual pages up into smaller pages if there are more than
         #: N images?
@@ -230,6 +248,10 @@ class PostProcessingOptions:
         #: If classification results are present, should we include a summary of
         #: classification categories?
         self.include_classification_category_report = True
+
+        #: The category/count summary typically only includes category names, this
+        #: flag includes descriptions (typically taxonomic strings) as well.
+        self.include_category_descriptions_with_global_counts = False
 
     # ...__init__()
 
@@ -1580,8 +1602,11 @@ def process_batch_results(options):
             index_page += '<h3>Images of specific classes</h3><br/><div class="contentdiv">'
             # Add links to all available classes
             for cname in sorted(classname_to_idx.keys()):
+                cname_print_string = cname
+                if len(cname_print_string) == 0:
+                    cname_print_string = '[no name available]'
                 index_page += '<a href="class_{0}.html">{0}</a> ({1})<br>'.format(
-                    cname,
+                    cname_print_string,
                     len(images_html['class_{}'.format(cname)]))
             index_page += '</div>'
 
@@ -1879,11 +1904,60 @@ def process_batch_results(options):
                     class_name_to_count[cname] = ccount
                 class_names = sorted(class_names,key=lambda x: class_name_to_count[x],reverse=True)
 
-            for cname in class_names:
-                ccount = len(images_html['class_{}'.format(cname)])
-                if ccount > 0:
-                    index_page += '<a href="class_{}.html">{}</a> ({})<br/>\n'.format(
-                        cname, cname.lower(), ccount)
+            if options.category_name_to_sort_weight is not None:
+                category_name_to_sort_weight = {}
+            else:
+                category_name_to_sort_weight = options.category_name_to_sort_weight
+                for category_name in category_name_to_sort_weight:
+                    assert isinstance(category_name_to_sort_weight[category_name],int), \
+                        'Illegal sort weight {} for category {}'.format(
+                            category_name_to_sort_weight[category_name],category_name)
+
+            # Figure out whether we need to do any grouping of categories
+            # while we print results
+
+            sort_weight_to_class_names = defaultdict(list)
+
+            # Loop over class names in the already-sorted order, which will be
+            # preserved within each weight group
+            for class_name in class_names:
+                if class_name in options.category_name_to_sort_weight:
+                    weight = options.category_name_to_sort_weight[class_name]
+                    sort_weight_to_class_names[weight].append(class_name)
+                else:
+                    # The default weight is zero
+                    sort_weight_to_class_names[0].append(class_name)
+
+            sort_weight_to_class_names = sort_dictionary_by_key(sort_weight_to_class_names)
+            category_names_printed = set()
+
+            for i_weight,sort_weight in enumerate(sort_weight_to_class_names):
+
+                class_names_this_weight = sort_weight_to_class_names[sort_weight]
+
+                for cname in class_names_this_weight:
+
+                    # Don't print multiple links when multiple category IDs have the same name
+                    if cname in category_names_printed:
+                        continue
+
+                    category_names_printed.add(cname)
+                    ccount = len(images_html['class_{}'.format(cname)])
+                    if ccount > 0:
+                        cname_print_string = cname.lower()
+                        if len(cname_print_string) == 0:
+                            cname_print_string = '[no name available]'
+                        index_page += '<a href="class_{}.html">{}</a> ({})<br/>\n'.format(
+                            cname, cname_print_string, ccount)
+
+                # ...for every category in this sort weight group
+
+                # Print a line break between sort weight groups
+                if i_weight != (len(sort_weight_to_class_names)-1):
+                    index_page += '<br/>\n'
+
+            # ...for every sort weight group
+
             index_page += '</div>\n'
 
             if options.include_classification_category_report:
@@ -1897,7 +1971,16 @@ def process_batch_results(options):
 
                 d = load_md_or_speciesnet_file(options.md_results_file)
 
-                classification_category_to_count = {}
+                category_name_to_count = {}
+
+                include_category_descriptions_with_global_counts = \
+                    options.include_category_descriptions_with_global_counts
+                if 'classification_category_descriptions' not in d:
+                    include_category_descriptions_with_global_counts = False
+                else:
+                    category_id_to_name = d['classification_categories']
+                    category_name_to_id = invert_dictionary(category_id_to_name)
+                    category_id_to_description = d['classification_category_descriptions']
 
                 # im = d['images'][0]
                 for im in d['images']:
@@ -1905,18 +1988,18 @@ def process_batch_results(options):
                         for det in im['detections']:
                             if ('classifications' in det) and (len(det['classifications']) > 0):
                                 class_id = det['classifications'][0][0]
-                                if class_id not in classification_category_to_count:
-                                    classification_category_to_count[class_id] = 1
+                                class_conf = det['classifications'][0][1]
+                                if class_conf < options.classification_confidence_threshold:
+                                    continue
+                                category_name = d['classification_categories'][class_id]
+                                if category_name not in category_name_to_count:
+                                    category_name_to_count[category_name] = 1
                                 else:
-                                    classification_category_to_count[class_id] = \
-                                        classification_category_to_count[class_id] + 1
-
-                category_name_to_count = {}
-
-                for class_id in classification_category_to_count:
-                    category_name = d['classification_categories'][class_id]
-                    category_name_to_count[category_name] = \
-                        classification_category_to_count[class_id]
+                                    category_name_to_count[category_name] = \
+                                        category_name_to_count[category_name] + 1
+                        # ...for each detection
+                    # ...if this image has detections
+                # ...for each image
 
                 category_name_to_count = sort_dictionary_by_value(
                     category_name_to_count,reverse=True)
@@ -1929,7 +2012,12 @@ def process_batch_results(options):
 
                 for category_name in category_name_to_count.keys():
                     count = category_name_to_count[category_name]
-                    category_count_html = '{}: {}<br>\n'.format(category_name,count)
+                    category_count_html = '{}: {}'.format(category_name,count)
+                    if include_category_descriptions_with_global_counts:
+                        category_id = category_name_to_id[category_name]
+                        category_description = category_id_to_description[category_id]
+                        category_count_html += ' ({})'.format(category_description)
+                    category_count_html += '<br/>\n'
                     category_count_footer += category_count_html
 
                 category_count_footer += '</div>\n'

@@ -18,7 +18,6 @@ MegaDetector model weights aren't downloaded at the time you install the package
 
 See [megadetector.readthedocs.io](https://megadetector.readthedocs.io).
 
-
 ## Examples of things you can do with this package
 
 ### Run MegaDetector on one image and count the number of detections
@@ -48,24 +47,23 @@ print('Found {} detections above threshold'.format(len(detections_above_threshol
 ```
 from megadetector.detection.run_detector_batch import \
     load_and_run_detector_batch, write_results_to_file
-from megadetector.utils import path_utils
-import os
 
-# Pick a folder to run MD on recursively, and an output file
-image_folder = os.path.expanduser('~/megadetector_test_images')
-output_file = os.path.expanduser('~/megadetector_output_test.json')
+# Choose a folder to run MD on recursively, and an output file
+image_folder = '/path/to/megadetector_test_images'
+output_file = '/path/to/output/file.json'
 
-# Recursively find images
-image_file_names = path_utils.find_images(image_folder,recursive=True)
+# The package will automatically download whichever model you request; you 
+# can also specify a filename.
+model_name = 'MDV5A'
 
-# This will automatically download MDv5a; you can also specify a filename.
-results = load_and_run_detector_batch('MDV5A', image_file_names)
+# Run the model on all images in the folder
+results = load_and_run_detector_batch(model_name, image_folder)
 
-# Write results to a format that Timelapse and other downstream tools like.
+# Write results to a format that Timelapse and other downstream tools like
 write_results_to_file(results,
                       output_file,
                       relative_path_base=image_folder,
-                      detector_file=detector_filename)
+                      detector_file=model_name)
 ```
 
 ## Contact

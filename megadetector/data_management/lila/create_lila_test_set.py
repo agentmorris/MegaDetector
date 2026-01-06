@@ -119,7 +119,12 @@ for ds_name in metadata_table.keys():
 
 #%% Convert to URLs
 
-preferred_cloud = 'gcp'
+preferred_cloud = None # 'gcp'
+available_clouds = ('azure','aws','gcp')
+
+if preferred_cloud is None:
+    preferred_cloud = random.choice(available_clouds)
+    print('Downloading images from {}'.format(preferred_cloud))
 
 # ds_name = (list(metadata_table.keys()))[0]
 for ds_name in metadata_table.keys():

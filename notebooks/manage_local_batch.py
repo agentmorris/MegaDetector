@@ -81,7 +81,6 @@ from megadetector.utils.ct_utils import split_list_into_fixed_size_chunks
 
 from megadetector.detection.run_detector_batch import load_and_run_detector_batch
 from megadetector.detection.run_detector_batch import write_results_to_file
-from megadetector.detection.run_detector import DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
 from megadetector.detection.run_detector import estimate_md_images_per_second
 from megadetector.detection.run_detector import get_detector_version_from_model_file
 
@@ -271,7 +270,10 @@ preview_options_base.parallelize_rendering_with_threads = parallelization_defaul
 preview_options_base.additional_image_fields_to_display = \
     {'pre_smoothing_description':'pre-smoothing labels',
      'pre_filtering_description':'pre-filtering labels',
+     'post_filtering_description':'post-filtering labels',
      'top_classification_common_name':'top class'}
+preview_options_base.category_name_to_sort_weight = \
+    {'animal':1,'blank':1,'unknown':1,'unreliable':1,'mammal':1}
 
 if render_animals_only:
     preview_options_base.rendering_bypass_sets = \
@@ -774,8 +776,12 @@ print('Scripts you probably want to run now:\n')
 for s in scripts_to_run:
     print(s)
 
+# import clipboard; clipboard.copy(scripts_to_run[0])
+
 
 #%% Run the tasks
+
+run_tasks_in_notebook = True
 
 r"""
 tl;dr: I almost never run this cell, i.e. "run_tasks_in_notebook" is almost always set to False.
@@ -804,6 +810,8 @@ if run_tasks_in_notebook:
 
     assert not use_yolo_inference_scripts, \
         'If you want to use the YOLOv5 inference scripts, you can\'t run the model interactively (yet)'
+    assert not use_tiled_inference, \
+        'If you want to use tiled inference, you can\'t run the model interactively (yet)'
 
     # i_task = 0; task = task_info[i_task]
     for i_task,task in enumerate(task_info):
@@ -828,7 +836,9 @@ if run_tasks_in_notebook:
                                               # Minimize the risk of IPython process issues
                                               use_image_queue=False,
                                               quiet=quiet_mode,
-                                              image_size=image_size)
+                                              image_size=image_size,
+                                              augment=augment,
+                                              detector_options=detector_options)
         elapsed = time.time() - start_time
 
         print('Task {}: finished inference for {} images in {}'.format(
@@ -1012,7 +1022,7 @@ options.otherDetectionsThreshold = options.confidenceMin
 
 options.bRenderDetectionTiles = True
 options.maxOutputImageWidth = 2000
-options.detectionTilesMaxCrops = 100
+options.detectionTilesMaxCrops = 80
 
 # options.lineThickness = 5
 # options.boxExpansion = 8
@@ -1225,6 +1235,9 @@ if run_tasks_in_notebook:
     md_speciesnet_options.skip_video = True
     md_speciesnet_options.verbose = True
 
+    # This is not necessary in VS Code, but it's necessary in Spyder
+    md_speciesnet_options.worker_type = 'thread'
+
     md_speciesnet_options.detections_file = detector_output_file_md_format
 
     if speciesnet_model_file is not None:
@@ -1233,6 +1246,7 @@ if run_tasks_in_notebook:
     # Enable geofencing if (a) we have a country code and (b) we're not immediately
     # applying a custom taxa list
     enable_geofence = True
+
     if country_code is None:
         enable_geofence = False
     if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
@@ -1240,9 +1254,8 @@ if run_tasks_in_notebook:
 
     if enable_geofence:
         md_speciesnet_options.country = country_code
-
-    if state_code is not None:
-        md_speciesnet_options.admin1_region = state_code
+        if state_code is not None:
+            md_speciesnet_options.admin1_region = state_code
 
     run_md_and_speciesnet(md_speciesnet_options)
 
@@ -1300,17 +1313,17 @@ if not run_tasks_in_notebook:
     from megadetector.utils.wi_taxonomy_utils import generate_predictions_json_from_md_results
 
     _ = generate_predictions_json_from_md_results(md_results_file=detection_results_file_for_crop_folder,
-                                                predictions_json_file=crop_detections_predictions_file,
-                                                base_folder=crop_folder)
+                                                  predictions_json_file=crop_detections_predictions_file,
+                                                  base_folder=crop_folder)
 
 
     # Generate a new instances.json file for the crops
 
     crop_instances = generate_instances_json_from_folder(folder=crop_folder,
-                                                        country=country_code,
-                                                        admin1_region=state_code,
-                                                        output_file=crop_instances_json,
-                                                        filename_replacements=None)
+                                                         country=country_code,
+                                                         admin1_region=state_code,
+                                                         output_file=crop_instances_json,
+                                                         filename_replacements=None)
 
     print('Generated {} instances for the crop folder (in file {})'.format(
         len(crop_instances['instances']),crop_instances_json))
@@ -1402,6 +1415,7 @@ if not run_tasks_in_notebook:
         cmd += ' --instances_json "{}"'.format(chunk_instances_json)
         cmd += ' --predictions_json "{}"'.format(chunk_predictions_json)
         cmd += ' --detections_json "{}"'.format(chunk_detections_json)
+        cmd += ' --ignore_existing_predictions'
 
         if classifier_batch_size is not None:
             cmd += ' --batch_size {}'.format(classifier_batch_size)
@@ -1488,6 +1502,7 @@ if not run_tasks_in_notebook:
     cmd += ' --classifications_json "{}"'.format(classifier_output_file_modular_crops)
     cmd += ' --detections_json "{}"'.format(crop_detections_predictions_file)
     cmd += ' --predictions_json "{}"'.format(ensemble_output_file_modular_crops)
+    cmd += ' --ignore_existing_predictions'
 
     # Currently we only skip the geofence if we're imminently going to apply a custom taxa
     # list, otherwise the smoothing is quite messy.
@@ -1531,8 +1546,8 @@ if not run_tasks_in_notebook:
     assert os.path.isfile(ensemble_output_file_modular_crops)
 
     generate_md_results_from_predictions_json(predictions_json_file=ensemble_output_file_modular_crops,
-                                            md_results_file=ensemble_output_file_crops_md_format,
-                                            base_folder=crop_folder+'/')
+                                              md_results_file=ensemble_output_file_crops_md_format,
+                                              base_folder=crop_folder+'/')
 
 
     ##%% Bring those crop-level results back to image level
@@ -1871,6 +1886,8 @@ preview_folder = path_join(postprocessing_output_folder,
 preview_options.md_results_file = sequence_smoothed_classification_file
 preview_options.output_dir = preview_folder
 preview_options.footer_text = geofence_footer
+preview_options.category_name_to_sort_weight = \
+    {'animal':1,'blank':1,'unknown':1,'unreliable':1,'mammal':1,'no cv result':1}
 
 print('Generating post-sequence-smoothing preview in {}'.format(preview_folder))
 ppresults = process_batch_results(preview_options)
@@ -1958,7 +1975,8 @@ data = None
 from megadetector.postprocessing.subset_json_detector_output import \
     subset_json_detector_output, SubsetJsonDetectorOutputOptions
 
-input_filename = filtered_output_filename
+# input_filename = output_fn_abs
+input_filename = '/a/b/c/file.json'
 output_base = path_join(combined_api_output_folder,base_task_name + '_json_subsets')
 
 print('Processing file {} to {}'.format(input_filename,output_base))
