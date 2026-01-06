@@ -36,7 +36,8 @@ dependencies = [
   # numpy >= 1.26.4 is required for python >= 3.12
   #
   # "numpy >= 1.26.4, < 2.0",
-  "numpy >= 1.26.4",
+  "numpy>=1.26.4; python_version < '3.14'",
+  "numpy>=1.26.4,<2.4; python_version >= '3.14'",
   # ultralytics-yolov5 has a dependency on FreeTypeFont.getsize(), which was
   # removed in Pillow 10.  Restrict to <10.0 if you want to use val.py from 
   # ultralytics-yolov5.
