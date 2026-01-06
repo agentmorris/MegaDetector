@@ -53,6 +53,18 @@ E1
 
 !maintenance
 
+
+## Add --force_model_download to run_md_and_speciesnet
+
+run_detector_batch supports a --force_model_download argument to handle the case where model weights were partially downloaded; add a corresponding option to run_md_and_speciesnet.  It should apply to both the MD weights and the SpeciesNet weights.
+
+P0
+
+E0
+
+!feature
+
+
 ## Handle legacy setup.py issues
 
 Two dependencies - yolov9pip and clipboard - give this warning during pip installation:<br/><br/>
@@ -101,6 +113,7 @@ P1
 E1
 
 !feature
+
 
 ## Allow excluding blanks in postprocessing
 
