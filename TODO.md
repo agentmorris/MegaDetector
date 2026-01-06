@@ -1031,9 +1031,11 @@ E0
 
 Python 3.14 is enabled on a [branch](https://github.com/agentmorris/MegaDetector/tree/py314-support).  Tests pass with no changes to code on all of my personal Windows and Linux machines, but fail on Windows on the GitHub Actions runner ([failed run](https://github.com/agentmorris/MegaDetector/actions/runs/19089542677/job/54536961503)).  Figure out what's up with this, and create a new work item that reflects whatever changes are required for Python 3.14 support.
 
-P0
+The specific error on the GH runner is an access violation with no meaningful stack trace; this appears to be a numpy compatibility issue, and the Internet doesn't seem surprised that this happens in some environments but not in others, even with identical numpy versions.  Consensus is that I should just wait this out; pre-built wheels for 3.14 will improve with time.  Dropped from P0 to P1 on 2026.01.06.  Also dropped from E1 to E0, because the expectation is that when this works, it will just magically work, I won't have to change any code.  All other 3.14 compatibility issues (all minor) are already handled on this branch.
 
-E1
+P1
+
+E0
 
 !maintenance
 
