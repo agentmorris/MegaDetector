@@ -532,7 +532,7 @@ YOLOv5 tells me that it's "fusing layers" twice during startup.  A little part o
 
 P0
 
-E1
+E0
 
 S-5
 
@@ -690,7 +690,7 @@ Nothing is "wrong" with the [MegaDetector Colab](https://github.com/agentmorris/
 
 P0
 
-E2
+E0
 
 !feature
 
