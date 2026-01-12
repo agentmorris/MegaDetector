@@ -27,7 +27,7 @@ from megadetector.utils.path_utils import path_is_abs
 from megadetector.utils.path_utils import open_file
 from megadetector.utils.wi_taxonomy_utils import load_md_or_speciesnet_file
 from megadetector.visualization import visualization_utils as vis_utils
-from megadetector.visualization.visualization_utils import blur_detections
+from megadetector.visualization.visualization_utils import blur_detections, DEFAULT_BOX_THICKNESS
 
 default_box_sort_order = 'confidence'
 
@@ -53,7 +53,9 @@ def _render_image(entry,
                   images_dir,
                   output_image_width,
                   box_sort_order=default_box_sort_order,
-                  category_names_to_blur=None):
+                  category_names_to_blur=None,
+                  box_thickness=DEFAULT_BOX_THICKNESS,
+                  box_expansion=0):
     """
     Internal function for rendering a single image.
     """
@@ -126,7 +128,9 @@ def _render_image(entry,
         classification_label_map=classification_label_map,
         confidence_threshold=confidence_threshold,
         classification_confidence_threshold=classification_confidence_threshold,
-        box_sort_order=box_sort_order)
+        box_sort_order=box_sort_order,
+        thickness=box_thickness,
+        expansion=box_expansion)
 
     if not preserve_path_structure:
         for char in ['/', '\\', ':']:
@@ -164,7 +168,10 @@ def visualize_detector_output(detector_output_path,
                               parallelize_rendering_with_threads=True,
                               box_sort_order=default_box_sort_order,
                               category_names_to_blur=None,
-                              link_images_to_originals=False):
+                              link_images_to_originals=False,
+                              detector_label_map=None,
+                              box_thickness=DEFAULT_BOX_THICKNESS,
+                              box_expansion=0):
     """
     Draws bounding boxes on images given the output of a detector.
 
@@ -205,6 +212,10 @@ def visualize_detector_output(detector_output_path,
             most commonly ['person']
         link_images_to_originals (bool, optional): include a link from every rendered image back to
             the corresponding original image
+        detector_label_map (dict, optional): mapping from category IDs to labels; by default (None) uses
+            the values in the detector file.  If this is the string 'no_detection_labels', hides labels.
+        box_thickness (int, optional): box thickness in pixels
+        box_expansion (int, optional): box expansion in pixels
 
     Returns:
         list: list of paths to annotated images
@@ -232,7 +243,14 @@ def visualize_detector_output(detector_output_path,
     assert confidence_threshold >= 0 and confidence_threshold <= 1, \
         f'Confidence threshold {confidence_threshold} is invalid, must be in (0, 1).'
 
-    if 'detection_categories' in detector_output:
+    if isinstance(detector_label_map,str):
+        assert detector_label_map == 'no_detection_labels', \
+            'Unrecognized detection label string {}'.format(detector_label_map)
+        detector_label_map = None
+    elif detector_label_map is not None:
+        assert isinstance(detector_label_map,dict), \
+            'Invalid detector label maps'
+    elif 'detection_categories' in detector_output:
         detector_label_map = detector_output['detection_categories']
     else:
         detector_label_map = DEFAULT_DETECTOR_LABEL_MAP
@@ -295,7 +313,9 @@ def visualize_detector_output(detector_output_path,
                                              images_dir=images_dir,
                                              output_image_width=output_image_width,
                                              box_sort_order=box_sort_order,
-                                             category_names_to_blur=category_names_to_blur),
+                                             category_names_to_blur=category_names_to_blur,
+                                             box_thickness=box_thickness,
+                                             box_expansion=box_expansion),
                                      images), total=len(images)))
         finally:
             if pool is not None:
@@ -318,7 +338,9 @@ def visualize_detector_output(detector_output_path,
                                              images_dir,
                                              output_image_width,
                                              box_sort_order,
-                                             category_names_to_blur=category_names_to_blur)
+                                             category_names_to_blur=category_names_to_blur,
+                                             box_thickness=box_thickness,
+                                             box_expansion=box_expansion)
             rendering_results.append(rendering_result)
 
     # ...for each image

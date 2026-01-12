@@ -151,6 +151,17 @@ for s in rows:
 
 #%% Determine whether a species is allowed in a country
 
+taxon = 'mustela altaica'
+country = 'USA'
+state = 'CA'
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=state,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+
+#%%
+
 taxon = 'pittidae'
 country = 'canada'
 state = None
