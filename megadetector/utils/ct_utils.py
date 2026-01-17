@@ -605,6 +605,7 @@ def round_floats_in_nested_dict(obj, decimal_places=5, allow_iterator_conversion
     Returns:
         The processed object (useful for recursive calls)
     """
+
     if isinstance(obj, dict):
         for key in obj:
             obj[key] = round_floats_in_nested_dict(obj[key], decimal_places=decimal_places,
