@@ -148,7 +148,7 @@ class BatchComparisonOptions:
         #: Compare only detections/non-detections, ignore categories (still renders categories)
         self.class_agnostic_comparison = False
 
-        #: Width of images to render in the output HTML
+        #: Width of images to render in the output HTML (None to use original size)
         self.target_width = 800
 
         #: Number of workers to use for rendering, or <=1 to disable parallelization

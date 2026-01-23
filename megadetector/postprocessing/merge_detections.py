@@ -85,8 +85,8 @@ def merge_detections(source_files,
                      options=None):
     """
     Merge high-confidence detections from one or more results files into another
-    file.   Typically used to combine results from MDv5b and/or MDv4 into a "primary"
-    results file from MDv5a.
+    file.  Typically used to combine results from, e.g., MDv5a and/or MDv5b into a
+    "primary" results file from MDv1000-redwood.
 
     [source_files] (a list of files or a single filename) specifies the set of
     results files that will be merged into [target_file].  The difference between a
@@ -175,6 +175,8 @@ def merge_detections(source_files,
     else:
         detection_categories = detection_categories_raw
 
+    # For each source file...
+    #
     # i_source_file = 0; source_file = source_files[i_source_file]
     for i_source_file,source_file in enumerate(source_files):
 
@@ -185,6 +187,8 @@ def merge_detections(source_files,
 
         # If necessary, map all the classification categories in the source file
         # into the space of the target file
+        #
+        # This will no-op if neither file has classification categories.
         source_data = \
             merge_classification_categories(target_file=output_data,
                                             source_file=source_data,
@@ -218,6 +222,8 @@ def merge_detections(source_files,
 
         source_confidence_threshold = options.source_confidence_thresholds[i_source_file]
 
+        # For each image...
+        #
         # source_im = source_data['images'][0]
         for source_im in tqdm(source_data['images']):
 
@@ -238,6 +244,8 @@ def merge_detections(source_files,
 
             detections_to_transfer = []
 
+            # For each detection category...
+            #
             # detection_category = list(detection_categories)[0]
             for detection_category in detection_categories:
 
@@ -271,6 +279,8 @@ def merge_detections(source_files,
                         (det['bbox'][2]*det['bbox'][3] >= options.min_detection_size) \
                         ]
 
+                # For each detection in this category in the source image...
+                #
                 # det = source_detections_this_category_filtered[0]
                 for det in source_detections_this_category_filtered:
 

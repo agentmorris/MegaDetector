@@ -1841,7 +1841,8 @@ def merge_classification_categories(target_file,
     Uses only category names, does not use category descriptions to decide
     whether to merge categories.  Behavior is undefined if multiple source
     categories have the same name.  Does not look at detection categories at
-    all.
+    all.  If neither file has classification categories, just re-writes
+    the source file.  Errors if exactly one file has classification categories.
 
     Args:
         target_file (str or dict): target .json file, in MD format (or an
@@ -1872,6 +1873,24 @@ def merge_classification_categories(target_file,
             'Could not find source file {}'.format(source_file)
         with open (source_file,'r') as f:
             source_d = json.load(f)
+
+
+    ##%% No-op is neither file has classification categories
+
+    source_has_classifications = ('classification_categories' in source_d)
+    target_has_classifications = ('classification_categories' in target_d)
+
+    if not (source_has_classifications or target_has_classifications):
+        print('Neither source nor target has classification categories, bypassing category merge')
+        if output_file is not None:
+            write_json(output_file,source_d)
+        return source_d
+
+
+    ##%% Error if only one file has classification categories
+
+    if source_has_classifications != target_has_classifications:
+        raise ValueError('Source and target disagree on whether classifications are present')
 
 
     ##%% Map categories
