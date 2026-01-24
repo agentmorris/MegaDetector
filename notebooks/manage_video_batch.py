@@ -320,12 +320,16 @@ if False:
     video_options.output_extension = 'mp4'
     video_options.trim_to_detections = True
 
+    # If I'm running this cell, I usually don't want boring videos
+    video_options.exclude_category_name_strings = \
+        ['animal_blank_no cv result','blank_no cv result','no cv result','blank','none','animal_blank']
+
     video_options.flatten_output = True
     video_options.min_output_length_seconds = 5
     video_options.parallelize_rendering_with_threads = \
         parallelization_uses_threads
 
-    # Prepends filename with
+    # Prepends filename with category names
     video_options.include_category_names_in_filenames = 'start'
 
     results = visualize_video_output(video_output_filename,
