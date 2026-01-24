@@ -322,7 +322,8 @@ if False:
 
     # If I'm running this cell, I usually don't want boring videos
     video_options.exclude_category_name_strings = \
-        ['animal_blank_no cv result','blank_no cv result','no cv result','blank','none','animal_blank']
+        ['animal_blank_no cv result','blank_no cv result','no cv result','blank','none','animal_blank',
+         'animal_no cv result','animal','blank_mammal']
 
     video_options.flatten_output = True
     video_options.min_output_length_seconds = 5
