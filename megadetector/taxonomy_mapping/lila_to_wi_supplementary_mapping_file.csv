@@ -1,3 +1,4 @@
+LILA name,WI name,notes
 start,Setup_pickup,
 end,Setup_pickup,
 cebinae,Cebidae,
@@ -43,3 +44,28 @@ cervini,Cervidae,
 ianthocincla konkakinhensis,Garrulax konkakinhensis,
 vicugna pacos,Lama,
 chelonioidea,Testudines,
+antilopinae,bovidae,small antelopes
+apidae,Unknown,bees
+arvicolinae,Cricetidae,voles/lemmings/muskrats
+aspidoscelis hyperythrus,Aspidoscelis hyperythra beldingi,orange-throated whiptail
+bowdleria punctata,Poodytes punctatus,New Zealand fernbird
+cephalophorus natalensis,Cephalophus natalensis,red forest duiker
+clonophis kirtlandii,Colubridae,Kirtland's snake
+cygnus sumnerensis,cygnus,New Zealand swan
+eupodotis afraoides,afrotis,Northern black korhaan
+eupodotis rueppelii,Heterotetrax rueppelii,Ruppell's bustard
+gulosus aristotelis,Phalacrocorax aristotelis,European shag
+hypsiglena ochrorhynchus,Hypsiglena ochrorhyncha,coast nightsnake
+jasus edwardsii,Decapoda,Southern rock lobster
+lampropeltis triangulum,Lampropeltis,milksnake
+mustela furo,Mustela,domestic ferret
+mustelinae,Mustelidae,weasels/ferrets/minks
+notamacropus,Macropodidae,wallabies (I raised a taxonomy request for this case; children of "notamacropus" are already present)
+perognathinae,Heteromyidae,spiny pocket mice
+sistrurus catenatus,Viperidae,Eastern massasauga
+storeria occipitomaculata,Colubridae,red-bellied snake (I raised a taxonomy request for this case; children of "storeria" are already present)
+streptopelia chinensis,Spilopelia chinensis,Eastern spotted dove
+thamnophis butleri,thamnophis,Butler's garter snake
+thamnophis radix,thamnophis,plains garter snake
+thamnophis saurita,thamnophis,Eastern ribbon snake
+tragelaphus sylvaticus,Tragelaphus,cape bushbuck
