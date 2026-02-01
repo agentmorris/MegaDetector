@@ -150,6 +150,7 @@ https://www.islandconservation.org/remote-sensing-on-islands)) ([video](https://
 * [Wildlife Division](https://www.michigan.gov/dnr/about/contact/wildlife), Michigan Department of Natural Resources ([blog post](https://www.michigan.gov/dnr/about/newsroom/releases/2025/08/18/dnr-researchers-to-test-trail-cameras-in-elk-survey))
 * [Cleveland Metroparks](https://www.clevelandmetroparks.com/) ([presentation](https://www.clevelandmetroparks.com/getmedia/d4978f4b-5641-4e6b-ac16-b29e9e3d43d1/AI_8_21_25.pdf))
 * [Conservation X Labs](https://conservationxlabs.com/) ([story](https://news.mongabay.com/2025/09/turning-camera-traps-into-real-time-sentinels-interview-with-conservation-x-labs-dante-wasmuht/))
+* [WildTracker program](https://www.wildtracker.com.au/), [Tasmanian Land Conservancy](https://tasland.org.au/) ([blog post](https://www.wildtracker.com.au/stickybeak-ai/), [news story](https://www.canberratimes.com.au/story/8956392/wombat-ai-software-deployed-to-track-native-animals/))
 
 Also see:
 
