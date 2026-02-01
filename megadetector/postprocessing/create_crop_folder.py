@@ -96,6 +96,8 @@ def _generate_crops_for_single_image(crops_this_image,
 
     detections_to_crop = [c['detection'] for c in crops_this_image]
 
+    # We use a confidence threshold of 0 here, because below-threshold
+    # detections don't result in calls to _generate_crops_for_single_image()
     cropped_images = crop_image(detections_to_crop,
                                 input_fn_abs,
                                 confidence_threshold=0,
@@ -370,6 +372,7 @@ def create_crop_folder(input_file,
                 'Unrecognized category name {}'.format(category_name)
             category_ids_to_include.add(category_name_to_id[category_name])
 
+
     ##%% Make a list of crops that we need to create
 
     # Maps input images to list of dicts, with keys 'crop_id','detection'
@@ -398,10 +401,13 @@ def create_crop_folder(input_file,
                 n_detections_excluded_by_category += 1
                 continue
 
-            det['crop_id'] = i_detection
+            # Use existing crop IDs if they're available (in rare scenarios, we
+            # prepopulate the "crop_id" field in a .json file).
+            if 'crop_id' not in det:
+                det['crop_id'] = i_detection
 
             crop_info = {'image_fn_relative':image_fn_relative,
-                         'crop_id':i_detection,
+                         'crop_id':det['crop_id'],
                          'detection':det}
 
             crop_filename_relative = _get_crop_filename(image_fn_relative,
@@ -418,6 +424,7 @@ def create_crop_folder(input_file,
 
     if n_detections_excluded_by_category > 0:
         print('Excluded {} detections by category'.format(n_detections_excluded_by_category))
+
 
     ##%% Generate crops
 
@@ -493,6 +500,7 @@ def create_crop_folder(input_file,
                     det_out['category'] = det['category']
                     det_out['conf'] = det['conf']
                     det_out['bbox'] = [0, 0, 1, 1]
+                    det_out['crop_id'] = det['crop_id']
                     im_out['detections'] = [det_out]
                     detection_results_cropped['images'].append(im_out)
 
@@ -504,6 +512,8 @@ def create_crop_folder(input_file,
 
         with open(crops_output_file,'w') as f:
             json.dump(detection_results_cropped,f,indent=1)
+
+    # ...if we need to write an output file
 
 # ...def create_crop_folder()
 
