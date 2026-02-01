@@ -24,6 +24,7 @@ from multiprocessing.pool import Pool, ThreadPool
 from functools import partial
 
 from megadetector.utils.path_utils import insert_before_extension
+from megadetector.utils.path_utils import make_executable
 from megadetector.utils.path_utils import path_join
 
 from megadetector.utils.ct_utils import split_list_into_n_chunks
@@ -109,6 +110,7 @@ def read_images_from_download_bundle(download_folder):
         [fn for fn in image_list_files if fn.startswith('images_') and fn.endswith('.csv')]
     image_list_files = \
         [path_join(download_folder,fn) for fn in image_list_files]
+    image_list_files = sorted(image_list_files)
     print('Found {} image list files'.format(len(image_list_files)))
 
 
@@ -116,10 +118,12 @@ def read_images_from_download_bundle(download_folder):
 
     image_id_to_image_records = defaultdict(list)
 
-    # image_list_file = image_list_files[0]
-    for image_list_file in image_list_files:
+    # i_file = 0; image_list_file = image_list_files[i_file]
+    for i_file,image_list_file in enumerate(image_list_files):
 
-        print('Reading images from list file {}'.format(
+        print('Reading images from list file {} of {} ({})'.format(
+            i_file,
+            len(image_list_files),
             os.path.basename(image_list_file)))
 
         df = pd.read_csv(image_list_file,low_memory=False)
@@ -286,6 +290,39 @@ def write_prefix_download_command(image_records,
 # ...def write_prefix_download_command(...)
 
 
+def _url_to_relative_path(url,image_flattening='deployment'):
+
+    assert url.startswith('gs://'), 'Illegal URL {}'.format(url)
+
+    relative_path = None
+
+    if image_flattening == 'none':
+        relative_path = url.replace('gs://','')
+    elif image_flattening == 'guid':
+        relative_path = url.split('/')[-1]
+    else:
+        assert image_flattening == 'deployment'
+        tokens = url.split('/')
+        found_deployment_id = False
+        for i_token,token in enumerate(tokens):
+            if token == 'deployment':
+                assert i_token < (len(tokens)-1)
+                deployment_id_string = tokens[i_token + 1]
+                deployment_id_string = deployment_id_string.replace('_thumb','')
+                assert is_int(deployment_id_string), \
+                    'Illegal deployment ID {}'.format(deployment_id_string)
+                image_id = url.split('/')[-1]
+                relative_path = deployment_id_string + '/' + image_id
+                found_deployment_id = True
+                break
+        assert found_deployment_id, \
+            'Could not find deployment ID for url {}'.format(url)
+
+    return relative_path
+
+# ...def _url_to_relative_path(...)
+
+
 def write_download_commands(image_records,
                             download_dir_base,
                             force_download=False,
@@ -347,32 +384,8 @@ def write_download_commands(image_records,
     for image_record in image_records:
 
         url = image_record['location']
-        assert url.startswith('gs://'), 'Illegal URL {}'.format(url)
-
-        relative_path = None
-
-        if image_flattening == 'none':
-            relative_path = url.replace('gs://','')
-        elif image_flattening == 'guid':
-            relative_path = url.split('/')[-1]
-        else:
-            assert image_flattening == 'deployment'
-            tokens = url.split('/')
-            found_deployment_id = False
-            for i_token,token in enumerate(tokens):
-                if token == 'deployment':
-                    assert i_token < (len(tokens)-1)
-                    deployment_id_string = tokens[i_token + 1]
-                    deployment_id_string = deployment_id_string.replace('_thumb','')
-                    assert is_int(deployment_id_string), \
-                        'Illegal deployment ID {}'.format(deployment_id_string)
-                    image_id = url.split('/')[-1]
-                    relative_path = deployment_id_string + '/' + image_id
-                    found_deployment_id = True
-                    break
-            assert found_deployment_id, \
-                'Could not find deployment ID in record {}'.format(str(image_record))
-
+        relative_path = _url_to_relative_path(url=url,
+                                              image_flattening=image_flattening)
         assert relative_path is not None
 
         if url in url_to_relative_path:
@@ -432,11 +445,15 @@ def write_download_commands(image_records,
     # Write out the download script for each chunk
     # i_script = 0
     for i_script in range(0,n_download_workers):
+        if len(commands_by_script[i_script]) == 0:
+            continue
         download_command_file = insert_before_extension(download_command_file_base,str(i_script).zfill(2))
         local_download_commands.append(os.path.basename(download_command_file))
         with open(download_command_file,'w',newline='\n') as f:
             for command in commands_by_script[i_script]:
                 f.write(command + '\n')
+        make_executable(download_command_file,catch_exceptions=True)
+
 
     # Write out the main download script
     with open(download_command_file_base,'w',newline='\n') as f:
@@ -444,6 +461,7 @@ def write_download_commands(image_records,
             f.write('./' + local_download_command + ' &\n')
         f.write('wait\n')
         f.write('echo done\n')
+    make_executable(download_command_file_base,catch_exceptions=True)
 
 # ...def write_download_commands(...)
 

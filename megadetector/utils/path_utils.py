@@ -25,6 +25,7 @@ import webbrowser
 import subprocess
 import re
 import pytest
+import stat
 
 from zipfile import ZipFile
 from datetime import datetime
@@ -685,6 +686,26 @@ def is_executable(filename):
     # https://stackoverflow.com/questions/11210104/check-if-a-program-exists-from-a-python-script
 
     return which(filename) is not None
+
+
+def make_executable(filename,catch_exceptions=False):
+    """
+    Make [filename] executable.
+
+    Args:
+        filename (str): filename to make executable
+        catch_exceptions (bool, optional): treat errors as warnings
+    """
+
+    try:
+        st = os.stat(filename)
+        os.chmod(filename, st.st_mode | stat.S_IEXEC)
+    except Exception as e:
+        if not catch_exceptions:
+            raise
+        else:
+            print('Warning: error making {} executable:\n{}'.format(
+                filename,str(e)))
 
 
 #%% WSL utilities
