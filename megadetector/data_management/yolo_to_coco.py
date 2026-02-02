@@ -22,6 +22,8 @@ from tqdm import tqdm
 from megadetector.utils.path_utils import find_images
 from megadetector.utils.path_utils import recursive_file_list
 from megadetector.utils.path_utils import find_image_strings
+from megadetector.utils.ct_utils import round_float
+from megadetector.utils.ct_utils import round_float_array
 from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.utils.ct_utils import write_json
 from megadetector.visualization.visualization_utils import open_image
@@ -441,7 +443,8 @@ def yolo_to_coco(input_folder,
                  force_integer_ids=False,
                  include_area=False,
                  include_crowd=False,
-                 invalid_annotation_handling='error'):
+                 invalid_annotation_handling='error',
+                 precision=3):
     """
     Converts a YOLO-formatted dataset to a COCO-formatted dataset.
 
@@ -492,6 +495,8 @@ def yolo_to_coco(input_folder,
         invalid_annotation_handling (str, optional): how to handle invalid annotations, e.g.
             negative-height bounding boxes.  Can be 'error', 'warn', or 'exclude'.  'exclude'
             implies 'warn'.
+        precision (int, optional): round box coordinates to this many decimal places, or
+            None to bypass rounding.
 
 
     Returns:
@@ -678,12 +683,16 @@ def yolo_to_coco(input_folder,
         im = image_result[0]
         annotations_this_image = image_result[1]
 
+        # This will be set to True if (a) the image has invalid annotations and
+        # (b) we are excluding invalid annotations, but not erroring
         skip_image = False
 
         # Validate annotations
         for ann in annotations_this_image:
+
             if 'bbox' not in ann:
                 continue
+
             # coco_bbox = [absolute_x_min, absolute_y_min, absolute_width, absolute_height]
             box_is_valid = True
             if len(ann['bbox']) != 4:
@@ -705,8 +714,13 @@ def yolo_to_coco(input_folder,
                     skip_image = True
                     break
 
+            if precision is not None:
+                ann['bbox'] = round_float_array(ann['bbox'],precision=precision)
+
             if include_area:
                 ann['area'] = ann['bbox'][2] * ann['bbox'][3]
+                if precision is not None:
+                    ann['area'] = round_float(ann['area'],precision=precision)
 
         # ...for each annotation
 

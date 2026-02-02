@@ -590,11 +590,13 @@ def invert_dictionary(d):
     return {v: k for k, v in d.items()}
 
 
-def round_floats_in_nested_dict(obj, decimal_places=5, allow_iterator_conversion=False):
+def round_floats_in_nested_dict(obj,
+                                decimal_places=5,
+                                allow_iterator_conversion=False):
     """
     Recursively rounds all floating point values in a nested structure to the
     specified number of decimal places. Handles dictionaries, lists, tuples,
-    sets, and other iterables. Modifies mutable objects in place.
+    sets, and other iterables. Modifies mutable objects in place by default.
 
     Args:
         obj (obj): The object to process (can be a dict, list, set, tuple, or primitive value)

@@ -190,7 +190,7 @@ data\_management.speciesnet\_to\_md module
    :hook:
    :prog: speciesnet_to_md
    :no_default_values:
-   
+
 data\_management.mewc\_to\_md module
 -----------------------------------------
 
@@ -335,6 +335,22 @@ data\_management.resize\_coco\_dataset module
    :prog: resize_coco_dataset
    :no_default_values:
 
+data\_management.threshold\_coco\_dataset module
+------------------------------------------------
+
+.. automodule:: megadetector.data_management.threshold_coco_dataset
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.data_management.threshold_coco_dataset
+   :func: main
+   :hook:
+   :prog: threshold_coco_dataset
+   :no_default_values:
+
 data\_management.wi\_download\_csv\_to\_coco module
 ----------------------------------------------------
 
@@ -342,4 +358,4 @@ data\_management.wi\_download\_csv\_to\_coco module
    :members:
    :undoc-members:
    :show-inheritance:
-   
+
