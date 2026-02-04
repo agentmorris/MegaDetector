@@ -49,6 +49,7 @@ def threshold_coco_dataset(input_filename,
         f'Illegal missing confidence handling {missing_confidence_handling}'
 
     # Read input data
+    print('Reading file {}'.format(input_filename))
     with open(input_filename,'r') as f:
         d = json.load(f)
 
