@@ -176,7 +176,8 @@ def visualize_detector_output(detector_output_path,
     Draws bounding boxes on images given the output of a detector.
 
     Args:
-        detector_output_path (str): path to detector output .json file
+        detector_output_path (str): path to detector output .json file, or a loaded MD results
+            dict
         out_dir (str): path to directory for saving annotated images
         images_dir (str, optional): folder where the images live; filenames in
             [detector_output_path] should be relative to [image_dir].  Can be None if paths are
@@ -221,8 +222,12 @@ def visualize_detector_output(detector_output_path,
         list: list of paths to annotated images
     """
 
-    assert os.path.exists(detector_output_path), \
-        'Detector output file does not exist at {}'.format(detector_output_path)
+    if isinstance(detector_output_path,str):
+        assert os.path.exists(detector_output_path), \
+            'Detector output file does not exist at {}'.format(detector_output_path)
+    else:
+        assert isinstance(detector_output_path,dict), \
+            'detector_output_path is neither a filename nor a results dict'
 
     if images_dir is not None:
         assert os.path.isdir(images_dir), \
@@ -233,7 +238,10 @@ def visualize_detector_output(detector_output_path,
 
     ##%% Load detector output
 
-    detector_output = load_md_or_speciesnet_file(detector_output_path)
+    if isinstance(detector_output_path,dict):
+        detector_output = detector_output_path
+    else:
+        detector_output = load_md_or_speciesnet_file(detector_output_path)
 
     images = detector_output['images']
 
