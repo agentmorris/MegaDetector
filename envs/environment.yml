@@ -8,9 +8,7 @@ channels:
   - nvidia
 
 dependencies:
-  # PyTorch is not yet supported in Python 3.12 as of the time I'm writing this 
-  # environment file.
-  - python>=3.8,<3.12
+  - python>=3.8,<3.15
 
   # Not imported directly, but we force this version to avoid this issue:
   #
