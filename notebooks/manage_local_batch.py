@@ -1,3 +1,5 @@
+#%% Header
+
 """
 
 manage_local_batch.py
@@ -2081,8 +2083,8 @@ for s in location_names:
 
 #%% End notebook: turn this script into a notebook (how meta!)
 
-import os # noqa
-import nbformat as nbf
+import os # type: ignore
+import nbformat as nbf # type: ignore
 
 if os.name == 'nt':
     git_base = r'c:\git'
@@ -2110,14 +2112,16 @@ with open(input_py_file,'r') as f:
 
 header_comment = ''
 
-assert lines[0].strip() == '"""'
+assert lines[0].strip() == '#%% Header'
 assert lines[1].strip() == ''
-assert lines[2].strip() == 'manage_local_batch.py'
+assert lines[2].strip() == '"""'
 assert lines[3].strip() == ''
+assert lines[4].strip() == 'manage_local_batch.py'
+assert lines[5].strip() == ''
 
-i_line = 4
+i_line = 6
 
-# Everything before the first cell is the header comment
+# Everything before the first non-header cell is the header comment
 while(not lines[i_line].startswith('#%%')):
 
     s_raw = lines[i_line]
