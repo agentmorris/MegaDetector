@@ -111,7 +111,7 @@ class DbVizOptions:
 
         #: Number of workers to use for parallelization; ignored if parallelize_rendering
         #: is False
-        self.parallelize_rendering_n_cores = 25
+        self.parallelize_rendering_n_cores = 16
 
         #: Should we show absolute (True) or relative (False) paths for each image?
         self.show_full_paths = False
@@ -135,6 +135,18 @@ class DbVizOptions:
         #: Optionally apply a confidence threshold; this requires that [confidence_field_name]
         #: be present in all detections.
         self.confidence_threshold = None
+
+        #: Custom mapping from category IDs to labels, replacing what's in the .json file
+        self.custom_category_mapping = None
+
+        #: JPEG quality to use for saving images (None for Pillow default)
+        self.quality = None
+
+        #: List of PIL color names, which will be indexed by category IDs, or None
+        #: to use the default color map.
+        #:
+        #: For example: ['AliceBlue', 'Red', 'RoyalBlue', 'Gold', 'Chartreuse']
+        self.colormap = None
 
 
 #%% Core functions
@@ -495,17 +507,25 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
             print('Image {} failed to open, error: {}'.format(img_path, e))
             return False
 
+        rendering_label_map = None
+        if options.custom_category_mapping is not None:
+            rendering_label_map = options.custom_category_mapping
+
         vis_utils.render_db_bounding_boxes(boxes=bboxes,
                                            classes=bbox_classes,
                                            image=image,
                                            original_size=original_size,
-                                           label_map=label_map,
+                                           label_map=rendering_label_map,
                                            thickness=options.box_thickness,
                                            expansion=options.box_expansion,
                                            tags=bbox_tags,
-                                           boxes_are_normalized=boxes_are_normalized)
+                                           boxes_are_normalized=boxes_are_normalized,
+                                           colormap=options.colormap)
 
-        image.save(output_full_path)
+        if options.quality is None:
+            image.save(output_full_path)
+        else:
+            image.save(output_full_path,quality=options.quality)
 
         return True
 

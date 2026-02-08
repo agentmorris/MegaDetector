@@ -15,10 +15,10 @@ import json
 # Created by get_lila_category_list.py
 input_lila_category_list_file = os.path.expanduser('~/lila/lila_categories_list/lila_dataset_to_categories.json')
 
-output_file = os.path.expanduser('~/lila/lila_additions_2025.10.07.csv')
+output_file = os.path.expanduser('~/lila/lila_additions_2025.11.17.csv')
 
 datasets_to_map = [
-    'California Small Animals'
+    'Biome Health Project Maasai Mara 2018'
     ]
 
 
@@ -190,7 +190,7 @@ if False:
 
     # Use this when an iNat match includes an empty subgenus with the same name as the genus
     n_levels_to_pop = 0
-    q = 'sus scrofa'
+    q = 'hirundinidae'
 
     taxonomy_preference = 'inat'
     m = get_preferred_taxonomic_match(q,taxonomy_preference)
@@ -209,5 +209,3 @@ if False:
         print(m.source)
         print(m.taxonomy_string)
         import clipboard; clipboard.copy(m.taxonomy_string)
-
-

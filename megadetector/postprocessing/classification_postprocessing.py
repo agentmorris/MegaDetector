@@ -13,6 +13,7 @@ Functions for postprocessing species classification results, particularly:
 
 #%% Constants and imports
 
+import os
 import json
 import copy
 import pandas as pd
@@ -26,6 +27,9 @@ from megadetector.utils.ct_utils import sort_dictionary_by_value
 from megadetector.utils.ct_utils import sort_dictionary_by_key
 from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.utils.ct_utils import write_json
+
+from megadetector.postprocessing.validate_batch_results import \
+    validate_batch_results, ValidateBatchResultsOptions
 
 from megadetector.utils.wi_taxonomy_utils import clean_taxonomy_string
 from megadetector.utils.wi_taxonomy_utils import taxonomy_level_index
@@ -333,6 +337,14 @@ def _prepare_results_for_smoothing(input_file,options):
 
     if 'classification_category_descriptions' in d:
         classification_descriptions = d['classification_category_descriptions']
+        classification_descriptions_single = {}
+        # We use "|" to delimit multiple descriptions, just use the first
+        # for smoothing.  This isn't perfect or "correct", but it's reasonable.
+        for k in classification_descriptions.keys():
+            v = classification_descriptions[k]
+            v = v.split('|')[0]
+            classification_descriptions_single[k] = v
+        classification_descriptions = classification_descriptions_single
         classification_descriptions_clean = {}
         # category_id = next(iter(classification_descriptions))
         for category_id in classification_descriptions:
@@ -1168,16 +1180,19 @@ def restrict_to_taxa_list(taxa_list,
                           output_file,
                           allow_walk_down=False,
                           add_pre_filtering_description=True,
+                          add_post_filtering_description=True,
                           allow_redundant_latin_names=True,
                           protected_common_names=None,
                           use_original_common_names_if_available=True,
-                          verbose=True):
+                          verbose=True,
+                          classification_threshold=None,
+                          combine_redundant_categories=True):
     """
     Given a prediction file in MD .json format, likely without having had
     a geofence applied, apply a custom taxa list.
 
     Args:
-        taxa_list (str): .csv file with at least the columns "latin" and "common".
+        taxa_list (str): .csv file with at least the columns "latin" and "common"
         speciesnet_taxonomy_file (str): taxonomy filename, in the same format used for
             model release (with 7-token taxonomy entries)
         input_file (str): .json file to read, in MD format.  This can be None, in which
@@ -1191,6 +1206,9 @@ def restrict_to_taxa_list(taxa_list,
         add_pre_filtering_description (bool, optional): should we add a new metadata
             field that summarizes each image's classifications prior to taxonomic
             restriction?
+        add_post_filtering_description (bool, optional): should we add a new metadata
+            field that summarizes each image's classifications after taxonomic
+            restriction?
         allow_redundant_latin_names (bool, optional): if False, we'll raise an Exception
             if the same latin name appears twice in the taxonomy list; if True, we'll
             just print a warning and ignore all entries other than the first for this
@@ -1202,11 +1220,22 @@ def restrict_to_taxa_list(taxa_list,
             column is present in [taxa_list], use those common names instead of the ones
             in the taxonomy file
         verbose (bool, optional): enable additional debug output
+        classification_threshold (float, optional): only relevant for the pre/post filtering
+            descriptions
+        combine_redundant_categories (bool, optional): whether to combine categories with the
+            same common name
     """
 
-    ##%% Read target taxa list
+    #%% Read target taxa list
 
     taxa_list_df = pd.read_csv(taxa_list)
+
+    # Convert NaN values to empty strings
+    taxa_list_df = taxa_list_df.fillna('')
+
+    # Strip string values
+    string_cols = taxa_list_df.select_dtypes(include=['object']).columns
+    taxa_list_df[string_cols] = taxa_list_df[string_cols].apply(lambda col: col.str.strip())
 
     required_columns = ('latin','common')
     for s in required_columns:
@@ -1221,14 +1250,11 @@ def restrict_to_taxa_list(taxa_list,
     # Remove rows from taxa_list_df where the "latin" column is nan,
     # printing a warning for each row (with a string representation of the whole row)
     for i_row,row in taxa_list_df.iterrows():
-        if pd.isna(row['latin']):
+        if len(row['latin']) == 0:
             if verbose:
                 print('Warning: Skipping row with empty "latin" column in {}:\n{}\n'.format(
                     taxa_list,str(row.to_dict())))
             taxa_list_df.drop(index=i_row, inplace=True)
-
-    # Convert all NaN values in the "common" column to empty strings
-    taxa_list_df['common'] = taxa_list_df['common'].fillna('')
 
     # Create a dictionary mapping source Latin names to target common names
     target_latin_to_common = {}
@@ -1264,31 +1290,45 @@ def restrict_to_taxa_list(taxa_list,
     # ...for each row in the custom taxonomy list
 
 
-    ##%% Read taxonomy file
+    #%% Read taxonomy file
 
     with open(speciesnet_taxonomy_file,'r') as f:
         speciesnet_taxonomy_list = f.readlines()
     speciesnet_taxonomy_list = [s.strip() for s in \
                                 speciesnet_taxonomy_list if len(s.strip()) > 0]
 
-    # Maps the latin name of every taxon to the corresponding full taxon string
+    # Maps the latin name of every taxon to the corresponding full taxon string,
+    # excluding the GUID.
     #
     # For species, the key is a binomial name
     speciesnet_latin_name_to_taxon_string = {}
     speciesnet_common_name_to_taxon_string = {}
 
     def _insert_taxonomy_string(s):
+        """
+        Insert the latin  name represented by [s] into
+        speciesnet_latin_name_to_taxon_string.  The latin name is
+        the lowest-level non-empty token (or the genus+species if all
+        tokens are populated).
+
+        Also inserts into speciesnet_common_name_to_taxon_string.
+
+        Sets GUIDs to a uniform value to simplify matching later.
+        """
 
         tokens = s.split(';')
         assert len(tokens) == 7, 'Illegal taxonomy string {}'.format(s)
 
-        guid = tokens[0] # noqa
+        # guid = tokens[0] # noqa
+        tokens[0] = 'guid'
         class_name = tokens[1]
         order = tokens[2]
         family = tokens[3]
         genus = tokens[4]
         species = tokens[5]
         common_name = tokens[6]
+
+        s = ';'.join(tokens)
 
         if len(class_name) == 0:
             assert common_name in ('animal','vehicle','blank'), \
@@ -1322,27 +1362,19 @@ def restrict_to_taxa_list(taxa_list,
             if common_name not in speciesnet_common_name_to_taxon_string:
                 speciesnet_common_name_to_taxon_string[common_name] = s
 
+    # Insert everything from the taxonomy .txt file into our taxonomy dicts
     for s in speciesnet_taxonomy_list:
-
         _insert_taxonomy_string(s)
 
 
-    ##%% Make sure all parent taxa are represented in the taxonomy
+    #%% Make sure all parent taxa are represented in the taxonomy
 
     # In theory any taxon that appears as the parent of another taxon should
     # also be in the taxonomy, but this isn't always true, so we fix it here.
     new_taxon_string_to_missing_tokens = defaultdict(list)
 
-    # While we're making this loop, also see whether we need to store any custom
-    # common name mappings based on the taxonomy list.
-    speciesnet_latin_name_to_output_common_name = {}
-
     # latin_name = next(iter(speciesnet_latin_name_to_taxon_string.keys()))
     for latin_name in speciesnet_latin_name_to_taxon_string.keys():
-
-        if latin_name in target_latin_to_common:
-            speciesnet_latin_name_to_output_common_name[latin_name] = \
-                target_latin_to_common[latin_name]
 
         if 'no cv result' in latin_name:
             continue
@@ -1351,7 +1383,6 @@ def restrict_to_taxa_list(taxa_list,
         tokens = taxon_string.split(';')
 
         # Don't process GUID, species, or common name
-        # i_token = 6
         for i_token in range(1,len(tokens)-2):
 
             test_token = tokens[i_token]
@@ -1360,9 +1391,8 @@ def restrict_to_taxa_list(taxa_list,
 
             # Do we need to make up a taxon for this token?
             if test_token not in speciesnet_latin_name_to_taxon_string:
-
                 new_tokens = [''] * 7
-                new_tokens[0] = 'fake_guid'
+                new_tokens[0] = 'guid'
                 for i_copy_token in range(1,i_token+1):
                     new_tokens[i_copy_token] = tokens[i_copy_token]
                 new_tokens[-1] = test_token + ' species'
@@ -1390,11 +1420,27 @@ def restrict_to_taxa_list(taxa_list,
             missing_taxa = ','.join(new_taxon_string_to_missing_tokens[taxon_string])
             print('{} ({})'.format(taxon_string,missing_taxa))
 
+        print('')
+
     for new_taxon_string in new_taxon_string_to_missing_tokens:
         _insert_taxonomy_string(new_taxon_string)
 
+    del new_taxon_string_to_missing_tokens
 
-    ##%% Make sure all taxa on the allow-list are in the taxonomy
+
+    #%% Store custom common name mappings based on the taxonomy list
+
+    speciesnet_latin_name_to_output_common_name = {}
+
+    # latin_name = next(iter(speciesnet_latin_name_to_taxon_string.keys()))
+    for latin_name in speciesnet_latin_name_to_taxon_string.keys():
+
+        if latin_name in target_latin_to_common:
+            speciesnet_latin_name_to_output_common_name[latin_name] = \
+                target_latin_to_common[latin_name]
+
+
+    #%% Make sure all taxa on the allow-list are in the taxonomy
 
     n_failed_mappings = 0
 
@@ -1413,7 +1459,7 @@ def restrict_to_taxa_list(taxa_list,
         raise ValueError('Cannot continue with taxonomic restriction')
 
 
-    ##%% For the allow-list, map each parent taxon to a set of allowable child taxa
+    #%% For the allow-list, map each parent taxon to a set of allowable child taxa
 
     # Maps parent names to all allowed child names, or None if this is the
     # lowest-level allowable taxon on this path
@@ -1517,7 +1563,7 @@ def restrict_to_taxa_list(taxa_list,
                 '"None" should only appear alone in a child taxon list'
 
 
-    ##%% If we were just validating the custom taxa file, we're done
+    #%% If we were just validating the custom taxa file, we're done
 
     if input_file is None:
         print('Finished validating custom taxonomy list')
@@ -1572,7 +1618,6 @@ def restrict_to_taxa_list(taxa_list,
         input_taxon_tokens = input_taxon_tokens[1:-1]
         assert len(input_taxon_tokens) == 5
 
-
         # Start at the species level (the last element in input_taxon_tokens),
         # and see whether each taxon is allowed
         test_index = len(input_taxon_tokens) - 1
@@ -1618,6 +1663,7 @@ def restrict_to_taxa_list(taxa_list,
                 elif not allow_walk_down:
                     target_taxon = test_taxon_name
                 else:
+                    candidate_taxon = None
                     # If there's a unique child, walk back *down* the allowable
                     # taxa until we run out of unique children
                     while ((next(iter(allowed_child_taxa)) is not None) and \
@@ -1631,6 +1677,7 @@ def restrict_to_taxa_list(taxa_list,
                                 candidate_taxon,speciesnet_latin_name_to_taxon_string)
                         allowed_child_taxa = \
                             allowed_parent_taxon_to_child_taxa[candidate_taxon]
+                    assert candidate_taxon is not None
                     target_taxon = candidate_taxon
 
             # ...if this is an allowed taxon
@@ -1647,6 +1694,15 @@ def restrict_to_taxa_list(taxa_list,
 
     # ...for each category (mapping input category IDs to output taxon strings)
 
+    if verbose:
+        for input_category_id in input_category_id_to_output_taxon_string:
+            common_name = input_category_id_to_common_name[input_category_id]
+            output_taxon_string = input_category_id_to_output_taxon_string[input_category_id]
+            print('Mapping {} ({}) to\n{}\n'.format(
+                input_category_id,
+                common_name,
+                output_taxon_string))
+
 
     #%% Map input category IDs to output category IDs
 
@@ -1656,6 +1712,8 @@ def restrict_to_taxa_list(taxa_list,
     input_category_id_to_output_category_id = {}
     output_taxon_string_to_category_id = {}
     output_category_id_to_common_name = {}
+
+    substitutions_printed = set()
 
     for input_category_id in input_category_id_to_output_taxon_string:
 
@@ -1673,7 +1731,11 @@ def restrict_to_taxa_list(taxa_list,
                 custom_common_name = speciesnet_latin_name_to_output_common_name[speciesnet_latin_name]
                 if custom_common_name != output_common_name:
                     if verbose:
-                        print('Substituting common name {} for {}'.format(custom_common_name,output_common_name))
+                        substitution_name = custom_common_name + ' --> ' + output_common_name
+                        if substitution_name not in substitutions_printed:
+                            substitutions_printed.add(substitution_name)
+                            print('Substituting common name {} for {}'.format(
+                                custom_common_name,output_common_name))
                     output_common_name = custom_common_name
 
         # Do we need to create a new output category?
@@ -1703,7 +1765,7 @@ def restrict_to_taxa_list(taxa_list,
     # ...for each category (mapping input category IDs to output category IDs)
 
 
-    ##%% Remap all category labels
+    #%% Remap all category labels
 
     assert len(set(output_taxon_string_to_category_id.keys())) == \
            len(set(output_taxon_string_to_category_id.values())), \
@@ -1724,10 +1786,16 @@ def restrict_to_taxa_list(taxa_list,
         if 'detections' not in im or im['detections'] is None:
             continue
 
+        description_options = ClassificationSmoothingOptions()
+        if classification_threshold is not None:
+            description_options.classification_confidence_threshold = classification_threshold
+
         # Possibly prepare a pre-filtering description
         pre_filtering_description = None
         if classification_descriptions is not None and add_pre_filtering_description:
-            category_to_count = count_detections_by_classification_category(im['detections'])
+            category_to_count = \
+                count_detections_by_classification_category(im['detections'],
+                                                            options=description_options)
             pre_filtering_description = \
                 get_classification_description_string(category_to_count,classification_descriptions)
             im['pre_filtering_description'] = pre_filtering_description
@@ -1738,6 +1806,14 @@ def restrict_to_taxa_list(taxa_list,
                     classification[0] = \
                         input_category_id_to_output_category_id[classification[0]]
 
+        if classification_descriptions is not None and add_post_filtering_description:
+            category_to_count = \
+                count_detections_by_classification_category(im['detections'],
+                                                            options=description_options)
+            post_filtering_description = \
+                get_classification_description_string(category_to_count,output_category_id_to_taxon_string)
+            im['post_filtering_description'] = post_filtering_description
+
     # ...for each image
 
     output_data['classification_categories'] = output_category_id_to_common_name
@@ -1745,8 +1821,379 @@ def restrict_to_taxa_list(taxa_list,
         output_category_id_to_taxon_string
 
 
-    ##%% Write output
+    #%% Write output
 
     write_json(output_file,output_data)
 
+    if combine_redundant_categories:
+        _ = combine_redundant_classification_categories(input_file=output_file,
+                                                        output_file=output_file)
+
 # ...def restrict_to_taxa_list(...)
+
+
+def merge_classification_categories(target_file,
+                                    source_file,
+                                    output_file=None):
+    """
+    Modify the classification categories in [source file] to be compatible
+    with the categories in [target_file], optionally writing a new file.
+    Uses only category names, does not use category descriptions to decide
+    whether to merge categories.  Behavior is undefined if multiple source
+    categories have the same name.  Does not look at detection categories at
+    all.  If neither file has classification categories, just re-writes
+    the source file.  Errors if exactly one file has classification categories.
+
+    Args:
+        target_file (str or dict): target .json file, in MD format (or an
+            already-loaded dict)
+        source_file (str): .json file to modify, in MD format (or an
+            already-loaded dict)
+        output_file (str, optional): .json file to which we should write a
+            modified version of [source_file]
+
+    Returns:
+        dict: remapped MD-formatted dict
+    """
+
+    ##%% Read input files
+
+    if isinstance(target_file,dict):
+        target_d = copy.deepcopy(target_file)
+    else:
+        assert os.path.isfile(target_file), \
+            'Could not find target file {}'.format(target_file)
+        with open(target_file,'r') as f:
+            target_d = json.load(f)
+
+    if isinstance(source_file,dict):
+        source_d = copy.deepcopy(source_file)
+    else:
+        assert os.path.isfile(source_file), \
+            'Could not find source file {}'.format(source_file)
+        with open (source_file,'r') as f:
+            source_d = json.load(f)
+
+
+    ##%% No-op is neither file has classification categories
+
+    source_has_classifications = ('classification_categories' in source_d)
+    target_has_classifications = ('classification_categories' in target_d)
+
+    if not (source_has_classifications or target_has_classifications):
+        print('Neither source nor target has classification categories, bypassing category merge')
+        if output_file is not None:
+            write_json(output_file,source_d)
+        return source_d
+
+
+    ##%% Error if only one file has classification categories
+
+    if source_has_classifications != target_has_classifications:
+        raise ValueError('Source and target disagree on whether classifications are present')
+
+
+    ##%% Map categories
+
+    target_category_id_to_name = {}
+    target_category_name_to_id = {}
+
+    input_category_id_to_output_category_id = {}
+
+    if 'classification_categories' in target_d:
+
+        target_category_id_to_name = target_d['classification_categories']
+        target_category_name_to_id = invert_dictionary(target_category_id_to_name)
+
+    if 'classification_categories' not in source_d:
+
+        print('Warning: merge_classification_categories called with no source classifications.')
+        print('This is legal, but this is a no-op.')
+
+    else:
+
+        for source_category_id in source_d['classification_categories']:
+
+            assert source_category_id not in input_category_id_to_output_category_id
+
+            category_name = source_d['classification_categories'][source_category_id]
+
+            # Does the target file have a category with the same name?
+            if category_name in target_category_name_to_id:
+
+                target_category_id = target_category_name_to_id[category_name]
+                input_category_id_to_output_category_id[source_category_id] = \
+                    target_category_id
+
+                print('Mapping category ID for existing category {} ({} to {})'.format(
+                    category_name,source_category_id,target_category_id))
+
+                # Print a warning if the descriptions don't match
+                if 'classification_category_descriptions' in target_d and \
+                    'classification_category_descriptions' in source_d:
+
+                    target_description = \
+                        target_d['classification_category_descriptions'][target_category_id]
+                    source_description = \
+                        source_d['classification_category_descriptions'][source_category_id]
+
+                    # If both descriptions look like SpeciesNet taxon strings, omit the GUID from
+                    # the descriptions for comparison
+                    if len(target_description.split(';')) == 7 and \
+                       len(source_description.split(';')) == 7:
+                       target_description = ';'.join((target_description.split(';'))[1:])
+                       source_description = ';'.join((source_description.split(';'))[1:])
+
+                    if target_description != source_description:
+                        print('Warning: merging categories for {} with different descriptions:'.format(
+                            category_name))
+                        print('Source {}: {}'.format(source_category_id,source_description))
+                        print('Target {}: {}'.format(target_category_id,target_description))
+
+            else:
+
+                # Create a new category
+
+                target_category_ids = list(target_category_id_to_name.keys())
+                if len(target_category_ids) == 0:
+                    new_category_id = '0'
+                else:
+                    target_category_ids = [int(x) for x in target_category_ids]
+                    new_category_id = str(max(target_category_ids)+1)
+
+                print('Creating a new category for {} ({})'.format(category_name,new_category_id))
+
+                target_category_id_to_name[new_category_id] = category_name
+                target_category_name_to_id = invert_dictionary(target_category_id_to_name)
+
+                input_category_id_to_output_category_id[source_category_id] = new_category_id
+
+                # Add the description only if the target file has descriptions
+                if 'classification_category_descriptions' in target_d and \
+                    'classification_category_descriptions' in source_d:
+                    target_d['classification_category_descriptions'][new_category_id] = \
+                        source_d['classification_category_descriptions'][source_category_id]
+
+            # ...if we do/don't have a matching target category name
+
+        # ...for each source category
+
+    # ...if the source file has classifications
+
+
+    ##%% Modify images
+
+    for im in source_d['images']:
+
+        if 'detections' not in im or im['detections'] is None:
+            continue
+
+        for det in im['detections']:
+
+            if 'classifications' not in det:
+                continue
+
+            for classification in det['classifications']:
+                original_category = classification[0]
+                new_category = input_category_id_to_output_category_id[original_category]
+                classification[0] = new_category
+
+            # ...for each classification
+
+        # ...for each detection
+
+    # ...for each image
+
+
+    ##%% Copy output categories
+
+    source_d['classification_categories'] = target_d['classification_categories']
+    if 'classification_category_descriptions' in target_d:
+        source_d['classification_category_descriptions'] = \
+            target_d['classification_category_descriptions']
+    else:
+        if 'classification_category_descriptions' in source_d:
+            del source_d['classification_category_descriptions']
+
+
+    ##%% Validate output
+
+    validation_options = ValidateBatchResultsOptions()
+    validation_options.check_image_existence = False
+    validation_options.raise_errors = True
+    _ = validate_batch_results(json_filename=source_d,options=validation_options)
+
+
+    ##%% Write output if necessary
+
+    if output_file is not None:
+        write_json(output_file,source_d)
+
+    return source_d
+
+# ...def merge_classification_categories(...)
+
+
+def combine_redundant_classification_categories(input_file,
+                                                output_file=None,
+                                                classification_threshold=0.5):
+    """
+    If [input_file] contains multiple categories with the same category name,
+    merges each equivalence class into a single category, optionally writing the results
+    to [output_file].
+
+    Args:
+        input_file (str or dict): .json file to read, in MD format (or an
+            already-loaded dict)
+        output_file (str): .json file to write, in MD format
+        classification_threshold (float, optional): only used when sorting
+            descriptions by count
+
+    Returns:
+        dict: remapped MD-formatted dict
+    """
+
+    ##%% Read input file and list categories
+
+    if isinstance(input_file,dict):
+        d = input_file
+    else:
+        assert os.path.isfile(input_file), \
+            'Input file {} not found'.format(input_file)
+        with open(input_file,'r') as f:
+            d = json.load(f)
+
+    input_category_name_to_ids = defaultdict(list)
+
+    for category_id in d['classification_categories']:
+        category_name = d['classification_categories'][category_id]
+        input_category_name_to_ids[category_name].append(category_id)
+
+
+    ##%% Return early if there are no redundant categories
+
+    # What's the largest number of IDs associated with a single category name?
+    max_count = 0
+    for category_name in input_category_name_to_ids:
+        c = len(input_category_name_to_ids[category_name])
+        if c > max_count:
+            max_count = c
+
+    if max_count == 1:
+        if output_file is not None:
+            print('No redundant categories, writing data unmodified to {}'.format(
+                output_file))
+            write_json(output_file,d)
+        return d
+
+
+    ##%% Map input category IDs to output category IDs
+
+    input_category_id_to_output_category_id = {}
+
+    for i_category,category_name in enumerate(input_category_name_to_ids):
+        output_category_id = str(i_category)
+        for input_category_id in input_category_name_to_ids[category_name]:
+            input_category_id_to_output_category_id[input_category_id] = \
+                output_category_id
+
+    n_input_categories = len(d['classification_categories'])
+    n_output_categories = len(input_category_name_to_ids)
+    assert n_output_categories < n_input_categories
+    print('Removing {} redundant categories'.format(
+        n_input_categories - n_output_categories))
+
+
+    ##%% Create a new category dict
+
+    output_category_name_to_id = {}
+
+    for input_category_id in input_category_id_to_output_category_id:
+        category_name = d['classification_categories'][input_category_id]
+        output_category_id = input_category_id_to_output_category_id[input_category_id]
+        if category_name in output_category_name_to_id:
+            assert output_category_name_to_id[category_name] == output_category_id
+        else:
+            output_category_name_to_id[category_name] = output_category_id
+
+
+    ##%% Create new classification category descriptions
+
+    if 'classification_category_descriptions' in d:
+
+        assert len(d['classification_category_descriptions']) == \
+               len(d['classification_categories'])
+
+        # Sort descriptions by count overall, so we can sort by description within categories later
+        description_to_count = {}
+        for description in d['classification_category_descriptions'].values():
+            description_to_count[description] = 0
+
+        for im in d['images']:
+            if 'detections' not in im or im['detections'] is None:
+                continue
+            for det in im['detections']:
+                if 'classifications' not in det or det['classifications'] is None:
+                    continue
+                conf = det['classifications'][0][1]
+                if conf < classification_threshold:
+                    continue
+                input_category_id = det['classifications'][0][0]
+                intput_category_description = d['classification_category_descriptions'][input_category_id]
+                description_to_count[intput_category_description] += 1
+            # ...for each detection
+        # ...for each image
+
+        # Sorting here is just a debug convenience
+        description_to_count = sort_dictionary_by_value(description_to_count,
+                                                        reverse=True)
+
+        # Create descriptions for the output categories
+        output_category_id_to_descriptions = defaultdict(list)
+
+        for input_category_id in input_category_id_to_output_category_id:
+            output_category_id = input_category_id_to_output_category_id[input_category_id]
+            description = d['classification_category_descriptions'][input_category_id]
+            output_category_id_to_descriptions[output_category_id].append(description)
+
+        output_classification_category_descriptions = {}
+
+        for output_category_id in output_category_id_to_descriptions:
+            descriptions = output_category_id_to_descriptions[output_category_id]
+            # If this output category combines multiple input categories
+            if len(descriptions) > 1:
+                # Sort "descriptions" in descending order by the corresponding values
+                # in description_to_count
+                descriptions.sort(key=lambda x: description_to_count[x], reverse=True)
+            output_classification_category_descriptions[output_category_id] = \
+                '|'.join(descriptions)
+        # ...for each category
+
+        d['classification_category_descriptions'] = output_classification_category_descriptions
+
+    # ...if we have to manage descriptions
+
+    d['classification_categories'] = invert_dictionary(output_category_name_to_id)
+
+    # Remap classifications
+    for im in d['images']:
+        if 'detections' not in im or im['detections'] is None:
+            continue
+        for det in im['detections']:
+            if 'classifications' not in det or det['classifications'] is None:
+                continue
+            for i_class in range(0,len(det['classifications'])):
+                input_category_id = det['classifications'][i_class][0]
+                output_category_id = \
+                    input_category_id_to_output_category_id[input_category_id]
+                det['classifications'][i_class][0] = output_category_id
+            # ...for each classification
+        # ...for each detection
+    # ...for each image
+
+    if output_file is not None:
+        write_json(output_file,d)
+
+    return d
+
+# ...def combine_redundant_classification_categories(...)

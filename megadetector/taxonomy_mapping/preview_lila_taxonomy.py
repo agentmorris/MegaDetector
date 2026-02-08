@@ -16,7 +16,7 @@ import os
 import pandas as pd
 
 # lila_taxonomy_file = r"c:\git\agentmorrisprivate\lila-taxonomy\lila-taxonomy-mapping.csv"
-lila_taxonomy_file = os.path.expanduser('~/lila/lila_additions_2025.10.07.csv')
+lila_taxonomy_file = os.path.expanduser('~/lila/lila_additions_2025.11.17.csv')
 
 preview_base = os.path.expanduser('~/lila/lila_taxonomy_preview')
 os.makedirs(preview_base,exist_ok=True)
@@ -383,9 +383,9 @@ for i_row,row in df.iterrows():
 
     print('Processing query {} of {} ({})'.format(i_row,len(df),query))
     paths = retrieve_sample_image.download_images(query=query,
-                                             output_directory=image_base,
-                                             limit=images_per_query,
-                                             verbose=True)
+                                                  output_directory=image_base,
+                                                  limit=images_per_query,
+                                                  verbose=True)
     print('Downloaded {} images for {}'.format(len(paths),query))
     scientific_name_to_paths[query] = paths
 

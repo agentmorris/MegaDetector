@@ -1,3 +1,5 @@
+#%% Header
+
 """
 
 wi_utils_driver.py
@@ -11,12 +13,27 @@ Utility cells to work with the wi_taxonomy_utils module.
 import os
 
 model_base = os.path.expanduser('~/models/speciesnet')
-geofencing_file = os.path.join(model_base,'crop','geofence_release.2025.02.27.0702.json')
+geofencing_file = os.path.join(model_base,'crop','geofence_release.20251208.json')
+taxonomy_file = os.path.join(model_base,'crop','taxonomy_release.20251208.txt')
+
+# This is not part of the model package, it comes from:
+#
+# https://github.com/lukes/ISO-3166-Countries-with-Regional-Codes/blob/master/all/all.csv
+#
+# wget "https://raw.githubusercontent.com/lukes/ISO-3166-Countries-with-Regional-Codes/refs/heads/master/all/all.csv" -O ~/models/speciesnet/country-codes.csv
 country_code_file = os.path.join(model_base,'country-codes.csv')
-taxonomy_file = os.path.join(model_base,'crop','taxonomy_release.txt')
 
 for fn in [geofencing_file,country_code_file,taxonomy_file]:
-    assert os.path.isfile(fn)
+    assert os.path.isfile(fn), 'Could not find file {}'.format(fn)
+
+us_state_codes = [
+    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+    'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+    'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+    'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
+    'DC'
+]
 
 
 #%% Initialize taxonomy functions
@@ -70,18 +87,55 @@ for s in rows:
     print(s)
 
 
+#%% Generate a block-except list
+
+block_except_list = 'AUS'
+species = 'potoroidae'
+species_string = taxonomy_handler.species_string_to_canonical_species_string(species)
+rows = taxonomy_handler.generate_csv_rows_to_block_all_countries_except(species_string,block_except_list)
+
+# import clipboard; clipboard.copy('\n'.join(rows))
+
+for s in rows:
+    print(s)
+
+
+#%% Generate a block-except list for states
+
+block_states_except = ['NJ','DE']
+
+species = 'sika deer'
+species_string = taxonomy_handler.species_string_to_canonical_species_string(species)
+
+rows = []
+
+for state_code in us_state_codes:
+    if state_code in block_states_except:
+        row = species_string + ',allow,USA,' + state_code
+    else:
+        row = species_string + ',block,USA,' + state_code
+    rows.append(row)
+
+# import clipboard; clipboard.copy('\n'.join(rows))
+
+
 #%% Generate an allow-list
 
-taxon_name = 'potoroidae'
-taxonomy_info = taxonomy_handler.binomial_name_to_taxonomy_info[taxon_name]
-taxonomy_string_short = taxonomy_info_to_taxonomy_string(taxonomy_info)
-assert len(taxonomy_string_short.split(';')) == 5
+taxon = 'sciurus carolinensis'
+# taxon = 'eastern fox squirrel'
+species_string = taxonomy_handler.species_string_to_canonical_species_string(taxon)
+taxonomy_info = taxonomy_handler.taxonomy_string_to_taxonomy_info[species_string]
 
-rows = taxonomy_handler.generate_csv_rows_for_species(species_string=taxonomy_string_short,
-                                                     allow_countries=['AUS'],
-                                                     block_countries=None,
-                                                     allow_states=None,
-                                                     block_states=None)
+if False:
+    taxonomy_info = taxonomy_handler.binomial_name_to_taxonomy_info[taxon]
+    taxonomy_string_short = taxonomy_info_to_taxonomy_string(taxonomy_info)
+    assert len(taxonomy_string_short.split(';')) == 5
+
+rows = taxonomy_handler.generate_csv_rows_for_species(species_string=species_string,
+                                                      allow_countries=['USA'],
+                                                      block_countries=None,
+                                                      allow_states=['CA','OR','ID','MT','WA'],
+                                                      block_states=None)
 
 # import clipboard; clipboard.copy('\n'.join(rows))
 
@@ -110,7 +164,26 @@ for s in rows:
     print(s)
 
 
-#%% Determine whether a species is allowed in a country
+#%% Determine whether a species is allowed in a location
+
+taxon = 'eastern gray squirrel'
+country = 'USA'
+state = 'CA'
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=state,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
+
+
+#%% Other locations
+
+taxon = 'mustela altaica'
+country = 'USA'
+state = 'CA'
+allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=state,return_status=False)
+taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
+common_name = taxonomy_info['common_name']
+print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
 
 taxon = 'pittidae'
 country = 'canada'
@@ -127,7 +200,6 @@ allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=None,r
 taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
 common_name = taxonomy_info['common_name']
 print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
-
 
 taxon = 'hippopotamidae'
 country = 'canada'
@@ -276,19 +348,24 @@ print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
 
 #%% Geofence updates
 
-repo_root = 'c:/git/cameratrapai'
+repo_root = os.path.expanduser('~/git/cameratrapai')
 script_file = os.path.join(repo_root,'speciesnet/scripts/build_geofence_release.py')
 geofence_base_file = os.path.join(repo_root,'data/geofence_base.json')
 geofence_fixes_file = os.path.join(repo_root,'data/geofence_fixes.csv')
-taxonomy_file = os.path.join(repo_root,'data/model_package/always_crop_99710272_22x8_v12_epoch_00148.labels.txt')
+taxonomy_file = os.path.join(repo_root,'data/model_package/taxonomy_release.txt')
+model_category_list_file = os.path.join(repo_root,'data/model_package/always_crop_99710272_22x8_v12_epoch_00148.labels.txt')
 output_file = os.path.join(repo_root,'data/model_package/geofence_release_updated.json')
 
 assert os.path.isfile(geofence_base_file)
 assert os.path.isfile(geofence_fixes_file)
+assert os.path.isfile(model_category_list_file)
 assert os.path.isfile(taxonomy_file)
 assert os.path.isfile(script_file)
 
-cmd = f'python "{script_file}" --base "{geofence_base_file}" --fixes "{geofence_fixes_file}" --output "{output_file}" --trim "{taxonomy_file}"'
+cmd = f'python "{script_file}" --base "{geofence_base_file}" --fixes "{geofence_fixes_file}"'
+cmd += f' --output "{output_file}" --trim "{model_category_list_file}"'
+cmd += f' --taxonomy "{taxonomy_file}"'
+
 cmd = cmd.replace('\\','/')
 print(cmd)
 # import clipboard; clipboard.copy(cmd)
@@ -582,3 +659,47 @@ for taxon in geofence_dict.keys():
 print('Found {} non-species-level rules (of {})'.format(
     len(non_species_rules),len(geofence_dict)))
 
+
+#%% Check whether a species should get geofenced...
+
+# ...according to the speciesnet package
+
+import json
+
+from speciesnet.geofence_utils import should_geofence_animal_classification
+from speciesnet.geofence_utils import geofence_animal_classification
+from speciesnet.ensemble import _load_taxonomy_from_file
+
+country = 'USA'
+state = 'CA'
+# taxon_name = 'neotamias species'
+taxon_name = 'eastern chipmunk'
+
+taxonomy_map = _load_taxonomy_from_file(taxonomy_file)
+species_string = taxonomy_handler.species_string_to_canonical_species_string(taxon_name)
+taxonomy_info = taxonomy_handler.taxonomy_string_to_taxonomy_info[species_string]
+
+# Generate a seven-token string
+taxonomy_string_long = taxonomy_info_to_taxonomy_string(taxonomy_info=taxonomy_info,
+                                                        include_taxon_id_and_common_name=True)
+
+with open(geofencing_file,'r') as f:
+    geofence_map = json.load(f)
+
+should_gefence = should_geofence_animal_classification(
+                    label=taxonomy_string_long,
+                    country=country,
+                    admin1_region=state,
+                    geofence_map=geofence_map,
+                    enable_geofence=True)
+
+print('Should geofence {} ({},{}): {}'.format(taxon_name,country,state,should_gefence))
+
+label,score,prediction_source = geofence_animal_classification(
+                                    labels=[taxonomy_string_long],
+                                    scores=[1.0],
+                                    country=country,
+                                    admin1_region=state,
+                                    taxonomy_map=taxonomy_map,
+                                    geofence_map=geofence_map,
+                                    enable_geofence=True)

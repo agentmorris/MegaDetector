@@ -590,11 +590,13 @@ def invert_dictionary(d):
     return {v: k for k, v in d.items()}
 
 
-def round_floats_in_nested_dict(obj, decimal_places=5, allow_iterator_conversion=False):
+def round_floats_in_nested_dict(obj,
+                                decimal_places=5,
+                                allow_iterator_conversion=False):
     """
     Recursively rounds all floating point values in a nested structure to the
     specified number of decimal places. Handles dictionaries, lists, tuples,
-    sets, and other iterables. Modifies mutable objects in place.
+    sets, and other iterables. Modifies mutable objects in place by default.
 
     Args:
         obj (obj): The object to process (can be a dict, list, set, tuple, or primitive value)
@@ -605,6 +607,7 @@ def round_floats_in_nested_dict(obj, decimal_places=5, allow_iterator_conversion
     Returns:
         The processed object (useful for recursive calls)
     """
+
     if isinstance(obj, dict):
         for key in obj:
             obj[key] = round_floats_in_nested_dict(obj[key], decimal_places=decimal_places,
@@ -732,20 +735,24 @@ def is_iterable(x):
     return True
 
 
-def is_empty(v):
+def is_empty(v,strip_strings=True):
     """
     A common definition of "empty" used throughout the repo, particularly when loading
     data from .csv files.  "empty" includes None, '', and NaN.
 
     Args:
         v (obj): the object to evaluate for emptiness
+        strip_strings (bool, optional): if v is a string, should whitespace be
+            considered empty?
 
     Returns:
         bool: True if [v] is None, '', or NaN, otherwise False
     """
     if v is None:
         return True
-    if isinstance(v,str) and v == '':
+    if isinstance(v,str) and len(v) == 0:
+        return True
+    if isinstance(v,str) and strip_strings and len(v.strip()) == 0:
         return True
     if isinstance(v,float) and np.isnan(v):
         return True
@@ -920,7 +927,7 @@ def parse_kvp(s,kv_separator='='):
     """
 
     items = s.split(kv_separator)
-    assert len(items) > 1, 'Illegal key-value pair'
+    assert len(items) > 1, 'Illegal key-value pair: {}'.format(s)
     key = items[0].strip()
     if len(items) > 1:
         value = kv_separator.join(items[1:]).strip()
@@ -1612,9 +1619,10 @@ def test_type_checking_and_validation():
 
     assert is_empty(None)
     assert is_empty("")
+    assert is_empty(" ", strip_strings=True)
     assert is_empty(np.nan)
     assert not is_empty(0)
-    assert not is_empty(" ")
+    assert not is_empty(" ", strip_strings=False)
     assert not is_empty([])
     assert not is_empty({})
     assert not is_empty(False) # False is not empty

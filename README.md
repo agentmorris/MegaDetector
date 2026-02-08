@@ -93,6 +93,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Gola Forest Programme](https://www.rspb.org.uk/our-work/conservation/projects/scientific-support-for-the-gola-forest-programme/), Royal Society for the Protection of Birds (RSPB)
 * [Graeme Shannon's Research Group](https://wildliferesearch.co.uk/group-1), Bangor University 
 * [Grizzly Bear Recovery Program](https://www.fws.gov/office/grizzly-bear-recovery-program), U.S. Fish & Wildlife Service
+* [Hall Wildlife Ecology Lab](https://sites.google.com/csub.edu/hallwildlifeecologylab/home), California State University Bakersfield
 * [Hamaarag](https://hamaarag.org.il/), The Steinhardt Museum of Natural History, Tel Aviv University
 * [Institut des Science de la Forêt Tempérée](https://isfort.uqo.ca/) (ISFORT), Université du Québec en Outaouais
 * [Lab of Dr. Bilal Habib](https://bhlab.in/about), the Wildlife Institute of India
@@ -122,11 +123,12 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [School of Natural Sciences](https://www.utas.edu.au/natural-sciences), University of Tasmania ([story](https://www.utas.edu.au/about/news-and-stories/articles/2022/1204-innovative-camera-network-keeps-close-eye-on-tassie-wildlife))
 * [Kenai National Wildlife Refuge](https://www.fws.gov/refuge/kenai), U.S. Fish & Wildlife Service ([story](https://www.peninsulaclarion.com/sports/refuge-notebook-new-technology-increases-efficiency-of-refuge-cameras/))
 * [Idaho Department of Fish and Game](https://idfg.idaho.gov/) ([fancy PBS video](https://www.youtube.com/watch?v=uEsL8EZKpbA&t=261s&ab_channel=OutdoorIdaho))
-* [Australian Wildlife Conservancy](https://www.australianwildlife.org/) (blog posts [1](https://www.australianwildlife.org/cutting-edge-technology-delivering-efficiency-gains-in-conservation/), [2](https://www.australianwildlife.org/efficiency-gains-at-the-cutting-edge-of-technology/), [3](https://www.australianwildlife.org/federal-grant-to-fund-ai-supported-wildlife-recognisers))
+* [Australian Wildlife Conservancy](https://www.australianwildlife.org/) (blog posts [1](https://www.australianwildlife.org/cutting-edge-technology-delivering-efficiency-gains-in-conservation/), [2](https://www.australianwildlife.org/efficiency-gains-at-the-cutting-edge-of-technology/), [3](https://www.australianwildlife.org/federal-grant-to-fund-ai-supported-wildlife-recognisers), [4](https://www.australianwildlife.org/news-and-resources/news/AWC-releases-innovative-AI-model-classifying-135-Australian-wildlife-species))
 * [Bavarian Forest National Park](https://www.nationalpark-bayerischer-wald.bayern.de/english/index.htm) ([story](https://customers.microsoft.com/en-au/story/1667539539271247797-nationalparkbayerischerwald-azure-en))
 * [Environs Kimberley](https://www.environskimberley.org.au) ([blog post](https://www.environskimberley.org.au/ai_megadetector))
 * [Felidae Conservation Fund](https://felidaefund.org/) ([WildePod platform](https://wildepod.org/)) ([blog post](https://abhaykashyap.com/blog/ai-powered-camera-trap-image-annotation-system/))
-* [Island Conservation](https://www.islandconservation.org/) (blog posts [1](https://www.islandconservation.org/conservation-machine-learning/),[2](https://news.lenovo.com/island-conservation-machine-learning-solutions-nvidia-island-ecosystems/?sprinklrid=12869857824&linkId=356951919)) ([video](https://www.lenovo.com/content/dam/lenovo/iso/customer-references-coe/one-lenovo-customer-stories/wfh/videos/WFH-One-Lenovo-ENG-subtitles.mp4))
+* [Island Conservation](https://www.islandconservation.org/) (blog posts [1](https://www.islandconservation.org/conservation-machine-learning/),[2](https://news.lenovo.com/island-conservation-machine-learning-solutions-nvidia-island-ecosystems/?sprinklrid=12869857824&linkId=356951919),[3](
+https://www.islandconservation.org/remote-sensing-on-islands)) ([video](https://www.lenovo.com/content/dam/lenovo/iso/customer-references-coe/one-lenovo-customer-stories/wfh/videos/WFH-One-Lenovo-ENG-subtitles.mp4))
 * [Alberta Biodiversity Monitoring Institute (ABMI)](https://www.abmi.ca/home.html) ([WildTrax platform](https://www.wildtrax.ca/)) (blog posts [1](https://wildcams.ca/blog/the-abmi-visits-the-zoo/),[2](http://blog.abmi.ca/2023/06/14/making-wildtrax-its-not-a-kind-of-magic-behind-the-screen/))
 * [Shan Shui Conservation Center](http://en.shanshui.org/) ([blog post](https://mp.weixin.qq.com/s/iOIQF3ckj0-rEG4yJgerYw?fbclid=IwAR0alwiWbe3udIcFvqqwm7y5qgr9hZpjr871FZIa-ErGUukZ7yJ3ZhgCevs)) ([translated blog post](https://mp-weixin-qq-com.translate.goog/s/iOIQF3ckj0-rEG4yJgerYw?fbclid=IwAR0alwiWbe3udIcFvqqwm7y5qgr9hZpjr871FZIa-ErGUukZ7yJ3ZhgCevs&_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en&_x_tr_pto=wapp)) ([Web demo](https://cameratrap-ai.hinature.cn/home))
 * [Irvine Ranch Conservancy](http://www.irconservancy.org/) ([story](https://www.ocregister.com/2022/03/30/ai-software-is-helping-researchers-focus-on-learning-about-ocs-wild-animals/))
@@ -148,6 +150,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Wildlife Division](https://www.michigan.gov/dnr/about/contact/wildlife), Michigan Department of Natural Resources ([blog post](https://www.michigan.gov/dnr/about/newsroom/releases/2025/08/18/dnr-researchers-to-test-trail-cameras-in-elk-survey))
 * [Cleveland Metroparks](https://www.clevelandmetroparks.com/) ([presentation](https://www.clevelandmetroparks.com/getmedia/d4978f4b-5641-4e6b-ac16-b29e9e3d43d1/AI_8_21_25.pdf))
 * [Conservation X Labs](https://conservationxlabs.com/) ([story](https://news.mongabay.com/2025/09/turning-camera-traps-into-real-time-sentinels-interview-with-conservation-x-labs-dante-wasmuht/))
+* [WildTracker program](https://www.wildtracker.com.au/), [Tasmanian Land Conservancy](https://tasland.org.au/) ([blog post](https://www.wildtracker.com.au/stickybeak-ai/), [news story](https://www.canberratimes.com.au/story/8956392/wombat-ai-software-deployed-to-track-native-animals/))
 
 Also see:
 

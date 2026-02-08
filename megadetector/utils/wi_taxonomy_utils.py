@@ -97,17 +97,24 @@ def is_valid_taxonomy_string(s):
     return isinstance(s,str) and (len(s.split(';')) == 5) and (s == s.lower())
 
 
-def clean_taxonomy_string(s):
+def clean_taxonomy_string(s, truncate_multiple_description_strings=True):
     """
     If [s] is a seven-token prediction string, trim the GUID and common name to produce
     a "clean" taxonomy string.  Else if [s] is a five-token string, return it.  Else error.
 
     Args:
         s (str): the seven- or five-token taxonomy/prediction string to clean
+        truncate_multiple_description_strings (bool, optional): we use | to delimit
+            multiple descriptions in the same string; if this is True, clean and
+            return just the first, else error.
 
     Returns:
         str: the five-token taxonomy string
     """
+
+    if truncate_multiple_description_strings:
+        tokens = s.split('|')
+        s = tokens[0]
 
     if is_valid_taxonomy_string(s):
         return s
@@ -116,7 +123,7 @@ def clean_taxonomy_string(s):
         assert len(tokens) == 7
         return ';'.join(tokens[1:-1])
     else:
-        raise ValueError('Invalid taxonomy string')
+        raise ValueError('Invalid taxonomy string: {}'.format(s))
 
 
 taxonomy_level_names = \
@@ -211,7 +218,6 @@ def is_taxonomic_prediction_string(s):
     """
 
     return (taxonomy_level_index(s) > 0)
-
 
 
 def get_kingdom(prediction_string):
@@ -432,9 +438,6 @@ def generate_md_results_from_predictions_json(predictions_json_file,
     files use absolute paths, so this function optionally removes the leading string
     [base_folder] from all file names.
 
-    Currently just applies the top classification category to every detection.  If the top
-    classification is "blank", writes an empty detection list.
-
     Uses the classification from the "prediction" field if it's available, otherwise
     uses the "classifications" field.
 
@@ -562,7 +565,9 @@ def generate_md_results_from_predictions_json(predictions_json_file,
                 class_to_assign = None
                 im_out['top_classification_common_name'] = top_classification_common_name
                 class_to_assign = im_in['prediction']
-                if convert_homo_species_to_human and class_to_assign.endswith('homo species'):
+                if convert_homo_species_to_human and \
+                    (('hominidae;homo' in class_to_assign) or \
+                     ('homo species') in class_to_assign):
                     class_to_assign = human_prediction_string
                 class_confidence = im_in['prediction_score']
 
@@ -570,9 +575,9 @@ def generate_md_results_from_predictions_json(predictions_json_file,
 
                 if class_to_assign == blank_prediction_string:
 
-                    # This is a scenario that's not captured well by the MD format: a blank prediction
-                    # with detections present.  But, for now, don't do anything special here, just making
-                    # a note of this.
+                    # We have a blank prediction with detections present.  For now, don't do anything
+                    # special here, just making a note of this, in case I want to handle this differently
+                    # later.
                     if len(im_out['detections']) > 0:
                         pass
 
@@ -627,7 +632,10 @@ def generate_md_results_from_predictions_json(predictions_json_file,
     # Fix the 'unknown' category
     if len(all_unknown_detections) > 0:
 
-        max_detection_category_id = max([int(x) for x in detection_category_id_to_name.keys()])
+        if len(detection_category_id_to_name) == 0:
+            max_detection_category_id = -1
+        else:
+            max_detection_category_id = max([int(x) for x in detection_category_id_to_name.keys()])
         unknown_category_id = str(max_detection_category_id + 1)
         detection_category_id_to_name[unknown_category_id] = 'unknown'
 
@@ -1372,7 +1380,7 @@ class TaxonomyHandler:
         """
         Generate rows in the format expected by geofence_fixes.csv, representing a list of
         allow and block rules to block all countries currently allowed for this species
-        except [allow_countries], and add allow rules these countries.
+        except [block_except_list], and add allow rules for these countries.
 
         Args:
             species_string (str): five-token taxonomy string
@@ -1418,8 +1426,8 @@ class TaxonomyHandler:
                 countries_to_allow.append(country)
 
         rows = self.generate_csv_rows_for_species(species_string,
-                                             allow_countries=countries_to_allow,
-                                             block_countries=countries_to_block)
+                                                  allow_countries=countries_to_allow,
+                                                  block_countries=countries_to_block)
 
         return rows
 
@@ -1625,31 +1633,73 @@ class TaxonomyHandler:
         # Now let's see whether we have to deal with any regional rules.
         #
         # Right now regional rules only exist for the US.
-        if (country_code == 'USA') and ('USA' in geofencing_rules_this_species[rule_type]):
+        if (country_code == 'USA'):
 
-            if state is None:
+            usa_blocked = False
+            usa_allowed = False
+            state_blocked = False
+            state_allowed = False
+            other_states_blocked = False
+            other_states_allowed = False
 
-                state_list = geofencing_rules_this_species[rule_type][country_code]
-                if len(state_list) > 0:
-                    assert status.startswith('allow')
-                    status = 'allow_no_state'
+            for rule_type in ('block','allow'):
 
-            else:
+                if rule_type not in geofencing_rules_this_species:
+                    continue
 
-                state_list = geofencing_rules_this_species[rule_type][country_code]
+                if (country_code in geofencing_rules_this_species[rule_type]):
 
-                if state in state_list:
-                    # If the state is on the list, do what the list says
-                    if rule_type == 'allow':
-                        status = 'allow_on_state_allow_list'
+                    state_list = geofencing_rules_this_species[rule_type][country_code]
+
+                    # If this rule doesn't have any associated states, it applies
+                    # to the whole country
+                    if len(state_list) == 0:
+                        if rule_type == 'block':
+                            usa_blocked = True
+                        else:
+                            assert rule_type == 'allow'
+                            usa_allowed = True
+                        continue
+
+                    if state is not None:
+
+                        # We have a state, and a list of states for this rule
+                        if state in state_list:
+                            if rule_type == 'block':
+                                state_blocked = True
+                            else:
+                                state_allowed = True
+                        else:
+                            if rule_type == 'block':
+                                other_states_blocked = True
+                            else:
+                                other_states_allowed = True
+
                     else:
-                        status = 'block_on_state_block_list'
-                else:
-                    # If the state is not on the list, do the opposite of what the list says
-                    if rule_type == 'allow':
-                        status = 'block_not_on_state_allow_list'
-                    else:
-                        status = 'allow_not_on_state_block_list'
+
+                        # We have a list of states for this rule, but no state to apply it to
+                        #
+                        # Treat this as allowing the whole country
+                        usa_allowed = True
+
+                # ...if we have a USA rule of this type
+
+            # ...for block/allow
+
+            if usa_blocked:
+                status = 'block_usa_wide'
+            elif usa_allowed:
+                status = 'allow_usa_wide'
+            elif state_blocked:
+                status = 'block_by_state'
+            elif state_allowed:
+                status = 'allow_by_state'
+            elif other_states_blocked:
+                status = 'allow_other_states_blocked'
+            elif other_states_allowed:
+                status = 'block_other_states_allowed'
+
+        # ...if the country code we're analyzing is "USA"
 
         if return_status:
             return status
@@ -1720,9 +1770,9 @@ class TaxonomyHandler:
                 if len(tokens) > 1:
                     state_code = tokens[1]
                 allowed = self.species_allowed_in_country(species=taxon,
-                                                     country=country_code,
-                                                     state=state_code,
-                                                     return_status=False)
+                                                          country=country_code,
+                                                          state=state_code,
+                                                          return_status=False)
                 if allowed:
                     n_allowed += 1
                     df.loc[taxon,region] = 1

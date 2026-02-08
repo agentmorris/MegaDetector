@@ -22,6 +22,7 @@ from tqdm import tqdm
 
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.utils.path_utils import insert_before_extension
+from megadetector.utils.ct_utils import round_floats_in_nested_dict
 from megadetector.utils.ct_utils import write_json
 
 default_confidence_threshold = 0.15
@@ -42,7 +43,8 @@ def md_to_coco(md_results_file,
                overwrite_behavior='skip',
                verbose=True,
                image_filename_to_size=None,
-               unrecognized_category_handling='error'):
+               unrecognized_category_handling='error',
+               precision=3):
     """
     "Converts" MegaDetector output files to COCO format.  "Converts" is in quotes because
     this is an opinionated transformation that typically requires a confidence threshold.
@@ -92,6 +94,8 @@ def md_to_coco(md_results_file,
             IDs not in the category mapping.  Can be "error", "ignore", or "warning".  Can also be a float,
             in which case an error is thrown if an unrecognized category has a confidence value higher than
             this value.
+        precision (int, optional): round box coordinates to this many decimal places, or
+            None to bypass rounding.
 
     Returns:
         dict: the COCO data dict, identical to what's written to [coco_output_file] if [coco_output_file]
@@ -293,6 +297,10 @@ def md_to_coco(md_results_file,
         coco_category = {'id':coco_category_id,
                          'name':md_results['detection_categories'][md_category_id]}
         output_dict['categories'].append(coco_category)
+
+    if precision is not None:
+        print('Limiting precision to {} places'.format(precision))
+        output_dict = round_floats_in_nested_dict(output_dict,decimal_places=precision)
 
     if verbose:
         print('Writing COCO output file...')

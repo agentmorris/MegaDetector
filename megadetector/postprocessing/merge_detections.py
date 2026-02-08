@@ -3,8 +3,8 @@
 merge_detections.py
 
 Merge high-confidence detections from one or more results files into another
-file.  Typically used to combine results from MDv5b and/or MDv4 into a "primary"
-results file from MDv5a.
+file.  Typically used to combine results from MDv5b and/or MDv4 and/or MDv5a
+into a "primary" results file from MDv5a or MDv1000-redwood.
 
 Detection categories must be the same in both files; if you want to first remap
 one file's category mapping to be the same as another's, see remap_detection_categories.
@@ -24,6 +24,9 @@ from tqdm import tqdm
 
 from megadetector.utils.ct_utils import get_iou
 from megadetector.utils.ct_utils import write_json
+
+from megadetector.postprocessing.classification_postprocessing import \
+    merge_classification_categories
 
 
 #%% Structs
@@ -58,8 +61,8 @@ class MergeDetectionsOptions:
         #: (but not both) of these.  These are category IDs, not names.
         self.categories_to_exclude = None
 
-        #: Only merge detections into images that have *no* detections in the
-        #: target results file.
+        #: Only merge detections into images that have *no* above-threshold
+        #: detections in the target results file.
         self.merge_empty_only = False
 
         #: IoU threshold above which two detections are considered the same
@@ -68,14 +71,22 @@ class MergeDetectionsOptions:
         #: Error if this is False and the output file exists
         self.overwrite = False
 
+        #: Add a 'merged' field (value True) to all merged detections.
+        #:
+        #: Only used for debugging.
+        self.mark_copied_detections = False
+
 
 #%% Main function
 
-def merge_detections(source_files,target_file,output_file,options=None):
+def merge_detections(source_files,
+                     target_file,
+                     output_file=None,
+                     options=None):
     """
     Merge high-confidence detections from one or more results files into another
-    file.   Typically used to combine results from MDv5b and/or MDv4 into a "primary"
-    results file from MDv5a.
+    file.  Typically used to combine results from, e.g., MDv5a and/or MDv5b into a
+    "primary" results file from MDv1000-redwood.
 
     [source_files] (a list of files or a single filename) specifies the set of
     results files that will be merged into [target_file].  The difference between a
@@ -84,13 +95,18 @@ def merge_detections(source_files,target_file,output_file,options=None):
     file already has above-threshold detection for an image+category, the output file gets
     the results of the "target" file.  I.e., the "target" file wins all ties.
 
+    Merges classification categories based on category names (ignoring descriptions).
+
     The results are written to [output_file].
 
     Args:
         source_files (list of str): list of files to merge into the results in [target_file]
         target_file (str): filename that is treated as the primary source of results
-        output_file (str): file to which we should write merged results
+        output_file (str, optional): file to which we should write merged results
         options (MergeDetectionsOptions, optional): see MergeDetectionsOptions
+
+    Returns:
+        dict in MegaDetector format, containing merged results
     """
 
     if isinstance(source_files,str):
@@ -99,7 +115,7 @@ def merge_detections(source_files,target_file,output_file,options=None):
     if options is None:
         options = MergeDetectionsOptions()
 
-    if (not options.overwrite) and (os.path.isfile(output_file)):
+    if (output_file is not None) and (not options.overwrite) and (os.path.isfile(output_file)):
         print('File {} exists, bypassing merge'.format(output_file))
         return
 
@@ -159,6 +175,8 @@ def merge_detections(source_files,target_file,output_file,options=None):
     else:
         detection_categories = detection_categories_raw
 
+    # For each source file...
+    #
     # i_source_file = 0; source_file = source_files[i_source_file]
     for i_source_file,source_file in enumerate(source_files):
 
@@ -166,6 +184,30 @@ def merge_detections(source_files,target_file,output_file,options=None):
 
         with open(source_file,'r') as f:
             source_data = json.load(f)
+
+        # If necessary, map all the classification categories in the source file
+        # into the space of the target file
+        #
+        # This will no-op if neither file has classification categories.
+        source_data = \
+            merge_classification_categories(target_file=output_data,
+                                            source_file=source_data,
+                                            output_file=None)
+
+        # If classification data is present in "target_file", merge_classification_categories
+        # guarantees compatible classification categories in source_data
+        if 'classification_categories' in output_data:
+            assert 'classification_categories' in source_data, 'Category merge error A'
+            assert len(source_data['classification_categories']) >= \
+                   len(output_data['classification_categories']), 'Category merge error B'
+            for category_id in output_data['classification_categories']:
+                assert category_id in source_data['classification_categories']
+                assert source_data['classification_categories'][category_id] == \
+                       output_data['classification_categories'][category_id], 'Category merge error C'
+            output_data['classification_categories'] = source_data['classification_categories']
+            if 'classification_category_descriptions' in output_data:
+                output_data['classification_category_descriptions'] = \
+                    source_data['classification_category_descriptions']
 
         if 'detector' in source_data['info']:
             source_detector_name = source_data['info']['detector']
@@ -180,6 +222,8 @@ def merge_detections(source_files,target_file,output_file,options=None):
 
         source_confidence_threshold = options.source_confidence_thresholds[i_source_file]
 
+        # For each image...
+        #
         # source_im = source_data['images'][0]
         for source_im in tqdm(source_data['images']):
 
@@ -200,6 +244,8 @@ def merge_detections(source_files,target_file,output_file,options=None):
 
             detections_to_transfer = []
 
+            # For each detection category...
+            #
             # detection_category = list(detection_categories)[0]
             for detection_category in detection_categories:
 
@@ -233,6 +279,8 @@ def merge_detections(source_files,target_file,output_file,options=None):
                         (det['bbox'][2]*det['bbox'][3] >= options.min_detection_size) \
                         ]
 
+                # For each detection in this category in the source image...
+                #
                 # det = source_detections_this_category_filtered[0]
                 for det in source_detections_this_category_filtered:
 
@@ -278,6 +326,10 @@ def merge_detections(source_files,target_file,output_file,options=None):
                 detections = fn_to_image[image_filename]['detections']
                 detections.extend(detections_to_transfer)
 
+                if options.mark_copied_detections:
+                    for det in detections_to_transfer:
+                        det['merged'] = True
+
                 # Update the max_detection_conf field (if present)
                 if 'max_detection_conf' in fn_to_image[image_filename]:
                     fn_to_image[image_filename]['max_detection_conf'] = \
@@ -289,9 +341,11 @@ def merge_detections(source_files,target_file,output_file,options=None):
 
     # ...for each source file
 
-    write_json(output_file,output_data)
+    if output_file is not None:
+        write_json(output_file,output_data)
+        print('Saved merged results to {}'.format(output_file))
 
-    print('Saved merged results to {}'.format(output_file))
+    return output_data
 
 # ...def merge_detections(...)
 

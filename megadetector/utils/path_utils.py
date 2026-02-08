@@ -24,6 +24,8 @@ import tarfile
 import webbrowser
 import subprocess
 import re
+import pytest
+import stat
 
 from zipfile import ZipFile
 from datetime import datetime
@@ -282,7 +284,9 @@ def insert_before_extension(filename, s=None, separator='.'):
     if s is None or len(s) == 0:
         s = datetime.now().strftime('%Y.%m.%d.%H.%M.%S')
     name, ext = os.path.splitext(filename)
-    return f'{name}{separator}{s}{ext}'
+    output_string = f'{name}{separator}{s}{ext}'
+    assert output_string != filename, 'Input and output filenames are identical'
+    return output_string
 
 
 def split_path(path):
@@ -444,6 +448,41 @@ def path_join(*paths, convert_slashes=True):
         return joined_path.replace('\\', '/')
     else:
         return joined_path
+
+
+@pytest.mark.skip(reason="This is not a test function")
+def test_file_write(fn, overwrite=True):
+    """
+    Writes an empty file to [fn], used to test that we have
+    appropriate permissions.  If [fn] exists and overwrite is False,
+    this function errors.  Creates the directory containing [fn] if
+    necessary.  Does not delete the test file.
+
+    Args:
+        fn (str): the filename to which we should perform a test write
+        overwrite (bool, optional): if [fn] exists, whether we should
+            overwrite (True) or error (False)
+
+    Returns:
+        bool: currently always returns True or errors
+    """
+
+    if os.path.isfile(fn) and (not overwrite):
+        raise ValueError(
+            'test_write_file: target file {} exists'.format(fn))
+    if os.path.isdir(fn):
+        raise ValueError(
+            'test_write_file: target file {} is a directory'.format(fn))
+
+    target_dir = os.path.dirname(fn)
+    if len(target_dir) > 0:
+        os.makedirs(target_dir,exist_ok=True)
+
+    # Create an empty file at the destination "fn"
+    with open(fn, 'w') as f:
+        f.write('')
+
+    return True
 
 
 #%% Image-related path functions
@@ -647,6 +686,26 @@ def is_executable(filename):
     # https://stackoverflow.com/questions/11210104/check-if-a-program-exists-from-a-python-script
 
     return which(filename) is not None
+
+
+def make_executable(filename,catch_exceptions=False):
+    """
+    Make [filename] executable.
+
+    Args:
+        filename (str): filename to make executable
+        catch_exceptions (bool, optional): treat errors as warnings
+    """
+
+    try:
+        st = os.stat(filename)
+        os.chmod(filename, st.st_mode | stat.S_IEXEC)
+    except Exception as e:
+        if not catch_exceptions:
+            raise
+        else:
+            print('Warning: error making {} executable:\n{}'.format(
+                filename,str(e)))
 
 
 #%% WSL utilities
@@ -1017,6 +1076,10 @@ def parallel_copy_files(input_file_to_output_file,
         verbose (bool, optional): enable additional debug output
         move (bool, optional): move instead of copying
     """
+
+    if len(input_file_to_output_file) == 0:
+        print('Warning: parallel_copy_files called with an empty copy list')
+        return
 
     n_workers = min(max_workers,len(input_file_to_output_file))
 
@@ -1627,11 +1690,11 @@ def compute_file_hash(file_path, algorithm='sha256', allow_failures=True):
 
 
 def parallel_compute_file_hashes(filenames,
-                               max_workers=16,
-                               use_threads=True,
-                               recursive=True,
-                               algorithm='sha256',
-                               verbose=False):
+                                 max_workers=16,
+                                 use_threads=True,
+                                 recursive=True,
+                                 algorithm='sha256',
+                                 verbose=False):
     """
     Compute file hashes for a list or folder of images.
 
