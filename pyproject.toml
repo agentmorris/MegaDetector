@@ -54,6 +54,7 @@ dependencies = [
   "python-dateutil",
   "send2trash",
   "clipboard",
+  "setuptools<82",
   
   # Not imported directly, but required to de-serialize some models
   "dill",
