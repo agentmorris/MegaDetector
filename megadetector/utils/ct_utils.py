@@ -735,20 +735,24 @@ def is_iterable(x):
     return True
 
 
-def is_empty(v):
+def is_empty(v,strip_strings=True):
     """
     A common definition of "empty" used throughout the repo, particularly when loading
     data from .csv files.  "empty" includes None, '', and NaN.
 
     Args:
         v (obj): the object to evaluate for emptiness
+        strip_strings (bool, optional): if v is a string, should whitespace be
+            considered empty?
 
     Returns:
         bool: True if [v] is None, '', or NaN, otherwise False
     """
     if v is None:
         return True
-    if isinstance(v,str) and v == '':
+    if isinstance(v,str) and len(v) == 0:
+        return True
+    if isinstance(v,str) and strip_strings and len(v.strip()) == 0:
         return True
     if isinstance(v,float) and np.isnan(v):
         return True
@@ -1615,9 +1619,10 @@ def test_type_checking_and_validation():
 
     assert is_empty(None)
     assert is_empty("")
+    assert is_empty(" ", strip_strings=True)
     assert is_empty(np.nan)
     assert not is_empty(0)
-    assert not is_empty(" ")
+    assert not is_empty(" ", strip_strings=False)
     assert not is_empty([])
     assert not is_empty({})
     assert not is_empty(False) # False is not empty
