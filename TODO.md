@@ -484,6 +484,8 @@ It's not clear what exactly will happen when this is deprecated.  The action ite
 
 In 2025.01.06, I reviewed this and dropped it from P0 to P1, and elevated the effort from E1 to E2.  pkg_resources isn't used much in the ultralytics-yolov5 package, but it's also not used in an esoteric corner of the package that will never be imported during normal MD use.  Specifically, it's imported in utils/general.py and loggers/__init__.py.  Both would be easy to replace with newer dependencies, but given that the repo from which this package was built is way out of date, and that there are a few other tiny things I'd love to fix anyway (e.g. the NMS timeout issue), the "right" solution would be to create a new package called something like "md-ultralytics-yolov5", fix all the things I want to fix (including the pkg_resources issue), and take a dependency on that.  But that's a hassle, so I won't do that unless this stops working.
 
+Update 2026.05.08: pkg_resources was finally removed from setuptools, so I pinned setuptools<82, which makes the warning go away, but isn't a good long-term solution.
+
 For posterity, the repo from which the [ultralytics-yolov5](https://pypi.org/project/ultralytics-yolov5) package builds is the [AushExcel/yolov5](https://github.com/AyushExel/yolov5) repo.  I created a snapshot of this repo at [agentmorris/ultralytics-yolov5](https://github.com/agentmorris/ultralytics-yolov5).  If this becomes a breaking issue, that's the repo from which I will create a new package.
 
 P1
