@@ -569,7 +569,8 @@ def clean_filename(filename,
                    allow_list=VALID_FILENAME_CHARS,
                    char_limit=CHAR_LIMIT,
                    force_lower=False,
-                   remove_trailing_leading_whitespace=True):
+                   remove_trailing_leading_whitespace=True,
+                   replace_whitespace=None):
     r"""
     Removes non-ASCII and other invalid filename characters (on any
     reasonable OS) from a filename, then optionally trims to a maximum length.
@@ -588,6 +589,8 @@ def clean_filename(filename,
         remove_trailing_leading_whitespace (bool, optional): remove trailing and
             leading whitespace from each component of a path, e.g. does not allow
             a/b/c /d.jpg
+        replace_whitespace (str, optional): replace all contiguous whitespace
+            with this string, or None to leave whitespace intact
     Returns:
         str: cleaned version of [filename]
     """
@@ -616,6 +619,8 @@ def clean_filename(filename,
         cleaned_filename = cleaned_filename[:char_limit]
     if force_lower:
         cleaned_filename = cleaned_filename.lower()
+    if replace_whitespace is not None:
+        cleaned_filename = re.sub(r'\s+', replace_whitespace, cleaned_filename)
     return cleaned_filename
 
 
