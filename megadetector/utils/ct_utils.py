@@ -575,18 +575,23 @@ def sort_dictionary_by_value(d,sort_values=None,reverse=False):
     return d
 
 
-def invert_dictionary(d):
+def invert_dictionary(d, verify_unique=False):
     """
-    Creates a new dictionary that maps d.values() to d.keys().  Does not check
-    uniqueness.
+    Creates a new dictionary that maps d.values() to d.keys()
 
     Args:
         d (dict): dictionary to invert
+        verify_unique (bool, optional): error if values are not unique
 
     Returns:
         dict: inverted copy of [d]
     """
 
+    if verify_unique:
+        n_unique_values = len(set(d.values()))
+        assert len(d) == n_unique_values, \
+            'Only {} unique values ({} total)'.format(
+                n_unique_values,len(d))
     return {v: k for k, v in d.items()}
 
 

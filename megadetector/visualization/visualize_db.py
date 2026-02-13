@@ -66,6 +66,9 @@ class DbVizOptions:
         self.html_options = write_html_image_list()
 
         #: Whether to sort images by filename (True) or randomly (False)
+        #:
+        #: This is ignored if max_sequence_length is not None, in which case
+        #: we always sort by sequence ID, then frame number.
         self.sort_by_filename = True
 
         #: Only show images that contain bounding boxes
@@ -154,6 +157,15 @@ class DbVizOptions:
         #:
         #: Images with multiple categories will be included in all relevant pages.
         self.create_category_pages = False
+
+        #: If this is None, we just sample images, and show images.  If this is
+        #: not None, we sample images, but we also show the other images in the sequences
+        #: containing our sampled images.  If this is <=0, there is no limit on the
+        #: number of images we'll show per sequences.  If this is >0, we will cap the number
+        #: of images shown per sequence; no guarantee is made about which images will
+        #: be selected in that case.  This only impacts the number of images added as
+        #: "sequence friends" of images that get sampled.
+        self.max_sequence_length = None
 
 
 #%% Core functions
@@ -285,6 +297,14 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
     for cat in categories:
         label_map[int(cat['id'])] = cat['name']
 
+    # Map sequence IDs to images if necessary
+    sequence_id_to_images = defaultdict(list)
+
+    if options.max_sequence_length is not None:
+        for im in images:
+            if 'seq_id' in im:
+                sequence_id_to_images[im['seq_id']].append(im)
+
     # Take a sample of images
     if options.num_to_visualize is not None:
         if options.num_to_visualize > len(images):
@@ -304,8 +324,75 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
     rendering_info = []
 
     image_id_to_annotations = defaultdict(list)
+
     for ann in annotations:
         image_id_to_annotations[ann['image_id']].append(ann)
+
+    # Do we need to find all the images that are in the same
+    # sequence as the sampled images?
+    if options.max_sequence_length is not None:
+
+        print('Preparing sequence friends')
+
+        seq_id_to_images_rendered = defaultdict(int)
+
+        # Don't add images that are already in the list
+        image_ids_already_sampled = set()
+        for im in images:
+            image_ids_already_sampled.add(im['id'])
+            if 'seq_id' in im:
+                seq_id_to_images_rendered[im['seq_id']] += 1
+
+        images_to_add = []
+
+        # For every image we've decided to render, find all her
+        # sequence friends
+        for im in images:
+
+            if 'seq_id' not in im:
+                continue
+
+            seq_id = im['seq_id']
+
+            # This is *all* the images in this sequence, regardless of
+            # whether we've already added them
+            images_this_sequence = sequence_id_to_images[seq_id]
+
+            for candidate_im in images_this_sequence:
+
+                # Have we already hit the maximum number of images for this sequence?
+                if (options.max_sequence_length > 0) and \
+                   (seq_id_to_images_rendered[seq_id] >= options.max_sequence_length):
+                    # Don't assert this, we may have more than max_sequence_length images
+                    # if we just happened to sample that way, we just won't add more.
+                    # assert seq_id_to_images_rendered[seq_id] == options.max_sequence_length
+                    if options.verbose:
+                        print('Already rendered {} images from sequence {}'.format(
+                            options.max_sequence_length,seq_id))
+                    break
+
+                assert candidate_im['seq_id'] == seq_id
+
+                # Add this image if necessary
+                if candidate_im['id'] not in image_ids_already_sampled:
+
+                    images_to_add.append(candidate_im)
+                    image_ids_already_sampled.add(candidate_im['id'])
+                    seq_id_to_images_rendered[seq_id] += 1
+
+            # ...for each sequence friend of the current image
+
+        # ...for each image in the sampled set
+
+        print('Adding {} new images ({} initially) as sequence friends'.format(
+            len(images_to_add),len(images)))
+        images.extend(images_to_add)
+
+        # Double-check that we didn't create duplicates
+        all_image_ids = [im['id'] for im in images]
+        assert len(all_image_ids) == len(set(all_image_ids))
+
+    # ...if we need to add sequence friends for every sampled image
 
     print('Preparing rendering list')
 
@@ -476,12 +563,25 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
                 'text-align:left;margin-top:20;margin-bottom:5',
             'image_categories': image_categories
         }
+
+        # Make it clear which images start a new sequence
+        if (options.max_sequence_length is not None) and \
+           ('frame_num' in img) and ('seq_id' in img) and \
+           (img['frame_num'] is not None) and (img['frame_num'] in (0,-1)):
+            sequence_header = '<span style="font-weight:bold;font-size:120%">Sequence {}</span><br/><br/>'.format(
+                img['seq_id'])
+            image_dict['title'] = sequence_header + image_dict['title']
+
         if options.include_image_links:
             image_dict['linkTarget'] = img_path
 
+        for field_name in ('seq_id','frame_num'):
+            if field_name in img:
+                image_dict[field_name] = img[field_name]
+
         images_html.append(image_dict)
 
-    # ...for each image
+    # ...for each sampled image
 
     def _render_image_info(rendering_info):
         """
@@ -498,6 +598,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         Returns:
             bool: True if rendering was successful, else False
         """
+
         img_path = rendering_info['img_path']
         bboxes = rendering_info['bboxes']
         bbox_classes = rendering_info['box_classes']
@@ -600,10 +701,30 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
     print('Rendered {} images in {} ({} successful)'.format(
         len(rendering_info),humanfriendly.format_timespan(elapsed),sum(rendering_success)))
 
-    if options.sort_by_filename:
-        images_html = sorted(images_html, key=lambda x: x['filename'])
+    # If we added every sampled image's sequence friends, we sort by sequence ID,
+    # then frame number
+    if options.max_sequence_length is not None:
+
+        # Add fields we need for sorting by sequence
+        for im in images_html:
+            if 'seq_id' not in im:
+                im['seq_id'] = 'no_sequence_id'
+            if 'frame_num' not in im:
+                im['frame_num'] = -1
+
+        # Sort the list of dicts "images_html" by the
+        # field "seq_id", then "frame_num", then "filename"
+        images_html = sorted(images_html,
+                             key=lambda x: (x['seq_id'], x['frame_num'], x['filename']))
+
     else:
-        random.shuffle(images_html)
+
+        if options.sort_by_filename:
+            images_html = sorted(images_html, key=lambda x: x['filename'])
+        else:
+            random.shuffle(images_html)
+
+    # ...if we need to sort using sequence information
 
     html_output_file = None
 
