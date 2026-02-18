@@ -38,8 +38,11 @@ overwrite = True
 parallelization_uses_threads = True
 n_workers = 8
 
-# Sample every Nth frame.  To specify a sampling rate in seconds, use a negative
-# value.  For example:
+# Sample every Nth frame.  Use 1 or None to extract every frame.
+#
+# To specify a sampling rate in seconds, use a negative value.
+#
+# For example:
 #
 # * Setting every_n_frames to -2.0 yields a frame rate of 0.5 fps
 # * Setting every_n_frames to -0.5 yields a frame rate of 2.0 fps
