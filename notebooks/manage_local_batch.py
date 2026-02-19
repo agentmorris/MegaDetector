@@ -1527,22 +1527,6 @@ if not run_tasks_in_notebook:
     _ = validate_predictions_file(ensemble_output_file_modular_crops,crop_instances_json)
 
 
-    ##%% Generate a list of corrections made by geofencing, and counts (still crops)
-
-    from megadetector.utils.wi_taxonomy_utils import find_geofence_adjustments, \
-        generate_geofence_adjustment_html_summary
-
-    rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular_crops,
-                                                    use_latin_names=False)
-
-    geofence_footer = generate_geofence_adjustment_html_summary(rollup_pair_to_count)
-
-    # If we didn't run geofencing, there should have been no geofence adjustments
-    if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
-        assert len(rollup_pair_to_count) == 0
-        assert len(geofence_footer) == 0
-
-
     ##%% Convert output file to MD format (still crops)
 
     assert os.path.isfile(ensemble_output_file_modular_crops)
@@ -1598,6 +1582,22 @@ for im in d['images']:
 
 print('Loaded results for {} images with {} failures'.format(
     len(images_in_folder),n_failures))
+
+
+#%% Generate a list of corrections made by geofencing, and counts (still crops)
+
+from megadetector.utils.wi_taxonomy_utils import find_geofence_adjustments, \
+    generate_geofence_adjustment_html_summary
+
+rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular_crops,
+                                                    use_latin_names=False)
+
+geofence_footer = generate_geofence_adjustment_html_summary(rollup_pair_to_count)
+
+# If we didn't run geofencing, there should have been no geofence adjustments
+if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
+    assert len(rollup_pair_to_count) == 0
+    assert len(geofence_footer) == 0
 
 
 #%% Preview (post-classification, pre-smoothing/pre-custom-taxa)

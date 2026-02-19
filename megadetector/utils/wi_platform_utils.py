@@ -88,7 +88,9 @@ def read_images_from_download_bundle(download_folder):
 
     Args:
         download_folder (str): a folder containing one or more images.csv files, typically
-            representing a Wildlife Insights download bundle.
+            representing a Wildlife Insights download bundle.  If this is a single .csv
+            file, reads just that file.
+
 
     Returns:
         dict: Maps image GUIDs to dicts with at least the following fields:
@@ -105,13 +107,22 @@ def read_images_from_download_bundle(download_folder):
 
     ##%% Find lists of images
 
-    image_list_files = os.listdir(download_folder)
-    image_list_files = \
-        [fn for fn in image_list_files if fn.startswith('images_') and fn.endswith('.csv')]
-    image_list_files = \
-        [path_join(download_folder,fn) for fn in image_list_files]
-    image_list_files = sorted(image_list_files)
-    print('Found {} image list files'.format(len(image_list_files)))
+    # If the caller supplied a single file
+    if os.path.isfile(download_folder):
+
+        image_list_files = [download_folder]
+
+    else:
+        assert os.path.isdir(download_folder), \
+            'Could not find folder {}'.format(download_folder)
+
+        image_list_files = os.listdir(download_folder)
+        image_list_files = \
+            [fn for fn in image_list_files if fn.startswith('images_') and fn.endswith('.csv')]
+        image_list_files = \
+            [path_join(download_folder,fn) for fn in image_list_files]
+        image_list_files = sorted(image_list_files)
+        print('Found {} image list files'.format(len(image_list_files)))
 
 
     ##%% Read lists of images by deployment
@@ -150,6 +161,8 @@ def read_images_from_download_bundle(download_folder):
         len(deployment_ids)))
 
     return image_id_to_image_records
+
+# ...def read_images_from_download_bundle(...)
 
 
 def find_images_in_identify_tab(download_folder_with_identify,download_folder_excluding_identify):
@@ -290,7 +303,20 @@ def write_prefix_download_command(image_records,
 # ...def write_prefix_download_command(...)
 
 
-def _url_to_relative_path(url,image_flattening='deployment'):
+def url_to_relative_path(url,image_flattening='deployment'):
+    """
+    Convert a WI gs:// URL to a relative path.
+
+    Args:
+        url (str): the URL to convert to a relative path
+        image_flattening (str, optional): if 'none', relative paths will be
+            returned as the entire URL for each image, other than gs://.  Can be
+            'guid' (just return [GUID].JPG) or 'deployment' (return
+            [deployment]/[GUID].JPG).
+
+    Returns:
+        str: converted path
+    """
 
     assert url.startswith('gs://'), 'Illegal URL {}'.format(url)
 
@@ -315,12 +341,15 @@ def _url_to_relative_path(url,image_flattening='deployment'):
                 relative_path = deployment_id_string + '/' + image_id
                 found_deployment_id = True
                 break
+
+        # ...for each token
+
         assert found_deployment_id, \
             'Could not find deployment ID for url {}'.format(url)
 
     return relative_path
 
-# ...def _url_to_relative_path(...)
+# ...def url_to_relative_path(...)
 
 
 def write_download_commands(image_records,
@@ -384,7 +413,7 @@ def write_download_commands(image_records,
     for image_record in image_records:
 
         url = image_record['location']
-        relative_path = _url_to_relative_path(url=url,
+        relative_path = url_to_relative_path(url=url,
                                               image_flattening=image_flattening)
         assert relative_path is not None
 

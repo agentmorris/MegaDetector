@@ -348,13 +348,16 @@ print('{} ({}) in {} ({}): {}'.format(taxon,common_name,country,state,allowed))
 
 #%% Geofence updates
 
+import os
+
 repo_root = os.path.expanduser('~/git/cameratrapai')
 script_file = os.path.join(repo_root,'speciesnet/scripts/build_geofence_release.py')
 geofence_base_file = os.path.join(repo_root,'data/geofence_base.json')
 geofence_fixes_file = os.path.join(repo_root,'data/geofence_fixes.csv')
 taxonomy_file = os.path.join(repo_root,'data/model_package/taxonomy_release.txt')
 model_category_list_file = os.path.join(repo_root,'data/model_package/always_crop_99710272_22x8_v12_epoch_00148.labels.txt')
-output_file = os.path.join(repo_root,'data/model_package/geofence_release_updated.json')
+# output_file = os.path.join(repo_root,'data/model_package/geofence_release_updated.json')
+output_file = os.path.expanduser('~/models/speciesnet/crop/geofence_release.temporary.json')
 
 assert os.path.isfile(geofence_base_file)
 assert os.path.isfile(geofence_fixes_file)
