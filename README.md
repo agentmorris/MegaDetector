@@ -54,7 +54,6 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Indigenous Desert Alliance](https://www.indigenousdesertalliance.com/)
 * [Myall Lakes Dingo Project](https://carnivorecoexistence.info/myall-lakes-dingo-project/)
 * [Norwegian Institute for Nature Research](https://www.nina.no/english/Home)
-* [Okala](https://www.okala.io/)
 * [Point No Point Treaty Council](https://pnptc.org/)
 * [Ramat Hanadiv Nature Park](https://www.ramat-hanadiv.org.il/en/)
 * [SPEA (Portuguese Society for the Study of Birds)](https://spea.pt/en/)
@@ -120,6 +119,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * Protected Areas Unit, Canadian Wildlife Service
 * Conservation and Restoration Science Branch, New South Wales Department of Climate Change, Energy, the Environment and Water
 
+* [Okala](https://www.okala.io/) ([video](https://filmfreeway.com/WhenAIMeetsConservation))
 * [School of Natural Sciences](https://www.utas.edu.au/natural-sciences), University of Tasmania ([story](https://www.utas.edu.au/about/news-and-stories/articles/2022/1204-innovative-camera-network-keeps-close-eye-on-tassie-wildlife))
 * [Kenai National Wildlife Refuge](https://www.fws.gov/refuge/kenai), U.S. Fish & Wildlife Service ([story](https://www.peninsulaclarion.com/sports/refuge-notebook-new-technology-increases-efficiency-of-refuge-cameras/))
 * [Idaho Department of Fish and Game](https://idfg.idaho.gov/) ([fancy PBS video](https://www.youtube.com/watch?v=uEsL8EZKpbA&t=261s&ab_channel=OutdoorIdaho))
