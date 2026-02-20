@@ -495,7 +495,7 @@ def blur_detections(image,detections,blur_radius=40):
 def render_detection_bounding_boxes(detections,
                                     image,
                                     label_map='show_categories',
-                                    classification_label_map=None,
+                                    classification_label_map='show_categories',
                                     confidence_threshold=0.0,
                                     thickness=DEFAULT_BOX_THICKNESS,
                                     expansion=0,
@@ -568,8 +568,9 @@ def render_detection_bounding_boxes(detections,
             the string 'show_categories'.
         classification_label_map (dict, optional): optional, mapping of the string class labels to the actual
             class names. The type of the numeric label (typically strings) needs to be consistent with the keys
-            in label_map; no casting is  carried out. If [label_map] is None, no labels are shown (not even numbers
-            and confidence values).
+            in label_map; no casting is carried out. If [label_map] is None, no labels are shown (not even numbers
+            and confidence values).  If you want category numbers and confidence values without class labels, use
+            the default value, the string 'show_categories'.
         confidence_threshold (float or dict, optional): threshold above which boxes are rendered.  Can also be a
             dictionary mapping category IDs to thresholds.
         thickness (int, optional): line thickness in pixels
@@ -663,30 +664,43 @@ def render_detection_bounding_boxes(detections,
                 max_classification_category = 0
                 max_classification_conf = -100
 
-                for classification in classifications:
+                # Should we render classification categories?
+                if classification_label_map is not None:
 
-                    classification_conf = classification[1]
-                    if classification_conf is None or \
-                       classification_conf < classification_confidence_threshold:
-                        continue
+                    show_category_names = True
 
-                    class_key = classification[0]
+                    if isinstance(classification_label_map,str):
+                        assert classification_label_map == 'show_categories', \
+                            'Unknown value for classification_label_map: {}'.format(
+                                classification_label_map)
+                        show_category_names = False
 
-                    # Is this the most confident classification for this detection?
-                    if classification_conf > max_classification_conf:
-                        max_classification_conf = classification_conf
-                        max_classification_category = int(class_key)
+                    for classification in classifications:
 
-                    if (classification_label_map is not None) and (class_key in classification_label_map):
-                        class_name = classification_label_map[class_key]
-                    else:
-                        class_name = class_key
-                    if classification_conf is not None:
-                        displayed_label += ['{}: {:5.1%}'.format(class_name.lower(), classification_conf)]
-                    else:
-                        displayed_label += ['{}'.format(class_name.lower())]
+                        classification_conf = classification[1]
+                        if classification_conf is None or \
+                        classification_conf < classification_confidence_threshold:
+                            continue
 
-                # ...for each classification
+                        class_key = classification[0]
+
+                        # Is this the most confident classification for this detection?
+                        if classification_conf > max_classification_conf:
+                            max_classification_conf = classification_conf
+                            max_classification_category = int(class_key)
+
+                        if (show_category_names) and (class_key in classification_label_map):
+                            class_name = classification_label_map[class_key]
+                        else:
+                            class_name = class_key
+                        if classification_conf is not None:
+                            displayed_label += ['{}: {:5.1%}'.format(class_name.lower(), classification_conf)]
+                        else:
+                            displayed_label += ['{}'.format(class_name.lower())]
+
+                    # ...for each classification
+
+                # ...if we're supposed to show classification categories
 
                 # To avoid duplicate colors with detection-only visualization, offset
                 # the classification class index by the number of detection classes

@@ -55,6 +55,7 @@ from megadetector.utils.ct_utils import sets_overlap
 from megadetector.utils.ct_utils import sort_dictionary_by_value
 from megadetector.utils.ct_utils import sort_dictionary_by_key
 from megadetector.utils.ct_utils import invert_dictionary
+from megadetector.utils.path_utils import clean_filename
 from megadetector.data_management.cct_json_utils import CameraTrapJsonUtils
 from megadetector.data_management.cct_json_utils import IndexedJsonDb
 from megadetector.postprocessing.load_api_results import load_api_results
@@ -438,7 +439,7 @@ def _render_bounding_boxes(
         image_relative_path,
         display_name,
         detections,
-        res,
+        category_string,
         ground_truth_boxes=None,
         detection_categories=None,
         classification_categories=None,
@@ -459,8 +460,8 @@ def _render_bounding_boxes(
         ['detections' or 'non_detections'] /
         [filename with slashes turned into tildes]
 
-    "res" is a result type, e.g. "detections", "non-detections"; this determines the
-    output folder for the rendered image.
+    "category_string" is a result type, e.g. "detections", "non-detections", "class_coyote"; this
+    determines the output folder for the rendered image.
 
     Only very preliminary support is provided for ground truth box rendering.
 
@@ -475,9 +476,9 @@ def _render_bounding_boxes(
 
     image_full_path = None
 
-    if res in options.rendering_bypass_sets:
+    if category_string in options.rendering_bypass_sets:
 
-        sample_name = res + '_' + path_utils.flatten_path(image_relative_path)
+        sample_name = category_string + '_' + path_utils.flatten_path(image_relative_path)
 
     else:
 
@@ -496,8 +497,8 @@ def _render_bounding_boxes(
             # return ''
 
         # Render images to a flat folder
-        sample_name = res + '_' + path_utils.flatten_path(image_relative_path)
-        fullpath = os.path.join(options.output_dir, res, sample_name)
+        sample_name = category_string + '_' + path_utils.flatten_path(image_relative_path)
+        fullpath = os.path.join(options.output_dir, category_string, sample_name)
 
         if image is not None:
 
@@ -548,13 +549,15 @@ def _render_bounding_boxes(
                 # we awkwardly check against a hard-coded limit
                 if (e.errno == errno.ENAMETOOLONG) or (len(fullpath) >= 259):
                     extension = os.path.splitext(sample_name)[1]
-                    sample_name = res + '_' + str(uuid.uuid4()) + extension
-                    image.save(os.path.join(options.output_dir, res, sample_name))
+                    sample_name = category_string + '_' + str(uuid.uuid4()) + extension
+                    image.save(os.path.join(options.output_dir, category_string, sample_name))
                 else:
                     raise
 
-    # Use slashes regardless of os
-    file_name = '{}/{}'.format(res,sample_name)
+        # ...if we successfully opened this image
+
+    # Use forward slashes regardless of os
+    file_name = '{}/{}'.format(category_string,sample_name)
 
     info = {
         'filename': file_name,
@@ -576,7 +579,7 @@ def _render_bounding_boxes(
 
     return info
 
-# ..._render_bounding_boxes
+# ..._render_bounding_boxes(...)
 
 
 def _prepare_html_subpages(images_html, output_dir, options=None):
@@ -595,55 +598,61 @@ def _prepare_html_subpages(images_html, output_dir, options=None):
 
     # Count items in each category
     image_counts = {}
-    for res, array in images_html.items():
-        image_counts[res] = len(array)
+    for category_string, image_this_category in images_html.items():
+        image_counts[category_string] = len(image_this_category)
 
     # Optionally sort by filename before writing to html
     if options.html_sort_order == 'filename':
         images_html_sorted = {}
-        for res, array in images_html.items():
-            sorted_array = sorted(array, key=lambda x: x['filename'])
-            images_html_sorted[res] = sorted_array
+        for category_string, images_this_category in images_html.items():
+            sorted_images_this_category = sorted(images_this_category, key=lambda x: x['filename'])
+            images_html_sorted[category_string] = sorted_images_this_category
         images_html = images_html_sorted
 
     # Optionally sort by confidence before writing to html
     elif options.html_sort_order == 'confidence':
         images_html_sorted = {}
-        for res, array in images_html.items():
+        for category_string, images_this_category in images_html.items():
 
-            if not all(['max_conf' in d for d in array]):
-                print(f"Warning: some elements in the {res} page don't have confidence " + \
+            if not all(['max_conf' in d for d in images_this_category]):
+                print(f"Warning: some elements in the {category_string} page don't have confidence " + \
                         "values, can't sort by confidence")
             else:
-                sorted_array = sorted(array, key=lambda x: x['max_conf'], reverse=True)
-                images_html_sorted[res] = sorted_array
+                sorted_images_this_category = sorted(images_this_category,
+                                                     key=lambda x: x['max_conf'], reverse=True)
+                images_html_sorted[category_string] = sorted_images_this_category
                 images_html = images_html_sorted
 
     else:
         assert options.html_sort_order == 'random',\
             'Unrecognized sort order {}'.format(options.html_sort_order)
         images_html_sorted = {}
-        for res, array in images_html.items():
-            sorted_array = random.sample(array,len(array))
-            images_html_sorted[res] = sorted_array
+        for category_string, images_this_category in images_html.items():
+            sorted_images_this_category = random.sample(images_this_category,len(images_this_category))
+            images_html_sorted[category_string] = sorted_images_this_category
         images_html = images_html_sorted
 
     # Write the individual HTML files
-    for res, array in images_html.items():
+    #
+    # category_string will be, e.g., "detections", "non-detections", "class_coyote"
+    for category_string, images_this_category in images_html.items():
 
         html_image_list_options = {}
         html_image_list_options['maxFiguresPerHtmlFile'] = options.max_figures_per_html_file
-        html_image_list_options['headerHtml'] = '<h1>{}</h1>'.format(res.upper())
-        html_image_list_options['pageTitle'] = '{}'.format(res.lower())
+        html_image_list_options['headerHtml'] = '<h1>{}</h1>'.format(category_string.upper())
+        html_image_list_options['pageTitle'] = '{}'.format(category_string.lower())
 
         # Don't write empty pages
-        if len(array) == 0:
+        if len(images_this_category) == 0:
             continue
         else:
+            html_filename_base = clean_filename(category_string,replace_whitespace='_')
             write_html_image_list(
-                filename=os.path.join(output_dir, '{}.html'.format(res)),
-                images=array,
+                filename=os.path.join(output_dir, '{}.html'.format(html_filename_base)),
+                images=images_this_category,
                 options=html_image_list_options)
+
+    # ...for each HTML page
 
     return image_counts
 
@@ -781,18 +790,18 @@ def _render_image_no_gt(file_info,
             if positive_categories not in detection_categories_to_results_name:
                 raise ValueError('Error: {} not in category mapping (file {})'.format(
                     str(positive_categories),image_relative_path))
-            res = detection_categories_to_results_name[positive_categories]
+            category_string = detection_categories_to_results_name[positive_categories]
         else:
-            res = 'detections'
+            category_string = 'detections'
 
     elif detection_status == DetectionStatus.DS_NEGATIVE:
-        res = 'non_detections'
+        category_string = 'non_detections'
     else:
         assert detection_status == DetectionStatus.DS_ALMOST
-        res = 'almost_detections'
+        category_string = 'almost_detections'
 
     display_name = '<b>Result type</b>: {}, <b>image</b>: {}, <b>max conf</b>: {:0.3f}'.format(
-        res, image_relative_path, max_conf)
+        category_string, image_relative_path, max_conf)
 
     # Are there any bonus fields we need to include in each image header?
     if options.additional_image_fields_to_display is not None:
@@ -826,7 +835,7 @@ def _render_image_no_gt(file_info,
         image_relative_path=image_relative_path,
         display_name=display_name,
         detections=detections,
-        res=res,
+        category_string=category_string,
         ground_truth_boxes=None,
         detection_categories=detection_categories,
         classification_categories=classification_categories,
@@ -836,7 +845,7 @@ def _render_image_no_gt(file_info,
 
     if len(rendered_image_html_info) > 0:
 
-        image_result = [[res, rendered_image_html_info]]
+        image_result = [[category_string, rendered_image_html_info]]
         classes_rendered_this_image = set()
         max_conf = 0
 
@@ -853,7 +862,7 @@ def _render_image_no_gt(file_info,
                 continue
 
             if ('classifications' in det) and (len(det['classifications']) > 0) and \
-                (res != 'non_detections'):
+                (category_string != 'non_detections'):
 
                 # This is a list of [class,confidence] pairs, sorted by classification confidence
                 classifications = det['classifications']
@@ -887,8 +896,11 @@ def _render_image_no_gt(file_info,
 # ...def _render_image_no_gt()
 
 
-def _render_image_with_gt(file_info,ground_truth_indexed_db,
-                         detection_categories,classification_categories,options):
+def _render_image_with_gt(file_info,
+                          ground_truth_indexed_db,
+                          detection_categories,
+                          classification_categories,
+                          options):
     """
     Render an image with ground truth information.  See _render_image_no_gt for return
     data format.
@@ -932,28 +944,31 @@ def _render_image_with_gt(file_info,ground_truth_indexed_db,
 
     if gt_presence and detected:
         if '_classification_accuracy' not in image.keys():
-            res = 'tp'
+            result_type = 'tp'
         elif np.isclose(1, image['_classification_accuracy']):
-            res = 'tpc'
+            result_type = 'tpc'
         else:
-            res = 'tpi'
+            result_type = 'tpi'
     elif not gt_presence and detected:
-        res = 'fp'
+        result_type = 'fp'
     elif gt_presence and not detected:
-        res = 'fn'
+        result_type = 'fn'
     else:
-        res = 'tn'
+        result_type = 'tn'
 
     display_name = '<b>Result type</b>: {}, <b>Presence</b>: {}, <b>Class</b>: {}, <b>Max conf</b>: {:0.3f}%, <b>Image</b>: {}'.format( # noqa
-        res.upper(), str(gt_presence), gt_class_summary,
-        max_conf * 100, image_relative_path)
+        result_type.upper(),
+        str(gt_presence),
+        gt_class_summary,
+        max_conf * 100,
+        image_relative_path)
 
     rendered_image_html_info = _render_bounding_boxes(
         image_base_dir=options.image_base_dir,
         image_relative_path=image_relative_path,
         display_name=display_name,
         detections=detections,
-        res=res,
+        category_string=result_type,
         ground_truth_boxes=ground_truth_boxes,
         detection_categories=detection_categories,
         classification_categories=classification_categories,
@@ -961,7 +976,7 @@ def _render_image_with_gt(file_info,ground_truth_indexed_db,
 
     image_result = None
     if len(rendered_image_html_info) > 0:
-        image_result = [[res, rendered_image_html_info]]
+        image_result = [[result_type, rendered_image_html_info]]
         for gt_class in gt_classes:
             image_result.append(['class_{}'.format(gt_class), rendered_image_html_info])
 
@@ -1426,7 +1441,7 @@ def process_batch_results(options):
         # Sample true/false positives/negatives with correct/incorrect top-1
         # classification and render to html
 
-        # Accumulate html image structs (in the format expected by write_html_image_lists)
+        # Accumulate html image structs (in the format expected by write_html_image_list)
         # for each category, e.g. 'tp', 'fp', ..., 'class_bird', ...
         images_html = collections.defaultdict(list)
 
@@ -1935,6 +1950,7 @@ def process_batch_results(options):
 
                 class_names_this_weight = sort_weight_to_class_names[sort_weight]
 
+                # cname = class_names_this_weight[0]
                 for cname in class_names_this_weight:
 
                     # Don't print multiple links when multiple category IDs have the same name
@@ -1944,11 +1960,13 @@ def process_batch_results(options):
                     category_names_printed.add(cname)
                     ccount = len(images_html['class_{}'.format(cname)])
                     if ccount > 0:
+                        html_filename_base = clean_filename('class_{}'.format(cname),
+                                                            replace_whitespace='_')
                         cname_print_string = cname.lower()
                         if len(cname_print_string) == 0:
                             cname_print_string = '[no name available]'
-                        index_page += '<a href="class_{}.html">{}</a> ({})<br/>\n'.format(
-                            cname, cname_print_string, ccount)
+                        index_page += '<a href="{}.html">{}</a> ({})<br/>\n'.format(
+                            html_filename_base, cname_print_string, ccount)
 
                 # ...for every category in this sort weight group
 

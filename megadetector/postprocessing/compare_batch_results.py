@@ -103,6 +103,14 @@ class PairwiseBatchComparisonOptions:
         #: Rendering threshold to use for all categories for filename B
         self.rendering_confidence_threshold_b = 0.1
 
+        #: Classification threshold to use for filename A, only relevant if classifications
+        #: are present
+        self.classification_confidence_threshold_a = 0.3
+
+        #: Classification threshold to use for filename B, only relevant if classifications
+        #: are present
+        self.classification_confidence_threshold_b = 0.3
+
 # ...class PairwiseBatchComparisonOptions
 
 
@@ -182,6 +190,9 @@ class BatchComparisonOptions:
 
         #: Should we show category names (instead of numbers) on detected boxes?
         self.show_category_names_on_detected_boxes = True
+
+        #: Should we show classification categories if present?
+        self.show_classification_categories = True
 
         #: List of PairwiseBatchComparisonOptions that defines the comparisons we'll render
         self.pairwise_options = []
@@ -327,21 +338,38 @@ def _render_image_pair(fn,image_pairs,category_folder,options,pairwise_options):
         im = visualization_utils.resize_image(im, options.target_width)
 
     label_map = None
+    classification_label_map_a = None
+    classification_label_map_b = None
+
     if options.show_category_names_on_detected_boxes:
-        label_map=options.detection_category_id_to_name
+
+        label_map = options.detection_category_id_to_name
+
+        if options.show_classification_categories:
+            classification_label_map_a = options.classification_category_id_to_name_a
+            classification_label_map_b = options.classification_category_id_to_name_b
+        else:
+            classification_label_map_a = None
+            classification_label_map_b = None
 
     visualization_utils.render_detection_bounding_boxes(detections_a,im,
         confidence_threshold=pairwise_options.rendering_confidence_threshold_a,
-        thickness=4,expansion=0,
+        classification_confidence_threshold=pairwise_options.classification_confidence_threshold_a,
+        thickness=4,
+        expansion=0,
         label_map=label_map,
+        classification_label_map=classification_label_map_a,
         colormap=options.colormap_a,
         textalign=visualization_utils.TEXTALIGN_LEFT,
         vtextalign=visualization_utils.VTEXTALIGN_TOP,
         custom_strings=custom_strings_a)
     visualization_utils.render_detection_bounding_boxes(detections_b,im,
         confidence_threshold=pairwise_options.rendering_confidence_threshold_b,
-        thickness=2,expansion=0,
+        classification_confidence_threshold=pairwise_options.classification_confidence_threshold_b,
+        thickness=2,
+        expansion=0,
         label_map=label_map,
+        classification_label_map=classification_label_map_b,
         colormap=options.colormap_b,
         textalign=visualization_utils.TEXTALIGN_LEFT,
         vtextalign=visualization_utils.VTEXTALIGN_BOTTOM,
@@ -611,16 +639,16 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
         random.seed(options.random_seed)
 
     # Warn the user if some "detections" might not get rendered
-    max_classification_threshold_a = max(list(pairwise_options.detection_thresholds_a.values()))
-    max_classification_threshold_b = max(list(pairwise_options.detection_thresholds_b.values()))
+    max_detection_threshold_a = max(list(pairwise_options.detection_thresholds_a.values()))
+    max_detection_threshold_b = max(list(pairwise_options.detection_thresholds_b.values()))
 
-    if pairwise_options.rendering_confidence_threshold_a > max_classification_threshold_a:
+    if pairwise_options.rendering_confidence_threshold_a > max_detection_threshold_a:
         print('*** Warning: rendering threshold A ({}) is higher than max confidence threshold A ({}) ***'.format(
-            pairwise_options.rendering_confidence_threshold_a,max_classification_threshold_a))
+            pairwise_options.rendering_confidence_threshold_a,max_detection_threshold_a))
 
-    if pairwise_options.rendering_confidence_threshold_b > max_classification_threshold_b:
+    if pairwise_options.rendering_confidence_threshold_b > max_detection_threshold_b:
         print('*** Warning: rendering threshold B ({}) is higher than max confidence threshold B ({}) ***'.format(
-            pairwise_options.rendering_confidence_threshold_b,max_classification_threshold_b))
+            pairwise_options.rendering_confidence_threshold_b,max_detection_threshold_b))
 
 
     ##%% Validate inputs
@@ -669,6 +697,13 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
     detection_category_id_to_name = detection_categories_a
     detection_category_name_to_id = invert_dictionary(detection_categories_a)
     options.detection_category_id_to_name = detection_category_id_to_name
+
+    options.classification_category_id_to_name_a = None
+    options.classification_category_id_to_name_b = None
+    if 'classification_categories' in results_a:
+        options.classification_category_id_to_name_a = results_a['classification_categories']
+    if 'classification_categories' in results_b:
+        options.classification_category_id_to_name_b = results_b['classification_categories']
 
     category_name_to_id_a = invert_dictionary(detection_categories_a)
     category_name_to_id_b = invert_dictionary(detection_categories_b)
@@ -1340,7 +1375,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             output_image_paths = []
             for fn in tqdm(image_filenames):
                 output_image_paths.append(_render_image_pair(fn,image_pairs,category_folder,
-                                                            options,pairwise_options))
+                                                             options,pairwise_options))
         else:
             output_image_paths = list(tqdm(pool.imap(
                 partial(_render_image_pair, image_pairs=image_pairs,
@@ -1971,8 +2006,6 @@ if False:
     options.sort_by_confidence = True
 
     options.pairwise_options = []
-
-    results_base = os.path.expanduser('~/postprocessing/bellevue-camera-traps')
 
     detection_thresholds = [0.15,0.15]
     rendering_thresholds = None
