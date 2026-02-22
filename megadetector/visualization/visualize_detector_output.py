@@ -22,6 +22,7 @@ from tqdm import tqdm
 from megadetector.data_management.annotations.annotation_constants import detector_bbox_category_id_to_name
 from megadetector.detection.run_detector import get_typical_confidence_threshold_from_results
 from megadetector.utils.ct_utils import get_max_conf
+from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 from megadetector.utils import write_html_image_list
 from megadetector.utils.path_utils import path_is_abs
 from megadetector.utils.path_utils import open_file
@@ -379,6 +380,9 @@ def visualize_detector_output(detector_output_path,
                 continue
             annotated_image_path_relative = os.path.relpath(r['annotated_image_path'],html_dir)
             d['filename'] = annotated_image_path_relative
+            # For sorting
+            d['filename_lower'] = annotated_image_path_relative.lower()
+            d['imageStyle'] = 'max-width:95%;'
             d['textStyle'] = \
              'font-family:verdana,arial,calibri;font-size:80%;' + \
                  'text-align:left;margin-top:20;margin-bottom:5'
@@ -387,9 +391,12 @@ def visualize_detector_output(detector_output_path,
                 d['linkTarget'] = r['image_filename_in_abs']
             html_image_info.append(d)
 
+        html_image_info = sort_list_of_dicts_by_key(html_image_info,'filename_lower')
         _ = write_html_image_list.write_html_image_list(html_output_file,
                                                         html_image_info,
                                                         options=html_output_options)
+
+    # ...if we're supposed to write HTML info
 
     return annotated_image_paths
 

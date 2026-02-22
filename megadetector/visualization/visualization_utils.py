@@ -694,7 +694,8 @@ def render_detection_bounding_boxes(detections,
                         else:
                             class_name = class_key
                         if classification_conf is not None:
-                            displayed_label += ['{}: {:5.1%}'.format(class_name.lower(), classification_conf)]
+                            displayed_label += ['{}: {}%'.format(
+                                class_name.lower(), round(100.0 * classification_conf))]
                         else:
                             displayed_label += ['{}'.format(class_name.lower())]
 
