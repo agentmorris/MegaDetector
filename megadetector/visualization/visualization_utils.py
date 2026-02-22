@@ -965,7 +965,7 @@ def draw_bounding_box_on_image(image,
 
         display_str_heights = [get_text_size(font,ds)[1] for ds in display_str_list]
 
-        # Each display_str has a top and bottom margin of 0.05x.
+        # Each display_str has a top and bottom margin of 0.05x the total label height.
         total_display_str_height = (1 + 2 * 0.05) * sum(display_str_heights)
 
         # Reverse list and print from bottom to top
@@ -1010,18 +1010,23 @@ def draw_bounding_box_on_image(image,
                 # box exceeds the top of the image, stack the strings below the bounding box
                 # instead of above, and vice-versa if we're bottom-aligning.
                 #
-                # If the text just doesn't fit outside the box, we don't try anything fancy,
-                # it will just appear outside the image.
+                # If neither outside-the-box position fits within the image (e.g. the box
+                # is nearly the full height of the image), render the label just inside the
+                # box, respecting the caller's original alignment preference.
                 if vtextalign == VTEXTALIGN_TOP:
                     text_bottom = top
                     if (text_bottom - total_display_str_height) < 0:
                         text_bottom = bottom + total_display_str_height
+                        if text_bottom > im_height:
+                            text_bottom = top + total_display_str_height
                 else:
                     assert vtextalign == VTEXTALIGN_BOTTOM, \
                         'Unrecognized vertical text alignment {}'.format(vtextalign)
                     text_bottom = bottom + total_display_str_height
-                    if (text_bottom + total_display_str_height) > im_height:
+                    if text_bottom > im_height:
                         text_bottom = top
+                        if (text_bottom - total_display_str_height) < 0:
+                            text_bottom = bottom
 
                 text_bottom = int(text_bottom) - i_str * (int(text_height + (2 * margin)))
 
