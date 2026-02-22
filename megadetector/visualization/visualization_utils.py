@@ -509,7 +509,8 @@ def render_detection_bounding_boxes(detections,
                                     custom_strings=None,
                                     box_sort_order='confidence',
                                     verbose=False,
-                                    rounded_corners=False):
+                                    rounded_corners=False,
+                                    label_font='arial.ttf'):
     """
     Renders bounding boxes (with labels and confidence values) on an image for all
     detections above a threshold.
@@ -594,6 +595,8 @@ def render_detection_bounding_boxes(detections,
             "reverse_confidence".  "confidence" puts the highest-confidence boxes on top.
         verbose (bool, optional): enable additional debug output
         rounded_corners (bool, optional): use rounded-rectangle style for boxes and labels
+            (default False)
+        label_font (str, optional): font filename to use for label text (default 'arial.ttf')
     """
 
     # Input validation
@@ -741,7 +744,8 @@ def render_detection_bounding_boxes(detections,
                                  textalign=textalign,
                                  vtextalign=vtextalign,
                                  label_font_size=label_font_size,
-                                 rounded_corners=rounded_corners)
+                                 rounded_corners=rounded_corners,
+                                 label_font=label_font)
 
 # ...render_detection_bounding_boxes(...)
 
@@ -757,7 +761,8 @@ def draw_bounding_boxes_on_image(image,
                                  vtextalign=VTEXTALIGN_TOP,
                                  text_rotation=None,
                                  label_font_size=DEFAULT_LABEL_FONT_SIZE,
-                                 rounded_corners=False):
+                                 rounded_corners=False,
+                                 label_font='arial.ttf'):
     """
     Draws bounding boxes on an image.  Modifies the image in place.
 
@@ -784,6 +789,8 @@ def draw_bounding_boxes_on_image(image,
         label_font_size (float, optional): font size in pixels.  If this is less than one, it's treated
             as a fraction of the image width.
         rounded_corners (bool, optional): use rounded-rectangle style for boxes and labels
+            (default False)
+        label_font (str, optional): font filename to use for label text (default 'arial.ttf')
     """
 
     boxes_shape = boxes.shape
@@ -805,7 +812,8 @@ def draw_bounding_boxes_on_image(image,
                                    vtextalign=vtextalign,
                                    text_rotation=text_rotation,
                                    label_font_size=label_font_size,
-                                   rounded_corners=rounded_corners)
+                                   rounded_corners=rounded_corners,
+                                   label_font=label_font)
 
 # ...draw_bounding_boxes_on_image(...)
 
@@ -855,7 +863,8 @@ def draw_bounding_box_on_image(image,
                                textalign=TEXTALIGN_LEFT,
                                vtextalign=VTEXTALIGN_TOP,
                                text_rotation=None,
-                               rounded_corners=False):
+                               rounded_corners=False,
+                               label_font='arial.ttf'):
     """
     Adds a bounding box to an image.  Modifies the image in place.
 
@@ -896,6 +905,8 @@ def draw_bounding_box_on_image(image,
         text_rotation (float, optional): rotation to apply to text
         rounded_corners (bool, optional): use rounded-rectangle style for boxes and labels
             (default False)
+        label_font (str, optional): font filename to use for label text (default 'arial.ttf');
+            falls back to the PIL default font if the specified font is not found
     """
 
     if colormap is None:
@@ -972,7 +983,7 @@ def draw_bounding_box_on_image(image,
         _draw_bounding_box_rounded(
             image, left, right, top, bottom, im_width, im_height,
             color, thickness, display_str_list, label_font_size,
-            textalign, vtextalign)
+            textalign, vtextalign, label_font=label_font)
         return
 
     draw.rectangle([(left, top), (right, bottom)], outline=color, width=thickness)
@@ -980,7 +991,7 @@ def draw_bounding_box_on_image(image,
     if display_str_list is not None:
 
         try:
-            font = ImageFont.truetype('arial.ttf', label_font_size)
+            font = ImageFont.truetype(label_font, label_font_size)
         except OSError:
             font = ImageFont.load_default()
 
@@ -1081,7 +1092,8 @@ def _draw_bounding_box_rounded(image,
                                left, right, top, bottom,
                                im_width, im_height,
                                color, thickness, display_str_list,
-                               label_font_size, textalign, vtextalign):
+                               label_font_size, textalign, vtextalign,
+                               label_font='arial.ttf'):
     """
     Renders a rounded-rectangle bounding box with rounded label backgrounds.
 
@@ -1104,7 +1116,7 @@ def _draw_bounding_box_rounded(image,
     if len(display_str_list) > 0:
 
         try:
-            font = ImageFont.truetype('arial.ttf', label_font_size)
+            font = ImageFont.truetype(label_font, label_font_size)
         except OSError:
             font = ImageFont.load_default()
 
@@ -1137,7 +1149,7 @@ def _draw_bounding_box_rounded(image,
 
             padded_str = ' ' + display_str + ' '
             text_width, text_height = get_text_size(font, padded_str)
-            margin = int(np.ceil(0.05 * text_height))
+            margin = int(np.ceil(0.01 * text_height))
             cur_text_bottom = int(text_bottom) - i_str * (int(text_height + (2 * margin)))
 
             text_left = left + corner_radius
@@ -1371,7 +1383,8 @@ def render_db_bounding_boxes(boxes,
                              label_font_size=DEFAULT_LABEL_FONT_SIZE,
                              tags=None,
                              boxes_are_normalized=False,
-                             rounded_corners=False):
+                             rounded_corners=False,
+                             label_font='arial.ttf'):
     """
     Render bounding boxes (with class labels) on an image.  This is a wrapper for
     draw_bounding_boxes_on_image, allowing the caller to operate on a resized image
@@ -1406,6 +1419,8 @@ def render_db_bounding_boxes(boxes,
             after each class name (e.g. to show scores)
         boxes_are_normalized (bool, optional): whether boxes have already been normalized
         rounded_corners (bool, optional): use rounded-rectangle style for boxes and labels
+            (default False)
+        label_font (str, optional): font filename to use for label text (default 'arial.ttf')
     """
 
     display_boxes = []
@@ -1470,7 +1485,8 @@ def render_db_bounding_boxes(boxes,
                                  vtextalign=vtextalign,
                                  text_rotation=text_rotation,
                                  label_font_size=label_font_size,
-                                 rounded_corners=rounded_corners)
+                                 rounded_corners=rounded_corners,
+                                 label_font=label_font)
 
 # ...def render_db_bounding_boxes(...)
 
@@ -1488,7 +1504,8 @@ def draw_bounding_boxes_on_file(input_file,
                                 target_size=None,
                                 ignore_exif_rotation=False,
                                 quality=None,
-                                rounded_corners=False):
+                                rounded_corners=False,
+                                label_font='arial.ttf'):
     """
     Renders detection bounding boxes on an image loaded from file, optionally writing the results to
     a new image file.
@@ -1520,6 +1537,8 @@ def draw_bounding_boxes_on_file(input_file,
             even if we are loading a JPEG and that JPEG says it should be rotated.
         quality (int, optional): jpeg quality to use for output (None to use PIL default)
         rounded_corners (bool, optional): use rounded-rectangle style for boxes and labels
+            (default False)
+        label_font (str, optional): font filename to use for label text (default 'arial.ttf')
 
     Returns:
         PIL.Image.Image: loaded and modified image
@@ -1540,7 +1559,8 @@ def draw_bounding_boxes_on_file(input_file,
             colormap=colormap,
             custom_strings=custom_strings,
             label_font_size=label_font_size,
-            rounded_corners=rounded_corners)
+            rounded_corners=rounded_corners,
+            label_font=label_font)
 
     if output_file is not None:
         if quality is None:

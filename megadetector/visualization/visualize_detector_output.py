@@ -59,7 +59,8 @@ def _render_image(entry,
                   box_thickness=DEFAULT_BOX_THICKNESS,
                   box_expansion=0,
                   label_font_size=DEFAULT_LABEL_FONT_SIZE,
-                  rounded_corners=False):
+                  rounded_corners=False,
+                  label_font='arial.ttf'):
     """
     Internal function for rendering a single image.
     """
@@ -136,7 +137,8 @@ def _render_image(entry,
         thickness=box_thickness,
         expansion=box_expansion,
         label_font_size=label_font_size,
-        rounded_corners=rounded_corners)
+        rounded_corners=rounded_corners,
+        label_font=label_font)
 
     if not preserve_path_structure:
         for char in ['/', '\\', ':']:
@@ -179,7 +181,8 @@ def visualize_detector_output(detector_output_path,
                               box_thickness=DEFAULT_BOX_THICKNESS,
                               box_expansion=0,
                               label_font_size=DEFAULT_LABEL_FONT_SIZE,
-                              rounded_corners=False):
+                              rounded_corners=False,
+                              label_font='arial.ttf'):
     """
     Draws bounding boxes on images given the output of a detector.
 
@@ -230,6 +233,8 @@ def visualize_detector_output(detector_output_path,
         label_font_size (float, optional): label font size in pixels.  If this is a float less
             than 1.0, it's treated as a fraction of the image width.
         rounded_corners (bool, optional): use rounded-rectangle style for boxes and labels
+            (default False)
+        label_font (str, optional): font filename to use for label text (default 'arial.ttf')
 
     Returns:
         list: list of paths to annotated images
@@ -338,7 +343,8 @@ def visualize_detector_output(detector_output_path,
                                              box_thickness=box_thickness,
                                              box_expansion=box_expansion,
                                              label_font_size=label_font_size,
-                                             rounded_corners=rounded_corners),
+                                             rounded_corners=rounded_corners,
+                                             label_font=label_font),
                                      images), total=len(images)))
         finally:
             if pool is not None:
@@ -365,7 +371,8 @@ def visualize_detector_output(detector_output_path,
                                              box_thickness=box_thickness,
                                              box_expansion=box_expansion,
                                              label_font_size=label_font_size,
-                                             rounded_corners=rounded_corners)
+                                             rounded_corners=rounded_corners,
+                                             label_font=label_font)
             rendering_results.append(rendering_result)
 
     # ...for each image
@@ -489,6 +496,9 @@ def main(): # noqa
     parser.add_argument(
         '--rounded_corners', action='store_true', default=False,
         help='Use rounded-rectangle style for boxes and labels.')
+    parser.add_argument(
+        '--label_font', type=str, default='arial.ttf',
+        help='Font filename to use for label text (default arial.ttf).')
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -516,7 +526,8 @@ def main(): # noqa
         box_thickness=args.box_thickness,
         box_expansion=args.box_expansion,
         label_font_size=args.label_font_size,
-        rounded_corners=args.rounded_corners)
+        rounded_corners=args.rounded_corners,
+        label_font=args.label_font)
 
     if (args.html_output_file is not None) and args.open_html_output_file:
         print('Opening output file {}'.format(args.html_output_file))
