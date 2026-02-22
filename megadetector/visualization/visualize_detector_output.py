@@ -58,7 +58,8 @@ def _render_image(entry,
                   category_names_to_blur=None,
                   box_thickness=DEFAULT_BOX_THICKNESS,
                   box_expansion=0,
-                  label_font_size=DEFAULT_LABEL_FONT_SIZE):
+                  label_font_size=DEFAULT_LABEL_FONT_SIZE,
+                  rounded_corners=False):
     """
     Internal function for rendering a single image.
     """
@@ -134,7 +135,8 @@ def _render_image(entry,
         box_sort_order=box_sort_order,
         thickness=box_thickness,
         expansion=box_expansion,
-        label_font_size=label_font_size)
+        label_font_size=label_font_size,
+        rounded_corners=rounded_corners)
 
     if not preserve_path_structure:
         for char in ['/', '\\', ':']:
@@ -176,7 +178,8 @@ def visualize_detector_output(detector_output_path,
                               detector_label_map=None,
                               box_thickness=DEFAULT_BOX_THICKNESS,
                               box_expansion=0,
-                              label_font_size=DEFAULT_LABEL_FONT_SIZE):
+                              label_font_size=DEFAULT_LABEL_FONT_SIZE,
+                              rounded_corners=False):
     """
     Draws bounding boxes on images given the output of a detector.
 
@@ -226,6 +229,7 @@ def visualize_detector_output(detector_output_path,
             than 1.0, it's treated as a fraction of the image width.
         label_font_size (float, optional): label font size in pixels.  If this is a float less
             than 1.0, it's treated as a fraction of the image width.
+        rounded_corners (bool, optional): use rounded-rectangle style for boxes and labels
 
     Returns:
         list: list of paths to annotated images
@@ -333,7 +337,8 @@ def visualize_detector_output(detector_output_path,
                                              category_names_to_blur=category_names_to_blur,
                                              box_thickness=box_thickness,
                                              box_expansion=box_expansion,
-                                             label_font_size=label_font_size),
+                                             label_font_size=label_font_size,
+                                             rounded_corners=rounded_corners),
                                      images), total=len(images)))
         finally:
             if pool is not None:
@@ -359,7 +364,8 @@ def visualize_detector_output(detector_output_path,
                                              category_names_to_blur=category_names_to_blur,
                                              box_thickness=box_thickness,
                                              box_expansion=box_expansion,
-                                             label_font_size=label_font_size)
+                                             label_font_size=label_font_size,
+                                             rounded_corners=rounded_corners)
             rendering_results.append(rendering_result)
 
     # ...for each image
@@ -480,6 +486,9 @@ def main(): # noqa
         '--label_font_size', type=float, default=DEFAULT_LABEL_FONT_SIZE,
         help='Font size in pixels for detection labels.  If this is less than 1.0, '
              'it is treated as a fraction of the image width.')
+    parser.add_argument(
+        '--rounded_corners', action='store_true', default=False,
+        help='Use rounded-rectangle style for boxes and labels.')
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -506,7 +515,8 @@ def main(): # noqa
         category_names_to_blur=category_names_to_blur,
         box_thickness=args.box_thickness,
         box_expansion=args.box_expansion,
-        label_font_size=args.label_font_size)
+        label_font_size=args.label_font_size,
+        rounded_corners=args.rounded_corners)
 
     if (args.html_output_file is not None) and args.open_html_output_file:
         print('Opening output file {}'.format(args.html_output_file))
