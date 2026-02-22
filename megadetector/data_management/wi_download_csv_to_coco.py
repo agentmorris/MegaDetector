@@ -115,7 +115,7 @@ def wi_download_csv_to_coco(csv_file_in,
         dict: COCO-formatted data, identical to what's written to [coco_file_out]
     """
 
-    #%% Validate inputs
+    ##%% Validate inputs
 
     assert os.path.isfile(csv_file_in) or os.path.isdir(csv_file_in), \
         '{} does not exist'.format(csv_file_in)
@@ -318,18 +318,21 @@ def wi_download_csv_to_coco(csv_file_in,
     coco_data['annotations'] = annotations
     coco_data['categories'] = categories
 
-    print('Categories and counts:\n')
+    print_category_counts = False
 
-    category_name_to_count = \
-        sort_dictionary_by_value(category_name_to_count,reverse=True)
+    if print_category_counts:
 
-    for i_category,category_name in enumerate(category_name_to_count):
-        category_name_string = category_name
-        if (category_name == 'empty') and (not include_blanks):
-            category_name_string += (' (excluded)')
-        print('{}: {}'.format(category_name_string,
-                              category_name_to_count[category_name]))
+        print('Categories and counts:\n')
 
+        category_name_to_count = \
+            sort_dictionary_by_value(category_name_to_count,reverse=True)
+
+        for i_category,category_name in enumerate(category_name_to_count):
+            category_name_string = category_name
+            if (category_name == 'empty') and (not include_blanks):
+                category_name_string += (' (excluded)')
+            print('{}: {}'.format(category_name_string,
+                                category_name_to_count[category_name]))
 
     ##%% Exclude missing images if requested
 
@@ -398,7 +401,7 @@ def wi_download_csv_to_coco(csv_file_in,
     # ...if we are supposed to exclude missing images
 
 
-    #%% Write output json
+    ##%% Write output json
 
     if coco_file_out is not None:
         print('Writing COCO data to {}'.format(coco_file_out))
