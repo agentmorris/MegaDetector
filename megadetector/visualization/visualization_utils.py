@@ -573,8 +573,10 @@ def render_detection_bounding_boxes(detections,
             the default value, the string 'show_categories'.
         confidence_threshold (float or dict, optional): threshold above which boxes are rendered.  Can also be a
             dictionary mapping category IDs to thresholds.
-        thickness (int, optional): line thickness in pixels
-        expansion (int, optional): number of pixels to expand bounding boxes on each side
+        thickness (int or float, optional): line thickness in pixels.  If this is a float less than
+            1.0, it's treated as a fraction of the image width.
+        expansion (int or float, optional): number of pixels to expand bounding boxes on each side.  If
+            this is a float less than 1.0, it's treated as a fraction of the image width.
         classification_confidence_threshold (float, optional): confidence above which classification results
             are displayed
         max_classifications (int, optional): maximum number of classification results rendered for one image
@@ -582,7 +584,8 @@ def render_detection_bounding_boxes(detections,
             indexing with the values in [classes]; defaults to a reasonable set of colors
         textalign (int, optional): TEXTALIGN_LEFT, TEXTALIGN_CENTER, or TEXTALIGN_RIGHT
         vtextalign (int, optional): VTEXTALIGN_TOP or VTEXTALIGN_BOTTOM
-        label_font_size (float, optional): font size for labels
+        label_font_size (float, optional): font size in pixels.  If this is less than one, it's treated
+            as a fraction of the image width.
         custom_strings (list of str, optional): optional set of strings to append to detection labels, should
             have the same length as [detections].  Appended before any classification labels.
         box_sort_order (str, optional): sorting scheme for detection boxes, can be None, "confidence", or
@@ -758,8 +761,10 @@ def draw_bounding_boxes_on_image(image,
         classes (list): a list of ints or string-formatted ints corresponding to the
              class labels of the boxes. This is only used for color selection.  Should have the same
              length as [boxes].
-        thickness (int, optional): line thickness in pixels
-        expansion (int, optional): number of pixels to expand bounding boxes on each side
+        thickness (int or float, optional): line thickness in pixels.  If this is a float less than
+            1.0, it's treated as a fraction of the image width.
+        expansion (int or float, optional): number of pixels to expand bounding boxes on each side.  If
+            this is a float less than 1.0, it's treated as a fraction of the image width.
         display_strs (list, optional): list of list of strings (the outer list should have the
             same length as [boxes]).  Typically this is used to show (possibly multiple) detection
             or classification categories and/or confidence values.
@@ -768,7 +773,8 @@ def draw_bounding_boxes_on_image(image,
         textalign (int, optional): TEXTALIGN_LEFT, TEXTALIGN_CENTER, or TEXTALIGN_RIGHT
         vtextalign (int, optional): VTEXTALIGN_TOP or VTEXTALIGN_BOTTOM
         text_rotation (float, optional): rotation to apply to text
-        label_font_size (float, optional): font size for labels
+        label_font_size (float, optional): font size in pixels.  If this is less than one, it's treated
+            as a fraction of the image width.
     """
 
     boxes_shape = boxes.shape
@@ -862,13 +868,16 @@ def draw_bounding_box_on_image(image,
         xmax (float): xmax of bounding box
         clss (int, optional): the class index of the object in this bounding box, used for choosing
             a color; should be either an integer or a string-formatted integer
-        thickness (int, optional): line thickness in pixels
-        expansion (int, optional): number of pixels to expand bounding boxes on each side
+        thickness (int or float, optional): line thickness in pixels.  If this is a float less than
+            1.0, it's treated as a fraction of the image width.
+        expansion (int or float, optional): number of pixels to expand bounding boxes on each side.  If
+            this is a float less than 1.0, it's treated as a fraction of the image width.
         display_str_list (list, optional): list of strings to display above the box (each to be shown on its
             own line)
         use_normalized_coordinates (bool, optional): if True (default), treat coordinates
             ymin, xmin, ymax, xmax as relative to the image, otherwise coordinates as absolute pixel values
-        label_font_size (float, optional): font size
+        label_font_size (float, optional): font size in pixels.  If this is less than one, it's treated
+            as a fraction of the image width.
         colormap (list, optional): list of color names, used to choose colors for categories by
             indexing with the values in [classes]; defaults to a reasonable set of colors
         textalign (int, optional): TEXTALIGN_LEFT, TEXTALIGN_CENTER, or TEXTALIGN_RIGHT
@@ -890,6 +899,29 @@ def draw_bounding_box_on_image(image,
 
     draw = ImageDraw.Draw(image)
     im_width, im_height = image.size
+
+    # Resolve fractional (image-width-relative) values for thickness, expansion,
+    # and label_font_size.  If any of these is between 0 and 1 (exclusive), interpret
+    # it as a fraction of image width.
+    assert thickness != 0.0, 'thickness cannot be zero'
+    assert label_font_size != 0.0, 'label_font_size cannot be zero'
+
+    # Clamp thickness and label_font_size to a minimum of 1 pixel, since a value
+    # of zero would be meaningless for line thickness and font size.  Expansion is
+    # not clamped, since 0 is a valid value (no expansion).
+    if 0 < thickness < 1:
+        thickness = max(1, round(thickness * im_width))
+    if 0 < expansion < 1:
+        expansion = round(expansion * im_width)
+    if 0 < label_font_size < 1:
+        label_font_size = max(1, round(label_font_size * im_width))
+
+    # Ensure these are ints regardless of whether fractional resolution occurred,
+    # since PIL requires int values for line thickness and font size.
+    thickness = int(thickness)
+    expansion = int(expansion)
+    label_font_size = int(label_font_size)
+
     if use_normalized_coordinates:
         (left, right, top, bottom) = (xmin * im_width, xmax * im_width,
                                       ymin * im_height, ymax * im_height)
@@ -1095,15 +1127,17 @@ def render_db_bounding_boxes(boxes,
             them accordingly before rendering
         label_map (dict, optional): int --> str dictionary, typically mapping category IDs to
             species labels; if None, category labels are rendered verbatim (typically as numbers)
-        thickness (int, optional): line width
-        expansion (int, optional): a number of pixels to include on each side of a cropped
-            detection
+        thickness (int or float, optional): line thickness in pixels.  If this is a float less than
+            1.0, it's treated as a fraction of the image width.
+        expansion (int or float, optional): number of pixels to expand bounding boxes on each side.  If
+            this is a float less than 1.0, it's treated as a fraction of the image width.
         colormap (list, optional): list of color names, used to choose colors for categories by
             indexing with the values in [classes]; defaults to a reasonable set of colors
         textalign (int, optional): TEXTALIGN_LEFT, TEXTALIGN_CENTER, or TEXTALIGN_RIGHT
         vtextalign (int, optional): VTEXTALIGN_TOP or VTEXTALIGN_BOTTOM
         text_rotation (float, optional): rotation to apply to text
-        label_font_size (float, optional): font size for labels
+        label_font_size (float, optional): font size in pixels.  If this is less than one, it's treated
+            as a fraction of the image width.
         tags (list, optional): list of strings of length len(boxes) that should be appended
             after each class name (e.g. to show scores)
         boxes_are_normalized (bool, optional): whether boxes have already been normalized
@@ -1203,11 +1237,14 @@ def draw_bounding_boxes_on_file(input_file,
         detector_label_map (dict, optional): a dict mapping category IDs to strings.  If this
             is None, no confidence values or identifiers are shown.  If this is {}, just category
             indices and confidence values are shown.
-        thickness (int, optional): line width in pixels for box rendering
-        expansion (int, optional): box expansion in pixels
+        thickness (int or float, optional): line thickness in pixels.  If this is a float less than
+            1.0, it's treated as a fraction of the image width.
+        expansion (int or float, optional): number of pixels to expand bounding boxes on each side.  If
+            this is a float less than 1.0, it's treated as a fraction of the image width.
         colormap (list, optional): list of color names, used to choose colors for categories by
             indexing with the values in [classes]; defaults to a reasonable set of colors
-        label_font_size (float, optional): label font size
+        label_font_size (float, optional): font size in pixels.  If this is less than one, it's treated
+            as a fraction of the image width.
         custom_strings (list, optional): set of strings to append to detection labels, should have the
             same length as [detections].  Appended before any classification labels.
         target_size (tuple, optional): tuple of (target_width,target_height).  Either or both can be -1,
@@ -1268,9 +1305,10 @@ def draw_db_boxes_on_file(input_file,
             labels (either by literally rendering the class labels, or by indexing into [label_map])
         label_map (dict, optional): int --> str dictionary, typically mapping category IDs to
             species labels; if None, category labels are rendered verbatim (typically as numbers)
-        thickness (int, optional): line width
-        expansion (int, optional): a number of pixels to include on each side of a cropped
-            detection
+        thickness (int or float, optional): line thickness in pixels.  If this is a float less than
+            1.0, it's treated as a fraction of the image width.
+        expansion (int or float, optional): number of pixels to expand bounding boxes on each side.  If
+            this is a float less than 1.0, it's treated as a fraction of the image width.
         ignore_exif_rotation (bool, optional): don't rotate the loaded pixels,
             even if we are loading a JPEG and that JPEG says it should be rotated
         quality (int, optional): jpeg quality to use for output (None to use PIL default)

@@ -28,7 +28,8 @@ from megadetector.utils.path_utils import path_is_abs
 from megadetector.utils.path_utils import open_file
 from megadetector.utils.wi_taxonomy_utils import load_md_or_speciesnet_file
 from megadetector.visualization import visualization_utils as vis_utils
-from megadetector.visualization.visualization_utils import blur_detections, DEFAULT_BOX_THICKNESS
+from megadetector.visualization.visualization_utils import \
+    blur_detections, DEFAULT_BOX_THICKNESS, DEFAULT_LABEL_FONT_SIZE
 
 default_box_sort_order = 'confidence'
 
@@ -56,7 +57,8 @@ def _render_image(entry,
                   box_sort_order=default_box_sort_order,
                   category_names_to_blur=None,
                   box_thickness=DEFAULT_BOX_THICKNESS,
-                  box_expansion=0):
+                  box_expansion=0,
+                  label_font_size=DEFAULT_LABEL_FONT_SIZE):
     """
     Internal function for rendering a single image.
     """
@@ -131,7 +133,8 @@ def _render_image(entry,
         classification_confidence_threshold=classification_confidence_threshold,
         box_sort_order=box_sort_order,
         thickness=box_thickness,
-        expansion=box_expansion)
+        expansion=box_expansion,
+        label_font_size=label_font_size)
 
     if not preserve_path_structure:
         for char in ['/', '\\', ':']:
@@ -157,7 +160,7 @@ def visualize_detector_output(detector_output_path,
                               images_dir=None,
                               confidence_threshold=0.15,
                               sample=-1,
-                              output_image_width=700,
+                              output_image_width=1000,
                               random_seed=None,
                               render_detections_only=False,
                               classification_confidence_threshold=0.1,
@@ -172,7 +175,8 @@ def visualize_detector_output(detector_output_path,
                               link_images_to_originals=False,
                               detector_label_map=None,
                               box_thickness=DEFAULT_BOX_THICKNESS,
-                              box_expansion=0):
+                              box_expansion=0,
+                              label_font_size=DEFAULT_LABEL_FONT_SIZE):
     """
     Draws bounding boxes on images given the output of a detector.
 
@@ -216,8 +220,12 @@ def visualize_detector_output(detector_output_path,
             the corresponding original image
         detector_label_map (dict, optional): mapping from category IDs to labels; by default (None) uses
             the values in the detector file.  If this is the string 'no_detection_labels', hides labels.
-        box_thickness (int, optional): box thickness in pixels
-        box_expansion (int, optional): box expansion in pixels
+        box_thickness (int or float, optional): box thickness in pixels.  If this is a float less than
+            1.0, it's treated as a fraction of the image width.
+        box_expansion (int or float , optional): box expansion in pixels.  If this is a float less
+            than 1.0, it's treated as a fraction of the image width.
+        label_font_size (float, optional): label font size in pixels.  If this is a float less
+            than 1.0, it's treated as a fraction of the image width.
 
     Returns:
         list: list of paths to annotated images
@@ -324,7 +332,8 @@ def visualize_detector_output(detector_output_path,
                                              box_sort_order=box_sort_order,
                                              category_names_to_blur=category_names_to_blur,
                                              box_thickness=box_thickness,
-                                             box_expansion=box_expansion),
+                                             box_expansion=box_expansion,
+                                             label_font_size=label_font_size),
                                      images), total=len(images)))
         finally:
             if pool is not None:
@@ -349,7 +358,8 @@ def visualize_detector_output(detector_output_path,
                                              box_sort_order,
                                              category_names_to_blur=category_names_to_blur,
                                              box_thickness=box_thickness,
-                                             box_expansion=box_expansion)
+                                             box_expansion=box_expansion,
+                                             label_font_size=label_font_size)
             rendering_results.append(rendering_result)
 
     # ...for each image
@@ -433,9 +443,9 @@ def main(): # noqa
              '(default) to annotate all images in the detector output file. '
              'There may be fewer images if some are not found in images_dir.')
     parser.add_argument(
-        '--output_image_width', type=int, default=700,
+        '--output_image_width', type=int, default=1000,
         help='Integer, desired width in pixels of the output annotated images. '
-             'Use -1 to not resize. Default: 700.')
+             'Use -1 to not resize. Default: 1000.')
     parser.add_argument(
         '--random_seed', type=int, default=None,
         help='Integer, for deterministic order of image sampling')
@@ -458,6 +468,18 @@ def main(): # noqa
     parser.add_argument(
         '--classification_confidence', type=float, default=0.3,
         help='If classification results are present, render results above this threshold')
+    parser.add_argument(
+        '--box_thickness', type=float, default=DEFAULT_BOX_THICKNESS,
+        help='Line thickness in pixels for box rendering.  If this is less than 1.0, '
+             'it is treated as a fraction of the image width.')
+    parser.add_argument(
+        '--box_expansion', type=float, default=0,
+        help='Number of pixels to expand bounding boxes on each side.  If this is less than 1.0, '
+             'it is treated as a fraction of the image width.')
+    parser.add_argument(
+        '--label_font_size', type=float, default=DEFAULT_LABEL_FONT_SIZE,
+        help='Font size in pixels for detection labels.  If this is less than 1.0, '
+             'it is treated as a fraction of the image width.')
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -481,7 +503,10 @@ def main(): # noqa
         classification_confidence_threshold=args.classification_confidence,
         preserve_path_structure=args.preserve_path_structure,
         html_output_file=args.html_output_file,
-        category_names_to_blur=category_names_to_blur)
+        category_names_to_blur=category_names_to_blur,
+        box_thickness=args.box_thickness,
+        box_expansion=args.box_expansion,
+        label_font_size=args.label_font_size)
 
     if (args.html_output_file is not None) and args.open_html_output_file:
         print('Opening output file {}'.format(args.html_output_file))
@@ -504,7 +529,7 @@ if False:
     images_dir = r'g:\camera_traps\camera_trap_images'
     confidence_threshold = 0.15
     sample = 50
-    output_image_width = 700
+    output_image_width = 1000
     random_seed = 1
     render_detections_only = True
     classification_confidence_threshold = 0.1
