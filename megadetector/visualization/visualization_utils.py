@@ -27,6 +27,7 @@ from megadetector.data_management.annotations import annotation_constants
 from megadetector.data_management.annotations.annotation_constants import \
     detector_bbox_category_id_to_name
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
+from megadetector.utils.ct_utils import round_float
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -697,8 +698,11 @@ def render_detection_bounding_boxes(detections,
                         else:
                             class_name = class_key
                         if classification_conf is not None:
+                            classification_conf_string = \
+                                 str(round_float(100.0 * classification_conf,1))
                             displayed_label += ['{}: {}%'.format(
-                                class_name.lower(), round(100.0 * classification_conf))]
+                                class_name.lower(), classification_conf_string)]
+
                         else:
                             displayed_label += ['{}'.format(class_name.lower())]
 
