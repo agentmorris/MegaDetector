@@ -953,8 +953,7 @@ def draw_bounding_box_on_image(image,
 
     # ...if we need to expand boxes
 
-    draw.line([(left, top), (left, bottom), (right, bottom),
-               (right, top), (left, top)], width=thickness, fill=color)
+    draw.rectangle([(left, top), (right, bottom)], outline=color, width=thickness)
 
     if display_str_list is not None:
 
