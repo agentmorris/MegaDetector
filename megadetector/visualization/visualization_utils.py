@@ -848,6 +848,32 @@ def get_text_size(font,s):
     return w,h
 
 
+def _load_font(label_font,label_font_size):
+    """
+    Internal function for loading a font with error handling
+    """
+    font = None
+    try:
+        font = ImageFont.truetype(label_font, label_font_size)
+        print('Loaded font {}'.format(label_font))
+    except Exception:
+        print('Warning: could not load font {}'.format(label_font))
+        font = None
+    if font is None:
+        try:
+            font = ImageFont.load_default(label_font_size)
+        except Exception:
+            print('Warning: failed to load default font at size {}'.format(
+                label_font_size))
+            font = None
+    if font is None:
+        font = ImageFont.load_default()
+
+    return font
+
+# ...def load_font(...)
+
+
 def draw_bounding_box_on_image(image,
                                ymin,
                                xmin,
@@ -990,10 +1016,7 @@ def draw_bounding_box_on_image(image,
 
     if display_str_list is not None:
 
-        try:
-            font = ImageFont.truetype(label_font, label_font_size)
-        except OSError:
-            font = ImageFont.load_default()
+        font = _load_font(label_font,label_font_size)
 
         display_str_heights = [get_text_size(font,ds)[1] for ds in display_str_list]
 
@@ -1007,6 +1030,7 @@ def draw_bounding_box_on_image(image,
             if len(display_str) == 0:
                 continue
 
+            display_str = ' ' + display_str + ' '
             text_width, text_height = get_text_size(font,display_str)
             margin = int(np.ceil(0.05 * text_height))
 
@@ -1115,10 +1139,7 @@ def _draw_bounding_box_rounded(image,
     # Draw labels
     if len(display_str_list) > 0:
 
-        try:
-            font = ImageFont.truetype(label_font, label_font_size)
-        except OSError:
-            font = ImageFont.load_default()
+        font = _load_font(label_font,label_font_size)
 
         display_str_heights = [get_text_size(font, ds)[1] for ds in display_str_list]
         total_display_str_height = (1 + 2 * 0.05) * sum(display_str_heights)
@@ -1149,7 +1170,7 @@ def _draw_bounding_box_rounded(image,
 
             padded_str = ' ' + display_str + ' '
             text_width, text_height = get_text_size(font, padded_str)
-            margin = int(np.ceil(0.01 * text_height))
+            margin = int(np.ceil(0.05 * text_height))
             cur_text_bottom = int(text_bottom) - i_str * (int(text_height + (2 * margin)))
 
             text_left = left + corner_radius
