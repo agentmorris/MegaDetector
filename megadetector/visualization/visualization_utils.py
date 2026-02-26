@@ -509,7 +509,6 @@ def render_detection_bounding_boxes(detections,
                                     custom_strings=None,
                                     box_sort_order='confidence',
                                     verbose=False,
-                                    rounded_corners=False,
                                     label_font='arial.ttf'):
     """
     Renders bounding boxes (with labels and confidence values) on an image for all
@@ -594,8 +593,6 @@ def render_detection_bounding_boxes(detections,
         box_sort_order (str, optional): sorting scheme for detection boxes, can be None, "confidence", or
             "reverse_confidence".  "confidence" puts the highest-confidence boxes on top.
         verbose (bool, optional): enable additional debug output
-        rounded_corners (bool, optional): use rounded-rectangle style for boxes and labels
-            (default False)
         label_font (str, optional): font filename to use for label text (default 'arial.ttf')
     """
 
@@ -744,7 +741,6 @@ def render_detection_bounding_boxes(detections,
                                  textalign=textalign,
                                  vtextalign=vtextalign,
                                  label_font_size=label_font_size,
-                                 rounded_corners=rounded_corners,
                                  label_font=label_font)
 
 # ...render_detection_bounding_boxes(...)
@@ -761,7 +757,6 @@ def draw_bounding_boxes_on_image(image,
                                  vtextalign=VTEXTALIGN_TOP,
                                  text_rotation=None,
                                  label_font_size=DEFAULT_LABEL_FONT_SIZE,
-                                 rounded_corners=False,
                                  label_font='arial.ttf'):
     """
     Draws bounding boxes on an image.  Modifies the image in place.
@@ -788,8 +783,6 @@ def draw_bounding_boxes_on_image(image,
         text_rotation (float, optional): rotation to apply to text
         label_font_size (float, optional): font size in pixels.  If this is less than one, it's treated
             as a fraction of the image width.
-        rounded_corners (bool, optional): use rounded-rectangle style for boxes and labels
-            (default False)
         label_font (str, optional): font filename to use for label text (default 'arial.ttf')
     """
 
@@ -812,7 +805,6 @@ def draw_bounding_boxes_on_image(image,
                                    vtextalign=vtextalign,
                                    text_rotation=text_rotation,
                                    label_font_size=label_font_size,
-                                   rounded_corners=rounded_corners,
                                    label_font=label_font)
 
 # ...draw_bounding_boxes_on_image(...)
@@ -889,7 +881,6 @@ def draw_bounding_box_on_image(image,
                                textalign=TEXTALIGN_LEFT,
                                vtextalign=VTEXTALIGN_TOP,
                                text_rotation=None,
-                               rounded_corners=False,
                                label_font='arial.ttf'):
     """
     Adds a bounding box to an image.  Modifies the image in place.
@@ -929,8 +920,6 @@ def draw_bounding_box_on_image(image,
         textalign (int, optional): TEXTALIGN_LEFT, TEXTALIGN_CENTER, or TEXTALIGN_RIGHT
         vtextalign (int, optional): VTEXTALIGN_TOP or VTEXTALIGN_BOTTOM
         text_rotation (float, optional): rotation to apply to text
-        rounded_corners (bool, optional): use rounded-rectangle style for boxes and labels
-            (default False)
         label_font (str, optional): font filename to use for label text (default 'arial.ttf');
             falls back to the PIL default font if the specified font is not found
     """
@@ -1002,15 +991,6 @@ def draw_bounding_box_on_image(image,
         top = min(top,im_height-1); bottom = min(bottom,im_height-1)
 
     # ...if we need to expand boxes
-
-    # This is treated as a special case with all kinds of hard-coded values,
-    # so we defer all of the work to a separate function.
-    if rounded_corners:
-        _draw_bounding_box_rounded(
-            image, left, right, top, bottom, im_width, im_height,
-            color, thickness, display_str_list, label_font_size,
-            textalign, vtextalign, label_font=label_font)
-        return
 
     draw.rectangle([(left, top), (right, bottom)], outline=color, width=thickness)
 
@@ -1112,241 +1092,6 @@ def draw_bounding_box_on_image(image,
 # ...def draw_bounding_box_on_image(...)
 
 
-def _draw_bounding_box_rounded(image,
-                               left, right, top, bottom,
-                               im_width, im_height,
-                               color, thickness, display_str_list,
-                               label_font_size, textalign, vtextalign,
-                               label_font='arial.ttf'):
-    """
-    Renders a rounded-rectangle bounding box with rounded label backgrounds.
-
-    Called by draw_bounding_box_on_image when rounded_corners=True.  All coordinates
-    and sizes should already be resolved to pixel values.
-
-    :meta private:
-    """
-
-    corner_radius = max(1, thickness * 3)
-
-    draw = ImageDraw.Draw(image)
-    draw.rounded_rectangle(
-        [(left, top), (right, bottom)],
-        radius=corner_radius,
-        outline=color,
-        width=thickness)
-
-    # Draw labels
-    if len(display_str_list) > 0:
-
-        font = _load_font(label_font,label_font_size)
-
-        display_str_heights = [get_text_size(font, ds)[1] for ds in display_str_list]
-        total_display_str_height = (1 + 2 * 0.05) * sum(display_str_heights)
-
-        # Compute vertical anchor, with inside-box fallback
-        if vtextalign == VTEXTALIGN_TOP:
-            text_bottom = top
-            if (text_bottom - total_display_str_height) < 0:
-                text_bottom = bottom + total_display_str_height
-                if text_bottom > im_height:
-                    text_bottom = top + total_display_str_height
-        else:
-            text_bottom = bottom + total_display_str_height
-            if text_bottom > im_height:
-                text_bottom = top
-                if (text_bottom - total_display_str_height) < 0:
-                    text_bottom = bottom
-
-        # First pass: compute label geometries.  Labels are offset inward by
-        # corner_radius so they align with the straight portion of the box edge.
-        label_geoms = []
-
-        for i_str, display_str in enumerate(display_str_list[::-1]):
-
-            if len(display_str) == 0:
-                label_geoms.append(None)
-                continue
-
-            padded_str = ' ' + display_str + ' '
-            text_width, text_height = get_text_size(font, padded_str)
-            margin = int(np.ceil(0.05 * text_height))
-            cur_text_bottom = int(text_bottom) - i_str * (int(text_height + (2 * margin)))
-
-            text_left = left + corner_radius
-            if textalign == TEXTALIGN_RIGHT:
-                text_left = right - corner_radius - text_width
-            elif textalign == TEXTALIGN_CENTER:
-                text_left = ((right + left) / 2.0) - (text_width / 2.0)
-            text_left = int(text_left)
-
-            label_geoms.append({
-                'text_left': text_left,
-                'label_top': (cur_text_bottom - text_height) - (2 * margin),
-                'label_bottom': cur_text_bottom,
-                'label_right': text_left + text_width,
-                'text_width': text_width,
-                'text_height': text_height,
-                'margin': margin,
-                'cur_text_bottom': cur_text_bottom,
-                'padded_str': padded_str
-            })
-
-        # Second pass: determine which corners to round on each label.
-        #
-        # There are two cases:
-        #
-        # (1) Labels are outside the box: round the "outside" corners (the edge
-        #     away from the detection box), unless the adjacent label further from
-        #     the box overlaps horizontally, which would create a gap.
-        #
-        # (2) Labels are inside the box: round only the corner that aligns with
-        #     the nearest corner of the rounded detection box, using the same
-        #     radius as the detection box so it nestles into the curve.
-
-        # Determine whether labels ended up inside or outside the box
-        first_geom = None
-        for g in label_geoms:
-            if g is not None:
-                first_geom = g
-                break
-
-        if first_geom is not None:
-            labels_inside_box = (first_geom['label_top'] >= top) and \
-                (first_geom['label_bottom'] <= bottom)
-            label_is_above_box = (not labels_inside_box) and \
-                (first_geom['label_bottom'] <= (top + bottom) / 2.0)
-        else:
-            label_is_above_box = True
-            labels_inside_box = False
-
-        label_radius = max(1, corner_radius // 2)
-
-        for i_str, geom in enumerate(label_geoms):
-
-            if geom is None:
-                continue
-
-            tl = geom['text_left']
-            lr = geom['label_right']
-
-            if labels_inside_box:
-
-                # When labels are inside the box, all labels should be aligned to
-                # the box edge (not offset inward by corner_radius like outside-box
-                # labels).  Only the label nearest the box corner gets a rounded
-                # corner, using the detection box's corner_radius so it nestles
-                # into the curve.
-                #
-                # The label nearest the corner is the outermost one (highest i_str),
-                # since labels are rendered bottom-to-top and the topmost label is
-                # closest to the top corner.
-                is_near_left = (textalign != TEXTALIGN_RIGHT)
-
-                # Shift all inside-box labels to the box edge
-                if is_near_left:
-                    shift = tl - left
-                    tl = left
-                    lr = lr - shift
-                else:
-                    shift = right - lr
-                    lr = right
-                    tl = tl + shift
-
-                # Add vertical padding to inside-box labels so the text doesn't
-                # look cramped.  Expand each label away from the box corner.
-                inside_v_pad = geom['margin'] * 2
-                is_near_top = (geom['label_top'] <= (top + bottom) / 2.0)
-                label_top = geom['label_top']
-                label_bottom = geom['label_bottom']
-                if is_near_top:
-                    label_bottom = label_bottom + inside_v_pad
-                else:
-                    label_top = label_top - inside_v_pad
-
-                is_corner_label = (i_str == len(label_geoms) - 1)
-
-                if is_corner_label:
-
-                    # Shift the corner label so it sits exactly at the box edge
-                    # rather than poking outside by a few pixels.
-                    if is_near_top and label_top < top:
-                        offset = top - label_top
-                        label_top = top
-                        label_bottom = label_bottom + offset
-                    elif (not is_near_top) and label_bottom > bottom:
-                        offset = label_bottom - bottom
-                        label_bottom = bottom
-                        label_top = label_top - offset
-
-                    # corners parameter is (top_left, top_right, bottom_right, bottom_left)
-                    if is_near_top and is_near_left:
-                        round_corners = (True, False, False, False)
-                    elif is_near_top and (not is_near_left):
-                        round_corners = (False, True, False, False)
-                    elif (not is_near_top) and is_near_left:
-                        round_corners = (False, False, False, True)
-                    else:
-                        round_corners = (False, False, True, False)
-
-                    draw.rounded_rectangle(
-                        [(tl, label_top), (lr, label_bottom)],
-                        radius=corner_radius,
-                        fill=color,
-                        corners=round_corners)
-                else:
-                    draw.rectangle(
-                        [(tl, label_top), (lr, label_bottom)],
-                        fill=color)
-
-            else:
-
-                # Labels are outside the box
-                round_left = True
-                round_right = True
-
-                # Check whether the next label outward overlaps this one on the left
-                # or right side; if so, squaring off that corner avoids a gap.
-                next_i = i_str + 1
-                if next_i < len(label_geoms) and label_geoms[next_i] is not None:
-                    next_tl = label_geoms[next_i]['text_left']
-                    next_lr = label_geoms[next_i]['label_right']
-                    if next_tl <= tl:
-                        round_left = False
-                    if next_lr >= lr:
-                        round_right = False
-
-                needs_rounding = round_left or round_right
-
-                if needs_rounding:
-                    # corners parameter is (top_left, top_right, bottom_right, bottom_left)
-                    if label_is_above_box:
-                        round_corners = (round_left, round_right, False, False)
-                    else:
-                        round_corners = (False, False, round_right, round_left)
-
-                    draw.rounded_rectangle(
-                        [(tl, geom['label_top']), (lr, geom['label_bottom'])],
-                        radius=label_radius,
-                        fill=color,
-                        corners=round_corners)
-                else:
-                    draw.rectangle(
-                        [(tl, geom['label_top']), (lr, geom['label_bottom'])],
-                        fill=color)
-
-            # ...labels inside or outside box
-
-            draw.text(
-                (tl + geom['margin'],
-                 geom['cur_text_bottom'] - geom['text_height'] - geom['margin']),
-                geom['padded_str'],
-                fill='black',
-                font=font)
-
-# ..._draw_bounding_box_rounded(...)
-
-
 def render_megadb_bounding_boxes(boxes_info, image):
     """
     Render bounding boxes to an image, where those boxes are in the mostly-deprecated
@@ -1404,7 +1149,6 @@ def render_db_bounding_boxes(boxes,
                              label_font_size=DEFAULT_LABEL_FONT_SIZE,
                              tags=None,
                              boxes_are_normalized=False,
-                             rounded_corners=False,
                              label_font='arial.ttf'):
     """
     Render bounding boxes (with class labels) on an image.  This is a wrapper for
@@ -1439,8 +1183,6 @@ def render_db_bounding_boxes(boxes,
         tags (list, optional): list of strings of length len(boxes) that should be appended
             after each class name (e.g. to show scores)
         boxes_are_normalized (bool, optional): whether boxes have already been normalized
-        rounded_corners (bool, optional): use rounded-rectangle style for boxes and labels
-            (default False)
         label_font (str, optional): font filename to use for label text (default 'arial.ttf')
     """
 
@@ -1506,7 +1248,6 @@ def render_db_bounding_boxes(boxes,
                                  vtextalign=vtextalign,
                                  text_rotation=text_rotation,
                                  label_font_size=label_font_size,
-                                 rounded_corners=rounded_corners,
                                  label_font=label_font)
 
 # ...def render_db_bounding_boxes(...)
@@ -1525,7 +1266,6 @@ def draw_bounding_boxes_on_file(input_file,
                                 target_size=None,
                                 ignore_exif_rotation=False,
                                 quality=None,
-                                rounded_corners=False,
                                 label_font='arial.ttf'):
     """
     Renders detection bounding boxes on an image loaded from file, optionally writing the results to
@@ -1557,8 +1297,6 @@ def draw_bounding_boxes_on_file(input_file,
         ignore_exif_rotation (bool, optional): don't rotate the loaded pixels,
             even if we are loading a JPEG and that JPEG says it should be rotated.
         quality (int, optional): jpeg quality to use for output (None to use PIL default)
-        rounded_corners (bool, optional): use rounded-rectangle style for boxes and labels
-            (default False)
         label_font (str, optional): font filename to use for label text (default 'arial.ttf')
 
     Returns:
@@ -1580,7 +1318,6 @@ def draw_bounding_boxes_on_file(input_file,
             colormap=colormap,
             custom_strings=custom_strings,
             label_font_size=label_font_size,
-            rounded_corners=rounded_corners,
             label_font=label_font)
 
     if output_file is not None:
