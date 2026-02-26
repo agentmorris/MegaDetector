@@ -847,7 +847,6 @@ def _load_font(label_font,label_font_size):
     font = None
     try:
         font = ImageFont.truetype(label_font, label_font_size)
-        print('Loaded font {}'.format(label_font))
     except Exception:
         print('Warning: could not load font {}'.format(label_font))
         font = None
