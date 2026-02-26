@@ -27,6 +27,7 @@ from megadetector.data_management.annotations import annotation_constants
 from megadetector.data_management.annotations.annotation_constants import \
     detector_bbox_category_id_to_name
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
+from megadetector.utils.ct_utils import round_float
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -507,7 +508,8 @@ def render_detection_bounding_boxes(detections,
                                     label_font_size=DEFAULT_LABEL_FONT_SIZE,
                                     custom_strings=None,
                                     box_sort_order='confidence',
-                                    verbose=False):
+                                    verbose=False,
+                                    label_font='arial.ttf'):
     """
     Renders bounding boxes (with labels and confidence values) on an image for all
     detections above a threshold.
@@ -573,8 +575,10 @@ def render_detection_bounding_boxes(detections,
             the default value, the string 'show_categories'.
         confidence_threshold (float or dict, optional): threshold above which boxes are rendered.  Can also be a
             dictionary mapping category IDs to thresholds.
-        thickness (int, optional): line thickness in pixels
-        expansion (int, optional): number of pixels to expand bounding boxes on each side
+        thickness (int or float, optional): line thickness in pixels.  If this is a float less than
+            1.0, it's treated as a fraction of the image width.
+        expansion (int or float, optional): number of pixels to expand bounding boxes on each side.  If
+            this is a float less than 1.0, it's treated as a fraction of the image width.
         classification_confidence_threshold (float, optional): confidence above which classification results
             are displayed
         max_classifications (int, optional): maximum number of classification results rendered for one image
@@ -582,12 +586,14 @@ def render_detection_bounding_boxes(detections,
             indexing with the values in [classes]; defaults to a reasonable set of colors
         textalign (int, optional): TEXTALIGN_LEFT, TEXTALIGN_CENTER, or TEXTALIGN_RIGHT
         vtextalign (int, optional): VTEXTALIGN_TOP or VTEXTALIGN_BOTTOM
-        label_font_size (float, optional): font size for labels
+        label_font_size (float, optional): font size in pixels.  If this is less than one, it's treated
+            as a fraction of the image width.
         custom_strings (list of str, optional): optional set of strings to append to detection labels, should
             have the same length as [detections].  Appended before any classification labels.
         box_sort_order (str, optional): sorting scheme for detection boxes, can be None, "confidence", or
             "reverse_confidence".  "confidence" puts the highest-confidence boxes on top.
         verbose (bool, optional): enable additional debug output
+        label_font (str, optional): font filename to use for label text (default 'arial.ttf')
     """
 
     # Input validation
@@ -694,8 +700,11 @@ def render_detection_bounding_boxes(detections,
                         else:
                             class_name = class_key
                         if classification_conf is not None:
+                            classification_conf_string = \
+                                 str(round_float(100.0 * classification_conf,1))
                             displayed_label += ['{}: {}%'.format(
-                                class_name.lower(), round(100.0 * classification_conf))]
+                                class_name.lower(), classification_conf_string)]
+
                         else:
                             displayed_label += ['{}'.format(class_name.lower())]
 
@@ -731,7 +740,8 @@ def render_detection_bounding_boxes(detections,
                                  colormap=colormap,
                                  textalign=textalign,
                                  vtextalign=vtextalign,
-                                 label_font_size=label_font_size)
+                                 label_font_size=label_font_size,
+                                 label_font=label_font)
 
 # ...render_detection_bounding_boxes(...)
 
@@ -746,7 +756,8 @@ def draw_bounding_boxes_on_image(image,
                                  textalign=TEXTALIGN_LEFT,
                                  vtextalign=VTEXTALIGN_TOP,
                                  text_rotation=None,
-                                 label_font_size=DEFAULT_LABEL_FONT_SIZE):
+                                 label_font_size=DEFAULT_LABEL_FONT_SIZE,
+                                 label_font='arial.ttf'):
     """
     Draws bounding boxes on an image.  Modifies the image in place.
 
@@ -758,8 +769,10 @@ def draw_bounding_boxes_on_image(image,
         classes (list): a list of ints or string-formatted ints corresponding to the
              class labels of the boxes. This is only used for color selection.  Should have the same
              length as [boxes].
-        thickness (int, optional): line thickness in pixels
-        expansion (int, optional): number of pixels to expand bounding boxes on each side
+        thickness (int or float, optional): line thickness in pixels.  If this is a float less than
+            1.0, it's treated as a fraction of the image width.
+        expansion (int or float, optional): number of pixels to expand bounding boxes on each side.  If
+            this is a float less than 1.0, it's treated as a fraction of the image width.
         display_strs (list, optional): list of list of strings (the outer list should have the
             same length as [boxes]).  Typically this is used to show (possibly multiple) detection
             or classification categories and/or confidence values.
@@ -768,7 +781,9 @@ def draw_bounding_boxes_on_image(image,
         textalign (int, optional): TEXTALIGN_LEFT, TEXTALIGN_CENTER, or TEXTALIGN_RIGHT
         vtextalign (int, optional): VTEXTALIGN_TOP or VTEXTALIGN_BOTTOM
         text_rotation (float, optional): rotation to apply to text
-        label_font_size (float, optional): font size for labels
+        label_font_size (float, optional): font size in pixels.  If this is less than one, it's treated
+            as a fraction of the image width.
+        label_font (str, optional): font filename to use for label text (default 'arial.ttf')
     """
 
     boxes_shape = boxes.shape
@@ -789,7 +804,8 @@ def draw_bounding_boxes_on_image(image,
                                    textalign=textalign,
                                    vtextalign=vtextalign,
                                    text_rotation=text_rotation,
-                                   label_font_size=label_font_size)
+                                   label_font_size=label_font_size,
+                                   label_font=label_font)
 
 # ...draw_bounding_boxes_on_image(...)
 
@@ -824,6 +840,32 @@ def get_text_size(font,s):
     return w,h
 
 
+def _load_font(label_font,label_font_size):
+    """
+    Internal function for loading a font with error handling
+    """
+    font = None
+    try:
+        font = ImageFont.truetype(label_font, label_font_size)
+        print('Loaded font {}'.format(label_font))
+    except Exception:
+        print('Warning: could not load font {}'.format(label_font))
+        font = None
+    if font is None:
+        try:
+            font = ImageFont.load_default(label_font_size)
+        except Exception:
+            print('Warning: failed to load default font at size {}'.format(
+                label_font_size))
+            font = None
+    if font is None:
+        font = ImageFont.load_default()
+
+    return font
+
+# ...def load_font(...)
+
+
 def draw_bounding_box_on_image(image,
                                ymin,
                                xmin,
@@ -838,7 +880,8 @@ def draw_bounding_box_on_image(image,
                                colormap=None,
                                textalign=TEXTALIGN_LEFT,
                                vtextalign=VTEXTALIGN_TOP,
-                               text_rotation=None):
+                               text_rotation=None,
+                               label_font='arial.ttf'):
     """
     Adds a bounding box to an image.  Modifies the image in place.
 
@@ -862,18 +905,23 @@ def draw_bounding_box_on_image(image,
         xmax (float): xmax of bounding box
         clss (int, optional): the class index of the object in this bounding box, used for choosing
             a color; should be either an integer or a string-formatted integer
-        thickness (int, optional): line thickness in pixels
-        expansion (int, optional): number of pixels to expand bounding boxes on each side
+        thickness (int or float, optional): line thickness in pixels.  If this is a float less than
+            1.0, it's treated as a fraction of the image width.
+        expansion (int or float, optional): number of pixels to expand bounding boxes on each side.  If
+            this is a float less than 1.0, it's treated as a fraction of the image width.
         display_str_list (list, optional): list of strings to display above the box (each to be shown on its
             own line)
         use_normalized_coordinates (bool, optional): if True (default), treat coordinates
             ymin, xmin, ymax, xmax as relative to the image, otherwise coordinates as absolute pixel values
-        label_font_size (float, optional): font size
+        label_font_size (float, optional): font size in pixels.  If this is less than one, it's treated
+            as a fraction of the image width.
         colormap (list, optional): list of color names, used to choose colors for categories by
             indexing with the values in [classes]; defaults to a reasonable set of colors
         textalign (int, optional): TEXTALIGN_LEFT, TEXTALIGN_CENTER, or TEXTALIGN_RIGHT
         vtextalign (int, optional): VTEXTALIGN_TOP or VTEXTALIGN_BOTTOM
         text_rotation (float, optional): rotation to apply to text
+        label_font (str, optional): font filename to use for label text (default 'arial.ttf');
+            falls back to the PIL default font if the specified font is not found
     """
 
     if colormap is None:
@@ -890,6 +938,29 @@ def draw_bounding_box_on_image(image,
 
     draw = ImageDraw.Draw(image)
     im_width, im_height = image.size
+
+    # Resolve fractional (image-width-relative) values for thickness, expansion,
+    # and label_font_size.  If any of these is between 0 and 1 (exclusive), interpret
+    # it as a fraction of image width.
+    assert thickness != 0.0, 'thickness cannot be zero'
+    assert label_font_size != 0.0, 'label_font_size cannot be zero'
+
+    # Clamp thickness and label_font_size to a minimum of 1 pixel, since a value
+    # of zero would be meaningless for line thickness and font size.  Expansion is
+    # not clamped, since 0 is a valid value (no expansion).
+    if 0 < thickness < 1:
+        thickness = max(1, round(thickness * im_width))
+    if 0 < expansion < 1:
+        expansion = round(expansion * im_width)
+    if 0 < label_font_size < 1:
+        label_font_size = max(1, round(label_font_size * im_width))
+
+    # Ensure these are ints regardless of whether fractional resolution occurred,
+    # since PIL requires int values for line thickness and font size.
+    thickness = int(thickness)
+    expansion = int(expansion)
+    label_font_size = int(label_font_size)
+
     if use_normalized_coordinates:
         (left, right, top, bottom) = (xmin * im_width, xmax * im_width,
                                       ymin * im_height, ymax * im_height)
@@ -921,19 +992,15 @@ def draw_bounding_box_on_image(image,
 
     # ...if we need to expand boxes
 
-    draw.line([(left, top), (left, bottom), (right, bottom),
-               (right, top), (left, top)], width=thickness, fill=color)
+    draw.rectangle([(left, top), (right, bottom)], outline=color, width=thickness)
 
     if display_str_list is not None:
 
-        try:
-            font = ImageFont.truetype('arial.ttf', label_font_size)
-        except OSError:
-            font = ImageFont.load_default()
+        font = _load_font(label_font,label_font_size)
 
         display_str_heights = [get_text_size(font,ds)[1] for ds in display_str_list]
 
-        # Each display_str has a top and bottom margin of 0.05x.
+        # Each display_str has a top and bottom margin of 0.05x the total label height.
         total_display_str_height = (1 + 2 * 0.05) * sum(display_str_heights)
 
         # Reverse list and print from bottom to top
@@ -943,6 +1010,7 @@ def draw_bounding_box_on_image(image,
             if len(display_str) == 0:
                 continue
 
+            display_str = ' ' + display_str + ' '
             text_width, text_height = get_text_size(font,display_str)
             margin = int(np.ceil(0.05 * text_height))
 
@@ -978,18 +1046,23 @@ def draw_bounding_box_on_image(image,
                 # box exceeds the top of the image, stack the strings below the bounding box
                 # instead of above, and vice-versa if we're bottom-aligning.
                 #
-                # If the text just doesn't fit outside the box, we don't try anything fancy,
-                # it will just appear outside the image.
+                # If neither outside-the-box position fits within the image (e.g. the box
+                # is nearly the full height of the image), render the label just inside the
+                # box, respecting the caller's original alignment preference.
                 if vtextalign == VTEXTALIGN_TOP:
                     text_bottom = top
                     if (text_bottom - total_display_str_height) < 0:
                         text_bottom = bottom + total_display_str_height
+                        if text_bottom > im_height:
+                            text_bottom = top + total_display_str_height
                 else:
                     assert vtextalign == VTEXTALIGN_BOTTOM, \
                         'Unrecognized vertical text alignment {}'.format(vtextalign)
                     text_bottom = bottom + total_display_str_height
-                    if (text_bottom + total_display_str_height) > im_height:
+                    if text_bottom > im_height:
                         text_bottom = top
+                        if (text_bottom - total_display_str_height) < 0:
+                            text_bottom = bottom
 
                 text_bottom = int(text_bottom) - i_str * (int(text_height + (2 * margin)))
 
@@ -1075,7 +1148,8 @@ def render_db_bounding_boxes(boxes,
                              text_rotation=None,
                              label_font_size=DEFAULT_LABEL_FONT_SIZE,
                              tags=None,
-                             boxes_are_normalized=False):
+                             boxes_are_normalized=False,
+                             label_font='arial.ttf'):
     """
     Render bounding boxes (with class labels) on an image.  This is a wrapper for
     draw_bounding_boxes_on_image, allowing the caller to operate on a resized image
@@ -1095,18 +1169,21 @@ def render_db_bounding_boxes(boxes,
             them accordingly before rendering
         label_map (dict, optional): int --> str dictionary, typically mapping category IDs to
             species labels; if None, category labels are rendered verbatim (typically as numbers)
-        thickness (int, optional): line width
-        expansion (int, optional): a number of pixels to include on each side of a cropped
-            detection
+        thickness (int or float, optional): line thickness in pixels.  If this is a float less than
+            1.0, it's treated as a fraction of the image width.
+        expansion (int or float, optional): number of pixels to expand bounding boxes on each side.  If
+            this is a float less than 1.0, it's treated as a fraction of the image width.
         colormap (list, optional): list of color names, used to choose colors for categories by
             indexing with the values in [classes]; defaults to a reasonable set of colors
         textalign (int, optional): TEXTALIGN_LEFT, TEXTALIGN_CENTER, or TEXTALIGN_RIGHT
         vtextalign (int, optional): VTEXTALIGN_TOP or VTEXTALIGN_BOTTOM
         text_rotation (float, optional): rotation to apply to text
-        label_font_size (float, optional): font size for labels
+        label_font_size (float, optional): font size in pixels.  If this is less than one, it's treated
+            as a fraction of the image width.
         tags (list, optional): list of strings of length len(boxes) that should be appended
             after each class name (e.g. to show scores)
         boxes_are_normalized (bool, optional): whether boxes have already been normalized
+        label_font (str, optional): font filename to use for label text (default 'arial.ttf')
     """
 
     display_boxes = []
@@ -1170,7 +1247,8 @@ def render_db_bounding_boxes(boxes,
                                  textalign=textalign,
                                  vtextalign=vtextalign,
                                  text_rotation=text_rotation,
-                                 label_font_size=label_font_size)
+                                 label_font_size=label_font_size,
+                                 label_font=label_font)
 
 # ...def render_db_bounding_boxes(...)
 
@@ -1187,7 +1265,8 @@ def draw_bounding_boxes_on_file(input_file,
                                 custom_strings=None,
                                 target_size=None,
                                 ignore_exif_rotation=False,
-                                quality=None):
+                                quality=None,
+                                label_font='arial.ttf'):
     """
     Renders detection bounding boxes on an image loaded from file, optionally writing the results to
     a new image file.
@@ -1203,11 +1282,14 @@ def draw_bounding_boxes_on_file(input_file,
         detector_label_map (dict, optional): a dict mapping category IDs to strings.  If this
             is None, no confidence values or identifiers are shown.  If this is {}, just category
             indices and confidence values are shown.
-        thickness (int, optional): line width in pixels for box rendering
-        expansion (int, optional): box expansion in pixels
+        thickness (int or float, optional): line thickness in pixels.  If this is a float less than
+            1.0, it's treated as a fraction of the image width.
+        expansion (int or float, optional): number of pixels to expand bounding boxes on each side.  If
+            this is a float less than 1.0, it's treated as a fraction of the image width.
         colormap (list, optional): list of color names, used to choose colors for categories by
             indexing with the values in [classes]; defaults to a reasonable set of colors
-        label_font_size (float, optional): label font size
+        label_font_size (float, optional): font size in pixels.  If this is less than one, it's treated
+            as a fraction of the image width.
         custom_strings (list, optional): set of strings to append to detection labels, should have the
             same length as [detections].  Appended before any classification labels.
         target_size (tuple, optional): tuple of (target_width,target_height).  Either or both can be -1,
@@ -1215,6 +1297,7 @@ def draw_bounding_boxes_on_file(input_file,
         ignore_exif_rotation (bool, optional): don't rotate the loaded pixels,
             even if we are loading a JPEG and that JPEG says it should be rotated.
         quality (int, optional): jpeg quality to use for output (None to use PIL default)
+        label_font (str, optional): font filename to use for label text (default 'arial.ttf')
 
     Returns:
         PIL.Image.Image: loaded and modified image
@@ -1234,7 +1317,8 @@ def draw_bounding_boxes_on_file(input_file,
             expansion=expansion,
             colormap=colormap,
             custom_strings=custom_strings,
-            label_font_size=label_font_size)
+            label_font_size=label_font_size,
+            label_font=label_font)
 
     if output_file is not None:
         if quality is None:
@@ -1268,9 +1352,10 @@ def draw_db_boxes_on_file(input_file,
             labels (either by literally rendering the class labels, or by indexing into [label_map])
         label_map (dict, optional): int --> str dictionary, typically mapping category IDs to
             species labels; if None, category labels are rendered verbatim (typically as numbers)
-        thickness (int, optional): line width
-        expansion (int, optional): a number of pixels to include on each side of a cropped
-            detection
+        thickness (int or float, optional): line thickness in pixels.  If this is a float less than
+            1.0, it's treated as a fraction of the image width.
+        expansion (int or float, optional): number of pixels to expand bounding boxes on each side.  If
+            this is a float less than 1.0, it's treated as a fraction of the image width.
         ignore_exif_rotation (bool, optional): don't rotate the loaded pixels,
             even if we are loading a JPEG and that JPEG says it should be rotated
         quality (int, optional): jpeg quality to use for output (None to use PIL default)
