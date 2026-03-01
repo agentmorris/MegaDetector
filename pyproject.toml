@@ -8,7 +8,7 @@ name = "megadetector"
 version = "10.0.18"
 description = "MegaDetector is an AI model that helps conservation folks spend less time doing boring things with camera trap images."
 readme = "README-package.md"
-requires-python = ">=3.9,<3.14"
+requires-python = ">=3.9,<3.15"
 license = "MIT"
 keywords = ["camera traps", "conservation", "wildlife", "ai", "megadetector"]
 authors = [
@@ -36,7 +36,8 @@ dependencies = [
   # numpy >= 1.26.4 is required for python >= 3.12
   #
   # "numpy >= 1.26.4, < 2.0",
-  "numpy >= 1.26.4",
+  "numpy>=1.26.4; python_version < '3.14'",
+  "numpy>=1.26.4,<2.0; python_version >= '3.14'",
   # ultralytics-yolov5 has a dependency on FreeTypeFont.getsize(), which was
   # removed in Pillow 10.  Restrict to <10.0 if you want to use val.py from 
   # ultralytics-yolov5.
