@@ -12,13 +12,13 @@ Currently assumes that common names are unique identifiers, which is convenient 
 #%% Imports and constants
 
 import os
+import re
 
 from tqdm import tqdm
 from collections import defaultdict
 
 from megadetector.utils.ct_utils import is_empty
 from megadetector.utils.ct_utils import write_json
-from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.utils.ct_utils import sort_dictionary_by_value
 from megadetector.utils.path_utils import find_images
 from megadetector.utils.wi_platform_utils import read_images_from_download_bundle
@@ -27,11 +27,6 @@ from megadetector.utils.wi_platform_utils import url_to_relative_path
 wi_extra_annotation_columns = \
     ('identified_by',
      'wi_taxon_id',
-     'class',
-     'order',
-     'family',
-     'genus',
-     'species',
      'uncertainty',
      'number_of_objects',
      'age',
@@ -51,6 +46,14 @@ wi_extra_annotation_columns = \
 # license
 # bounding_boxes
 
+# Handled as part of the category:
+#
+# class
+# order
+# family
+# genus
+# species
+
 # Handled as part of the image:
 #
 # timestamp
@@ -68,9 +71,11 @@ default_category_remappings = {
     # "blank" is handled specially below
     # 'blank':'empty',
     'homo species':'human',
-    'human-camera trapper':'human',
     'no cv result':'unknown',
-    'misfire':'blank'
+    'misfire':'blank',
+    '.*human.*':'human',
+    '.*vehicle.*':'vehicle',
+    'truck':'vehicle'
 }
 
 
@@ -89,6 +94,9 @@ def wi_download_csv_to_coco(csv_file_in,
     Converts a .csv file (or folder of .csv files) from a Wildlife Insights project export
     to a COCO Camera Traps .json file.
 
+    TODO: currently relies on uniqueness of common names, which is not guaranteed.  Prints
+    warnings for non-unique common names.
+
     Args:
         csv_file_in (str): a downloaded .csv file we should convert to COCO, or a folder
             containing images...csv files.
@@ -97,14 +105,14 @@ def wi_download_csv_to_coco(csv_file_in,
         image_folder (str, optional): the folder where images live, only relevant if
             [exclude_missing_images] is True
         exclude_missing_images (bool, optional): whether to exclude images not present
-            in disk; if this is True, [image_folder] must be a valid folder
+            in disk; if this is True, [image_folder] must be a valid folder.  This has no
+            impact on blank images if "include_blanks" is False.
         image_flattening (str, optional): if 'none', relative paths will be stored
             as the entire URL for each image, other than gs://.  Can be 'guid' (just
             store [GUID].JPG) or 'deployment' (store as [deployment]/[GUID].JPG).
         verbose (bool, optional): enable additional debug console output
-        category_remappings (dict, optional): str --> str dict that maps any number of
-            WI category names to output category names; for example defaults to mapping
-            "Homo Species" to "Human", but leaves 99.99% of categories unchanged.
+        category_remappings (dict, optional): str --> str dict that maps WI category
+            names to output category names.  Regular expressions allowed in keys.
         blank_disagreement_handling (str, optional): what to do when the "common_name"
             field disagrees with the "is_blank" field; can be "trust_label" (default),
             "trust_is_blank", or "error
@@ -133,9 +141,9 @@ def wi_download_csv_to_coco(csv_file_in,
 
     ##%% Create COCO dictionaries
 
-    category_name_to_id = {}
-    category_name_to_id['empty'] = 0
-    category_name_to_count = defaultdict(int)
+    category_name_to_category = {}
+    empty_category = {'name':'empty','id':0,'count':0,'taxonomy_string':''}
+    category_name_to_category['empty'] = empty_category
 
     image_id_to_image = {}
     image_id_to_annotations = defaultdict(list)
@@ -212,8 +220,24 @@ def wi_download_csv_to_coco(csv_file_in,
 
             # ...handling empty category names
 
-            if (category_remappings is not None) and (category_name in category_remappings):
-                category_name = category_remappings[category_name]
+            taxonomy_tokens = []
+            for level in ('class','order','family','genus','species'):
+                taxonomy_tokens.append(record[level])
+            taxonomy_string = ';'.join(taxonomy_tokens)
+            taxonomy_string = taxonomy_string.lower().strip()
+
+            # Should this category name get remapped?
+            if (category_remappings is not None):
+                # Check for exact matches
+                if category_name in category_remappings:
+                    category_name = category_remappings[category_name]
+                # Check for regex matches
+                else:
+                    for k in category_remappings.keys():
+                        if re.search(k,category_name):
+                            category_name = category_remappings[k]
+                            break
+
 
             # This is used for logic below, so we handle it outside of category_remappings
             if category_name == 'blank':
@@ -255,11 +279,25 @@ def wi_download_csv_to_coco(csv_file_in,
                 continue
             categories_this_image.add(category_name)
 
-            if category_name in category_name_to_id:
-                category_id = category_name_to_id[category_name]
+            if category_name in category_name_to_category:
+                category = category_name_to_category[category_name]
+                category_id = category['id']
+                category['count'] = category['count'] + 1
+                assert category['name'] == category_name
+                if (category_name != 'empty') and \
+                   (taxonomy_string != category['taxonomy_string']):
+                    print('Warning: category {} has multiple taxonomy strings:\n{}\n{}\n'.format(
+                        category_name,
+                        taxonomy_string,
+                        category['taxonomy_string']))
             else:
-                category_id = len(category_name_to_id)
-                category_name_to_id[category_name] = category_id
+                category_id = len(category_name_to_category)
+                category = {}
+                category_name_to_category[category_name] = category
+                category['name'] = category_name
+                category['id'] = category_id
+                category['count'] = 1
+                category['taxonomy_string'] = taxonomy_string
 
             if category_name != 'empty':
                 nonblank_annotation_found = True
@@ -271,8 +309,6 @@ def wi_download_csv_to_coco(csv_file_in,
             ann['id'] = image_id + '_' + str(annotation_number).zfill(2)
             ann['category_id'] = category_id
             annotations_this_image.append(ann)
-
-            category_name_to_count[category_name] += 1
 
             extra_info = {}
             for s in wi_extra_annotation_columns:
@@ -294,11 +330,11 @@ def wi_download_csv_to_coco(csv_file_in,
 
     # ...for each image
 
+    ##%%
+
     images = list(image_id_to_image.values())
-    categories = []
-    for category_name in category_name_to_id:
-        category_id = category_name_to_id[category_name]
-        categories.append({'id':category_id,'name':category_name})
+    categories = list(category_name_to_category.values())
+
     annotations = []
 
     # image_id_to_annotations contains image IDs we didn't end up using,
@@ -324,6 +360,7 @@ def wi_download_csv_to_coco(csv_file_in,
 
         print('Categories and counts:\n')
 
+        category_name_to_count = {c['name']:c['count'] for c in categories}
         category_name_to_count = \
             sort_dictionary_by_value(category_name_to_count,reverse=True)
 
@@ -349,7 +386,7 @@ def wi_download_csv_to_coco(csv_file_in,
 
         category_name_to_missing_image_count = defaultdict(int)
 
-        category_id_to_name = invert_dictionary(category_name_to_id)
+        category_id_to_name = {c['id']:c['name'] for c in categories}
 
         # im = images[0]
         for im in tqdm(images):
