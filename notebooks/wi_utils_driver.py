@@ -48,12 +48,15 @@ taxonomy_handler = TaxonomyHandler(taxonomy_file=taxonomy_file,
 
 #%% Generate a block list
 
-taxon_name = 'sciurus vulgaris'
-taxonomy_info = taxonomy_handler.binomial_name_to_taxonomy_info[taxon_name]
+# taxon_name = 'sciurus vulgaris'
+# taxonomy_info = taxonomy_handler.binomial_name_to_taxonomy_info[taxon_name]
+common_name = 'bear family'
+taxonomy_info = taxonomy_handler.common_name_to_taxonomy_info[common_name]
+
 taxonomy_string_short = taxonomy_info_to_taxonomy_string(taxonomy_info)
 assert len(taxonomy_string_short.split(';')) == 5
 
-block_list = 'USA'
+block_list = 'GBR'
 
 rows = taxonomy_handler.generate_csv_rows_for_species(species_string=taxonomy_string_short,
                                                       allow_countries=None,
@@ -166,9 +169,9 @@ for s in rows:
 
 #%% Determine whether a species is allowed in a location
 
-taxon = 'eastern gray squirrel'
-country = 'USA'
-state = 'CA'
+taxon = 'bear family'
+country = 'GBR'
+state = None
 allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=state,return_status=False)
 taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
 common_name = taxonomy_info['common_name']
