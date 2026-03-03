@@ -73,12 +73,13 @@ class ClassificationAnalysisOptions:
         #: Folder to which we should write html output page
         self.html_output_dir = None
 
-        #: Maximum number of total images to render.  Only relevant if html_output_dir is
-        #: not None.
+        #: Approximate maximum number of total images to render.  May be exceeded slightly if
+        #: required to make sure that at least one image is rendered per non-empty cell in the
+        #: confusion matrix.  Only relevant if html_output_dir is not None.
         self.max_total_images = 8000
 
-        #: Maximum number of images to render per confusion matrix cell.  Only relevant if
-        #: html_output_dir is not None.
+        #: Try to sample this many images to render per confusion matrix cell.  Only relevant
+        #: if html_output_dir is not None.  Total number is still capped by max_total_images.
         self.max_images_per_cell = 50
 
         #: Random seed to be used if image sampling is necessary
@@ -513,6 +514,13 @@ def analyze_classification_results(options):
                         pred_union[cat] = conf
                 for cat, count in filename_to_pred_counts[fn].items():
                     pred_count_union[cat] += count
+
+            # If the sequence has any non-"empty" predictions, remove "empty";
+            # it was only added because individual frames lacked above-threshold
+            # detections, but the sequence as a whole is not empty.
+            if len(pred_union) > 1 and 'empty' in pred_union:
+                del pred_union['empty']
+                pred_count_union.pop('empty', None)
 
             seq_filename_to_gt_categories[seq_id] = gt_union
             seq_filename_to_pred_categories[seq_id] = pred_union
