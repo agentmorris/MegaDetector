@@ -130,7 +130,9 @@ class ClassificationSmoothingOptions:
         #: Only include these categories in the smoothing process (None to use all categories)
         self.detection_category_names_to_smooth = ['animal']
 
-        #: Debug options
+        ## Debug options
+
+        #: Enable additional debug output for a particular image
         self.break_at_image = None
 
         ## Populated internally
@@ -780,6 +782,9 @@ def _smooth_classifications_for_list_of_detections(detections,
         # ...for each detection
 
     # ...if the dominant category is legit and we have taxonomic information available
+
+    if verbose_debug_enabled:
+        print('Made {} same-family changes'.format(n_within_family_smoothing_changes))
 
     return {'n_other_classifications_changed_this_image':n_other_classifications_changed_this_image,
             'n_detections_flipped_this_image':n_detections_flipped_this_image,

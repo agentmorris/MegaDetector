@@ -157,6 +157,8 @@ class AnalysisResults:
 
         self.macro_f1 = None
         self.micro_f1 = None
+        self.micro_precision = None
+        self.micro_recall = None
         self.accuracy = None
 
         #: The confusion matrix as a 2D numpy array
@@ -463,7 +465,7 @@ def analyze_classification_results(options):
             del filename_to_pred_counts[fn]
 
         if len(fns_to_remove) > 0:
-            print('  {} images excluded (all GT categories were ignored)'.format(
+            print('  {} images excluded because all their GT categories were ignored'.format(
                 len(fns_to_remove)))
 
         # Remove ignored categories from predictions
@@ -661,8 +663,30 @@ def analyze_classification_results(options):
         total_predicted += n_pred
         total_gt += n_gt
 
-    micro_precision = total_tp / total_predicted if total_predicted > 0 else 0.0
-    micro_recall = total_tp / total_gt if total_gt > 0 else 0.0
+    # Compute per-image micro precision and recall.
+    #
+    # Note: when computed from the confusion matrix, micro precision always
+    # equals micro recall (because total column sums == total row sums ==
+    # total matrix entries).  Instead, we compute per-image set-based metrics:
+    #
+    #   micro_precision = sum(|GT ∩ pred|) / sum(|pred|)
+    #   micro_recall    = sum(|GT ∩ pred|) / sum(|GT|)
+    #
+    # These can differ when images have multiple GT and/or predicted categories.
+
+    sum_intersection = 0
+    sum_gt_size = 0
+    sum_pred_size = 0
+
+    for entity_id in filename_to_gt_categories:
+        gt_cats = filename_to_gt_categories[entity_id]
+        pred_cats_set = set(filename_to_pred_categories[entity_id].keys())
+        sum_intersection += len(gt_cats & pred_cats_set)
+        sum_gt_size += len(gt_cats)
+        sum_pred_size += len(pred_cats_set)
+
+    micro_precision = sum_intersection / sum_pred_size if sum_pred_size > 0 else 0.0
+    micro_recall = sum_intersection / sum_gt_size if sum_gt_size > 0 else 0.0
     micro_f1 = 2 * micro_precision * micro_recall / (micro_precision + micro_recall) \
         if (micro_precision + micro_recall) > 0 else 0.0
 
@@ -677,6 +701,8 @@ def analyze_classification_results(options):
     print('\nOverall metrics:')
     print('  Accuracy: {:.4f}'.format(accuracy))
     print('  Macro F1: {:.4f}'.format(macro_f1))
+    print('  Micro precision: {:.4f}'.format(micro_precision))
+    print('  Micro recall: {:.4f}'.format(micro_recall))
     print('  Micro F1: {:.4f}'.format(micro_f1))
 
     ## Generate HTML output
@@ -708,33 +734,43 @@ def analyze_classification_results(options):
             if len(entity_ids) > 0:
                 non_empty_cells[(true_cat, pred_cat)] = entity_ids
 
-        n_non_empty_cells = len(non_empty_cells)
+        # Determine how many images to sample per cell.
+        #
+        # First, cap each cell at max_images_per_cell.  Then, if the total
+        # exceeds max_total_images, scale down proportionally.
+        cell_desired_counts = {}
+        for key, entity_ids in non_empty_cells.items():
+            cell_desired_counts[key] = min(len(entity_ids), options.max_images_per_cell)
 
-        # Compute budget per cell
-        if n_non_empty_cells > 0:
-            budget_per_cell = max(1, options.max_total_images // n_non_empty_cells)
-        else:
-            budget_per_cell = options.max_images_per_cell
+        total_desired = sum(cell_desired_counts.values())
 
-        max_per_cell = min(options.max_images_per_cell, budget_per_cell)
+        if total_desired > options.max_total_images and total_desired > 0:
+            scale = options.max_total_images / total_desired
+            for key in cell_desired_counts:
+                cell_desired_counts[key] = max(1, int(cell_desired_counts[key] * scale))
 
         # Sample entities per cell
         rng = random.Random(options.random_seed)
         sampled_cells = {}
 
-        for (true_cat, pred_cat), entity_ids in non_empty_cells.items():
-            if len(entity_ids) <= max_per_cell:
-                sampled_cells[(true_cat, pred_cat)] = list(entity_ids)
+        for key, entity_ids in non_empty_cells.items():
+            n_sample = cell_desired_counts[key]
+            if len(entity_ids) <= n_sample:
+                sampled_cells[key] = list(entity_ids)
             else:
-                sampled_cells[(true_cat, pred_cat)] = rng.sample(entity_ids, max_per_cell)
+                sampled_cells[key] = rng.sample(entity_ids, n_sample)
 
-        # Collect all unique filenames that need rendering
+        # Collect all unique filenames that need rendering.
+        #
+        # For sequence-level analysis, render only the first image in each
+        # sequence as an exemplar.
         filenames_to_render = set()
         for entity_ids in sampled_cells.values():
             if options.sequence_level_analysis:
                 for seq_id in entity_ids:
-                    for fn in seq_id_to_filenames_map.get(seq_id, []):
-                        filenames_to_render.add(fn)
+                    fns = seq_id_to_filenames_map.get(seq_id, [])
+                    if len(fns) > 0:
+                        filenames_to_render.add(fns[0])
             else:
                 filenames_to_render.update(entity_ids)
 
@@ -793,9 +829,11 @@ def analyze_classification_results(options):
 
             for entity_id in entity_ids:
 
-                # Get filenames for this entity
+                # Get filenames for this entity; for sequence-level analysis,
+                # show only the first image as an exemplar.
                 if options.sequence_level_analysis:
-                    fns = seq_id_to_filenames_map.get(entity_id, [])
+                    all_fns = seq_id_to_filenames_map.get(entity_id, [])
+                    fns = all_fns[:1]
                 else:
                     fns = [entity_id]
 
@@ -1102,6 +1140,8 @@ def analyze_classification_results(options):
     results.per_category_results = per_category_results
     results.macro_f1 = float(macro_f1)
     results.micro_f1 = float(micro_f1)
+    results.micro_precision = float(micro_precision)
+    results.micro_recall = float(micro_recall)
     results.accuracy = float(accuracy)
     results.confusion_matrix = confusion_matrix
     results.active_categories = active_categories
