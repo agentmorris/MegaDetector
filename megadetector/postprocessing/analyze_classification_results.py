@@ -476,6 +476,8 @@ def analyze_classification_results(options):
 
         print('{} images remaining after filtering'.format(len(filename_to_gt_categories)))
 
+    # ...if we are supposed to ignore some categories
+
     ## Sequence-level aggregation
 
     if options.sequence_level_analysis:
@@ -500,6 +502,7 @@ def analyze_classification_results(options):
         seq_filename_to_pred_counts = {}
 
         for seq_id, filenames in seq_id_to_filenames.items():
+
             gt_union = set()
             pred_union = {}
             pred_count_union = defaultdict(int)
@@ -515,6 +518,8 @@ def analyze_classification_results(options):
             seq_filename_to_pred_categories[seq_id] = pred_union
             seq_filename_to_pred_counts[seq_id] = dict(pred_count_union)
 
+        # ...for each sequence
+
         # Replace image-level dicts with sequence-level dicts
         filename_to_gt_categories = seq_filename_to_gt_categories
         filename_to_pred_categories = seq_filename_to_pred_categories
@@ -522,11 +527,14 @@ def analyze_classification_results(options):
 
         print('{} sequences for analysis'.format(len(filename_to_gt_categories)))
 
+    # ...if we're doing a sequence-level analysis
+
     ## Collapse ground truth to single label per image/sequence
 
     if options.single_label_per_image:
 
         for entity_id in filename_to_gt_categories:
+
             gt_cats = filename_to_gt_categories[entity_id]
             if len(gt_cats) <= 1:
                 continue
@@ -557,8 +565,12 @@ def analyze_classification_results(options):
 
             filename_to_gt_categories[entity_id] = {winner}
 
+        # ...for each image or sequence
+
         print('Collapsed ground truth to single label per {}'.format(
             'sequence' if options.sequence_level_analysis else 'image'))
+
+    # ...if we're supposed to collapse ground truth to a single label per image/sequence
 
     ## Collapse predictions to single label per image/sequence
 
@@ -613,6 +625,7 @@ def analyze_classification_results(options):
         pred_cats = filename_to_pred_categories[entity_id]
 
         for true_cat in gt_cats:
+
             for pred_cat in pred_cats:
 
                 # For off-diagonal entries, skip cases where both categories are
@@ -628,6 +641,12 @@ def analyze_classification_results(options):
                 confusion_matrix[true_idx, pred_idx] += 1
                 true_pred_to_filenames[(true_cat, pred_cat)].append(entity_id)
 
+            # ...for each predicted category
+
+        # ...for each true category
+
+    # ...for each image or sequence
+
     ## Compute metrics
 
     per_category_results = {}
@@ -636,6 +655,7 @@ def analyze_classification_results(options):
     total_gt = 0
 
     for cat in active_categories:
+
         idx = category_to_index[cat]
         tp = confusion_matrix[idx, idx]
         fp = int(confusion_matrix[:, idx].sum()) - tp
@@ -646,7 +666,7 @@ def analyze_classification_results(options):
 
         precision = tp / n_pred if n_pred > 0 else 0.0
         recall = tp / n_gt if n_gt > 0 else 0.0
-        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+        f1 = (2 * precision * recall) / (precision + recall) if ((precision + recall) > 0) else 0.0
 
         per_category_results[cat] = {
             'precision': precision,
@@ -663,9 +683,11 @@ def analyze_classification_results(options):
         total_predicted += n_pred
         total_gt += n_gt
 
+    # ...for each category
+
     # Compute per-image micro precision and recall.
     #
-    # Note: when computed from the confusion matrix, micro precision always
+    # When computed from the confusion matrix, micro precision always
     # equals micro recall (because total column sums == total row sums ==
     # total matrix entries).  Instead, we compute per-image set-based metrics:
     #
@@ -679,6 +701,7 @@ def analyze_classification_results(options):
     sum_pred_size = 0
 
     for entity_id in filename_to_gt_categories:
+
         gt_cats = filename_to_gt_categories[entity_id]
         pred_cats_set = set(filename_to_pred_categories[entity_id].keys())
         sum_intersection += len(gt_cats & pred_cats_set)
@@ -687,7 +710,7 @@ def analyze_classification_results(options):
 
     micro_precision = sum_intersection / sum_pred_size if sum_pred_size > 0 else 0.0
     micro_recall = sum_intersection / sum_gt_size if sum_gt_size > 0 else 0.0
-    micro_f1 = 2 * micro_precision * micro_recall / (micro_precision + micro_recall) \
+    micro_f1 = (2 * micro_precision * micro_recall) / (micro_precision + micro_recall) \
         if (micro_precision + micro_recall) > 0 else 0.0
 
     f1_values = [per_category_results[cat]['f1'] for cat in active_categories
@@ -905,6 +928,7 @@ def analyze_classification_results(options):
         this_mispredicted_as = {}
 
         for cat in active_categories:
+
             idx = category_to_index[cat]
 
             # Column: which true categories were predicted as this one?
@@ -930,6 +954,8 @@ def analyze_classification_results(options):
                     row_entries.append((other_cat, count))
             row_entries.sort(key=lambda x: -x[1])
             this_mispredicted_as[cat] = row_entries[:n_mispred]
+
+        # ...for each category
 
         style_header = """<head>
     <style type="text/css">
@@ -1043,6 +1069,7 @@ def analyze_classification_results(options):
         html += '<tbody>\n'
 
         for cat in active_categories:
+
             r = per_category_results[cat]
             html += '<tr>'
             html += '<td>{}</td>'.format(cat)
@@ -1082,6 +1109,8 @@ def analyze_classification_results(options):
 
             html += '</tr>\n'
 
+        # ...for each category
+
         html += '</tbody>\n'
         html += '</table>\n'
 
@@ -1098,10 +1127,12 @@ def analyze_classification_results(options):
 
         # Data rows
         for true_cat in active_categories:
+
             html += '<tr>\n'
             html += '<td><b>{}</b></td>\n'.format(true_cat)
 
             for pred_cat in active_categories:
+
                 true_idx = category_to_index[true_cat]
                 pred_idx = category_to_index[pred_cat]
                 count = int(confusion_matrix[true_idx, pred_idx])
@@ -1119,7 +1150,11 @@ def analyze_classification_results(options):
 
                     html += '<a href="{}">{}</a></td>\n'.format(cell_filename, count)
 
+            # ...for each predicted category
+
             html += '</tr>\n'
+
+        # ...for each true category
 
         html += '</table>\n'
 
@@ -1132,7 +1167,7 @@ def analyze_classification_results(options):
 
         print('\nHTML output written to {}'.format(html_output_file))
 
-    # ...if html_output_dir
+    # ...if we're supposed to write HTML output
 
     ## Build and return results
 
