@@ -243,6 +243,9 @@ def _collapse_sequence_categories(categories):
 
     return cats
 
+# ...def _collapse_sequence_categories(...)
+
+
 def _get_image_predicted_categories(im, detection_threshold,
                                     classification_confidence_threshold,
                                     detection_category_id_to_name,
@@ -497,6 +500,7 @@ def analyze_classification_results(options):
     filename_to_pred_counts = {}
 
     for fn in filename_to_gt_categories:
+
         im = results_fn_to_im[fn]
         pred_cats, pred_counts = _get_image_predicted_categories(
             im, detection_threshold,
@@ -834,12 +838,68 @@ def analyze_classification_results(options):
             if len(entity_ids) > 0:
                 non_empty_cells[(true_cat, pred_cat)] = entity_ids
 
-        # Determine how many images to sample per cell.
+        # Build "strict" misprediction data: entities where a single wrong
+        # category was the only prediction.
         #
-        # First, cap each cell at max_images_per_cell.  Then, if the total
-        # exceeds max_total_images, scale down proportionally.
+        # strictly_fp[pred_cat][true_cat] -> [entity_ids]
+        strictly_fp = defaultdict(lambda: defaultdict(list))
+        # strictly_fn[true_cat][pred_cat] -> [entity_ids]
+        strictly_fn = defaultdict(lambda: defaultdict(list))
+
+        for entity_id in filename_to_gt_categories:
+            gt_cats = filename_to_gt_categories[entity_id]
+            pred_cats = set(filename_to_pred_categories[entity_id].keys())
+            if len(pred_cats) == 1:
+                pred_cat = next(iter(pred_cats))
+                if pred_cat not in gt_cats:
+                    for true_cat in gt_cats:
+                        strictly_fp[pred_cat][true_cat].append(entity_id)
+                        strictly_fn[true_cat][pred_cat].append(entity_id)
+
+        # Build top-N summaries and collect entity lists for per-cell pages
+        strictly_mispredicted_as = {}
+        strictly_this_mispredicted_as = {}
+        strict_fp_entities = {}  # (pred_cat, true_cat) -> [entity_ids]
+
+        n_mispred_for_strict = options.n_mispredictions_for_table
+
+        for cat in active_categories:
+            col_entries = []
+            for other_cat, entity_ids in strictly_fp.get(cat, {}).items():
+                if len(entity_ids) > 0:
+                    col_entries.append((other_cat, len(entity_ids)))
+                    strict_fp_entities[(cat, other_cat)] = entity_ids
+            col_entries.sort(key=lambda x: -x[1])
+            strictly_mispredicted_as[cat] = col_entries[:n_mispred_for_strict]
+
+            row_entries = []
+            for other_cat, entity_ids in strictly_fn.get(cat, {}).items():
+                if len(entity_ids) > 0:
+                    row_entries.append((other_cat, len(entity_ids)))
+            row_entries.sort(key=lambda x: -x[1])
+            strictly_this_mispredicted_as[cat] = row_entries[:n_mispred_for_strict]
+
+        # Determine which strict cells need pages
+        strict_cells_to_render = set()
+        for cat in active_categories:
+            for other_cat, _ in strictly_mispredicted_as[cat]:
+                strict_cells_to_render.add((cat, other_cat))
+            for other_cat, _ in strictly_this_mispredicted_as[cat]:
+                strict_cells_to_render.add((other_cat, cat))
+
+        strict_non_empty_cells = {}
+        for pred_cat, true_cat in strict_cells_to_render:
+            entity_ids = strict_fp_entities.get((pred_cat, true_cat), [])
+            if len(entity_ids) > 0:
+                strict_non_empty_cells[('strict', pred_cat, true_cat)] = entity_ids
+
+        # Determine how many images to sample per cell across both regular and
+        # strict cells.  First cap each at max_images_per_cell, then scale down
+        # proportionally if the combined total exceeds max_total_images.
         cell_desired_counts = {}
         for key, entity_ids in non_empty_cells.items():
+            cell_desired_counts[key] = min(len(entity_ids), options.max_images_per_cell)
+        for key, entity_ids in strict_non_empty_cells.items():
             cell_desired_counts[key] = min(len(entity_ids), options.max_images_per_cell)
 
         total_desired = sum(cell_desired_counts.values())
@@ -860,11 +920,31 @@ def analyze_classification_results(options):
             else:
                 sampled_cells[key] = rng.sample(entity_ids, n_sample)
 
+        sampled_strict_cells = {}
+        for key, entity_ids in strict_non_empty_cells.items():
+            n_sample = cell_desired_counts[key]
+            if len(entity_ids) <= n_sample:
+                sampled_strict_cells[(key[1], key[2])] = list(entity_ids)
+            else:
+                sampled_strict_cells[(key[1], key[2])] = rng.sample(entity_ids, n_sample)
+
         # Collect all unique filenames that need rendering.
         #
         # For sequence-level analysis, render only the first image in each
         # sequence as an exemplar.
         filenames_to_render = set()
+
+        # Include filenames from strict misprediction cells
+        for entity_ids in sampled_strict_cells.values():
+            if options.sequence_level_analysis:
+                for seq_id in entity_ids:
+                    fns = seq_id_to_filenames_map.get(seq_id, [])
+                    if len(fns) > 0:
+                        filenames_to_render.add(fns[0])
+            else:
+                filenames_to_render.update(entity_ids)
+
+        # Include filenames from regular confusion matrix cells
         for entity_ids in sampled_cells.values():
             if options.sequence_level_analysis:
                 for seq_id in entity_ids:
@@ -984,6 +1064,61 @@ def analyze_classification_results(options):
                 options=cell_options)
 
         # ...for each cell
+
+        # Generate per-cell HTML pages for strict misprediction subsets
+
+        def _strict_cell_html_filename(pred_cat, true_cat):
+            return 'strict_predicted_{}_true_{}.html'.format(
+                pred_cat.replace(' ', '_').replace('/', '_'),
+                true_cat.replace(' ', '_').replace('/', '_'))
+
+        for (pred_cat, true_cat), entity_ids in sampled_strict_cells.items():
+
+            html_image_info_list = []
+            for entity_id in entity_ids:
+                if options.sequence_level_analysis:
+                    all_fns = seq_id_to_filenames_map.get(entity_id, [])
+                    fns = all_fns[:1]
+                else:
+                    fns = [entity_id]
+
+                for fn in fns:
+                    im = results_fn_to_im.get(fn, None)
+                    if im is None:
+                        continue
+
+                    fn_clean = flatten_path(fn).replace(' ', '_')
+                    image_link = 'images/' + fn_clean
+
+                    gt_cats_str = ', '.join(sorted(filename_to_gt_categories.get(
+                        entity_id, set())))
+                    pred_cats_for_entity = filename_to_pred_categories.get(entity_id, {})
+                    pred_cats_str = ', '.join(
+                        ['{} ({:.2f})'.format(c, conf)
+                         for c, conf in sorted(pred_cats_for_entity.items())])
+
+                    title = '<b>File</b>: {}<br/><b>GT</b>: {}<br/><b>Pred</b>: {}'.format(
+                        fn, gt_cats_str, pred_cats_str)
+
+                    html_image_info = {
+                        'filename': image_link,
+                        'title': title,
+                        'textStyle':
+                            'font-family:verdana,arial,calibri;font-size:80%;'
+                            'text-align:left;margin-top:20;margin-bottom:5'
+                    }
+                    html_image_info_list.append(html_image_info)
+
+            cell_html_path = os.path.join(
+                options.html_output_dir,
+                _strict_cell_html_filename(pred_cat, true_cat))
+            cell_title = 'Strictly predicted: {} (true: {})'.format(pred_cat, true_cat)
+            write_html_image_list(
+                filename=cell_html_path,
+                images=html_image_info_list,
+                options={'headerHtml': '<h1>{}</h1>'.format(cell_title)})
+
+        # ...for each strict cell
 
         # Generate index.html
 
@@ -1141,7 +1276,9 @@ def analyze_classification_results(options):
         html += '<th class="sortable" onclick="sortTable(\'stats-table\',4,\'num\')">Recall</th>'
         html += '<th class="sortable" onclick="sortTable(\'stats-table\',5,\'num\')">F1</th>'
         html += '<th>Mispredicted as this category</th>'
+        html += '<th>Strictly mispredicted as this category</th>'
         html += '<th>This was mispredicted as</th>'
+        html += '<th>Strictly mispredicted as</th>'
         html += '</tr></thead>\n'
         html += '<tbody>\n'
 
@@ -1170,6 +1307,20 @@ def analyze_classification_results(options):
                 html += '<br/>'.join(fp_parts)
                 html += '</td>'
 
+            # "Strictly mispredicted as this category" column
+            strict_fp_entries = strictly_mispredicted_as[cat]
+            if len(strict_fp_entries) == 0:
+                html += '<td></td>'
+            else:
+                html += '<td class="mispred-cell">'
+                strict_fp_parts = []
+                for other_cat, count in strict_fp_entries:
+                    link = _strict_cell_html_filename(cat, other_cat)
+                    strict_fp_parts.append('<a href="{}">{}</a> ({})'.format(
+                        link, other_cat, count))
+                html += '<br/>'.join(strict_fp_parts)
+                html += '</td>'
+
             # "This was mispredicted as" column (FN: cat predicted as other things)
             fn_entries = this_mispredicted_as[cat]
             if len(fn_entries) == 0:
@@ -1182,6 +1333,20 @@ def analyze_classification_results(options):
                     fn_parts.append('<a href="{}">{}</a> ({})'.format(
                         link, other_cat, count))
                 html += '<br/>'.join(fn_parts)
+                html += '</td>'
+
+            # "Strictly mispredicted as" column
+            strict_fn_entries = strictly_this_mispredicted_as[cat]
+            if len(strict_fn_entries) == 0:
+                html += '<td></td>'
+            else:
+                html += '<td class="mispred-cell">'
+                strict_fn_parts = []
+                for other_cat, count in strict_fn_entries:
+                    link = _strict_cell_html_filename(other_cat, cat)
+                    strict_fn_parts.append('<a href="{}">{}</a> ({})'.format(
+                        link, other_cat, count))
+                html += '<br/>'.join(strict_fn_parts)
                 html += '</td>'
 
             html += '</tr>\n'
