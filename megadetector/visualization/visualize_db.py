@@ -560,7 +560,8 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
                 filename_text, img_id, len(bboxes), frame_string, image_classes,
                 label_level_string, flag_string, extra_field_string, extra_annotation_field_string),
             'textStyle': 'font-family:verdana,arial,calibri;font-size:80%;' + \
-                'text-align:left;margin-top:20;margin-bottom:5',
+                'text-align:left;margin-top:20;margin-bottom:5;',
+            'imageStyle':'max-width:95%;',
             'image_categories': image_categories
         }
 
