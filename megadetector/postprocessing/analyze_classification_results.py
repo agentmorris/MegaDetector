@@ -40,6 +40,23 @@ default_detection_category_mapping = {}
 default_detection_category_mapping['person'] = 'human'
 default_detection_category_mapping['vehicle'] = 'vehicle'
 
+# Category names treated as "no detections at all" (lowest priority).
+# Any other category bumps these from a sequence's category set.
+null_category_names = ['blank', 'empty']
+
+# Category names treated as "detection with no classification" (bumps null
+# categories, but is itself bumped by any non-null, non-unknown category).
+unknown_category_names = ['unknown']
+
+# Category names representing a generic "animal" detection.  Bumped by any
+# animal-specific category (i.e. any category not in non_animal_category_names
+# and not in null/unknown categories).
+generic_animal_category_names = ['animal']
+
+# Category names that are NOT animals.  Used to determine whether a category
+# is an animal-specific prediction (which would bump generic_animal_category_names).
+non_animal_category_names = ['person', 'human', 'vehicle']
+
 
 #%% Support classes
 
@@ -177,6 +194,54 @@ class AnalysisResults:
 
 
 #%% Support functions
+
+def _collapse_sequence_categories(categories):
+    """
+    Collapse a set of categories by removing less-specific categories when
+    more-specific ones are present, according to the priority hierarchy:
+
+        null (blank/empty) < unknown < generic animal / non-animal specifics
+
+    Also, generic animal categories (e.g. "animal") are bumped by any
+    animal-specific category.
+
+    Args:
+        categories (set): set of lowercase category name strings
+
+    Returns:
+        set: the collapsed category set
+    """
+
+    if len(categories) <= 1:
+        return categories
+
+    cats = set(categories)
+
+    null_set = set(null_category_names)
+    unknown_set = set(unknown_category_names)
+    generic_animal_set = set(generic_animal_category_names)
+    non_animal_set = set(non_animal_category_names)
+
+    all_special = null_set | unknown_set | generic_animal_set
+
+    # Check what tiers are present
+    has_non_null_non_unknown = any(c not in null_set and c not in unknown_set for c in cats)
+    has_specific_animal = any(
+        c not in all_special and c not in non_animal_set for c in cats)
+
+    # Null categories are bumped by anything else
+    if has_non_null_non_unknown or (cats & unknown_set):
+        cats -= null_set
+
+    # Unknown categories are bumped by anything that isn't null or unknown
+    if has_non_null_non_unknown:
+        cats -= unknown_set
+
+    # Generic animal is bumped by any animal-specific category
+    if has_specific_animal:
+        cats -= generic_animal_set
+
+    return cats
 
 def _get_image_predicted_categories(im, detection_threshold,
                                     classification_confidence_threshold,
@@ -385,11 +450,11 @@ def analyze_classification_results(options):
     print('{} images in common between results and ground truth'.format(len(common_filenames)))
 
     if len(results_only) > 0:
-        print('Warning: {} images (of {}) in results but not in ground truth'.format(
-            len(results_only),len(gt_fn_to_im)))
+        print('Warning: {} images in results but not in ground truth (GT has {}, results have {})'.format(
+            len(results_only),len(gt_fn_to_im),len(results_fn_to_im)))
     if len(gt_only) > 0:
-        print('Warning: {} images (of {}) in ground truth but not in results'.format(
-            len(gt_only),len(results_fn_to_im)))
+        print('Warning: {} images in ground truth but not in results (GT has {}, results have {})'.format(
+            len(gt_only),len(gt_fn_to_im),len(results_fn_to_im)))
 
     assert len(common_filenames) > 0, \
         'No images in common between results and ground truth'
@@ -515,12 +580,16 @@ def analyze_classification_results(options):
                 for cat, count in filename_to_pred_counts[fn].items():
                     pred_count_union[cat] += count
 
-            # If the sequence has any non-"empty" predictions, remove "empty";
-            # it was only added because individual frames lacked above-threshold
-            # detections, but the sequence as a whole is not empty.
-            if len(pred_union) > 1 and 'empty' in pred_union:
-                del pred_union['empty']
-                pred_count_union.pop('empty', None)
+            # Collapse category hierarchies for the sequence; e.g. if a sequence
+            # has both "empty" and "deer" predictions, remove "empty".
+            collapsed_gt = _collapse_sequence_categories(gt_union)
+            gt_union = collapsed_gt
+
+            collapsed_pred = _collapse_sequence_categories(set(pred_union.keys()))
+            removed_pred_cats = set(pred_union.keys()) - collapsed_pred
+            for cat in removed_pred_cats:
+                del pred_union[cat]
+                pred_count_union.pop(cat, None)
 
             seq_filename_to_gt_categories[seq_id] = gt_union
             seq_filename_to_pred_categories[seq_id] = pred_union
@@ -1165,6 +1234,9 @@ def analyze_classification_results(options):
         # ...for each true category
 
         html += '</table>\n'
+
+        # Default sort: N (GT) descending (call twice to toggle from asc to desc)
+        html += '<script>sortTable("stats-table",1,"num");sortTable("stats-table",1,"num");</script>\n'
 
         html += '</body>\n'
         html += '</html>\n'
