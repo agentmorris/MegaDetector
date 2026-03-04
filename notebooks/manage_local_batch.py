@@ -79,6 +79,7 @@ from copy import deepcopy
 
 from megadetector.utils.ct_utils import split_list_into_n_chunks
 from megadetector.utils.ct_utils import image_file_to_camera_folder
+from megadetector.utils.ct_utils import write_json
 from megadetector.utils.ct_utils import split_list_into_fixed_size_chunks
 
 from megadetector.detection.run_detector_batch import load_and_run_detector_batch
@@ -971,8 +972,7 @@ for im in combined_results['images']:
     else:
         im['file'] = im['file'].replace(input_path + '/','',1)
 
-with open(combined_api_output_file,'w') as f:
-    json.dump(combined_results,f,indent=1)
+write_json(combined_api_output_file,f)
 
 print('\nWrote results to {}'.format(combined_api_output_file))
 
@@ -1382,8 +1382,7 @@ if not run_tasks_in_notebook:
         chunk_instances_json = path_join(chunk_folder,'crop_instances_chunk_{}.json'.format(
             chunk_str))
         chunk_instances_dict = {'instances':chunk}
-        with open(chunk_instances_json,'w') as f:
-            json.dump(chunk_instances_dict,f,indent=1)
+        write_json(chunk_instances_json,chunk_instances_dict)
 
         chunk_detections_json = path_join(chunk_folder,'detections_chunk_{}.json'.format(
             chunk_str))
@@ -1398,8 +1397,7 @@ if not run_tasks_in_notebook:
 
         detection_predictions_dict = {'predictions':detection_predictions_this_chunk}
 
-        with open(chunk_detections_json,'w') as f:
-            json.dump(detection_predictions_dict,f,indent=1)
+        write_json(chunk_detections_json,detection_predictions_dict)
 
         chunk_files = [instance['filepath'] for instance in chunk]
 
