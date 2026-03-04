@@ -138,6 +138,9 @@ def wi_download_csv_to_coco(csv_file_in,
     # read_images_from_download_bundle supports a folder or a single .csv file
     image_id_to_image_records = read_images_from_download_bundle(csv_file_in)
 
+    print('Read image records for {} unique image IDs'.format(
+        len(image_id_to_image_records)))
+
 
     ##%% Create COCO dictionaries
 
@@ -149,6 +152,8 @@ def wi_download_csv_to_coco(csv_file_in,
     image_id_to_annotations = defaultdict(list)
 
     print('Converting records to COCO...')
+
+    n_blanks_excluded = 0
 
     # image_id = next(iter(image_id_to_image_records))
     for image_id in tqdm(image_id_to_image_records.keys(),
@@ -327,6 +332,8 @@ def wi_download_csv_to_coco(csv_file_in,
 
         if include_blanks or nonblank_annotation_found:
             image_id_to_image[image_id] = im
+        else:
+            n_blanks_excluded += 1
 
     # ...for each image
 
@@ -334,6 +341,9 @@ def wi_download_csv_to_coco(csv_file_in,
 
     images = list(image_id_to_image.values())
     categories = list(category_name_to_category.values())
+
+    print('Created COCO records for {} image IDs ({} blanks excluded)'.format(
+        len(image_id_to_image),n_blanks_excluded))
 
     annotations = []
 
@@ -345,6 +355,9 @@ def wi_download_csv_to_coco(csv_file_in,
         annotations_this_image = image_id_to_annotations[image_id]
         for ann in annotations_this_image:
             annotations.append(ann)
+
+    print('Created COCO {} annotation records ({} categories)'.format(
+        len(annotations),len(categories)))
 
     info = {'version':'1.00','description':'converted from WI export'}
     info['source_file'] = csv_file_in

@@ -125,7 +125,7 @@ class PostProcessingOptions:
         #: tn, tp, fn, fp
         self.rendering_bypass_sets = []
 
-        #: If this is None, choose a confidence threshold based on the detector version.
+        #: If this is None, a confidence threshold is selected based on the detector version.
         #:
         #: This can either be a float or a dictionary mapping category names (not IDs) to
         #: thresholds.  The category "default" can be used to specify thresholds for
