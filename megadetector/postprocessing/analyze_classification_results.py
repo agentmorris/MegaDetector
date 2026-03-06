@@ -103,7 +103,7 @@ class ClassificationAnalysisOptions:
         self.random_seed = 0
 
         #: Confidence threshold to apply to classification (not detection) results
-        self.classification_confidence_threshold = 0.5
+        self.classification_confidence_threshold = 0.6
 
         #: A dict mapping detection category names to classification category names, for
         #: categories we want to handle specially.  Any detection in a matching category with
@@ -135,7 +135,7 @@ class ClassificationAnalysisOptions:
         #: Number of top misprediction categories to show in the per-category
         #: statistics table (for both "mispredicted as this" and "this was
         #: mispredicted as" columns).
-        self.n_mispredictions_for_table = 3
+        self.n_mispredictions_for_table = 5
 
         #: List of category names to completely exclude from the analysis,
         #: whether they appear in ground truth or predictions.  Checked after
@@ -156,6 +156,18 @@ class ClassificationAnalysisOptions:
         #: count (how many images in the sequence have that category), then
         #: alphabetically.
         self.single_label_per_image = False
+
+        #: Before processing, optionally map a subset of predicted classification categories
+        #: to alternative names.  Typically used to reconcile category names across predictions/GT.
+        #:
+        #: If not None, should be a str --> str dict.
+        self.predicted_category_name_mappings = None
+
+        #: Before processing, optionally map a subset of GT classification categories
+        #: to alternative names.  Typically used to reconcile category names across predictions/GT.
+        #:
+        #: If not None, should be a str --> str dict.
+        self.gt_category_name_mappings = None
 
     # ...def __init__(...)
 
@@ -377,7 +389,8 @@ def _render_single_image(im, render_constants):
         result['success'] = True
         result['output_path'] = output_path
     except Exception as e:
-        print('Warning: error rendering {}: {}'.format(im['file'], str(e)))
+        print('Warning: error rendering {} to {}: {}'.format(
+            im['file'], output_path, str(e)))
 
     return result
 
@@ -484,6 +497,8 @@ def analyze_classification_results(options):
         gt_cats = set()
         for ann in annotations:
             cat_name = gt_category_id_to_name[ann['category_id']].lower()
+            if options.gt_category_name_mappings is not None:
+                cat_name = options.gt_category_name_mappings.get(cat_name, cat_name)
             gt_cats.add(cat_name)
 
         filename_to_gt_categories[fn] = gt_cats
@@ -508,6 +523,19 @@ def analyze_classification_results(options):
             detection_category_id_to_name,
             classification_category_id_to_name,
             detection_category_mapping)
+
+        if options.predicted_category_name_mappings is not None:
+            mapped_cats = {}
+            mapped_counts = {}
+            for cat_name, conf in pred_cats.items():
+                mapped_name = options.predicted_category_name_mappings.get(cat_name, cat_name)
+                mapped_cats[mapped_name] = max(conf, mapped_cats.get(mapped_name, 0))
+            for cat_name, count in pred_counts.items():
+                mapped_name = options.predicted_category_name_mappings.get(cat_name, cat_name)
+                mapped_counts[mapped_name] = count + mapped_counts.get(mapped_name, 0)
+            pred_cats = mapped_cats
+            pred_counts = mapped_counts
+
         filename_to_pred_categories[fn] = pred_cats
         filename_to_pred_counts[fn] = pred_counts
 

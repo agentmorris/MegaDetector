@@ -635,7 +635,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
             print('Image {} failed to open, error: {}'.format(img_path, e))
             return False
 
-        rendering_label_map = None
+        rendering_label_map = label_map
         if options.custom_category_mapping is not None:
             rendering_label_map = options.custom_category_mapping
 
