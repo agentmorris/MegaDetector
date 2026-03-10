@@ -103,7 +103,7 @@ class ClassificationAnalysisOptions:
         self.random_seed = 0
 
         #: Confidence threshold to apply to classification (not detection) results
-        self.classification_confidence_threshold = 0.5
+        self.classification_confidence_threshold = 0.6
 
         #: A dict mapping detection category names to classification category names, for
         #: categories we want to handle specially.  Any detection in a matching category with
