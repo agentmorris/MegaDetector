@@ -552,6 +552,7 @@ def _prepare_analysis_data(options):
     n_images_without_annotations = 0
 
     for im in gt_data['images']:
+
         fn = im['file_name']
         if fn not in common_filenames:
             continue
@@ -570,6 +571,8 @@ def _prepare_analysis_data(options):
 
         filename_to_gt_categories[fn] = gt_cats
 
+    # ...for each filename
+
     if n_images_without_annotations > 0:
         print('Warning: {} images in GT with no annotations (excluded)'.format(
             n_images_without_annotations))
@@ -584,6 +587,7 @@ def _prepare_analysis_data(options):
     for fn in filename_to_gt_categories:
 
         im = results_fn_to_im[fn]
+
         pred_cats, pred_counts = _get_image_predicted_categories(
             im,
             detection_threshold,
