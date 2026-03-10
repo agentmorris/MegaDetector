@@ -117,6 +117,15 @@ class ClassificationAnalysisOptions:
         #: Defaults to detection_category_mapping.
         self.detection_category_mapping = None
 
+        #: When this is True (default), we trust detection categories regardless of
+        #: classifications.  I.e., a detection category of "person" with a classification
+        #: of "elk" will be treated as a classification of "person".
+        #:
+        #: When this is False, we trust classifications, if present.  This is generally
+        #: used when I'm simulating Wildlife Insights ensemble behavior, where "classifications"
+        #: at this point really represent the output of the entire WI ensemble.
+        self.apply_detection_category_mapping_when_classifications_are_present = True
+
         #: If True, the entire analysis will be performed at the *sequence* level, rather
         #: than the image level.
         self.sequence_level_analysis = False
@@ -128,6 +137,12 @@ class ClassificationAnalysisOptions:
         #:
         #: Only relevant if rendering_workers is > 1.
         self.rendering_pool_type = 'threads'
+
+        #: Should we over-write images that already exist?
+        self.overwrite = True
+
+        # Should we show the "overall metrics" table?
+        self.show_overall_metrics = True
 
         #: Width of rendered output images (-1 to preserve original size)
         self.output_image_width = 1000
@@ -156,6 +171,10 @@ class ClassificationAnalysisOptions:
         #: count (how many images in the sequence have that category), then
         #: alphabetically.
         self.single_label_per_image = False
+
+        #: Maximum number of images to include in any HTML page, generally only
+        #: relevant when calling render_misprediction_pages(...).
+        self.max_images_per_html_file = 1000
 
     # ...def __init__(...)
 
@@ -246,11 +265,13 @@ def _collapse_sequence_categories(categories):
 # ...def _collapse_sequence_categories(...)
 
 
-def _get_image_predicted_categories(im, detection_threshold,
+def _get_image_predicted_categories(im,
+                                    detection_threshold,
                                     classification_confidence_threshold,
                                     detection_category_id_to_name,
                                     classification_category_id_to_name,
-                                    detection_category_mapping):
+                                    detection_category_mapping,
+                                    options):
     """
     For a single MD results image entry, returns a tuple of:
 
@@ -280,13 +301,29 @@ def _get_image_predicted_categories(im, detection_threshold,
 
         det_category_name_lower = det_category_name.lower()
 
-        # Check if this detection category is in the mapping (e.g., person -> human)
-        if det_category_name_lower in detection_category_mapping:
-            mapped_name = detection_category_mapping[det_category_name_lower].lower()
-            if mapped_name not in predicted_categories or predicted_categories[mapped_name] < 1.0:
-                predicted_categories[mapped_name] = 1.0
-            predicted_counts[mapped_name] += 1
-        else:
+        # Do we need to look at classifications?  This will be False if we infer the category
+        # from detections alone.
+        review_classifications = True
+
+        # Determine whether the detection category should be used as the prediction
+        # for this object
+        if (det_category_name_lower in detection_category_mapping):
+
+            # If we have classifications and we're supposed to use them in
+            # this scenario...
+            if ('classifications' in det) and \
+                (len(det['classifications']) > 0) and \
+                (not options.apply_detection_category_mapping_when_classifications_are_present):
+                review_classifications = True
+            else:
+                mapped_name = detection_category_mapping[det_category_name_lower].lower()
+                if mapped_name not in predicted_categories or predicted_categories[mapped_name] < 1.0:
+                    predicted_categories[mapped_name] = 1.0
+                predicted_counts[mapped_name] += 1
+                review_classifications = False
+
+        if review_classifications:
+
             # Look at classifications
             classifications = det.get('classifications', None)
             has_above_threshold_classification = False
@@ -310,6 +347,8 @@ def _get_image_predicted_categories(im, detection_threshold,
                     predicted_categories['unknown'] = 1.0
                 predicted_counts['unknown'] += 1
 
+        # ...if we're supposed to look at classifications for this object
+
     # ...for each detection
 
     if not has_above_threshold_detection:
@@ -329,9 +368,29 @@ def _render_single_image(im, render_constants):
         render_constants (dict): rendering parameters
 
     Returns:
-        dict: result with 'success', 'output_path', 'file' keys
+        dict: result with at least the keys 'success', 'output_path', 'file', and
+        'error'
     """
 
+    result = {
+        'success': False,
+        'output_path': None,
+        'error': None,
+        'file': im['file']
+    }
+
+    # Validate inputs
+    if im['detections'] is None:
+
+        failure_string = ''
+        if 'failure' in im:
+            failure_string = im['failure']
+        print('Warning: skipping rendering for {}: failure string [{}]'.format(
+            im['file'],failure_string))
+        result['error'] = 'inference failure'
+        return result
+
+    # Expand input dict to local variables
     image_base_dir = render_constants['image_base_dir']
     output_dir = render_constants['output_dir']
     detection_label_map = render_constants['detection_label_map']
@@ -339,45 +398,41 @@ def _render_single_image(im, render_constants):
     detection_threshold = render_constants['detection_threshold']
     classification_confidence_threshold = render_constants['classification_confidence_threshold']
     output_image_width = render_constants['output_image_width']
-
-    result = {
-        'success': False,
-        'output_path': None,
-        'file': im['file']
-    }
+    overwrite = render_constants['overwrite']
 
     # Build output filename
     fn_clean = flatten_path(im['file']).replace(' ', '_')
     output_path = os.path.join(output_dir, fn_clean)
 
     # Skip if already rendered
-    if os.path.isfile(output_path):
+    if os.path.isfile(output_path) and (not overwrite):
+
         result['success'] = True
         result['output_path'] = output_path
+        result['error'] = 'Skipped rendering, image exists'
         return result
 
     input_path = os.path.join(image_base_dir, im['file'])
 
     if not os.path.isfile(input_path):
         print('Warning: image not found: {}'.format(input_path))
+        result['error'] = 'image not found'
         return result
 
-    try:
-        image = vis_utils.open_image(input_path)
-        image = vis_utils.resize_image(image, output_image_width)
+    image = vis_utils.open_image(input_path)
+    image = vis_utils.resize_image(image, output_image_width)
 
-        vis_utils.render_detection_bounding_boxes(
-            im['detections'], image,
-            label_map=detection_label_map,
-            classification_label_map=classification_label_map,
-            confidence_threshold=detection_threshold,
-            classification_confidence_threshold=classification_confidence_threshold)
+    vis_utils.render_detection_bounding_boxes(
+        im['detections'],
+        image,
+        label_map=detection_label_map,
+        classification_label_map=classification_label_map,
+        confidence_threshold=detection_threshold,
+        classification_confidence_threshold=classification_confidence_threshold)
 
-        image.save(output_path)
-        result['success'] = True
-        result['output_path'] = output_path
-    except Exception as e:
-        print('Warning: error rendering {}: {}'.format(im['file'], str(e)))
+    image.save(output_path)
+    result['success'] = True
+    result['output_path'] = output_path
 
     return result
 
@@ -386,16 +441,29 @@ def _render_single_image(im, render_constants):
 
 #%% Core functions
 
-def analyze_classification_results(options):
+def _prepare_analysis_data(options):
     """
-    Perform precision-recall analysis on classification results.
+    Load results and ground truth files, build category assignments, apply filtering
+    and aggregation options, and return the prepared data needed for analysis and
+    rendering.
 
     Args:
         options (ClassificationAnalysisOptions): options object defining filenames
             and analysis parameters.
 
     Returns:
-        AnalysisResults: results of the classification analysis
+        dict: prepared analysis data with keys:
+            - filename_to_gt_categories
+            - filename_to_pred_categories
+            - filename_to_pred_counts
+            - active_categories
+            - category_to_index
+            - results_fn_to_im
+            - gt_data
+            - detection_category_id_to_name
+            - classification_category_id_to_name
+            - detection_threshold
+            - categories_to_ignore
     """
 
     ## Setup and defaults
@@ -503,13 +571,17 @@ def analyze_classification_results(options):
 
         im = results_fn_to_im[fn]
         pred_cats, pred_counts = _get_image_predicted_categories(
-            im, detection_threshold,
+            im,
+            detection_threshold,
             options.classification_confidence_threshold,
             detection_category_id_to_name,
             classification_category_id_to_name,
-            detection_category_mapping)
+            detection_category_mapping,
+            options)
         filename_to_pred_categories[fn] = pred_cats
         filename_to_pred_counts[fn] = pred_counts
+
+    # ...for each filename
 
     ## Filter ignored categories
 
@@ -546,7 +618,7 @@ def analyze_classification_results(options):
 
         print('{} images remaining after filtering'.format(len(filename_to_gt_categories)))
 
-    # ...if we are supposed to ignore some categories
+    # ...if we're supposed to ignore some categories
 
     ## Sequence-level aggregation
 
@@ -658,6 +730,7 @@ def analyze_classification_results(options):
     if options.single_prediction_per_image:
 
         for entity_id in filename_to_pred_categories:
+
             pred_cats = filename_to_pred_categories[entity_id]
             if len(pred_cats) <= 1:
                 continue
@@ -677,6 +750,10 @@ def analyze_classification_results(options):
         print('Collapsed predictions to single label per {}'.format(
             'sequence' if options.sequence_level_analysis else 'image'))
 
+        # ...for each image or sequence
+
+    # ...if we are collapsing to a single prediction per image
+
     ## Determine active categories
 
     all_gt_categories = set()
@@ -693,6 +770,48 @@ def analyze_classification_results(options):
 
     category_to_index = {cat: i for i, cat in enumerate(active_categories)}
 
+    return {
+        'filename_to_gt_categories': filename_to_gt_categories,
+        'filename_to_pred_categories': filename_to_pred_categories,
+        'filename_to_pred_counts': filename_to_pred_counts,
+        'active_categories': active_categories,
+        'category_to_index': category_to_index,
+        'results_fn_to_im': results_fn_to_im,
+        'gt_data': gt_data,
+        'detection_category_id_to_name': detection_category_id_to_name,
+        'classification_category_id_to_name': classification_category_id_to_name,
+        'detection_threshold': detection_threshold,
+        'categories_to_ignore': categories_to_ignore
+    }
+
+# ...def _prepare_analysis_data(...)
+
+
+def analyze_classification_results(options):
+    """
+    Perform precision-recall analysis on classification results.
+
+    Args:
+        options (ClassificationAnalysisOptions): options object defining filenames
+            and analysis parameters.
+
+    Returns:
+        AnalysisResults: results of the classification analysis
+    """
+
+    prepared = _prepare_analysis_data(options)
+
+    filename_to_gt_categories = prepared['filename_to_gt_categories']
+    filename_to_pred_categories = prepared['filename_to_pred_categories']
+    active_categories = prepared['active_categories']
+    category_to_index = prepared['category_to_index']
+    results_fn_to_im = prepared['results_fn_to_im']
+    gt_data = prepared['gt_data']
+    detection_category_id_to_name = prepared['detection_category_id_to_name']
+    classification_category_id_to_name = prepared['classification_category_id_to_name']
+    detection_threshold = prepared['detection_threshold']
+    categories_to_ignore = prepared['categories_to_ignore']
+
     ## Build confusion matrix
 
     n_categories = len(active_categories)
@@ -702,6 +821,7 @@ def analyze_classification_results(options):
     true_pred_to_filenames = defaultdict(list)
 
     for entity_id in filename_to_gt_categories:
+
         gt_cats = filename_to_gt_categories[entity_id]
         pred_cats = filename_to_pred_categories[entity_id]
 
@@ -730,6 +850,19 @@ def analyze_classification_results(options):
 
     ## Compute metrics
 
+    # Count entities (images/sequences) per category, independent of the
+    # confusion matrix.  N(GT) = number of entities where this category is in
+    # the ground truth.  N(Pred) = number of entities where this category was
+    # predicted at least once with above-threshold confidence.
+    gt_entity_counts = defaultdict(int)
+    pred_entity_counts = defaultdict(int)
+
+    for entity_id in filename_to_gt_categories:
+        for cat in filename_to_gt_categories[entity_id]:
+            gt_entity_counts[cat] += 1
+        for cat in filename_to_pred_categories[entity_id]:
+            pred_entity_counts[cat] += 1
+
     per_category_results = {}
     total_tp = 0
     total_predicted = 0
@@ -742,11 +875,11 @@ def analyze_classification_results(options):
         fp = int(confusion_matrix[:, idx].sum()) - tp
         fn = int(confusion_matrix[idx, :].sum()) - tp
 
-        n_gt = tp + fn
-        n_pred = tp + fp
+        n_gt = gt_entity_counts[cat]
+        n_pred = pred_entity_counts[cat]
 
-        precision = tp / n_pred if n_pred > 0 else 0.0
-        recall = tp / n_gt if n_gt > 0 else 0.0
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
         f1 = (2 * precision * recall) / (precision + recall) if ((precision + recall) > 0) else 0.0
 
         per_category_results[cat] = {
@@ -761,8 +894,8 @@ def analyze_classification_results(options):
         }
 
         total_tp += tp
-        total_predicted += n_pred
-        total_gt += n_gt
+        total_predicted += (tp + fp)
+        total_gt += (tp + fn)
 
     # ...for each category
 
@@ -838,68 +971,87 @@ def analyze_classification_results(options):
             if len(entity_ids) > 0:
                 non_empty_cells[(true_cat, pred_cat)] = entity_ids
 
-        # Build "strict" misprediction data: entities where a single wrong
-        # category was the only prediction.
+        # Build misprediction data with separate FP and FN perspectives.
         #
-        # strictly_fp[pred_cat][true_cat] -> [entity_ids]
-        strictly_fp = defaultdict(lambda: defaultdict(list))
-        # strictly_fn[true_cat][pred_cat] -> [entity_ids]
-        strictly_fn = defaultdict(lambda: defaultdict(list))
+        # FP perspective ("mispredicted as this category"): for each predicted
+        # category that is NOT in the ground truth, pair with each GT category.
+        # mispred_fp[pred_cat][true_cat] -> [entity_ids]
+        mispred_fp = defaultdict(lambda: defaultdict(list))
+        #
+        # FN perspective ("mispredicted as"): for each GT category that is NOT
+        # among the predictions, pair with each predicted category.
+        # mispred_fn[true_cat][pred_cat] -> [entity_ids]
+        mispred_fn = defaultdict(lambda: defaultdict(list))
 
         for entity_id in filename_to_gt_categories:
             gt_cats = filename_to_gt_categories[entity_id]
             pred_cats = set(filename_to_pred_categories[entity_id].keys())
-            if len(pred_cats) == 1:
-                pred_cat = next(iter(pred_cats))
-                if pred_cat not in gt_cats:
-                    for true_cat in gt_cats:
-                        strictly_fp[pred_cat][true_cat].append(entity_id)
-                        strictly_fn[true_cat][pred_cat].append(entity_id)
+
+            # FP: predicted categories not in GT
+            wrong_preds = pred_cats - gt_cats
+            for pred_cat in wrong_preds:
+                for true_cat in gt_cats:
+                    mispred_fp[pred_cat][true_cat].append(entity_id)
+
+            # FN: GT categories not in predictions
+            missed_gts = gt_cats - pred_cats
+            for true_cat in missed_gts:
+                for pred_cat in pred_cats:
+                    mispred_fn[true_cat][pred_cat].append(entity_id)
 
         # Build top-N summaries and collect entity lists for per-cell pages
-        strictly_mispredicted_as = {}
-        strictly_this_mispredicted_as = {}
-        strict_fp_entities = {}  # (pred_cat, true_cat) -> [entity_ids]
+        mispredicted_as_this = {}
+        fp_entities = {}  # (pred_cat, true_cat) -> [entity_ids]
 
-        n_mispred_for_strict = options.n_mispredictions_for_table
+        this_was_mispredicted_as = {}
+        fn_entities = {}  # (true_cat, pred_cat) -> [entity_ids]
+
+        n_mispred_for_mispred = options.n_mispredictions_for_table
 
         for cat in active_categories:
+
             col_entries = []
-            for other_cat, entity_ids in strictly_fp.get(cat, {}).items():
+            for other_cat, entity_ids in mispred_fp.get(cat, {}).items():
                 if len(entity_ids) > 0:
                     col_entries.append((other_cat, len(entity_ids)))
-                    strict_fp_entities[(cat, other_cat)] = entity_ids
+                    fp_entities[(cat, other_cat)] = entity_ids
             col_entries.sort(key=lambda x: -x[1])
-            strictly_mispredicted_as[cat] = col_entries[:n_mispred_for_strict]
+            mispredicted_as_this[cat] = col_entries[:n_mispred_for_mispred]
 
             row_entries = []
-            for other_cat, entity_ids in strictly_fn.get(cat, {}).items():
+            for other_cat, entity_ids in mispred_fn.get(cat, {}).items():
                 if len(entity_ids) > 0:
                     row_entries.append((other_cat, len(entity_ids)))
+                    fn_entities[(cat, other_cat)] = entity_ids
             row_entries.sort(key=lambda x: -x[1])
-            strictly_this_mispredicted_as[cat] = row_entries[:n_mispred_for_strict]
+            this_was_mispredicted_as[cat] = row_entries[:n_mispred_for_mispred]
 
-        # Determine which strict cells need pages
-        strict_cells_to_render = set()
-        for cat in active_categories:
-            for other_cat, _ in strictly_mispredicted_as[cat]:
-                strict_cells_to_render.add((cat, other_cat))
-            for other_cat, _ in strictly_this_mispredicted_as[cat]:
-                strict_cells_to_render.add((other_cat, cat))
+        # ...for each category
 
-        strict_non_empty_cells = {}
-        for pred_cat, true_cat in strict_cells_to_render:
-            entity_ids = strict_fp_entities.get((pred_cat, true_cat), [])
-            if len(entity_ids) > 0:
-                strict_non_empty_cells[('strict', pred_cat, true_cat)] = entity_ids
+        # Determine which misprediction cells need pages (FP and FN separately)
+        fp_non_empty_cells = {}
+        for (pred_cat, true_cat), entity_ids in fp_entities.items():
+            # Only generate pages for cells that appear in the top-N summaries
+            if any(true_cat == other_cat
+                   for other_cat, _ in mispredicted_as_this.get(pred_cat, [])):
+                fp_non_empty_cells[('fp', pred_cat, true_cat)] = entity_ids
 
-        # Determine how many images to sample per cell across both regular and
-        # strict cells.  First cap each at max_images_per_cell, then scale down
-        # proportionally if the combined total exceeds max_total_images.
+        fn_non_empty_cells = {}
+        for (true_cat, pred_cat), entity_ids in fn_entities.items():
+            if any(pred_cat == other_cat
+                   for other_cat, _ in this_was_mispredicted_as.get(true_cat, [])):
+                fn_non_empty_cells[('fn', true_cat, pred_cat)] = entity_ids
+
+        # Determine how many images to sample per cell across regular, FP
+        # misprediction, and FN misprediction cells.  First cap each at
+        # max_images_per_cell, then scale down proportionally if the combined
+        # total exceeds max_total_images.
         cell_desired_counts = {}
         for key, entity_ids in non_empty_cells.items():
             cell_desired_counts[key] = min(len(entity_ids), options.max_images_per_cell)
-        for key, entity_ids in strict_non_empty_cells.items():
+        for key, entity_ids in fp_non_empty_cells.items():
+            cell_desired_counts[key] = min(len(entity_ids), options.max_images_per_cell)
+        for key, entity_ids in fn_non_empty_cells.items():
             cell_desired_counts[key] = min(len(entity_ids), options.max_images_per_cell)
 
         total_desired = sum(cell_desired_counts.values())
@@ -920,13 +1072,21 @@ def analyze_classification_results(options):
             else:
                 sampled_cells[key] = rng.sample(entity_ids, n_sample)
 
-        sampled_strict_cells = {}
-        for key, entity_ids in strict_non_empty_cells.items():
+        sampled_fp_cells = {}
+        for key, entity_ids in fp_non_empty_cells.items():
             n_sample = cell_desired_counts[key]
             if len(entity_ids) <= n_sample:
-                sampled_strict_cells[(key[1], key[2])] = list(entity_ids)
+                sampled_fp_cells[(key[1], key[2])] = list(entity_ids)
             else:
-                sampled_strict_cells[(key[1], key[2])] = rng.sample(entity_ids, n_sample)
+                sampled_fp_cells[(key[1], key[2])] = rng.sample(entity_ids, n_sample)
+
+        sampled_fn_cells = {}
+        for key, entity_ids in fn_non_empty_cells.items():
+            n_sample = cell_desired_counts[key]
+            if len(entity_ids) <= n_sample:
+                sampled_fn_cells[(key[1], key[2])] = list(entity_ids)
+            else:
+                sampled_fn_cells[(key[1], key[2])] = rng.sample(entity_ids, n_sample)
 
         # Collect all unique filenames that need rendering.
         #
@@ -934,25 +1094,19 @@ def analyze_classification_results(options):
         # sequence as an exemplar.
         filenames_to_render = set()
 
-        # Include filenames from strict misprediction cells
-        for entity_ids in sampled_strict_cells.values():
-            if options.sequence_level_analysis:
-                for seq_id in entity_ids:
-                    fns = seq_id_to_filenames_map.get(seq_id, [])
-                    if len(fns) > 0:
-                        filenames_to_render.add(fns[0])
-            else:
-                filenames_to_render.update(entity_ids)
+        def _collect_filenames(entity_id_lists):
+            for entity_ids in entity_id_lists:
+                if options.sequence_level_analysis:
+                    for seq_id in entity_ids:
+                        fns = seq_id_to_filenames_map.get(seq_id, [])
+                        if len(fns) > 0:
+                            filenames_to_render.add(fns[0])
+                else:
+                    filenames_to_render.update(entity_ids)
 
-        # Include filenames from regular confusion matrix cells
-        for entity_ids in sampled_cells.values():
-            if options.sequence_level_analysis:
-                for seq_id in entity_ids:
-                    fns = seq_id_to_filenames_map.get(seq_id, [])
-                    if len(fns) > 0:
-                        filenames_to_render.add(fns[0])
-            else:
-                filenames_to_render.update(entity_ids)
+        _collect_filenames(sampled_cells.values())
+        _collect_filenames(sampled_fp_cells.values())
+        _collect_filenames(sampled_fn_cells.values())
 
         # Build image entries for rendering
         images_to_render = []
@@ -970,7 +1124,8 @@ def analyze_classification_results(options):
             'classification_label_map': classification_category_id_to_name,
             'detection_threshold': detection_threshold,
             'classification_confidence_threshold': options.classification_confidence_threshold,
-            'output_image_width': options.output_image_width
+            'output_image_width': options.output_image_width,
+            'overwrite': options.overwrite
         }
 
         if options.rendering_workers > 1 and len(images_to_render) > 1:
@@ -994,9 +1149,12 @@ def analyze_classification_results(options):
                 pool.close()
                 pool.join()
         else:
+
             rendering_results = []
             for im in tqdm(images_to_render):
                 rendering_results.append(_render_single_image(im, render_constants))
+
+        # ...if we are parallelizing rendering
 
         n_success = sum(1 for r in rendering_results if r['success'])
         print('Successfully rendered {} of {} images'.format(n_success, len(images_to_render)))
@@ -1055,7 +1213,8 @@ def analyze_classification_results(options):
 
             cell_title = 'True: {}, Predicted: {}'.format(true_cat, pred_cat)
             cell_options = {
-                'headerHtml': '<h1>{}</h1>'.format(cell_title)
+                'headerHtml': '<h1>{}</h1>'.format(cell_title),
+                'maxFiguresPerHtmlFile': options.max_images_per_html_file
             }
 
             write_html_image_list(
@@ -1065,15 +1224,22 @@ def analyze_classification_results(options):
 
         # ...for each cell
 
-        # Generate per-cell HTML pages for strict misprediction subsets
+        # Generate per-cell HTML pages for misprediction subsets.
+        #
+        # FP and FN perspectives have separate pages because they can contain
+        # different entity sets for the same (true_cat, pred_cat) pair.
 
-        def _strict_cell_html_filename(pred_cat, true_cat):
-            return 'strict_predicted_{}_true_{}.html'.format(
+        def _fp_cell_html_filename(pred_cat, true_cat):
+            return 'fp_predicted_{}_true_{}.html'.format(
                 pred_cat.replace(' ', '_').replace('/', '_'),
                 true_cat.replace(' ', '_').replace('/', '_'))
 
-        for (pred_cat, true_cat), entity_ids in sampled_strict_cells.items():
+        def _fn_cell_html_filename(true_cat, pred_cat):
+            return 'fn_true_{}_predicted_{}.html'.format(
+                true_cat.replace(' ', '_').replace('/', '_'),
+                pred_cat.replace(' ', '_').replace('/', '_'))
 
+        def _build_cell_image_list(entity_ids):
             html_image_info_list = []
             for entity_id in entity_ids:
                 if options.sequence_level_analysis:
@@ -1108,17 +1274,43 @@ def analyze_classification_results(options):
                             'text-align:left;margin-top:20;margin-bottom:5'
                     }
                     html_image_info_list.append(html_image_info)
+            return html_image_info_list
 
+        # FP pages: "mispredicted as this category"
+        for (pred_cat, true_cat), entity_ids in sampled_fp_cells.items():
+
+            html_image_info_list = _build_cell_image_list(entity_ids)
             cell_html_path = os.path.join(
                 options.html_output_dir,
-                _strict_cell_html_filename(pred_cat, true_cat))
-            cell_title = 'Strictly predicted: {} (true: {})'.format(pred_cat, true_cat)
+                _fp_cell_html_filename(pred_cat, true_cat))
+            cell_title = 'Mispredicted as: {} (true: {})'.format(pred_cat, true_cat)
+
             write_html_image_list(
                 filename=cell_html_path,
                 images=html_image_info_list,
-                options={'headerHtml': '<h1>{}</h1>'.format(cell_title)})
+                options={
+                    'headerHtml': '<h1>{}</h1>'.format(cell_title),
+                    'maxFiguresPerHtmlFile': options.max_images_per_html_file
+                })
 
-        # ...for each strict cell
+        # FN pages: "mispredicted as" (this true category was missed)
+        for (true_cat, pred_cat), entity_ids in sampled_fn_cells.items():
+
+            html_image_info_list = _build_cell_image_list(entity_ids)
+            cell_html_path = os.path.join(
+                options.html_output_dir,
+                _fn_cell_html_filename(true_cat, pred_cat))
+            cell_title = 'True: {}, mispredicted as: {}'.format(true_cat, pred_cat)
+
+            write_html_image_list(
+                filename=cell_html_path,
+                images=html_image_info_list,
+                options={
+                    'headerHtml': '<h1>{}</h1>'.format(cell_title),
+                    'maxFiguresPerHtmlFile': options.max_images_per_html_file
+                })
+
+        # ...for each misprediction cell
 
         # Generate index.html
 
@@ -1253,19 +1445,47 @@ def analyze_classification_results(options):
         html += '</div>\n'
 
         # Overall metrics
-        html += '<h2>Overall Metrics</h2>\n'
+        if options.show_overall_metrics:
+
+            html += '<h2>Overall metrics</h2>\n'
+            html += '<div class="contentdiv">\n'
+            html += '<table class="metrics-table">\n'
+            html += '<tr><td>Accuracy</td><td>{:.4f}</td></tr>\n'.format(accuracy)
+            html += '<tr><td>Macro F1</td><td>{:.4f}</td></tr>\n'.format(macro_f1)
+            html += '<tr><td>Micro F1</td><td>{:.4f}</td></tr>\n'.format(micro_f1)
+            html += '<tr><td>Micro Precision</td><td>{:.4f}</td></tr>\n'.format(micro_precision)
+            html += '<tr><td>Micro Recall</td><td>{:.4f}</td></tr>\n'.format(micro_recall)
+            html += '</table>\n'
+            html += '</div>\n'
+
+        # Column explanations
+        html += '<h2>Column explanations</h2>\n'
         html += '<div class="contentdiv">\n'
-        html += '<table class="metrics-table">\n'
-        html += '<tr><td>Accuracy</td><td>{:.4f}</td></tr>\n'.format(accuracy)
-        html += '<tr><td>Macro F1</td><td>{:.4f}</td></tr>\n'.format(macro_f1)
-        html += '<tr><td>Micro F1</td><td>{:.4f}</td></tr>\n'.format(micro_f1)
-        html += '<tr><td>Micro Precision</td><td>{:.4f}</td></tr>\n'.format(micro_precision)
-        html += '<tr><td>Micro Recall</td><td>{:.4f}</td></tr>\n'.format(micro_recall)
-        html += '</table>\n'
+        html += '<p><b>Predicted as this category</b>: images where this category was among the predictions, '
+        html += 'and some other category was among the true labels. This category may also be a correct true '
+        html += 'label for the image; these entries do not necessarily represent errors. For example, if the '
+        html += 'ground truth for an image is &ldquo;human,cattle&rdquo; and the prediction is &ldquo;human&rdquo; '
+        html += 'or &ldquo;human,cattle&rdquo;, this image would be included in the "human" link in this column in '
+        html += 'the &ldquo;cattle&rdquo; row. This column is '
+        html += 'generally useful for understanding the distribution of multi-label or multi-prediction images, '
+        html += 'but it is not very useful for understanding model errors.</p>\n'
+        html += '<p><b>Mispredicted as this category</b>: images where this category was among the predictions, '
+        html += 'and it was wrong (not present in the ground truth). This column is useful for understanding '
+        html += 'model errors, specifically false positives for this category.</p>\n'
+        html += '<p><b>This was predicted as</b>: images with this true label that also received a prediction '
+        html += 'of some other category. Other predictions (including the correct one) may also be present. '
+        html += 'For example, if the ground truth for an image is &ldquo;cattle&rdquo;, and the prediction is '
+        html += '&ldquo;human,cattle&rdquo;, this image would be included in the "human" link in this column in '
+        html += 'the &ldquo;cattle&rdquo; row. This column is generally '
+        html += 'useful for understanding the distribution of multi-label or multi-prediction images, but it is '
+        html += 'not very useful for understanding model errors.</p>\n'
+        html += '<p><b>Mispredicted as</b>: images with this true label whose predictions did not include this '
+        html += 'label. This column is useful for understanding model errors, specifically false negatives for '
+        html += 'this category.</p>\n'
         html += '</div>\n'
 
         # Per-category statistics table (sortable)
-        html += '<h2>Per-Category Statistics</h2>\n'
+        html += '<h2>Per-category statistics</h2>\n'
         html += '<p style="margin-left:50px;font-size:90%;">Click column headers to sort</p>\n'
         html += '<table class="result-table" id="stats-table">\n'
         html += '<thead><tr>'
@@ -1275,10 +1495,10 @@ def analyze_classification_results(options):
         html += '<th class="sortable" onclick="sortTable(\'stats-table\',3,\'num\')">Precision</th>'
         html += '<th class="sortable" onclick="sortTable(\'stats-table\',4,\'num\')">Recall</th>'
         html += '<th class="sortable" onclick="sortTable(\'stats-table\',5,\'num\')">F1</th>'
+        html += '<th>Predicted as this category</th>'
         html += '<th>Mispredicted as this category</th>'
-        html += '<th>Strictly mispredicted as this category</th>'
-        html += '<th>This was mispredicted as</th>'
-        html += '<th>Strictly mispredicted as</th>'
+        html += '<th>This was predicted as</th>'
+        html += '<th>Mispredicted as</th>'
         html += '</tr></thead>\n'
         html += '<tbody>\n'
 
@@ -1307,21 +1527,22 @@ def analyze_classification_results(options):
                 html += '<br/>'.join(fp_parts)
                 html += '</td>'
 
-            # "Strictly mispredicted as this category" column
-            strict_fp_entries = strictly_mispredicted_as[cat]
-            if len(strict_fp_entries) == 0:
+            # "Mispredicted as this category" column (FP: this category was
+            # predicted but is not in GT)
+            mispred_fp_entries = mispredicted_as_this[cat]
+            if len(mispred_fp_entries) == 0:
                 html += '<td></td>'
             else:
                 html += '<td class="mispred-cell">'
-                strict_fp_parts = []
-                for other_cat, count in strict_fp_entries:
-                    link = _strict_cell_html_filename(cat, other_cat)
-                    strict_fp_parts.append('<a href="{}">{}</a> ({})'.format(
+                mispred_fp_parts = []
+                for other_cat, count in mispred_fp_entries:
+                    link = _fp_cell_html_filename(cat, other_cat)
+                    mispred_fp_parts.append('<a href="{}">{}</a> ({})'.format(
                         link, other_cat, count))
-                html += '<br/>'.join(strict_fp_parts)
+                html += '<br/>'.join(mispred_fp_parts)
                 html += '</td>'
 
-            # "This was mispredicted as" column (FN: cat predicted as other things)
+            # "This was predicted as" column (off-diagonal confusion matrix row)
             fn_entries = this_mispredicted_as[cat]
             if len(fn_entries) == 0:
                 html += '<td></td>'
@@ -1335,18 +1556,18 @@ def analyze_classification_results(options):
                 html += '<br/>'.join(fn_parts)
                 html += '</td>'
 
-            # "Strictly mispredicted as" column
-            strict_fn_entries = strictly_this_mispredicted_as[cat]
-            if len(strict_fn_entries) == 0:
+            # "Mispredicted as" column (FN: this true category was not predicted)
+            mispred_fn_entries = this_was_mispredicted_as[cat]
+            if len(mispred_fn_entries) == 0:
                 html += '<td></td>'
             else:
                 html += '<td class="mispred-cell">'
-                strict_fn_parts = []
-                for other_cat, count in strict_fn_entries:
-                    link = _strict_cell_html_filename(other_cat, cat)
-                    strict_fn_parts.append('<a href="{}">{}</a> ({})'.format(
+                mispred_fn_parts = []
+                for other_cat, count in mispred_fn_entries:
+                    link = _fn_cell_html_filename(cat, other_cat)
+                    mispred_fn_parts.append('<a href="{}">{}</a> ({})'.format(
                         link, other_cat, count))
-                html += '<br/>'.join(strict_fn_parts)
+                html += '<br/>'.join(mispred_fn_parts)
                 html += '</td>'
 
             html += '</tr>\n'
@@ -1357,8 +1578,13 @@ def analyze_classification_results(options):
         html += '</table>\n'
 
         # Confusion matrix
-        html += '<h2>Confusion Matrix</h2>\n'
-        html += '<p>Rows = true categories, columns = predicted categories</p>\n'
+        html += '<h2>Confusion matrix</h2>\n'
+        html += '<p>Rows = true categories, columns = predicted categories. '
+        html += 'On-diagonal elements indicate a category that was both in the ground truth and among '
+        html += 'the predictions. An image with multiple correct labels contributes to the diagonal for '
+        html += 'each correct category. The off-diagonal elements do not necessarily indicate errors; they '
+        html += 'correspond to the &ldquo;predicted as this category&rdquo; and &ldquo;this was predicted '
+        html += 'as&rdquo; columns in the table above.</p>\n'
         html += '<table class="result-table">\n'
 
         # Header row with rotated predicted category labels
@@ -1432,6 +1658,255 @@ def analyze_classification_results(options):
 # ...def analyze_classification_results(...)
 
 
+def render_misprediction_pages(options, cells_to_render):
+    """
+    Render detailed HTML pages for specific misprediction cells, typically with a
+    large number of images (e.g. 2000) for deep-dive analysis.
+
+    Uses the same data-loading and preparation logic as analyze_classification_results.
+
+    Args:
+        options (ClassificationAnalysisOptions): options object; needs results_file,
+            gt_file, image_base_dir, html_output_dir.  max_images_per_cell controls
+            page length (e.g. set to 2000 for deep dives).
+        cells_to_render (list): list of (true_cat, pred_cat, mode) tuples where mode
+            is one of:
+            - 'standard': entities where true_cat is in GT, pred_cat is in predictions,
+              true_cat != pred_cat, and the off-diagonal skip condition is not met.
+            - 'strict_fp': entities where pred_cat is among the predictions and
+              pred_cat is NOT in the ground truth, and true_cat is in GT.  (The
+              "mispredicted as this category" criterion.)
+            - 'strict_fn': entities where true_cat is in GT and true_cat is NOT
+              among the predictions, and pred_cat is in predictions.  (The
+              "mispredicted as" criterion.)
+
+    Returns:
+        list: paths to the generated HTML files
+    """
+
+    assert options.image_base_dir is not None, \
+        'image_base_dir is required for render_misprediction_pages'
+    assert options.html_output_dir is not None, \
+        'html_output_dir is required for render_misprediction_pages'
+
+    prepared = _prepare_analysis_data(options)
+
+    filename_to_gt_categories = prepared['filename_to_gt_categories']
+    filename_to_pred_categories = prepared['filename_to_pred_categories']
+    active_categories = prepared['active_categories']
+    results_fn_to_im = prepared['results_fn_to_im']
+    gt_data = prepared['gt_data']
+    detection_category_id_to_name = prepared['detection_category_id_to_name']
+    classification_category_id_to_name = prepared['classification_category_id_to_name']
+    detection_threshold = prepared['detection_threshold']
+
+    os.makedirs(options.html_output_dir, exist_ok=True)
+    preview_images_folder = os.path.join(options.html_output_dir, 'images')
+    os.makedirs(preview_images_folder, exist_ok=True)
+
+    # For sequence-level analysis, build seq_id -> filenames map
+    seq_id_to_filenames_map = None
+    if options.sequence_level_analysis:
+        seq_id_to_filenames_map = defaultdict(list)
+        for im in gt_data['images']:
+            fn = im['file_name']
+            if fn in results_fn_to_im and 'seq_id' in im:
+                seq_id_to_filenames_map[im['seq_id']].append(fn)
+
+    # Validate requested categories
+    active_set = set(active_categories)
+    for true_cat, pred_cat, mode in cells_to_render:
+        if true_cat not in active_set:
+            print('Warning: true category "{}" not in active categories, '
+                  'will produce empty page'.format(true_cat))
+        if pred_cat not in active_set:
+            print('Warning: pred category "{}" not in active categories, '
+                  'will produce empty page'.format(pred_cat))
+        assert mode in ('standard', 'strict_fp', 'strict_fn'), \
+            'mode must be "standard", "strict_fp", or "strict_fn", got "{}"'.format(mode)
+
+    # Collect matching entity IDs for each requested cell
+    cell_entity_ids = {}
+
+    for true_cat, pred_cat, mode in cells_to_render:
+        key = (true_cat, pred_cat, mode)
+        matching = []
+
+        for entity_id in filename_to_gt_categories:
+            gt_cats = filename_to_gt_categories[entity_id]
+            pred_cats = filename_to_pred_categories[entity_id]
+
+            if true_cat not in gt_cats:
+                continue
+
+            if mode == 'standard':
+                if pred_cat not in pred_cats:
+                    continue
+                if true_cat == pred_cat:
+                    continue
+                # Off-diagonal skip: both categories are correctly present
+                if pred_cat in gt_cats and true_cat in pred_cats:
+                    continue
+                matching.append(entity_id)
+
+            elif mode == 'strict_fp':
+                # pred_cat was predicted and is NOT in GT
+                if pred_cat not in pred_cats:
+                    continue
+                if pred_cat in gt_cats:
+                    continue
+                matching.append(entity_id)
+
+            else:  # strict_fn
+                # true_cat is in GT and is NOT among predictions
+                if true_cat in pred_cats:
+                    continue
+                if pred_cat not in pred_cats:
+                    continue
+                matching.append(entity_id)
+
+        cell_entity_ids[key] = matching
+
+    # Sample to max_images_per_cell
+    rng = random.Random(options.random_seed)
+    for key in cell_entity_ids:
+        entity_ids = cell_entity_ids[key]
+        if len(entity_ids) > options.max_images_per_cell:
+            cell_entity_ids[key] = rng.sample(entity_ids, options.max_images_per_cell)
+
+    # Collect all filenames that need rendering
+    filenames_to_render = set()
+    for entity_ids in cell_entity_ids.values():
+        if options.sequence_level_analysis:
+            for seq_id in entity_ids:
+                fns = seq_id_to_filenames_map.get(seq_id, [])
+                if len(fns) > 0:
+                    filenames_to_render.add(fns[0])
+        else:
+            filenames_to_render.update(entity_ids)
+
+    # Build image entries for rendering
+    images_to_render = []
+    for fn in filenames_to_render:
+        if fn in results_fn_to_im:
+            images_to_render.append(results_fn_to_im[fn])
+
+    print('\nRendering {} images for {} misprediction pages...'.format(
+        len(images_to_render), len(cells_to_render)))
+
+    # Render images
+    render_constants = {
+        'image_base_dir': options.image_base_dir,
+        'output_dir': preview_images_folder,
+        'detection_label_map': detection_category_id_to_name,
+        'classification_label_map': classification_category_id_to_name,
+        'detection_threshold': detection_threshold,
+        'classification_confidence_threshold': options.classification_confidence_threshold,
+        'output_image_width': options.output_image_width,
+        'overwrite': options.overwrite
+    }
+
+    if options.rendering_workers > 1 and len(images_to_render) > 1:
+
+        if options.rendering_pool_type == 'threads':
+            pool = ThreadPool(options.rendering_workers)
+            worker_string = 'threads'
+        else:
+            pool = Pool(options.rendering_workers)
+            worker_string = 'processes'
+
+        print('Rendering with {} {}'.format(options.rendering_workers, worker_string))
+
+        try:
+            rendering_results = list(tqdm(
+                pool.imap(
+                    partial(_render_single_image, render_constants=render_constants),
+                    images_to_render),
+                total=len(images_to_render)))
+        finally:
+            pool.close()
+            pool.join()
+    else:
+        rendering_results = []
+        for im in tqdm(images_to_render):
+            rendering_results.append(_render_single_image(im, render_constants))
+
+    n_success = sum(1 for r in rendering_results if r['success'])
+    print('Successfully rendered {} of {} images'.format(n_success, len(images_to_render)))
+
+    # Generate one HTML page per requested cell
+    generated_files = []
+
+    for true_cat, pred_cat, mode in cells_to_render:
+        key = (true_cat, pred_cat, mode)
+        entity_ids = cell_entity_ids[key]
+
+        html_image_info_list = []
+
+        for entity_id in entity_ids:
+
+            if options.sequence_level_analysis:
+                all_fns = seq_id_to_filenames_map.get(entity_id, [])
+                fns = all_fns[:1]
+            else:
+                fns = [entity_id]
+
+            for fn in fns:
+                im = results_fn_to_im.get(fn, None)
+                if im is None:
+                    continue
+
+                fn_clean = flatten_path(fn).replace(' ', '_')
+                image_link = 'images/' + fn_clean
+
+                gt_cats_str = ', '.join(sorted(filename_to_gt_categories.get(
+                    entity_id, set())))
+                pred_cats_for_entity = filename_to_pred_categories.get(entity_id, {})
+                pred_cats_str = ', '.join(
+                    ['{} ({:.2f})'.format(c, conf)
+                     for c, conf in sorted(pred_cats_for_entity.items())])
+
+                title = '<b>File</b>: {}<br/><b>GT</b>: {}<br/><b>Pred</b>: {}'.format(
+                    fn, gt_cats_str, pred_cats_str)
+
+                html_image_info = {
+                    'filename': image_link,
+                    'title': title,
+                    'textStyle':
+                        'font-family:verdana,arial,calibri;font-size:80%;'
+                        'text-align:left;margin-top:20;margin-bottom:5'
+                }
+                html_image_info_list.append(html_image_info)
+
+        # Build filename
+        mode_prefix = 'strict_' if mode == 'strict' else ''
+        cell_html_filename = '{}predicted_{}_true_{}.html'.format(
+            mode_prefix,
+            pred_cat.replace(' ', '_').replace('/', '_'),
+            true_cat.replace(' ', '_').replace('/', '_'))
+        cell_html_path = os.path.join(options.html_output_dir, cell_html_filename)
+
+        mode_label = 'Strictly predicted' if mode == 'strict' else 'Predicted'
+        cell_title = '{}: {} (true: {}) — {} images'.format(
+            mode_label, pred_cat, true_cat, len(html_image_info_list))
+        cell_options = {
+            'headerHtml': '<h1>{}</h1>'.format(cell_title),
+            'maxFiguresPerHtmlFile': options.max_images_per_html_file
+        }
+
+        write_html_image_list(
+            filename=cell_html_path,
+            images=html_image_info_list,
+            options=cell_options)
+
+        generated_files.append(cell_html_path)
+        print('  Wrote {} ({} images)'.format(cell_html_filename, len(html_image_info_list)))
+
+    return generated_files
+
+# ...def render_misprediction_pages(...)
+
+
 #%% Interactive driver
 
 if False:
@@ -1454,6 +1929,34 @@ if False:
 
     from megadetector.utils.path_utils import open_file
     open_file(results.html_output_file)
+
+
+    #%% Deep-dive into specific misprediction cells
+
+    from megadetector.postprocessing.analyze_classification_results import \
+        ClassificationAnalysisOptions, render_misprediction_pages
+    from megadetector.utils.path_utils import open_file
+
+    deep_dive_options = ClassificationAnalysisOptions()
+    deep_dive_options.results_file = '/home/user/tmp/classification-analysis/subset_results.json'
+    deep_dive_options.gt_file = '/home/user/tmp/classification-analysis/subset_gt.json'
+    deep_dive_options.image_base_dir = '/home/user/tmp/images'
+    deep_dive_options.html_output_dir = '/home/user/tmp/classification-analysis/deep_dive'
+    deep_dive_options.sequence_level_analysis = False
+    deep_dive_options.categories_to_ignore = ['vehicle','no cv result','setup_pickup']
+    deep_dive_options.single_prediction_per_image = False
+    deep_dive_options.single_label_per_image = False
+    deep_dive_options.max_images_per_cell = 2000
+    deep_dive_options.rendering_pool_type = 'processes'
+
+    cells = [
+        ('domestic cattle', 'empty', 'strict_fp'),
+        ('domestic cattle', 'human', 'strict_fn'),
+    ]
+
+    generated_files = render_misprediction_pages(deep_dive_options, cells)
+    for f in generated_files:
+        open_file(f)
 
 
 #%% Command-line driver

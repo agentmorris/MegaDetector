@@ -451,7 +451,9 @@ def generate_md_results_from_predictions_json(predictions_json_file,
         predictions_json_file (str): path to a predictions.json file, or a dict
         md_results_file (str, optional): path to which we should write an MD-formatted .json file
         base_folder (str, optional): leading string to remove from each path in the
-            predictions.json file
+            predictions.json file.  Typically the folder on which you ran run_model.py,
+            including the trailing slash, such that filenames in the MD-formatted output
+            file will be relative to that folder.
         max_decimals (int, optional): number of decimal places to which we should round
             all values
         convert_human_to_person (bool, optional): WI predictions.json files sometimes use the
