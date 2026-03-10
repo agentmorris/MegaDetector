@@ -46,6 +46,49 @@ taxonomy_handler = TaxonomyHandler(taxonomy_file=taxonomy_file,
                                    country_code_file=country_code_file)
 
 
+#%% Find all taxa allowed in a region
+
+country = 'AUS'
+state = None
+
+with open(taxonomy_file,'r',encoding='utf-8') as f:
+    lines = f.readlines()
+
+for line in lines:
+    assert len(line.split(';')) == 7
+    tokens = line.split(';')
+    for token in tokens:
+        assert ',' not in token
+
+taxon_strings_seven_token = [s.strip() for s in lines]
+taxon_strings_five_token = [';'.join(s.split(';')[1:-1]) for s in taxon_strings_seven_token]
+
+five_token_taxon_to_seven_token_taxon = {}
+for i_taxon in range(len(taxon_strings_five_token)):
+    five_token_taxon_to_seven_token_taxon[taxon_strings_five_token[i_taxon]] = \
+        taxon_strings_seven_token[i_taxon]
+
+allowed_taxa_five_token = []
+for taxon_string in taxon_strings_five_token:
+    allowed = taxonomy_handler.species_allowed_in_country(taxon_string,
+                                                          country=country,
+                                                          state=state,
+                                                          return_status=False)
+    if allowed:
+        allowed_taxa_five_token.append(taxon_string)
+
+print('{} of {} taxa are allowed in {}'.format(
+    len(allowed_taxa_five_token),
+    len(taxon_strings_five_token),
+    country))
+
+allowed_seven_token_taxa = []
+
+for taxon_five_token in allowed_taxa_five_token:
+    taxon_seven_token = five_token_taxon_to_seven_token_taxon[taxon_five_token]
+    allowed_seven_token_taxa.append(taxon_seven_token)
+
+
 #%% Generate a block list
 
 # taxon_name = 'sciurus vulgaris'

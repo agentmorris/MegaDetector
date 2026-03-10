@@ -30,6 +30,7 @@ from functools import partial
 
 from megadetector.utils.path_utils import find_images, is_executable
 from megadetector.utils.ct_utils import args_to_object
+from megadetector.utils.ct_utils import write_json
 from megadetector.utils.ct_utils import image_file_to_camera_folder
 from megadetector.data_management.cct_json_utils import write_object_with_serialized_datetimes
 
@@ -135,6 +136,128 @@ def _get_exif_ifd(exif):
     }
 
 
+def _is_null_gps_value(v):
+    """
+    GPS values can be expressed as tuples of floats or tuples of
+    IFDRationals.  Check whether either is null.  Returns True if
+    there is a process error, because this is generally being used
+    in a context where the "safe" thing to do is to assume that a GPS
+    value is present.
+    """
+
+    if v is None:
+        return True
+
+    if v == 0:
+        return True
+
+    try:
+        from PIL import TiffImagePlugin
+        if isinstance(v,TiffImagePlugin.IFDRational):
+            return (v.numerator == 0 or v.denominator == 0)
+        else:
+            # Not an IFDRational, and not 0
+            return False
+    except Exception:
+        return True
+
+
+def _is_null_island(gps_info):
+    r"""
+    Check for this special case in EXIF GPS data:
+
+    {'GPSVersionID': b'\x02\x00\x00\x00',
+     'GPSLatitudeRef': 'N',
+     'GPSLatitude': (0.0, 0.0, 0.0),
+     'GPSLongitudeRef': 'E',
+     'GPSLongitude': (0.0, 0.0, 0.0)}
+    """
+
+    assert isinstance(gps_info,dict)
+    # k = 'GPSLatitude'
+    for k in ('GPSLatitude','GPSLongitude'):
+        assert k in gps_info
+        v = gps_info[k]
+        if not (isinstance(v,list) or isinstance(v,tuple)):
+            return False
+        if (len(v) != 3):
+            return False
+        try:
+            if all([_is_null_gps_value(x) for x in v]):
+                return True
+        except Exception:
+            return False
+    return False
+
+def get_gps_info(im, verbose=False, check_for_null_island=True):
+    """
+    Given a filename, PIL image, dict of EXIF tags, or dict containing an 'exif_tags' field,
+    return GPS location information if available.
+
+    Args:
+        im (str, PIL.Image.Image, dict): image for which we should read GPS metadata
+        verbose (bool, optional): enable additional debug information
+        check_for_null_island (bool, optional): treat 0,0 as being "not GPS"
+
+    Returns:
+        dict: with keys 'status', 'gps_info'.  'status' will be 'success', 'read_error',
+        'no_exif_info, 'no_gps_info', or 'null_island'.  If not None, 'gps_info' contains at
+        least the keys GPSVersionID, GPSLatitudeRef, GPSLatitude, GPSLongitudeRef, and
+        GPSLongitude. Values are not decoded to, e.g., degrees, they are left as reported in
+        EXIF.
+    """
+
+    to_return = {'status':'unknown','gps_info':None}
+
+    if isinstance(im,str) or isinstance(im,Image.Image):
+        try:
+            exif_tags = read_pil_exif(im)
+        except Exception as e:
+            if isinstance(im,str):
+                s = 'Read error for {}: {}'.format(im,str(e))
+            else:
+                s = str(e)
+            if verbose:
+                print(s)
+            to_return['status'] = 'read_error'
+            to_return['error'] = str(e)
+            return to_return
+        if exif_tags is None:
+            to_return['status'] = 'no_exif_info'
+            return to_return
+        assert isinstance(exif_tags,dict)
+    else:
+        assert isinstance(im,dict)
+        exif_tags = im
+
+    if 'exif_tags' in exif_tags:
+        exif_tags = exif_tags['exif_tags']
+        if exif_tags is None:
+            to_return['status'] = 'no_exif_info'
+            return to_return
+
+    if 'GPSInfo' in exif_tags and \
+        exif_tags['GPSInfo'] is not None and \
+        isinstance(exif_tags['GPSInfo'],dict):
+
+            # Don't indicate that GPS data is present if only GPS version info is present
+            if ('GPSLongitude' in exif_tags['GPSInfo']) or \
+               ('GPSLatitude' in exif_tags['GPSInfo']):
+
+                if check_for_null_island and (_is_null_island(exif_tags['GPSInfo'])):
+                    to_return['status'] = 'null_island'
+                    to_return['gps_info'] = exif_tags['GPSInfo']
+                else:
+                    to_return['status'] = 'success'
+                    to_return['gps_info'] = exif_tags['GPSInfo']
+                return to_return
+
+    to_return['status'] = 'no_gps_info'
+    return to_return
+
+# ...def get_gps_info(...)
+
+
 def has_gps_info(im):
     """
     Given a filename, PIL image, dict of EXIF tags, or dict containing an 'exif_tags' field,
@@ -150,30 +273,13 @@ def has_gps_info(im):
         a file.
     """
 
-    if isinstance(im,str) or isinstance(im,Image.Image):
-        exif_tags = read_pil_exif(im)
-        if exif_tags is None:
-            return None
-        assert isinstance(exif_tags,dict)
+    r = get_gps_info(im)
+    if r['status'] == 'success':
+        return True
+    elif r['status'] in ('no_gps_info','null_island'):
+        return False
     else:
-        assert isinstance(im,dict)
-        exif_tags = im
-
-    if 'exif_tags' in exif_tags:
-        exif_tags = exif_tags['exif_tags']
-        if exif_tags is None:
-            return None
-
-    if 'GPSInfo' in exif_tags and \
-        exif_tags['GPSInfo'] is not None and \
-        isinstance(exif_tags['GPSInfo'],dict):
-
-            # Don't indicate that GPS data is present if only GPS version info is present
-            if ('GPSLongitude' in exif_tags['GPSInfo']) or ('GPSLatitude' in exif_tags['GPSInfo']):
-                return True
-            return False
-
-    return False
+        return None
 
 # ...def has_gps_info(...)
 
@@ -653,8 +759,7 @@ def _write_exif_results(results,output_file):
 
     if output_file.endswith('.json'):
 
-        with open(output_file,'w') as f:
-            json.dump(results,f,indent=1,default=str)
+        write_json(output_file,results,force_str=True)
 
     elif output_file.endswith('.csv'):
 

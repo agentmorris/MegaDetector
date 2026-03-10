@@ -972,7 +972,7 @@ for im in combined_results['images']:
     else:
         im['file'] = im['file'].replace(input_path + '/','',1)
 
-write_json(combined_api_output_file,f)
+write_json(combined_api_output_file,combined_results)
 
 print('\nWrote results to {}'.format(combined_api_output_file))
 

@@ -411,6 +411,17 @@ E2
 !testing
 
 
+## Add tests for get_gps_info
+
+Include sample jpg files with/without GPS info, validate that get_gps_info behaves as expected.  Ideally include a jpg file with "null island" GPS, i.e. GPS values of (0,0,0) or (nan,nan,nan), which are handled specially.
+
+P2
+
+E0
+
+!testing
+
+
 ## Formal evaluation of image size, augmentation, preprocessing mode
 
 There are several knobs the user can turn when trying to squeeze the most accuracy out of a specific MD model: specifically, the user can tinker with the inference image size, enabling image augmentation, and switching between "classic" and "modern" preprocessing.  I have not yet formally evaluated the performance impacts of these approaches, so this could use formal evaluation and documentation of best practices.
