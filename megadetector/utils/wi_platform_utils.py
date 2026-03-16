@@ -54,30 +54,88 @@ wi_result_fields = ['wi_taxon_id','class','order','family','genus','species','co
 
 def read_sequences_from_download_bundle(download_folder):
     """
-    Reads sequences.csv from [download_folder], returning a list of dicts.  This is a
-    thin wrapper around pd.read_csv, it's just here for future-proofing.
+    Reads all sequences.csv files from [download_folder], returns a dict mapping sequence_id
+    values to a list of dicts that describe each image.  It's a list of dicts rather than a
+    single dict because sequences may appear more than once.
 
     Args:
-        download_folder (str): a folder containing exactly one file called sequences.csv, typically
-            representing a Wildlife Insights download bundle.
+        download_folder (str): a folder containing one or more sequences.csv files, typically
+            representing a Wildlife Insights download bundle.  If this is a single .csv
+            file, reads just that file.
 
     Returns:
-        list of dict: a direct conversion of the .csv file to a list of dicts
+        dict: Maps string-formatted sequence IDs to dicts with at least the following fields:
+            * project_id (int)
+            * deployment_id (str)
+
+        May also contain classification fields: wi_taxon_id (str), species, etc.  Returns
+        None if no .csv files are available.
+
     """
 
     print('Reading sequences from {}'.format(download_folder))
 
-    sequence_list_files = os.listdir(download_folder)
-    sequence_list_files = \
-        [fn for fn in sequence_list_files if fn == 'sequences.csv']
-    assert len(sequence_list_files) == 1, \
-        'Could not find sequences.csv in {}'.format(download_folder)
+    ##%% Find lists of sequences
 
-    sequence_list_file = path_join(download_folder,sequence_list_files[0])
+    # If the caller supplied a single file
+    if os.path.isfile(download_folder):
 
-    df = pd.read_csv(sequence_list_file)
-    sequence_records = df.to_dict('records')
-    return sequence_records
+        sequence_list_files = [download_folder]
+
+    else:
+        assert os.path.isdir(download_folder), \
+            'Could not find folder {}'.format(download_folder)
+
+        sequence_list_files = os.listdir(download_folder)
+        sequence_list_files = \
+            [fn for fn in sequence_list_files if fn.startswith('sequence') and fn.endswith('.csv')]
+        sequence_list_files = \
+            [path_join(download_folder,fn) for fn in sequence_list_files]
+        sequence_list_files = sorted(sequence_list_files)
+        print('Found {} sequence list files'.format(len(sequence_list_files)))
+
+    if len(sequence_list_files) == 0:
+        return None
+
+
+    ##%% Read lists of images by deployment
+
+    sequence_id_to_sequence_records = defaultdict(list)
+
+    # i_file = 0; sequence_list_file = sequence_list_files[i_file]
+    for i_file,sequence_list_file in enumerate(sequence_list_files):
+
+        print('Reading sequences from list file {} of {} ({})'.format(
+            i_file,
+            len(sequence_list_files),
+            os.path.basename(sequence_list_file)))
+
+        df = pd.read_csv(sequence_list_file,low_memory=False)
+
+        # i_row = 0; row = df.iloc[i_row]
+        for i_row,row in tqdm(df.iterrows(),total=len(df)):
+
+            row_dict = row.to_dict()
+            sequence_id = row_dict['sequence_id']
+            sequence_id_to_sequence_records[sequence_id].append(row_dict)
+
+        # ...for each sequence
+
+    # ...for each list file
+
+    deployment_ids = set()
+    for sequence_id in sequence_id_to_sequence_records:
+        sequence_records = sequence_id_to_sequence_records[sequence_id]
+        for sequence_record in sequence_records:
+            deployment_ids.add(sequence_record['deployment_id'])
+
+    print('Found {} rows in {} deployments'.format(
+        len(sequence_id_to_sequence_records),
+        len(deployment_ids)))
+
+    return sequence_id_to_sequence_records
+
+# ...def read_sequences_from_download_bundle(...)
 
 
 def read_images_from_download_bundle(download_folder):
@@ -100,7 +158,8 @@ def read_images_from_download_bundle(download_folder):
             * filename (str, the filename without path at the time of upload)
             * location (str, starting with gs://)
 
-        May also contain classification fields: wi_taxon_id (str), species, etc.
+        May also contain classification fields: wi_taxon_id (str), species, etc. Returns
+        None if no .csv files are available.
     """
 
     print('Reading images from {}'.format(download_folder))
@@ -123,6 +182,9 @@ def read_images_from_download_bundle(download_folder):
             [path_join(download_folder,fn) for fn in image_list_files]
         image_list_files = sorted(image_list_files)
         print('Found {} image list files'.format(len(image_list_files)))
+
+    if len(image_list_files) == 0:
+        return None
 
 
     ##%% Read lists of images by deployment
@@ -408,20 +470,22 @@ def write_download_commands(image_records,
     assert image_flattening in ('none','guid','deployment'), \
         'Illegal image flattening strategy {}'.format(image_flattening)
 
-    url_to_relative_path = {}
+    # Note to self: there is a function in this module called url_to_relative_path
+    url_to_relative_path_dict = {}
 
     for image_record in image_records:
 
         url = image_record['location']
         relative_path = url_to_relative_path(url=url,
-                                              image_flattening=image_flattening)
+                                             image_flattening=image_flattening)
         assert relative_path is not None
 
-        if url in url_to_relative_path:
-            assert url_to_relative_path[url] == relative_path, \
+        # Make sure mappings are unique
+        if url in url_to_relative_path_dict:
+            assert url_to_relative_path_dict[url] == relative_path, \
                 'URL path mapping error'
         else:
-            url_to_relative_path[url] = relative_path
+            url_to_relative_path_dict[url] = relative_path
 
     # ...for each image record
 
@@ -444,7 +508,7 @@ def write_download_commands(image_records,
 
         assert url.startswith('gs://'), 'Illegal URL {}'.format(url)
 
-        relative_path = url_to_relative_path[url]
+        relative_path = url_to_relative_path_dict[url]
         abs_path = path_join(download_dir_base,relative_path)
 
         # Optionally skip files that already exist
@@ -482,7 +546,6 @@ def write_download_commands(image_records,
             for command in commands_by_script[i_script]:
                 f.write(command + '\n')
         make_executable(download_command_file,catch_exceptions=True)
-
 
     # Write out the main download script
     with open(download_command_file_base,'w',newline='\n') as f:
