@@ -65,6 +65,17 @@ E0
 !feature
 
 
+## Improve and clarify statistics in analyze_classification_results
+
+analyze_classification_results.py takes a somewhat lazy approach to statistics computation: it is correct in a world where no categories are parents of other categories, and where each image contains a single species.  The more difficult cases should be handled more carefully, probably with additional options to, e.g., give "partial credit" for higher-level predictions that aren't wrong.  At the very least, explanatory text should be added to the reports to describe how statistics are computed wrt taxonomic levels and multi-species images.
+
+P1
+
+E1
+
+!feature
+
+
 ## Handle legacy setup.py issues
 
 Two dependencies - yolov9pip and clipboard - give this warning during pip installation:<br/><br/>

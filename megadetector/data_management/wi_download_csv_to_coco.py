@@ -67,6 +67,10 @@ wi_extra_image_columns = ('project_id','deployment_id')
 def _make_location_id(project_id,deployment_id):
     return 'project_' + str(project_id) + '_deployment_' + deployment_id
 
+# The default category mappings lose some information about vehicles,
+# but we are typically using this to perform accuracy comparisons for animals,
+# and having lots of categories that co-occur with other categories (which
+# vehicles do) makes analysis messier.
 default_category_remappings = {
     # "blank" is handled specially below
     # 'blank':'empty',
@@ -75,7 +79,8 @@ default_category_remappings = {
     'misfire':'blank',
     '.*human.*':'human',
     '.*vehicle.*':'vehicle',
-    'truck':'vehicle'
+    'truck':'vehicle',
+    'atv':'vehicle'
 }
 
 
