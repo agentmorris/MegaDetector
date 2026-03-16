@@ -480,6 +480,7 @@ def write_download_commands(image_records,
                                              image_flattening=image_flattening)
         assert relative_path is not None
 
+        # Make sure mappings are unique
         if url in url_to_relative_path_dict:
             assert url_to_relative_path_dict[url] == relative_path, \
                 'URL path mapping error'
