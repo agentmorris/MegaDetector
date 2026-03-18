@@ -121,9 +121,19 @@ for i_row,row in taxonomy_df.iterrows():
 
 # The order of these headers needs to match the order in which fields are added later in this cell;
 # don't mess with this order.
-header = ['dataset_name','url_gcp','url_aws','url_azure',
-          'image_id','sequence_id','location_id','frame_num',
-          'original_label','scientific_name','common_name','datetime','annotation_level']
+header = ['dataset_name',
+          'url_gcp',
+          'url_aws',
+          'url_azure',
+          'image_id',
+          'sequence_id',
+          'location_id',
+          'frame_num',
+          'original_label',
+          'scientific_name',
+          'common_name',
+          'datetime',
+          'annotation_level']
 
 header.extend(taxonomy_levels_to_include)
 
