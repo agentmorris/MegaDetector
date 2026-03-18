@@ -432,7 +432,7 @@ for s in list(df.scientific_name):
         path_to_size[fp] = sizes[i_fp]
     paths_by_size = [x for _, x in sorted(zip(sizes, image_fullpaths),reverse=True)]
 
-    # Be suspicious of duplicate sizes
+    # Be suspicious of duplicate sizes, those are typically duplicated images
     b_duplicate_sizes = [False] * len(paths_by_size)
 
     for i_path,p in enumerate(paths_by_size):
