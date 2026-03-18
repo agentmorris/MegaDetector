@@ -336,23 +336,27 @@ for i_row,row in df.iterrows():
 
 # Takes ~1 minute per 10 rows
 
+import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from megadetector.taxonomy_mapping import simple_image_download
+
+
 remapped_queries = {'papio':'papio+baboon',
                     'damaliscus lunatus jimela':'damaliscus lunatus',
                     'mazama':'genus+mazama',
                     'mirafra':'genus+mirafra'}
-
-import os
-from megadetector.taxonomy_mapping import retrieve_sample_image
 
 scientific_name_to_paths = {}
 image_base = os.path.join(preview_base,'images')
 images_per_query = 15
 min_valid_images_per_query = 3
 min_valid_image_size = 3000
+n_download_workers = 8
 
-# TODO: parallelize this loop
-#
-# i_row = 0; row = df.iloc[i_row]
+# Build the list of queries that actually need downloading
+queries_to_download = []
+seen_queries = set()
+
 for i_row,row in df.iterrows():
 
     s = row['scientific_name']
@@ -365,6 +369,10 @@ for i_row,row in df.iterrows():
     if query in remapped_queries:
         query = remapped_queries[query]
 
+    if query in seen_queries:
+        continue
+    seen_queries.add(query)
+
     query_folder = os.path.join(image_base,query)
     os.makedirs(query_folder,exist_ok=True)
 
@@ -374,22 +382,39 @@ for i_row,row in df.iterrows():
     sizes = [os.path.getsize(p) for p in image_fullpaths]
     sizes_above_threshold = [x for x in sizes if x > min_valid_image_size]
     if len(sizes_above_threshold) > min_valid_images_per_query:
-        print('Skipping query {}, already have {} images'.format(s,len(sizes_above_threshold)))
+        print('Skipping query {}, already have {} images'.format(query,len(sizes_above_threshold)))
         continue
 
-    # Check whether we've already run this query for a previous row
-    if query in scientific_name_to_paths:
-        continue
-
-    print('Processing query {} of {} ({})'.format(i_row,len(df),query))
-    paths = retrieve_sample_image.download_images(query=query,
-                                                  output_directory=image_base,
-                                                  limit=images_per_query,
-                                                  verbose=True)
-    print('Downloaded {} images for {}'.format(len(paths),query))
-    scientific_name_to_paths[query] = paths
+    queries_to_download.append(query)
 
 # ...for each row in the mapping table
+
+print('Need to download images for {} queries'.format(len(queries_to_download)))
+
+
+def _download_images_for_query(query):
+    """
+    Download images for a single query using a per-call Downloader instance.
+    """
+
+    downloader = simple_image_download.Downloader()
+    downloader.directory = image_base
+    query_for_download = query.replace(' ','+')
+    paths = downloader.download(query_for_download,
+                                limit=images_per_query,
+                                verbose=False,
+                                cache=False,
+                                download_cache=False)
+    return query, paths
+
+
+with ThreadPoolExecutor(max_workers=n_download_workers) as executor:
+    futures = {executor.submit(_download_images_for_query, q): q
+               for q in queries_to_download}
+    for future in tqdm(as_completed(futures), total=len(futures)):
+        query, paths = future.result()
+        scientific_name_to_paths[query] = paths
+        print('Downloaded {} images for {}'.format(len(paths),query))
 
 
 #%% Rename .jpeg to .jpg
