@@ -229,3 +229,30 @@ class Downloader:
     def flush_cache(self):
         """Clear the Downloader instance cache"""
         self._cached_urls = set()
+
+
+#%% Scrap
+
+if False:
+
+    pass
+
+    #%% Basic test
+
+    downloader = Downloader()
+    keywords='mammal'
+    limit=10
+    verbose=True
+    cache=False
+    download_cache=False
+
+    output_folder = os.path.expanduser('~/tmp/image-download-test')
+    os.makedirs(output_folder,exist_ok=True)
+    downloader.directory = output_folder
+
+    downloader.download(keywords=keywords,
+                        limit=limit,
+                        verbose=verbose,
+                        cache=cache,
+                        download_cache=download_cache)
+

@@ -26,6 +26,7 @@ This folder is only for generating and maintaining this mapping. If you want to 
   * Set "datasets_to_map" and "output_file" appropriately
   * Run the whole script; this will create the .csv file you'll be working with
   * Open that .csv file, and use the "manual lookup" cell to fix things that matched incorrectly or didn't match at all.  I do this with three windows open: a .csv editor, VS Code (with the cell called "manual lookup" from this script open), and a browser.  Leave all versions of "empty" as empty rows, other than the dataset name and label.
+  * Validate with `python -m megadetector.taxonomy_mapping.taxonomy_csv_checker "filename.csv"`
 
 * Use [preview_lila_taxonomy.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/taxonomy_mapping/preview_lila_taxonomy.py) to produce an HTML file full of images that you can use to make sure that the matches were sensible; be particularly suspicious of anything that doesn't look like a mammal, bird, or reptile.  Go back and fix things in the .csv file.  This script/notebook also does a bunch of other consistency checking, e.g. making sure that if the "taxonomy_level" column says "species", the "taxonomy_string" column is actually a species.
 
@@ -37,7 +38,7 @@ This folder is only for generating and maintaining this mapping. If you want to 
 * Check for errors (one more time) (this should be redundant with what's now included in [preview_lila_taxonomy.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/taxonomy_mapping/preview_lila_taxonomy.py), but it can't hurt) by running:
 
     ```bash
-    python taxonomy_mapping/taxonomy_csv_checker.py private-repo/lila-taxonomy/lila-taxonomy-mapping.csv
+    python -m megadetector.taxonomy_mapping.taxonomy_csv_checker "private-repo/lila-taxonomy/lila-taxonomy-mapping.csv"
     ```
 
 * Prepare the "release" taxonomy file (which removes a couple columns and removes unused rows) using [prepare_lila_taxonomy_release.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/taxonomy_mapping/prepare_lila_taxonomy_release.py).  This will create "lila-taxonomy-mapping_release.csv" in the local LILA base folder.  Run the taxonomy checker against this file too, just to be safe.
