@@ -1064,3 +1064,14 @@ E0
 !maintenance
 
 
+## Windows support for WI project download 
+
+write_download_commands() in wi_platform_utils (which writes out a series of gcloud storage commands to download images for a WI project) assumes bash (writes .sh files, uses "wait" and "echo").  Add .bat support.
+
+P3
+
+E0
+
+!feature
+
+
