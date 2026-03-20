@@ -18,8 +18,6 @@ import os
 import sys
 import time
 
-import numpy as np
-
 import humanfriendly
 
 from itertools import compress
