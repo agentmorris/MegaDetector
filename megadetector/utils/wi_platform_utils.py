@@ -30,6 +30,7 @@ from megadetector.utils.path_utils import path_join
 from megadetector.utils.ct_utils import split_list_into_n_chunks
 from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.utils.ct_utils import compare_values_nan_equal
+from megadetector.utils.ct_utils import is_empty
 
 from megadetector.utils.string_utils import is_int
 
@@ -56,7 +57,8 @@ def read_sequences_from_download_bundle(download_folder):
     """
     Reads all sequences.csv files from [download_folder], returns a dict mapping sequence_id
     values to a list of dicts that describe each image.  It's a list of dicts rather than a
-    single dict because sequences may appear more than once.
+    single dict because sequences may appear more than once, typically indicating multiple
+    species.
 
     Args:
         download_folder (str): a folder containing one or more sequences.csv files, typically
@@ -69,7 +71,7 @@ def read_sequences_from_download_bundle(download_folder):
             * deployment_id (str)
 
         May also contain classification fields: wi_taxon_id (str), species, etc.  Returns
-        None if no .csv files are available.
+        None if no sequence .csv files are available.
 
     """
 
@@ -81,8 +83,12 @@ def read_sequences_from_download_bundle(download_folder):
     if os.path.isfile(download_folder):
 
         sequence_list_files = [download_folder]
+        if not (download_folder.startswith('sequence') and download_folder.endswith('.csv')):
+            print('Warning: {} does not look like a sequences csv file'.format(download_folder))
+            return None
 
     else:
+
         assert os.path.isdir(download_folder), \
             'Could not find folder {}'.format(download_folder)
 
@@ -125,9 +131,21 @@ def read_sequences_from_download_bundle(download_folder):
 
     deployment_ids = set()
     for sequence_id in sequence_id_to_sequence_records:
+
         sequence_records = sequence_id_to_sequence_records[sequence_id]
+
         for sequence_record in sequence_records:
+
             deployment_ids.add(sequence_record['deployment_id'])
+
+            # Remove None and NaN
+            for k in sequence_record:
+                if is_empty(sequence_record[k]):
+                    sequence_record[k] = ''
+
+        # ...for each record associated with this sequence ID
+
+    # ...for each sequence ID
 
     print('Found {} rows in {} deployments'.format(
         len(sequence_id_to_sequence_records),
@@ -142,7 +160,7 @@ def read_images_from_download_bundle(download_folder):
     """
     Reads all images.csv files from [download_folder], returns a dict mapping image IDs
     to a list of dicts that describe each image.  It's a list of dicts rather than a single dict
-    because images may appear more than once.
+    because images may appear more than once, typically indicating multiple species.
 
     Args:
         download_folder (str): a folder containing one or more images.csv files, typically
@@ -159,7 +177,7 @@ def read_images_from_download_bundle(download_folder):
             * location (str, starting with gs://)
 
         May also contain classification fields: wi_taxon_id (str), species, etc. Returns
-        None if no .csv files are available.
+        None if no image .csv files are available.
     """
 
     print('Reading images from {}'.format(download_folder))
@@ -170,8 +188,12 @@ def read_images_from_download_bundle(download_folder):
     if os.path.isfile(download_folder):
 
         image_list_files = [download_folder]
+        if not (download_folder.startswith('images_') and download_folder.endswith('.csv')):
+            print('Warning: {} does not look like an images csv file'.format(download_folder))
+            return None
 
     else:
+
         assert os.path.isdir(download_folder), \
             'Could not find folder {}'.format(download_folder)
 
@@ -205,6 +227,12 @@ def read_images_from_download_bundle(download_folder):
         for i_row,row in tqdm(df.iterrows(),total=len(df)):
 
             row_dict = row.to_dict()
+
+            # Remove None and NaN
+            for k in row_dict:
+                if is_empty(row_dict[k]):
+                    row_dict[k] = ''
+
             image_id = row_dict['image_id']
             image_id_to_image_records[image_id].append(row_dict)
 

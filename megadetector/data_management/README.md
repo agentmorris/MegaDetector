@@ -76,25 +76,25 @@ image
   # looks like: 
   #
   # 2022-12-31 09:52:50
-  "datetime": datetime,  
+  "datetime" : datetime,  
 
   # A unique identifier for the sequence (aka burst, episode, or event) to 
   # which this image belongs
-  "seq_id": str,
+  "seq_id" : str,
 
   # The total number of images in this event
-  "seq_num_frames": int,
+  "seq_num_frames" : int,
 
   # The zero-indexed index of this image within this event
-  "frame_num": int
+  "frame_num" : int
   
   # This is an int in older data sets, but convention is now strings
-  "location": str,
+  "location" : str,
   
   # Image corruption is quite common in camera trap images, and throwing out corrupt
   # images in database assembly is "dodging part of the problem".  Wherever possible,
   # use this flag to indicate that an image failed to load, e.g. in PIL and/or TensorFlow.
-  "corrupt": bool
+  "corrupt" : bool
 }
 
 category
@@ -123,15 +123,17 @@ annotation
   
   ## Optional ##
   
+  "count" : int,
+  
   # These are in absolute, floating-point coordinates, with the origin at the upper-left
   #
   # Mutually exclusive with "bbox_relative"
-  "bbox": [x,y,width,height],
+  "bbox" : [x,y,width,height],
   
   # These are in normalized, floating-point coordinates, with the origin at the upper-left
   #
   # Mutually exclusive with "bbox"
-  "bbox_relative": [x,y,width,height],
+  "bbox_relative" : [x,y,width,height],
   
   # This indicates that this annotation is really applied at the *sequence* level,
   # and may not be reliable at the individual-image level.  Since the *sequences* are

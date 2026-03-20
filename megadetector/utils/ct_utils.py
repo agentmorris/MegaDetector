@@ -701,27 +701,6 @@ def image_file_to_camera_folder(image_fn):
     return camera_folder
 
 
-def is_float(v):
-    """
-    Determines whether v is either a float or a string representation of a float.
-
-    Args:
-        v (object): object to evaluate
-
-    Returns:
-        bool: True if [v] is a float or a string representation of a float, otherwise False
-    """
-
-    if v is None:
-        return False
-
-    try:
-        _ = float(v)
-        return True
-    except ValueError:
-        return False
-
-
 def is_iterable(x):
     """
     Uses duck typing to assess whether [x] is iterable (list, set, dict, etc.).
@@ -1598,17 +1577,6 @@ def test_type_checking_and_validation():
     Test type checking and validation utility functions.
     """
 
-    ##%% Test is_float
-
-    assert is_float(1.23)
-    assert is_float("1.23")
-    assert is_float("-1.23")
-    assert is_float("  1.23  ")
-    assert not is_float("abc")
-    assert not is_float(None)
-    assert is_float(1) # int is also a float (current behavior)
-
-
     ##%% Test is_iterable
 
     assert is_iterable([1,2,3])
@@ -1667,7 +1635,7 @@ def test_type_checking_and_validation():
     ##%% Test is_function_name
 
     def _test_local_func(): pass
-    assert is_function_name("is_float", locals()) # Test a function in ct_utils
+    assert is_function_name("sets_overlap", locals()) # Test a function in ct_utils
     assert is_function_name("_test_local_func", locals()) # Test a local function
     assert is_function_name("print", locals()) # Test a builtin
     assert not is_function_name("non_existent_func", locals())

@@ -85,7 +85,8 @@ from multiprocessing.pool import ThreadPool
 from functools import partial
 from tqdm import tqdm
 
-from megadetector.utils.ct_utils import args_to_object, is_float
+from megadetector.utils.ct_utils import args_to_object
+from megadetector.utils.string_utils import is_float
 from megadetector.utils.path_utils import remove_empty_folders
 from megadetector.detection.run_detector import get_typical_confidence_threshold_from_results
 from megadetector.visualization import visualization_utils as vis_utils
