@@ -138,8 +138,8 @@ def _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
 
         for shape in shapes:
 
-            if shape['shape_type'] != 'rectangle':
-                print('Only rectangles are supported, skipping an annotation of type {} in {}'.format(
+            if shape['shape_type'] not in ('rectangle','polygon'):
+                print('Skipping an annotation of type {} in {}'.format(
                     shape['shape_type'],image_fn_relative))
                 continue
 
@@ -155,26 +155,62 @@ def _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
                 category_id = category_name_to_id[category_name]
 
             points = shape['points']
-            if len(points) != 2:
-                print('Warning: illegal rectangle with {} points for {}'.format(
-                    len(points),image_fn_relative))
-                continue
 
-            p0 = points[0]
-            p1 = points[1]
-            x0 = min(p0[0],p1[0])
-            x1 = max(p0[0],p1[0])
-            y0 = min(p0[1],p1[1])
-            y1 = max(p0[1],p1[1])
+            if shape['shape_type'] == 'rectangle':
 
-            bbox = [x0,y0,abs(x1-x0),abs(y1-y0)]
-            ann = {}
-            ann['id'] = str(uuid.uuid1())
-            ann['image_id'] = im['id']
-            ann['category_id'] = category_id
-            ann['sequence_level_annotation'] = False
-            ann['bbox'] = bbox
-            annotations_this_image.append(ann)
+                if len(points) != 2:
+                    print('Warning: illegal rectangle with {} points for {}'.format(
+                        len(points),image_fn_relative))
+                    continue
+
+                p0 = points[0]
+                p1 = points[1]
+                x0 = min(p0[0],p1[0])
+                x1 = max(p0[0],p1[0])
+                y0 = min(p0[1],p1[1])
+                y1 = max(p0[1],p1[1])
+
+                bbox = [x0,y0,abs(x1-x0),abs(y1-y0)]
+                ann = {}
+                ann['id'] = str(uuid.uuid1())
+                ann['image_id'] = im['id']
+                ann['category_id'] = category_id
+                ann['sequence_level_annotation'] = False
+                ann['bbox'] = bbox
+                annotations_this_image.append(ann)
+
+            else:
+
+                assert shape['shape_type'] == 'polygon'
+
+                if len(points) < 3:
+                    print('Warning: illegal polygon with {} points for {}'.format(
+                        len(points),image_fn_relative))
+                    continue
+
+                # COCO segmentation is a list of polygons, each a flat list of coordinates
+                segmentation = []
+                for pt in points:
+                    segmentation.append(pt[0])
+                    segmentation.append(pt[1])
+
+                # Compute the axis-aligned bounding box
+                x_coords = [pt[0] for pt in points]
+                y_coords = [pt[1] for pt in points]
+                x0 = min(x_coords)
+                y0 = min(y_coords)
+                bbox_w = max(x_coords) - x0
+                bbox_h = max(y_coords) - y0
+
+                bbox = [x0,y0,bbox_w,bbox_h]
+                ann = {}
+                ann['id'] = str(uuid.uuid1())
+                ann['image_id'] = im['id']
+                ann['category_id'] = category_id
+                ann['sequence_level_annotation'] = False
+                ann['bbox'] = bbox
+                ann['segmentation'] = [segmentation]
+                annotations_this_image.append(ann)
 
         # ...for each shape
 
@@ -206,8 +242,9 @@ def labelme_to_coco(input_folder,
     Finds all images in [input_folder] that have corresponding .json files, and converts
     to a COCO .json file.
 
-    Currently only supports bounding box annotations and image-level flags (i.e., does not
-    support point or general polygon annotations).
+    Currently supports bounding box and polygon annotations, as well as image-level flags
+    (i.e., does not support point annotations).  Polygon annotations produce COCO annotations
+    with a "segmentation" field and an axis-aligned bounding box.
 
     Labelme's image-level flags don't quite fit the COCO annotations format, so they are attached
     to image objects, rather than annotation objects.
