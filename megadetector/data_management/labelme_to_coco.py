@@ -12,7 +12,6 @@ import ast
 import os
 import sys
 import json
-import uuid
 import argparse
 
 from multiprocessing.pool import Pool, ThreadPool
@@ -133,7 +132,7 @@ def _process_labelme_file(image_fn_relative,
             category_id = category_name_to_id['empty']
 
         ann = {}
-        ann['id'] = str(uuid.uuid1())
+        ann['id'] = im['id'] + '_ann'
         ann['image_id'] = im['id']
         ann['category_id'] = category_id
         ann['sequence_level_annotation'] = False
@@ -141,7 +140,7 @@ def _process_labelme_file(image_fn_relative,
 
     else:
 
-        for shape in shapes:
+        for i_shape,shape in enumerate(shapes):
 
             if shape['shape_type'] not in ('rectangle','polygon'):
                 print('Skipping an annotation of type {} in {}'.format(
@@ -188,7 +187,7 @@ def _process_labelme_file(image_fn_relative,
             points = shape['points']
 
             # Populate non-geometry fields
-            ann['id'] = str(uuid.uuid1())
+            ann['id'] = ann['id'] = im['id'] + '_ann_' + str(i_shape).zfill(3)
             ann['image_id'] = im['id']
             ann['category_id'] = category_id
             ann['sequence_level_annotation'] = False
@@ -235,13 +234,14 @@ def _process_labelme_file(image_fn_relative,
                 bbox_h = max(y_coords) - y0
 
                 bbox = [x0,y0,bbox_w,bbox_h]
-                ann = {}
                 ann['bbox'] = bbox
                 ann['segmentation'] = [segmentation]
 
             # ...if this is a rectangle/polygon
 
         # ...for each shape
+
+    # ...if we do/don't have shapes for this image
 
     result['im'] = im
     result['annotations_this_image'] = annotations_this_image
