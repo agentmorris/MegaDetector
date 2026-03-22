@@ -8,6 +8,7 @@ Converts a folder of labelme-formatted .json files to COCO.
 
 #%% Constants and imports
 
+import ast
 import os
 import sys
 import json
@@ -38,9 +39,13 @@ def _add_category(category_name,category_name_to_id,candidate_category_id=0):
     return candidate_category_id
 
 
-def _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
-                          no_json_handling,validate_image_sizes,
-                          category_name_to_id,allow_new_categories=True):
+def _process_labelme_file(image_fn_relative,
+                          input_folder,
+                          use_folders_as_labels,
+                          no_json_handling,
+                          validate_image_sizes,
+                          category_name_to_id,
+                          allow_new_categories=True):
     """
     Internal function for processing each image; this support function facilitates parallelization.
     """
@@ -143,10 +148,36 @@ def _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
                     shape['shape_type'],image_fn_relative))
                 continue
 
+            ann = {}
+            annotations_this_image.append(ann)
+
             if use_folders_as_labels:
                 category_name = os.path.basename(os.path.dirname(image_fn_abs))
             else:
-                category_name = shape['label']
+
+                label = shape['label'].strip()
+                assert len(label) > 0, 'Illegal label for file {}'.format(image_fn_relative)
+
+                category_name = label
+
+                # When multiple fields are available, labelme populates a dictionary (or at least
+                # I've seen this happen once)
+                if label[0] == '{' and label[-1] == '}' and 'name' in label:
+
+                    try:
+                        label_dict = ast.literal_eval(label)
+                        category_name = label_dict['name']
+                        # Copy all other fields directly to the output annotation
+                        for k in label_dict:
+                            if k != 'name':
+                                ann[k] = label_dict[k]
+                    except Exception:
+                        print('Warning: failed to parse what looked like a dictionary for {}'.format(image_fn_relative))
+
+                        # This is a no-op, but including it for clarity
+                        category_name = label
+
+                # ...if we might have to parse a dict for this label
 
             if allow_new_categories:
                 category_id = _add_category(category_name,category_name_to_id)
@@ -156,6 +187,13 @@ def _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
 
             points = shape['points']
 
+            # Populate non-geometry fields
+            ann['id'] = str(uuid.uuid1())
+            ann['image_id'] = im['id']
+            ann['category_id'] = category_id
+            ann['sequence_level_annotation'] = False
+
+            # Populate geometry
             if shape['shape_type'] == 'rectangle':
 
                 if len(points) != 2:
@@ -171,13 +209,7 @@ def _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
                 y1 = max(p0[1],p1[1])
 
                 bbox = [x0,y0,abs(x1-x0),abs(y1-y0)]
-                ann = {}
-                ann['id'] = str(uuid.uuid1())
-                ann['image_id'] = im['id']
-                ann['category_id'] = category_id
-                ann['sequence_level_annotation'] = False
                 ann['bbox'] = bbox
-                annotations_this_image.append(ann)
 
             else:
 
@@ -204,13 +236,10 @@ def _process_labelme_file(image_fn_relative,input_folder,use_folders_as_labels,
 
                 bbox = [x0,y0,bbox_w,bbox_h]
                 ann = {}
-                ann['id'] = str(uuid.uuid1())
-                ann['image_id'] = im['id']
-                ann['category_id'] = category_id
-                ann['sequence_level_annotation'] = False
                 ann['bbox'] = bbox
                 ann['segmentation'] = [segmentation]
-                annotations_this_image.append(ann)
+
+            # ...if this is a rectangle/polygon
 
         # ...for each shape
 
@@ -336,6 +365,7 @@ def labelme_to_coco(input_folder,
 
     # Remove any images we're supposed to skip
     if (relative_paths_to_include is not None) or (relative_paths_to_exclude is not None):
+
         image_filenames_relative_to_process = []
         for image_fn_relative in image_filenames_relative:
             if relative_paths_to_include is not None and image_fn_relative not in relative_paths_to_include:
@@ -357,6 +387,8 @@ def labelme_to_coco(input_folder,
 
     if empty_category_id is None:
         empty_category_id = _add_category(empty_category_name,category_name_to_id)
+
+    print('Processing annotations...')
 
     if max_workers <= 1:
 
