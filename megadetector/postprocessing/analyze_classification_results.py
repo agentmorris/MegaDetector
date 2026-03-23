@@ -278,8 +278,6 @@ def _collapse_sequence_categories(categories):
 
 
 def _get_image_predicted_categories(im,
-                                    detection_threshold,
-                                    classification_confidence_threshold,
                                     detection_category_id_to_name,
                                     classification_category_id_to_name,
                                     detection_category_mapping,
@@ -302,7 +300,7 @@ def _get_image_predicted_categories(im,
 
     for det in im['detections']:
 
-        if det['conf'] < detection_threshold:
+        if det['conf'] < options.detection_threshold:
             continue
 
         has_above_threshold_detection = True
@@ -344,7 +342,7 @@ def _get_image_predicted_categories(im,
                 for cls in classifications:
                     cls_id = str(cls[0])
                     cls_conf = cls[1]
-                    if cls_conf >= classification_confidence_threshold:
+                    if cls_conf >= options.classification_confidence_threshold:
                         cls_name = classification_category_id_to_name.get(cls_id, None)
                         if cls_name is not None:
                             cls_name_lower = cls_name.lower()
@@ -586,8 +584,6 @@ def _prepare_analysis_data(options):
         im = results_fn_to_im[fn]
         pred_cats, pred_counts = _get_image_predicted_categories(
             im,
-            detection_threshold,
-            options.classification_confidence_threshold,
             detection_category_id_to_name,
             classification_category_id_to_name,
             detection_category_mapping,
