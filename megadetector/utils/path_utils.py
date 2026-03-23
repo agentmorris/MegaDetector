@@ -1650,6 +1650,9 @@ def unzip_file(input_file, output_folder=None):
     if output_folder is None:
         output_folder = os.path.dirname(input_file)
 
+    if len(output_folder) > 0:
+        os.makedirs(output_folder, exist_ok=True)
+
     with zipfile.ZipFile(input_file, 'r') as zf:
         zf.extractall(output_folder)
 
@@ -1671,6 +1674,9 @@ def parallel_unzip_files(input_files,
             max_workers <= 1
         verbose (bool, optional): enable additional debug console output
     """
+
+    if output_folder is not None:
+        os.makedirs(output_folder, exist_ok=True)
 
     n_workers = min(max_workers, len(input_files))
 
