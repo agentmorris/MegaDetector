@@ -1231,7 +1231,7 @@ def restrict_to_taxa_list(taxa_list,
             same common name
     """
 
-    #%% Read target taxa list
+    ##%% Read target taxa list
 
     taxa_list_df = pd.read_csv(taxa_list)
 
@@ -1295,7 +1295,7 @@ def restrict_to_taxa_list(taxa_list,
     # ...for each row in the custom taxonomy list
 
 
-    #%% Read taxonomy file
+    ##%% Read taxonomy file
 
     with open(speciesnet_taxonomy_file,'r') as f:
         speciesnet_taxonomy_list = f.readlines()
@@ -1372,7 +1372,7 @@ def restrict_to_taxa_list(taxa_list,
         _insert_taxonomy_string(s)
 
 
-    #%% Make sure all parent taxa are represented in the taxonomy
+    ##%% Make sure all parent taxa are represented in the taxonomy
 
     # In theory any taxon that appears as the parent of another taxon should
     # also be in the taxonomy, but this isn't always true, so we fix it here.
@@ -1433,7 +1433,7 @@ def restrict_to_taxa_list(taxa_list,
     del new_taxon_string_to_missing_tokens
 
 
-    #%% Store custom common name mappings based on the taxonomy list
+    ##%% Store custom common name mappings based on the taxonomy list
 
     speciesnet_latin_name_to_output_common_name = {}
 
@@ -1445,7 +1445,7 @@ def restrict_to_taxa_list(taxa_list,
                 target_latin_to_common[latin_name]
 
 
-    #%% Make sure all taxa on the allow-list are in the taxonomy
+    ##%% Make sure all taxa on the allow-list are in the taxonomy
 
     n_failed_mappings = 0
 
@@ -1464,7 +1464,7 @@ def restrict_to_taxa_list(taxa_list,
         raise ValueError('Cannot continue with taxonomic restriction')
 
 
-    #%% For the allow-list, map each parent taxon to a set of allowable child taxa
+    ##%% For the allow-list, map each parent taxon to a set of allowable child taxa
 
     # Maps parent names to all allowed child names, or None if this is the
     # lowest-level allowable taxon on this path
@@ -1568,14 +1568,14 @@ def restrict_to_taxa_list(taxa_list,
                 '"None" should only appear alone in a child taxon list'
 
 
-    #%% If we were just validating the custom taxa file, we're done
+    ##%% If we were just validating the custom taxa file, we're done
 
     if input_file is None:
         print('Finished validating custom taxonomy list')
         return
 
 
-    #%% Map all predictions that exist in this dataset...
+    ##%% Map all predictions that exist in this dataset...
 
     # ...to the prediction we should generate.
 
@@ -1709,7 +1709,7 @@ def restrict_to_taxa_list(taxa_list,
                 output_taxon_string))
 
 
-    #%% Map input category IDs to output category IDs
+    ##%% Map input category IDs to output category IDs
 
     speciesnet_taxon_string_to_latin_name = \
         invert_dictionary(speciesnet_latin_name_to_taxon_string)
@@ -1770,7 +1770,7 @@ def restrict_to_taxa_list(taxa_list,
     # ...for each category (mapping input category IDs to output category IDs)
 
 
-    #%% Remap all category labels
+    ##%% Remap all category labels
 
     assert len(set(output_taxon_string_to_category_id.keys())) == \
            len(set(output_taxon_string_to_category_id.values())), \
@@ -1826,7 +1826,7 @@ def restrict_to_taxa_list(taxa_list,
         output_category_id_to_taxon_string
 
 
-    #%% Write output
+    ##%% Write output
 
     write_json(output_file,output_data)
 

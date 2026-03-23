@@ -1064,3 +1064,23 @@ E0
 !maintenance
 
 
+## Windows support for WI project download 
+
+write_download_commands() in wi_platform_utils (which writes out a series of gcloud storage commands to download images for a WI project) assumes bash (writes .sh files, uses "wait" and "echo").  Add .bat support.
+
+P3
+
+E0
+
+!feature
+
+
+## URL cleanup in LILA files
+
+The "camera trap datasets" .csv file (with one row per dataset) and the Big CSV File (with one row per observation) have separate columns for Azure/GCP/AWS URLs.  This is no longer necessary, since all three copies have the same structure now.  This creates potential for errors when I update these files, and also bloats the already-giant observations file.  Condense these.
+
+P2
+
+E1
+
+!lila

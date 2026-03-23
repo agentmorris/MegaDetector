@@ -17,11 +17,14 @@ import re
 from tqdm import tqdm
 from collections import defaultdict
 
-from megadetector.utils.ct_utils import is_empty
 from megadetector.utils.ct_utils import write_json
+from megadetector.utils.ct_utils import is_empty
 from megadetector.utils.ct_utils import sort_dictionary_by_value
+from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
+from megadetector.utils.string_utils import is_int
 from megadetector.utils.path_utils import find_images
 from megadetector.utils.wi_platform_utils import read_images_from_download_bundle
+from megadetector.utils.wi_platform_utils import read_sequences_from_download_bundle
 from megadetector.utils.wi_platform_utils import url_to_relative_path
 
 wi_extra_annotation_columns = \
@@ -29,6 +32,7 @@ wi_extra_annotation_columns = \
      'wi_taxon_id',
      'uncertainty',
      'number_of_objects',
+     'group_size',
      'age',
      'sex',
      'animal_recognizable',
@@ -143,11 +147,93 @@ def wi_download_csv_to_coco(csv_file_in,
     # read_images_from_download_bundle supports a folder or a single .csv file
     image_id_to_image_records = read_images_from_download_bundle(csv_file_in)
 
+    assert image_id_to_image_records is not None, \
+        'Failed to read images from {}'.format(csv_file_in)
+
     print('Read image records for {} unique image IDs'.format(
         len(image_id_to_image_records)))
 
+    sequence_id_to_sequence_records = read_sequences_from_download_bundle(csv_file_in)
 
-    ##%% Create COCO dictionaries
+    sequence_id_to_image_ids = None
+
+    # Is this a sequence-based project?
+    if sequence_id_to_sequence_records is not None:
+
+        print('Read sequence records for {} sequence IDs'.format(
+            len(sequence_id_to_sequence_records)))
+
+        # Group images into sequences
+
+        sequence_id_to_image_ids = defaultdict(set)
+
+        # image_id = next(iter(image_id_to_image_records))
+        for image_id in image_id_to_image_records:
+
+            records_this_image = image_id_to_image_records[image_id]
+
+            for r in records_this_image:
+
+                assert image_id == r['image_id']
+                if 'sequence_id' not in r:
+                    print('Warning: image {} does not have a sequence ID'.format(r['image_id']))
+                    continue
+                sequence_id_to_image_ids[r['sequence_id']].add(image_id)
+
+            # ...for each record associated with this image ID
+
+        # ...for each image ID
+
+        # Create frame numbers and frame ordering
+
+        # sequence_id = next(iter(sequence_id_to_image_ids))
+        for sequence_id in sequence_id_to_image_ids:
+
+            image_ids_this_sequence = sequence_id_to_image_ids[sequence_id]
+
+            records_this_sequence = []
+
+            for image_id in image_ids_this_sequence:
+
+                records_this_image = image_id_to_image_records[image_id]
+                # Choose a representative record for sorting
+                r = records_this_image[0]
+                # Timestamps are formatted as "2019-09-09 13:45:00"
+                assert isinstance(r['timestamp'],str) and len(r['timestamp']) == 19
+                records_this_sequence.append(r)
+
+            sorted_records_this_sequence = \
+                sort_list_of_dicts_by_key(records_this_sequence,'timestamp')
+
+            # i_record = 0; r = sorted_records_this_sequence[i_record]
+            for i_record,r in enumerate(sorted_records_this_sequence):
+
+                r['frame_num'] = i_record
+                r['seq_num_frames'] = len(sorted_records_this_sequence)
+                image_id = r['image_id']
+
+                # If there are multiple records for this image (typically indicating multiple
+                # species), propagate that information to the other records
+                records_this_image_id = image_id_to_image_records[image_id]
+
+                # target_r = records_this_image_id[0]
+                for target_r in records_this_image_id:
+
+                    if r == target_r:
+                        continue
+
+                    assert r['timestamp'] == target_r['timestamp']
+                    target_r['frame_num'] = i_record
+                    target_r['seq_num_frames'] = len(sorted_records_this_sequence)
+
+            # ...for each record in this sequence
+
+        # ...for each sequence ID
+
+    # ...if this is a sequence-based project
+
+
+    #%% Create COCO dictionaries
 
     category_name_to_category = {}
     empty_category = {'name':'empty','id':0,'count':0,'taxonomy_string':''}
@@ -165,12 +251,6 @@ def wi_download_csv_to_coco(csv_file_in,
                          total=len(image_id_to_image_records)):
 
         image_records_this_id = image_id_to_image_records[image_id]
-
-        # Remove None and NaN
-        for record in image_records_this_id:
-            for k in record:
-                if is_empty(record[k]):
-                    record[k] = ''
 
         reference_record = image_records_this_id[0]
 
@@ -191,22 +271,84 @@ def wi_download_csv_to_coco(csv_file_in,
         im['location'] = location_id
         im['datetime'] = reference_record['timestamp']
 
+        sequence_records_this_sequence = None
+
+        # Should we iterate over image records or sequence records to determine
+        # labels for this image?
+        label_records = image_records_this_id
+
+        if 'sequence_id' in reference_record:
+
+            assert sequence_id_to_image_ids is not None
+            assert 'seq_num_frames' in reference_record, 'sequence processing error'
+            assert 'frame_num' in reference_record, 'sequence processing error'
+
+            # Not a typo; WI uses "sequence_id", COCO Camera Traps uses "seq_id"
+            im['seq_id'] = reference_record['sequence_id']
+            im['seq_num_frames'] = reference_record['seq_num_frames']
+            im['frame_num'] = reference_record['frame_num']
+
+            sequence_records_this_sequence = \
+                sequence_id_to_sequence_records[reference_record['sequence_id']]
+            label_records = sequence_records_this_sequence
+
+            # Image-level and sequence-level taxa should be the same
+            #
+            # I don't know why labels are reported at both levels.
+            taxon_ids_this_sequence = set([r['wi_taxon_id'] for r in sequence_records_this_sequence])
+            taxon_ids_each_image = set([r['wi_taxon_id'] for r in image_records_this_id])
+
+            assert taxon_ids_each_image == taxon_ids_this_sequence, \
+                'Sequence label inconsistency'
+
         im['wi_image_info'] = {}
         for s in wi_extra_image_columns:
-            im['wi_image_info'][s] = str(record[s])
+            assert s in reference_record, \
+                'Required column {} missing from image {}'.format(s,reference_record['image_id'])
+            im['wi_image_info'][s] = str(reference_record[s])
 
         categories_this_image = set()
 
-        # record = image_records_this_id[0]
-        for record in image_records_this_id:
+        # Iterate over either image records or label records to determine the labels
+        # we should store for this image.
+        #
+        # record = label_records[0]
+        for record in label_records:
 
-            # If there are multiple records for this image, make sure the metadata
-            # is consistent
+            # If there are multiple records for this image (typically because multiple species
+            # were recorded), make sure the metadata is consistent across records
             if record != reference_record:
 
-                assert record['timestamp'] == reference_record['timestamp']
+                # "Timestamp" is only present for image records; sequence records use
+                # "start_time" and "end_time"
+                # assert record['timestamp'] == reference_record['timestamp']
                 assert record['project_id'] == reference_record['project_id']
                 assert record['deployment_id'] == reference_record['deployment_id']
+
+            count = None
+
+            # This is a bit of future-proofing... it seems odd to me that "count"
+            # becomes "number_of_objects" in image-based project downloads.
+            if 'count' in record:
+                raise ValueError(
+                    'Note to self: you suspected a field called "count" might occur in some scenarios')
+
+            # Image-based projects use "number_of_objects"
+            if 'number_of_objects' in record:
+                assert 'group_size' not in record
+                count = record['number_of_objects']
+
+            # Sequence-based projects use "group_size"
+            if 'group_size' in record:
+                assert 'number_of_objects' not in record
+                count = record['group_size']
+
+            if is_empty(count):
+                count = None
+            else:
+                assert is_int(count), \
+                    'Illegal group size value: {}'.format(count)
+                count = int(count)
 
             category_name = record['common_name'].strip().lower()
 
@@ -247,7 +389,6 @@ def wi_download_csv_to_coco(csv_file_in,
                         if re.search(k,category_name):
                             category_name = category_remappings[k]
                             break
-
 
             # This is used for logic below, so we handle it outside of category_remappings
             if category_name == 'blank':
@@ -318,22 +459,35 @@ def wi_download_csv_to_coco(csv_file_in,
             annotation_number = len(annotations_this_image)
             ann['id'] = image_id + '_' + str(annotation_number).zfill(2)
             ann['category_id'] = category_id
+
+            if sequence_records_this_sequence is not None:
+                ann['sequence_level_annotation'] = True
+            else:
+                ann['sequence_level_annotation'] = False
+
+            if count is not None:
+                ann['count'] = count
+
             annotations_this_image.append(ann)
 
             extra_info = {}
             for s in wi_extra_annotation_columns:
-                v = record[s]
-                if isinstance(v,str):
-                    if (len(v) > 0):
-                        extra_info[s] = v
-                elif isinstance(v,bool):
-                    if v:
-                        extra_info[s] = v
+                if s in record:
+                    v = record[s]
+                    # Don't store empty fields
+                    if isinstance(v,str):
+                        if (len(v) > 0):
+                            extra_info[s] = v
+                    # Treat bools as store_true, there are tons of uninformative "False"
+                    # fields (e.g. "highlighted").
+                    elif isinstance(v,bool):
+                        if v:
+                            extra_info[s] = v
 
             if len(extra_info) > 0:
                 ann['wi_extra_info'] = extra_info
 
-        # ...for each record associated with this image
+        # ...for each label record (image or sequence) associated with this image
 
         if include_blanks or nonblank_annotation_found:
             image_id_to_image[image_id] = im
@@ -342,7 +496,8 @@ def wi_download_csv_to_coco(csv_file_in,
 
     # ...for each image
 
-    ##%%
+
+    ##%% Write COCO output
 
     images = list(image_id_to_image.values())
     categories = list(category_name_to_category.values())
@@ -498,6 +653,7 @@ if False:
     validate_images = False
     verbose = True
     category_remappings = default_category_remappings
+
 
 #%% Command-line driver
 

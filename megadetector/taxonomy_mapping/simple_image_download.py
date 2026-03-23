@@ -2,11 +2,7 @@
 
 simple_image_download.py
 
-Web image downloader, used in preview_lila_taxonomy.py
-
-Slightly modified from:
-
-https://github.com/RiddlerQ/simple_image_download
+Downloader for images from Bing Image Search.
 
 pip install python-magic
 
@@ -18,7 +14,8 @@ pip install python-magic-bin
 #%% Imports
 
 import os
-import urllib
+import re
+import html
 import requests
 import magic
 import random
@@ -28,29 +25,36 @@ from urllib.parse import quote
 
 #%% Constants
 
-BASE_URL = 'https://www.google.com/search?q='
-GOOGLE_PICTURE_ID = '''&biw=1536&bih=674&tbm=isch&sxsrf=ACYBGNSXXpS6YmAKUiLKKBs6xWb4uUY5gA:1581168823770&source=lnms&sa=X&ved=0ahUKEwioj8jwiMLnAhW9AhAIHbXTBMMQ_AUI3QUoAQ'''
+BING_IMAGE_SEARCH_URL = 'https://www.bing.com/images/search'
 HEADERS = {
     'User-Agent':
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36"
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+    'Accept-Language': 'en-US,en;q=0.9',
 }
-SCANNER_COUNTER = None
 
 
 #%% Support functions
 
-def generate_search_url(keywords):
-    keywords_to_search = [str(item).strip() for item in keywords.split(',')][0].split()
-    keywords_count = len(keywords_to_search)
-    return keywords_to_search, keywords_count
-
-
-def generate_urls(search):
+def _extract_image_urls_from_bing(html_text, limit):
     """
-    Generate Google search URLs for all tokens in the list [search]
+    Extract image URLs from Bing Image Search HTML.
+
+    Bing embeds image metadata in elements with class="iusc" and a JSON
+    blob in the 'm' attribute, which contains 'murl' (media URL).
     """
 
-    return [(BASE_URL+quote(word)+GOOGLE_PICTURE_ID) for word in search]
+    decoded = html.unescape(html_text)
+    murl_matches = re.findall(r'"murl"\s*:\s*"(https?://[^"]+)"', decoded)
+
+    # Deduplicate while preserving order
+    seen = set()
+    unique_urls = []
+    for url in murl_matches:
+        if url not in seen:
+            seen.add(url)
+            unique_urls.append(url)
+
+    return unique_urls[:limit]
 
 
 def check_webpage(url):
@@ -62,34 +66,6 @@ def check_webpage(url):
     except Exception as err:
         print(err)
     return checked_url
-
-
-def scan_webpage(webpage, extensions, timer):
-    """
-    Scan for pictures to download based on keywords
-    """
-
-    global SCANNER_COUNTER
-    scanner = webpage.find
-    found = False
-    counter = 0
-    while counter < timer:
-        new_line = scanner('"https://', SCANNER_COUNTER + 1)  # How Many New lines
-        SCANNER_COUNTER = scanner('"', new_line + 1)  # Ends of line
-        buffer = scanner('\\', new_line + 1, SCANNER_COUNTER)
-        if buffer != -1:
-            object_raw = webpage[new_line + 1:buffer]
-        else:
-            object_raw = webpage[new_line + 1:SCANNER_COUNTER]
-        if any(extension in object_raw for extension in extensions) or 'tbn0' in object_raw:
-            found = True
-            break
-        counter += 1
-    if found:
-        object_ready = check_webpage(object_raw)
-        return object_ready
-    else:
-        pass
 
 
 #%% Main class
@@ -133,38 +109,37 @@ class Downloader:
         return [self._cached_urls[url][1].url
                 for url in self._cached_urls]
 
-    def _download_page(self, url):
-        req = urllib.request.Request(url, headers=HEADERS)
-        resp = urllib.request.urlopen(req)
-        resp_data = str(resp.read())
-        return resp_data
+    def _download_page(self, query):
+        """Download Bing Image Search results page for the given query."""
+        params = {
+            'q': query,
+            'form': 'HDRSC2',
+            'first': '1',
+        }
+        resp = requests.get(BING_IMAGE_SEARCH_URL, params=params,
+                            headers=HEADERS, timeout=10)
+        return resp.text
 
     def search_urls(self, keywords, limit=1, verbose=False, cache=True, timer=None):
         cache_out = {}
-        search, count = generate_search_url(keywords)
-        urls_ = generate_urls(search)
-        timer = timer if timer else 1000
-        # max_progressbar = count * (list(range(limit+1))[-1]+1)
+        # Split keywords the same way the original code did
+        search = [str(item).strip() for item in keywords.split(',')][0].split()
+        count = len(search)
 
-        # bar = progressbar.ProgressBar(maxval=max_progressbar,
-        #                               widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()]).start()
         i = 0
         while i < count:
-            global SCANNER_COUNTER
-            SCANNER_COUNTER = -1
-            url = urls_[i]
-            path = self.generate_dir(search[i])
-            raw_html = self._download_page(url)
-            for _ in range(limit+1):
-                webpage_url = scan_webpage(raw_html, self._extensions, timer)
+            query = search[i]
+            path = self.generate_dir(query)
+            raw_html = self._download_page(query)
+            image_urls = _extract_image_urls_from_bing(raw_html, limit + 1)
+
+            for img_url in image_urls[:limit + 1]:
+                webpage_url = check_webpage(img_url)
                 if webpage_url:
-                    file_name = Downloader.gen_fn(webpage_url, search[i])
+                    file_name = Downloader.gen_fn(webpage_url, query)
                     cache_out[file_name] = [path, webpage_url]
-                else:
-                    pass
-                # bar.update(bar.currval + 1)
             i += 1
-        # bar.finish()
+
         if verbose:
             for url in cache_out:
                 print(url)
@@ -229,3 +204,29 @@ class Downloader:
     def flush_cache(self):
         """Clear the Downloader instance cache"""
         self._cached_urls = set()
+
+
+#%% Scrap
+
+if False:
+
+    pass
+
+    #%% Basic test
+
+    downloader = Downloader()
+    keywords='mammal'
+    limit=10
+    verbose=True
+    cache=False
+    download_cache=False
+
+    output_folder = os.path.expanduser('~/tmp/image-download-test')
+    os.makedirs(output_folder,exist_ok=True)
+    downloader.directory = output_folder
+
+    downloader.download(keywords=keywords,
+                        limit=limit,
+                        verbose=verbose,
+                        cache=cache,
+                        download_cache=download_cache)

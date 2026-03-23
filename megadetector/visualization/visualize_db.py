@@ -18,8 +18,6 @@ import os
 import sys
 import time
 
-import numpy as np
-
 import humanfriendly
 
 from itertools import compress
@@ -31,11 +29,9 @@ from tqdm import tqdm
 
 from megadetector.utils.write_html_image_list import write_html_image_list
 from megadetector.utils.path_utils import clean_filename
+from megadetector.utils.ct_utils import is_empty
 from megadetector.data_management.cct_json_utils import IndexedJsonDb
 from megadetector.visualization import visualization_utils as vis_utils
-
-def _isnan(x):
-    return (isinstance(x,float) and np.isnan(x))
 
 
 #%% Settings
@@ -62,7 +58,7 @@ class DbVizOptions:
         #: html_options['maxFiguresPerHtmlFile']
         #:
         #: ...which can be used to paginate previews to a number of images that will load well
-        #: in a browser (5000 is a reasonable limit).
+        #: in a browser (1000 is a reasonable limit).
         self.html_options = write_html_image_list()
 
         #: Whether to sort images by filename (True) or randomly (False)
@@ -430,11 +426,11 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         for i_ann,ann in enumerate(annotations_this_image):
 
             if options.extra_annotation_fields_to_print is not None:
-                field_names = list(ann.index)
+                field_names = ann.keys()
                 for field_name in field_names:
                     if field_name in options.extra_annotation_fields_to_print:
                         field_value = ann[field_name]
-                        if (field_value is not None) and (not _isnan(field_value)):
+                        if not is_empty(field_value):
                             extra_annotation_field_string += ' ({}:{})'.format(
                                 field_name,field_value)
 
@@ -536,7 +532,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
 
         flag_string = ''
 
-        if ('flags' in img) and (not _isnan(img['flags'])):
+        if ('flags' in img) and (not is_empty(img['flags'])):
             flag_string = ', flags: {}'.format(str(img['flags']))
 
         extra_field_string = ''
