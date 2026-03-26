@@ -400,7 +400,7 @@ def integrity_check_json_db(json_file, options=None):
 
             annotation_string = str(ann['bbox'])
 
-            # We'll allow aribtrary metadata to be tacked on to the end of boxes
+            # We'll allow arbitrary metadata to be tacked on to the end of boxes
             s = ''
             if len(ann['bbox']) < 4:
                 s += 'Annotation error: illegal bounding box in annotation {} for image {}: {}\n'.format(

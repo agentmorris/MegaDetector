@@ -2144,8 +2144,8 @@ def combine_redundant_classification_categories(input_file,
                 if conf < classification_threshold:
                     continue
                 input_category_id = det['classifications'][0][0]
-                intput_category_description = d['classification_category_descriptions'][input_category_id]
-                description_to_count[intput_category_description] += 1
+                input_category_description = d['classification_category_descriptions'][input_category_id]
+                description_to_count[input_category_description] += 1
             # ...for each detection
         # ...for each image
 

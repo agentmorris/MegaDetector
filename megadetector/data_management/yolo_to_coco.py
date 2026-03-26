@@ -207,7 +207,7 @@ def load_yolo_class_list(class_name_file):
     else:
 
         assert ext in ('yml','yaml'), \
-            'Illegal class name file extension for {}'.fomat(class_name_file)
+            'Illegal class name file extension for {}'.format(class_name_file)
         category_id_to_name = read_classes_from_yolo_dataset_file(class_name_file)
 
     return category_id_to_name
