@@ -1699,6 +1699,7 @@ def render_misprediction_pages(options, cells_to_render):
             page length (e.g. set to 2000 for deep dives).
         cells_to_render (list): list of (true_cat, pred_cat, mode) tuples where mode
             is one of:
+
             - 'standard': entities where true_cat is in GT, pred_cat is in predictions,
               true_cat != pred_cat, and the off-diagonal skip condition is not met.
             - 'strict_fp': entities where pred_cat is among the predictions and
