@@ -69,11 +69,12 @@ These questions help us assess which of our tools (or someone else's tools!) wil
 
 8. Do you have an NVIDIA GPU available?  "I don't know what a GPU is" is a perfectly good answer.  If you are running Windows, [here](https://www.windowscentral.com/how-determine-graphics-card-windows-10) is a useful guide to checking your GPU make/model.
 
-9. How did you hear about MegaDetector and/or SpeciesNet?
+9. At the place where you plan to do most of your work, how is your bandwidth?  If you're able to visit speedtest.net to measure your upload and download speeds, that's helpful.  Connectivity is not required for using MegaDetector and/or SpeciesNet, but in some cases, sending images to us or to a cloud-based platform is the best solution, so it's helpful to know whether bandwidth is a constraint.
 
-10. At the place where you plan to do most of your work, how is your bandwidth?  If you're able to visit speedtest.net to measure your upload and download speeds, that's helpful.  Connectivity is not required for using MegaDetector and/or SpeciesNet, but in some cases, sending images to us or to a cloud-based platform is the best solution, so it's helpful to know whether bandwidth is a constraint.
+10. Do you have any legal or policy constraints that prevent you from using cloud-based tools to manage or review your images?  Using cloud-based tools is not required for using MegaDetector and/or SpeciesNet, but for some users, a cloud-based tool is the best approach, so it's helpful to know whether this is a non-starter.
 
-11. Do you have any legal or policy constraints that prevent you from using cloud-based tools to manage or review your images?  Using cloud-based tools is not required for using MegaDetector and/or SpeciesNet, but for some users, a cloud-based tool is the best approach, so it's helpful to know whether this is a non-starter.
+11. How did you hear about MegaDetector and/or SpeciesNet?
+
 
 
 ## Learn more
