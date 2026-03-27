@@ -71,11 +71,9 @@ These questions help us assess which of our tools (or someone else's tools!) wil
 
 9. How did you hear about MegaDetector and/or SpeciesNet?
 
-The next few questions aren't directly related to MegaDetector, which does not require connectivity.  But we like to ask because it may impact some of the tools we recommend you use instead of or alongside MegaDetector...
+10. At the place where you plan to do most of your work, how is your bandwidth?  If you're able to visit speedtest.net to measure your upload and download speeds, that's helpful.  Connectivity is not required for using MegaDetector and/or SpeciesNet, but in some cases, sending images to us or to a cloud-based platform is the best solution, so it's helpful to know whether bandwidth is a constraint.
 
-10. At the place where you plan to do most of your work, how is your bandwidth?  If you're able to visit speedtest.net to measure your upload and download speeds, that's helpful. 
-
-11. Do you have any legal or policy constraints that prevent you from using cloud-based tools to manage or review your images?
+11. Do you have any legal or policy constraints that prevent you from using cloud-based tools to manage or review your images?  Using cloud-based tools is not required for using MegaDetector and/or SpeciesNet, but for some users, a cloud-based tool is the best approach, so it's helpful to know whether this is a non-starter.
 
 
 ## Learn more
