@@ -274,6 +274,8 @@ In certain Apple silicon environments, MD produces incorrect results.  This is n
 
 This was a P0 E3, but as of 2025.11.07, it appears that this issue is resolved by upgrading to the most recent version of MacOS and to PyTorch 2.9.  Reducing to E1 because the only items left to do here is to  put a finer point on the minimum required OS/PyTorch versions for MPS inference.
 
+2026.03.27: confirmed, this appears to be fixed by upgrading to MacOS Tahoe.  Closing this issue.
+
 P0
 
 S-5
