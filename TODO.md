@@ -268,21 +268,6 @@ E2
 !maintenance
 
 
-## Incorrect results in some Mac environments
-
-In certain Apple silicon environments, MD produces incorrect results.  This is not specific to MD, this is a bug in YOLOv5.  See [this issue](https://github.com/ultralytics/yolov5/issues/12654) and [this question](https://github.com/ultralytics/yolov5/issues/12645) on the YOLOv5 repo for details and status.  As of 2025.10.29, this appears to be limited to a very narrow range of M1 Pro silicon (not M2/M3/M4, not M1 non-Pro, and not even all M1 Pro machines).  Because it's so rare, and because M1s are slowly disappearing from the universe, the goal here is not so much to fix it, rather to reliably identify this issue and disable MPS acceleration on impacted machines. but it's so rare that although it's reliably reproducible where it occurs, I don't have an easy way to identify impacted machines.
-
-This was a P0 E3, but as of 2025.11.07, it appears that this issue is resolved by upgrading to the most recent version of MacOS and to PyTorch 2.9.  Reducing to E1 because the only items left to do here is to  put a finer point on the minimum required OS/PyTorch versions for MPS inference.
-
-P0
-
-S-5
-
-E1
-
-!bug
-
-
 ## R wrappers
 
 A substantial number (most?) of our users prefer R, and we're forcing them to run a bunch of Python code.  It would be great to either wrap the inference process in R, or port the inference code to R.  IMO it's not urgent to do this for anything in the MD package other than the inference code.  It would likely be acceptable to provide an R wrapper that launches Python at the CLI; this simplifies the implementation quite a bit compared to porting and/or calling Python directly from R.
