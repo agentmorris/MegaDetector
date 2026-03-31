@@ -19,13 +19,14 @@ json_output_folder = os.path.join(test_folder_base,'json_files')
 visualization_folder = os.path.join(test_folder_base,'visualization')
 
 model_names = ['mdv5a','mdv1000-redwood'] # ['mdv5a','mdv5b','mdv1000-redwood']
-compatibility_modes = ['modern','classic']
+compatibility_modes = ['modern'] # ['modern','classic']
 
-image_sizes = [None,1600,1920]
-augmentation_states = ['noaug','aug']
+image_sizes = [None] # [None,1600,1920]
+augmentation_states = ['noaug'] # ['noaug','aug']
 tiling_states = ['tiling','no-tiling']
 
 n_gpus = 2
+worker_type = 'thread'
 
 tile_size_x = 1280
 tile_size_y = 1280
@@ -92,6 +93,7 @@ for model_name in model_names:
                     job_output_file = os.path.join(json_output_folder,job_name + '.json')
 
                     job_info = {}
+                    job_info['job_index'] = len(all_job_info)
                     job_info['job_name'] = job_name
                     job_info['job_output_file'] = job_output_file
                     job_info['params'] = params
@@ -108,10 +110,39 @@ for model_name in model_names:
 # ...for each model
 
 
+#%% Create tiles once if necessary
+
+if ('tiling' in tiling_states) and (tiling_folder is not None):
+
+    _ = run_tiled_inference(model_file=None,
+                            image_folder=input_folder,
+                            tiling_folder=tiling_folder,
+                            output_file=None,
+                            tile_size_x=tile_size_x,
+                            tile_size_y=tile_size_y,
+                            tile_overlap=tile_overlap,
+                            checkpoint_path=None,
+                            checkpoint_frequency=-1,
+                            remove_tiles=False,
+                            yolo_inference_options=None,
+                            n_patch_extraction_workers=4,
+                            overwrite_tiles=True,
+                            image_list=None,
+                            augment=None,
+                            detector_options=None,
+                            use_image_queue=False, # Windows IPython issue
+                            preprocess_on_image_queue=None,
+                            inference_size=None,
+                            pool_type='thread',
+                            load_cached_tiles_if_available=False,
+                            create_tiles_only=True)
+
+
 #%% Run jobs (support functions)
 
 def run_job(job_info):
 
+    job_index = job_info['job_index']
     job_name = job_info['job_name']
     job_output_file = job_info['job_output_file']
     model_name = job_info['params']['model_name']
@@ -120,7 +151,7 @@ def run_job(job_info):
     augmentation_state = job_info['params']['aug']
     tiling_state = job_info['params']['tiling']
 
-    print('Processing job {} to {}'.format(job_name,job_output_file))
+    print('Processing job {} ({}) to {}'.format(job_index,job_name,job_output_file))
 
     augment = (augmentation_state == 'aug')
 
@@ -161,19 +192,20 @@ def run_job(job_info):
                                         verbose_output=False)
 
         write_results_to_file(results=r,
-                                output_file=job_output_file,
-                                relative_path_base=input_folder,
-                                detector_file=model_name,
-                                info=None,
-                                include_max_conf=False,
-                                custom_metadata=None,
-                                force_forward_slashes=True)
+                              output_file=job_output_file,
+                              relative_path_base=input_folder,
+                              detector_file=model_name,
+                              info=None,
+                              include_max_conf=False,
+                              custom_metadata=None,
+                              force_forward_slashes=True)
 
     else:
 
         assert tiling_state == 'tiling'
         overwrite_tiles = False
         remove_tiles = (tiling_folder is None)
+        load_cached_tiles_if_available = (tiling_folder is not None)
 
         _ = run_tiled_inference(model_file=model_name,
                                 image_folder=input_folder,
@@ -194,13 +226,38 @@ def run_job(job_info):
                                 use_image_queue=False, # Windows IPython issue
                                 preprocess_on_image_queue=None,
                                 inference_size=image_size,
-                                pool_type='thread')
+                                pool_type='thread',
+                                load_cached_tiles_if_available=load_cached_tiles_if_available,
+                                create_tiles_only=False)
 
 
 #%% Run jobs (execution)
 
-for job_info in all_job_info:
-    run_job(job_info)
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+
+if n_gpus <= 1:
+
+    for job_info in all_job_info:
+        run_job(job_info)
+
+else:
+
+    # Assign each job to a GPU round-robin
+    for i_job,job_info in enumerate(all_job_info):
+        job_info['gpu_index'] = (i_job % n_gpus)
+
+    assert worker_type in ('thread','process'), \
+        'Invalid worker_type: {}'.format(worker_type)
+
+    if worker_type == 'thread':
+        pool_class = ThreadPoolExecutor
+    else:
+        pool_class = ProcessPoolExecutor
+
+    with pool_class(max_workers=n_gpus) as executor:
+        futures = [executor.submit(run_job,job_info) for job_info in all_job_info]
+        for future in futures:
+            future.result()
 
 
 #%% Visualize output for every job

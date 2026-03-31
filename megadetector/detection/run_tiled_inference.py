@@ -47,7 +47,7 @@ from megadetector.detection.run_detector_batch import \
 from megadetector.detection.run_detector import \
     try_download_known_detector, CONF_DIGITS, COORD_DIGITS
 from megadetector.utils import path_utils
-from megadetector.utils.ct_utils import round_float_array, round_float
+from megadetector.utils.ct_utils import round_float_array, round_float, write_json
 from megadetector.visualization import visualization_utils as vis_utils
 
 default_patch_overlap = 0.5
@@ -421,7 +421,9 @@ def run_tiled_inference(model_file,
                         loader_workers=default_loaders,
                         inference_size=None,
                         verbose=False,
-                        pool_type=None):
+                        pool_type=None,
+                        load_cached_tiles_if_available=False,
+                        create_tiles_only=False):
     """
     Runs inference using [model_file] on the images in [image_folder], fist splitting each image up
     into tiles of size [tile_size_x] x [tile_size_y], writing those tiles to [tiling_folder],
@@ -479,6 +481,9 @@ def run_tiled_inference(model_file,
             yolo_inference_options is None
         verbose (bool, optional): enable additional debug output
         pool_type (str, optional): 'thread' or 'process', or None to use the default (threads)
+        load_cached_tiles_if_available (bool, optional): if we find tile information in the tiling
+            folder from a previous call to this function, load tile information rather than re-tiling.
+        create_tiles_only (bool, optional): return after creating tiles, before running inference
 
     Returns:
         dict: MD-formatted results dictionary, identical to what's written to [output_file]
@@ -547,67 +552,79 @@ def run_tiled_inference(model_file,
 
     all_image_patch_info = None
 
-    print('Extracting patches from {} images on {} workers'.format(
-        len(image_files_relative),n_patch_extraction_workers))
-
-    n_workers = n_patch_extraction_workers
-
-    if n_workers <= 1:
-
-        all_image_patch_info = []
-
-        # fn_relative = image_files_relative[0]
-        for fn_relative in tqdm(image_files_relative):
-            image_patch_info = \
-                _extract_tiles_for_image(fn_relative,
-                                         image_folder,
-                                         tiling_folder,
-                                         patch_size,
-                                         patch_stride,
-                                         overwrite=overwrite_tiles)
-            all_image_patch_info.append(image_patch_info)
-
-    else:
-
-        pool = None
-        try:
-            if n_workers > len(image_files_relative):
-
-                print('Pool of {} requested, but only {} images available, reducing pool to {}'.\
-                      format(n_workers,len(image_files_relative),len(image_files_relative)))
-                n_workers = len(image_files_relative)
-
-            if pool_type == 'thread':
-                pool = ThreadPool(n_workers); poolstring = 'threads'
-            else:
-                pool = Pool(n_workers); poolstring = 'processes'
-
-            print('Starting patch extraction pool with {} {}'.format(n_workers,poolstring))
-
-            all_image_patch_info = list(tqdm(pool.imap(
-                    partial(_extract_tiles_for_image,
-                            image_folder=image_folder,
-                            tiling_folder=tiling_folder,
-                            patch_size=patch_size,
-                            patch_stride=patch_stride,
-                            overwrite=overwrite_tiles),
-                    image_files_relative),total=len(image_files_relative)))
-        finally:
-            if pool is not None:
-                pool.close()
-                pool.join()
-                print('Pool closed and joined for patch extraction')
-
-    # ...for each image
-
-    # Write tile information to file; this is just a debugging convenience
     folder_name = path_utils.clean_filename(image_folder,force_lower=True)
     if folder_name.startswith('_'):
         folder_name = folder_name[1:]
 
     tile_cache_file = os.path.join(tiling_folder,folder_name + '_patch_info.json')
-    with open(tile_cache_file,'w') as f:
-        json.dump(all_image_patch_info,f,indent=1)
+
+    if os.path.isfile(tile_cache_file) and load_cached_tiles_if_available:
+
+        print('Loading cached tiles from {}'.format(tile_cache_file))
+        with open(tile_cache_file,'r') as f:
+            all_image_patch_info = json.load(f)
+
+    else:
+
+        print('Extracting patches from {} images on {} workers'.format(
+            len(image_files_relative),n_patch_extraction_workers))
+
+        n_workers = n_patch_extraction_workers
+
+        if n_workers <= 1:
+
+            all_image_patch_info = []
+
+            # fn_relative = image_files_relative[0]
+            for fn_relative in tqdm(image_files_relative):
+                image_patch_info = \
+                    _extract_tiles_for_image(fn_relative,
+                                            image_folder,
+                                            tiling_folder,
+                                            patch_size,
+                                            patch_stride,
+                                            overwrite=overwrite_tiles)
+                all_image_patch_info.append(image_patch_info)
+
+        else:
+
+            pool = None
+            try:
+                if n_workers > len(image_files_relative):
+
+                    print('Pool of {} requested, but only {} images available, reducing pool to {}'.\
+                        format(n_workers,len(image_files_relative),len(image_files_relative)))
+                    n_workers = len(image_files_relative)
+
+                if pool_type == 'thread':
+                    pool = ThreadPool(n_workers); poolstring = 'threads'
+                else:
+                    pool = Pool(n_workers); poolstring = 'processes'
+
+                print('Starting patch extraction pool with {} {}'.format(n_workers,poolstring))
+
+                all_image_patch_info = list(tqdm(pool.imap(
+                        partial(_extract_tiles_for_image,
+                                image_folder=image_folder,
+                                tiling_folder=tiling_folder,
+                                patch_size=patch_size,
+                                patch_stride=patch_stride,
+                                overwrite=overwrite_tiles),
+                        image_files_relative),total=len(image_files_relative)))
+            finally:
+                if pool is not None:
+                    pool.close()
+                    pool.join()
+                    print('Pool closed and joined for patch extraction')
+
+        # ...for each image
+
+        # Write tile information to file
+        with open(tile_cache_file,'w') as f:
+            print('Writing tile information to {}'.format(tile_cache_file))
+            write_json(tile_cache_file,all_image_patch_info)
+
+    # ...if we are/aren't loading cached tiles
 
     # Keep track of patches that failed
     images_with_patch_errors = {}
@@ -615,14 +632,19 @@ def run_tiled_inference(model_file,
         if patch_info['error'] is not None:
             images_with_patch_errors[patch_info['image_fn']] = patch_info
 
+    if create_tiles_only:
+        return None
+
 
     ##%% Run inference on the folder of tiles
+
+    job_guid = str(uuid.uuid1())
 
     # When running with run_inference_with_yolov5_val, we'll pass the folder
     if yolo_inference_options is not None:
 
         patch_level_output_file = os.path.join(tiling_folder,
-                                               folder_name + '_patch_level_results.json')
+                                               folder_name + '_' + job_guid + '_patch_level_results.json')
 
         if yolo_inference_options.augment != augment:
             print('Warning: augment parameter is {}, but yolo options augment says {}'.format(
@@ -672,7 +694,7 @@ def run_tiled_inference(model_file,
                                                         loader_workers=loader_workers)
 
         patch_level_output_file = os.path.join(tiling_folder,
-                                               folder_name + '_patch_level_results.json')
+                                               folder_name + '_' + job_guid + '_patch_level_results.json')
 
         patch_level_results = write_results_to_file(inference_results,
                                                     patch_level_output_file,
@@ -817,7 +839,7 @@ def run_tiled_inference(model_file,
     # ...for each image
 
     image_level_results_file_pre_nms = \
-        os.path.join(tiling_folder,folder_name + '_image_level_results_pre_nms.json')
+        os.path.join(tiling_folder,folder_name + '_' + job_guid + '_image_level_results_pre_nms.json')
     with open(image_level_results_file_pre_nms,'w') as f:
         json.dump(image_level_results,f,indent=1)
 
