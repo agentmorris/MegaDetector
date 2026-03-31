@@ -10,22 +10,24 @@ of images.
 
 import os
 
-# input_folder = 'f:/data/heksinki-marteau-non-empty'
-input_folder = 'c:/temp/batch-test-images'
-test_folder_base = 'c:/temp/heksinki-marteau-comparisons'
-tiling_folder = 'c:/temp/heksinki-marteau-tiles'
+input_folder = 'f:/data'
+# input_folder = 'c:/temp/batch-test-images'
+test_folder_base = 'c:/temp/batch-comparisons'
+tiling_folder = 'c:/temp/batch-tiles'
 
 json_output_folder = os.path.join(test_folder_base,'json_files')
 visualization_folder = os.path.join(test_folder_base,'visualization')
 
 model_names = ['mdv5a','mdv1000-redwood'] # ['mdv5a','mdv5b','mdv1000-redwood']
-compatibility_modes = ['modern'] # ['modern','classic']
+compatibility_modes = ['modern','classic'] # ['modern','classic']
 
-image_sizes = [None] # [None,1600,1920]
-augmentation_states = ['noaug'] # ['noaug','aug']
-tiling_states = ['tiling','no-tiling']
+image_sizes = [None,1600,1920] # [None,1600,1920]
+augmentation_states = ['noaug','aug'] # ['noaug','aug']
+tiling_states = ['tiling','no-tiling'] # ['tiling','no-tiling']
 
 n_gpus = 2
+
+# process-based parallelism is not supported in this notebook on Windows
 worker_type = 'thread'
 
 tile_size_x = 1280
@@ -110,7 +112,10 @@ for model_name in model_names:
 # ...for each model
 
 
-#%% Create tiles once if necessary
+#%% Create tiles if necessary
+
+# We do this just once; the tiles will be re-used across all jobs where tiling
+# is enabled.
 
 if ('tiling' in tiling_states) and (tiling_folder is not None):
 
@@ -230,10 +235,17 @@ def run_job(job_info):
                                 load_cached_tiles_if_available=load_cached_tiles_if_available,
                                 create_tiles_only=False)
 
+# ...def run_job(...)
+
 
 #%% Run jobs (execution)
 
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+import threading
+import random
+
+from concurrent.futures import ProcessPoolExecutor
+
+random.seed(0)
 
 if n_gpus <= 1:
 
@@ -242,22 +254,42 @@ if n_gpus <= 1:
 
 else:
 
-    # Assign each job to a GPU round-robin
+    # Randomly permute the list "job_info"
+    random.shuffle(all_job_info)
+
+    # Partition jobs by GPU index (round-robin)
+    gpu_job_lists = [[] for _ in range(n_gpus)]
     for i_job,job_info in enumerate(all_job_info):
-        job_info['gpu_index'] = (i_job % n_gpus)
+        gpu_index = i_job % n_gpus
+        job_info['gpu_index'] = gpu_index
+        gpu_job_lists[gpu_index].append(job_info)
+
+    def run_gpu_jobs(gpu_jobs):
+        for job_info in gpu_jobs:
+            run_job(job_info)
 
     assert worker_type in ('thread','process'), \
         'Invalid worker_type: {}'.format(worker_type)
 
     if worker_type == 'thread':
-        pool_class = ThreadPoolExecutor
-    else:
-        pool_class = ProcessPoolExecutor
 
-    with pool_class(max_workers=n_gpus) as executor:
-        futures = [executor.submit(run_job,job_info) for job_info in all_job_info]
-        for future in futures:
-            future.result()
+        threads = []
+        for gpu_index in range(n_gpus):
+            t = threading.Thread(target=run_gpu_jobs,args=(gpu_job_lists[gpu_index],))
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
+
+    else:
+
+        with ProcessPoolExecutor(max_workers=n_gpus) as executor:
+            futures = [executor.submit(run_gpu_jobs,gpu_job_lists[gpu_index]) \
+                       for gpu_index in range(n_gpus)]
+            for future in futures:
+                future.result()
+
+# ...if we need to parallelize execution
 
 
 #%% Visualize output for every job
