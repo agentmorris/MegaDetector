@@ -844,20 +844,29 @@ class PTDetector:
         if preprocess_only:
             return
 
-        if not force_cpu:
-            if torch.cuda.is_available():
-                self.device = torch.device('cuda:0')
-            try:
-                if torch.backends.mps.is_built and torch.backends.mps.is_available():
-                    # MPS inference fails on GitHub runners as of 2025.08.  This is
-                    # independent of model size.  So, we disable MPS when running in GHA.
-                    if is_running_in_gha():
-                        print('GitHub actions detected, bypassing MPS backend')
-                    else:
-                        print('Using MPS device')
-                        self.device = 'mps'
-            except AttributeError:
-                pass
+        if (detector_options is not None) and \
+           ('device' in detector_options) and \
+           detector_options['device'] is not None:
+
+            print('Using caller-specified device: {}'.format(detector_options['device']))
+            self.device = detector_options['device']
+
+        else:
+
+            if not force_cpu:
+                if torch.cuda.is_available():
+                    self.device = torch.device('cuda:0')
+                try:
+                    if torch.backends.mps.is_built and torch.backends.mps.is_available():
+                        # MPS inference fails on GitHub runners as of 2025.08.  This is
+                        # independent of model size.  So, we disable MPS when running in GHA.
+                        if is_running_in_gha():
+                            print('GitHub actions detected, bypassing MPS backend')
+                        else:
+                            print('Using MPS device')
+                            self.device = 'mps'
+                except AttributeError:
+                    pass
 
         # AddaxAI depends on this printout, don't remove it
         print('PTDetector using device {}'.format(str(self.device).lower()))
