@@ -315,6 +315,7 @@ def _initialize_yolo_imports(model_type='yolov5',
             print('Bypassing imports for YOLO model type {}'.format(model_type))
             return
         else:
+            print('Starting yolo import cleanup')
             _clean_yolo_imports()
 
     try_yolov5_import = (model_type == 'yolov5')
@@ -361,10 +362,10 @@ def _initialize_yolo_imports(model_type='yolov5',
 
             # print('yolov9 module import failed: {}'.format(e))
             # print(traceback.format_exc())
-            print('It looks like you are trying to run a model that requires the yolov9pip package, '
+            print('\n\n*****\nIt looks like you are trying to run a model that requires the yolov9pip package, '
                   'but the yolov9pip package is not installed.  Nothing is wrong, this package is '
                   'just not installed by default with the MegaDetector Python package.  Run '
-                  '"pip install yolov9pip" to install it, and try again.')
+                  '"pip install yolov9pip" to install it, and try again.\n*****\n\n')
             raise
 
     # If we haven't succeeded yet, import from the ultralytics package
@@ -376,10 +377,10 @@ def _initialize_yolo_imports(model_type='yolov5',
 
         except Exception:
 
-            print('It looks like you are trying to run a model that requires the ultralytics package, '
+            print('\n\n*****\nIt looks like you are trying to run a model that requires the ultralytics package, '
                   'but the ultralytics package is not installed.  Nothing is wrong, this package is '
                   'just not installed by default with the MegaDetector Python package.  Run '
-                  '"pip install ultralytics" to install it, and try again.')
+                  '"pip install ultralytics" to install it, and try again.\n*****\n\n')
             raise
 
         try:
@@ -390,6 +391,7 @@ def _initialize_yolo_imports(model_type='yolov5',
                 from ultralytics.utils.ops import non_max_suppression # type: ignore # noqa
             except Exception:
                 from ultralytics.utils.nms import non_max_suppression # type: ignore # noqa
+
             from ultralytics.utils.ops import xyxy2xywh # type: ignore # noqa
 
             # In the ultralytics package, scale_boxes and scale_coords both exist;
