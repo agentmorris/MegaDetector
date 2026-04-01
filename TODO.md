@@ -962,6 +962,8 @@ E2
 
 ## Consider removing yolov9-pip dependency
 
+Resolved: 2026.04.01, I am removing this dependency by default.
+
 The megadetector package takes a dependency on yolov9pip, even though I don't think a lot of people will use MDv1000-cedar.  It would simplify installation if we removed this dependency, and asked users to install yolov9pip when they want to use MDv1000-cedar, like we do for MDv1000-larch.  The action item here is just to sit and think about this (E1), then do it if I decide to do it (E0).
 
 P1

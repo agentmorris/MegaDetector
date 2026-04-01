@@ -361,7 +361,11 @@ def _initialize_yolo_imports(model_type='yolov5',
 
             # print('yolov9 module import failed: {}'.format(e))
             # print(traceback.format_exc())
-            pass
+            print('It looks like you are trying to run a model that requires the yolov9pip package, '
+                  'but the yolov9pip package is not installed.  Nothing is wrong, this package is '
+                  'just not installed by default with the MegaDetector Python package.  Run '
+                  '"pip install yolov9pip" to install it, and try again.')
+            raise
 
     # If we haven't succeeded yet, import from the ultralytics package
     if try_ultralytics_import and not utils_imported:
@@ -373,8 +377,8 @@ def _initialize_yolo_imports(model_type='yolov5',
         except Exception:
 
             print('It looks like you are trying to run a model that requires the ultralytics package, '
-                  'but the ultralytics package is not installed.  For licensing reasons, this '
-                  'is not installed by default with the MegaDetector Python package.  Run '
+                  'but the ultralytics package is not installed.  Nothing is wrong, this package is '
+                  'just not installed by default with the MegaDetector Python package.  Run '
                   '"pip install ultralytics" to install it, and try again.')
             raise
 

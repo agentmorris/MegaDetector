@@ -74,9 +74,13 @@ ultralytics-yolov5 == 0.1.1
 #
 # https://pypi.org/project/pyyolov9/
 # https://pypi.org/project/yolov9py/
-yolov9pip == 0.0.4
+#
+# No longer including this by default; if the user wants to run MDv1000-cedar,
+# we'll tell them to install yolov9pip.
+#
+# yolov9pip == 0.0.4
 
 # Don't install ultralytics; if the user wants to run an ultralytics-trained
-# model, we'll tell them to install the ultralytics package
+# model, we'll tell them to install the ultralytics package.
 #
 # ultralytics
