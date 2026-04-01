@@ -82,13 +82,11 @@ Two dependencies - yolov9pip and clipboard - give this warning during pip instal
 
 DEPRECATION: Building 'yolov9pip' using the legacy setup.py bdist_wheel mechanism, which will be removed in a future version. pip 25.3 will enforce this behaviour change. A possible replacement is to use the standardized build interface by setting the `--use-pep517` option, (possibly combined with `--no-build-isolation`), or adding a `pyproject.toml` file to the source tree of 'yolov9pip'. Discussion can be found [here](https://github.com/pypa/pip/issues/6334).
 
-The yolov9pip part of this is a moot issue if I decide to remove the yolov9pip dependency, and the clipboard dependency is just for development.  Hence P2.
+The yolov9pip package is low-priority, since it's no longer included by default, and the clipboard dependency is just for development.  Hence P3.
 
-P2
+P3
 
 E2
-
-!also-see[remove-yolov9-dependency]
 
 !maintenance
 
@@ -960,19 +958,6 @@ E2
 !maintenance
 
 
-## Consider removing yolov9-pip dependency
-
-The megadetector package takes a dependency on yolov9pip, even though I don't think a lot of people will use MDv1000-cedar.  It would simplify installation if we removed this dependency, and asked users to install yolov9pip when they want to use MDv1000-cedar, like we do for MDv1000-larch.  The action item here is just to sit and think about this (E1), then do it if I decide to do it (E0).
-
-P1
-
-E1
-
-!name[remove-yolov9-dependency]
-
-!admin
-
-
 ## Load class names from detector files if available
 
 Currently we assume MegaDetector classes in run_detector_batch, and we allow custom class mappings via --class_mapping_filename.  Long ago, class names weren't stored in YOLO-style detectors, now they are, so, optionally load class names from detectors.  This doesn't really matter when using MegaDetector, but it removes the hassle of using --class_mapping_filename when using non-MD detectors.
@@ -1041,6 +1026,8 @@ E0
 Python 3.14 is enabled on a [branch](https://github.com/agentmorris/MegaDetector/tree/py314-support).  Tests pass with no changes to code on all of my personal Windows and Linux machines, but fail on Windows on the GitHub Actions runner ([failed run](https://github.com/agentmorris/MegaDetector/actions/runs/19089542677/job/54536961503)).  Figure out what's up with this, and create a new work item that reflects whatever changes are required for Python 3.14 support.
 
 The specific error on the GH runner is an access violation with no meaningful stack trace; this appears to be a numpy compatibility issue, and the Internet doesn't seem surprised that this happens in some environments but not in others, even with identical numpy versions.  Consensus is that I should just wait this out; pre-built wheels for 3.14 will improve with time.  Dropped from P0 to P1 on 2026.01.06.  Also dropped from E1 to E0, because the expectation is that when this works, it will just magically work, I won't have to change any code.  All other 3.14 compatibility issues (all minor) are already handled on this branch.
+
+Still fails as of 2026.04.01.
 
 P1
 

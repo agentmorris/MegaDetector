@@ -111,7 +111,7 @@ The first few papers that cited MD were mostly papers <i>about</i> using ML for 
 
 &mdash;Me, while writing this markdown file
 
-Running lots of images through MD was a fantastic opportunity to find all the places where annoying stuff happens, sometimes expected things related to gaps in training data, sometimes just "machine learning will drive you bananas" things.  This section highlights some of the major weak points that emerged in the course of running MD over the last few years; I discuss these in more detail [here](https://github.com/agentmorris/MegaDetector/blob/main/megadetector-challenges.md).  
+Running lots of images through MD was a fantastic opportunity to find all the places where annoying stuff happens, sometimes expected things related to gaps in training data, sometimes just "machine learning will drive you bananas" things.  This section highlights some of the major weak points that emerged in the course of running MD over the last few years; I discuss these in more detail [here](https://github.com/agentmorris/MegaDetector/blob/main/megadetector-challenges.md).
 
 Before I get to the specific issues, maybe a more important point: these issues look obvious here when I choose representative images, but in most cases these issues aren't obvious if you only look at positives, i.e. detections.  That's why it's so so so so important - for any AI model that will be used to avoid manual review, not just MD - to make sure that new users have a systematic way to review a sample of their <i>negatives</i> (to make sure there aren't animals hiding in the "negatives"), and to go into each batch with the assumption that AI is a complete catastrophe, and convince yourself otherwise before trusting AI, or before recommending that a use trust AI.
 
@@ -391,7 +391,9 @@ In this example, "MDV5A" tells the module to use MDv5a.  This field is case-inse
 
 Those are the "official" short names, but the module tries to be forgiving; for example, saying "md1000-redwood" instead of "mdv1000-redwood" is OK.  Any filename can also be used here to load a MD model from a local file.  Instead of specifying a model, you can also use the strings "default" and "megadetector", both of which will tell the module to use whatever model version I recommend as the default (at the time of the package release you're using).  Until the community has had time to experiment with the new models, the default is still MDv5a.
 
-NB: I prefer that the Python package not take AGPL dependencies, so the MD Python package only includes the dependencies to run the non-AGPL models (MDv5, MDv1000-redwood, MDv1000-cedar, MDv1000-spruce).  If you try to run MDv1000-larch or MDv1000-sorrel, you'll get a hopefully-very-straightforward message saying "please run `pip install ultralytics`", and after you do that, everything should work.
+NB: I prefer that the Python package not take AGPL dependencies, so the MD Python package only includes the dependencies to run the non-AGPL models (MDv5a, MDv5b, MDv1000-redwood, and MDv1000-spruce).  If you try to run MDv1000-larch or MDv1000-sorrel, you'll get a hopefully-very-straightforward message saying "please run `pip install ultralytics`", and after you do that, everything should work.
+
+Bonus NB: the yolov9 dependency required to run MDv1000-cedar doesn't add any licensing complexity, but it is on the big side, and I don't generally encourage users to use anything other than MDv5a, MDv5b, or MDv1000-redwood, so by default this is not included either.  If you try to run MDv1000-cedar, you'll get a hopefully-very-straightforward message saying "please run `pip install yolov9pip`", and after you do that, everything should work.
 
 Here are some other options to this script you might want to experiment with if you're feeling adventurous and you want to squeeze every bit of accuracy out of MD:
 
