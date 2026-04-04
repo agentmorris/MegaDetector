@@ -15,6 +15,14 @@ input_folder = 'f:/data'
 test_folder_base = 'c:/temp/batch-comparisons'
 tiling_folder = 'c:/temp/batch-tiles'
 
+from megadetector.utils.path_utils import windows_path_to_wsl_path
+from megadetector.utils.ct_utils import environment_is_wsl
+
+if environment_is_wsl():
+    input_folder = windows_path_to_wsl_path(input_folder)
+    test_folder_base = windows_path_to_wsl_path(test_folder_base)
+    tiling_folder = windows_path_to_wsl_path(tiling_folder)
+
 json_output_folder = os.path.join(test_folder_base,'json_files')
 visualization_folder = os.path.join(test_folder_base,'visualization')
 
@@ -29,6 +37,9 @@ n_gpus = 2
 
 # process-based parallelism is not supported in this notebook on Windows
 worker_type = 'thread'
+
+if environment_is_wsl():
+    worker_type = 'process'
 
 tile_size_x = 1280
 tile_size_y = 1280
@@ -71,7 +82,7 @@ from megadetector.detection.run_tiled_inference import run_tiled_inference
 
 all_job_info = []
 
-overwrite = True
+include_finished_jobs = True
 
 # model_name = model_names[0]
 for model_name in model_names:
@@ -94,6 +105,10 @@ for model_name in model_names:
                     job_name = parameters_to_name(params)
                     job_output_file = os.path.join(json_output_folder,job_name + '.json')
 
+                    if os.path.isfile(job_output_file) and (not include_finished_jobs):
+                        print('{} exists, skipping'.format(job_output_file))
+                        continue
+
                     job_info = {}
                     job_info['job_index'] = len(all_job_info)
                     job_info['job_name'] = job_name
@@ -110,6 +125,8 @@ for model_name in model_names:
     # ...for each compatibilty mode
 
 # ...for each model
+
+print('Assembled {} jobs'.format(len(all_job_info)))
 
 
 #%% Create tiles if necessary
@@ -144,6 +161,8 @@ if ('tiling' in tiling_states) and (tiling_folder is not None):
 
 
 #%% Run jobs (support functions)
+
+overwrite = False
 
 def run_job(job_info):
 
@@ -240,10 +259,11 @@ def run_job(job_info):
 
 #%% Run jobs (execution)
 
+from concurrent.futures import ProcessPoolExecutor
+
 import threading
 import random
 
-from concurrent.futures import ProcessPoolExecutor
 
 random.seed(0)
 
@@ -296,6 +316,8 @@ else:
 
 from megadetector.visualization.visualize_detector_output import \
     visualize_detector_output
+from megadetector.visualization.visualization_utils import \
+    DEFAULT_BOX_THICKNESS, DEFAULT_LABEL_FONT_SIZE
 
 html_output_files = []
 
@@ -315,9 +337,9 @@ for i_job,job_info in enumerate(all_job_info):
                                   out_dir=job_visualization_folder,
                                   images_dir=input_folder,
                                   confidence_threshold=rendering_threshold,
-                                  sample=-1,
+                                  sample=1000,
                                   output_image_width=1200,
-                                  random_seed=None,
+                                  random_seed=0,
                                   render_detections_only=False,
                                   classification_confidence_threshold=None,
                                   html_output_file=html_output_file,
@@ -327,7 +349,10 @@ for i_job,job_info in enumerate(all_job_info):
                                   parallelize_rendering_n_cores=10,
                                   parallelize_rendering_with_threads=True,
                                   category_names_to_blur=None,
-                                  link_images_to_originals=True)
+                                  link_images_to_originals=True,
+                                  box_thickness=2,
+                                  box_expansion=2,
+                                  label_font_size=12)
 
     html_output_files.append(html_output_file)
 
@@ -347,6 +372,8 @@ if False:
     pass
 
     #%% Review versions of one image
+
+    # This cell assumes the visualizations have already been generated.
 
     import shutil
 
@@ -390,9 +417,11 @@ if False:
     options = write_html_image_list()
     index_file = os.path.join(image_review_folder,'index.html')
     write_html_image_list(filename=index_file,
-                        images=image_info,
-                        options=options)
+                          images=image_info,
+                          options=options)
 
+    from megadetector.utils.path_utils import open_file
+    open_file(index_file, attempt_to_open_in_wsl_host=True)
 
     #%% Open existing visualizations for specific jobs
 
@@ -406,6 +435,11 @@ if False:
             for param_name in html_group_params['params']:
                 assert param_name in job_info['params'], \
                     'No value for {}'.format(param_name)
+                # Empty lists for a parameter means that all jobs match for that
+                # parameter
+                if (html_group_params['params'][param_name] is None) or \
+                   (len(html_group_params['params'][param_name]) == 0):
+                    continue
                 if job_info['params'][param_name] not in html_group_params['params'][param_name]:
                     job_matches = False
                     break
@@ -418,16 +452,19 @@ if False:
     html_group = {}
     html_group['name'] = 'test'
     html_group['params'] = {}
-    html_group['params']['model_name'] = ('mdv5a',)
-    html_group['params']['image_size'] = (1600,)
-    html_group['params']['compatibility_mode'] = ('modern',)
-    html_group['params']['aug'] = ('noaug','aug')
-    html_group['params']['tiling'] = ('tiling',)
+    html_group['params']['model_name'] = ['mdv5a']
+    html_group['params']['image_size'] = None # [1600]
+    html_group['params']['compatibility_mode'] = None # ['modern']
+    html_group['params']['aug'] = None # ['noaug','aug']
+    html_group['params']['tiling'] = ['tiling']
     html_group['matching_jobs'] = find_matching_jobs(html_group)
 
     print('Found {} matching jobs for {}'.format(
         len(html_group['matching_jobs']),
         html_group['name']))
 
+    #%%
+
     for matching_job in html_group['matching_jobs']:
-        open_file(matching_job['html_output_file'])
+        open_file(matching_job['html_output_file'],attempt_to_open_in_wsl_host=True)
+
