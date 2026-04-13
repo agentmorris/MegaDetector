@@ -254,6 +254,10 @@ class PostProcessingOptions:
         #: flag includes descriptions (typically taxonomic strings) as well.
         self.include_category_descriptions_with_global_counts = False
 
+        #: Display the min/max normalized size of above-threshold detections for each
+        #: image
+        self.include_size_range = False
+
     # ...__init__()
 
 # ...PostProcessingOptions
@@ -714,6 +718,19 @@ def _get_positive_categories(detections,options,detection_categories):
     return sorted(positive_categories)
 
 
+def _get_positive_detections(detections,options,detection_categories):
+    """
+    Returns a list of positive detections n the detection list [detections].
+    """
+
+    positive_detections = []
+    for d in detections:
+        threshold = _get_threshold_for_category_id(d['category'], options, detection_categories)
+        if d['conf'] >= threshold:
+            positive_detections.append(d)
+    return positive_detections
+
+
 def _has_positive_detection(detections,options,detection_categories):
     """
     Determines whether any positive detections are present in the detection list
@@ -744,7 +761,7 @@ def _render_image_no_gt(file_info,
     {
      'filename': 'detections_animal/detections_animal_blah~01060415.JPG',
      'title': '<b>Result type</b>: detections_animal,
-               <b>Image</b>: blah\\01060415.JPG,
+               <b>Image</b>: blah/01060415.JPG,
                <b>Max conf</b>: 0.897',
       'textStyle': 'font-family:verdana,arial,calibri;font-size:80%;text-align:left;margin-top:20;margin-bottom:5',
       'linkTarget': 'full_path_to_%5C01060415.JPG'
@@ -770,7 +787,8 @@ def _render_image_no_gt(file_info,
 
     # Determine whether any positive detections are present (using a threshold that
     # may vary by category)
-    found_positive_detection = _has_positive_detection(detections,options,detection_categories)
+    found_positive_detection = \
+        _has_positive_detection(detections,options,detection_categories)
 
     detection_status = DetectionStatus.DS_UNASSIGNED
     if found_positive_detection:
@@ -800,8 +818,37 @@ def _render_image_no_gt(file_info,
         assert detection_status == DetectionStatus.DS_ALMOST
         category_string = 'almost_detections'
 
-    display_name = '<b>Result type</b>: {}, <b>image</b>: {}, <b>max conf</b>: {:0.3f}'.format(
+    display_name = '<b>Result type</b>: {}, <b>image</b>: {}, <b>max conf</b>: {:0.2f}'.format(
         category_string, image_relative_path, max_conf)
+
+    if options.include_size_range:
+
+        positive_detections = _get_positive_detections(detections,options,detection_categories)
+
+        min_size = None
+        max_size = None
+
+        for d in positive_detections:
+
+            assert 'bbox' in d
+            assert len(d['bbox']) >= 4
+            assert d['bbox'][2] > 0
+            assert d['bbox'][3] > 0
+            normalized_size = d['bbox'][2] * d['bbox'][3]
+            if (min_size is None) or (normalized_size < min_size):
+                min_size = normalized_size
+            if (max_size is None) or (normalized_size > max_size):
+                max_size = normalized_size
+
+        # ...for each detection
+
+        if min_size is None:
+            display_name += ' (no size range)'
+        else:
+            display_name += ' (size min/max: {:0.4f},{:0.4f})'.format(
+                min_size,max_size)
+
+    # ...if we're supposed to include the detection size range
 
     # Are there any bonus fields we need to include in each image header?
     if options.additional_image_fields_to_display is not None:
