@@ -217,8 +217,28 @@ def merge_detections(source_files,
         output_data['info']['detections_transferred_from'].append(os.path.basename(source_file))
         output_data['info']['detector'] = output_data['info']['detector'] + ' + ' + source_detector_name
 
-        assert source_data['detection_categories'] == output_data['detection_categories'], \
-            'Cannot merge files with different detection category maps'
+        ## Verify category compatibility
+
+        # Every source category has to exist in the target file...
+        for category_id in source_data['detection_categories']:
+            assert category_id in output_data['detection_categories'] and \
+                   source_data['detection_categories'][category_id] == \
+                   output_data['detection_categories'][category_id], \
+                   'Incompatible detection categories'
+
+        # ...but it's OK if the target file has some extra categories
+        #
+        # This check is technically redundant, but I'm keeping it here for clarity:
+        # the target file can have extra categories, but the categories that exist
+        # in the source file have to have the same names.
+        for category_id in output_data['detection_categories']:
+            if category_id in source_data['detection_categories']:
+                assert source_data['detection_categories'][category_id] == \
+                       output_data['detection_categories'][category_id], \
+                       'Incompatible detection categories'
+
+        if source_data['detection_categories'] != output_data['detection_categories']:
+            print('Warning: detection categories are compatible, but not identical')
 
         source_confidence_threshold = options.source_confidence_thresholds[i_source_file]
 
