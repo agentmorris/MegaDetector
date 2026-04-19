@@ -719,10 +719,11 @@ from speciesnet.geofence_utils import should_geofence_animal_classification
 from speciesnet.geofence_utils import geofence_animal_classification
 from speciesnet.ensemble import _load_taxonomy_from_file
 
-country = 'USA'
-state = 'CA'
+country = 'COL'
+state = None # 'CA'
 # taxon_name = 'neotamias species'
-taxon_name = 'eastern chipmunk'
+# taxon_name = 'eastern grey kangaroo'
+taxon_name = 'hippopotamus'
 
 taxonomy_map = _load_taxonomy_from_file(taxonomy_file)
 species_string = taxonomy_handler.species_string_to_canonical_species_string(taxon_name)

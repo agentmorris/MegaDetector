@@ -318,6 +318,7 @@ from megadetector.visualization.visualize_detector_output import \
     visualize_detector_output
 from megadetector.visualization.visualization_utils import \
     DEFAULT_BOX_THICKNESS, DEFAULT_LABEL_FONT_SIZE
+from megadetector.utils import write_html_image_list
 
 html_output_files = []
 
@@ -333,6 +334,10 @@ for i_job,job_info in enumerate(all_job_info):
 
     print('Visualizing job {}: {}'.format(i_job,job_info['job_name']))
 
+    html_options = write_html_image_list.write_html_image_list()
+    html_options['pageTitle'] = 'Comparison results: {}'.format(job_info['job_name'])
+    html_options['headerHtml'] = '<h2>Comparison results: {}</h2>\n'.format(job_info['job_name'])
+
     _ = visualize_detector_output(detector_output_path=file_to_visualize,
                                   out_dir=job_visualization_folder,
                                   images_dir=input_folder,
@@ -343,7 +348,7 @@ for i_job,job_info in enumerate(all_job_info):
                                   render_detections_only=False,
                                   classification_confidence_threshold=None,
                                   html_output_file=html_output_file,
-                                  html_output_options=None,
+                                  html_output_options=html_options,
                                   preserve_path_structure=False,
                                   parallelize_rendering=True,
                                   parallelize_rendering_n_cores=10,
@@ -458,6 +463,21 @@ if False:
     html_group['params']['aug'] = None # ['noaug','aug']
     html_group['params']['tiling'] = ['tiling']
     html_group['matching_jobs'] = find_matching_jobs(html_group)
+
+    # Choose a specific subset of jobs by name
+    if False:
+        html_group = {}
+        html_group['name'] = 'no-tiling-best'
+        html_group['matching_names'] = [
+            'aug_modern_none_mdv1000-redwood_no-tiling',
+            'aug_modern_none_mdv5a_no-tiling',
+            'aug_classic_none_mdv1000-redwood_no-tiling',
+            'aug_classic_1600_mdv1000-redwood_no-tiling',
+            'noaug_modern_none_mdv1000-redwood_no-tiling'
+        ]
+        html_group['matching_jobs'] = [x for x in all_job_info if x['job_name'] in html_group['matching_names']]
+        assert len(html_group['matching_jobs']) == len(html_group['matching_names'])
+
 
     print('Found {} matching jobs for {}'.format(
         len(html_group['matching_jobs']),

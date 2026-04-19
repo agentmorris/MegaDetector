@@ -28,7 +28,8 @@ class SizeCategorizationOptions:
 
         #: Thresholds to use for separation, as a fraction of the image size.
         #:
-        #: Should be sorted from smallest to largest.
+        #: Will get sorted by categorize_detections_by_size, so the order doesn't
+        #: matter, as long as the order matches size_category_names.
         self.size_thresholds = [0.95]
 
         #: List of category numbers to use in separation; uses all categories if None
@@ -40,6 +41,11 @@ class SizeCategorizationOptions:
         #: Categories to assign to thresholded ranges; should have the same length as
         #: "size_thresholds".
         self.size_category_names = ['large_detection']
+
+        #: Is the default category above the largest threshold in size_thresholds,
+        #: or below the smallest?  By default we are separating *large* detections
+        #: into a new category, so the default is smaller than the smallest threshold
+        self.default_category_is_smallest = True
 
 
 #%% Main functions
@@ -58,6 +64,7 @@ def categorize_detections_by_size(input_file,output_file=None,options=None):
         dict: data loaded from [input_file], with the new size-based categories.
         Identical to what's written to [output_file], if [output_file] is not None.
     """
+
     if options is None:
         options = SizeCategorizationOptions()
 
@@ -68,10 +75,12 @@ def categorize_detections_by_size(input_file,output_file=None,options=None):
     assert len(options.size_thresholds) == len(options.size_category_names), \
         'Options struct should have the same number of category names and size thresholds'
 
-    # Sort size thresholds and names from largest to smallest
+    # Sort size thresholds and names
     options.size_category_names = [x for _,x in sorted(zip(options.size_thresholds, # noqa
-                                                             options.size_category_names),reverse=True)]
-    options.size_thresholds = sorted(options.size_thresholds,reverse=True)
+                                                       options.size_category_names),
+                                                       reverse=options.default_category_is_smallest)]
+    options.size_thresholds = sorted(options.size_thresholds,
+                                     reverse=options.default_category_is_smallest)
 
     with open(input_file) as f:
         data = json.load(f)
@@ -82,6 +91,7 @@ def categorize_detections_by_size(input_file,output_file=None,options=None):
     max_key = max(category_keys)
 
     threshold_to_category_id = {}
+
     for i_threshold,threshold in enumerate(options.size_thresholds):
 
         category_id = str(max_key+1)
@@ -120,7 +130,7 @@ def categorize_detections_by_size(input_file,output_file=None,options=None):
                (d['category'] not in options.categories_to_separate):
                 continue
 
-            # https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#detector-outputs
+            # https://lila.science/megadetector-output-format
             w = d['bbox'][2]
             h = d['bbox'][3]
             detection_size = w*h
@@ -136,9 +146,17 @@ def categorize_detections_by_size(input_file,output_file=None,options=None):
                 metric = h
             assert metric is not None
 
+            # The order in which size_thresholds is sorted depends on the value of
+            # default_category_is_smallest
             for i_threshold,threshold in enumerate(options.size_thresholds):
 
-                if metric >= threshold:
+                category_matches = None
+                if options.default_category_is_smallest:
+                    category_matches = (metric >= threshold)
+                else:
+                    category_matches = (metric <= threshold)
+
+                if category_matches:
 
                     category_id = threshold_to_category_id[i_threshold]
 
@@ -148,6 +166,7 @@ def categorize_detections_by_size(input_file,output_file=None,options=None):
                     break
 
             # ...for each threshold
+
         # ...for each detection
 
     # ...for each image
