@@ -899,7 +899,7 @@ for i_task,task in tqdm(enumerate(task_info),total=len(task_info)):
     # im = task_results['images'][0]
     for im in task_results['images']:
 
-        # For paths to be relative.  The only semi-common scenario when this
+        # Make paths relative.  The only semi-common scenario when this
         # won't already be the case is when we're using tiled inference.
         if not os.path.isabs(im['file']):
             fn = path_join(input_path,im['file'])
