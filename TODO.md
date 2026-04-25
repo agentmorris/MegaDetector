@@ -53,19 +53,40 @@ E1
 
 !maintenance
 
+
+## Add --force_model_download to run_md_and_speciesnet
+
+run_detector_batch supports a --force_model_download argument to handle the case where model weights were partially downloaded; add a corresponding option to run_md_and_speciesnet.  It should apply to both the MD weights and the SpeciesNet weights.
+
+P0
+
+E0
+
+!feature
+
+
+## Improve and clarify statistics in analyze_classification_results
+
+analyze_classification_results.py takes a somewhat lazy approach to statistics computation: it is correct in a world where no categories are parents of other categories, and where each image contains a single species.  The more difficult cases should be handled more carefully, probably with additional options to, e.g., give "partial credit" for higher-level predictions that aren't wrong.  At the very least, explanatory text should be added to the reports to describe how statistics are computed wrt taxonomic levels and multi-species images.
+
+P1
+
+E1
+
+!feature
+
+
 ## Handle legacy setup.py issues
 
 Two dependencies - yolov9pip and clipboard - give this warning during pip installation:<br/><br/>
 
 DEPRECATION: Building 'yolov9pip' using the legacy setup.py bdist_wheel mechanism, which will be removed in a future version. pip 25.3 will enforce this behaviour change. A possible replacement is to use the standardized build interface by setting the `--use-pep517` option, (possibly combined with `--no-build-isolation`), or adding a `pyproject.toml` file to the source tree of 'yolov9pip'. Discussion can be found [here](https://github.com/pypa/pip/issues/6334).
 
-The yolov9pip part of this is a moot issue if I decide to remove the yolov9pip dependency, and the clipboard dependency is just for development.  Hence P2.
+The yolov9pip package is low-priority, since it's no longer included by default, and the clipboard dependency is just for development.  Hence P3.
 
-P2
+P3
 
 E2
-
-!also-see[remove-yolov9-dependency]
 
 !maintenance
 
@@ -101,6 +122,7 @@ P1
 E1
 
 !feature
+
 
 ## Allow excluding blanks in postprocessing
 
@@ -244,21 +266,6 @@ E2
 !maintenance
 
 
-## Incorrect results in some Mac environments
-
-In certain Apple silicon environments, MD produces incorrect results.  This is not specific to MD, this is a bug in YOLOv5.  See [this issue](https://github.com/ultralytics/yolov5/issues/12654) and [this question](https://github.com/ultralytics/yolov5/issues/12645) on the YOLOv5 repo for details and status.  As of 2025.10.29, this appears to be limited to a very narrow range of M1 Pro silicon (not M2/M3/M4, not M1 non-Pro, and not even all M1 Pro machines).  Because it's so rare, and because M1s are slowly disappearing from the universe, the goal here is not so much to fix it, rather to reliably identify this issue and disable MPS acceleration on impacted machines. but it's so rare that although it's reliably reproducible where it occurs, I don't have an easy way to identify impacted machines.
-
-This was a P0 E3, but as of 2025.11.07, it appears that this issue is resolved by upgrading to the most recent version of MacOS and to PyTorch 2.9.  Reducing to E1 because the only items left to do here is to  put a finer point on the minimum required OS/PyTorch versions for MPS inference.
-
-P0
-
-S-5
-
-E1
-
-!bug
-
-
 ## R wrappers
 
 A substantial number (most?) of our users prefer R, and we're forcing them to run a bunch of Python code.  It would be great to either wrap the inference process in R, or port the inference code to R.  IMO it's not urgent to do this for anything in the MD package other than the inference code.  It would likely be acceptable to provide an R wrapper that launches Python at the CLI; this simplifies the implementation quite a bit compared to porting and/or calling Python directly from R.
@@ -387,6 +394,17 @@ E2
 !testing
 
 
+## Add tests for get_gps_info
+
+Include sample jpg files with/without GPS info, validate that get_gps_info behaves as expected.  Ideally include a jpg file with "null island" GPS, i.e. GPS values of (0,0,0) or (nan,nan,nan), which are handled specially.
+
+P2
+
+E0
+
+!testing
+
+
 ## Formal evaluation of image size, augmentation, preprocessing mode
 
 There are several knobs the user can turn when trying to squeeze the most accuracy out of a specific MD model: specifically, the user can tinker with the inference image size, enabling image augmentation, and switching between "classic" and "modern" preprocessing.  I have not yet formally evaluated the performance impacts of these approaches, so this could use formal evaluation and documentation of best practices.
@@ -471,6 +489,8 @@ It's not clear what exactly will happen when this is deprecated.  The action ite
 
 In 2025.01.06, I reviewed this and dropped it from P0 to P1, and elevated the effort from E1 to E2.  pkg_resources isn't used much in the ultralytics-yolov5 package, but it's also not used in an esoteric corner of the package that will never be imported during normal MD use.  Specifically, it's imported in utils/general.py and loggers/__init__.py.  Both would be easy to replace with newer dependencies, but given that the repo from which this package was built is way out of date, and that there are a few other tiny things I'd love to fix anyway (e.g. the NMS timeout issue), the "right" solution would be to create a new package called something like "md-ultralytics-yolov5", fix all the things I want to fix (including the pkg_resources issue), and take a dependency on that.  But that's a hassle, so I won't do that unless this stops working.
 
+Update 2026.05.08: pkg_resources was finally removed from setuptools, so I pinned setuptools<82, which makes the warning go away, but isn't a good long-term solution.
+
 For posterity, the repo from which the [ultralytics-yolov5](https://pypi.org/project/ultralytics-yolov5) package builds is the [AushExcel/yolov5](https://github.com/AyushExel/yolov5) repo.  I created a snapshot of this repo at [agentmorris/ultralytics-yolov5](https://github.com/agentmorris/ultralytics-yolov5).  If this becomes a breaking issue, that's the repo from which I will create a new package.
 
 P1
@@ -519,7 +539,7 @@ YOLOv5 tells me that it's "fusing layers" twice during startup.  A little part o
 
 P0
 
-E1
+E0
 
 S-5
 
@@ -677,7 +697,7 @@ Nothing is "wrong" with the [MegaDetector Colab](https://github.com/agentmorris/
 
 P0
 
-E2
+E0
 
 !feature
 
@@ -938,19 +958,6 @@ E2
 !maintenance
 
 
-## Consider removing yolov9-pip dependency
-
-The megadetector package takes a dependency on yolov9pip, even though I don't think a lot of people will use MDv1000-cedar.  It would simplify installation if we removed this dependency, and asked users to install yolov9pip when they want to use MDv1000-cedar, like we do for MDv1000-larch.  The action item here is just to sit and think about this (E1), then do it if I decide to do it (E0).
-
-P1
-
-E1
-
-!name[remove-yolov9-dependency]
-
-!admin
-
-
 ## Load class names from detector files if available
 
 Currently we assume MegaDetector classes in run_detector_batch, and we allow custom class mappings via --class_mapping_filename.  Long ago, class names weren't stored in YOLO-style detectors, now they are, so, optionally load class names from detectors.  This doesn't really matter when using MegaDetector, but it removes the hassle of using --class_mapping_filename when using non-MD detectors.
@@ -1016,12 +1023,36 @@ E0
 
 ## Python 3.14 support
 
-Python 3.14 is enabled on a [branch](https://github.com/agentmorris/MegaDetector/tree/py314-support).  Tests pass with no changes to code on all of my personal Windows and Linux machines, but fail on Windows on the GitHub Actions runner ([failed run](https://github.com/agentmorris/MegaDetector/actions/runs/19089542677/job/54536961503)).  Figure out what's up with this, and create a new work item that reflects whatever changes are required for Python 3.14 support.
+Python 3.14 is enabled on a [branch](https://github.com/agentmorris/MegaDetector/tree/py314-support).  Tests pass with no changes to code on all of my personal Windows and Linux machines, but fail on Windows on the GitHub Actions runner ([failed run](https://github.com/agentmorris/MegaDetector/actions/runs/19089542677/job/54536961503)).  It passes on the Linux and Mac GHA runners.  Figure out what's up with this, and create a new work item that reflects whatever changes are required for Python 3.14 support.
 
-P0
+The specific error on the GH runner is an access violation with no meaningful stack trace; this appears to be a numpy compatibility issue, and the Internet doesn't seem surprised that this happens in some environments but not in others, even with identical numpy versions.  Consensus is that I should just wait this out; pre-built wheels for 3.14 will improve with time.  Dropped from P0 to P1 on 2026.01.06.  Also dropped from E1 to E0, because the expectation is that when this works, it will just magically work, I won't have to change any code.  All other 3.14 compatibility issues (all minor) are already handled on this branch.
 
-E1
+Still fails as of 2026.04.01.
+
+P1
+
+E0
 
 !maintenance
 
 
+## Windows support for WI project download 
+
+write_download_commands() in wi_platform_utils (which writes out a series of gcloud storage commands to download images for a WI project) assumes bash (writes .sh files, uses "wait" and "echo").  Add .bat support.
+
+P3
+
+E0
+
+!feature
+
+
+## URL cleanup in LILA files
+
+The "camera trap datasets" .csv file (with one row per dataset) and the Big CSV File (with one row per observation) have separate columns for Azure/GCP/AWS URLs.  This is no longer necessary, since all three copies have the same structure now.  This creates potential for errors when I update these files, and also bloats the already-giant observations file.  Condense these.
+
+P2
+
+E1
+
+!lila

@@ -130,7 +130,9 @@ class ClassificationSmoothingOptions:
         #: Only include these categories in the smoothing process (None to use all categories)
         self.detection_category_names_to_smooth = ['animal']
 
-        #: Debug options
+        ## Debug options
+
+        #: Enable additional debug output for a particular image
         self.break_at_image = None
 
         ## Populated internally
@@ -781,6 +783,9 @@ def _smooth_classifications_for_list_of_detections(detections,
 
     # ...if the dominant category is legit and we have taxonomic information available
 
+    if verbose_debug_enabled:
+        print('Made {} same-family changes'.format(n_within_family_smoothing_changes))
+
     return {'n_other_classifications_changed_this_image':n_other_classifications_changed_this_image,
             'n_detections_flipped_this_image':n_detections_flipped_this_image,
             'n_taxonomic_changes_this_image':n_taxonomic_changes_this_image,
@@ -1226,7 +1231,7 @@ def restrict_to_taxa_list(taxa_list,
             same common name
     """
 
-    #%% Read target taxa list
+    ##%% Read target taxa list
 
     taxa_list_df = pd.read_csv(taxa_list)
 
@@ -1290,7 +1295,7 @@ def restrict_to_taxa_list(taxa_list,
     # ...for each row in the custom taxonomy list
 
 
-    #%% Read taxonomy file
+    ##%% Read taxonomy file
 
     with open(speciesnet_taxonomy_file,'r') as f:
         speciesnet_taxonomy_list = f.readlines()
@@ -1367,7 +1372,7 @@ def restrict_to_taxa_list(taxa_list,
         _insert_taxonomy_string(s)
 
 
-    #%% Make sure all parent taxa are represented in the taxonomy
+    ##%% Make sure all parent taxa are represented in the taxonomy
 
     # In theory any taxon that appears as the parent of another taxon should
     # also be in the taxonomy, but this isn't always true, so we fix it here.
@@ -1428,7 +1433,7 @@ def restrict_to_taxa_list(taxa_list,
     del new_taxon_string_to_missing_tokens
 
 
-    #%% Store custom common name mappings based on the taxonomy list
+    ##%% Store custom common name mappings based on the taxonomy list
 
     speciesnet_latin_name_to_output_common_name = {}
 
@@ -1440,7 +1445,7 @@ def restrict_to_taxa_list(taxa_list,
                 target_latin_to_common[latin_name]
 
 
-    #%% Make sure all taxa on the allow-list are in the taxonomy
+    ##%% Make sure all taxa on the allow-list are in the taxonomy
 
     n_failed_mappings = 0
 
@@ -1459,7 +1464,7 @@ def restrict_to_taxa_list(taxa_list,
         raise ValueError('Cannot continue with taxonomic restriction')
 
 
-    #%% For the allow-list, map each parent taxon to a set of allowable child taxa
+    ##%% For the allow-list, map each parent taxon to a set of allowable child taxa
 
     # Maps parent names to all allowed child names, or None if this is the
     # lowest-level allowable taxon on this path
@@ -1563,14 +1568,14 @@ def restrict_to_taxa_list(taxa_list,
                 '"None" should only appear alone in a child taxon list'
 
 
-    #%% If we were just validating the custom taxa file, we're done
+    ##%% If we were just validating the custom taxa file, we're done
 
     if input_file is None:
         print('Finished validating custom taxonomy list')
         return
 
 
-    #%% Map all predictions that exist in this dataset...
+    ##%% Map all predictions that exist in this dataset...
 
     # ...to the prediction we should generate.
 
@@ -1704,7 +1709,7 @@ def restrict_to_taxa_list(taxa_list,
                 output_taxon_string))
 
 
-    #%% Map input category IDs to output category IDs
+    ##%% Map input category IDs to output category IDs
 
     speciesnet_taxon_string_to_latin_name = \
         invert_dictionary(speciesnet_latin_name_to_taxon_string)
@@ -1765,7 +1770,7 @@ def restrict_to_taxa_list(taxa_list,
     # ...for each category (mapping input category IDs to output category IDs)
 
 
-    #%% Remap all category labels
+    ##%% Remap all category labels
 
     assert len(set(output_taxon_string_to_category_id.keys())) == \
            len(set(output_taxon_string_to_category_id.values())), \
@@ -1821,7 +1826,7 @@ def restrict_to_taxa_list(taxa_list,
         output_category_id_to_taxon_string
 
 
-    #%% Write output
+    ##%% Write output
 
     write_json(output_file,output_data)
 
@@ -1841,7 +1846,8 @@ def merge_classification_categories(target_file,
     Uses only category names, does not use category descriptions to decide
     whether to merge categories.  Behavior is undefined if multiple source
     categories have the same name.  Does not look at detection categories at
-    all.
+    all.  If neither file has classification categories, just re-writes
+    the source file.  Errors if exactly one file has classification categories.
 
     Args:
         target_file (str or dict): target .json file, in MD format (or an
@@ -1872,6 +1878,24 @@ def merge_classification_categories(target_file,
             'Could not find source file {}'.format(source_file)
         with open (source_file,'r') as f:
             source_d = json.load(f)
+
+
+    ##%% No-op is neither file has classification categories
+
+    source_has_classifications = ('classification_categories' in source_d)
+    target_has_classifications = ('classification_categories' in target_d)
+
+    if not (source_has_classifications or target_has_classifications):
+        print('Neither source nor target has classification categories, bypassing category merge')
+        if output_file is not None:
+            write_json(output_file,source_d)
+        return source_d
+
+
+    ##%% Error if only one file has classification categories
+
+    if source_has_classifications != target_has_classifications:
+        raise ValueError('Source and target disagree on whether classifications are present')
 
 
     ##%% Map categories
@@ -2120,8 +2144,8 @@ def combine_redundant_classification_categories(input_file,
                 if conf < classification_threshold:
                     continue
                 input_category_id = det['classifications'][0][0]
-                intput_category_description = d['classification_category_descriptions'][input_category_id]
-                description_to_count[intput_category_description] += 1
+                input_category_description = d['classification_category_descriptions'][input_category_id]
+                description_to_count[input_category_description] += 1
             # ...for each detection
         # ...for each image
 

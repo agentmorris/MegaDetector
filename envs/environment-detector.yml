@@ -91,7 +91,10 @@ dependencies:
     #
     # https://pypi.org/project/pyyolov9/
     # https://pypi.org/project/yolov9py/
-    - yolov9pip==0.0.4
+    #
+    # No longer including this by default.
+    #
+    # - yolov9pip==0.0.4
     
     # yolov9pip triggers the installation of a more recent numpy version, 
     # for reasons that don't matter to MegaDetector.  Insist on 1.23.5.

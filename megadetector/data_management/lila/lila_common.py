@@ -181,7 +181,7 @@ def read_lila_metadata(metadata_dir, force_download=False):
     return metadata_table
 
 
-def read_lila_all_images_file(metadata_dir, force_download=False):
+def read_lila_all_images_file(metadata_dir, force_download=False, read_to_dataframe=True):
     """
     Downloads if necessary - then unzips if necessary - the .csv file with label mappings for
     all LILA files, and opens the resulting .csv file as a Pandas DataFrame.
@@ -190,9 +190,11 @@ def read_lila_all_images_file(metadata_dir, force_download=False):
         metadata_dir (str): folder to use for temporary LILA metadata files
         force_download (bool, optional): download the metadata file even if
             the local file exists.
+        read_to_dataframe (bool, optional): read the .csv file into a dataframe
 
     Returns:
-        pd.DataFrame: a DataFrame containing one row per identification in a LILA camera trap image
+        pd.DataFrame: a DataFrame containing one row per identification in a LILA camera trap
+        image, or None if read_to_dataframe is False
     """
 
     p = urlparse(lila_all_images_url)
@@ -210,8 +212,10 @@ def read_lila_all_images_file(metadata_dir, force_download=False):
     else:
         print('{} already unzipped'.format(unzipped_csv_filename))
 
-    df = pd.read_csv(unzipped_csv_filename)
+    if not read_to_dataframe:
+        return None
 
+    df = pd.read_csv(unzipped_csv_filename)
     return df
 
 

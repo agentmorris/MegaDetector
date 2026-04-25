@@ -25,6 +25,7 @@ import webbrowser
 import subprocess
 import re
 import pytest
+import stat
 
 from zipfile import ZipFile
 from datetime import datetime
@@ -568,7 +569,8 @@ def clean_filename(filename,
                    allow_list=VALID_FILENAME_CHARS,
                    char_limit=CHAR_LIMIT,
                    force_lower=False,
-                   remove_trailing_leading_whitespace=True):
+                   remove_trailing_leading_whitespace=True,
+                   replace_whitespace=None):
     r"""
     Removes non-ASCII and other invalid filename characters (on any
     reasonable OS) from a filename, then optionally trims to a maximum length.
@@ -587,6 +589,8 @@ def clean_filename(filename,
         remove_trailing_leading_whitespace (bool, optional): remove trailing and
             leading whitespace from each component of a path, e.g. does not allow
             a/b/c /d.jpg
+        replace_whitespace (str, optional): replace all contiguous whitespace
+            with this string, or None to leave whitespace intact
     Returns:
         str: cleaned version of [filename]
     """
@@ -615,6 +619,8 @@ def clean_filename(filename,
         cleaned_filename = cleaned_filename[:char_limit]
     if force_lower:
         cleaned_filename = cleaned_filename.lower()
+    if replace_whitespace is not None:
+        cleaned_filename = re.sub(r'\s+', replace_whitespace, cleaned_filename)
     return cleaned_filename
 
 
@@ -685,6 +691,26 @@ def is_executable(filename):
     # https://stackoverflow.com/questions/11210104/check-if-a-program-exists-from-a-python-script
 
     return which(filename) is not None
+
+
+def make_executable(filename,catch_exceptions=False):
+    """
+    Make [filename] executable.
+
+    Args:
+        filename (str): filename to make executable
+        catch_exceptions (bool, optional): treat errors as warnings
+    """
+
+    try:
+        st = os.stat(filename)
+        os.chmod(filename, st.st_mode | stat.S_IEXEC)
+    except Exception as e:
+        if not catch_exceptions:
+            raise
+        else:
+            print('Warning: error making {} executable:\n{}'.format(
+                filename,str(e)))
 
 
 #%% WSL utilities
@@ -1624,8 +1650,57 @@ def unzip_file(input_file, output_folder=None):
     if output_folder is None:
         output_folder = os.path.dirname(input_file)
 
+    if len(output_folder) > 0:
+        os.makedirs(output_folder, exist_ok=True)
+
     with zipfile.ZipFile(input_file, 'r') as zf:
         zf.extractall(output_folder)
+
+
+def parallel_unzip_files(input_files,
+                         output_folder=None,
+                         max_workers=16,
+                         use_threads=True,
+                         verbose=False):
+    """
+    Unzips one or more zipfiles in parallel.
+
+    Args:
+        input_files (list): list of zipfiles to unzip
+        output_folder (str, optional): folder to which we should unzip all files in
+            [input_files], defaults to unzipping each file to the folder where it lives
+        max_workers (int, optional): number of concurrent workers, set to <= 1 to disable parallelism
+        use_threads (bool, optional): whether to use threads (True) or processes (False); ignored if
+            max_workers <= 1
+        verbose (bool, optional): enable additional debug console output
+    """
+
+    if output_folder is not None:
+        os.makedirs(output_folder, exist_ok=True)
+
+    n_workers = min(max_workers, len(input_files))
+
+    if use_threads:
+        pool = ThreadPool(n_workers)
+    else:
+        pool = Pool(n_workers)
+
+    try:
+
+        with tqdm(total=len(input_files)) as pbar:
+            for i, _ in enumerate(pool.imap_unordered(
+                    partial(unzip_file, output_folder=output_folder),
+                    input_files)):
+                pbar.update()
+
+    finally:
+
+        pool.close()
+        pool.join()
+        if verbose:
+            print('Pool closed and joined for parallel unzipping')
+
+# ...def parallel_unzip_files(...)
 
 
 #%% File hashing functions
@@ -2754,6 +2829,56 @@ class TestPathUtils:
         if os.path.exists(zef_file3_zip + ".zip"): os.remove(zef_file3_zip + ".zip")
 
 
+    def test_parallel_unzip_files(self):
+        """
+        Test the parallel_unzip_files function.
+        """
+
+        # Create some files to zip
+        test_parallel_dir = os.path.join(self.test_dir, 'parallel_unzip_test')
+        os.makedirs(test_parallel_dir, exist_ok=True)
+        zip_files = []
+        n_zip_files = 3
+
+        for i_file in range(0,n_zip_files):
+
+            file_to_zip = os.path.join(
+                test_parallel_dir, 'to_zip_{}.txt'.format(i_file))
+            content = 'test content for zipping {}'.format(i_file)
+            with open(file_to_zip, 'w') as f:
+                f.write(content)
+            zip_fn = zip_file(file_to_zip)
+            zip_files.append(zip_fn)
+
+        # ...for each zipfile
+
+        # Unzip them in parallel to a new folder
+        unzip_folder = os.path.join(self.test_dir, 'unzipped_parallel')
+        parallel_unzip_files(zip_files, output_folder=unzip_folder, max_workers=2)
+
+        # Verify the unzipped files
+        for i_file in range(0,n_zip_files):
+            unzipped_file = os.path.join(
+                unzip_folder, 'to_zip_{}.txt'.format(i_file))
+            assert os.path.isfile(unzipped_file)
+            with open(unzipped_file, 'r') as f:
+                assert f.read() == 'test content for zipping {}'.format(i_file)
+
+        # Unzip them in parallel without an explicit output folder (should go back to original)
+        # We need to delete the original .txt files first to be sure
+        for i_file in range(0,n_zip_files):
+            os.remove(os.path.join(test_parallel_dir, 'to_zip_{}.txt'.format(i_file)))
+
+        parallel_unzip_files(zip_files, output_folder=None, max_workers=2)
+
+        for i_file in range(0,3):
+            unzipped_file = os.path.join(
+                test_parallel_dir, 'to_zip_{}.txt'.format(i_file))
+            assert os.path.isfile(unzipped_file)
+            with open(unzipped_file, 'r') as f:
+                assert f.read() == 'test content for zipping {}'.format(i_file)
+
+
     def test_compute_file_hash(self):
         """
         Test compute_file_hash and parallel_compute_file_hashes.
@@ -2867,6 +2992,7 @@ def test_path_utils():
         test_instance.test_zip_files_into_single_zipfile()
         test_instance.test_add_files_to_single_tar_file()
         test_instance.test_parallel_zip_individual_files_and_folders()
+        test_instance.test_parallel_unzip_files()
         test_instance.test_compute_file_hash()
 
     finally:

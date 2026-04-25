@@ -54,13 +54,18 @@ ds_name_to_annotation_level = {}
 ds_name_to_annotation_level['Caltech Camera Traps'] = 'image'
 ds_name_to_annotation_level['ENA24'] = 'image'
 ds_name_to_annotation_level['Island Conservation Camera Traps'] = 'image'
-ds_name_to_annotation_level['Channel IslandsCamera Traps'] = 'image'
+ds_name_to_annotation_level['Channel Islands Camera Traps'] = 'image'
 ds_name_to_annotation_level['WCS Camera Traps'] = 'sequence'
 ds_name_to_annotation_level['Wellington Camera Traps'] = 'sequence'
 ds_name_to_annotation_level['NACTI'] = 'unknown'
 ds_name_to_annotation_level['Seattle(ish) Camera Traps'] = 'image'
+ds_name_to_annotation_level['Oregon Critters'] = 'image'
+ds_name_to_annotation_level['Felidae Conservation Fund 2020-2025'] = 'image'
+ds_name_to_annotation_level['WSU Lynx'] = 'sequence'
 
 known_unmapped_labels = set(['WCS Camera Traps:#ref!'])
+
+expected_no_location_datasets = set(['ENA24','Missouri Camera Traps','Desert Lion Conservation Camera Traps'])
 
 debug_max_images_per_dataset = -1
 if debug_max_images_per_dataset > 0:
@@ -83,6 +88,9 @@ def _clearnan(v):
 #%% Download and parse the metadata file
 
 metadata_table = read_lila_metadata(metadata_dir)
+
+for ds_name in ds_name_to_annotation_level:
+    assert ds_name in metadata_table
 
 # To select an individual data set for debugging
 if False:
@@ -121,9 +129,19 @@ for i_row,row in taxonomy_df.iterrows():
 
 # The order of these headers needs to match the order in which fields are added later in this cell;
 # don't mess with this order.
-header = ['dataset_name','url_gcp','url_aws','url_azure',
-          'image_id','sequence_id','location_id','frame_num',
-          'original_label','scientific_name','common_name','datetime','annotation_level']
+header = ['dataset_name',
+          'url_gcp',
+          'url_aws',
+          'url_azure',
+          'image_id',
+          'sequence_id',
+          'location_id',
+          'frame_num',
+          'original_label',
+          'scientific_name',
+          'common_name',
+          'datetime',
+          'annotation_level']
 
 header.extend(taxonomy_levels_to_include)
 
@@ -410,9 +428,14 @@ else:
 
 # Expected: ENA24, Missouri Camera Traps, Desert Lion Conservation Camera Traps
 
+no_location_datasets = set()
 for ds_name in dataset_name_to_locations.keys():
+    assert len(dataset_name_to_locations[ds_name]) > 0
     if len(dataset_name_to_locations[ds_name]) == 1:
+        no_location_datasets.add(ds_name)
         print('No location information for {}'.format(ds_name))
+
+assert no_location_datasets == expected_no_location_datasets
 
 
 #%% Preview constants

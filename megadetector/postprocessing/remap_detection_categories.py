@@ -48,7 +48,7 @@ def remap_detection_categories(input_file,
         overwrite (bool, optional): whether to overwrite [output_file] if it exists; if this is True and
             [output_file] exists, this function is a no-op
         invalid_category_handling (str, optional): what to do about categories that are not in
-            the input file's category list ('error' or 'unknown'), if 'uknown', creates a new
+            the input file's category list ('error' or 'unknown'), if 'unknown', creates a new
             "unknown" category
 
     """

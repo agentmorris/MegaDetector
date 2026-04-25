@@ -5,7 +5,7 @@ requires = [
 
 [project]
 name = "megadetector"
-version = "10.0.17"
+version = "10.0.20"
 description = "MegaDetector is an AI model that helps conservation folks spend less time doing boring things with camera trap images."
 readme = "README-package.md"
 requires-python = ">=3.9,<3.15"
@@ -55,6 +55,7 @@ dependencies = [
   "python-dateutil",
   "send2trash",
   "clipboard",
+  "setuptools<82",
   
   # Not imported directly, but required to de-serialize some models
   "dill",
@@ -64,14 +65,23 @@ dependencies = [
   "pytest",
   
   # PyTorch/yolo stuff
+  #
+  # Note this is *not* the "ultralytics" package *or* the package called "yolov5".  This
+  # is a snapshot of the yolov5 code base that predates Ultralytics's switch to an AGPL license.
   "ultralytics-yolov5 == 0.1.1",
-  "yolov9pip == 0.0.4",
+  
+  # Let the user install yolov9pip if they want to use YOLOv9 models.
+  #
+  # "yolov9pip == 0.0.4",
   
   # Let ultralytics-yolov5 install torch
+  #
   # "torch >= 2.0.1",
   # "torchvision >= 0.15.2",  
   
-  # Let the user install ultralytics if they want to use YOLOv11 models
+  # Let the user install the ultralytics package if they want to use YOLOv11 
+  # models.
+  #
   # ultralytics
   
   # PyTorch will get installed by ultralytics-yolov5
@@ -81,6 +91,7 @@ dependencies = [
   
   # This is a compatible alternative to ultralytics-yolov5, just keeping it 
   # here for posterity.
+  #
   # "yolov5 == 7.0.13"
 ]
 

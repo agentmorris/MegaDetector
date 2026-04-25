@@ -18,22 +18,20 @@ import os
 import sys
 import time
 
-import pandas as pd
-import numpy as np
-
 import humanfriendly
 
 from itertools import compress
+from collections import defaultdict
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
+from copy import deepcopy
 from tqdm import tqdm
 
 from megadetector.utils.write_html_image_list import write_html_image_list
+from megadetector.utils.path_utils import clean_filename
+from megadetector.utils.ct_utils import is_empty
 from megadetector.data_management.cct_json_utils import IndexedJsonDb
 from megadetector.visualization import visualization_utils as vis_utils
-
-def _isnan(x):
-    return (isinstance(x,float) and np.isnan(x))
 
 
 #%% Settings
@@ -60,10 +58,13 @@ class DbVizOptions:
         #: html_options['maxFiguresPerHtmlFile']
         #:
         #: ...which can be used to paginate previews to a number of images that will load well
-        #: in a browser (5000 is a reasonable limit).
+        #: in a browser (1000 is a reasonable limit).
         self.html_options = write_html_image_list()
 
         #: Whether to sort images by filename (True) or randomly (False)
+        #:
+        #: This is ignored if max_sequence_length is not None, in which case
+        #: we always sort by sequence ID, then frame number.
         self.sort_by_filename = True
 
         #: Only show images that contain bounding boxes
@@ -147,6 +148,20 @@ class DbVizOptions:
         #:
         #: For example: ['AliceBlue', 'Red', 'RoyalBlue', 'Gold', 'Chartreuse']
         self.colormap = None
+
+        #: Should we create separate pages for each category (within the sampled set)?
+        #:
+        #: Images with multiple categories will be included in all relevant pages.
+        self.create_category_pages = False
+
+        #: If this is None, we just sample images, and show images.  If this is
+        #: not None, we sample images, but we also show the other images in the sequences
+        #: containing our sampled images.  If this is <=0, there is no limit on the
+        #: number of images we'll show per sequences.  If this is >0, we will cap the number
+        #: of images shown per sequence; no guarantee is made about which images will
+        #: be selected in that case.  This only impacts the number of images added as
+        #: "sequence friends" of images that get sampled.
+        self.max_sequence_length = None
 
 
 #%% Core functions
@@ -273,34 +288,111 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
 
     # ...if we need to include/exclude categories
 
-    # Put the annotations in a dataframe so we can select all annotations for a given image
-    print('Creating data frames')
-    df_anno = pd.DataFrame(annotations)
-    df_img = pd.DataFrame(images)
-
     # Construct label map
     label_map = {}
     for cat in categories:
         label_map[int(cat['id'])] = cat['name']
 
+    # Map sequence IDs to images if necessary
+    sequence_id_to_images = defaultdict(list)
+
+    if options.max_sequence_length is not None:
+        for im in images:
+            if 'seq_id' in im:
+                sequence_id_to_images[im['seq_id']].append(im)
+
     # Take a sample of images
     if options.num_to_visualize is not None:
-        if options.num_to_visualize > len(df_img):
+        if options.num_to_visualize > len(images):
             print('Warning: asked to visualize {} images, but only {} are available, keeping them all'.\
-                  format(options.num_to_visualize,len(df_img)))
+                  format(options.num_to_visualize,len(images)))
         else:
-            df_img = df_img.sample(n=options.num_to_visualize,random_state=options.random_seed)
+            random.seed(options.random_seed)
+            images = random.sample(images,options.num_to_visualize)
 
+    # List of dicts containing HTML image information suitable for passing to
+    # write_html_image_list
     images_html = []
 
-    # Set of dicts representing inputs to render_db_bounding_boxes:
+    # Set of dicts representing inputs to _render_image_info, with fields:
     #
-    # bboxes, box_classes, image_path
+    # bboxes, box_classes, tags, img_path, output_file_name, boxes_are_normalies
     rendering_info = []
+
+    image_id_to_annotations = defaultdict(list)
+
+    for ann in annotations:
+        image_id_to_annotations[ann['image_id']].append(ann)
+
+    # Do we need to find all the images that are in the same
+    # sequence as the sampled images?
+    if options.max_sequence_length is not None:
+
+        print('Preparing sequence friends')
+
+        seq_id_to_images_rendered = defaultdict(int)
+
+        # Don't add images that are already in the list
+        image_ids_already_sampled = set()
+        for im in images:
+            image_ids_already_sampled.add(im['id'])
+            if 'seq_id' in im:
+                seq_id_to_images_rendered[im['seq_id']] += 1
+
+        images_to_add = []
+
+        # For every image we've decided to render, find all her
+        # sequence friends
+        for im in images:
+
+            if 'seq_id' not in im:
+                continue
+
+            seq_id = im['seq_id']
+
+            # This is *all* the images in this sequence, regardless of
+            # whether we've already added them
+            images_this_sequence = sequence_id_to_images[seq_id]
+
+            for candidate_im in images_this_sequence:
+
+                # Have we already hit the maximum number of images for this sequence?
+                if (options.max_sequence_length > 0) and \
+                   (seq_id_to_images_rendered[seq_id] >= options.max_sequence_length):
+                    # Don't assert this, we may have more than max_sequence_length images
+                    # if we just happened to sample that way, we just won't add more.
+                    # assert seq_id_to_images_rendered[seq_id] == options.max_sequence_length
+                    if options.verbose:
+                        print('Already rendered {} images from sequence {}'.format(
+                            options.max_sequence_length,seq_id))
+                    break
+
+                assert candidate_im['seq_id'] == seq_id
+
+                # Add this image if necessary
+                if candidate_im['id'] not in image_ids_already_sampled:
+
+                    images_to_add.append(candidate_im)
+                    image_ids_already_sampled.add(candidate_im['id'])
+                    seq_id_to_images_rendered[seq_id] += 1
+
+            # ...for each sequence friend of the current image
+
+        # ...for each image in the sampled set
+
+        print('Adding {} new images ({} initially) as sequence friends'.format(
+            len(images_to_add),len(images)))
+        images.extend(images_to_add)
+
+        # Double-check that we didn't create duplicates
+        all_image_ids = [im['id'] for im in images]
+        assert len(all_image_ids) == len(set(all_image_ids))
+
+    # ...if we need to add sequence friends for every sampled image
 
     print('Preparing rendering list')
 
-    for i_image,img in tqdm(df_img.iterrows(),total=len(df_img)):
+    for i_image,img in tqdm(enumerate(images),total=len(images)):
 
         img_id = img['id']
         assert img_id is not None
@@ -312,7 +404,10 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         else:
             img_path = os.path.join(image_base_dir,img_relative_path).replace('\\','/')
 
-        annos_i = df_anno.loc[df_anno['image_id'] == img_id, :] # all annotations on this image
+        if img_id in image_id_to_annotations:
+            annotations_this_image = image_id_to_annotations[img_id]
+        else:
+            annotations_this_image = []
 
         bboxes = []
         box_classes = []
@@ -328,28 +423,27 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         boxes_are_normalized = None
 
         # Iterate over annotations for this image
-        # i_ann = 0; anno = annos_i.iloc[i_ann]
-        for i_ann,anno in annos_i.iterrows():
+        for i_ann,ann in enumerate(annotations_this_image):
 
             if options.extra_annotation_fields_to_print is not None:
-                field_names = list(anno.index)
+                field_names = ann.keys()
                 for field_name in field_names:
                     if field_name in options.extra_annotation_fields_to_print:
-                        field_value = anno[field_name]
-                        if (field_value is not None) and (not _isnan(field_value)):
+                        field_value = ann[field_name]
+                        if not is_empty(field_value):
                             extra_annotation_field_string += ' ({}:{})'.format(
                                 field_name,field_value)
 
             if options.confidence_threshold is not None:
-                assert options.confidence_field_name in anno, \
+                assert options.confidence_field_name in ann, \
                     'Error: confidence thresholding requested, ' + \
                         'but at least one annotation does not have the {} field'.format(
                             options.confidence_field_name)
-                if anno[options.confidence_field_name] < options.confidence_threshold:
+                if ann[options.confidence_field_name] < options.confidence_threshold:
                     continue
 
-            if 'sequence_level_annotation' in anno:
-                b_sequence_level_annotation = anno['sequence_level_annotation']
+            if 'sequence_level_annotation' in ann:
+                b_sequence_level_annotation = ann['sequence_level_annotation']
                 if b_sequence_level_annotation:
                     annotation_level = 'sequence'
                 else:
@@ -359,7 +453,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
                 elif annotation_level_for_image != annotation_level:
                     annotation_level_for_image = 'mixed'
 
-            category_id = anno['category_id']
+            category_id = ann['category_id']
             category_name = label_map[category_id]
             if options.add_search_links:
                 category_name = category_name.replace('"','')
@@ -368,32 +462,32 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
 
             image_categories.add(category_name)
 
-            assert not ('bbox' in anno and 'bbox_relative' in anno), \
+            assert not ('bbox' in ann and 'bbox_relative' in ann), \
                 "An annotation can't have both an absolute and a relative bounding box"
 
             box_field = 'bbox'
-            if 'bbox_relative' in anno:
+            if 'bbox_relative' in ann:
                 box_field = 'bbox_relative'
                 assert (boxes_are_normalized is None) or (boxes_are_normalized), \
                     "An image can't have both absolute and relative bounding boxes"
                 boxes_are_normalized = True
-            elif 'bbox' in anno:
+            elif 'bbox' in ann:
                 assert (boxes_are_normalized is None) or (not boxes_are_normalized), \
                     "An image can't have both absolute and relative bounding boxes"
                 boxes_are_normalized = False
 
-            if box_field in anno:
-                bbox = anno[box_field]
+            if box_field in ann:
+                bbox = ann[box_field]
                 if isinstance(bbox,float):
                     assert math.isnan(bbox), "I shouldn't see a bbox that's neither a box nor NaN"
                     continue
                 bboxes.append(bbox)
-                box_classes.append(anno['category_id'])
+                box_classes.append(ann['category_id'])
 
                 box_score_string = ''
                 if options.confidence_field_name is not None and \
-                   options.confidence_field_name in anno:
-                       score = anno[options.confidence_field_name]
+                   options.confidence_field_name in ann:
+                       score = ann[options.confidence_field_name]
                        box_score_string = '({}%)'.format(round(100 * score))
                 box_score_strings.append(box_score_string)
 
@@ -438,7 +532,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
 
         flag_string = ''
 
-        if ('flags' in img) and (not _isnan(img['flags'])):
+        if ('flags' in img) and (not is_empty(img['flags'])):
             flag_string = ', flags: {}'.format(str(img['flags']))
 
         extra_field_string = ''
@@ -452,8 +546,9 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
                         field_name,str(img[field_name]))
 
         # We're adding html for an image before we render it, so it's possible this image will
-        # fail to render.  For applications where this script is being used to debua a database
-        # (the common case?), this is useful behavior, for other applications, this is annoying.
+        # fail to render.  For applications where this script is being used to debug a database
+        # (the common case), this is useful behavior, because we still see a record of this
+        # item in the HTML output.  For other applications, it's annoying to have broken images.
         image_dict = \
         {
             'filename': '{}/{}'.format('rendered_images', file_name),
@@ -461,16 +556,45 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
                 filename_text, img_id, len(bboxes), frame_string, image_classes,
                 label_level_string, flag_string, extra_field_string, extra_annotation_field_string),
             'textStyle': 'font-family:verdana,arial,calibri;font-size:80%;' + \
-                'text-align:left;margin-top:20;margin-bottom:5'
+                'text-align:left;margin-top:20;margin-bottom:5;',
+            'imageStyle':'max-width:95%;',
+            'image_categories': image_categories
         }
+
+        # Make it clear which images start a new sequence
+        if (options.max_sequence_length is not None) and \
+           ('frame_num' in img) and ('seq_id' in img) and \
+           (img['frame_num'] is not None) and (img['frame_num'] in (0,-1)):
+            sequence_header = '<span style="font-weight:bold;font-size:120%">Sequence {}</span><br/><br/>'.format(
+                img['seq_id'])
+            image_dict['title'] = sequence_header + image_dict['title']
+
         if options.include_image_links:
             image_dict['linkTarget'] = img_path
 
+        for field_name in ('seq_id','frame_num'):
+            if field_name in img:
+                image_dict[field_name] = img[field_name]
+
         images_html.append(image_dict)
 
-    # ...for each image
+    # ...for each sampled image
 
-    def render_image_info(rendering_info):
+    def _render_image_info(rendering_info):
+        """
+        Render one image.
+
+        Args:
+            rendering_info (dict): a dict with fields:
+                - img_path: the absolute path (or URL) to the input image
+                - bboxes: a list of bbox dicts to render (or [])
+                - bbox_classes: a list of category IDs the same length as [bboxes]
+                - output_file_name: the relative output path to which we should render
+                - tags (optional): a list of additional text tags to include with each box
+
+        Returns:
+            bool: True if rendering was successful, else False
+        """
 
         img_path = rendering_info['img_path']
         bboxes = rendering_info['bboxes']
@@ -507,7 +631,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
             print('Image {} failed to open, error: {}'.format(img_path, e))
             return False
 
-        rendering_label_map = None
+        rendering_label_map = label_map
         if options.custom_category_mapping is not None:
             rendering_label_map = options.custom_category_mapping
 
@@ -529,7 +653,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
 
         return True
 
-    # ...def render_image_info(...)
+    # ...def _render_image_info(...)
 
     print('Rendering images')
     start_time = time.time()
@@ -555,7 +679,7 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
                     pool = Pool(options.parallelize_rendering_n_cores)
                 print('Rendering images with {} {}'.format(options.parallelize_rendering_n_cores,
                                                            worker_string))
-            rendering_success = list(tqdm(pool.imap(render_image_info, rendering_info),
+            rendering_success = list(tqdm(pool.imap(_render_image_info, rendering_info),
                                      total=len(rendering_info)))
         finally:
             if pool is not None:
@@ -567,32 +691,132 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
 
         rendering_success = []
         for file_info in tqdm(rendering_info):
-            rendering_success.append(render_image_info(file_info))
+            rendering_success.append(_render_image_info(file_info))
 
     elapsed = time.time() - start_time
 
     print('Rendered {} images in {} ({} successful)'.format(
         len(rendering_info),humanfriendly.format_timespan(elapsed),sum(rendering_success)))
 
-    if options.sort_by_filename:
-        images_html = sorted(images_html, key=lambda x: x['filename'])
+    # If we added every sampled image's sequence friends, we sort by sequence ID,
+    # then frame number
+    if options.max_sequence_length is not None:
+
+        # Add fields we need for sorting by sequence
+        for im in images_html:
+            if 'seq_id' not in im:
+                im['seq_id'] = 'no_sequence_id'
+            if 'frame_num' not in im:
+                im['frame_num'] = -1
+
+        # Sort the list of dicts "images_html" by the
+        # field "seq_id", then "frame_num", then "filename"
+        images_html = sorted(images_html,
+                             key=lambda x: (x['seq_id'], x['frame_num'], x['filename']))
+
     else:
-        random.shuffle(images_html)
 
-    html_output_file = os.path.join(output_dir, 'index.html')
+        if options.sort_by_filename:
+            images_html = sorted(images_html, key=lambda x: x['filename'])
+        else:
+            random.shuffle(images_html)
 
-    html_options = options.html_options
-    if isinstance(db_path,str):
-        html_options['headerHtml'] = '<h1>Sample annotations from {}</h1>'.format(db_path)
+    # ...if we need to sort using sequence information
+
+    html_output_file = None
+
+    if options.create_category_pages:
+
+        all_categories = set()
+        for im in images_html:
+            categories_this_image = im['image_categories']
+            for category_name in categories_this_image:
+                all_categories.add(category_name)
+
+        all_categories = sorted(list(all_categories))
+
+        # Create a special category for images with no annotations
+        no_category_token = 'no_categories'
+        all_categories.append(no_category_token)
+
+        category_name_to_relative_filename = {}
+        category_name_to_count = {}
+
+        for category_name in all_categories:
+
+            category_name_clean = clean_filename(category_name,
+                                                 force_lower=True,
+                                                 replace_whitespace='_')
+            category_filename_relative = category_name_clean + '.html'
+            category_name_to_relative_filename[category_name] = category_filename_relative
+            category_filename_abs = os.path.join(output_dir,category_filename_relative)
+
+            # Find images that should go in this category page
+            images_this_category = []
+
+            for im in images_html:
+
+                include_this_image = False
+                if category_name == no_category_token:
+                    include_this_image = (len(im['image_categories']) == 0)
+                else:
+                    include_this_image = category_name in im['image_categories']
+                if include_this_image:
+                    images_this_category.append(im)
+
+            # ...for each image
+
+            category_name_to_count[category_name] = len(images_this_category)
+
+            title_string = '<h1>Sample annotations for category {}</h1>'.format(
+                category_name)
+
+            html_options = deepcopy(options.html_options)
+            html_options['headerHtml'] = title_string
+
+            write_html_image_list(
+                filename=category_filename_abs,
+                images=images_this_category,
+                options=html_options)
+
+        # ...for each category
+
+        html_output_file = os.path.join(output_dir, 'index.html')
+
+        if isinstance(db_path,str):
+            title_string = '<h1>Sample annotations from {}</h1>'.format(db_path)
+        else:
+            title_string = '<h1>Sample annotations</h1>'
+
+        with open(html_output_file,'w') as f:
+            f.write('<html><head>{}</head><body>\n'.format(title_string))
+            for category_name in category_name_to_relative_filename:
+                s = '<p style="padding:0px;margin:0px;margin-left:15px;text-align:left;'
+                s += 'font-family:''segoe ui'',calibri,arial;font-size:100%;text-decoration:none;font-weight:normal;">'
+                f.write(s)
+                f.write('<a href="{}">{}</a> ({} images)</p>\n'.format(
+                    category_name_to_relative_filename[category_name],
+                    category_name,
+                    category_name_to_count[category_name]
+                ))
+            f.write('</body></html>\n')
+
     else:
-        html_options['headerHtml'] = '<h1>Sample annotations</h1>'
 
-    write_html_image_list(
+        html_output_file = os.path.join(output_dir, 'index.html')
+
+        html_options = options.html_options
+        if isinstance(db_path,str):
+            html_options['headerHtml'] = '<h1>Sample annotations from {}</h1>'.format(db_path)
+        else:
+            html_options['headerHtml'] = '<h1>Sample annotations</h1>'
+
+        write_html_image_list(
             filename=html_output_file,
             images=images_html,
             options=html_options)
 
-    print('Visualized {} images, wrote results to {}'.format(len(images_html),html_output_file))
+        print('Visualized {} images, wrote results to {}'.format(len(images_html),html_output_file))
 
     return html_output_file,image_db
 

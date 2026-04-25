@@ -358,7 +358,11 @@ def _initialize_yolo_imports(model_type='yolov5',
 
             # print('yolov9 module import failed: {}'.format(e))
             # print(traceback.format_exc())
-            pass
+            print('It looks like you are trying to run a model that requires the yolov9pip package, '
+                  'but the yolov9pip package is not installed.  Nothing is wrong, this package is '
+                  'just not installed by default with the MegaDetector Python package.  Run '
+                  '"pip install yolov9pip" to install it, and try again.')
+            raise
 
     # If we haven't succeeded yet, import from the ultralytics package
     if try_ultralytics_import and not utils_imported:
@@ -370,8 +374,8 @@ def _initialize_yolo_imports(model_type='yolov5',
         except Exception:
 
             print('It looks like you are trying to run a model that requires the ultralytics package, '
-                  'but the ultralytics package is not installed, but .  For licensing reasons, this '
-                  'is not installed by default with the MegaDetector Python package.  Run '
+                  'but the ultralytics package is not installed.  Nothing is wrong, this package is '
+                  'just not installed by default with the MegaDetector Python package.  Run '
                   '"pip install ultralytics" to install it, and try again.')
             raise
 
@@ -1191,7 +1195,7 @@ class PTDetector:
                                        iou_thres=nms_iou_thres,
                                        agnostic=False,
                                        multi_label=False)
-            
+
 
         assert isinstance(pred, list)
         assert len(pred) == len(batch_metadata), \
@@ -1380,7 +1384,7 @@ class PTDetector:
                 mi = 4 + nc  # end index for filtering
                 filtered_conf_channels = x[:, 4:mi]  # all confidence channels
                 max_any_conf = filtered_conf_channels.amax(1)  # max across all channels
-                
+
                 valid_detections = max_any_conf > conf_thres
                 x = x[valid_detections]
             else:
@@ -1411,17 +1415,17 @@ class PTDetector:
                 # cls contains ONLY the class probabilities (columns 4 to 4+nc)
                 nc = x.shape[1] - 4  # number of classes
                 extra = 0  # no extra columns for our models
-                
+
                 # Split exactly like Ultralytics does
                 cls = x[:, 4:4+nc]  # class probabilities only (no objectness)
-                
+
                 # cls contains the pure class probabilities, use directly
                 class_conf = cls
-                
-                # Follow Ultralytics exactly: cls.max(1, keepdim=True) 
+
+                # Follow Ultralytics exactly: cls.max(1, keepdim=True)
                 # This gives us both the max class confidence AND the class index
                 max_class_conf, best_class_idx = class_conf.max(1, keepdim=True)
-                
+
                 # Set the final confidence values for Ultralytics
                 best_class_conf = max_class_conf
             else:

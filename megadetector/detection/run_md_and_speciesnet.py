@@ -61,7 +61,7 @@ DEFAULT_DETECTOR_MODEL = 'MDV5A'
 try:
     from speciesnet import DEFAULT_MODEL as DEFAULT_CLASSIFIER_MODEL
 except Exception:
-    DEFAULT_CLASSIFIER_MODEL = 'kaggle:google/speciesnet/pyTorch/v4.0.1a'
+    DEFAULT_CLASSIFIER_MODEL = 'kaggle:google/speciesnet/pyTorch/v4.0.2a'
 DEFAULT_DETECTION_CONFIDENCE_THRESHOLD_FOR_CLASSIFICATION = 0.1
 DEFAULT_DETECTION_CONFIDENCE_THRESHOLD_FOR_OUTPUT = DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
 DEFAULT_DETECTOR_BATCH_SIZE = 1
@@ -121,7 +121,7 @@ class RunMDSpeciesNetOptions:
         #: MegaDetector model identifier (MDv5a, MDv5b, MDv1000-redwood, etc.)
         self.detector_model = DEFAULT_DETECTOR_MODEL
 
-        #: SpeciesNet classifier model identifier (e.g. kaggle:google/speciesnet/pyTorch/v4.0.1a)
+        #: SpeciesNet classifier model identifier (e.g. kaggle:google/speciesnet/pyTorch/v4.0.2a)
         self.classification_model = DEFAULT_CLASSIFIER_MODEL
 
         #: Batch size for MegaDetector inference

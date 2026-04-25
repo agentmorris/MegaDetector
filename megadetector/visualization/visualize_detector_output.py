@@ -22,12 +22,14 @@ from tqdm import tqdm
 from megadetector.data_management.annotations.annotation_constants import detector_bbox_category_id_to_name
 from megadetector.detection.run_detector import get_typical_confidence_threshold_from_results
 from megadetector.utils.ct_utils import get_max_conf
+from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 from megadetector.utils import write_html_image_list
 from megadetector.utils.path_utils import path_is_abs
 from megadetector.utils.path_utils import open_file
 from megadetector.utils.wi_taxonomy_utils import load_md_or_speciesnet_file
 from megadetector.visualization import visualization_utils as vis_utils
-from megadetector.visualization.visualization_utils import blur_detections
+from megadetector.visualization.visualization_utils import \
+    blur_detections, DEFAULT_BOX_THICKNESS, DEFAULT_LABEL_FONT_SIZE
 
 default_box_sort_order = 'confidence'
 
@@ -53,7 +55,11 @@ def _render_image(entry,
                   images_dir,
                   output_image_width,
                   box_sort_order=default_box_sort_order,
-                  category_names_to_blur=None):
+                  category_names_to_blur=None,
+                  box_thickness=DEFAULT_BOX_THICKNESS,
+                  box_expansion=0,
+                  label_font_size=DEFAULT_LABEL_FONT_SIZE,
+                  label_font='arial.ttf'):
     """
     Internal function for rendering a single image.
     """
@@ -126,7 +132,11 @@ def _render_image(entry,
         classification_label_map=classification_label_map,
         confidence_threshold=confidence_threshold,
         classification_confidence_threshold=classification_confidence_threshold,
-        box_sort_order=box_sort_order)
+        box_sort_order=box_sort_order,
+        thickness=box_thickness,
+        expansion=box_expansion,
+        label_font_size=label_font_size,
+        label_font=label_font)
 
     if not preserve_path_structure:
         for char in ['/', '\\', ':']:
@@ -152,24 +162,30 @@ def visualize_detector_output(detector_output_path,
                               images_dir=None,
                               confidence_threshold=0.15,
                               sample=-1,
-                              output_image_width=700,
-                              random_seed=None,
+                              output_image_width=1000,
+                              random_seed=0,
                               render_detections_only=False,
                               classification_confidence_threshold=0.1,
                               html_output_file=None,
                               html_output_options=None,
                               preserve_path_structure=False,
-                              parallelize_rendering=False,
+                              parallelize_rendering=True,
                               parallelize_rendering_n_cores=10,
                               parallelize_rendering_with_threads=True,
                               box_sort_order=default_box_sort_order,
                               category_names_to_blur=None,
-                              link_images_to_originals=False):
+                              link_images_to_originals=False,
+                              detector_label_map=None,
+                              box_thickness=DEFAULT_BOX_THICKNESS,
+                              box_expansion=0,
+                              label_font_size=DEFAULT_LABEL_FONT_SIZE,
+                              label_font='arial.ttf'):
     """
     Draws bounding boxes on images given the output of a detector.
 
     Args:
-        detector_output_path (str): path to detector output .json file
+        detector_output_path (str): path to detector output .json file, or a loaded MD results
+            dict
         out_dir (str): path to directory for saving annotated images
         images_dir (str, optional): folder where the images live; filenames in
             [detector_output_path] should be relative to [image_dir].  Can be None if paths are
@@ -178,7 +194,8 @@ def visualize_detector_output(detector_output_path,
         sample (int, optional): maximum number of images to render, -1 for all
         output_image_width (int, optional): width in pixels to resize images for display,
             preserving aspect ration; set to -1 to use original image width
-        random_seed (int, optional): seed to use for choosing images when sample != -1
+        random_seed (int, optional): seed to use for choosing images when sample != -1, use None
+            to avoid forcing a seed
         render_detections_only (bool, optional): only render images with above-threshold detections.
             Empty images are discarded after sampling, so if you want to see, e.g., 1000 non-empty
             images, you can set [render_detections_only], but you need to sample more than 1000 images.
@@ -205,13 +222,26 @@ def visualize_detector_output(detector_output_path,
             most commonly ['person']
         link_images_to_originals (bool, optional): include a link from every rendered image back to
             the corresponding original image
+        detector_label_map (dict, optional): mapping from category IDs to labels; by default (None) uses
+            the values in the detector file.  If this is the string 'no_detection_labels', hides labels.
+        box_thickness (int or float, optional): box thickness in pixels.  If this is a float less than
+            1.0, it's treated as a fraction of the image width.
+        box_expansion (int or float , optional): box expansion in pixels.  If this is a float less
+            than 1.0, it's treated as a fraction of the image width.
+        label_font_size (float, optional): label font size in pixels.  If this is a float less
+            than 1.0, it's treated as a fraction of the image width.
+        label_font (str, optional): font filename to use for label text (default 'arial.ttf')
 
     Returns:
         list: list of paths to annotated images
     """
 
-    assert os.path.exists(detector_output_path), \
-        'Detector output file does not exist at {}'.format(detector_output_path)
+    if isinstance(detector_output_path,str):
+        assert os.path.exists(detector_output_path), \
+            'Detector output file does not exist at {}'.format(detector_output_path)
+    else:
+        assert isinstance(detector_output_path,dict), \
+            'detector_output_path is neither a filename nor a results dict'
 
     if images_dir is not None:
         assert os.path.isdir(images_dir), \
@@ -222,7 +252,10 @@ def visualize_detector_output(detector_output_path,
 
     ##%% Load detector output
 
-    detector_output = load_md_or_speciesnet_file(detector_output_path)
+    if isinstance(detector_output_path,dict):
+        detector_output = detector_output_path
+    else:
+        detector_output = load_md_or_speciesnet_file(detector_output_path)
 
     images = detector_output['images']
 
@@ -232,7 +265,14 @@ def visualize_detector_output(detector_output_path,
     assert confidence_threshold >= 0 and confidence_threshold <= 1, \
         f'Confidence threshold {confidence_threshold} is invalid, must be in (0, 1).'
 
-    if 'detection_categories' in detector_output:
+    if isinstance(detector_label_map,str):
+        assert detector_label_map == 'no_detection_labels', \
+            'Unrecognized detection label string {}'.format(detector_label_map)
+        detector_label_map = None
+    elif detector_label_map is not None:
+        assert isinstance(detector_label_map,dict), \
+            'Invalid detector label maps'
+    elif 'detection_categories' in detector_output:
         detector_label_map = detector_output['detection_categories']
     else:
         detector_label_map = DEFAULT_DETECTOR_LABEL_MAP
@@ -295,7 +335,11 @@ def visualize_detector_output(detector_output_path,
                                              images_dir=images_dir,
                                              output_image_width=output_image_width,
                                              box_sort_order=box_sort_order,
-                                             category_names_to_blur=category_names_to_blur),
+                                             category_names_to_blur=category_names_to_blur,
+                                             box_thickness=box_thickness,
+                                             box_expansion=box_expansion,
+                                             label_font_size=label_font_size,
+                                             label_font=label_font),
                                      images), total=len(images)))
         finally:
             if pool is not None:
@@ -318,7 +362,11 @@ def visualize_detector_output(detector_output_path,
                                              images_dir,
                                              output_image_width,
                                              box_sort_order,
-                                             category_names_to_blur=category_names_to_blur)
+                                             category_names_to_blur=category_names_to_blur,
+                                             box_thickness=box_thickness,
+                                             box_expansion=box_expansion,
+                                             label_font_size=label_font_size,
+                                             label_font=label_font)
             rendering_results.append(rendering_result)
 
     # ...for each image
@@ -349,6 +397,9 @@ def visualize_detector_output(detector_output_path,
                 continue
             annotated_image_path_relative = os.path.relpath(r['annotated_image_path'],html_dir)
             d['filename'] = annotated_image_path_relative
+            # For sorting
+            d['filename_lower'] = annotated_image_path_relative.lower()
+            d['imageStyle'] = 'max-width:95%;'
             d['textStyle'] = \
              'font-family:verdana,arial,calibri;font-size:80%;' + \
                  'text-align:left;margin-top:20;margin-bottom:5'
@@ -357,9 +408,12 @@ def visualize_detector_output(detector_output_path,
                 d['linkTarget'] = r['image_filename_in_abs']
             html_image_info.append(d)
 
+        html_image_info = sort_list_of_dicts_by_key(html_image_info,'filename_lower')
         _ = write_html_image_list.write_html_image_list(html_output_file,
                                                         html_image_info,
                                                         options=html_output_options)
+
+    # ...if we're supposed to write HTML info
 
     return annotated_image_paths
 
@@ -396,9 +450,9 @@ def main(): # noqa
              '(default) to annotate all images in the detector output file. '
              'There may be fewer images if some are not found in images_dir.')
     parser.add_argument(
-        '--output_image_width', type=int, default=700,
+        '--output_image_width', type=int, default=1000,
         help='Integer, desired width in pixels of the output annotated images. '
-             'Use -1 to not resize. Default: 700.')
+             'Use -1 to not resize. Default: 1000.')
     parser.add_argument(
         '--random_seed', type=int, default=None,
         help='Integer, for deterministic order of image sampling')
@@ -421,6 +475,21 @@ def main(): # noqa
     parser.add_argument(
         '--classification_confidence', type=float, default=0.3,
         help='If classification results are present, render results above this threshold')
+    parser.add_argument(
+        '--box_thickness', type=float, default=DEFAULT_BOX_THICKNESS,
+        help='Line thickness in pixels for box rendering.  If this is less than 1.0, '
+             'it is treated as a fraction of the image width.')
+    parser.add_argument(
+        '--box_expansion', type=float, default=0,
+        help='Number of pixels to expand bounding boxes on each side.  If this is less than 1.0, '
+             'it is treated as a fraction of the image width.')
+    parser.add_argument(
+        '--label_font_size', type=float, default=DEFAULT_LABEL_FONT_SIZE,
+        help='Font size in pixels for detection labels.  If this is less than 1.0, '
+             'it is treated as a fraction of the image width.')
+    parser.add_argument(
+        '--label_font', type=str, default='arial.ttf',
+        help='Font filename to use for label text (default arial.ttf).')
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()
@@ -444,7 +513,11 @@ def main(): # noqa
         classification_confidence_threshold=args.classification_confidence,
         preserve_path_structure=args.preserve_path_structure,
         html_output_file=args.html_output_file,
-        category_names_to_blur=category_names_to_blur)
+        category_names_to_blur=category_names_to_blur,
+        box_thickness=args.box_thickness,
+        box_expansion=args.box_expansion,
+        label_font_size=args.label_font_size,
+        label_font=args.label_font)
 
     if (args.html_output_file is not None) and args.open_html_output_file:
         print('Opening output file {}'.format(args.html_output_file))
@@ -467,7 +540,7 @@ if False:
     images_dir = r'g:\camera_traps\camera_trap_images'
     confidence_threshold = 0.15
     sample = 50
-    output_image_width = 700
+    output_image_width = 1000
     random_seed = 1
     render_detections_only = True
     classification_confidence_threshold = 0.1

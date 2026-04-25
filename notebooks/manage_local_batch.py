@@ -1,3 +1,5 @@
+#%% Header
+
 """
 
 manage_local_batch.py
@@ -77,6 +79,7 @@ from copy import deepcopy
 
 from megadetector.utils.ct_utils import split_list_into_n_chunks
 from megadetector.utils.ct_utils import image_file_to_camera_folder
+from megadetector.utils.ct_utils import write_json
 from megadetector.utils.ct_utils import split_list_into_fixed_size_chunks
 
 from megadetector.detection.run_detector_batch import load_and_run_detector_batch
@@ -262,7 +265,7 @@ preview_options_base.almost_detection_confidence_threshold = \
 preview_options_base.ground_truth_json_file = None
 preview_options_base.separate_detections_by_category = True
 preview_options_base.sample_seed = 0
-preview_options_base.max_figures_per_html_file = 2500
+preview_options_base.max_figures_per_html_file = 1000
 preview_options_base.sort_classification_results_by_count = True
 preview_options_base.parallelize_rendering = True
 preview_options_base.parallelize_rendering_n_cores = default_workers_for_parallel_tasks
@@ -896,7 +899,7 @@ for i_task,task in tqdm(enumerate(task_info),total=len(task_info)):
     # im = task_results['images'][0]
     for im in task_results['images']:
 
-        # For paths to be relative.  The only semi-common scenario when this
+        # Make paths relative.  The only semi-common scenario when this
         # won't already be the case is when we're using tiled inference.
         if not os.path.isabs(im['file']):
             fn = path_join(input_path,im['file'])
@@ -969,8 +972,7 @@ for im in combined_results['images']:
     else:
         im['file'] = im['file'].replace(input_path + '/','',1)
 
-with open(combined_api_output_file,'w') as f:
-    json.dump(combined_results,f,indent=1)
+write_json(combined_api_output_file,combined_results)
 
 print('\nWrote results to {}'.format(combined_api_output_file))
 
@@ -1380,8 +1382,7 @@ if not run_tasks_in_notebook:
         chunk_instances_json = path_join(chunk_folder,'crop_instances_chunk_{}.json'.format(
             chunk_str))
         chunk_instances_dict = {'instances':chunk}
-        with open(chunk_instances_json,'w') as f:
-            json.dump(chunk_instances_dict,f,indent=1)
+        write_json(chunk_instances_json,chunk_instances_dict)
 
         chunk_detections_json = path_join(chunk_folder,'detections_chunk_{}.json'.format(
             chunk_str))
@@ -1396,8 +1397,7 @@ if not run_tasks_in_notebook:
 
         detection_predictions_dict = {'predictions':detection_predictions_this_chunk}
 
-        with open(chunk_detections_json,'w') as f:
-            json.dump(detection_predictions_dict,f,indent=1)
+        write_json(chunk_detections_json,detection_predictions_dict)
 
         chunk_files = [instance['filepath'] for instance in chunk]
 
@@ -1525,22 +1525,6 @@ if not run_tasks_in_notebook:
     _ = validate_predictions_file(ensemble_output_file_modular_crops,crop_instances_json)
 
 
-    ##%% Generate a list of corrections made by geofencing, and counts (still crops)
-
-    from megadetector.utils.wi_taxonomy_utils import find_geofence_adjustments, \
-        generate_geofence_adjustment_html_summary
-
-    rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular_crops,
-                                                    use_latin_names=False)
-
-    geofence_footer = generate_geofence_adjustment_html_summary(rollup_pair_to_count)
-
-    # If we didn't run geofencing, there should have been no geofence adjustments
-    if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
-        assert len(rollup_pair_to_count) == 0
-        assert len(geofence_footer) == 0
-
-
     ##%% Convert output file to MD format (still crops)
 
     assert os.path.isfile(ensemble_output_file_modular_crops)
@@ -1596,6 +1580,22 @@ for im in d['images']:
 
 print('Loaded results for {} images with {} failures'.format(
     len(images_in_folder),n_failures))
+
+
+#%% Generate a list of corrections made by geofencing, and counts (still crops)
+
+from megadetector.utils.wi_taxonomy_utils import find_geofence_adjustments, \
+    generate_geofence_adjustment_html_summary
+
+rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular_crops,
+                                                    use_latin_names=False)
+
+geofence_footer = generate_geofence_adjustment_html_summary(rollup_pair_to_count)
+
+# If we didn't run geofencing, there should have been no geofence adjustments
+if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
+    assert len(rollup_pair_to_count) == 0
+    assert len(geofence_footer) == 0
 
 
 #%% Preview (post-classification, pre-smoothing/pre-custom-taxa)
@@ -2081,8 +2081,8 @@ for s in location_names:
 
 #%% End notebook: turn this script into a notebook (how meta!)
 
-import os # noqa
-import nbformat as nbf
+import os # type: ignore
+import nbformat as nbf # type: ignore
 
 if os.name == 'nt':
     git_base = r'c:\git'
@@ -2110,14 +2110,16 @@ with open(input_py_file,'r') as f:
 
 header_comment = ''
 
-assert lines[0].strip() == '"""'
+assert lines[0].strip() == '#%% Header'
 assert lines[1].strip() == ''
-assert lines[2].strip() == 'manage_local_batch.py'
+assert lines[2].strip() == '"""'
 assert lines[3].strip() == ''
+assert lines[4].strip() == 'manage_local_batch.py'
+assert lines[5].strip() == ''
 
-i_line = 4
+i_line = 6
 
-# Everything before the first cell is the header comment
+# Everything before the first non-header cell is the header comment
 while(not lines[i_line].startswith('#%%')):
 
     s_raw = lines[i_line]

@@ -315,6 +315,7 @@ def _initialize_yolo_imports(model_type='yolov5',
             print('Bypassing imports for YOLO model type {}'.format(model_type))
             return
         else:
+            print('Starting yolo import cleanup')
             _clean_yolo_imports()
 
     try_yolov5_import = (model_type == 'yolov5')
@@ -361,7 +362,11 @@ def _initialize_yolo_imports(model_type='yolov5',
 
             # print('yolov9 module import failed: {}'.format(e))
             # print(traceback.format_exc())
-            pass
+            print('\n\n*****\nIt looks like you are trying to run a model that requires the yolov9pip package, '
+                  'but the yolov9pip package is not installed.  Nothing is wrong, this package is '
+                  'just not installed by default with the MegaDetector Python package.  Run '
+                  '"pip install yolov9pip" to install it, and try again.\n*****\n\n')
+            raise
 
     # If we haven't succeeded yet, import from the ultralytics package
     if try_ultralytics_import and not utils_imported:
@@ -372,10 +377,10 @@ def _initialize_yolo_imports(model_type='yolov5',
 
         except Exception:
 
-            print('It looks like you are trying to run a model that requires the ultralytics package, '
-                  'but the ultralytics package is not installed.  For licensing reasons, this '
-                  'is not installed by default with the MegaDetector Python package.  Run '
-                  '"pip install ultralytics" to install it, and try again.')
+            print('\n\n*****\nIt looks like you are trying to run a model that requires the ultralytics package, '
+                  'but the ultralytics package is not installed.  Nothing is wrong, this package is '
+                  'just not installed by default with the MegaDetector Python package.  Run '
+                  '"pip install ultralytics" to install it, and try again.\n*****\n\n')
             raise
 
         try:
@@ -386,6 +391,7 @@ def _initialize_yolo_imports(model_type='yolov5',
                 from ultralytics.utils.ops import non_max_suppression # type: ignore # noqa
             except Exception:
                 from ultralytics.utils.nms import non_max_suppression # type: ignore # noqa
+
             from ultralytics.utils.ops import xyxy2xywh # type: ignore # noqa
 
             # In the ultralytics package, scale_boxes and scale_coords both exist;
@@ -844,20 +850,29 @@ class PTDetector:
         if preprocess_only:
             return
 
-        if not force_cpu:
-            if torch.cuda.is_available():
-                self.device = torch.device('cuda:0')
-            try:
-                if torch.backends.mps.is_built and torch.backends.mps.is_available():
-                    # MPS inference fails on GitHub runners as of 2025.08.  This is
-                    # independent of model size.  So, we disable MPS when running in GHA.
-                    if is_running_in_gha():
-                        print('GitHub actions detected, bypassing MPS backend')
-                    else:
-                        print('Using MPS device')
-                        self.device = 'mps'
-            except AttributeError:
-                pass
+        if (detector_options is not None) and \
+           ('device' in detector_options) and \
+           detector_options['device'] is not None:
+
+            print('Using caller-specified device: {}'.format(detector_options['device']))
+            self.device = detector_options['device']
+
+        else:
+
+            if not force_cpu:
+                if torch.cuda.is_available():
+                    self.device = torch.device('cuda:0')
+                try:
+                    if torch.backends.mps.is_built and torch.backends.mps.is_available():
+                        # MPS inference fails on GitHub runners as of 2025.08.  This is
+                        # independent of model size.  So, we disable MPS when running in GHA.
+                        if is_running_in_gha():
+                            print('GitHub actions detected, bypassing MPS backend')
+                        else:
+                            print('Using MPS device')
+                            self.device = 'mps'
+                except AttributeError:
+                    pass
 
         # AddaxAI depends on this printout, don't remove it
         print('PTDetector using device {}'.format(str(self.device).lower()))

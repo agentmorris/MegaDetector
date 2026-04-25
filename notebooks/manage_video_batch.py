@@ -1,3 +1,5 @@
+#%% Header
+
 """
 
 manage_video_batch.py
@@ -36,8 +38,11 @@ overwrite = True
 parallelization_uses_threads = True
 n_workers = 8
 
-# Sample every Nth frame.  To specify a sampling rate in seconds, use a negative
-# value.  For example:
+# Sample every Nth frame.  Use 1 or None to extract every frame.
+#
+# To specify a sampling rate in seconds, use a negative value.
+#
+# For example:
 #
 # * Setting every_n_frames to -2.0 yields a frame rate of 0.5 fps
 # * Setting every_n_frames to -0.5 yields a frame rate of 2.0 fps
@@ -320,12 +325,17 @@ if False:
     video_options.output_extension = 'mp4'
     video_options.trim_to_detections = True
 
+    # If I'm running this cell, I usually don't want boring videos
+    video_options.exclude_category_name_strings = \
+        ['animal_blank_no cv result','blank_no cv result','no cv result','blank','none','animal_blank',
+         'animal_no cv result','animal','blank_mammal']
+
     video_options.flatten_output = True
     video_options.min_output_length_seconds = 5
     video_options.parallelize_rendering_with_threads = \
         parallelization_uses_threads
 
-    # Prepends filename with
+    # Prepends filename with category names
     video_options.include_category_names_in_filenames = 'start'
 
     results = visualize_video_output(video_output_filename,
@@ -414,19 +424,18 @@ This notebook is auto-generated from manage_video_batch.py (a cell-delimited .py
 with open(input_py_file,'r') as f:
     lines = f.readlines()
 
-assert lines[0].strip() == '"""'
+assert lines[0].strip() == '#%% Header'
 assert lines[1].strip() == ''
-assert lines[2].strip() == 'manage_video_batch.py'
+assert lines[2].strip() == '"""'
 assert lines[3].strip() == ''
+assert lines[4].strip() == 'manage_video_batch.py'
+assert lines[5].strip() == ''
 
 nb = nbf.v4.new_notebook()
 nb['cells'].append(nbf.v4.new_markdown_cell(nb_header))
 
-i_line = 0
-
-# Exclude everything before the first cell
-while(not lines[i_line].startswith('#%%')):
-    i_line += 1
+# Exclude everything before the first non-header cell
+i_line = 6
 
 current_cell = []
 

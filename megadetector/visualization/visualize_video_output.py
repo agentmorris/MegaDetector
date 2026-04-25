@@ -41,6 +41,7 @@ DEFAULT_CLASSIFICATION_THRESHOLD = 0.4
 DEFAULT_DETECTION_THRESHOLD = 0.15
 
 NO_FRAMES_STRING = 'No frames with detections to process'
+SKIPPED_STRING = 'Skipped'
 
 
 #%% Classes
@@ -101,6 +102,9 @@ class VideoVisualizationOptions:
         #: Should we include classification category names in the output filenames?
         #: Helps for finding showcase videos.  Can be "start", "end", or None.
         self.include_category_names_in_filenames = None
+
+        #: List of category name strings to skip (e.g. "none", "bear_moose"), or None
+        self.exclude_category_name_strings = None
 
 # ...class VideoVisualizationOptions
 
@@ -168,10 +172,11 @@ def _get_video_output_framerate(video_entry, original_framerate, rendering_fs='a
         if 'frame_number' in detection:
             frame_numbers.append(detection['frame_number'])
 
+    frame_numbers = sorted(set(frame_numbers))
+
     if len(frame_numbers) < 2:
         return original_framerate
 
-    frame_numbers = sorted(set(frame_numbers))
     first_interval = frame_numbers[1] - frame_numbers[0]
 
     # Calculate output frame rate based on first interval
@@ -385,12 +390,20 @@ def _process_video(video_entry,
             ext = '.' + ext
         output_fn_relative = os.path.splitext(output_fn_relative)[0] + ext
 
+    category_names = _get_classification_names(video_entry,classification_label_map,options)
+    if len(category_names) > 0:
+        category_names = '_'.join(sorted(list(category_names)))
+    else:
+        category_names = 'none'
+
+    if options.exclude_category_name_strings is not None:
+        if category_names in options.exclude_category_name_strings:
+            print('Ignoring category string {} for {}'.format(
+                category_names,output_fn_relative))
+            result['error'] = SKIPPED_STRING + ': {}'.format(category_names)
+            return result
+
     if options.include_category_names_in_filenames is not None:
-        category_names = _get_classification_names(video_entry,classification_label_map,options)
-        if len(category_names) > 0:
-            category_names = '_'.join(sorted(list(category_names)))
-        else:
-            category_names = 'none'
         if options.include_category_names_in_filenames == 'start':
             output_fn_relative = category_names + '_' + output_fn_relative
         else:
@@ -665,6 +678,8 @@ def visualize_video_output(detector_output_path,
     n_empty = 0
     n_failed = 0
     n_successful = 0
+    n_skipped = 0
+
     for r in results:
         if r['success']:
             assert r['error'] is None
@@ -673,6 +688,8 @@ def visualize_video_output(detector_output_path,
             assert r['error'] is not None
             if NO_FRAMES_STRING in r['error']:
                 n_empty += 1
+            elif SKIPPED_STRING in r['error']:
+                n_skipped += 1
             else:
                 n_failed += 1
 
@@ -682,6 +699,7 @@ def visualize_video_output(detector_output_path,
     print(f'  Successfully processed: {n_successful} videos')
     print(f'  No above-threshold detections: {n_empty} videos')
     print(f'  Failed: {n_failed} videos')
+    print(f'  Skipped: {n_skipped} videos')
     print(f'  Total frames rendered: {total_frames}')
 
     return results

@@ -14,6 +14,22 @@ Subpackages
 Submodules
 ----------
 
+postprocessing.analyze\_classification\_results module
+------------------------------------------------------
+
+.. automodule:: megadetector.postprocessing.analyze_classification_results
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.postprocessing.analyze_classification_results
+   :func: main
+   :hook:
+   :prog: analyze_classification_results
+   :no_default_values:
+
 postprocessing.categorize\_detections\_by\_size module
 ------------------------------------------------------
 
@@ -37,7 +53,7 @@ postprocessing.create\_crop\_folder module
    :hook:
    :prog: create_crop_folder
    :no_default_values:
-   
+
 postprocessing.classification\_postprocessing module
 ----------------------------------------------------
 
@@ -61,7 +77,7 @@ postprocessing.combine\_batch\_outputs module
    :hook:
    :prog: combine_batch_outputs
    :no_default_values:
-    
+
 postprocessing.compare\_batch\_results module
 ---------------------------------------------
 
@@ -256,7 +272,7 @@ postprocessing.top\_folders\_to\_bottom module
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
-   
+
 .. sphinx_argparse_cli::
    :module: megadetector.postprocessing.top_folders_to_bottom
    :func: main
@@ -272,7 +288,7 @@ postprocessing.generate\_csv\_report module
    :undoc-members:
    :show-inheritance:
    :exclude-members: main
-   
+
 .. sphinx_argparse_cli::
    :module: megadetector.postprocessing.generate_csv_report
    :func: main

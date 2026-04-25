@@ -11,9 +11,11 @@ This folder is only for generating and maintaining this mapping. If you want to 
 
 * Edit the [LILA camera trap datasets index file](http://lila.science/wp-content/uploads/2023/06/lila_camera_trap_datasets.csv) to include the new dataset name, metadata URLs, and MD results URLs.  The copy on LILA is the source of truth.
 
+
 ### Validate the new index file
 
 * Use [test_lila_metadata_urls.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/data_management/lila/test_lila_metadata_urls.py) to verify that the metadata .csv files and MegaDetector results files exist, and that their contents point to base URLs that actually exist.  I.e., make sure that all the metadata URLs and MD results files are programmatically usable.
+
 
 ### Update the taxonomy mapping
 
@@ -24,6 +26,7 @@ This folder is only for generating and maintaining this mapping. If you want to 
   * Set "datasets_to_map" and "output_file" appropriately
   * Run the whole script; this will create the .csv file you'll be working with
   * Open that .csv file, and use the "manual lookup" cell to fix things that matched incorrectly or didn't match at all.  I do this with three windows open: a .csv editor, VS Code (with the cell called "manual lookup" from this script open), and a browser.  Leave all versions of "empty" as empty rows, other than the dataset name and label.
+  * Validate with `python -m megadetector.taxonomy_mapping.taxonomy_csv_checker "filename.csv"`
 
 * Use [preview_lila_taxonomy.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/taxonomy_mapping/preview_lila_taxonomy.py) to produce an HTML file full of images that you can use to make sure that the matches were sensible; be particularly suspicious of anything that doesn't look like a mammal, bird, or reptile.  Go back and fix things in the .csv file.  This script/notebook also does a bunch of other consistency checking, e.g. making sure that if the "taxonomy_level" column says "species", the "taxonomy_string" column is actually a species.
 
@@ -35,9 +38,9 @@ This folder is only for generating and maintaining this mapping. If you want to 
 * Check for errors (one more time) (this should be redundant with what's now included in [preview_lila_taxonomy.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/taxonomy_mapping/preview_lila_taxonomy.py), but it can't hurt) by running:
 
     ```bash
-    python taxonomy_mapping/taxonomy_csv_checker.py private-repo/lila-taxonomy/lila-taxonomy-mapping.csv
+    python -m megadetector.taxonomy_mapping.taxonomy_csv_checker "private-repo/lila-taxonomy/lila-taxonomy-mapping.csv"
     ```
-    
+
 * Prepare the "release" taxonomy file (which removes a couple columns and removes unused rows) using [prepare_lila_taxonomy_release.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/taxonomy_mapping/prepare_lila_taxonomy_release.py).  This will create "lila-taxonomy-mapping_release.csv" in the local LILA base folder.  Run the taxonomy checker against this file too, just to be safe.
 
 * Upload to <https://lila.science/public/lila-taxonomy-mapping_release.csv>.  This is a small file that does not get zipped.
