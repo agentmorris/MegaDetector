@@ -873,6 +873,13 @@ class PTDetector:
                             self.device = 'mps'
                 except AttributeError:
                     pass
+                if self.device == 'cpu':
+                    try:
+                        import torch_directml
+                        self.device = torch_directml.device()
+                        print('Using DirectML device')
+                    except ImportError:
+                        pass
 
         # AddaxAI depends on this printout, don't remove it
         print('PTDetector using device {}'.format(str(self.device).lower()))
@@ -914,14 +921,17 @@ class PTDetector:
         # other than MPS devices.
         use_map_location = (device != 'mps')
 
+        # DirectML (privateuseone) doesn't support map_location; load to CPU, .to(device) handles the rest
+        safe_map_location = 'cpu' if 'privateuseone' in str(device) else device
+
         if use_map_location:
             try:
-                checkpoint = torch.load(model_pt_path, map_location=device, weights_only=False)
+                checkpoint = torch.load(model_pt_path, map_location=safe_map_location, weights_only=False)
             # For a transitional period, we want to support torch 1.1x, where the weights_only
             # parameter doesn't exist
             except Exception as e:
                 if "'weights_only' is an invalid keyword" in str(e):
-                    checkpoint = torch.load(model_pt_path, map_location=device)
+                    checkpoint = torch.load(model_pt_path, map_location=safe_map_location)
                 else:
                     raise
         else:
@@ -1302,6 +1312,8 @@ class PTDetector:
 
         # Run the model on the batch
         pred = self.model(batch_tensor, augment=augment)[0]
+        if 'privateuseone' in str(self.device):
+            pred = pred.cpu()
 
         # Configure NMS parameters
         if 'classic' in self.compatibility_mode:
