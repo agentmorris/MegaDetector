@@ -28,17 +28,25 @@ def directml_test():
         bool: Whether directML support is available.
     """
 
+    torch_directml_imported = False
+
     try:
+
         import torch_directml
         print('\n*** DirectML imported, running DirectML test ***\n')
+        torch_directml_imported = True
 
         device = torch_directml.device()
         print('DirectML device name: {}'.format(str(device)))
         if 'privateuseone' in str(device):
             print('DirectML device detected')
             return True
-    except Exception:
-        pass
+        
+    except Exception as e:
+        
+        if torch_directml_imported:
+            print('Error: {}'.format(str(e)))
+            
     return False
 
 
