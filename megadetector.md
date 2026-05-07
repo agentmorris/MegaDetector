@@ -203,6 +203,15 @@ python -m megadetector.utils.gpu_test
 
 If it <i>still</i> says "No GPUs reported by PyTorch", 95% of the time, this is fixed by <a href="https://www.nvidia.com/en-us/geforce/drivers/">updating your Nvidia driver</a> and rebooting.  If you have an Nvidia GPU, and you've installed the latest driver, and you've rebooted, and you did everything we suggested here, and you're still seeing "No GPUs reported by PyTorch", <a href="mailto:cameratraps@lila.science">email us</a>.
 
+#### Using an AMD GPU
+
+Deep learning is pretty Nvidia-centric, to the point where "GPU" is almost synonymous with "Nvidia GPU".  But... the MegaDetector Python package includes experimental support for AMD Radeon GPUs.  This is not installed by default, but if you have an AMD GPU, and you run:
+
+```bash
+pip install torch-directml
+```
+
+...your GPU should be detected.  If this worked, you will see "Using DirectML device" in the output when you run MegaDetector.
 
 ## How do I use the results?
 
