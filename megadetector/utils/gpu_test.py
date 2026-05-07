@@ -20,6 +20,28 @@ except Exception:
 
 #%% Torch/TF test functions
 
+def directml_test():
+    """
+    Check whether DirectML support is available.
+
+    Returns:
+        bool: Whether directML support is available.
+    """
+
+    try:
+        import torch_directml
+        print('\n*** DirectML imported, running DirectML test ***\n')
+
+        device = torch_directml.device()
+        print('DirectML device name: {}'.format(str(device)))
+        if 'privateuseone' in str(device):
+            print('DirectML device detected')
+            return True
+    except Exception:
+        pass
+    return False
+
+
 def torch_test():
     """
     Print diagnostic information about Torch/CUDA status, including Torch/CUDA versions
@@ -123,3 +145,6 @@ if __name__ == '__main__':
 
     print('\n*** Running TF tests ***\n')
     tf_test()
+
+    # This is rare, so don't include any printouts in the common case
+    directml_test()
