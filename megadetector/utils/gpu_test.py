@@ -41,12 +41,12 @@ def directml_test():
         if 'privateuseone' in str(device):
             print('DirectML device detected')
             return True
-        
+
     except Exception as e:
-        
+
         if torch_directml_imported:
             print('Error: {}'.format(str(e)))
-            
+
     return False
 
 
