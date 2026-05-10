@@ -41,7 +41,7 @@ from megadetector.utils.ct_utils import sort_dictionary_by_value
 from megadetector.utils.ct_utils import environment_is_wsl
 
 # Should all be lower-case
-IMG_EXTENSIONS = ('.jpg', '.jpeg', '.gif', '.png', '.tif', '.tiff', '.bmp')
+IMG_EXTENSIONS = ('.jpg', '.jpeg', '.gif', '.png', '.tif', '.tiff', '.bmp', '.webp', '.avif')
 
 VALID_FILENAME_CHARS = f"~-_.() {string.ascii_letters}{string.digits}"
 SEPARATOR_CHARS = r":\/"
