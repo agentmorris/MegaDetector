@@ -120,6 +120,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * Conservation and Restoration Science Branch, New South Wales Department of Climate Change, Energy, the Environment and Water
 
 * [Okala](https://www.okala.io/) ([video](https://filmfreeway.com/WhenAIMeetsConservation))
+* [Parks Victoria](https://www.parks.vic.gov.au/) ([story](https://www.abc.net.au/news/2026-04-27/ai-helps-parks-victoria-manage-native-species-pests-after-fires/106589360))
 * [School of Natural Sciences](https://www.utas.edu.au/natural-sciences), University of Tasmania ([story](https://www.utas.edu.au/about/news-and-stories/articles/2022/1204-innovative-camera-network-keeps-close-eye-on-tassie-wildlife))
 * [Kenai National Wildlife Refuge](https://www.fws.gov/refuge/kenai), U.S. Fish & Wildlife Service ([story](https://www.peninsulaclarion.com/sports/refuge-notebook-new-technology-increases-efficiency-of-refuge-cameras/))
 * [Idaho Department of Fish and Game](https://idfg.idaho.gov/) ([fancy PBS video](https://www.youtube.com/watch?v=uEsL8EZKpbA&t=261s&ab_channel=OutdoorIdaho))
