@@ -473,16 +473,32 @@ def wi_download_csv_to_coco(csv_file_in,
             extra_info = {}
             for s in wi_extra_annotation_columns:
                 if s in record:
+
                     v = record[s]
-                    # Don't store empty fields
-                    if isinstance(v,str):
-                        if (len(v) > 0):
-                            extra_info[s] = v
+
+                    # Only store interesting values
+                    store_record = False
+
+                    if isinstance(v,str) and (len(v) > 0):
+                        if s.lower() == 'uncertainty' and v.lower() == "don't know":
+                            store_record = False
+                        elif s.lower() == 'age' and v.lower() == 'unknown':
+                            store_record = False
+                        elif s.lower() == 'sex' and v.lower() == 'unknown':
+                            store_record = False
+                        elif s.lower() == 'identified_by' and v.lower() == 'batch upload':
+                            store_record = False
+                        else:
+                            store_record = True
+
                     # Treat bools as store_true, there are tons of uninformative "False"
                     # fields (e.g. "highlighted").
                     elif isinstance(v,bool):
                         if v:
-                            extra_info[s] = v
+                            store_record = True
+
+                    if store_record:
+                        extra_info[s] = v
 
             if len(extra_info) > 0:
                 ann['wi_extra_info'] = extra_info
