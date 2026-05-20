@@ -1213,7 +1213,8 @@ def get_file_sizes(base_dir, convert_slashes=True):
         dict: dictionary mapping filenames to file sizes in bytes
     """
 
-    relative_filenames = recursive_file_list(base_dir, convert_slashes=convert_slashes,
+    relative_filenames = recursive_file_list(base_dir,
+                                             convert_slashes=convert_slashes,
                                              return_relative_paths=True)
 
     fn_to_size = {}

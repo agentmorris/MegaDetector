@@ -346,10 +346,15 @@ if False:
 
     #%% Estimate the extracted size of a folder by sampling a few videos
 
-    n_videos_to_sample = 5
+    import shutil # noqa
+    import humanfriendly
+    import random
+
+    from megadetector.utils.path_utils import _get_file_size,get_file_sizes
+
+    n_videos_to_sample = 10
 
     video_filenames = video_utils.find_videos(input_folder,recursive=True)
-    import random
     random.seed(0)
     sampled_videos = random.sample(video_filenames,n_videos_to_sample)
     assert len(sampled_videos) == n_videos_to_sample
@@ -376,19 +381,20 @@ if False:
                                     quality=quality,
                                     max_width=max_width)
 
-        from megadetector.utils.path_utils import _get_file_size,get_file_sizes
         video_size =_get_file_size(video_fn)[1]
         assert video_size > 0
-        total_input_size += video_size
 
         frame_size = get_file_sizes(frame_output_folder_this_video)
         frame_size = sum(frame_size.values())
-        assert frame_size > 0
-        total_output_size += frame_size
+        if frame_size == 0:
+            print('Warning: error computing frame sizes for {}'.format(video_fn))
+        else:
+            total_input_size += video_size
+            total_output_size += frame_size
 
-    import shutil # noqa
+    # ...for each video
+
     # shutil.rmtree(size_test_frame_folder)
-    import humanfriendly
     print('')
     print('Video size: {}'.format(humanfriendly.format_size(total_input_size)))
     print('Frame size: {}'.format(humanfriendly.format_size(total_output_size)))
