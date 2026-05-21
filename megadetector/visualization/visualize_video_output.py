@@ -100,11 +100,28 @@ class VideoVisualizationOptions:
         self.parallelize_rendering_with_threads = True
 
         #: Should we include classification category names in the output filenames?
+        #:
         #: Helps for finding showcase videos.  Can be "start", "end", or None.
         self.include_category_names_in_filenames = None
 
         #: List of category name strings to skip (e.g. "none", "bear_moose"), or None
+        #:
+        #: This tests against combined name strings ("bear_moose"), not individual category
+        #: names ("bear", "moose").
         self.exclude_category_name_strings = None
+
+        #: List of individual category names to skip (e.g. "bear", "moose") or None
+        #:
+        #: This tests against individual category names ("bear", "moose"), not combined name
+        #: strings ("bear_moose").
+        self.exclude_category_names = None
+
+        #: List of individual category names to includes (e.g. "bear", "moose"), or None.
+        #: At least one of these categories must be present for a video to be included.
+        #:
+        #: This tests against individual category names ("bear", "moose"), not combined
+        #: name strings ("bear_moose").
+        self.include_category_names = None
 
 # ...class VideoVisualizationOptions
 
@@ -390,20 +407,58 @@ def _process_video(video_entry,
             ext = '.' + ext
         output_fn_relative = os.path.splitext(output_fn_relative)[0] + ext
 
-    category_names = _get_classification_names(video_entry,classification_label_map,options)
-    if len(category_names) > 0:
-        category_names = '_'.join(sorted(list(category_names)))
+    category_names_list = _get_classification_names(video_entry,classification_label_map,options)
+    if len(category_names_list) > 0:
+        category_names = '_'.join(sorted(list(category_names_list)))
     else:
         category_names = 'none'
 
     if options.exclude_category_name_strings is not None:
+
+        # Make sure this value is a list
+        if isinstance(options.exclude_category_name_strings,str):
+            options.exclude_category_name_strings = [options.exclude_category_name_strings]
+
         if category_names in options.exclude_category_name_strings:
             print('Ignoring category string {} for {}'.format(
                 category_names,output_fn_relative))
             result['error'] = SKIPPED_STRING + ': {}'.format(category_names)
             return result
 
+    if options.exclude_category_names is not None:
+
+        # Make sure this value is a list
+        if isinstance(options.exclude_category_names,str):
+            options.exclude_category_names = [options.exclude_category_names]
+
+        for category_name in category_names_list:
+            if category_name in options.exclude_category_names:
+                print('Ignoring category {} for {}'.format(
+                    category_name,output_fn_relative))
+                result['error'] = SKIPPED_STRING + ': {}'.format(category_name)
+                return result
+
+    if options.include_category_names is not None:
+
+        # Make sure this value is a list
+        if isinstance(options.include_category_names,str):
+            options.include_category_names = [options.include_category_names]
+
+        found_matching_category = False
+
+        for category_name in category_names_list:
+            if category_name in options.include_category_names:
+                found_matching_category = True
+                break
+
+        if not found_matching_category:
+            print('No match to required categories in {} for {}'.format(
+                category_name,output_fn_relative))
+            result['error'] = SKIPPED_STRING + ': {}'.format(category_name)
+            return result
+
     if options.include_category_names_in_filenames is not None:
+
         if options.include_category_names_in_filenames == 'start':
             output_fn_relative = category_names + '_' + output_fn_relative
         else:
@@ -606,7 +661,9 @@ def visualize_video_output(detector_output_path,
     print('Found {} videos in results file'.format(len(video_entries)))
 
     # Apply sampling if requested
-    if (options.sample > 0) and (len(video_entries) > options.sample):
+    if (options.sample is not None) and \
+       (options.sample > 0) and \
+       (len(video_entries) > options.sample):
         if options.random_seed is not None:
             random.seed(options.random_seed)
         n_videos_available = len(video_entries)

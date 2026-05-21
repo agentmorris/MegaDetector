@@ -327,8 +327,23 @@ if False:
 
     # If I'm running this cell, I usually don't want boring videos
     video_options.exclude_category_name_strings = \
-        ['animal_blank_no cv result','blank_no cv result','no cv result','blank','none','animal_blank',
-         'animal_no cv result','animal','blank_mammal']
+        ['animal',
+         'animal_blank_no cv result',
+         'animal_blank',
+         'animal_blank_human_no cv result',
+         'animal_blank_mammal',
+         'animal_blank_mammal_no cv result',
+         'animal_bird_blank_no cv result',
+         'animal_bird_no cv result',
+         'animal_no cv result',
+         'blank',
+         'blank_mammal',
+         'blank_no cv result',
+         'no cv result',
+         'none']
+
+    # video_options.exclude_category_names = ['cercopithecidae family']
+    # video_options.include_category_names = ['spotted hyena']
 
     video_options.flatten_output = True
     video_options.min_output_length_seconds = 5
