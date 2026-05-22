@@ -768,7 +768,7 @@ def main(): # noqa
     def validate_threshold(v,name):
         # print('{} {}'.format(v,name))
         if v is not None:
-            assert v >= 0.0 and v <= 1.0, \
+            assert 0.0 <= v <= 1.0, \
                 'Illegal {} threshold {}'.format(name,v)
 
     validate_threshold(args.threshold,'default')

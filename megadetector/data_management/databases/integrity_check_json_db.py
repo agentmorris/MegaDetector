@@ -232,7 +232,7 @@ def integrity_check_json_db(json_file, options=None):
     if options.verbose:
         print('\nChecking image records...')
 
-    if options.iMaxNumImages > 0 and len(images) > options.iMaxNumImages:
+    if 0 < options.iMaxNumImages < len(images):
 
         if options.verbose:
             print('Trimming image list to {}'.format(options.iMaxNumImages))

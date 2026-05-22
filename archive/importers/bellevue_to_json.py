@@ -99,7 +99,7 @@ print('Enumerated {} images'.format(len(image_files)))
 # fname = image_files[0]
 for fname in tqdm(image_files):
   
-    if max_files >= 0 and len(images) > max_files:            
+    if 0 <= max_files < len(images):
         print('Warning: early break at {} files'.format(max_files))
         break
     

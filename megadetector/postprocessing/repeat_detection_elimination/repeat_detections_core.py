@@ -682,7 +682,7 @@ def _find_matches_in_directory(dir_name_and_rows, options):
             #
             # assert confidence >= 0.0 and confidence <= 1.0
 
-            assert confidence >= -1.0 and confidence <= 1.0
+            assert -1.0 <= confidence <= 1.0
 
             if confidence < options.confidenceMin:
                 continue
@@ -710,7 +710,7 @@ def _find_matches_in_directory(dir_name_and_rows, options):
                 print('Warning: negative-area bounding box for file {}'.format(filename))
                 area = abs(area); h = abs(h); w = abs(w)
 
-            assert area >= 0.0 and area <= 1.0, \
+            assert 0.0 <= area <= 1.0, \
                 'Illegal bounding box area {} in image {}'.format(area,filename)
 
             if area < options.minSuspiciousDetectionSize:

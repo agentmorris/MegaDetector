@@ -535,7 +535,7 @@ for ann in tqdm(annotations):
     season_id = ann['image_id'].split('/')[0]
     assert season_id is not None and season_id.startswith('S')
     season = int(season_id.replace('SER_','S').replace('S',''))
-    assert season >=1 and season <= nSeasons
+    assert 1 <= season <= nSeasons
     i_season = season - 1
     annotations_by_season[i_season].append(ann)
     im = im_id_to_image[ann['image_id']]
@@ -631,7 +631,7 @@ for ann in tqdm(annotations):
     season_id = ann['image_id'].split('/')[0]
     assert season_id is not None and season_id.startswith('S')
     season = int(season_id.replace('SER_','S').replace('S',''))
-    assert season >=1 and season <= nSeasons
+    assert 1 <= season <= nSeasons
     i_season = season - 1
     categories_by_season[i_season].add(ann['category_id'])
 
@@ -761,7 +761,7 @@ def create_human_archive():
         for iImage,im in enumerate(images):
             if im['id'] in human_image_ids:
                 n_images_added += 1
-                if debug_max_files > 0 and n_images_added > debug_max_files:
+                if 0 < debug_max_files < n_images_added:
                     break
                 if (n_images_added % n_dot)==0:
                     print('.',end='')
@@ -796,8 +796,8 @@ def create_season_archive(i_season):
         season_id = im['id'].split('/')[0]
         assert season_id is not None and season_id.startswith('S')
         season = int(season_id.replace('SER_','S').replace('S',''))
-        assert season >=1 and season <= nSeasons
-        
+        assert 1 <= season <= nSeasons
+
         if (season != i_season + 1):
             continue
         
@@ -815,7 +815,7 @@ def create_season_archive(i_season):
             print('.',end='')
         if (n_images_added % n_print)==0:
             print('{} images added to {}'.format(n_images_added,zipfilename))            
-        if debug_max_files > 0 and n_images_added > debug_max_files:
+        if 0 < debug_max_files < n_images_added:
             break
         
         source_file = os.path.join(image_base,im['file_name'])

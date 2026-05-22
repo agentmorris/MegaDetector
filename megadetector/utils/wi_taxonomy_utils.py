@@ -141,7 +141,7 @@ def taxonomy_level_to_string(k):
         str: taxonomy level string
     """
 
-    assert k >= 0 and k < len(taxonomy_level_names), \
+    assert 0 <= k < len(taxonomy_level_names), \
         'Illegal taxonomy level index {}'.format(k)
 
     return taxonomy_level_names[k]

@@ -146,7 +146,7 @@ class GridWidget(QWidget):
 
     def doJump(self):
       val= int(self.current.text()) 
-      if val>=1 and val<=self.num_pages:
+      if 1 <= val <= self.num_pages:
         self.page= val
         self.updated= True
         self.showCurrentPage()

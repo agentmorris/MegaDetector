@@ -60,7 +60,7 @@ all_input_metadata = []
 # i_file = 87; fn = input_files[i_file]
 for i_file,fn in enumerate(input_files):
 
-    if max_num_csvs > 0 and len(all_input_metadata) >= max_num_csvs:
+    if 0 < max_num_csvs <= len(all_input_metadata):
         break
     
     if not fn.endswith('.csv'):

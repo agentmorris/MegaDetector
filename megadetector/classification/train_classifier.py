@@ -402,7 +402,7 @@ def main(dataset_dir: str,
         print(f'Epoch: {epoch}')
         writer.add_scalar('lr', lr_scheduler.get_last_lr()[0], epoch)
 
-        if epoch > 0 and finetune == epoch:
+        if 0 < epoch == finetune:
             print('Turning off fine-tune!')
             set_finetune(model, model_name, finetune=False)
 

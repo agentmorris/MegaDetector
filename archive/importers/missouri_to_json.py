@@ -108,7 +108,7 @@ for root, subdirs, files in os.walk(imageDir):
     for fname in files:
   
         nFiles = nFiles + 1
-        if maxFiles >= 0 and nFiles > maxFiles:            
+        if 0 <= maxFiles < nFiles:
             print('Warning: early break at {} files'.format(maxFiles))
             break
         

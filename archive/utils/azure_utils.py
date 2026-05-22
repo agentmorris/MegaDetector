@@ -59,8 +59,7 @@ def walk_container(container_client: ContainerClient,
                     folders.append(prefix + short_name)
                 depth += 1
                 walk_blob_hierarchy(item.name, folders=folders, blobs=blobs)
-                if (debug_max_items > 0
-                        and len(folders) + len(blobs) > debug_max_items):
+                if 0 < debug_max_items < len(folders) + len(blobs):
                     return folders, blobs
                 depth -= 1
             else:

@@ -210,12 +210,12 @@ def is_daytime(date_time):
 
     is_summer = True if date_time.month in [5, 6, 7, 8, 9] else False
     if is_summer:
-        if date_time.hour >= 6 and date_time.hour <= 19:
+        if 6 <= date_time.hour <= 19:
             return True
         else:
             return False
     else:
-        if date_time.hour >= 7 and date_time.hour <= 18:
+        if 7 <= date_time.hour <= 18:
             return True
         else:
             return False

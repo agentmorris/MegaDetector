@@ -163,7 +163,7 @@ def get_patch_boundaries(image_size,patch_size,patch_stride=None):
     # ...for each row
 
     for p in patch_start_positions:
-        assert p[0] >= 0 and p[1] >= 0 and p[0] <= image_width and p[1] <= image_height, \
+        assert 0 <= p[0] <= image_width and 0 <= p[1] <= image_height, \
         'Patch generation error (illegal patch {})'.format(p)
 
     # The last patch should always end at the bottom-right of the image
@@ -491,7 +491,7 @@ def run_tiled_inference(model_file,
 
     ##%% Validate arguments
 
-    assert tile_overlap < 1 and tile_overlap >= 0, \
+    assert 0 <= tile_overlap < 1, \
         'Illegal tile overlap value {}'.format(tile_overlap)
 
     if tile_size_x == -1:

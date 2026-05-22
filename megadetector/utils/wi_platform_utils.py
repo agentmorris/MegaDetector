@@ -988,7 +988,7 @@ def validate_payload(payload):
         for c in classifications['classes']:
             assert is_valid_prediction_string(c)
         for score in classifications['scores']:
-            assert isinstance(score,float) and score >= 0 and score <= 1.0
+            assert isinstance(score, float) and 0 <= score <= 1.0
         assert 'detections' in prediction and isinstance(prediction['detections'],list)
 
         for detection in prediction['detections']:
@@ -997,8 +997,8 @@ def validate_payload(payload):
             assert 'category' in detection and detection['category'] in ('1','2','3')
             assert 'label' in detection and detection['label'] in ('animal','person','vehicle')
             assert 'conf' in detection and \
-                isinstance(detection['conf'],float) and \
-                detection['conf'] >= 0 and detection['conf'] <= 1.0
+                   isinstance(detection['conf'],float) and \
+                   0 <= detection['conf'] <= 1.0
             assert 'bbox' in detection and \
                 isinstance(detection['bbox'],list) and \
                 len(detection['bbox']) == 4

@@ -262,7 +262,7 @@ def visualize_detector_output(detector_output_path,
     if confidence_threshold is None:
         confidence_threshold = get_typical_confidence_threshold_from_results(detector_output)
 
-    assert confidence_threshold >= 0 and confidence_threshold <= 1, \
+    assert 0 <= confidence_threshold <= 1, \
         f'Confidence threshold {confidence_threshold} is invalid, must be in (0, 1).'
 
     if isinstance(detector_label_map,str):

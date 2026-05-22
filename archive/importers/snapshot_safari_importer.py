@@ -558,7 +558,7 @@ for iImage,im in tqdm(enumerate(images),total=len(images)):
         print('.',end='')
     if (n_images_added % n_print)==0:
         print('{} images added to {}'.format(n_images_added,zipfilename))            
-    if debug_max_files > 0 and n_images_added > debug_max_files:
+    if 0 < debug_max_files < n_images_added:
         break
     
     source_file = os.path.join(project_base,im_relative_path)

@@ -264,7 +264,7 @@ def raic_csv_to_md_results(result_csv_file,
         
         category_id = str(int(row['category']))
         confidence = row['confidence']        
-        assert isinstance(confidence,float) and confidence <= 1.0 and confidence >= 0.0
+        assert isinstance(confidence, float) and 0.0 <= confidence <= 1.0
         
         det = {}
         im['detections'].append(det)

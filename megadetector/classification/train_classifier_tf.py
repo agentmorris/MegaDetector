@@ -592,7 +592,7 @@ def main(dataset_dir: str,
         optimizer.learning_rate = lr_schedule(epoch)
         tf.summary.scalar('lr', optimizer.learning_rate, epoch)
 
-        if epoch > 0 and finetune == epoch:
+        if 0 < epoch == finetune:
             print('Turning off fine-tune!')
             model.base_model.trainable = True
 

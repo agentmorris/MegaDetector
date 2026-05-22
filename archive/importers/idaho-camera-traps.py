@@ -252,7 +252,7 @@ def csv_to_sequences(csv_file):
         time = row['Time']
         datestring = date + ' ' + time
         dt = dateutil.parser.parse(datestring)
-        assert dt.year >= 2015 and dt.year <= 2019
+        assert 2015 <= dt.year <= 2019
         df.loc[i_row,'datetime'] = dt
         
     # Make sure data are sorted chronologically

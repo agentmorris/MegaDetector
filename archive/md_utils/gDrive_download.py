@@ -173,7 +173,7 @@ def PrepareFolderDownload(folderID,folderTargetDir,dataEnumerator=None):
     # Enumerate and process files in this folder
     for f in fileList:
     
-        if maxFiles > 0 and dataEnumerator.nFiles > maxFiles:
+        if 0 < maxFiles < dataEnumerator.nFiles:
             return dataEnumerator
 
         dataEnumerator.fileInfo.append(f)
@@ -222,7 +222,7 @@ if (enumerationMode == 'ifnecessary') and (os.path.exists(downloadListFile)):
     with open(downloadListFile) as csvfile:
         r = csv.reader(csvfile)
         for iRow,row in enumerate(r):
-            if maxFiles > 0 and iRow > maxFiles:
+            if 0 < maxFiles < iRow:
                 break
             else:
                 downloadList.append(row)

@@ -98,7 +98,7 @@ all_locations = set()
 # im = ground_truth_dicts[0]
 for im in tqdm(images):
     dt = dateutil.parser.isoparse(im['timestamp'])
-    assert dt.year >= 2019 and dt.year <= 2021
+    assert 2019 <= dt.year <= 2021
     im['datetime'] = dt
     
     # The field called "location" in the WI .csv file is a URL, we want to reclaim

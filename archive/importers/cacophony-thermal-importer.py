@@ -327,13 +327,13 @@ def process_file(fn_relative,verbose=False):
             # In a small number of tracks, boxes are turned upside-down or left-over-right, 
             # we don't bother checking for coordinate validity in those tracks.
             if left <= right:
-                assert left >= 0 and left < clip_attrs.get('res_x')
-                assert right >= 0 and right < clip_attrs.get('res_x')
-            
+                assert 0 <= left < clip_attrs.get('res_x')
+                assert 0 <= right < clip_attrs.get('res_x')
+
             if top <= bottom:
-                assert top >= 0 and top < clip_attrs.get('res_y')
-                assert bottom >= 0 and bottom < clip_attrs.get('res_y')
-        
+                assert 0 <= top < clip_attrs.get('res_y')
+                assert 0 <= bottom < clip_attrs.get('res_y')
+
             # frame_number should be approximately equal to i_position + start_frame, but this
             # can be off by a little when 'start_frame' and/or 'end_frame' are not integers. 
             # Make sure this is approximately true.

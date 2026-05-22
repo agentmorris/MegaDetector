@@ -518,7 +518,7 @@ def get_datetime_from_image(image,include_crops=True,options=None):
     # ...for each set of OCR options
 
     if extracted_datetime is not None:
-        assert extracted_datetime.year <= 2023 and extracted_datetime.year >= 1990
+        assert 1990 <= extracted_datetime.year <= 2023
 
     to_return = {}
     to_return['datetime'] = extracted_datetime
@@ -869,5 +869,5 @@ if False:
             extracted_datetime = None
 
     if extracted_datetime is not None:
-        assert extracted_datetime.year <= 2023 and extracted_datetime.year >= 1990
+        assert 1990 <= extracted_datetime.year <= 2023
 
