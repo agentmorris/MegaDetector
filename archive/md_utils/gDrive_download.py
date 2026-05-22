@@ -130,7 +130,7 @@ def PrepareFolderDownload(folderID,folderTargetDir,dataEnumerator=None):
     recursive calls.
     """
     
-    if dataEnumerator == None:
+    if dataEnumerator is None:
 
         dataEnumerator = DataEnumerator()
 

@@ -14,7 +14,7 @@ det_folder = '/ai4efs/models/object_detection/faster_rcnn_inception_resnet_v2_at
 
 def compute_precision_recall_with_images(detection_file, detection_results=None,images_to_consider='all', get_night_day = None):
     
-    if detection_results == None:
+    if detection_results is None:
         print('Loading detection file...')
     
         with open(detection_file) as f:

@@ -14,7 +14,7 @@ db_file = '/ai4efs/databases/caltechcameratraps/CaltechCameraTrapsFullAnnotation
 
 def compute_precision_recall_with_sequences(detection_file, db_file, detection_results=None,images_to_consider='all', get_night_day = None):
     
-    if detection_results == None:
+    if detection_results is None:
         print('Loading detection file...')
     
         with open(detection_file) as f:

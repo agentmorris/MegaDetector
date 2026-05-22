@@ -18,7 +18,7 @@ def frange(start, stop, step):
 
 def cluster_detections_by_image(detection_results, use_im=None):
     
-    if use_im == None:
+    if use_im is None:
         use_im = {im:True for im in detection_results['images']}
 
     per_image_detections = {detection_results['images'][idx] :{'bboxes': detection_results['detections'][idx], 'scores': detection_results['detection_scores'][idx], 'labels':detection_results['detection_labels'][idx]} for idx in range(len(detection_results['images'])) if use_im[detection_results['images'][idx]]}

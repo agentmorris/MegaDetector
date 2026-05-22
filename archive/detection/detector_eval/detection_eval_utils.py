@@ -21,7 +21,7 @@ def get_non_person_images(results):
 
 def group_detections_by_image(results, use_im=None):
     
-    if use_im == None:
+    if use_im is None:
         use_im = {im: True for im in results['images']}
 
     per_image_detections = {results['images'][idx]: {'boxes': results['detection_boxes'][idx],
