@@ -840,17 +840,6 @@ E1
 !training
 
 
-## Merge get_file_sizes and parallel_get_file_sizes
-
-There is some redundancy between the get_file_sizes and parallel_get_file_sizes functions, clean this redundancy up.
-
-P3
-
-E1
-
-!maintenance
-
-
 ## Merge resize_images and resize_image_folder
 
 There is some redundancy between the resize_images and resize_image_folder functions, clean this redundancy up.

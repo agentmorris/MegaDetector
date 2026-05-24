@@ -399,7 +399,8 @@ if False:
         video_size =_get_file_size(video_fn)[1]
         assert video_size > 0
 
-        frame_size = get_file_sizes(frame_output_folder_this_video)
+        frame_size = get_file_sizes(filenames=frame_output_folder_this_video,
+                                    recursive=False)
         frame_size = sum(frame_size.values())
         if frame_size == 0:
             print('Warning: error computing frame sizes for {}'.format(video_fn))
