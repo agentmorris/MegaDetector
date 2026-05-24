@@ -14,7 +14,7 @@ det_folder = '/data/experiments/object_detection/inception_resnet_v2_atrous/expo
 
 def compute_precision_recall(detection_file, detection_results=None,images_to_consider='all', get_night_day = None):
     
-    if detection_results == None:
+    if detection_results is None:
         print('Loading detection file...')
     
         with open(detection_file) as f:

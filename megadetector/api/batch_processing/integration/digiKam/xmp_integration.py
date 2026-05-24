@@ -99,7 +99,7 @@ def update_xmp_metadata(categories, options, rename_cats, n_images, image):
     try:
         
         filename = image['file']
-        if options.remove_path != None and len(options.remove_path) > 0:
+        if options.remove_path is not None and len(options.remove_path) > 0:
             filename = filename.replace(options.remove_path, '')
         img_path = os.path.join(options.image_folder, filename)
         assert os.path.isfile(img_path), 'Image {} not found'.format(img_path)
@@ -124,7 +124,7 @@ def update_xmp_metadata(categories, options, rename_cats, n_images, image):
                 
                 # If we're supposed to compare to a threshold...
                 if len(options.min_threshold) > 0 and \
-                    options.min_threshold != None:
+                        options.min_threshold is not None:
                     if float(detection['conf']) > float(options.min_threshold):
                         image_categories.append(cat)
                         original_image_cats.append(
@@ -136,7 +136,7 @@ def update_xmp_metadata(categories, options, rename_cats, n_images, image):
                     original_image_cats.append(categories[detection['category']])
 
             # Keep track of the highest-confidence detection for this class                
-            if options.min_threshold != None and \
+            if options.min_threshold is not None and \
                 len(options.min_threshold) > 0 and \
                     detection['conf'] > \
                         original_image_cats_conf.get(
@@ -153,11 +153,11 @@ def update_xmp_metadata(categories, options, rename_cats, n_images, image):
             
             matching_cats = set(rename_cats).intersection(set(original_image_cats))
             is_conf_low = False
-            if options.min_threshold != None and len(options.min_threshold) > 0:
+            if options.min_threshold is not None and len(options.min_threshold) > 0:
                 for matching_cat in matching_cats:
                     if original_image_cats_conf[matching_cat] < float(options.rename_conf):
                         is_conf_low = True
-            if options.min_threshold != None and \
+            if options.min_threshold is not None and \
                 len(options.min_threshold) > 0 and \
                     len(image['detections']) == 0 or \
                 (len(options.rename_conf) > 0 and \
