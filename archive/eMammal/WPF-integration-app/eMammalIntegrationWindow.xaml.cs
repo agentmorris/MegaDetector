@@ -89,7 +89,7 @@ namespace eMammal_integration_application
 
         private void TabSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (Tab.SelectedIndex == 0 | Tab.SelectedIndex == 1)
+            if (Tab.SelectedIndex == 0 || Tab.SelectedIndex == 1)
             {
                 TabResults.Visibility = Visibility.Hidden;
             }

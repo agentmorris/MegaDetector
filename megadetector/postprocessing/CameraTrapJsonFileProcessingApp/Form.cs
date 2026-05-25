@@ -284,7 +284,7 @@ namespace CameraTrapJsonManagerApp
                     return false;
                 }
 
-                if(confidenceThreshold < 0 | confidenceThreshold > 1)
+                if(confidenceThreshold < 0 || confidenceThreshold > 1)
                 {
                     panelMain.CreateGraphics().DrawRectangle(Pens.Red,
                                            textboxConfidenceThreshold.Left - 1,
