@@ -294,7 +294,7 @@ if False:
     from megadetector.utils import url_utils
 
     status_codes = url_utils.test_urls(urls,timeout=2.0)
-    assert all([code == 200 for code in status_codes])
+    assert all(code == 200 for code in status_codes)
 
 
     #%% Verify that the metadata URLs exist for individual datasets
@@ -319,5 +319,5 @@ if False:
                                        n_workers=10,
                                        pool_type='process',
                                        timeout=2.0)
-    assert all([code == 200 for code in status_codes])
+    assert all(code == 200 for code in status_codes)
 

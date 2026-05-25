@@ -1281,7 +1281,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
                     # Is this an empty image?
                     if category_name in options.gt_empty_categories:
 
-                        assert all([cn in options.gt_empty_categories for cn in category_names_in_gt]), \
+                        assert all(cn in options.gt_empty_categories for cn in category_names_in_gt), \
                             'Image {} has both empty and non-empty ground truth labels'.format(
                                 im_detection['file'])
                         if len(category_names_detected) > 0:

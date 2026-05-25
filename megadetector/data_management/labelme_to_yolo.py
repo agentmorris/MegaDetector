@@ -183,7 +183,7 @@ def labelme_folder_to_yolo(labelme_folder,
 
     if relative_filenames_to_convert is not None:
         labelme_files_relative = relative_filenames_to_convert
-        assert all([fn.endswith('.json') for fn in labelme_files_relative]), \
+        assert all(fn.endswith('.json') for fn in labelme_files_relative), \
             'relative_filenames_to_convert contains non-json files'
     else:
         labelme_files_relative = recursive_file_list(labelme_folder,return_relative_paths=True)

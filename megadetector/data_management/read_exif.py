@@ -183,7 +183,7 @@ def _is_null_island(gps_info):
         if (len(v) != 3):
             return False
         try:
-            if all([_is_null_gps_value(x) for x in v]):
+            if all(_is_null_gps_value(x) for x in v):
                 return True
         except Exception:
             return False
@@ -568,7 +568,7 @@ def read_exif_tags_for_image(file_path,options=None):
         exif_lines = proc.stdout.readlines()
         exif_lines = [s.strip() for s in exif_lines]
         if ( (exif_lines is None) or (len(exif_lines) == 0) or not \
-            any([s.lower().startswith('[exif]') for s in exif_lines])):
+            any(s.lower().startswith('[exif]') for s in exif_lines)):
             result['status'] = 'failure'
             return result
 

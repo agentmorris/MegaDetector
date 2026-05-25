@@ -66,8 +66,8 @@ def main(): # noqa
     images_file_name = 'Template Wildlife Insights Batch Upload - Imagev1.0.csv'
     cameras_file_name = 'Template Wildlife Insights Batch Upload - Camerav1.0.csv'
 
-    assert all([os.path.isfile(os.path.join(templates_dir,fn)) for fn in \
-                [projects_file_name,deployments_file_name,images_file_name,cameras_file_name]])
+    assert all(os.path.isfile(os.path.join(templates_dir,fn)) for fn in \
+                [projects_file_name,deployments_file_name,images_file_name,cameras_file_name])
 
 
     #%% Project information

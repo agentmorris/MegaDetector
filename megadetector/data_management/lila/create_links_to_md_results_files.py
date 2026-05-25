@@ -61,7 +61,7 @@ for i_row,row in df.iterrows():
         if dataset_shortname == 'snapshot-serengeti':
             matching_files = [fn for fn in matching_files if '_S' not in fn]
             assert len(matching_files) == 2
-            assert all(['mdv4' in fn for fn in matching_files])
+            assert all('mdv4' in fn for fn in matching_files)
             rde_files = [fn for fn in matching_files if 'rde' in fn]
             raw_files = [fn for fn in matching_files if 'rde' not in fn]
             assert len(rde_files) == 1 and len(raw_files) == 1

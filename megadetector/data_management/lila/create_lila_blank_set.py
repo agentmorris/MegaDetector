@@ -104,15 +104,15 @@ original_labels = sorted(list(df['original_label'].unique()),
 
 # Blanks are represented as NaN in the "common_name" column (though not all NaN's are blanks)
 assert '' not in common_names
-assert all([s not in common_names for s in blank_original_labels])
-assert all([s not in common_names for s in nonblank_original_labels])
+assert all(s not in common_names for s in blank_original_labels)
+assert all(s not in common_names for s in nonblank_original_labels)
 assert np.nan in common_names
 
 # Blanks are represented as "empty" or "misfire" in the "original_label" column
-assert all([s in original_labels for s in blank_original_labels])
-assert all([s in original_labels for s in nonblank_original_labels])
-assert all([s in original_labels for s in other_labels_without_common_names])
-assert all([s not in original_labels for s in ('','blank','none',np.nan)])
+assert all(s in original_labels for s in blank_original_labels)
+assert all(s in original_labels for s in nonblank_original_labels)
+assert all(s in original_labels for s in other_labels_without_common_names)
+assert all(s not in original_labels for s in ('','blank','none',np.nan))
 
 
 #%% Count empty labels and common names

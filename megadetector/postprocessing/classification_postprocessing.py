@@ -1341,13 +1341,13 @@ def restrict_to_taxa_list(taxa_list,
             return
 
         if len(species) > 0:
-            assert all([len(s) > 0 for s in [genus,family,order]]), \
+            assert all(len(s) > 0 for s in [genus,family,order]), \
                 'Higher-level taxa missing for {}: {},{},{}'.format(s,genus,family,order)
             binomial_name = genus + ' ' + species
             if binomial_name not in speciesnet_latin_name_to_taxon_string:
                 speciesnet_latin_name_to_taxon_string[binomial_name] = s
         elif len(genus) > 0:
-            assert all([len(s) > 0 for s in [family,order]]), \
+            assert all(len(s) > 0 for s in [family,order]), \
                 'Higher-level taxa missing for {}: {},{}'.format(s,family,order)
             if genus not in speciesnet_latin_name_to_taxon_string:
                 speciesnet_latin_name_to_taxon_string[genus] = s

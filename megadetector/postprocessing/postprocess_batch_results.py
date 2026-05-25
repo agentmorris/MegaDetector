@@ -618,7 +618,7 @@ def _prepare_html_subpages(images_html, output_dir, options=None):
         images_html_sorted = {}
         for category_string, images_this_category in images_html.items():
 
-            if not all(['max_conf' in d for d in images_this_category]):
+            if not all('max_conf' in d for d in images_this_category):
                 print(f"Warning: some elements in the {category_string} page don't have confidence " + \
                         "values, can't sort by confidence")
             else:
