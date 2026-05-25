@@ -736,13 +736,11 @@ def _prepare_analysis_data(options):
                         cat_name = gt_category_id_to_name[ann['category_id']].lower()
                         if cat_name not in categories_to_ignore:
                             cat_counts[cat_name] += 1
-                # Pick by count (descending), then alphabetically
-                winner = max(gt_cats, key=lambda c: (cat_counts.get(c, 0), -ord(c[0])))
-                # More robust: sort by (-count, name)
-                winner = sorted(gt_cats, key=lambda c: (-cat_counts.get(c, 0), c))[0]
+                # Sort by (-count, name)
+                winner = min(gt_cats, key=lambda c: (-cat_counts.get(c, 0), c))
             else:
                 # Image-level: break ties alphabetically
-                winner = sorted(gt_cats)[0]
+                winner = min(gt_cats)
 
             filename_to_gt_categories[entity_id] = {winner}
 
@@ -767,9 +765,9 @@ def _prepare_analysis_data(options):
 
             # Pick by count (descending), then max confidence (descending),
             # then alphabetically
-            winner = sorted(
+            winner = min(
                 pred_cats.keys(),
-                key=lambda c: (-counts.get(c, 0), -pred_cats[c], c))[0]
+                key=lambda c: (-counts.get(c, 0), -pred_cats[c], c))
 
             winner_conf = pred_cats[winner]
             filename_to_pred_categories[entity_id] = {winner: winner_conf}
