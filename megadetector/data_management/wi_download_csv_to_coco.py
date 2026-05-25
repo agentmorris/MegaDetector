@@ -352,7 +352,7 @@ def wi_download_csv_to_coco(csv_file_in,
 
             category_name = record['common_name'].strip().lower()
 
-            if len(category_name) == '':
+            if category_name == '':
 
                 if len(record['genus']) > 0 and len(record['species']) > 0:
                     category_name = record['genus'] + ' ' + record['species']
