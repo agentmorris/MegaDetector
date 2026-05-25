@@ -142,24 +142,12 @@ def analyze_images(url_or_path: str, json_keys: Optional[Sequence[str]] = None,
         datasets_table = MegadbUtils().get_datasets_table()
 
     is_json = ('.json' in url_or_path)
-    if url_or_path.startswith(('http://', 'https://')):
-        r = requests.get(url_or_path)
-        if is_json:
-            img_paths = r.json()
-        else:
-            img_paths = r.text.splitlines()
+    if is_json:
+        img_paths = get_image_paths_from_json(url_or_path)
+        if json_keys is not None:
+            img_paths = filter_image_paths_with_json_keys(img_paths, json_keys)
     else:
-        with open(url_or_path, 'r') as f:
-            if is_json:
-                img_paths = json.load(f)
-            else:
-                img_paths = f.readlines()
-
-    if is_json and json_keys is not None:
-        img_paths_json = img_paths
-        img_paths = []
-        for k in json_keys:
-            img_paths += img_paths_json[k]
+        img_paths = get_img_paths_from_string(url_or_path)
 
     mapping: dict[str, list[str]] = {
         status: []
@@ -187,6 +175,36 @@ def analyze_images(url_or_path: str, json_keys: Optional[Sequence[str]] = None,
         print(f'{status}: {len(img_list)}')
         pprint(sorted(img_list))
 
+
+def get_image_paths_from_json(url_or_path: str) -> Any:
+    if url_or_path.startswith(('http://', 'https://')):
+        r = requests.get(url_or_path)
+        img_paths = r.json()
+    else:
+        with open(url_or_path, 'r') as f:
+            img_paths = json.load(f)
+
+    return img_paths
+
+
+def filter_image_paths_with_json_keys(img_paths, json_keys: Sequence[str]) -> list[Any]:
+    img_paths_json = img_paths
+    img_paths = []
+    for k in json_keys:
+        img_paths += img_paths_json[k]
+    return img_paths
+
+
+def get_img_paths_from_string(url_or_path: str) -> Any:
+    if url_or_path.startswith(('http://', 'https://')):
+
+        r = requests.get(url_or_path)
+        img_paths = r.text.splitlines()
+    else:
+
+        with open(url_or_path, 'r') as f:
+            img_paths = f.readlines()
+    return img_paths
 
 #%% Command-line driver
 
