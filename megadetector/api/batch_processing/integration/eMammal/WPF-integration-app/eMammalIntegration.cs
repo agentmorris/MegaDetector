@@ -164,7 +164,7 @@ namespace eMammal_integration_application
                 logger.Info(logImages.ToString());
 
             // Add remaining detections
-            if (!recordsAdded & foundImage)
+            if (!recordsAdded && foundImage)
             {
                 Common.ShowProgress(window, Constants.PROGRESS_UPDATING_ANNOTATIONS_IN_DB, progressCount);
                 db.BulkInsertAnnotations(sql);
