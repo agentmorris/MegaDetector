@@ -21,6 +21,8 @@ from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
 from tqdm import tqdm
 from functools import partial
+from collections.abc import Mapping
+from typing import Union
 
 from megadetector.utils.path_utils import find_images
 from megadetector.data_management.annotations import annotation_constants
@@ -94,6 +96,8 @@ DEFAULT_COLORS = [
 
 pil_tag_name_to_id = {v: k for k, v in TAGS.items()}
 
+Pathish = Union[str, bytes, os.PathLike[str], os.PathLike[bytes]]
+InputFiles = Union[Pathish, Mapping[Pathish, Pathish]]
 
 #%% Functions
 
@@ -1543,93 +1547,164 @@ def _resize_absolute_image(input_output_files,
 # ..._resize_absolute_image(...)
 
 
-def resize_images(input_file_to_output_file,
-                  target_width=-1,
-                  target_height=-1,
-                  no_enlarge_width=False,
-                  verbose=False,
-                  quality='keep',
-                  pool_type='process',
-                  n_workers=10):
+def resize_images(input_files: InputFiles,
+                  output_folder: Pathish | None = None,
+                  target_width: int = -1,
+                  target_height: int = -1,
+                  no_enlarge_width: bool = False,
+                  verbose: bool = False,
+                  quality: str | int = 'keep',
+                  pool_type: str = 'process',
+                  n_workers: int = 10,
+                  recursive: bool = True,
+                  image_files_relative: list[str] | None = None,
+                  overwrite: bool = True):
     """
-    Resizes all images the dictionary [input_file_to_output_file].
+    Resize images from either a folder path or an explicit input/output mapping.
 
-    TODO: This is a little more redundant with resize_image_folder than I would like;
-    refactor resize_image_folder to call resize_images.  Not doing that yet because
-    at the time I'm writing this comment, a lot of code depends on resize_image_folder
-    and I don't want to rock the boat yet.
+    `input_files` may be either:
+      - A path-like object pointing to a folder. Images are enumerated from that folder.
+      - A mapping whose keys are input image paths and whose values are output image paths.
+
+    Folder mode:
+      - If output_folder is None, images are resized in place.
+      - If output_folder is provided, relative paths are preserved inside output_folder.
+      - image_files_relative can be provided to restrict work to specific relative paths.
+      - recursive controls whether images are enumerated recursively.
+
+    Mapping mode:
+      - Each key/value pair is treated as one explicit input/output resize operation.
+      - output_folder, recursive, image_files_relative, and overwrite are ignored.
+      - Mapping keys and values may be str, bytes, or os.PathLike paths.
 
     Args:
-        input_file_to_output_file (dict): dict mapping images that exist to the locations
-            where the resized versions should be written
-        target_width (int, optional): width to which we should resize this image, or -1
-            to let target_height determine the size
-        target_height (int, optional): height to which we should resize this image, or -1
-            to let target_width determine the size
-        no_enlarge_width (bool, optional): if [no_enlarge_width] is True, and
-            [target width] is larger than the original image width, does not modify the image,
-            but will write to output_file if supplied
-        verbose (bool, optional): enable additional debug output
-        quality (str or int, optional): passed to exif_preserving_save, see docs for more detail
-        pool_type (str, optional): whether use use processes ('process') or threads ('thread') for
-            parallelization; ignored if n_workers <= 1
-        n_workers (int, optional): number of workers to use for parallel resizing; set to <=1
-            to disable parallelization
+        input_files (Pathish or Mapping[Pathish, Pathish]):
+            Either a folder path to enumerate, or a mapping from input image paths to
+            output image paths.
+        output_folder (Pathish, optional):
+            Folder for resized images when input_files is a folder. Defaults to in-place.
+            Ignored when input_files is a mapping.
+        target_width (int, optional):
+            Target width, or -1 to let target_height determine the size.
+        target_height (int, optional):
+            Target height, or -1 to let target_width determine the size.
+        no_enlarge_width (bool, optional):
+            If True and target_width exceeds the original image width, do not enlarge.
+        verbose (bool, optional):
+            Enable additional debug output.
+        quality (str or int, optional):
+            Passed to exif_preserving_save.
+        pool_type (str, optional):
+            'process' or 'thread'; ignored if n_workers <= 1.
+        n_workers (int, optional):
+            Number of workers; set <= 1 to disable parallelism.
+        recursive (bool, optional):
+            Folder mode only. Whether to recursively enumerate images.
+        image_files_relative (list[str], optional):
+            Folder mode only. If provided, resize only these relative image paths.
+        overwrite (bool, optional):
+            Folder mode only. Whether to overwrite existing output images.
 
     Returns:
-        list: a list of dicts with keys 'input_fn', 'output_fn', 'status', and 'error'.
-        'status' will be 'success' or 'error'; 'error' will be None for successful cases,
-        otherwise will contain the image-specific error.
+        list:
+            A list of dicts with keys 'input_fn', 'output_fn', 'status', and 'error'.
+            'status' will be 'success', 'skipped', or 'error'. 'error' will be None
+            for successful and skipped cases, otherwise it will contain the image-specific
+            error.
     """
 
-    assert pool_type in ('process','thread'), 'Illegal pool type {}'.format(pool_type)
+    assert pool_type in ('process', 'thread'), f'Illegal pool type {pool_type}'
 
-    input_output_file_pairs = []
+    if isinstance(input_files, (str, bytes, os.PathLike)):
+        input_folder = input_files
+        assert os.path.isdir(input_folder), f'{input_folder} is not a folder'
 
-    # Reformat input files as (input,output) tuples
-    for input_fn in input_file_to_output_file:
-        input_output_file_pairs.append((input_fn,input_file_to_output_file[input_fn]))
+        if output_folder is None:
+            output_folder = input_folder
+        else:
+            os.makedirs(output_folder, exist_ok=True)
 
-    if n_workers == 1:
-
-        results = []
-        for i_o_file_pair in tqdm(input_output_file_pairs):
-            results.append(_resize_absolute_image(i_o_file_pair,
-                            target_width=target_width,
-                            target_height=target_height,
-                            no_enlarge_width=no_enlarge_width,
-                            verbose=verbose,
-                            quality=quality))
-
-    else:
-
-        pool = None
-
-        try:
-
-            if pool_type == 'thread':
-                pool = ThreadPool(n_workers); poolstring = 'threads'
-            else:
-                assert pool_type == 'process'
-                pool = Pool(n_workers); poolstring = 'processes'
+        if image_files_relative is None:
 
             if verbose:
-                print('Starting resizing pool with {} {}'.format(n_workers,poolstring))
+                print('Enumerating images')
 
-            p = partial(_resize_absolute_image,
-                    target_width=target_width,
-                    target_height=target_height,
-                    no_enlarge_width=no_enlarge_width,
-                    verbose=verbose,
-                    quality=quality)
+            image_files_relative = find_images(
+                input_folder,
+                recursive=recursive,
+                return_relative_paths=True,
+                convert_slashes=True,
+            )
 
-            results = list(tqdm(pool.imap(p, input_output_file_pairs),total=len(input_output_file_pairs)))
+            if verbose:
+                print(f'Found {len(image_files_relative)} images')
 
-        finally:
+        work_items = list(image_files_relative)
 
-            if pool is not None:
-                pool.close()
-                pool.join()
+        resize_fn = partial(
+            _resize_relative_image,
+            input_folder=input_folder,
+            output_folder=output_folder,
+            target_width=target_width,
+            target_height=target_height,
+            no_enlarge_width=no_enlarge_width,
+            verbose=verbose,
+            quality=quality,
+            overwrite=overwrite,
+        )
+
+    else:
+        input_file_to_output_file = dict(input_files)
+
+        work_items = list(input_file_to_output_file.items())
+
+        resize_fn = partial(
+            _resize_absolute_image,
+            target_width=target_width,
+            target_height=target_height,
+            no_enlarge_width=no_enlarge_width,
+            verbose=verbose,
+            quality=quality,
+        )
+
+    if not work_items:
+        return []
+
+    if n_workers <= 1:
+        if verbose:
+            print('Resizing images')
+
+        return [
+            resize_fn(work_item)
+            for work_item in tqdm(work_items)
+        ]
+
+    n_workers = min(n_workers, len(work_items))
+
+    pool = None
+
+    try:
+        if pool_type == 'thread':
+            pool = ThreadPool(n_workers)
+            pool_string = 'threads'
+        else:
+            pool = Pool(n_workers)
+            pool_string = 'processes'
+
+        if verbose:
+            print(f'Starting resizing pool with {n_workers} {pool_string}')
+
+        results = list(tqdm(
+            pool.imap(resize_fn, work_items),
+            total=len(work_items),
+        ))
+
+    finally:
+        if pool is not None:
+            pool.close()
+            pool.join()
+
+            if verbose:
                 print('Pool closed and joined for image resizing')
 
     return results
@@ -1655,97 +1730,50 @@ def resize_image_folder(input_folder,
     Defaults to in-place resizing (output_folder is optional).
 
     Args:
-        input_folder (str): folder in which we should find images to resize
-        output_folder (str, optional): folder in which we should write resized images.  If
-            None, resizes images in place.  Otherwise, maintains relative paths in the target
-            folder.
-        target_width (int, optional): width to which we should resize this image, or -1
-            to let target_height determine the size
-        target_height (int, optional): height to which we should resize this image, or -1
-            to let target_width determine the size
-        no_enlarge_width (bool, optional): if [no_enlarge_width] is True, and
-            [target width] is larger than the original image width, does not modify the image,
-            but will write to output_file if supplied
-        verbose (bool, optional): enable additional debug output
-        quality (str or int, optional): passed to exif_preserving_save, see docs for more detail
-        pool_type (str, optional): whether use use processes ('process') or threads ('thread') for
-            parallelization; ignored if n_workers <= 1
-        n_workers (int, optional): number of workers to use for parallel resizing; set to <=1
-            to disable parallelization
-        recursive (bool, optional): whether to search [input_folder] recursively for images.
-        image_files_relative (list, optional): if not None, skips any relative paths not
-            in this list
-        overwrite (bool, optional): whether to overwrite existing target images
+     input_folder (str): folder in which we should find images to resize
+     output_folder (str, optional): folder in which we should write resized images.  If
+         None, resizes images in place.  Otherwise, maintains relative paths in the target
+         folder.
+     target_width (int, optional): width to which we should resize this image, or -1
+         to let target_height determine the size
+     target_height (int, optional): height to which we should resize this image, or -1
+         to let target_width determine the size
+     no_enlarge_width (bool, optional): if [no_enlarge_width] is True, and
+         [target width] is larger than the original image width, does not modify the image,
+         but will write to output_file if supplied
+     verbose (bool, optional): enable additional debug output
+     quality (str or int, optional): passed to exif_preserving_save, see docs for more detail
+     pool_type (str, optional): whether use use processes ('process') or threads ('thread') for
+         parallelization; ignored if n_workers <= 1
+     n_workers (int, optional): number of workers to use for parallel resizing; set to <=1
+         to disable parallelization
+     recursive (bool, optional): whether to search [input_folder] recursively for images.
+     image_files_relative (list, optional): if not None, skips any relative paths not
+         in this list
+     overwrite (bool, optional): whether to overwrite existing target images
 
     Returns:
-        list: a list of dicts with keys 'input_fn', 'output_fn', 'status', and 'error'.
-        'status' will be 'success', 'skipped', or 'error'; 'error' will be None for successful
-        cases, otherwise will contain the image-specific error.
+     list: a list of dicts with keys 'input_fn', 'output_fn', 'status', and 'error'.
+     'status' will be 'success', 'skipped', or 'error'; 'error' will be None for successful
+     cases, otherwise will contain the image-specific error.
     """
 
-    assert os.path.isdir(input_folder), '{} is not a folder'.format(input_folder)
+    return resize_images(
+        input_folder,
+        output_folder=output_folder,
+        target_width=target_width,
+        target_height=target_height,
+        no_enlarge_width=no_enlarge_width,
+        verbose=verbose,
+        quality=quality,
+        pool_type=pool_type,
+        n_workers=n_workers,
+        recursive=recursive,
+        image_files_relative=image_files_relative,
+        overwrite=overwrite,
+    )
 
-    if output_folder is None:
-        output_folder = input_folder
-    else:
-        os.makedirs(output_folder,exist_ok=True)
-
-    assert pool_type in ('process','thread'), 'Illegal pool type {}'.format(pool_type)
-
-    if image_files_relative is None:
-
-        if verbose:
-            print('Enumerating images')
-
-        image_files_relative = find_images(input_folder,recursive=recursive,
-                                           return_relative_paths=True,convert_slashes=True)
-        if verbose:
-            print('Found {} images'.format(len(image_files_relative)))
-
-    if n_workers == 1:
-
-        if verbose:
-            print('Resizing images')
-
-        results = []
-        for fn_relative in tqdm(image_files_relative):
-            results.append(_resize_relative_image(fn_relative,
-                                  input_folder=input_folder,
-                                  output_folder=output_folder,
-                                  target_width=target_width,
-                                  target_height=target_height,
-                                  no_enlarge_width=no_enlarge_width,
-                                  verbose=verbose,
-                                  quality=quality,
-                                  overwrite=overwrite))
-
-    else:
-
-        if pool_type == 'thread':
-            pool = ThreadPool(n_workers); poolstring = 'threads'
-        else:
-            assert pool_type == 'process'
-            pool = Pool(n_workers); poolstring = 'processes'
-
-        if verbose:
-            print('Starting resizing pool with {} {}'.format(n_workers,poolstring))
-
-        p = partial(_resize_relative_image,
-                input_folder=input_folder,
-                output_folder=output_folder,
-                target_width=target_width,
-                target_height=target_height,
-                no_enlarge_width=no_enlarge_width,
-                verbose=verbose,
-                quality=quality,
-                overwrite=overwrite)
-
-        results = list(tqdm(pool.imap(p, image_files_relative),
-                            total=len(image_files_relative)))
-
-    return results
-
-# ...def resize_image_folder(...)
+# ...def resize_images(...)
 
 
 def get_image_size(im,verbose=False):
@@ -2057,14 +2085,14 @@ if False:
 
     #%% Recursive resize test
 
-    from megadetector.visualization.visualization_utils import resize_image_folder # noqa
+    from megadetector.visualization.visualization_utils import resize_image # noqa
 
     input_folder = r"C:\temp\resize-test\in"
     output_folder = r"C:\temp\resize-test\out"
 
-    resize_results = resize_image_folder(input_folder,output_folder,
-                         target_width=1280,verbose=True,quality=85,no_enlarge_width=True,
-                         pool_type='process',n_workers=10)
+    resize_results = resize_images(input_folder,output_folder,
+                        target_width=1280,verbose=True,quality=85,no_enlarge_width=True,
+                        pool_type='process',n_workers=10)
 
 
     #%% Integrity checking test
