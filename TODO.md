@@ -840,17 +840,6 @@ E1
 !training
 
 
-## Merge resize_images and resize_image_folder
-
-There is some redundancy between the resize_images and resize_image_folder functions, clean this redundancy up.
-
-P3
-
-E1
-
-!maintenance
-
-
 ## Argument validation in postprocess_batch_results
 
 postprocess_batch_results should at least notify the user, and probably error, when it’s run without one of (1) absolute paths, (2) ground truth, or (3) an image folder.  I don't think there's a sensible case where you would not want to specify one of those things.
@@ -1025,7 +1014,7 @@ E0
 !maintenance
 
 
-## Windows support for WI project download 
+## Windows support for WI project download
 
 write_download_commands() in wi_platform_utils (which writes out a series of gcloud storage commands to download images for a WI project) assumes bash (writes .sh files, uses "wait" and "echo").  Add .bat support.
 

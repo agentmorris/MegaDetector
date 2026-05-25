@@ -1462,78 +1462,42 @@ def gray_scale_fraction(image,crop_size=(0.1,0.1)):
 # ...def gray_scale_fraction(...)
 
 
-def _resize_relative_image(fn_relative,
-                           input_folder,
-                           output_folder,
-                           target_width,
-                           target_height,
-                           no_enlarge_width,
-                           verbose,
-                           quality,
-                           overwrite=True):
-    """
-    Internal function for resizing an image from one folder to another,
-    maintaining relative path.
-    """
-
-    input_fn_abs = os.path.join(input_folder,fn_relative)
-    output_fn_abs = os.path.join(output_folder,fn_relative)
-
-    if (not overwrite) and (os.path.isfile(output_fn_abs)):
-        status = 'skipped'
-        error = None
-        return {'fn_relative':fn_relative,'status':status,'error':error}
-
-    os.makedirs(os.path.dirname(output_fn_abs),exist_ok=True)
-    try:
-        _ = resize_image(input_fn_abs,
-                         output_file=output_fn_abs,
-                         target_width=target_width,
-                         target_height=target_height,
-                         no_enlarge_width=no_enlarge_width,
-                         verbose=verbose,
-                         quality=quality)
-        status = 'success'
-        error = None
-    except Exception as e:
-        if verbose:
-            print('Error resizing {}: {}'.format(fn_relative,str(e)))
-        status = 'error'
-        error = str(e)
-
-    return {'fn_relative':fn_relative,'status':status,'error':error}
-
-# ...def _resize_relative_image(...)
-
-
 def _resize_absolute_image(input_output_files,
                            target_width,
                            target_height,
                            no_enlarge_width,
                            verbose,
-                           quality):
+                           quality,
+                           overwrite):
     """
     Internal wrapper for resize_image used in the context of a batch resize operation.
     """
 
     input_fn_abs = input_output_files[0]
     output_fn_abs = input_output_files[1]
-    os.makedirs(os.path.dirname(output_fn_abs),exist_ok=True)
-    try:
-        _ = resize_image(input_fn_abs,
-                         output_file=output_fn_abs,
-                         target_width=target_width,
-                         target_height=target_height,
-                         no_enlarge_width=no_enlarge_width,
-                         verbose=verbose,
-                         quality=quality)
-        status = 'success'
-        error = None
-    except Exception as e:
-        if verbose:
-            print('Error resizing {}: {}'.format(input_fn_abs,str(e)))
-        status = 'error'
-        error = str(e)
+    error = None
+
+    if (not overwrite) and (os.path.isfile(output_fn_abs)):
+
+        status = 'skipped'
+
+    else:
+
+        os.makedirs(os.path.dirname(output_fn_abs),exist_ok=True)
+        try:
+            _ = resize_image(input_fn_abs,
+                            output_file=output_fn_abs,
+                            target_width=target_width,
+                            target_height=target_height,
+                            no_enlarge_width=no_enlarge_width,
+                            verbose=verbose,
+                            quality=quality)
+            status = 'success'
+        except Exception as e:
+            if verbose:
+                print('Error resizing {}: {}'.format(input_fn_abs,str(e)))
+            status = 'error'
+            error = str(e)
 
     return {'input_fn':input_fn_abs,
             'output_fn':output_fn_abs,
@@ -1550,14 +1514,10 @@ def resize_images(input_file_to_output_file,
                   verbose=False,
                   quality='keep',
                   pool_type='process',
-                  n_workers=10):
+                  n_workers=10,
+                  overwrite=True):
     """
     Resizes all images the dictionary [input_file_to_output_file].
-
-    TODO: This is a little more redundant with resize_image_folder than I would like;
-    refactor resize_image_folder to call resize_images.  Not doing that yet because
-    at the time I'm writing this comment, a lot of code depends on resize_image_folder
-    and I don't want to rock the boat yet.
 
     Args:
         input_file_to_output_file (dict): dict mapping images that exist to the locations
@@ -1575,6 +1535,7 @@ def resize_images(input_file_to_output_file,
             parallelization; ignored if n_workers <= 1
         n_workers (int, optional): number of workers to use for parallel resizing; set to <=1
             to disable parallelization
+        overwrite (bool, optional): whether to overwrite existing target images
 
     Returns:
         list: a list of dicts with keys 'input_fn', 'output_fn', 'status', and 'error'.
@@ -1599,7 +1560,8 @@ def resize_images(input_file_to_output_file,
                             target_height=target_height,
                             no_enlarge_width=no_enlarge_width,
                             verbose=verbose,
-                            quality=quality))
+                            quality=quality,
+                            overwrite=overwrite))
 
     else:
 
@@ -1621,7 +1583,8 @@ def resize_images(input_file_to_output_file,
                     target_height=target_height,
                     no_enlarge_width=no_enlarge_width,
                     verbose=verbose,
-                    quality=quality)
+                    quality=quality,
+                    overwrite=overwrite)
 
             results = list(tqdm(pool.imap(p, input_output_file_pairs),total=len(input_output_file_pairs)))
 
@@ -1702,46 +1665,22 @@ def resize_image_folder(input_folder,
         if verbose:
             print('Found {} images'.format(len(image_files_relative)))
 
-    if n_workers == 1:
+    input_file_to_output_file = {}
 
-        if verbose:
-            print('Resizing images')
+    for fn_relative_in in image_files_relative:
+        fn_abs_in = os.path.join(input_folder,fn_relative_in)
+        fn_abs_out = os.path.join(output_folder,fn_relative_in)
+        input_file_to_output_file[fn_abs_in] = fn_abs_out
 
-        results = []
-        for fn_relative in tqdm(image_files_relative):
-            results.append(_resize_relative_image(fn_relative,
-                                  input_folder=input_folder,
-                                  output_folder=output_folder,
-                                  target_width=target_width,
-                                  target_height=target_height,
-                                  no_enlarge_width=no_enlarge_width,
-                                  verbose=verbose,
-                                  quality=quality,
-                                  overwrite=overwrite))
-
-    else:
-
-        if pool_type == 'thread':
-            pool = ThreadPool(n_workers); poolstring = 'threads'
-        else:
-            assert pool_type == 'process'
-            pool = Pool(n_workers); poolstring = 'processes'
-
-        if verbose:
-            print('Starting resizing pool with {} {}'.format(n_workers,poolstring))
-
-        p = partial(_resize_relative_image,
-                input_folder=input_folder,
-                output_folder=output_folder,
-                target_width=target_width,
-                target_height=target_height,
-                no_enlarge_width=no_enlarge_width,
-                verbose=verbose,
-                quality=quality,
-                overwrite=overwrite)
-
-        results = list(tqdm(pool.imap(p, image_files_relative),
-                            total=len(image_files_relative)))
+    results = resize_images(input_file_to_output_file=input_file_to_output_file,
+                            target_width=target_width,
+                            target_height=target_height,
+                            no_enlarge_width=no_enlarge_width,
+                            verbose=verbose,
+                            quality=quality,
+                            pool_type=pool_type,
+                            n_workers=n_workers,
+                            overwrite=overwrite)
 
     return results
 
@@ -1993,8 +1932,10 @@ def parallel_check_image_integrity(filenames,
 
     return results
 
+# ...def parallel_check_image_integrity(...)
 
-#%% Test drivers
+
+#%% Interactive test drivers
 
 if False:
 
@@ -2062,9 +2003,14 @@ if False:
     input_folder = r"C:\temp\resize-test\in"
     output_folder = r"C:\temp\resize-test\out"
 
-    resize_results = resize_image_folder(input_folder,output_folder,
-                         target_width=1280,verbose=True,quality=85,no_enlarge_width=True,
-                         pool_type='process',n_workers=10)
+    resize_results = resize_image_folder(input_folder,
+                                         output_folder,
+                                         target_width=1280,
+                                         verbose=True,
+                                         quality=85,
+                                         no_enlarge_width=True,
+                                         pool_type='process',
+                                         n_workers=10)
 
 
     #%% Integrity checking test
