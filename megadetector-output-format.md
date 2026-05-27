@@ -18,19 +18,17 @@ Example output with both detection and classification results:
         "format_version": "1.6",
 
         // All other "info" fields are optional
-        "detector": "md_v4.1.0.pb",
-        "detection_completion_time": "2019-05-22 02:12:19",
-        "classifier": "ecosystem1_v2",
-        "classification_completion_time": "2019-05-26 01:52:08",
+        "detector": "MDV5A",
+        "detection_completion_time": "2026-05-26 19:11:27",
+        "classifier": "kaggle:google/speciesnet/pyTorch/v4.0.2a/1",
+        "classification_completion_time": "2026-05-26 19:11:32",
         "detector_metadata": {
-           "megadetector_version":"v4.1.0",
-           // These fields make recommendations to downstream tools about
-           // reasonable default confidence thresholds.
-           "typical_detection_threshold":0.8,
-           "conservative_detection_threshold":0.6
-        },
-        "classifier_metadata": {
-           "typical_classification_threshold":0.75
+            "image_size": 1280,
+            "megadetector_version": "v5a.0.1",
+            // These fields make recommendations to downstream tools about
+            // reasonable default confidence thresholds.
+            "typical_detection_threshold": 0.2,
+            "conservative_detection_threshold": 0.05,
         },
         "summary_report": "<p>Summary report</p><br/><p>...in which HTML is allowed.</p>"
     },
