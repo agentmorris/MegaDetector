@@ -120,7 +120,7 @@ def get_common_name_from_prediction_string(s):
                 common_name = tokens[1] + ' class'
             # Non-empty ID
             elif i_token == 0:
-                common_name = tokens[1] + ' category'
+                common_name = tokens[0] + ' category'
             break
 
         # ...if this token is non-empty

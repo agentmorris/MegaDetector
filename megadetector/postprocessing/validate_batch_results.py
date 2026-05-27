@@ -127,13 +127,16 @@ def validate_batch_results(json_filename,options=None):
         if 'format_version' not in info :
             raise ValueError('Input does not specify format version')
 
-        if not isinstance(info['format_version'],str):
-            raise ValueError('format_version is not a string')
-
         format_version = float(info['format_version'])
         if format_version < 1.3:
             raise ValueError('This validator can only be used with format version 1.3 or later')
 
+        # We were ambiguous on string vs float version numbers prior to the 1.6 format,
+        # but *usually* wrote string-formatted floats.  Now we required them to be string-formatted
+        # floats.
+        if format_version >= 1.6:
+            if not isinstance(info['format_version'],str):
+                raise ValueError('format_version is not a string')
 
         ## Category validation
 
