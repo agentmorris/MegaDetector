@@ -18,7 +18,7 @@ from collections import defaultdict
 from tqdm import tqdm
 
 from megadetector.utils.path_utils import \
-    insert_before_extension, find_images
+    insert_before_extension, find_images, path_join
 
 from megadetector.utils.ct_utils import (
     split_list_into_n_chunks,
@@ -33,6 +33,7 @@ from megadetector.postprocessing.validate_batch_results import \
     validate_batch_results, ValidateBatchResultsOptions
 
 from megadetector.detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP
+from megadetector.detection.run_detector_batch import current_format_version
 
 md_category_id_to_name = DEFAULT_DETECTOR_LABEL_MAP
 md_category_name_to_id = invert_dictionary(md_category_id_to_name)
@@ -61,6 +62,81 @@ default_tokens_to_ignore = ['$RECYCLE.BIN']
 
 
 #%% Miscellaneous taxonomy support functions
+
+def get_common_name_from_prediction_string(s):
+    """
+    Extract the common name from the seven-token prediction string [s], or generate
+    a reasonable one (e.g. "vulpes genus").  Prediction strings look like:
+
+    '90d950db-2106-4bd9-a4c1-777604c3eada;mammalia;rodentia;;;;rodent'
+
+    Args:
+        s (str): the string for which we should extract a common name
+
+    Returns:
+        str: the extracted common name
+    """
+
+    s = s.strip()
+    tokens = s.split(';')
+    assert len(tokens) == 7, \
+        'Invalid prediction string: {}'.format(s)
+    tokens = [token.strip() for token in tokens]
+
+    common_name = None
+
+    i_token = 6
+
+    while i_token >= 0:
+
+        token = tokens[i_token]
+
+        if len(token) > 0:
+
+            # Non-empty common name
+            if i_token == 6:
+                common_name = token
+            # Non-empty species name
+            elif i_token == 5:
+                # If a species name is present, a genus name should always be present
+                if len(tokens[4]) == 0:
+                    print('Warning: invalid genus/species combination {}'.format(s))
+                    common_name = tokens[5]
+                else:
+                    # Create binomial name
+                    common_name = tokens[4] + ' ' + tokens[5]
+            # Non-empty genus name
+            elif i_token == 4:
+                # Not a typo, this is a convention, genus-level names end with "species"
+                common_name = tokens[4] + ' species'
+            # Non-empty family name
+            elif i_token == 3:
+                common_name = tokens[3] + ' family'
+            # Non-empty order name
+            elif i_token == 2:
+                common_name = tokens[2] + ' order'
+            # Non-empty class name
+            elif i_token == 1:
+                common_name = tokens[1] + ' class'
+            # Non-empty ID
+            elif i_token == 0:
+                common_name = tokens[1] + ' category'
+            break
+
+        # ...if this token is non-empty
+
+        i_token -= 1
+
+    # ...for each token
+
+    if common_name is None:
+        assert s == ';;;;;;'
+        common_name = 'empty_prediction_string'
+
+    return common_name
+
+# ...def get_common_name_from_prediction_string(...)
+
 
 def is_valid_prediction_string(s):
     """
@@ -451,17 +527,17 @@ def generate_md_results_from_predictions_json(predictions_json_file,
         predictions_json_file (str): path to a predictions.json file, or a dict
         md_results_file (str, optional): path to which we should write an MD-formatted .json file
         base_folder (str, optional): leading string to remove from each path in the
-            predictions.json file.  Typically the folder on which you ran run_model.py,
-            including the trailing slash, such that filenames in the MD-formatted output
-            file will be relative to that folder.
+            predictions.json file.  Typically the folder on which you ran run_model.py.
+            If base_folder does not end in a slash, but filenames start with
+            base_folder + '/', this function assumes that you meant to add the slash.
         max_decimals (int, optional): number of decimal places to which we should round
             all values
         convert_human_to_person (bool, optional): WI predictions.json files sometimes use the
-            detection category "human"; MD files usually use "person".  If True, switches "human"
-            to "person".
-        convert_homo_species_to_human (bool, optional): the ensemble often rolls human predictions
-            up to "homo species", which isn't wrong, but looks odd.  This forces these back to
-            "homo sapiens".
+            detection category "human"; MD files usually use "person".  If True, this function
+            will change the detection category name "human" to "person".
+        convert_homo_species_to_human (bool, optional): the ensemble often rolls human
+            predictions up to "homo species", which isn't wrong, but looks odd.  This forces
+            these back to "homo sapiens".
         verbose (bool, optional): enable additional debug output
 
     Returns:
@@ -487,16 +563,21 @@ def generate_md_results_from_predictions_json(predictions_json_file,
     # Convert backslashes to forward slashes in both filenames and the base folder string
     for im in predictions:
         im['filepath'] = im['filepath'].replace('\\','/')
+
     if base_folder is not None:
         base_folder = base_folder.replace('\\','/')
 
     detection_category_id_to_name = {}
-    classification_category_name_to_id = {}
+
+    # Initially, this maps seven-token category strings to IDs, we will convert those
+    # to common names later.
+    classification_category_string_to_id = {}
 
     # Keep track of detections that don't have an assigned detection category; these
-    # are fake detections we create for non-blank images with non-empty detection lists.
+    # are fake detections we create for non-blank images with empty detection lists.
+    #
     # We need to go back later and give them a legitimate detection category ID.
-    all_unknown_detections = []
+    fake_detections = []
 
     # Create the output images list
     images_out = []
@@ -508,11 +589,17 @@ def generate_md_results_from_predictions_json(predictions_json_file,
 
         im_out = {}
 
+        # We've already converted backslashes to forward slashes
         fn = im_in['filepath']
+
         if base_folder is not None:
+
             if fn.startswith(base_folder):
                 base_folder_replacements += 1
                 fn = fn.replace(base_folder,'',1)
+            elif fn.startswith(base_folder + '/'):
+                base_folder_replacements += 1
+                fn = fn.replace(base_folder + '/','',1)
 
         im_out['file'] = fn
 
@@ -556,11 +643,10 @@ def generate_md_results_from_predictions_json(predictions_json_file,
                 class_to_assign = classifications['classes'][0]
                 class_confidence = classifications['scores'][0]
 
-                tokens = class_to_assign.split(';')
-                assert len(tokens) == 7
-                top_classification_common_name = tokens[-1]
-                if len(top_classification_common_name) == 0:
-                    top_classification_common_name = 'undefined'
+                # This gets stored as a sidecar field, and only gets used if the top
+                # classification is superseded by a "prediction" field
+                top_classification_common_name = \
+                    get_common_name_from_prediction_string(class_to_assign)
 
             if 'prediction' in im_in:
 
@@ -595,7 +681,7 @@ def generate_md_results_from_predictions_json(predictions_json_file,
                             print('Warning: creating fake detection for non-blank whole-image classification' + \
                                   ' in {}'.format(im_in['file']))
                         det_out = {}
-                        all_unknown_detections.append(det_out)
+                        fake_detections.append(det_out)
 
                         # We will change this to a string-int later
                         det_out['category'] = 'unknown'
@@ -608,11 +694,11 @@ def generate_md_results_from_predictions_json(predictions_json_file,
                 # Attach that classification to each detection
 
                 # Create a new category ID if necessary
-                if class_to_assign in classification_category_name_to_id:
-                    classification_category_id = classification_category_name_to_id[class_to_assign]
+                if class_to_assign in classification_category_string_to_id:
+                    classification_category_id = classification_category_string_to_id[class_to_assign]
                 else:
-                    classification_category_id = str(len(classification_category_name_to_id))
-                    classification_category_name_to_id[class_to_assign] = classification_category_id
+                    classification_category_id = str(len(classification_category_string_to_id))
+                    classification_category_string_to_id[class_to_assign] = classification_category_id
 
                 for det in im_out['detections']:
                     det['classifications'] = []
@@ -631,19 +717,20 @@ def generate_md_results_from_predictions_json(predictions_json_file,
             print('Warning: you supplied {} as the base folder, but I made zero replacements'.format(
                 base_folder))
 
-    # Fix the 'unknown' category
-    if len(all_unknown_detections) > 0:
+    # fake_detections contains fake, whole-image detections we created for non-blank
+    # images with empty detection lists.
+    if len(fake_detections) > 0:
 
         if len(detection_category_id_to_name) == 0:
             max_detection_category_id = -1
         else:
             max_detection_category_id = max([int(x) for x in detection_category_id_to_name.keys()])
-        unknown_category_id = str(max_detection_category_id + 1)
-        detection_category_id_to_name[unknown_category_id] = 'unknown'
+        fake_detection_category_id = str(max_detection_category_id + 1)
+        detection_category_id_to_name[fake_detection_category_id] = 'unknown'
 
-        for det in all_unknown_detections:
+        for det in fake_detections:
             assert det['category'] == 'unknown'
-            det['category'] = unknown_category_id
+            det['category'] = fake_detection_category_id
 
 
     # Sort by filename
@@ -653,17 +740,18 @@ def generate_md_results_from_predictions_json(predictions_json_file,
     # Prepare friendly classification names
 
     classification_category_descriptions = \
-        invert_dictionary(classification_category_name_to_id)
+        invert_dictionary(classification_category_string_to_id)
     classification_categories_out = {}
     for category_id in classification_category_descriptions.keys():
-        category_name = classification_category_descriptions[category_id].split(';')[-1]
-        classification_categories_out[category_id] = category_name
+        category_string = classification_category_descriptions[category_id]
+        common_name = get_common_name_from_prediction_string(category_string)
+        classification_categories_out[category_id] = common_name
 
     # Prepare the output dict
 
     detection_categories_out = detection_category_id_to_name
     info = {}
-    info['format_version'] = 1.4
+    info['format_version'] = current_format_version
     info['detector'] = 'converted_from_predictions_json'
 
     if convert_human_to_person:
@@ -706,7 +794,8 @@ def generate_predictions_json_from_md_results(md_results_file,
         md_results_file (str): path to an MD-formatted .json file
         predictions_json_file (str): path to which we should write a predictions.json file
         base_folder (str, optional): folder name to prepend to each path in md_results_file,
-            to convert relative paths to absolute paths.
+            to convert relative paths to absolute paths.  If [base_folder] is non-empty and
+            doesn't end in a slash, a slash will be added.
     """
 
     # Validate the input file
@@ -719,13 +808,19 @@ def generate_predictions_json_from_md_results(md_results_file,
     output_dict = {}
     output_dict['predictions'] = []
 
+    if base_folder is not None:
+
+        base_folder = base_folder.replace('\\','/')
+        if not base_folder.endswith('/'):
+            base_folder = base_folder + '/'
+
     # im = md_results['images'][0]
     for im in md_results['images']:
 
         prediction = {}
         fn = im['file']
-        if base_folder is not None:
-            fn = os.path.join(base_folder,fn)
+        if (base_folder is not None) and (len(base_folder) > 0):
+            fn = path_join(base_folder,fn)
         fn = fn.replace('\\','/')
         prediction['filepath'] = fn
         if 'failure' in im and im['failure'] is not None:
@@ -1809,3 +1904,43 @@ class TaxonomyHandler:
     # ...def export_geofence_data_to_csv(...)
 
 # ...class TaxonomyHandler
+
+
+#%% Tests
+
+class TestWITaxonomyUtils:
+    """
+    Tests for wi_taxonomy_utils.py
+    """
+
+    def test_get_common_name_from_prediction_string(self):
+        """
+        Test driver for get_common_name_from_prediction_string(...)
+        """
+
+        input_to_expected_output = {}
+        input_to_expected_output['07153810-54e6-4a5c-85a4-1968d82def4c;mammalia;carnivora;felidae;panthera;uncia;snow leopard'] = \
+            'snow leopard'
+        input_to_expected_output['58bbfcec-c72c-4e59-a980-214cd62f9bd5;mammalia;carnivora;phocidae;;;'] = \
+            'phocidae family'
+        input_to_expected_output['d126f0ec-82dd-46f0-b76a-5985ff6bbc9b;mammalia;primates;hominidae;homo;;'] = \
+            'homo species'
+        input_to_expected_output['1f689929-883d-4dae-958c-3d57ab5b6c16;;;;;;animal'] = \
+            'animal'
+        input_to_expected_output['4e436540-aacc-409b-ad26-b31658bed1e3;aves;anseriformes;;;;'] = \
+            'anseriformes order'
+
+        for k in input_to_expected_output:
+            expected_output = input_to_expected_output[k]
+            actual_output = get_common_name_from_prediction_string(k)
+            assert actual_output == expected_output, \
+                'For string {}, expected common name {}, got {}'.format(
+                    k,expected_output,actual_output)
+
+def test_wi_taxonomy_utils():
+    """
+    Module-level test entry point.
+    """
+
+    test_instance = TestWITaxonomyUtils()
+    test_instance.test_get_common_name_from_prediction_string()

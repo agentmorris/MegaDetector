@@ -127,6 +127,9 @@ def validate_batch_results(json_filename,options=None):
         if 'format_version' not in info :
             raise ValueError('Input does not specify format version')
 
+        if not isinstance(info['format_version'],str):
+            raise ValueError('format_version is not a string')
+
         format_version = float(info['format_version'])
         if format_version < 1.3:
             raise ValueError('This validator can only be used with format version 1.3 or later')
@@ -137,25 +140,43 @@ def validate_batch_results(json_filename,options=None):
         if 'detection_categories' not in d:
             raise ValueError('Input does not contain detection_categories field')
 
-        for k in d['detection_categories'].keys():
+        for category_id in d['detection_categories'].keys():
+
             # Category ID should be string-formatted ints
-            if not isinstance(k,str):
-                raise ValueError('Invalid detection category ID: {}'.format(k))
-            _ = int(k)
-            if not isinstance(d['detection_categories'][k],str):
+            if not isinstance(category_id,str):
+                raise ValueError('Invalid detection category ID: {}'.format(category_id))
+            _ = int(category_id)
+            if not isinstance(d['detection_categories'][category_id],str):
                 raise ValueError('Invalid detection category name: {}'.format(
-                    d['detection_categories'][k]))
+                    d['detection_categories'][category_id]))
+
+            category_name = d['detection_categories'][category_id]
+            if format_version >= 1.6:
+                if len(category_name.strip()) == 0:
+                    raise ValueError('Detection category name is blank for ID {}'.format(
+                        category_id))
+
+        # ...for each detection category
 
         if 'classification_categories' in d:
-            for k in d['classification_categories'].keys():
-                # Categories should be string-formatted ints
-                if not isinstance(k,str):
-                    raise ValueError('Invalid classification category ID: {}'.format(k))
-                _ = int(k)
-                if not isinstance(d['classification_categories'][k],str):
-                    raise ValueError('Invalid classification category name: {}'.format(
-                        d['classification_categories'][k]))
 
+            for category_id in d['classification_categories'].keys():
+
+                # Categories should be string-formatted ints
+                if not isinstance(category_id,str):
+                    raise ValueError('Invalid classification category ID: {}'.format(category_id))
+                _ = int(category_id)
+                if not isinstance(d['classification_categories'][category_id],str):
+                    raise ValueError('Invalid classification category name: {}'.format(
+                        d['classification_categories'][category_id]))
+
+                category_name = d['classification_categories'][category_id]
+                if format_version >= 1.6:
+                    if len(category_name.strip()) == 0:
+                        raise ValueError('Classification category name is blank for ID {}'.format(
+                            category_id))
+
+        # ...for each classification category
 
         ## Image validation
 
