@@ -36,6 +36,7 @@ from megadetector.utils.ct_utils import is_sphinx_build
 from megadetector.utils.ct_utils import args_to_object
 from megadetector.utils.path_utils import find_images
 from megadetector.utils.path_utils import test_file_write
+from megadetector.utils.wi_taxonomy_utils import get_common_name_from_prediction_string
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.postprocessing.validate_batch_results import \
     validate_batch_results, ValidateBatchResultsOptions
@@ -1239,17 +1240,12 @@ def _run_classification_step(detector_results_file: str,
             # "cb553c4e-42c9-4fe0-9bd0-da2d6ed5bfa1;mammalia;carnivora;canidae;urocyon;littoralis;island fox"
             tokens = class_name.split(';')
             assert len(tokens) == 7
-            taxonomy_string = ';'.join(tokens[1:6])
-            common_name = tokens[6]
-            if len(common_name) == 0:
-                common_name = taxonomy_string
+            common_name = get_common_name_from_prediction_string(class_name)
 
             if common_name not in self.common_name_to_id:
+
                 self.common_name_to_id[common_name] = str(self.next_category_id)
                 self.classification_categories[str(self.next_category_id)] = common_name
-                # Store the full seven-token string, rather than the shortened five-token string, for
-                # compatibility with what is expected by the classification_postprocessing module.
-                # self.classification_category_descriptions[str(self.next_category_id)] = taxonomy_string
                 self.classification_category_descriptions[str(self.next_category_id)] = class_name
                 self.next_category_id += 1
 
