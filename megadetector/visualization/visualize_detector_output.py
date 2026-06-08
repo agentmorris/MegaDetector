@@ -70,6 +70,8 @@ def _render_image(entry,
                         'annotated_image_path':None,
                         'max_conf':None,
                         'image_filename_in_abs':None,
+                        'open_failure':None,
+                        'rendering_failure':None,
                         'file':entry['file']}
 
     image_id = entry['file']
@@ -96,59 +98,71 @@ def _render_image(entry,
             'Relative paths are required when an image base dir is supplied'
         image_filename_in_abs = os.path.join(images_dir, image_id)
     if not os.path.exists(image_filename_in_abs):
-        print(f'Image {image_id} not found')
+        print('Image {} not found'.format(image_id))
         rendering_result['missing_image'] = True
         return rendering_result
 
     rendering_result['image_filename_in_abs'] = image_filename_in_abs
 
     # Load the image
-    image = vis_utils.open_image(image_filename_in_abs)
+    try:
+        image = vis_utils.open_image(image_filename_in_abs)
+    except Exception as e:
+        print('Warning: error opening {}: {}'.format(image_filename_in_abs,str(e)))
+        rendering_result['open_failure'] = True
+        return rendering_result
 
-    # Find categories we're supposed to blur
-    category_ids_to_blur = []
-    if category_names_to_blur is not None:
-        if isinstance(category_names_to_blur,str):
-            category_names_to_blur = [category_names_to_blur]
-        for category_id in detector_label_map:
-            if detector_label_map[category_id] in category_names_to_blur:
-                category_ids_to_blur.append(category_id)
+    try:
 
-    detections_to_blur = []
-    for d in entry['detections']:
-        if d['conf'] >= confidence_threshold and d['category'] in category_ids_to_blur:
-            detections_to_blur.append(d)
-    if len(detections_to_blur) > 0:
-        blur_detections(image,detections_to_blur)
+        # Find categories we're supposed to blur
+        category_ids_to_blur = []
+        if category_names_to_blur is not None:
+            if isinstance(category_names_to_blur,str):
+                category_names_to_blur = [category_names_to_blur]
+            for category_id in detector_label_map:
+                if detector_label_map[category_id] in category_names_to_blur:
+                    category_ids_to_blur.append(category_id)
 
-    # Resize if necessary
-    #
-    # If output_image_width is -1 or None, this will just return the original image
-    image = vis_utils.resize_image(image, output_image_width)
+        detections_to_blur = []
+        for d in entry['detections']:
+            if d['conf'] >= confidence_threshold and d['category'] in category_ids_to_blur:
+                detections_to_blur.append(d)
+        if len(detections_to_blur) > 0:
+            blur_detections(image,detections_to_blur)
 
-    vis_utils.render_detection_bounding_boxes(
-        entry['detections'], image,
-        label_map=detector_label_map,
-        classification_label_map=classification_label_map,
-        confidence_threshold=confidence_threshold,
-        classification_confidence_threshold=classification_confidence_threshold,
-        box_sort_order=box_sort_order,
-        thickness=box_thickness,
-        expansion=box_expansion,
-        label_font_size=label_font_size,
-        label_font=label_font)
+        # Resize if necessary
+        #
+        # If output_image_width is -1 or None, this will just return the original image
+        image = vis_utils.resize_image(image, output_image_width)
 
-    if not preserve_path_structure:
-        for char in ['/', '\\', ':']:
-            image_id = image_id.replace(char, '~')
-        annotated_img_path = os.path.join(out_dir, f'anno_{image_id}')
-    else:
-        assert not os.path.isabs(image_id), "Can't preserve paths when operating on absolute paths"
-        annotated_img_path = os.path.join(out_dir, image_id)
-        os.makedirs(os.path.dirname(annotated_img_path),exist_ok=True)
+        vis_utils.render_detection_bounding_boxes(
+            entry['detections'], image,
+            label_map=detector_label_map,
+            classification_label_map=classification_label_map,
+            confidence_threshold=confidence_threshold,
+            classification_confidence_threshold=classification_confidence_threshold,
+            box_sort_order=box_sort_order,
+            thickness=box_thickness,
+            expansion=box_expansion,
+            label_font_size=label_font_size,
+            label_font=label_font)
 
-    image.save(annotated_img_path)
-    rendering_result['annotated_image_path'] = annotated_img_path
+        if not preserve_path_structure:
+            for char in ['/', '\\', ':']:
+                image_id = image_id.replace(char, '~')
+            annotated_img_path = os.path.join(out_dir, f'anno_{image_id}')
+        else:
+            assert not os.path.isabs(image_id), "Can't preserve paths when operating on absolute paths"
+            annotated_img_path = os.path.join(out_dir, image_id)
+            os.makedirs(os.path.dirname(annotated_img_path),exist_ok=True)
+
+        image.save(annotated_img_path)
+        rendering_result['annotated_image_path'] = annotated_img_path
+
+    except Exception as e:
+
+        print('Warning: error rendering {}: {}'.format(image_filename_in_abs,str(e)))
+        rendering_result['rendering_failure'] = True
 
     return rendering_result
 
@@ -393,7 +407,8 @@ def visualize_detector_output(detector_output_path,
         for r in rendering_results:
             d = {}
             if r['annotated_image_path'] is None:
-                assert r['failed_image'] or r['missing_image'] or r['skipped_image']
+                assert r['failed_image'] or r['missing_image'] or r['skipped_image'] or \
+                    r['open_failure'] or r['rendering_failure']
                 continue
             annotated_image_path_relative = os.path.relpath(r['annotated_image_path'],html_dir)
             d['filename'] = annotated_image_path_relative
