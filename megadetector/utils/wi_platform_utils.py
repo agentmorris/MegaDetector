@@ -389,6 +389,7 @@ def write_prefix_download_command(image_records,
         f.write(cmd + '\n')
 
     print('Download script written to {}'.format(download_command_file))
+    make_executable(download_command_file,catch_exceptions=True)
 
 # ...def write_prefix_download_command(...)
 
