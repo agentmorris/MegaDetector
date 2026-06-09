@@ -322,6 +322,8 @@ if False:
     from megadetector.visualization.visualize_video_output import \
         VideoVisualizationOptions, visualize_video_output
 
+    sample_output_dir = 'c:/temp/video-samples'
+
     video_options = VideoVisualizationOptions()
 
     video_options.confidence_threshold = 0.2
@@ -362,7 +364,7 @@ if False:
     video_options.include_category_names_in_filenames = 'start'
 
     results = visualize_video_output(video_output_filename,
-                                     out_dir='c:/temp/video-samples',
+                                     out_dir=sample_output_dir,
                                      video_dir=input_folder,
                                      options=video_options)
 
