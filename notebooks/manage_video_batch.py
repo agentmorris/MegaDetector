@@ -454,6 +454,8 @@ This notebook is auto-generated from manage_video_batch.py (a cell-delimited .py
 with open(input_py_file,'r') as f:
     lines = f.readlines()
 
+header_comment = ''
+
 assert lines[0].strip() == '#%% Header'
 assert lines[1].strip() == ''
 assert lines[2].strip() == '"""'
@@ -464,8 +466,28 @@ assert lines[5].strip() == ''
 nb = nbf.v4.new_notebook()
 nb['cells'].append(nbf.v4.new_markdown_cell(nb_header))
 
-# Exclude everything before the first non-header cell
 i_line = 6
+
+# Everything before the first non-header cell is the header comment
+while(not lines[i_line].startswith('#%%')):
+
+    s_raw = lines[i_line]
+    s_trimmed = s_raw.strip()
+
+    # Ignore the closing quotes at the end of the header
+    if (s_trimmed == '"""'):
+        i_line += 1
+        continue
+
+    if len(s_trimmed) == 0:
+        header_comment += '\n\n'
+    else:
+        header_comment += ' ' + s_raw
+    i_line += 1
+
+nb_header += header_comment
+nb = nbf.v4.new_notebook()
+nb['cells'].append(nbf.v4.new_markdown_cell(nb_header))
 
 current_cell = []
 
