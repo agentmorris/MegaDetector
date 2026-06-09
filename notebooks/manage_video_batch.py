@@ -71,26 +71,34 @@ frame_filenames_by_video,fs_by_video,video_filenames = \
                                        allow_empty_videos=True)
 
 
-#%% Cache frame rate information
+#%% Load or cache frame rate information
 
-assert len(video_filenames) == len(fs_by_video)
+if os.path.isfile(frame_rate_cache):
 
-video_filename_relative_to_fs = {}
+    print('Loading frame rate info from {}'.format(frame_rate_cache))
+    with open(frame_rate_cache,'r') as f:
+        video_filename_relative_to_fs = json.load(f)
 
-# video_filename_abs = video_filenames[0]
-for i_video,video_filename_abs in enumerate(video_filenames):
+else:
 
-    assert video_filename_abs.startswith(input_folder)
-    video_filename_relative = os.path.relpath(
-        video_filename_abs,input_folder).replace('\\','/')
-    assert video_filename_relative not in video_filename_relative_to_fs
-    video_filename_relative_to_fs[video_filename_relative] = fs_by_video[i_video]
+    assert len(video_filenames) == len(fs_by_video)
 
-# ...for each video
+    video_filename_relative_to_fs = {}
 
-assert len(video_filename_relative_to_fs) == len(video_filenames)
+    # video_filename_abs = video_filenames[0]
+    for i_video,video_filename_abs in enumerate(video_filenames):
 
-write_json(frame_rate_cache,video_filename_relative_to_fs)
+        assert video_filename_abs.startswith(input_folder)
+        video_filename_relative = os.path.relpath(
+            video_filename_abs,input_folder).replace('\\','/')
+        assert video_filename_relative not in video_filename_relative_to_fs
+        video_filename_relative_to_fs[video_filename_relative] = fs_by_video[i_video]
+
+    # ...for each video
+
+    assert len(video_filename_relative_to_fs) == len(video_filenames)
+
+    write_json(frame_rate_cache,video_filename_relative_to_fs)
 
 
 #%% List frame files, break into folders
