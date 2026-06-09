@@ -1283,7 +1283,7 @@ if not run_tasks_in_notebook:
     print('Generated {} instances'.format(len(instances['instances'])))
 
 
-    #%% Generate crop dataset
+    ##%% Generate crop dataset
 
     from megadetector.postprocessing.create_crop_folder import \
         CreateCropFolderOptions, create_crop_folder
@@ -1306,7 +1306,7 @@ if not run_tasks_in_notebook:
     assert os.path.isdir(crop_folder)
 
 
-    #%% Convert crop metadata to SpeciesNet input format
+    ##%% Convert crop metadata to SpeciesNet input format
 
     # Convert detection results for the crops to predictions.json format
     #
@@ -1331,7 +1331,7 @@ if not run_tasks_in_notebook:
         len(crop_instances['instances']),crop_instances_json))
 
 
-    #%% Run SpeciesNet on crops
+    ##%% Run SpeciesNet on crops
 
     os.makedirs(chunk_folder,exist_ok=True)
 
@@ -1582,7 +1582,7 @@ print('Loaded results for {} images with {} failures'.format(
     len(images_in_folder),n_failures))
 
 
-#%% Generate a list of corrections made by geofencing, and counts (still crops)
+##%% Generate a list of corrections made by geofencing, and counts (still crops)
 
 from megadetector.utils.wi_taxonomy_utils import find_geofence_adjustments, \
     generate_geofence_adjustment_html_summary
