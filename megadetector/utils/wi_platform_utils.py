@@ -400,7 +400,7 @@ def url_to_relative_path(url,image_flattening='deployment'):
 
     Args:
         url (str): the URL to convert to a relative path
-        image_flattening (str, optional): if 'none', relative paths will be
+        image_flattening (str, optional): if 'none' or None, relative paths will be
             returned as the entire URL for each image, other than gs://.  Can be
             'guid' (just return [GUID].JPG) or 'deployment' (return
             [deployment]/[GUID].JPG).
@@ -413,7 +413,7 @@ def url_to_relative_path(url,image_flattening='deployment'):
 
     relative_path = None
 
-    if image_flattening == 'none':
+    if (image_flattening is None) or (image_flattening == 'none'):
         relative_path = url.replace('gs://','')
     elif image_flattening == 'guid':
         relative_path = url.split('/')[-1]

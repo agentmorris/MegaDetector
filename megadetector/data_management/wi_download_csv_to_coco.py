@@ -245,6 +245,7 @@ def wi_download_csv_to_coco(csv_file_in,
     print('Converting records to COCO...')
 
     n_blanks_excluded = 0
+    n_placeholders_excluded = 0
 
     # image_id = next(iter(image_id_to_image_records))
     for image_id in tqdm(image_id_to_image_records.keys(),
@@ -256,6 +257,10 @@ def wi_download_csv_to_coco(csv_file_in,
 
         url = reference_record['location']
         assert url.startswith('gs://')
+
+        # Omit placeholder images
+        if 'https' in url and 'placeholder' in url:
+            continue
 
         file_name = url_to_relative_path(url,image_flattening=image_flattening)
 
@@ -435,7 +440,7 @@ def wi_download_csv_to_coco(csv_file_in,
                 category_id = category['id']
                 category['count'] = category['count'] + 1
                 assert category['name'] == category_name
-                if (category_name != 'empty') and \
+                if (category_name not in ['empty','unknown']) and \
                    (taxonomy_string != category['taxonomy_string']):
                     print('Warning: category {} has multiple taxonomy strings:\n{}\n{}\n'.format(
                         category_name,
@@ -518,8 +523,8 @@ def wi_download_csv_to_coco(csv_file_in,
     images = list(image_id_to_image.values())
     categories = list(category_name_to_category.values())
 
-    print('Created COCO records for {} image IDs ({} blanks excluded)'.format(
-        len(image_id_to_image),n_blanks_excluded))
+    print('Created COCO records for {} image IDs ({} blanks, {} placeholders excluded)'.format(
+        len(image_id_to_image),n_blanks_excluded, n_placeholders_excluded))
 
     annotations = []
 
