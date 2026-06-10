@@ -63,6 +63,7 @@ error_names_for_retry = ['ConnectionError']
 
 DEFAULT_BOX_THICKNESS = 4
 DEFAULT_LABEL_FONT_SIZE = 16
+DEFAULT_LABEL_FONT = 'arial.ttf'
 
 # Default color map for mapping integer category IDs to colors when rendering bounding
 # boxes
@@ -509,7 +510,7 @@ def render_detection_bounding_boxes(detections,
                                     custom_strings=None,
                                     box_sort_order='confidence',
                                     verbose=False,
-                                    label_font='arial.ttf'):
+                                    label_font=DEFAULT_LABEL_FONT):
     """
     Renders bounding boxes (with labels and confidence values) on an image for all
     detections above a threshold.
@@ -600,6 +601,12 @@ def render_detection_bounding_boxes(detections,
     if (label_map is not None) and (isinstance(label_map,str)) and (label_map == 'show_categories'):
         label_map = {}
 
+    if label_font_size is None:
+        label_font_size = DEFAULT_LABEL_FONT_SIZE
+
+    if label_font is None:
+        label_font = DEFAULT_LABEL_FONT
+
     if custom_strings is not None:
         assert len(custom_strings) == len(detections), \
             '{} custom strings provided for {} detections'.format(
@@ -607,10 +614,10 @@ def render_detection_bounding_boxes(detections,
 
     display_boxes = []
 
-    # list of lists, one list of strings for each bounding box (to accommodate multiple labels)
+    # List of lists, one list of strings for each bounding box (to accommodate multiple labels)
     display_strs = []
 
-    # for color selection
+    # For color selection
     classes = []
 
     if box_sort_order is not None:
@@ -757,7 +764,7 @@ def draw_bounding_boxes_on_image(image,
                                  vtextalign=VTEXTALIGN_TOP,
                                  text_rotation=None,
                                  label_font_size=DEFAULT_LABEL_FONT_SIZE,
-                                 label_font='arial.ttf'):
+                                 label_font=DEFAULT_LABEL_FONT):
     """
     Draws bounding boxes on an image.  Modifies the image in place.
 
@@ -880,7 +887,7 @@ def draw_bounding_box_on_image(image,
                                textalign=TEXTALIGN_LEFT,
                                vtextalign=VTEXTALIGN_TOP,
                                text_rotation=None,
-                               label_font='arial.ttf'):
+                               label_font=DEFAULT_LABEL_FONT):
     """
     Adds a bounding box to an image.  Modifies the image in place.
 
@@ -1148,7 +1155,7 @@ def render_db_bounding_boxes(boxes,
                              label_font_size=DEFAULT_LABEL_FONT_SIZE,
                              tags=None,
                              boxes_are_normalized=False,
-                             label_font='arial.ttf'):
+                             label_font=DEFAULT_LABEL_FONT):
     """
     Render bounding boxes (with class labels) on an image.  This is a wrapper for
     draw_bounding_boxes_on_image, allowing the caller to operate on a resized image
@@ -1265,7 +1272,7 @@ def draw_bounding_boxes_on_file(input_file,
                                 target_size=None,
                                 ignore_exif_rotation=False,
                                 quality=None,
-                                label_font='arial.ttf'):
+                                label_font=DEFAULT_LABEL_FONT):
     """
     Renders detection bounding boxes on an image loaded from file, optionally writing the results to
     a new image file.

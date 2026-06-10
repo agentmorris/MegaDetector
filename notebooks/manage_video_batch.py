@@ -350,7 +350,9 @@ if False:
          'blank_mammal',
          'blank_no cv result',
          'no cv result',
-         'none']
+         'none',
+         'animal_mammal_no cv result',
+         'carnivorous mammal']
 
     # video_options.exclude_category_names = ['cercopithecidae family']
     # video_options.include_category_names = ['spotted hyena']
