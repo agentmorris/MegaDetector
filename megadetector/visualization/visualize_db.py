@@ -104,7 +104,7 @@ class DbVizOptions:
         self.multiple_categories_tag = '*multiple*'
 
         #: Parallelize rendering across multiple workers
-        self.parallelize_rendering = False
+        self.parallelize_rendering = True
 
         #: In theory, whether to parallelize with threads (True) or processes (False), but
         #: process-based parallelization in this function is currently unsupported
@@ -112,7 +112,7 @@ class DbVizOptions:
 
         #: Number of workers to use for parallelization; ignored if parallelize_rendering
         #: is False
-        self.parallelize_rendering_n_cores = 16
+        self.parallelize_rendering_n_cores = 12
 
         #: Should we show absolute (True) or relative (False) paths for each image?
         self.show_full_paths = False

@@ -188,6 +188,9 @@ class ClassificationAnalysisOptions:
         #: If not None, should be a str --> str dict.
         self.gt_category_name_mappings = None
 
+        #: Only review this many classifications per detection
+        self.max_classifications_per_detection = 1
+
     # ...def __init__(...)
 
 # ...class ClassificationAnalysisOptions
@@ -339,10 +342,17 @@ def _get_image_predicted_categories(im,
             has_above_threshold_classification = False
 
             if classifications is not None:
-                for cls in classifications:
+
+                for i_cls,cls in enumerate(classifications):
+
+                    if i_cls >= options.max_classifications_per_detection:
+                        break
+
                     cls_id = str(cls[0])
                     cls_conf = cls[1]
+
                     if cls_conf >= options.classification_confidence_threshold:
+
                         cls_name = classification_category_id_to_name.get(cls_id, None)
                         if cls_name is not None:
                             cls_name_lower = cls_name.lower()
@@ -351,6 +361,12 @@ def _get_image_predicted_categories(im,
                                     predicted_categories[cls_name_lower] < cls_conf:
                                 predicted_categories[cls_name_lower] = cls_conf
                             predicted_counts[cls_name_lower] += 1
+
+                    # ...if this classification is above threshold
+
+                # ...for each classification
+
+            # ...if there are classifications for this detection
 
             if not has_above_threshold_classification:
                 if 'unknown' not in predicted_categories:
@@ -409,6 +425,7 @@ def _render_single_image(im, render_constants):
     classification_confidence_threshold = render_constants['classification_confidence_threshold']
     output_image_width = render_constants['output_image_width']
     overwrite = render_constants['overwrite']
+    max_classifications_per_detection = render_constants['max_classifications_per_detection']
 
     # Build output filename
     fn_clean = flatten_path(im['file']).replace(' ', '_')
@@ -438,7 +455,8 @@ def _render_single_image(im, render_constants):
         label_map=detection_label_map,
         classification_label_map=classification_label_map,
         confidence_threshold=detection_threshold,
-        classification_confidence_threshold=classification_confidence_threshold)
+        classification_confidence_threshold=classification_confidence_threshold,
+        max_classifications=max_classifications_per_detection)
 
     image.save(output_path)
     result['success'] = True
@@ -1153,7 +1171,8 @@ def analyze_classification_results(options):
             'detection_threshold': detection_threshold,
             'classification_confidence_threshold': options.classification_confidence_threshold,
             'output_image_width': options.output_image_width,
-            'overwrite': options.overwrite
+            'overwrite': options.overwrite,
+            'max_classifications_per_detection': options.max_classifications_per_detection
         }
 
         if options.rendering_workers > 1 and len(images_to_render) > 1:
