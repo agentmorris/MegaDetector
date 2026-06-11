@@ -65,6 +65,17 @@ E0
 !feature
 
 
+## Graceful handling of small images during tiling
+
+When running tiled inference, if either dimension of an image is smaller than the tiling size, that image fails.  This is OK, it's correctly recorded as an inference failure, but in most cases I would rather it fall back to a smaller tile size in that case.
+
+P2
+
+E0
+
+!feature
+
+
 ## Improve and clarify statistics in analyze_classification_results
 
 analyze_classification_results.py takes a somewhat lazy approach to statistics computation: it is correct in a world where no categories are parents of other categories, and where each image contains a single species.  The more difficult cases should be handled more carefully, probably with additional options to, e.g., give "partial credit" for higher-level predictions that aren't wrong.  At the very least, explanatory text should be added to the reports to describe how statistics are computed wrt taxonomic levels and multi-species images.
