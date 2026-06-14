@@ -424,12 +424,8 @@ def url_to_relative_path(url,image_flattening='deployment'):
         for i_token,token in enumerate(tokens):
             if token == 'deployment':
                 assert i_token < (len(tokens)-1)
-                deployment_id_string = tokens[i_token + 1]
-                deployment_id_string = deployment_id_string.replace('_thumb','')
-                assert is_int(deployment_id_string), \
-                    'Illegal deployment ID {}'.format(deployment_id_string)
-                image_id = url.split('/')[-1]
-                relative_path = deployment_id_string + '/' + image_id
+                relative_path = '/'.join(tokens[i_token:])
+                relative_path = relative_path.replace('_thumb','')
                 found_deployment_id = True
                 break
 
