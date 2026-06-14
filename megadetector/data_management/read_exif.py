@@ -14,6 +14,7 @@ path.  No attempt is made to be consistent in format across the two approaches.
 #%% Imports and constants
 
 import os
+import math
 import subprocess
 import json
 import argparse
@@ -256,6 +257,55 @@ def get_gps_info(im, verbose=False, check_for_null_island=True):
     return to_return
 
 # ...def get_gps_info(...)
+
+
+def _dms_to_decimal(dms, ref):
+    """
+    EXIF (deg, min, sec) + ref -> signed decimal degrees.
+    """
+    degrees, minutes, seconds = (float(x) for x in dms)
+    decimal = degrees + (minutes / 60) + (seconds / 3600)
+    if ref in ('S', 'W'): # southern / western hemisphere
+        decimal = -decimal
+    return decimal
+
+
+def get_exif_lat_lon(gps, verbose=False):
+    """
+    Convert an EXIF GPS dict to lat,lon.
+
+    Args:
+        gps (dict): dict with fields GPSLatitude, GPSLongitude, GPSLatitudeRef,
+        and GPSLongitudeRef
+        verbose (bool, optional): print warnings on unsuccessful conversions
+
+    Returns:
+        tuple: lat,lon, or None if the data are not valid GPS coordinates
+    """
+
+    if ('GPSInfo' in gps) and ('GPSLatitude' not in gps):
+        gps = gps['GPSInfo']
+
+    try:
+        lat = _dms_to_decimal(gps['GPSLatitude'],  gps['GPSLatitudeRef'])
+        lon = _dms_to_decimal(gps['GPSLongitude'], gps['GPSLongitudeRef'])
+    except Exception as e:
+        if verbose:
+            print('Warning: error parsing GPS info: {}'.format(str(e)))
+        return None
+    if math.isnan(lat) or math.isnan(lon):
+        if verbose:
+            print('Warning: NaN in lat/lon')
+        return None
+    if gps['GPSLatitudeRef'] not in ('N', 'S') or gps['GPSLongitudeRef'] not in ('E', 'W'):
+        if verbose:
+            print('Warning: invalid GPS reference information')
+        return None
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        if verbose:
+            print('Warning: lat/lon out of bounds ({},{})'.format(lat,lon))
+        return None
+    return (lat, lon)
 
 
 def has_gps_info(im):
