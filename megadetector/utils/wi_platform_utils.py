@@ -32,8 +32,6 @@ from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.utils.ct_utils import compare_values_nan_equal
 from megadetector.utils.ct_utils import is_empty
 
-from megadetector.utils.string_utils import is_int
-
 from megadetector.utils.wi_taxonomy_utils import is_valid_prediction_string
 from megadetector.utils.wi_taxonomy_utils import no_cv_result_prediction_string
 from megadetector.utils.wi_taxonomy_utils import blank_prediction_string
