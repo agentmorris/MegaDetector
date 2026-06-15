@@ -190,6 +190,7 @@ def _is_null_island(gps_info):
             return False
     return False
 
+
 def get_gps_info(im, verbose=False, check_for_null_island=True):
     """
     Given a filename, PIL image, dict of EXIF tags, or dict containing an 'exif_tags' field,
