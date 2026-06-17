@@ -691,7 +691,7 @@ def image_file_to_camera_folder(image_fn):
     # 100EK113 is (for some reason) the overflow folder style for Bushnell cameras
     # 100_BTCF is the overflow folder style for Browning cameras
     # 100MEDIA is the overflow folder style used on a number of consumer-grade cameras
-    patterns = [r'/\d+RECNX/',r'/\d+EK\d+/',r'/\d+_BTCF/',r'/\d+MEDIA/']
+    patterns = [r'/\d+RECNX/',r'/\d+EK\d+/',r'/\d+_BTCF/',r'/\d+MEDIA/',r'/\d+DSCIM/']
 
     image_fn = image_fn.replace('\\','/')
     for pat in patterns:
