@@ -15,10 +15,10 @@ import json
 # Created by get_lila_category_list.py
 input_lila_category_list_file = os.path.expanduser('~/lila/lila_categories_list/lila_dataset_to_categories.json')
 
-output_file = os.path.expanduser('~/lila/lila_additions_2026.03.18.csv')
+output_file = os.path.expanduser('~/lila/lila_additions_2026.06.17.csv')
 
 datasets_to_map = [
-    'WSU Lynx', 'Oregon Critters', 'Felidae Conservation Fund 2020-2025'
+    'AMMonitor Camera Traps'
     ]
 
 
@@ -71,7 +71,7 @@ output_rows = []
 
 taxonomy_preference = 'inat'
 
-allow_non_preferred_matches = True
+allow_non_preferred_matches = False
 
 # mapping_string = category_mappings[1]; print(mapping_string)
 for mapping_string in category_mappings:
@@ -188,9 +188,11 @@ if False:
 
     from megadetector.taxonomy_mapping.species_lookup import pop_levels
 
+    allow_non_preferred_matches = True
+
     # Use this when an iNat match includes an empty subgenus with the same name as the genus
     n_levels_to_pop = 0
-    q = 'bos taurus'
+    q = 'animalia'
 
     taxonomy_preference = 'inat'
     m = get_preferred_taxonomic_match(q,taxonomy_preference)
@@ -204,8 +206,11 @@ if False:
         print('No match')
     else:
         if m.source != taxonomy_preference:
-            print('\n*** non-preferred match ***\n')
-            # raise ValueError('')
+            s = '\n*** non-preferred match ***\n'
+            if not allow_non_preferred_matches:
+                raise ValueError(s)
+            else:
+                print(s)
         print(m.source)
         print(m.taxonomy_string)
         import clipboard; clipboard.copy(m.taxonomy_string)
