@@ -62,6 +62,7 @@ ds_name_to_annotation_level['Seattle(ish) Camera Traps'] = 'image'
 ds_name_to_annotation_level['Oregon Critters'] = 'image'
 ds_name_to_annotation_level['Felidae Conservation Fund 2020-2025'] = 'image'
 ds_name_to_annotation_level['WSU Lynx'] = 'sequence'
+ds_name_to_annotation_level['AMMonitor Camera Traps'] = 'sequence'
 
 known_unmapped_labels = set(['WCS Camera Traps:#ref!'])
 
