@@ -1,3 +1,5 @@
+#%% Header
+
 """
 
 generate_lila_per_image_labels.py
@@ -14,6 +16,7 @@ This script does not validate image URLs.
 Does not include bounding box annotations.
 
 """
+
 
 #%% Constants and imports
 
