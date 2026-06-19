@@ -2,8 +2,15 @@
 
 analyze_classification_results.py
 
-Given a results file in MD format, and a ground truth file in COCO Camera Traps format,
-both containing classification results, perform various analyses, including:
+Given a results file in MD format:
+
+http://lila.science/megadetector-output-format
+
+...and a ground truth file in COCO Camera Traps format:
+
+http://lila.science/coco-camera-traps
+
+...both containing classification results, perform various analyses, including:
 
 * Precision/recall analysis
 * Confusion matrix with links to visualization pages
@@ -40,22 +47,28 @@ default_detection_category_mapping = {}
 default_detection_category_mapping['person'] = 'human'
 default_detection_category_mapping['vehicle'] = 'vehicle'
 
-# Category names treated as "no detections at all" (lowest priority).
+# Category names treated as "no detections at all" (lowest priority)
+# when collapsing category names for a sequence-level analysis.
+#
 # Any other category bumps these from a sequence's category set.
 null_category_names = ['blank', 'empty']
 
-# Category names treated as "detection with no classification" (bumps null
-# categories, but is itself bumped by any non-null, non-unknown category).
+# Category names treated as "detection with no classification" when collapsing
+# category names for a sequence-level analysis (bumps null categories, but is
+# itself bumped by any non-null, non-unknown category).
 unknown_category_names = ['unknown']
 
-# Category names representing a generic "animal" detection.  Bumped by any
-# animal-specific category (i.e. any category not in non_animal_category_names
-# and not in null/unknown categories).
+# Category names representing a generic "animal" detection when collapsing category
+# names for a sequence-level analysis. Bumped by any animal-specific category (i.e.
+# any category not in non_animal_category_names and not in null/unknown categories).
 generic_animal_category_names = ['animal']
 
 # Category names that are NOT animals.  Used to determine whether a category
-# is an animal-specific prediction (which would bump generic_animal_category_names).
+# is an animal-specific prediction when collapsing category names for a sequence-level
+# analysis (which would bump generic_animal_category_names).
 non_animal_category_names = ['person', 'human', 'vehicle']
+
+below_threshold_category_name = 'below-threshold'
 
 
 #%% Support classes
@@ -191,6 +204,13 @@ class ClassificationAnalysisOptions:
         #: Only review this many classifications per detection
         self.max_classifications_per_detection = 1
 
+        #: When an image (or detection) is treated as [below_threshold_category_name]
+        #: because none of its classifications were above
+        #: classification_confidence_threshold, show up to this many of the actual
+        #: (below-threshold) classifications in the caption of rendered example images.
+        #: This is display-only and does not affect the analysis.  Set to 0 to disable.
+        self.n_below_threshold_classifications_to_display = 3
+
     # ...def __init__(...)
 
 # ...class ClassificationAnalysisOptions
@@ -252,7 +272,11 @@ def _collapse_sequence_categories(categories):
     cats = set(categories)
 
     null_set = set(null_category_names)
-    unknown_set = set(unknown_category_names)
+
+    # The synthetic "below-threshold" category (assigned when a detection has
+    # classifications but none above threshold) is treated as part of the unknown
+    # tier here, so it's bumped by any confident category in the sequence.
+    unknown_set = set(unknown_category_names) | {below_threshold_category_name}
     generic_animal_set = set(generic_animal_category_names)
     non_animal_set = set(non_animal_category_names)
 
@@ -291,15 +315,24 @@ def _get_image_predicted_categories(im,
     - a dict mapping predicted category names (lowercase) to their max confidence
     - a dict mapping predicted category names (lowercase) to the number of
       above-threshold classifications for that category
+    - a dict mapping classification category names (lowercase) to their max
+      confidence, for detections whose classifications were all below threshold
+      (i.e. detections we treat as [below_threshold_category_name]).  This is
+      used only for display when rendering example images; category name mapping
+      and ignored-category filtering are applied later, in _prepare_analysis_data.
     """
 
     predicted_categories = {}
     predicted_counts = defaultdict(int)
 
+    # For detections we treat as [below_threshold_category_name], the actual
+    # below-threshold classifications, preserved for display only
+    below_threshold_categories = {}
+
     has_above_threshold_detection = False
 
     if im.get('detections') is None:
-        return {'empty': 1.0}, {'empty': 1}
+        return {'empty': 1.0}, {'empty': 1}, {}
 
     for det in im['detections']:
 
@@ -369,18 +402,36 @@ def _get_image_predicted_categories(im,
             # ...if there are classifications for this detection
 
             if not has_above_threshold_classification:
-                if 'unknown' not in predicted_categories:
-                    predicted_categories['unknown'] = 1.0
-                predicted_counts['unknown'] += 1
+
+                if below_threshold_category_name not in predicted_categories:
+                    predicted_categories[below_threshold_category_name] = 1.0
+                predicted_counts[below_threshold_category_name] += 1
+
+                # Preserve the actual (below-threshold) classifications for this
+                # detection so we can surface them when rendering example images,
+                # even though we're treating this object as
+                # [below_threshold_category_name] for analysis.  Classifications are
+                # assumed to be sorted by descending confidence, so the first N are
+                # the top N (and are all below threshold, since none was above).
+                if classifications is not None:
+                    for cls in classifications[:options.n_below_threshold_classifications_to_display]:
+                        cls_name = classification_category_id_to_name.get(str(cls[0]), None)
+                        cls_conf = cls[1]
+                        if cls_name is None or cls_conf is None:
+                            continue
+                        cls_name_lower = cls_name.lower()
+                        if cls_name_lower not in below_threshold_categories or \
+                                below_threshold_categories[cls_name_lower] < cls_conf:
+                            below_threshold_categories[cls_name_lower] = cls_conf
 
         # ...if we're supposed to look at classifications for this object
 
     # ...for each detection
 
     if not has_above_threshold_detection:
-        return {'empty': 1.0}, {'empty': 1}
+        return {'empty': 1.0}, {'empty': 1}, {}
 
-    return predicted_categories, dict(predicted_counts)
+    return predicted_categories, dict(predicted_counts), below_threshold_categories
 
 # ...def _get_image_predicted_categories(...)
 
@@ -465,6 +516,51 @@ def _render_single_image(im, render_constants):
     return result
 
 # ...def _render_single_image(...)
+
+
+def _build_html_image_title(fn,
+                            gt_categories,
+                            pred_categories,
+                            below_threshold_categories,
+                            n_below_threshold_to_display):
+    """
+    Build the HTML caption for a single rendered example image.
+
+    The caption shows the filename, the ground truth categories, and the predicted
+    categories.  For images we're treating as [below_threshold_category_name] (i.e.
+    detections whose classifications were all below threshold), it additionally shows
+    the actual top classifications, even though they were below threshold.
+
+    Args:
+        fn (str): image filename, shown in the caption
+        gt_categories (set): ground truth category names for this entity
+        pred_categories (dict): predicted category name -> max confidence for this entity
+        below_threshold_categories (dict): classification category name -> max confidence
+            for below-threshold detections in this image (may be empty)
+        n_below_threshold_to_display (int): maximum number of below-threshold classifications
+            to show; if <= 0, the below-threshold line is omitted
+
+    Returns:
+        str: HTML caption string
+    """
+
+    gt_cats_str = ', '.join(sorted(gt_categories))
+    pred_cats_str = ', '.join(
+        ['{} ({:.2f})'.format(c, conf) for c, conf in sorted(pred_categories.items())])
+
+    title = '<b>File</b>: {}<br/><b>GT</b>: {}<br/><b>Pred</b>: {}'.format(
+        fn, gt_cats_str, pred_cats_str)
+
+    if (n_below_threshold_to_display > 0) and (below_threshold_categories is not None) \
+            and (len(below_threshold_categories) > 0):
+        top_below = sorted(below_threshold_categories.items(),
+                           key=lambda x: (-x[1], x[0]))[:n_below_threshold_to_display]
+        below_str = ', '.join(['{} ({:.2f})'.format(c, conf) for c, conf in top_below])
+        title += '<br/><b>Below threshold</b>: {}'.format(below_str)
+
+    return title
+
+# ...def _build_html_image_title(...)
 
 
 #%% Core functions
@@ -600,17 +696,25 @@ def _prepare_analysis_data(options):
     filename_to_pred_categories = {}
     filename_to_pred_counts = {}
 
+    # Per-filename below-threshold classifications, preserved for display when
+    # rendering example images (see _get_image_predicted_categories).  Keyed by
+    # filename (not entity), and used only for captions.
+    fn_to_below_threshold_classifications = {}
+
     for fn in filename_to_gt_categories:
 
         im = results_fn_to_im[fn]
 
-        pred_cats, pred_counts = _get_image_predicted_categories(
+        pred_cats, pred_counts, below_threshold_cats = _get_image_predicted_categories(
             im,
             detection_category_id_to_name,
             classification_category_id_to_name,
             detection_category_mapping,
             options)
 
+        # Possibly remap predicted category names.  Category name mapping is applied
+        # to the below-threshold display categories too, so they behave as if the
+        # results file had been remapped before reaching this module.
         if options.predicted_category_name_mappings is not None:
 
             mapped_cats = {}
@@ -624,8 +728,15 @@ def _prepare_analysis_data(options):
             pred_cats = mapped_cats
             pred_counts = mapped_counts
 
+            mapped_below = {}
+            for cat_name, conf in below_threshold_cats.items():
+                mapped_name = options.predicted_category_name_mappings.get(cat_name, cat_name)
+                mapped_below[mapped_name] = max(conf, mapped_below.get(mapped_name, 0))
+            below_threshold_cats = mapped_below
+
         filename_to_pred_categories[fn] = pred_cats
         filename_to_pred_counts[fn] = pred_counts
+        fn_to_below_threshold_classifications[fn] = below_threshold_cats
 
     # ...for each filename
 
@@ -651,16 +762,20 @@ def _prepare_analysis_data(options):
             del filename_to_gt_categories[fn]
             del filename_to_pred_categories[fn]
             del filename_to_pred_counts[fn]
+            del fn_to_below_threshold_classifications[fn]
 
         if len(fns_to_remove) > 0:
             print('  {} images excluded because all their GT categories were ignored'.format(
                 len(fns_to_remove)))
 
-        # Remove ignored categories from predictions
+        # Remove ignored categories from predictions.  Ignored categories are also
+        # removed from the below-threshold display categories, so they behave as if
+        # the results file had been filtered before reaching this module.
         for fn in filename_to_pred_categories:
             for cat in categories_to_ignore:
                 filename_to_pred_categories[fn].pop(cat, None)
                 filename_to_pred_counts[fn].pop(cat, None)
+                fn_to_below_threshold_classifications[fn].pop(cat, None)
 
         print('{} images remaining after filtering'.format(len(filename_to_gt_categories)))
 
@@ -820,6 +935,7 @@ def _prepare_analysis_data(options):
         'filename_to_gt_categories': filename_to_gt_categories,
         'filename_to_pred_categories': filename_to_pred_categories,
         'filename_to_pred_counts': filename_to_pred_counts,
+        'fn_to_below_threshold_classifications': fn_to_below_threshold_classifications,
         'active_categories': active_categories,
         'category_to_index': category_to_index,
         'results_fn_to_im': results_fn_to_im,
@@ -849,6 +965,7 @@ def analyze_classification_results(options):
 
     filename_to_gt_categories = prepared['filename_to_gt_categories']
     filename_to_pred_categories = prepared['filename_to_pred_categories']
+    fn_to_below_threshold_classifications = prepared['fn_to_below_threshold_classifications']
     active_categories = prepared['active_categories']
     category_to_index = prepared['category_to_index']
     results_fn_to_im = prepared['results_fn_to_im']
@@ -1230,17 +1347,12 @@ def analyze_classification_results(options):
                     fn_clean = flatten_path(fn).replace(' ', '_')
                     image_link = 'images/' + fn_clean
 
-                    gt_cats_str = ', '.join(sorted(filename_to_gt_categories.get(
-                        entity_id if not options.sequence_level_analysis else entity_id,
-                        set())))
-                    pred_cats = filename_to_pred_categories.get(
-                        entity_id if not options.sequence_level_analysis else entity_id, {})
-                    pred_cats_str = ', '.join(
-                        ['{} ({:.2f})'.format(c, conf)
-                         for c, conf in sorted(pred_cats.items())])
-
-                    title = '<b>File</b>: {}<br/><b>GT</b>: {}<br/><b>Pred</b>: {}'.format(
-                        fn, gt_cats_str, pred_cats_str)
+                    title = _build_html_image_title(
+                        fn,
+                        filename_to_gt_categories.get(entity_id, set()),
+                        filename_to_pred_categories.get(entity_id, {}),
+                        fn_to_below_threshold_classifications.get(fn, {}),
+                        options.n_below_threshold_classifications_to_display)
 
                     html_image_info = {
                         'filename': image_link,
@@ -1303,15 +1415,12 @@ def analyze_classification_results(options):
                     fn_clean = flatten_path(fn).replace(' ', '_')
                     image_link = 'images/' + fn_clean
 
-                    gt_cats_str = ', '.join(sorted(filename_to_gt_categories.get(
-                        entity_id, set())))
-                    pred_cats_for_entity = filename_to_pred_categories.get(entity_id, {})
-                    pred_cats_str = ', '.join(
-                        ['{} ({:.2f})'.format(c, conf)
-                         for c, conf in sorted(pred_cats_for_entity.items())])
-
-                    title = '<b>File</b>: {}<br/><b>GT</b>: {}<br/><b>Pred</b>: {}'.format(
-                        fn, gt_cats_str, pred_cats_str)
+                    title = _build_html_image_title(
+                        fn,
+                        filename_to_gt_categories.get(entity_id, set()),
+                        filename_to_pred_categories.get(entity_id, {}),
+                        fn_to_below_threshold_classifications.get(fn, {}),
+                        options.n_below_threshold_classifications_to_display)
 
                     html_image_info = {
                         'filename': image_link,
@@ -1741,6 +1850,7 @@ def render_misprediction_pages(options, cells_to_render):
 
     filename_to_gt_categories = prepared['filename_to_gt_categories']
     filename_to_pred_categories = prepared['filename_to_pred_categories']
+    fn_to_below_threshold_classifications = prepared['fn_to_below_threshold_classifications']
     active_categories = prepared['active_categories']
     results_fn_to_im = prepared['results_fn_to_im']
     gt_data = prepared['gt_data']
@@ -1907,15 +2017,12 @@ def render_misprediction_pages(options, cells_to_render):
                 fn_clean = flatten_path(fn).replace(' ', '_')
                 image_link = 'images/' + fn_clean
 
-                gt_cats_str = ', '.join(sorted(filename_to_gt_categories.get(
-                    entity_id, set())))
-                pred_cats_for_entity = filename_to_pred_categories.get(entity_id, {})
-                pred_cats_str = ', '.join(
-                    ['{} ({:.2f})'.format(c, conf)
-                     for c, conf in sorted(pred_cats_for_entity.items())])
-
-                title = '<b>File</b>: {}<br/><b>GT</b>: {}<br/><b>Pred</b>: {}'.format(
-                    fn, gt_cats_str, pred_cats_str)
+                title = _build_html_image_title(
+                    fn,
+                    filename_to_gt_categories.get(entity_id, set()),
+                    filename_to_pred_categories.get(entity_id, {}),
+                    fn_to_below_threshold_classifications.get(fn, {}),
+                    options.n_below_threshold_classifications_to_display)
 
                 html_image_info = {
                     'filename': image_link,
@@ -2088,6 +2195,12 @@ def main():
         '--single_label_per_image', action='store_true',
         help='Collapse ground truth to a single category per image/sequence')
 
+    parser.add_argument(
+        '--n_below_threshold_classifications_to_display', type=int, default=3,
+        help='For images treated as below-threshold (no above-threshold classification), '
+             'show up to this many of the actual below-threshold classifications in '
+             'rendered example captions (0 to disable)')
+
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()
@@ -2113,6 +2226,8 @@ def main():
         options.categories_to_ignore = [c.strip() for c in args.categories_to_ignore.split(',')]
     options.single_prediction_per_image = args.single_prediction_per_image
     options.single_label_per_image = args.single_label_per_image
+    options.n_below_threshold_classifications_to_display = \
+        args.n_below_threshold_classifications_to_display
 
     results = analyze_classification_results(options)
 
