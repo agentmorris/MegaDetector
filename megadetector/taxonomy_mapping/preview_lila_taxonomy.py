@@ -16,7 +16,7 @@ import os
 import pandas as pd
 
 # lila_taxonomy_file = r"c:\git\agentmorrisprivate\lila-taxonomy\lila-taxonomy-mapping.csv"
-lila_taxonomy_file = os.path.expanduser('~/lila/lila_additions_2026.03.18.csv')
+lila_taxonomy_file = os.path.expanduser('~/lila/lila_additions_2026.06.17.csv')
 
 preview_base = os.path.expanduser('~/lila/lila_taxonomy_preview')
 os.makedirs(preview_base,exist_ok=True)
@@ -82,7 +82,9 @@ for i_row,row in df.iterrows():
     ts = row['taxonomy_string']
     assert sn == taxonomy_string_to_scientific(ts)
 
-    assert row['taxonomy_level'] == taxonomy_string_to_level(ts)
+    assert row['taxonomy_level'] == taxonomy_string_to_level(ts), \
+        'Taxonomy level mismatch for {}: {} vs {}'.format(
+            sn,row['taxonomy_level'],taxonomy_string_to_level(ts))
 
 # Look for outdated mappings
 taxonomy_preference = 'inat'
@@ -97,11 +99,13 @@ for i_row,row in tqdm(df.iterrows(),total=len(df)):
             continue
 
         m = get_preferred_taxonomic_match(sn,taxonomy_preference)
-        assert m.scientific_name == sn
+        assert m.scientific_name == sn, \
+            'Scientific name mismatch ({} vs {})'.format(m.scientific_name,sn)
 
         ts = row['taxonomy_string']
-        assert m.taxonomy_string[0:50] == ts[0:50], 'Mismatch for {}:\n\n{}\n\n{}\n'.format(
-            row['dataset_name'],ts,m.taxonomy_string)
+        assert m.taxonomy_string[0:50] == ts[0:50], \
+            'Mismatch for {}:\n\n{}\n\n{}\n'.format(row['dataset_name'],
+                                                    ts,m.taxonomy_string)
 
         if ts != m.taxonomy_string:
             n_taxonomy_changes += 1
@@ -540,7 +544,10 @@ with open(html_output_file, 'w', encoding='utf-8') as f:
         else:
             f.write('{}: <b><u>{}</u></b> unmapped'.format(row.dataset_name,row.query))
 
-        if s is None or s not in names:
+        if (s is None) or \
+                (s not in names) or \
+                (s not in scientific_name_to_preferred_images) or \
+                (len(scientific_name_to_preferred_images[s]) == 0):
             f.write('<p class="content_p">no images available</p>')
         else:
             image_paths = scientific_name_to_preferred_images[s]
