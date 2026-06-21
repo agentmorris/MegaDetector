@@ -365,7 +365,8 @@ def subset_json_detector_output_by_confidence(data, options):
 
     print('Subsetting by confidence >= {}'.format(options.confidence_threshold))
 
-    n_max_changes = 0
+    n_detections_evaluated = 0
+    n_detections_kept = 0
 
     # im = images_in[0]
     for i_image, im in tqdm(enumerate(images_in), total=len(images_in)):
@@ -378,8 +379,13 @@ def subset_json_detector_output_by_confidence(data, options):
 
         p_orig = get_max_conf(im)
 
+        n_detections_evaluated += len(im['detections'])
+
         # Find all detections above threshold for this image
-        detections = [d for d in im['detections'] if d['conf'] >= options.confidence_threshold]
+        detections = \
+            [d for d in im['detections'] if d['conf'] >= options.confidence_threshold]
+
+        n_detections_kept += len(detections)
 
         # If there are no detections above threshold, set the max probability
         # to -1, unless it already had a negative probability.
@@ -395,14 +401,6 @@ def subset_json_detector_output_by_confidence(data, options):
 
         im['detections'] = detections
 
-        # Did this thresholding result in a max-confidence change?
-        if abs(p_orig - p) > 0.00001:
-
-            # We should only be *lowering* max confidence values (i.e., making them negative)
-            assert (p_orig <= 0) or (p < p_orig), \
-                'Confidence changed from {} to {}'.format(p_orig, p)
-            n_max_changes += 1
-
         if 'max_detection_conf' in im:
             im['max_detection_conf'] = p
 
@@ -411,8 +409,8 @@ def subset_json_detector_output_by_confidence(data, options):
     # ...for each image
 
     data['images'] = images_out
-    print('done, found {} matches (of {}), {} max conf changes'.format(
-            len(data['images']),len(images_in),n_max_changes))
+    print('Done, kept {} detections (of {})'.format(
+        n_detections_kept,n_detections_evaluated))
 
     return data
 
