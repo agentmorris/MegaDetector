@@ -51,7 +51,7 @@ script):
   run_chunk_000_gpu_00.bat (or .sh on Linux)
 
   Personally, I like to run that script directly in a command prompt (I just leave VS Code or
-  Spyder open, though it's OK if that window gets shut down while MD is running).
+  VS Code open, though it's OK if that window gets shut down while MD is running).
 
 * Then when the jobs are done, back to the interactive environment!  I run the next few cells,
   which make sure the job finished.  You are very plausibly done at this point, and can ignore
@@ -2101,7 +2101,7 @@ nb_header += \
 """
 This notebook represents an interactive process for running MegaDetector and SpeciesNet on large batches of images, including typical and optional postprocessing steps.  Everything after "Merge results..." is basically optional, and we typically do a mix of these optional steps, depending on the job.
 
-This notebook is auto-generated from manage_local_batch.py (a cell-delimited .py file that is used the same way, typically in Spyder or VS Code).
+This notebook is auto-generated from manage_local_batch.py (a cell-delimited .py file that is used the same way, typically in VS Code or Spyder).
 
 """
 

@@ -505,7 +505,7 @@ We run a lot of MegaDetector on a lot of images, and in addition to running the 
 * Dividing images into chunks for running on multiple GPUs
 * Making sure that the number of failed/corrupted images was reasonable
 * Eliminating frequent false detections using the [repeat detection elimination](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/postprocessing/repeat_detection_elimination) process
-* Visualizing the results using [postprocess_batch_results.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/postprocess_batch_results.py) to make "results preview" pages like [this one](https://lila.science/public/snapshot_safari_public/snapshot-safari-kar-2022-00-00-v5a.0.0_0.200/)
+* Visualizing the results using [postprocess_batch_results.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/postprocess_batch_results.py) to make "results preview" pages like [this one](https://lilawildlife.blob.core.windows.net/lila-wildlife/previews/speciesnet-previews/speciesnet-postprocessing-examples/idaho-camera-traps/index.html)
 
 ...and, less frequently:
 
@@ -514,7 +514,7 @@ We run a lot of MegaDetector on a lot of images, and in addition to running the 
 * Various manipulation of the output files, e.g. splitting .json files into smaller .json files for subfolders
 * Running and comparing multiple versions of MegaDetector
 
-There are separate scripts to do all of these things, but things would get chaotic if we ran each of these steps separately.  So in practice we almost always run MegaDetector using [manage_local_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/manage_local_batch.py), a script broken into cells for each of those steps.  We run this in an interactive console in [Spyder](https://github.com/spyder-ide/spyder), but we also periodically export this script to a [notebook](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/manage_local_batch.ipynb) that does exactly the same thing.
+There are separate scripts to do all of these things, but things would get chaotic if we ran each of these steps separately.  So in practice we almost always run MegaDetector using [manage_local_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/manage_local_batch.py), a script broken into cells for each of those steps.  We run this in an interactive console in VS Code, but we also periodically export this script to a [notebook](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/manage_local_batch.ipynb) that does exactly the same thing.
 
 So, if you find yourself keeping track of lots of steps like this to manage large MD jobs, try the notebook out!  And let us know if it's useful/broken/wonderful/terrible.
 
