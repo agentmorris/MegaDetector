@@ -17,9 +17,11 @@ combine_coco_camera_traps_files input1.json input2.json ... inputN.json output.j
 
 #%% Constants and imports
 
-import argparse
-import json
+import os
 import sys
+import json
+import argparse
+
 from megadetector.utils import ct_utils
 
 
@@ -45,13 +47,22 @@ def combine_cct_files(input_files,
         dict: the merged COCO-formatted .json dict
     """
 
+    # Argument validation
+    for fn in input_files:
+        assert os.path.isfile(fn), 'Could not find file {}'.format(fn)
+
+    if filename_prefixes is not None:
+        assert isinstance(filename_prefixes,dict), 'filename_prefixes must be a dict'
+        assert len(filename_prefixes) == len(input_files), 'Prefix dict mismatch'
+
     input_dicts = []
     print('Loading input files')
     for fn in input_files:
         with open(fn, 'r', encoding='utf-8') as f:
             d = json.load(f)
             if filename_prefixes is not None:
-                assert fn in filename_prefixes
+                assert fn in filename_prefixes, \
+                    'No prefix mapping for {}'.format(fn)
                 d['filename_prefix'] = filename_prefixes[fn]
             input_dicts.append(d)
 
