@@ -114,8 +114,9 @@ def remap_detection_categories(input_file,
                         output_category_id = output_category_name_to_output_category_id['unknown']
                     else:
                         category_id_values = [int(x) for x in output_category_name_to_output_category_id.values()]
-                        unknown_category_id = max(category_id_values) + 1
+                        unknown_category_id = str(max(category_id_values) + 1)
                         output_category_name_to_output_category_id['unknown'] = unknown_category_id
+                        target_category_map[unknown_category_id] = 'unknown'
                         output_category_id = unknown_category_id
             else:
                 output_category_id = input_category_id_to_output_category_id[input_category_id]

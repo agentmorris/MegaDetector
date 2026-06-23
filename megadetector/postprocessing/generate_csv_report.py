@@ -335,7 +335,7 @@ def generate_csv_report(md_results_file,
 
                         # Classifications should always be sorted by confidence.  Not
                         # technically required, but always true in practice.
-                        assert is_list_sorted([c[1] for c in det['classifications']]), \
+                        assert is_list_sorted([c[1] for c in det['classifications']], reverse=True), \
                             'This script does not yet support unsorted classifications'
                         assert classification_category_id_to_name is not None, \
                             'If classifications are present, category mappings should be present'
