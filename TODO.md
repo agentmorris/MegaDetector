@@ -803,7 +803,7 @@ E1
 !bug
 
 
-## Standardized cast consistency in docs for CLI arguments
+## Standardized case consistency in docs for CLI arguments
 
 There is inconsistent casing in CLI arguments, fix this.
 
