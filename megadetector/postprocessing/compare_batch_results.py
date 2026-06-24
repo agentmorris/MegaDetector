@@ -69,6 +69,29 @@ def _maxempty(L): # noqa
         return max(L)
 
 
+def _normalize_detection_thresholds(thresholds):
+    """
+    Normalize detection thresholds to a category-to-threshold dictionary.
+
+    Args:
+        thresholds (dict or float): either a category-to-threshold dictionary, or
+            a single numeric threshold to use for all categories
+
+    Returns:
+        dict: a category-to-threshold dictionary
+    """
+
+    if isinstance(thresholds, dict):
+        return thresholds
+
+    if isinstance(thresholds, (int, float)) and not isinstance(thresholds, bool):
+        return {'default': float(thresholds)}
+
+    raise TypeError(
+        'Detection thresholds must be a dict or a numeric value, not {}'.format(
+            type(thresholds).__name__))
+
+
 #%% Constants and support classes
 
 class PairwiseBatchComparisonOptions:
@@ -637,6 +660,11 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
 
     if options.random_seed is not None:
         random.seed(options.random_seed)
+
+    pairwise_options.detection_thresholds_a = _normalize_detection_thresholds(
+        pairwise_options.detection_thresholds_a)
+    pairwise_options.detection_thresholds_b = _normalize_detection_thresholds(
+        pairwise_options.detection_thresholds_b)
 
     # Warn the user if some "detections" might not get rendered
     max_detection_threshold_a = max(list(pairwise_options.detection_thresholds_a.values()))
