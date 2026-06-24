@@ -451,7 +451,7 @@ nb_header += \
 """
 This notebook represents an interactive process for running MegaDetector on large batches of videos, including typical and optional postprocessing steps.
 
-This notebook is auto-generated from manage_video_batch.py (a cell-delimited .py file that is used the same way, typically in Spyder or VS Code).
+This notebook is auto-generated from manage_video_batch.py (a cell-delimited .py file that is used the same way, typically in VS Code or Spyder).
 
 """
 
