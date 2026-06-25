@@ -98,28 +98,45 @@ def remap_detection_categories(input_file,
 
         # det = im['detections'][0]
         for det in im['detections']:
+
             input_category_id = det['category']
+
             if input_category_id not in input_category_id_to_output_category_id:
+
                 input_category_name = '[unknown]'
                 if input_category_id in input_categories:
                     input_category_name = input_categories[input_category_id]
+
                 s = 'Detection category {} ({}) not mapped'.format(
                     input_category_id,input_category_name)
+
                 if invalid_category_handling == 'error':
+
                     raise ValueError(s)
+
                 else:
+
                     assert invalid_category_handling == 'unknown'
                     print('Warning: {}'.format(s))
                     if 'unknown' in output_category_name_to_output_category_id:
                         output_category_id = output_category_name_to_output_category_id['unknown']
                     else:
-                        category_id_values = [int(x) for x in output_category_name_to_output_category_id.values()]
-                        unknown_category_id = max(category_id_values) + 1
+                        # Create a new "unknown" category for the unmapped category
+                        category_id_values = \
+                            [int(x) for x in output_category_name_to_output_category_id.values()]
+                        unknown_category_id = str(max(category_id_values) + 1)
                         output_category_name_to_output_category_id['unknown'] = unknown_category_id
+                        target_category_map[unknown_category_id] = 'unknown'
                         output_category_id = unknown_category_id
             else:
+
                 output_category_id = input_category_id_to_output_category_id[input_category_id]
+
+            # ...if this category ID has been mapped to the output dict
+
             det['category'] = output_category_id
+
+        # ...for each detection
 
     # ...for each image
 
