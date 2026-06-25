@@ -58,6 +58,9 @@ from megadetector.utils.ct_utils import invert_dictionary, get_iou
 from megadetector.utils import path_utils
 from megadetector.visualization.visualization_utils import get_text_size
 
+
+#%% Support functions
+
 def _maxempty(L): # noqa
     """
     Return the maximum value in a list, or 0 if the list is empty
@@ -67,29 +70,6 @@ def _maxempty(L): # noqa
         return 0
     else:
         return max(L)
-
-
-def _normalize_detection_thresholds(thresholds):
-    """
-    Normalize detection thresholds to a category-to-threshold dictionary.
-
-    Args:
-        thresholds (dict or float): either a category-to-threshold dictionary, or
-            a single numeric threshold to use for all categories
-
-    Returns:
-        dict: a category-to-threshold dictionary
-    """
-
-    if isinstance(thresholds, dict):
-        return thresholds
-
-    if isinstance(thresholds, (int, float)) and not isinstance(thresholds, bool):
-        return {'default': float(thresholds)}
-
-    raise TypeError(
-        'Detection thresholds must be a dict or a numeric value, not {}'.format(
-            type(thresholds).__name__))
 
 
 #%% Constants and support classes
@@ -115,9 +95,13 @@ class PairwiseBatchComparisonOptions:
         self.results_description_b = None
 
         #: Per-class detection thresholds to use for filename A (including a 'default' threshold)
+        #:
+        #: Can also be a float (applied to all categories).
         self.detection_thresholds_a = {'animal':0.15,'person':0.15,'vehicle':0.15,'default':0.15}
 
         #: Per-class detection thresholds to use for filename B (including a 'default' threshold)
+        #:
+        #: Can also be a float (applied to all categories).
         self.detection_thresholds_b = {'animal':0.15,'person':0.15,'vehicle':0.15,'default':0.15}
 
         #: Rendering threshold to use for all categories for filename A
@@ -661,10 +645,13 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
     if options.random_seed is not None:
         random.seed(options.random_seed)
 
-    pairwise_options.detection_thresholds_a = _normalize_detection_thresholds(
-        pairwise_options.detection_thresholds_a)
-    pairwise_options.detection_thresholds_b = _normalize_detection_thresholds(
-        pairwise_options.detection_thresholds_b)
+    if isinstance(pairwise_options.detection_thresholds_a, float):
+        pairwise_options.detection_thresholds_a = \
+            {'default': pairwise_options.detection_thresholds_a}
+
+    if isinstance(pairwise_options.detection_thresholds_b, float):
+        pairwise_options.detection_thresholds_b = \
+            {'default': pairwise_options.detection_thresholds_b}
 
     # Warn the user if some "detections" might not get rendered
     max_detection_threshold_a = max(list(pairwise_options.detection_thresholds_a.values()))
