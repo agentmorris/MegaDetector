@@ -27,7 +27,6 @@ the results of multiple model versions, see merge_detections.py.
 import argparse
 import sys
 import json
-from copy import deepcopy
 from megadetector.utils import ct_utils
 
 
@@ -132,7 +131,6 @@ def combine_batch_output_dictionaries(input_dicts, require_uniqueness=True):
         for im in input_dict['images']:
             # Normalize path separators so we don't treat images as different if they
             # were processed on different OS's
-            im = deepcopy(im)
             im['file'] = im['file'].replace('\\','/')
             im_file = im['file']
             if require_uniqueness:
@@ -144,14 +142,7 @@ def combine_batch_output_dictionaries(input_dicts, require_uniqueness=True):
                     n_redundant_images += 1
                     previous_im = images[im_file]
                     # Replace a previous failure with a success
-                    previous_was_failure = \
-                        ('failure' in previous_im and previous_im['failure'] is not None) or \
-                        ('detections' not in previous_im) or \
-                        (previous_im.get('detections', None) is None)
-                    current_is_success = \
-                        ('failure' not in im or im['failure'] is None) and \
-                        ('detections' in im) and (im['detections'] is not None)
-                    if previous_was_failure and current_is_success:
+                    if ('detections' in im) and ('detections' not in previous_im):
                         images[im_file] = im
                         print(f'Replacing previous failure for image: {im_file}')
                 else:
