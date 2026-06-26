@@ -350,7 +350,7 @@ def _initialize_yolo_imports(model_type='yolov5',
 
         try:
 
-            # from yolov9.utils.general import non_max_suppression # noqa
+            from yolov9.utils.general import non_max_suppression # noqa
             from yolov9.utils.general import xyxy2xywh # noqa
             from yolov9.utils.augmentations import letterbox # noqa
             from yolov9.utils.general import scale_boxes as scale_coords # noqa
@@ -1323,9 +1323,14 @@ class PTDetector:
 
         use_library_nms = False
 
-        # Model output format changed in recent ultralytics packages, and the nms implementation
-        # in this module hasn't been updated to handle that format yet.
-        if (yolo_model_type_imported is not None) and (yolo_model_type_imported == 'ultralytics'):
+        # The custom nms() implementation in this module assumes the YOLOv5 output layout
+        # ([batch, num_anchors, num_classes + 5], i.e. with an objectness score at index 4).
+        # The ultralytics and (wongkinyiu) yolov9 libraries produce an anchor-free, transposed
+        # layout ([batch, num_classes + 4, num_anchors], with no objectness score), which nms()
+        # would misinterpret (treating anchor positions as class indices).  So we route those
+        # model types to their library's non_max_suppression() instead.
+        if (yolo_model_type_imported is not None) and \
+           (yolo_model_type_imported in ('ultralytics', 'yolov9')):
             use_library_nms = True
 
         if use_library_nms:
