@@ -27,6 +27,7 @@ the results of multiple model versions, see merge_detections.py.
 import argparse
 import sys
 import json
+
 from megadetector.utils import ct_utils
 
 

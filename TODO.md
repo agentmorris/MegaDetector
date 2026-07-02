@@ -189,17 +189,6 @@ E2
 !feature
 
 
-## Allow a single confidence threshold in compare_batch_results
-
-compare_batch_results takes a dict of class --> threshold mappings for each file being compared.  Allow this to be a float (rather than a dict) that applies to all categories.  The dict already supports a "default" entry, so just take the float value and stick it in a dict as {'default':new_threshold}.
-
-P4
-
-E0
-
-!feature
-
-
 ## Add classification support to compare_batch_results
 
 compare_batch_results supports comparing detections, but not species classifications.  Add support for species classification results.
@@ -803,7 +792,7 @@ E1
 !bug
 
 
-## Standardized cast consistency in docs for CLI arguments
+## Standardized case consistency in docs for CLI arguments
 
 There is inconsistent casing in CLI arguments, fix this.
 
