@@ -457,7 +457,7 @@ def _render_single_image(im, render_constants):
     }
 
     # Validate inputs
-    if im['detections'] is None:
+    if ('detections' not in im) or (im['detections'] is None):
 
         failure_string = ''
         if 'failure' in im:
@@ -619,7 +619,7 @@ def _prepare_analysis_data(options):
 
     gt_category_id_to_name = {}
     for c in gt_data['categories']:
-        gt_category_id_to_name[c['id']] = c['name']
+        gt_category_id_to_name[c['id']] = c['name'].lower()
 
     # Normalize filenames (backslash -> forward slash)
     for im in results_data['images']:
@@ -663,6 +663,15 @@ def _prepare_analysis_data(options):
     filename_to_gt_categories = {}
     n_images_without_annotations = 0
 
+    # Convert ctegory mappings to lowercase
+    gt_category_name_mappings = None
+
+    if options.gt_category_name_mappings is not None:
+        gt_category_name_mappings = {}
+        for k in options.gt_category_name_mappings:
+            v = options.gt_category_name_mappings[k]
+            gt_category_name_mappings[k.lower()] = v.lower()
+
     for im in gt_data['images']:
 
         fn = im['file_name']
@@ -677,8 +686,8 @@ def _prepare_analysis_data(options):
         gt_cats = set()
         for ann in annotations:
             cat_name = gt_category_id_to_name[ann['category_id']].lower()
-            if options.gt_category_name_mappings is not None:
-                cat_name = options.gt_category_name_mappings.get(cat_name, cat_name)
+            if gt_category_name_mappings is not None:
+                cat_name = gt_category_name_mappings.get(cat_name, cat_name)
             gt_cats.add(cat_name)
 
         filename_to_gt_categories[fn] = gt_cats
