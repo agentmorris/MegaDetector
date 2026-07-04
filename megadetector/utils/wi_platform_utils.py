@@ -398,10 +398,9 @@ def url_to_relative_path(url,image_flattening='deployment'):
 
     Args:
         url (str): the URL to convert to a relative path
-        image_flattening (str, optional): if 'none' or None, relative paths will be
-            returned as the entire URL for each image, other than gs://.  Can be
-            'guid' (just return [GUID].JPG) or 'deployment' (return
-            [deployment]/[GUID].JPG).
+        image_flattening (str, optional): if 'none', relative paths will be stored
+            as the entire URL for each image, other than gs://.  Can be 'guid' (just
+            store [GUID].JPG) or 'deployment' (store as [deployment]/[GUID].JPG).
 
     Returns:
         str: converted path
@@ -415,8 +414,7 @@ def url_to_relative_path(url,image_flattening='deployment'):
         relative_path = url.replace('gs://','')
     elif image_flattening == 'guid':
         relative_path = url.split('/')[-1]
-    else:
-        assert image_flattening == 'deployment'
+    elif image_flattening == 'deployment':
         tokens = url.split('/')
         found_deployment_id = False
         for i_token,token in enumerate(tokens):
@@ -431,6 +429,8 @@ def url_to_relative_path(url,image_flattening='deployment'):
 
         assert found_deployment_id, \
             'Could not find deployment ID for url {}'.format(url)
+    else:
+        raise ValueError('Unrecognized image flattening scheme {}'.format(image_flattening))
 
     return relative_path
 

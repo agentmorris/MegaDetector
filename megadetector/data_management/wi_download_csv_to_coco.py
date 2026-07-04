@@ -118,7 +118,8 @@ def wi_download_csv_to_coco(csv_file_in,
             impact on blank images if "include_blanks" is False.
         image_flattening (str, optional): if 'none', relative paths will be stored
             as the entire URL for each image, other than gs://.  Can be 'guid' (just
-            store [GUID].JPG) or 'deployment' (store as [deployment]/[GUID].JPG).
+            store [GUID].JPG), 'deployment' (store as [deployment]/[GUID].JPG), or
+            'project' (store as [project]/[deployment]/[GUID].JPG).
         verbose (bool, optional): enable additional debug console output
         category_remappings (dict, optional): str --> str dict that maps WI category
             names to output category names.  Regular expressions allowed in keys.
@@ -262,7 +263,12 @@ def wi_download_csv_to_coco(csv_file_in,
         if 'https' in url and 'placeholder' in url:
             continue
 
-        file_name = url_to_relative_path(url,image_flattening=image_flattening)
+        # The "project" flattening scheme means "prepend the project ID to /[deployment]/..."
+        if image_flattening == 'project':
+            project_id = str(reference_record['project_id'])
+            file_name = project_id + '/' + url_to_relative_path(url,image_flattening='deployment')
+        else:
+            file_name = url_to_relative_path(url,image_flattening=image_flattening)
 
         location_id = _make_location_id(
             reference_record['project_id'],
@@ -548,16 +554,15 @@ def wi_download_csv_to_coco(csv_file_in,
     coco_data['annotations'] = annotations
     coco_data['categories'] = categories
 
+    category_name_to_count = {c['name']:c['count'] for c in categories}
+    category_name_to_count = \
+        sort_dictionary_by_value(category_name_to_count,reverse=True)
+
     print_category_counts = False
 
     if print_category_counts:
 
         print('Categories and counts:\n')
-
-        category_name_to_count = {c['name']:c['count'] for c in categories}
-        category_name_to_count = \
-            sort_dictionary_by_value(category_name_to_count,reverse=True)
-
         for i_category,category_name in enumerate(category_name_to_count):
             category_name_string = category_name
             if (category_name == 'empty') and (not include_blanks):

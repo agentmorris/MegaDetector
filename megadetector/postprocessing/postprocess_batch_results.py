@@ -203,10 +203,10 @@ class PostProcessingOptions:
         self.almost_detection_confidence_threshold = None
 
         #: Enable/disable rendering parallelization
-        self.parallelize_rendering = False
+        self.parallelize_rendering = True
 
         #: Number of threads/processes to use for rendering parallelization
-        self.parallelize_rendering_n_cores = 16
+        self.parallelize_rendering_n_cores = 12
 
         #: Whether to use threads (True) or processes (False) for rendering parallelization
         self.parallelize_rendering_with_threads = True
@@ -1057,6 +1057,7 @@ def process_batch_results(options):
         PostProcessingResults: information about the results/preview, most importantly the
         HTML filename of the output.  See the PostProcessingResults class for details.
     """
+
     ppresults = PostProcessingResults()
 
     ##%% Expand some options for convenience
