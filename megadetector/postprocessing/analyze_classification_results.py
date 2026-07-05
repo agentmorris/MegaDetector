@@ -1270,9 +1270,9 @@ def analyze_classification_results(options):
             for entity_ids in entity_id_lists:
                 if options.sequence_level_analysis:
                     for seq_id in entity_ids:
-                        fns = seq_id_to_filenames_map.get(seq_id, [])
-                        if len(fns) > 0:
-                            filenames_to_render.add(fns[0])
+                        sequence_filenames = seq_id_to_filenames_map.get(seq_id, [])
+                        if len(sequence_filenames) > 0:
+                            filenames_to_render.add(sequence_filenames[0])
                 else:
                     filenames_to_render.update(entity_ids)
 
