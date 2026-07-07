@@ -570,7 +570,7 @@ def is_gpu_available(model_file):
         print('TensorFlow version:', tf.__version__)
         print('tf.test.is_gpu_available:', gpu_available)
         return gpu_available
-    if not model_file.endswith('.pt'):
+    if not (model_file.endswith('.pt') or model_file.endswith('.pth')):
         print('Warning: could not determine environment from model file name, assuming PyTorch')
 
     import torch
@@ -642,6 +642,16 @@ def load_detector(model_file,
             detector_options['force_cpu'] = force_cpu
         detector_options['use_model_native_classes'] = USE_MODEL_NATIVE_CLASSES
         detector = PTDetector(model_file, detector_options, verbose=verbose)
+
+    elif model_file.endswith('.pth'):
+
+        # RF-DETR models use a .pth extension.  This isn't unique to RF-DETR, but it's unique among
+        # supported models, so for now we identify these purely by extension.
+        from megadetector.detection.rfdetr_detector import RFDETRDetector
+
+        if detector_options is None:
+            detector_options = {}
+        detector = RFDETRDetector(model_file, detector_options, verbose=verbose)
 
     else:
 
@@ -865,6 +875,7 @@ def _validate_zip_file(file_path, file_description='file'):
     Returns:
         bool: True if valid, False otherwise
     """
+
     try:
         with zipfile.ZipFile(file_path, 'r') as zipf:
             corrupt_file = zipf.testzip()
@@ -894,6 +905,7 @@ def _validate_md5_hash(file_path, expected_hash, file_description='file'):
     Returns:
         bool: True if hash matches, False otherwise
     """
+
     try:
         actual_hash = compute_file_hash(file_path, algorithm='md5').lower()
         expected_hash = expected_hash.lower()
@@ -1074,7 +1086,8 @@ def main(): # noqa
 
     parser.add_argument(
         'detector_file',
-        help='Path detector model file (.pb or .pt).  Can also be MDV4, MDV5A, or MDV5B to request automatic download.')
+        help='Path to detector model file (.pt, .pth, or .pb).  Can also be a model string ' + \
+             '(e.g. "MDV5A", "MDv1000-redwood") to request automatic download.')
 
     # Must specify either an image file or a directory
     group = parser.add_mutually_exclusive_group(required=True)

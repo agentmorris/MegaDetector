@@ -358,9 +358,10 @@ def _consumer_func(q,
 
         # ...if we pulled the sentinel signal (None) telling us that a worker finished
 
-        # At this point, we have a real image (i.e., not a sentinel indicating that a worker finished)
+        # At this point, we have a real image (i.e., not a sentinel indicating that a worker
+        # finished).
         #
-        # "r" is always a tuple of (filename,image,producer_id)
+        # "r" is always a tuple of (filename,image,producer_id).
         #
         # Image can be a PIL image (if the loader wasn't doing preprocessing) or a dict with
         # a preprocessed image and associated metadata.
@@ -380,8 +381,8 @@ def _consumer_func(q,
             if pbar is not None:
                 pbar.update(1)
 
-        # This is a catastrophic internal failure; preprocessing workers should
-        # be passing the consumer dicts that represent processed images
+        # This would be an internal failure; preprocessing workers should
+        # be passing consumer dicts that represent processed images.
         elif preprocess_on_image_queue and (not isinstance(image,dict)):
 
             print('Expected a dict, received an image of type {}'.format(type(image)))
