@@ -533,19 +533,6 @@ E1
 !feature
 
 
-## Why does "fusing layers" print twice?
-
-YOLOv5 tells me that it's "fusing layers" twice during startup.  A little part of me is concerned that somehow I'm loading the model twice, even when only a single worker is operating.  Assess this.
-
-P0
-
-E0
-
-S-5
-
-!bug
-
-
 ## RDE might remove custom fields within a detection object
 
 The RDE process loads detections into a pandas dataframe, then re-generates a new list of detections.  There's no "official" scenario where detections might have custom properties, but I think this will result in the loss of custom properties.  Assess this, then either fix it, remove this item (if this doesn't really happen), or update the effort/priority of this task.
@@ -969,15 +956,25 @@ E0
 !maintenance
 
 
+## More robust determination of model types
+
+Currently load_model() decides which object to instantiate based on file extensions: .pt == yolo, .pth == RF-DETR, .pb = TFODAPI.  This works for all models we support right now, but it's not very robust or forward-compatible.
+
+P3
+
+E3
+
+!maintenance
+
 ## Address module-level globals in run_detector_batch and run_detector
 
-The DEFAULT_DETECTOR_LABEL_MAP module-level global variable in run_detector_batch is used to pass custom class mappings around; this is rare and not very important, but sloppy.
+The DEFAULT_DETECTOR_LABEL_MAP module-level global variable in run_detector_batch is used to pass custom class mappings around; this is sloppy.  write_results_to_file should receive optional an optional category map, rather than communicating this via a global variable.  A good test case is RF-DETR/CFD support, which currently loads classes in a sensible way (in load_model()), then stashes them in a global variable.
 
-Similarly, the USE_MODEL_NATIVE_CLASSES module-level global in run_detector is used to pass a custom option around; this is rare and not very important, but sloppy.
+Similarly, the USE_MODEL_NATIVE_CLASSES module-level global in run_detector is used to pass a custom option around; this is also sloppy.
 
 Fix both of these.
 
-P4
+P2
 
 E2
 

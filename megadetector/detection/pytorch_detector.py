@@ -738,7 +738,7 @@ require_non_default_compatibility_mode = False
 
 class PTDetector:
     """
-    Class that runs a PyTorch-based MegaDetector model.  Also used as a preprocessor
+    Class that runs a YOLO-based MegaDetector model.  Also used as a preprocessor
     for images that will later be run through an instance of PTDetector.
     """
 
@@ -974,8 +974,6 @@ class PTDetector:
                 EXIF rotation already handled
             image_id (str, optional): a path to identify the image; will be in the "file" field
                 of the output object
-            detection_threshold (float, optional): only detections above this confidence threshold
-                will be included in the return value
             image_size (int, optional): image size (long side) to use for inference, or None to
                 use the default size specified at the time the model was loaded
             verbose (bool, optional): enable additional debug output
@@ -1117,6 +1115,7 @@ class PTDetector:
         result['scaling_shape'] = scaling_shape
         result['letterbox_ratio'] = letterbox_ratio
         result['letterbox_pad'] = letterbox_pad
+
         return result
 
     # ...def preprocess_image(...)
