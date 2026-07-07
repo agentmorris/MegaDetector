@@ -20,6 +20,7 @@ import numpy as np
 
 from megadetector.detection.run_detector import CONF_DIGITS, COORD_DIGITS, FAILURE_INFER
 from megadetector.utils.ct_utils import round_float, round_float_array
+from megadetector.utils.ct_utils import parse_bool_string
 
 
 #%% Model loading
@@ -91,6 +92,7 @@ def load_model(detector_file,
 
     if optimize_for_inference:
 
+        print('Optimizing loaded model for inference')
         model.optimize_for_inference(batch_size=batch_size)
 
         # optimize_for_inference is off by default because it reportedly created
@@ -211,10 +213,15 @@ class RFDETRDetector:
 
         # Parse options specific to this detector family
         image_size = None
+        optimize_for_inference = False
 
         if detector_options is not None:
-            if ('image_size' in detector_options) and (detector_options['image_size'] is not None):
+            if ('image_size' in detector_options) and \
+                (detector_options['image_size'] is not None):
                 image_size = int(detector_options['image_size'])
+            if ('optimize_for_inference' in detector_options) and \
+                (detector_options['optimize_for_inference'] is not None):
+                optimize_for_inference = parse_bool_string(detector_options['optimize_for_inference'])
 
         #: Image resolution passed to from_checkpoint(); None means "use the resolution
         #: recorded in the checkpoint".  After the model is loaded, this is updated to the
@@ -243,7 +250,9 @@ class RFDETRDetector:
             return
 
         # Load the model
-        model_info = load_model(model_path, image_size=self.image_size)
+        model_info = load_model(model_path,
+                                image_size=self.image_size,
+                                optimize_for_inference=optimize_for_inference)
         self.model = model_info['model']
         self.model_type = model_info['model_type']
         self.image_size = model_info['image_size']

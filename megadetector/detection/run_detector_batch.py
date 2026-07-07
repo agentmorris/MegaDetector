@@ -1051,6 +1051,8 @@ def _load_custom_class_mapping(class_mapping_filename):
 
     print('Loaded custom class mapping:')
     print(class_mapping)
+
+    # This determins what gets written by write_results_to_file
     run_detector.DEFAULT_DETECTOR_LABEL_MAP = class_mapping
     return class_mapping
 
@@ -1196,9 +1198,8 @@ def load_and_run_detector_batch(model_file,
                                              force_download=force_model_download,
                                              verbose=verbose)
 
-    gpu_available = is_gpu_available(model_file)
-
-    print('GPU available: {}'.format(gpu_available))
+    # Print debug information about GPU availability
+    gpu_available = is_gpu_available(model_file, context_string='load_and_run_detector_batch')
 
     if (n_cores > 1) and gpu_available:
 
