@@ -945,7 +945,8 @@ def open_file(filename,
     Args:
         filename (str): file to open
         attempt_to_open_in_wsl_host (bool, optional): if this is True, and we're in WSL, attempts
-            to open [filename] in the Windows host environment
+            to open [filename] in the Windows host environment.  Only supported for windows files
+            that are being provided as /mnt/... paths.
         browser_name (str, optional): see above
     """
 
