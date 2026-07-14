@@ -2,39 +2,68 @@
 
 zamba_to_md.py
 
-Convert a labels.csv file produced by Zamba Cloud to a MD results file suitable
-for import into Timelapse.
+Convert a labels.csv file produced by Zamba Cloud to a MD-formatted results file.
 
-Columns are expected to be:
+For video files, columns are expected to be:
 
-video_uuid (not used)
-original_filename (assumed to be a relative path name)
-top_k_label,top_k_probability, for k = 1..N
-[category name 1],[category name 2],...
-corrected_label
+    video_uuid (not used)
+    original_filename (assumed to be a relative path name)
+    top_k_label,top_k_probability, for k = 1..N
+    [category name 1],[category name 2],...
+    corrected_label
 
-Because the MD results file fundamentally stores detections, what we'll
-actually do is create bogus detections that fill the entire image.
+For image files, columns are expected to be:
 
-There is no special handling of empty/blank categories; because these results are
-based on a classifier, rather than a detector (where "blank" would be the absence of
-all other categories), "blank" can be queried in Timelapse just like any other class.
+    filepath (assumed to have the same stem as an original file)
+    detection_category (MD category ID)
+    detection_conf
+    x1, y1, x2, y2 (in absolute coordinates)
+    class1 (confidence of classification category 1)
+    class2 (confidence of classification category 2)
+    ...
 
 """
 
 #%% Imports and constants
 
+import os
 import sys
 import argparse
 
 import pandas as pd
 
+from tqdm import tqdm
+from collections import defaultdict
+
 from megadetector.utils.ct_utils import write_json
+from megadetector.utils.ct_utils import invert_dictionary
+from megadetector.utils.ct_utils import sort_dictionary_by_value
+from megadetector.utils.wi_taxonomy_utils import get_common_name_from_prediction_string
+from megadetector.utils.wi_taxonomy_utils import is_valid_prediction_string
+from megadetector.detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP
+from megadetector.utils.path_utils import find_images
+from megadetector.visualization.visualization_utils import get_image_size
+
+expected_video_columns = ('video_uuid','corrected_label','original_filename')
+expected_image_columns = ('filepath', 'detection_category', 'detection_conf', 'x1', 'y1', 'x2', 'y2')
+
+assert expected_image_columns[0] != expected_video_columns[0], \
+    'Invalid image/video column names'
+
+# How many classifications should we include per detection?
+#
+# Only impacts image (not video) files
+top_n_classifications = 3
+
+# Min classification confidence to include in ouutput
+#
+# Only impacts image (not video) files
+min_classification_confidence = 0.05
 
 
 #%% Main function
 
-def zamba_results_to_md_results(input_file,output_file=None):
+def zamba_results_to_md_results(input_file,output_file=None,image_folder=None):
     """
     Converts the .csv file [input_file] to the MD-formatted .json file [output_file].
 
@@ -44,6 +73,12 @@ def zamba_results_to_md_results(input_file,output_file=None):
         input_file (str): the .csv file to convert
         output_file (str, optional): the output .json file (defaults to
             [input_file].json)
+        image_folder (str, optional): folder name containing images, file name stems
+            are assumed to be unique within this folder (only required  for image results, not
+            video)
+
+    Returns:
+        str: the file to which results are written (the same as output_file if it was supplied)
     """
 
     if output_file is None:
@@ -51,8 +86,210 @@ def zamba_results_to_md_results(input_file,output_file=None):
 
     df = pd.read_csv(input_file)
 
-    expected_columns = ('video_uuid','corrected_label','original_filename')
-    for s in expected_columns:
+    if expected_video_columns[0] in df.columns:
+        _zamba_video_results_to_md_results(df=df,output_file=output_file)
+    elif expected_image_columns[0] in df.columns:
+        _zamba_image_results_to_md_results(df=df,
+                                           output_file=output_file,
+                                           image_folder=image_folder)
+    else:
+        raise ValueError('Could not determine Zamba file type')
+
+    return output_file
+
+# ...def zamba_results_to_md_results(...)
+
+
+#%% Media-specific functions
+
+def _zamba_image_results_to_md_results(df,output_file,image_folder):
+
+    assert image_folder is not None, 'image_folder is required for image files'
+    assert os.path.isdir(image_folder), 'Image folder {} not found'.format(image_folder)
+
+    image_filenames_relative = find_images(image_folder,recursive=True,return_relative_paths=True)
+    image_basename_to_relative_paths = defaultdict(list)
+    for fn_relative in image_filenames_relative:
+        bn = os.path.basename(fn_relative)
+        image_basename_to_relative_paths[bn].append(fn_relative)
+
+    print('Found {} images in {}'.format(len(image_filenames_relative),
+                                         image_folder))
+
+    for s in expected_image_columns:
+        assert s in df.columns,\
+            'Expected column {} not found, are you sure this is a Zamba results .csv file?'.format(
+                s)
+
+    # Non-required columns are assumed to be category scores
+    #
+    # If someone has a species called, e.g., "x1", they're out of luck
+    category_columns = []
+    for s in df.columns:
+        if s not in expected_image_columns:
+            category_columns.append(s)
+
+    print('Found columns for {} categories'.format(len(category_columns)))
+
+    # To handle the SpeciesNet special case, allow category names to be extracted from
+    # column names.
+    column_name_to_category_name = {}
+    classification_category_name_to_id = {}
+    classification_category_id_to_description = {}
+    for column_name in category_columns:
+
+        if is_valid_prediction_string(s):
+            category_name = get_common_name_from_prediction_string(column_name)
+        else:
+            category_name = column_name
+        column_name_to_category_name[column_name] = category_name
+        category_id = str(len(classification_category_name_to_id))
+        classification_category_name_to_id[category_name] = category_id
+        classification_category_id_to_description[category_id] = column_name
+
+    # ...for each column
+
+    classification_category_id_to_name = invert_dictionary(classification_category_name_to_id)
+
+    info = {}
+    info['format_version'] = '1.6'
+    info['detector'] = 'Zamba Cloud'
+    info['classifier'] = 'Zamba Cloud'
+
+    detection_category_id_to_name = {}
+
+    records = df.to_dict(orient='records')
+
+    # If we only ever see categories 1, 2, 3, assume MD categories
+    #
+    # record = records[0]
+    detection_category_ids = set()
+    for record in records:
+        detection_category_id = str(int(record['detection_category']))
+        detection_category_ids.add(detection_category_id)
+
+    found_non_md_id = False
+    for detection_category_id in detection_category_ids:
+        if detection_category_id not in ('1','2','3'):
+            found_non_md_id = True
+            break
+
+    if found_non_md_id:
+        print('Warning: found non-MD category ID')
+        # Use dummy category names
+        for detection_category_id in detection_category_ids:
+            detection_category_id_to_name[detection_category_id] = detection_category_id
+    else:
+        detection_category_id_to_name = DEFAULT_DETECTOR_LABEL_MAP
+
+    filename_to_image = {}
+
+    skipped_files = []
+
+    images = []
+
+    # record = records[0]
+    for record in tqdm(records):
+
+        file_identifier = record['filepath']
+
+        image_basename = os.path.basename(file_identifier)
+        if image_basename not in image_basename_to_relative_paths:
+            print('Warning: file {} not found on disk, skipping'.format(file_identifier))
+            skipped_files.append(file_identifier)
+            continue
+
+        fn_relative = image_basename_to_relative_paths[image_basename]
+        assert len(fn_relative) > 0
+        if len(fn_relative) > 1:
+            print('Warning: file {} matches multiple files on disk, skipping'.format(file_identifier))
+            skipped_files.append(file_identifier)
+            continue
+        fn_relative = fn_relative[0]
+        assert isinstance(fn_relative,str)
+
+        fn_abs = os.path.join(image_folder,fn_relative)
+        assert os.path.isfile(fn_abs), 'File {} not found'.format(fn_abs)
+
+        if fn_relative in filename_to_image:
+            im = filename_to_image[fn_relative]
+        else:
+            im = {}
+            try:
+                w,h = get_image_size(fn_abs)
+            except Exception as e:
+                print('Warning: failed to read size from image {}: {}'.format(
+                    fn_relative, str(e)))
+                skipped_files.append(file_identifier)
+                continue
+
+            im['file'] = fn_relative
+            im['detections'] = []
+            filename_to_image[fn_relative] = im
+
+        det = {}
+        det['category'] = str(int(record['detection_category']))
+        det['conf'] = float(record['detection_conf'])
+        x1_norm = record['x1'] / w
+        y1_norm = record['y1'] / h
+        x2_norm = record['x2'] / w
+        y2_norm = record['y2'] / h
+        box_w = x2_norm - x1_norm
+        box_h = y2_norm - y1_norm
+        det['bbox'] = [x1_norm, y1_norm, box_w, box_h]
+        im['detections'].append(det)
+
+        classification_category_id_to_confidence = {}
+
+        for column_name in category_columns:
+            classification_conf = float(record[column_name])
+            category_name = column_name_to_category_name[column_name]
+            classification_category_id = classification_category_name_to_id[category_name]
+            classification_category_id_to_confidence[classification_category_id] = \
+                classification_conf
+
+        classification_category_id_to_confidence = \
+            sort_dictionary_by_value(classification_category_id_to_confidence,reverse=True)
+
+        for i_category,classification_category_id in \
+            enumerate(classification_category_id_to_confidence.keys()):
+
+            classification_conf = \
+                classification_category_id_to_confidence[classification_category_id]
+            if (i_category > top_n_classifications) or \
+                (classification_conf < min_classification_confidence):
+                break
+            if 'classifications' not in det:
+                det['classifications'] = []
+            det['classifications'].append([classification_category_id,classification_conf])
+
+        # ...for each classification category
+
+        images.append(im)
+
+    # ...for each record
+
+    if len(skipped_files) > 0:
+        print('Warning: skipped {} of {} files'.format(
+            len(skipped_files), len(records)))
+
+    results = {}
+    results['info'] = info
+    results['detection_categories'] = detection_category_id_to_name
+    results['classification_categories'] = classification_category_id_to_name
+    results['classification_category_descriptions'] = classification_category_id_to_description
+    results['images'] = images
+
+    write_json(output_file,results)
+
+    print('Wrote results for {} images to {}'.format(len(images),output_file))
+
+# ...def _zamba_image_results_to_md_results(df,output_file)
+
+
+def _zamba_video_results_to_md_results(df,output_file):
+
+    for s in expected_video_columns:
         assert s in df.columns,\
             'Expected column {} not found, are you sure this is a Zamba results .csv file?'.format(
                 s)
@@ -84,7 +321,7 @@ def zamba_results_to_md_results(input_file,output_file=None):
     column_names = list(df.columns)
     first_category_name_index = 0
     while('top_' in column_names[first_category_name_index] or \
-          column_names[first_category_name_index] in expected_columns):
+          column_names[first_category_name_index] in expected_video_columns):
         first_category_name_index += 1
 
     i_column = first_category_name_index
@@ -98,7 +335,7 @@ def zamba_results_to_md_results(input_file,output_file=None):
         print(s)
 
     info = {}
-    info['format_version'] = '1.3'
+    info['format_version'] = '1.6'
     info['detector'] = 'Zamba Cloud'
     info['classifier'] = 'Zamba Cloud'
 
@@ -139,7 +376,7 @@ def zamba_results_to_md_results(input_file,output_file=None):
 
     write_json(output_file,results)
 
-# ...zamba_results_to_md_results(...)
+# ..._zamba_video_results_to_md_results(...)
 
 
 #%% Interactive driver
@@ -176,13 +413,19 @@ def main():
         default=None,
         help='output .json file (defaults to input file appended with ".json")')
 
+    parser.add_argument(
+        '--image_folder',
+        type=str,
+        default=None,
+        help='Folder name containing images (only required for image results, not video)')
+
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()
 
     args = parser.parse_args()
 
-    zamba_results_to_md_results(args.input_file,args.output_file)
+    zamba_results_to_md_results(args.input_file,args.output_file,args.image_folder)
 
 if __name__ == '__main__':
     main()

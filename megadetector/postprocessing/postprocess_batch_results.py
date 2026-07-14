@@ -143,13 +143,13 @@ class PostProcessingOptions:
         self.target_recall = 0.9
 
         #: Number of images to sample, -1 for "all images"
-        self.num_images_to_sample = 500
+        self.num_images_to_sample = 1000
 
         #: Random seed for sampling, or None
         self.sample_seed = 0 # None
 
         #: Image width for images in the HTML output
-        self.viz_target_width = 800
+        self.viz_target_width = 1200
 
         #: Line width (in pixels) for rendering detections
         self.line_thickness = 4
@@ -206,7 +206,7 @@ class PostProcessingOptions:
         self.parallelize_rendering = True
 
         #: Number of threads/processes to use for rendering parallelization
-        self.parallelize_rendering_n_cores = 12
+        self.parallelize_rendering_n_cores = 8
 
         #: Whether to use threads (True) or processes (False) for rendering parallelization
         self.parallelize_rendering_with_threads = True
@@ -229,7 +229,7 @@ class PostProcessingOptions:
 
         #: Should we split individual pages up into smaller pages if there are more than
         #: N images?
-        self.max_figures_per_html_file = None
+        self.max_figures_per_html_file = 1000
 
         #: Footer text for the index page
         # self.footer_text = \
@@ -2185,8 +2185,8 @@ def main(): # noqa
         '--sort_by_confidence', action='store_true',
         help='Sort output in decreasing order by confidence (defaults to sorting by filename)')
     parser.add_argument(
-        '--n_cores', type=int, default=1,
-        help='Number of threads to use for rendering (default: 1)')
+        '--n_cores', type=int, default=4,
+        help='Number of threads to use for rendering (default: 4)')
     parser.add_argument(
         '--parallelize_rendering_with_processes',
         action='store_true',
