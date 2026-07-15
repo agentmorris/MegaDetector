@@ -1822,6 +1822,13 @@ def check_image_integrity(filename,modes=None):
         'success' or 'error').
     """
 
+    # We generally want truncated images to fail in this context, but AFAIK the only
+    # was to force this behavior is to change global state.  So we back it up and
+    # restore it when we're done checking this image.
+    load_truncated_images_initial_state = ImageFile.LOAD_TRUNCATED_IMAGES
+
+    ImageFile.LOAD_TRUNCATED_IMAGES = False
+
     if modes is None:
         modes = ('cv','pil','skimage','jpeg_trailer')
     else:
@@ -1855,18 +1862,20 @@ def check_image_integrity(filename,modes=None):
             except Exception as e:
                 result[mode] = 'error: {}'.format(str(e))
         elif mode == 'skimage':
+            skimage_loaded = False
             try:
                 # This is not a standard dependency
                 from skimage import io as skimage_io # type: ignore # noqa
+                skimage_loaded = True
             except Exception:
                 result[mode] = 'could not import skimage, run pip install scikit-image'
-                return result
-            try:
-                skimage_im = skimage_io.imread(filename) # noqa
-                assert skimage_im is not None
-                result[mode] = 'success'
-            except Exception as e:
-                result[mode] = 'error: {}'.format(str(e))
+            if skimage_loaded:
+                try:
+                    skimage_im = skimage_io.imread(filename) # noqa
+                    assert skimage_im is not None
+                    result[mode] = 'success'
+                except Exception as e:
+                    result[mode] = 'error: {}'.format(str(e))
         elif mode == 'jpeg_trailer':
             # https://stackoverflow.com/a/48282863/16644970
             try:
@@ -1880,6 +1889,8 @@ def check_image_integrity(filename,modes=None):
                 result[mode] = 'error: {}'.format(str(e))
 
     # ...for each mode
+
+    ImageFile.LOAD_TRUNCATED_IMAGES = load_truncated_images_initial_state
 
     return result
 

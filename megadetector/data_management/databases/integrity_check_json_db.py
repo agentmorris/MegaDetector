@@ -150,9 +150,6 @@ def integrity_check_json_db(json_file, options=None):
     if options.bCheckImageSizes:
         options.bCheckImageExistence = True
 
-    if options.verbose:
-        print(options.__dict__)
-
     if options.baseDir is None:
         options.baseDir = ''
 
