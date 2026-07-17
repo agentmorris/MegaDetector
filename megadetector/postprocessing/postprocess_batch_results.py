@@ -914,7 +914,13 @@ def _render_image_no_gt(file_info,
                 # This is a list of [class,confidence] pairs, sorted by classification confidence
                 classifications = det['classifications']
                 top1_class_id = classifications[0][0]
-                top1_class_name = classification_categories[top1_class_id]
+                if str(top1_class_id) in classification_categories:
+                    top1_class_id = str(top1_class_id)
+                if top1_class_id not in classification_categories:
+                    print('Warning: no classification category for ID {}'.format(top1_class_id))
+                    top1_class_name = str(top1_class_id)
+                else:
+                    top1_class_name = str(classification_categories[top1_class_id])
                 top1_class_score = classifications[0][1]
 
                 # If we either don't have a classification confidence threshold, or
@@ -1202,8 +1208,8 @@ def process_batch_results(options):
     else:
 
         if 'info' not in other_fields or 'detector' not in other_fields['info']:
-            print('No model metadata supplied, assuming MDv4')
-            model_version_string = 'MDv4 (assumed)'
+            print('No model metadata supplied, assuming MDv5a')
+            model_version_string = 'MDv5a (assumed)'
         else:
             model_version_string = other_fields['info']['detector']
 
@@ -2057,7 +2063,13 @@ def process_batch_results(options):
                                 class_conf = det['classifications'][0][1]
                                 if class_conf < options.classification_confidence_threshold:
                                     continue
-                                category_name = d['classification_categories'][class_id]
+                                if str(class_id) in d['classification_categories']:
+                                    class_id = str(class_id)
+                                if class_id not in d['classification_categories']:
+                                    print('Warning: no category name for ID {}'.format(class_id))
+                                    category_name = str(class_id)
+                                else:
+                                    category_name = d['classification_categories'][class_id]
                                 if category_name not in category_name_to_count:
                                     category_name_to_count[category_name] = 1
                                 else:

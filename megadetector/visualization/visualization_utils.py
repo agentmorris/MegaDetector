@@ -704,8 +704,12 @@ def render_detection_bounding_boxes(detections,
 
                         if (show_category_names) and (class_key in classification_label_map):
                             class_name = classification_label_map[class_key]
+                        # Handle the case where a file was written with int classification
+                        # categories, rather than string-ints
+                        elif (show_category_names) and (str(class_key) in classification_label_map):
+                            class_name = classification_label_map[str(class_key)]
                         else:
-                            class_name = class_key
+                            class_name = str(class_key)
                         if classification_conf is not None:
                             classification_conf_string = \
                                  str(round_float(100.0 * classification_conf,1))
