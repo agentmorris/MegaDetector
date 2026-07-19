@@ -216,12 +216,15 @@ def exif_preserving_save(pil_image,
         default_quality (int, optional): determines output quality when quality == 'keep' and we are
             saving a non-JPEG source to a JPEG file
         verbose (bool, optional): enable additional debug console output
-        tags_to_exclude (list, optional): tags to exclude from the output file
+        tags_to_exclude (list or str, optional): tags to exclude from the output file, or the
+            string 'all' to exclude all EXIF tags.
     """
 
-    # Read EXIF metadata
-    # exif = pil_image.info['exif'] if ('exif' in pil_image.info) else None
-    exif = pil_image.getexif()
+    # Read EXIF metadata if necessary
+    if isinstance(tags_to_exclude,str) and tags_to_exclude == 'all':
+        exif = None
+    else:
+        exif = pil_image.getexif()
 
     if isinstance(tags_to_exclude,str):
         tags_to_exclude = [tags_to_exclude]

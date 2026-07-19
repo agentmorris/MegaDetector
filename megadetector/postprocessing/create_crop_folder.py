@@ -117,7 +117,14 @@ def _generate_crops_for_single_image(crops_this_image,
 
         cropped_image = cropped_images[i_crop]
         os.makedirs(os.path.dirname(crop_filename_abs),exist_ok=True)
-        exif_preserving_save(cropped_image,crop_filename_abs,quality=options.quality)
+
+        # We use exif_preserving_save for all save operations, but in this
+        # case there's no reason to save EXIF information.
+        exif_preserving_save(
+            pil_image=cropped_image,
+            output_file=crop_filename_abs,
+            quality=options.quality,
+            tags_to_exclude='all')
 
     # ...for each crop
 
