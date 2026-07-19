@@ -1938,16 +1938,16 @@ from megadetector.postprocessing.validate_batch_results import \
     ValidateBatchResultsOptions, validate_batch_results
 
 input_fn_abs = sequence_smoothed_classification_file
-output_fn_abs = insert_before_extension(input_fn_abs,'trimmed')
+trimmed_classification_file = insert_before_extension(input_fn_abs,'trimmed')
 
 options = SubsetJsonDetectorOutputOptions()
 options.remove_classification_categories_below_count = 1
 options.overwrite_json_files = True
-_ = subset_json_detector_output(input_fn_abs, output_fn_abs, options)
+_ = subset_json_detector_output(input_fn_abs, trimmed_classification_file, options)
 
 validation_options = ValidateBatchResultsOptions()
 validation_options.raise_errors = True
-_ = validate_batch_results(output_fn_abs, validation_options)
+_ = validate_batch_results(trimmed_classification_file, validation_options)
 
 
 #%% Zip .json files
@@ -1966,6 +1966,75 @@ parallel_zip_files(json_files,overwrite=True)
 # The remaining cells are run often, but not all the time.
 #
 # See manage_local_batch_scrap.py for additional cells I sometimes run at this point.
+
+
+#%% Create a preview page with just interesting categories
+
+# First filter to a new .json file
+
+interesting_animals_classification_file = insert_before_extension(
+    sequence_smoothed_classification_file,'interesting-animals')
+
+interesting_category_names = \
+    ['coyote','black bear','striped skunk','gray wolf','pheasant','red fox','gray fox']
+
+with open(sequence_smoothed_classification_file,'r') as f:
+    d = json.load(f)
+
+interesting_category_ids = []
+
+for category_id in d['classification_categories'].keys():
+    category_name = d['classification_categories'][category_id]
+    if category_name in interesting_category_names:
+        interesting_category_ids.append(category_id)
+interesting_category_ids = set(interesting_category_ids)
+
+assert len(interesting_category_ids) == len(interesting_category_names)
+
+interesting_images = []
+
+for im in d['images']:
+    interesting_image = False
+    if 'detections' not in im or im['detections'] is None:
+        continue
+    for det in im['detections']:
+        if 'classifications' not in det:
+            continue
+        for cls in det['classifications']:
+            if cls[0] in interesting_category_ids:
+                interesting_image = True
+                break
+        if interesting_image:
+            break
+    if interesting_image:
+        interesting_images.append(im)
+
+print('{} of {} images are interesting'.format(len(interesting_images),
+                                               len(d['images'])))
+
+d['images'] = interesting_images
+
+write_json(interesting_animals_classification_file,d)
+
+# Then render that .json file with no restrictions
+
+preview_options = deepcopy(preview_options_base)
+preview_options.num_images_to_sample = 20000
+
+preview_folder = path_join(postprocessing_output_folder,
+    base_task_name + '_{}_interesting-animals'.format(preview_options.confidence_threshold))
+preview_options.md_results_file = interesting_animals_classification_file
+preview_options.output_dir = preview_folder
+preview_options.category_name_to_sort_weight = \
+    {'animal':1,'blank':1,'unknown':1,'unreliable':1,'mammal':1,'no cv result':1}
+
+preview_options.confidence_threshold = 0.1
+preview_options.almost_detection_confidence_threshold = 0.05
+
+print('Generating interesting-animals preview in {}'.format(preview_folder))
+ppresults = process_batch_results(preview_options)
+open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')
+# SingletonHTTPServer.start_server(preview_folder,port=8000); open_file('http://localhost:8000')
 
 
 #%% .json splitting
