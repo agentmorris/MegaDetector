@@ -115,6 +115,9 @@ run_separate_consumer_process = False
 # Enable additional debug output
 verbose = False
 
+# File format version
+current_format_version = '1.6'
+
 
 #%% Support functions for multiprocessing
 
@@ -355,9 +358,10 @@ def _consumer_func(q,
 
         # ...if we pulled the sentinel signal (None) telling us that a worker finished
 
-        # At this point, we have a real image (i.e., not a sentinel indicating that a worker finished)
+        # At this point, we have a real image (i.e., not a sentinel indicating that a worker
+        # finished).
         #
-        # "r" is always a tuple of (filename,image,producer_id)
+        # "r" is always a tuple of (filename,image,producer_id).
         #
         # Image can be a PIL image (if the loader wasn't doing preprocessing) or a dict with
         # a preprocessed image and associated metadata.
@@ -377,8 +381,8 @@ def _consumer_func(q,
             if pbar is not None:
                 pbar.update(1)
 
-        # This is a catastrophic internal failure; preprocessing workers should
-        # be passing the consumer dicts that represent processed images
+        # This would be an internal failure; preprocessing workers should
+        # be passing consumer dicts that represent processed images.
         elif preprocess_on_image_queue and (not isinstance(image,dict)):
 
             print('Expected a dict, received an image of type {}'.format(type(image)))
@@ -1047,6 +1051,8 @@ def _load_custom_class_mapping(class_mapping_filename):
 
     print('Loaded custom class mapping:')
     print(class_mapping)
+
+    # This determins what gets written by write_results_to_file
     run_detector.DEFAULT_DETECTOR_LABEL_MAP = class_mapping
     return class_mapping
 
@@ -1192,9 +1198,8 @@ def load_and_run_detector_batch(model_file,
                                              force_download=force_model_download,
                                              verbose=verbose)
 
-    gpu_available = is_gpu_available(model_file)
-
-    print('GPU available: {}'.format(gpu_available))
+    # Print debug information about GPU availability
+    gpu_available = is_gpu_available(model_file, context_string='load_and_run_detector_batch')
 
     if (n_cores > 1) and gpu_available:
 
@@ -1207,6 +1212,20 @@ def load_and_run_detector_batch(model_file,
         print('Warning: multiple cores requested, but the image queue is enabled; parallelization ' + \
               'with the image queue is not currently supported, defaulting to one worker')
         n_cores = 1
+
+    # Batching only helps on a GPU, so we reduce the batch size to 1 if batch inference is
+    # requested on a CPU.  This needs to happen before we create any detector objects,
+    # detectors may compile themselves for a specific batch size at load time.
+    if (batch_size > 1) and (not gpu_available):
+
+        print('Batch size of {} requested, but no GPU is available, using batch size 1'.format(
+            batch_size))
+        batch_size = 1
+
+    # Some detectors (currently just RF-DETR) need to know the batch size at the time the
+    # model is loaded; this is ignored by other detectors.
+    if batch_size != 1:
+        detector_options['batch_size'] = batch_size
 
     if use_image_queue:
 
@@ -1251,11 +1270,6 @@ def load_and_run_detector_batch(model_file,
                                  verbose=verbose)
         elapsed = time.time() - start_time
         print('Loaded model in {}'.format(humanfriendly.format_timespan(elapsed)))
-
-        if (batch_size > 1) and (not gpu_available):
-            print('Batch size of {} requested, but no GPU is available, using batch size 1'.format(
-                batch_size))
-            batch_size = 1
 
         # Filter out already processed images
         images_to_process = [im_file for im_file in image_file_names
@@ -1583,7 +1597,7 @@ def write_results_to_file(results,
 
         info = {
             'detection_completion_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'format_version': '1.5'
+            'format_version': current_format_version
         }
 
         if detector_file is not None:

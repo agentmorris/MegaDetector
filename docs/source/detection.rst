@@ -47,6 +47,14 @@ detection.pytorch\_detector module
    :undoc-members:
    :show-inheritance:
 
+detection.rfdetr\_detector module
+----------------------------------
+
+.. automodule:: megadetector.detection.rfdetr_detector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 detection.tf\_detector module
 -----------------------------
 

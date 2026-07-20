@@ -498,7 +498,6 @@ def yolo_to_coco(input_folder,
         precision (int, optional): round box coordinates to this many decimal places, or
             None to bypass rounding.
 
-
     Returns:
         dict: COCO-formatted data, the same as what's written to [output_file]
     """

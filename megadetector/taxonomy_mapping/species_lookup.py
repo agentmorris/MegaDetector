@@ -712,7 +712,9 @@ def pop_levels(m, n_levels=1):
 # ...def pop_levels(...)
 
 
-def get_preferred_taxonomic_match(query: str, taxonomy_preference = 'inat', retry=True) -> TaxonomicMatch:
+def get_preferred_taxonomic_match(query,
+                                  taxonomy_preference='inat',
+                                  retry=True):
     """
     Wrapper for _get_preferred_taxonomic_match, but expressing a variety of heuristics
     and preferences that are specific to our scenario.
@@ -731,18 +733,27 @@ def get_preferred_taxonomic_match(query: str, taxonomy_preference = 'inat', retr
     if (len(m.scientific_name) > 0) or (not retry):
         return m
 
+    query = query.strip()
+
+    # Convert things like "black backed jackal" to "black-backed jackal"
     for s in hyphenated_terms:
         query = query.replace(' ' + s,'-' + s)
+
+    # Handle cases like "squirrel sp" and "squirrel sp."
+    if query.endswith('.'):
+        query = query[:-1].strip()
+    if query.endswith('sp'):
+        query = query[:-2].strip()
+
     m,query = _get_preferred_taxonomic_match(query=query,taxonomy_preference=taxonomy_preference)
 
     if (len(m.scientific_name) > 0) or (not retry):
         return m
 
-    query = query.replace(' species','')
-    query = query.replace(' order','')
-    query = query.replace(' genus','')
-    query = query.replace(' family','')
-    query = query.replace(' subfamily','')
+    # Handle cases like "squirrel species"
+    for s in ('species','order','genus','family','subfamily'):
+        query = query.replace(s,'').strip()
+
     m,query = _get_preferred_taxonomic_match(query=query,taxonomy_preference=taxonomy_preference)
 
     return m

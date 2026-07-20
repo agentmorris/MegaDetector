@@ -118,7 +118,8 @@ def wi_download_csv_to_coco(csv_file_in,
             impact on blank images if "include_blanks" is False.
         image_flattening (str, optional): if 'none', relative paths will be stored
             as the entire URL for each image, other than gs://.  Can be 'guid' (just
-            store [GUID].JPG) or 'deployment' (store as [deployment]/[GUID].JPG).
+            store [GUID].JPG), 'deployment' (store as [deployment]/[GUID].JPG), or
+            'project' (store as [project]/[deployment]/[GUID].JPG).
         verbose (bool, optional): enable additional debug console output
         category_remappings (dict, optional): str --> str dict that maps WI category
             names to output category names.  Regular expressions allowed in keys.
@@ -245,6 +246,7 @@ def wi_download_csv_to_coco(csv_file_in,
     print('Converting records to COCO...')
 
     n_blanks_excluded = 0
+    n_placeholders_excluded = 0
 
     # image_id = next(iter(image_id_to_image_records))
     for image_id in tqdm(image_id_to_image_records.keys(),
@@ -257,7 +259,16 @@ def wi_download_csv_to_coco(csv_file_in,
         url = reference_record['location']
         assert url.startswith('gs://')
 
-        file_name = url_to_relative_path(url,image_flattening=image_flattening)
+        # Omit placeholder images
+        if 'https' in url and 'placeholder' in url:
+            continue
+
+        # The "project" flattening scheme means "prepend the project ID to /[deployment]/..."
+        if image_flattening == 'project':
+            project_id = str(reference_record['project_id'])
+            file_name = project_id + '/' + url_to_relative_path(url,image_flattening='deployment')
+        else:
+            file_name = url_to_relative_path(url,image_flattening=image_flattening)
 
         location_id = _make_location_id(
             reference_record['project_id'],
@@ -352,7 +363,7 @@ def wi_download_csv_to_coco(csv_file_in,
 
             category_name = record['common_name'].strip().lower()
 
-            if len(category_name) == '':
+            if category_name == '':
 
                 if len(record['genus']) > 0 and len(record['species']) > 0:
                     category_name = record['genus'] + ' ' + record['species']
@@ -435,7 +446,7 @@ def wi_download_csv_to_coco(csv_file_in,
                 category_id = category['id']
                 category['count'] = category['count'] + 1
                 assert category['name'] == category_name
-                if (category_name != 'empty') and \
+                if (category_name not in ['empty','unknown']) and \
                    (taxonomy_string != category['taxonomy_string']):
                     print('Warning: category {} has multiple taxonomy strings:\n{}\n{}\n'.format(
                         category_name,
@@ -473,16 +484,32 @@ def wi_download_csv_to_coco(csv_file_in,
             extra_info = {}
             for s in wi_extra_annotation_columns:
                 if s in record:
+
                     v = record[s]
-                    # Don't store empty fields
-                    if isinstance(v,str):
-                        if (len(v) > 0):
-                            extra_info[s] = v
+
+                    # Only store interesting values
+                    store_record = False
+
+                    if isinstance(v,str) and (len(v) > 0):
+                        if s.lower() == 'uncertainty' and v.lower() == "don't know":
+                            store_record = False
+                        elif s.lower() == 'age' and v.lower() == 'unknown':
+                            store_record = False
+                        elif s.lower() == 'sex' and v.lower() == 'unknown':
+                            store_record = False
+                        elif s.lower() == 'identified_by' and v.lower() == 'batch upload':
+                            store_record = False
+                        else:
+                            store_record = True
+
                     # Treat bools as store_true, there are tons of uninformative "False"
                     # fields (e.g. "highlighted").
                     elif isinstance(v,bool):
                         if v:
-                            extra_info[s] = v
+                            store_record = True
+
+                    if store_record:
+                        extra_info[s] = v
 
             if len(extra_info) > 0:
                 ann['wi_extra_info'] = extra_info
@@ -502,8 +529,8 @@ def wi_download_csv_to_coco(csv_file_in,
     images = list(image_id_to_image.values())
     categories = list(category_name_to_category.values())
 
-    print('Created COCO records for {} image IDs ({} blanks excluded)'.format(
-        len(image_id_to_image),n_blanks_excluded))
+    print('Created COCO records for {} image IDs ({} blanks, {} placeholders excluded)'.format(
+        len(image_id_to_image),n_blanks_excluded, n_placeholders_excluded))
 
     annotations = []
 
@@ -527,16 +554,15 @@ def wi_download_csv_to_coco(csv_file_in,
     coco_data['annotations'] = annotations
     coco_data['categories'] = categories
 
+    category_name_to_count = {c['name']:c['count'] for c in categories}
+    category_name_to_count = \
+        sort_dictionary_by_value(category_name_to_count,reverse=True)
+
     print_category_counts = False
 
     if print_category_counts:
 
         print('Categories and counts:\n')
-
-        category_name_to_count = {c['name']:c['count'] for c in categories}
-        category_name_to_count = \
-            sort_dictionary_by_value(category_name_to_count,reverse=True)
-
         for i_category,category_name in enumerate(category_name_to_count):
             category_name_string = category_name
             if (category_name == 'empty') and (not include_blanks):

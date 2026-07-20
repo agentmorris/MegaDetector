@@ -32,8 +32,6 @@ from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.utils.ct_utils import compare_values_nan_equal
 from megadetector.utils.ct_utils import is_empty
 
-from megadetector.utils.string_utils import is_int
-
 from megadetector.utils.wi_taxonomy_utils import is_valid_prediction_string
 from megadetector.utils.wi_taxonomy_utils import no_cv_result_prediction_string
 from megadetector.utils.wi_taxonomy_utils import blank_prediction_string
@@ -389,6 +387,7 @@ def write_prefix_download_command(image_records,
         f.write(cmd + '\n')
 
     print('Download script written to {}'.format(download_command_file))
+    make_executable(download_command_file,catch_exceptions=True)
 
 # ...def write_prefix_download_command(...)
 
@@ -399,10 +398,9 @@ def url_to_relative_path(url,image_flattening='deployment'):
 
     Args:
         url (str): the URL to convert to a relative path
-        image_flattening (str, optional): if 'none', relative paths will be
-            returned as the entire URL for each image, other than gs://.  Can be
-            'guid' (just return [GUID].JPG) or 'deployment' (return
-            [deployment]/[GUID].JPG).
+        image_flattening (str, optional): if 'none', relative paths will be stored
+            as the entire URL for each image, other than gs://.  Can be 'guid' (just
+            store [GUID].JPG) or 'deployment' (store as [deployment]/[GUID].JPG).
 
     Returns:
         str: converted path
@@ -412,23 +410,18 @@ def url_to_relative_path(url,image_flattening='deployment'):
 
     relative_path = None
 
-    if image_flattening == 'none':
+    if (image_flattening is None) or (image_flattening == 'none'):
         relative_path = url.replace('gs://','')
     elif image_flattening == 'guid':
         relative_path = url.split('/')[-1]
-    else:
-        assert image_flattening == 'deployment'
+    elif image_flattening == 'deployment':
         tokens = url.split('/')
         found_deployment_id = False
         for i_token,token in enumerate(tokens):
             if token == 'deployment':
                 assert i_token < (len(tokens)-1)
-                deployment_id_string = tokens[i_token + 1]
-                deployment_id_string = deployment_id_string.replace('_thumb','')
-                assert is_int(deployment_id_string), \
-                    'Illegal deployment ID {}'.format(deployment_id_string)
-                image_id = url.split('/')[-1]
-                relative_path = deployment_id_string + '/' + image_id
+                relative_path = '/'.join(tokens[i_token:])
+                relative_path = relative_path.replace('_thumb','')
                 found_deployment_id = True
                 break
 
@@ -436,6 +429,8 @@ def url_to_relative_path(url,image_flattening='deployment'):
 
         assert found_deployment_id, \
             'Could not find deployment ID for url {}'.format(url)
+    else:
+        raise ValueError('Unrecognized image flattening scheme {}'.format(image_flattening))
 
     return relative_path
 

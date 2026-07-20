@@ -65,6 +65,17 @@ E0
 !feature
 
 
+## Graceful handling of small images during tiling
+
+When running tiled inference, if either dimension of an image is smaller than the tiling size, that image fails.  This is OK, it's correctly recorded as an inference failure, but in most cases I would rather it fall back to a smaller tile size in that case.
+
+P2
+
+E0
+
+!feature
+
+
 ## Improve and clarify statistics in analyze_classification_results
 
 analyze_classification_results.py takes a somewhat lazy approach to statistics computation: it is correct in a world where no categories are parents of other categories, and where each image contains a single species.  The more difficult cases should be handled more carefully, probably with additional options to, e.g., give "partial credit" for higher-level predictions that aren't wrong.  At the very least, explanatory text should be added to the reports to describe how statistics are computed wrt taxonomic levels and multi-species images.
@@ -174,17 +185,6 @@ Address this by:
 P3
 
 E2
-
-!feature
-
-
-## Allow a single confidence threshold in compare_batch_results
-
-compare_batch_results takes a dict of class --> threshold mappings for each file being compared.  Allow this to be a float (rather than a dict) that applies to all categories.  The dict already supports a "default" entry, so just take the float value and stick it in a dict as {'default':new_threshold}.
-
-P4
-
-E0
 
 !feature
 
@@ -533,19 +533,6 @@ E1
 !feature
 
 
-## Why does "fusing layers" print twice?
-
-YOLOv5 tells me that it's "fusing layers" twice during startup.  A little part of me is concerned that somehow I'm loading the model twice, even when only a single worker is operating.  Assess this.
-
-P0
-
-E0
-
-S-5
-
-!bug
-
-
 ## RDE might remove custom fields within a detection object
 
 The RDE process loads detections into a pandas dataframe, then re-generates a new list of detections.  There's no "official" scenario where detections might have custom properties, but I think this will result in the loss of custom properties.  Assess this, then either fix it, remove this item (if this doesn't really happen), or update the effort/priority of this task.
@@ -647,7 +634,7 @@ E0
 
 ## Revive synchronous (real-time) API
 
-The Flask-based API for serving MD was retired to the archive folder a few months ago for lack of maintenance, but it turns out that some folks were using it.  The short version of this work item is to bring it out of the archive folder and make sure it doesn't mess up linting and testing.  The stretch goal is to take a look at it and update it for how one would do this in 2025, and to make a nice demo out of it.  I'm assigning an effort level just for the short-term goal.
+The Flask-based API for serving MD was retired to the archive folder in ~2024 for lack of maintenance, but it turns out that some folks were using it.  The short version of this work item is to bring it out of the archive folder and make sure it doesn't mess up linting and testing.  The stretch goal is to take a look at it and update it for how one would do this in 2025, and to make a nice demo out of it.  I'm assigning an effort level just for the short-term goal.
 
 Whenever we tackle this, also bump gunicorn to >= 23 to address dependabot issues.
 
@@ -660,9 +647,9 @@ E0
 
 ## Remove complex MKL requirements
 
-The dependencies currently specify an old version of MKL (2024.0) for all non-Darwin platforms, because of an incompatibility between some versions of MKL and some versions of PyTorch, described in [this PyTorch issue](https://github.com/pytorch/pytorch/issues/123097).  We can remove this quirky dependency if we require PyTorch >= 2.5, which at some point becomes a good idea anyway, supporting ancient versions of PyTorch complicates testing.  The action item here is mostly to think through the implications of requiring PyTorch >= 2.5.
+The dependencies currently specify an old version of MKL (2024.0) for all non-Darwin platforms, because of an incompatibility between some versions of MKL and some versions of PyTorch, described in [this PyTorch issue](https://github.com/pytorch/pytorch/issues/123097).  We can remove this quirky dependency if we require PyTorch >= 2.5, which is now a good idea (this is a 2024 PyTorch version, and I'm writing this in 2026).  The only tricky bit is that we don't require torch directly in pyproject.toml, we let ultralytics-yolov5 install torch.  So, confirm that it's OK for us to require torch >= 2.5 directly in pyproject.toml, i.e. that this won't mess with the ultralytics-yolov5 installation, then - assuming it is - remove the quirky MKL requirement from pyproject.toml.
 
-P3
+P0
 
 E1
 
@@ -722,6 +709,18 @@ P1
 E2
 
 !testing
+!maintenance
+
+
+## Consider switching instructions from miniforge to uv
+
+uv is a quicker install than miniforge, consider replacing miniforge with uv in our default install instructions for non-Python people.
+
+P2
+
+E3
+
+!admin
 !maintenance
 
 
@@ -792,7 +791,7 @@ E1
 !bug
 
 
-## Standardized cast consistency in docs for CLI arguments
+## Standardized case consistency in docs for CLI arguments
 
 There is inconsistent casing in CLI arguments, fix this.
 
@@ -838,28 +837,6 @@ E1
 
 !feature
 !training
-
-
-## Merge get_file_sizes and parallel_get_file_sizes
-
-There is some redundancy between the get_file_sizes and parallel_get_file_sizes functions, clean this redundancy up.
-
-P3
-
-E1
-
-!maintenance
-
-
-## Merge resize_images and resize_image_folder
-
-There is some redundancy between the resize_images and resize_image_folder functions, clean this redundancy up.
-
-P3
-
-E1
-
-!maintenance
 
 
 ## Argument validation in postprocess_batch_results
@@ -991,15 +968,25 @@ E0
 !maintenance
 
 
+## More robust determination of model types
+
+Currently load_model() decides which object to instantiate based on file extensions: .pt == yolo, .pth == RF-DETR, .pb = TFODAPI.  This works for all models we support right now, but it's not very robust or forward-compatible.
+
+P3
+
+E3
+
+!maintenance
+
 ## Address module-level globals in run_detector_batch and run_detector
 
-The DEFAULT_DETECTOR_LABEL_MAP module-level global variable in run_detector_batch is used to pass custom class mappings around; this is rare and not very important, but sloppy.
+The DEFAULT_DETECTOR_LABEL_MAP module-level global variable in run_detector_batch is used to pass custom class mappings around; this is sloppy.  write_results_to_file should receive optional an optional category map, rather than communicating this via a global variable.  A good test case is RF-DETR/CFD support, which currently loads classes in a sensible way (in load_model()), then stashes them in a global variable.
 
-Similarly, the USE_MODEL_NATIVE_CLASSES module-level global in run_detector is used to pass a custom option around; this is rare and not very important, but sloppy.
+Similarly, the USE_MODEL_NATIVE_CLASSES module-level global in run_detector is used to pass a custom option around; this is also sloppy.
 
 Fix both of these.
 
-P4
+P2
 
 E2
 
@@ -1027,7 +1014,7 @@ Python 3.14 is enabled on a [branch](https://github.com/agentmorris/MegaDetector
 
 The specific error on the GH runner is an access violation with no meaningful stack trace; this appears to be a numpy compatibility issue, and the Internet doesn't seem surprised that this happens in some environments but not in others, even with identical numpy versions.  Consensus is that I should just wait this out; pre-built wheels for 3.14 will improve with time.  Dropped from P0 to P1 on 2026.01.06.  Also dropped from E1 to E0, because the expectation is that when this works, it will just magically work, I won't have to change any code.  All other 3.14 compatibility issues (all minor) are already handled on this branch.
 
-Still fails as of 2026.04.01.
+Still fails as of 2026.07.19.
 
 P1
 
@@ -1036,7 +1023,7 @@ E0
 !maintenance
 
 
-## Windows support for WI project download 
+## Windows support for WI project download
 
 write_download_commands() in wi_platform_utils (which writes out a series of gcloud storage commands to download images for a WI project) assumes bash (writes .sh files, uses "wait" and "echo").  Add .bat support.
 

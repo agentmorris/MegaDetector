@@ -71,26 +71,34 @@ frame_filenames_by_video,fs_by_video,video_filenames = \
                                        allow_empty_videos=True)
 
 
-#%% Cache frame rate information
+#%% Load or cache frame rate information
 
-assert len(video_filenames) == len(fs_by_video)
+if os.path.isfile(frame_rate_cache):
 
-video_filename_relative_to_fs = {}
+    print('Loading frame rate info from {}'.format(frame_rate_cache))
+    with open(frame_rate_cache,'r') as f:
+        video_filename_relative_to_fs = json.load(f)
 
-# video_filename_abs = video_filenames[0]
-for i_video,video_filename_abs in enumerate(video_filenames):
+else:
 
-    assert video_filename_abs.startswith(input_folder)
-    video_filename_relative = os.path.relpath(
-        video_filename_abs,input_folder).replace('\\','/')
-    assert video_filename_relative not in video_filename_relative_to_fs
-    video_filename_relative_to_fs[video_filename_relative] = fs_by_video[i_video]
+    assert len(video_filenames) == len(fs_by_video)
 
-# ...for each video
+    video_filename_relative_to_fs = {}
 
-assert len(video_filename_relative_to_fs) == len(video_filenames)
+    # video_filename_abs = video_filenames[0]
+    for i_video,video_filename_abs in enumerate(video_filenames):
 
-write_json(frame_rate_cache,video_filename_relative_to_fs)
+        assert video_filename_abs.startswith(input_folder)
+        video_filename_relative = os.path.relpath(
+            video_filename_abs,input_folder).replace('\\','/')
+        assert video_filename_relative not in video_filename_relative_to_fs
+        video_filename_relative_to_fs[video_filename_relative] = fs_by_video[i_video]
+
+    # ...for each video
+
+    assert len(video_filename_relative_to_fs) == len(video_filenames)
+
+    write_json(frame_rate_cache,video_filename_relative_to_fs)
 
 
 #%% List frame files, break into folders
@@ -314,6 +322,8 @@ if False:
     from megadetector.visualization.visualize_video_output import \
         VideoVisualizationOptions, visualize_video_output
 
+    sample_output_dir = 'c:/temp/video-samples'
+
     video_options = VideoVisualizationOptions()
 
     video_options.confidence_threshold = 0.2
@@ -327,8 +337,25 @@ if False:
 
     # If I'm running this cell, I usually don't want boring videos
     video_options.exclude_category_name_strings = \
-        ['animal_blank_no cv result','blank_no cv result','no cv result','blank','none','animal_blank',
-         'animal_no cv result','animal','blank_mammal']
+        ['animal',
+         'animal_blank_no cv result',
+         'animal_blank',
+         'animal_blank_human_no cv result',
+         'animal_blank_mammal',
+         'animal_blank_mammal_no cv result',
+         'animal_bird_blank_no cv result',
+         'animal_bird_no cv result',
+         'animal_no cv result',
+         'blank',
+         'blank_mammal',
+         'blank_no cv result',
+         'no cv result',
+         'none',
+         'animal_mammal_no cv result',
+         'carnivorous mammal']
+
+    # video_options.exclude_category_names = ['cercopithecidae family']
+    # video_options.include_category_names = ['spotted hyena']
 
     video_options.flatten_output = True
     video_options.min_output_length_seconds = 5
@@ -339,17 +366,22 @@ if False:
     video_options.include_category_names_in_filenames = 'start'
 
     results = visualize_video_output(video_output_filename,
-                                     out_dir='c:/temp/video-samples',
+                                     out_dir=sample_output_dir,
                                      video_dir=input_folder,
                                      options=video_options)
 
 
     #%% Estimate the extracted size of a folder by sampling a few videos
 
-    n_videos_to_sample = 5
+    import shutil # noqa
+    import humanfriendly
+    import random
+
+    from megadetector.utils.path_utils import _get_file_size,get_file_sizes
+
+    n_videos_to_sample = 10
 
     video_filenames = video_utils.find_videos(input_folder,recursive=True)
-    import random
     random.seed(0)
     sampled_videos = random.sample(video_filenames,n_videos_to_sample)
     assert len(sampled_videos) == n_videos_to_sample
@@ -376,19 +408,21 @@ if False:
                                     quality=quality,
                                     max_width=max_width)
 
-        from megadetector.utils.path_utils import _get_file_size,get_file_sizes
         video_size =_get_file_size(video_fn)[1]
         assert video_size > 0
-        total_input_size += video_size
 
-        frame_size = get_file_sizes(frame_output_folder_this_video)
+        frame_size = get_file_sizes(filenames=frame_output_folder_this_video,
+                                    recursive=False)
         frame_size = sum(frame_size.values())
-        assert frame_size > 0
-        total_output_size += frame_size
+        if frame_size == 0:
+            print('Warning: error computing frame sizes for {}'.format(video_fn))
+        else:
+            total_input_size += video_size
+            total_output_size += frame_size
 
-    import shutil # noqa
+    # ...for each video
+
     # shutil.rmtree(size_test_frame_folder)
-    import humanfriendly
     print('')
     print('Video size: {}'.format(humanfriendly.format_size(total_input_size)))
     print('Frame size: {}'.format(humanfriendly.format_size(total_output_size)))
@@ -417,12 +451,14 @@ nb_header += \
 """
 This notebook represents an interactive process for running MegaDetector on large batches of videos, including typical and optional postprocessing steps.
 
-This notebook is auto-generated from manage_video_batch.py (a cell-delimited .py file that is used the same way, typically in Spyder or VS Code).
+This notebook is auto-generated from manage_video_batch.py (a cell-delimited .py file that is used the same way, typically in VS Code or Spyder).
 
 """
 
 with open(input_py_file,'r') as f:
     lines = f.readlines()
+
+header_comment = ''
 
 assert lines[0].strip() == '#%% Header'
 assert lines[1].strip() == ''
@@ -434,8 +470,28 @@ assert lines[5].strip() == ''
 nb = nbf.v4.new_notebook()
 nb['cells'].append(nbf.v4.new_markdown_cell(nb_header))
 
-# Exclude everything before the first non-header cell
 i_line = 6
+
+# Everything before the first non-header cell is the header comment
+while(not lines[i_line].startswith('#%%')):
+
+    s_raw = lines[i_line]
+    s_trimmed = s_raw.strip()
+
+    # Ignore the closing quotes at the end of the header
+    if (s_trimmed == '"""'):
+        i_line += 1
+        continue
+
+    if len(s_trimmed) == 0:
+        header_comment += '\n\n'
+    else:
+        header_comment += ' ' + s_raw
+    i_line += 1
+
+nb_header += header_comment
+nb = nbf.v4.new_notebook()
+nb['cells'].append(nbf.v4.new_markdown_cell(nb_header))
 
 current_cell = []
 

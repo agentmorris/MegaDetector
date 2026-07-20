@@ -21,7 +21,6 @@
 17. [Pretty picture and mesmerizing video](#pretty-picture-and-mesmerizing-video)
 18. [Can you share the training data?](#can-you-share-the-training-data)
 
-
 ## MegaDetector overview
 
 Conservation biologists invest a huge amount of time reviewing camera trap images, and much of that time is spent reviewing images they aren't interested in.  This primarily includes empty images, but for many projects, images of people and vehicles are also "noise", or at least need to be handled separately from animals.
@@ -34,18 +33,16 @@ Before you read the rest of this page...
 
 * If you are looking for a convenient GUI-based tool to run MegaDetector, you don't need anything from this page: check out [AddaxAI](https://addaxdatascience.com/addaxai/) (formerly EcoAssist).  AddaxAI is how 95% of users run MegaDetector.
 * If you're just <i>considering</i> the use of AI in your workflow, and you aren't even sure yet whether MegaDetector would be useful to you, we recommend reading the much shorter "[getting started with MegaDetector](getting-started.md)" page.
-* If you're a programmer-type looking to use tools from this repo, check out the [Python package](https://pypi.org/project/megadetector/) that provides access to everything in this repo (yes, you guessed it, "pip install megadetector").
+* If you're a programmer-type looking to use tools from this repo, check out the [MegaDetector Python package](https://pypi.org/project/megadetector/), which provides access to everything in this repo (yes, you guessed it, "pip install megadetector").
 * If you're already familiar with MegaDetector and you're ready to run it on your data, and you're looking for instructions on running MegaDetector, read on!
 * If you have any questions, or you want to tell us that MegaDetector was amazing/terrible on your images, <a href="mailto:cameratraps@lila.science">email us</a>!
 * If you have zillions of images and you'd like someone to help you dig out of your backlog by processing images for you, <a href="mailto:cameratraps@lila.science">email us</a>!  Processing images is like our favorite thing to do, and it's how we improve our tools.  And it's fast.  And free.  So, never feel bad about asking us to help you out of your backlog.
 
 MegaDetector is just one of many tools that aims to make conservation biologists more efficient with AI.  If you want to learn about other ways to use AI to accelerate camera trap workflows, check out our survey of the field, affectionately titled &ldquo;[Everything I know about machine learning and camera traps](https://agentmorris.github.io/camera-trap-ml-survey/)&rdquo;.
 
-
 ## Our ask to MegaDetector users
 
 MegaDetector is free, and it makes us super-happy when people use it, so we put it out there as a downloadable model that is easy to use in a variety of conservation scenarios.  That means we don't know who's using it unless you contact us (or we happen to run into you), so please please pretty-please email us at [cameratraps@lila.science](mailto:cameratraps@lila.science) if you find it useful!
-
 
 ## Using MegaDetector
 
@@ -143,10 +140,9 @@ pip install torch torchvision --upgrade --force-reinstall --index-url https://do
 
 If that doesn't help, see the section below called "[using a gpu](#using-a-gpu)".
 
-
 #### run_detector_batch.py
 
-To apply this model to larger image sets, we recommend using [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector_batch.py).  This outputs data in the [MegaDetector results format](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/batch_processing#megadetector-batch-output-format), so you can work with the results in tools like [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/).
+To apply this model to larger image sets, we recommend using [run_detector_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/detection/run_detector_batch.py).  This outputs data in the [MegaDetector output format](https://lila.science/megadetector-output-format), so you can work with the results in tools like [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/).
 
 You can launch run_detector_batch.py like this:
 
@@ -175,7 +171,6 @@ You will see something like this at the beginning of the output:
 
 `Restored 80000 entries from the checkpoint`
 
-
 ## Using a GPU
 
 If you have an Nvidia GPU on your computer, most AI models (including MegaDetector) can use your GPU to run much faster than they can on your CPU.  Sometimes it takes an extra step to make sure AI models can actually see your GPU, but you only have to do this once.  You can quickly check whether MegaDetector will see your GPU by running:
@@ -203,11 +198,19 @@ python -m megadetector.utils.gpu_test
 
 If it <i>still</i> says "No GPUs reported by PyTorch", 95% of the time, this is fixed by <a href="https://www.nvidia.com/en-us/geforce/drivers/">updating your Nvidia driver</a> and rebooting.  If you have an Nvidia GPU, and you've installed the latest driver, and you've rebooted, and you did everything we suggested here, and you're still seeing "No GPUs reported by PyTorch", <a href="mailto:cameratraps@lila.science">email us</a>.
 
+### Using an AMD GPU
+
+Deep learning is pretty Nvidia-centric, to the point where "GPU" is almost synonymous with "Nvidia GPU".  But... the MegaDetector Python package includes experimental support for AMD Radeon GPUs.  This is not installed by default, but if you have an AMD GPU, and you run:
+
+```bash
+pip install torch-directml
+```
+
+...your GPU should be detected.  If this worked, you will see "Using DirectML device" in the output when you run MegaDetector.
 
 ## How do I use the results?
 
 See the ["How do people use MegaDetector results?"](https://github.com/agentmorris/MegaDetector/blob/main/getting-started.md#how-people-use-megadetector-results) section of our "getting started" page.
-
 
 ## Downloading MegaDetector (optional)
 
@@ -215,16 +218,13 @@ When you run MegaDetector using the instructions earlier on this page, the model
 
 If you download a model from one of these links, in the above instructions, just replace "MDV5A" with the full path to wherever you downloaded the model file, e.g. "c:\models\md_v5a.0.0pt".
 
+* [MDv1000-redwood](https://github.com/agentmorris/MegaDetector/releases/download/v1000.0/md_v1000.0.0-redwood.pt)
 * [MDv5a](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt)
 * [MDv5b](https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5b.0.0.pt)
-* [MDv4](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb)
-
 
 ## MegaDetector versions
 
-In this section, we provide information about lots of MegaDetector versions.  Unless you have a very esoteric scenario, you want MegaDetector v5, and you can ignore all the other MegaDetector versions.  The rest of this section, after the MDv5 download links, is more like a mini-MegaDetector-museum than part of the User Guide.
-
-In any script or function that takes a model name, you can always say "default" or "megadetector", in which case you'll always get the model that the MegaDetector developers consider to be the most accurate model available.  But you can also specify the "short name" for any of the models listed below.
+In this section, we provide information about lots of MegaDetector versions.  Unless you have a very esoteric scenario, you want MDv1000-redwood or MDv5a, and you can ignore all the other MegaDetector versions.  MDv1000-redwood has the highest accuracy, but MDv5a has been most extensively used/studied.  All of the smaller models will save you compute time, but cost you human time, which is almost never a good tradeoff.
 
 ### MegaDetector v1000.0, 2025.07.23
 
@@ -247,7 +247,6 @@ This release includes five new MegaDetector models, under the model family name 
 * [MegaDetector v1000-larch (.pt)](https://github.com/agentmorris/MegaDetector/releases/download/v1000.0/md_v1000.0.0-larch.pt)
 * [MegaDetector v1000-sorrel (.pt)](https://github.com/agentmorris/MegaDetector/releases/download/v1000.0/md_v1000.0.0-sorrel.pt)
 * [MegaDetector v1000-spruce (.pt)](https://github.com/agentmorris/MegaDetector/releases/download/v1000.0/md_v1000.0.0-spruce.pt)
-
 
 ### MegaDetector v5.0, 2022.06.15
 
@@ -329,18 +328,16 @@ First MegaDetector release!  Yes, that's right, v2 was the first release.  If th
 - [TFODAPI config file](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/megadetector_v2.config)
 - [Last checkpoint (for resuming training)](https://lilawildlife.blob.core.windows.net/lila-wildlife/models/camera_traps/megadetector/megadetector_v2_checkpoint.zip)
 
-
 ## How fast is MegaDetector, and can I run it on my giant/small computer?
 
 You can run anything on anything if you have enough time, and for all but the highest-volume users, a laptop CPU is probably enough to run MegaDetector on all your images, and even a basic Nvidia GPU is <i>almost definitely</i> enough to run MegaDetector on all your images.  Here are some rules of thumb to help you estimate how fast you can run MegaDetector on different types of hardware.
 
-* On a decent laptop (without a fancy deep learning GPU) that is neither the fastest nor slowest laptop you can buy in 2025, MegaDetector v5 can process somewhere between 30,000 and 50,000 images per day.  This might be totally fine for scenarios where you have even hundreds of thousands of images, as long as you can wait a few days.
-* On a dedicated deep learning GPU that is neither the fastest nor slowest GPU you can buy in 2025, MegaDetector v5 can process between 300,000 and 1,000,000 images per day.  We include a few <a href="#benchmark-timings">benchmark timings</a> below on some specific GPUs.
+* On a decent laptop (without a fancy deep learning GPU) that is neither the fastest nor slowest laptop you can buy in 2025, MegaDetector v5 or v1000-redwood can process somewhere between 30,000 and 50,000 images per day.  This might be totally fine for scenarios where you have even hundreds of thousands of images, as long as you can wait a few days.
+* On a dedicated deep learning GPU that is neither the fastest nor slowest GPU you can buy in 2025, MegaDetector v5 or v1000-redwood can process between 300,000 and 1,000,000 images per day.  We include a few <a href="#benchmark-timings">benchmark timings</a> below on some specific GPUs.
 
 Often we interact with users who could easily keep up with their image load on their own computer, but they have a huge backlog that's tough to dig out of.  If that's you, <a href="mailto:cameratraps@lila.science">email us</a>!  Processing images is like our favorite thing to do, and it's how we improve our tools.  And it's fast.  And free.  So, never feel bad about asking us to help you out of your backlog.
 
 We don't typically recommend running MegaDetector on embedded devices, although <a href="https://www.electromaker.io/project/view/whats-destroying-my-yard-pest-detection-with-raspberry-pi">some folks have done it</a>!  More commonly, for embedded scenarios, it probably makes sense to use MegaDetector to generate bounding boxes on lots of images from your specific ecosystem, then use those boxes to train a smaller model that fits your embedded device's compute budget.
-
 
 ### Benchmark timings
 
@@ -369,19 +366,6 @@ But you will get a very good estimate of how long it will take to run other MDv1
 
 That said, any time I write that a smaller model is faster, I also want to attach a caveat.  The release notes also recommend that you should use the largest model you can use: saving <i>compute</i> time in order to have slightly less accurate results that cost you more <i>human</i> time later is almost never worth it.  If you have a GPU, there's almost no scenario where you want to use anything other than MDv5 or MDv1000-redwood, and even if you don't have a GPU, it's a relatively niche scenario where you want to use less accurate models.  Even with the faster models, you still have to walk away from your desk to run a batch of images, and once you've done that, it's <i>usually</i> worth just letting it run a little longer to get more accurate results.
 
-
-#### Timing results for MDv4
-
-FWIW, MDv5 is consistently 3x-4x faster than MDv4, so if you see a device listed here and want to estimate MDv5 performance, assume 3x-4x speedup.
-
-* An <a href="https://www.nvidia.com/en-us/data-center/v100/">NVIDIA V100</a> processes around 2.79 images per second, or around 240,000 images per day (for MDv4)
-* An <a href="https://www.nvidia.com/en-us/geforce/graphics-cards/30-series/rtx-3090/">NVIDIA RTX 3090</a> processes ~3.24 images per second, or ~280,000 images per day (for MDv4)
-* An <a href="https://www.nvidia.com/en-us/geforce/graphics-cards/rtx-2080-ti/">NVIDIA RTX 2080 Ti</a> processes ~2.48 images per second, or ~214,000 images per day (for MDv4)
-* An <a href="https://www.nvidia.com/en-us/geforce/20-series/">NVIDIA RTX 2080</a> processes ~2.0 images per second, or ~171,000 images per day (for MDv4)
-* An <a href="https://www.nvidia.com/en-us/geforce/graphics-cards/rtx-2060-super/">NVIDIA RTX 2060 SUPER</a> processes ~1.64 images per second, or ~141,000 images per day (for MDv4)
-* An <a href="https://www.nvidia.com/en-us/titan/titan-v/">NVIDIA Titan V</a> processes ~1.9 images per second, or ~167,000 images per day (for MDv4)
-* An <a href="https://www.notebookcheck.net/NVIDIA-Quadro-T2000-Laptop-Graphics-Card.423971.0.html">NVIDIA Titan Quadro T2000</a> processes ~0.64 images per second, or ~55,200 images per day (for MDv4)
-
 #### Contributing to this benchmark list
 
 If you want to run this benchmark on your own, here are <a href="https://github.com/agentmorris/MegaDetector/blob/main/sandbox/download_megadetector_timing_benchmark_set.bat">azcopy commands</a> to download those 13,226 images, and we're happy to help you get MegaDetector running on your setup.  Or if you're using MegaDetector on other images with other GPUs, we'd love to include that data here as well.  <a href="mailto:cameratraps@lila.science">Email us</a>!
@@ -394,7 +378,6 @@ Speed can vary widely based on image size, hard drive speed, etc., and in these 
 * An RTX 3050 processes ~4.6 images per second, or ~397,000 images per day through MDv5
 * An RTX 3090 processes ~11 images per second, or ~950,000 images per day through MDv5
 
-
 ## Is there a GUI?
 
 Many of our users either use our Python tools to run MegaDetector or have us run MegaDetector for them (see [this page](getting-started.md) for more information about that), then most of those users use [Timelapse](https://saul.cpsc.ucalgary.ca/timelapse/) to use their MegaDetector results in an image review workflow.
@@ -403,12 +386,16 @@ But we recognize that Python tools can be a bit daunting, so we're excited that 
 
 ### Local tools that run MegaDetector (and other models)
 
-* [AddaxAI](https://addaxdatascience.com/addaxai/) is a GUI-based tool for running MegaDetector and a variety of species classifiers; also supports a number of postprocessing functions (e.g. folder separation).  This is how most users run MegaDetector.  AddaxAI worried about all the Python stuff in this repo, so that you don't have to.
+All of the following are GUI-based tools for running MegaDetector and one or more species classifiers on camera trap images:
+ 
+* [AddaxAI](https://addaxdatascience.com/addaxai/)
+* [Biowatch](https://github.com/earthtoolsmaker/biowatch)
 * [DeepFaune](https://www.deepfaune.cnrs.fr/en/)
-* [BoquilaHUB](https://boquila.org/hub) is a GUI-based tool for running MegaDetector and a variety of species classifiers
-* [CamTrap Detector](https://github.com/bencevans/camtrap-detector) is a GUI-based tool for running MegaDetector (supports MDv5)
+* [BoquilaHUB](https://boquila.org/hub)
+<!--
+* [CamTrap Detector](https://github.com/bencevans/camtrap-detector)
 * [MegaDetector-GUI](https://github.com/petargyurov/megadetector-gui) is a GUI-based tool for running MegaDetector in Windows environments (MDv4 only as far as we know)
-
+-->
 
 ### Cloud-based platforms that leverage MegaDetector
 
@@ -430,12 +417,10 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 * [Zamba Cloud](https://github.com/drivendataorg/zamba)
 * [OCAPI](https://www.terroiko.fr/ocapi/)
 
-
 ### Interactive demos/APIs
 
 * [Hendry Lydecker](https://github.com/hlydecker) set up a [Hugging Face app](https://huggingface.co/spaces/hlydecker/MegaDetector_v5) for running MDv5
 * [Ben Evans](https://bencevans.io/) set up a [Web-based MegaDetector demo](https://replicate.com/bencevans/megadetector) at [replicate.com](https://replicate.com)
-
 
 ### Other ways of running MegaDetector that don't fit easily into one of those categories
 
@@ -474,11 +459,9 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 * [Colab notebook](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/megadetector_colab.ipynb) ([open in Colab](https://colab.research.google.com/github/agentmorris/MegaDetector/blob/main/detection/megadetector_colab.ipynb)) for running MDv5 on images stored in Google Drive.
 * [Real-time MegaDetector API using Flask](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/synchronous).  This is deployed via Docker, so the Dockerfile provided for the real-time API may be a good starting point for other Docker-based MegaDetector deployments as well.
 
-
 ## Who is using MegaDetector?
 
 See <a href="https://github.com/agentmorris/MegaDetector/#who-is-using-megadetector">this list</a> on the repo's main page.
-
 
 ## What about species classification?
 
@@ -488,7 +471,6 @@ MegaDetector only finds animals, it doesn't identify them to species level.  If 
 
 Image credit University of Minnesota, from the [Orinoquía Camera Traps](https://lila.science/datasets/orinoquia-camera-traps/) dataset.
 
-
 ## Pro tips for large workloads
 
 We run a lot of MegaDetector on a lot of images, and in addition to running the "run_detector_batch" script described in the previous section, running a large batch of images often includes:
@@ -496,7 +478,7 @@ We run a lot of MegaDetector on a lot of images, and in addition to running the 
 * Dividing images into chunks for running on multiple GPUs
 * Making sure that the number of failed/corrupted images was reasonable
 * Eliminating frequent false detections using the [repeat detection elimination](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/postprocessing/repeat_detection_elimination) process
-* Visualizing the results using [postprocess_batch_results.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/postprocess_batch_results.py) to make "results preview" pages like [this one](https://lila.science/public/snapshot_safari_public/snapshot-safari-kar-2022-00-00-v5a.0.0_0.200/)
+* Visualizing the results using [postprocess_batch_results.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/postprocess_batch_results.py) to make "results preview" pages like [this one](https://lilawildlife.blob.core.windows.net/lila-wildlife/previews/speciesnet-previews/speciesnet-postprocessing-examples/idaho-camera-traps/index.html)
 
 ...and, less frequently:
 
@@ -505,30 +487,13 @@ We run a lot of MegaDetector on a lot of images, and in addition to running the 
 * Various manipulation of the output files, e.g. splitting .json files into smaller .json files for subfolders
 * Running and comparing multiple versions of MegaDetector
 
-There are separate scripts to do all of these things, but things would get chaotic if we ran each of these steps separately.  So in practice we almost always run MegaDetector using [manage_local_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/manage_local_batch.py), a script broken into cells for each of those steps.  We run this in an interactive console in [Spyder](https://github.com/spyder-ide/spyder), but we also periodically export this script to a [notebook](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/manage_local_batch.ipynb) that does exactly the same thing.
+There are separate scripts to do all of these things, but things would get chaotic if we ran each of these steps separately.  So in practice we almost always run MegaDetector using [manage_local_batch.py](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/manage_local_batch.py), a script broken into cells for each of those steps.  We run this in an interactive console in VS Code, but we also periodically export this script to a [notebook](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/manage_local_batch.ipynb) that does exactly the same thing.
 
 So, if you find yourself keeping track of lots of steps like this to manage large MD jobs, try the notebook out!  And let us know if it's useful/broken/wonderful/terrible.
 
-
 ## Pro tips for coaxing every bit of accuracy out of MegaDetector
 
-As per the [training data](#can-you-share-the-training-data) section, MDv5 is actually two models (MDv5a and MDv5b), differing only in their training data.  In fact, MDv5a's training data is a superset of MDv5b's training data.  So, when should you use each?  What should you do if MegaDetector is working, but not <i>quite</i> well enough for a difficult scenario, like the ones on our [MegaDetector challenges](https://github.com/agentmorris/MegaDetector/blob/main/megadetector-challenges.md) page?  Or what if MegaDetector is working great, but you're a perfectionist who wants to push the envelope on precision?  This section is a very rough flowchart for how the MegaDetector developers choose MegaDetector versions/enhancements when presented with a new dataset.
-
-1. The first thing we always run is MDv5a... <b>95% of the time, the flowchart stops here</b>.  That's in bold because we want to stress that this whole section is about the unusual case, not the typical case.  There are enough complicated things in life, don't make choosing MegaDetector versions more complicated than it needs to be.<br/></br>Though FWIW, we're not usually trying to squeeze every bit of precision out of a particular dataset, we're almost always focused on recall (i.e., not missing animals).  So if MDv5a is finding all the animals and the number of false positives is "fine", we don't usually run MDv5b, for example, just to see whether it would slightly  reduce the number of false positives.
-
-2. If things are working great, but you're going to be using MegaDetector a lot and you want to add a step to your process that has a bit of a learning curve, but can eliminate a bunch of false positives once you get used to it, consider the [repeat detection elimination](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/postprocessing/repeat_detection_elimination) process.
-
-3. If anything looks off, specifically if you're missing animals that you think MegaDetector should be getting, or if you just want to see if you can squeeze a little more precision out, try MDv5b.  Usually, we've found that
-MDv5a works at least as well as MDv5b, but every dataset is different.<br/><br/>For example, [WildEye](https://wildeyeconservation.org/) did a thorough [MegaDetector v5 evaluation](https://wildeyeconservation.org/megadetector-version-5/) and found slightly better precision with MDv5b.  MDv5a is trained on everything MDv5b was trained on, plus some non-camera-trap data, so as a general rule, MDv5a may do <i>slightly</i> better on reptiles, birds, and distant vehicles.  MDv5b may do <i>slightly</i> better on very dark or low-contrast images.
-
-4. If you're still missing animals, but one or both models look close, try adding the "--augment" option to run_detector_batch, which turns on [test-time augmentation](https://docs.ultralytics.com/yolov5/tutorials/test_time_augmentation/). It will run a little more slowly, but sometimes augmentation helps.
-
-5. If none of the above are quite working well enough, but two or three of the above are close, try using [merge_detections.py](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/merge_detections.py) to get the best of both worlds, i.e. to take the high-confidence detections from multiple MegaDetector results files.
-
-6. If things are still not good enough, we have a case where MD just seems not to work; that's what the [MegaDetector challenges](https://github.com/agentmorris/MegaDetector/blob/main/megadetector-challenges.md) page is all about.  Now we're in DIY territory.
-
-And please please please, <b>if you find you need to do anything other than step 1 (simple MDv5a), please [let us know](mailto:cameratraps@lila.science)!</b>  It's really helpful for us to hear about cases where MegaDetector either doesn't work well or requires extra tinkering.
-
+I have a document [here](http://lila.science/megadetector-pro-tips) summarizing the process I use for running MegaDetector and [SpeciesNet](https://github.com/google/cameratrapai/), including some "bells and whistles" that I use for difficult jobs.
 
 ## Have you evaluated MegaDetector's accuracy?
 
@@ -565,17 +530,22 @@ If you know of other validation studies that have been published, [let us know](
 
 Really, don't trust results from one ecosystem and assume they will hold in another. [This paper](https://openaccess.thecvf.com/content_ECCV_2018/html/Beery_Recognition_in_Terra_ECCV_2018_paper.html) is about just how catastrophically bad AI models for camera trap images <i>can</i> fail to generalize to new locations.  We hope that's not the case with MegaDetector!  But don't assume.
 
-
 ## What is MegaDetector bad at?
 
 While MegaDetector works well in a variety of terrestrial ecosystems, it's not perfect, and we can't stress enough how important it is to test MegaDetector on your own data before trusting it.  We can help you do that; [email us](mailto:cameratraps@lila.science) if you have questions about how to evaluate MegaDetector on your own data, even if you don't have images you've already reviewed.
 
-But really, we'll answer the question... MegaDetector v5's biggest challenges are with reptiles.  This is an area where accuracy has dramatically improved since MDv4, but it's still the case that reptiles are under-represented in camera trap data, and an AI model is only as good as its training data.  That doesn't mean MDv5 doesn't support reptiles; sometimes it does amazing on reptile-heavy datasets.  But sometimes it drives you bonkers by missing obvious reptiles.
+But really, we'll answer the question... here are the most common cases where you think MegaDetector might work better than it actually does:
+
+* MegaDetector does not work well on downward-facing small animal cameras.  Fortunately, it's not clear that a detector is helpful for these images, since even very small animals are large in terms of pixels.  See the [Small Animal Camera Traps classifier](https://github.com/agentmorris/small-animals-classifier) for a more appropriate model for small animal cameras.
+* MegaDetector v5 was not good at reptiles, even large reptiles.  This was improved significantly with MDv1000-redwood, but it's still a bit hit or miss.
+* MegaDetector struggles with animals on the surface of bodies of water, e.g. semi-aquatic mammals.
+* MegaDetector can only see things that are visible in single frames, so if you have, e.g., caribou moving along the horizon that just look like tiny dots in single images, MegaDetector will not perform well.
+
+I'm excluding things that are definitely not camera traps and are therefore out of scope for MegaDetector, e.g. aerial images or underwater images.
 
 If you want to read more about our favorite MD failure cases, check out the [MegaDetector challenges](https://github.com/agentmorris/MegaDetector/blob/main/megadetector-challenges.md) page.
 
 tl;dr: always test on your own data!
-
 
 ## Citing MegaDetector
 
@@ -596,7 +566,6 @@ The same citation, in BibTex format:
 }
 ```
 
-
 ## Pretty picture and mesmerizing video
 
 Here's a "teaser" image of what detector output looks like:
@@ -610,7 +579,6 @@ Teaser thumbnail from that video:
 <img width=600 src="http://dmorris.net/video/detector_video_thumbnail.png">
 
 Image credit [eMammal](https://emammal.si.edu/).  Video created by [Sara Beery](https://beerys.github.io/).
-
 
 ## Can you share the training data?
 
@@ -658,7 +626,6 @@ MD1000 was trained on a dataset that overlaps with the substantial majority of t
 Overall, experiments suggest that the MD1000 training set is substantially similar to the MDv5 training set (e.g., running MDv5 on the MD1000 validation set yields results that are similar to MDv5 running on its own validation set).
 
 MD1000 was also pre-trained on output from MDv5 (only using locations from LILA that are <i>not</i> in the MDv5 validation split).  As much as I'd like to think this pre-training allowed the model to retain some information about data I didn't have the ability to explicitly train on, that wasn't really the point, and this probably resulted in little or no information transferred to the final MD1000 models; this was more like a warmup phase that was helpful in reducing the total <i>calendar</i> time for training (i.e., I could keep working on data while the models were getting to a better-than-default starting point).  I don't include that pre-training when I refer to the training data size.
-
 
 ## I'm partying like it's 2019, and I want to run MDv4
 

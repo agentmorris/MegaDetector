@@ -350,7 +350,7 @@ def _initialize_yolo_imports(model_type='yolov5',
 
         try:
 
-            # from yolov9.utils.general import non_max_suppression # noqa
+            from yolov9.utils.general import non_max_suppression # noqa
             from yolov9.utils.general import xyxy2xywh # noqa
             from yolov9.utils.augmentations import letterbox # noqa
             from yolov9.utils.general import scale_boxes as scale_coords # noqa
@@ -738,7 +738,7 @@ require_non_default_compatibility_mode = False
 
 class PTDetector:
     """
-    Class that runs a PyTorch-based MegaDetector model.  Also used as a preprocessor
+    Class that runs a YOLO-based MegaDetector model.  Also used as a preprocessor
     for images that will later be run through an instance of PTDetector.
     """
 
@@ -873,6 +873,13 @@ class PTDetector:
                             self.device = 'mps'
                 except AttributeError:
                     pass
+                if self.device == 'cpu':
+                    try:
+                        import torch_directml
+                        self.device = torch_directml.device()
+                        print('Using DirectML device')
+                    except ImportError:
+                        pass
 
         # AddaxAI depends on this printout, don't remove it
         print('PTDetector using device {}'.format(str(self.device).lower()))
@@ -914,14 +921,17 @@ class PTDetector:
         # other than MPS devices.
         use_map_location = (device != 'mps')
 
+        # DirectML (privateuseone) doesn't support map_location; load to CPU, .to(device) handles the rest
+        safe_map_location = 'cpu' if 'privateuseone' in str(device) else device
+
         if use_map_location:
             try:
-                checkpoint = torch.load(model_pt_path, map_location=device, weights_only=False)
+                checkpoint = torch.load(model_pt_path, map_location=safe_map_location, weights_only=False)
             # For a transitional period, we want to support torch 1.1x, where the weights_only
             # parameter doesn't exist
             except Exception as e:
                 if "'weights_only' is an invalid keyword" in str(e):
-                    checkpoint = torch.load(model_pt_path, map_location=device)
+                    checkpoint = torch.load(model_pt_path, map_location=safe_map_location)
                 else:
                     raise
         else:
@@ -964,8 +974,6 @@ class PTDetector:
                 EXIF rotation already handled
             image_id (str, optional): a path to identify the image; will be in the "file" field
                 of the output object
-            detection_threshold (float, optional): only detections above this confidence threshold
-                will be included in the return value
             image_size (int, optional): image size (long side) to use for inference, or None to
                 use the default size specified at the time the model was loaded
             verbose (bool, optional): enable additional debug output
@@ -1107,6 +1115,7 @@ class PTDetector:
         result['scaling_shape'] = scaling_shape
         result['letterbox_ratio'] = letterbox_ratio
         result['letterbox_pad'] = letterbox_pad
+
         return result
 
     # ...def preprocess_image(...)
@@ -1302,6 +1311,8 @@ class PTDetector:
 
         # Run the model on the batch
         pred = self.model(batch_tensor, augment=augment)[0]
+        if 'privateuseone' in str(self.device):
+            pred = pred.cpu()
 
         # Configure NMS parameters
         if 'classic' in self.compatibility_mode:
@@ -1311,9 +1322,14 @@ class PTDetector:
 
         use_library_nms = False
 
-        # Model output format changed in recent ultralytics packages, and the nms implementation
-        # in this module hasn't been updated to handle that format yet.
-        if (yolo_model_type_imported is not None) and (yolo_model_type_imported == 'ultralytics'):
+        # The custom nms() implementation in this module assumes the YOLOv5 output layout
+        # ([batch, num_anchors, num_classes + 5], i.e. with an objectness score at index 4).
+        # The ultralytics and (wongkinyiu) yolov9 libraries produce an anchor-free, transposed
+        # layout ([batch, num_classes + 4, num_anchors], with no objectness score), which nms()
+        # would misinterpret (treating anchor positions as class indices).  So we route those
+        # model types to their library's non_max_suppression() instead.
+        if (yolo_model_type_imported is not None) and \
+           (yolo_model_type_imported in ('ultralytics', 'yolov9')):
             use_library_nms = True
 
         if use_library_nms:

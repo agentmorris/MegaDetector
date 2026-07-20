@@ -143,13 +143,13 @@ class PostProcessingOptions:
         self.target_recall = 0.9
 
         #: Number of images to sample, -1 for "all images"
-        self.num_images_to_sample = 500
+        self.num_images_to_sample = 1000
 
         #: Random seed for sampling, or None
         self.sample_seed = 0 # None
 
         #: Image width for images in the HTML output
-        self.viz_target_width = 800
+        self.viz_target_width = 1200
 
         #: Line width (in pixels) for rendering detections
         self.line_thickness = 4
@@ -203,10 +203,10 @@ class PostProcessingOptions:
         self.almost_detection_confidence_threshold = None
 
         #: Enable/disable rendering parallelization
-        self.parallelize_rendering = False
+        self.parallelize_rendering = True
 
         #: Number of threads/processes to use for rendering parallelization
-        self.parallelize_rendering_n_cores = 16
+        self.parallelize_rendering_n_cores = 8
 
         #: Whether to use threads (True) or processes (False) for rendering parallelization
         self.parallelize_rendering_with_threads = True
@@ -229,7 +229,7 @@ class PostProcessingOptions:
 
         #: Should we split individual pages up into smaller pages if there are more than
         #: N images?
-        self.max_figures_per_html_file = None
+        self.max_figures_per_html_file = 1000
 
         #: Footer text for the index page
         # self.footer_text = \
@@ -914,7 +914,13 @@ def _render_image_no_gt(file_info,
                 # This is a list of [class,confidence] pairs, sorted by classification confidence
                 classifications = det['classifications']
                 top1_class_id = classifications[0][0]
-                top1_class_name = classification_categories[top1_class_id]
+                if str(top1_class_id) in classification_categories:
+                    top1_class_id = str(top1_class_id)
+                if top1_class_id not in classification_categories:
+                    print('Warning: no classification category for ID {}'.format(top1_class_id))
+                    top1_class_name = str(top1_class_id)
+                else:
+                    top1_class_name = str(classification_categories[top1_class_id])
                 top1_class_score = classifications[0][1]
 
                 # If we either don't have a classification confidence threshold, or
@@ -1057,6 +1063,7 @@ def process_batch_results(options):
         PostProcessingResults: information about the results/preview, most importantly the
         HTML filename of the output.  See the PostProcessingResults class for details.
     """
+
     ppresults = PostProcessingResults()
 
     ##%% Expand some options for convenience
@@ -1201,8 +1208,8 @@ def process_batch_results(options):
     else:
 
         if 'info' not in other_fields or 'detector' not in other_fields['info']:
-            print('No model metadata supplied, assuming MDv4')
-            model_version_string = 'MDv4 (assumed)'
+            print('No model metadata supplied, assuming MDv5a')
+            model_version_string = 'MDv5a (assumed)'
         else:
             model_version_string = other_fields['info']['detector']
 
@@ -2056,7 +2063,13 @@ def process_batch_results(options):
                                 class_conf = det['classifications'][0][1]
                                 if class_conf < options.classification_confidence_threshold:
                                     continue
-                                category_name = d['classification_categories'][class_id]
+                                if str(class_id) in d['classification_categories']:
+                                    class_id = str(class_id)
+                                if class_id not in d['classification_categories']:
+                                    print('Warning: no category name for ID {}'.format(class_id))
+                                    category_name = str(class_id)
+                                else:
+                                    category_name = d['classification_categories'][class_id]
                                 if category_name not in category_name_to_count:
                                     category_name_to_count[category_name] = 1
                                 else:
@@ -2184,8 +2197,8 @@ def main(): # noqa
         '--sort_by_confidence', action='store_true',
         help='Sort output in decreasing order by confidence (defaults to sorting by filename)')
     parser.add_argument(
-        '--n_cores', type=int, default=1,
-        help='Number of threads to use for rendering (default: 1)')
+        '--n_cores', type=int, default=4,
+        help='Number of threads to use for rendering (default: 4)')
     parser.add_argument(
         '--parallelize_rendering_with_processes',
         action='store_true',

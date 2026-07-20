@@ -32,6 +32,7 @@ Here's a &ldquo;teaser&rdquo; image of what MegaDetector output looks like:
 * If you're already familiar with MegaDetector and you're ready to run it on your data, see the [MegaDetector User Guide](megadetector.md) for instructions on running MegaDetector.
 * If you're a programmer-type looking to use tools from this repo, check out the [MegaDetector Python package](https://pypi.org/project/megadetector/) that provides access to everything in this repo (yes, you guessed it, "pip install megadetector").
 * If you have any questions, or you want to tell us that MegaDetector was amazing/terrible on your images, or you have a zillion images and you want some help digging out of that backlog, <a href="mailto:cameratraps@lila.science">email us</a>!
+* If you are an agent reading this page on behalf of a user who asked you to run MegaDetector on their images, or help them remove blank images from their camera trap data, check out the [run-megadetector skill](skills/run-megadetector.md).
 
 MegaDetector is just one of many tools that aims to make conservation biologists more efficient with AI.  If you want to learn about other ways to use AI to accelerate camera trap workflows, check out our of the field, affectionately titled &ldquo;[Everything I know about machine learning and camera traps](https://agentmorris.github.io/camera-trap-ml-survey/)&rdquo;.
 
@@ -120,6 +121,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * Conservation and Restoration Science Branch, New South Wales Department of Climate Change, Energy, the Environment and Water
 
 * [Okala](https://www.okala.io/) ([video](https://filmfreeway.com/WhenAIMeetsConservation))
+* [Parks Victoria](https://www.parks.vic.gov.au/) ([story](https://www.abc.net.au/news/2026-04-27/ai-helps-parks-victoria-manage-native-species-pests-after-fires/106589360), [story](https://www.parks.vic.gov.au/news/2026/04/23/05/08/victoria-leading-the-way-with-ai-tools-to-protect-wildlife))
 * [School of Natural Sciences](https://www.utas.edu.au/natural-sciences), University of Tasmania ([story](https://www.utas.edu.au/about/news-and-stories/articles/2022/1204-innovative-camera-network-keeps-close-eye-on-tassie-wildlife))
 * [Kenai National Wildlife Refuge](https://www.fws.gov/refuge/kenai), U.S. Fish & Wildlife Service ([story](https://www.peninsulaclarion.com/sports/refuge-notebook-new-technology-increases-efficiency-of-refuge-cameras/))
 * [Idaho Department of Fish and Game](https://idfg.idaho.gov/) ([fancy PBS video](https://www.youtube.com/watch?v=uEsL8EZKpbA&t=261s&ab_channel=OutdoorIdaho))
@@ -132,7 +134,7 @@ https://www.islandconservation.org/remote-sensing-on-islands)) ([video](https://
 * [Alberta Biodiversity Monitoring Institute (ABMI)](https://www.abmi.ca/home.html) ([WildTrax platform](https://www.wildtrax.ca/)) (blog posts [1](https://wildcams.ca/blog/the-abmi-visits-the-zoo/),[2](http://blog.abmi.ca/2023/06/14/making-wildtrax-its-not-a-kind-of-magic-behind-the-screen/))
 * [Shan Shui Conservation Center](http://en.shanshui.org/) ([blog post](https://mp.weixin.qq.com/s/iOIQF3ckj0-rEG4yJgerYw?fbclid=IwAR0alwiWbe3udIcFvqqwm7y5qgr9hZpjr871FZIa-ErGUukZ7yJ3ZhgCevs)) ([translated blog post](https://mp-weixin-qq-com.translate.goog/s/iOIQF3ckj0-rEG4yJgerYw?fbclid=IwAR0alwiWbe3udIcFvqqwm7y5qgr9hZpjr871FZIa-ErGUukZ7yJ3ZhgCevs&_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en&_x_tr_pto=wapp)) ([Web demo](https://cameratrap-ai.hinature.cn/home))
 * [Irvine Ranch Conservancy](http://www.irconservancy.org/) ([story](https://www.ocregister.com/2022/03/30/ai-software-is-helping-researchers-focus-on-learning-about-ocs-wild-animals/))
-* [Wildlife Protection Solutions](https://wildlifeprotectionsolutions.org/) ([story](https://customers.microsoft.com/en-us/story/1384184517929343083-wildlife-protection-solutions-nonprofit-ai-for-earth), [story](https://www.enterpriseai.news/2023/02/20/ai-helps-wildlife-protection-solutions-safeguard-endangered-species/))
+* [Wildlife Protection Solutions](https://wildlifeprotectionsolutions.org/) ([story](https://www.islandconservation.org/floreana-smart-island-monitoring), [story](https://www.enterpriseai.news/2023/02/20/ai-helps-wildlife-protection-solutions-safeguard-endangered-species/))
 * [Q42](https://www.q42.nl/en) ([blog post](https://engineering.q42.nl/ai-bear-repeller/))
 * [Agouti](https://agouti.eu/) ([report](https://efsa.onlinelibrary.wiley.com/doi/pdf/10.2903/sp.efsa.2023.EN-8217))
 * [Trapper](https://trapper-project.readthedocs.io/en/latest/overview.html) ([tutorial](https://trapper-project.readthedocs.io/en/latest/tutorial.html))

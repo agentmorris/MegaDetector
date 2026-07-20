@@ -63,6 +63,7 @@ error_names_for_retry = ['ConnectionError']
 
 DEFAULT_BOX_THICKNESS = 4
 DEFAULT_LABEL_FONT_SIZE = 16
+DEFAULT_LABEL_FONT = 'arial.ttf'
 
 # Default color map for mapping integer category IDs to colors when rendering bounding
 # boxes
@@ -215,12 +216,15 @@ def exif_preserving_save(pil_image,
         default_quality (int, optional): determines output quality when quality == 'keep' and we are
             saving a non-JPEG source to a JPEG file
         verbose (bool, optional): enable additional debug console output
-        tags_to_exclude (list, optional): tags to exclude from the output file
+        tags_to_exclude (list or str, optional): tags to exclude from the output file, or the
+            string 'all' to exclude all EXIF tags.
     """
 
-    # Read EXIF metadata
-    # exif = pil_image.info['exif'] if ('exif' in pil_image.info) else None
-    exif = pil_image.getexif()
+    # Read EXIF metadata if necessary
+    if isinstance(tags_to_exclude,str) and tags_to_exclude == 'all':
+        exif = None
+    else:
+        exif = pil_image.getexif()
 
     if isinstance(tags_to_exclude,str):
         tags_to_exclude = [tags_to_exclude]
@@ -509,7 +513,7 @@ def render_detection_bounding_boxes(detections,
                                     custom_strings=None,
                                     box_sort_order='confidence',
                                     verbose=False,
-                                    label_font='arial.ttf'):
+                                    label_font=DEFAULT_LABEL_FONT):
     """
     Renders bounding boxes (with labels and confidence values) on an image for all
     detections above a threshold.
@@ -600,6 +604,12 @@ def render_detection_bounding_boxes(detections,
     if (label_map is not None) and (isinstance(label_map,str)) and (label_map == 'show_categories'):
         label_map = {}
 
+    if label_font_size is None:
+        label_font_size = DEFAULT_LABEL_FONT_SIZE
+
+    if label_font is None:
+        label_font = DEFAULT_LABEL_FONT
+
     if custom_strings is not None:
         assert len(custom_strings) == len(detections), \
             '{} custom strings provided for {} detections'.format(
@@ -607,10 +617,10 @@ def render_detection_bounding_boxes(detections,
 
     display_boxes = []
 
-    # list of lists, one list of strings for each bounding box (to accommodate multiple labels)
+    # List of lists, one list of strings for each bounding box (to accommodate multiple labels)
     display_strs = []
 
-    # for color selection
+    # For color selection
     classes = []
 
     if box_sort_order is not None:
@@ -697,8 +707,12 @@ def render_detection_bounding_boxes(detections,
 
                         if (show_category_names) and (class_key in classification_label_map):
                             class_name = classification_label_map[class_key]
+                        # Handle the case where a file was written with int classification
+                        # categories, rather than string-ints
+                        elif (show_category_names) and (str(class_key) in classification_label_map):
+                            class_name = classification_label_map[str(class_key)]
                         else:
-                            class_name = class_key
+                            class_name = str(class_key)
                         if classification_conf is not None:
                             classification_conf_string = \
                                  str(round_float(100.0 * classification_conf,1))
@@ -757,7 +771,7 @@ def draw_bounding_boxes_on_image(image,
                                  vtextalign=VTEXTALIGN_TOP,
                                  text_rotation=None,
                                  label_font_size=DEFAULT_LABEL_FONT_SIZE,
-                                 label_font='arial.ttf'):
+                                 label_font=DEFAULT_LABEL_FONT):
     """
     Draws bounding boxes on an image.  Modifies the image in place.
 
@@ -880,7 +894,7 @@ def draw_bounding_box_on_image(image,
                                textalign=TEXTALIGN_LEFT,
                                vtextalign=VTEXTALIGN_TOP,
                                text_rotation=None,
-                               label_font='arial.ttf'):
+                               label_font=DEFAULT_LABEL_FONT):
     """
     Adds a bounding box to an image.  Modifies the image in place.
 
@@ -1148,7 +1162,7 @@ def render_db_bounding_boxes(boxes,
                              label_font_size=DEFAULT_LABEL_FONT_SIZE,
                              tags=None,
                              boxes_are_normalized=False,
-                             label_font='arial.ttf'):
+                             label_font=DEFAULT_LABEL_FONT):
     """
     Render bounding boxes (with class labels) on an image.  This is a wrapper for
     draw_bounding_boxes_on_image, allowing the caller to operate on a resized image
@@ -1265,7 +1279,7 @@ def draw_bounding_boxes_on_file(input_file,
                                 target_size=None,
                                 ignore_exif_rotation=False,
                                 quality=None,
-                                label_font='arial.ttf'):
+                                label_font=DEFAULT_LABEL_FONT):
     """
     Renders detection bounding boxes on an image loaded from file, optionally writing the results to
     a new image file.
@@ -1462,78 +1476,42 @@ def gray_scale_fraction(image,crop_size=(0.1,0.1)):
 # ...def gray_scale_fraction(...)
 
 
-def _resize_relative_image(fn_relative,
-                           input_folder,
-                           output_folder,
-                           target_width,
-                           target_height,
-                           no_enlarge_width,
-                           verbose,
-                           quality,
-                           overwrite=True):
-    """
-    Internal function for resizing an image from one folder to another,
-    maintaining relative path.
-    """
-
-    input_fn_abs = os.path.join(input_folder,fn_relative)
-    output_fn_abs = os.path.join(output_folder,fn_relative)
-
-    if (not overwrite) and (os.path.isfile(output_fn_abs)):
-        status = 'skipped'
-        error = None
-        return {'fn_relative':fn_relative,'status':status,'error':error}
-
-    os.makedirs(os.path.dirname(output_fn_abs),exist_ok=True)
-    try:
-        _ = resize_image(input_fn_abs,
-                         output_file=output_fn_abs,
-                         target_width=target_width,
-                         target_height=target_height,
-                         no_enlarge_width=no_enlarge_width,
-                         verbose=verbose,
-                         quality=quality)
-        status = 'success'
-        error = None
-    except Exception as e:
-        if verbose:
-            print('Error resizing {}: {}'.format(fn_relative,str(e)))
-        status = 'error'
-        error = str(e)
-
-    return {'fn_relative':fn_relative,'status':status,'error':error}
-
-# ...def _resize_relative_image(...)
-
-
 def _resize_absolute_image(input_output_files,
                            target_width,
                            target_height,
                            no_enlarge_width,
                            verbose,
-                           quality):
+                           quality,
+                           overwrite):
     """
     Internal wrapper for resize_image used in the context of a batch resize operation.
     """
 
     input_fn_abs = input_output_files[0]
     output_fn_abs = input_output_files[1]
-    os.makedirs(os.path.dirname(output_fn_abs),exist_ok=True)
-    try:
-        _ = resize_image(input_fn_abs,
-                         output_file=output_fn_abs,
-                         target_width=target_width,
-                         target_height=target_height,
-                         no_enlarge_width=no_enlarge_width,
-                         verbose=verbose,
-                         quality=quality)
-        status = 'success'
-        error = None
-    except Exception as e:
-        if verbose:
-            print('Error resizing {}: {}'.format(input_fn_abs,str(e)))
-        status = 'error'
-        error = str(e)
+    error = None
+
+    if (not overwrite) and (os.path.isfile(output_fn_abs)):
+
+        status = 'skipped'
+
+    else:
+
+        os.makedirs(os.path.dirname(output_fn_abs),exist_ok=True)
+        try:
+            _ = resize_image(input_fn_abs,
+                            output_file=output_fn_abs,
+                            target_width=target_width,
+                            target_height=target_height,
+                            no_enlarge_width=no_enlarge_width,
+                            verbose=verbose,
+                            quality=quality)
+            status = 'success'
+        except Exception as e:
+            if verbose:
+                print('Error resizing {}: {}'.format(input_fn_abs,str(e)))
+            status = 'error'
+            error = str(e)
 
     return {'input_fn':input_fn_abs,
             'output_fn':output_fn_abs,
@@ -1550,14 +1528,10 @@ def resize_images(input_file_to_output_file,
                   verbose=False,
                   quality='keep',
                   pool_type='process',
-                  n_workers=10):
+                  n_workers=10,
+                  overwrite=True):
     """
     Resizes all images the dictionary [input_file_to_output_file].
-
-    TODO: This is a little more redundant with resize_image_folder than I would like;
-    refactor resize_image_folder to call resize_images.  Not doing that yet because
-    at the time I'm writing this comment, a lot of code depends on resize_image_folder
-    and I don't want to rock the boat yet.
 
     Args:
         input_file_to_output_file (dict): dict mapping images that exist to the locations
@@ -1575,6 +1549,7 @@ def resize_images(input_file_to_output_file,
             parallelization; ignored if n_workers <= 1
         n_workers (int, optional): number of workers to use for parallel resizing; set to <=1
             to disable parallelization
+        overwrite (bool, optional): whether to overwrite existing target images
 
     Returns:
         list: a list of dicts with keys 'input_fn', 'output_fn', 'status', and 'error'.
@@ -1599,7 +1574,8 @@ def resize_images(input_file_to_output_file,
                             target_height=target_height,
                             no_enlarge_width=no_enlarge_width,
                             verbose=verbose,
-                            quality=quality))
+                            quality=quality,
+                            overwrite=overwrite))
 
     else:
 
@@ -1621,7 +1597,8 @@ def resize_images(input_file_to_output_file,
                     target_height=target_height,
                     no_enlarge_width=no_enlarge_width,
                     verbose=verbose,
-                    quality=quality)
+                    quality=quality,
+                    overwrite=overwrite)
 
             results = list(tqdm(pool.imap(p, input_output_file_pairs),total=len(input_output_file_pairs)))
 
@@ -1702,46 +1679,22 @@ def resize_image_folder(input_folder,
         if verbose:
             print('Found {} images'.format(len(image_files_relative)))
 
-    if n_workers == 1:
+    input_file_to_output_file = {}
 
-        if verbose:
-            print('Resizing images')
+    for fn_relative_in in image_files_relative:
+        fn_abs_in = os.path.join(input_folder,fn_relative_in)
+        fn_abs_out = os.path.join(output_folder,fn_relative_in)
+        input_file_to_output_file[fn_abs_in] = fn_abs_out
 
-        results = []
-        for fn_relative in tqdm(image_files_relative):
-            results.append(_resize_relative_image(fn_relative,
-                                  input_folder=input_folder,
-                                  output_folder=output_folder,
-                                  target_width=target_width,
-                                  target_height=target_height,
-                                  no_enlarge_width=no_enlarge_width,
-                                  verbose=verbose,
-                                  quality=quality,
-                                  overwrite=overwrite))
-
-    else:
-
-        if pool_type == 'thread':
-            pool = ThreadPool(n_workers); poolstring = 'threads'
-        else:
-            assert pool_type == 'process'
-            pool = Pool(n_workers); poolstring = 'processes'
-
-        if verbose:
-            print('Starting resizing pool with {} {}'.format(n_workers,poolstring))
-
-        p = partial(_resize_relative_image,
-                input_folder=input_folder,
-                output_folder=output_folder,
-                target_width=target_width,
-                target_height=target_height,
-                no_enlarge_width=no_enlarge_width,
-                verbose=verbose,
-                quality=quality,
-                overwrite=overwrite)
-
-        results = list(tqdm(pool.imap(p, image_files_relative),
-                            total=len(image_files_relative)))
+    results = resize_images(input_file_to_output_file=input_file_to_output_file,
+                            target_width=target_width,
+                            target_height=target_height,
+                            no_enlarge_width=no_enlarge_width,
+                            verbose=verbose,
+                            quality=quality,
+                            pool_type=pool_type,
+                            n_workers=n_workers,
+                            overwrite=overwrite)
 
     return results
 
@@ -1876,13 +1829,21 @@ def check_image_integrity(filename,modes=None):
         'success' or 'error').
     """
 
+    # We generally want truncated images to fail in this context, but AFAIK the only
+    # was to force this behavior is to change global state.  So we back it up and
+    # restore it when we're done checking this image.
+    load_truncated_images_initial_state = ImageFile.LOAD_TRUNCATED_IMAGES
+
+    ImageFile.LOAD_TRUNCATED_IMAGES = False
+
     if modes is None:
         modes = ('cv','pil','skimage','jpeg_trailer')
     else:
         if isinstance(modes,str):
             modes = [modes]
         for mode in modes:
-            assert mode in ('cv','pil','skimage'), 'Unrecognized mode {}'.format(mode)
+            assert mode in ('cv','pil','skimage','jpeg_trailer'), \
+                'Unrecognized mode {}'.format(mode)
 
     assert os.path.isfile(filename), 'Could not find file {}'.format(filename)
 
@@ -1908,18 +1869,20 @@ def check_image_integrity(filename,modes=None):
             except Exception as e:
                 result[mode] = 'error: {}'.format(str(e))
         elif mode == 'skimage':
+            skimage_loaded = False
             try:
                 # This is not a standard dependency
                 from skimage import io as skimage_io # type: ignore # noqa
+                skimage_loaded = True
             except Exception:
                 result[mode] = 'could not import skimage, run pip install scikit-image'
-                return result
-            try:
-                skimage_im = skimage_io.imread(filename) # noqa
-                assert skimage_im is not None
-                result[mode] = 'success'
-            except Exception as e:
-                result[mode] = 'error: {}'.format(str(e))
+            if skimage_loaded:
+                try:
+                    skimage_im = skimage_io.imread(filename) # noqa
+                    assert skimage_im is not None
+                    result[mode] = 'success'
+                except Exception as e:
+                    result[mode] = 'error: {}'.format(str(e))
         elif mode == 'jpeg_trailer':
             # https://stackoverflow.com/a/48282863/16644970
             try:
@@ -1933,6 +1896,8 @@ def check_image_integrity(filename,modes=None):
                 result[mode] = 'error: {}'.format(str(e))
 
     # ...for each mode
+
+    ImageFile.LOAD_TRUNCATED_IMAGES = load_truncated_images_initial_state
 
     return result
 
@@ -1993,8 +1958,10 @@ def parallel_check_image_integrity(filenames,
 
     return results
 
+# ...def parallel_check_image_integrity(...)
 
-#%% Test drivers
+
+#%% Interactive test drivers
 
 if False:
 
@@ -2062,9 +2029,14 @@ if False:
     input_folder = r"C:\temp\resize-test\in"
     output_folder = r"C:\temp\resize-test\out"
 
-    resize_results = resize_image_folder(input_folder,output_folder,
-                         target_width=1280,verbose=True,quality=85,no_enlarge_width=True,
-                         pool_type='process',n_workers=10)
+    resize_results = resize_image_folder(input_folder,
+                                         output_folder,
+                                         target_width=1280,
+                                         verbose=True,
+                                         quality=85,
+                                         no_enlarge_width=True,
+                                         pool_type='process',
+                                         n_workers=10)
 
 
     #%% Integrity checking test
@@ -2082,3 +2054,232 @@ if False:
             if r[mode] != 'success':
                 s = r[mode]
                 print('Mode {} failed for {}:\n{}\n'.format(mode,r['file'],s))
+
+
+#%% Tests
+
+class TestVisualizationUtils:
+    """
+    Tests for visualization_utils.py.
+    """
+
+    def set_up(self):
+        """
+        Download (if necessary) and locate the shared md-tests image data,
+        and create a scratch folder for test-specific outputs.
+        """
+
+        import shutil # noqa
+        from megadetector.utils.md_tests import download_test_data
+        from megadetector.utils.ct_utils import make_test_folder
+
+        options = download_test_data()
+        self.scratch_dir = options.scratch_dir
+        self.image_folder = os.path.join(self.scratch_dir,'md-test-images')
+        assert os.path.isdir(self.image_folder), \
+            'Test image folder {} not found'.format(self.image_folder)
+
+        self.corrupt_dir = os.path.join(self.image_folder,'corrupt-images')
+        assert os.path.isdir(self.corrupt_dir), \
+            'Corrupt-images folder {} not found'.format(self.corrupt_dir)
+        self.corrupt_images = sorted([os.path.join(self.corrupt_dir,fn) \
+                                      for fn in os.listdir(self.corrupt_dir)])
+        assert len(self.corrupt_images) >= 2, \
+            'Expected at least two corrupt test images'
+
+        self.good_images = [
+            os.path.join(self.image_folder,'ena24_7904.jpg'),
+            os.path.join(self.image_folder,'nacti_part3_sub308_CA-11_0001325.jpg'),
+        ]
+        for fn in self.good_images:
+            assert os.path.isfile(fn), 'Missing test image {}'.format(fn)
+
+        # Scratch folder for outputs we create (and will delete in tear_down)
+        self.test_dir = make_test_folder(subfolder='megadetector/visualization_utils_tests')
+        print('Using temporary folder {} for visualization_utils testing'.format(self.test_dir))
+
+
+    def tear_down(self):
+        """
+        Remove test-specific output directories.  Leaves the shared md-tests
+        image data in place for other tests to use.
+        """
+
+        import shutil
+        if os.path.exists(self.test_dir):
+            shutil.rmtree(self.test_dir,ignore_errors=True)
+
+
+    def test_check_image_integrity(self):
+        """
+        Test check_image_integrity on known-good and deliberately-corrupted images.
+        """
+
+        # Good image: cv, pil, and jpeg_trailer should all succeed.  Skip the
+        # skimage check here because skimage is an optional dependency.
+        good = self.good_images[0]
+        result = check_image_integrity(good,modes=['cv','pil','jpeg_trailer'])
+        assert result['file'] == good
+        for mode in ('cv','pil','jpeg_trailer'):
+            assert result[mode].startswith('success'), \
+                'Expected success for mode {} on good image, got: {}'.format(
+                    mode,result[mode])
+
+        # Corrupt images: cv and pil should both report errors
+        for fn in self.corrupt_images:
+            result = check_image_integrity(fn,modes=['cv','pil'])
+            assert result['cv'].startswith('error'), \
+                'Expected cv error on corrupt image {}, got: {}'.format(fn,result['cv'])
+            assert result['pil'].startswith('error'), \
+                'Expected pil error on corrupt image {}, got: {}'.format(fn,result['pil'])
+
+        # The "very-corrupt-..." image has a broken JPEG trailer
+        very_corrupt = [f for f in self.corrupt_images \
+                        if 'very-corrupt' in os.path.basename(f)]
+        assert len(very_corrupt) == 1, \
+            'Expected exactly one "very-corrupt" image, found {}'.format(len(very_corrupt))
+        r = check_image_integrity(very_corrupt[0],modes=['jpeg_trailer'])
+        assert not r['jpeg_trailer'].startswith('success'), \
+            'Expected jpeg_trailer failure on very-corrupt image, got: {}'.format(
+                r['jpeg_trailer'])
+
+
+    def test_parallel_check_image_integrity(self):
+        """
+        Test parallel_check_image_integrity on a mix of good and corrupt images.
+        """
+
+        filenames = self.good_images + self.corrupt_images
+        results = parallel_check_image_integrity(filenames,
+                                                 modes=['cv','pil'],
+                                                 max_workers=2)
+        assert len(results) == len(filenames)
+
+        results_by_file = {os.path.normpath(r['file']):r for r in results}
+        for fn in self.good_images:
+            r = results_by_file[os.path.normpath(fn)]
+            assert r['cv'] == 'success'
+            assert r['pil'] == 'success'
+        for fn in self.corrupt_images:
+            r = results_by_file[os.path.normpath(fn)]
+            assert r['cv'].startswith('error')
+            assert r['pil'].startswith('error')
+
+
+    def test_parallel_get_image_sizes(self):
+        """
+        Test parallel_get_image_sizes on good and corrupt images.
+        """
+
+        # Good images: should return positive (w,h) tuples
+        sizes = parallel_get_image_sizes(self.good_images,max_workers=2)
+        assert set(sizes.keys()) == set(self.good_images)
+        for fn,size in sizes.items():
+            assert size is not None, 'No size returned for {}'.format(fn)
+            assert len(size) == 2
+            assert size[0] > 0 and size[1] > 0, \
+                'Invalid size {} for {}'.format(size,fn)
+
+        # Corrupt images: should return None
+        sizes_corrupt = parallel_get_image_sizes(self.corrupt_images,max_workers=2)
+        for fn in self.corrupt_images:
+            assert sizes_corrupt[fn] is None, \
+                'Expected None size for corrupt image {}, got {}'.format(
+                    fn,sizes_corrupt[fn])
+
+
+    def test_resize_images(self):
+        """
+        Test resize_images: write resized copies and confirm output sizes.
+        """
+
+        target_w = 320
+        out_dir = os.path.join(self.test_dir,'resize_images_out')
+        os.makedirs(out_dir,exist_ok=True)
+
+        input_file_to_output_file = {}
+        for fn in self.good_images:
+            input_file_to_output_file[fn] = os.path.join(out_dir,os.path.basename(fn))
+
+        results = resize_images(input_file_to_output_file,
+                                target_width=target_w,
+                                n_workers=1)
+        assert len(results) == len(input_file_to_output_file)
+        for r in results:
+            assert r['status'] == 'success', \
+                'Expected success, got {}'.format(r)
+            assert os.path.isfile(r['output_fn']), \
+                'Output file {} not created'.format(r['output_fn'])
+
+        # Verify the resized images actually have the target width
+        out_sizes = parallel_get_image_sizes(list(input_file_to_output_file.values()),
+                                             max_workers=2)
+        for out_fn,size in out_sizes.items():
+            assert size is not None and size[0] == target_w, \
+                'Expected width {} for {}, got {}'.format(target_w,out_fn,size)
+
+
+    def test_resize_image_folder(self):
+        """
+        Test resize_image_folder, including the overwrite=False skip path.
+        """
+
+        target_w = 320
+        out_dir = os.path.join(self.test_dir,'resize_folder_out')
+
+        # Restrict the operation to a couple of known-good images so the test is
+        # quick and doesn't trip over the corrupt-images subfolder.
+        rel_images = [os.path.relpath(fn,self.image_folder).replace('\\','/') \
+                      for fn in self.good_images]
+
+        results = resize_image_folder(self.image_folder,
+                                      output_folder=out_dir,
+                                      target_width=target_w,
+                                      image_files_relative=rel_images,
+                                      pool_type='thread',
+                                      n_workers=2)
+        assert len(results) == len(rel_images)
+        for r in results:
+            assert r['status'] == 'success', \
+                'Expected success, got {}'.format(r)
+            assert os.path.isfile(r['output_fn']), \
+                'Output file {} not created'.format(r['output_fn'])
+
+        # Relative paths should be preserved under out_dir
+        for fn_rel in rel_images:
+            assert os.path.isfile(os.path.join(out_dir,fn_rel))
+
+        # Running again with overwrite=False should skip all files
+        results_skipped = resize_image_folder(self.image_folder,
+                                              output_folder=out_dir,
+                                              target_width=target_w,
+                                              image_files_relative=rel_images,
+                                              pool_type='thread',
+                                              n_workers=2,
+                                              overwrite=False)
+        for r in results_skipped:
+            assert r['status'] == 'skipped', \
+                'Expected skipped, got {}'.format(r)
+
+# ...class TestVisualizationUtils()
+
+
+def test_visualization_utils():
+    """
+    Runs all tests in the TestVisualizationUtils class.
+    """
+
+    test_instance = TestVisualizationUtils()
+    test_instance.set_up()
+
+    try:
+
+        test_instance.test_check_image_integrity()
+        test_instance.test_parallel_check_image_integrity()
+        test_instance.test_parallel_get_image_sizes()
+        test_instance.test_resize_images()
+        test_instance.test_resize_image_folder()
+
+    finally:
+
+        test_instance.tear_down()

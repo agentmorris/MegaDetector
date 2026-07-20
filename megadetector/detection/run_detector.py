@@ -551,7 +551,7 @@ def get_typical_confidence_threshold_from_results(results):
     return default_threshold
 
 
-def is_gpu_available(model_file):
+def is_gpu_available(model_file, context_string=None):
     r"""
     Determines whether a GPU is available, importing PyTorch or TF depending on the extension
     of model_file.  Does not actually load model_file, just uses that to determine how to check
@@ -559,6 +559,8 @@ def is_gpu_available(model_file):
 
     Args:
         model_file (str): model filename, e.g. c:/x/z/md_v5a.0.0.pt
+        context_string (str): string to print to the console to clarify the context
+            in which is_gpu_available is being called
 
     Returns:
         bool: whether a GPU is available
@@ -570,12 +572,21 @@ def is_gpu_available(model_file):
         print('TensorFlow version:', tf.__version__)
         print('tf.test.is_gpu_available:', gpu_available)
         return gpu_available
-    if not model_file.endswith('.pt'):
+    if not (model_file.endswith('.pt') or model_file.endswith('.pth')):
         print('Warning: could not determine environment from model file name, assuming PyTorch')
 
     import torch
     gpu_available = torch.cuda.is_available()
-    print('PyTorch reports {} available CUDA devices'.format(torch.cuda.device_count()))
+
+    if context_string is None:
+        context_string = ''
+    else:
+        context_string = ' ({})'.format(context_string)
+
+    print('PyTorch reports {} available CUDA devices{}'.format(
+        torch.cuda.device_count(),
+        context_string))
+
     if not gpu_available:
         try:
             # mps backend only available in torch >= 1.12.0
@@ -615,7 +626,8 @@ def load_detector(model_file,
     model_file = try_download_known_detector(model_file,
                                              force_download=force_model_download)
 
-    print('GPU available: {}'.format(is_gpu_available(model_file)))
+    # Print debugging information about GPU availability
+    is_gpu_available(model_file, context_string='load_detector')
 
     start_time = time.time()
 
@@ -642,6 +654,20 @@ def load_detector(model_file,
             detector_options['force_cpu'] = force_cpu
         detector_options['use_model_native_classes'] = USE_MODEL_NATIVE_CLASSES
         detector = PTDetector(model_file, detector_options, verbose=verbose)
+
+    elif model_file.endswith('.pth'):
+
+        # RF-DETR models use a .pth extension.  This isn't unique to RF-DETR, but it's unique among
+        # supported models, so for now we identify these purely by extension.
+        from megadetector.detection.rfdetr_detector import RFDETRDetector
+
+        if detector_options is None:
+            detector_options = {}
+        detector = RFDETRDetector(model_file, detector_options, verbose=verbose)
+
+        # This is a hack
+        global DEFAULT_DETECTOR_LABEL_MAP
+        DEFAULT_DETECTOR_LABEL_MAP = detector.detection_categories
 
     else:
 
@@ -865,6 +891,7 @@ def _validate_zip_file(file_path, file_description='file'):
     Returns:
         bool: True if valid, False otherwise
     """
+
     try:
         with zipfile.ZipFile(file_path, 'r') as zipf:
             corrupt_file = zipf.testzip()
@@ -894,6 +921,7 @@ def _validate_md5_hash(file_path, expected_hash, file_description='file'):
     Returns:
         bool: True if hash matches, False otherwise
     """
+
     try:
         actual_hash = compute_file_hash(file_path, algorithm='md5').lower()
         expected_hash = expected_hash.lower()
@@ -1074,7 +1102,8 @@ def main(): # noqa
 
     parser.add_argument(
         'detector_file',
-        help='Path detector model file (.pb or .pt).  Can also be MDV4, MDV5A, or MDV5B to request automatic download.')
+        help='Path to detector model file (.pt, .pth, or .pb).  Can also be a model string ' + \
+             '(e.g. "MDV5A", "MDv1000-redwood") to request automatic download.')
 
     # Must specify either an image file or a directory
     group = parser.add_mutually_exclusive_group(required=True)

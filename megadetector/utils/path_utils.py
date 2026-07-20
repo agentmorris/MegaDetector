@@ -41,7 +41,7 @@ from megadetector.utils.ct_utils import sort_dictionary_by_value
 from megadetector.utils.ct_utils import environment_is_wsl
 
 # Should all be lower-case
-IMG_EXTENSIONS = ('.jpg', '.jpeg', '.gif', '.png', '.tif', '.tiff', '.bmp')
+IMG_EXTENSIONS = ('.jpg', '.jpeg', '.gif', '.png', '.tif', '.tiff', '.bmp', '.webp', '.avif')
 
 VALID_FILENAME_CHARS = f"~-_.() {string.ascii_letters}{string.digits}"
 SEPARATOR_CHARS = r":\/"
@@ -945,7 +945,8 @@ def open_file(filename,
     Args:
         filename (str): file to open
         attempt_to_open_in_wsl_host (bool, optional): if this is True, and we're in WSL, attempts
-            to open [filename] in the Windows host environment
+            to open [filename] in the Windows host environment.  Only supported for windows files
+            that are being provided as /mnt/... paths.
         browser_name (str, optional): see above
     """
 
@@ -1196,34 +1197,6 @@ def parallel_delete_files(input_files,
 
 #%% File size functions
 
-def get_file_sizes(base_dir, convert_slashes=True):
-    """
-    Gets sizes recursively for all files in base_dir, returning a dict mapping
-    relative filenames to size.
-
-    TODO: merge the functionality here with parallel_get_file_sizes, which uses slightly
-    different semantics.
-
-    Args:
-        base_dir (str): folder within which we want all file sizes
-        convert_slashes (bool, optional): force forward slashes in return strings,
-            otherwise uses the native path separator
-
-    Returns:
-        dict: dictionary mapping filenames to file sizes in bytes
-    """
-
-    relative_filenames = recursive_file_list(base_dir, convert_slashes=convert_slashes,
-                                             return_relative_paths=True)
-
-    fn_to_size = {}
-    for fn_relative in tqdm(relative_filenames):
-        fn_abs = os.path.join(base_dir,fn_relative)
-        fn_to_size[fn_relative] = os.path.getsize(fn_abs)
-
-    return fn_to_size
-
-
 def _get_file_size(filename,verbose=False):
     """
     Internal function for safely getting the size of a file.  Returns a (filename,size)
@@ -1239,36 +1212,37 @@ def _get_file_size(filename,verbose=False):
     return (filename,size)
 
 
-def parallel_get_file_sizes(filenames,
-                            max_workers=16,
-                            use_threads=True,
-                            verbose=False,
-                            recursive=True,
-                            convert_slashes=True,
-                            return_relative_paths=False):
+def get_file_sizes(filenames,
+                   max_workers=1,
+                   use_threads=True,
+                   verbose=False,
+                   recursive=True,
+                   convert_slashes=True,
+                   return_relative_paths=True):
     """
     Returns a dictionary mapping every file in [filenames] to the corresponding file size,
-    or None for errors.  If [filenames] is a folder, will enumerate the folder (optionally recursively).
+    or None for errors.  If [filenames] is a folder, will enumerate the folder (optionally
+    recursively).
 
     Args:
         filenames (list or str): list of filenames for which we should read sizes, or a folder
             within which we should read all file sizes recursively
-        max_workers (int, optional): number of concurrent workers; set to <=1 to disable parallelism
-        use_threads (bool, optional): whether to use threads (True) or processes (False) for
-            parallel copying; ignored if max_workers <= 1
-        verbose (bool, optional): enable additional debug output
+        max_workers (int, optional): number of concurrent workers; set <= 1 to disable parallelism
+        use_threads (bool, optional): whether to use threads (True) or processes (False); ignored
+            if max_workers <= 1
+        verbose (bool, optional): enable debug output
         recursive (bool, optional): enumerate recursively, only relevant if [filenames] is a folder.
         convert_slashes (bool, optional): convert backslashes to forward slashes
         return_relative_paths (bool, optional): return relative paths; only relevant if [filenames]
             is a folder.
 
     Returns:
-        dict: dictionary mapping filenames to file sizes in bytes
+        dict: mapping filename to file size in bytes, or None for files that error
     """
 
     folder_name = None
 
-    if isinstance(filenames,str):
+    if isinstance(filenames, str):
 
         folder_name = filenames
         assert os.path.isdir(filenames), 'Could not find folder {}'.format(folder_name)
@@ -1277,43 +1251,56 @@ def parallel_get_file_sizes(filenames,
             print('Enumerating files in {}'.format(folder_name))
 
         # Enumerate absolute paths here, we'll convert to relative later if requested
-        filenames = recursive_file_list(folder_name,recursive=recursive,return_relative_paths=False)
+        filenames = recursive_file_list(folder_name,
+                                        recursive=recursive,
+                                        return_relative_paths=False)
 
     else:
 
-        assert is_iterable(filenames), '[filenames] argument is neither a folder nor an iterable'
+        assert is_iterable(filenames), \
+            '[filenames] argument is neither a folder nor an iterable'
 
-    n_workers = min(max_workers,len(filenames))
+    if max_workers <= 1:
 
-    if verbose:
-        print('Creating worker pool')
+        get_size_results = \
+            [_get_file_size(fn, verbose=verbose) for fn in tqdm(filenames)]
 
-    pool = None
+    else:
 
-    try:
-
-        if use_threads:
-            pool_string = 'thread'
-            pool = ThreadPool(n_workers)
-        else:
-            pool_string = 'process'
-            pool = Pool(n_workers)
+        n_workers = min(max_workers, len(filenames))
 
         if verbose:
-            print('Created a {} pool of {} workers'.format(
-                pool_string,n_workers))
+            print('Creating worker pool')
 
-        # This returns (filename,size) tuples
-        get_size_results = list(tqdm(pool.imap(
-            partial(_get_file_size,verbose=verbose),filenames), total=len(filenames)))
+        pool = None
 
-    finally:
+        try:
+            if use_threads:
+                pool_string = 'thread'
+                pool = ThreadPool(n_workers)
+            else:
+                pool_string = 'process'
+                pool = Pool(n_workers)
 
-        if pool is not None:
-            pool.close()
-            pool.join()
             if verbose:
-                print('Pool closed and join for file size collection')
+                print('Created a {} pool of {} workers'.format(
+                    pool_string,n_workers))
+
+            # This returns (filename,size) tuples
+            get_size_results = list(tqdm(pool.imap(
+                partial(_get_file_size,verbose=verbose),filenames), total=len(filenames)))
+
+        finally:
+
+            if pool is not None:
+
+                pool.close()
+                pool.join()
+
+                if verbose:
+                    print('Pool closed and joined for file size collection')
+
+    # ...if we are running serially/in parallel
 
     to_return = {}
     for r in get_size_results:
@@ -1327,7 +1314,7 @@ def parallel_get_file_sizes(filenames,
 
     return to_return
 
-# ...def parallel_get_file_sizes(...)
+# ...def get_file_sizes(...)
 
 
 #%% Compression (zip/tar) functions
@@ -2540,7 +2527,7 @@ class TestPathUtils:
 
     def test_get_file_sizes(self):
         """
-        Test get_file_sizes and parallel_get_file_sizes functions.
+        Test get_file_sizes function.
         """
 
         file_sizes_test_dir = os.path.join(self.test_dir,'file_sizes')
@@ -2566,26 +2553,26 @@ class TestPathUtils:
         assert sizes_relative == expected_sizes_relative
 
         file_list_abs = [f1_path, f2_path]
-        sizes_parallel_abs = parallel_get_file_sizes(file_list_abs, max_workers=1)
+        sizes_parallel_abs = get_file_sizes(file_list_abs, max_workers=4)
         expected_sizes_parallel_abs = {
             f1_path.replace('\\','/'): len(content1),
             f2_path.replace('\\','/'): len(content2)
         }
         assert sizes_parallel_abs == expected_sizes_parallel_abs
 
-        sizes_parallel_folder_abs = parallel_get_file_sizes(file_sizes_test_dir,
-                                                            max_workers=1,
-                                                            return_relative_paths=False)
+        sizes_parallel_folder_abs = get_file_sizes(file_sizes_test_dir,
+                                                   max_workers=4,
+                                                   return_relative_paths=False)
         assert sizes_parallel_folder_abs == expected_sizes_parallel_abs
 
-        sizes_parallel_folder_rel = parallel_get_file_sizes(file_sizes_test_dir,
-                                                            max_workers=1,
-                                                            return_relative_paths=True)
+        sizes_parallel_folder_rel = get_file_sizes(file_sizes_test_dir,
+                                                   max_workers=4,
+                                                   return_relative_paths=True)
         assert sizes_parallel_folder_rel == expected_sizes_relative
 
         non_existent_file = os.path.join(file_sizes_test_dir, "no_such_file.txt")
-        sizes_with_error = parallel_get_file_sizes([f1_path, non_existent_file],
-                                                   max_workers=1)
+        sizes_with_error = get_file_sizes([f1_path, non_existent_file],
+                                          max_workers=1)
         expected_with_error = {
             f1_path.replace('\\','/'): len(content1),
             non_existent_file.replace('\\','/'): None

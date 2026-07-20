@@ -161,5 +161,3 @@ if False:
     df.to_csv(release_taxonomy_file,header=True,index=False)
 
     print('Wrote final output to {}'.format(release_taxonomy_file))
-
-
