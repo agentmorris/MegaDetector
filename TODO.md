@@ -634,7 +634,7 @@ E0
 
 ## Revive synchronous (real-time) API
 
-The Flask-based API for serving MD was retired to the archive folder a few months ago for lack of maintenance, but it turns out that some folks were using it.  The short version of this work item is to bring it out of the archive folder and make sure it doesn't mess up linting and testing.  The stretch goal is to take a look at it and update it for how one would do this in 2025, and to make a nice demo out of it.  I'm assigning an effort level just for the short-term goal.
+The Flask-based API for serving MD was retired to the archive folder in ~2024 for lack of maintenance, but it turns out that some folks were using it.  The short version of this work item is to bring it out of the archive folder and make sure it doesn't mess up linting and testing.  The stretch goal is to take a look at it and update it for how one would do this in 2025, and to make a nice demo out of it.  I'm assigning an effort level just for the short-term goal.
 
 Whenever we tackle this, also bump gunicorn to >= 23 to address dependabot issues.
 
@@ -647,9 +647,9 @@ E0
 
 ## Remove complex MKL requirements
 
-The dependencies currently specify an old version of MKL (2024.0) for all non-Darwin platforms, because of an incompatibility between some versions of MKL and some versions of PyTorch, described in [this PyTorch issue](https://github.com/pytorch/pytorch/issues/123097).  We can remove this quirky dependency if we require PyTorch >= 2.5, which at some point becomes a good idea anyway, supporting ancient versions of PyTorch complicates testing.  The action item here is mostly to think through the implications of requiring PyTorch >= 2.5.
+The dependencies currently specify an old version of MKL (2024.0) for all non-Darwin platforms, because of an incompatibility between some versions of MKL and some versions of PyTorch, described in [this PyTorch issue](https://github.com/pytorch/pytorch/issues/123097).  We can remove this quirky dependency if we require PyTorch >= 2.5, which is now a good idea (this is a 2024 PyTorch version, and I'm writing this in 2026).  The only tricky bit is that we don't require torch directly in pyproject.toml, we let ultralytics-yolov5 install torch.  So, confirm that it's OK for us to require torch >= 2.5 directly in pyproject.toml, i.e. that this won't mess with the ultralytics-yolov5 installation, then - assuming it is - remove the quirky MKL requirement from pyproject.toml.
 
-P3
+P0
 
 E1
 
@@ -709,6 +709,18 @@ P1
 E2
 
 !testing
+!maintenance
+
+
+## Consider switching instructions from miniforge to uv
+
+uv is a quicker install than miniforge, consider replacing miniforge with uv in our default install instructions for non-Python people.
+
+P2
+
+E3
+
+!admin
 !maintenance
 
 
@@ -1002,7 +1014,7 @@ Python 3.14 is enabled on a [branch](https://github.com/agentmorris/MegaDetector
 
 The specific error on the GH runner is an access violation with no meaningful stack trace; this appears to be a numpy compatibility issue, and the Internet doesn't seem surprised that this happens in some environments but not in others, even with identical numpy versions.  Consensus is that I should just wait this out; pre-built wheels for 3.14 will improve with time.  Dropped from P0 to P1 on 2026.01.06.  Also dropped from E1 to E0, because the expectation is that when this works, it will just magically work, I won't have to change any code.  All other 3.14 compatibility issues (all minor) are already handled on this branch.
 
-Still fails as of 2026.04.01.
+Still fails as of 2026.07.19.
 
 P1
 
