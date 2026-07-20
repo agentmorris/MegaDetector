@@ -22,13 +22,21 @@ from megadetector.detection.run_detector import CONF_DIGITS, COORD_DIGITS, FAILU
 from megadetector.utils.ct_utils import round_float, round_float_array
 from megadetector.utils.ct_utils import parse_bool_string
 
+# Maps the dtype strings we accept in detector options to the corresponding torch dtypes
+dtype_string_to_torch_dtype = {
+    'float16': torch.float16,
+    'float32': torch.float32
+}
+
 
 #%% Model loading
 
 def load_model(detector_file,
                image_size=None,
                optimize_for_inference=False,
-               batch_size=1):
+               batch_size=1,
+               compile=None,
+               dtype=None):
     """
     Load an RF-DETR model from an inference-ready .pth checkpoint via
     rfdetr.from_checkpoint(), which reads the architecture name ("Nano",
@@ -42,7 +50,17 @@ def load_model(detector_file,
         optimize_for_inference (bool, optional): whether to optimize the model for
             inference, which should be a free lunch, but as of 9/2025 there is some
             risk of accuracy regression.
-        batch_size (int, optional): batch size to pass to optimize_for_inference()
+        batch_size (int, optional): batch size to pass to optimize_for_inference().  This
+            only matters when [optimize_for_inference] is True *and* compilation is enabled;
+            a compiled model can only be run at the batch size it was compiled for.  Ignored
+            if [optimize_for_inference] is False.
+        compile (bool, optional): whether optimize_for_inference() should compile the model
+            (via torch.jit.trace).  None means "use the rfdetr default", which is currently
+            True.  Compilation ties the model to a single batch size.  Ignored if
+            [optimize_for_inference] is False.
+        dtype (str, optional): floating-point dtype used for inference, either "float16" or
+            "float32".  None means "use the rfdetr default", which is currently float32.  Ignored
+            if [optimize_for_inference] is False.
 
     Returns:
         dict: dictionary with keys:
@@ -51,6 +69,11 @@ def load_model(detector_file,
             - 'image_size' (int): resolved inference resolution
             - 'detection_categories' (dict): mapping from string category IDs to class names
     """
+
+    if dtype is not None:
+        assert dtype in dtype_string_to_torch_dtype, \
+            'Illegal dtype {}, dtype should be one of: {}'.format(
+                dtype,', '.join(dtype_string_to_torch_dtype.keys()))
 
     # The rfdetr package is not installed by default with the MegaDetector package,
     # so we import it here (rather than at module scope) and print a friendly warning
@@ -92,8 +115,18 @@ def load_model(detector_file,
 
     if optimize_for_inference:
 
-        print('Optimizing loaded model for inference')
-        model.optimize_for_inference(batch_size=batch_size)
+        optimize_kwargs = {'batch_size':batch_size}
+
+        # Leaving [compile] or [dtype] set to None means "use the rfdetr defaults", which
+        # are currently True and float32, respectively.
+        if compile is not None:
+            optimize_kwargs['compile'] = compile
+        if dtype is not None:
+            optimize_kwargs['dtype'] = dtype_string_to_torch_dtype[dtype]
+
+        print('Optimizing loaded model for inference (batch size {}, compile {}, dtype {})'.format(
+            batch_size,str(compile),dtype))
+        model.optimize_for_inference(**optimize_kwargs)
 
         # optimize_for_inference is off by default because it reportedly created
         # inference errors in some environments.  This comment suggests that specifying
@@ -102,6 +135,11 @@ def load_model(detector_file,
         #
         # https://github.com/roboflow/rf-detr/issues/326#issuecomment-3321838797
         # model.optimize_for_inference(batch_size=batch_size,dtype=torch.bfloat16)
+
+    elif (compile is not None) or (dtype is not None):
+
+        print('Warning: the "compile" and/or "dtype" options were supplied, but ' + \
+              'optimize_for_inference is False, so they will have no effect.')
 
     # Get class names from model
     #
@@ -203,8 +241,8 @@ class RFDETRDetector:
 
         Args:
             model_path (str): path to the .pth model file to load
-            detector_options (dict, optional): dictionary of detector options that mean
-                different things to different models
+            detector_options (dict, optional): dictionary of RFDETr-specific detector options,
+                see load_model for documentation of available options.
             verbose (bool, optional): enable additional debug output
         """
 
@@ -214,6 +252,9 @@ class RFDETRDetector:
         # Parse options specific to this detector family
         image_size = None
         optimize_for_inference = False
+        batch_size = 1
+        compile = None
+        dtype = None
 
         if detector_options is not None:
             if ('image_size' in detector_options) and \
@@ -222,6 +263,26 @@ class RFDETRDetector:
             if ('optimize_for_inference' in detector_options) and \
                 (detector_options['optimize_for_inference'] is not None):
                 optimize_for_inference = parse_bool_string(detector_options['optimize_for_inference'])
+            if ('batch_size' in detector_options) and \
+                (detector_options['batch_size'] is not None):
+                batch_size = int(detector_options['batch_size'])
+            if ('compile' in detector_options) and \
+                (detector_options['compile'] is not None):
+                compile = parse_bool_string(detector_options['compile'])
+            if ('dtype' in detector_options) and \
+                (detector_options['dtype'] is not None):
+                dtype = detector_options['dtype']
+                assert dtype in dtype_string_to_torch_dtype, \
+                    'Illegal dtype {}, dtype should be one of: {}'.format(
+                        dtype,', '.join(dtype_string_to_torch_dtype.keys()))
+
+        # If the caller asked for inference optimization, but didn't say anything about
+        # compilation, don't compile.  Compiling (torch.jit.trace) restricts the model to a
+        # single batch size, and in practice buys very little compared to running at a
+        # smaller dtype, so we don't opt into it implicitly.  Note that this differs from
+        # the rfdetr default, which is to compile.
+        if optimize_for_inference and (compile is None):
+            compile = False
 
         #: Image resolution passed to from_checkpoint(); None means "use the resolution
         #: recorded in the checkpoint".  After the model is loaded, this is updated to the
@@ -236,6 +297,11 @@ class RFDETRDetector:
 
         #: Mapping from string category IDs to class names; None until the model is loaded
         self.detection_categories = None
+
+        #: The exact batch size this model requires at inference time, or None if any batch
+        #: size is allowed.  This is only set when the model has been compiled, since
+        #: compilation (torch.jit.trace) ties the model to a single batch size.
+        self.required_batch_size = None
 
         preprocess_only = False
         if (detector_options is not None) and \
@@ -252,11 +318,20 @@ class RFDETRDetector:
         # Load the model
         model_info = load_model(model_path,
                                 image_size=self.image_size,
-                                optimize_for_inference=optimize_for_inference)
+                                optimize_for_inference=optimize_for_inference,
+                                batch_size=batch_size,
+                                compile=compile,
+                                dtype=dtype)
         self.model = model_info['model']
         self.model_type = model_info['model_type']
         self.image_size = model_info['image_size']
         self.detection_categories = model_info['detection_categories']
+
+        # A compiled model can only be run at the batch size it was compiled for, so record
+        # that batch size; generate_detections_one_batch() pads short batches accordingly.
+        # [compile] can no longer be None at this point; we resolved None to False above.
+        if optimize_for_inference and compile:
+            self.required_batch_size = batch_size
 
     # ...def __init__(...)
 
@@ -412,6 +487,33 @@ class RFDETRDetector:
 
         # ...for each image in this batch
 
+        # A compiled model can only be run at the batch size it was compiled for, so we pad
+        # short batches with dummy images, and discard the dummy results after inference.
+        # This happens after we've assembled [image_ids] and [image_shapes], so those lists
+        # still refer only to the real images.
+        n_images = len(images_for_inference)
+        n_padding_images = 0
+
+        if self.required_batch_size is not None:
+
+            assert n_images <= self.required_batch_size, \
+                'This model was compiled for a batch size of {}, but a batch of {} '.format(
+                    self.required_batch_size,n_images) + \
+                'images was supplied; batches larger than the compiled batch size are ' + \
+                'not supported'
+
+            n_padding_images = self.required_batch_size - n_images
+
+            if (n_padding_images > 0) and verbose:
+                print('Padding a batch of {} images out to the compiled batch size of {}'.format(
+                    n_images,self.required_batch_size))
+
+            for _ in range(n_padding_images):
+                images_for_inference.append(
+                    np.zeros((self.image_size,self.image_size,3),dtype=np.uint8))
+
+        # ...if this model requires a specific batch size
+
         # Run inference.  model.predict() returns a single Detections object for a single
         # image, or a list of Detections objects for a list of images.
         try:
@@ -431,6 +533,10 @@ class RFDETRDetector:
         assert len(detections_list) == len(images_for_inference), \
             'Mismatch between prediction length {} and batch size {}'.format(
                 len(detections_list),len(images_for_inference))
+
+        # Discard the results for any dummy images we added as padding
+        if n_padding_images > 0:
+            detections_list = detections_list[:n_images]
 
         # Format the outputs to follow MD package conventions
         results = []
