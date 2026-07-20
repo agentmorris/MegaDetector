@@ -88,7 +88,7 @@ def load_model(detector_file,
 
     model_type = type(model).__name__
     image_size = model.model_config.resolution
-    print('Loaded {} at resolution {}'.format(model_type, image_size))
+    print('Loaded {} at resolution {}, batch size {}'.format(model_type, image_size, batch_size))
 
     if optimize_for_inference:
 
