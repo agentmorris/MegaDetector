@@ -1213,6 +1213,20 @@ def load_and_run_detector_batch(model_file,
               'with the image queue is not currently supported, defaulting to one worker')
         n_cores = 1
 
+    # Batching only helps on a GPU, so we reduce the batch size to 1 if batch inference is
+    # requested on a CPU.  This needs to happen before we create any detector objects,
+    # detectors may compile themselves for a specific batch size at load time.
+    if (batch_size > 1) and (not gpu_available):
+
+        print('Batch size of {} requested, but no GPU is available, using batch size 1'.format(
+            batch_size))
+        batch_size = 1
+
+    # Some detectors (currently just RF-DETR) need to know the batch size at the time the
+    # model is loaded; this is ignored by other detectors.
+    if batch_size != 1:
+        detector_options['batch_size'] = batch_size
+
     if use_image_queue:
 
         assert n_cores <= 1
@@ -1256,11 +1270,6 @@ def load_and_run_detector_batch(model_file,
                                  verbose=verbose)
         elapsed = time.time() - start_time
         print('Loaded model in {}'.format(humanfriendly.format_timespan(elapsed)))
-
-        if (batch_size > 1) and (not gpu_available):
-            print('Batch size of {} requested, but no GPU is available, using batch size 1'.format(
-                batch_size))
-            batch_size = 1
 
         # Filter out already processed images
         images_to_process = [im_file for im_file in image_file_names
