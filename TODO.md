@@ -405,6 +405,18 @@ E0
 !testing
 
 
+## Evaluate accuracy tradeoffs with RFDETR optimizations enabled
+
+For RF-DETR models, we can independently enable fp16 inference and compilation.  These come with some accuracy loss, but I think it's minimal.  Formally evaluate this and come up with recommendations about when to enable these optimizations.
+
+P1
+
+E2
+
+!docs
+!testing
+
+
 ## Formal evaluation of image size, augmentation, preprocessing mode
 
 There are several knobs the user can turn when trying to squeeze the most accuracy out of a specific MD model: specifically, the user can tinker with the inference image size, enabling image augmentation, and switching between "classic" and "modern" preprocessing.  I have not yet formally evaluated the performance impacts of these approaches, so this could use formal evaluation and documentation of best practices.
