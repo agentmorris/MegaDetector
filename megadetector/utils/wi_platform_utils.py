@@ -442,11 +442,12 @@ def write_download_commands(image_records,
                             force_download=False,
                             n_download_workers=25,
                             download_command_file_base=None,
-                            image_flattening='deployment'):
+                            image_flattening='deployment',
+                            script_extension=None):
     """
     Given a list of dicts with at least the field 'location' (a gs:// URL), prepare a set of "gcloud
-    storage" commands to download images, and write those to a series of .sh scripts, along with one
-    .sh script that runs all the others and blocks.
+    storage" commands to download images, and write those to a series of .sh/.bat scripts, along with
+    one .sh/.bat script that runs all the others and blocks.
 
     gcloud commands will use relative paths.
 
@@ -463,6 +464,8 @@ def write_download_commands(image_records,
         image_flattening (str, optional): if 'none', relative paths will be preserved
             representing the entire URL for each image.  Can be 'guid' (just download to
             [GUID].JPG) or 'deployment' (download to [deployment]/[GUID].JPG).
+        script_extension (str, optional): 'bat' or 'sh', or None to auto-select based on
+            OS
     """
 
     ##%% Input validation
@@ -480,6 +483,17 @@ def write_download_commands(image_records,
     assert isinstance(image_records[0],dict), \
         'Illegal image record format {}'.format(type(image_records[0]))
 
+    if script_extension is None:
+        if os.name == 'nt':
+            script_extension = '.bat'
+        else:
+            script_extension = '.sh'
+    else:
+        script_extension = script_extension.lower()
+        if not script_extension.startswith('.'):
+            script_extension = '.' + script_extension
+        assert script_extension in ('.bat','.sh'), \
+            'Unrecognized script extension {}'.format(script_extension)
 
     ##%% Map URLs to relative paths
 
@@ -516,7 +530,8 @@ def write_download_commands(image_records,
     ##%% Make list of gcloud storage commands
 
     if download_command_file_base is None:
-        download_command_file_base = path_join(download_dir_base,'download_wi_images.sh')
+        download_command_file_base = path_join(download_dir_base,
+                                               'download_wi_images' + script_extension)
 
     commands = []
     skipped_urls = []
@@ -549,7 +564,7 @@ def write_download_commands(image_records,
     print('Skipped {} URLs'.format(len(skipped_urls)))
 
 
-    ##%% Write those commands out to n .sh files
+    ##%% Write those commands out to n scripts
 
     commands_by_script = split_list_into_n_chunks(commands,n_download_workers)
 
@@ -572,10 +587,34 @@ def write_download_commands(image_records,
 
     # Write out the main download script
     with open(download_command_file_base,'w',newline='\n') as f:
-        for local_download_command in local_download_commands:
-            f.write('./' + local_download_command + ' &\n')
-        f.write('wait\n')
-        f.write('echo done\n')
+
+        if script_extension == '.sh':
+
+            for local_download_command in local_download_commands:
+                f.write('./' + local_download_command + ' &\n')
+            f.write('wait\n')
+            f.write('echo Finished downloads\n')
+
+        else:
+
+            assert script_extension == '.bat'
+
+            # There is not an easy way to invoke the scripts in parallel in pure .bat, so we
+            # punt to PowerShell for the execution.
+
+            # for local_download_command in local_download_commands:
+            #    f.write('call ' + local_download_command + '\n')
+
+            cmd = 'powershell -NoProfile -Command "@('
+            quoted_local_download_commands = ["'" + s + "'" for s in local_download_commands]
+            cmd += ','.join(quoted_local_download_commands)
+            cmd += ') | ForEach-Object { Start-Process $_ -PassThru -NoNewWindow } | Wait-Process"'
+
+            f.write(cmd + '\n')
+            f.write('echo Finished downloads\n')
+
+    # ...with open(...)
+
     make_executable(download_command_file_base,catch_exceptions=True)
 
 # ...def write_download_commands(...)

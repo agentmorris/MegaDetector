@@ -5,6 +5,19 @@
 After initiating .csv downloads from one or more Wildlife Insights projects, download the corresponding
 images and convert labels to COCO.
 
+This notebook expects a single base folder, with a subfolder called "csv_downloads"; unzip
+WI .csv zipfiles there.  A parallel folder called "images" will be created for image downloads.
+
+E.g.:
+
+c:\temp\wi-test
+  csv-downloads
+    wildlife-insights_f108491f-4724-442c-8073-0b3ac74ac5d7_project-2013431_data
+      projects.csv
+      deployments.csv
+      images_2013431.csv
+  images
+
 """
 
 
@@ -65,9 +78,6 @@ p = {}
 p['name'] = 'Project Two'
 p['id'] = 2001112
 projects.append(p)
-
-for p in projects:
-    print(p['id'])
 
 
 #%% Find download folders
@@ -194,7 +204,7 @@ for i_project,p in enumerate(projects):
     else:
         write_prefix_download_command(image_records=image_records_to_download,
                                       download_dir_base=project_image_folder,
-                                      download_command_file=download_command_file                                      )
+                                      download_command_file=download_command_file)
 
 # ...for each project
 
