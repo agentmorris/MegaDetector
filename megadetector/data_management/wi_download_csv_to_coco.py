@@ -646,7 +646,7 @@ def wi_download_csv_to_coco(csv_file_in,
 
     ##%% Validate output
 
-    from megadetector.data_management.databases.integrity_check_json_db import \
+    from megadetector.data_management.integrity_check_json_db import \
         IntegrityCheckOptions,integrity_check_json_db
 
     print('Validating COCO file {}'.format(coco_file_out))

@@ -23,8 +23,8 @@ from tqdm import tqdm
 from functools import partial
 
 from megadetector.utils.path_utils import find_images
-from megadetector.data_management.annotations import annotation_constants
-from megadetector.data_management.annotations.annotation_constants import \
+from megadetector.data_management import annotation_constants
+from megadetector.data_management.annotation_constants import \
     detector_bbox_category_id_to_name
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 from megadetector.utils.ct_utils import round_float
