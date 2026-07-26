@@ -105,9 +105,11 @@ if False:
 #%% Download and extract metadata for each dataset
 
 for ds_name in metadata_table.keys():
-    metadata_table[ds_name]['metadata_filename'] = read_metadata_file_for_dataset(ds_name=ds_name,
-                                                                         metadata_dir=metadata_dir,
-                                                                         metadata_table=metadata_table)
+    metadata_table[ds_name]['metadata_filename'] = \
+        read_metadata_file_for_dataset(ds_name=ds_name,
+                                       metadata_dir=metadata_dir,
+                                       metadata_table=metadata_table)
+
 
 #%% Load taxonomy data
 

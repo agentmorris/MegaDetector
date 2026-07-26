@@ -1044,3 +1044,15 @@ P2
 E1
 
 !lila
+
+
+## Standardize module naming in the data_management subpackage
+
+We use "coco_db", "json"db", "coco_database", etc. interchangeably in module names; standardize these, probably to "coco_db".
+
+P3
+
+E0
+
+!maintenance
+
