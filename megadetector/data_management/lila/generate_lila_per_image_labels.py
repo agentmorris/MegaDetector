@@ -132,6 +132,9 @@ for i_row,row in taxonomy_df.iterrows():
 #%% Process annotations for each dataset
 
 # Takes a few hours
+#
+# TODO: parallelize this loop, write .csv files without headers (to simplify merging),
+# merge .csv files at the end.
 
 # The order of these headers needs to match the order in which fields are added later in this cell;
 # don't mess with this order.
@@ -430,6 +433,13 @@ else:
         _check_row(row)
 
 
+#%% Zip output file
+
+zipped_output_file = zip_file(output_file,verbose=True,overwrite=True)
+
+print('Zipped {} to {}'.format(output_file,zipped_output_file))
+
+
 #%% Check for datasets that have only one location string (typically "unknown")
 
 # Expected: ENA24, Missouri Camera Traps, Desert Lion Conservation Camera Traps
@@ -554,13 +564,6 @@ for im in images_to_download:
 write_html_image_list.write_html_image_list(html_filename,html_images)
 
 open_file(html_filename)
-
-
-#%% Zip output file
-
-zipped_output_file = zip_file(output_file,verbose=True,overwrite=True)
-
-print('Zipped {} to {}'.format(output_file,zipped_output_file))
 
 
 #%% Experimental: convert to .json
