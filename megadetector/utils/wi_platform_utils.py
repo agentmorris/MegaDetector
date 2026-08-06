@@ -536,8 +536,10 @@ def write_download_commands(image_records,
     if script_extension is None:
         if os.name == 'nt':
             script_extension = '.bat'
+            command_prefix = 'call '
         else:
             script_extension = '.sh'
+            command_prefix = ''
     else:
         script_extension = script_extension.lower()
         if not script_extension.startswith('.'):
@@ -605,7 +607,8 @@ def write_download_commands(image_records,
             continue
 
         # command = 'gsutil cp "{}" "./{}"'.format(url,relative_path)
-        command = 'gcloud storage cp --no-clobber "{}" "./{}"'.format(url,relative_path)
+        command = command_prefix
+        command += 'gcloud storage cp --no-clobber "{}" "./{}"'.format(url,relative_path)
         commands.append(command)
 
     print('Generated {} commands for {} image records'.format(
