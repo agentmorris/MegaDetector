@@ -164,7 +164,8 @@ for i_project,p in enumerate(projects):
 
         if is_empty(r['identified_by']) or (r['identified_by'].lower() == 'computer vision'):
             unidentified_images.append(r)
-            if not download_unidentified_images:
+            if download_unidentified_images:
+                image_records_to_download.append(r)
                 continue
 
         if not download_identified_images:
