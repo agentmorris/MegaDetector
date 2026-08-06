@@ -228,8 +228,13 @@ else:
 
 from megadetector.utils.wi_platform_utils import url_to_relative_path
 from megadetector.utils.path_utils import recursive_file_list
+from megadetector.utils.path_utils import is_image_file
 
 n_placeholders = 0
+
+# Don't count files as "extra downloaded files" if they were generated locally as
+# part of the download process
+ignore_tokens = ['download_wi_images','image_records']
 
 # i_project = 0; p = projects[i_project]
 for i_project,p in enumerate(projects):
@@ -238,11 +243,11 @@ for i_project,p in enumerate(projects):
     project_image_folder_abs = os.path.join(image_base_folder,str(project_id))
 
     print('Enumerating files in {}'.format(project_image_folder_abs))
-    downloaded_images_relative = recursive_file_list(project_image_folder_abs,
+    downloaded_files_relative = recursive_file_list(project_image_folder_abs,
                                                      return_relative_paths=True)
-
-    downloaded_images_relative = set(downloaded_images_relative)
+    downloaded_files_relative = set(downloaded_files_relative)
     missing_files = []
+    matching_files = []
 
     relative_paths_requested = set()
 
@@ -253,19 +258,33 @@ for i_project,p in enumerate(projects):
             continue
         relative_path = url_to_relative_path(url)
         relative_paths_requested.add(relative_path)
-        if relative_path not in downloaded_images_relative:
+        if relative_path in downloaded_files_relative:
+            matching_files.append(relative_path)
+        else:
             missing_files.append(relative_path)
 
     extra_files = []
 
-    for relative_path in downloaded_images_relative:
+    for relative_path in downloaded_files_relative:
+
+        # Don't count files as "extra downloaded files" if they were generated locally as
+        # part of the download process
+        ignore_file = False
+        for s in ignore_tokens:
+            if s in relative_path:
+                ignore_file = True
+                break
+        if ignore_file:
+            continue
+
         if relative_path not in relative_paths_requested:
             extra_files.append(relative_path)
 
-    print('Found {} images for project {} ({}): {} missing, {} placeholder, {} extra'.format(
-            len(downloaded_images_relative),
+    print('Found {} files for project {} ({}):\n{} matching downloads, {} missing, {} placeholder, {} extra files'.format(
+            len(downloaded_files_relative),
             i_project,
             project_id,
+            len(matching_files),
             len(missing_files),
             n_placeholders,
             len(extra_files)))
