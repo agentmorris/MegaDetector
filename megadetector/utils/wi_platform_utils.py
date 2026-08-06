@@ -678,7 +678,8 @@ def get_auth_token(client_secret_info, verbose=False):
 
     Args:
         client_secret_info (str or dict): a dict with keys "clientId" and "clientSecret",
-        or the filename of a .json file containing that dict.
+            or the filename of a .json file containing that dict.
+        verbose (bool, optional): enable additional debug output
 
     Returns:
         str: auth token, likely with a 60-minute expiration
@@ -691,14 +692,14 @@ def get_auth_token(client_secret_info, verbose=False):
             d = json.load(f)
             assert 'clientId' in d and 'clientSecret' in d, \
                 'File {} does not appear to be a client secret file'.format(client_secret_info)
-            clientId = d['clientId']
-            clientSecret = d['clientSecret']
+            client_id = d['clientId']
+            client_secret = d['clientSecret']
     else:
-        clientId = client_secret_info['clientId']
-        clientSecret = client_secret_info['clientSecret']
+        client_id = client_secret_info['clientId']
+        client_secret = client_secret_info['clientSecret']
 
     headers = { 'Content-Type': 'application/json' }
-    payload = { 'clientId':clientId,'clientSecret':clientSecret }
+    payload = { 'clientId':client_id,'clientSecret':client_secret }
 
     response = requests.post(get_auth_token_url, headers=headers, json=payload)
 
