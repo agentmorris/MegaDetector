@@ -45,11 +45,14 @@ from megadetector.utils.ct_utils import is_empty
 # Should we download individual images, or whole buckets?
 download_individual_images = False
 
+# All of these are incompatible with "download_individual_images"
 download_blank_images = True
 download_unidentified_images = True
+download_identified_images = False
 
 # This determines the parallelism of the download process.  Only meaningful if
-# download_individual_images is False.
+# download_individual_images is True.  If download_individual_images is False, we rely on
+# gcloud storage cp for parallelism.
 n_download_workers = 25
 
 force_generate_download_commands = True
@@ -100,10 +103,13 @@ for i_project,p in enumerate(projects):
     project_download_folder = project_id_to_download_folder[p['id']]
     p['project_download_folder'] = project_download_folder
 
+print('Found {} projects'.format(len(projects)))
+
 
 #%% Prepare download scripts
 
 unidentified_images = []
+skipped_identified_images = []
 blank_mismatches = []
 blank_images = []
 
@@ -114,6 +120,12 @@ if not download_blank_images:
 if not download_unidentified_images:
     assert download_individual_images, \
         "Can't skip unidentified images if we're downloading whole buckets"
+
+if not download_identified_images:
+    assert download_individual_images, \
+        "Can't skip identified images if we're downloading whole buckets"
+
+all_image_ids = set()
 
 # i_project = 1; p = projects[i_project]
 for i_project,p in enumerate(projects):
@@ -148,10 +160,16 @@ for i_project,p in enumerate(projects):
     # r = image_records[0]
     for r in tqdm(image_records):
 
-        if is_empty(r['identified_by']):
+        all_image_ids.add(r['image_id'])
+
+        if is_empty(r['identified_by']) or (r['identified_by'].lower() == 'computer vision'):
             unidentified_images.append(r)
             if not download_unidentified_images:
                 continue
+
+        if not download_identified_images:
+            skipped_identified_images.append(r)
+            continue
 
         is_blank = r['is_blank']
         assert is_blank in (0,1)
@@ -177,12 +195,21 @@ for i_project,p in enumerate(projects):
 
     # ...for each record
 
-    print('Found {} blank images (of {})'.format(
-        len(blank_images),len(image_records)))
-    print('Found {} unidentified images (of {})'.format(
+    print('Found {} unique image IDs'.format(len(all_image_ids)))
+
+    print('Found {} unidentified image records (of {})'.format(
         len(unidentified_images),len(image_records)))
 
-    print('Downloading {} of {} images'.format(
+    if download_identified_images:
+        assert len(skipped_identified_images) == 0
+    else:
+        print('Skipped {} identified image records (of {})'.format(
+            len(skipped_identified_images),len(image_records)))
+
+    print('Found {} blank image records (of {})'.format(
+        len(blank_images),len(image_records)))
+
+    print('Downloading {} of {} image records'.format(
         len(image_records_to_download),len(image_records)))
 
     os.makedirs(project_image_folder,exist_ok=True)
