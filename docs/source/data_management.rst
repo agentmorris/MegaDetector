@@ -18,7 +18,6 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   data_management.databases
    data_management.lila
 
 Submodules
@@ -359,3 +358,51 @@ data\_management.wi\_download\_csv\_to\_coco module
    :undoc-members:
    :show-inheritance:
 
+data\_management.combine\_coco\_camera\_traps\_files module
+---------------------------------------------------------------------
+
+.. automodule:: megadetector.data_management.combine_coco_camera_traps_files
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.data_management.combine_coco_camera_traps_files
+   :func: main
+   :hook:
+   :prog: combine_coco_camera_traps_files
+   :no_default_values:
+
+data\_management.integrity\_check\_json\_db module
+------------------------------------------------------------
+
+.. automodule:: megadetector.data_management.integrity_check_json_db
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.data_management.integrity_check_json_db
+   :func: main
+   :hook:
+   :prog: integrity_check_json_db
+   :no_default_values:
+
+data\_management.subset\_json\_db module
+--------------------------------------------------
+
+.. automodule:: megadetector.data_management.subset_json_db
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   :exclude-members: main
+
+.. sphinx_argparse_cli::
+   :module: megadetector.data_management.subset_json_db
+   :func: main
+   :hook:
+   :prog: subset_json_db
+   :no_default_values:

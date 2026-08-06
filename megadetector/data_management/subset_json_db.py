@@ -3,7 +3,8 @@
 subset_json_db.py
 
 Select a subset of images (and associated annotations) from a .json file in COCO
-Camera Traps format based on a string query.
+Camera Traps format based on a string query, or sample a COCO .json file based on
+categories.
 
 To subset .json files in the MegaDetector output format, see
 subset_json_detector_output.py.
@@ -15,15 +16,147 @@ subset_json_detector_output.py.
 import sys
 import json
 import argparse
+import random
 
 from tqdm import tqdm
 from copy import copy
+
+from collections import defaultdict
 
 from megadetector.utils import ct_utils
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 
 
 #%% Functions
+
+class DbSamplingOptions:
+    """
+    Parameters controlling metadata extraction.
+    """
+
+    def __init__(self):
+
+        #: Maximum image count for each category.  The key "default", if present,
+        #: applies to all categories not included in this dict.  A value of -1
+        #: indicates "no maximum".  The key 'no_annotations' refers to images with
+        #: no annotations.  This may be exceeded in cases where images have annotations
+        #: for multiple categories.
+        self.category_name_to_max_count = {'default':-1}
+
+        #: Sampling random seed
+        self.random_seed = 0
+
+
+def sample_json_db(input_json,
+                   sampling_options,
+                   output_json=None,
+                   verbose=False):
+    """
+    Given a json file (or dictionary already loaded from a json file), produce a new
+    database in which
+
+    Args:
+        input_json (str): COCO Camera Traps .json file to load, or an already-loaded dict
+        sampling_options (DbSamplingOptions): defines the sampling behavior
+        output_json (str, optional): file to write the resulting .json file to
+        verbose (bool, optional): enable additional debug output
+    """
+
+    # Load the input file if necessary
+    if isinstance(input_json,str):
+        print('Loading input .json...')
+        with open(input_json, 'r') as f:
+            input_data = json.load(f)
+    else:
+        assert isinstance(input_json,dict), \
+            'input_json is neither a filename nor a dict'
+        input_data = input_json
+
+    category_name_to_image_ids = defaultdict(set)
+    image_id_to_category_names = defaultdict(set)
+    category_id_to_name = {c['id']:c['name'] for c in input_data['categories']}
+
+    for ann in tqdm(input_data['annotations']):
+        image_id = ann['image_id']
+        category_id = ann['category_id']
+        category_name = category_id_to_name[category_id]
+        category_name_to_image_ids[category_name].add(image_id)
+        image_id_to_category_names[image_id].add(category_name)
+
+    for im in tqdm(input_data['images']):
+        if im['id'] not in image_id_to_category_names:
+            category_name_to_image_ids['no_annotations'].add(im['id'])
+
+    if verbose:
+        print('Mapped {} image IDs to {} categories ({} with no annotations)'.format(
+            len(image_id_to_category_names),
+            len(category_name_to_image_ids),
+            len(category_name_to_image_ids['no_annotations'])))
+
+    image_ids_to_keep = set()
+
+    random.seed(sampling_options.random_seed)
+
+    for category_name in category_name_to_image_ids:
+
+        image_ids_this_category = category_name_to_image_ids[category_name]
+        if category_name in sampling_options.category_name_to_max_count:
+            max_count = sampling_options.category_name_to_max_count[category_name]
+        elif 'default' in sampling_options.category_name_to_max_count:
+            max_count = sampling_options.category_name_to_max_count['default']
+        else:
+            max_count = -1
+
+        # If we're supposed to keep all images for this category...
+        if (max_count < 0) or (len(image_ids_this_category) <= max_count):
+            if verbose:
+                print('Keeping all {} images for category {}'.format(
+                    len(image_ids_this_category), category_name))
+            for image_id in image_ids_this_category:
+                image_ids_to_keep.add(image_id)
+        else:
+            if verbose:
+                print('Keeping {} of {} images for category {}'.format(
+                    max_count, len(image_ids_this_category), category_name))
+            image_ids_to_keep_this_category = random.sample(
+                tuple(image_ids_this_category), max_count)
+            for image_id in image_ids_to_keep_this_category:
+                image_ids_to_keep.add(image_id)
+
+    # ...for each cateogry
+
+    input_images = input_data['images']
+    input_annotations = input_data['annotations']
+
+    output_data = input_data
+    del input_data
+
+    output_data['images'] = []
+    output_data['annotations'] = []
+
+    for im in input_images:
+        if im['id'] in image_ids_to_keep:
+            output_data['images'].append(im)
+
+    for ann in input_annotations:
+        if ann['image_id'] in image_ids_to_keep:
+            output_data['annotations'].append(ann)
+
+    # Write the output file if requested
+    if output_json is not None:
+        if verbose:
+            print('Writing output .json to {}'.format(output_json))
+        ct_utils.write_json(output_json, output_data)
+
+    if verbose:
+        print('Keeping {} of {} images, {} of {} annotations'.format(
+            len(output_data['images']),len(input_images),
+            len(output_data['annotations']),len(input_annotations)))
+
+    return output_data
+
+# ...def sample_json_db(...)
+
 
 def subset_json_db(input_json,
                    query,
@@ -158,6 +291,8 @@ def subset_json_db(input_json,
             len(output_data['annotations']),len(input_data['annotations'])))
 
     return output_data
+
+# ...def subset_json_db(...)
 
 
 #%% Interactive driver

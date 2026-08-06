@@ -30,6 +30,7 @@ from tqdm import tqdm
 from megadetector.utils.write_html_image_list import write_html_image_list
 from megadetector.utils.path_utils import clean_filename
 from megadetector.utils.ct_utils import is_empty
+from megadetector.utils.ct_utils import sort_dictionary_by_value
 from megadetector.data_management.cct_json_utils import IndexedJsonDb
 from megadetector.visualization import visualization_utils as vis_utils
 
@@ -153,6 +154,11 @@ class DbVizOptions:
         #:
         #: Images with multiple categories will be included in all relevant pages.
         self.create_category_pages = False
+
+        #: Should we sort category pages alphabetically, or by image count?
+        #:
+        #: Valid values: 'alphabetical', 'image_count'
+        self.category_page_sort_order = 'alphabetical'
 
         #: If this is None, we just sample images, and show images.  If this is
         #: not None, we sample images, but we also show the other images in the sequences
@@ -727,13 +733,23 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
 
     if options.create_category_pages:
 
-        all_categories = set()
+        category_name_to_count = defaultdict(int)
+
         for im in images_html:
             categories_this_image = im['image_categories']
             for category_name in categories_this_image:
-                all_categories.add(category_name)
+                category_name_to_count[category_name] += 1
 
-        all_categories = sorted(list(all_categories))
+        category_page_sort_order = options.category_page_sort_order
+        if category_page_sort_order == 'image_count':
+            category_name_to_count = sort_dictionary_by_value(
+                category_name_to_count, reverse=True)
+            all_categories = list(category_name_to_count.keys())
+        else:
+            if category_page_sort_order != 'alphabetical':
+                print('Warning: unrecognized category sort order: {}'.format(
+                    category_page_sort_order))
+            all_categories = sorted(list(category_name_to_count.keys()))
 
         # Create a special category for images with no annotations
         no_category_token = 'no_categories'

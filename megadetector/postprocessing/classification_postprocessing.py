@@ -1414,7 +1414,7 @@ def restrict_to_taxa_list(taxa_list,
     new_taxon_string_to_missing_tokens = \
         sort_dictionary_by_key(new_taxon_string_to_missing_tokens)
 
-    if verbose:
+    if verbose and (len(new_taxon_string_to_missing_tokens) > 0):
 
         print(f'Found {len(new_taxon_string_to_missing_tokens)} taxa that need to be inserted to ' + \
               'make the taxonomy valid, showing only mammals and birds here:\n')

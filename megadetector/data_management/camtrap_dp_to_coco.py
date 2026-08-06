@@ -206,7 +206,7 @@ if False:
 
     #%% Validate
 
-    from megadetector.data_management.databases.integrity_check_json_db import \
+    from megadetector.data_management.integrity_check_json_db import \
         integrity_check_json_db, IntegrityCheckOptions
 
     options = IntegrityCheckOptions()

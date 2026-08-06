@@ -1044,3 +1044,37 @@ P2
 E1
 
 !lila
+
+
+## Standardize module naming in the data_management subpackage
+
+We use "coco_db", "json"db", "coco_database", etc. interchangeably in module names; standardize these, probably to "coco_db".
+
+P3
+
+E0
+
+!maintenance
+
+
+## Parallelize LILA .csv generation
+
+Parallelize the main loop in generate_lila_per_image_labels.py.
+
+P2
+
+E0
+
+!lila
+
+
+## Add TODO validation to testing/linting
+
+Validate this file (TODO.md) during testing/linting.
+
+P2
+
+E0
+
+!maintenance
+!testing
