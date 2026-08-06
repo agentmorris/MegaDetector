@@ -66,7 +66,9 @@ DEFAULT_LABEL_FONT_SIZE = 16
 DEFAULT_LABEL_FONT = 'arial.ttf'
 
 # Default color map for mapping integer category IDs to colors when rendering bounding
-# boxes
+# boxes.  Standard MegaDetector categories are 1/2/3 for animal/person/vehicle, so
+# when we index into this array, we get our default colors of red, blue, and
+# gold (i.e., yellow).
 DEFAULT_COLORS = [
     'AliceBlue', 'Red', 'RoyalBlue', 'Gold', 'Chartreuse', 'Aqua', 'Azure',
     'Beige', 'Bisque', 'BlanchedAlmond', 'BlueViolet', 'BurlyWood', 'CadetBlue',
@@ -196,7 +198,8 @@ def exif_preserving_save(pil_image,
                          quality='keep',
                          default_quality=85,
                          verbose=False,
-                         tags_to_exclude=None):
+                         tags_to_exclude=None,
+                         fall_back_to_discarding_exif=True):
     """
     Saves [pil_image] to [output_file], making a moderate attempt to preserve EXIF
     data and JPEG quality.  Neither is guaranteed.
@@ -218,6 +221,8 @@ def exif_preserving_save(pil_image,
         verbose (bool, optional): enable additional debug console output
         tags_to_exclude (list or str, optional): tags to exclude from the output file, or the
             string 'all' to exclude all EXIF tags.
+        fall_back_to_discarding_exif (bool, optional): if saving with EXIF info fails, should
+            we fall back to saving with no EXIF info, instead of raising an exception?
     """
 
     # Read EXIF metadata if necessary
@@ -237,30 +242,63 @@ def exif_preserving_save(pil_image,
     # Quality preservation is only supported for JPEG sources.
     if pil_image.format != "JPEG":
         if quality == 'keep':
-            if verbose:
-                print('Warning: quality "keep" passed when saving a non-JPEG source (during save to {})'.format(
-                    output_file))
+            # if verbose:
+            #    print('Warning: quality "keep" passed when saving a non-JPEG source' + \
+            #          '(during save to {}, format {})'.format(output_file, str(pil_image.format)))
             quality = default_quality
 
     # Some output formats don't support the quality parameter, so we try once with,
     # and once without.  This is a horrible cascade of if's, but it's a consequence of
     # the fact that "None" is not supported for either "exif" or "quality".
 
+    successful_write = False
+
     try:
 
         if exif is not None:
             pil_image.save(output_file, exif=exif, quality=quality)
+            successful_write = True
         else:
             pil_image.save(output_file, quality=quality)
+            successful_write = True
 
-    except Exception:
+    except Exception as e:
 
         if verbose:
-            print('Warning: failed to write {}, trying again without quality parameter'.format(output_file))
-        if exif is not None:
-            pil_image.save(output_file, exif=exif)
-        else:
-            pil_image.save(output_file)
+            print('Warning: failed to write {} ({}), trying again without quality parameter'.format(
+                output_file, str(e)))
+
+    if not successful_write:
+
+        try:
+            if exif is not None:
+                pil_image.save(output_file, exif=exif)
+                successful_write = True
+            else:
+                pil_image.save(output_file)
+                successful_write = True
+
+        except Exception as e:
+
+            if verbose:
+                print('Warning: failed to write {} ({}) after discarding quality parameter'.format(
+                    output_file, str(e)))
+                if fall_back_to_discarding_exif:
+                    print('Falling back to writing without EXIF')
+
+            # If we're not allowed to try without EXIF data, fail here
+            if not fall_back_to_discarding_exif:
+                raise
+
+    if (not successful_write) and fall_back_to_discarding_exif:
+
+        # Let exceptions get raised if this still fails
+        pil_image.save(output_file)
+        successful_write = True
+
+    # If we got here, we should either set successful_write to True,
+    # all other paths end with an exception.
+    assert successful_write, 'Internal error in exif_preserving_save'
 
 # ...def exif_preserving_save(...)
 
@@ -574,11 +612,11 @@ def render_detection_bounding_boxes(detections,
             the string 'show_categories'.
         classification_label_map (dict, optional): optional, mapping of the string class labels to the actual
             class names. The type of the numeric label (typically strings) needs to be consistent with the keys
-            in label_map; no casting is carried out. If [label_map] is None, no labels are shown (not even numbers
-            and confidence values).  If you want category numbers and confidence values without class labels, use
-            the default value, the string 'show_categories'.
-        confidence_threshold (float or dict, optional): threshold above which boxes are rendered.  Can also be a
-            dictionary mapping category IDs to thresholds.
+            in label_map; no casting is carried out. If [classification_label_map] is None, no classification
+            labels are shown (not even numbers and confidence values).  If you want category numbers and
+            confidence values without class labels, use the default value, the string 'show_categories'.
+        confidence_threshold (float or dict, optional): threshold above which boxes are rendered.  Can also be
+            a dictionary mapping category IDs to thresholds.
         thickness (int or float, optional): line thickness in pixels.  If this is a float less than
             1.0, it's treated as a fraction of the image width.
         expansion (int or float, optional): number of pixels to expand bounding boxes on each side.  If
