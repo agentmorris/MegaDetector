@@ -12,6 +12,7 @@ Utility functions for working with the Wildlife Insights platform, specifically:
 #%% Imports
 
 import os
+import json
 import requests
 
 import pandas as pd
@@ -22,6 +23,7 @@ from collections import defaultdict
 
 from multiprocessing.pool import Pool, ThreadPool
 from functools import partial
+from copy import deepcopy
 
 from megadetector.utils.path_utils import insert_before_extension
 from megadetector.utils.path_utils import make_executable
@@ -47,6 +49,54 @@ md_category_name_to_id = invert_dictionary(md_category_id_to_name)
 
 # Fields expected to be present in a valid WI result
 wi_result_fields = ['wi_taxon_id','class','order','family','genus','species','common_name']
+
+# Sample payload for validation
+sample_update_payload = {
+
+    "predictions": [
+        {
+          "project_id": "1234",
+          "ignore_data_file_checks": True,
+          "prediction": "f1856211-cfb7-4a5b-9158-c0f72fd09ee6;;;;;;blank",
+          "prediction_score": 0.81218224763870239,
+            "classifications": {
+                "classes": [
+                    "f1856211-cfb7-4a5b-9158-c0f72fd09ee6;;;;;;blank",
+                    "b1352069-a39c-4a84-a949-60044271c0c1;aves;;;;;bird",
+                    "90d950db-2106-4bd9-a4c1-777604c3eada;mammalia;rodentia;;;;rodent",
+                    "f2d233e3-80e3-433d-9687-e29ecc7a467a;mammalia;;;;;mammal",
+                    "ac068717-6079-4aec-a5ab-99e8d14da40b;mammalia;rodentia;sciuridae;dremomys;rufigenis;red-cheeked squirrel"
+                ],
+                "scores": [
+                    0.81218224763870239,
+                    0.1096673980355263,
+                    0.02707692421972752,
+                    0.00771023565903306,
+                    0.0049269795417785636
+                ]
+            },
+            "detections": [
+                {
+                    "category": "1",
+                    "label": "animal",
+                    "conf": 0.181,
+                    "bbox": [
+                        0.02421,
+                        0.35823999999999989,
+                        0.051560000000000009,
+                        0.070826666666666746
+                    ]
+                }
+            ],
+            "model_version": "3.1.2",
+            "prediction_source": "manual_update",
+            "data_file_id": "2ea1d2b2-7f84-43f9-af1f-8be0e69c7015"
+        }
+    ]
+}
+
+process_cv_response_url = 'https://api.wildlifeinsights.org/api/v1/data-file/process-CV-response'
+get_auth_token_url = 'https://api.wildlifeinsights.org/v1/auth/m2m/token'
 
 
 #%% Functions for managing WI downloads
@@ -486,8 +536,10 @@ def write_download_commands(image_records,
     if script_extension is None:
         if os.name == 'nt':
             script_extension = '.bat'
+            command_prefix = 'call '
         else:
             script_extension = '.sh'
+            command_prefix = ''
     else:
         script_extension = script_extension.lower()
         if not script_extension.startswith('.'):
@@ -555,7 +607,8 @@ def write_download_commands(image_records,
             continue
 
         # command = 'gsutil cp "{}" "./{}"'.format(url,relative_path)
-        command = 'gcloud storage cp --no-clobber "{}" "./{}"'.format(url,relative_path)
+        command = command_prefix
+        command += 'gcloud storage cp --no-clobber "{}" "./{}"'.format(url,relative_path)
         commands.append(command)
 
     print('Generated {} commands for {} image records'.format(
@@ -620,70 +673,68 @@ def write_download_commands(image_records,
 # ...def write_download_commands(...)
 
 
-#%% Functions and constants related to pushing results to the DB
+#%% Functions related to pushing results to the DB
 
-# Sample payload for validation
-sample_update_payload = {
+def get_auth_token(client_secret_info, verbose=False):
+    """
+    Get a temporary auth token from the WI "token" API.
 
-    "predictions": [
-        {
-          "project_id": "1234",
-          "ignore_data_file_checks": True,
-          "prediction": "f1856211-cfb7-4a5b-9158-c0f72fd09ee6;;;;;;blank",
-          "prediction_score": 0.81218224763870239,
-            "classifications": {
-                "classes": [
-                    "f1856211-cfb7-4a5b-9158-c0f72fd09ee6;;;;;;blank",
-                    "b1352069-a39c-4a84-a949-60044271c0c1;aves;;;;;bird",
-                    "90d950db-2106-4bd9-a4c1-777604c3eada;mammalia;rodentia;;;;rodent",
-                    "f2d233e3-80e3-433d-9687-e29ecc7a467a;mammalia;;;;;mammal",
-                    "ac068717-6079-4aec-a5ab-99e8d14da40b;mammalia;rodentia;sciuridae;dremomys;rufigenis;red-cheeked squirrel"
-                ],
-                "scores": [
-                    0.81218224763870239,
-                    0.1096673980355263,
-                    0.02707692421972752,
-                    0.00771023565903306,
-                    0.0049269795417785636
-                ]
-            },
-            "detections": [
-                {
-                    "category": "1",
-                    "label": "animal",
-                    "conf": 0.181,
-                    "bbox": [
-                        0.02421,
-                        0.35823999999999989,
-                        0.051560000000000009,
-                        0.070826666666666746
-                    ]
-                }
-            ],
-            "model_version": "3.1.2",
-            "prediction_source": "manual_update",
-            "data_file_id": "2ea1d2b2-7f84-43f9-af1f-8be0e69c7015"
-        }
-    ]
-}
+    Args:
+        client_secret_info (str or dict): a dict with keys "clientId" and "clientSecret",
+            or the filename of a .json file containing that dict.
+        verbose (bool, optional): enable additional debug output
 
-process_cv_response_url = 'https://placeholder'
+    Returns:
+        str: auth token, likely with a 60-minute expiration
+    """
+
+    if isinstance(client_secret_info,str):
+        assert os.path.isfile(client_secret_info), \
+            'Could not find client info file {}'.format(client_secret_info)
+        with open(client_secret_info,'r') as f:
+            d = json.load(f)
+            assert 'clientId' in d and 'clientSecret' in d, \
+                'File {} does not appear to be a client secret file'.format(client_secret_info)
+            client_id = d['clientId']
+            client_secret = d['clientSecret']
+    else:
+        client_id = client_secret_info['clientId']
+        client_secret = client_secret_info['clientSecret']
+
+    headers = { 'Content-Type': 'application/json' }
+    payload = { 'clientId':client_id,'clientSecret':client_secret }
+
+    response = requests.post(get_auth_token_url, headers=headers, json=payload)
+
+    # Check the response status code
+    if response.status_code in (200,201):
+        content = response.json()
+        assert isinstance(content,dict) and ('token' in content), \
+            'Invalid auth header response'
+        token = content['token']
+        assert isinstance(token,str) and (len(token) > 0), \
+            'Invalid auth token'
+        if verbose:
+            print('Successfully retrieved auth header with token length {}'.format(len(token)))
+        return token
+    else:
+        if verbose:
+            print('Error getting auth token: {} {}'.format(response.status_code,response.text))
+        return None
+
+# ...def get_auth_token(...)
 
 
-def prepare_data_update_auth_headers(auth_token_file):
+def prepare_data_update_auth_headers(auth_token):
     """
     Read the authorization token from a text file and prepare http headers.
 
     Args:
-        auth_token_file (str): a single-line text file containing a write-enabled
-        API token.
+        auth_token (str): a valid WI API token, likely retrieved via get_auth_token()
 
     Returns:
         dict: http headers, with fields 'Authorization' and 'Content-Type'
     """
-
-    with open(auth_token_file,'r') as f:
-        auth_token = f.read()
 
     headers = {
         'Authorization': 'Bearer ' + auth_token,
@@ -691,6 +742,8 @@ def prepare_data_update_auth_headers(auth_token_file):
     }
 
     return headers
+
+# ...def prepare_data_update_auth_headers(...)
 
 
 def push_results_for_images(payload,
@@ -712,8 +765,11 @@ def push_results_for_images(payload,
     """
 
     if verbose:
+        print_headers = deepcopy(headers)
+        if ('Authorization' in print_headers) and len(print_headers['Authorization']) >= 10:
+            print_headers['Authorization'] = print_headers['Authorization'][0:10] + '...'
         print('Sending header {} to URL {}'.format(
-            headers,url))
+            print_headers,url))
 
     response = requests.post(url, headers=headers, json=payload)
 
@@ -786,6 +842,8 @@ def parallel_push_results_for_images(payloads,
 
         assert len(results) == len(payloads)
         return results
+
+# ...def def parallel_push_results_for_images(...)
 
 
 def generate_payload_with_replacement_detections(wi_result,
@@ -913,6 +971,7 @@ def generate_no_cv_result_payload(data_file_id,
     prediction['model_version'] = model_version
     prediction['prediction_source'] = prediction_source
     prediction['data_file_id'] = data_file_id
+
     prediction['project_id'] = project_id
     payload = {}
     payload['predictions'] = [prediction]
