@@ -786,7 +786,7 @@ def push_results_for_images(payload,
 
 
 def parallel_push_results_for_images(payloads,
-                                     headers,
+                                     auth_info,
                                      url=process_cv_response_url,
                                      verbose=False,
                                      pool_type='thread',
@@ -797,7 +797,10 @@ def parallel_push_results_for_images(payloads,
 
     Args:
         payloads (list of dict): payloads to upload to the API
-        headers (dict): authorization headers, see prepare_data_update_auth_headers
+        auth_info (str or dict): authentication information.  Can be
+            a dict with keys "clientId" and "clientSecret", a filename pointing
+            to a json file containing that dict, or an already-created auth token
+            (string).
         url (str, optional): API URL
         verbose (bool, optional): enable additional debug output
         pool_type (str, optional): 'thread' or 'process'
@@ -806,6 +809,18 @@ def parallel_push_results_for_images(payloads,
     Returns:
         list of int: list of http response codes, one per payload
     """
+
+    # If we've been given client secret information...
+    if isinstance(auth_info,dict) or \
+       (isinstance(auth_info,str) and os.path.isfile(auth_info)):
+        auth_token = get_auth_token(auth_info, verbose=verbose)
+
+    # Otherwise we should have been given a valid authentication token...
+    else:
+        assert isinstance(auth_info,str), 'Invalid authentication information'
+        auth_token = auth_info
+
+    headers = prepare_data_update_auth_headers(auth_token=auth_token)
 
     if n_workers == 1:
 
@@ -1154,7 +1169,7 @@ def record_is_unidentified(record):
         assert np.isnan(identified_by)
         return True
     else:
-        return identified_by == 'Computer vision'
+        return (identified_by.lower() == 'computer vision')
 
 
 def record_lists_are_identical(records_0,records_1,verbose=False):
