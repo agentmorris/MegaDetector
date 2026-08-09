@@ -24,6 +24,7 @@ import sys
 
 from functools import partial
 from multiprocessing.pool import Pool, ThreadPool
+from collections import defaultdict
 from operator import itemgetter
 from tqdm import tqdm
 
@@ -366,6 +367,8 @@ def integrity_check_json_db(json_file, options=None):
 
     n_boxes = 0
 
+    category_id_to_image_ids = defaultdict(set)
+
     for ann in tqdm(annotations):
 
         # Confirm that required fields are present
@@ -433,11 +436,18 @@ def integrity_check_json_db(json_file, options=None):
 
         image_id_to_image[ann['image_id']]['_count'] += 1
         category_id_to_category[ann['category_id']]['_count'] +=1
+        category_id_to_image_ids[ann['category_id']].add(ann['image_id'])
 
     # ...for each annotation
 
     sorted_categories = sorted(categories, key=itemgetter('_count'), reverse=True)
 
+    # Compute image counts per category
+    category_name_to_image_count = {}
+    for category_id in category_id_to_image_ids:
+        image_count = len(category_id_to_image_ids[category_id])
+        category_name = category_id_to_category[category_id]['name']
+        category_name_to_image_count[category_name] = image_count
 
     ##%% Print statistics
 
@@ -479,10 +489,13 @@ def integrity_check_json_db(json_file, options=None):
         if len(image_location_set) > 0:
             print('DB contains images from {} locations\n'.format(len(image_location_set)))
 
-        print('Categories and annotation (not image) counts:\n')
+        print('Categories and annotation/image counts:\n')
 
         for cat in sorted_categories:
-            print('{:6} {}'.format(cat['_count'],cat['name']))
+            print('{:6} {} ({} images)'.format(
+                cat['_count'],
+                cat['name'],
+                category_name_to_image_count[cat['name']]))
 
         print('')
 
