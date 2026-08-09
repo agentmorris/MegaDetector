@@ -63,9 +63,8 @@ In this scenario, the folders within "animals" will be:
 
 deer, cow, multiple, unclassified
 
-"multiple" in this case only means "deer and cow"; if an image is classified as containing a
-bird and a bear, that would end up in "unclassified", since the folder separation is based only
-on the categories you provide at the command line.
+"multiple" in this case means "deer and cow", "deer and something else", or "cow and something else";
+if an image is classified as containing a bird and a bear, that would end up in "unclassified".
 
 No classification-based separation is done within the animal_person, animal_vehicle, or
 animal_person_vehicle folders.
@@ -180,6 +179,11 @@ class SeparateDetectionsIntoFoldersOptions:
         #:
         #: deer=0.75,cow=0.75
         self.classification_thresholds = None
+
+        #: If we have a classification threshold for "deer", we are going to create a folder
+        #: for images that are *only* deer.  This is the threshold we use to decide whether
+        #: a category *not* listed in classification_thresholds is present
+        self.unlisted_category_threshold = 0.5
 
         ## Debug or internal attributes
 
@@ -322,9 +326,13 @@ def _process_detections(im,options):
                                            (d['category'] == animal_category_id and \
                                            d['conf'] >= options.category_name_to_threshold['animal'])]
 
-                # Count the number of classification categories that are above threshold for at
-                # least one detection
+                # Count the number of classification categories (*on* our list) that are above
+                # threshold for at least one detection
                 classification_categories_above_threshold = set()
+
+                # Count the number of classification categories (*not* on our list) that are above
+                # threshold for at least one detection
+                unlisted_classification_categories_above_threshold = set()
 
                 # d = valid_animal_detections[0]
                 for d in valid_animal_detections:
@@ -343,21 +351,35 @@ def _process_detections(im,options):
                         assert options.classification_category_id_to_name is not None
                         classification_category_name = \
                             options.classification_category_id_to_name[classification_category_id]
-                        if (classification_category_name in options.classification_thresholds) and \
-                            (classification_confidence > \
-                             options.classification_thresholds[classification_category_name]):
-                            classification_categories_above_threshold.add(classification_category_name)
+
+                        # Is this one of the categories for which we're creating a dedicated folder?
+                        if (classification_category_name in options.classification_thresholds):
+
+                            if (classification_confidence > \
+                                options.classification_thresholds[classification_category_name]):
+                                classification_categories_above_threshold.add(classification_category_name)
+
+                        # Not one of our folder-creation categories, but above-threshold
+                        elif (classification_confidence > options.unlisted_category_threshold):
+
+                            unlisted_classification_categories_above_threshold.add(
+                                classification_category_name)
 
                     # ...for each classification
 
                 # ...for each detection
 
+                # No categories on our list
                 if len(classification_categories_above_threshold) == 0:
                     classification_folder_name = 'unclassified'
 
-                elif len(classification_categories_above_threshold) > 1:
+                # Multiple categories on our list, or a category on our list and
+                # one or more categories that are not on our list
+                elif (len(classification_categories_above_threshold) > 1) or \
+                     (len(unlisted_classification_categories_above_threshold) > 1):
                     classification_folder_name = 'multiple'
 
+                # Just a single category on our list
                 else:
                     assert len(classification_categories_above_threshold) == 1
                     classification_folder_name = list(classification_categories_above_threshold)[0]
