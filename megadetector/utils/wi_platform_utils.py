@@ -765,6 +765,11 @@ def push_results_for_images(payload,
         int: response status code
     """
 
+    to_return = {}
+    to_return['status_code'] = None
+    to_return['error'] = None
+    to_return['data_file_ids'] = None
+
     if verbose:
         print_headers = deepcopy(headers)
         if ('Authorization' in print_headers) and len(print_headers['Authorization']) >= 10:
@@ -772,18 +777,29 @@ def push_results_for_images(payload,
         print('Sending header {} to URL {}'.format(
             print_headers,url))
 
-    response = requests.post(url, headers=headers, json=payload)
+    try:
 
-    # Check the response status code
-    if response.status_code in (200,201):
-        if verbose:
-            print('Successfully pushed results for {} images'.format(len(payload['predictions'])))
-            print(response.headers)
-            print(str(response))
-    else:
-        print(f'Error: {response.status_code} {response.text}')
+        data_file_ids = []
+        for prediction in payload['predictions']:
+            data_file_ids.append(prediction['data_file_id'])
+        to_return['data_file_ids'] = data_file_ids
 
-    return response.status_code
+        response = requests.post(url, headers=headers, json=payload)
+        to_return['status_code'] = response.status_code
+
+        # Check the response status code
+        if response.status_code in (200,201):
+            if verbose:
+                print('Successfully pushed results for {} images'.format(len(payload['predictions'])))
+                print(response.headers)
+                print(str(response))
+        else:
+            print(f'Error: {response.status_code} {response.text}')
+    except Exception as e:
+        print('Warning, error submitting payload: {}'.format(str(e)))
+        to_return['error'] = str(e)
+
+    return to_return
 
 
 def parallel_push_results_for_images(payloads,

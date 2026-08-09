@@ -45,10 +45,10 @@ from megadetector.utils.ct_utils import is_empty
 # Should we download individual images, or whole buckets?
 download_individual_images = False
 
-# All of these are incompatible with "download_individual_images"
+# All of these must be True if "download_individual_images" is False
 download_blank_images = True
 download_unidentified_images = True
-download_identified_images = False
+download_identified_images = True
 
 # This determines the parallelism of the download process.  Only meaningful if
 # download_individual_images is True.  If download_individual_images is False, we rely on
