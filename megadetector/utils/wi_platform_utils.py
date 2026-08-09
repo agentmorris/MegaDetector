@@ -30,6 +30,7 @@ from megadetector.utils.path_utils import make_executable
 from megadetector.utils.path_utils import path_join
 
 from megadetector.utils.ct_utils import split_list_into_n_chunks
+from megadetector.utils.ct_utils import split_list_into_fixed_size_chunks
 from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.utils.ct_utils import compare_values_nan_equal
 from megadetector.utils.ct_utils import is_empty
@@ -786,38 +787,99 @@ def push_results_for_images(payload,
 
 
 def parallel_push_results_for_images(payloads,
-                                     headers,
+                                     auth_info,
                                      url=process_cv_response_url,
                                      verbose=False,
                                      pool_type='thread',
-                                     n_workers=10):
+                                     n_workers=10,
+                                     chunk_size=None):
     """
     Push results for the list of payloads in [payloads] to the process_cv_response API,
     parallelized over multiple workers.
 
     Args:
         payloads (list of dict): payloads to upload to the API
-        headers (dict): authorization headers, see prepare_data_update_auth_headers
+        auth_info (str or dict): authentication information.  Can be
+            a dict with keys "clientId" and "clientSecret", a filename pointing
+            to a json file containing that dict, or an already-created auth token
+            (string).  An already-created token is not legal if [chunk_size] is not
+            None.
         url (str, optional): API URL
         verbose (bool, optional): enable additional debug output
         pool_type (str, optional): 'thread' or 'process'
         n_workers (int, optional): number of parallel workers
+        chunk_size (int, optional): if not None, process payloads in chunks of this
+            size, retrieving a new auth token before each chunk.  Auth tokens
+            typically expire after 60 minutes, so this is useful for jobs that are
+            expected to run longer than that.  Requires that [auth_info] be client
+            secret information (a dict or a filename), rather than an already-created
+            token.
 
     Returns:
         list of int: list of http response codes, one per payload
     """
 
+    # If we've been given client secret information...
+    if isinstance(auth_info,dict) or \
+       (isinstance(auth_info,str) and os.path.isfile(auth_info)):
+
+        client_secret_info = auth_info
+
+    # Otherwise we should have been given a valid authentication token...
+    else:
+
+        assert isinstance(auth_info,str), 'Invalid authentication information'
+        assert chunk_size is None, \
+            'chunk_size requires client secret information; new tokens cannot be ' + \
+            'created from an existing token'
+        client_secret_info = None
+
+    if chunk_size is None:
+        payload_chunks = [payloads]
+    else:
+        print('Breaking {} payloads into chunks of size {}'.format(
+            len(payloads),chunk_size))
+        assert isinstance(chunk_size,int) and (chunk_size > 0), \
+            'Illegal chunk size {}'.format(chunk_size)
+        payload_chunks = split_list_into_fixed_size_chunks(payloads,chunk_size)
+
+    def _headers_for_next_chunk():
+        """
+        Prepare auth headers for the next chunk, retrieving a new token if we have
+        client secret information.
+        """
+
+        print('Fetching auth information for a new payload chunk')
+
+        if client_secret_info is None:
+            auth_token = auth_info
+        else:
+            auth_token = get_auth_token(client_secret_info, verbose=verbose)
+            assert auth_token is not None, 'Failed to retrieve auth token'
+
+        return prepare_data_update_auth_headers(auth_token=auth_token)
+
+    # ...def _headers_for_next_chunk()
+
+    results = []
+
     if n_workers == 1:
 
-        results = []
-        for payload in payloads:
-            results.append(push_results_for_images(payload,
-                                                   headers=headers,
-                                                   url=url,
-                                                   verbose=verbose))
-        return results
+        for payload_chunk in payload_chunks:
+
+            headers = _headers_for_next_chunk()
+
+            for payload in payload_chunk:
+                results.append(push_results_for_images(payload,
+                                                       headers=headers,
+                                                       url=url,
+                                                       verbose=verbose))
+
+        # ...for each chunk
 
     else:
+
+        pool = None
 
         assert pool_type in ('thread','process')
 
@@ -832,18 +894,31 @@ def parallel_push_results_for_images(payloads,
             print('Created a {} pool of {} workers'.format(
                 pool_string,n_workers))
 
-            results = list(tqdm(pool.imap(
-                partial(push_results_for_images,headers=headers,url=url,verbose=verbose),payloads),
-                total=len(payloads)))
+            with tqdm(total=len(payloads)) as progress_bar:
+
+                for payload_chunk in payload_chunks:
+
+                    headers = _headers_for_next_chunk()
+
+                    for result in pool.imap(
+                        partial(push_results_for_images,headers=headers,url=url,verbose=verbose),
+                        payload_chunk):
+                        results.append(result)
+                        progress_bar.update(1)
+
+                # ...for each chunk
+
         finally:
-            pool.close()
-            pool.join()
-            print('Pool closed and joined for WI result uploads')
 
-        assert len(results) == len(payloads)
-        return results
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print('Pool closed and joined for WI result uploads')
 
-# ...def def parallel_push_results_for_images(...)
+    assert len(results) == len(payloads)
+    return results
+
+# ...def parallel_push_results_for_images(...)
 
 
 def generate_payload_with_replacement_detections(wi_result,
@@ -899,6 +974,8 @@ def generate_payload_with_replacement_detections(wi_result,
 
     return payload
 
+# ...def generate_payload_with_replacement_detections(...)
+
 
 def generate_blank_prediction_payload(data_file_id,
                                       project_id,
@@ -937,6 +1014,8 @@ def generate_blank_prediction_payload(data_file_id,
     payload['predictions'] = [prediction]
 
     return payload
+
+# ...def generate_blank_prediction_payload(...)
 
 
 def generate_no_cv_result_payload(data_file_id,
@@ -977,6 +1056,8 @@ def generate_no_cv_result_payload(data_file_id,
     payload['predictions'] = [prediction]
 
     return payload
+
+# ...def generate_no_cv_result_payload(...)
 
 
 def generate_payload_for_prediction_string(data_file_id,
@@ -1037,6 +1118,8 @@ def generate_payload_for_prediction_string(data_file_id,
     payload['predictions'] = [prediction]
 
     return payload
+
+# ...def generate_payload_for_prediction_string(...)
 
 
 def validate_payload(payload):
@@ -1154,7 +1237,7 @@ def record_is_unidentified(record):
         assert np.isnan(identified_by)
         return True
     else:
-        return identified_by == 'Computer vision'
+        return (identified_by.lower() == 'computer vision')
 
 
 def record_lists_are_identical(records_0,records_1,verbose=False):
