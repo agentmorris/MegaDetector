@@ -11,7 +11,7 @@ WI .csv zipfiles there.  A parallel folder called "images" will be created for i
 E.g.:
 
 c:\temp\wi-test
-  csv-downloads
+  csv_downloads
     wildlife-insights_f108491f-4724-442c-8073-0b3ac74ac5d7_project-2013431_data
       projects.csv
       deployments.csv
