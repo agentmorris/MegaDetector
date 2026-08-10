@@ -30,6 +30,7 @@ gcloud config set component_manager/disable_update_check true
 gcloud auth login
 """
 
+
 #%% Imports and constants
 
 import os
@@ -38,12 +39,13 @@ import json
 from tqdm import tqdm
 
 from megadetector.utils.wi_platform_utils import read_images_from_download_bundle
+from megadetector.utils.wi_platform_utils import read_sequences_from_download_bundle
 from megadetector.utils.wi_platform_utils import write_download_commands
 from megadetector.utils.wi_platform_utils import write_prefix_download_command
 from megadetector.utils.ct_utils import is_empty
 
 # Should we download individual images, or whole buckets?
-download_individual_images = False
+download_individual_images = True
 
 # All of these must be True if "download_individual_images" is False
 download_blank_images = True
@@ -147,7 +149,12 @@ for i_project,p in enumerate(projects):
 
     download_folder_relative = p['project_download_folder']
     download_folder_abs = os.path.join(csv_base,download_folder_relative)
+
+    # Dict mapping image IDs to image records
     image_records = read_images_from_download_bundle(download_folder_abs)
+
+    # Dict mapping sequence IDs to sequence records
+    sequence_records = read_sequences_from_download_bundle(download_folder_abs)
 
     image_records_flattened = []
     for x in image_records.values():
@@ -162,7 +169,21 @@ for i_project,p in enumerate(projects):
 
         all_image_ids.add(r['image_id'])
 
-        if is_empty(r['identified_by']) or (r['identified_by'].lower() == 'computer vision'):
+        # If this is a sequence-based project, find the sequence information
+        # for this image
+        sequence_record = None
+        if ('sequence_id' in r) and (sequence_records is not None):
+            assert r['sequence_id'] in sequence_records, \
+                'Sequence ID {} not found'.format(r['sequence_id'])
+            sequence_record = sequence_records[r['sequence_id']][-1]
+
+        # Optionally exclude unidentified images
+        if 'identified_by' in r:
+            identified_by = r['identified_by']
+        else:
+            identified_by = sequence_record['identified_by']
+
+        if is_empty(identified_by) or (identified_by.lower() == 'computer vision'):
             unidentified_images.append(r)
             if download_unidentified_images:
                 image_records_to_download.append(r)
@@ -172,7 +193,11 @@ for i_project,p in enumerate(projects):
             skipped_identified_images.append(r)
             continue
 
-        is_blank = r['is_blank']
+        if 'is_blank' in r:
+            is_blank = r['is_blank']
+        else:
+            is_blank = sequence_record['is_blank']
+
         assert is_blank in (0,1)
 
         # Sometimes common_name is NaN... this is a platform bug, there's no
@@ -189,8 +214,9 @@ for i_project,p in enumerate(projects):
             if not download_blank_images:
                 continue
 
-        n = r['number_of_objects']
-        assert isinstance(n,int) and (n >= 0)
+        if 'number_of_objects' in r:
+            n = r['number_of_objects']
+            assert isinstance(n,int) and (n >= 0)
 
         image_records_to_download.append(r)
 
@@ -417,7 +443,7 @@ for i_project,project_image_folder in enumerate(project_image_folders):
                                 coco_file_out=project_coco_file,
                                 image_folder=project_image_folder,
                                 exclude_missing_images=False,
-                                image_flattening=None, # 'deployment',
+                                image_flattening='deployment',
                                 verbose=True,
                                 blank_disagreement_handling='trust_label',
                                 include_blanks=True)
@@ -428,7 +454,7 @@ for i_project,project_image_folder in enumerate(project_image_folders):
 #%% Create sequences
 
 import json
-
+import shutil
 from megadetector.data_management import cct_json_utils
 from megadetector.data_management.cct_json_utils import SequenceOptions
 from megadetector.utils.path_utils import insert_before_extension
@@ -442,16 +468,34 @@ for i_project,project_image_folder in enumerate(project_image_folders):
     project_id = project_image_folder.split('/')[-1]
     _ = int(project_id)
     project_coco_file = os.path.join(project_image_folder,project_id + '.coco.json')
-    assert os.path.isfile(project_coco_file)
+    project_coco_file_with_sequences = insert_before_extension(
+        project_coco_file,'with_sequences')
+
+    assert os.path.isfile(project_coco_file) or \
+        os.path.isfile(project_coco_file_with_sequences)
+
+    if os.path.isfile(project_coco_file_with_sequences) and \
+        (not os.path.isfile(project_coco_file)):
+        print('Pre-sequence file already moved, skipping')
+        continue
 
     with open(project_coco_file,'r') as f:
         d = json.load(f)
 
+    n_images_with_sequence_information = 0
+
+    for im in d['images']:
+        if 'seq_id' in im:
+            n_images_with_sequence_information += 1
+
+    if n_images_with_sequence_information > 0:
+        print('{} of {} images have sequence information, skipping sequence creation'.format(
+            n_images_with_sequence_information,len(d['images'])))
+        shutil.move(project_coco_file,project_coco_file_with_sequences)
+        continue
+
     print('Assembling images into sequences')
     _ = cct_json_utils.create_sequences(d, options=sequence_options)
-
-    project_coco_file_with_sequences = insert_before_extension(
-        project_coco_file,'with_sequences')
 
     write_json(project_coco_file_with_sequences,d,serialize_datetimes=True)
 
@@ -520,78 +564,3 @@ for i_project,project_image_folder in enumerate(project_image_folders):
 from megadetector.utils.path_utils import open_file
 for fn in preview_filenames:
     open_file(fn)
-
-
-#%% Sample images from each project for MD comparisons
-
-import random
-
-from collections import defaultdict
-
-random.seed(0)
-n_samples_per_project = 50
-include_blanks_in_sample = False
-
-absolute_filenames_to_copy = []
-
-for i_project,project_image_folder in enumerate(project_image_folders):
-
-    project_id = project_image_folder.split('/')[-1]
-    _ = int(project_id)
-    project_coco_file = os.path.join(project_image_folder,project_id + '.coco.with_sequences.json')
-    assert os.path.isfile(project_coco_file)
-
-    with open(project_coco_file,'r') as f:
-        d = json.load(f)
-
-    image_id_to_categories = defaultdict(set)
-
-    category_id_to_name = {}
-    for c in d['categories']:
-        category_id_to_name[c['id']] = c['name']
-
-    for ann in d['annotations']:
-        image_id = ann['image_id']
-        category_name = category_id_to_name[ann['category_id']]
-        image_id_to_categories[image_id].add(category_name)
-
-    relative_filenames_to_sample = []
-
-    for im in d['images']:
-        fn_relative = im['file_name']
-        categories_this_image = image_id_to_categories[im['id']]
-        if not include_blanks_in_sample:
-            if len(categories_this_image) == 1 and 'empty' in categories_this_image:
-                continue
-        relative_filenames_to_sample.append(fn_relative)
-
-    n_sample = min(n_samples_per_project, len(relative_filenames_to_sample))
-    sampled_filenames = random.sample(relative_filenames_to_sample,n_sample)
-
-    print('Sampled {} of {} candidates ({} total) in project {}'.format(
-        len(sampled_filenames), len(relative_filenames_to_sample),
-        len(d['images']), project_id))
-
-    for fn_relative in sampled_filenames:
-        fn_abs = os.path.join(project_image_folder, fn_relative)
-        assert os.path.isfile(fn_abs)
-        absolute_filenames_to_copy.append(fn_abs)
-
-# ...for each project
-
-
-#%% Copy samples
-
-import shutil
-
-sample_folder = os.path.join(project_base,'sample-images')
-os.makedirs(sample_folder,exist_ok=True)
-
-output_filenames_relative = set()
-
-for fn_abs_in in tqdm(absolute_filenames_to_copy):
-    fn_out_relative = os.path.basename(fn_abs_in)
-    assert fn_out_relative not in output_filenames_relative
-    output_filenames_relative.add(fn_out_relative)
-    fn_out_abs = os.path.join(sample_folder,fn_out_relative)
-    shutil.copyfile(fn_abs_in,fn_out_abs)
