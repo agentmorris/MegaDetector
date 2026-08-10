@@ -37,6 +37,7 @@ import os
 import json
 
 from tqdm import tqdm
+from collections import defaultdict
 
 from megadetector.utils.wi_platform_utils import read_images_from_download_bundle
 from megadetector.utils.wi_platform_utils import read_sequences_from_download_bundle
@@ -129,7 +130,7 @@ if not download_identified_images:
 
 all_image_ids = set()
 
-# i_project = 1; p = projects[i_project]
+# i_project = 0; p = projects[i_project]
 for i_project,p in enumerate(projects):
 
     project_id = str(p['id'])
@@ -164,8 +165,10 @@ for i_project,p in enumerate(projects):
 
     image_records_to_download = []
 
-    # r = image_records[0]
-    for r in tqdm(image_records):
+    missing_sequence_id_to_image_ids = defaultdict(list)
+
+    # i_record = 0; r = image_records[i_record]
+    for i_record,r in tqdm(enumerate(image_records),total=len(image_records)):
 
         all_image_ids.add(r['image_id'])
 
@@ -173,8 +176,10 @@ for i_project,p in enumerate(projects):
         # for this image
         sequence_record = None
         if ('sequence_id' in r) and (sequence_records is not None):
-            assert r['sequence_id'] in sequence_records, \
-                'Sequence ID {} not found'.format(r['sequence_id'])
+            if r['sequence_id'] not in sequence_records:
+                print('Warning: sequence ID {} not found'.format(r['sequence_id']))
+                missing_sequence_id_to_image_ids[r['sequence_id']].append(r['image_id'])
+                continue
             sequence_record = sequence_records[r['sequence_id']][-1]
 
         # Optionally exclude unidentified images
@@ -183,12 +188,15 @@ for i_project,p in enumerate(projects):
         else:
             identified_by = sequence_record['identified_by']
 
+        # Is this a unidentified image?
         if is_empty(identified_by) or (identified_by.lower() == 'computer vision'):
             unidentified_images.append(r)
             if download_unidentified_images:
                 image_records_to_download.append(r)
-                continue
+            continue
 
+        # If we got this far, we have an identified image, so skip it if we're
+        # not supposed to be downloading identified images.
         if not download_identified_images:
             skipped_identified_images.append(r)
             continue
@@ -207,6 +215,8 @@ for i_project,p in enumerate(projects):
             ((is_blank == 0) and (r['common_name'].lower() == 'blank')):
                 blank_mismatches.append(r)
 
+        # If either the "is_blank" field or the "common_name" field indicate that this image
+        # is blank, treat it as blank (these can disagree sometimes).
         if is_blank or \
             (isinstance(r['common_name'],str) and (r['common_name'].lower() == 'blank')):
             blank_images.append(r)
@@ -221,6 +231,14 @@ for i_project,p in enumerate(projects):
         image_records_to_download.append(r)
 
     # ...for each record
+
+    if len(missing_sequence_id_to_image_ids) > 0:
+        n_missing_sequence_images = 0
+        for seq_id in missing_sequence_id_to_image_ids:
+            n_missing_sequence_images += len(missing_sequence_id_to_image_ids[seq_id])
+        print('Warning: {} sequence IDs were missing ({} images)'.format(
+            len(missing_sequence_id_to_image_ids),
+            n_missing_sequence_images))
 
     print('Found {} unique image IDs'.format(len(all_image_ids)))
 
