@@ -157,6 +157,14 @@ class ClassificationAnalysisOptions:
         # Should we show the "overall metrics" table?
         self.show_overall_metrics = True
 
+        #: Should we include rows/columns in the confusion matrix that are entirely
+        #: empty?  Rows and columns are considered separately, so, e.g., a category
+        #: that was never predicted (empty column) may still appear as a row.
+        #:
+        #: Only relevant if html_output_dir is not None; this does not impact the
+        #: confusion matrix returned in the AnalysisResults object.
+        self.include_empty_rc = False
+
         #: Width of rendered output images (-1 to preserve original size)
         self.output_image_width = 1000
 
@@ -336,7 +344,7 @@ def _get_image_predicted_categories(im,
 
     for det in im['detections']:
 
-        if det['conf'] < options.detection_threshold:
+        if (options.detection_threshold is not None) and (det['conf'] < options.detection_threshold):
             continue
 
         has_above_threshold_detection = True
@@ -1750,21 +1758,41 @@ def analyze_classification_results(options):
         html += 'each correct category. The off-diagonal elements do not necessarily indicate errors; they '
         html += 'correspond to the &ldquo;predicted as this category&rdquo; and &ldquo;this was predicted '
         html += 'as&rdquo; columns in the table above.</p>\n'
+
+        # Optionally omit categories that never appear as a true label (empty rows)
+        # and/or categories that were never predicted (empty columns).  Rows and
+        # columns are handled independently, so a category may appear as a row but
+        # not as a column, or vice-versa.
+        if options.include_empty_rc:
+            matrix_row_categories = active_categories
+            matrix_column_categories = active_categories
+        else:
+            matrix_row_categories = \
+                [cat for cat in active_categories if
+                 confusion_matrix[category_to_index[cat], :].sum() > 0]
+            matrix_column_categories = \
+                [cat for cat in active_categories if
+                 confusion_matrix[:, category_to_index[cat]].sum() > 0]
+            if (len(matrix_row_categories) < len(active_categories)) or \
+               (len(matrix_column_categories) < len(active_categories)):
+                html += '<p>Categories with no entries in the confusion matrix have been omitted; '
+                html += 'rows and columns are omitted independently.</p>\n'
+
         html += '<table class="result-table">\n'
 
         # Header row with rotated predicted category labels
         html += '<tr><td>&nbsp;</td>\n'
-        for cat in active_categories:
+        for cat in matrix_column_categories:
             html += '<td class="rotate"><p style="margin-left:20px;">{}</p></td>\n'.format(cat)
         html += '</tr>\n'
 
         # Data rows
-        for true_cat in active_categories:
+        for true_cat in matrix_row_categories:
 
             html += '<tr>\n'
             html += '<td><b>{}</b></td>\n'.format(true_cat)
 
-            for pred_cat in active_categories:
+            for pred_cat in matrix_column_categories:
 
                 true_idx = category_to_index[true_cat]
                 pred_idx = category_to_index[pred_cat]
@@ -2205,6 +2233,10 @@ def main():
         help='Collapse ground truth to a single category per image/sequence')
 
     parser.add_argument(
+        '--include_empty_rc', action='store_true',
+        help='Include rows/columns in the confusion matrix that are entirely empty')
+
+    parser.add_argument(
         '--n_below_threshold_classifications_to_display', type=int, default=3,
         help='For images treated as below-threshold (no above-threshold classification), '
              'show up to this many of the actual below-threshold classifications in '
@@ -2235,6 +2267,7 @@ def main():
         options.categories_to_ignore = [c.strip() for c in args.categories_to_ignore.split(',')]
     options.single_prediction_per_image = args.single_prediction_per_image
     options.single_label_per_image = args.single_label_per_image
+    options.include_empty_rc = args.include_empty_rc
     options.n_below_threshold_classifications_to_display = \
         args.n_below_threshold_classifications_to_display
 

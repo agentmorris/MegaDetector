@@ -186,9 +186,19 @@ def wi_download_csv_to_coco(csv_file_in,
         # ...for each image ID
 
         # Create frame numbers and frame ordering
+        #
+        # We sort records within a sequence by timestamp, but every
+        # once in a while, we hit an image with no timestamp, so we
+        # populate it with an arbitrary timestamp.
+        dummy_timestamp = '1900-01-01 12:00:00'
 
-        # sequence_id = next(iter(sequence_id_to_image_ids))
-        for sequence_id in sequence_id_to_image_ids:
+        n_empty_timestamps = 0
+        n_images_evaluated = 0
+
+        # i_sequence = 0; sequence_id = next(iter(sequence_id_to_image_ids))
+        for i_sequence,sequence_id in tqdm(
+            enumerate(sequence_id_to_image_ids),
+            total=len(sequence_id_to_image_ids)):
 
             image_ids_this_sequence = sequence_id_to_image_ids[sequence_id]
 
@@ -196,11 +206,19 @@ def wi_download_csv_to_coco(csv_file_in,
 
             for image_id in image_ids_this_sequence:
 
+                n_images_evaluated += 1
+
                 records_this_image = image_id_to_image_records[image_id]
                 # Choose a representative record for sorting
                 r = records_this_image[0]
                 # Timestamps are formatted as "2019-09-09 13:45:00"
-                assert isinstance(r['timestamp'],str) and len(r['timestamp']) == 19
+                #
+                # ...except sometimes they're empty.
+                assert isinstance(r['timestamp'],str)
+                assert len(r['timestamp']) in (0,19)
+                if len(r['timestamp']) == 0:
+                    n_empty_timestamps += 1
+                    r['timstamp'] = dummy_timestamp
                 records_this_sequence.append(r)
 
             sorted_records_this_sequence = \
@@ -231,10 +249,14 @@ def wi_download_csv_to_coco(csv_file_in,
 
         # ...for each sequence ID
 
+        if n_empty_timestamps > 0:
+            print('Warning: {} of {} images have invalid timestamps'.format(
+                n_empty_timestamps,n_images_evaluated))
+
     # ...if this is a sequence-based project
 
 
-    #%% Create COCO dictionaries
+    ##%% Create COCO dictionaries
 
     category_name_to_category = {}
     empty_category = {'name':'empty','id':0,'count':0,'taxonomy_string':''}
@@ -247,6 +269,7 @@ def wi_download_csv_to_coco(csv_file_in,
 
     n_blanks_excluded = 0
     n_placeholders_excluded = 0
+    n_sequence_image_inconsistencies = 0
 
     # image_id = next(iter(image_id_to_image_records))
     for image_id in tqdm(image_id_to_image_records.keys(),
@@ -309,8 +332,8 @@ def wi_download_csv_to_coco(csv_file_in,
             taxon_ids_this_sequence = set([r['wi_taxon_id'] for r in sequence_records_this_sequence])
             taxon_ids_each_image = set([r['wi_taxon_id'] for r in image_records_this_id])
 
-            assert taxon_ids_each_image == taxon_ids_this_sequence, \
-                'Sequence label inconsistency'
+            if taxon_ids_each_image != taxon_ids_this_sequence:
+                n_sequence_image_inconsistencies += 1
 
         im['wi_image_info'] = {}
         for s in wi_extra_image_columns:
@@ -523,14 +546,18 @@ def wi_download_csv_to_coco(csv_file_in,
 
     # ...for each image
 
+    if n_sequence_image_inconsistencies > 0:
+        print('Warning: {} sequence/image label inconsistencies'.format(
+            n_sequence_image_inconsistencies))
+
+    print('Created COCO records for {} image IDs ({} blanks, {} placeholders excluded)'.format(
+            len(image_id_to_image),n_blanks_excluded, n_placeholders_excluded))
+
 
     ##%% Write COCO output
 
     images = list(image_id_to_image.values())
     categories = list(category_name_to_category.values())
-
-    print('Created COCO records for {} image IDs ({} blanks, {} placeholders excluded)'.format(
-        len(image_id_to_image),n_blanks_excluded, n_placeholders_excluded))
 
     annotations = []
 

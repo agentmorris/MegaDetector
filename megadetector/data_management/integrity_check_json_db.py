@@ -492,10 +492,17 @@ def integrity_check_json_db(json_file, options=None):
         print('Categories and annotation/image counts:\n')
 
         for cat in sorted_categories:
+            category_name = cat['name']
+            image_count = 0
+            annotation_count = cat['_count']
+            if category_name in category_name_to_image_count:
+                image_count = category_name_to_image_count[cat['name']]
+            else:
+                assert annotation_count == 0, 'Image/annotation count mismatch'
             print('{:6} {} ({} images)'.format(
-                cat['_count'],
-                cat['name'],
-                category_name_to_image_count[cat['name']]))
+                annotation_count,
+                category_name,
+                image_count))
 
         print('')
 
