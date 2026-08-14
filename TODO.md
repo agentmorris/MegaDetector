@@ -1037,7 +1037,7 @@ E0
 
 ## URL cleanup in LILA files
 
-The "camera trap datasets" .csv file (with one row per dataset) and the Big CSV File (with one row per observation) have separate columns for Azure/GCP/AWS URLs.  This is no longer necessary, since all three copies have the same structure now.  This creates potential for errors when I update these files, and also bloats the already-giant observations file.  Condense these.
+The "camera trap datasets" .csv file (with one row per dataset) and the Big CSV File (with one row per observation) have separate columns for Azure/GCP/AWS URLs.  This is no longer necessary, since all three copies have the same structure now.  This creates potential for errors when I update these files, and bloats the already-giant observations file.  Condense these.
 
 P2
 
@@ -1078,3 +1078,14 @@ E0
 
 !maintenance
 !testing
+
+
+## Support variable-encoding Bushnell camera videos
+
+According to [this bug](https://github.com/opencv/opencv/pull/29700) on the OpenCV repo: "Some MJPEG AVI files change chroma subsampling partway through the stream at a constant frame size. A Bushnell trail camera, for instance, writes its first frame as yuvj422p and every frame after that as yuvj420p.".  This causes decoding crashes.  This was merged into OpenCV on 2026.08.11; the current OpenCV PyPI version is 5.0.0.93.  This fix will likely be included in the next PyPI release.  The likely fix is to just update our requirement to be >= that version.  If for any reason that becomes complicated, as Peter suggests [here](https://github.com/agentmorris/MegaDetector/issues/237) - we can set OPENCV_VIDEOIO_PRIORITY_FFMPEG=0.
+
+P2
+
+E0
+
+!bug
