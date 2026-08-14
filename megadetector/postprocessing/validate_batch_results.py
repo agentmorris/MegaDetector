@@ -16,6 +16,7 @@ import json
 import argparse
 
 from tqdm import tqdm
+from collections import defaultdict
 
 from megadetector.detection.video_utils import is_video_file
 from megadetector.utils.ct_utils import args_to_object, is_list_sorted # noqa
@@ -69,7 +70,7 @@ class ValidateBatchResultsOptions:
 
 def validate_batch_results(json_filename,options=None):
     """
-    Verify that [json_filename] is a valid MD output file.  Currently errors on invalid files.
+    Verify that [json_filename] is a valid MD output file.
 
     Args:
         json_filename (str or dict): the filename to validate, or an already loaded results dict
@@ -183,6 +184,16 @@ def validate_batch_results(json_filename,options=None):
 
         ## Image validation
 
+        # Store counts per category to include in return info, not used directly for
+        # validation
+        detection_category_id_to_count = defaultdict(int)
+        classification_category_id_to_count = defaultdict(int)
+
+        validation_results['detection_category_id_to_count'] = \
+            detection_category_id_to_count
+        validation_results['classification_category_id_to_count'] = \
+            classification_category_id_to_count
+
         if 'images' not in d:
             raise ValueError('images field not present')
         if not isinstance(d['images'],list):
@@ -214,19 +225,27 @@ def validate_batch_results(json_filename,options=None):
                         'Image {} has a detection with an unmapped category {}'.format(
                             file,det['category'])
 
+                    detection_category_id_to_count[det['category']] += 1
+
                     if 'classifications' in det and det['classifications'] is not None:
+
                         for c in det['classifications']:
+
                             assert isinstance(c[0],str), \
                                 'Image {} has an illegal classification category: {}'.format(file,c[0])
                             assert c[0] in d['classification_categories'], \
                                 'Classification category {} appears in an image, but not in the category list'.format(
                                     c[0])
+                            classification_category_id_to_count[c[0]] += 1
+
                             try:
                                 _ = int(c[0])
                             except Exception:
                                 raise ValueError('Image {} has an illegal classification category: {}'.format(
                                     file,c[0]))
                             assert isinstance(c[1],float) or isinstance(c[1], int)
+
+                        # ...for each classification
 
                 # ...for each detection
 
