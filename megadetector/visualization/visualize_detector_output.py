@@ -19,7 +19,7 @@ from multiprocessing.pool import Pool
 from functools import partial
 from tqdm import tqdm
 
-from megadetector.data_management.annotations.annotation_constants import detector_bbox_category_id_to_name
+from megadetector.data_management.annotation_constants import detector_bbox_category_id_to_name
 from megadetector.detection.run_detector import get_typical_confidence_threshold_from_results
 from megadetector.utils.ct_utils import get_max_conf
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key

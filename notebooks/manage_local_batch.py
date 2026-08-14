@@ -2028,9 +2028,6 @@ preview_options.output_dir = preview_folder
 preview_options.category_name_to_sort_weight = \
     {'animal':1,'blank':1,'unknown':1,'unreliable':1,'mammal':1,'no cv result':1}
 
-preview_options.confidence_threshold = 0.1
-preview_options.almost_detection_confidence_threshold = 0.05
-
 print('Generating interesting-animals preview in {}'.format(preview_folder))
 ppresults = process_batch_results(preview_options)
 open_file(ppresults.output_html_file,attempt_to_open_in_wsl_host=True,browser_name='chrome')

@@ -63,9 +63,8 @@ In this scenario, the folders within "animals" will be:
 
 deer, cow, multiple, unclassified
 
-"multiple" in this case only means "deer and cow"; if an image is classified as containing a
-bird and a bear, that would end up in "unclassified", since the folder separation is based only
-on the categories you provide at the command line.
+"multiple" in this case means "deer and cow", "deer and something else", or "cow and something else";
+if an image is classified as containing a bird and a bear, that would end up in "unclassified".
 
 No classification-based separation is done within the animal_person, animal_vehicle, or
 animal_person_vehicle folders.
@@ -81,7 +80,9 @@ import shutil
 import sys
 import itertools
 
+from multiprocessing.pool import Pool
 from multiprocessing.pool import ThreadPool
+
 from functools import partial
 from tqdm import tqdm
 
@@ -127,6 +128,11 @@ class SeparateDetectionsIntoFoldersOptions:
         #: Number of workers to use, set to <= 1 to disable parallelization
         self.n_threads = 1
 
+        #: Should we use threads ("threads") or processes ("processes") for rendering?
+        #:
+        #: Only relevant if n_threads is > 1.
+        self.rendering_pool_type = 'threads'
+
         #: By default, this function errors if you try to output to an existing folder
         self.allow_existing_directory = False
 
@@ -159,18 +165,25 @@ class SeparateDetectionsIntoFoldersOptions:
         #: Should we render boxes on the output images?  Makes everything a lot slower.
         self.render_boxes = False
 
+        #: If we're rendering boxes, should we show labels/confidence values?
+        self.show_box_labels = False
+
         #: Line thickness in pixels; only relevant if [render_boxes] is True
         self.line_thickness = default_line_thickness
 
         #: Box expansion in pixels; only relevant if [render_boxes] is True
         self.box_expansion = default_box_expansion
 
-        #: Originally specified as a string that looks like this:
+        #: Can be a dict mapping category names to confidence thresholds, or a string
+        #: that looks like:
         #:
         #: deer=0.75,cow=0.75
-        #:
-        #: String, converted internally to a dict mapping name:threshold
         self.classification_thresholds = None
+
+        #: If we have a classification threshold for "deer", we are going to create a folder
+        #: for images that are *only* deer.  This is the threshold we use to decide whether
+        #: a category *not* listed in classification_thresholds is present
+        self.unlisted_category_threshold = 0.5
 
         ## Debug or internal attributes
 
@@ -180,12 +193,12 @@ class SeparateDetectionsIntoFoldersOptions:
         #: Do not set explicitly; populated from data when using classification results
         self.classification_categories = None
 
-        #: Used to test this script; sets a limit on the number of images to process.
+        #: Sets a limit on the number of images to process (for debugging)
         self.debug_max_images = None
 
         #: Do not set explicitly; this gets created based on [results_file]
         #:
-        #:Dictionary mapping categories (plus combinations of categories, and 'empty') to output folders
+        #: Dictionary mapping categories (plus combinations of categories, and 'empty') to output folders
         self.category_name_to_folder = None
 
         #: Do not set explicitly; this gets loaded from [results_file]
@@ -199,6 +212,9 @@ class SeparateDetectionsIntoFoldersOptions:
         #: Remove all empty folders from the target folder at the end of the process,
         #: whether or not they were created by this script
         self.remove_empty_folders = False
+
+        #: Enable additional debug output
+        self.verbose = False
 
     # ...__init__()
 
@@ -276,8 +292,8 @@ def _process_detections(im,options):
 
         categories_above_threshold.sort()
 
-        using_classification_folders = (options.classification_thresholds is not None and \
-                                        len(options.classification_thresholds) > 0)
+        using_classification_folders = (options.classification_thresholds is not None) and \
+                                       (len(options.classification_thresholds) > 0)
 
         # If this is above multiple thresholds
         if len(categories_above_threshold) > 1:
@@ -310,9 +326,13 @@ def _process_detections(im,options):
                                            (d['category'] == animal_category_id and \
                                            d['conf'] >= options.category_name_to_threshold['animal'])]
 
-                # Count the number of classification categories that are above threshold for at
-                # least one detection
+                # Count the number of classification categories (*on* our list) that are above
+                # threshold for at least one detection
                 classification_categories_above_threshold = set()
+
+                # Count the number of classification categories (*not* on our list) that are above
+                # threshold for at least one detection
+                unlisted_classification_categories_above_threshold = set()
 
                 # d = valid_animal_detections[0]
                 for d in valid_animal_detections:
@@ -331,21 +351,35 @@ def _process_detections(im,options):
                         assert options.classification_category_id_to_name is not None
                         classification_category_name = \
                             options.classification_category_id_to_name[classification_category_id]
-                        if (classification_category_name in options.classification_thresholds) and \
-                            (classification_confidence > \
-                             options.classification_thresholds[classification_category_name]):
-                            classification_categories_above_threshold.add(classification_category_name)
+
+                        # Is this one of the categories for which we're creating a dedicated folder?
+                        if (classification_category_name in options.classification_thresholds):
+
+                            if (classification_confidence > \
+                                options.classification_thresholds[classification_category_name]):
+                                classification_categories_above_threshold.add(classification_category_name)
+
+                        # Not one of our folder-creation categories, but above-threshold
+                        elif (classification_confidence > options.unlisted_category_threshold):
+
+                            unlisted_classification_categories_above_threshold.add(
+                                classification_category_name)
 
                     # ...for each classification
 
                 # ...for each detection
 
+                # No categories on our list
                 if len(classification_categories_above_threshold) == 0:
                     classification_folder_name = 'unclassified'
 
-                elif len(classification_categories_above_threshold) > 1:
+                # Multiple categories on our list, or a category on our list and
+                # one or more categories that are not on our list
+                elif (len(classification_categories_above_threshold) > 1) or \
+                     (len(unlisted_classification_categories_above_threshold) > 1):
                     classification_folder_name = 'multiple'
 
+                # Just a single category on our list
                 else:
                     assert len(classification_categories_above_threshold) == 1
                     classification_folder_name = list(classification_categories_above_threshold)[0]
@@ -434,17 +468,26 @@ def _process_detections(im,options):
             category_detections = [d for d in detections if d['category'] == category_id]
 
             # When we're not using classification folders, remove classification
-            # information to maintain standard detection colors.
-            if not using_classification_folders:
+            # information to maintain standard detection colors.  Also don't use
+            # colors for classifications when we're not showing classification labels,
+            # in this case it's more confusing than helpful.
+            if (not using_classification_folders) or (not options.show_box_labels):
                 for d in category_detections:
                     if 'classifications' in d:
                         del d['classifications']
 
+            if options.show_box_labels:
+                rendering_label_map = options.detection_categories
+                rendering_classification_label_map = classification_label_map
+            else:
+                rendering_label_map = None
+                rendering_classification_label_map = None
+
             vis_utils.render_detection_bounding_boxes(
                 category_detections,
                 pil_image,
-                label_map=options.detection_categories,
-                classification_label_map=classification_label_map,
+                label_map=rendering_label_map,
+                classification_label_map=rendering_classification_label_map,
                 confidence_threshold=category_threshold,
                 thickness=options.line_thickness,
                 expansion=options.box_expansion)
@@ -452,7 +495,9 @@ def _process_detections(im,options):
         # ...for each category
 
         # Try to preserve EXIF data and image quality when saving
-        vis_utils.exif_preserving_save(pil_image,target_path)
+        vis_utils.exif_preserving_save(pil_image,
+                                       target_path,
+                                       verbose=options.verbose)
 
     # ...if we don't/do need to render boxes
 
@@ -482,6 +527,10 @@ def separate_detections_into_folders(options):
         'Cannot specify both render_boxes and move_images'
     assert not ((options.category_names_to_blur is not None) and options.move_images), \
         'Cannot specify both category_names_to_blur and move_images'
+
+    # Allow "-1" to mean the same thing as None for debug_max_images
+    if (options.debug_max_images is not None) and (options.debug_max_images < 0):
+        options.debug_max_images = None
 
     # Create output folder if necessary
     if (os.path.isdir(options.base_output_folder)) and \
@@ -607,9 +656,13 @@ def separate_detections_into_folders(options):
 
     # ...if we need to deal with classification categories
 
-    if options.n_threads <= 1 or options.debug_max_images is not None:
+    if (options.debug_max_images is not None) and \
+       (options.debug_max_images < len(images)):
+        print('Debug: clipping list to {} images'.format(options.debug_max_images))
+        images = images[0:options.debug_max_images]
 
-        # i_image = 14; im = images[i_image]; im
+    if options.n_threads <= 1:
+
         for i_image,im in enumerate(tqdm(images)):
             if options.debug_max_images is not None and i_image > options.debug_max_images:
                 break
@@ -618,8 +671,16 @@ def separate_detections_into_folders(options):
 
     else:
 
-        print('Starting a pool with {} threads'.format(options.n_threads))
-        pool = ThreadPool(options.n_threads)
+        if options.rendering_pool_type == 'threads':
+            pool = ThreadPool(options.n_threads)
+            worker_string = 'threads'
+        else:
+            pool = Pool(options.n_threads)
+            worker_string = 'processes'
+
+        print('Separating images into folder with {} {}'.format(
+            options.n_threads,worker_string))
+
         try:
             process_detections_with_options = partial(_process_detections, options=options)
             _ = list(tqdm(pool.imap(process_detections_with_options, images), total=len(images)))
@@ -634,70 +695,6 @@ def separate_detections_into_folders(options):
 
 #  ...def separate_detections_into_folders
 
-
-#%% Interactive driver
-
-if False:
-
-    pass
-
-    #%%
-
-    options = SeparateDetectionsIntoFoldersOptions()
-
-    options.results_file = os.path.expanduser(
-        '~/data/snapshot-safari-2022-08-16-KRU-v5a.0.0_detections.json')
-    options.base_input_folder = os.path.expanduser('~/data/KRU/KRU_public')
-    options.base_output_folder = os.path.expanduser('~/data/KRU-separated')
-    options.n_threads = 100
-    options.render_boxes = True
-    options.allow_existing_directory = True
-
-    #%%
-
-    options = SeparateDetectionsIntoFoldersOptions()
-
-    options.results_file = os.path.expanduser('~/data/ena24-2022-06-15-v5a.0.0_megaclassifier.json')
-    options.base_input_folder = os.path.expanduser('~/data/ENA24/images')
-    options.base_output_folder = os.path.expanduser('~/data/ENA24-separated')
-    options.n_threads = 100
-    options.classification_thresholds = 'deer=0.75,cow=0.75,bird=0.75'
-    options.render_boxes = True
-    options.allow_existing_directory = True
-
-    #%%
-
-    separate_detections_into_folders(options)
-
-    #%% Testing various command-line invocations
-
-    """
-    # With boxes, no classification
-    python separate_detections_into_folders.py \
-        ~/data/ena24-2022-06-15-v5a.0.0_megaclassifier.json \
-        ~/data/ENA24/images ~/data/ENA24-separated \
-        --threshold 0.17 --animal_threshold 0.2 --n_threads 10 \
-        --allow_existing_directory --render_boxes --line_thickness 10 --box_expansion 10
-
-    # No boxes, no classification (default)
-    python separate_detections_into_folders.py \
-        ~/data/ena24-2022-06-15-v5a.0.0_megaclassifier.json \
-        ~/data/ENA24/images ~/data/ENA24-separated \
-        --threshold 0.17 --animal_threshold 0.2 --n_threads 10 --allow_existing_directory
-
-    # With boxes, with classification
-    python separate_detections_into_folders.py \
-        ~/data/ena24-2022-06-15-v5a.0.0_megaclassifier.json ~/data/ENA24/images ~/data/ENA24-separated \
-        --threshold 0.17 --animal_threshold 0.2 --n_threads 10 --allow_existing_directory \
-        --render_boxes --line_thickness 10 --box_expansion 10 \
-        --classification_thresholds "deer=0.75,cow=0.75,bird=0.75"
-
-    # No boxes, with classification
-    python separate_detections_into_folders.py \
-        ~/data/ena24-2022-06-15-v5a.0.0_megaclassifier.json ~/data/ENA24/images ~/data/ENA24-separated \
-        --threshold 0.17 --animal_threshold 0.2 --n_threads 10 --allow_existing_directory \
-        --classification_thresholds "deer=0.75,cow=0.75,bird=0.75"
-    """
 
 #%% Command-line driver
 

@@ -266,6 +266,8 @@ def read_metadata_file_for_dataset(ds_name,
 
         with zipfile.ZipFile(json_filename,'r') as z:
             files = z.namelist()
+
+        # Each metadata zipfile should contain only a .json file
         assert len(files) == 1
         unzipped_json_filename = os.path.join(metadata_dir,files[0])
         if not os.path.isfile(unzipped_json_filename):
@@ -320,4 +322,3 @@ if False:
                                        pool_type='process',
                                        timeout=2.0)
     assert all([code == 200 for code in status_codes])
-

@@ -405,6 +405,18 @@ E0
 !testing
 
 
+## Evaluate accuracy tradeoffs with RFDETR optimizations enabled
+
+For RF-DETR models, we can independently enable fp16 inference and compilation.  These come with some accuracy loss, but I think it's minimal.  Formally evaluate this and come up with recommendations about when to enable these optimizations.
+
+P1
+
+E2
+
+!docs
+!testing
+
+
 ## Formal evaluation of image size, augmentation, preprocessing mode
 
 There are several knobs the user can turn when trying to squeeze the most accuracy out of a specific MD model: specifically, the user can tinker with the inference image size, enabling image augmentation, and switching between "classic" and "modern" preprocessing.  I have not yet formally evaluated the performance impacts of these approaches, so this could use formal evaluation and documentation of best practices.
@@ -1023,23 +1035,57 @@ E0
 !maintenance
 
 
-## Windows support for WI project download
-
-write_download_commands() in wi_platform_utils (which writes out a series of gcloud storage commands to download images for a WI project) assumes bash (writes .sh files, uses "wait" and "echo").  Add .bat support.
-
-P3
-
-E0
-
-!feature
-
-
 ## URL cleanup in LILA files
 
-The "camera trap datasets" .csv file (with one row per dataset) and the Big CSV File (with one row per observation) have separate columns for Azure/GCP/AWS URLs.  This is no longer necessary, since all three copies have the same structure now.  This creates potential for errors when I update these files, and also bloats the already-giant observations file.  Condense these.
+The "camera trap datasets" .csv file (with one row per dataset) and the Big CSV File (with one row per observation) have separate columns for Azure/GCP/AWS URLs.  This is no longer necessary, since all three copies have the same structure now.  This creates potential for errors when I update these files, and bloats the already-giant observations file.  Condense these.
 
 P2
 
 E1
 
 !lila
+
+
+## Standardize module naming in the data_management subpackage
+
+We use "coco_db", "json"db", "coco_database", etc. interchangeably in module names; standardize these, probably to "coco_db".
+
+P3
+
+E0
+
+!maintenance
+
+
+## Parallelize LILA .csv generation
+
+Parallelize the main loop in generate_lila_per_image_labels.py.
+
+P2
+
+E0
+
+!lila
+
+
+## Add TODO validation to testing/linting
+
+Validate this file (TODO.md) during testing/linting.
+
+P2
+
+E0
+
+!maintenance
+!testing
+
+
+## Support variable-encoding Bushnell camera videos
+
+According to [this bug](https://github.com/opencv/opencv/pull/29700) on the OpenCV repo: "Some MJPEG AVI files change chroma subsampling partway through the stream at a constant frame size. A Bushnell trail camera, for instance, writes its first frame as yuvj422p and every frame after that as yuvj420p.".  This causes decoding crashes.  This was merged into OpenCV on 2026.08.11; the current OpenCV PyPI version is 5.0.0.93.  This fix will likely be included in the next PyPI release.  The likely fix is to just update our requirement to be >= that version.  If for any reason that becomes complicated, as Peter suggests [here](https://github.com/agentmorris/MegaDetector/issues/237) - we can set OPENCV_VIDEOIO_PRIORITY_FFMPEG=0.
+
+P2
+
+E0
+
+!bug

@@ -12,6 +12,7 @@ Utility functions for working with the Wildlife Insights platform, specifically:
 #%% Imports
 
 import os
+import json
 import requests
 
 import pandas as pd
@@ -22,12 +23,14 @@ from collections import defaultdict
 
 from multiprocessing.pool import Pool, ThreadPool
 from functools import partial
+from copy import deepcopy
 
 from megadetector.utils.path_utils import insert_before_extension
 from megadetector.utils.path_utils import make_executable
 from megadetector.utils.path_utils import path_join
 
 from megadetector.utils.ct_utils import split_list_into_n_chunks
+from megadetector.utils.ct_utils import split_list_into_fixed_size_chunks
 from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.utils.ct_utils import compare_values_nan_equal
 from megadetector.utils.ct_utils import is_empty
@@ -47,6 +50,54 @@ md_category_name_to_id = invert_dictionary(md_category_id_to_name)
 
 # Fields expected to be present in a valid WI result
 wi_result_fields = ['wi_taxon_id','class','order','family','genus','species','common_name']
+
+# Sample payload for validation
+sample_update_payload = {
+
+    "predictions": [
+        {
+          "project_id": "1234",
+          "ignore_data_file_checks": True,
+          "prediction": "f1856211-cfb7-4a5b-9158-c0f72fd09ee6;;;;;;blank",
+          "prediction_score": 0.81218224763870239,
+            "classifications": {
+                "classes": [
+                    "f1856211-cfb7-4a5b-9158-c0f72fd09ee6;;;;;;blank",
+                    "b1352069-a39c-4a84-a949-60044271c0c1;aves;;;;;bird",
+                    "90d950db-2106-4bd9-a4c1-777604c3eada;mammalia;rodentia;;;;rodent",
+                    "f2d233e3-80e3-433d-9687-e29ecc7a467a;mammalia;;;;;mammal",
+                    "ac068717-6079-4aec-a5ab-99e8d14da40b;mammalia;rodentia;sciuridae;dremomys;rufigenis;red-cheeked squirrel"
+                ],
+                "scores": [
+                    0.81218224763870239,
+                    0.1096673980355263,
+                    0.02707692421972752,
+                    0.00771023565903306,
+                    0.0049269795417785636
+                ]
+            },
+            "detections": [
+                {
+                    "category": "1",
+                    "label": "animal",
+                    "conf": 0.181,
+                    "bbox": [
+                        0.02421,
+                        0.35823999999999989,
+                        0.051560000000000009,
+                        0.070826666666666746
+                    ]
+                }
+            ],
+            "model_version": "3.1.2",
+            "prediction_source": "manual_update",
+            "data_file_id": "2ea1d2b2-7f84-43f9-af1f-8be0e69c7015"
+        }
+    ]
+}
+
+process_cv_response_url = 'https://api.wildlifeinsights.org/api/v1/data-file/process-CV-response'
+get_auth_token_url = 'https://api.wildlifeinsights.org/v1/auth/m2m/token'
 
 
 #%% Functions for managing WI downloads
@@ -442,11 +493,12 @@ def write_download_commands(image_records,
                             force_download=False,
                             n_download_workers=25,
                             download_command_file_base=None,
-                            image_flattening='deployment'):
+                            image_flattening='deployment',
+                            script_extension=None):
     """
     Given a list of dicts with at least the field 'location' (a gs:// URL), prepare a set of "gcloud
-    storage" commands to download images, and write those to a series of .sh scripts, along with one
-    .sh script that runs all the others and blocks.
+    storage" commands to download images, and write those to a series of .sh/.bat scripts, along with
+    one .sh/.bat script that runs all the others and blocks.
 
     gcloud commands will use relative paths.
 
@@ -463,6 +515,8 @@ def write_download_commands(image_records,
         image_flattening (str, optional): if 'none', relative paths will be preserved
             representing the entire URL for each image.  Can be 'guid' (just download to
             [GUID].JPG) or 'deployment' (download to [deployment]/[GUID].JPG).
+        script_extension (str, optional): 'bat' or 'sh', or None to auto-select based on
+            OS
     """
 
     ##%% Input validation
@@ -480,6 +534,19 @@ def write_download_commands(image_records,
     assert isinstance(image_records[0],dict), \
         'Illegal image record format {}'.format(type(image_records[0]))
 
+    if script_extension is None:
+        if os.name == 'nt':
+            script_extension = '.bat'
+            command_prefix = 'call '
+        else:
+            script_extension = '.sh'
+            command_prefix = ''
+    else:
+        script_extension = script_extension.lower()
+        if not script_extension.startswith('.'):
+            script_extension = '.' + script_extension
+        assert script_extension in ('.bat','.sh'), \
+            'Unrecognized script extension {}'.format(script_extension)
 
     ##%% Map URLs to relative paths
 
@@ -516,7 +583,8 @@ def write_download_commands(image_records,
     ##%% Make list of gcloud storage commands
 
     if download_command_file_base is None:
-        download_command_file_base = path_join(download_dir_base,'download_wi_images.sh')
+        download_command_file_base = path_join(download_dir_base,
+                                               'download_wi_images' + script_extension)
 
     commands = []
     skipped_urls = []
@@ -540,7 +608,8 @@ def write_download_commands(image_records,
             continue
 
         # command = 'gsutil cp "{}" "./{}"'.format(url,relative_path)
-        command = 'gcloud storage cp --no-clobber "{}" "./{}"'.format(url,relative_path)
+        command = command_prefix
+        command += 'gcloud storage cp --no-clobber "{}" "./{}"'.format(url,relative_path)
         commands.append(command)
 
     print('Generated {} commands for {} image records'.format(
@@ -549,7 +618,7 @@ def write_download_commands(image_records,
     print('Skipped {} URLs'.format(len(skipped_urls)))
 
 
-    ##%% Write those commands out to n .sh files
+    ##%% Write those commands out to n scripts
 
     commands_by_script = split_list_into_n_chunks(commands,n_download_workers)
 
@@ -572,79 +641,101 @@ def write_download_commands(image_records,
 
     # Write out the main download script
     with open(download_command_file_base,'w',newline='\n') as f:
-        for local_download_command in local_download_commands:
-            f.write('./' + local_download_command + ' &\n')
-        f.write('wait\n')
-        f.write('echo done\n')
+
+        if script_extension == '.sh':
+
+            for local_download_command in local_download_commands:
+                f.write('./' + local_download_command + ' &\n')
+            f.write('wait\n')
+            f.write('echo Finished downloads\n')
+
+        else:
+
+            assert script_extension == '.bat'
+
+            # There is not an easy way to invoke the scripts in parallel in pure .bat, so we
+            # punt to PowerShell for the execution.
+
+            # for local_download_command in local_download_commands:
+            #    f.write('call ' + local_download_command + '\n')
+
+            cmd = 'powershell -NoProfile -Command "@('
+            quoted_local_download_commands = ["'" + s + "'" for s in local_download_commands]
+            cmd += ','.join(quoted_local_download_commands)
+            cmd += ') | ForEach-Object { Start-Process $_ -PassThru -NoNewWindow } | Wait-Process"'
+
+            f.write(cmd + '\n')
+            f.write('echo Finished downloads\n')
+
+    # ...with open(...)
+
     make_executable(download_command_file_base,catch_exceptions=True)
 
 # ...def write_download_commands(...)
 
 
-#%% Functions and constants related to pushing results to the DB
+#%% Functions related to pushing results to the DB
 
-# Sample payload for validation
-sample_update_payload = {
+def get_auth_token(client_secret_info, verbose=False):
+    """
+    Get a temporary auth token from the WI "token" API.
 
-    "predictions": [
-        {
-          "project_id": "1234",
-          "ignore_data_file_checks": True,
-          "prediction": "f1856211-cfb7-4a5b-9158-c0f72fd09ee6;;;;;;blank",
-          "prediction_score": 0.81218224763870239,
-            "classifications": {
-                "classes": [
-                    "f1856211-cfb7-4a5b-9158-c0f72fd09ee6;;;;;;blank",
-                    "b1352069-a39c-4a84-a949-60044271c0c1;aves;;;;;bird",
-                    "90d950db-2106-4bd9-a4c1-777604c3eada;mammalia;rodentia;;;;rodent",
-                    "f2d233e3-80e3-433d-9687-e29ecc7a467a;mammalia;;;;;mammal",
-                    "ac068717-6079-4aec-a5ab-99e8d14da40b;mammalia;rodentia;sciuridae;dremomys;rufigenis;red-cheeked squirrel"
-                ],
-                "scores": [
-                    0.81218224763870239,
-                    0.1096673980355263,
-                    0.02707692421972752,
-                    0.00771023565903306,
-                    0.0049269795417785636
-                ]
-            },
-            "detections": [
-                {
-                    "category": "1",
-                    "label": "animal",
-                    "conf": 0.181,
-                    "bbox": [
-                        0.02421,
-                        0.35823999999999989,
-                        0.051560000000000009,
-                        0.070826666666666746
-                    ]
-                }
-            ],
-            "model_version": "3.1.2",
-            "prediction_source": "manual_update",
-            "data_file_id": "2ea1d2b2-7f84-43f9-af1f-8be0e69c7015"
-        }
-    ]
-}
+    Args:
+        client_secret_info (str or dict): a dict with keys "clientId" and "clientSecret",
+            or the filename of a .json file containing that dict.
+        verbose (bool, optional): enable additional debug output
 
-process_cv_response_url = 'https://placeholder'
+    Returns:
+        str: auth token, likely with a 60-minute expiration
+    """
+
+    if isinstance(client_secret_info,str):
+        assert os.path.isfile(client_secret_info), \
+            'Could not find client info file {}'.format(client_secret_info)
+        with open(client_secret_info,'r') as f:
+            d = json.load(f)
+            assert 'clientId' in d and 'clientSecret' in d, \
+                'File {} does not appear to be a client secret file'.format(client_secret_info)
+            client_id = d['clientId']
+            client_secret = d['clientSecret']
+    else:
+        client_id = client_secret_info['clientId']
+        client_secret = client_secret_info['clientSecret']
+
+    headers = { 'Content-Type': 'application/json' }
+    payload = { 'clientId':client_id,'clientSecret':client_secret }
+
+    response = requests.post(get_auth_token_url, headers=headers, json=payload)
+
+    # Check the response status code
+    if response.status_code in (200,201):
+        content = response.json()
+        assert isinstance(content,dict) and ('token' in content), \
+            'Invalid auth header response'
+        token = content['token']
+        assert isinstance(token,str) and (len(token) > 0), \
+            'Invalid auth token'
+        if verbose:
+            print('Successfully retrieved auth header with token length {}'.format(len(token)))
+        return token
+    else:
+        if verbose:
+            print('Error getting auth token: {} {}'.format(response.status_code,response.text))
+        return None
+
+# ...def get_auth_token(...)
 
 
-def prepare_data_update_auth_headers(auth_token_file):
+def prepare_data_update_auth_headers(auth_token):
     """
     Read the authorization token from a text file and prepare http headers.
 
     Args:
-        auth_token_file (str): a single-line text file containing a write-enabled
-        API token.
+        auth_token (str): a valid WI API token, likely retrieved via get_auth_token()
 
     Returns:
         dict: http headers, with fields 'Authorization' and 'Content-Type'
     """
-
-    with open(auth_token_file,'r') as f:
-        auth_token = f.read()
 
     headers = {
         'Authorization': 'Bearer ' + auth_token,
@@ -652,6 +743,8 @@ def prepare_data_update_auth_headers(auth_token_file):
     }
 
     return headers
+
+# ...def prepare_data_update_auth_headers(...)
 
 
 def push_results_for_images(payload,
@@ -672,57 +765,137 @@ def push_results_for_images(payload,
         int: response status code
     """
 
+    to_return = {}
+    to_return['status_code'] = None
+    to_return['error'] = None
+    to_return['data_file_ids'] = None
+
     if verbose:
+        print_headers = deepcopy(headers)
+        if ('Authorization' in print_headers) and len(print_headers['Authorization']) >= 10:
+            print_headers['Authorization'] = print_headers['Authorization'][0:10] + '...'
         print('Sending header {} to URL {}'.format(
-            headers,url))
+            print_headers,url))
 
-    response = requests.post(url, headers=headers, json=payload)
+    try:
 
-    # Check the response status code
-    if response.status_code in (200,201):
-        if verbose:
-            print('Successfully pushed results for {} images'.format(len(payload['predictions'])))
-            print(response.headers)
-            print(str(response))
-    else:
-        print(f'Error: {response.status_code} {response.text}')
+        data_file_ids = []
+        for prediction in payload['predictions']:
+            data_file_ids.append(prediction['data_file_id'])
+        to_return['data_file_ids'] = data_file_ids
 
-    return response.status_code
+        response = requests.post(url, headers=headers, json=payload)
+        to_return['status_code'] = response.status_code
+
+        # Check the response status code
+        if response.status_code in (200,201):
+            if verbose:
+                print('Successfully pushed results for {} images'.format(len(payload['predictions'])))
+                print(response.headers)
+                print(str(response))
+        else:
+            print(f'Error: {response.status_code} {response.text}')
+    except Exception as e:
+        print('Warning, error submitting payload: {}'.format(str(e)))
+        to_return['error'] = str(e)
+
+    return to_return
 
 
 def parallel_push_results_for_images(payloads,
-                                     headers,
+                                     auth_info,
                                      url=process_cv_response_url,
                                      verbose=False,
                                      pool_type='thread',
-                                     n_workers=10):
+                                     n_workers=10,
+                                     chunk_size=None):
     """
     Push results for the list of payloads in [payloads] to the process_cv_response API,
     parallelized over multiple workers.
 
     Args:
         payloads (list of dict): payloads to upload to the API
-        headers (dict): authorization headers, see prepare_data_update_auth_headers
+        auth_info (str or dict): authentication information.  Can be
+            a dict with keys "clientId" and "clientSecret", a filename pointing
+            to a json file containing that dict, or an already-created auth token
+            (string).  An already-created token is not legal if [chunk_size] is not
+            None.
         url (str, optional): API URL
         verbose (bool, optional): enable additional debug output
         pool_type (str, optional): 'thread' or 'process'
         n_workers (int, optional): number of parallel workers
+        chunk_size (int, optional): if not None, process payloads in chunks of this
+            size, retrieving a new auth token before each chunk.  Auth tokens
+            typically expire after 60 minutes, so this is useful for jobs that are
+            expected to run longer than that.  Requires that [auth_info] be client
+            secret information (a dict or a filename), rather than an already-created
+            token.
 
     Returns:
         list of int: list of http response codes, one per payload
     """
 
+    # If we've been given client secret information...
+    if isinstance(auth_info,dict) or \
+       (isinstance(auth_info,str) and os.path.isfile(auth_info)):
+
+        client_secret_info = auth_info
+
+    # Otherwise we should have been given a valid authentication token...
+    else:
+
+        assert isinstance(auth_info,str), 'Invalid authentication information'
+        assert chunk_size is None, \
+            'chunk_size requires client secret information; new tokens cannot be ' + \
+            'created from an existing token'
+        client_secret_info = None
+
+    if chunk_size is None:
+        payload_chunks = [payloads]
+    else:
+        print('Breaking {} payloads into chunks of size {}'.format(
+            len(payloads),chunk_size))
+        assert isinstance(chunk_size,int) and (chunk_size > 0), \
+            'Illegal chunk size {}'.format(chunk_size)
+        payload_chunks = split_list_into_fixed_size_chunks(payloads,chunk_size)
+
+    def _headers_for_next_chunk():
+        """
+        Prepare auth headers for the next chunk, retrieving a new token if we have
+        client secret information.
+        """
+
+        print('Fetching auth information for a new payload chunk')
+
+        if client_secret_info is None:
+            auth_token = auth_info
+        else:
+            auth_token = get_auth_token(client_secret_info, verbose=verbose)
+            assert auth_token is not None, 'Failed to retrieve auth token'
+
+        return prepare_data_update_auth_headers(auth_token=auth_token)
+
+    # ...def _headers_for_next_chunk()
+
+    results = []
+
     if n_workers == 1:
 
-        results = []
-        for payload in payloads:
-            results.append(push_results_for_images(payload,
-                                                   headers=headers,
-                                                   url=url,
-                                                   verbose=verbose))
-        return results
+        for payload_chunk in payload_chunks:
+
+            headers = _headers_for_next_chunk()
+
+            for payload in payload_chunk:
+                results.append(push_results_for_images(payload,
+                                                       headers=headers,
+                                                       url=url,
+                                                       verbose=verbose))
+
+        # ...for each chunk
 
     else:
+
+        pool = None
 
         assert pool_type in ('thread','process')
 
@@ -737,16 +910,31 @@ def parallel_push_results_for_images(payloads,
             print('Created a {} pool of {} workers'.format(
                 pool_string,n_workers))
 
-            results = list(tqdm(pool.imap(
-                partial(push_results_for_images,headers=headers,url=url,verbose=verbose),payloads),
-                total=len(payloads)))
-        finally:
-            pool.close()
-            pool.join()
-            print('Pool closed and joined for WI result uploads')
+            with tqdm(total=len(payloads)) as progress_bar:
 
-        assert len(results) == len(payloads)
-        return results
+                for payload_chunk in payload_chunks:
+
+                    headers = _headers_for_next_chunk()
+
+                    for result in pool.imap(
+                        partial(push_results_for_images,headers=headers,url=url,verbose=verbose),
+                        payload_chunk):
+                        results.append(result)
+                        progress_bar.update(1)
+
+                # ...for each chunk
+
+        finally:
+
+            if pool is not None:
+                pool.close()
+                pool.join()
+                print('Pool closed and joined for WI result uploads')
+
+    assert len(results) == len(payloads)
+    return results
+
+# ...def parallel_push_results_for_images(...)
 
 
 def generate_payload_with_replacement_detections(wi_result,
@@ -802,6 +990,8 @@ def generate_payload_with_replacement_detections(wi_result,
 
     return payload
 
+# ...def generate_payload_with_replacement_detections(...)
+
 
 def generate_blank_prediction_payload(data_file_id,
                                       project_id,
@@ -841,6 +1031,8 @@ def generate_blank_prediction_payload(data_file_id,
 
     return payload
 
+# ...def generate_blank_prediction_payload(...)
+
 
 def generate_no_cv_result_payload(data_file_id,
                                   project_id,
@@ -874,11 +1066,14 @@ def generate_no_cv_result_payload(data_file_id,
     prediction['model_version'] = model_version
     prediction['prediction_source'] = prediction_source
     prediction['data_file_id'] = data_file_id
+
     prediction['project_id'] = project_id
     payload = {}
     payload['predictions'] = [prediction]
 
     return payload
+
+# ...def generate_no_cv_result_payload(...)
 
 
 def generate_payload_for_prediction_string(data_file_id,
@@ -939,6 +1134,8 @@ def generate_payload_for_prediction_string(data_file_id,
     payload['predictions'] = [prediction]
 
     return payload
+
+# ...def generate_payload_for_prediction_string(...)
 
 
 def validate_payload(payload):
@@ -1056,7 +1253,7 @@ def record_is_unidentified(record):
         assert np.isnan(identified_by)
         return True
     else:
-        return identified_by == 'Computer vision'
+        return (identified_by.lower() == 'computer vision')
 
 
 def record_lists_are_identical(records_0,records_1,verbose=False):

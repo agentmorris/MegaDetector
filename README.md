@@ -241,14 +241,9 @@ Environment files... specifically .yml files for mamba/conda environments (these
 Media used in documentation.
 
 
-#### archive
-
-Old code that we didn't <i>quite</i> want to delete, but is basically obsolete.
-
-
 #### sandbox
 
-Random things that don't fit in any other directory, but aren't quite deprecated.  Mostly postprocessing scripts that were built for a single use case but could potentially be useful in the future.
+Random things that don't fit in any other directory, but aren't quite deprecated.
 
 
 #### test_images

@@ -65,6 +65,11 @@ def remap_coco_categories(input_data,
     input_category_id_to_input_category_name = \
         invert_dictionary(input_category_name_to_input_category_id)
 
+    # Make sure the mapping was unique
+    assert len(input_category_id_to_input_category_name) == \
+        len(input_category_name_to_input_category_id), \
+        'Non-invertible category ID mapping'
+
     # Map input IDs --> output IDs
     input_category_id_to_output_category_id = {}
     input_category_names = list(input_category_name_to_output_category_name.keys())
@@ -74,7 +79,9 @@ def remap_coco_categories(input_data,
 
         output_name = input_category_name_to_output_category_name[input_name]
         assert output_name in output_category_name_to_id, \
-            'No output ID for {} --> {}'.format(input_name,output_name)
+            'No output category ID for {} --> {}'.format(input_name,output_name)
+        assert input_name in input_category_name_to_input_category_id, \
+            'No input category ID for {}'.format(input_name)
         input_id = input_category_name_to_input_category_id[input_name]
         output_id = output_category_name_to_id[output_name]
         input_category_id_to_output_category_id[input_id] = output_id

@@ -21,7 +21,7 @@ import pandas as pd
 
 from megadetector.postprocessing.load_api_results import load_api_results_csv
 from megadetector.utils.wi_taxonomy_utils import load_md_or_speciesnet_file
-from megadetector.data_management.annotations import annotation_constants
+from megadetector.data_management import annotation_constants
 from megadetector.utils.ct_utils import get_max_conf
 from megadetector.utils.ct_utils import write_json
 
