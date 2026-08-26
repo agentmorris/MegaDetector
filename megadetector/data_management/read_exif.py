@@ -149,7 +149,13 @@ def _is_null_gps_value(v):
     if v is None:
         return True
 
-    if v == 0:
+    if isinstance(v,str):
+        try:
+            v = float(v)
+        except Exception:
+            return True
+
+    if v == 0.0:
         return True
 
     try:

@@ -92,11 +92,15 @@ class DbVizOptions:
         #: Only include images that contain annotations with these class names (not IDs) (list)
         #:
         #: Mutually exclusive with classes_to_exclude
+        #:
+        #: Category inclusion/exclusion happens *before* sampling.
         self.classes_to_include = None
 
         #: Exclude images that contain annotations with these class names (not IDs) (list)
         #:
         #: Mutually exclusive with classes_to_include
+        #:
+        #: #: Category inclusion/exclusion happens *before* sampling.
         self.classes_to_exclude = None
 
         #: Special tag used to say "show me all images with multiple categories"
