@@ -276,8 +276,8 @@ def validate_label_file(label_file,category_id_to_name=None,verbose=False):
         normalized_y_min = normalized_y_center - normalized_height / 2.0
         normalized_y_max = normalized_y_center + normalized_height / 2.0
 
-        if normalized_x_min < 0 or normalized_y_min < 0 or \
-            normalized_x_max > 1 or normalized_y_max > 1:
+        if (normalized_x_min < 0) or (normalized_y_min < 0) or \
+            (normalized_x_max > 1) or (normalized_y_max > 1):
             label_result['errors'].append('Invalid bounding box: {} {} {} {}'.format(
                 normalized_x_min,normalized_y_min,normalized_x_max,normalized_y_max))
 
