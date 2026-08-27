@@ -6,24 +6,9 @@
 #
 ########
 
-# Not imported directly, but we force this version to avoid this issue:
-#
-# https://github.com/pytorch/pytorch/issues/123097
-mkl == 2024.0; sys_platform != 'darwin'
-  
-# To use ultralytics-yolov5's val.py, we need to use an old version of numpy, 
-# because of the removal of np.int in numpy 1.24.0.  This is only necessary if 
-# you're going to use the full val.py suite in ultralytics-yolov5.  If you pin 
-# numpy here, do it again in the pip section below.
-# numpy == 1.23.5
-numpy >=1.22, < 2.0
+numpy >= 1.26.4
 
-# ultralytics-yolov5 has a dependency on FreeTypeFont.getsize(), which was
-# removed in Pillow 10.  Restrict to <10.0 if you want to use val.py from 
-# ultralytics-yolov5.
-# Pillow >= 9.5.0, < 10.0
-Pillow >= 9.5.0
-
+Pillow >= 10.0.0
 tqdm >= 4.64.0
 jsonpickle >= 3.0.2
 humanfriendly >= 10.0
@@ -41,7 +26,7 @@ pytest
 # Not imported directly, but required to de-serialize some models
 dill
 
---extra-index-url https://download.pytorch.org/whl/cu118
+--extra-index-url https://download.pytorch.org/whl/cu130
 torch >= 2.0
 torchvision >=0.15.0
 
