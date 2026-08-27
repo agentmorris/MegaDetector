@@ -4,38 +4,19 @@ name: megadetector-no-yolo
 
 channels:
   - conda-forge
-  - pytorch
-  - nvidia
 
 dependencies:
-  # PyTorch is not yet supported in Python 3.12 as of the time I'm writing this 
-  # environment file.
-  - python>=3.8,<3.12
-
-  # Not imported directly, but we force this version to avoid this issue:
-  #
-  # https://github.com/pytorch/pytorch/issues/123097
-  #
-  # ...but we do this via pip, since it breaks conda's dependency resolver.
-  #
-  # - mkl=2024.0
+  - python>=3.9
+  - pip
   
-  # To use ultralytics-yolov5, we need to use an old version of numpy, because
-  # of the removal of np.int in numpy 1.24.0.  Even if we relaxed that requirement
-  # or patched np.int, we definitely don't want numpy>=2.0.
-  - numpy=1.23.5
-    
-  # ultralytics-yolov5 has a dependency on FreeTypeFont.getsize(), which was
-  # removed in Pillow 10, so we force Pillow < 10.0
-  - Pillow>=9.1.0,< 10.0
-  
+  - numpy>=1.26.4  
+  - Pillow>=10.0.0  
   - tqdm>=4.64.0
   - jsonpickle>=3.0.0
   - humanfriendly>=10.0  
   - matplotlib>=3.8.0
   - opencv>=4.8.0
   - requests>=2.31.0
-  - fastquadtree>=1.1.2
   - scikit-learn>=1.3.1
   - pandas>=2.1.1
   
@@ -50,9 +31,24 @@ dependencies:
   - seaborn>=0.12.2
   - PyYAML>=6.0.1
     
-  - pytorch::pytorch>=2.0
-  - pytorch::torchvision>=0.15.0
-  - pytorch::pytorch-cuda=11.8
-
   # For running MegaDetector v4
   # - tensorflow>=2.0,<=2.10
+
+  - pip:
+    # PyTorch stopped publishing conda packages after 2.5.1, so torch comes from
+    # pip.  The extra index URL is what gets us CUDA builds; without it, pip
+    # installs CPU-only wheels on Windows.  Note that the index has to be one
+    # that actually carries current builds, otherwise PyPI wins the version
+    # comparison and you silently get CPU wheels anyway.
+    - --extra-index-url https://download.pytorch.org/whl/cu130
+    - torch>=2.0
+    - torchvision>=0.15.0
+
+    # torch requires setuptools with no upper bound, but setuptools 82 removed
+    # pkg_resources, which yolov5/utils/general.py imports at module scope.  Without
+    # this pin, MDv5 inference fails with "Could not import YOLOv5 functions".  This
+    # mirrors the pin in pyproject.toml.
+    - setuptools<82
+
+    # fastquadtree is not available on conda-forge, so it has to come from pip.
+    - fastquadtree>=1.1.2

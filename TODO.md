@@ -493,15 +493,15 @@ E3
 
 ## pkg_resources deprecation
 
-YOLO5 depends on the [pkg_resources](https://setuptools.pypa.io/en/latest/pkg_resources.html) module, which is slated for deprecation in November 2025.  This results in the following warning when running MD and/or SpeciesNet:
+YOLO5 depends on the [pkg_resources](https://setuptools.pypa.io/en/latest/pkg_resources.html) module, which was deprecated.  This results in the following warning when running MD and/or SpeciesNet:
 
 `/.../site-packages/yolov5/utils/general.py:34: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.`
 
-It's not clear what exactly will happen when this is deprecated.  The action item here is to assess that, and do something about it.
+Setuptools is pinned to <82, which makes the warning go away, but isn't a good long-term solution.
 
-In 2025.01.06, I reviewed this and dropped it from P0 to P1, and elevated the effort from E1 to E2.  pkg_resources isn't used much in the ultralytics-yolov5 package, but it's also not used in an esoteric corner of the package that will never be imported during normal MD use.  Specifically, it's imported in utils/general.py and loggers/__init__.py.  Both would be easy to replace with newer dependencies, but given that the repo from which this package was built is way out of date, and that there are a few other tiny things I'd love to fix anyway (e.g. the NMS timeout issue), the "right" solution would be to create a new package called something like "md-ultralytics-yolov5", fix all the things I want to fix (including the pkg_resources issue), and take a dependency on that.  But that's a hassle, so I won't do that unless this stops working.
+pkg_resources isn't used much in the ultralytics-yolov5 package, but it's also not used in an esoteric corner of the package that will never be imported during normal MD use.  Specifically, it's imported in utils/general.py and loggers/__init__.py.  Both would be easy to replace with newer dependencies, but given that the repo from which this package was built is way out of date, and that there are a few other tiny things I'd love to fix anyway (e.g. the NMS timeout issue), the "right" solution might be to create a new package called something like "md-ultralytics-yolov5", fix all the things I want to fix (including the pkg_resources issue), and take a dependency on that.  But that's a hassle, so I won't do that unless this stops working.
 
-Update 2026.05.08: pkg_resources was finally removed from setuptools, so I pinned setuptools<82, which makes the warning go away, but isn't a good long-term solution.
+Another option is to inject a stand-in into sys.modules['package_resources'].
 
 For posterity, the repo from which the [ultralytics-yolov5](https://pypi.org/project/ultralytics-yolov5) package builds is the [AushExcel/yolov5](https://github.com/AyushExel/yolov5) repo.  I created a snapshot of this repo at [agentmorris/ultralytics-yolov5](https://github.com/agentmorris/ultralytics-yolov5).  If this becomes a breaking issue, that's the repo from which I will create a new package.
 
@@ -655,18 +655,6 @@ P3
 E0
 
 !maintenance
-
-
-## Remove complex MKL requirements
-
-The dependencies currently specify an old version of MKL (2024.0) for all non-Darwin platforms, because of an incompatibility between some versions of MKL and some versions of PyTorch, described in [this PyTorch issue](https://github.com/pytorch/pytorch/issues/123097).  We can remove this quirky dependency if we require PyTorch >= 2.5, which is now a good idea (this is a 2024 PyTorch version, and I'm writing this in 2026).  The only tricky bit is that we don't require torch directly in pyproject.toml, we let ultralytics-yolov5 install torch.  So, confirm that it's OK for us to require torch >= 2.5 directly in pyproject.toml, i.e. that this won't mess with the ultralytics-yolov5 installation, then - assuming it is - remove the quirky MKL requirement from pyproject.toml.
-
-P0
-
-E1
-
-!maintenance
-!admin
 
 
 ## run_md_and_speciesnet improvements
@@ -1012,21 +1000,6 @@ manage_local_batch contains a check indicating that preprocess_on_image_queue is
 "Standalone preprocessing is not yet supported for "modern" preprocessing"
 
 I'm not sure these are still incompatible; double-check on this.  This is P3 in as much as it concerns the notebook, P1 because I'm increasingly using "modern" preprocessing and want to make sure it's compatible with all the same options that "classic" preprocessing supports.
-
-P1
-
-E0
-
-!maintenance
-
-
-## Python 3.14 support
-
-Python 3.14 is enabled on a [branch](https://github.com/agentmorris/MegaDetector/tree/py314-support).  Tests pass with no changes to code on all of my personal Windows and Linux machines, but fail on Windows on the GitHub Actions runner ([failed run](https://github.com/agentmorris/MegaDetector/actions/runs/19089542677/job/54536961503)).  It passes on the Linux and Mac GHA runners.  Figure out what's up with this, and create a new work item that reflects whatever changes are required for Python 3.14 support.
-
-The specific error on the GH runner is an access violation with no meaningful stack trace; this appears to be a numpy compatibility issue, and the Internet doesn't seem surprised that this happens in some environments but not in others, even with identical numpy versions.  Consensus is that I should just wait this out; pre-built wheels for 3.14 will improve with time.  Dropped from P0 to P1 on 2026.01.06.  Also dropped from E1 to E0, because the expectation is that when this works, it will just magically work, I won't have to change any code.  All other 3.14 compatibility issues (all minor) are already handled on this branch.
-
-Still fails as of 2026.07.19.
 
 P1
 
