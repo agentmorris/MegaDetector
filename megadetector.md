@@ -387,7 +387,7 @@ But we recognize that Python tools can be a bit daunting, so we're excited that 
 ### Local tools that run MegaDetector (and other models)
 
 All of the following are GUI-based tools for running MegaDetector and one or more species classifiers on camera trap images:
- 
+
 * [AddaxAI](https://addaxdatascience.com/addaxai/)
 * [Biowatch](https://github.com/earthtoolsmaker/biowatch)
 * [DeepFaune](https://www.deepfaune.cnrs.fr/en/)
@@ -431,7 +431,6 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 * Mega-Efficient Wildlife Classifier (MEWC) (tools for training classifiers on MD crops) ([github.com/zaandahl/mewc](https://github.com/zaandahl/mewc))
 * MegaDetectorLite (ONNX/TensorRT conversions for MD) ([github.com/timmh/MegaDetectorLite](https://github.com/timmh/MegaDetectorLite))
 * MegaDetector-FastAPI (MD serving via FastAPI/Streamlit) ([github.com/abhayolo/megadetector-fastapi](https://github.com/abhayolo/megadetector-fastapi))
-* MegaDetector UI (tools for server-side invocation of MegaDetector) ([github.com/NINAnor/megadetector_ui](https://github.com/NINAnor/megadetector_ui)
 * MegaDetector Container (Docker image for running MD) ([github.com/bencevans/megadetector-contained](https://github.com/bencevans/megadetector-contained))
 * MegaDetector V5 - ONNX (tools for exporting MDv5 to ONNX) ([github.com/parlaynu/megadetector-v5-onnx](https://github.com/parlaynu/megadetector-v5-onnx))
 * MEWC (Mega Efficient Wildlife Classifier) ([github.com/zaandahl/mewc](https://github.com/zaandahl/mewc))
@@ -457,7 +456,6 @@ It's not quite as simple as "these platforms all run MegaDetector on your images
 #### Maintained within this repo
 
 * [Colab notebook](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/megadetector_colab.ipynb) ([open in Colab](https://colab.research.google.com/github/agentmorris/MegaDetector/blob/main/detection/megadetector_colab.ipynb)) for running MDv5 on images stored in Google Drive.
-* [Real-time MegaDetector API using Flask](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/api/synchronous).  This is deployed via Docker, so the Dockerfile provided for the real-time API may be a good starting point for other Docker-based MegaDetector deployments as well.
 
 ## Who is using MegaDetector?
 

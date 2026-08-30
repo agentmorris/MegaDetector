@@ -43,7 +43,7 @@ Priorities range from 0 (urgent) to 4 (likely will never get done).  Effort rang
 
 The [Ultralytics NMS function](https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/nms.py) has some significant limitations, most notably it produces incorrect behavior when a non-configurable timeout is exceeded.  I.e., it just bails after ~2 seconds, which can lead to missed objects if random stuff happens on the machine.  Consequently, there is a custom NMS function in pytorch_detector that replaces this for MDv5, MDv1000-redwood, and MDv1000-cedar.  However, the ultralytics models (sorrel, larch) produce output in a different format that is not supported by the custom NMS function, so currently we fall back to the ultralytics NMS implementation for these models.
 
-I got to a working nms() function that would support both import formats, but it still requires some cleanup.  The working version is in [archive/misc/pytorch_detector_universal_nms.py](https://github.com/agentmorris/MegaDetector/blob/main/archive/misc/pytorch_detector_universal_nms.py).  This needs to be manually merged into pytorch_detector.py, and tested.
+I got to a working nms() function that would support both import formats, but it still requires some cleanup.  The working version was in [archive/misc/pytorch_detector_universal_nms.py](https://github.com/agentmorris/MegaDetector/blob/main/archive/misc/pytorch_detector_universal_nms.py).  This file has since been deleted, and I think it would be easier to re-write than figure out what the state of it was at the time, but it's there in git history if we need it.  After reviving or re-creating this module, it needs to be manually merged into pytorch_detector.py, and tested.
 
 Fix this, and remove the ultralytics NMS import.  Before removing this item, consider whether the remaining functions that are still imported from the ultralytics/YOLO libraries are worth it, or whether we can (finally) remove those imports.  This is the only significant utility function that is still imported.
 
@@ -235,7 +235,7 @@ E2
 
 ## Add postprocessing parameters to output files
 
-In [repeat detection elimination](https://github.com/agentmorris/MegaDetector/tree/main/api/megadetector/postprocessing/repeat_detection_elimination) and [sequence-based classification smoothing](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/classification_postprocessing.py), write the smoothing parameters into the output file.
+In [repeat detection elimination](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/postprocessing/repeat_detection_elimination) and [sequence-based classification smoothing](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/classification_postprocessing.py), write the smoothing parameters into the output file.
 
 P3
 
@@ -1062,3 +1062,14 @@ P2
 E0
 
 !bug
+
+
+## Remove deprecated API folder
+
+The "api" folder no longer hosts any APIs, just documentation.  Remove this folder and put the contents somewhere sensible.  Consider deprecating the "classification" folder in the same cleanup pass.
+
+P2
+
+E0
+
+!docs

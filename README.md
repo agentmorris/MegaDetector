@@ -91,7 +91,7 @@ Here are a few of the organizations that have used MegaDetector... we're only li
 * [Department of Wildlife Ecology and Conservation](https://wec.ifas.ufl.edu/), University of Florida
 * [Fodrie Lab](https://fodriefishecol.wixsite.com/unc-fish/), Institute of Marine Sciences, UNC Chapel Hill
 * [Gola Forest Programme](https://www.rspb.org.uk/our-work/conservation/projects/scientific-support-for-the-gola-forest-programme/), Royal Society for the Protection of Birds (RSPB)
-* [Graeme Shannon's Research Group](https://wildliferesearch.co.uk/group-1), Bangor University 
+* [Graeme Shannon's Research Group](https://wildliferesearch.co.uk/group-1), Bangor University
 * [Grizzly Bear Recovery Program](https://www.fws.gov/office/grizzly-bear-recovery-program), U.S. Fish & Wildlife Service
 * [Hall Wildlife Ecology Lab](https://sites.google.com/csub.edu/hallwildlifeecologylab/home), California State University Bakersfield
 * [Hamaarag](https://hamaarag.org.il/), The Steinhardt Museum of Natural History, Tel Aviv University
@@ -210,11 +210,6 @@ Code for:
 * Converting frequently-used metadata formats to [COCO Camera Traps](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/data_management/README.md#coco-cameratraps-format) format
 * Converting the output of AI models (especially YOLOv5) to the format used for AI results throughout this repo
 * Creating, visualizing, and  editing COCO Camera Traps .json databases
-
-
-#### megadetector/api
-
-Code for hosting our models as an API, either for synchronous operation (i.e., for real-time inference) or as a batch process (for large biodiversity surveys).  This folder is largely deprecated, and primarily exists now only to hold documentation that is still relevant, to which there are permanent links.  Mostly everything in this folder has been moved to the "archive" folder.
 
 
 #### megadetector/classification
