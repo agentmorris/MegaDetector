@@ -45,7 +45,7 @@ So let's assume that:
 
 You would run:
 
-`python megadetector/postprocessing/find_repeat_detections.py "c:\my_results.json" --imageBase "c:\my_images" --outputBase "c:\repeat_detection_stuff"`
+`python megadetector/postprocessing/repeat_detection_elimination/find_repeat_detections.py "c:\my_results.json" --imageBase "c:\my_images" --outputBase "c:\repeat_detection_stuff"`
 
 This script can take a while!  Possibly hours if you have millions of images, typically just a few minutes if you only have tens of thousands of images.  If you want to test it on just a couple folders first, you can use the `--debugMaxDir` option, to tell the script to only process a certain number of cameras.
 
@@ -132,7 +132,7 @@ After running this process, you still have a .json file in the standard MegaDete
 
 When you see a red box on a rock and you <i>don't</i> delete that image, you're making a judgement call that all the other detections that appear in more or less exactly that same spot are also that same rock.  But you're always taking a small risk that an animal happened to line itself up <i>just so</i> at some point, i.e. that it lined up <i>exactly</i> with that rock, in which case suppressing the potentially hundreds of repetitions of that rock could also suppress that animal.  With a sufficiently high IoU threshold (more on this below, but basically, how similar two boxes need to be to be considered the same) and a sufficiently high occurrence threshold (more in this below, but basically, the number of times a detection has to occur to be "suspicious"), the risk is low.  But it's not zero!
 
-Ergo, we've recently added a neat new feature (thanks, [Doantam](https://www.linkedin.com/in/doantam-phan/)!) that lets you visualize a grid of many (possibly all) of the detections that were identical to the one in the red box.  This lets you quickly see what you're throwing away when you <i>don't</i> delete one of these images.  We will probably make this the default at some point, because it's super-duper-useful, but we don't like to rock the boat.  For now, you can enable this with the `--renderDetectionTiles` option.
+Ergo, we've recently added a neat new feature (thanks, [Doantam](https://www.linkedin.com/in/doantam-phan/)!) that lets you visualize a grid of many (possibly all) of the detections that were identical to the one in the red box.  This lets you quickly see what you're throwing away when you <i>don't</i> delete one of these images.  We will probably make this the default at some point, because it's super-duper-useful, but we don't like to rock the boat.  For now, you can enable this with the `--bRenderDetectionTiles` option.
 
 Here's an example where you can see in just a glance that all 99 instances of this detection are exactly the same bush:
 
@@ -168,7 +168,7 @@ There are a few magic numbers involved in identifying "suspicious" detections.  
 
 You can run:
 
-`python megadetector/postprocessing/find_repeat_detections.py`
+`python megadetector/postprocessing/repeat_detection_elimination/find_repeat_detections.py`
 
 ...for a full list of options and documentation for each, but some specific options of interest.
 
