@@ -16,7 +16,7 @@ import os
 import pandas as pd
 
 # lila_taxonomy_file = r"c:\git\agentmorrisprivate\lila-taxonomy\lila-taxonomy-mapping.csv"
-lila_taxonomy_file = os.path.expanduser('~/lila/lila_additions_2026.06.17.csv')
+lila_taxonomy_file = os.path.expanduser('~/lila/lila_additions_2026.09.01.csv')
 
 preview_base = os.path.expanduser('~/lila/lila_taxonomy_preview')
 os.makedirs(preview_base,exist_ok=True)

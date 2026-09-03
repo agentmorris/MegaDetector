@@ -188,6 +188,13 @@ class RunMDSpeciesNetOptions:
         #: Include raw (pre-rollup/geofence) classification scores in output
         self.include_raw_classifications = False
 
+        #: Force downloading the detector and classifier model files, even if the
+        #: local files already exist (typically to overwrite corrupted model files).
+        #:
+        #: Only relevant for named/remote models, i.e. this has no effect for models
+        #: that are specified as local files or folders.
+        self.force_model_download = False
+
         if self.time_sample is None and self.frame_sample is None:
             self.time_sample = DEFAULT_SECONDS_PER_VIDEO_FRAME
 
@@ -939,7 +946,8 @@ def _run_detection_step(source_folder: str,
                         skip_images: bool = False,
                         skip_video: bool = False,
                         frame_sample: int = None,
-                        time_sample: float = None) -> str:
+                        time_sample: float = None,
+                        force_model_download: bool = False) -> str:
     """
     Run MegaDetector on all images/videos in [source_folder].
 
@@ -956,6 +964,9 @@ def _run_detection_step(source_folder: str,
         skip_video (bool, optional): ignore videos, only process images
         frame_sample (int, optional): sample every Nth frame from videos
         time_sample (float, optional): sample frames every N seconds from videos
+        force_model_download (bool, optional): force downloading the detector model file
+            if a named model (e.g. "MDV5A") is supplied, even if the local file already
+            exists (typically to overwrite a corrupted model file)
     """
 
     print('Starting detection step...')
@@ -1009,7 +1020,8 @@ def _run_detection_step(source_folder: str,
             include_exif_tags=None,
             loader_workers=detector_worker_threads,
             preprocess_on_image_queue=True,
-            use_threads_for_queue=use_threads_for_queue
+            use_threads_for_queue=use_threads_for_queue,
+            force_model_download=force_model_download
         )
 
         # Write image results to temporary file
@@ -1029,9 +1041,14 @@ def _run_detection_step(source_folder: str,
 
         print('Running MegaDetector on {} videos...'.format(len(video_files)))
 
+        # If we also had images to process, we already forced a download of the
+        # detector model above, so there's no need to download it again here.
+        force_model_download_for_videos = force_model_download and (len(image_files) == 0)
+
         # Set up video processing options
         video_options = ProcessVideoOptions()
         video_options.model_file = detector_model
+        video_options.force_model_download = force_model_download_for_videos
         video_options.input_video_file = source_folder
         video_options.output_json_file = detector_output_file.replace('.json', '_videos.json')
         video_options.json_confidence_threshold = detection_confidence_threshold
@@ -1078,7 +1095,8 @@ def _run_classification_step(detector_results_file: str,
                              top_n_scores: int = DEFAULT_TOP_N_SCORES,
                              worker_type: str = DEFAULT_WORKER_TYPE,
                              include_raw_classifications: bool = False,
-                             rollup_target_confidence: float = DEFAULT_ROLLUP_TARGET_CONFIDENCE):
+                             rollup_target_confidence: float = DEFAULT_ROLLUP_TARGET_CONFIDENCE,
+                             force_model_download: bool = False):
     """
     Run SpeciesNet classification on detections from MegaDetector results.
 
@@ -1099,6 +1117,9 @@ def _run_classification_step(detector_results_file: str,
             classification scores in output
         rollup_target_confidence (float, optional): target confidence threshold for taxonomic
             rollup.  Ignored if enable_rollup is False.
+        force_model_download (bool, optional): force downloading the classifier model files
+            if a remote model (e.g. a "kaggle:" or "hf:" identifier) is supplied, even if
+            the local files already exist (typically to overwrite corrupted model files)
     """
 
     print('Starting classification step...')
@@ -1117,6 +1138,22 @@ def _run_classification_step(detector_results_file: str,
         raise ValueError('No images found in detector results')
 
     print('Using SpeciesNet classifier: {}'.format(classifier_model))
+
+    # The classifier gets loaded in several places below (in the main thread and/or in
+    # worker threads/processes, depending on [worker_type]), and it doesn't make sense
+    # to force a download in all of those places.  Instead, if we've been asked to force
+    # a download, we load a throwaway instance here, on the CPU, just to make sure the
+    # model files are freshly downloaded (and loadable) before we do anything else.
+    if force_model_download:
+
+        print('Forcing a download of classifier model {}'.format(classifier_model))
+        throwaway_classifier = SpeciesNetClassifier(classifier_model,
+                                                    device='cpu',
+                                                    force_model_download=True)
+        del throwaway_classifier
+        print('Finished forced download of classifier model {}'.format(classifier_model))
+
+    # ...if we need to force a model download
 
     # Set multiprocessing start method to 'spawn' for CUDA compatibility
     if worker_type == 'process':
@@ -1450,7 +1487,8 @@ def run_md_and_speciesnet(options):
             skip_video=options.skip_video,
             frame_sample=options.frame_sample,
             time_sample=options.time_sample,
-            worker_type=options.worker_type
+            worker_type=options.worker_type,
+            force_model_download=options.force_model_download
         )
 
     # Run SpeciesNet
@@ -1467,7 +1505,8 @@ def run_md_and_speciesnet(options):
         admin1_region=options.admin1_region,
         worker_type=options.worker_type,
         include_raw_classifications=options.include_raw_classifications,
-        rollup_target_confidence=options.rollup_target_confidence
+        rollup_target_confidence=options.rollup_target_confidence,
+        force_model_download=options.force_model_download
     )
 
     elapsed_time = time.time() - start_time
@@ -1584,6 +1623,11 @@ def main():
     parser.add_argument('--include_raw_classifications',
                         action='store_true',
                         help='Include raw (pre-rollup/geofence) classification scores in output')
+    parser.add_argument('--force_model_download',
+                        action='store_true',
+                        help='Force a download of both the detector and classifier models, even if ' + \
+                             'the local model files already exist (typically to overwrite corrupted ' + \
+                             'model files)')
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()
