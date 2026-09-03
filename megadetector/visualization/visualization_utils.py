@@ -896,11 +896,15 @@ def _load_font(label_font,label_font_size):
     """
     Internal function for loading a font with error handling
     """
+
     font = None
     try:
         font = ImageFont.truetype(label_font, label_font_size)
     except Exception:
-        print('Warning: could not load font {}'.format(label_font))
+        # Only print this warning once in a process
+        if not getattr(_load_font, "_printed_font_warning", False):
+            print('Warning: could not load font {}'.format(label_font))
+            _load_font._printed_font_warning = True
         font = None
     if font is None:
         try:

@@ -81,7 +81,7 @@ def download_url(url,
     Args:
         url (str): the URL to download
         destination_filename (str, optional): the target filename; if None, will create
-            a file in system temp space
+            a file in system temp space.
         progress_updater (object or bool, optional): can be "None", "False", "True", or a
             specific callable object.  If None or False, no progress updated will be
             displayed.  If True, a default progress bar will be created.

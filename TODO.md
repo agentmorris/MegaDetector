@@ -667,17 +667,6 @@ E1
 !feature
 
 
-## Update Colab
-
-Nothing is "wrong" with the [MegaDetector Colab](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/megadetector_colab.ipynb), but it hasn't been updated in a while.  It doesn't mention MDv1000 or SpeciesNet; it would be helpful to just give the Colab a once-over, make sure it's still in good shape, and add optional cells that demonstrate MDv1000 use and SpeciesNet inference (via run_md_and_speciesnet).
-
-P0
-
-E0
-
-!feature
-
-
 ## Explore compiled PyTorch
 
 [torch.compile](https://pytorch.org/tutorials/intermediate/torch_compile_tutorial.html) was introduced in 2023, but I haven't evaluated it for MegaDetector (or SpeciesNet).  Evaluate it for both MegaDetector and SpeciesNet.
