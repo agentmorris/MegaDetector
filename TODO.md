@@ -54,17 +54,6 @@ E1
 !maintenance
 
 
-## Add --force_model_download to run_md_and_speciesnet
-
-run_detector_batch supports a --force_model_download argument to handle the case where model weights were partially downloaded; add a corresponding option to run_md_and_speciesnet.  It should apply to both the MD weights and the SpeciesNet weights.
-
-P0
-
-E0
-
-!feature
-
-
 ## Graceful handling of small images during tiling
 
 When running tiled inference, if either dimension of an image is smaller than the tiling size, that image fails.  This is OK, it's correctly recorded as an inference failure, but in most cases I would rather it fall back to a smaller tile size in that case.
