@@ -87,6 +87,11 @@ class ProcessVideoOptions:
         #: Detector-specific options
         self.detector_options = None
 
+        #: Force downloading the model file if a named model (e.g. "MDV5A") is supplied,
+        #: even if the local file already exists (typically to overwrite a corrupted
+        #: model file)
+        self.force_model_download = False
+
         #: Write a checkpoint file (to resume processing later) every N videos;
         #: set to -1 (default) to disable checkpointing
         self.checkpoint_frequency = -1
@@ -153,7 +158,9 @@ def process_videos(options):
     if options.verbose:
         print('Processing videos from input source {}'.format(options.input_video_file))
 
-    detector = load_detector(options.model_file,detector_options=options.detector_options)
+    detector = load_detector(options.model_file,
+                             force_model_download=options.force_model_download,
+                             detector_options=options.detector_options)
 
     def frame_callback(image_np,image_id):
         return detector.generate_detections_one_image(image_np,
@@ -433,6 +440,12 @@ def main(): # noqa
         metavar='KEY=VALUE',
         default='',
         help='Detector-specific options, as a space-separated list of key-value pairs')
+
+    parser.add_argument(
+        '--force_model_download',
+        action='store_true',
+        help=('If a named model (e.g. "MDV5A") is supplied, force a download of that model even if the ' +\
+              'local file already exists (typically to overwrite a corrupted model file).'))
 
     parser.add_argument(
         '--checkpoint_frequency',

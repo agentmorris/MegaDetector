@@ -15,10 +15,10 @@ import json
 # Created by get_lila_category_list.py
 input_lila_category_list_file = os.path.expanduser('~/lila/lila_categories_list/lila_dataset_to_categories.json')
 
-output_file = os.path.expanduser('~/lila/lila_additions_2026.06.17.csv')
+output_file = os.path.expanduser('~/lila/lila_additions_2026.09.01.csv')
 
 datasets_to_map = [
-    'AMMonitor Camera Traps'
+    'Duck Pictures in Wetlands'
     ]
 
 
@@ -192,7 +192,7 @@ if False:
 
     # Use this when an iNat match includes an empty subgenus with the same name as the genus
     n_levels_to_pop = 0
-    q = 'animalia'
+    q = 'cygnus'
 
     taxonomy_preference = 'inat'
     m = get_preferred_taxonomic_match(q,taxonomy_preference)

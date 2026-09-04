@@ -54,17 +54,6 @@ E1
 !maintenance
 
 
-## Add --force_model_download to run_md_and_speciesnet
-
-run_detector_batch supports a --force_model_download argument to handle the case where model weights were partially downloaded; add a corresponding option to run_md_and_speciesnet.  It should apply to both the MD weights and the SpeciesNet weights.
-
-P0
-
-E0
-
-!feature
-
-
 ## Graceful handling of small images during tiling
 
 When running tiled inference, if either dimension of an image is smaller than the tiling size, that image fails.  This is OK, it's correctly recorded as an inference failure, but in most cases I would rather it fall back to a smaller tile size in that case.
@@ -443,21 +432,6 @@ E3
 !feature
 
 
-## Reference result updates
-
-* Reduce complexity of reference results: MD's test harness relies on .json files with pre-generated results for MDv5a and MDv5b, for a reference set of images and videos.  Because output varies slightly between PyTorch versions and between hardware environments, I have a number of results files.  This has gotten too complicated; remove most of the results files and increase the allowed tolerance during testing.
-* Add test results for MD1000 models: MD's test harness only has results for MDv5, so it tests the not-crashing-ness of the other models, but it does not test correctness.  Add test results for other MD1000 models.
-* Vehicle images: none of the test images include vehicles; add vehicle images to testing, including human/vehicle and animal/vehicle images
-* Images with lat/lon information in EXIF metadata; make sure EXIF extraction (especially GPS location) is working correctly.
-* The "magic zebra image" that causes problems on M1 Pro machines; this should be called out as a dedicated single-command test case
-
-P0
-
-E1
-
-!testing
-
-
 ## Test coverage improvements
 
 This is a placeholder for generally evaluating md_tests and the pytest harness, and deciding which scripts need additional testing.  Effort is highly variable; for example, adding tests for run_md_and_speciesnet is important and very easy.  Adding tests for postprocess_batch_results that actually verify correctness is a pain.  This work item almost certainly starts with asking AI what modules are not covered (or poorly covered) by tests.
@@ -674,17 +648,6 @@ Create new work items for anything from this list that doesn't get done.
 P0
 
 E1
-
-!feature
-
-
-## Update Colab
-
-Nothing is "wrong" with the [MegaDetector Colab](https://github.com/agentmorris/MegaDetector/blob/main/notebooks/megadetector_colab.ipynb), but it hasn't been updated in a while.  It doesn't mention MDv1000 or SpeciesNet; it would be helpful to just give the Colab a once-over, make sure it's still in good shape, and add optional cells that demonstrate MDv1000 use and SpeciesNet inference (via run_md_and_speciesnet).
-
-P0
-
-E0
 
 !feature
 

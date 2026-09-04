@@ -95,7 +95,7 @@ for ds_name in metadata_table.keys():
 
 dataset_to_categories = {}
 
-# ds_name = 'NACTI'
+# ds_name = 'SWG Camera Traps'
 for ds_name in metadata_table.keys():
 
     taxonomy_mapping_available = (ds_name in datasets_with_taxonomy_mapping)
@@ -116,6 +116,12 @@ for ds_name in metadata_table.keys():
     # Collect list of categories and mappings to category name
     categories = data['categories']
 
+    # In some cases, a "count" field is in the actual .json file, remove this
+    # so we can re-count
+    for c in categories:
+        if 'count' in c:
+            del c['count']
+
     category_id_to_count = defaultdict(int)
     annotations = data['annotations']
 
@@ -125,9 +131,11 @@ for ds_name in metadata_table.keys():
 
     # c = categories[0]
     for c in categories:
+
        count = category_id_to_count[c['id']]
        if 'count' in c:
-           assert 'bbox' in ds_name or c['count'] == count
+           assert ('bbox' in ds_name) or (c['count'] == count)
+
        c['count'] = count
 
        # Don't do taxonomy mapping for bbox data sets, which are sometimes just binary and are
@@ -147,6 +155,8 @@ for ds_name in metadata_table.keys():
                sn = ds_query_to_scientific_name[taxonomy_query_string]
                assert sn is not None and len(sn) > 0
                c['scientific_name_from_taxonomy_mapping'] = sn
+
+    # ...for each category
 
     dataset_to_categories[ds_name] = categories
 

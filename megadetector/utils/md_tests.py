@@ -152,21 +152,14 @@ class MDTestOptions:
 
 #%% Support functions
 
-def get_expected_results_filename(gpu_is_available,
-                                  model_string='mdv5a',
+def get_expected_results_filename(model_string='mdv5a',
                                   test_type='image',
                                   augment=False,
                                   options=None):
     """
-    Expected results vary just a little across inference environments, particularly
-    between PT 1.x and 2.x, so when making sure things are working acceptably, we
-    compare to a reference file that matches the current environment.
-
-    This function gets the correct filename to compare to current results, depending
-    on whether a GPU is available.
+    This function gets the correct filename to compare to current results.
 
     Args:
-        gpu_is_available (bool): whether a GPU is available
         model_string (str, optional): the model for which we're retrieving expected results
         test_type (str, optional): the test type we're running ("image" or "video")
         augment (bool, optional): whether we're running this test with image augmentation
@@ -177,40 +170,17 @@ def get_expected_results_filename(gpu_is_available,
         data zipfile)
     """
 
-    if gpu_is_available:
-        hw_string = 'gpu'
-    else:
-        hw_string = 'cpu'
-    import torch
-    torch_version = str(torch.__version__)
-    if torch_version.startswith('1'):
-        assert torch_version == '1.10.1', 'Only tested against PT 1.10.1 and PT 2.x'
-        pt_string = 'pt1.10.1'
-    else:
-        assert torch_version.startswith('2'), 'Unknown torch version: {}'.format(torch_version)
-        pt_string = 'pt2.x'
-
-    # A hack for now to account for the fact that even with acceleration enabled and PT2
-    # installed, Apple silicon appears to provide the same results as CPU/PT1 inference
-    try:
-        import torch
-        m1_inference = torch.backends.mps.is_built and torch.backends.mps.is_available()
-        if m1_inference:
-            print('I appear to be running on M1/M2 hardware, using pt1/cpu as the reference results')
-            hw_string = 'cpu'
-            pt_string = 'pt1.10.1'
-    except Exception:
-        pass
-
-    aug_string = ''
     if augment:
-        aug_string = 'augment-'
-
-    # We only have a single set of video results
-    if test_type == 'image':
-        fn = '{}-{}{}-{}-{}.json'.format(model_string,aug_string,test_type,hw_string,pt_string)
+        aug_string = 'augment'
     else:
-        fn = '{}-{}.json'.format(model_string,test_type)
+        aug_string = 'no_augment'
+
+    assert test_type in ('image','video')
+
+    if test_type == 'image':
+        fn = '{}-{}-{}.json'.format(model_string,test_type,aug_string)
+    else:
+        fn = '{}-{}-{}.json'.format(model_string,test_type,aug_string)
 
     if options is not None and options.scratch_dir is not None:
         fn = os.path.join(options.scratch_dir,fn)
@@ -822,6 +792,9 @@ def run_python_tests(options):
     ## Make sure our tests are doing what we think they're doing
 
     from megadetector.detection import pytorch_detector
+
+    # We're not actually going to set a non-default compatibility mode, we're just
+    # going to make sure that a dummy string is correctly picked up.
     pytorch_detector.require_non_default_compatibility_mode = True
 
 
@@ -854,7 +827,8 @@ def run_python_tests(options):
 
         print('\n** Running MD on a folder of images (module) **\n')
 
-        from megadetector.detection.run_detector_batch import load_and_run_detector_batch,write_results_to_file
+        from megadetector.detection.run_detector_batch import \
+            load_and_run_detector_batch,write_results_to_file
 
         results = load_and_run_detector_batch(options.default_model,
                                               image_file_names,
@@ -872,8 +846,7 @@ def run_python_tests(options):
         validate_batch_results(inference_output_file)
 
         # Verify value correctness
-        expected_results_file = get_expected_results_filename(is_gpu_available(verbose=False),
-                                                              options=options)
+        expected_results_file = get_expected_results_filename(options=options)
         compare_results(inference_output_file,expected_results_file,options)
 
 
@@ -905,9 +878,9 @@ def run_python_tests(options):
                                   relative_path_base=image_folder,
                                   detector_file=options.default_model)
 
-        expected_results_file = get_expected_results_filename(is_gpu_available(verbose=False),
-                                                              options=options)
+        expected_results_file = get_expected_results_filename(options=options)
         compare_results(inference_output_file_batch,expected_results_file,options)
+
 
         ## Run and verify again with augmentation enabled
 
@@ -925,8 +898,7 @@ def run_python_tests(options):
                                   detector_file=options.default_model)
 
         expected_results_file_augmented = \
-            get_expected_results_filename(is_gpu_available(verbose=False),
-                                          augment=True,options=options)
+            get_expected_results_filename(augment=True,options=options)
         compare_results(inference_output_file_augmented,expected_results_file_augmented,options)
 
 
@@ -1074,17 +1046,19 @@ def run_python_tests(options):
 
         from megadetector.detection.process_video import ProcessVideoOptions, process_videos
         from megadetector.utils.path_utils import insert_before_extension
+        from megadetector.detection.run_detector import DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
 
         video_options = ProcessVideoOptions()
         video_options.model_file = options.default_model
-        video_options.input_video_file = os.path.join(options.scratch_dir,
-                                                      os.path.dirname(options.test_videos[0]))
+        video_options.input_video_file = os.path.join(options.scratch_dir,'md-test-images')
         video_options.output_json_file = os.path.join(options.scratch_dir,'video_folder_output.json')
         video_options.output_video_file = None
         video_options.recursive = True
         video_options.verbose = True
-        video_options.json_confidence_threshold = 0.05
-        video_options.time_sample = 2
+        video_options.json_confidence_threshold = DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
+        # This needs to match
+        # video_options.time_sample = 2
+        video_options.frame_sample = 10
         video_options.detector_options = copy(options.detector_options)
         _ = process_videos(video_options)
 
@@ -1094,7 +1068,7 @@ def run_python_tests(options):
         ## Verify results
 
         expected_results_file = \
-            get_expected_results_filename(is_gpu_available(verbose=False),test_type='video',options=options)
+            get_expected_results_filename(test_type='video',options=options)
         assert os.path.isfile(expected_results_file)
 
         from copy import deepcopy

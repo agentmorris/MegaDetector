@@ -1110,7 +1110,7 @@ def load_and_run_detector_batch(model_file,
         augment (bool, optional): enable image augmentation
         force_model_download (bool, optional): force downloading the model file if
             a named model (e.g. "MDV5A") is supplied, even if the local file already
-            exists
+            exists (typically to handle the case where the model file is corrupted).
         detector_options (dict, optional): key/value pairs that are interpreted differently
             by different detectors.  Can also be a list of k=v pairs, or a comma-delimited
             string containing a list of k=v pairs.
@@ -1889,7 +1889,7 @@ def main(): # noqa
         '--force_model_download',
         action='store_true',
         help=('If a named model (e.g. "MDV5A") is supplied, force a download of that model even if the ' +\
-              'local file already exists.'))
+              'local file already exists (typically to overwrite a corrupted model model).'))
     parser.add_argument(
         '--previous_results_file',
         type=str,
