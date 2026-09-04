@@ -1603,7 +1603,7 @@ def run_download_tests(options):
                                          verbose=False)
         version_string = get_detector_version_from_model_file(fn, verbose=False)
         # Make sure this is the same version we asked for, modulo the MDv5 re-releases
-        assert (version_string.replace('.0.1','.0.0') == model_name.replace('.0.1','.0.0'))
+        assert version_string.replace('.0.1','.0.0') == model_name.replace('.0.1','.0.0')
 
     # Make sure we can download models based on short names, e.g. "MDV5A"
     for model_name in model_string_to_model_version:

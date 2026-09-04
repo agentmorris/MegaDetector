@@ -135,7 +135,7 @@ def download_url(url,
         if len(target_dir) > 0:
             os.makedirs(target_dir,exist_ok=True)
         urllib.request.urlretrieve(url, destination_filename, progress_updater)
-        assert(os.path.isfile(destination_filename))
+        assert os.path.isfile(destination_filename)
         n_bytes = os.path.getsize(destination_filename)
         if verbose:
             print('...done, {} bytes.'.format(n_bytes))

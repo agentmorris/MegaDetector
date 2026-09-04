@@ -169,7 +169,7 @@ for i_label,s in enumerate(original_label_to_count):
 #%% Do some consistency checks over the empty labels and stats
 
 # All images called 'empty' should have NaN as their common name
-assert (len(common_names_with_empty_original_labels) == 1)
+assert len(common_names_with_empty_original_labels) == 1
 assert next(iter(common_names_with_empty_original_labels)) == 'nan'
 
 # 'empty' should be the most frequent original label overall

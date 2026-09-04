@@ -84,8 +84,8 @@ def render_images_with_thumbnails(
     """
 
     # Check to make sure the arguments are reasonable
-    assert(len(secondary_image_filename_list) ==
-           len(secondary_image_bounding_box_list)), \
+    assert (len(secondary_image_filename_list) ==
+            len(secondary_image_bounding_box_list)), \
            'Length of secondary image list and bounding box list should be equal'
 
     assert primary_image_location in ['left','right']
