@@ -643,8 +643,8 @@ def read_exif_tags_for_image(file_path,options=None):
 
             # Split on the first occurrence of ":"
             tokens = line.split(':',1)
-            assert(len(tokens) == 2), 'EXIF tokenization failure ({} tokens, expected 2)'.format(
-                len(tokens))
+            assert len(tokens) == 2, \
+                'EXIF tokenization failure ({} tokens, expected 2)'.format(len(tokens))
 
             field_value = tokens[1].strip()
 

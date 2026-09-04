@@ -335,8 +335,10 @@ def find_images_in_identify_tab(download_folder_with_identify,download_folder_ex
 
     image_ids_in_identify_tab = all_image_ids_with_identify.difference(all_image_ids_excluding_identify)
 
-    assert len(image_ids_in_identify_tab) == \
-        len(all_image_ids_with_identify) - len(all_image_ids_excluding_identify)
+    expected_images_in_identify_tab = len(all_image_ids_with_identify) - len(all_image_ids_excluding_identify)
+    assert len(image_ids_in_identify_tab) == expected_images_in_identify_tab, \
+        'Expected {} images in identify tab, found {}'.format(
+            expected_images_in_identify_tab, len(image_ids_in_identify_tab))
 
     print('Found {} images with identify, {} in identify tab, {} excluding'.format(
         len(all_image_ids_with_identify),
@@ -348,7 +350,7 @@ def find_images_in_identify_tab(download_folder_with_identify,download_folder_ex
 
     for image_id in image_ids_in_identify_tab:
         image_records_this_image = image_id_to_image_records_with_identify[image_id]
-        assert len(image_records_this_image) > 0
+        assert len(image_records_this_image) > 0, 'Internal error'
         image_records_in_identify_tab.extend(image_records_this_image)
         for image_record in image_records_this_image:
             deployment_ids_for_downloaded_images.add(image_record['deployment_id'])
@@ -470,7 +472,8 @@ def url_to_relative_path(url,image_flattening='deployment'):
         found_deployment_id = False
         for i_token,token in enumerate(tokens):
             if token == 'deployment':
-                assert i_token < (len(tokens)-1)
+                assert i_token < (len(tokens)-1), \
+                    'Failed to find deployment string in {}'.format(url)
                 relative_path = '/'.join(tokens[i_token:])
                 relative_path = relative_path.replace('_thumb','')
                 found_deployment_id = True
@@ -568,7 +571,7 @@ def write_download_commands(image_records,
         url = image_record['location']
         relative_path = url_to_relative_path(url=url,
                                              image_flattening=image_flattening)
-        assert relative_path is not None
+        assert relative_path is not None, 'Missing relative path for url {}'.format(url)
 
         # Make sure mappings are unique
         if url in url_to_relative_path_dict:
@@ -651,7 +654,7 @@ def write_download_commands(image_records,
 
         else:
 
-            assert script_extension == '.bat'
+            assert script_extension == '.bat', 'Illegal script extension {}'.format(script_extension)
 
             # There is not an easy way to invoke the scripts in parallel in pure .bat, so we
             # punt to PowerShell for the execution.
@@ -897,7 +900,7 @@ def parallel_push_results_for_images(payloads,
 
         pool = None
 
-        assert pool_type in ('thread','process')
+        assert pool_type in ('thread','process'), 'Illegal pool type {}'.format(pool_type)
 
         try:
             if pool_type == 'thread':
@@ -931,7 +934,10 @@ def parallel_push_results_for_images(payloads,
                 pool.join()
                 print('Pool closed and joined for WI result uploads')
 
-    assert len(results) == len(payloads)
+    assert len(results) == len(payloads), \
+        'Mismatch between {} results and {} payloads'.format(
+            len(results),len(payloads))
+
     return results
 
 # ...def parallel_push_results_for_images(...)
@@ -1150,50 +1156,67 @@ def validate_payload(payload):
         bool: successful validation; this is just future-proofing, currently never returns False
     """
 
-    assert isinstance(payload,dict)
-    assert len(payload.keys()) == 1 and 'predictions' in payload
+    assert isinstance(payload,dict), 'Illegal payload dict'
+    assert len(payload.keys()) == 1 and 'predictions' in payload, 'Illegal payload dict'
 
     # prediction = payload['predictions'][0]
     for prediction in payload['predictions']:
 
-        assert 'project_id' in prediction
+        assert 'project_id' in prediction, \
+            'Illegal prediction dict {}'.format(str(prediction))
         if not isinstance(prediction['project_id'],int):
             _ = int(prediction['project_id'])
         assert 'ignore_data_file_checks' in prediction and \
-            isinstance(prediction['ignore_data_file_checks'],bool)
+            isinstance(prediction['ignore_data_file_checks'],bool), \
+                'Illegal prediction dict {}'.format(str(prediction))
         assert 'prediction' in prediction and \
             isinstance(prediction['prediction'],str) and \
-            len(prediction['prediction'].split(';')) == 7
+            len(prediction['prediction'].split(';')) == 7, \
+                'Illegal prediction dict {}'.format(str(prediction))
         assert 'prediction_score' in prediction and \
-            isinstance(prediction['prediction_score'],float)
+            isinstance(prediction['prediction_score'],float), \
+                'Illegal prediction dict {}'.format(str(prediction))
         assert 'model_version' in prediction and \
-            isinstance(prediction['model_version'],str)
+            isinstance(prediction['model_version'],str), \
+                'Illegal prediction dict {}'.format(str(prediction))
         assert 'data_file_id' in prediction and \
             isinstance(prediction['data_file_id'],str) and \
-            len(prediction['data_file_id']) == 36
+            len(prediction['data_file_id']) == 36, \
+                'Illegal prediction dict {}'.format(str(prediction))
         assert 'classifications' in prediction and \
-            isinstance(prediction['classifications'],dict)
+            isinstance(prediction['classifications'],dict), \
+                'Illegal prediction dict {}'.format(str(prediction))
         classifications = prediction['classifications']
-        assert 'classes' in classifications and isinstance(classifications['classes'],list)
-        assert 'scores' in classifications and isinstance(classifications['scores'],list)
-        assert len(classifications['classes']) == len(classifications['scores'])
+        assert 'classes' in classifications and isinstance(classifications['classes'],list), \
+            'Illegal prediction dict {}'.format(str(prediction))
+        assert 'scores' in classifications and isinstance(classifications['scores'],list), \
+            'Illegal prediction dict {}'.format(str(prediction))
+        assert len(classifications['classes']) == len(classifications['scores']), \
+            'Illegal prediction dict {}'.format(str(prediction))
         for c in classifications['classes']:
-            assert is_valid_prediction_string(c)
+            assert is_valid_prediction_string(c), 'Illegal prediction string {}'.format(c)
         for score in classifications['scores']:
-            assert isinstance(score,float) and score >= 0 and score <= 1.0
-        assert 'detections' in prediction and isinstance(prediction['detections'],list)
+            assert isinstance(score,float) and score >= 0 and score <= 1.0, \
+                'Illegal confidence value {}'.format(score)
+        assert 'detections' in prediction and isinstance(prediction['detections'],list), \
+            'Illegal detections list in {}'.format(str(prediction))
 
         for detection in prediction['detections']:
 
-            assert isinstance(detection,dict)
-            assert 'category' in detection and detection['category'] in ('1','2','3')
-            assert 'label' in detection and detection['label'] in ('animal','person','vehicle')
+            assert isinstance(detection,dict), \
+                'Illegal detections dict in prediction {}'.format(str(prediction))
+            assert 'category' in detection and detection['category'] in ('1','2','3'), \
+                'Illegal detections dict in prediction {}'.format(str(prediction))
+            assert 'label' in detection and detection['label'] in ('animal','person','vehicle'), \
+                'Illegal detections dict in prediction {}'.format(str(prediction))
             assert 'conf' in detection and \
                 isinstance(detection['conf'],float) and \
-                detection['conf'] >= 0 and detection['conf'] <= 1.0
+                detection['conf'] >= 0 and detection['conf'] <= 1.0, \
+                    'Illegal detections dict in prediction {}'.format(str(prediction))
             assert 'bbox' in detection and \
                 isinstance(detection['bbox'],list) and \
-                len(detection['bbox']) == 4
+                len(detection['bbox']) == 4, \
+                    'Illegal detections dict in prediction {}'.format(str(prediction))
 
          # ...for each detection
 
@@ -1227,10 +1250,11 @@ def wi_result_to_prediction_string(r):
         if isinstance(r[field],str):
             values.append(r[field].lower())
         else:
-            assert isinstance(r[field],float) and np.isnan(r[field])
+            assert isinstance(r[field],float) and np.isnan(r[field]), \
+                'Illegal value {} for field {}'.format(str(r[field]), field)
             values.append('')
     s = ';'.join(values)
-    assert is_valid_prediction_string(s)
+    assert is_valid_prediction_string(s), 'Invalid prediction string {}'.format(s)
     return s
 
 
@@ -1248,9 +1272,11 @@ def record_is_unidentified(record):
     """
 
     identified_by = record['identified_by']
-    assert isinstance(identified_by,float) or isinstance(identified_by,str)
+    assert isinstance(identified_by,float) or isinstance(identified_by,str), \
+        'Invalid "identified by" string {}'.format(str(identified_by))
     if isinstance(identified_by,float):
-        assert np.isnan(identified_by)
+        assert np.isnan(identified_by), \
+            'Invalid "identified by" string {}'.format(str(identified_by))
         return True
     else:
         return (identified_by.lower() == 'computer vision')
@@ -1276,7 +1302,7 @@ def record_lists_are_identical(records_0,records_1,verbose=False):
     # i_record = 0; record_0 = records_0[i_record]
     for i_record,record_0 in enumerate(records_0):
         record_1 = records_1[i_record]
-        assert set(record_0.keys()) == set(record_1.keys())
+        assert set(record_0.keys()) == set(record_1.keys()), 'Key mismatch'
         for k in record_0.keys():
             if not compare_values_nan_equal(record_0[k],record_1[k]):
                 if verbose:

@@ -47,7 +47,7 @@ I got to a working nms() function that would support both import formats, but it
 
 Fix this, and remove the ultralytics NMS import.  Before removing this item, consider whether the remaining functions that are still imported from the ultralytics/YOLO libraries are worth it, or whether we can (finally) remove those imports.  This is the only significant utility function that is still imported.
 
-P1
+P0
 
 E1
 
@@ -78,7 +78,7 @@ E1
 
 ## Handle legacy setup.py issues
 
-Two dependencies - yolov9pip and clipboard - give this warning during pip installation:<br/><br/>
+Two dependencies - yolov9pip and clipboard - give this warning during pip installation:
 
 DEPRECATION: Building 'yolov9pip' using the legacy setup.py bdist_wheel mechanism, which will be removed in a future version. pip 25.3 will enforce this behaviour change. A possible replacement is to use the standardized build interface by setting the `--use-pep517` option, (possibly combined with `--no-build-isolation`), or adding a `pyproject.toml` file to the source tree of 'yolov9pip'. Discussion can be found [here](https://github.com/pypa/pip/issues/6334).
 
@@ -106,7 +106,7 @@ E2
 
 postprocess_batch_results currently has no support for video.  When run on a .json file that points to videos, extract frames in a sensible way to generate previews.
 
-P2
+P1
 
 E2
 
@@ -133,17 +133,6 @@ P2
 E1
 
 !feature
-
-
-## Add descriptions to all tqdm progress bars
-
-Particularly when running manage_local_batch, there are a lot of progress bars that run without clear indications of what's happening at each step.  Add descriptions to all progress bars to address this.
-
-P2
-
-E0
-
-!maintenance
 
 
 ## Taxonomy mapping error
@@ -215,7 +204,7 @@ E1
 
 Allow postprocess_batch_results to operate on sequences, rather than just images.  Sample based on sequences, do precision/recall analysis based on sequences, and render sequences in a sensible way on the output page.
 
-P2
+P1
 
 E2
 
@@ -306,7 +295,7 @@ The [docs page](https://megadetector.readthedocs.io/en/latest/) is complete and 
 
 Lots of the information from the [MDv1000 release notes](https://github.com/agentmorris/MegaDetector/blob/main/docs/release-notes/mdv1000-release.md) could be re-used for the docs page, especially from the [section about the Python package](https://github.com/agentmorris/MegaDetector/blob/main/docs/release-notes/mdv1000-release.md#formally-introducing-the-md-python-package).
 
-P0
+P1
 
 E2
 
@@ -318,7 +307,7 @@ E2
 
 MDv5a used COCO and iNat boxes; MDv5b and MD1000 do not.  Overall performance on camera trap images is better without COCO and iNat data, but there are some scenarios where the inclusion of this data improves accuracy, and even more scenarios where it improves "vibes" (i.e., creates less annoying types of false positives).  I would like to re-create the equivalent of MDv5b for the MDv1000 family, which requires curating the human/animal/vehicle subset of COCO, and the "animals that might plausibly appear in camera trap images" subset of the [iNat 2017 challenge dataset](https://www.inaturalist.org/projects/inat-2017-challenge-dataset).  The latter is somewhat involved; conceptually, it includes, e.g., mammals, but not whales, and maybe not bats (at least as they might appear in iNat data), and it includes reptiles, but not, e.g., tiny geckos.
 
-P1
+P0
 
 E2
 
@@ -360,17 +349,6 @@ E2
 !docs
 
 
-## Checkpointing for video folder processing
-
-run_detector_batch supports checkpointing, so crashes/reboots/etc. won't cause data loss during long inference jobs. process_video does not yet have this kind of checkpointing functionality.  This is not a huge deal, since in practice you would break large tasks into multiple calls to process_video(), but it would be nice to simplify this, even for large jobs.
-
-P1
-
-E2
-
-!feature
-
-
 ## Performance evaluation for batching, preprocessing
 
 run_detector_batch supports batched inference (for GPUs) and adjustable levels of worker-side preprocessing.  I have not formally evaluated the performance benefit (in terms of time, not accuracy) of using batched inference for various models on various GPUs.  This could use documentation of best practices.
@@ -387,7 +365,7 @@ E2
 
 Include sample jpg files with/without GPS info, validate that get_gps_info behaves as expected.  Ideally include a jpg file with "null island" GPS, i.e. GPS values of (0,0,0) or (nan,nan,nan), which are handled specially.
 
-P2
+P1
 
 E0
 
@@ -497,22 +475,11 @@ E2
 !optimization
 
 
-## Re-evaluate "modern" postprocessing
+## Support detector batch sizes other than 1 for video
 
-At the time I added the "modern" postprocessing approach, it super-duper agreed with yolov5’s val.py; add a test back to make sure this is still the case.  Also assess whether it accuracy is better with "classic" or "modern" preprocessing on the MD val set, for all the models that matter.
+run_detector_batch supports batch inference (for GPUs); process_video does not.  The requirement is only to support batching within a video, it's OK if an incomplete batch runs at the end of each video if it simplifies implementation.  Make sure this is propagated to run_md_and_speciesnet.
 
-P2
-
-E2
-
-!testing
-
-
-## Support batch inference for video
-
-run_detector_batch supports batch inference (for GPUs); process_video does not.  The requirement is only to support batching within a video, it's OK if an incomplete batch runs at the end of each video if it simplifies implementation.
-
-P2
+P0
 
 E1
 
@@ -523,7 +490,7 @@ E1
 
 The RDE process loads detections into a pandas dataframe, then re-generates a new list of detections.  There's no "official" scenario where detections might have custom properties, but I think this will result in the loss of custom properties.  Assess this, then either fix it, remove this item (if this doesn't really happen), or update the effort/priority of this task.
 
-P2
+P0
 
 E2
 
@@ -532,7 +499,7 @@ E2
 
 ## More careful stride handling
 
-Currently pytorch_detector uses a stride size of 64 for all 1280px models (which specifically means YOLOv5x6), and a stride size of 32 for all other models.  This is true for all MD models that exist right now, but if we, for example, train YOLOv9 @ 1280px, or train a YOLOv5?6 model (where ? != "x") this heuristic would fail.
+pytorch_detector uses a stride size of 64 for all 1280px models (which specifically means YOLOv5x6), and a stride size of 32 for all other models.  This is true for all MD models that exist right now, but if we, for example, train YOLOv9 @ 1280px, or train a YOLOv5?6 model (where ? != "x") this heuristic would fail.
 
 P3
 
@@ -545,7 +512,7 @@ E2
 
 Currently run_detector_batch has a somewhat separate code path for batch/non-batch inference.  This is just me being conservative: we should be able to treat non-batch inference as batch inference with a batch size of 1 to reduce complexity.  I just want to let things percolate for a bit before I do this.
 
-P3
+P1
 
 E0
 
@@ -589,22 +556,11 @@ E0
 
 With the release of MDv1000, I introduced two preprocessing approaches: "classic" (which matches what we always did for MDv5, and roughly matches YOLOv5's detect.py) and "modern" (which roughly matches YOLOv5's val.py).  Neither is obviously better or worse, but they are different.  There is a separate item for evaluating this difference (and others); this item is just about more properly documenting the difference, and documenting how to invoke each approach.  This would include finding a couple of example images where they produce different results.
 
-P1
+P0
 
 E1
 
 !docs
-
-
-## Add category pages to visualize_db
-
-postprocess_batch_results, which we use to visualize detector/classifier output, can break the results down by category in the generated HTML page.  It would be useful to add this to visualize_db, which we use to visualize COCO-formatted databases.
-
-P3
-
-E1
-
-!feature
 
 
 ## Add hash values to .json output
@@ -656,7 +612,7 @@ E1
 
 [torch.compile](https://pytorch.org/tutorials/intermediate/torch_compile_tutorial.html) was introduced in 2023, but I haven't evaluated it for MegaDetector (or SpeciesNet).  Evaluate it for both MegaDetector and SpeciesNet.
 
-P0
+P1
 
 E3
 
@@ -758,7 +714,7 @@ E1
 
 There is inconsistent casing in CLI arguments, fix this.
 
-P4
+P3
 
 E2
 
@@ -806,7 +762,7 @@ E1
 
 postprocess_batch_results should at least notify the user, and probably error, when it’s run without one of (1) absolute paths, (2) ground truth, or (3) an image folder.  I don't think there's a sensible case where you would not want to specify one of those things.
 
-P4
+P3
 
 E0
 
@@ -869,31 +825,20 @@ E0
 
 [repeat_detections_core](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/repeat_detection_elimination/repeat_detections_core.py) adds an unnecessary "failure" field (set to null) for all successful images.  This is not a violation of the format spec, but it's silly.  This happens because this script goes through a pandas dataframe after an intermediate, then converts rows back to dicts before exporting.  Fix this.  The easiest fix is to just remove these prior to export.
 
-P3
+P1
 
 E0
 
 !maintenance
 
 
-## Clean up all long argument lists in run_detector_batch
+## Clean up long argument lists in run_detector_batch
 
 run_detector_batch (arguably the most important module in the repo) has super-long argument lists for basically every function.  Other modules in the repo handle this by moving the relevant options to a dedicated options class.  Do this for run_detector_batch.  Backwards compatibility is not a huge issue as long as the CLI doesn't break.
 
 P3
 
 E1
-
-!maintenance
-
-
-## Support running MD in the ultralytics package
-
-MDv5 (and MDv1000-redwood) don't work in the ultralytics package.  They *almost* work, but a few class names have changed.  There's no particular reason this is important, but it would allow new deployment surfaces, so it wouldn't hurt.  I think this will require a one-time step where we move the weights to a slightly different container.
-
-P4
-
-E2
 
 !maintenance
 
@@ -920,17 +865,6 @@ E1
 !feature
 
 
-## Add explanatory strings for every assertion
-
-Add explanatory strings for every assert() statement in the repo.
-
-P2
-
-E0
-
-!maintenance
-
-
 ## More robust determination of model types
 
 Currently load_model() decides which object to instantiate based on file extensions: .pt == yolo, .pth == RF-DETR, .pb = TFODAPI.  This works for all models we support right now, but it's not very robust or forward-compatible.
@@ -949,7 +883,7 @@ Similarly, the USE_MODEL_NATIVE_CLASSES module-level global in run_detector is u
 
 Fix both of these.
 
-P2
+P1
 
 E2
 
@@ -1008,7 +942,7 @@ E0
 
 Validate this file (TODO.md) during testing/linting.
 
-P2
+P1
 
 E0
 

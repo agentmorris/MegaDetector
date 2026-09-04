@@ -400,7 +400,9 @@ def _render_image_pair(fn,image_pairs,category_folder,options,pairwise_options):
             if options.show_category_names_on_gt_boxes:
                 label_map=options.gt_category_id_to_name
 
-            assert len(gt_boxes) == len(gt_categories)
+            assert len(gt_boxes) == len(gt_categories), \
+                'Mismatch between number of boxes and number of categories ({} vs {})'.format(
+                    len(gt_boxes),len(gt_categories))
             gt_colormap = ['yellow']*(max(gt_categories)+1)
             visualization_utils.render_db_bounding_boxes(boxes=gt_boxes,
                                                          classes=gt_categories,
@@ -529,12 +531,12 @@ def _result_types_to_comparison_category(result_types_present_a,
     # The tn-only categories are for the case where one model has a TN and the
     # other has at least one fp
     if 'tn' in result_types_present_a and 'fp' in result_types_present_b:
-        assert len(result_types_present_a) == 1
-        assert len(result_types_present_b) == 1
+        assert len(result_types_present_a) == 1, 'Unexpected set of result types'
+        assert len(result_types_present_b) == 1, 'Unexpected set of result types'
         return 'tn_a_only'
     if 'tn' in result_types_present_b and 'fp' in result_types_present_a:
-        assert len(result_types_present_a) == 1
-        assert len(result_types_present_b) == 1
+        assert len(result_types_present_a) == 1, 'Unexpected set of result types'
+        assert len(result_types_present_b) == 1, 'Unexpected set of result types'
         return 'tn_b_only'
 
     # The 'fpfn' category is for everything else
@@ -640,7 +642,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
 
     # pairwise_options is passed as a parameter here, and should not be specified
     # in the options object.
-    assert options.pairwise_options is None
+    assert options.pairwise_options is None, 'Expected pairwise options'
 
     if options.random_seed is not None:
         random.seed(options.random_seed)
@@ -776,10 +778,15 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
     else:
         if options.error_on_non_matching_lists:
             for fn in filenames_a:
-                assert fn in filenames_b_set
+                assert fn in filenames_b_set, \
+                    'Filename {} in set A but not set B'.format(fn)
 
-    assert len(filenames_a) == len(images_a)
-    assert len(filenames_b_set) == len(images_b)
+    assert len(filenames_a) == len(images_a), \
+        'Mismatch between number of filenames and number of images in set A ({} vs {})'.format(
+            len(filenames_a),len(images_a))
+    assert len(filenames_b_set) == len(images_b), \
+    'Mismatch between number of filenames and number of images in set B ({} vs {})'.format(
+                len(filenames_b_set),len(images_b))
 
     if options.filenames_to_include is None:
         filenames_to_compare = filenames_a
@@ -804,7 +811,8 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
         if isinstance(options.ground_truth_file,dict):
             gt_data = options.ground_truth_file
         else:
-            assert isinstance(options.ground_truth_file,str)
+            assert isinstance(options.ground_truth_file,str), \
+                'Illegal ground truth file of type {}'.format(type(options.ground_truth_file))
             with open(options.ground_truth_file,'r') as f:
                 gt_data = json.load(f)
 
@@ -853,7 +861,8 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
                         raise ValueError('GT category {} not available in detection category list'.format(
                             gt_category_name))
 
-    assert ground_truth_type in ('no_gt','bbox_gt','image_level_gt')
+    assert ground_truth_type in ('no_gt','bbox_gt','image_level_gt'), \
+        'Illegal ground truth type {}'.format(ground_truth_type)
 
     # Make sure ground truth data refers to at least *some* of the same files that are in our
     # results files
@@ -864,7 +873,8 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
         gt_filenames_set = set(gt_filenames)
 
         common_filenames = filenames_to_compare_set.intersection(gt_filenames_set)
-        assert len(common_filenames) > 0, 'MD results files and ground truth file have no images in common'
+        assert len(common_filenames) > 0, \
+            'MD results files and ground truth file have no images in common'
 
         filenames_only_in_gt = gt_filenames_set.difference(filenames_to_compare_set)
         if len(filenames_only_in_gt) > 0:
@@ -1003,7 +1013,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
         if fn not in filename_to_image_b:
 
             # We shouldn't have gotten this far if error_on_non_matching_lists is set
-            assert not options.error_on_non_matching_lists
+            assert not options.error_on_non_matching_lists, 'Internal error'
 
             print('Skipping filename {}, not in image set B'.format(fn))
             continue
@@ -1022,7 +1032,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             if fn not in filename_to_image_gt:
 
                 # We shouldn't have gotten this far if error_on_non_matching_lists is set
-                assert not options.error_on_non_matching_lists
+                assert not options.error_on_non_matching_lists, 'Internal error'
 
                 print('Skipping filename {}, not in ground truth'.format(fn))
                 continue
@@ -1040,11 +1050,13 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             categories_above_threshold_a = set()
 
             if 'detections' not in im_a or im_a['detections'] is None:
-                assert 'failure' in im_a and im_a['failure'] is not None
+                assert 'failure' in im_a and im_a['failure'] is not None, \
+                    'Non-failed image with no detections list'
                 continue
 
             if 'detections' not in im_b or im_b['detections'] is None:
-                assert 'failure' in im_b and im_b['failure'] is not None
+                assert 'failure' in im_b and im_b['failure'] is not None, \
+                    'Non-failed image with no detections list'
                 continue
 
             invalid_category_error = False
@@ -1110,7 +1122,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             elif detection_a and (not detection_b):
                 comparison_category = 'detections_a_only'
             else:
-                assert detection_b and (not detection_a)
+                assert detection_b and (not detection_a), 'Internal error'
                 comparison_category = 'detections_b_only'
 
             max_conf_a = _maxempty([det['conf'] for det in im_a['detections']])
@@ -1146,7 +1158,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
                 if 'bbox' not in gt_ann:
                     return False
 
-                assert 'normalized_bbox' in gt_ann
+                assert 'normalized_bbox' in gt_ann, 'Invalid annotation missing [normalized_bbox]'
                 iou = get_iou(det['bbox'],gt_ann['normalized_bbox'])
 
                 return iou >= options.gt_iou_threshold
@@ -1158,7 +1170,9 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
 
                 annotations_gt = [ann for ann in annotations_gt if 'bbox' in ann]
 
-                assert im_detection['file'] == im_gt['file_name']
+                assert im_detection['file'] == im_gt['file_name'], \
+                    'Mismatch between detection and ground truth ({} vs {})'.format(
+                        im_detection['file'],im_gt['file_name'])
 
                 # List of result types - tn, tp, fp, fn - present in this image.  tn is
                 # mutually exclusive with the others.
@@ -1211,7 +1225,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
 
                     if annotation_matches_det:
                         # We should have found this when we looped over detections
-                        assert 'tp' in result_types_present
+                        assert 'tp' in result_types_present, 'Internal error'
                     else:
                         result_types_present.add('fn')
 
@@ -1232,15 +1246,17 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
 
             # TNs are mutually exclusive with other categories
             if 'tn' in result_types_present_a or 'tn' in result_types_present_b:
-                assert len(result_types_present_a) == 1
-                assert len(result_types_present_b) == 1
+                assert len(result_types_present_a) == 1, 'Internal error'
+                assert len(result_types_present_b) == 1, 'Internal error'
 
             # If either model has a TP or FN, the other has to have a TP or FN, since
             # there was something in the GT
             if ('tp' in result_types_present_a) or ('fn' in result_types_present_a):
-                assert 'tp' in result_types_present_b or 'fn' in result_types_present_b
+                assert 'tp' in result_types_present_b or 'fn' in result_types_present_b, \
+                    'Internal error'
             if ('tp' in result_types_present_b) or ('fn' in result_types_present_b):
-                assert 'tp' in result_types_present_a or 'fn' in result_types_present_a
+                assert 'tp' in result_types_present_a or 'fn' in result_types_present_a, \
+                    'Internal error'
 
 
             ## Choose a comparison category based on result types
@@ -1261,7 +1277,9 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             def _categorize_image_with_image_level_gt(im_detection,im_gt,annotations_gt,
                                                       category_id_to_threshold):
 
-                assert im_detection['file'] == im_gt['file_name']
+                assert im_detection['file'] == im_gt['file_name'], \
+                    'Mismatch between detection and ground truth ({} vs {})'.format(
+                        im_detection['file'],im_gt['file_name'])
 
                 # List of result types - tn, tp, fp, fn - present in this image.
                 result_types_present = set()
@@ -1303,13 +1321,13 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
                             result_types_present.add('fp')
                             # If there is a false positive present in an empty image, there can't
                             # be any other result types present
-                            assert len(result_types_present) == 1
+                            assert len(result_types_present) == 1, 'Internal error'
                         else:
                             result_types_present.add('tn')
 
                     elif category_name in category_names_detected:
 
-                        assert 'tp' in result_types_present
+                        assert 'tp' in result_types_present, 'Internal error'
 
                     else:
 
@@ -1331,9 +1349,9 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             # If either model has a TP or FN, the other has to have a TP or FN, since
             # there was something in the GT
             if ('tp' in result_types_present_a) or ('fn' in result_types_present_a):
-                assert 'tp' in result_types_present_b or 'fn' in result_types_present_b
+                assert 'tp' in result_types_present_b or 'fn' in result_types_present_b, 'Internal error'
             if ('tp' in result_types_present_b) or ('fn' in result_types_present_b):
-                assert 'tp' in result_types_present_a or 'fn' in result_types_present_a
+                assert 'tp' in result_types_present_a or 'fn' in result_types_present_a, 'Internal error'
 
 
             ## Choose a comparison category based on result types
@@ -1350,7 +1368,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
 
         # ...what kind of ground truth (if any) do we have?
 
-        assert comparison_category is not None
+        assert comparison_category is not None, 'Internal error'
         categories_to_image_pairs[comparison_category][fn] = im_pair
         im_pair['sort_conf'] = sort_conf
 
@@ -1432,7 +1450,9 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
                     category))
                 image_filenames = random.sample(image_filenames,
                                                 options.max_images_per_category)
-            assert len(image_filenames) <= options.max_images_per_category
+            assert len(image_filenames) <= options.max_images_per_category, \
+                'Asked to render {} filenames, expected a max of {}'.format(
+                    len(image_filenames),options.max_images_per_category)
 
         input_image_absolute_paths = [os.path.join(options.image_folder,fn) for fn in image_filenames]
 
@@ -1446,7 +1466,8 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
 
         image_info = []
 
-        assert len(category_image_output_paths_relative) == len(input_image_absolute_paths)
+        assert len(category_image_output_paths_relative) == len(input_image_absolute_paths), \
+            'Internal error'
 
         for i_fn,fn in enumerate(category_image_output_paths_relative):
 
@@ -1637,9 +1658,9 @@ def compare_batch_results(options):
         BatchComparisonResults: the results of this comparison task
     """
 
-    assert options.output_folder is not None
-    assert options.image_folder is not None
-    assert options.pairwise_options is not None
+    assert options.output_folder is not None, 'Missing output folder'
+    assert options.image_folder is not None, 'Missing image folder'
+    assert options.pairwise_options is not None, 'Missing pairwise options'
 
     options = copy.deepcopy(options)
 

@@ -211,12 +211,12 @@ def visualize_db(db_path, output_dir, image_base_dir, options=None):
         if not image_base_dir.endswith('/'):
             image_base_dir += '/'
     else:
-        assert(os.path.isdir(image_base_dir))
+        assert os.path.isdir(image_base_dir)
 
     os.makedirs(os.path.join(output_dir, 'rendered_images'), exist_ok=True)
 
     if isinstance(db_path,str):
-        assert(os.path.isfile(db_path))
+        assert os.path.isfile(db_path)
         print('Loading database from {}...'.format(db_path))
         image_db = json.load(open(db_path))
         print('...done, loaded {} images'.format(len(image_db['images'])))

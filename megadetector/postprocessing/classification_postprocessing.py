@@ -152,7 +152,8 @@ def _results_for_sequence(images_this_sequence,filename_to_results):
     for im in images_this_sequence:
         fn = im['file_name']
         results_this_image = filename_to_results[fn]
-        assert isinstance(results_this_image,dict)
+        assert isinstance(results_this_image,dict), \
+            'Invalid results dict of type {}'.format(type(results_this_image))
         results_this_sequence.append(results_this_image)
 
     return results_this_sequence
@@ -240,7 +241,8 @@ def get_classification_description_string(category_to_count,classification_descr
     for category_id in category_to_count:
         category_description = classification_descriptions[category_id]
         tokens = category_description.split(';')
-        assert len(tokens) == 7
+        assert len(tokens) == 7, \
+            'Invalid category description {}'.format(category_description)
         category_name = tokens[-1]
         if len(category_name) == 0:
             category_name = 'undefined category'
@@ -277,7 +279,8 @@ def _prepare_results_for_smoothing(input_file,options):
             print('Loading results from:\n{}'.format(input_file))
             d = json.load(f)
     else:
-        assert isinstance(input_file,dict)
+        assert isinstance(input_file,dict), \
+            'Invalid input_file value, type {}'.format(type(input_file))
         if options.modify_in_place:
             d = input_file
         else:
@@ -322,7 +325,8 @@ def _prepare_results_for_smoothing(input_file,options):
                 continue
 
             classification_confidence_values = [c[1] for c in det['classifications']]
-            assert is_list_sorted(classification_confidence_values,reverse=True)
+            assert is_list_sorted(classification_confidence_values,reverse=True), \
+                'Unsorted classification list'
             det['classifications'] = [det['classifications'][0]]
 
         # ...for each detection in this image
@@ -454,7 +458,8 @@ def _smooth_classifications_for_list_of_detections(detections,
             if not _detection_is_relevant_for_smoothing(det,options):
                 continue
 
-            assert len(det['classifications']) == 1
+            assert len(det['classifications']) == 1, \
+                'Classification list should be length 1, got {}'.format(len(det['classifications']))
             c = det['classifications'][0]
 
             if (c[1] >= options.classification_confidence_threshold) and \
@@ -508,7 +513,8 @@ def _smooth_classifications_for_list_of_detections(detections,
             if not _detection_is_relevant_for_smoothing(det,options):
                 continue
 
-            assert len(det['classifications']) == 1
+            assert len(det['classifications']) == 1, \
+                'Classification list should be length 1, got {}'.format(len(det['classifications']))
             c = det['classifications'][0]
 
             # Don't over-write the most common category with itself
@@ -527,7 +533,8 @@ def _smooth_classifications_for_list_of_detections(detections,
                     classification_descriptions_clean[most_common_category]
 
                 category_id_this_classification = c[0]
-                assert category_id_this_classification in category_to_count
+                assert category_id_this_classification in category_to_count, \
+                    'Category ID {} not in count list'.format(category_id_this_classification)
 
                 category_description_this_classification = \
                     classification_descriptions_clean[category_id_this_classification]
@@ -588,7 +595,8 @@ def _smooth_classifications_for_list_of_detections(detections,
             if not _detection_is_relevant_for_smoothing(det,options):
                 continue
 
-            assert len(det['classifications']) == 1
+            assert len(det['classifications']) == 1, \
+                'Classification list should be length 1, got {}'.format(len(det['classifications']))
             c = det['classifications'][0]
 
             # Don't bother with any classifications below the confidence threshold
@@ -709,7 +717,8 @@ def _smooth_classifications_for_list_of_detections(detections,
             taxonomy_level_index(category_description_most_common_category)
         n_most_common_category = category_to_count[most_common_category]
         tokens = category_description_most_common_category.split(';')
-        assert len(tokens) == 7
+        assert len(tokens) == 7, \
+            'Invalid category description {}'.format(category_description_most_common_category)
         most_common_category_family = tokens[3]
         most_common_category_genus = tokens[4]
 
@@ -727,7 +736,8 @@ def _smooth_classifications_for_list_of_detections(detections,
             if not _detection_is_relevant_for_smoothing(det,options):
                 continue
 
-            assert len(det['classifications']) == 1
+            assert len(det['classifications']) == 1, \
+                'Classification list should be length 1, got {}'.format(len(det['classifications']))
             c = det['classifications'][0]
 
             # Don't over-write the most common category with itself
@@ -752,7 +762,8 @@ def _smooth_classifications_for_list_of_detections(detections,
             category_description_candidate_flip = \
                 classification_descriptions[c[0]]
             tokens = category_description_candidate_flip.split(';')
-            assert len(tokens) == 7
+            assert len(tokens) == 7, \
+                'Invalid category description {}'.format(category_description_candidate_flip)
             candidate_flip_category_family = tokens[3]
             candidate_flip_category_genus = tokens[4]
             candidate_flip_category_taxonomic_level = \
@@ -993,7 +1004,8 @@ def smooth_classification_results_sequence_level(input_file,
             cct_sequence_information = json.load(f)
             image_info = cct_sequence_information['images']
     else:
-        assert isinstance(cct_sequence_information,dict)
+        assert isinstance(cct_sequence_information,dict), \
+            'Illegal sequence information of type {}'.format(type(cct_sequence_information))
         image_info = cct_sequence_information['images']
 
     sequence_to_image_filenames = defaultdict(list)
@@ -1006,7 +1018,8 @@ def smooth_classification_results_sequence_level(input_file,
     image_fn_to_classification_results = {}
     for im in d['images']:
         fn = im['file']
-        assert fn not in image_fn_to_classification_results
+        assert fn not in image_fn_to_classification_results, \
+            'Image file {} already processed'.format(fn)
         image_fn_to_classification_results[fn] = im
 
 
@@ -1507,7 +1520,7 @@ def restrict_to_taxa_list(taxa_list,
 
             # "None" is our leaf node marker, we should never have ''
             if child_taxon is not None:
-                assert len(child_taxon) > 0
+                assert len(child_taxon) > 0, 'Empty child taxon name'
 
             parent_taxon = tokens[parent_token_index]
 
@@ -1547,7 +1560,7 @@ def restrict_to_taxa_list(taxa_list,
                     allowed_parent_taxon_to_child_taxa[parent_taxon].add(child_taxon)
 
                 # If we haven't hit a non-empty taxon yet, don't update "child_taxon"
-                assert len(parent_taxon) > 0
+                assert len(parent_taxon) > 0, 'Empty parent taxon name'
                 child_taxon = parent_taxon
 
             # ...if we have a non-empty taxon
@@ -1621,7 +1634,8 @@ def restrict_to_taxa_list(taxa_list,
 
         # This is always class/order/family/genus/species
         input_taxon_tokens = input_taxon_tokens[1:-1]
-        assert len(input_taxon_tokens) == 5
+        assert len(input_taxon_tokens) == 5, \
+            'Illegal taxonomy string {}'.format(input_taxon_string)
 
         # Start at the species level (the last element in input_taxon_tokens),
         # and see whether each taxon is allowed
@@ -1682,7 +1696,7 @@ def restrict_to_taxa_list(taxa_list,
                                 candidate_taxon,speciesnet_latin_name_to_taxon_string)
                         allowed_child_taxa = \
                             allowed_parent_taxon_to_child_taxa[candidate_taxon]
-                    assert candidate_taxon is not None
+                    assert candidate_taxon is not None, 'Empty candidate taxon'
                     target_taxon = candidate_taxon
 
             # ...if this is an allowed taxon
@@ -1919,7 +1933,8 @@ def merge_classification_categories(target_file,
 
         for source_category_id in source_d['classification_categories']:
 
-            assert source_category_id not in input_category_id_to_output_category_id
+            assert source_category_id not in input_category_id_to_output_category_id, \
+                'Already processed category ID {}'.format(source_category_id)
 
             category_name = source_d['classification_categories'][source_category_id]
 
@@ -2104,7 +2119,9 @@ def combine_redundant_classification_categories(input_file,
 
     n_input_categories = len(d['classification_categories'])
     n_output_categories = len(input_category_name_to_ids)
-    assert n_output_categories < n_input_categories
+    assert n_output_categories < n_input_categories, \
+        'Category length mismatch ({} vs {})'.format(
+            n_output_categories,n_input_categories)
     print('Removing {} redundant categories'.format(
         n_input_categories - n_output_categories))
 
@@ -2117,7 +2134,8 @@ def combine_redundant_classification_categories(input_file,
         category_name = d['classification_categories'][input_category_id]
         output_category_id = input_category_id_to_output_category_id[input_category_id]
         if category_name in output_category_name_to_id:
-            assert output_category_name_to_id[category_name] == output_category_id
+            assert output_category_name_to_id[category_name] == output_category_id, \
+                'Category mismatch for ID {}'.format(output_category_id)
         else:
             output_category_name_to_id[category_name] = output_category_id
 
@@ -2127,7 +2145,10 @@ def combine_redundant_classification_categories(input_file,
     if 'classification_category_descriptions' in d:
 
         assert len(d['classification_category_descriptions']) == \
-               len(d['classification_categories'])
+               len(d['classification_categories']), \
+               'Mismatch between {} descriptions and {} categories'.format(
+                    len(d['classification_category_descriptions']),
+                    len(d['classification_categories']))
 
         # Sort descriptions by count overall, so we can sort by description within categories later
         description_to_count = {}

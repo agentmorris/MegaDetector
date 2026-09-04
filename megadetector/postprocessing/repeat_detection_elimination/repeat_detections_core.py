@@ -324,10 +324,11 @@ class IndexedDetection:
 
         if bbox is None:
             bbox = []
-        assert isinstance(i_detection,int)
-        assert isinstance(filename,str)
-        assert isinstance(bbox,list)
-        assert isinstance(category,str)
+
+        assert isinstance(i_detection,int), 'Illegal detection value of type {}'.format(type(i_detection))
+        assert isinstance(filename,str), 'Illegal filename of type {}'.format(type(filename))
+        assert isinstance(bbox,list), 'Illegal bounding box of type {}'.format(type(bbox))
+        assert isinstance(category,str), 'Illegal category of type {}'.format(type(category))
 
         #: index of this detection within all detections for this filename
         self.i_detection = i_detection
@@ -358,10 +359,10 @@ class DetectionLocation:
 
     def __init__(self, instance, detection, relative_dir, category, id=None):
 
-        assert isinstance(detection,dict)
-        assert isinstance(instance,IndexedDetection)
-        assert isinstance(relative_dir,str)
-        assert isinstance(category,str)
+        assert isinstance(detection,dict), 'Illegal detection of type {}'.format(type(detection))
+        assert isinstance(instance,IndexedDetection), 'Illegal instance of type {}'.format(type(instance))
+        assert isinstance(relative_dir,str), 'Illegal folder name of type {}'.format(type(relative_dir))
+        assert isinstance(category,str), 'Illegal category of type {}'.format(type(category))
 
         #: list of IndexedDetections that match this detection
         self.instances = [instance]
@@ -505,9 +506,10 @@ def _sort_detections_for_directory(candidate_detections,options):
         #
         # Make sure the labels are unique incrementing integers.
         for i_label in range(1,len(unique_labels)):
-            assert unique_labels[i_label] == 1 + unique_labels[i_label-1]
+            assert unique_labels[i_label] == 1 + unique_labels[i_label-1], \
+                'Non-increasing labels'
 
-        assert len(labels) == len(candidate_detections)
+        assert len(labels) == len(candidate_detections), 'Unexpected number of candidate detections'
 
         # Store the label assigned to each cluster
         for i_label,label in enumerate(labels):
@@ -533,14 +535,15 @@ def _sort_detections_for_directory(candidate_detections,options):
 
         old_cluster_label_to_new_cluster_label = {}
         new_cluster_labels = np.argsort(label_x_means)
-        assert len(new_cluster_labels) == len(np.unique(new_cluster_labels))
+        assert len(new_cluster_labels) == len(np.unique(new_cluster_labels)), \
+            'Non-unique cluster labels'
         for old_cluster_label in unique_labels:
             old_cluster_label_to_new_cluster_label[old_cluster_label] =\
                 np.where(new_cluster_labels==old_cluster_label)[0][0]
 
         for i_cluster in range(0,len(unique_labels)):
             old_label = unique_labels[i_cluster]
-            assert i_cluster == old_label
+            assert i_cluster == old_label, 'Internal error'
             new_label = old_cluster_label_to_new_cluster_label[old_label]
 
         for i_det,det in enumerate(candidate_detections):
@@ -660,7 +663,7 @@ def _find_matches_in_directory(dir_name_and_rows, options):
             print('Skipping failed image {} ({})'.format(filename,row['failure']))
             continue
 
-        assert len(detections) > 0
+        assert len(detections) > 0, 'Empty detections list'
 
         # For each detection in this image
         for i_detection, detection in enumerate(detections):
@@ -682,7 +685,8 @@ def _find_matches_in_directory(dir_name_and_rows, options):
             #
             # assert confidence >= 0.0 and confidence <= 1.0
 
-            assert confidence >= -1.0 and confidence <= 1.0
+            assert (confidence >= -1.0) and (confidence <= 1.0), \
+                'Illegal confidence value {}'.format(confidence)
 
             if confidence < options.confidenceMin:
                 continue
@@ -858,18 +862,21 @@ def _update_detection_table(repeat_detection_results, options, output_file_name=
                 # The bbox for this instance should be almost the same as the bbox
                 # for this detection group, where "almost" is defined by the IOU
                 # threshold.
-                assert iou >= options.iouThreshold
+                assert iou >= options.iouThreshold, 'Unexpected IoU value ({} < {})'.format(
+                    iou, options.iouThreshold)
                 # if iou < options.iouThreshold:
                 #    print('IOU warning: {},{}'.format(iou,options.iouThreshold))
 
-                assert instance.filename in repeat_detection_results.filename_to_row
+                assert instance.filename in repeat_detection_results.filename_to_row, \
+                    'Unexpected instance filename {}'.format(instance.filename)
                 i_row = repeat_detection_results.filename_to_row[instance.filename]
                 row = detection_results.iloc[i_row]
                 row_detections = row['detections']
                 detection_to_modify = row_detections[instance.i_detection]
 
                 # Make sure the bounding box matches
-                assert (instance_bbox[0:4] == detection_to_modify['bbox'][0:4])
+                assert (instance_bbox[0:4] == detection_to_modify['bbox'][0:4]), \
+                    'Bounding box mismatch'
 
                 # Make the probability negative, if it hasn't been switched by
                 # another bounding box
@@ -894,7 +901,8 @@ def _update_detection_table(repeat_detection_results, options, output_file_name=
 
         detections = row['detections']
         if (detections is None) or isinstance(detections,float):
-            assert isinstance(row['failure'],str)
+            assert isinstance(row['failure'],str), \
+                'Illegal failure indicator of type {}'.format(type(row['failure']))
             continue
 
         if len(detections) == 0:
@@ -904,7 +912,7 @@ def _update_detection_table(repeat_detection_results, options, output_file_name=
 
         # No longer strictly true; sometimes I run RDE on RDE output
         # assert max_p_original >= 0
-        assert max_p_original >= -1.0
+        assert max_p_original >= -1.0, 'Unexpected max_p_original {}'.format(max_p_original)
 
         max_p = None
         n_negative = 0
@@ -920,13 +928,15 @@ def _update_detection_table(repeat_detection_results, options, output_file_name=
                 max_p = p
 
         # We should only be making detections *less* likely in this process
-        assert max_p <= max_p_original
+        assert max_p <= max_p_original, \
+            'Unexpected max_p vs max_p_original ({} > {})'.format(max_p,max_p_original)
         detection_results.at[i_row, 'max_detection_conf'] = max_p
 
         # If there was a meaningful change, count it
         if abs(max_p - max_p_original) > 1e-3:
 
-            assert max_p < max_p_original
+            assert max_p < max_p_original, \
+                'Unexpected max_p vs max_p_original ({} > {})'.format(max_p,max_p_original)
 
             n_prob_changes += 1
 
@@ -939,7 +949,7 @@ def _update_detection_table(repeat_detection_results, options, output_file_name=
             # Negative probabilities should be the only reason max_p changed, so
             # we should have found at least one negative value if we reached
             # this point.
-            assert n_negative > 0
+            assert n_negative > 0, 'max_p change with no negative values'
 
         # ...if there was a meaningful change to the max probability for this row
 
@@ -972,14 +982,15 @@ def _render_sample_image_for_detection(detection,filtering_dir,options):
 
     # Confidence values should already have been sorted in the previous loop
     instance_confidences = [instance.confidence for instance in detection.instances]
-    assert ct_utils.is_list_sorted(instance_confidences,reverse=True)
+    assert ct_utils.is_list_sorted(instance_confidences,reverse=True), \
+        'Confidence values are not sorted'
 
     # Choose the highest-confidence index
     instance = detection.instances[0]
     relative_path = instance.filename
 
     output_relative_path = detection.sampleImageRelativeFileName
-    assert len(output_relative_path) > 0
+    assert len(output_relative_path) > 0, 'Invalid relative output path {}'.format(output_relative_path)
 
     output_full_path = os.path.join(filtering_dir, output_relative_path)
 
@@ -1004,7 +1015,7 @@ def _render_sample_image_for_detection(detection,filtering_dir,options):
                 im = vis_utils.resize_image(im, options.maxOutputImageWidth,
                                             target_height=-1)
 
-            assert detection.sampleImageDetections is not None
+            assert detection.sampleImageDetections is not None, 'Internal error'
 
             # At this point, suspicious detections have already been flipped
             # negative, which we don't want for rendering purposes
@@ -1171,7 +1182,8 @@ def find_repeat_detections(input_filename, output_file_name=None, options=None):
     # Check early to avoid problems with the output folder
 
     if options.bWriteFilteringFolder:
-        assert options.outputBase is not None and len(options.outputBase) > 0
+        assert options.outputBase is not None and len(options.outputBase) > 0, \
+            'bWriteFilteringFolder specified without outputBase'
         os.makedirs(options.outputBase,exist_ok=True)
 
 
@@ -1235,7 +1247,7 @@ def find_repeat_detections(input_filename, output_file_name=None, options=None):
                 while (i_level < options.nDirLevelsFromLeaf):
                     i_level += 1
                     dir_name = os.path.dirname(dir_name)
-            assert len(dir_name) > 0
+            assert len(dir_name) > 0, 'Invalid folder name'
 
         if dir_name not in rows_by_directory:
             # Create a new DataFrame with just this row
@@ -1244,7 +1256,8 @@ def find_repeat_detections(input_filename, output_file_name=None, options=None):
 
         rows_by_directory[dir_name].append(row)
 
-        assert relative_path not in filename_to_row
+        assert relative_path not in filename_to_row, \
+            'Unmapped filename {}'.format(relative_path)
         filename_to_row[relative_path] = i_row
 
     # ...for each unique detection
@@ -1301,7 +1314,7 @@ def find_repeat_detections(input_filename, output_file_name=None, options=None):
             options.pbar = None
             for i_dir, dir_name in tqdm(enumerate(dirs_to_search)):
                 dir_name_and_row = dir_name_and_rows[i_dir]
-                assert dir_name_and_row[0] == dir_name
+                assert dir_name_and_row[0] == dir_name, 'Internal error for folder {}'.format(dir_name)
                 print('Processing dir {} of {}: {}'.format(i_dir,len(dirs_to_search),dir_name))
                 all_candidate_detections[i_dir] = \
                     _find_matches_in_directory(dir_name_and_row, options)
@@ -1361,7 +1374,8 @@ def find_repeat_detections(input_filename, output_file_name=None, options=None):
                 for i_location, location_info in tqdm(enumerate(dir_name_and_rows)):
 
                     location_name = location_info[0]
-                    assert location_name in location_name_to_normalized_location_name
+                    assert location_name in location_name_to_normalized_location_name, \
+                        'Internal error for location {}'.format(location_name)
                     normalized_location_name = location_name_to_normalized_location_name[location_name]
                     intermediate_results_file = os.path.join(intermediate_json_file_folder,
                                                              normalized_location_name + '.csv')
@@ -1470,7 +1484,9 @@ def find_repeat_detections(input_filename, output_file_name=None, options=None):
     # If we're just loading detections from a file...
     else:
 
-        assert len(suspicious_detections) == len(dirs_to_search)
+        assert len(suspicious_detections) == len(dirs_to_search), \
+            'Directory list mismatch ({} vs {})'.format(
+                len(suspicious_detections),len(dirs_to_search))
 
         n_detections_removed = 0
         n_detections_loaded = 0
