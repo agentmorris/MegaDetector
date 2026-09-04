@@ -130,7 +130,7 @@ def get_common_name_from_prediction_string(s):
     # ...for each token
 
     if common_name is None:
-        assert s == ';;;;;;'
+        assert s == ';;;;;;', 'Unexpected missing common name in {}'.format(s)
         common_name = 'empty_prediction_string'
 
     return common_name
@@ -196,7 +196,7 @@ def clean_taxonomy_string(s, truncate_multiple_description_strings=True):
         return s
     elif is_valid_prediction_string(s):
         tokens = s.split(';')
-        assert len(tokens) == 7
+        assert len(tokens) == 7, 'Illegal taxonomy string {}'.format(s)
         return ';'.join(tokens[1:-1])
     else:
         raise ValueError('Invalid taxonomy string: {}'.format(s))
@@ -256,7 +256,7 @@ def taxonomy_level_index(s):
         return 0
 
     tokens = s.split(';')
-    assert len(tokens) in (5,7)
+    assert len(tokens) in (5,7), 'Illegal taxonomy string {}'.format(s)
 
     if len(tokens) == 7:
         tokens = tokens[1:-1]
@@ -307,7 +307,8 @@ def get_kingdom(prediction_string):
         str: the kingdom field from the input string
     """
     tokens = prediction_string.split(';')
-    assert is_valid_prediction_string(prediction_string)
+    assert is_valid_prediction_string(prediction_string), \
+        'Invalid prediction string {}'.format(prediction_string)
     return tokens[1]
 
 
@@ -549,7 +550,9 @@ def generate_md_results_from_predictions_json(predictions_json_file,
         with open(predictions_json_file,'r') as f:
             predictions = json.load(f)
     else:
-        assert isinstance(predictions_json_file,dict)
+        assert isinstance(predictions_json_file,dict), \
+            'Illegal value for predictions_json_file (type {})'.format(
+                type(predictions_json_file))
         predictions = predictions_json_file
 
     # Round floating-point values (confidence scores, coordinates) to a
@@ -558,7 +561,8 @@ def generate_md_results_from_predictions_json(predictions_json_file,
         round_floats_in_nested_dict(predictions, decimal_places=max_decimals)
 
     predictions = predictions['predictions']
-    assert isinstance(predictions,list)
+    assert isinstance(predictions,list), \
+        'Illegal [predictions] value of type {}'.format(type(predictions))
 
     # Convert backslashes to forward slashes in both filenames and the base folder string
     for im in predictions:
@@ -621,7 +625,10 @@ def generate_md_results_from_predictions_json(predictions_json_file,
                     for det_in in im_in['detections']:
                         det_out = {}
                         if det_in['category'] in detection_category_id_to_name:
-                            assert detection_category_id_to_name[det_in['category']] == det_in['label']
+                            assert detection_category_id_to_name[det_in['category']] == det_in['label'], \
+                                'Mismatch between category name {} and label {}'.format(
+                                    detection_category_id_to_name[det_in['category']],
+                                    det_in['label'])
                         else:
                             detection_category_id_to_name[det_in['category']] = det_in['label']
                         det_out = {}
@@ -638,8 +645,12 @@ def generate_md_results_from_predictions_json(predictions_json_file,
             if 'classifications' in im_in:
 
                 classifications = im_in['classifications']
-                assert len(classifications['scores']) == len(classifications['classes'])
-                assert is_list_sorted(classifications['scores'],reverse=True)
+                assert len(classifications['scores']) == len(classifications['classes']), \
+                    'Mismatch between score list (length {}) and class list (length {})'.format(
+                        len(classifications['scores']),
+                        len(classifications['classes']))
+                assert is_list_sorted(classifications['scores'],reverse=True), \
+                    'Unsorted classification scores'
                 class_to_assign = classifications['classes'][0]
                 class_confidence = classifications['scores'][0]
 
@@ -671,7 +682,8 @@ def generate_md_results_from_predictions_json(predictions_json_file,
 
                 else:
 
-                    assert not class_to_assign.endswith('blank')
+                    assert not class_to_assign.endswith('blank'), \
+                        'Invalid blank prediction class {}'.format(class_to_assign)
 
                     # This is a scenario that's not captured well by the MD format: no detections present,
                     # but a non-blank prediction.  For now, create a fake detection to handle this prediction.
@@ -729,7 +741,8 @@ def generate_md_results_from_predictions_json(predictions_json_file,
         detection_category_id_to_name[fake_detection_category_id] = 'unknown'
 
         for det in fake_detections:
-            assert det['category'] == 'unknown'
+            assert det['category'] == 'unknown', \
+                'Invalid fake detection with category {}'.format(det['category'])
             det['category'] = fake_detection_category_id
 
 
@@ -826,7 +839,8 @@ def generate_predictions_json_from_md_results(md_results_file,
         if 'failure' in im and im['failure'] is not None:
             prediction['failures'] = ['DETECTOR']
         else:
-            assert 'detections' in im and im['detections'] is not None
+            assert 'detections' in im and im['detections'] is not None, \
+                'No detections list available in non-failed image'
             detections = []
             for det in im['detections']:
                 output_det = deepcopy(det)
@@ -837,7 +851,7 @@ def generate_predictions_json_from_md_results(md_results_file,
             detections = sort_list_of_dicts_by_key(detections,'conf', reverse=True)
             prediction['detections'] = detections
 
-        assert len(prediction.keys()) >= 2
+        assert len(prediction.keys()) >= 2, 'Invalid prediction dict'
         output_dict['predictions'].append(prediction)
 
     # ...for each image
@@ -882,7 +896,7 @@ def generate_instances_json_from_folder(folder,
         dict: dict with at least the field "instances"
     """
 
-    assert os.path.isdir(folder)
+    assert os.path.isdir(folder), 'Invalid directory name {}'.format(folder)
 
     print('Enumerating images in {}'.format(folder))
     image_files_abs = find_images(folder,recursive=True,return_relative_paths=False)
@@ -947,7 +961,8 @@ def split_instances_into_n_batches(instances_json,n_batches,output_files=None):
 
     with open(instances_json,'r') as f:
         instances = json.load(f)
-    assert isinstance(instances,dict) and 'instances' in instances
+    assert isinstance(instances,dict) and 'instances' in instances, \
+        'Invalid instances dict'
     instances = instances['instances']
 
     if output_files is not None:
@@ -993,11 +1008,12 @@ def merge_prediction_json_files(input_prediction_files,output_prediction_file):
             'Could not find prediction file {}'.format(input_json_fn)
         with open(input_json_fn,'r') as f:
             results_this_file = json.load(f)
-        assert isinstance(results_this_file,dict)
+        assert isinstance(results_this_file,dict), 'Invalid results dict'
         predictions_this_file = results_this_file['predictions']
         for prediction in predictions_this_file:
             image_fn = prediction['filepath']
-            assert image_fn not in image_filenames_processed
+            assert image_fn not in image_filenames_processed, \
+                'Image {} already processed'.format(image_fn)
         predictions.extend(predictions_this_file)
 
     output_dict = {'predictions':predictions}
@@ -1088,8 +1104,8 @@ def validate_predictions_file(fn,instances=None,verbose=True):
             else:
                 raise ValueError('Could not find instances file/folder {}'.format(
                     instances))
-        assert isinstance(instances,dict)
-        assert 'instances' in instances
+        assert isinstance(instances,dict), 'Invalid instances dict'
+        assert 'instances' in instances, 'Invalid instances dict'
         instances = instances['instances']
         if verbose:
             print('Expected results for {} files'.format(len(instances)))
@@ -1099,7 +1115,7 @@ def validate_predictions_file(fn,instances=None,verbose=True):
 
         expected_files = set([instance['filepath'] for instance in instances])
         found_files = set([prediction['filepath'] for prediction in predictions])
-        assert expected_files == found_files
+        assert expected_files == found_files, 'Unexpected list of images in predictions file'
 
     # ...if a list of instances was supplied
 
@@ -1130,7 +1146,7 @@ def find_geofence_adjustments(ensemble_json_file,use_latin_names=False):
     # Load and validate ensemble results
     ensemble_results = validate_predictions_file(ensemble_json_file)
 
-    assert isinstance(ensemble_results,dict)
+    assert isinstance(ensemble_results,dict), 'Invalid ensemble results'
     predictions = ensemble_results['predictions']
 
     # Maps comma-separated pairs of common names (or binomial names) to
@@ -1154,8 +1170,10 @@ def find_geofence_adjustments(ensemble_json_file,use_latin_names=False):
             classification_taxonomy_string = \
                 prediction['classifications']['classes'][0]
             prediction_taxonomy_string = prediction['prediction']
-            assert is_valid_prediction_string(classification_taxonomy_string)
-            assert is_valid_prediction_string(prediction_taxonomy_string)
+            assert is_valid_prediction_string(classification_taxonomy_string), \
+                'Invalid prediction string {}'.format(classification_taxonomy_string)
+            assert is_valid_prediction_string(prediction_taxonomy_string), \
+                'Invalid prediction string {}'.format(prediction_taxonomy_string)
 
             # Typical examples:
             # '86f5b978-4f30-40cc-bd08-be9e3fba27a0;mammalia;rodentia;sciuridae;sciurus;carolinensis;eastern gray squirrel'
@@ -1204,7 +1222,8 @@ def generate_geofence_adjustment_html_summary(rollup_pair_to_count,min_count=10)
         {key: value for key, value in rollup_pair_to_count.items() if value >= min_count}
 
     # rollup_pair_to_count is sorted in descending order by count
-    assert is_list_sorted(list(rollup_pair_to_count.values()),reverse=True)
+    assert is_list_sorted(list(rollup_pair_to_count.values()),reverse=True), \
+        'Unsorted rollup_pair_to_count list'
 
     if len(rollup_pair_to_count) > 0:
 
@@ -1305,10 +1324,11 @@ class TaxonomyHandler:
 
         for line in taxonomy_lines:
             tokens = line.split(';')
-            assert len(tokens) == 7, 'Illegal line {} in taxonomy file {}'.format(
-                line,taxonomy_file)
+            assert len(tokens) == 7, \
+                'Illegal line {} in taxonomy file {}'.format(line,taxonomy_file)
             five_token_string = ';'.join(tokens[1:-1])
-            assert len(five_token_string.split(';')) == 5
+            assert len(five_token_string.split(';')) == 5, \
+                'Invalid taxonomy line {}'.format(line)
             five_token_string_to_seven_token_string[five_token_string] = line
 
         for taxonomy_string in five_token_string_to_seven_token_string.keys():
@@ -1318,9 +1338,11 @@ class TaxonomyHandler:
             taxon_info = {}
             extended_string = five_token_string_to_seven_token_string[taxonomy_string]
             tokens = extended_string.split(';')
-            assert len(tokens) == 7
+            assert len(tokens) == 7, \
+                'Invalid taxonomy string {}'.format(taxonomy_string)
             taxon_info['taxon_id'] = tokens[0]
-            assert len(taxon_info['taxon_id']) == 36
+            assert len(taxon_info['taxon_id']) == 36, \
+                'Invalid taxonomy string {}'.format(taxonomy_string)
             taxon_info['kingdom'] = 'animal'
             taxon_info['phylum'] = 'chordata'
             taxon_info['class'] = tokens[1]
@@ -1421,17 +1443,18 @@ class TaxonomyHandler:
 
             for rule_type in species_rules.keys():
 
-                assert rule_type in ('allow','block')
+                assert rule_type in ('allow','block'), 'Invalid rule type {}'.format(rule_type)
                 all_country_rules_this_species = species_rules[rule_type]
 
                 for country_code in all_country_rules_this_species.keys():
 
-                    assert country_code in self.country_code_to_country
+                    assert country_code in self.country_code_to_country, \
+                        'Invalid country code {}'.format(country_code)
                     region_rules = all_country_rules_this_species[country_code]
                     # Right now we only have regional rules for the USA; these may be part of
                     # allow or block rules.
                     if len(region_rules) > 0:
-                        assert country_code == 'USA'
+                        assert country_code == 'USA', 'Region attached to a non-US country'
 
                 # ...for each country code in this rule set
 
@@ -1450,7 +1473,8 @@ class TaxonomyHandler:
 
         if not isinstance(codes,list):
 
-            assert isinstance(codes,str)
+            assert isinstance(codes,str), \
+                'Illegal region code string of type {}'.format(type(codes))
 
             codes = codes.strip()
 
@@ -1461,12 +1485,13 @@ class TaxonomyHandler:
                 codes = codes.split(',')
             codes = [c.strip() for c in codes]
 
-        assert isinstance(codes,list)
+        assert isinstance(codes,list), \
+            'Illegal region code list of type {}'.format(type(codes))
 
         codes = [c.upper().strip() for c in codes]
 
         for c in codes:
-            assert len(c) in (2,3)
+            assert len(c) in (2,3), 'Illegal region code {}'.format(c)
 
         return codes
 
@@ -1674,15 +1699,17 @@ class TaxonomyHandler:
 
         if state is not None:
             state = state.upper()
-            assert len(state) == 2
+            assert len(state) == 2, 'Illegal state code {}'.format(state)
 
         # Turn "country" into a country code
 
         if len(country) == 3:
-            assert country.upper() in self.country_code_to_country
+            assert country.upper() in self.country_code_to_country, \
+                'Illegal country code {}'.format(country)
             country = country.upper()
         else:
-            assert country.lower() in self.country_to_country_code
+            assert country.lower() in self.country_to_country_code, \
+                'Illegal country code {}'.format(country)
             country = self.country_to_country_code[country.lower()]
 
         country_code = country.upper()
@@ -1701,7 +1728,7 @@ class TaxonomyHandler:
 
         rule_types_this_species = list(geofencing_rules_this_species.keys())
         for rule_type in rule_types_this_species:
-            assert rule_type in ('allow','block')
+            assert rule_type in ('allow','block'), 'Illegal rule type {}'.format(rule_type)
 
         if 'block' in rule_types_this_species:
             blocked_countries = list(geofencing_rules_this_species['block'])
@@ -1724,7 +1751,7 @@ class TaxonomyHandler:
             status = 'block_not_on_country_allow_list'
         else:
             # Only block rules exist for this species, and they don't include this country
-            assert len(blocked_countries) > 0
+            assert len(blocked_countries) > 0, 'Expected country-level block rules'
             status = 'allow_not_on_block_list'
 
         # Now let's see whether we have to deal with any regional rules.
@@ -1754,7 +1781,7 @@ class TaxonomyHandler:
                         if rule_type == 'block':
                             usa_blocked = True
                         else:
-                            assert rule_type == 'allow'
+                            assert rule_type == 'allow', 'Unexpected rule type {}'.format(rule_type)
                             usa_allowed = True
                         continue
 
@@ -1804,7 +1831,7 @@ class TaxonomyHandler:
             if status.startswith('allow'):
                 return True
             else:
-                assert status.startswith('block')
+                assert status.startswith('block'), 'Invalid status {}'.format(status)
                 return False
 
     # ...def species_allowed_in_country(...)
@@ -1836,19 +1863,22 @@ class TaxonomyHandler:
             taxon_rules = self.taxonomy_string_to_geofencing_rules[taxon]
             for rule_type in taxon_rules.keys():
 
-                assert rule_type in ('allow','block')
+                assert rule_type in ('allow','block'), 'Illegal rule type {}'.format(rule_type)
                 all_country_rules_this_species = taxon_rules[rule_type]
 
                 for country_code in all_country_rules_this_species.keys():
                     all_regions.add(country_code)
-                    assert country_code in self.country_code_to_country
-                    assert len(country_code) == 3
+                    assert country_code in self.country_code_to_country, \
+                        'Illegal country code {}'.format(country_code)
+                    assert len(country_code) == 3, \
+                        'Illegal country code {}'.format(country_code)
                     region_rules = all_country_rules_this_species[country_code]
                     if len(region_rules) > 0:
-                        assert country_code == 'USA'
+                        assert country_code == 'USA', 'Region-level rules for non-US country'
                         for region_name in region_rules:
-                            assert len(region_name) == 2
-                            assert isinstance(region_name,str)
+                            assert len(region_name) == 2, 'Illegal region name {}'.format(region_name)
+                            assert isinstance(region_name,str), \
+                                'Illegal region name {}'.format(str(region_name))
                             all_regions.add(country_code + ':' + region_name)
 
         all_regions = sorted(list(all_regions))
@@ -1893,7 +1923,8 @@ class TaxonomyHandler:
                 if taxon in self.taxonomy_string_to_taxonomy_info:
                     taxonomy_info = self.taxonomy_string_to_taxonomy_info[taxon]
                     common_name = taxonomy_info['common_name']
-                    assert isinstance(common_name,str) and len(common_name) < 50
+                    assert isinstance(common_name,str) and len(common_name) < 50, \
+                        'Invalid common name {}'.format(common_name)
                     df.loc[taxon,'common_name'] = common_name
 
         if csv_fn is not None:
