@@ -541,6 +541,7 @@ E0
 
 !docs
 
+
 ## Graceful handling of augmentation for MDv1000-cedar
 
 MDv1000-cedar does not support image augmentation.  It's not important to add it; the entire point of MDv1000-cedar is for compute-constrained scenarios.  Right now, though, it crashes unhelpfully.  Handle this more gracefully.
@@ -556,7 +557,7 @@ E0
 
 With the release of MDv1000, I introduced two preprocessing approaches: "classic" (which matches what we always did for MDv5, and roughly matches YOLOv5's detect.py) and "modern" (which roughly matches YOLOv5's val.py).  Neither is obviously better or worse, but they are different.  There is a separate item for evaluating this difference (and others); this item is just about more properly documenting the difference, and documenting how to invoke each approach.  This would include finding a couple of example images where they produce different results.
 
-P0
+P2
 
 E1
 
