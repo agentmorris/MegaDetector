@@ -590,11 +590,12 @@ def wi_download_csv_to_coco(csv_file_in,
         print('Warning: {} sequence/image label inconsistencies'.format(
             n_sequence_image_inconsistencies))
 
-    print('Created COCO records for {} image IDs, {} blanks ({} excluded), {} unidentified ({} excluded), {} placeholders excluded)'.format(
-            len(image_id_to_image),
-            n_blanks,n_blanks_excluded,
-            n_unidentified_images,n_unidentified_images_excluded,
-            n_placeholders_excluded))
+    print('Created COCO records for {} image IDs, {} blanks ({} excluded), {} unidentified '
+          '({} excluded), {} placeholders excluded'.format(
+          len(image_id_to_image),
+          n_blanks,n_blanks_excluded,
+          n_unidentified_images,n_unidentified_images_excluded,
+          n_placeholders_excluded))
 
 
     ##%% Write COCO output

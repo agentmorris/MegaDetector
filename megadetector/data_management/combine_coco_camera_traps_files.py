@@ -67,7 +67,8 @@ def combine_cct_files(input_files,
 
     print('Merging results')
     merged_dict = combine_cct_dictionaries(
-        input_dicts, require_uniqueness=require_uniqueness)
+        input_dicts,
+        require_uniqueness=require_uniqueness)
 
     print('Writing output')
     if output_file is not None:
@@ -78,7 +79,8 @@ def combine_cct_files(input_files,
 # ...def combine_cct_files(...)
 
 
-def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
+def combine_cct_dictionaries(input_dicts,
+                             require_uniqueness=True):
     """
     Merges the list of COCO Camera Traps dictionaries [input_dicts].  See module header
     comment for details on merge rules.
@@ -92,7 +94,8 @@ def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
         dict: the merged COCO-formatted .json dict
     """
 
-    #%%
+    # We are going to modify some of the inputs, so make copies first
+    input_dicts = [deepcopy(d) for d in input_dicts]
 
     filename_to_image = {}
     all_annotations = []
@@ -127,6 +130,7 @@ def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
         index_string = 'ds' + str(i_input_dict).zfill(3) + '_'
 
         old_category_id_to_new_category_id = {}
+        old_image_id_to_new_image_id = {}
 
         # Map detection categories from the original data set into the merged data set
         for original_category in input_dict['categories']:
@@ -164,15 +168,18 @@ def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
 
             im_file = filename_prefix + im['file_name']
             im['file_name'] = im_file
-            if require_uniqueness:
-                assert im_file not in filename_to_image, f'Duplicate image: {im_file}'
-            else:
-                if im_file in filename_to_image:
-                    print('Redundant image {}'.format(im_file))
 
             # Create a unique ID
             im['id'] = index_string + str(im['id'])
-            filename_to_image[im_file] = im
+
+            if im_file in filename_to_image:
+                assert not require_uniqueness, f'Duplicate image: {im_file}'
+                # Keep the first record we saw for this filename, and remember to point
+                # this image's annotations at the record we're keeping
+                print('Redundant image {}'.format(im_file))
+                old_image_id_to_new_image_id[im['id']] = filename_to_image[im_file]['id']
+            else:
+                filename_to_image[im_file] = im
 
         # ...for each image
 
@@ -181,6 +188,8 @@ def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
         for ann in input_dict['annotations']:
 
             ann['image_id'] = index_string + str(ann['image_id'])
+            if ann['image_id'] in old_image_id_to_new_image_id:
+                ann['image_id'] = old_image_id_to_new_image_id[ann['image_id']]
             ann['id'] = index_string + str(ann['id'])
             assert ann['category_id'] in old_category_id_to_new_category_id
             ann['category_id'] = old_category_id_to_new_category_id[ann['category_id']]
@@ -191,8 +200,7 @@ def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
 
         # Merge info dicts, don't check completion time fields
         if info is None:
-            import copy
-            info = copy.deepcopy(input_dict['info'])
+            info = deepcopy(input_dict['info'])
             info['original_info'] = [input_dict['info']]
         else:
             info['original_info'].append(input_dict['info'])
@@ -202,8 +210,42 @@ def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
     # Convert merged image dictionaries to a sorted list
     sorted_images = sorted(filename_to_image.values(), key=lambda im: im['file_name'])
 
-    assert len(sorted_images) == sum(image_counts), 'Image count mismatch'
+    if require_uniqueness:
+        assert len(sorted_images) == sum(image_counts), 'Image count mismatch'
     assert len(all_annotations) == sum(annotation_counts), 'Annotation count mismatch'
+
+    # Every annotation should refer to an image that's still in the merged file.  We also
+    # remove redundant annotations here; when the same image appears in multiple input
+    # files, that image's annotations get merged onto a single image record, so we may
+    # have annotations that are identical other than the "id" field.
+    all_image_ids = set(im['id'] for im in sorted_images)
+    assert len(all_image_ids) == len(sorted_images), 'Duplicate image IDs in merged output'
+
+    deduplicated_annotations = []
+    annotation_keys = set()
+    n_redundant_annotations = 0
+
+    for ann in all_annotations:
+
+        assert ann['image_id'] in all_image_ids, \
+            'Annotation {} refers to non-existent image {}'.format(
+                ann['id'],ann['image_id'])
+
+        # Compare every field except the annotation ID; sort_keys makes this
+        # independent of field order, and default=str keeps us from choking on
+        # anything unusual that made it into a custom field.
+        annotation_key = json.dumps({k:v for k,v in ann.items() if k != 'id'},
+                                    sort_keys=True, default=str)
+
+        if annotation_key in annotation_keys:
+            n_redundant_annotations += 1
+        else:
+            annotation_keys.add(annotation_key)
+            deduplicated_annotations.append(ann)
+
+    # ...for each annotation
+
+    all_annotations = deduplicated_annotations
 
     all_categories = list(category_name_to_category.values())
     all_categories = sort_list_of_dicts_by_key(all_categories,'id')
@@ -216,6 +258,8 @@ def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
         len(sorted_images),image_count_string))
     print('Merged file has {} annotations ({})'.format(
         len(all_annotations),annotation_count_string))
+    if n_redundant_annotations > 0:
+        print('Removed {} redundant annotations'.format(n_redundant_annotations))
     print('Merged {} common categories ({})'.format(
         n_merged_categories,category_count_string))
 
@@ -223,8 +267,6 @@ def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
                    'categories': all_categories,
                    'images': sorted_images,
                    'annotations': all_annotations}
-
-    #%%
 
     return merged_dict
 
