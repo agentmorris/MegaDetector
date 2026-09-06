@@ -9,10 +9,6 @@ writing the results to another .json file.
 - Errors on unrecognized fields.
 - Checks compatibility in info structs, within reason.
 
-*Example command-line invocation*
-
-combine_coco_camera_traps_files input1.json input2.json ... inputN.json output.json
-
 """
 
 #%% Constants and imports
@@ -22,7 +18,10 @@ import sys
 import json
 import argparse
 
-from megadetector.utils import ct_utils
+from copy import deepcopy
+
+from megadetector.utils.ct_utils import write_json
+from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 
 
 #%% Merge functions
@@ -72,9 +71,11 @@ def combine_cct_files(input_files,
 
     print('Writing output')
     if output_file is not None:
-        ct_utils.write_json(output_file, merged_dict)
+        write_json(output_file, merged_dict)
 
     return merged_dict
+
+# ...def combine_cct_files(...)
 
 
 def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
@@ -91,18 +92,28 @@ def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
         dict: the merged COCO-formatted .json dict
     """
 
+    #%%
+
     filename_to_image = {}
     all_annotations = []
     info = None
 
-    category_name_to_id = {}
-    category_name_to_id['empty'] = 0
-    next_category_id = 1
+    category_name_to_category = {}
 
     known_fields = ['info', 'categories', 'annotations','images','filename_prefix']
 
+    image_counts = []
+    annotation_counts = []
+    category_counts = []
+
+    n_merged_categories = 0
+
     # i_input_dict = 0; input_dict = input_dicts[i_input_dict]
     for i_input_dict,input_dict in enumerate(input_dicts):
+
+        image_counts.append(len(input_dict['images']))
+        annotation_counts.append(len(input_dict['annotations']))
+        category_counts.append(len(input_dict['categories']))
 
         filename_prefix = ''
         if ('filename_prefix' in input_dict.keys()):
@@ -115,24 +126,30 @@ def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
         # We will prepend an index to every ID to guarantee uniqueness
         index_string = 'ds' + str(i_input_dict).zfill(3) + '_'
 
-        old_cat_id_to_new_cat_id = {}
+        old_category_id_to_new_category_id = {}
 
         # Map detection categories from the original data set into the merged data set
         for original_category in input_dict['categories']:
 
-            original_cat_id = original_category['id']
-            cat_name = original_category['name']
-            if cat_name in category_name_to_id:
-                new_cat_id = category_name_to_id[cat_name]
-            else:
-                new_cat_id = next_category_id
-                next_category_id += 1
-                category_name_to_id[cat_name] = new_cat_id
+            original_category_id = original_category['id']
+            category_name = original_category['name']
 
-            if original_cat_id in old_cat_id_to_new_cat_id:
-                assert old_cat_id_to_new_cat_id[original_cat_id] == new_cat_id
+            # If we've already created a new category for this name, use that ID
+            if category_name in category_name_to_category:
+                new_category_id = category_name_to_category[category_name]['id']
+                n_merged_categories += 1
             else:
-                old_cat_id_to_new_cat_id[original_cat_id] = new_cat_id
+                new_category_id = len(category_name_to_category)
+                new_category = deepcopy(original_category)
+                new_category['id'] = new_category_id
+                category_name_to_category[category_name] = new_category
+
+            if original_category_id in old_category_id_to_new_category_id:
+                assert old_category_id_to_new_category_id[original_category_id] == \
+                    new_category_id, 'Category ID mismatch'
+            else:
+                old_category_id_to_new_category_id[original_category_id] = \
+                    new_category_id
 
         # ...for each category
 
@@ -165,8 +182,8 @@ def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
 
             ann['image_id'] = index_string + str(ann['image_id'])
             ann['id'] = index_string + str(ann['id'])
-            assert ann['category_id'] in old_cat_id_to_new_cat_id
-            ann['category_id'] = old_cat_id_to_new_cat_id[ann['category_id']]
+            assert ann['category_id'] in old_category_id_to_new_category_id
+            ann['category_id'] = old_category_id_to_new_category_id[ann['category_id']]
 
         # ...for each annotation
 
@@ -185,17 +202,33 @@ def combine_cct_dictionaries(input_dicts, require_uniqueness=True):
     # Convert merged image dictionaries to a sorted list
     sorted_images = sorted(filename_to_image.values(), key=lambda im: im['file_name'])
 
-    all_categories = [{'id':category_name_to_id[cat_name],'name':cat_name} for\
-                      cat_name in category_name_to_id.keys()]
+    assert len(sorted_images) == sum(image_counts), 'Image count mismatch'
+    assert len(all_annotations) == sum(annotation_counts), 'Annotation count mismatch'
+
+    all_categories = list(category_name_to_category.values())
+    all_categories = sort_list_of_dicts_by_key(all_categories,'id')
+
+    image_count_string = ','.join([str(n) for n in image_counts])
+    annotation_count_string = ','.join([str(n) for n in annotation_counts])
+    category_count_string = ','.join([str(n) for n in category_counts])
+
+    print('Merged file has {} images ({})'.format(
+        len(sorted_images),image_count_string))
+    print('Merged file has {} annotations ({})'.format(
+        len(all_annotations),annotation_count_string))
+    print('Merged {} common categories ({})'.format(
+        n_merged_categories,category_count_string))
 
     merged_dict = {'info': info,
                    'categories': all_categories,
                    'images': sorted_images,
                    'annotations': all_annotations}
 
+    #%%
+
     return merged_dict
 
-# ...combine_cct_dictionaries(...)
+# ...def combine_cct_dictionaries(...)
 
 
 #%% Command-line driver

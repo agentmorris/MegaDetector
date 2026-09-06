@@ -139,9 +139,10 @@ class SubsetJsonDetectorOutputOptions:
         #: scenario indeed where you would want to specify both.
         self.categories_to_keep = None
 
-        #: Either a list of category names (not IDs), or a dictionary mapping category *names* (not IDs) to thresholds.
-        #: Removes non-matching detections, does not remove images.  Not technically mutually exclusize with
-        #: category_ids_to_keep, but it's an esoteric scenario indeed where you would want to specify both.
+        #: Either a list of category names (not IDs), or a dictionary mapping category *names* (not IDs) to
+        #: thresholds.  Removes non-matching detections, does not remove images.  Not technically mutually
+        #: exclusive with category_ids_to_keep, but it's an esoteric scenario indeed where you would want to
+        #: specify both.
         self.category_names_to_keep = None
 
         #: Set to >0 during testing to limit the number of images that get processed.

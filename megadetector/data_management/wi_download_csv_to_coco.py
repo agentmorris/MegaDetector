@@ -26,6 +26,7 @@ from megadetector.utils.path_utils import find_images
 from megadetector.utils.wi_platform_utils import read_images_from_download_bundle
 from megadetector.utils.wi_platform_utils import read_sequences_from_download_bundle
 from megadetector.utils.wi_platform_utils import url_to_relative_path
+from megadetector.utils.wi_platform_utils import record_is_unidentified
 
 wi_extra_annotation_columns = \
     ('identified_by',
@@ -98,7 +99,8 @@ def wi_download_csv_to_coco(csv_file_in,
                             verbose=True,
                             category_remappings=default_category_remappings,
                             blank_disagreement_handling='trust_label',
-                            include_blanks=True):
+                            include_blanks=True,
+                            include_unidentified_images=True):
     """
     Converts a .csv file (or folder of .csv files) from a Wildlife Insights project export
     to a COCO Camera Traps .json file.
@@ -128,6 +130,8 @@ def wi_download_csv_to_coco(csv_file_in,
             "trust_is_blank", or "error
         include_blanks (bool, optional): whether to include blank images in the COCO
             file
+        include_unidentified_images (bool, optional): whether to include unidentified images
+            in the COCO file
 
     Returns:
         dict: COCO-formatted data, identical to what's written to [coco_file_out]
@@ -267,9 +271,14 @@ def wi_download_csv_to_coco(csv_file_in,
 
     print('Converting records to COCO...')
 
-    n_blanks_excluded = 0
     n_placeholders_excluded = 0
     n_sequence_image_inconsistencies = 0
+
+    n_blanks = 0
+    n_blanks_excluded = 0
+
+    n_unidentified_images = 0
+    n_unidentified_images_excluded = 0
 
     # image_id = next(iter(image_id_to_image_records))
     for image_id in tqdm(image_id_to_image_records.keys(),
@@ -296,8 +305,6 @@ def wi_download_csv_to_coco(csv_file_in,
         location_id = _make_location_id(
             reference_record['project_id'],
             reference_record['deployment_id'])
-
-        nonblank_annotation_found = False
 
         im = {}
         im['id'] = image_id
@@ -384,7 +391,10 @@ def wi_download_csv_to_coco(csv_file_in,
                     'Illegal group size value: {}'.format(count)
                 count = int(count)
 
-            category_name = record['common_name'].strip().lower()
+            if record_is_unidentified(record):
+                category_name = 'unidentified'
+            else:
+                category_name = record['common_name'].strip().lower()
 
             if category_name == '':
 
@@ -469,7 +479,7 @@ def wi_download_csv_to_coco(csv_file_in,
                 category_id = category['id']
                 category['count'] = category['count'] + 1
                 assert category['name'] == category_name
-                if (category_name not in ['empty','unknown']) and \
+                if (category_name not in ['empty','unknown','unidentified']) and \
                    (taxonomy_string != category['taxonomy_string']):
                     print('Warning: category {} has multiple taxonomy strings:\n{}\n{}\n'.format(
                         category_name,
@@ -483,9 +493,6 @@ def wi_download_csv_to_coco(csv_file_in,
                 category['id'] = category_id
                 category['count'] = 1
                 category['taxonomy_string'] = taxonomy_string
-
-            if category_name != 'empty':
-                nonblank_annotation_found = True
 
             ann = {}
             ann['image_id'] = image_id
@@ -539,10 +546,43 @@ def wi_download_csv_to_coco(csv_file_in,
 
         # ...for each label record (image or sequence) associated with this image
 
-        if include_blanks or nonblank_annotation_found:
-            image_id_to_image[image_id] = im
+        nonblank_annotation_found = False
+        identification_found = False
+
+        assert len(categories_this_image) > 0, \
+            'At this point I should have at least one category name'
+        for category_name in categories_this_image:
+            assert category_name != 'blank', 'Illegal "blank" category (should be "empty")'
+            if category_name != 'empty':
+                nonblank_annotation_found = True
+            if category_name != 'unidentified':
+                identification_found = True
+
+        if not identification_found:
+
+            n_unidentified_images += 1
+
+            if include_unidentified_images:
+                image_id_to_image[image_id] = im
+            else:
+                n_unidentified_images_excluded += 1
+
         else:
-            n_blanks_excluded += 1
+
+            if not nonblank_annotation_found:
+
+                n_blanks += 1
+
+                if include_blanks:
+                    image_id_to_image[image_id] = im
+                else:
+                    n_blanks_excluded += 1
+
+            else:
+
+                image_id_to_image[image_id] = im
+
+        # ...if we do/don't have an identification for this image
 
     # ...for each image
 
@@ -550,8 +590,11 @@ def wi_download_csv_to_coco(csv_file_in,
         print('Warning: {} sequence/image label inconsistencies'.format(
             n_sequence_image_inconsistencies))
 
-    print('Created COCO records for {} image IDs ({} blanks, {} placeholders excluded)'.format(
-            len(image_id_to_image),n_blanks_excluded, n_placeholders_excluded))
+    print('Created COCO records for {} image IDs, {} blanks ({} excluded), {} unidentified ({} excluded), {} placeholders excluded)'.format(
+            len(image_id_to_image),
+            n_blanks,n_blanks_excluded,
+            n_unidentified_images,n_unidentified_images_excluded,
+            n_placeholders_excluded))
 
 
     ##%% Write COCO output
