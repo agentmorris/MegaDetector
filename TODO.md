@@ -561,13 +561,14 @@ E0
 
 I'm treating all of the following as a single work item, because they're easier to tackle in a single session.
 
-* run_md_and_speciesnet does not currently have the same checkpointing support that run_detector_batch has.  The core functionality is there for the detection step, because it's built in to run_detector_batch, but this needs to be exposed to the CLI.  Equivalent functionality needs to be added for the classification step.
-* run_speciesnet_and_md does not currently incorporate sequence-/image-level classification smoothing.  Add this.  The core functionality already exists, it just needs to be added to run_md_and_speciesnet.
-* Add other options from run_detector_batch (e.g. image_size, augment, detector options).  No new functionality needs to be added, these can just be passed through to run_detector_batch.
-* Add support for custom taxonomy lists.  The core functionality already exists, it just needs to be added to run_md_and_speciesnet.
-* GPU utilization is not where I would like it to be during the classification step, though I have not compared it to run_model.  See whether GPU utilization goes up if I disable geofencing/rollup; if it does, push those back to the main process (which is currently just sitting idle) rather than the consumer process.
-* Run one-time testing of run_md_and_speciesnet against run_model.
-* Add permanent tests for run_md_and_speciesnet.
+* run_md_and_speciesnet does not currently have the same checkpointing support that run_detector_batch has.  The core functionality is there for the detection step, because it's built in to run_detector_batch, but this needs to be exposed to the CLI.  Equivalent functionality needs to be added for the classification step. (P0)
+* Add other options from run_detector_batch (e.g. image_size, augment, detector options).  No new functionality needs to be added, these can just be passed through to run_detector_batch. (P0)
+* GPU utilization is not where I would like it to be during the classification step, though I have not compared it to run_model.  See whether GPU utilization goes up if I disable geofencing/rollup; if it does, push those back to the main process (which is currently just sitting idle) rather than the consumer process. (P0)
+* Run one-time testing of run_md_and_speciesnet against run_model. (P0)
+* Add permanent tests for run_md_and_speciesnet. (P0)
+
+* run_speciesnet_and_md does not currently incorporate sequence-/image-level classification smoothing.  Add this.  The core functionality already exists, it just needs to be added to run_md_and_speciesnet. (P1)
+* Add support for custom taxonomy lists.  The core functionality already exists, it just needs to be added to run_md_and_speciesnet. (P1)
 
 Create new work items for anything from this list that doesn't get done.
 
