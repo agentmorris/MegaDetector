@@ -18,6 +18,8 @@ This document shows you how to run these scripts.
 
 <b>None of this is required</b>; you can work with MegaDetector results without doing this step.  In fact, we only usually recommend this if you have (a) lots of images (millions) and (b) a reasonably high rate of false positives.  But if you have (a) and (b), this process may save you lots of time!
 
+If you prefer an app to the approach presented on this page, you might want to check out Yunxuan Chai's "[RocksBeGone](https://rocksbegone.camtra.pw/)", a graphical version of the repeat detection elimination process that runs in a browser.
+
 
 # Prerequisites
 

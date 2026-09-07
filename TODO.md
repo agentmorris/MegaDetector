@@ -6,6 +6,7 @@ This file documents open work items.  Each level-2 heading is a work item.  Ever
 * A priority designated as P[N], on a line by itself.  Priority ranges from 0 to 4, 0 being highest priority.
 * An effort level designated as E[N].  Effort ranges from 0 to 4, 4 being the most effort
 * At least one tag, indicated as !tag-name.
+* Optional: a sort weight (as S[N]), which controls sort order within a priority/effort group. Default sort weight is 0. Negative sort weights are allowed. Higher sort weights will appear first.
 
 Tags can be arbitrary strings, but the most common tags are !feature, !maintenance, !bug, !docs, !lila, and !admin.  !admin basically means "this involves a decision by the repo maintainer(s), it's not really a work item".
 
@@ -21,6 +22,8 @@ The section called "title" can contain a title for the page, otherwise it will d
 This file is viewable at:
 
 https://dmorris.net/task-viewer/?file=https://raw.githubusercontent.com/agentmorris/MegaDetector/refs/heads/main/TODO.md
+
+...which is generated with [Markdown Task Viewer](https://github.com/agentmorris/task-viewer).
 
 
 # Title
@@ -47,7 +50,7 @@ I got to a working nms() function that would support both import formats, but it
 
 Fix this, and remove the ultralytics NMS import.  Before removing this item, consider whether the remaining functions that are still imported from the ultralytics/YOLO libraries are worth it, or whether we can (finally) remove those imports.  This is the only significant utility function that is still imported.
 
-P0
+P1
 
 E1
 
@@ -182,9 +185,9 @@ E2
 
 run_detector_batch only supports single-GPU (or single-/multi-CPU) inference.  Add multi-GPU inference.  This is P3 because in practice, when using manage_local_batch to create and run jobs, multi-GPU inference is handled naturally by breaking the task up into multiple lists of images.
 
-P3
+P1
 
-E2
+E1
 
 !feature
 
@@ -277,18 +280,6 @@ E3
 !integration
 
 
-## Client-side RDE tool
-
-The [repeat detection elimination](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/postprocessing/repeat_detection_elimination) pipeline currently requires stitching together a bunch of tools: python scripts, a 3P image viewer, the Windows explorer.  It would be nice to integrate this into a proper client-side tool.  This would also be a good opportunity to allow keeping just a couple of images from a repeat detection series; currently if you see one animal and 100 false positives in a detection group, you typically have to just keep the whole detection group and eat 100 false positives.
-
-P2
-
-E3
-
-!frontend
-!feature
-
-
 ## Docs page improvements
 
 The [docs page](https://megadetector.readthedocs.io/en/latest/) is complete and up to date, but it could use a design review, updates to a more modern theme, and the addition of some more detailed information that is currently in the MegaDetector User's Guide.  This is vague, I know, but basically "take a close look at the docs page and make it nicer".  For my two cents, I like the styles used by [contextily](https://contextily.readthedocs.io/en/latest) and [pybowler](https://pybowler.io/docs/basics-usage).
@@ -318,7 +309,7 @@ E2
 
 It's often useful to run generic YOLO models on camera trap images, e.g. to complement MD with more fine-grained vehicle or background object classification.  The MD Python package is a useful way to do this, if you want to, e.g., review the results in Timelapse, or combine them with MD/SpeciesNet results.  This does not require any new code, just clear documentation.
 
-P2
+P3
 
 E1
 
@@ -475,28 +466,6 @@ E2
 !optimization
 
 
-## Support detector batch sizes other than 1 for video
-
-run_detector_batch supports batch inference (for GPUs); process_video does not.  The requirement is only to support batching within a video, it's OK if an incomplete batch runs at the end of each video if it simplifies implementation.  Make sure this is propagated to run_md_and_speciesnet.
-
-P0
-
-E1
-
-!feature
-
-
-## RDE might remove custom fields within a detection object
-
-The RDE process loads detections into a pandas dataframe, then re-generates a new list of detections.  There's no "official" scenario where detections might have custom properties, but I think this will result in the loss of custom properties.  Assess this, then either fix it, remove this item (if this doesn't really happen), or update the effort/priority of this task.
-
-P0
-
-E2
-
-!bug
-
-
 ## More careful stride handling
 
 pytorch_detector uses a stride size of 64 for all 1280px models (which specifically means YOLOv5x6), and a stride size of 32 for all other models.  This is true for all MD models that exist right now, but if we, for example, train YOLOv9 @ 1280px, or train a YOLOv5?6 model (where ? != "x") this heuristic would fail.
@@ -592,13 +561,14 @@ E0
 
 I'm treating all of the following as a single work item, because they're easier to tackle in a single session.
 
-* run_md_and_speciesnet does not currently have the same checkpointing support that run_detector_batch has.  The core functionality is there for the detection step, because it's built in to run_detector_batch, but this needs to be exposed to the CLI.  Equivalent functionality needs to be added for the classification step.
-* run_speciesnet_and_md does not currently incorporate sequence-/image-level classification smoothing.  Add this.  The core functionality already exists, it just needs to be added to run_md_and_speciesnet.
-* Add other options from run_detector_batch (e.g. image_size, augment, detector options).  No new functionality needs to be added, these can just be passed through to run_detector_batch.
-* Add support for custom taxonomy lists.  The core functionality already exists, it just needs to be added to run_md_and_speciesnet.
-* GPU utilization is not where I would like it to be during the classification step, though I have not compared it to run_model.  See whether GPU utilization goes up if I disable geofencing/rollup; if it does, push those back to the main process (which is currently just sitting idle) rather than the consumer process.
-* Run one-time testing of run_md_and_speciesnet against run_model.
-* Add permanent tests for run_md_and_speciesnet.
+* run_md_and_speciesnet does not currently have the same checkpointing support that run_detector_batch has.  The core functionality is there for the detection step, because it's built in to run_detector_batch, but this needs to be exposed to the CLI.  Equivalent functionality needs to be added for the classification step. (P0)
+* Add other options from run_detector_batch (e.g. image_size, augment, detector options).  No new functionality needs to be added, these can just be passed through to run_detector_batch. (P0)
+* GPU utilization is not where I would like it to be during the classification step, though I have not compared it to run_model.  See whether GPU utilization goes up if I disable geofencing/rollup; if it does, push those back to the main process (which is currently just sitting idle) rather than the consumer process. (P0)
+* Run one-time testing of run_md_and_speciesnet against run_model. (P0)
+* Add permanent tests for run_md_and_speciesnet. (P0)
+
+* run_speciesnet_and_md does not currently incorporate sequence-/image-level classification smoothing.  Add this.  The core functionality already exists, it just needs to be added to run_md_and_speciesnet. (P1)
+* Add support for custom taxonomy lists.  The core functionality already exists, it just needs to be added to run_md_and_speciesnet. (P1)
 
 Create new work items for anything from this list that doesn't get done.
 
@@ -706,7 +676,7 @@ When the GPU version of PyTorch is installed, but inference is run on the CPU (t
 
 P3
 
-E1
+E2
 
 !bug
 
@@ -802,9 +772,9 @@ This task is two-fold:
 * Assess whether map_location is supported on Apple silicon in recent versions of PyTorch, so we can eliminate the special case
 * Assess whether there is a performance/memory consumption benefit/cost to using map_location.
 
-I last tried switching to use_map_location on mps devices on 2025.08.18, it did not go well.  Dropping this to P3.
+I last tried switching to use_map_location on mps devices on 2025.08.18, it did not go well.  Dropped to P3 at the time, bumping it back to P2 now that a year has passed.
 
-P3
+P2
 
 E3
 
@@ -816,17 +786,6 @@ E3
 The "weights_only" parameter was added in PyTorch 2.x, and is required for loading MD models.  So as long as we support both PT 1.x and PT 2.x, we have a try/except in pytorch_detector to first try loading with weights_only=False, but then we fall back to omitting this parameter.  If we finally ditch support for PT 1.x, remove this try/except block.
 
 P3
-
-E0
-
-!maintenance
-
-
-## Remove unnecessary null failures from RDE output
-
-[repeat_detections_core](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/repeat_detection_elimination/repeat_detections_core.py) adds an unnecessary "failure" field (set to null) for all successful images.  This is not a violation of the format spec, but it's silly.  This happens because this script goes through a pandas dataframe after an intermediate, then converts rows back to dicts before exporting.  Fix this.  The easiest fix is to just remove these prior to export.
-
-P1
 
 E0
 

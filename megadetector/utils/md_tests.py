@@ -1078,6 +1078,25 @@ def run_python_tests(options):
 
         compare_results(video_options.output_json_file,expected_results_file,options_loose)
 
+
+        ## Video test (folder, batch size > 1)
+
+        # Batching is disabled on the CPU, so on a CPU-only machine, this is just a
+        # repeat of the previous test.
+        print('\n** Running MD on a folder of videos with batch size > 1 (module) **\n')
+
+        video_options_batch = deepcopy(video_options)
+        video_options_batch.output_json_file = \
+            insert_before_extension(video_options.output_json_file,'batch')
+        video_options_batch.batch_size = options.alternative_batch_size
+
+        _ = process_videos(video_options_batch)
+
+        assert os.path.isfile(video_options_batch.output_json_file), \
+            'Batched video test failed to render output .json file'
+
+        compare_results(video_options_batch.output_json_file,expected_results_file,options_loose)
+
     # ...if we're not skipping video tests
 
     print('\n*** Finished module tests ***\n')
