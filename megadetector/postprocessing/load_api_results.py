@@ -30,10 +30,11 @@ from megadetector.utils.wi_taxonomy_utils import load_md_or_speciesnet_file
 
 #%% Functions for loading .json results into a Pandas DataFrame, and writing back to .json
 
-def load_api_results(api_output_path: str, normalize_paths: bool = True,
-                     filename_replacements: Optional[Mapping[str, str]] = None,
-                     force_forward_slashes: bool = True
-                     ) -> tuple[pd.DataFrame, dict]:
+def load_api_results(api_output_path,
+                     normalize_paths=True,
+                     filename_replacements=None,
+                     force_forward_slashes=True
+                     ):
     r"""
     Loads json-formatted MegaDetector results to a Pandas DataFrame.
 

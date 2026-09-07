@@ -478,17 +478,6 @@ E2
 !optimization
 
 
-## RDE might remove custom fields within a detection object
-
-The RDE process loads detections into a pandas dataframe, then re-generates a new list of detections.  There's no "official" scenario where detections might have custom properties, but I think this will result in the loss of custom properties.  Assess this, then either fix it, remove this item (if this doesn't really happen), or update the effort/priority of this task.
-
-P0
-
-E2
-
-!bug
-
-
 ## More careful stride handling
 
 pytorch_detector uses a stride size of 64 for all 1280px models (which specifically means YOLOv5x6), and a stride size of 32 for all other models.  This is true for all MD models that exist right now, but if we, for example, train YOLOv9 @ 1280px, or train a YOLOv5?6 model (where ? != "x") this heuristic would fail.
@@ -808,17 +797,6 @@ E3
 The "weights_only" parameter was added in PyTorch 2.x, and is required for loading MD models.  So as long as we support both PT 1.x and PT 2.x, we have a try/except in pytorch_detector to first try loading with weights_only=False, but then we fall back to omitting this parameter.  If we finally ditch support for PT 1.x, remove this try/except block.
 
 P3
-
-E0
-
-!maintenance
-
-
-## Remove unnecessary null failures from RDE output
-
-[repeat_detections_core](https://github.com/agentmorris/MegaDetector/blob/main/megadetector/postprocessing/repeat_detection_elimination/repeat_detections_core.py) adds an unnecessary "failure" field (set to null) for all successful images.  This is not a violation of the format spec, but it's silly.  This happens because this script goes through a pandas dataframe after an intermediate, then converts rows back to dicts before exporting.  Fix this.  The easiest fix is to just remove these prior to export.
-
-P1
 
 E0
 
