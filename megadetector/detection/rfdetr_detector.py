@@ -28,6 +28,80 @@ dtype_string_to_torch_dtype = {
     'float32': torch.float32
 }
 
+#: Whether to allow TF32 for RF-DETR model loading and inference by default.
+#:
+#: TF32 is a reduced-precision format that PyTorch uses automatically on recent NVIDIA GPUs.
+#: It's around 10% faster, but it makes RF-DETR's results depend on the batch size.  In
+#: practice, running the same image alone vs. in a batch of 4 shifts confidence values by up
+#: to ~0.05.
+#:
+#: Note that this is not something we can leave to the defaults: PyTorch enables TF32 for
+#: convolutions by default, and importing the rfdetr package additionally enables it for
+#: matrix multiplications, for the whole process.
+DEFAULT_USE_TF32 = False
+
+
+class TF32ExecutionContext:
+    """
+    Context manager that applies PyTorch's TF32 settings for the duration of a block, then
+    restores the values that were in effect when the block was entered.
+
+    TF32 settings are global to a PyTorch process, so we apply them only around RF-DETR
+    model loading and inference.
+    """
+
+    def __init__(self, use_tf32):
+        """
+        Initializes TF32ExecutionContext.
+
+        Args:
+            use_tf32 (bool): whether TF32 should be enabled within this context
+        """
+
+        #: Whether TF32 should be enabled within this context
+        self.use_tf32 = use_tf32
+
+        #: The value of torch.get_float32_matmul_precision() when this context was entered
+        self.previous_matmul_precision = None
+
+        #: The value of torch.backends.cudnn.allow_tf32 when this context was entered
+        self.previous_cudnn_allow_tf32 = None
+
+    def apply_settings(self):
+        """
+        Applies this context's TF32 settings.  Called automatically on entry; also called
+        directly after importing rfdetr, which changes these settings as a side effect.
+        """
+
+        # "high" allows TF32 for matmuls, "highest" forces full fp32
+        torch.set_float32_matmul_precision('high' if self.use_tf32 else 'highest')
+        torch.backends.cudnn.allow_tf32 = self.use_tf32
+
+    def __enter__(self):
+        """
+        Stores the current TF32 settings, then applies this context's settings.
+        """
+
+        self.previous_matmul_precision = torch.get_float32_matmul_precision()
+        self.previous_cudnn_allow_tf32 = torch.backends.cudnn.allow_tf32
+
+        self.apply_settings()
+
+        return self
+
+    def __exit__(self, exception_type, exception_value, exception_traceback):
+        """
+        Restores the TF32 settings that were in effect when this context was entered.
+        """
+
+        torch.set_float32_matmul_precision(self.previous_matmul_precision)
+        torch.backends.cudnn.allow_tf32 = self.previous_cudnn_allow_tf32
+
+        # Don't suppress exceptions
+        return False
+
+# ...class TF32ExecutionContext
+
 
 #%% Model loading
 
@@ -36,7 +110,8 @@ def load_model(detector_file,
                optimize_for_inference=False,
                batch_size=1,
                compile=None,
-               dtype=None):
+               dtype=None,
+               use_tf32=DEFAULT_USE_TF32):
     """
     Load an RF-DETR model from an inference-ready .pth checkpoint via
     rfdetr.from_checkpoint(), which reads the architecture name ("Nano",
@@ -61,12 +136,15 @@ def load_model(detector_file,
         dtype (str, optional): floating-point dtype used for inference, either "float16" or
             "float32".  None means "use the rfdetr default", which is currently float32.  Ignored
             if [optimize_for_inference] is False.
+        use_tf32 (bool, optional): whether to allow reduced-precision TF32 computations.
+            Enabling TF32 is around 10% faster, but makes results depend on the batch size;
+            see DEFAULT_USE_TF32.
 
     Returns:
         dict: dictionary with keys:
             - 'model': the loaded RF-DETR model
-            - 'model_type' (str): resolved variant class name (e.g. 'RFDETRSmall')
-            - 'image_size' (int): resolved inference resolution
+            - 'model_type' (str): model type name (e.g. 'RFDETRSmall')
+            - 'image_size' (int): inference resolution
             - 'detection_categories' (dict): mapping from string category IDs to class names
     """
 
@@ -75,71 +153,84 @@ def load_model(detector_file,
             'Illegal dtype {}, dtype should be one of: {}'.format(
                 dtype,', '.join(dtype_string_to_torch_dtype.keys()))
 
-    # The rfdetr package is not installed by default with the MegaDetector package,
-    # so we import it here (rather than at module scope) and print a friendly warning
-    # if it's not available.
-    try:
-        import rfdetr
-    except Exception:
-        print('\n\n*****\nIt looks like you are trying to run an RF-DETR model with the '
-              'MegaDetector Python package.  This is supported, but the rfdetr package is not '
-              'installed by default.  Run "pip install rfdetr" to install it, and try again.'
-              '\n*****\n\n')
-        raise
+    # Everything from the rfdetr import through model construction runs inside a
+    # TF32ExecutionContext, for two reasons.  First, importing rfdetr enables TF32 matmuls
+    # for the whole process, which would otherwise silently change the numerics of any other
+    # model running in this process; entering the context around the import means we put that
+    # setting back the way we found it on the way out.  Second, optimize_for_inference() may
+    # trace/compile the model, which bakes in whatever precision is active at that time.
+    with TF32ExecutionContext(use_tf32) as tf32_context:
 
-    assert detector_file.lower().endswith('.pth'), \
-        '{} does not appear to be a compatible RF-DETR checkpoint'.format(detector_file)
+        # The rfdetr package is not installed by default with the MegaDetector package,
+        # so we import it here (rather than at module scope) and print a friendly warning
+        # if it's not available.
+        try:
+            import rfdetr
+        except Exception:
+            print('\n\n*****\nIt looks like you are trying to run an RF-DETR model with the '
+                  'MegaDetector Python package.  This is supported, but the rfdetr package is not '
+                  'installed by default.  Run "pip install rfdetr" to install it, and try again.'
+                  '\n*****\n\n')
+            raise
 
-    # This module uses rfdetr.from_checkpoint(), which relies on a 'model_config' field
-    # that was not present in checkpoints produced by early RF-DETR library versions.
-    print('Reading checkpoint metadata from: {}'.format(detector_file))
-    checkpoint = torch.load(detector_file, weights_only=False, map_location='cpu')
-    if 'model_config' not in checkpoint:
-        raise ValueError(
-            "Model file '{}' is in an older format that this inference ".format(detector_file) + \
-            "code does not support (missing 'model_config' metadata).")
-    del checkpoint
+        # Importing rfdetr changes the TF32 settings, so re-apply ours
+        tf32_context.apply_settings()
 
-    # Load the model, letting from_checkpoint() resolve the model type and resolution.
-    #
-    # A caller-supplied image_size overrides the loaded resolution.
-    from_checkpoint_kwargs = {}
-    if image_size is not None:
-        from_checkpoint_kwargs['resolution'] = image_size
-    print('Loading model from {}...'.format(detector_file))
-    model = rfdetr.from_checkpoint(detector_file, **from_checkpoint_kwargs)
+        assert detector_file.lower().endswith('.pth'), \
+            '{} does not appear to be a compatible RF-DETR checkpoint'.format(detector_file)
 
-    model_type = type(model).__name__
-    image_size = model.model_config.resolution
-    print('Loaded {} at resolution {}'.format(model_type, image_size))
+        # This module uses rfdetr.from_checkpoint(), which relies on a 'model_config' field
+        # that was not present in checkpoints produced by early RF-DETR library versions.
+        print('Reading checkpoint metadata from: {}'.format(detector_file))
+        checkpoint = torch.load(detector_file, weights_only=False, map_location='cpu')
+        if 'model_config' not in checkpoint:
+            raise ValueError(
+                "Model file '{}' is in an older format that this inference ".format(detector_file) + \
+                "code does not support (missing 'model_config' metadata).")
+        del checkpoint
 
-    if optimize_for_inference:
-
-        optimize_kwargs = {'batch_size':batch_size}
-
-        # Leaving [compile] or [dtype] set to None means "use the rfdetr defaults", which
-        # are currently True and float32, respectively.
-        if compile is not None:
-            optimize_kwargs['compile'] = compile
-        if dtype is not None:
-            optimize_kwargs['dtype'] = dtype_string_to_torch_dtype[dtype]
-
-        print('Optimizing loaded model for inference (batch size {}, compile {}, dtype {})'.format(
-            batch_size,str(compile),dtype))
-        model.optimize_for_inference(**optimize_kwargs)
-
-        # optimize_for_inference is off by default because it reportedly created
-        # inference errors in some environments.  This comment suggests that specifying
-        # dtype=bfloat16 allows us to have our cake and eat it too, but this hasn't
-        # been tested.
+        # Load the model, letting from_checkpoint() resolve the model type and resolution.
         #
-        # https://github.com/roboflow/rf-detr/issues/326#issuecomment-3321838797
-        # model.optimize_for_inference(batch_size=batch_size,dtype=torch.bfloat16)
+        # A caller-supplied image_size overrides the loaded resolution.
+        from_checkpoint_kwargs = {}
+        if image_size is not None:
+            from_checkpoint_kwargs['resolution'] = image_size
+        print('Loading model from {}...'.format(detector_file))
+        model = rfdetr.from_checkpoint(detector_file, **from_checkpoint_kwargs)
 
-    elif (compile is not None) or (dtype is not None):
+        model_type = type(model).__name__
+        image_size = model.model_config.resolution
+        print('Loaded {} at resolution {}'.format(model_type, image_size))
 
-        print('Warning: the "compile" and/or "dtype" options were supplied, but ' + \
-              'optimize_for_inference is False, so they will have no effect.')
+        if optimize_for_inference:
+
+            optimize_kwargs = {'batch_size':batch_size}
+
+            # Leaving [compile] or [dtype] set to None means "use the rfdetr defaults", which
+            # are currently True and float32, respectively.
+            if compile is not None:
+                optimize_kwargs['compile'] = compile
+            if dtype is not None:
+                optimize_kwargs['dtype'] = dtype_string_to_torch_dtype[dtype]
+
+            print('Optimizing loaded model for inference (batch size {}, compile {}, dtype {})'.format(
+                batch_size,str(compile),dtype))
+            model.optimize_for_inference(**optimize_kwargs)
+
+            # optimize_for_inference is off by default because it reportedly created
+            # inference errors in some environments.  This comment suggests that specifying
+            # dtype=bfloat16 allows us to have our cake and eat it too, but this hasn't
+            # been tested.
+            #
+            # https://github.com/roboflow/rf-detr/issues/326#issuecomment-3321838797
+            # model.optimize_for_inference(batch_size=batch_size,dtype=torch.bfloat16)
+
+        elif (compile is not None) or (dtype is not None):
+
+            print('Warning: the "compile" and/or "dtype" options were supplied, but ' + \
+                  'optimize_for_inference is False, so they will have no effect.')
+
+    # ...with TF32ExecutionContext(...)
 
     # Get class names from model
     #
@@ -255,6 +346,7 @@ class RFDETRDetector:
         batch_size = 1
         compile = None
         dtype = None
+        use_tf32 = DEFAULT_USE_TF32
 
         if detector_options is not None:
             if ('image_size' in detector_options) and \
@@ -275,6 +367,9 @@ class RFDETRDetector:
                 assert dtype in dtype_string_to_torch_dtype, \
                     'Illegal dtype {}, dtype should be one of: {}'.format(
                         dtype,', '.join(dtype_string_to_torch_dtype.keys()))
+            if ('use_tf32' in detector_options) and \
+                (detector_options['use_tf32'] is not None):
+                use_tf32 = parse_bool_string(detector_options['use_tf32'])
 
         # If the caller asked for inference optimization, but didn't say anything about
         # compilation, don't compile.  Compiling (torch.jit.trace) restricts the model to a
@@ -303,6 +398,9 @@ class RFDETRDetector:
         #: compilation (torch.jit.trace) ties the model to a single batch size.
         self.required_batch_size = None
 
+        #: Whether TF32 is allowed during inference for this model; see DEFAULT_USE_TF32
+        self.use_tf32 = use_tf32
+
         preprocess_only = False
         if (detector_options is not None) and \
            ('preprocess_only' in detector_options) and \
@@ -321,7 +419,9 @@ class RFDETRDetector:
                                 optimize_for_inference=optimize_for_inference,
                                 batch_size=batch_size,
                                 compile=compile,
-                                dtype=dtype)
+                                dtype=dtype,
+                                use_tf32=use_tf32)
+
         self.model = model_info['model']
         self.model_type = model_info['model_type']
         self.image_size = model_info['image_size']
@@ -516,13 +616,17 @@ class RFDETRDetector:
 
         # Run inference.  model.predict() returns a single Detections object for a single
         # image, or a list of Detections objects for a list of images.
+        #
+        # We apply our TF32 settings for the duration of inference; leaving TF32 enabled
+        # makes results depend on the batch size (see DEFAULT_USE_TF32).
         try:
-            if len(images_for_inference) == 1:
-                detections_list = [self.model.predict(images_for_inference[0],
-                                                      threshold=detection_threshold)]
-            else:
-                detections_list = self.model.predict(images_for_inference,
-                                                     threshold=detection_threshold)
+            with TF32ExecutionContext(self.use_tf32):
+                if len(images_for_inference) == 1:
+                    detections_list = [self.model.predict(images_for_inference[0],
+                                                          threshold=detection_threshold)]
+                else:
+                    detections_list = self.model.predict(images_for_inference,
+                                                         threshold=detection_threshold)
         except Exception as e:
             # If inference fails, mark all images in the batch as failed
             print('Warning: RF-DETR batch inference failed for {} images: {}'.format(
