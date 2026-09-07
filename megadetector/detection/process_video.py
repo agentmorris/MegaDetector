@@ -25,7 +25,7 @@ from megadetector.utils.ct_utils import args_to_object
 from megadetector.utils.ct_utils import dict_to_kvp_list, parse_kvp_list
 from megadetector.detection.video_utils import _filename_to_frame_number
 from megadetector.detection.video_utils import find_videos
-from megadetector.detection.video_utils import run_callback_on_frames_for_folder
+from megadetector.detection.video_utils import run_callback_on_frames_for_folder_batched
 from megadetector.detection.run_detector import load_detector
 from megadetector.detection.run_detector import is_gpu_available
 from megadetector.detection.run_detector import try_download_known_detector
@@ -223,13 +223,14 @@ def process_videos(options):
 
         video_folder = os.path.dirname(options.input_video_file)
         video_bn = os.path.basename(options.input_video_file)
-        md_results = run_callback_on_frames_for_folder(input_video_folder=video_folder,
-                                                       frame_batch_callback=frame_batch_callback,
-                                                       batch_size=batch_size,
-                                                       every_n_frames=every_n_frames_param,
-                                                       verbose=options.verbose,
-                                                       files_to_process_relative=[video_bn],
-                                                       error_on_empty_video=options.exit_on_empty_video)
+        md_results = run_callback_on_frames_for_folder_batched(
+            input_video_folder=video_folder,
+            frame_batch_callback=frame_batch_callback,
+            batch_size=batch_size,
+            every_n_frames=every_n_frames_param,
+            verbose=options.verbose,
+            files_to_process_relative=[video_bn],
+            error_on_empty_video=options.exit_on_empty_video)
 
     else:
 
@@ -238,13 +239,14 @@ def process_videos(options):
 
         video_folder = options.input_video_file
 
-        md_results = run_callback_on_frames_for_folder(input_video_folder=options.input_video_file,
-                                                       frame_batch_callback=frame_batch_callback,
-                                                       batch_size=batch_size,
-                                                       every_n_frames=every_n_frames_param,
-                                                       verbose=options.verbose,
-                                                       recursive=options.recursive,
-                                                       error_on_empty_video=options.exit_on_empty_video)
+        md_results = run_callback_on_frames_for_folder_batched(
+            input_video_folder=options.input_video_file,
+            frame_batch_callback=frame_batch_callback,
+            batch_size=batch_size,
+            every_n_frames=every_n_frames_param,
+            verbose=options.verbose,
+            recursive=options.recursive,
+            error_on_empty_video=options.exit_on_empty_video)
 
     # ...whether we're processing a file or a folder
 

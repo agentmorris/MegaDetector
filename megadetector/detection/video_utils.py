@@ -330,29 +330,24 @@ def _add_frame_numbers_to_results(results):
 
 
 def run_callback_on_frames(input_video_file,
-                           frame_callback=None,
+                           frame_callback,
                            every_n_frames=None,
                            verbose=False,
                            frames_to_process=None,
-                           allow_empty_videos=False,
-                           frame_batch_callback=None,
-                           batch_size=1):
+                           allow_empty_videos=False):
     """
     Calls the function frame_callback(np.array,image_id) on all (or selected) frames in
     [input_video_file].
 
-    Alternatively, if [frame_batch_callback] is supplied, calls
-    frame_batch_callback(list of np.array,list of image_id) on batches of up to [batch_size]
-    frames.  Exactly one of [frame_callback] and [frame_batch_callback] should be supplied.
+    To run a callback on *batches* of frames, use run_callback_on_frames_batched().
 
     Args:
         input_video_file (str): video file to process
-        frame_callback (function, optional): callback to run on frames, should take an np.array and a
-            string and return a single value.  callback should expect two arguments: (1) a numpy array
-            with image data, in the typical PIL image orientation/channel order, and (2) a string
-            identifier for the frame, typically something like "frame0006.jpg" (even though it's not a
-            JPEG image, this is just an identifier for the frame).  Mutually exclusive with
-            [frame_batch_callback].
+        frame_callback (function): callback to run on frames, should take an np.array and a string and
+            return a single value.  callback should expect two arguments: (1) a numpy array with image
+            data, in the typical PIL image orientation/channel order, and (2) a string identifier
+            for the frame, typically something like "frame0006.jpg" (even though it's not a JPEG
+            image, this is just an identifier for the frame).
         every_n_frames (int or float, optional): sample every Nth frame starting from the first frame;
             if this is None or 1, every frame is processed.  If this is a negative value, it's
             interpreted as a sampling rate in seconds, which is rounded to the nearest frame sampling
@@ -364,14 +359,6 @@ def run_callback_on_frames(input_video_file,
             a single frame number.
         allow_empty_videos (bool, optional): Just print a warning if a video appears to have no
             frames (by default, this raises an Exception).
-        frame_batch_callback (function, optional): callback to run on batches of frames, should take
-            a list of np.arrays and a list of strings, and should return a list of values with the
-            same length as the input lists.  The two arguments are (1) a list of numpy arrays with
-            image data, in the typical PIL image orientation/channel order, and (2) a list of string
-            identifiers for those frames.  Mutually exclusive with [frame_callback].
-        batch_size (int, optional): the maximum number of frames to pass to [frame_batch_callback] at
-            a time.  The last batch in a video may be smaller than [batch_size].  Only meaningful when
-            [frame_batch_callback] is supplied.
 
     Returns:
         dict: dict with keys 'frame_filenames' (list), 'frame_rate' (float), 'results' (list).
@@ -388,21 +375,6 @@ def run_callback_on_frames(input_video_file,
 
     if (frames_to_process is not None) and (every_n_frames is not None):
         raise ValueError('frames_to_process and every_n_frames are mutually exclusive')
-
-    if (frame_callback is None) and (frame_batch_callback is None):
-        raise ValueError('One of frame_callback and frame_batch_callback must be supplied')
-
-    if (frame_callback is not None) and (frame_batch_callback is not None):
-        raise ValueError('frame_callback and frame_batch_callback are mutually exclusive')
-
-    if batch_size is None:
-        batch_size = 1
-
-    if batch_size < 1:
-        raise ValueError('Illegal batch size {}'.format(batch_size))
-
-    if (frame_callback is not None) and (batch_size != 1):
-        raise ValueError('batch_size is only meaningful when frame_batch_callback is supplied')
 
     vidcap = None
 
@@ -433,33 +405,6 @@ def run_callback_on_frames(input_video_file,
                 every_n_frames = int(every_n_frames)
 
         # ...if every_n_frames was supplied
-
-        # Frames that have been read but not yet passed to [frame_batch_callback]; these are
-        # only used when we're running in batch mode.
-        pending_images = []
-        pending_frame_filenames = []
-
-        def _process_pending_batch():
-            """
-            Run [frame_batch_callback] on the frames in [pending_images], append the results
-            to [results], and clear the pending lists.  No-op if there are no pending frames.
-            """
-
-            if len(pending_images) == 0:
-                return
-
-            batch_results = frame_batch_callback(pending_images,pending_frame_filenames)
-
-            assert len(batch_results) == len(pending_images), \
-                'Batch callback returned {} results for {} frames in video {}'.format(
-                    len(batch_results),len(pending_images),input_video_file)
-
-            results.extend(batch_results)
-
-            pending_images.clear()
-            pending_frame_filenames.clear()
-
-        # ...def _process_pending_batch()
 
         # frame_number = 0
         for frame_number in range(0,n_frames):
@@ -492,33 +437,12 @@ def run_callback_on_frames(input_video_file,
             # Convert from OpenCV conventions to PIL conventions
             image_np = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-            # Run the callback, either on this frame alone, or on a batch of frames
-            if frame_batch_callback is None:
+            # Run the callback
+            frame_results = frame_callback(image_np,frame_filename_relative)
 
-                frame_results = frame_callback(image_np,frame_filename_relative)
-
-                results.append(frame_results)
-
-            else:
-
-                pending_images.append(image_np)
-                pending_frame_filenames.append(frame_filename_relative)
-
-                if len(pending_images) >= batch_size:
-                    _process_pending_batch()
-
-            # ...are we running in batch mode?
+            results.append(frame_results)
 
         # ...for each frame
-
-        # Process any frames left over at the end of this video; this batch will typically
-        # be smaller than [batch_size].
-        if frame_batch_callback is not None:
-            _process_pending_batch()
-
-        assert len(results) == len(frame_filenames), \
-            'Generated {} results for {} frames in video {}'.format(
-                len(results),len(frame_filenames),input_video_file)
 
         if len(frame_filenames) == 0:
             if allow_empty_videos:
@@ -548,68 +472,146 @@ def run_callback_on_frames(input_video_file,
 # ...def run_callback_on_frames(...)
 
 
-def run_callback_on_frames_for_folder(input_video_folder,
-                                      frame_callback=None,
-                                      every_n_frames=None,
-                                      verbose=False,
-                                      recursive=True,
-                                      files_to_process_relative=None,
-                                      error_on_empty_video=False,
-                                      frame_batch_callback=None,
-                                      batch_size=1):
+def run_callback_on_frames_batched(input_video_file,
+                                   frame_batch_callback,
+                                   batch_size,
+                                   every_n_frames=None,
+                                   verbose=False,
+                                   frames_to_process=None,
+                                   allow_empty_videos=False):
     """
-    Calls the function frame_callback(np.array,image_id) on all (or selected) frames in
-    all videos in [input_video_folder].
+    Calls the function frame_batch_callback(list of np.array,list of image_id) on batches of
+    up to [batch_size] frames from [input_video_file].  This is a wrapper around
+    run_callback_on_frames() that accumulates frames into batches; use that function to run a
+    callback on one frame at a time.
 
-    Alternatively, if [frame_batch_callback] is supplied, calls
-    frame_batch_callback(list of np.array,list of image_id) on batches of up to [batch_size]
-    frames.  Exactly one of [frame_callback] and [frame_batch_callback] should be supplied.
-    Batches never span videos, so the last batch for each video will typically be smaller
-    than [batch_size].
+    Args:
+        input_video_file (str): video file to process
+        frame_batch_callback (function): callback to run on batches of frames, should take a list
+            of np.arrays and a list of strings, and should return a list of values with the same
+            length as the input lists.  The two arguments are (1) a list of numpy arrays with image
+            data, in the typical PIL image orientation/channel order, and (2) a list of string
+            identifiers for those frames, typically something like "frame0006.jpg" (even though
+            they're not JPEG images, these are just identifiers for the frames).
+        batch_size (int): the maximum number of frames to pass to [frame_batch_callback] at a
+            time.  The last batch for a video is typically smaller than [batch_size].
+        every_n_frames (int or float, optional): sample every Nth frame starting from the first frame;
+            if this is None or 1, every frame is processed.  If this is a negative value, it's
+            interpreted as a sampling rate in seconds, which is rounded to the nearest frame sampling
+            rate. Mutually exclusive with frames_to_process.
+        verbose (bool, optional): enable additional debug console output
+        frames_to_process (list of int, optional): process this specific set of frames;
+            mutually exclusive with every_n_frames.  If all values are beyond the length
+            of the video, no frames are extracted.  Can also be a single int, specifying
+            a single frame number.
+        allow_empty_videos (bool, optional): Just print a warning if a video appears to have no
+            frames (by default, this raises an Exception).
+
+    Returns:
+        dict: dict with keys 'frame_filenames' (list), 'frame_rate' (float), 'results' (list),
+        in the same format returned by run_callback_on_frames().  'results' contains the values
+        returned by the callback, flattened back out to one element per frame.
+    """
+
+    if batch_size is None:
+        batch_size = 1
+
+    if batch_size < 1:
+        raise ValueError('Illegal batch size {}'.format(batch_size))
+
+    # Frames that have been read, but not yet passed to [frame_batch_callback]
+    pending_images = []
+    pending_frame_filenames = []
+
+    # Results for all the batches we've processed so far, flattened to one element per frame
+    batch_results = []
+
+    def _process_pending_batch():
+        """
+        Run [frame_batch_callback] on the frames in [pending_images], append the results to
+        [batch_results], and clear the pending lists.  No-op if there are no pending frames.
+        """
+
+        if len(pending_images) == 0:
+            return
+
+        results_this_batch = frame_batch_callback(pending_images,pending_frame_filenames)
+
+        assert len(results_this_batch) == len(pending_images), \
+            'Batch callback returned {} results for {} frames in video {}'.format(
+                len(results_this_batch),len(pending_images),input_video_file)
+
+        batch_results.extend(results_this_batch)
+
+        pending_images.clear()
+        pending_frame_filenames.clear()
+
+    # ...def _process_pending_batch()
+
+    def frame_callback(image_np,image_id):
+        """
+        Accumulate frames until we have a full batch.  The value returned here is discarded;
+        the caller's results come from [frame_batch_callback].
+        """
+
+        pending_images.append(image_np)
+        pending_frame_filenames.append(image_id)
+
+        if len(pending_images) >= batch_size:
+            _process_pending_batch()
+
+        return None
+
+    # ...def frame_callback(...)
+
+    to_return = run_callback_on_frames(input_video_file=input_video_file,
+                                       frame_callback=frame_callback,
+                                       every_n_frames=every_n_frames,
+                                       verbose=verbose,
+                                       frames_to_process=frames_to_process,
+                                       allow_empty_videos=allow_empty_videos)
+
+    # Process any frames left over at the end of this video
+    _process_pending_batch()
+
+    assert len(batch_results) == len(to_return['frame_filenames']), \
+        'Generated {} results for {} frames in video {}'.format(
+            len(batch_results),len(to_return['frame_filenames']),input_video_file)
+
+    # Replace the per-frame results (which are all None) with the batched results
+    to_return['results'] = batch_results
+
+    return to_return
+
+# ...def run_callback_on_frames_batched(...)
+
+
+def _run_callback_on_frames_for_folder_core(input_video_folder,
+                                            video_callback,
+                                            verbose=False,
+                                            recursive=True,
+                                            files_to_process_relative=None,
+                                            error_on_empty_video=False):
+    """
+    Shared implementation for run_callback_on_frames_for_folder() and
+    run_callback_on_frames_for_folder_batched(); those functions differ only in how they
+    process each video, which is what [video_callback] encapsulates.
 
     Args:
         input_video_folder (str): video folder to process
-        frame_callback (function, optional): callback to run on frames, should take an np.array and a
-            string and return a single value.  callback should expect two arguments: (1) a numpy array
-            with image data, in the typical PIL image orientation/channel order, and (2) a string
-            identifier for the frame, typically something like "frame0006.jpg" (even though it's not a
-            JPEG image, this is just an identifier for the frame).  Mutually exclusive with
-            [frame_batch_callback].
-        every_n_frames (int or float, optional): sample every Nth frame starting from the first frame;
-            if this is None or 1, every frame is processed.  If this is a negative value, it's
-            interpreted as a sampling rate in seconds, which is rounded to the nearest frame
-            sampling rate.
+        video_callback (function): function that processes a single video, taking an absolute
+            video filename and returning a dict in the format returned by
+            run_callback_on_frames()
         verbose (bool, optional): enable additional debug console output
         recursive (bool, optional): recurse into [input_video_folder]
         files_to_process_relative (list, optional): only process specific relative paths
         error_on_empty_video (bool, optional): by default, videos with errors or no valid frames
             are silently stored as failures; this turns them into exceptions
-        frame_batch_callback (function, optional): callback to run on batches of frames, should take
-            a list of np.arrays and a list of strings, and should return a list of values with the
-            same length as the input lists.  The two arguments are (1) a list of numpy arrays with
-            image data, in the typical PIL image orientation/channel order, and (2) a list of string
-            identifiers for those frames.  Mutually exclusive with [frame_callback].
-        batch_size (int, optional): the maximum number of frames to pass to [frame_batch_callback] at
-            a time.  Only meaningful when [frame_batch_callback] is supplied.
 
     Returns:
         dict: dict with keys 'video_filenames' (list of str), 'frame_rates' (list of floats),
-        'results' (list of list of dicts). 'video_filenames' will contain *relative* filenames.
-        'results' is a list (one element per video) of lists (one element per frame) of whatever the
-        callback returns, typically (but not necessarily) dicts in the MD results format.
-
-        For failed videos, the frame rate will be represented by -1, and "results"
-        will be a dict with at least the key "failure".
+        'results' (list of list of dicts); see run_callback_on_frames_for_folder() for details.
     """
-
-    # Validate the callback arguments here, rather than relying on the equivalent checks in
-    # run_callback_on_frames(); errors raised there would be caught by the per-video error
-    # handling below, and reported as (many) video failures.
-    if (frame_callback is None) and (frame_batch_callback is None):
-        raise ValueError('One of frame_callback and frame_batch_callback must be supplied')
-
-    if (frame_callback is not None) and (frame_batch_callback is not None):
-        raise ValueError('frame_callback and frame_batch_callback are mutually exclusive')
 
     to_return = {'video_filenames':[],'frame_rates':[],'results':[]}
 
@@ -649,14 +651,7 @@ def run_callback_on_frames_for_folder(input_video_folder,
             # per-image format)
             #
             # frame_filenames (list of frame IDs, i.e. synthetic filenames)
-            video_results = run_callback_on_frames(input_video_file=video_fn_abs,
-                                                   frame_callback=frame_callback,
-                                                   every_n_frames=every_n_frames,
-                                                   verbose=verbose,
-                                                   frames_to_process=None,
-                                                   allow_empty_videos=False,
-                                                   frame_batch_callback=frame_batch_callback,
-                                                   batch_size=batch_size)
+            video_results = video_callback(video_fn_abs)
 
         except Exception as e:
 
@@ -689,7 +684,131 @@ def run_callback_on_frames_for_folder(input_video_folder,
 
     return to_return
 
+# ...def _run_callback_on_frames_for_folder_core(...)
+
+
+def run_callback_on_frames_for_folder(input_video_folder,
+                                      frame_callback,
+                                      every_n_frames=None,
+                                      verbose=False,
+                                      recursive=True,
+                                      files_to_process_relative=None,
+                                      error_on_empty_video=False):
+    """
+    Calls the function frame_callback(np.array,image_id) on all (or selected) frames in
+    all videos in [input_video_folder].
+
+    To run a callback on *batches* of frames, use run_callback_on_frames_for_folder_batched().
+
+    Args:
+        input_video_folder (str): video folder to process
+        frame_callback (function): callback to run on frames, should take an np.array and a string and
+            return a single value.  callback should expect two arguments: (1) a numpy array with image
+            data, in the typical PIL image orientation/channel order, and (2) a string identifier
+            for the frame, typically something like "frame0006.jpg" (even though it's not a JPEG
+            image, this is just an identifier for the frame).
+        every_n_frames (int or float, optional): sample every Nth frame starting from the first frame;
+            if this is None or 1, every frame is processed.  If this is a negative value, it's
+            interpreted as a sampling rate in seconds, which is rounded to the nearest frame
+            sampling rate.
+        verbose (bool, optional): enable additional debug console output
+        recursive (bool, optional): recurse into [input_video_folder]
+        files_to_process_relative (list, optional): only process specific relative paths
+        error_on_empty_video (bool, optional): by default, videos with errors or no valid frames
+            are silently stored as failures; this turns them into exceptions
+
+    Returns:
+        dict: dict with keys 'video_filenames' (list of str), 'frame_rates' (list of floats),
+        'results' (list of list of dicts). 'video_filenames' will contain *relative* filenames.
+        'results' is a list (one element per video) of lists (one element per frame) of whatever the
+        callback returns, typically (but not necessarily) dicts in the MD results format.
+
+        For failed videos, the frame rate will be represented by -1, and "results"
+        will be a dict with at least the key "failure".
+    """
+
+    def video_callback(video_fn_abs):
+        return run_callback_on_frames(input_video_file=video_fn_abs,
+                                      frame_callback=frame_callback,
+                                      every_n_frames=every_n_frames,
+                                      verbose=verbose,
+                                      frames_to_process=None,
+                                      allow_empty_videos=False)
+
+    return _run_callback_on_frames_for_folder_core(
+        input_video_folder=input_video_folder,
+        video_callback=video_callback,
+        verbose=verbose,
+        recursive=recursive,
+        files_to_process_relative=files_to_process_relative,
+        error_on_empty_video=error_on_empty_video)
+
 # ...def run_callback_on_frames_for_folder(...)
+
+
+def run_callback_on_frames_for_folder_batched(input_video_folder,
+                                              frame_batch_callback,
+                                              batch_size,
+                                              every_n_frames=None,
+                                              verbose=False,
+                                              recursive=True,
+                                              files_to_process_relative=None,
+                                              error_on_empty_video=False):
+    """
+    Calls the function frame_batch_callback(list of np.array,list of image_id) on batches of up
+    to [batch_size] frames from all videos in [input_video_folder].  Batches never span videos,
+    so the last batch for each video is typically smaller than [batch_size].  Use
+    run_callback_on_frames_for_folder() to run a callback on one frame at a time.
+
+    Args:
+        input_video_folder (str): video folder to process
+        frame_batch_callback (function): callback to run on batches of frames, should take a list
+            of np.arrays and a list of strings, and should return a list of values with the same
+            length as the input lists.  The two arguments are (1) a list of numpy arrays with image
+            data, in the typical PIL image orientation/channel order, and (2) a list of string
+            identifiers for those frames, typically something like "frame0006.jpg" (even though
+            they're not JPEG images, these are just identifiers for the frames).
+        batch_size (int): the maximum number of frames to pass to [frame_batch_callback] at a time
+        every_n_frames (int or float, optional): sample every Nth frame starting from the first frame;
+            if this is None or 1, every frame is processed.  If this is a negative value, it's
+            interpreted as a sampling rate in seconds, which is rounded to the nearest frame
+            sampling rate.
+        verbose (bool, optional): enable additional debug console output
+        recursive (bool, optional): recurse into [input_video_folder]
+        files_to_process_relative (list, optional): only process specific relative paths
+        error_on_empty_video (bool, optional): by default, videos with errors or no valid frames
+            are silently stored as failures; this turns them into exceptions
+
+    Returns:
+        dict: dict with keys 'video_filenames' (list of str), 'frame_rates' (list of floats),
+        'results' (list of list of dicts), in the same format returned by
+        run_callback_on_frames_for_folder().
+    """
+
+    # Validate the batch size here, rather than relying on the equivalent check in
+    # run_callback_on_frames_batched(); errors raised there would be caught by the per-video
+    # error handling below, and reported as (many) video failures.
+    if (batch_size is not None) and (batch_size < 1):
+        raise ValueError('Illegal batch size {}'.format(batch_size))
+
+    def video_callback(video_fn_abs):
+        return run_callback_on_frames_batched(input_video_file=video_fn_abs,
+                                              frame_batch_callback=frame_batch_callback,
+                                              batch_size=batch_size,
+                                              every_n_frames=every_n_frames,
+                                              verbose=verbose,
+                                              frames_to_process=None,
+                                              allow_empty_videos=False)
+
+    return _run_callback_on_frames_for_folder_core(
+        input_video_folder=input_video_folder,
+        video_callback=video_callback,
+        verbose=verbose,
+        recursive=recursive,
+        files_to_process_relative=files_to_process_relative,
+        error_on_empty_video=error_on_empty_video)
+
+# ...def run_callback_on_frames_for_folder_batched(...)
 
 
 def video_to_frames(input_video_file,
