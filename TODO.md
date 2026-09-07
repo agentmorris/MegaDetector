@@ -185,9 +185,9 @@ E2
 
 run_detector_batch only supports single-GPU (or single-/multi-CPU) inference.  Add multi-GPU inference.  This is P3 because in practice, when using manage_local_batch to create and run jobs, multi-GPU inference is handled naturally by breaking the task up into multiple lists of images.
 
-P3
+P1
 
-E2
+E1
 
 !feature
 
@@ -280,18 +280,6 @@ E3
 !integration
 
 
-## Client-side RDE tool
-
-The [repeat detection elimination](https://github.com/agentmorris/MegaDetector/tree/main/megadetector/postprocessing/repeat_detection_elimination) pipeline currently requires stitching together a bunch of tools: python scripts, a 3P image viewer, the Windows explorer.  It would be nice to integrate this into a proper client-side tool.  This would also be a good opportunity to allow keeping just a couple of images from a repeat detection series; currently if you see one animal and 100 false positives in a detection group, you typically have to just keep the whole detection group and eat 100 false positives.
-
-P2
-
-E3
-
-!frontend
-!feature
-
-
 ## Docs page improvements
 
 The [docs page](https://megadetector.readthedocs.io/en/latest/) is complete and up to date, but it could use a design review, updates to a more modern theme, and the addition of some more detailed information that is currently in the MegaDetector User's Guide.  This is vague, I know, but basically "take a close look at the docs page and make it nicer".  For my two cents, I like the styles used by [contextily](https://contextily.readthedocs.io/en/latest) and [pybowler](https://pybowler.io/docs/basics-usage).
@@ -321,7 +309,7 @@ E2
 
 It's often useful to run generic YOLO models on camera trap images, e.g. to complement MD with more fine-grained vehicle or background object classification.  The MD Python package is a useful way to do this, if you want to, e.g., review the results in Timelapse, or combine them with MD/SpeciesNet results.  This does not require any new code, just clear documentation.
 
-P2
+P3
 
 E1
 
@@ -687,7 +675,7 @@ When the GPU version of PyTorch is installed, but inference is run on the CPU (t
 
 P3
 
-E1
+E2
 
 !bug
 
@@ -783,9 +771,9 @@ This task is two-fold:
 * Assess whether map_location is supported on Apple silicon in recent versions of PyTorch, so we can eliminate the special case
 * Assess whether there is a performance/memory consumption benefit/cost to using map_location.
 
-I last tried switching to use_map_location on mps devices on 2025.08.18, it did not go well.  Dropping this to P3.
+I last tried switching to use_map_location on mps devices on 2025.08.18, it did not go well.  Dropped to P3 at the time, bumping it back to P2 now that a year has passed.
 
-P3
+P2
 
 E3
 

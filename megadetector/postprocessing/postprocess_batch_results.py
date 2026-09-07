@@ -59,6 +59,7 @@ from megadetector.utils.path_utils import clean_filename
 from megadetector.data_management.cct_json_utils import CameraTrapJsonUtils
 from megadetector.data_management.cct_json_utils import IndexedJsonDb
 from megadetector.postprocessing.load_api_results import load_api_results
+from megadetector.postprocessing.load_api_results import is_missing_field_value
 from megadetector.detection.run_detector import get_typical_confidence_threshold_from_results
 
 warnings.filterwarnings('ignore', '(Possibly )?corrupt EXIF data', UserWarning)
@@ -859,9 +860,8 @@ def _render_image_no_gt(file_info,
 
                 field_value = file_info[field_name]
 
-                if (field_value is None) or \
-                    (isinstance(field_value,float) and np.isnan(field_value)):
-                        continue
+                if is_missing_field_value(field_value):
+                    continue
 
                 # Optionally use a display name that's different from the field name
                 if isinstance(options.additional_image_fields_to_display,dict):
@@ -1150,11 +1150,14 @@ def process_batch_results(options):
     # Remove rows with inference failures (typically due to corrupt images)
     n_failures = 0
     if 'failure' in detections_df.columns:
-        n_failures = detections_df['failure'].count()
+        # Images without a failure indicator have a sentinel value in this column, rather
+        # than NaN; see load_api_results().
+        b_image_succeeded = detections_df['failure'].apply(is_missing_field_value)
+        n_failures = int((~b_image_succeeded).sum())
         print('Ignoring {} failed images'.format(n_failures))
         # Explicitly forcing a copy() operation here to suppress "trying to be set
         # on a copy" warnings (and associated risks) below.
-        detections_df = detections_df[detections_df['failure'].isna()].copy()
+        detections_df = detections_df[b_image_succeeded].copy()
 
     assert other_fields is not None
 

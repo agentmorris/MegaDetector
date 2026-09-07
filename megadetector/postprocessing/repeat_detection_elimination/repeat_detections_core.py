@@ -38,6 +38,7 @@ from functools import partial
 from megadetector.utils import path_utils
 from megadetector.utils import ct_utils
 from megadetector.postprocessing.load_api_results import load_api_results, write_api_results
+from megadetector.postprocessing.load_api_results import is_missing_field_value
 from megadetector.postprocessing.postprocess_batch_results import is_sas_url
 from megadetector.postprocessing.postprocess_batch_results import relative_sas_url
 from megadetector.visualization.visualization_utils import open_image, render_detection_bounding_boxes
@@ -602,8 +603,10 @@ def _find_matches_in_directory(dir_name_and_rows, options):
         print('Loading results for location {} from {}'.format(
             dir_name,detections_loaded_from_csv_file))
         rows = pd.read_csv(detections_loaded_from_csv_file)
-        # Pandas writes out detections out as strings, convert them back to lists
-        rows['detections'] = rows['detections'].apply(lambda s: json.loads(s.replace('\'','"')))
+        # Pandas writes out detections out as strings, convert them back to lists.  Images
+        # for which no detections are available (e.g. failed images) are left alone.
+        rows['detections'] = rows['detections'].apply(
+            lambda s: s if is_missing_field_value(s) else json.loads(s.replace('\'','"')))
 
     if options.maxImagesPerFolder is not None and len(rows) > options.maxImagesPerFolder:
         print('Ignoring directory {} because it has {} images (limit set to {})'.format(
@@ -658,8 +661,8 @@ def _find_matches_in_directory(dir_name_and_rows, options):
         #
         # }
         detections = row['detections']
-        if isinstance(detections,float):
-            assert isinstance(row['failure'],str), 'Expected failure indicator'
+        if is_missing_field_value(detections):
+            assert not is_missing_field_value(row['failure']), 'Expected failure indicator'
             print('Skipping failed image {} ({})'.format(filename,row['failure']))
             continue
 
@@ -900,9 +903,9 @@ def _update_detection_table(repeat_detection_results, options, output_file_name=
     for i_row, row in detection_results.iterrows():
 
         detections = row['detections']
-        if (detections is None) or isinstance(detections,float):
-            assert isinstance(row['failure'],str), \
-                'Illegal failure indicator of type {}'.format(type(row['failure']))
+        if is_missing_field_value(detections):
+            assert not is_missing_field_value(row['failure']), \
+                'Illegal failure indicator {}'.format(row['failure'])
             continue
 
         if len(detections) == 0:
