@@ -1055,6 +1055,7 @@ def _run_detection_step(source_folder: str,
         video_options.frame_sample = frame_sample
         video_options.time_sample = time_sample
         video_options.recursive = True
+        video_options.batch_size = detector_batch_size
 
         # Process videos
         process_videos(video_options)

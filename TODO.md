@@ -6,6 +6,7 @@ This file documents open work items.  Each level-2 heading is a work item.  Ever
 * A priority designated as P[N], on a line by itself.  Priority ranges from 0 to 4, 0 being highest priority.
 * An effort level designated as E[N].  Effort ranges from 0 to 4, 4 being the most effort
 * At least one tag, indicated as !tag-name.
+* Optional: a sort weight (as S[N]), which controls sort order within a priority/effort group. Default sort weight is 0. Negative sort weights are allowed. Higher sort weights will appear first.
 
 Tags can be arbitrary strings, but the most common tags are !feature, !maintenance, !bug, !docs, !lila, and !admin.  !admin basically means "this involves a decision by the repo maintainer(s), it's not really a work item".
 
@@ -21,6 +22,8 @@ The section called "title" can contain a title for the page, otherwise it will d
 This file is viewable at:
 
 https://dmorris.net/task-viewer/?file=https://raw.githubusercontent.com/agentmorris/MegaDetector/refs/heads/main/TODO.md
+
+...which is generated with [Markdown Task Viewer](https://github.com/agentmorris/task-viewer).
 
 
 # Title
@@ -47,7 +50,7 @@ I got to a working nms() function that would support both import formats, but it
 
 Fix this, and remove the ultralytics NMS import.  Before removing this item, consider whether the remaining functions that are still imported from the ultralytics/YOLO libraries are worth it, or whether we can (finally) remove those imports.  This is the only significant utility function that is still imported.
 
-P0
+P1
 
 E1
 
@@ -473,17 +476,6 @@ P2
 E2
 
 !optimization
-
-
-## Support detector batch sizes other than 1 for video
-
-run_detector_batch supports batch inference (for GPUs); process_video does not.  The requirement is only to support batching within a video, it's OK if an incomplete batch runs at the end of each video if it simplifies implementation.  Make sure this is propagated to run_md_and_speciesnet.
-
-P0
-
-E1
-
-!feature
 
 
 ## RDE might remove custom fields within a detection object

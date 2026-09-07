@@ -18,6 +18,8 @@ import os
 import sys
 import argparse
 
+from copy import deepcopy
+
 from megadetector.detection import run_detector_batch
 from megadetector.utils.ct_utils import args_to_object
 from megadetector.utils.ct_utils import dict_to_kvp_list, parse_kvp_list
@@ -25,6 +27,8 @@ from megadetector.detection.video_utils import _filename_to_frame_number
 from megadetector.detection.video_utils import find_videos
 from megadetector.detection.video_utils import run_callback_on_frames_for_folder
 from megadetector.detection.run_detector import load_detector
+from megadetector.detection.run_detector import is_gpu_available
+from megadetector.detection.run_detector import try_download_known_detector
 from megadetector.postprocessing.validate_batch_results import \
         ValidateBatchResultsOptions, validate_batch_results
 
@@ -43,11 +47,6 @@ class ProcessVideoOptions:
     def __init__(self):
 
         #: Can be a model filename (.pt or .pb) or a model name (e.g. "MDV5A")
-        #:
-        #: Use the string "no_detection" to indicate that you only want to extract frames,
-        #: not run a model.  If you do this, you almost definitely want to set
-        #: keep_extracted_frames to "True", otherwise everything in this module is a no-op.
-        #: I.e., there's no reason to extract frames, do nothing with them, then delete them.
         self.model_file = 'MDV5A'
 
         #: Video (of folder of videos) to process
@@ -76,6 +75,12 @@ class ProcessVideoOptions:
         #: Run the model at this image size (don't mess with this unless you know what you're
         #: getting into)... if you just want to pass smaller frames to MD, use max_width
         self.image_size = None
+
+        #: Batch size to use for inference.  Batching only helps on a GPU, so this is
+        #: automatically reduced to 1 for CPU inference.  Frames are batched within each video;
+        #: batches never span videos, so the last batch for each video is typically smaller
+        #: than [batch_size].
+        self.batch_size = 1
 
         #: Enable image augmentation
         self.augment = False
@@ -122,6 +127,9 @@ def _validate_video_options(options):
     if n_sampling_options_configured > 1:
         raise ValueError('frame_sample and time_sample are mutually exclusive')
 
+    if (options.batch_size is None) or (options.batch_size < 1):
+        raise ValueError('Illegal batch size {}'.format(options.batch_size))
+
     return True
 
 
@@ -158,13 +166,45 @@ def process_videos(options):
     if options.verbose:
         print('Processing videos from input source {}'.format(options.input_video_file))
 
-    detector = load_detector(options.model_file,
-                             force_model_download=options.force_model_download,
-                             detector_options=options.detector_options)
+    # Resolve model names (e.g. "MDV5A") to filenames, so we can tell (below) whether a GPU
+    # is available for this model type.  We deliberately don't modify options.model_file, which
+    # is recorded in the output file.
+    model_file = try_download_known_detector(options.model_file,
+                                             force_download=options.force_model_download,
+                                             verbose=options.verbose)
 
-    def frame_callback(image_np,image_id):
-        return detector.generate_detections_one_image(image_np,
-                                                      image_id,
+    detector_options = options.detector_options
+    if detector_options is None:
+        detector_options = {}
+    else:
+        detector_options = deepcopy(detector_options)
+
+    batch_size = options.batch_size
+
+    # Batching only helps on a GPU, so we reduce the batch size to 1 if batch inference is
+    # requested on a CPU.  This needs to happen before we load the model; some detectors
+    # compile themselves for a specific batch size at load time.
+    if batch_size > 1:
+
+        gpu_available = is_gpu_available(model_file, context_string='process_videos')
+
+        if not gpu_available:
+            print('Batch size of {} requested, but no GPU is available, using batch size 1'.format(
+                   batch_size))
+            batch_size = 1
+
+    # Some detectors (currently just RF-DETR) need to know the batch size at the time the
+    # model is loaded; this is ignored by other detectors.
+    if batch_size != 1:
+        detector_options['batch_size'] = batch_size
+
+    detector = load_detector(model_file,
+                             force_model_download=False,
+                             detector_options=detector_options)
+
+    def frame_batch_callback(images_np,image_ids):
+        return detector.generate_detections_one_batch(images_np,
+                                                      image_ids,
                                                       detection_threshold=options.json_confidence_threshold,
                                                       augment=options.augment,
                                                       image_size=options.image_size,
@@ -184,7 +224,8 @@ def process_videos(options):
         video_folder = os.path.dirname(options.input_video_file)
         video_bn = os.path.basename(options.input_video_file)
         md_results = run_callback_on_frames_for_folder(input_video_folder=video_folder,
-                                                       frame_callback=frame_callback,
+                                                       frame_batch_callback=frame_batch_callback,
+                                                       batch_size=batch_size,
                                                        every_n_frames=every_n_frames_param,
                                                        verbose=options.verbose,
                                                        files_to_process_relative=[video_bn],
@@ -198,7 +239,8 @@ def process_videos(options):
         video_folder = options.input_video_file
 
         md_results = run_callback_on_frames_for_folder(input_video_folder=options.input_video_file,
-                                                       frame_callback=frame_callback,
+                                                       frame_batch_callback=frame_batch_callback,
+                                                       batch_size=batch_size,
                                                        every_n_frames=every_n_frames_param,
                                                        verbose=options.verbose,
                                                        recursive=options.recursive,
@@ -246,6 +288,14 @@ def process_videos(options):
 
                 assert frame_number not in im['frames_processed'], \
                     'Received the same frame twice for video {}'.format(im['file'])
+
+                # The MD output format has no way to represent the failure of an individual
+                # frame, so we treat failed frames as if they hadn't been sampled at all.
+                if ('failure' in results_one_frame) and \
+                   (results_one_frame['failure'] is not None):
+                    print('Warning: frame {} of video {} failed: {}'.format(
+                        frame_number,video_fn,results_one_frame['failure']))
+                    continue
 
                 im['frames_processed'].append(frame_number)
 
@@ -307,6 +357,8 @@ def options_to_command(options):
         cmd += ' --json_confidence_threshold ' + str(options.json_confidence_threshold)
     if options.frame_sample is not None:
         cmd += ' --frame_sample ' + str(options.frame_sample)
+    if (options.batch_size is not None) and (options.batch_size != 1):
+        cmd += ' --batch_size ' + str(options.batch_size)
     if options.verbose:
         cmd += ' --verbose'
     if options.detector_options is not None and len(options.detector_options) > 0:
@@ -388,8 +440,7 @@ def main(): # noqa
         'producing a new video with detections annotated'))
 
     parser.add_argument('model_file', type=str,
-                        help='MegaDetector model file (.pt or .pb) or model name (e.g. "MDV5A"), '\
-                             'or the string "no_detection" to run just frame extraction')
+                        help='MegaDetector model file (.pt, .pth, or .pb) or model name (e.g. "MDV5A")')
 
     parser.add_argument('input_video_file', type=str,
                         help='video file (or folder) to process')
@@ -424,6 +475,13 @@ def main(): # noqa
                         default=None,
                         help=('Force image resizing to a specific integer size on the long '\
                               'axis (not recommended to change this)'))
+
+    parser.add_argument('--batch_size',
+                        type=int,
+                        default=default_options.batch_size,
+                        help='Batch size for GPU inference (default {}).  Frames are batched '\
+                             'within each video.  CPU inference will ignore this and use '\
+                             'batch_size=1.'.format(default_options.batch_size))
 
     parser.add_argument('--augment',
                         action='store_true',
