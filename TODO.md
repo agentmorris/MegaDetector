@@ -23,8 +23,6 @@ This file is viewable at:
 
 https://dmorris.net/task-viewer/?file=https://raw.githubusercontent.com/agentmorris/MegaDetector/refs/heads/main/TODO.md
 
-...which is generated with [Markdown Task Viewer](https://github.com/agentmorris/task-viewer).
-
 
 # Title
 
@@ -38,6 +36,8 @@ This page tracks work items related to [MegaDetector](https://github.com/agentmo
 This is just a task list; once a task is in progress, it will be tracked via GitHub Issues.  GitHub Issues is also still the right place for users to raise issues or ask questions.  GitHub Issues is just not, IMHO, a very practical "TODO list".
 
 Priorities range from 0 (urgent) to 4 (likely will never get done).  Effort ranges from 0 (less than an hour while watching football) to 4 (mega-big).
+
+This page is generated with [Markdown Task Viewer](https://github.com/agentmorris/task-viewer).
 
 
 # Issues

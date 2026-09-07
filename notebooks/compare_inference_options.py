@@ -122,7 +122,7 @@ for model_name in model_names:
 
         # ...for each inference size
 
-    # ...for each compatibilty mode
+    # ...for each compatibility mode
 
 # ...for each model
 

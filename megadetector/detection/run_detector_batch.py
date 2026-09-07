@@ -1052,7 +1052,7 @@ def _load_custom_class_mapping(class_mapping_filename):
     print('Loaded custom class mapping:')
     print(class_mapping)
 
-    # This determins what gets written by write_results_to_file
+    # This determines what gets written by write_results_to_file
     run_detector.DEFAULT_DETECTOR_LABEL_MAP = class_mapping
     return class_mapping
 

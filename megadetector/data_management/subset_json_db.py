@@ -123,7 +123,7 @@ def sample_json_db(input_json,
             for image_id in image_ids_to_keep_this_category:
                 image_ids_to_keep.add(image_id)
 
-    # ...for each cateogry
+    # ...for each category
 
     input_images = input_data['images']
     input_annotations = input_data['annotations']

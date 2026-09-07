@@ -222,7 +222,7 @@ def wi_download_csv_to_coco(csv_file_in,
                 assert len(r['timestamp']) in (0,19)
                 if len(r['timestamp']) == 0:
                     n_empty_timestamps += 1
-                    r['timstamp'] = dummy_timestamp
+                    r['timestamp'] = dummy_timestamp
                 records_this_sequence.append(r)
 
             sorted_records_this_sequence = \
