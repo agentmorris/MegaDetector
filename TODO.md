@@ -298,7 +298,7 @@ E2
 
 MDv5a used COCO and iNat boxes; MDv5b and MD1000 do not.  Overall performance on camera trap images is better without COCO and iNat data, but there are some scenarios where the inclusion of this data improves accuracy, and even more scenarios where it improves "vibes" (i.e., creates less annoying types of false positives).  I would like to re-create the equivalent of MDv5b for the MDv1000 family, which requires curating the human/animal/vehicle subset of COCO, and the "animals that might plausibly appear in camera trap images" subset of the [iNat 2017 challenge dataset](https://www.inaturalist.org/projects/inat-2017-challenge-dataset).  The latter is somewhat involved; conceptually, it includes, e.g., mammals, but not whales, and maybe not bats (at least as they might appear in iNat data), and it includes reptiles, but not, e.g., tiny geckos.
 
-P0
+P1
 
 E2
 
