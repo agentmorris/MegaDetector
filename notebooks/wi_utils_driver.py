@@ -212,8 +212,8 @@ for s in rows:
 
 #%% Determine whether a species is allowed in a location
 
-taxon = 'bear family'
-country = 'GBR'
+taxon = 'peromyscus species'
+country = 'ITA'
 state = None
 allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=state,return_status=False)
 taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)

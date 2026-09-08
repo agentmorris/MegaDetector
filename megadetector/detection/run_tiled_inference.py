@@ -97,10 +97,21 @@ def get_patch_boundaries(image_size,patch_size,patch_stride=None):
     image_width = image_size[0]
     image_height = image_size[1]
 
-    assert patch_size[0] <= image_size[0], 'Patch width {} is larger than image width {}'.format(
-        patch_size[0],image_size[0])
-    assert patch_size[1] <= image_size[1], 'Patch height {} is larger than image height {}'.format(
-        patch_size[1],image_size[1])
+    reduced_patch_size = False
+
+    if patch_size[0] > image_size[0]:
+        print('Warning: patch width {} is larger than image width {}, reducing patch width'.format(
+            patch_size[0],image_size[0]))
+        patch_size = (image_size[0],patch_size[1])
+        reduced_patch_size = True
+    if patch_size[1] > image_size[1]:
+        print('Warning: patch height {} is larger than image height {}, reducing patch height'.format(
+            patch_size[1],image_size[1]))
+        patch_size = (patch_size[0],image_size[1])
+        reduced_patch_size = True
+
+    if reduced_patch_size:
+        print('Using effective patch size: {}'.format(str(patch_size)))
 
     def add_patch_row(patch_start_positions,y_start):
         """
