@@ -76,11 +76,14 @@ def _make_location_id(project_id,deployment_id):
 # but we are typically using this to perform accuracy comparisons for animals,
 # and having lots of categories that co-occur with other categories (which
 # vehicles do) makes analysis messier.
+#
+# All keys in this dict should be lower-case.  Regexes are allowed.
 default_category_remappings = {
     # "blank" is handled specially below
     # 'blank':'empty',
     'homo species':'human',
     'no cv result':'unknown',
+    'cv failed':'unknown',
     'misfire':'blank',
     '.*human.*':'human',
     '.*vehicle.*':'vehicle',
@@ -245,7 +248,15 @@ def wi_download_csv_to_coco(csv_file_in,
                     if r == target_r:
                         continue
 
-                    assert r['timestamp'] == target_r['timestamp']
+                    # If one record has a timestamp and the other doesn't, copy the valid
+                    # timestamp to the record that's missing a timestamp.
+                    if is_empty(r['timestamp']) and (not is_empty(target_r['timestamp'])):
+                        r['timestamp'] = target_r['timestamp']
+                    elif is_empty(target_r['timestamp']) and (not is_empty(r['timestamp'])):
+                                            target_r['timestamp'] = r['timestamp']
+
+                    assert r['timestamp'] == target_r['timestamp'], \
+                        'Timestamp mismatch between records for the same sequence'
                     target_r['frame_num'] = i_record
                     target_r['seq_num_frames'] = len(sorted_records_this_sequence)
 

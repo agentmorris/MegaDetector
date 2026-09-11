@@ -44,6 +44,7 @@ from megadetector.utils.wi_platform_utils import read_sequences_from_download_bu
 from megadetector.utils.wi_platform_utils import write_download_commands
 from megadetector.utils.wi_platform_utils import write_prefix_download_command
 from megadetector.utils.ct_utils import is_empty
+from megadetector.utils.string_utils import is_int
 
 # Should we download individual images, or whole buckets?
 download_individual_images = True
@@ -75,6 +76,8 @@ project_info_cache_file = os.path.join(project_base,'project_info.json')
 image_base_folder = os.path.join(project_base,'images')
 csv_base = os.path.join(project_base,'csv_downloads')
 
+preview_base = os.path.join(project_base,'coco-preview')
+
 p = {}
 p['name'] = 'Project One'
 p['id'] = 2001111
@@ -103,10 +106,26 @@ for folder_name in project_folders_relative:
 
 for i_project,p in enumerate(projects):
 
-    project_download_folder = project_id_to_download_folder[p['id']]
+    project_id = p['id']
+    project_download_folder = project_id_to_download_folder[project_id]
     p['project_download_folder'] = project_download_folder
+    project_image_folder = os.path.join(image_base_folder,str(project_id))
+    os.makedirs(project_image_folder,exist_ok=True)
 
 print('Found {} projects'.format(len(projects)))
+
+project_image_folders = os.listdir(image_base_folder)
+project_image_folders = [fn for fn in project_image_folders if is_int(fn)]
+project_image_folders = [os.path.join(image_base_folder,fn) for fn in project_image_folders]
+project_image_folders = [fn.replace('\\','/') for fn in project_image_folders]
+
+project_csv_folders = os.listdir(csv_base)
+project_csv_folders = [fn for fn in project_csv_folders if fn.endswith('_data')]
+project_csv_folders = [os.path.join(csv_base,fn) for fn in project_csv_folders]
+project_csv_folders = [fn.replace('\\','/') for fn in project_csv_folders]
+
+assert len(project_image_folders) == len(projects)
+assert len(project_csv_folders) == len(projects)
 
 
 #%% Prepare download scripts
@@ -139,6 +158,8 @@ for i_project,p in enumerate(projects):
         i_project,len(projects),project_id))
 
     project_image_folder = os.path.join(image_base_folder,project_id)
+    os.makedirs(project_image_folder,exist_ok=True)
+
     download_command_file = \
         os.path.join(project_image_folder,'download_images_{}{}'.format(
             project_id,script_extension))
@@ -296,7 +317,7 @@ else:
     print('Wrote project cache to {}'.format(project_info_cache_file))
 
 
-#%% Check download completion
+#%% Check download completion, find extra files
 
 from megadetector.utils.wi_platform_utils import url_to_relative_path
 from megadetector.utils.path_utils import recursive_file_list
@@ -335,7 +356,7 @@ for i_project,p in enumerate(projects):
         else:
             missing_files.append(relative_path)
 
-    extra_files = []
+    extra_files_this_project = []
 
     for relative_path in downloaded_files_relative:
 
@@ -350,7 +371,7 @@ for i_project,p in enumerate(projects):
             continue
 
         if relative_path not in relative_paths_requested:
-            extra_files.append(relative_path)
+            extra_files_this_project.append(relative_path)
 
     print('Found {} files for project {} ({}):\n{} matching downloads, {} missing, {} placeholder, {} extra files'.format(
             len(downloaded_files_relative),
@@ -359,78 +380,75 @@ for i_project,p in enumerate(projects):
             len(matching_files),
             len(missing_files),
             n_placeholders,
-            len(extra_files)))
+            len(extra_files_this_project)))
+
+    p['extra_files'] = extra_files_this_project
+    p['downloaded_files_relative_set'] = set(downloaded_files_relative)
 
 # ...for each project
 
 
-#%% Delete redundant thumbnails (prep)
+#%% Delete images that we don't need (prep)
+
+from megadetector.utils.path_utils import is_image_file
 
 # Only necessary for whole-bucket downloads
 
-from megadetector.utils.path_utils import recursive_file_list
-
 files_to_delete = []
 
-print('Enumerating files in {}'.format(project_base))
-downloaded_images_relative = recursive_file_list(image_base_folder,
-                                                 return_relative_paths=True)
+# i_project = 0; p = projects[i_project]
+for i_project,p in enumerate(projects):
 
-downloaded_images_relative = set(downloaded_images_relative)
+    project_id = p['id']
+    extra_files_this_project = p['extra_files']
+    project_image_folder_abs = os.path.join(image_base_folder,str(project_id))
 
-# i_file = 0; relative_path = downloaded_images_relative[i_file]
-for i_file,relative_path in tqdm(enumerate(downloaded_images_relative),
-                                    total=len(downloaded_images_relative)):
-    if ('_500' in relative_path) and \
-        (relative_path.replace('_500','') in downloaded_images_relative):
-        absolute_path = os.path.join(image_base_folder,relative_path)
-        assert os.path.isfile(absolute_path)
-        files_to_delete.append(absolute_path)
+    files_to_delete_this_project = []
+    non_image_files_this_project = []
+    n_thumbnails_deleted = 0
 
-print('Identified {} redundant thumbnails (of {} images)'.format(
-    len(files_to_delete),
-    len(downloaded_images_relative)))
+    for i_file,fn_relative in tqdm(
+        enumerate(extra_files_this_project),total=len(extra_files_this_project)):
 
-for fn in files_to_delete:
-    assert '_500' in fn
+        if is_image_file(fn_relative):
+
+            fn_abs = os.path.join(project_image_folder_abs,fn_relative)
+            # Checking whether every file exists is slow, I just want to check for bugs
+            # where I got the base path wrong, so I just check whether the first few files
+            # exist.
+            if i_file < 10:
+                assert os.path.isfile(fn_abs)
+            assert fn_relative in p['downloaded_files_relative_set']
+            files_to_delete_this_project.append(fn_abs)
+            if '_500' in fn_relative:
+                n_thumbnails_deleted += 1
+
+        else:
+
+            non_image_files_this_project.append(fn_relative)
+
+    # ...for each extra file
+
+    p['non_image_files'] = non_image_files_this_project
+
+    print('For project {}, deleting {} of {} images ({} thumbnails), leaving {} non-image files'.format(
+        project_id,
+        len(files_to_delete_this_project),
+        len(p['downloaded_files_relative_set']),
+        n_thumbnails_deleted,
+        len(non_image_files_this_project)))
+
+    files_to_delete.extend(files_to_delete_this_project)
+
+# ...for each project
+
+print('Deleting {} files total'.format(len(files_to_delete)))
 
 
-#%%  Delete redundant thumbnails (execution)
+#%% Delete images that we don't need (prep)
 
 from megadetector.utils.path_utils import parallel_delete_files
 parallel_delete_files(input_files=files_to_delete)
-
-
-#%% Find image/csv folders
-
-def is_int_string(s):
-    try:
-        _ = int(s)
-        return True
-    except Exception:
-        return False
-
-project_image_folders = os.listdir(image_base_folder)
-project_image_folders = [fn for fn in project_image_folders if is_int_string(fn)]
-project_image_folders = [os.path.join(image_base_folder,fn) for fn in project_image_folders]
-
-project_csv_folders = os.listdir(csv_base)
-project_csv_folders = [fn for fn in project_csv_folders if fn.endswith('_data')]
-project_csv_folders = [os.path.join(csv_base,fn) for fn in project_csv_folders]
-
-print('Found {} project image folders and {} project csv folders'.format(
-    len(project_image_folders),
-    len(project_csv_folders)
-))
-
-assert len(project_image_folders) == len(projects)
-assert len(project_csv_folders) == len(projects)
-
-for fn in project_image_folders:
-    assert os.path.isdir(fn)
-
-for fn in project_csv_folders:
-    assert os.path.isdir(fn)
 
 
 #%% Run COCO conversions
@@ -442,7 +460,7 @@ force_coco_conversion = True
 # i_project = 0; project_image_folder = project_image_folders[i_project]
 for i_project,project_image_folder in enumerate(project_image_folders):
 
-    project_id = project_image_folder.split('/')[-1]
+    project_id = project_image_folder.replace('\\','/').split('/')[-1]
     _ = int(project_id)
     current_project_csv_folders = [fn for fn in project_csv_folders if project_id in fn]
     assert len(current_project_csv_folders) == 1
@@ -464,12 +482,15 @@ for i_project,project_image_folder in enumerate(project_image_folders):
                                 image_flattening='deployment',
                                 verbose=True,
                                 blank_disagreement_handling='trust_label',
-                                include_blanks=True)
+                                include_blanks=True,
+                                include_unidentified_images=False)
 
 # ...for each project
 
 
-#%% Create sequences
+#%% Create sequences if necessary
+
+# For sequence projects, this cell will just copy the .json file to a with_sequences.json file
 
 import json
 import shutil
@@ -483,7 +504,7 @@ sequence_options = SequenceOptions()
 # i_project = 0; project_image_folder = project_image_folders[i_project]
 for i_project,project_image_folder in enumerate(project_image_folders):
 
-    project_id = project_image_folder.split('/')[-1]
+    project_id = project_image_folder.replace('\\','/').split('/')[-1]
     _ = int(project_id)
     project_coco_file = os.path.join(project_image_folder,project_id + '.coco.json')
     project_coco_file_with_sequences = insert_before_extension(
@@ -525,8 +546,6 @@ for i_project,project_image_folder in enumerate(project_image_folders):
 from megadetector.visualization.visualize_db import \
     DbVizOptions, visualize_db
 
-project_base = os.path.expanduser('~/tmp/wi-project-analysis')
-preview_base = os.path.join(project_base,'coco-preview')
 os.makedirs(preview_base,exist_ok=True)
 
 viz_options = DbVizOptions()
@@ -557,7 +576,7 @@ preview_filenames = []
 # i_project = 0; project_image_folder = project_image_folders[i_project]
 for i_project,project_image_folder in enumerate(project_image_folders):
 
-    project_id = project_image_folder.split('/')[-1]
+    project_id = project_image_folder.replace('\\','/').split('/')[-1]
     _ = int(project_id)
     project_coco_file = os.path.join(project_image_folder,project_id + '.coco.with_sequences.json')
     assert os.path.isfile(project_coco_file)
@@ -580,5 +599,239 @@ for i_project,project_image_folder in enumerate(project_image_folders):
 #%% Open preview visualizations
 
 from megadetector.utils.path_utils import open_file
+
 for fn in preview_filenames:
     open_file(fn)
+
+
+#%% Optionally merge all COCO files into a single file at the "images" folder level
+
+from megadetector.data_management.combine_coco_camera_traps_files import \
+    combine_cct_files
+from megadetector.data_management.integrity_check_json_db import \
+    IntegrityCheckOptions, integrity_check_json_db
+
+filename_prefixes = {}
+
+combined_cct_file = os.path.join(image_base_folder,'combined_projects.json')
+
+# i_project = 0; project_image_folder = project_image_folders[i_project]
+for i_project,project_image_folder in enumerate(project_image_folders):
+
+    project_id = project_image_folder.replace('\\','/').split('/')[-1]
+    project_coco_file = os.path.join(project_image_folder,project_id + '.coco.with_sequences.json')
+    image_prefix_this_project = project_id + '/'
+    filename_prefixes[project_coco_file] = image_prefix_this_project
+
+d = combine_cct_files(input_files=filename_prefixes.keys(),
+                      output_file=combined_cct_file,
+                      require_uniqueness=True,
+                      filename_prefixes=filename_prefixes)
+
+integrity_check_options = IntegrityCheckOptions()
+
+integrity_check_options.baseDir = image_base_folder
+integrity_check_options.bCheckImageExistence = True
+integrity_check_options.bRequireLocation = True
+
+_,_,error_info = integrity_check_json_db(json_file=combined_cct_file,
+                                         options=integrity_check_options)
+
+assert len(error_info['validation_errors']) == 0
+
+
+#%% Visualize combined file
+
+from megadetector.visualization.visualize_db import \
+    DbVizOptions, visualize_db
+from megadetector.utils.path_utils import open_file
+
+preview_base = 'g:/temp/combined-coco-preview'
+os.makedirs(preview_base,exist_ok=True)
+
+viz_options = DbVizOptions()
+viz_options.num_to_visualize = 2000
+viz_options.viz_size = (1000, -1)
+viz_options.html_options['maxFiguresPerHtmlFile'] = 1000
+viz_options.sort_by_filename = True
+viz_options.random_seed = 0
+viz_options.classes_to_include = None
+viz_options.classes_to_exclude = None
+viz_options.multiple_categories_tag = '*multiple*'
+viz_options.parallelize_rendering = True
+viz_options.parallelize_rendering_with_threads = True
+viz_options.parallelize_rendering_n_cores = 12
+viz_options.create_category_pages = True
+viz_options.max_sequence_length = 3
+
+html_filename,_ = visualize_db(db_path=combined_cct_file,
+                               output_dir=preview_base,
+                               image_base_dir=image_base_folder,
+                               options=viz_options)
+
+open_file(html_filename)
+
+
+#%% Create separate files for identified and unidentified images
+
+with open(combined_cct_file,'r') as f:
+    d = json.load(f)
+
+category_id_to_name = {}
+for c in d['categories']:
+    category_id_to_name[c['id']] = c['name']
+
+image_id_to_category_names = defaultdict(set)
+
+for ann in d['annotations']:
+    category_name = category_id_to_name[ann['category_id']]
+    image_id_to_category_names[ann['image_id']].add(category_name)
+
+identified_image_ids = []
+unidentified_image_ids = []
+
+identified_images = []
+unidentified_images = []
+identified_annotations = []
+unidentified_annotations = []
+
+for im in d['images']:
+
+    category_names_this_image = image_id_to_category_names[im['id']]
+
+    if 'unidentified' in category_names_this_image:
+        assert len(category_names_this_image) == 1
+        unidentified_image_ids.append(im['id'])
+        unidentified_images.append(im)
+    else:
+        identified_image_ids.append(im['id'])
+        identified_images.append(im)
+
+# ...for each image
+
+identified_image_ids = set(identified_image_ids)
+unidentified_image_ids = set(unidentified_image_ids)
+
+for ann in d['annotations']:
+
+    assert (ann['image_id'] in identified_image_ids) or \
+           (ann['image_id'] in unidentified_image_ids)
+    if ann['image_id'] in identified_image_ids:
+        identified_annotations.append(ann)
+    else:
+        unidentified_annotations.append(ann)
+
+# ...for each annotation
+
+print('Identification present for {} of {} images ({} of {} annotations)'.format(
+    len(identified_images), len(d['images']),
+    len(identified_annotations), len(d['annotations'])))
+
+assert len(identified_images) + len(unidentified_images) == len(d['images'])
+assert len(identified_annotations) + len(unidentified_annotations) == len(d['annotations'])
+
+d_identified = {}
+d_identified['info'] = d['info']
+d_identified['categories'] = d['categories']
+d_identified['images'] = identified_images
+d_identified['annotations'] = identified_annotations
+
+d_unidentified = {}
+d_unidentified['info'] = d['info']
+d_unidentified['categories'] = d['categories']
+d_unidentified['images'] = unidentified_images
+d_unidentified['annotations'] = unidentified_annotations
+
+output_file_identified = insert_before_extension(combined_cct_file,'identified')
+output_file_unidentified = insert_before_extension(combined_cct_file,'unidentified')
+
+write_json(output_file_identified,d_identified)
+write_json(output_file_unidentified,d_unidentified)
+
+
+#%% Scrap
+
+if False:
+
+    pass
+
+    #%% Compute total download size
+
+    pass
+
+    #%% Get total file size for every file in the bucket
+
+    file_size_commands = []
+
+    # i_project = 0; p = projects[i_project]
+    for i_project,p in enumerate(projects):
+
+        project_id = str(p['id'])
+        project_image_folder = os.path.join(image_base_folder,project_id)
+        bucket_size_file = os.path.join(project_image_folder,'blob_sizes.txt')
+        p['bucket_size_file'] = bucket_size_file
+
+        buckets_this_project = set()
+        for url in p['image_urls_to_download']:
+            assert url.startswith('gs://')
+            bucket_name = url.replace('gs://','').split('/')[0]
+            buckets_this_project.add(bucket_name)
+        assert len(buckets_this_project) == 1
+
+        cmd = 'gcloud storage du "gs://{}" > "{}"'.format(
+            bucket_name,bucket_size_file)
+        file_size_commands.append(cmd)
+
+    all_file_size_commands = '\n'.join(file_size_commands) + '\n'
+    print(all_file_size_commands)
+    # import clipboard; clipboard.copy(all_file_size_commands)
+
+
+    #%% Read file sizes back, compute total download size
+
+    import humanfriendly
+
+    # i_project = 0; p = projects[i_project]
+    for i_project,p in enumerate(projects):
+
+        bucket_size_file = p['bucket_size_file']
+        assert os.path.isfile(bucket_size_file)
+        with open(bucket_size_file,'r') as f:
+            lines = f.readlines()
+            lines = [s.strip() for s in lines]
+            lines = [s for s in lines if len(s) > 0 and not s.endswith('/')]
+
+        url_to_size_this_project = {}
+
+        total_bucket_size = 0
+
+        # i_line = 0; s = lines[i_line]
+        for i_line,s in enumerate(lines):
+
+            tokens = s.split()
+            assert len(tokens) == 2
+            assert tokens[1].startswith('gs://')
+            assert is_int(tokens[0])
+            url = tokens[1]
+            size_bytes = int(tokens[0])
+            total_bucket_size += size_bytes
+            url_to_size_this_project[url] = size_bytes
+
+        total_size_bytes_this_project = 0
+        missing_urls_this_project = []
+
+        for url in p['image_urls_to_download']:
+
+            if url not in url_to_size_this_project:
+                missing_urls_this_project.append(url)
+                continue
+
+            total_size_bytes_this_project += url_to_size_this_project[url]
+
+        print('Total size for project {}: {} (missing {} URLs) (total bucket size {})'.format(
+            p['id'],
+            humanfriendly.format_size(total_size_bytes_this_project),
+            len(missing_urls_this_project),
+            humanfriendly.format_size(total_bucket_size)))
+
+    # ...for each project
