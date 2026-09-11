@@ -252,11 +252,11 @@ def combine_cct_dictionaries(input_dicts,
 
     image_count_string = ','.join([str(n) for n in image_counts])
     annotation_count_string = ','.join([str(n) for n in annotation_counts])
-    category_count_string = ','.join([str(n) for n in category_counts])
+    category_count_string = ', '.join([str(n) for n in category_counts])
 
-    print('Merged file has {} images ({})'.format(
+    print('Merged file has {} images (by project: {})'.format(
         len(sorted_images),image_count_string))
-    print('Merged file has {} annotations ({})'.format(
+    print('Merged file has {} annotations (by project: {})'.format(
         len(all_annotations),annotation_count_string))
     if n_redundant_annotations > 0:
         print('Removed {} redundant annotations'.format(n_redundant_annotations))
