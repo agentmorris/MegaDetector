@@ -25,6 +25,7 @@ from megadetector.utils.string_utils import is_int
 from megadetector.utils.path_utils import find_images
 from megadetector.utils.wi_platform_utils import read_images_from_download_bundle
 from megadetector.utils.wi_platform_utils import read_sequences_from_download_bundle
+from megadetector.utils.wi_platform_utils import read_deployments_from_download_bundle
 from megadetector.utils.wi_platform_utils import url_to_relative_path
 from megadetector.utils.wi_platform_utils import record_is_unidentified
 
@@ -160,6 +161,16 @@ def wi_download_csv_to_coco(csv_file_in,
 
     print('Read image records for {} unique image IDs'.format(
         len(image_id_to_image_records)))
+
+    # read_deployments_from_download_bundle supports a folder or a single .csv file,
+    # but for .csv file input, it wants a deployment.csv file, so we pass the folder
+    # containing our image .csv files.
+    if os.path.isfile(csv_file_in):
+        csv_folder = os.path.dirname(csv_file_in)
+    else:
+        csv_folder = csv_file_in
+
+    deployment_slug_to_deployment_info = read_deployments_from_download_bundle(csv_folder)
 
     sequence_id_to_sequence_records = read_sequences_from_download_bundle(csv_file_in)
 
@@ -635,6 +646,7 @@ def wi_download_csv_to_coco(csv_file_in,
     coco_data['images'] = images
     coco_data['annotations'] = annotations
     coco_data['categories'] = categories
+    coco_data['deployments'] = deployment_slug_to_deployment_info
 
     category_name_to_count = {c['name']:c['count'] for c in categories}
     category_name_to_count = \

@@ -304,6 +304,100 @@ def read_images_from_download_bundle(download_folder):
 # ...def read_images_from_download_bundle(...)
 
 
+def read_deployments_from_download_bundle(download_folder):
+    """
+    Reads all deployments.csv files from [download_folder], returns a dict mapping deployment IDs
+    to information about each deployment.  Keys in the dict are [project_id]_[deployment_id], so
+    keys are unique across projects (deployment IDs are not necessarily unique).
+
+    Args:
+        download_folder (str): a folder containing one or more deployments.csv files, typically
+            representing a Wildlife Insights download bundle.  If this is a single .csv
+            file, reads just that file.
+
+
+    Returns:
+        dict: Maps deployment slugs to dicts with at least the following fields:
+            * project_id (int)
+            * deployment_id (str)
+            * latitude (float)
+            * longitude (float)
+
+    """
+
+    print('Reading deployments from {}'.format(download_folder))
+
+    ##%% Find lists of deployments
+
+    # If the caller supplied a single file
+    if os.path.isfile(download_folder):
+
+        deployment_list_files = [download_folder]
+        if not (download_folder.startswith('deployments') and download_folder.endswith('.csv')):
+            print('Warning: {} does not look like an deployments csv file'.format(download_folder))
+            return None
+
+    else:
+
+        assert os.path.isdir(download_folder), \
+            'Could not find folder {}'.format(download_folder)
+
+        deployment_list_files = os.listdir(download_folder)
+        deployment_list_files = \
+            [fn for fn in deployment_list_files if fn.startswith('deployment') and fn.endswith('.csv')]
+        deployment_list_files = \
+            [path_join(download_folder,fn) for fn in deployment_list_files]
+        deployment_list_files = sorted(deployment_list_files)
+        print('Found {} deployment list files'.format(len(deployment_list_files)))
+
+    if len(deployment_list_files) == 0:
+        return None
+
+
+    ##%% Read lists of deployments
+
+    deployment_slug_to_deployment_info = {}
+
+    # i_file = 0; deployment_list_file = deployment_list_files[i_file]
+    for i_file,deployment_list_file in enumerate(deployment_list_files):
+
+        print('Reading deployments from list file {} of {} ({})'.format(
+            i_file,
+            len(deployment_list_files),
+            os.path.basename(deployment_list_file)))
+
+        df = pd.read_csv(deployment_list_file,low_memory=False)
+
+        # i_row = 0; row = df.iloc[i_row]
+        for i_row,row in tqdm(df.iterrows(),total=len(df)):
+
+            row_dict = row.to_dict()
+
+            # Remove None and NaN
+            for k in row_dict:
+                if is_empty(row_dict[k]):
+                    row_dict[k] = ''
+
+            deployment_id = row_dict['deployment_id'].strip()
+            project_id = str(row_dict['project_id']).strip()
+            deployment_slug = project_id + '_' + deployment_id
+            assert deployment_slug not in deployment_slug_to_deployment_info, \
+                'Deployment slug {} appears more than once in {}'.format(
+                    deployment_slug,download_folder)
+            deployment_slug_to_deployment_info[deployment_slug] = row_dict
+
+        # ...for each deployment
+
+    # ...for each list file
+
+    print('Found {} deployments'.format(
+        len(deployment_slug_to_deployment_info)))
+
+    return deployment_slug_to_deployment_info
+
+# ...def deployment_slug_to_deployment_info(...)
+
+
 def find_images_in_identify_tab(download_folder_with_identify,download_folder_excluding_identify):
     """
     Based on extracted download packages with and without the "exclude images in 'identify' tab
