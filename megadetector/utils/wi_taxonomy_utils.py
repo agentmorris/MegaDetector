@@ -872,7 +872,8 @@ def generate_instances_json_from_folder(folder,
                                         lon=None,
                                         output_file=None,
                                         filename_replacements=None,
-                                        tokens_to_ignore=default_tokens_to_ignore):
+                                        tokens_to_ignore=default_tokens_to_ignore,
+                                        filenames_to_ignore=None):
     """
     Generate an instances.json record that contains all images in [folder], optionally
     including location information, in a format suitable for run_model.py.  Optionally writes
@@ -883,14 +884,19 @@ def generate_instances_json_from_folder(folder,
         country (str, optional): a three-letter country code
         admin1_region (str, optional): an administrative region code, typically a two-letter
             US state code
-        lat (float, optional): latitude to associate with all images
-        lon (float, optional): longitude to associate with all images
+        lat (float, optional): latitude to associate with all images, or a dict mapping
+            relative path names to latitude values.  If this is not None, [lon] must also
+            not be None.
+        lon (float, optional): longitude to associate with all images, or a dict mapping
+            relative path names to latitude values.  If this is not None, [lat] must also
+            not be None.
         output_file (str, optional): .json file to which we should write instance records
         filename_replacements (dict, optional): str --> str dict indicating filename substrings
             that should be replaced with other strings.  Replacement occurs *after* converting
             backslashes to forward slashes.
         tokens_to_ignore (list, optional): ignore any images with these tokens in their
             names, typically used to avoid $RECYCLE.BIN.  Can be None.
+        filenames_to_ignore (list, optional): list of relative paths to ignore
 
     Returns:
         dict: dict with at least the field "instances"
@@ -899,34 +905,57 @@ def generate_instances_json_from_folder(folder,
     assert os.path.isdir(folder), 'Invalid directory name {}'.format(folder)
 
     print('Enumerating images in {}'.format(folder))
-    image_files_abs = find_images(folder,recursive=True,return_relative_paths=False)
+
+    image_files_relative = find_images(folder,recursive=True,return_relative_paths=True)
+    if filenames_to_ignore is not None:
+        image_files_relative = [fn for fn in image_files_relative if not fn in filenames_to_ignore]
 
     if tokens_to_ignore is not None:
-        n_images_before_ignore_tokens = len(image_files_abs)
+        n_images_before_ignore_tokens = len(image_files_relative)
         for token in tokens_to_ignore:
-            image_files_abs = [fn for fn in image_files_abs if token not in fn]
+            image_files_relative = [fn for fn in image_files_relative if token not in fn]
         print('After ignoring {} tokens, kept {} of {} images'.format(
-            len(tokens_to_ignore),len(image_files_abs),n_images_before_ignore_tokens))
+            len(tokens_to_ignore),len(image_files_relative),n_images_before_ignore_tokens))
+
+    assert (lat is None and lon is None) or (lat is not None and lon is not None), \
+        'lat and lon must both be provided or omitted'
 
     instances = []
 
-    # image_fn_abs = image_files_abs[0]
-    for image_fn_abs in image_files_abs:
+    # image_fn_relative = image_files_relative[0]
+    for image_fn_relative in image_files_relative:
+
         instance = {}
+
+        image_fn_abs = path_join(folder,image_fn_relative)
         instance['filepath'] = image_fn_abs.replace('\\','/')
+
         if filename_replacements is not None:
             for s in filename_replacements:
                 instance['filepath'] = instance['filepath'].replace(s,filename_replacements[s])
+
         if country is not None:
             instance['country'] = country
+
         if admin1_region is not None:
             instance['admin1_region'] = admin1_region
-        if lat is not None:
-            assert lon is not None, 'Latitude provided without longitude'
-            instance['latitude'] = lat
-        if lon is not None:
-            assert lat is not None, 'Longitude provided without latitude'
-            instance['longitude'] = lon
+
+        if isinstance(lat,dict):
+            assert image_fn_relative in lat, \
+                'No lat provided for {}'.format(image_fn_relative)
+            image_lat = lat[image_fn_relative]
+        else:
+            image_lat = lat
+        instance['latitude'] = image_lat
+
+        if isinstance(lon,dict):
+            assert image_fn_relative in lon, \
+                'No long provided for {}'.format(image_fn_relative)
+            image_lon = lon[image_fn_relative]
+        else:
+            image_lon = lon
+        instance['longitude'] = image_lon
+
         instances.append(instance)
 
     to_return = {'instances':instances}
