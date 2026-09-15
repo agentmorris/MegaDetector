@@ -908,7 +908,7 @@ def generate_instances_json_from_folder(folder,
 
     image_files_relative = find_images(folder,recursive=True,return_relative_paths=True)
     if filenames_to_ignore is not None:
-        image_files_relative = [fn for fn in image_files_relative if not fn in filenames_to_ignore]
+        image_files_relative = [fn for fn in image_files_relative if (fn not in filenames_to_ignore)]
 
     if tokens_to_ignore is not None:
         n_images_before_ignore_tokens = len(image_files_relative)
