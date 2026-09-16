@@ -1358,8 +1358,50 @@ def zip_file(input_fn, output_fn=None, overwrite=False, verbose=False, compress_
 # ...def zip_file(...)
 
 
-def add_files_to_single_tar_file(input_files, output_fn, arc_name_base,
-                                 overwrite=False, verbose=False, mode='x'):
+def validate_zipfile(fn, verbose=True):
+    """
+    Validate the zip file [fn].  Reads the whole file, can be slow for large archives.
+
+    Args:
+        fn (str): zip file to validate
+        verbose (bool, optional): enable additional debug console output
+
+    Returns:
+        bool: whether [fn] is a valid zip archive
+    """
+
+    assert os.path.isfile(fn), 'File {} not found'.format(fn)
+
+    try:
+
+        with zipfile.ZipFile(fn, 'r') as zipf:
+
+            # testzip() returns None if the valid is valid
+            validation_result = zipf.testzip()
+
+            if validation_result is None:
+                if verbose:
+                    print('Successfully validated {}'.format(fn))
+                return True
+            else:
+                if verbose:
+                    print('Corrupt zip archive found in {}'.format(fn))
+                return False
+
+    except zipfile.BadZipFile:
+
+        print('{} does not appear to be a zipfile'.format(fn))
+        return False
+
+
+# ...def validate_zip_file(...)
+
+def add_files_to_single_tar_file(input_files,
+                                 output_fn,
+                                 arc_name_base,
+                                 overwrite=False,
+                                 verbose=False,
+                                 mode='x'):
     """
     Adds all the files in [input_files] to the tar file [output_fn].
     Archive names are relative to arc_name_base.
