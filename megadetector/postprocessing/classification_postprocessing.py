@@ -1035,6 +1035,8 @@ def smooth_classification_results_sequence_level(input_file,
     n_taxonomic_classification_changes = 0
     n_within_family_changes = 0
 
+    images_missing_from_results = set()
+
     # sequence_id = list(sequence_to_image_filenames.keys())[0]
     for sequence_id in sequence_to_image_filenames.keys():
 
@@ -1046,8 +1048,7 @@ def smooth_classification_results_sequence_level(input_file,
         detections_this_sequence = []
         for image_filename in image_filenames_this_sequence:
             if image_filename not in image_fn_to_classification_results:
-                print('Warning: {} in sequence list but not in results'.format(
-                    image_filename))
+                images_missing_from_results.add(image_filename)
                 continue
             im = image_fn_to_classification_results[image_filename]
             if 'detections' not in im or im['detections'] is None:
@@ -1093,6 +1094,15 @@ def smooth_classification_results_sequence_level(input_file,
             n_within_family_sequences_changed += 1
 
     # ...for each sequence
+
+    if len(images_missing_from_results) > 0:
+        print('Warning: {} images in sequence records but not in results, for example:\n'.format(
+            len(images_missing_from_results)))
+        n_filenames_to_show = min(len(images_missing_from_results),10)
+        images_missing_from_results = sorted(list(images_missing_from_results))
+        for i_file in range(0,n_filenames_to_show):
+            print(images_missing_from_results[i_file])
+        print('')
 
     print('Classification smoothing: changed {} detections in {} sequences'.format(
         n_detections_flipped,n_sequences_changed))
