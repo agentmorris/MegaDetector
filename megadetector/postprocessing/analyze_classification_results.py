@@ -35,6 +35,7 @@ from functools import partial
 from multiprocessing.pool import ThreadPool
 from multiprocessing.pool import Pool
 from tqdm import tqdm
+from copy import deepcopy
 
 from megadetector.utils.path_utils import flatten_path
 from megadetector.utils.write_html_image_list import write_html_image_list
@@ -106,11 +107,23 @@ class ClassificationAnalysisOptions:
         #: Approximate maximum number of total images to render.  May be exceeded slightly if
         #: required to make sure that at least one image is rendered per non-empty cell in the
         #: confusion matrix.  Only relevant if html_output_dir is not None.
+        #:
+        #: For sequence-level analyses, this is the number of *sequences* to sample; up to
+        #: max_images_per_sequence images are rendered for each sampled sequence.
         self.max_total_images = 8000
 
         #: Try to sample this many images to render per confusion matrix cell.  Only relevant
         #: if html_output_dir is not None.  Total number is still capped by max_total_images.
+        #:
+        #: For sequence-level analyses, this is the number of *sequences* to sample per cell.
         self.max_images_per_cell = 50
+
+        #: For sequence-level analyses, the maximum number of images to show for each sampled
+        #: sequence.  If a sequence has more images than this, we show at least one image for
+        #: each non-null predicted category, then other non-null images, then null images.
+        #: Selected images are always displayed in frame order.  Only relevant if
+        #: html_output_dir is not None.
+        self.max_images_per_sequence = 10
 
         #: Random seed to be used if image sampling is necessary
         self.random_seed = 0
@@ -526,49 +539,307 @@ def _render_single_image(im, render_constants):
 # ...def _render_single_image(...)
 
 
-def _build_html_image_title(fn,
-                            gt_categories,
-                            pred_categories,
-                            below_threshold_categories,
-                            n_below_threshold_to_display):
+def _evenly_spaced_subset(items, n):
     """
-    Build the HTML caption for a single rendered example image.
-
-    The caption shows the filename, the ground truth categories, and the predicted
-    categories.  For images we're treating as [below_threshold_category_name] (i.e.
-    detections whose classifications were all below threshold), it additionally shows
-    the actual top classifications, even though they were below threshold.
+    Choose up to [n] evenly-spaced items from [items], preserving order.
 
     Args:
-        fn (str): image filename, shown in the caption
+        items (list): items to choose from
+        n (int): number of items to choose; if <= 0, returns an empty list
+
+    Returns:
+        list: the chosen items, in the same order they appear in [items]
+    """
+
+    if n <= 0:
+        return []
+
+    if n >= len(items):
+        return list(items)
+
+    # Take the center of each of [n] equal-sized bins; since n < len(items), each bin is at
+    # least one item wide, so the chosen indices are unique.
+    step = len(items) / n
+    return [items[int((i_item + 0.5) * step)] for i_item in range(n)]
+
+# ...def _evenly_spaced_subset(...)
+
+
+def _sort_sequence_filenames(filenames, gt_fn_to_im):
+    """
+    Sort the filenames in a sequence by the "frame_num" field in the corresponding GT
+    image entries, or by filename if any image in the sequence is missing frame_num.
+
+    Args:
+        filenames (list): filenames in this sequence
+        gt_fn_to_im (dict): maps filenames to GT image dicts
+
+    Returns:
+        list: sorted filenames
+    """
+
+    if all((gt_fn_to_im[fn].get('frame_num', None) is not None) for fn in filenames):
+        return sorted(filenames, key=lambda fn: (gt_fn_to_im[fn]['frame_num'], fn))
+    else:
+        return sorted(filenames)
+
+# ...def _sort_sequence_filenames(...)
+
+
+def _select_sequence_filenames(sorted_filenames, fn_to_frame_pred_categories, max_images):
+    """
+    Choose which images to display for a sequence.  If the sequence has more than
+    [max_images] images, images are chosen in this priority order:
+
+    1. At least one image for each non-null predicted category (the image with the
+       highest confidence for that category)
+    2. Other images with at least one non-null predicted category (evenly spaced)
+    3. Remaining (null) images (evenly spaced)
+
+    "Null" categories are those in null_category_names.
+
+    Args:
+        sorted_filenames (list): all filenames in this sequence, sorted in frame order
+        fn_to_frame_pred_categories (dict): maps each filename to an image-level dict
+            mapping predicted category names to max confidence values
+        max_images (int): maximum number of images to choose
+
+    Returns:
+        list: the chosen filenames, in frame order
+    """
+
+    assert (max_images is not None) and (max_images > 0), \
+        'max_images_per_sequence must be a positive integer'
+
+    if len(sorted_filenames) <= max_images:
+        return list(sorted_filenames)
+
+    null_set = set(null_category_names)
+
+    # Indices (into sorted_filenames) of the images we've chosen
+    selected_indices = set()
+
+    ## Choose at least one image for each non-null predicted category
+
+    # Maps each non-null category to a (confidence, index) tuple for the image with the
+    # highest confidence for that category; ties go to the earliest image
+    category_to_best_image = {}
+
+    for i_image, fn in enumerate(sorted_filenames):
+        for category, conf in fn_to_frame_pred_categories[fn].items():
+            if category in null_set:
+                continue
+            if (category not in category_to_best_image) or \
+                    (conf > category_to_best_image[category][0]):
+                category_to_best_image[category] = (conf, i_image)
+
+    # In the unlikely event that there are more categories than slots, prefer categories
+    # with higher confidence values
+    categories = sorted(category_to_best_image.keys(),
+                        key=lambda c: (-category_to_best_image[c][0], c))
+
+    for category in categories:
+        if len(selected_indices) >= max_images:
+            break
+        selected_indices.add(category_to_best_image[category][1])
+
+    ## Fill remaining slots with other non-null images, then with null images
+
+    non_null_indices = []
+    null_indices = []
+
+    for i_image, fn in enumerate(sorted_filenames):
+        if i_image in selected_indices:
+            continue
+        if any((category not in null_set) for category in fn_to_frame_pred_categories[fn]):
+            non_null_indices.append(i_image)
+        else:
+            null_indices.append(i_image)
+
+    selected_indices.update(
+        _evenly_spaced_subset(non_null_indices, max_images - len(selected_indices)))
+    selected_indices.update(
+        _evenly_spaced_subset(null_indices, max_images - len(selected_indices)))
+
+    return [sorted_filenames[i_image] for i_image in sorted(selected_indices)]
+
+# ...def _select_sequence_filenames(...)
+
+
+def _get_entity_display_filenames(entity_id, prepared, options):
+    """
+    Get the filenames we should display for an entity (an image or a sequence).
+
+    Args:
+        entity_id (str): a filename (for image-level analyses) or a sequence ID (for
+            sequence-level analyses)
+        prepared (dict): prepared analysis data returned by _prepare_analysis_data
+        options (ClassificationAnalysisOptions): analysis options
+
+    Returns:
+        list: filenames to display for this entity, in display order
+    """
+
+    if options.sequence_level_analysis:
+        return _select_sequence_filenames(prepared['seq_id_to_filenames'][entity_id],
+                                          prepared['fn_to_frame_pred_categories'],
+                                          options.max_images_per_sequence)
+    else:
+        return [entity_id]
+
+# ...def _get_entity_display_filenames(...)
+
+
+def _build_category_caption_lines(gt_categories,
+                                  pred_categories,
+                                  below_threshold_categories,
+                                  n_below_threshold_to_display):
+    """
+    Build the lines of an HTML image caption that describe ground truth and predicted
+    categories.
+
+    If this entity includes detections we're treating as [below_threshold_category_name]
+    (i.e. detections whose classifications were all below threshold), the caption also
+    shows the actual top classifications, even though they were below threshold.
+
+    Args:
         gt_categories (set): ground truth category names for this entity
         pred_categories (dict): predicted category name -> max confidence for this entity
         below_threshold_categories (dict): classification category name -> max confidence
-            for below-threshold detections in this image (may be empty)
+            for below-threshold detections in this entity (may be empty)
         n_below_threshold_to_display (int): maximum number of below-threshold classifications
             to show; if <= 0, the below-threshold line is omitted
 
     Returns:
-        str: HTML caption string
+        list: HTML strings, one per caption line
     """
 
     gt_cats_str = ', '.join(sorted(gt_categories))
     pred_cats_str = ', '.join(
         ['{} ({:.2f})'.format(c, conf) for c, conf in sorted(pred_categories.items())])
 
-    title = '<b>File</b>: {}<br/><b>GT</b>: {}<br/><b>Pred</b>: {}'.format(
-        fn, gt_cats_str, pred_cats_str)
+    lines = []
+    lines.append('<b>GT</b>: {}'.format(gt_cats_str))
+    lines.append('<b>Pred</b>: {}'.format(pred_cats_str))
 
     if (n_below_threshold_to_display > 0) and (below_threshold_categories is not None) \
             and (len(below_threshold_categories) > 0):
         top_below = sorted(below_threshold_categories.items(),
                            key=lambda x: (-x[1], x[0]))[:n_below_threshold_to_display]
         below_str = ', '.join(['{} ({:.2f})'.format(c, conf) for c, conf in top_below])
-        title += '<br/><b>Below threshold</b>: {}'.format(below_str)
+        lines.append('<b>Below threshold</b>: {}'.format(below_str))
 
-    return title
+    return lines
 
-# ...def _build_html_image_title(...)
+# ...def _build_category_caption_lines(...)
+
+
+def _build_html_image_info_list(entity_ids, entity_id_to_display_filenames, prepared, options):
+    """
+    Build the list of image entries (in the format expected by write_html_image_list) for
+    a single HTML page.
+
+    For image-level analyses, each image gets a caption with its filename, sequence
+    information (if available), and categories.
+
+    For sequence-level analyses, the first image in each sequence gets a caption with
+    sequence information (with the sequence ID in a larger font, to make boundaries between
+    sequences easy to see) and categories, and every image gets a line with its filename.
+
+    Args:
+        entity_ids (list): filenames or sequence IDs to include on this page
+        entity_id_to_display_filenames (dict): maps each entity ID to the list of filenames
+            to display for that entity (see _get_entity_display_filenames)
+        prepared (dict): prepared analysis data returned by _prepare_analysis_data
+        options (ClassificationAnalysisOptions): analysis options
+
+    Returns:
+        list: list of dicts with keys 'filename', 'title', and 'textStyle'
+    """
+
+    filename_to_gt_categories = prepared['filename_to_gt_categories']
+    filename_to_pred_categories = prepared['filename_to_pred_categories']
+    fn_to_below_threshold_classifications = prepared['fn_to_below_threshold_classifications']
+    gt_fn_to_im = prepared['gt_fn_to_im']
+
+    text_style = 'font-family:verdana,arial,calibri;font-size:80%;' \
+        'text-align:left;margin-top:20;margin-bottom:5'
+
+    html_image_info_list = []
+
+    for entity_id in entity_ids:
+
+        display_filenames = entity_id_to_display_filenames[entity_id]
+        if len(display_filenames) == 0:
+            continue
+
+        # Below-threshold classifications are stored per image; for sequences, merge them
+        # across all images in the sequence (not just the displayed images).
+        if options.sequence_level_analysis:
+            below_threshold_categories = {}
+            for fn in prepared['seq_id_to_filenames'][entity_id]:
+                for category, conf in fn_to_below_threshold_classifications.get(fn, {}).items():
+                    if (category not in below_threshold_categories) or \
+                            (below_threshold_categories[category] < conf):
+                        below_threshold_categories[category] = conf
+        else:
+            below_threshold_categories = fn_to_below_threshold_classifications.get(entity_id, {})
+
+        category_lines = _build_category_caption_lines(
+            filename_to_gt_categories.get(entity_id, set()),
+            filename_to_pred_categories.get(entity_id, {}),
+            below_threshold_categories,
+            options.n_below_threshold_classifications_to_display)
+
+        for i_fn, fn in enumerate(display_filenames):
+
+            gt_im = gt_fn_to_im[fn]
+            file_line = '<b>File</b>: {}'.format(fn)
+
+            if options.sequence_level_analysis:
+
+                # The first image in each sequence gets the full caption, subsequent images
+                # just get their filename
+                if i_fn == 0:
+                    lines = ['<span style="font-size:150%;"><b>Sequence ID</b>: {}</span>'.format(
+                        entity_id)]
+                    if gt_im.get('seq_num_frames', None) is not None:
+                        n_frames_line = '<b>Number of frames</b>: {}'.format(gt_im['seq_num_frames'])
+                        if len(display_filenames) < gt_im['seq_num_frames']:
+                            n_frames_line += ' (showing {})'.format(len(display_filenames))
+                        lines.append(n_frames_line)
+                    lines.extend(category_lines)
+                    lines.append(file_line)
+                else:
+                    lines = [file_line]
+
+            else:
+
+                lines = [file_line]
+                if gt_im.get('seq_id', None) is not None:
+                    lines.append('<b>Sequence ID</b>: {}'.format(gt_im['seq_id']))
+                if gt_im.get('seq_num_frames', None) is not None:
+                    lines.append('<b>Number of frames</b>: {}'.format(gt_im['seq_num_frames']))
+                lines.extend(category_lines)
+
+            # ...if this is a sequence-level analysis
+
+            fn_clean = flatten_path(fn).replace(' ', '_')
+
+            html_image_info = {
+                'filename': 'images/' + fn_clean,
+                'title': '<br/>'.join(lines),
+                'textStyle': text_style
+            }
+            html_image_info_list.append(html_image_info)
+
+        # ...for each image we're displaying for this entity
+
+    # ...for each entity
+
+    return html_image_info_list
+
+# ...def _build_html_image_info_list(...)
 
 
 #%% Core functions
@@ -588,9 +859,15 @@ def _prepare_analysis_data(options):
             - filename_to_gt_categories
             - filename_to_pred_categories
             - filename_to_pred_counts
+            - fn_to_below_threshold_classifications
+            - fn_to_frame_pred_categories (image-level predictions, even for
+              sequence-level analyses)
+            - seq_id_to_filenames (sequence ID -> filenames in frame order, only
+              for sequence-level analyses, otherwise None)
             - active_categories
             - category_to_index
             - results_fn_to_im
+            - gt_fn_to_im
             - gt_data
             - detection_category_id_to_name
             - classification_category_id_to_name
@@ -613,9 +890,15 @@ def _prepare_analysis_data(options):
     results_data = load_md_or_speciesnet_file(options.results_file)
 
     detection_threshold = options.detection_threshold
+
     if detection_threshold is None:
+
         detection_threshold = get_typical_confidence_threshold_from_results(results_data)
         print('Using auto-detected confidence threshold: {}'.format(detection_threshold))
+
+        # Modify the detection threshold in "options" so it will get used in nested calls,
+        # e.g. to _get_image_predicted_categories()
+        options.detection_threshold = detection_threshold
 
     print('Loading ground truth from {}'.format(options.gt_file))
     with open(options.gt_file, 'r') as f:
@@ -798,6 +1081,12 @@ def _prepare_analysis_data(options):
 
     # ...if we're supposed to ignore some categories
 
+    # Preserve image-level predictions (used to choose which images to display for
+    # each sequence), since the dicts below are replaced for sequence-level analyses
+    fn_to_frame_pred_categories = dict(filename_to_pred_categories)
+
+    seq_id_to_filenames = None
+
     ## Sequence-level aggregation
 
     if options.sequence_level_analysis:
@@ -815,6 +1104,10 @@ def _prepare_analysis_data(options):
         seq_id_to_filenames = defaultdict(list)
         for fn, seq_id in filename_to_seq_id.items():
             seq_id_to_filenames[seq_id].append(fn)
+
+        # Sort filenames within each sequence in frame order
+        seq_id_to_filenames = {seq_id: _sort_sequence_filenames(filenames, gt_fn_to_im)
+                               for seq_id, filenames in seq_id_to_filenames.items()}
 
         # Aggregate GT and predictions per sequence
         seq_filename_to_gt_categories = {}
@@ -953,9 +1246,12 @@ def _prepare_analysis_data(options):
         'filename_to_pred_categories': filename_to_pred_categories,
         'filename_to_pred_counts': filename_to_pred_counts,
         'fn_to_below_threshold_classifications': fn_to_below_threshold_classifications,
+        'fn_to_frame_pred_categories': fn_to_frame_pred_categories,
+        'seq_id_to_filenames': seq_id_to_filenames,
         'active_categories': active_categories,
         'category_to_index': category_to_index,
         'results_fn_to_im': results_fn_to_im,
+        'gt_fn_to_im': gt_fn_to_im,
         'gt_data': gt_data,
         'detection_category_id_to_name': detection_category_id_to_name,
         'classification_category_id_to_name': classification_category_id_to_name,
@@ -978,15 +1274,18 @@ def analyze_classification_results(options):
         AnalysisResults: results of the classification analysis
     """
 
+    # We may manipulate some properties within options, e.g. if we may
+    # choose a confidence threshold based on the detector version if a
+    # threshold was not provided, so copy the options struct first.
+    options = deepcopy(options)
+
     prepared = _prepare_analysis_data(options)
 
     filename_to_gt_categories = prepared['filename_to_gt_categories']
     filename_to_pred_categories = prepared['filename_to_pred_categories']
-    fn_to_below_threshold_classifications = prepared['fn_to_below_threshold_classifications']
     active_categories = prepared['active_categories']
     category_to_index = prepared['category_to_index']
     results_fn_to_im = prepared['results_fn_to_im']
-    gt_data = prepared['gt_data']
     detection_category_id_to_name = prepared['detection_category_id_to_name']
     classification_category_id_to_name = prepared['classification_category_id_to_name']
     detection_threshold = prepared['detection_threshold']
@@ -1137,14 +1436,6 @@ def analyze_classification_results(options):
 
         # Determine which images to render
 
-        # For sequence-level analysis, we need to map back to individual filenames
-        if options.sequence_level_analysis:
-            seq_id_to_filenames_map = defaultdict(list)
-            for im in gt_data['images']:
-                fn = im['file_name']
-                if fn in results_fn_to_im and 'seq_id' in im:
-                    seq_id_to_filenames_map[im['seq_id']].append(fn)
-
         # Collect non-empty cells and their filenames
         non_empty_cells = {}
         for (true_cat, pred_cat), entity_ids in true_pred_to_filenames.items():
@@ -1268,25 +1559,21 @@ def analyze_classification_results(options):
             else:
                 sampled_fn_cells[(key[1], key[2])] = rng.sample(entity_ids, n_sample)
 
-        # Collect all unique filenames that need rendering.
-        #
-        # For sequence-level analysis, render only the first image in each
-        # sequence as an exemplar.
+        # Choose the images to display for each sampled entity.  For sequence-level
+        # analyses, this chooses up to max_images_per_sequence images per sequence.
+        entity_id_to_display_filenames = {}
+
+        for sampled_entity_ids in list(sampled_cells.values()) + \
+                list(sampled_fp_cells.values()) + list(sampled_fn_cells.values()):
+            for entity_id in sampled_entity_ids:
+                if entity_id not in entity_id_to_display_filenames:
+                    entity_id_to_display_filenames[entity_id] = \
+                        _get_entity_display_filenames(entity_id, prepared, options)
+
+        # Collect all unique filenames that need rendering
         filenames_to_render = set()
-
-        def _collect_filenames(entity_id_lists):
-            for entity_ids in entity_id_lists:
-                if options.sequence_level_analysis:
-                    for seq_id in entity_ids:
-                        sequence_filenames = seq_id_to_filenames_map.get(seq_id, [])
-                        if len(sequence_filenames) > 0:
-                            filenames_to_render.add(sequence_filenames[0])
-                else:
-                    filenames_to_render.update(entity_ids)
-
-        _collect_filenames(sampled_cells.values())
-        _collect_filenames(sampled_fp_cells.values())
-        _collect_filenames(sampled_fn_cells.values())
+        for display_filenames in entity_id_to_display_filenames.values():
+            filenames_to_render.update(display_filenames)
 
         # Build image entries for rendering
         images_to_render = []
@@ -1294,7 +1581,11 @@ def analyze_classification_results(options):
             if fn in results_fn_to_im:
                 images_to_render.append(results_fn_to_im[fn])
 
-        print('\nRendering {} images...'.format(len(images_to_render)))
+        if options.sequence_level_analysis:
+            print('\nRendering {} images from {} sequences...'.format(
+                len(images_to_render), len(entity_id_to_display_filenames)))
+        else:
+            print('\nRendering {} images...'.format(len(images_to_render)))
 
         # Render images
         render_constants = {
@@ -1344,43 +1635,8 @@ def analyze_classification_results(options):
 
         for (true_cat, pred_cat), entity_ids in sampled_cells.items():
 
-            html_image_info_list = []
-
-            for entity_id in entity_ids:
-
-                # Get filenames for this entity; for sequence-level analysis,
-                # show only the first image as an exemplar.
-                if options.sequence_level_analysis:
-                    all_fns = seq_id_to_filenames_map.get(entity_id, [])
-                    fns = all_fns[:1]
-                else:
-                    fns = [entity_id]
-
-                for fn in fns:
-                    im = results_fn_to_im.get(fn, None)
-                    if im is None:
-                        continue
-
-                    fn_clean = flatten_path(fn).replace(' ', '_')
-                    image_link = 'images/' + fn_clean
-
-                    title = _build_html_image_title(
-                        fn,
-                        filename_to_gt_categories.get(entity_id, set()),
-                        filename_to_pred_categories.get(entity_id, {}),
-                        fn_to_below_threshold_classifications.get(fn, {}),
-                        options.n_below_threshold_classifications_to_display)
-
-                    html_image_info = {
-                        'filename': image_link,
-                        'title': title,
-                        'textStyle':
-                            'font-family:verdana,arial,calibri;font-size:80%;'
-                            'text-align:left;margin-top:20;margin-bottom:5'
-                    }
-                    html_image_info_list.append(html_image_info)
-
-            # ...for each entity
+            html_image_info_list = _build_html_image_info_list(
+                entity_ids, entity_id_to_display_filenames, prepared, options)
 
             cell_html_filename = 'predicted_{}_true_{}.html'.format(
                 pred_cat.replace(' ', '_').replace('/', '_'),
@@ -1415,44 +1671,11 @@ def analyze_classification_results(options):
                 true_cat.replace(' ', '_').replace('/', '_'),
                 pred_cat.replace(' ', '_').replace('/', '_'))
 
-        def _build_cell_image_list(entity_ids):
-            html_image_info_list = []
-            for entity_id in entity_ids:
-                if options.sequence_level_analysis:
-                    all_fns = seq_id_to_filenames_map.get(entity_id, [])
-                    fns = all_fns[:1]
-                else:
-                    fns = [entity_id]
-
-                for fn in fns:
-                    im = results_fn_to_im.get(fn, None)
-                    if im is None:
-                        continue
-
-                    fn_clean = flatten_path(fn).replace(' ', '_')
-                    image_link = 'images/' + fn_clean
-
-                    title = _build_html_image_title(
-                        fn,
-                        filename_to_gt_categories.get(entity_id, set()),
-                        filename_to_pred_categories.get(entity_id, {}),
-                        fn_to_below_threshold_classifications.get(fn, {}),
-                        options.n_below_threshold_classifications_to_display)
-
-                    html_image_info = {
-                        'filename': image_link,
-                        'title': title,
-                        'textStyle':
-                            'font-family:verdana,arial,calibri;font-size:80%;'
-                            'text-align:left;margin-top:20;margin-bottom:5'
-                    }
-                    html_image_info_list.append(html_image_info)
-            return html_image_info_list
-
         # FP pages: "mispredicted as this category"
         for (pred_cat, true_cat), entity_ids in sampled_fp_cells.items():
 
-            html_image_info_list = _build_cell_image_list(entity_ids)
+            html_image_info_list = _build_html_image_info_list(
+                entity_ids, entity_id_to_display_filenames, prepared, options)
             cell_html_path = os.path.join(
                 options.html_output_dir,
                 _fp_cell_html_filename(pred_cat, true_cat))
@@ -1469,7 +1692,8 @@ def analyze_classification_results(options):
         # FN pages: "mispredicted as" (this true category was missed)
         for (true_cat, pred_cat), entity_ids in sampled_fn_cells.items():
 
-            html_image_info_list = _build_cell_image_list(entity_ids)
+            html_image_info_list = _build_html_image_info_list(
+                entity_ids, entity_id_to_display_filenames, prepared, options)
             cell_html_path = os.path.join(
                 options.html_output_dir,
                 _fn_cell_html_filename(true_cat, pred_cat))
@@ -1887,10 +2111,8 @@ def render_misprediction_pages(options, cells_to_render):
 
     filename_to_gt_categories = prepared['filename_to_gt_categories']
     filename_to_pred_categories = prepared['filename_to_pred_categories']
-    fn_to_below_threshold_classifications = prepared['fn_to_below_threshold_classifications']
     active_categories = prepared['active_categories']
     results_fn_to_im = prepared['results_fn_to_im']
-    gt_data = prepared['gt_data']
     detection_category_id_to_name = prepared['detection_category_id_to_name']
     classification_category_id_to_name = prepared['classification_category_id_to_name']
     detection_threshold = prepared['detection_threshold']
@@ -1898,15 +2120,6 @@ def render_misprediction_pages(options, cells_to_render):
     os.makedirs(options.html_output_dir, exist_ok=True)
     preview_images_folder = os.path.join(options.html_output_dir, 'images')
     os.makedirs(preview_images_folder, exist_ok=True)
-
-    # For sequence-level analysis, build seq_id -> filenames map
-    seq_id_to_filenames_map = None
-    if options.sequence_level_analysis:
-        seq_id_to_filenames_map = defaultdict(list)
-        for im in gt_data['images']:
-            fn = im['file_name']
-            if fn in results_fn_to_im and 'seq_id' in im:
-                seq_id_to_filenames_map[im['seq_id']].append(fn)
 
     # Validate requested categories
     active_set = set(active_categories)
@@ -1969,16 +2182,19 @@ def render_misprediction_pages(options, cells_to_render):
         if len(entity_ids) > options.max_images_per_cell:
             cell_entity_ids[key] = rng.sample(entity_ids, options.max_images_per_cell)
 
+    # Choose the images to display for each sampled entity.  For sequence-level
+    # analyses, this chooses up to max_images_per_sequence images per sequence.
+    entity_id_to_display_filenames = {}
+    for entity_ids in cell_entity_ids.values():
+        for entity_id in entity_ids:
+            if entity_id not in entity_id_to_display_filenames:
+                entity_id_to_display_filenames[entity_id] = \
+                    _get_entity_display_filenames(entity_id, prepared, options)
+
     # Collect all filenames that need rendering
     filenames_to_render = set()
-    for entity_ids in cell_entity_ids.values():
-        if options.sequence_level_analysis:
-            for seq_id in entity_ids:
-                fns = seq_id_to_filenames_map.get(seq_id, [])
-                if len(fns) > 0:
-                    filenames_to_render.add(fns[0])
-        else:
-            filenames_to_render.update(entity_ids)
+    for display_filenames in entity_id_to_display_filenames.values():
+        filenames_to_render.update(display_filenames)
 
     # Build image entries for rendering
     images_to_render = []
@@ -1986,8 +2202,12 @@ def render_misprediction_pages(options, cells_to_render):
         if fn in results_fn_to_im:
             images_to_render.append(results_fn_to_im[fn])
 
-    print('\nRendering {} images for {} misprediction pages...'.format(
-        len(images_to_render), len(cells_to_render)))
+    if options.sequence_level_analysis:
+        print('\nRendering {} images from {} sequences for {} misprediction pages...'.format(
+            len(images_to_render), len(entity_id_to_display_filenames), len(cells_to_render)))
+    else:
+        print('\nRendering {} images for {} misprediction pages...'.format(
+            len(images_to_render), len(cells_to_render)))
 
     # Render images
     render_constants = {
@@ -1998,7 +2218,8 @@ def render_misprediction_pages(options, cells_to_render):
         'detection_threshold': detection_threshold,
         'classification_confidence_threshold': options.classification_confidence_threshold,
         'output_image_width': options.output_image_width,
-        'overwrite': options.overwrite
+        'overwrite': options.overwrite,
+        'max_classifications_per_detection': options.max_classifications_per_detection
     }
 
     if options.rendering_workers > 1 and len(images_to_render) > 1:
@@ -2036,51 +2257,31 @@ def render_misprediction_pages(options, cells_to_render):
         key = (true_cat, pred_cat, mode)
         entity_ids = cell_entity_ids[key]
 
-        html_image_info_list = []
+        html_image_info_list = _build_html_image_info_list(
+            entity_ids, entity_id_to_display_filenames, prepared, options)
 
-        for entity_id in entity_ids:
-
-            if options.sequence_level_analysis:
-                all_fns = seq_id_to_filenames_map.get(entity_id, [])
-                fns = all_fns[:1]
-            else:
-                fns = [entity_id]
-
-            for fn in fns:
-                im = results_fn_to_im.get(fn, None)
-                if im is None:
-                    continue
-
-                fn_clean = flatten_path(fn).replace(' ', '_')
-                image_link = 'images/' + fn_clean
-
-                title = _build_html_image_title(
-                    fn,
-                    filename_to_gt_categories.get(entity_id, set()),
-                    filename_to_pred_categories.get(entity_id, {}),
-                    fn_to_below_threshold_classifications.get(fn, {}),
-                    options.n_below_threshold_classifications_to_display)
-
-                html_image_info = {
-                    'filename': image_link,
-                    'title': title,
-                    'textStyle':
-                        'font-family:verdana,arial,calibri;font-size:80%;'
-                        'text-align:left;margin-top:20;margin-bottom:5'
-                }
-                html_image_info_list.append(html_image_info)
-
-        # Build filename
-        mode_prefix = 'strict_' if mode == 'strict' else ''
+        # Build filename; strict modes get a mode-specific prefix, so pages for the same
+        # (true_cat, pred_cat) pair in different modes don't overwrite each other
+        if mode == 'standard':
+            mode_prefix = ''
+        else:
+            mode_prefix = mode + '_'
         cell_html_filename = '{}predicted_{}_true_{}.html'.format(
             mode_prefix,
             pred_cat.replace(' ', '_').replace('/', '_'),
             true_cat.replace(' ', '_').replace('/', '_'))
         cell_html_path = os.path.join(options.html_output_dir, cell_html_filename)
 
-        mode_label = 'Strictly predicted' if mode == 'strict' else 'Predicted'
-        cell_title = '{}: {} (true: {}) — {} images'.format(
-            mode_label, pred_cat, true_cat, len(html_image_info_list))
+        # Use the same page titles as the corresponding pages in analyze_classification_results
+        if mode == 'standard':
+            mode_title = 'Predicted: {} (true: {})'.format(pred_cat, true_cat)
+        elif mode == 'strict_fp':
+            mode_title = 'Mispredicted as: {} (true: {})'.format(pred_cat, true_cat)
+        else:
+            mode_title = 'True: {}, mispredicted as: {}'.format(true_cat, pred_cat)
+
+        analysis_unit = 'sequences' if options.sequence_level_analysis else 'images'
+        cell_title = '{} — {} {}'.format(mode_title, len(entity_ids), analysis_unit)
         cell_options = {
             'headerHtml': '<h1>{}</h1>'.format(cell_title),
             'maxFiguresPerHtmlFile': options.max_images_per_html_file
@@ -2092,7 +2293,11 @@ def render_misprediction_pages(options, cells_to_render):
             options=cell_options)
 
         generated_files.append(cell_html_path)
-        print('  Wrote {} ({} images)'.format(cell_html_filename, len(html_image_info_list)))
+        if options.sequence_level_analysis:
+            print('  Wrote {} ({} images from {} sequences)'.format(
+                cell_html_filename, len(html_image_info_list), len(entity_ids)))
+        else:
+            print('  Wrote {} ({} images)'.format(cell_html_filename, len(html_image_info_list)))
 
     return generated_files
 
@@ -2196,6 +2401,11 @@ def main():
         help='Maximum number of images per confusion matrix cell')
 
     parser.add_argument(
+        '--max_images_per_sequence', type=int, default=10,
+        help='For sequence-level analyses, maximum number of images to show per sampled sequence '
+             '(--max_total_images and --max_images_per_cell count sequences in this case)')
+
+    parser.add_argument(
         '--random_seed', type=int, default=0,
         help='Random seed for image sampling')
 
@@ -2257,6 +2467,7 @@ def main():
     options.classification_confidence_threshold = args.classification_confidence_threshold
     options.max_total_images = args.max_total_images
     options.max_images_per_cell = args.max_images_per_cell
+    options.max_images_per_sequence = args.max_images_per_sequence
     options.random_seed = args.random_seed
     options.sequence_level_analysis = args.sequence_level
     options.rendering_workers = args.rendering_workers
