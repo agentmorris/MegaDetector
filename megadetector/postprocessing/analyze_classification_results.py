@@ -666,14 +666,14 @@ def _select_sequence_filenames(sorted_filenames, fn_to_frame_pred_categories, ma
 # ...def _select_sequence_filenames(...)
 
 
-def _get_entity_display_filenames(entity_id, prepared, options):
+def _get_entity_display_filenames(entity_id, analysis_data, options):
     """
     Get the filenames we should display for an entity (an image or a sequence).
 
     Args:
         entity_id (str): a filename (for image-level analyses) or a sequence ID (for
             sequence-level analyses)
-        prepared (dict): prepared analysis data returned by _prepare_analysis_data
+        analysis_data (dict): analysis data returned by _prepare_analysis_data
         options (ClassificationAnalysisOptions): analysis options
 
     Returns:
@@ -681,8 +681,8 @@ def _get_entity_display_filenames(entity_id, prepared, options):
     """
 
     if options.sequence_level_analysis:
-        return _select_sequence_filenames(prepared['seq_id_to_filenames'][entity_id],
-                                          prepared['fn_to_frame_pred_categories'],
+        return _select_sequence_filenames(analysis_data['seq_id_to_filenames'][entity_id],
+                                          analysis_data['fn_to_frame_pred_categories'],
                                           options.max_images_per_sequence)
     else:
         return [entity_id]
@@ -734,7 +734,7 @@ def _build_category_caption_lines(gt_categories,
 # ...def _build_category_caption_lines(...)
 
 
-def _build_html_image_info_list(entity_ids, entity_id_to_display_filenames, prepared, options):
+def _build_html_image_info_list(entity_ids, entity_id_to_display_filenames, analysis_data, options):
     """
     Build the list of image entries (in the format expected by write_html_image_list) for
     a single HTML page.
@@ -750,17 +750,17 @@ def _build_html_image_info_list(entity_ids, entity_id_to_display_filenames, prep
         entity_ids (list): filenames or sequence IDs to include on this page
         entity_id_to_display_filenames (dict): maps each entity ID to the list of filenames
             to display for that entity (see _get_entity_display_filenames)
-        prepared (dict): prepared analysis data returned by _prepare_analysis_data
+        analysis_data (dict): analysis data returned by _prepare_analysis_data
         options (ClassificationAnalysisOptions): analysis options
 
     Returns:
         list: list of dicts with keys 'filename', 'title', and 'textStyle'
     """
 
-    filename_to_gt_categories = prepared['filename_to_gt_categories']
-    filename_to_pred_categories = prepared['filename_to_pred_categories']
-    fn_to_below_threshold_classifications = prepared['fn_to_below_threshold_classifications']
-    gt_fn_to_im = prepared['gt_fn_to_im']
+    filename_to_gt_categories = analysis_data['filename_to_gt_categories']
+    filename_to_pred_categories = analysis_data['filename_to_pred_categories']
+    fn_to_below_threshold_classifications = analysis_data['fn_to_below_threshold_classifications']
+    gt_fn_to_im = analysis_data['gt_fn_to_im']
 
     text_style = 'font-family:verdana,arial,calibri;font-size:80%;' \
         'text-align:left;margin-top:20;margin-bottom:5'
@@ -777,7 +777,7 @@ def _build_html_image_info_list(entity_ids, entity_id_to_display_filenames, prep
         # across all images in the sequence (not just the displayed images).
         if options.sequence_level_analysis:
             below_threshold_categories = {}
-            for fn in prepared['seq_id_to_filenames'][entity_id]:
+            for fn in analysis_data['seq_id_to_filenames'][entity_id]:
                 for category, conf in fn_to_below_threshold_classifications.get(fn, {}).items():
                     if (category not in below_threshold_categories) or \
                             (below_threshold_categories[category] < conf):
@@ -1279,17 +1279,17 @@ def analyze_classification_results(options):
     # threshold was not provided, so copy the options struct first.
     options = deepcopy(options)
 
-    prepared = _prepare_analysis_data(options)
+    analysis_data = _prepare_analysis_data(options)
 
-    filename_to_gt_categories = prepared['filename_to_gt_categories']
-    filename_to_pred_categories = prepared['filename_to_pred_categories']
-    active_categories = prepared['active_categories']
-    category_to_index = prepared['category_to_index']
-    results_fn_to_im = prepared['results_fn_to_im']
-    detection_category_id_to_name = prepared['detection_category_id_to_name']
-    classification_category_id_to_name = prepared['classification_category_id_to_name']
-    detection_threshold = prepared['detection_threshold']
-    categories_to_ignore = prepared['categories_to_ignore']
+    filename_to_gt_categories = analysis_data['filename_to_gt_categories']
+    filename_to_pred_categories = analysis_data['filename_to_pred_categories']
+    active_categories = analysis_data['active_categories']
+    category_to_index = analysis_data['category_to_index']
+    results_fn_to_im = analysis_data['results_fn_to_im']
+    detection_category_id_to_name = analysis_data['detection_category_id_to_name']
+    classification_category_id_to_name = analysis_data['classification_category_id_to_name']
+    detection_threshold = analysis_data['detection_threshold']
+    categories_to_ignore = analysis_data['categories_to_ignore']
 
     ## Build confusion matrix
 
@@ -1568,7 +1568,7 @@ def analyze_classification_results(options):
             for entity_id in sampled_entity_ids:
                 if entity_id not in entity_id_to_display_filenames:
                     entity_id_to_display_filenames[entity_id] = \
-                        _get_entity_display_filenames(entity_id, prepared, options)
+                        _get_entity_display_filenames(entity_id, analysis_data, options)
 
         # Collect all unique filenames that need rendering
         filenames_to_render = set()
@@ -1636,7 +1636,7 @@ def analyze_classification_results(options):
         for (true_cat, pred_cat), entity_ids in sampled_cells.items():
 
             html_image_info_list = _build_html_image_info_list(
-                entity_ids, entity_id_to_display_filenames, prepared, options)
+                entity_ids, entity_id_to_display_filenames, analysis_data, options)
 
             cell_html_filename = 'predicted_{}_true_{}.html'.format(
                 pred_cat.replace(' ', '_').replace('/', '_'),
@@ -1675,7 +1675,7 @@ def analyze_classification_results(options):
         for (pred_cat, true_cat), entity_ids in sampled_fp_cells.items():
 
             html_image_info_list = _build_html_image_info_list(
-                entity_ids, entity_id_to_display_filenames, prepared, options)
+                entity_ids, entity_id_to_display_filenames, analysis_data, options)
             cell_html_path = os.path.join(
                 options.html_output_dir,
                 _fp_cell_html_filename(pred_cat, true_cat))
@@ -1693,7 +1693,7 @@ def analyze_classification_results(options):
         for (true_cat, pred_cat), entity_ids in sampled_fn_cells.items():
 
             html_image_info_list = _build_html_image_info_list(
-                entity_ids, entity_id_to_display_filenames, prepared, options)
+                entity_ids, entity_id_to_display_filenames, analysis_data, options)
             cell_html_path = os.path.join(
                 options.html_output_dir,
                 _fn_cell_html_filename(true_cat, pred_cat))
@@ -2102,20 +2102,25 @@ def render_misprediction_pages(options, cells_to_render):
         list: paths to the generated HTML files
     """
 
+    # We may manipulate some properties within options, e.g. if we may
+    # choose a confidence threshold based on the detector version if a
+    # threshold was not provided, so copy the options struct first.
+    options = deepcopy(options)
+
     assert options.image_base_dir is not None, \
         'image_base_dir is required for render_misprediction_pages'
     assert options.html_output_dir is not None, \
         'html_output_dir is required for render_misprediction_pages'
 
-    prepared = _prepare_analysis_data(options)
+    analysis_data = _prepare_analysis_data(options)
 
-    filename_to_gt_categories = prepared['filename_to_gt_categories']
-    filename_to_pred_categories = prepared['filename_to_pred_categories']
-    active_categories = prepared['active_categories']
-    results_fn_to_im = prepared['results_fn_to_im']
-    detection_category_id_to_name = prepared['detection_category_id_to_name']
-    classification_category_id_to_name = prepared['classification_category_id_to_name']
-    detection_threshold = prepared['detection_threshold']
+    filename_to_gt_categories = analysis_data['filename_to_gt_categories']
+    filename_to_pred_categories = analysis_data['filename_to_pred_categories']
+    active_categories = analysis_data['active_categories']
+    results_fn_to_im = analysis_data['results_fn_to_im']
+    detection_category_id_to_name = analysis_data['detection_category_id_to_name']
+    classification_category_id_to_name = analysis_data['classification_category_id_to_name']
+    detection_threshold = analysis_data['detection_threshold']
 
     os.makedirs(options.html_output_dir, exist_ok=True)
     preview_images_folder = os.path.join(options.html_output_dir, 'images')
@@ -2189,7 +2194,7 @@ def render_misprediction_pages(options, cells_to_render):
         for entity_id in entity_ids:
             if entity_id not in entity_id_to_display_filenames:
                 entity_id_to_display_filenames[entity_id] = \
-                    _get_entity_display_filenames(entity_id, prepared, options)
+                    _get_entity_display_filenames(entity_id, analysis_data, options)
 
     # Collect all filenames that need rendering
     filenames_to_render = set()
@@ -2258,7 +2263,7 @@ def render_misprediction_pages(options, cells_to_render):
         entity_ids = cell_entity_ids[key]
 
         html_image_info_list = _build_html_image_info_list(
-            entity_ids, entity_id_to_display_filenames, prepared, options)
+            entity_ids, entity_id_to_display_filenames, analysis_data, options)
 
         # Build filename; strict modes get a mode-specific prefix, so pages for the same
         # (true_cat, pred_cat) pair in different modes don't overwrite each other
