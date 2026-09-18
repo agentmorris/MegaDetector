@@ -451,7 +451,9 @@ class RFDETRDetector:
             image_id (str, optional): a path to identify the image; will be in the "file" field
                 of the output object
             image_size (int, optional): included for signature compatibility with
-                PTDetector.preprocess_image(); ignored for RF-DETR models
+                PTDetector.preprocess_image().  RF-DETR resolution is fixed at load time, so
+                this must be either None or the resolution this model was loaded at; any other
+                value raises a ValueError.
             verbose (bool, optional): enable additional debug output
 
         Returns:
@@ -508,9 +510,10 @@ class RFDETRDetector:
                 of the output objects.  Ignored when img_original contains preprocessed dicts.
             detection_threshold (float, optional): only detections above this confidence threshold
                 will be included in the return value
-            image_size (int, optional): included for signature compatibility with PTDetector; must
-                be None for RF-DETR models (set the resolution via the 'image_size' detector option
-                at load time instead)
+            image_size (int, optional): included for signature compatibility with PTDetector.
+                RF-DETR resolution is fixed at load time (set it via the 'image_size' detector
+                option), so this must be either None or the resolution this model was loaded at;
+                any other value raises a ValueError.
             augment (bool, optional): included for signature compatibility with PTDetector; must be
                 False for RF-DETR models
             verbose (bool, optional): enable additional debug output
@@ -694,8 +697,9 @@ class RFDETRDetector:
                 of the output object
             detection_threshold (float, optional): only detections above this confidence threshold
                 will be included in the return value
-            image_size (int, optional): must be None for RF-DETR models (for which image size is specified
-                at load time, not inference time)
+            image_size (int, optional): RF-DETR resolution is specified at load time (via the
+                'image_size' detector option), not inference time, so this must be either None or
+                the resolution this model was loaded at; any other value raises a ValueError.
             augment (bool, optional): must be False for RF-DETR models (which don't support augmentation)
             verbose (bool, optional): enable additional debug output
 

@@ -34,6 +34,8 @@ import tempfile
 import zipfile
 
 import humanfriendly
+
+from copy import deepcopy
 from tqdm import tqdm
 
 from megadetector.utils import path_utils as path_utils
@@ -729,6 +731,28 @@ def load_and_run_detector(model_file,
     if len(image_file_names) == 0:
         print('Warning: no files available')
         return
+
+    # Some detectors (currently just RF-DETR) need to know the image size at the time the
+    # model is loaded, so we make sure it's in detector_options.  This is ignored by other
+    # detectors.
+    if detector_options is None:
+        detector_options = {}
+    else:
+        # We add values to [detector_options] here, so we work with a copy, rather
+        # than modifying the caller's dict.
+        detector_options = deepcopy(detector_options)
+
+    # For future-proofing, make sure that if someone supplied image_size as an argument *and*
+    # in detector options, we don't have inconsistent values.  There's no reason anyone would
+    # do this, this is just future-proofing.  Values in detector_options may be strings (they
+    # typically come from the command line), so we compare ints.
+    detector_options_image_size = detector_options.get('image_size',None)
+    if (image_size is not None) and (detector_options_image_size is not None) and \
+        (int(detector_options_image_size) != image_size):
+        raise ValueError('Incompatible image_size values: {} vs. {}'.format(
+            detector_options_image_size,image_size))
+    if image_size is not None:
+        detector_options['image_size'] = image_size
 
     # Possibly automatically download the model
     model_file = try_download_known_detector(model_file,

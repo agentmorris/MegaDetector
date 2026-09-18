@@ -2,23 +2,18 @@
 
 run_tiled_inference.py
 
-**This script is experimental, YMMV.**
-
 Runs inference on a folder, fist splitting each image up into tiles of size
 MxN (typically the native inference size of your detector), writing those
 tiles out to a temporary folder, then de-duplicating the resulting detections before
 merging them back into a set of detections that make sense on the original images.
 
 This approach will likely fail to detect very large animals, so if you expect both large
-and small animals (in terms of pixel size), this script is best used in
+and small animals (in terms of pixel size), this module is best used in
 conjunction with a traditional inference pass that looks at whole images.
 
 Currently requires temporary storage at least as large as the input data, generally
 a lot more than that (depending on the overlap between adjacent tiles).  This is
 inefficient, but easy to debug.
-
-Programmatic invocation supports using YOLOv5's inference scripts (and test-time
-augmentation); the command-line interface only supports standard inference right now.
 
 """
 
@@ -40,8 +35,7 @@ from tqdm import tqdm
 import torch
 from torchvision import ops
 
-from megadetector.detection.run_inference_with_yolov5_val import \
-    YoloInferenceOptions,run_inference_with_yolo_val
+from megadetector.detection.run_inference_with_yolov5_val import run_inference_with_yolo_val
 from megadetector.detection.run_detector_batch import \
     load_and_run_detector_batch,write_results_to_file,default_loaders
 from megadetector.detection.run_detector import \
@@ -890,95 +884,7 @@ def run_tiled_inference(model_file,
 
     return image_level_results
 
-
-#%% Interactive driver
-
-if False:
-
-    pass
-
-    #%% Run tiled inference (in Python)
-
-    model_file = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')
-    image_folder = os.path.expanduser('~/data/KRU-test')
-    tiling_folder = os.path.expanduser('~/tmp/tiling-test')
-    output_file = os.path.expanduser('~/tmp/KRU-test-tiled.json')
-
-    tile_size_x = 3000
-    tile_size_y = 3000
-    tile_overlap = 0.5
-    checkpoint_path = None
-    checkpoint_frequency = -1
-    remove_tiles = False
-
-    use_yolo_inference = False
-
-    if not use_yolo_inference:
-
-        yolo_inference_options = None
-
-    else:
-
-        yolo_inference_options = YoloInferenceOptions()
-        yolo_inference_options.yolo_working_folder = os.path.expanduser('~/git/yolov5')
-
-    run_tiled_inference(model_file, image_folder, tiling_folder, output_file,
-                        tile_size_x=tile_size_x, tile_size_y=tile_size_y,
-                        tile_overlap=tile_overlap,
-                        checkpoint_path=checkpoint_path,
-                        checkpoint_frequency=checkpoint_frequency,
-                        remove_tiles=remove_tiles,
-                        yolo_inference_options=yolo_inference_options)
-
-
-    #%% Run tiled inference (generate a command)
-
-    import os
-
-    model_file = os.path.expanduser('~/models/camera_traps/megadetector/md_v5.0.0/md_v5a.0.0.pt')
-    image_folder = os.path.expanduser('~/data/KRU-test')
-    tiling_folder = os.path.expanduser('~/tmp/tiling-test')
-    output_file = os.path.expanduser('~/tmp/KRU-test-tiled.json')
-    tile_size = [5152,3968]
-    tile_overlap = 0.8
-
-    cmd = f'python run_tiled_inference.py {model_file} {image_folder} {tiling_folder} {output_file} ' + \
-          f'--tile_overlap {tile_overlap} --no_remove_tiles --tile_size_x {tile_size[0]} --tile_size_y {tile_size[1]}'
-
-    print(cmd)
-    import clipboard; clipboard.copy(cmd)
-
-
-    #%% Preview tiled inference
-
-    from megadetector.postprocessing.postprocess_batch_results import \
-        PostProcessingOptions, process_batch_results
-
-    options = PostProcessingOptions()
-    options.image_base_dir = image_folder
-    options.include_almost_detections = True
-    options.num_images_to_sample = None
-    options.confidence_threshold = 0.2
-    options.almost_detection_confidence_threshold = options.confidence_threshold - 0.05
-    options.ground_truth_json_file = None
-    options.separate_detections_by_category = True
-    # options.sample_seed = 0
-
-    options.parallelize_rendering = True
-    options.parallelize_rendering_n_cores = 10
-    options.parallelize_rendering_with_threads = False
-
-    preview_base = os.path.join(tiling_folder,'preview')
-    os.makedirs(preview_base, exist_ok=True)
-
-    print('Processing post-RDE to {}'.format(preview_base))
-
-    options.md_results_file = output_file
-    options.output_dir = preview_base
-    ppresults = process_batch_results(options)
-    html_output_file = ppresults.output_html_file
-
-    path_utils.open_file(html_output_file)
+# ...def run_tiled_inference(...)
 
 
 #%% Command-line driver

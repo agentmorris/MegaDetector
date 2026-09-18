@@ -198,6 +198,22 @@ def process_videos(options):
     if batch_size != 1:
         detector_options['batch_size'] = batch_size
 
+    # Similarly, some detectors (currently just RF-DETR) need to know the image size at the
+    # time the model is loaded, so we make sure it's in detector_options.  This is ignored by
+    # other detectors.
+    #
+    # For future-proofing, make sure that if someone supplied image_size in the options *and*
+    # in detector options, we don't have inconsistent values.  There's no reason anyone would
+    # do this, this is just future-proofing.  Values in detector_options may be strings (they
+    # typically come from the command line), so we compare ints.
+    detector_options_image_size = detector_options.get('image_size',None)
+    if (options.image_size is not None) and (detector_options_image_size is not None) and \
+        (int(detector_options_image_size) != options.image_size):
+        raise ValueError('Incompatible image_size values: {} vs. {}'.format(
+            detector_options_image_size,options.image_size))
+    if options.image_size is not None:
+        detector_options['image_size'] = options.image_size
+
     detector = load_detector(model_file,
                              force_model_download=False,
                              detector_options=detector_options)

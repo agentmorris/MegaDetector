@@ -751,6 +751,9 @@ def _process_batch(image_items_batch,
             batch_detections = \
                 detector.generate_detections_one_batch(valid_images,
                                                        valid_image_filenames,
+                                                       detection_threshold=confidence_threshold,
+                                                       image_size=image_size,
+                                                       augment=augment,
                                                        verbose=verbose)
 
             assert len(batch_detections) == len(valid_images)
@@ -1136,6 +1139,10 @@ def load_and_run_detector_batch(model_file,
         detector_options = parse_kvp_list(detector_options)
     elif isinstance(detector_options,str):
         detector_options = parse_kvp_list(detector_options.split(','))
+    else:
+        # We add values to [detector_options] below (e.g. batch size, image size), so we work
+        # with a copy, rather than modifying the caller's dict.
+        detector_options = deepcopy(detector_options)
     assert isinstance(detector_options,dict)
 
     if confidence_threshold is None:
@@ -1227,11 +1234,13 @@ def load_and_run_detector_batch(model_file,
     #
     # First, for future-proofing, make sure that if someone supplied batch_size at the command
     # line *and* in detector options, we don't have inconsistent values.  There's no reason anyone
-    # would do this, this is just future-proofing.
-    if ('batch_size' in detector_options) and (detector_options['batch_size'] != batch_size):
-        if detector_options['batch_size'] != batch_size:
-            raise ValueError('Incompatible batch_size values: {} vs. {}'.format(
-                detector_options['batch_size'],batch_size))
+    # would do this, this is just future-proofing.  Values in detector_options may be strings
+    # (they typically come from the command line), so we compare ints.
+    detector_options_batch_size = detector_options.get('batch_size',None)
+    if (batch_size != 1) and (detector_options_batch_size is not None) and \
+        (int(detector_options_batch_size) != batch_size):
+        raise ValueError('Incompatible batch_size values: {} vs. {}'.format(
+            detector_options_batch_size,batch_size))
     if batch_size != 1:
         detector_options['batch_size'] = batch_size
 
@@ -1239,12 +1248,15 @@ def load_and_run_detector_batch(model_file,
     # model is loaded, so we make sure it's in detector_options.  This is ignored by other
     # detectors.
     #
-    # First, for future-proofing, make sure that if someone supplied batch_size at the command
+    # First, for future-proofing, make sure that if someone supplied image_size at the command
     # line *and* in detector options, we don't have inconsistent values.  There's no reason anyone
-    # would do this, this is just future-proofing.
-    if (image_size in detector_options) and (detector_options['image_size'] != image_size):
+    # would do this, this is just future-proofing.  Values in detector_options may be strings
+    # (they typically come from the command line), so we compare ints.
+    detector_options_image_size = detector_options.get('image_size',None)
+    if (image_size is not None) and (detector_options_image_size is not None) and \
+        (int(detector_options_image_size) != image_size):
         raise ValueError('Incompatible image_size values: {} vs. {}'.format(
-            detector_options['image_size'],image_size))
+            detector_options_image_size,image_size))
     if image_size is not None:
         detector_options['image_size'] = image_size
 

@@ -401,9 +401,49 @@ E3
 !feature
 
 
-## Test coverage improvements
+## Add a batch_size argument to run_tiled_inference
+
+run_tiled_inference lacks the batch_size argument that run_detector_batch has; add it.
+
+P1
+
+E0
+
+!feature
+
+
+## Clean up batch size and image size parameter handling
+
+Because batch size and image size could be modified between inference calls for YOLO models, these were historically passed as inference-time arguments.  For RF-DETR models, they need to be fixed at load time, which required passing them through via the detector_options argument.  This is fine, but it led to some code redundancy across process_video, run_detector, and run_detector_batch.  I'd like to clean this redundancy up.
+
+P1
+
+E1
+
+!maintenance
+
+
+## Test coverage improvements (inference)
+
+Add tests (including reference results) for alternative inference approaches, including the following:
+
+* Augmentation (with and without batching, which should not impact output)
+* Alternative image sizes (with and without batching, which should not impact output
+* Alternative preprocessing schemes (i.e., compatibility modes) (with and without batching, which should not impact output)
+* Alternative models (mdv1000-redwood, RF-DETR models) (with and without batching, which should not impact output)
+
+P0
+
+E2
+
+!testing
+
+
+## Test coverage improvements (miscellaneous)
 
 This is a placeholder for generally evaluating md_tests and the pytest harness, and deciding which scripts need additional testing.  Effort is highly variable; for example, adding tests for run_md_and_speciesnet is important and very easy.  Adding tests for postprocess_batch_results that actually verify correctness is a pain.  This work item almost certainly starts with asking AI what modules are not covered (or poorly covered) by tests.
+
+This item is intended to handle everything not directly related to inference.
 
 P1
 
@@ -509,6 +549,17 @@ P2
 E0
 
 !docs
+
+
+## Add augmentation for RF-DETR models
+
+Aim for something roughly analogous to the augmentation supported with augment=True for YOLO models.
+
+P1
+
+E2
+
+!feature
 
 
 ## Graceful handling of augmentation for MDv1000-cedar
@@ -835,6 +886,7 @@ E3
 
 !maintenance
 
+
 ## Address module-level globals in run_detector_batch and run_detector
 
 The DEFAULT_DETECTOR_LABEL_MAP module-level global variable in run_detector_batch is used to pass custom class mappings around; this is sloppy.  write_results_to_file should receive optional an optional category map, rather than communicating this via a global variable.  A good test case is RF-DETR/CFD support, which currently loads classes in a sensible way (in load_model()), then stashes them in a global variable.
@@ -843,7 +895,7 @@ Similarly, the USE_MODEL_NATIVE_CLASSES module-level global in run_detector is u
 
 Fix both of these.
 
-P1
+P0
 
 E2
 
