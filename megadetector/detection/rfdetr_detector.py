@@ -462,6 +462,11 @@ class RFDETRDetector:
                   was supplied)
         """
 
+        if (image_size is not None) and (image_size != self.image_size):
+            raise ValueError(
+                'RF-DETR model initialized for image size {}, but image size {} requested'.format(
+                    self.image_size,image_size))
+
         result = {'file': image_id}
 
         # Store the PIL version of the original image; the caller may want to use it later
@@ -518,12 +523,13 @@ class RFDETRDetector:
                 - 'failure' (a failure string, only present if inference failed)
         """
 
-        # These parameters exist only for signature compatibility with other detectors; RF-DETR
-        # handles resizing internally and does not support augmentation.
-        assert image_size is None, \
-            'image_size is not supported as an inference-time call for RF-DETR models; set the resolution ' + \
-            'via the "image_size" detector option at load time instead'
-        assert not augment, 'augmentation is not supported for RF-DETR models'
+        if (image_size is not None) and (image_size != self.image_size):
+            raise ValueError(
+                'RF-DETR model initialized for image size {}, but image size {} requested'.format(
+                    self.image_size,image_size))
+
+        if augment:
+            raise NotImplementedError('augmentation is not supported for RF-DETR models')
 
         # Validate inputs
         if not isinstance(img_original, list):
@@ -631,7 +637,9 @@ class RFDETRDetector:
             # If inference fails, mark all images in the batch as failed
             print('Warning: RF-DETR batch inference failed for {} images: {}'.format(
                 len(images_for_inference),str(e)))
-            return [{'file': image_ids[i_img], 'detections': None, 'failure': FAILURE_INFER}
+            return [{'file': image_ids[i_img],
+                     'detections': None,
+                     'failure': FAILURE_INFER + ': ' + str(e)}
                     for i_img in range(len(image_ids))]
 
         assert len(detections_list) == len(images_for_inference), \
@@ -699,11 +707,13 @@ class RFDETRDetector:
                 - 'failure' (a failure string, only present if inference failed)
         """
 
-        # These parameters exist only for signature compatibility with PTDetector
-        assert image_size is None, \
-            'image_size is not supported as an inference-time call for RF-DETR models; set the resolution ' + \
-            'via the "image_size" detector option at load time instead'
-        assert not augment, 'augmentation is not supported for RF-DETR models'
+        if (image_size is not None) and (image_size != self.image_size):
+            raise ValueError(
+                'RF-DETR model initialized for image size {}, but image size {} requested'.format(
+                    self.image_size,image_size))
+
+        if augment:
+            raise NotImplementedError('augmentation is not supported for RF-DETR models')
 
         # Prepare batch inputs
         if isinstance(img_original, dict):

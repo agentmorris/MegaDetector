@@ -25,9 +25,9 @@ from megadetector.utils.ct_utils import write_json
 def remap_detection_categories(input_file,
                                output_file,
                                target_category_map,
-                               input_category_name_to_output_category_name,
+                               input_category_name_to_output_category_name=None,
                                overwrite=False,
-                               invalid_category_handling='unknown'):
+                               invalid_category_handling='error'):
     """
     Given a MegaDetector results file [input_file], remap the category IDs according to the dictionary
     [target_category_map], writing the results to [output_file].  The remapped dictionary needs to have
@@ -39,21 +39,24 @@ def remap_detection_categories(input_file,
 
     Args:
         input_file (str): the MD .json results file to remap
-        output_file (str): the remapped .json file to write
+        output_file (str): the remapped .json file to write, or None to bypass output
         target_category_map (dict): the category mapping that should be used in the output file,
             mapping string-ints to class names. This can also be a MD results file, in which case
             we'll use that file's detection_categories dictionary.
-        input_category_name_to_output_category_name (dict): str->str, the specific category mapping
-            that should be used, otherwise will determine from target class names
+        input_category_name_to_output_category_name (dict, optional): str->str, the specific category
+            mapping that should be used.  If this is None, no mapping is applied.  If this is not None,
+            no mapping is applid for categories not in this dict.
         overwrite (bool, optional): whether to overwrite [output_file] if it exists; if this is True and
             [output_file] exists, this function is a no-op
         invalid_category_handling (str, optional): what to do about categories that are not in
             the input file's category list ('error' or 'unknown'), if 'unknown', creates a new
             "unknown" category
 
+    Returns:
+        dict: the remapped MD results
     """
 
-    if os.path.exists(output_file) and (not overwrite):
+    if (output_file is not None) and os.path.exists(output_file) and (not overwrite):
         print('File {} exists, bypassing remapping'.format(output_file))
         return
 
@@ -84,8 +87,12 @@ def remap_detection_categories(input_file,
     input_category_id_to_output_category_id = {}
     for input_category_id in input_categories.keys():
         input_category_name = input_categories[input_category_id]
-        output_category_name = \
-            input_category_name_to_output_category_name[input_category_name]
+        if (input_category_name_to_output_category_name is not None) and \
+           (input_category_name in input_category_name_to_output_category_name):
+            output_category_name = \
+                input_category_name_to_output_category_name[input_category_name]
+        else:
+            output_category_name = input_category_name
         output_category_id = \
             output_category_name_to_output_category_id[output_category_name]
         input_category_id_to_output_category_id[input_category_id] = output_category_id
@@ -142,8 +149,12 @@ def remap_detection_categories(input_file,
 
     input_data['detection_categories'] = target_category_map
 
-    write_json(output_file,input_data)
+    if output_file is not None:
 
-    print('Saved remapped results to {}'.format(output_file))
+        write_json(output_file,input_data)
+        print('Saved remapped results to {}'.format(output_file))
+
+    # This is actually output data at this point, we modified it in place
+    return input_data
 
 # ...def remap_detection_categories(...)

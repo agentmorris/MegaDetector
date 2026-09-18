@@ -1,6 +1,6 @@
 #%% Header
 
-"""
+r"""
 
 After initiating .csv downloads from one or more Wildlife Insights projects, download the corresponding
 images and convert labels to COCO.
@@ -72,7 +72,6 @@ projects = []
 project_base = 'e:/data/project-nanme'
 assert os.path.isdir(project_base)
 
-project_info_cache_file = os.path.join(project_base,'project_info.json')
 image_base_folder = os.path.join(project_base,'images')
 csv_base = os.path.join(project_base,'csv_downloads')
 
@@ -281,9 +280,10 @@ for i_project,p in enumerate(projects):
     os.makedirs(project_image_folder,exist_ok=True)
 
     image_records_file = os.path.join(project_image_folder,'image_records.json')
+    print('Writing image records to {}...'.format(image_records_file))
     with open(image_records_file,'w') as f:
         json.dump(image_records_to_download,f,indent=1)
-    print('Wrote image records to {}'.format(image_records_file))
+    print('Finished writing image records to {}'.format(image_records_file))
 
     image_urls_to_download = [r['location'] for r in image_records_to_download]
 
@@ -300,21 +300,6 @@ for i_project,p in enumerate(projects):
                                       download_command_file=download_command_file)
 
 # ...for each project
-
-
-#%% Save or load download information
-
-if os.path.isfile(project_info_cache_file):
-
-    print('Loading project info from {}'.format(project_info_cache_file))
-    with open(project_info_cache_file,'r') as f:
-        projects = json.load(f)
-
-else:
-
-    with open(project_info_cache_file,'w') as f:
-        json.dump(projects,f,indent=1)
-    print('Wrote project cache to {}'.format(project_info_cache_file))
 
 
 #%% Check download completion, find extra files
@@ -445,7 +430,7 @@ for i_project,p in enumerate(projects):
 print('Deleting {} files total'.format(len(files_to_delete)))
 
 
-#%% Delete images that we don't need (prep)
+#%% Delete images that we don't need (execution)
 
 from megadetector.utils.path_utils import parallel_delete_files
 parallel_delete_files(input_files=files_to_delete)

@@ -794,9 +794,9 @@ def run_tiled_inference(model_file,
             assert patch_w == patch_size[0]
             assert patch_h == patch_size[1]
 
-            # If there was an inference failure on one patch, report the image
-            # as an inference failure
-            if 'detections' not in patch_results:
+            # If there was an inference failure on one patch, report the whole image
+            # as an inference failure.
+            if ('detections' not in patch_results) or (patch_results['detections'] is None):
                 assert 'failure' in patch_results
                 output_im['detections'] = None
                 output_im['failure'] = patch_results['failure']

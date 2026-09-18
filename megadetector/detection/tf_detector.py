@@ -199,7 +199,7 @@ class TFDetector:
 
         except Exception as e:
 
-            result['failure'] = FAILURE_INFER
+            result['failure'] = FAILURE_INFER + ': ' + str(e)
             print('TFDetector: image {} failed during inference: {}'.format(image_id, str(e)))
 
         return result

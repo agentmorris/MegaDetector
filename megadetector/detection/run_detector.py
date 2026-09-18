@@ -51,7 +51,7 @@ warnings.filterwarnings('ignore', 'Metadata warning', UserWarning)
 # Numpy FutureWarnings from tensorflow import
 warnings.filterwarnings('ignore', category=FutureWarning)
 
-# String constants used for consistent reporting of processing errors
+# String constants used for consistent prefixing of processing errors
 FAILURE_INFER = 'inference failure'
 FAILURE_IMAGE_OPEN = 'image access failure'
 

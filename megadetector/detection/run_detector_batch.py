@@ -177,7 +177,7 @@ def _producer_func(q,
                                                            image_size=image_size,
                                                            verbose=verbose)
                 if 'failure' in image_info:
-                    assert image_info['failure'] == run_detector.FAILURE_INFER
+                    assert image_info['failure'].startswith(run_detector.FAILURE_INFER)
                     raise
 
                 image = image_info
@@ -461,7 +461,7 @@ def _consumer_func(q,
 def _run_detector_with_image_queue(image_files,
                                    model_file,
                                    confidence_threshold,
-                                   quiet=False,
+                                   quiet=True,
                                    image_size=None,
                                    include_image_size=False,
                                    include_image_timestamp=False,
@@ -998,7 +998,7 @@ def _process_image(im_file,
             print('Image {} cannot be processed. Exception: {}'.format(im_file, e))
         result = {
             'file': im_file,
-            'failure': run_detector.FAILURE_INFER
+            'failure': run_detector.FAILURE_INFER + ': ' + str(e)
         }
         return result
 
@@ -1224,8 +1224,29 @@ def load_and_run_detector_batch(model_file,
 
     # Some detectors (currently just RF-DETR) need to know the batch size at the time the
     # model is loaded; this is ignored by other detectors.
+    #
+    # First, for future-proofing, make sure that if someone supplied batch_size at the command
+    # line *and* in detector options, we don't have inconsistent values.  There's no reason anyone
+    # would do this, this is just future-proofing.
+    if ('batch_size' in detector_options) and (detector_options['batch_size'] != batch_size):
+        if detector_options['batch_size'] != batch_size:
+            raise ValueError('Incompatible batch_size values: {} vs. {}'.format(
+                detector_options['batch_size'],batch_size))
     if batch_size != 1:
         detector_options['batch_size'] = batch_size
+
+    # Some detectors (currently just RF-DETR) need to know the image size at the time the
+    # model is loaded, so we make sure it's in detector_options.  This is ignored by other
+    # detectors.
+    #
+    # First, for future-proofing, make sure that if someone supplied batch_size at the command
+    # line *and* in detector options, we don't have inconsistent values.  There's no reason anyone
+    # would do this, this is just future-proofing.
+    if (image_size in detector_options) and (detector_options['image_size'] != image_size):
+        raise ValueError('Incompatible image_size values: {} vs. {}'.format(
+            detector_options['image_size'],image_size))
+    if image_size is not None:
+        detector_options['image_size'] = image_size
 
     if use_image_queue:
 
