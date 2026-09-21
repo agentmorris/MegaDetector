@@ -10,7 +10,7 @@ of images.
 
 import os
 
-# input_folder = 'c:/temp/batch-test-images'
+input_folder = 'c:/temp/batch-test-images'
 test_folder_base = 'c:/temp/batch-comparisons'
 tiling_folder = 'c:/temp/batch-tiles'
 
