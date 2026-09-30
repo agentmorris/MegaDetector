@@ -58,6 +58,7 @@ for model_name in model_names:
     if 'detr' in model_file or 'detr' in model_name:
         import rfdetr
 
+
 #%% Derived constants and support functions
 
 from megadetector.detection.run_detector import load_and_run_detector
