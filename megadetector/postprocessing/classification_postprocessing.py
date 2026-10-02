@@ -1863,7 +1863,8 @@ def restrict_to_taxa_list(taxa_list,
 
 def merge_classification_categories(target_file,
                                     source_file,
-                                    output_file=None):
+                                    output_file=None,
+                                    verbose=True):
     """
     Modify the classification categories in [source file] to be compatible
     with the categories in [target_file], optionally writing a new file.
@@ -1873,6 +1874,10 @@ def merge_classification_categories(target_file,
     all.  If neither file has classification categories, just re-writes
     the source file.  Errors if exactly one file has classification categories.
 
+    If either file has category descriptions, the output will have descriptions
+    for every category; categories with no available description get an empty
+    description (with a warning).
+
     Args:
         target_file (str or dict): target .json file, in MD format (or an
             already-loaded dict)
@@ -1880,6 +1885,7 @@ def merge_classification_categories(target_file,
             already-loaded dict)
         output_file (str, optional): .json file to which we should write a
             modified version of [source_file]
+        verbose (bool, optional): enable additional debug output
 
     Returns:
         dict: remapped MD-formatted dict
@@ -1910,7 +1916,8 @@ def merge_classification_categories(target_file,
     target_has_classifications = ('classification_categories' in target_d)
 
     if not (source_has_classifications or target_has_classifications):
-        print('Neither source nor target has classification categories, bypassing category merge')
+        if verbose:
+            print('Neither source nor target has classification categories, bypassing category merge')
         if output_file is not None:
             write_json(output_file,source_d)
         return source_d
@@ -1934,6 +1941,15 @@ def merge_classification_categories(target_file,
         target_category_id_to_name = target_d['classification_categories']
         target_category_name_to_id = invert_dictionary(target_category_id_to_name)
 
+    # If either file has category descriptions, the output will have a description
+    # for every category
+    source_descriptions = source_d.get('classification_category_descriptions',{})
+    output_has_descriptions = ('classification_category_descriptions' in source_d) or \
+                              ('classification_category_descriptions' in target_d)
+    if output_has_descriptions and ('classification_category_descriptions' not in target_d):
+        target_d['classification_category_descriptions'] = {}
+    target_descriptions = target_d.get('classification_category_descriptions',{})
+
     if 'classification_categories' not in source_d:
 
         print('Warning: merge_classification_categories called with no source classifications.')
@@ -1955,17 +1971,20 @@ def merge_classification_categories(target_file,
                 input_category_id_to_output_category_id[source_category_id] = \
                     target_category_id
 
-                print('Mapping category ID for existing category {} ({} to {})'.format(
-                    category_name,source_category_id,target_category_id))
+                if verbose:
+                    print('Mapping category ID for existing category {} ({} to {})'.format(
+                        category_name,source_category_id,target_category_id))
+
+                target_description = target_descriptions.get(target_category_id,'')
+                source_description = source_descriptions.get(source_category_id,'')
+
+                # If only the source has a description for this category, use that
+                if (len(target_description) == 0) and (len(source_description) > 0):
+
+                    target_descriptions[target_category_id] = source_description
 
                 # Print a warning if the descriptions don't match
-                if 'classification_category_descriptions' in target_d and \
-                    'classification_category_descriptions' in source_d:
-
-                    target_description = \
-                        target_d['classification_category_descriptions'][target_category_id]
-                    source_description = \
-                        source_d['classification_category_descriptions'][source_category_id]
+                elif (len(target_description) > 0) and (len(source_description) > 0):
 
                     # If both descriptions look like SpeciesNet taxon strings, omit the GUID from
                     # the descriptions for comparison
@@ -1991,24 +2010,47 @@ def merge_classification_categories(target_file,
                     target_category_ids = [int(x) for x in target_category_ids]
                     new_category_id = str(max(target_category_ids)+1)
 
-                print('Creating a new category for {} ({})'.format(category_name,new_category_id))
+                if verbose:
+                    print('Creating a new category for {} ({})'.format(category_name,new_category_id))
 
                 target_category_id_to_name[new_category_id] = category_name
                 target_category_name_to_id = invert_dictionary(target_category_id_to_name)
 
                 input_category_id_to_output_category_id[source_category_id] = new_category_id
 
-                # Add the description only if the target file has descriptions
-                if 'classification_category_descriptions' in target_d and \
-                    'classification_category_descriptions' in source_d:
-                    target_d['classification_category_descriptions'][new_category_id] = \
-                        source_d['classification_category_descriptions'][source_category_id]
+                if source_category_id in source_descriptions:
+                    target_descriptions[new_category_id] = source_descriptions[source_category_id]
 
             # ...if we do/don't have a matching target category name
 
         # ...for each source category
 
     # ...if the source file has classifications
+
+    # Fill in empty descriptions for any categories that don't have descriptions
+    if output_has_descriptions:
+
+        category_names_without_descriptions = []
+
+        for category_id in target_category_id_to_name:
+            if category_id not in target_descriptions:
+                target_descriptions[category_id] = ''
+                category_names_without_descriptions.append(
+                    target_category_id_to_name[category_id])
+
+        if len(category_names_without_descriptions) > 0:
+            max_names_to_print = 10
+            names_string = ', '.join(category_names_without_descriptions[0:max_names_to_print])
+            if len(category_names_without_descriptions) > max_names_to_print:
+                names_string += ', ...'
+            print('Warning: no description available for {} classification categories, '
+                  'using empty descriptions ({})'.format(
+                      len(category_names_without_descriptions),names_string))
+
+        # Keep descriptions in the same order as categories
+        target_d['classification_category_descriptions'] = \
+            {category_id: target_descriptions[category_id]
+             for category_id in target_category_id_to_name}
 
 
     ##%% Modify images
