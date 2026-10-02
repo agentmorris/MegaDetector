@@ -259,6 +259,9 @@ class PostProcessingOptions:
         #: image
         self.include_size_range = False
 
+        #: Enable additional debug output
+        self.verbose = True
+
     # ...__init__()
 
 # ...PostProcessingOptions
@@ -989,8 +992,9 @@ def _render_image_with_gt(file_info,
     gt_class_summary = ','.join(gt_classes)
 
     if gt_status > DetectionStatus.DS_MAX_DEFINITIVE_VALUE:
-        print(f'Skipping image {image_id}, does not have a definitive '
-              f'ground truth status (status: {gt_status}, classes: {gt_class_summary})')
+        if options.verbose:
+            print(f'Skipping image {image_id}, does not have a definitive '
+                f'ground truth status (status: {gt_status}, classes: {gt_class_summary})')
         return None
 
     detected = _has_positive_detection(detections, options, detection_categories)

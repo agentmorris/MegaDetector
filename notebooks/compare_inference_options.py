@@ -10,7 +10,7 @@ of images.
 
 import os
 
-# input_folder = 'c:/temp/batch-test-images'
+input_folder = 'c:/temp/batch-test-images'
 test_folder_base = 'c:/temp/batch-comparisons'
 tiling_folder = 'c:/temp/batch-tiles'
 
@@ -57,6 +57,7 @@ for model_name in model_names:
         model_file = model_name_to_model_file[model_name]
     if 'detr' in model_file or 'detr' in model_name:
         import rfdetr
+
 
 #%% Derived constants and support functions
 
