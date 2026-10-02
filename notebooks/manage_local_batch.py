@@ -1007,7 +1007,7 @@ task_index = 0
 
 options = repeat_detections_core.RepeatDetectionOptions()
 
-options.confidenceMin = 0.1
+options.confidenceMin = 0.075
 options.confidenceMax = 1.01
 options.iouThreshold = 0.85
 options.occurrenceThreshold = 15
