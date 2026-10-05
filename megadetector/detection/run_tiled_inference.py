@@ -41,6 +41,7 @@ from megadetector.detection.run_detector_batch import \
 from megadetector.detection.run_detector import \
     try_download_known_detector, CONF_DIGITS, COORD_DIGITS
 from megadetector.utils import path_utils
+from megadetector.utils.path_utils import path_join
 from megadetector.utils.ct_utils import round_float_array, round_float, write_json
 from megadetector.visualization import visualization_utils as vis_utils
 
@@ -259,7 +260,7 @@ def extract_patch_from_image(im,
         assert patch_folder is not None,\
             "If you don't supply a patch filename to extract_patch_from_image, you need to supply a folder name"
         patch_name = patch_info_to_patch_name(image_name,patch_x_min,patch_y_min)
-        patch_image_fn = os.path.join(patch_folder,patch_name + '.jpg')
+        patch_image_fn = path_join(patch_folder,patch_name + '.jpg')
 
     if os.path.isfile(patch_image_fn) and (not overwrite):
         pass
@@ -358,7 +359,7 @@ def _extract_tiles_for_image(fn_relative,
     failure details.  In that case, some tiles may still be generated.
     """
 
-    fn_abs = os.path.join(image_folder,fn_relative)
+    fn_abs = path_join(image_folder,fn_relative)
     error = None
     patches = []
 
@@ -401,6 +402,8 @@ def _extract_tiles_for_image(fn_relative,
     image_patch_info['error'] = error
 
     return image_patch_info
+
+# ...def _extract_tiles_for_image(...)
 
 
 #%% Main function
@@ -514,7 +517,7 @@ def run_tiled_inference(model_file,
 
     if tiling_folder is None:
         tiling_folder = \
-            os.path.join(tempfile.gettempdir(), 'md-tiling', str(uuid.uuid1()))
+            path_join(tempfile.gettempdir(), 'md-tiling', str(uuid.uuid1()))
         print('Creating temporary tiling folder: {}'.format(tiling_folder))
 
     os.makedirs(tiling_folder,exist_ok=True)
@@ -561,7 +564,7 @@ def run_tiled_inference(model_file,
     if folder_name.startswith('_'):
         folder_name = folder_name[1:]
 
-    tile_cache_file = os.path.join(tiling_folder,folder_name + '_patch_info.json')
+    tile_cache_file = path_join(tiling_folder,folder_name + '_patch_info.json')
 
     if os.path.isfile(tile_cache_file) and load_cached_tiles_if_available:
 
@@ -648,7 +651,7 @@ def run_tiled_inference(model_file,
     # When running with run_inference_with_yolov5_val, we'll pass the folder
     if yolo_inference_options is not None:
 
-        patch_level_output_file = os.path.join(tiling_folder,
+        patch_level_output_file = path_join(tiling_folder,
                                                folder_name + '_' + job_guid + '_patch_level_results.json')
 
         if yolo_inference_options.augment != augment:
@@ -698,7 +701,7 @@ def run_tiled_inference(model_file,
                                                         verbose_output=verbose,
                                                         loader_workers=loader_workers)
 
-        patch_level_output_file = os.path.join(tiling_folder,
+        patch_level_output_file = path_join(tiling_folder,
                                                folder_name + '_' + job_guid + '_patch_level_results.json')
 
         patch_level_results = write_results_to_file(inference_results,
@@ -726,8 +729,9 @@ def run_tiled_inference(model_file,
     for i_image,image_fn_relative in tqdm(enumerate(image_files_relative),
                                           total=len(image_files_relative)):
 
-        image_fn_abs = os.path.join(image_folder,image_fn_relative)
-        assert os.path.isfile(image_fn_abs)
+        image_fn_abs = path_join(image_folder,image_fn_relative)
+        assert os.path.isfile(image_fn_abs), \
+            'Could not find image file {}'.format(image_fn_abs)
 
         output_im = {}
         output_im['file'] = image_fn_relative
@@ -844,7 +848,7 @@ def run_tiled_inference(model_file,
     # ...for each image
 
     image_level_results_file_pre_nms = \
-        os.path.join(tiling_folder,folder_name + '_' + job_guid + '_image_level_results_pre_nms.json')
+        path_join(tiling_folder,folder_name + '_' + job_guid + '_image_level_results_pre_nms.json')
     with open(image_level_results_file_pre_nms,'w') as f:
         json.dump(image_level_results,f,indent=1)
 
