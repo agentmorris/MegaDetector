@@ -68,6 +68,28 @@ E0
 !feature
 
 
+## Multiprocessing in process_video
+
+Video decoding currently happens in the same worker as inference in process_video; move video decoding to a worker pool.
+
+P0
+
+E1
+
+!bug
+
+
+## Very small negative values for every_n_frames crash process_video
+
+A very small negative value for every_n_frames (e.g. -0.01 on a 30 fps video) rounds to a frame interval of 0, so the mod operation leads to a ZeroDivisionError.
+
+P2
+
+E0
+
+!bug
+
+
 ## Improve and clarify statistics in analyze_classification_results
 
 analyze_classification_results.py takes a somewhat lazy approach to statistics computation: it is correct in a world where no categories are parents of other categories, and where each image contains a single species.  The more difficult cases should be handled more carefully, probably with additional options to, e.g., give "partial credit" for higher-level predictions that aren't wrong.  At the very least, explanatory text should be added to the reports to describe how statistics are computed wrt taxonomic levels and multi-species images.
