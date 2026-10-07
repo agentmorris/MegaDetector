@@ -409,27 +409,37 @@ def run_callback_on_frames(input_video_file,
         # frame_number = 0
         for frame_number in range(0,n_frames):
 
+            # Will we use this frame?
+            keep = True
+            if (every_n_frames is not None):
+                keep = (frame_number % every_n_frames) == 0
+            if (frames_to_process is not None):
+                if (frame_number > max(frames_to_process)):
+                    break
+                keep = (frame_number in frames_to_process)
+
             # We've already read the first frame, when we opened the video
             if frame_number != 0:
-                success,image = vidcap.read()
+                if keep:
+                    success,image = vidcap.read()
+                else:
+                    # For frames we're skipping, grab() decodes the frame (which is
+                    # still necessary to decode subsequent frames), but skips the
+                    # color conversion and copy that read() would also do.
+                    success = vidcap.grab()
+                    image = None
             else:
                 success = True
 
             if not success:
-                assert image is None
                 if verbose:
                     print('Read terminating at frame {} of {}'.format(frame_number,n_frames))
                 break
 
-            if every_n_frames is not None:
-                if (frame_number % every_n_frames) != 0:
-                    continue
+            if not keep:
+                continue
 
-            if frames_to_process is not None:
-                if frame_number > max(frames_to_process):
-                    break
-                if frame_number not in frames_to_process:
-                    continue
+            assert image is not None, 'Internal error: no decoded frame available'
 
             frame_filename_relative = _frame_number_to_filename(frame_number)
             frame_filenames.append(frame_filename_relative)
@@ -991,22 +1001,33 @@ def video_to_frames(input_video_file,
         if bypass_extraction:
             break
 
-        success,image = vidcap.read()
+        # Will we use this frame?
+        keep = True
+        if (every_n_frames is not None):
+            keep = (frame_number % every_n_frames) == 0
+        if (frames_to_extract is not None):
+            if (frame_number > max(frames_to_extract)):
+                break
+            keep = (frame_number in frames_to_extract)
+
+        if keep:
+            success,image = vidcap.read()
+        else:
+            # For frames we're skipping, grab() decodes the frame (which is
+            # still necessary to decode subsequent frames), but skips the
+            # color conversion and copy that read() would also do.
+            success = vidcap.grab()
+            image = None
+
         if not success:
-            assert image is None
             if verbose:
                 print('Read terminating at frame {} of {}'.format(frame_number,n_frames))
             break
 
-        if every_n_frames is not None:
-            if (frame_number % every_n_frames) != 0:
-                continue
+        if not keep:
+            continue
 
-        if frames_to_extract is not None:
-            if frame_number > max(frames_to_extract):
-                break
-            if frame_number not in frames_to_extract:
-                continue
+        assert image is not None, 'Internal error: no decoded frame available'
 
         # Has resizing been requested?
         if max_width is not None:
