@@ -1309,7 +1309,9 @@ def restrict_to_taxa_list(taxa_list,
                 latin)
             if allow_redundant_latin_names:
                 if verbose:
-                    print('Warning: {}'.format(error_string))
+                    print('Warning: {}, keeping the first entry ({})'.format(
+                        error_string,target_latin_to_common[latin]))
+                continue
             else:
                 raise ValueError(error_string)
 

@@ -1004,3 +1004,14 @@ P2
 E0
 
 !docs
+
+
+## Handle encoding more carefully in restrict_to_taxa_list
+
+Taxonomy mapping .csv files are read with pd.read_csv() in restrict_to_taxa_list().  These files often contain non-standard characters, and odd stuff can happen.  Probably best to require utf-8, document it as such, and do a one-time search over my library of mapping files to make sure they're all UTF-8.
+
+P1
+
+E0
+
+!feature
