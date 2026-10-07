@@ -217,14 +217,6 @@ def load_model(detector_file,
                 batch_size,str(compile),dtype))
             model.optimize_for_inference(**optimize_kwargs)
 
-            # optimize_for_inference is off by default because it reportedly created
-            # inference errors in some environments.  This comment suggests that specifying
-            # dtype=bfloat16 allows us to have our cake and eat it too, but this hasn't
-            # been tested.
-            #
-            # https://github.com/roboflow/rf-detr/issues/326#issuecomment-3321838797
-            # model.optimize_for_inference(batch_size=batch_size,dtype=torch.bfloat16)
-
         elif (compile is not None) or (dtype is not None):
 
             print('Warning: the "compile" and/or "dtype" options were supplied, but ' + \

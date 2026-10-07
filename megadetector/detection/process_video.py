@@ -32,10 +32,6 @@ from megadetector.detection.run_detector import try_download_known_detector
 from megadetector.postprocessing.validate_batch_results import \
         ValidateBatchResultsOptions, validate_batch_results
 
-# Notes to self re: upcoming work on checkpointing
-from megadetector.utils.ct_utils import split_list_into_fixed_size_chunks # noqa
-from megadetector.detection.run_detector_batch import write_checkpoint, load_checkpoint # noqa
-
 
 #%% Classes
 
