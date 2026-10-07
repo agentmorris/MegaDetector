@@ -1144,7 +1144,23 @@ def validate_predictions_file(fn,instances=None,verbose=True):
 
         expected_files = set([instance['filepath'] for instance in instances])
         found_files = set([prediction['filepath'] for prediction in predictions])
-        assert expected_files == found_files, 'Unexpected list of images in predictions file'
+        if expected_files != found_files:
+            expected_files_not_in_found_files = \
+                sorted([fn for fn in expected_files if fn not in found_files])
+            found_files_not_in_expected_files = \
+                sorted([fn for fn in found_files if fn not in expected_files])
+            n_print = 10
+            def print_first_n(files,n):
+                for i_file in range(0,n):
+                    if i_file >= len(files):
+                        break
+                    print(files[i_file])
+            print("Expected images we didn't find in the predictions file:")
+            print_first_n(expected_files_not_in_found_files,n_print)
+            print("\nImages in the the predictions file that we didn't expect:")
+            print_first_n(found_files_not_in_expected_files,n_print)
+            print('')
+            raise ValueError('Unexpected list of images in predictions file')
 
     # ...if a list of instances was supplied
 

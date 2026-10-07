@@ -290,7 +290,7 @@ if render_animals_only:
 
 input_path = '/drive/organization'
 organization_name_short = 'organization'
-job_date = None # '2025-01-01'
+job_date = None # '2026-10-01'
 model_file = 'MDV5A' # 'MDV5A', 'MDV5B', 'MDV4', 'MDv1000-redwood'
 
 # Number of jobs to split data into, typically equal to the number of available GPUs, though
@@ -1270,9 +1270,9 @@ if not run_tasks_in_notebook:
 
     pass
 
-    #%% Generate instances.json
+    #%% Generate crops, run classifier
 
-    # ...for the original images.
+    ##%% Generate instances.json
 
     instances = generate_instances_json_from_folder(folder=input_path,
                                                     country=country_code,
@@ -1504,9 +1504,10 @@ if not run_tasks_in_notebook:
     cmd += ' --predictions_json "{}"'.format(ensemble_output_file_modular_crops)
     cmd += ' --ignore_existing_predictions'
 
-    # Currently we only skip the geofence if we're imminently going to apply a custom taxa
-    # list, otherwise the smoothing is quite messy.
-    if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
+    # Currently we skip the geofence if either (a) we don't have a country or (b) we're imminently
+    # going to apply a custom taxa list.
+    if (country_code is None) or \
+       ((custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing')):
         cmd += ' --nogeofence'
 
     ensemble_commands.append(cmd)
