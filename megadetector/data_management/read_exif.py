@@ -1156,12 +1156,16 @@ def _write_gps_test_image(output_file, gps_ifd=None, exif_tags=None):
         exif[0x8825] = gps_ifd
     im.save(output_file, exif=exif.tobytes())
 
+# ...def _write_gps_test_image(...)
+
 
 def test_get_gps_info():
     """
-    Test get_gps_info() and has_gps_info() on .jpg files with and without GPS
-    information, including "null island" GPS values.
+    Test get_gps_info() and has_gps_info() on synthetic .jpg files with and without
+    GPS information, including "null island" GPS values.
     """
+
+    print('Running GPS info tests...')
 
     from PIL import TiffImagePlugin
 
@@ -1191,7 +1195,7 @@ def test_get_gps_info():
 
         version_only_gps = {0:gps_version}
 
-        # 0x010F = Make
+        # 0x010F = Camera make
         make_tag = {0x010F:'Synthetic camera'}
 
         image_files = {}
@@ -1330,6 +1334,8 @@ def test_get_gps_info():
                                        'GPSLongitudeRef':'W',
                                        'GPSLongitude':('122', '19', '12')}}
         assert get_gps_info(string_valid_gps)['status'] == 'success'
+
+        print('GPS info tests passed')
 
     finally:
 
