@@ -374,17 +374,6 @@ E2
 !testing
 
 
-## Add tests for get_gps_info
-
-Include sample jpg files with/without GPS info, validate that get_gps_info behaves as expected.  Ideally include a jpg file with "null island" GPS, i.e. GPS values of (0,0,0) or (nan,nan,nan), which are handled specially.
-
-P1
-
-E0
-
-!testing
-
-
 ## Evaluate accuracy tradeoffs with RFDETR optimizations enabled
 
 For RF-DETR models, we can independently enable fp16 inference and compilation.  These come with some accuracy loss, but I think it's minimal.  Formally evaluate this and come up with recommendations about when to enable these optimizations.
