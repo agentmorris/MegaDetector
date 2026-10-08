@@ -1141,13 +1141,13 @@ def _write_gps_test_image(output_file, gps_ifd):
 
     im = Image.new('RGB', (32,32), color='green')
     exif = Image.Exif()
-    exif[0x8825] = gps_ifd
+    exif[ExifTags.IFD.GPSInfo] = gps_ifd
     im.save(output_file, exif=exif.tobytes())
 
 # ...def _write_gps_test_image(...)
 
 
-def test_get_gps_info():
+def test_get_gps_info_on_edge_cases():
     """
     Test get_gps_info() and has_gps_info() on cases that don't occur in the real images in
     the gps-tests folder of the MD test data package (see test_get_gps_info_real_images()):
@@ -1164,10 +1164,15 @@ def test_get_gps_info():
 
         ## Null island stored as NaN
 
-        # Integer GPS tags: 0 = GPSVersionID, 1 = GPSLatitudeRef, 2 = GPSLatitude,
-        # 3 = GPSLongitudeRef, 4 = GPSLongitude
+        # Integer GPS tags:
         #
-        # A rational with a denominator of zero is read back as NaN
+        # 0 = GPSVersionID
+        # 1 = GPSLatitudeRef
+        # 2 = GPSLatitude,
+        # 3 = GPSLongitudeRef
+        # 4 = GPSLongitude
+        #
+        # A rational with a denominator of zero is read back as NaN.
         nan_value = TiffImagePlugin.IFDRational(0,0)
         nan_gps = {0:b'\x02\x02\x00\x00',
                    1:'N', 2:(nan_value, nan_value, nan_value),
@@ -1222,7 +1227,7 @@ def test_get_gps_info():
 
         shutil.rmtree(test_folder,ignore_errors=True)
 
-# ...def test_get_gps_info(...)
+# ...def test_get_gps_info_on_edge_cases(...)
 
 
 def test_get_gps_info_real_images():
@@ -1277,7 +1282,7 @@ def test_get_gps_info_real_images():
         'very-corrupt-caltech_camera_traps_58a022a4-23d2-11e8-a6a3-ec086b02610b.jpg':('read_error',None)
     }
 
-    # Make sure every image in the test folder has an expected result
+    # Make sure every image in the test folder has an expected result.
     image_names = sorted(os.listdir(gps_test_folder))
     for image_name in image_names:
         assert image_name in expected_results, \
