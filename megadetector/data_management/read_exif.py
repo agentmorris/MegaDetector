@@ -1130,30 +1130,18 @@ if __name__ == '__main__':
 
 #%% Tests
 
-def _write_gps_test_image(output_file, gps_ifd=None, exif_tags=None):
+def _write_gps_test_image(output_file, gps_ifd):
     """
     Write a small .jpg file with the specified EXIF GPS information.
 
     Args:
         output_file (str): .jpg file to write
-        gps_ifd (dict, optional): GPS IFD, mapping integer GPS tags to values; if this
-            is None, no GPS IFD is written
-        exif_tags (dict, optional): additional EXIF tags, mapping integer tags to values;
-            if this and [gps_ifd] are both None, the image is written with no EXIF data
+        gps_ifd (dict): GPS IFD, mapping integer GPS tags to values
     """
 
     im = Image.new('RGB', (32,32), color='green')
-
-    if (gps_ifd is None) and (exif_tags is None):
-        im.save(output_file)
-        return
-
     exif = Image.Exif()
-    if exif_tags is not None:
-        for k,v in exif_tags.items():
-            exif[k] = v
-    if gps_ifd is not None:
-        exif[0x8825] = gps_ifd
+    exif[0x8825] = gps_ifd
     im.save(output_file, exif=exif.tobytes())
 
 # ...def _write_gps_test_image(...)
@@ -1161,8 +1149,9 @@ def _write_gps_test_image(output_file, gps_ifd=None, exif_tags=None):
 
 def test_get_gps_info():
     """
-    Test get_gps_info() and has_gps_info() on synthetic .jpg files with and without
-    GPS information, including "null island" GPS values.
+    Test get_gps_info() and has_gps_info() on cases that don't occur in the real images in
+    the gps-tests folder of the MD test data package (see test_get_gps_info_real_images()):
+    "null island" GPS values stored as NaN, missing files, and dict input.
     """
 
     print('Running GPS info tests...')
@@ -1173,155 +1162,47 @@ def test_get_gps_info():
 
     try:
 
-        ## Create test images
+        ## Null island stored as NaN
 
         # Integer GPS tags: 0 = GPSVersionID, 1 = GPSLatitudeRef, 2 = GPSLatitude,
         # 3 = GPSLongitudeRef, 4 = GPSLongitude
-        gps_version = b'\x02\x02\x00\x00'
-
-        valid_gps = {0:gps_version,
-                     1:'N', 2:(47.0, 36.0, 36.0),
-                     3:'W', 4:(122.0, 19.0, 12.0)}
-
-        zero_gps = {0:gps_version,
-                    1:'N', 2:(0.0, 0.0, 0.0),
-                    3:'E', 4:(0.0, 0.0, 0.0)}
-
+        #
         # A rational with a denominator of zero is read back as NaN
         nan_value = TiffImagePlugin.IFDRational(0,0)
-        nan_gps = {0:gps_version,
+        nan_gps = {0:b'\x02\x02\x00\x00',
                    1:'N', 2:(nan_value, nan_value, nan_value),
                    3:'E', 4:(nan_value, nan_value, nan_value)}
 
-        version_only_gps = {0:gps_version}
+        nan_gps_file = os.path.join(test_folder,'nan_gps.jpg')
+        _write_gps_test_image(nan_gps_file, nan_gps)
 
-        # 0x010F = Camera make
-        make_tag = {0x010F:'Synthetic camera'}
+        r = get_gps_info(nan_gps_file)
+        assert r['status'] == 'null_island', \
+            'Expected status null_island for NaN GPS, got {}'.format(r['status'])
+        assert has_gps_info(nan_gps_file) is False
 
-        image_files = {}
-        image_files['valid_gps'] = os.path.join(test_folder,'valid_gps.jpg')
-        image_files['zero_gps'] = os.path.join(test_folder,'zero_gps.jpg')
-        image_files['nan_gps'] = os.path.join(test_folder,'nan_gps.jpg')
-        image_files['version_only_gps'] = os.path.join(test_folder,'version_only_gps.jpg')
-        image_files['no_gps'] = os.path.join(test_folder,'no_gps.jpg')
-        image_files['no_exif'] = os.path.join(test_folder,'no_exif.jpg')
-        image_files['not_an_image'] = os.path.join(test_folder,'not_an_image.jpg')
-        image_files['missing'] = os.path.join(test_folder,'missing.jpg')
-
-        _write_gps_test_image(image_files['valid_gps'], gps_ifd=valid_gps)
-        _write_gps_test_image(image_files['zero_gps'], gps_ifd=zero_gps)
-        _write_gps_test_image(image_files['nan_gps'], gps_ifd=nan_gps)
-        _write_gps_test_image(image_files['version_only_gps'], gps_ifd=version_only_gps,
-                              exif_tags=make_tag)
-        _write_gps_test_image(image_files['no_gps'], exif_tags=make_tag)
-        _write_gps_test_image(image_files['no_exif'])
-
-        with open(image_files['not_an_image'],'w') as f:
-            f.write('This is not an image')
-
-
-        ## Validate status values
-
-        expected_status = {
-            'valid_gps':'success',
-            'zero_gps':'null_island',
-            'nan_gps':'null_island',
-            'version_only_gps':'no_gps_info',
-            'no_gps':'no_gps_info',
-            'no_exif':'no_gps_info',
-            'not_an_image':'read_error',
-            'missing':'read_error'
-        }
-
-        expected_has_gps = {
-            'valid_gps':True,
-            'zero_gps':False,
-            'nan_gps':False,
-            'version_only_gps':False,
-            'no_gps':False,
-            'no_exif':False,
-            'not_an_image':None,
-            'missing':None
-        }
-
-        for image_name,image_file in image_files.items():
-
-            r = get_gps_info(image_file)
-            assert r['status'] == expected_status[image_name], \
-                'Expected status {} for {}, got {}'.format(
-                    expected_status[image_name],image_name,r['status'])
-
-            if r['status'] in ('success','null_island'):
-                assert r['gps_info'] is not None
-                for k in ('GPSVersionID','GPSLatitudeRef','GPSLatitude',
-                          'GPSLongitudeRef','GPSLongitude'):
-                    assert k in r['gps_info'], \
-                        'Missing GPS field {} for {}'.format(k,image_name)
-            else:
-                assert r['gps_info'] is None
-
-            if r['status'] == 'read_error':
-                assert 'error' in r
-
-            assert has_gps_info(image_file) == expected_has_gps[image_name], \
-                'Unexpected has_gps_info() result for {}'.format(image_name)
-
-        # ...for each test image
-
-
-        ## Validate the location we read from the image with valid GPS information
-
-        r = get_gps_info(image_files['valid_gps'])
-        assert r['gps_info']['GPSLatitudeRef'] == 'N'
-        assert r['gps_info']['GPSLongitudeRef'] == 'W'
-        lat,lon = get_exif_lat_lon(r['gps_info'])
-        assert abs(lat - 47.61) < 0.0001, 'Unexpected latitude {}'.format(lat)
-        assert abs(lon - -122.32) < 0.0001, 'Unexpected longitude {}'.format(lon)
-
-
-        ## Null island checking can be disabled
-
-        r = get_gps_info(image_files['zero_gps'], check_for_null_island=False)
-        assert r['status'] == 'success'
-        r = get_gps_info(image_files['nan_gps'], check_for_null_island=False)
+        # Null island checking can be disabled
+        r = get_gps_info(nan_gps_file, check_for_null_island=False)
         assert r['status'] == 'success'
 
 
-        ## PIL images should give the same results as filenames
+        ## Missing file
 
-        for image_name in ('valid_gps','zero_gps','no_gps'):
-            with Image.open(image_files[image_name]) as im:
-                r = get_gps_info(im)
-            assert r['status'] == expected_status[image_name], \
-                'Expected status {} for PIL image {}, got {}'.format(
-                    expected_status[image_name],image_name,r['status'])
+        missing_file = os.path.join(test_folder,'missing.jpg')
+        r = get_gps_info(missing_file)
+        assert r['status'] == 'read_error', \
+            'Expected status read_error for a missing file, got {}'.format(r['status'])
+        assert 'error' in r
+        assert has_gps_info(missing_file) is None
 
 
-        ## EXIF dicts should give the same results as filenames
-
-        for image_name in ('valid_gps','zero_gps','no_gps'):
-
-            exif_tags = read_pil_exif(image_files[image_name])
-
-            # A dict of EXIF tags
-            r = get_gps_info(exif_tags)
-            assert r['status'] == expected_status[image_name], \
-                'Expected status {} for EXIF dict {}, got {}'.format(
-                    expected_status[image_name],image_name,r['status'])
-
-            # A dict containing an 'exif_tags' field, as in read_exif_from_folder() results
-            r = get_gps_info({'file_name':image_name + '.jpg','exif_tags':exif_tags})
-            assert r['status'] == expected_status[image_name], \
-                'Expected status {} for EXIF result {}, got {}'.format(
-                    expected_status[image_name],image_name,r['status'])
-
-        # ...for each test image
+        ## A dict with an 'exif_tags' field that is None, as in read_exif_from_folder() results
 
         r = get_gps_info({'file_name':'no_exif.jpg','exif_tags':None})
         assert r['status'] == 'no_exif_info'
 
 
-        ## GPS values may also be stored as strings, e.g. after a .json round trip
+        ## GPS values may also be stored as strings
 
         string_zero_gps = {'GPSInfo':{'GPSLatitudeRef':'N',
                                       'GPSLatitude':('0', '0', '0'),
@@ -1342,3 +1223,150 @@ def test_get_gps_info():
         shutil.rmtree(test_folder,ignore_errors=True)
 
 # ...def test_get_gps_info(...)
+
+
+def test_get_gps_info_real_images():
+    """
+    Test get_gps_info() and has_gps_info() on real camera trap images from the gps-tests
+    folder in the MD test data package, covering valid GPS, "null island" GPS, junk GPS
+    values, GPS tags without location information, no GPS, no EXIF, and corrupt images.
+    """
+
+    print('Running GPS info tests on real images...')
+
+    from megadetector.utils.md_tests import download_test_data
+
+    options = download_test_data()
+    gps_test_folder = os.path.join(options.scratch_dir,'gps-tests')
+    assert os.path.isdir(gps_test_folder), \
+        'GPS test folder {} not found'.format(gps_test_folder)
+
+    # Maps each image to its expected get_gps_info() status and has_gps_info() result
+    expected_results = {
+
+        # Valid GPS
+        'micronesia_cam02april2019_20190411_172520_rcnx0001.jpg':('success',True),
+
+        # Valid GPS, with a latitude of zero degrees (but not null island)
+        'zebra.jpg':('success',True),
+
+        # Null island, with N/E refs
+        '1ab17fb3-f94a-49f7-9158-63872d6312e2.jpg':('null_island',False),
+
+        # Null island, with S/W refs
+        'IMAG0781.jpg':('null_island',False),
+
+        # Junk GPS values; GPS information is present, even though it can't be
+        # converted to a location
+        '0435b_0435_20240101_040003_1.jpg':('success',True),
+        'dominicanrepublic_cam11518mayo2017a_20161214_063302_img_0001.jpg':('success',True),
+
+        # GPS tags without latitude/longitude
+        '01090079.jpg':('no_gps_info',False),
+
+        # Empty GPS IFD
+        'dominicanrepublic_cam0901noviembre2015_20151028_141139_img_0022.jpg':('no_gps_info',False),
+
+        # EXIF information, but no GPS information
+        'nacti_part1_sub198_FL-16_09_03_2015_FL-16_0089498.jpg':('no_gps_info',False),
+
+        # No EXIF information
+        'caltech_camera_traps_58a022a4-23d2-11e8-a6a3-ec086b02610b.jpg':('no_gps_info',False),
+
+        # Corrupt image
+        'very-corrupt-caltech_camera_traps_58a022a4-23d2-11e8-a6a3-ec086b02610b.jpg':('read_error',None)
+    }
+
+    # Make sure every image in the test folder has an expected result
+    image_names = sorted(os.listdir(gps_test_folder))
+    for image_name in image_names:
+        assert image_name in expected_results, \
+            'No expected GPS result for test image {}'.format(image_name)
+
+    # image_name = next(iter(expected_results))
+    for image_name,(expected_status,expected_has_gps) in expected_results.items():
+
+        image_file = os.path.join(gps_test_folder,image_name)
+        assert os.path.isfile(image_file), 'GPS test image {} not found'.format(image_file)
+
+        r = get_gps_info(image_file)
+        assert r['status'] == expected_status, \
+            'Expected status {} for {}, got {}'.format(expected_status,image_name,r['status'])
+
+        if r['status'] in ('success','null_island'):
+            assert r['gps_info'] is not None
+            for k in ('GPSLatitudeRef','GPSLatitude','GPSLongitudeRef','GPSLongitude'):
+                assert k in r['gps_info'], \
+                    'Missing GPS field {} for {}'.format(k,image_name)
+        else:
+            assert r['gps_info'] is None
+
+        if r['status'] == 'read_error':
+            assert 'error' in r
+
+        assert has_gps_info(image_file) == expected_has_gps, \
+            'Unexpected has_gps_info() result for {}'.format(image_name)
+
+        if expected_status == 'read_error':
+            continue
+
+        # PIL images should give the same results as filenames
+        with Image.open(image_file) as im:
+            r = get_gps_info(im)
+        assert r['status'] == expected_status, \
+            'Expected status {} for PIL image {}, got {}'.format(
+                expected_status,image_name,r['status'])
+
+        # Dicts of EXIF tags, and dicts containing an 'exif_tags' field (as in
+        # read_exif_from_folder() results) should give the same results as filenames
+        exif_tags = read_pil_exif(image_file)
+        r = get_gps_info(exif_tags)
+        assert r['status'] == expected_status, \
+            'Expected status {} for EXIF dict {}, got {}'.format(
+                expected_status,image_name,r['status'])
+        r = get_gps_info({'file_name':image_name,'exif_tags':exif_tags})
+        assert r['status'] == expected_status, \
+            'Expected status {} for EXIF result {}, got {}'.format(
+                expected_status,image_name,r['status'])
+
+    # ...for each test image
+
+
+    ## Null island checking can be disabled
+
+    for image_name in ('1ab17fb3-f94a-49f7-9158-63872d6312e2.jpg','IMAG0781.jpg'):
+        r = get_gps_info(os.path.join(gps_test_folder,image_name), check_for_null_island=False)
+        assert r['status'] == 'success', \
+            'Expected status success for {} without null island checking, got {}'.format(
+                image_name,r['status'])
+
+
+    ## Validate the locations we read from images with valid or junk GPS information
+
+    expected_locations = {
+        'micronesia_cam02april2019_20190411_172520_rcnx0001.jpg':(36.9836,-122.0616),
+        'zebra.jpg':(0.3101,36.8788),
+        '0435b_0435_20240101_040003_1.jpg':None,
+        'dominicanrepublic_cam11518mayo2017a_20161214_063302_img_0001.jpg':None
+    }
+
+    for image_name,expected_location in expected_locations.items():
+
+        r = get_gps_info(os.path.join(gps_test_folder,image_name))
+        location = get_exif_lat_lon(r['gps_info'])
+
+        if expected_location is None:
+            assert location is None, \
+                'Expected no location for {}, got {}'.format(image_name,location)
+        else:
+            assert location is not None, 'No location for {}'.format(image_name)
+            assert abs(location[0] - expected_location[0]) < 0.0001, \
+                'Unexpected latitude {} for {}'.format(location[0],image_name)
+            assert abs(location[1] - expected_location[1]) < 0.0001, \
+                'Unexpected longitude {} for {}'.format(location[1],image_name)
+
+    # ...for each image with a location to check
+
+    print('GPS info tests on real images passed')
+
+# ...def test_get_gps_info_real_images(...)
