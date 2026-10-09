@@ -16,9 +16,10 @@ RF-DETR-specific detector options (detector_options, e.g. from run_detector_batc
 - optimize_for_inference: use this if you want inference to be as fast as possible, you
   don't care about tiny floating-point differences in the results, and you don't want
   fine-grained control over how that happens.  On NVIDIA GPUs, this runs the model in
-  float16, and compiles it if the batch size is 1.  In tests, this was around 2-4x
-  faster, and confidence values typically changed by less than 0.02 (occasionally more for
-  borderline detections).  Without an NVIDIA GPU, this option is ignored.
+  float16, and compiles it if the batch size is 1; in tests, this was around 2-4x faster.
+  On Apple MPS devices, this runs the model in float16 without compiling it; in tests, this
+  was around 1.1-1.5x faster.  In both cases, confidence values typically changed by less
+  than 0.02 (occasionally more for borderline detections).  On CPUs, this option is ignored.
 
 - compile, dtype, use_tf32: lower-level options for fine-grained control; see load_model().
   These are ignored (with a warning) if optimize_for_inference is specified.
@@ -139,7 +140,9 @@ def load_model(detector_file,
     whose optimize_for_inference option chooses these settings automatically.  In our tests
     on an NVIDIA GPU, dtype="float16" provided most of the available speedup (around 2-4x);
     compiling added a little more at batch size 1, but needs much more GPU memory at larger
-    batch sizes.
+    batch sizes.  On an Apple MPS devices, float16 was around 1.1-1.5x faster, and compiling
+    added little speed, but needed several times as much memory (e.g. around 8 GB vs. 2 GB
+    for an RF-DETR Medium model at 1280 pixels, at batch size 1).
 
     Args:
         detector_file (str): path to .pth checkpoint file.
@@ -151,7 +154,8 @@ def load_model(detector_file,
         compile (bool, optional): whether to compile the model (via torch.jit.trace, using
             rfdetr's inference() function).  Compilation ties the model to a single batch size.
         dtype (str, optional): floating-point dtype used for inference, either "float16" or
-            "float32".  float16 is much faster on NVIDIA GPUs, but much slower on CPUs.
+            "float32".  float16 is much faster on NVIDIA GPUs, somewhat faster on Apple GPUs,
+            and much slower on CPUs.
         use_tf32 (bool, optional): whether to allow reduced-precision TF32 computations.
             Enabling TF32 is around 10% faster, but makes results depend on the batch size;
             see DEFAULT_USE_TF32.
@@ -223,9 +227,9 @@ def load_model(detector_file,
         if compile or (dtype != 'float32'):
 
             device = model.model.device
-            if (dtype == 'float16') and (device.type != 'cuda'):
-                print('Warning: running in float16 on {}; float16 is much faster than '.format(
-                      device.type) + 'float32 on NVIDIA GPUs, but typically much slower on CPUs')
+            if (dtype == 'float16') and (device.type not in ('cuda', 'mps')):
+                print('Warning: running in float16 on {}; float16 is faster than float32 on '.format(
+                      device.type) + 'CUDA and MPS devices, but typically much slower on CPUs')
 
             print('Preparing model for inference (batch size {}, compile {}, dtype {})'.format(
                 batch_size,compile,dtype))
@@ -439,10 +443,17 @@ class RFDETRDetector:
                 compile = (batch_size == 1)
                 print('Optimizing model for inference (float16, {})'.format(
                     'compiled' if compile else 'not compiled'))
+            elif torch.backends.mps.is_available():
+                # On MPS devices, half precision is a smaller win (around 1.1-1.5x).  Compiling
+                # adds little speed, but needs several times as much memory (which on a Mac is
+                # shared with the rest of the system), so we never compile.
+                dtype = 'float16'
+                compile = False
+                print('Optimizing model for inference (float16, not compiled)')
             else:
                 # float16 is much slower than float32 on CPUs
-                print('Inference optimization is only supported on NVIDIA GPUs, running '
-                      'without optimization')
+                print('Inference optimization is only supported on NVIDIA and Apple GPUs, '
+                      'running without optimization')
                 dtype = 'float32'
                 compile = False
 
