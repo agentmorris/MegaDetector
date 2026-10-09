@@ -146,9 +146,8 @@ def crop_results_to_image_results(image_results_file_with_crop_ids,
         2. Generated a crop folder using create_crop_folder
         3. Run a species classifier on those crops
 
-    This function will take the crop-level results and transform them back
-    to the original images.  Classification categories, if available, are taken
-    from [crop_results_file].
+    It takes the crop-level results and transform them back to the original images.
+    Classification categories, if available, are taken from [crop_results_file].
 
     Args:
         image_results_file_with_crop_ids (str): results file for the original images,
