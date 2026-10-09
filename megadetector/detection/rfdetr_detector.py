@@ -11,6 +11,24 @@ earlier checkpoint formats.
 The rfdetr package is not a dependency of the MegaDetector Python package, so it is
 imported lazily (at the time a model is loaded), rather than at module import time.
 
+RF-DETR-specific detector options (detector_options, e.g. from run_detector_batch.py):
+
+- optimize_for_inference: use this if you want inference to be as fast as possible, you
+  don't care about tiny floating-point differences in the results, and you don't want
+  fine-grained control over how that happens.  On NVIDIA GPUs, this runs the model in
+  float16, and compiles it if the batch size is 1; in tests, this was around 2-4x faster.
+  On Apple MPS devices, this runs the model in float16 without compiling it; in tests, this
+  was around 1.1-1.5x faster.  In both cases, confidence values typically changed by less
+  than 0.02 (occasionally more for borderline detections).  On CPUs, this option is ignored.
+
+- compile, dtype, use_tf32: lower-level options for fine-grained control; see load_model().
+  These are ignored (with a warning) if optimize_for_inference is specified.
+
+- image_size: inference resolution; by default, the resolution the model was trained at.
+
+- batch_size: the batch size that will be used for inference (typically set by
+  run_detector_batch.py); only matters at load time if the model is compiled.
+
 """
 
 #%% Imports and constants
@@ -33,7 +51,8 @@ dtype_string_to_torch_dtype = {
 #: TF32 is a reduced-precision format that PyTorch uses automatically on recent NVIDIA GPUs.
 #: It's around 10% faster, but it makes RF-DETR's results depend on the batch size.  In
 #: practice, running the same image alone vs. in a batch of 4 shifts confidence values by up
-#: to ~0.05.
+#: to ~0.05.  TF32 only applies to float32 computations, so it has no effect when the model
+#: runs in float16.
 #:
 #: Note that this is not something we can leave to the defaults: PyTorch enables TF32 for
 #: convolutions by default, and importing the rfdetr package additionally enables it for
@@ -107,10 +126,9 @@ class TF32ExecutionContext:
 
 def load_model(detector_file,
                image_size=None,
-               optimize_for_inference=False,
                batch_size=1,
-               compile=None,
-               dtype=None,
+               compile=False,
+               dtype='float32',
                use_tf32=DEFAULT_USE_TF32):
     """
     Load an RF-DETR model from an inference-ready .pth checkpoint via
@@ -118,24 +136,26 @@ def load_model(detector_file,
     "Medium", etc.), training resolution, and class names from metadata stored
     in the checkpoint.
 
+    This is the low-level interface; most callers should use the RFDETRDetector class,
+    whose optimize_for_inference option chooses these settings automatically.  In our tests
+    on an NVIDIA GPU, dtype="float16" provided most of the available speedup (around 2-4x);
+    compiling added a little more at batch size 1, but needs much more GPU memory at larger
+    batch sizes.  On an Apple MPS devices, float16 was around 1.1-1.5x faster, and compiling
+    added little speed, but needed several times as much memory (e.g. around 8 GB vs. 2 GB
+    for an RF-DETR Medium model at 1280 pixels, at batch size 1).
+
     Args:
         detector_file (str): path to .pth checkpoint file.
         image_size (int, optional): image resolution for inference.  None uses the
             training resolution recorded in the checkpoint; a value overrides it.
-        optimize_for_inference (bool, optional): whether to optimize the model for
-            inference, which should be a free lunch, but as of 9/2025 there is some
-            risk of accuracy regression.
-        batch_size (int, optional): batch size to pass to optimize_for_inference().  This
-            only matters when [optimize_for_inference] is True *and* compilation is enabled;
-            a compiled model can only be run at the batch size it was compiled for.  Ignored
-            if [optimize_for_inference] is False.
-        compile (bool, optional): whether optimize_for_inference() should compile the model
-            (via torch.jit.trace).  None means "use the rfdetr default", which is currently
-            True.  Compilation ties the model to a single batch size.  Ignored if
-            [optimize_for_inference] is False.
+        batch_size (int, optional): batch size that will be used for inference.  Only
+            matters if [compile] is True, since a compiled model can only be run at the
+            batch size it was compiled for.
+        compile (bool, optional): whether to compile the model (via torch.jit.trace, using
+            rfdetr's inference() function).  Compilation ties the model to a single batch size.
         dtype (str, optional): floating-point dtype used for inference, either "float16" or
-            "float32".  None means "use the rfdetr default", which is currently float32.  Ignored
-            if [optimize_for_inference] is False.
+            "float32".  float16 is much faster on NVIDIA GPUs, somewhat faster on Apple GPUs,
+            and much slower on CPUs.
         use_tf32 (bool, optional): whether to allow reduced-precision TF32 computations.
             Enabling TF32 is around 10% faster, but makes results depend on the batch size;
             see DEFAULT_USE_TF32.
@@ -148,17 +168,17 @@ def load_model(detector_file,
             - 'detection_categories' (dict): mapping from string category IDs to class names
     """
 
-    if dtype is not None:
-        assert dtype in dtype_string_to_torch_dtype, \
-            'Illegal dtype {}, dtype should be one of: {}'.format(
-                dtype,', '.join(dtype_string_to_torch_dtype.keys()))
+    assert dtype in dtype_string_to_torch_dtype, \
+        'Illegal dtype {}, dtype should be one of: {}'.format(
+            dtype,', '.join(dtype_string_to_torch_dtype.keys()))
 
     # Everything from the rfdetr import through model construction runs inside a
-    # TF32ExecutionContext, for two reasons.  First, importing rfdetr enables TF32 matmuls
-    # for the whole process, which would otherwise silently change the numerics of any other
-    # model running in this process; entering the context around the import means we put that
-    # setting back the way we found it on the way out.  Second, optimize_for_inference() may
-    # trace/compile the model, which bakes in whatever precision is active at that time.
+    # TF32ExecutionContext, because importing rfdetr enables TF32 matmuls for the whole
+    # process, which would otherwise silently change the numerics of any other model running
+    # in this process; entering the context around the import means we put that setting back
+    # the way we found it on the way out.  TF32 settings are applied when the model runs, not
+    # baked in when it's compiled, so we also apply them around inference (see
+    # generate_detections_one_batch()).
     with TF32ExecutionContext(use_tf32) as tf32_context:
 
         # The rfdetr package is not installed by default with the MegaDetector package,
@@ -202,25 +222,28 @@ def load_model(detector_file,
         image_size = model.model_config.resolution
         print('Loaded {} at resolution {}'.format(model_type, image_size))
 
-        if optimize_for_inference:
+        # rfdetr's inference() function only changes anything if it compiles the model or
+        # changes its dtype; otherwise it just makes a copy of the model.
+        if compile or (dtype != 'float32'):
 
-            optimize_kwargs = {'batch_size':batch_size}
+            device = model.model.device
+            if (dtype == 'float16') and (device.type not in ('cuda', 'mps')):
+                print('Warning: running in float16 on {}; float16 is faster than float32 on '.format(
+                      device.type) + 'CUDA and MPS devices, but typically much slower on CPUs')
 
-            # Leaving [compile] or [dtype] set to None means "use the rfdetr defaults", which
-            # are currently True and float32, respectively.
-            if compile is not None:
-                optimize_kwargs['compile'] = compile
-            if dtype is not None:
-                optimize_kwargs['dtype'] = dtype_string_to_torch_dtype[dtype]
+            print('Preparing model for inference (batch size {}, compile {}, dtype {})'.format(
+                batch_size,compile,dtype))
 
-            print('Optimizing loaded model for inference (batch size {}, compile {}, dtype {})'.format(
-                batch_size,str(compile),dtype))
-            model.optimize_for_inference(**optimize_kwargs)
+            inference_kwargs = {'batch_size':batch_size,
+                                'compile':compile,
+                                'dtype':dtype_string_to_torch_dtype[dtype]}
 
-        elif (compile is not None) or (dtype is not None):
-
-            print('Warning: the "compile" and/or "dtype" options were supplied, but ' + \
-                  'optimize_for_inference is False, so they will have no effect.')
+            # optimize_for_inference() was renamed to inference() in rfdetr 1.9.0, and
+            # removed in 1.11.0
+            if hasattr(model, 'inference'):
+                model.inference(**inference_kwargs)
+            else:
+                model.optimize_for_inference(**inference_kwargs)
 
     # ...with TF32ExecutionContext(...)
 
@@ -324,21 +347,25 @@ class RFDETRDetector:
 
         Args:
             model_path (str): path to the .pth model file to load
-            detector_options (dict, optional): dictionary of RFDETr-specific detector options,
-                see load_model for documentation of available options.
+            detector_options (dict, optional): dictionary of RF-DETR-specific detector options
+                (see the module header): optimize_for_inference, compile, dtype, use_tf32,
+                image_size, batch_size, and preprocess_only.  compile, dtype, and use_tf32 are
+                documented in load_model().
             verbose (bool, optional): enable additional debug output
         """
 
         if verbose:
             print('Initializing RFDETRDetector')
 
-        # Parse options specific to this detector family
+        # Parse options specific to this detector family.  compile, dtype, and use_tf32 stay
+        # None unless they're supplied, so we can tell whether optimize_for_inference is
+        # overriding anything the caller asked for.
         image_size = None
         optimize_for_inference = False
         batch_size = 1
         compile = None
         dtype = None
-        use_tf32 = DEFAULT_USE_TF32
+        use_tf32 = None
 
         if detector_options is not None:
             if ('image_size' in detector_options) and \
@@ -363,14 +390,6 @@ class RFDETRDetector:
                 (detector_options['use_tf32'] is not None):
                 use_tf32 = parse_bool_string(detector_options['use_tf32'])
 
-        # If the caller asked for inference optimization, but didn't say anything about
-        # compilation, don't compile.  Compiling (torch.jit.trace) restricts the model to a
-        # single batch size, and in practice buys very little compared to running at a
-        # smaller dtype, so we don't opt into it implicitly.  Note that this differs from
-        # the rfdetr default, which is to compile.
-        if optimize_for_inference and (compile is None):
-            compile = False
-
         #: Image resolution passed to from_checkpoint(); None means "use the resolution
         #: recorded in the checkpoint".  After the model is loaded, this is updated to the
         #: resolution actually used.
@@ -391,7 +410,7 @@ class RFDETRDetector:
         self.required_batch_size = None
 
         #: Whether TF32 is allowed during inference for this model; see DEFAULT_USE_TF32
-        self.use_tf32 = use_tf32
+        self.use_tf32 = DEFAULT_USE_TF32
 
         preprocess_only = False
         if (detector_options is not None) and \
@@ -405,10 +424,56 @@ class RFDETRDetector:
                 print('Created RFDETRDetector in preprocess-only mode')
             return
 
+        # optimize_for_inference overrides the lower-level options
+        if optimize_for_inference:
+
+            for option_name, option_value in (('compile', compile), ('dtype', dtype),
+                                              ('use_tf32', use_tf32)):
+                if option_value is not None:
+                    print('Warning: the {} option is ignored because optimize_for_inference '.format(
+                          option_name) + 'was specified')
+
+            if torch.cuda.is_available():
+                # Half precision provides most of the speedup.  Compiling (torch.jit.trace)
+                # saves a few milliseconds per call, so it only helps at batch size 1; at
+                # larger batch sizes, the compiled model needs much more GPU memory, and
+                # batching already spreads that per-call overhead across images.  TF32 has no
+                # effect in float16.
+                dtype = 'float16'
+                compile = (batch_size == 1)
+                print('Optimizing model for inference (float16, {})'.format(
+                    'compiled' if compile else 'not compiled'))
+            elif torch.backends.mps.is_available():
+                # On MPS devices, half precision is a smaller win (around 1.1-1.5x).  Compiling
+                # adds little speed, but needs several times as much memory (which on a Mac is
+                # shared with the rest of the system), so we never compile.
+                dtype = 'float16'
+                compile = False
+                print('Optimizing model for inference (float16, not compiled)')
+            else:
+                # float16 is much slower than float32 on CPUs
+                print('Inference optimization is only supported on NVIDIA and Apple GPUs, '
+                      'running without optimization')
+                dtype = 'float32'
+                compile = False
+
+            use_tf32 = DEFAULT_USE_TF32
+
+        # ...if optimize_for_inference
+
+        # Options that weren't supplied get load_model()'s defaults
+        if compile is None:
+            compile = False
+        if dtype is None:
+            dtype = 'float32'
+        if use_tf32 is None:
+            use_tf32 = DEFAULT_USE_TF32
+
+        self.use_tf32 = use_tf32
+
         # Load the model
         model_info = load_model(model_path,
                                 image_size=self.image_size,
-                                optimize_for_inference=optimize_for_inference,
                                 batch_size=batch_size,
                                 compile=compile,
                                 dtype=dtype,
@@ -421,8 +486,7 @@ class RFDETRDetector:
 
         # A compiled model can only be run at the batch size it was compiled for, so record
         # that batch size; generate_detections_one_batch() pads short batches accordingly.
-        # [compile] can no longer be None at this point; we resolved None to False above.
-        if optimize_for_inference and compile:
+        if compile:
             self.required_batch_size = batch_size
 
     # ...def __init__(...)

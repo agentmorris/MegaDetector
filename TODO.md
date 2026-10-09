@@ -374,17 +374,6 @@ E2
 !testing
 
 
-## Add tests for get_gps_info
-
-Include sample jpg files with/without GPS info, validate that get_gps_info behaves as expected.  Ideally include a jpg file with "null island" GPS, i.e. GPS values of (0,0,0) or (nan,nan,nan), which are handled specially.
-
-P1
-
-E0
-
-!testing
-
-
 ## Evaluate accuracy tradeoffs with RFDETR optimizations enabled
 
 For RF-DETR models, we can independently enable fp16 inference and compilation.  These come with some accuracy loss, but I think it's minimal.  Formally evaluate this and come up with recommendations about when to enable these optimizations.
@@ -1004,3 +993,14 @@ P2
 E0
 
 !docs
+
+
+## Handle encoding more carefully in restrict_to_taxa_list
+
+Taxonomy mapping .csv files are read with pd.read_csv() in restrict_to_taxa_list().  These files often contain non-standard characters, and odd stuff can happen.  Probably best to require utf-8, document it as such, and do a one-time search over my library of mapping files to make sure they're all UTF-8.
+
+P1
+
+E0
+
+!feature
