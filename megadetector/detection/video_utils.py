@@ -330,6 +330,32 @@ def _add_frame_numbers_to_results(results):
     return results
 
 
+def _seconds_to_frame_interval(every_n_seconds, frame_rate, input_video_file):
+    """
+    Converts a sampling interval in seconds to a sampling interval in frames.  If the interval
+    is shorter than the time between frames (so it would round to zero frames), samples every
+    frame, and prints a warning.
+
+    Args:
+        every_n_seconds (float): sampling interval in seconds
+        frame_rate (float): frame rate of [input_video_file]
+        input_video_file (str): the video we're sampling, only used for printing warnings
+
+    Returns:
+        int: the sampling interval in frames, which is always at least 1
+    """
+
+    every_n_frames = int(every_n_seconds * frame_rate)
+
+    if every_n_frames < 1:
+        print('Warning: a sampling interval of {} seconds is shorter than the time between '
+              'frames for {} ({} fps), sampling every frame'.format(
+                  every_n_seconds,input_video_file,frame_rate))
+        every_n_frames = 1
+
+    return every_n_frames
+
+
 def run_callback_on_frames(input_video_file,
                            frame_callback,
                            every_n_frames=None,
@@ -382,6 +408,11 @@ def run_callback_on_frames(input_video_file,
     try:
 
         vidcap,image = open_video(input_video_file,verbose=verbose)
+
+        # open_video() returns None if none of the OpenCV backends could open this file
+        if vidcap is None:
+            raise Exception('Could not open video {}'.format(input_video_file))
+
         n_frames = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
         frame_rate = vidcap.get(cv2.CAP_PROP_FPS)
 
@@ -395,7 +426,9 @@ def run_callback_on_frames(input_video_file,
 
             if (every_n_frames < 0):
                 every_n_seconds = abs(every_n_frames)
-                every_n_frames = int(every_n_seconds * frame_rate)
+                every_n_frames = _seconds_to_frame_interval(every_n_seconds,
+                                                            frame_rate,
+                                                            input_video_file)
                 if verbose:
                     print('Interpreting a time sampling rate of {} hz as a frame interval of {}'.format(
                         every_n_seconds,every_n_frames))
@@ -898,7 +931,7 @@ def video_to_frames(input_video_file,
 
     if (every_n_frames is not None) and (every_n_frames < 0):
         every_n_seconds = abs(every_n_frames)
-        every_n_frames = int(every_n_seconds * fs)
+        every_n_frames = _seconds_to_frame_interval(every_n_seconds,fs,input_video_file)
         if verbose:
             print('Interpreting a time sampling rate of {} hz as a frame interval of {}'.format(
                 every_n_seconds,every_n_frames))
