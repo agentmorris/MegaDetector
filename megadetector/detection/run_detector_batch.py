@@ -108,9 +108,6 @@ randomize_batch_order_during_testing = True
 # doesn't really matter, so I'm not in a big rush to move these to options until I do
 # a larger cleanup of all the long argument lists in this module.
 
-# Should the consumer loop run on its own process, or here in the main process?
-run_separate_consumer_process = False
-
 # Enable additional debug output
 verbose = False
 
@@ -119,6 +116,71 @@ current_format_version = '1.6'
 
 
 #%% Support functions for multiprocessing
+
+def _load_preprocessor(preprocessor, detector_options=None, verbose=False):
+    """
+    Loads a detector object that will only be used for preprocessing, i.e., without loading
+    model weights.  Used by the loader workers when preprocessing is enabled on the image
+    queue.  Also used by process_video.py.
+
+    Args:
+        preprocessor (str): model file path/identifier
+        detector_options (dict, optional): key/value pairs that are interpreted differently
+            by different detectors
+        verbose (bool, optional): enable additional debug output
+
+    Returns:
+        detector object: a detector that supports preprocess_image()
+    """
+
+    assert isinstance(preprocessor,str)
+
+    if detector_options is None:
+        detector_options = {}
+    else:
+        detector_options = deepcopy(detector_options)
+
+    # Tell the detector object it's being loaded as a preprocessor, so it
+    # shouldn't actually load model weights.
+    detector_options['preprocess_only'] = True
+
+    return load_detector(preprocessor,
+                         detector_options=detector_options,
+                         verbose=verbose)
+
+# ...def _load_preprocessor(...)
+
+
+def _preprocess_image(preprocessor, image, image_id, image_size=None, verbose=False):
+    """
+    Preprocesses a loaded image on a loader worker.  Raises an exception if preprocessing
+    fails.  Also used by process_video.py.
+
+    Args:
+        preprocessor (detector object): a detector object returned by _load_preprocessor()
+        image (Image or np.array): the image to preprocess
+        image_id (str): identifier for this image, typically a filename
+        image_size (int, optional): image size to use for preprocessing
+        verbose (bool, optional): enable additional debug output
+
+    Returns:
+        dict: the preprocessed image and associated metadata
+    """
+
+    image_info = preprocessor.preprocess_image(image,
+                                               image_id=image_id,
+                                               image_size=image_size,
+                                               verbose=verbose)
+
+    if 'failure' in image_info:
+        assert image_info['failure'].startswith(run_detector.FAILURE_INFER)
+        raise Exception('Preprocessing failure for {}: {}'.format(
+            image_id,image_info['failure']))
+
+    return image_info
+
+# ...def _preprocess_image(...)
+
 
 def _producer_func(q,
                    image_files,
@@ -154,14 +216,9 @@ def _producer_func(q,
         sys.stdout.flush()
 
     if preprocessor is not None:
-        assert isinstance(preprocessor,str)
-        detector_options = deepcopy(detector_options)
-        # Tell the detector object it's being loaded as a preprocessor, so it
-        # shouldn't actually load model weights.
-        detector_options['preprocess_only'] = True
-        preprocessor = load_detector(preprocessor,
-                                     detector_options=detector_options,
-                                     verbose=verbose)
+        preprocessor = _load_preprocessor(preprocessor,
+                                          detector_options=detector_options,
+                                          verbose=verbose)
 
     for im_file in image_files:
 
@@ -171,15 +228,11 @@ def _producer_func(q,
 
             if preprocessor is not None:
 
-                image_info = preprocessor.preprocess_image(image,
-                                                           image_id=im_file,
-                                                           image_size=image_size,
-                                                           verbose=verbose)
-                if 'failure' in image_info:
-                    assert image_info['failure'].startswith(run_detector.FAILURE_INFER)
-                    raise
-
-                image = image_info
+                image = _preprocess_image(preprocessor,
+                                          image,
+                                          im_file,
+                                          image_size=image_size,
+                                          verbose=verbose)
 
         except Exception as e:
             print('Producer process: image {} cannot be loaded:\n{}'.format(im_file,str(e)))
@@ -200,7 +253,6 @@ def _producer_func(q,
 
 
 def _consumer_func(q,
-                   return_queue,
                    model_file,
                    confidence_threshold,
                    loader_workers,
@@ -215,18 +267,19 @@ def _consumer_func(q,
                    batch_size=1,
                    checkpoint_path=None,
                    checkpoint_frequency=-1,
-                   previous_results=None
+                   previous_results=None,
+                   result_callback=None
                    ):
     """
-    Consumer function; only used when using the (optional) image queue.
+    Consumer function: pulls images from a blocking queue and processes them.
+    Returns when "None" has been read from each loader's queue.
 
-    Pulls images from a blocking queue and processes them.  Returns when "None" has
-    been read from each loader's queue.
+    Only used within run_detector_batch when using the image queue.  Also used by
+    process_video.py when using a video queue.
 
     Args:
         q (Queue): multiprocessing queue to pull images from
-        return_queue (Queue): queue to put final results into
-        model_file (str or detector object): model file path/identifier or pre-loaded detector
+        model_file (str): model file path or identifier (e.g. "MDV5A")
         confidence_threshold (float): only detections above this threshold are returned
         loader_workers (int): number of producer workers (used to know when all are finished)
         image_size (int, optional): image size to use for inference
@@ -246,24 +299,30 @@ def _consumer_func(q,
             checkpointing
         previous_results (list, optional): results restored from a previous checkpoint; these
             are included in checkpoints, but not in the results this function returns
+        result_callback (function, optional): if not None, this function is called with a list
+            of new results each time the results are available (i.e., after each image
+            or batch)
+
+    Returns:
+        list: list of dicts in the format returned by process_image(), not including
+        [previous_results]
     """
 
     if verbose:
         print('Consumer starting'); sys.stdout.flush()
 
+    assert isinstance(model_file,str), \
+        'The consumer function requires a model filename or identifier'
+
     start_time = time.time()
 
-    if isinstance(model_file,str):
-        detector = load_detector(model_file,
-                                 detector_options=detector_options,
-                                 verbose=verbose)
-        elapsed = time.time() - start_time
-        print('Loaded model (before queueing) in {}, printing updates every {} images'.format(
-            humanfriendly.format_timespan(elapsed),n_queue_print))
-        sys.stdout.flush()
-    else:
-        detector = model_file
-        print('Detector of type {} passed to consumer function'.format(type(detector)))
+    detector = load_detector(model_file,
+                             detector_options=detector_options,
+                             verbose=verbose)
+    elapsed = time.time() - start_time
+    print('Loaded model (before queueing) in {}, printing updates every {} images'.format(
+        humanfriendly.format_timespan(elapsed),n_queue_print))
+    sys.stdout.flush()
 
     results = []
 
@@ -274,9 +333,11 @@ def _consumer_func(q,
     n_queues_finished = 0
     last_checkpoint_count = 0
 
+    # The number of results we've passed to [result_callback] so far
+    n_results_reported = 0
+
     pbar = None
     if n_total_images is not None:
-        # TODO: in principle I should close this pbar
         pbar = tqdm(total=n_total_images)
 
     # Batch processing state
@@ -336,8 +397,12 @@ def _consumer_func(q,
 
                     # ...for each batch we have left to process
 
-                return_queue.put(results)
-                return
+                # Report any new results to the caller
+                if (result_callback is not None) and (len(results) > n_results_reported):
+                    result_callback(results[n_results_reported:])
+                    n_results_reported = len(results)
+
+                return results
 
             else:
 
@@ -444,6 +509,11 @@ def _consumer_func(q,
 
         # ...whether we received a string (indicating failure) or an image from the loader worker
 
+        # Report results to the caller, e.g. for progress bars or checkpointing
+        if (result_callback is not None) and (len(results) > n_results_reported):
+            result_callback(results[n_results_reported:])
+            n_results_reported = len(results)
+
         q.task_done()
 
     # ...while True (consumer loop)
@@ -512,7 +582,6 @@ def _run_detector_with_image_queue(image_files,
         detector_options = {}
 
     q = multiprocessing.JoinableQueue(max_queue_size)
-    return_queue = multiprocessing.Queue(1)
 
     producers = []
 
@@ -552,63 +621,27 @@ def _run_detector_with_image_queue(image_files,
         producer.daemon = False
         producer.start()
 
-    if run_separate_consumer_process:
-        if use_threads_for_queue:
-            consumer = Thread(target=_consumer_func,args=(q,
-                                                          return_queue,
-                                                          model_file,
-                                                          confidence_threshold,
-                                                          loader_workers,
-                                                          image_size,
-                                                          include_image_size,
-                                                          include_image_timestamp,
-                                                          include_exif_tags,
-                                                          augment,
-                                                          detector_options,
-                                                          preprocess_on_image_queue,
-                                                          n_total_images,
-                                                          batch_size,
-                                                          checkpoint_path,
-                                                          checkpoint_frequency,
-                                                          previous_results))
-        else:
-            consumer = Process(target=_consumer_func,args=(q,
-                                                           return_queue,
-                                                           model_file,
-                                                           confidence_threshold,
-                                                           loader_workers,
-                                                           image_size,
-                                                           include_image_size,
-                                                           include_image_timestamp,
-                                                           include_exif_tags,
-                                                           augment,
-                                                           detector_options,
-                                                           preprocess_on_image_queue,
-                                                           n_total_images,
-                                                           batch_size,
-                                                           checkpoint_path,
-                                                           checkpoint_frequency,
-                                                           previous_results))
-        consumer.daemon = True
-        consumer.start()
-    else:
-        _consumer_func(q,
-                       return_queue,
-                       model_file,
-                       confidence_threshold,
-                       loader_workers,
-                       image_size,
-                       include_image_size,
-                       include_image_timestamp,
-                       include_exif_tags,
-                       augment,
-                       detector_options,
-                       preprocess_on_image_queue,
-                       n_total_images,
-                       batch_size,
-                       checkpoint_path,
-                       checkpoint_frequency,
-                       previous_results)
+    # The consumer runs here in the calling process, and returns when all the producers
+    # have finished
+    results = _consumer_func(q,
+                             model_file,
+                             confidence_threshold,
+                             loader_workers,
+                             image_size,
+                             include_image_size,
+                             include_image_timestamp,
+                             include_exif_tags,
+                             augment,
+                             detector_options,
+                             preprocess_on_image_queue,
+                             n_total_images,
+                             batch_size,
+                             checkpoint_path,
+                             checkpoint_frequency,
+                             previous_results)
+
+    if verbose:
+        print('Consumer loop finished')
 
     for i_producer,producer in enumerate(producers):
         producer.join()
@@ -618,16 +651,9 @@ def _run_detector_with_image_queue(image_files,
     if verbose:
         print('All producers finished')
 
-    if run_separate_consumer_process:
-        consumer.join()
-    if verbose:
-        print('Consumer loop finished')
-
     q.join()
     if verbose:
         print('Queue joined')
-
-    results = return_queue.get()
 
     return results
 
@@ -838,7 +864,6 @@ def _process_batch(image_items_batch,
 def _process_images(im_files,
                    detector,
                    confidence_threshold,
-                   use_image_queue=False,
                    quiet=False,
                    image_size=None,
                    checkpoint_queue=None,
@@ -846,20 +871,17 @@ def _process_images(im_files,
                    include_image_timestamp=False,
                    include_exif_tags=None,
                    augment=False,
-                   detector_options=None,
-                   loader_workers=default_loaders,
-                   preprocess_on_image_queue=default_preprocess_on_image_queue,
-                   use_threads_for_queue=False):
+                   detector_options=None):
     """
-    Runs a detector (typically MegaDetector) over a list of image files, possibly using multiple
-    image loading workers, but not using multiple inference workers.
+    Runs a detector (typically MegaDetector) over a list of image files, one image at a time.
+    Used by the workers in the multi-core (CPU) inference path, where each worker processes
+    one chunk of images.
 
     Args:
         im_files (list): paths to image files
         detector (str or detector object): loaded model or str; if this is a string, it can be a
             path to a .pb/.pt model file or a known model identifier (e.g. "MDV5A")
         confidence_threshold (float): only detections above this threshold are returned
-        use_image_queue (bool, optional): separate image loading onto a dedicated worker process
         quiet (bool, optional): suppress per-image printouts
         image_size (int, optional): image size to use for inference, only mess with this
             if (a) you're using a model other than MegaDetector or (b) you know what you're
@@ -871,11 +893,6 @@ def _process_images(im_files,
         augment (bool, optional): enable image augmentation
         detector_options (dict, optional): key/value pairs that are interpreted differently
             by different detectors
-        loader_workers (int, optional): number of loaders to use (only relevant when using image queue)
-        preprocess_on_image_queue (bool, optional): if the image queue is enabled, should it handle
-            image loading and preprocessing (True), or just image loading (False)?
-        use_threads_for_queue (bool, optional): use threads (rather than processes) for the data
-            loading workers
 
     Returns:
         list: list of dicts, in which each dict represents detections on one image,
@@ -891,47 +908,27 @@ def _process_images(im_files,
         elapsed = time.time() - start_time
         print('Loaded model (process_images) in {}'.format(humanfriendly.format_timespan(elapsed)))
 
-    if detector_options is None:
-        detector_options = {}
+    results = []
 
-    if use_image_queue:
+    for im_file in im_files:
 
-        results = _run_detector_with_image_queue(im_files,
-                                      detector,
-                                      confidence_threshold,
-                                      quiet=quiet,
-                                      image_size=image_size,
-                                      include_image_size=include_image_size,
-                                      include_image_timestamp=include_image_timestamp,
-                                      include_exif_tags=include_exif_tags,
-                                      augment=augment,
-                                      detector_options=detector_options,
-                                      loader_workers=loader_workers,
-                                      preprocess_on_image_queue=preprocess_on_image_queue,
-                                      use_threads_for_queue=use_threads_for_queue)
-        return results
+        result = _process_image(im_file,
+                                detector,
+                                confidence_threshold,
+                                quiet=quiet,
+                                image_size=image_size,
+                                include_image_size=include_image_size,
+                                include_image_timestamp=include_image_timestamp,
+                                include_exif_tags=include_exif_tags,
+                                augment=augment)
 
-    else:
+        if checkpoint_queue is not None:
+            checkpoint_queue.put(result)
+        results.append(result)
 
-        results = []
-        for im_file in im_files:
-            result = _process_image(im_file,
-                                   detector,
-                                   confidence_threshold,
-                                   quiet=quiet,
-                                   image_size=image_size,
-                                   include_image_size=include_image_size,
-                                   include_image_timestamp=include_image_timestamp,
-                                   include_exif_tags=include_exif_tags,
-                                   augment=augment)
+    # ...for each image
 
-            if checkpoint_queue is not None:
-                checkpoint_queue.put(result)
-            results.append(result)
-
-        return results
-
-    # ...if we are/aren't using the image queue
+    return results
 
 # ...def _process_images(...)
 
@@ -1421,7 +1418,6 @@ def load_and_run_detector_batch(model_file,
                 pool.map(partial(_process_images,
                                  detector=detector,
                                  confidence_threshold=confidence_threshold,
-                                 use_image_queue=False,
                                  quiet=quiet,
                                  image_size=image_size,
                                  checkpoint_queue=checkpoint_queue,
@@ -1429,8 +1425,7 @@ def load_and_run_detector_batch(model_file,
                                  include_image_timestamp=include_image_timestamp,
                                  include_exif_tags=include_exif_tags,
                                  augment=augment,
-                                 detector_options=detector_options,
-                                 use_threads_for_queue=use_threads_for_queue),
+                                 detector_options=detector_options),
                                  image_chunks)
 
                 checkpoint_queue.put(None)
@@ -1442,7 +1437,6 @@ def load_and_run_detector_batch(model_file,
                 new_results = pool.map(partial(_process_images,
                                                detector=detector,
                                                confidence_threshold=confidence_threshold,
-                                               use_image_queue=False,
                                                quiet=quiet,
                                                checkpoint_queue=None,
                                                image_size=image_size,
@@ -1450,8 +1444,7 @@ def load_and_run_detector_batch(model_file,
                                                include_image_timestamp=include_image_timestamp,
                                                include_exif_tags=include_exif_tags,
                                                augment=augment,
-                                               detector_options=detector_options,
-                                               use_threads_for_queue=use_threads_for_queue),
+                                               detector_options=detector_options),
                                                image_chunks)
 
                 new_results = list(itertools.chain.from_iterable(new_results))
@@ -1588,6 +1581,61 @@ def load_checkpoint(checkpoint_path):
     return results
 
 # ...def load_checkpoint(...)
+
+
+def _resolve_checkpoint_to_resume(resume_from_checkpoint,
+                                  checkpoint_path,
+                                  output_dir,
+                                  checkpoint_prefix='md_checkpoint'):
+    """
+    Determines which checkpoint file to resume from, given the value of the
+    --resume_from_checkpoint option, which is either a checkpoint filename or "auto".  If it's
+    "auto", uses [checkpoint_path] if it's not None, otherwise finds the most recent checkpoint
+    in [output_dir].  Also used by process_video.py.
+
+    Args:
+        resume_from_checkpoint (str): a checkpoint filename, or "auto"
+        checkpoint_path (str): the checkpoint path specified by the user, or None
+        output_dir (str): the folder in which we should look for checkpoints if
+            [resume_from_checkpoint] is "auto" and [checkpoint_path] is None
+        checkpoint_prefix (str, optional): when searching [output_dir], only consider .json files
+            whose names start with this string
+
+    Returns:
+        str: the checkpoint file to resume from
+    """
+
+    if resume_from_checkpoint != 'auto':
+        return resume_from_checkpoint
+
+    if checkpoint_path is not None:
+        if not os.path.isfile(checkpoint_path):
+            raise ValueError('resume_from_checkpoint set to "auto" with checkpoint path {}, '
+                             'but that file does not exist'.format(checkpoint_path))
+        return checkpoint_path
+
+    if len(output_dir) == 0:
+        output_dir = '.'
+
+    checkpoint_files = []
+    if os.path.isdir(output_dir):
+        checkpoint_files = os.listdir(output_dir)
+        checkpoint_files = [fn for fn in checkpoint_files if \
+                            (fn.startswith(checkpoint_prefix) and fn.endswith('.json'))]
+
+    if len(checkpoint_files) == 0:
+        raise ValueError('resume_from_checkpoint set to "auto", but no checkpoints found in {}'.format(
+            output_dir))
+
+    if len(checkpoint_files) > 1:
+        print('Warning: found {} checkpoints in {}, using the latest'.format(
+            len(checkpoint_files),output_dir))
+
+    # Checkpoint filenames include a timestamp, so the last one is the most recent
+    checkpoint_files = sorted(checkpoint_files)
+    return os.path.join(output_dir,checkpoint_files[-1])
+
+# ...def _resolve_checkpoint_to_resume(...)
 
 
 def get_image_datetime(image):
@@ -1907,8 +1955,8 @@ def main(): # noqa
         type=str,
         default=None,
         help='Path to a JSON checkpoint file to resume from, or "auto" to ' + \
-             'find the most recent checkpoint in the same folder as the output file.  "auto" uses' + \
-             'checkpoint_path (rather than searching the output folder) if checkpoint_path is specified.')
+             'find the most recent checkpoint in the same folder as the output file.  "auto" uses ' + \
+             '--checkpoint_path (rather than searching the output folder) if --checkpoint_path is specified.')
     parser.add_argument(
         '--allow_checkpoint_overwrite',
         action='store_true',
@@ -2050,22 +2098,12 @@ def main(): # noqa
     # File paths in the checkpoint are always absolute paths; conversion to relative paths
     # (if requested) happens at the time results are exported at the end of a job.
     if args.resume_from_checkpoint is not None:
-        if args.resume_from_checkpoint == 'auto':
-            checkpoint_files = os.listdir(output_dir)
-            checkpoint_files = [fn for fn in checkpoint_files if \
-                                (fn.startswith('md_checkpoint') and fn.endswith('.json'))]
-            if len(checkpoint_files) == 0:
-                raise ValueError('resume_from_checkpoint set to "auto", but no checkpoints found in {}'.format(
-                    output_dir))
-            else:
-                if len(checkpoint_files) > 1:
-                    print('Warning: found {} checkpoints in {}, using the latest'.format(
-                        len(checkpoint_files),output_dir))
-                    checkpoint_files = sorted(checkpoint_files)
-                checkpoint_file_relative = checkpoint_files[-1]
-                checkpoint_file = os.path.join(output_dir,checkpoint_file_relative)
-        else:
-            checkpoint_file = args.resume_from_checkpoint
+        # If --resume_from_checkpoint is "auto", this resumes from --checkpoint_path if it was
+        # specified, otherwise from the most recent checkpoint in the output folder.
+        checkpoint_file = _resolve_checkpoint_to_resume(args.resume_from_checkpoint,
+                                                        args.checkpoint_path,
+                                                        output_dir,
+                                                        checkpoint_prefix='md_checkpoint')
         results = load_checkpoint(checkpoint_file)
     else:
         results = []

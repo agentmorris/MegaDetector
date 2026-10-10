@@ -619,6 +619,84 @@ def compare_results(inference_output_file,
 # ...def compare_results(...)
 
 
+def _write_partial_video_checkpoint(reference_results_file,
+                                    video_folder,
+                                    checkpoint_file,
+                                    expected_results_file):
+    """
+    Simulates an interrupted video processing job, to test resuming from checkpoints: writes a
+    checkpoint containing results for the first half of the videos in [reference_results_file].
+
+    To confirm that videos restored from the checkpoint aren't re-processed, the detections are
+    removed from one of the restored videos.  Writes the results we expect after resuming from
+    this checkpoint (i.e., [reference_results_file] with that video's detections removed) to
+    [expected_results_file].
+
+    Args:
+        reference_results_file (str): MD-formatted video results file, with filenames relative
+            to [video_folder]
+        video_folder (str): the folder to which filenames in [reference_results_file] are relative
+        checkpoint_file (str): the checkpoint file to write
+        expected_results_file (str): the .json file to which we should write the expected results
+
+    Returns:
+        list: the filenames (absolute paths) of the videos in the checkpoint
+    """
+
+    from megadetector.detection.video_utils import find_videos
+
+    with open(reference_results_file,'r') as f:
+        reference_results = json.load(f)
+
+    # Filenames in checkpoints are absolute paths with forward slashes
+    all_video_files = set(find_videos(os.path.abspath(video_folder),
+                                      recursive=True,
+                                      convert_slashes=True,
+                                      return_relative_paths=False))
+
+    sorted_reference_results = sorted(reference_results['images'], key=lambda d: d['file'])
+    n_restored_videos = len(sorted_reference_results) // 2
+    assert n_restored_videos > 0, 'Not enough videos to test resuming from a checkpoint'
+
+    restored_results = []
+
+    # The relative filename of the restored video whose detections we remove
+    altered_video = None
+
+    for im in sorted_reference_results[0:n_restored_videos]:
+
+        restored_result = copy(im)
+        restored_result['file'] = \
+            os.path.abspath(os.path.join(video_folder,im['file'])).replace('\\','/')
+        assert restored_result['file'] in all_video_files, \
+            'Could not map result {} to a video path'.format(im['file'])
+
+        if (altered_video is None) and (im['detections'] is not None) and \
+            (len(im['detections']) > 0):
+            altered_video = im['file']
+            restored_result['detections'] = []
+
+        restored_results.append(restored_result)
+
+    # ...for each video we're restoring
+
+    assert altered_video is not None, 'None of the restored videos have detections'
+
+    with open(checkpoint_file,'w') as f:
+        json.dump({'checkpoint':restored_results},f,indent=1)
+
+    for im in reference_results['images']:
+        if im['file'] == altered_video:
+            im['detections'] = []
+
+    with open(expected_results_file,'w') as f:
+        json.dump(reference_results,f,indent=1)
+
+    return [r['file'] for r in restored_results]
+
+# ...def _write_partial_video_checkpoint(...)
+
+
 def _args_to_object(args, obj):
     """
     Copies all fields from a Namespace (typically the output from parse_args) to an
@@ -1127,7 +1205,6 @@ def run_python_tests(options):
         video_options.model_file = options.default_model
         video_options.input_video_file = os.path.join(options.scratch_dir,'md-test-images')
         video_options.output_json_file = os.path.join(options.scratch_dir,'video_folder_output.json')
-        video_options.output_video_file = None
         video_options.recursive = True
         video_options.verbose = True
         video_options.json_confidence_threshold = DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
@@ -1171,6 +1248,128 @@ def run_python_tests(options):
             'Batched video test failed to render output .json file'
 
         compare_results(video_options_batch.output_json_file,expected_results_file,options_loose)
+
+
+        ## Video test (folder, frame queue)
+
+        print('\n** Running MD on a folder of videos with the frame queue (module) **\n')
+
+        # With a batch size of 1, results should be identical to the results we got without
+        # the frame queue.  This uses processes (the default) for the frame decoding workers.
+        video_options_queue = deepcopy(video_options)
+        video_options_queue.output_json_file = \
+            insert_before_extension(video_options.output_json_file,'queue')
+        video_options_queue.use_image_queue = True
+        video_options_queue.loader_workers = 2
+
+        _ = process_videos(video_options_queue)
+
+        assert output_files_are_identical(fn1=video_options.output_json_file,
+                                          fn2=video_options_queue.output_json_file,
+                                          verbose=True), \
+            'Video results with the frame queue differ from results without the frame queue'
+
+
+        ## Video test (folder, frame queue with threads, preprocessing, and batch size > 1)
+
+        print('\n** Running MD on a folder of videos with the frame queue, preprocessing, '
+              'and batch size > 1 (module) **\n')
+
+        video_options_queue_batch = deepcopy(video_options)
+        video_options_queue_batch.output_json_file = \
+            insert_before_extension(video_options.output_json_file,'queue_batch')
+        video_options_queue_batch.use_image_queue = True
+        video_options_queue_batch.use_threads_for_queue = True
+        video_options_queue_batch.preprocess_on_image_queue = True
+        video_options_queue_batch.batch_size = options.alternative_batch_size
+
+        _ = process_videos(video_options_queue_batch)
+
+        compare_results(video_options_queue_batch.output_json_file,expected_results_file,options_loose)
+
+
+        ## Video test (folder, resume from a checkpoint)
+
+        # Resume from a checkpoint containing results for some of the videos, with and without
+        # the frame queue.  We record the contents of each checkpoint we write by temporarily
+        # replacing write_checkpoint(), which process_video.py calls via run_detector_batch.
+
+        from megadetector.detection import run_detector_batch
+
+        partial_checkpoint_file = os.path.join(options.scratch_dir,
+                                               'video_resume_partial_checkpoint.json')
+        expected_resume_results_file = \
+            insert_before_extension(video_options.output_json_file,'resume_expected')
+
+        # The filenames in each checkpoint we write, in the order the checkpoints were written
+        checkpoint_filenames = []
+        original_write_checkpoint = run_detector_batch.write_checkpoint
+
+        def _record_checkpoint(checkpoint_path, results):
+            """
+            Replaces write_checkpoint() for this test; records the filenames in each checkpoint,
+            then writes the checkpoint.
+            """
+
+            checkpoint_filenames.append([r['file'] for r in results])
+            original_write_checkpoint(checkpoint_path, results)
+
+        for use_image_queue in [False,True]:
+
+            print('\n** Resuming from a checkpoint with use_image_queue={} (module) **\n'.format(
+                use_image_queue))
+
+            restored_video_files = _write_partial_video_checkpoint(
+                reference_results_file=video_options.output_json_file,
+                video_folder=video_options.input_video_file,
+                checkpoint_file=partial_checkpoint_file,
+                expected_results_file=expected_resume_results_file)
+
+            video_options_resume = deepcopy(video_options)
+            video_options_resume.output_json_file = insert_before_extension(
+                video_options.output_json_file,'resume_queue' if use_image_queue else 'resume')
+            video_options_resume.use_image_queue = use_image_queue
+            video_options_resume.loader_workers = 2
+            video_options_resume.checkpoint_frequency = 1
+
+            # When a checkpoint path is specified, resuming with "auto" should resume from
+            # that file
+            video_options_resume.checkpoint_path = partial_checkpoint_file
+            video_options_resume.resume_from_checkpoint = 'auto'
+
+            checkpoint_filenames.clear()
+
+            try:
+                run_detector_batch.write_checkpoint = _record_checkpoint
+                _ = process_videos(video_options_resume)
+            finally:
+                run_detector_batch.write_checkpoint = original_write_checkpoint
+
+            # We should have written a checkpoint after each new video, and every checkpoint
+            # should include the restored videos
+            with open(video_options.output_json_file,'r') as f:
+                n_videos = len(json.load(f)['images'])
+            expected_checkpoint_sizes = list(range(len(restored_video_files) + 1,n_videos + 1))
+            checkpoint_sizes = [len(filenames) for filenames in checkpoint_filenames]
+            assert checkpoint_sizes == expected_checkpoint_sizes, \
+                'Expected video checkpoints with {} results, got {}'.format(
+                    expected_checkpoint_sizes,checkpoint_sizes)
+
+            for filenames in checkpoint_filenames:
+                assert set(restored_video_files).issubset(set(filenames)), \
+                    'Video checkpoint is missing results restored from the previous checkpoint'
+
+            assert not os.path.isfile(partial_checkpoint_file), \
+                'Video checkpoint file was not deleted after processing finished'
+
+            # The output should match the original results, other than the restored video
+            # whose detections we removed
+            assert output_files_are_identical(fn1=expected_resume_results_file,
+                                              fn2=video_options_resume.output_json_file,
+                                              verbose=True), \
+                'Unexpected results after resuming video processing from a checkpoint'
+
+        # ...for each queue setting
 
     # ...if we're not skipping video tests
 
@@ -1705,6 +1904,56 @@ def run_cli_tests(options):
         cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
 
         cmd_results = execute_and_print(cmd)
+
+
+        ## Video test (frame queue)
+
+        print('\n** Testing video processing with the frame queue (CLI) **\n')
+
+        # With a batch size of 1, results should be identical to the results we got without
+        # the frame queue
+        video_inference_output_file_queue = insert_before_extension(video_inference_output_file,'queue')
+        cmd_queue = cmd.replace(video_inference_output_file,video_inference_output_file_queue)
+        cmd_queue += ' --use_image_queue --preprocess_on_image_queue --loader_workers 2'
+        cmd_results = execute_and_print(cmd_queue)
+
+        assert output_files_are_identical(fn1=video_inference_output_file,
+                                          fn2=video_inference_output_file_queue,
+                                          verbose=True), \
+            'Video results with the frame queue differ from results without the frame queue'
+
+
+        ## Video test (resume from a checkpoint with the frame queue)
+
+        print('\n** Resuming video processing from a checkpoint with the frame queue (CLI) **\n')
+
+        partial_checkpoint_file = os.path.join(options.scratch_dir,
+                                               'video_resume_partial_checkpoint_cli.json')
+        expected_resume_results_file = \
+            insert_before_extension(video_inference_output_file,'resume_expected')
+
+        _ = _write_partial_video_checkpoint(reference_results_file=video_inference_output_file,
+                                            video_folder=options.scratch_dir,
+                                            checkpoint_file=partial_checkpoint_file,
+                                            expected_results_file=expected_resume_results_file)
+
+        video_inference_output_file_resume = \
+            insert_before_extension(video_inference_output_file,'queue_resume')
+        cmd_resume = cmd.replace(video_inference_output_file,video_inference_output_file_resume)
+        cmd_resume += ' --use_image_queue --use_threads_for_queue --checkpoint_frequency 1'
+        cmd_resume += ' --resume_from_checkpoint "{}"'.format(partial_checkpoint_file)
+        cmd_results = execute_and_print(cmd_resume)
+
+        # Since we didn't specify --checkpoint_path, new checkpoints were written to a new file,
+        # so the checkpoint we resumed from is still there
+        os.remove(partial_checkpoint_file)
+
+        # The output should match the original results, other than the restored video whose
+        # detections we removed
+        assert output_files_are_identical(fn1=expected_resume_results_file,
+                                          fn2=video_inference_output_file_resume,
+                                          verbose=True), \
+            'Unexpected results after resuming video processing from a checkpoint'
 
     # ...if we're not skipping video tests
 
