@@ -919,7 +919,7 @@ manage_local_batch contains a check indicating that preprocess_on_image_queue is
 
 "Standalone preprocessing is not yet supported for "modern" preprocessing"
 
-I'm not sure these are still incompatible; double-check on this.  This is P3 in as much as it concerns the notebook, P1 because I'm increasingly using "modern" preprocessing and want to make sure it's compatible with all the same options that "classic" preprocessing supports.
+I'm not sure these are still incompatible; double-check on this.  This is not really an important issue in manage_local_batch, but I'm marking this as P1 because I'm increasingly using "modern" preprocessing and want to make sure it's compatible with all the same options that "classic" preprocessing supports.
 
 P1
 

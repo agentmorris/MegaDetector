@@ -882,6 +882,81 @@ def run_python_tests(options):
         compare_results(inference_output_file_batch,expected_results_file,options)
 
 
+        ## Resume from a checkpoint with the image queue enabled
+
+        print('\n** Resuming from a checkpoint with the image queue enabled (module) **\n')
+
+        from megadetector.detection.run_detector_batch import load_checkpoint
+
+        # Simulate an interrupted job: pretend that the first half of the images were processed
+        # before the interruption, using results from the standard inference run.
+        with open(inference_output_file_standard_inference,'r') as f:
+            standard_results = json.load(f)
+        relative_filename_to_result = {im['file']:im for im in standard_results['images']}
+
+        sorted_image_file_names = sorted(image_file_names)
+        n_restored_images = len(sorted_image_file_names) // 2
+        restored_image_file_names = set(sorted_image_file_names[0:n_restored_images])
+        restored_results = []
+        for image_file_name in sorted_image_file_names[0:n_restored_images]:
+            relative_filename = os.path.relpath(image_file_name,image_folder).replace('\\','/')
+            restored_result = copy(relative_filename_to_result[relative_filename])
+            restored_result['file'] = image_file_name
+            restored_results.append(restored_result)
+
+        # Remove any checkpoint left over from a previous test run, so we only see
+        # checkpoints written by this run
+        checkpoint_file_queue_resume = os.path.join(options.scratch_dir,
+                                                    'queue_resume_checkpoint.json')
+        if os.path.isfile(checkpoint_file_queue_resume):
+            os.remove(checkpoint_file_queue_resume)
+
+        results = load_and_run_detector_batch(options.default_model,
+                                              image_file_names,
+                                              checkpoint_path=checkpoint_file_queue_resume,
+                                              checkpoint_frequency=5,
+                                              results=list(restored_results),
+                                              use_image_queue=True,
+                                              use_threads_for_queue=True,
+                                              preprocess_on_image_queue=True,
+                                              quiet=True,
+                                              detector_options=copy(options.detector_options))
+
+        # Each image should appear exactly once in the final results
+        result_image_file_names = [r['file'] for r in results]
+        assert len(result_image_file_names) == len(image_file_names), \
+            'Expected {} results after resuming, found {}'.format(
+                len(image_file_names),len(result_image_file_names))
+        assert set(result_image_file_names) == set(image_file_names), \
+            'Results after resuming do not match the set of input images'
+
+        # Checkpoints written after resuming should include the restored results, not just the
+        # results computed since resuming
+        assert os.path.isfile(checkpoint_file_queue_resume), \
+            'No checkpoint was written when resuming with the image queue enabled'
+        checkpoint_results = load_checkpoint(checkpoint_file_queue_resume)
+        os.remove(checkpoint_file_queue_resume)
+        checkpoint_image_file_names = [r['file'] for r in checkpoint_results]
+        assert len(set(checkpoint_image_file_names)) == len(checkpoint_image_file_names), \
+            'Checkpoint written after resuming contains duplicate results'
+        assert restored_image_file_names.issubset(checkpoint_image_file_names), \
+            'Checkpoint written after resuming is missing restored results'
+        assert len(checkpoint_image_file_names) > n_restored_images, \
+            'Checkpoint written after resuming does not contain any new results'
+
+        # The final results should match the standard results
+        inference_output_file_queue_resume = \
+            insert_before_extension(inference_output_file,'queue_resume')
+        _ = write_results_to_file(results,
+                                  inference_output_file_queue_resume,
+                                  relative_path_base=image_folder,
+                                  detector_file=options.default_model)
+        compare_results(inference_output_file_queue_resume,
+                        inference_output_file_standard_inference,
+                        options,
+                        expected_results_file_is_absolute=True)
+
+
         ## Run and verify again with augmentation enabled
 
         print('\n** Running MD on images with augmentation (module) **\n')
@@ -1310,6 +1385,50 @@ def run_cli_tests(options):
 
         assert output_files_are_identical(fn1=inference_output_file,
                                           fn2=inference_output_file_checkpoint,
+                                          verbose=True)
+
+
+        ## Resume from a checkpoint with the image queue and checkpointing enabled
+
+        print('\n** Resuming from a checkpoint with the image queue enabled (CLI) **\n')
+
+        from megadetector.utils import path_utils
+
+        # Simulate an interrupted job: write a checkpoint containing results for the first half
+        # of the images, using results from the standard inference run.  Filenames in checkpoints
+        # are absolute paths with forward slashes.
+        with open(inference_output_file,'r') as f:
+            standard_results = json.load(f)
+
+        all_image_files = set([fn.replace('\\','/') for fn in \
+                               path_utils.find_images(image_folder,recursive=True)])
+        sorted_standard_results = sorted(standard_results['images'], key=lambda d: d['file'])
+        n_restored_images = len(sorted_standard_results) // 2
+        restored_results = []
+        for im in sorted_standard_results[0:n_restored_images]:
+            restored_result = copy(im)
+            restored_result['file'] = os.path.join(image_folder,im['file']).replace('\\','/')
+            assert restored_result['file'] in all_image_files, \
+                'Could not map result {} to an image path'.format(im['file'])
+            restored_results.append(restored_result)
+
+        partial_checkpoint_file = os.path.join(options.scratch_dir,
+                                               'queue_resume_partial_checkpoint.json')
+        with open(partial_checkpoint_file,'w') as f:
+            json.dump({'checkpoint':restored_results},f,indent=1)
+
+        cmd = base_cmd + ' --use_image_queue --preprocess_on_image_queue --checkpoint_frequency 5'
+        cmd += ' --resume_from_checkpoint "{}"'.format(partial_checkpoint_file)
+        inference_output_file_queue_resume = insert_before_extension(inference_output_file,
+                                                                     'queue_resume')
+        cmd = cmd.replace(inference_output_file,inference_output_file_queue_resume)
+        cmd += ' --detector_options {}'.format(dict_to_kvp_list(options.detector_options))
+        cmd_results = execute_and_print(cmd)
+
+        os.remove(partial_checkpoint_file)
+
+        assert output_files_are_identical(fn1=inference_output_file,
+                                          fn2=inference_output_file_queue_resume,
                                           verbose=True)
 
 

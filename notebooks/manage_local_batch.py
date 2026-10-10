@@ -384,8 +384,6 @@ base_output_folder_name = \
 os.makedirs(base_output_folder_name,exist_ok=True)
 
 if use_image_queue:
-    assert checkpoint_frequency is None,\
-        'Checkpointing is not supported when using an image queue'
     if preprocess_on_image_queue and (detector_options is not None) and \
         'compatibility_mode=modern' in detector_options:
         raise NotImplementedError('Standalone preprocessing is not yet supported for "modern" preprocessing')

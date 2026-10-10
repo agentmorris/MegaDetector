@@ -17,21 +17,20 @@ are processed and final results file written to output_file, the temporary
 checkpoint file will be deleted. If you want to resume from a checkpoint, set
 the checkpoint file's path using --resume_from_checkpoint.
 
-Has multiprocessing support for CPUs only; if a GPU is available, it will
-use the GPU instead of CPUs, and the --ncores option will be ignored.  Checkpointing
-is not supported when using a GPU.
+Has parallel inference support for CPUs only; if a GPU is available, it will
+use the GPU instead of CPUs, and the --ncores option will be ignored.
 
-The lack of GPU multiprocessing support might sound annoying, but in practice we
-run a gazillion MegaDetector images on multiple GPUs using this script, we just only use
-one GPU *per invocation of this script*.  Dividing a list of images into one chunk
-per GPU happens outside of this script.
+The lack of parallel GPU inference support might sound annoying for the small handful of users
+with two GPUs, but in practice we run a gazillion MegaDetector images on multiple GPUs using this
+script, we just only use one GPU *per invocation of this script*.  Dividing a list of images into
+one chunk per GPU happens outside of this script.
 
 Does not have a command-line option to bind the process to a particular GPU, but you can
 prepend with "CUDA_VISIBLE_DEVICES=0 ", for example, to bind to GPU 0, e.g.:
 
 CUDA_VISIBLE_DEVICES=0 python detection/run_detector_batch.py md_v4.1.0.pb ~/data ~/mdv4test.json
 
-You can disable GPU processing entirely by setting CUDA_VISIBLE_DEVICES=''.
+You can disable GPU processing entirely by setting CUDA_VISIBLE_DEVICES=-1.
 
 """
 
@@ -215,7 +214,8 @@ def _consumer_func(q,
                    n_total_images=None,
                    batch_size=1,
                    checkpoint_path=None,
-                   checkpoint_frequency=-1
+                   checkpoint_frequency=-1,
+                   previous_results=None
                    ):
     """
     Consumer function; only used when using the (optional) image queue.
@@ -244,6 +244,8 @@ def _consumer_func(q,
             checkpointing
         checkpoint_frequency (int, optional): write checkpoint every N images, -1 disables
             checkpointing
+        previous_results (list, optional): results restored from a previous checkpoint; these
+            are included in checkpoints, but not in the results this function returns
     """
 
     if verbose:
@@ -265,27 +267,12 @@ def _consumer_func(q,
 
     results = []
 
+    if previous_results is None:
+        previous_results = []
+
     n_images_processed = 0
     n_queues_finished = 0
     last_checkpoint_count = 0
-
-    def _should_write_checkpoint():
-        """
-        Check whether we should write a checkpoint. Returns True if we've crossed a
-        checkpoint boundary.
-        """
-
-        if (checkpoint_frequency <= 0) or (checkpoint_path is None):
-            return False
-
-        # Calculate the checkpoint threshold we should have crossed
-        current_checkpoint_threshold = \
-            (n_images_processed // checkpoint_frequency) * checkpoint_frequency
-        last_checkpoint_threshold = \
-            (last_checkpoint_count // checkpoint_frequency) * checkpoint_frequency
-
-        # We should write a checkpoint if we've crossed into a new checkpoint interval
-        return (current_checkpoint_threshold > last_checkpoint_threshold)
 
     pbar = None
     if n_total_images is not None:
@@ -443,10 +430,16 @@ def _consumer_func(q,
             # ...if we are/aren't doing batch processing
 
             # Write checkpoint if necessary
-            if _should_write_checkpoint():
+            if (checkpoint_path is not None) and \
+                _checkpoint_boundary_crossed(last_checkpoint_count,
+                                             n_images_processed,
+                                             checkpoint_frequency):
                 print('Consumer: writing checkpoint after {} images'.format(
                     n_images_processed))
-                write_checkpoint(checkpoint_path, results)
+                # Include any results restored from a previous checkpoint, so this checkpoint
+                # covers every image processed so far, not just images processed since the
+                # last restart.
+                write_checkpoint(checkpoint_path, previous_results + results)
                 last_checkpoint_count = n_images_processed
 
         # ...whether we received a string (indicating failure) or an image from the loader worker
@@ -473,7 +466,8 @@ def _run_detector_with_image_queue(image_files,
                                    batch_size=1,
                                    checkpoint_path=None,
                                    checkpoint_frequency=-1,
-                                   use_threads_for_queue=False):
+                                   use_threads_for_queue=False,
+                                   previous_results=None):
     """
     Driver function for the (optional) multiprocessing-based image queue.  Spawns workers to read and
     preprocess images, runs the consumer function in the calling process.
@@ -501,6 +495,8 @@ def _run_detector_with_image_queue(image_files,
         checkpoint_frequency (int, optional): write checkpoint every N images, -1 disables checkpointing
         use_threads_for_queue (bool, optional): use threads (rather than processes) for the data
             loading workers
+        previous_results (list, optional): results restored from a previous checkpoint; these
+            are included in checkpoints, but not in the results this function returns
 
     Returns:
         list: list of dicts in the format returned by process_image()
@@ -573,7 +569,8 @@ def _run_detector_with_image_queue(image_files,
                                                           n_total_images,
                                                           batch_size,
                                                           checkpoint_path,
-                                                          checkpoint_frequency))
+                                                          checkpoint_frequency,
+                                                          previous_results))
         else:
             consumer = Process(target=_consumer_func,args=(q,
                                                            return_queue,
@@ -590,7 +587,8 @@ def _run_detector_with_image_queue(image_files,
                                                            n_total_images,
                                                            batch_size,
                                                            checkpoint_path,
-                                                           checkpoint_frequency))
+                                                           checkpoint_frequency,
+                                                           previous_results))
         consumer.daemon = True
         consumer.start()
     else:
@@ -609,7 +607,8 @@ def _run_detector_with_image_queue(image_files,
                        n_total_images,
                        batch_size,
                        checkpoint_path,
-                       checkpoint_frequency)
+                       checkpoint_frequency,
+                       previous_results)
 
     for i_producer,producer in enumerate(producers):
         producer.join()
@@ -1287,14 +1286,15 @@ def load_and_run_detector_batch(model_file,
                           batch_size=batch_size,
                           checkpoint_path=checkpoint_path,
                           checkpoint_frequency=checkpoint_frequency,
-                          use_threads_for_queue=use_threads_for_queue)
+                          use_threads_for_queue=use_threads_for_queue,
+                          previous_results=results)
 
         # Merge new results with existing results from checkpoint
         results.extend(new_results)
 
     elif n_cores <= 1:
 
-        # Single-threaded processing, no image queue
+        # Single-threaded inference, no image queue
 
         # Load the detector
         start_time = time.time()
@@ -1341,10 +1341,15 @@ def load_and_run_detector_batch(model_file,
                                                augment=augment)
 
                 results.extend(batch_results)
+                image_count_before_batch = image_count
                 image_count += len(batch)
 
-                # Write a checkpoint if necessary
-                if (checkpoint_frequency != -1) and ((image_count % checkpoint_frequency) == 0):
+                # Write a checkpoint if necessary; the image count doesn't necessarily land on
+                # multiples of the checkpoint frequency, so we check whether this batch crossed
+                # a checkpoint boundary.
+                if _checkpoint_boundary_crossed(image_count_before_batch,
+                                                image_count,
+                                                checkpoint_frequency):
                     print('Writing a new checkpoint after having processed {} images since '
                           'last restart'.format(image_count))
                     write_checkpoint(checkpoint_path, results)
@@ -1377,10 +1382,10 @@ def load_and_run_detector_batch(model_file,
 
     else:
 
-        # Multiprocessing is enabled at this point
+        # Parallel inference is enabled at this point (and the image queue is disabled)
 
-        # When using multiprocessing, tell the workers to load the model on each
-        # process, by passing the model_file string as the "model" argument to
+        # When using parallel inference, tell the inference workers to load the model on
+        # each worker, by passing the model_file string as the "model" argument to
         # process_images.
         detector = model_file
 
@@ -1401,7 +1406,7 @@ def load_and_run_detector_batch(model_file,
 
             if checkpoint_path is not None:
 
-                # Multiprocessing and checkpointing are both enabled at this point
+                # Parallel inference and checkpointing are both enabled at this point
 
                 checkpoint_queue = Manager().Queue()
 
@@ -1472,10 +1477,36 @@ def load_and_run_detector_batch(model_file,
 # ...def load_and_run_detector_batch(...)
 
 
+def _checkpoint_boundary_crossed(n_images_before, n_images_after, checkpoint_frequency):
+    """
+    Determines whether a checkpoint is due, i.e., whether the number of processed images crossed
+    a multiple of [checkpoint_frequency] when going from [n_images_before] to [n_images_after].
+    When images are processed in batches, the image count doesn't necessarily land on multiples
+    of [checkpoint_frequency], so checking whether the count is divisible by [checkpoint_frequency]
+    can skip checkpoints.
+
+    Args:
+        n_images_before (int): number of images processed as of the last time we checked
+        n_images_after (int): number of images processed now
+        checkpoint_frequency (int): write a checkpoint every N images; None or values <= 0
+            disable checkpointing
+
+    Returns:
+        bool: whether we should write a checkpoint
+    """
+
+    if (checkpoint_frequency is None) or (checkpoint_frequency <= 0):
+        return False
+
+    return (n_images_after // checkpoint_frequency) > (n_images_before // checkpoint_frequency)
+
+# ...def _checkpoint_boundary_crossed(...)
+
+
 def _checkpoint_queue_handler(checkpoint_path, checkpoint_frequency, checkpoint_queue, results):
     """
     Thread function to accumulate results and write checkpoints when checkpointing and
-    multiprocessing are both enabled.
+    parallel inference are both enabled.
     """
 
     result_count = 0
@@ -1493,6 +1524,8 @@ def _checkpoint_queue_handler(checkpoint_path, checkpoint_frequency, checkpoint_
                     'last restart'.format(result_count))
 
             write_checkpoint(checkpoint_path, results)
+
+# ...def _checkpoint_queue_handler(...)
 
 
 def write_checkpoint(checkpoint_path, results):
@@ -1526,6 +1559,8 @@ def write_checkpoint(checkpoint_path, results):
             print('Warning: error removing backup checkpoint file {}:\n{}'.format(
                 checkpoint_tmp_path,str(e)))
 
+# ...def write_checkpoint(...)
+
 
 def load_checkpoint(checkpoint_path):
     """
@@ -1551,6 +1586,8 @@ def load_checkpoint(checkpoint_path):
     print('Restored {} entries from the checkpoint {}'.format(len(results),checkpoint_path))
 
     return results
+
+# ...def load_checkpoint(...)
 
 
 def get_image_datetime(image):
@@ -1837,8 +1874,7 @@ def main(): # noqa
     parser.add_argument(
         '--use_image_queue',
         action='store_true',
-        help='Pre-load images, may help keep your GPU busy; does not currently support ' + \
-             'checkpointing.  Useful if you have a very fast GPU and a very slow disk.')
+        help='Pre-load images on a worker pool, may help keep your GPU busy.')
     parser.add_argument(
         '--preprocess_on_image_queue',
         action='store_true',
@@ -2217,3 +2253,189 @@ def main(): # noqa
 
 if __name__ == '__main__':
     main()
+
+
+#%% Tests
+
+class _FakeDetector:
+    """
+    Stand-in for a detector object, used to test internal logic (e.g. related to checkpointing
+    and multiprocessing without loading a model.  Returns an empty detection list for every image.
+    """
+
+    def generate_detections_one_image(self, image, image_id, **kwargs):
+        """
+        Returns an empty detection list for one image.
+
+        Args:
+            image (Image): the image (ignored)
+            image_id (str): the image filename
+            kwargs (dict): other arguments accepted by real detectors (ignored)
+
+        Returns:
+            dict: a result for [image_id] with no detections
+        """
+
+        return {'file': image_id, 'detections': []}
+
+    def generate_detections_one_batch(self, images, image_ids, **kwargs):
+        """
+        Returns an empty detection list for each image in a batch.
+
+        Args:
+            images (list): the images (ignored)
+            image_ids (list): the image filenames
+            kwargs (dict): other arguments accepted by real detectors (ignored)
+
+        Returns:
+            list: a result with no detections for each element of [image_ids]
+        """
+
+        return [{'file': image_id, 'detections': []} for image_id in image_ids]
+
+# ...class _FakeDetector
+
+
+def test_checkpoints_when_resuming():
+    """
+    Tests the checkpoints written by load_and_run_detector_batch() when resuming from a
+    checkpoint, with and without the image queue, and with and without batching.  Uses a
+    fake detector, so this doesn't require a model or a GPU.
+
+    Every checkpoint written after resuming should include the results restored from the
+    previous checkpoint, and a checkpoint should be written each time the number of new
+    images crosses a multiple of the checkpoint frequency, even when the batch size doesn't
+    divide the checkpoint frequency.
+    """
+
+    from PIL import Image
+
+    global load_detector, is_gpu_available, write_checkpoint
+
+    original_load_detector = load_detector
+    original_is_gpu_available = is_gpu_available
+    original_write_checkpoint = write_checkpoint
+
+    # The filenames in each checkpoint we write, in the order the checkpoints were written
+    checkpoint_filenames = []
+
+    def _fake_load_detector(*args, **kwargs):
+        """
+        Replaces load_detector() for this test.
+        """
+
+        return _FakeDetector()
+
+    def _fake_is_gpu_available(*args, **kwargs):
+        """
+        Replaces is_gpu_available() for this test; pretends a GPU is available, so batch
+        sizes > 1 aren't reduced to 1.
+        """
+
+        return True
+
+    def _record_checkpoint(checkpoint_path, results):
+        """
+        Replaces write_checkpoint() for this test; records the filenames in each checkpoint,
+        then writes the checkpoint.
+        """
+
+        checkpoint_filenames.append([r['file'] for r in results])
+        original_write_checkpoint(checkpoint_path, results)
+
+    test_folder = ct_utils.make_test_folder(subfolder='run_detector_batch_tests')
+
+    try:
+
+        load_detector = _fake_load_detector
+        is_gpu_available = _fake_is_gpu_available
+        write_checkpoint = _record_checkpoint
+
+        ## Create test images
+
+        n_images = 20
+        image_files = []
+        for i_image in range(n_images):
+            image_file = os.path.join(test_folder,'image_{:02d}.jpg'.format(i_image)).replace('\\','/')
+            Image.new('RGB', (32,32), color='green').save(image_file)
+            image_files.append(image_file)
+
+        # Pretend that the first few images were restored from a previous checkpoint
+        n_restored_images = 4
+        restored_results = [{'file': image_file, 'detections': []}
+                            for image_file in image_files[0:n_restored_images]]
+        restored_files = set(image_files[0:n_restored_images])
+
+        checkpoint_frequency = 5
+
+        ## Run inference with and without the image queue and batching
+
+        # Each tuple is (use_image_queue, batch_size, expected number of results in each checkpoint).
+        #
+        # We have four restored images and 16 new images.  When processing one image at a time, we
+        # should write checkpoints after 5, 10, and 15 new images.  With a batch size of 4, the
+        # number of new images goes 4, 8, 12, 16, so we should write checkpoints after 8, 12, and
+        # 16 new images.  Every checkpoint should also include the restored images.
+        test_cases = [
+            (False, 1, [9, 14, 19]),
+            (False, 4, [12, 16, 20]),
+            (True, 1, [9, 14, 19]),
+            (True, 4, [12, 16, 20])
+        ]
+
+        for use_image_queue, batch_size, expected_checkpoint_sizes in test_cases:
+
+            print('Testing checkpoints with use_image_queue={}, batch_size={}'.format(
+                use_image_queue,batch_size))
+
+            checkpoint_path = os.path.join(test_folder,'checkpoint_queue_{}_batch_{}.json'.format(
+                use_image_queue,batch_size))
+            checkpoint_filenames.clear()
+
+            results = load_and_run_detector_batch(model_file='fake-model',
+                                                  image_file_names=image_files,
+                                                  checkpoint_path=checkpoint_path,
+                                                  checkpoint_frequency=checkpoint_frequency,
+                                                  results=list(restored_results),
+                                                  use_image_queue=use_image_queue,
+                                                  use_threads_for_queue=True,
+                                                  loader_workers=2,
+                                                  batch_size=batch_size,
+                                                  quiet=True)
+
+            ## Validate the final results
+
+            result_files = [r['file'] for r in results]
+            assert len(result_files) == n_images, \
+                'Expected {} results, got {}'.format(n_images,len(result_files))
+            assert set(result_files) == set(image_files), \
+                'Final results do not match the set of input images'
+
+            ## Validate the checkpoints
+
+            checkpoint_sizes = [len(filenames) for filenames in checkpoint_filenames]
+            assert checkpoint_sizes == expected_checkpoint_sizes, \
+                'Expected checkpoints with {} results, got {}'.format(
+                    expected_checkpoint_sizes,checkpoint_sizes)
+
+            for filenames in checkpoint_filenames:
+                assert len(set(filenames)) == len(filenames), \
+                    'Checkpoint contains duplicate results'
+                assert restored_files.issubset(filenames), \
+                    'Checkpoint is missing results restored from the previous checkpoint'
+
+            # The checkpoint file should contain the last checkpoint we wrote
+            checkpoint_results = load_checkpoint(checkpoint_path)
+            assert [r['file'] for r in checkpoint_results] == checkpoint_filenames[-1], \
+                'Checkpoint file does not match the last checkpoint written'
+
+        # ...for each test case
+
+    finally:
+
+        load_detector = original_load_detector
+        is_gpu_available = original_is_gpu_available
+        write_checkpoint = original_write_checkpoint
+        shutil.rmtree(test_folder,ignore_errors=True)
+
+# ...def test_checkpoints_when_resuming(...)
