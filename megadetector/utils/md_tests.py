@@ -34,6 +34,15 @@ import pytest
 from copy import copy
 
 
+#%% Allow disabling MPS during tests
+
+if os.environ.get("DISABLE_MPS") == "1":
+    print('*** Disabling MPS ***')
+    import torch
+    torch._C._mps_is_available = lambda: False
+    torch.backends.mps.is_available.cache_clear()
+
+
 #%% Classes
 
 class MDTestOptions:
