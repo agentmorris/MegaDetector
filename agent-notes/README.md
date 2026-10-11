@@ -1,0 +1,3 @@
+# The agent-notes folder
+
+Everything in this repo outside of this folder is either human-written or closely human-reviewed.  We'll see how long that lasts, but as of 2026.10, when I'm writing this README, this is the case.  This folder is where I will dump notes from agents for future agents, generally to be linked from the TODO list.  Unlike everything else in this repo, I make no claim to actually understanding what's in this folder.

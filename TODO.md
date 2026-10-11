@@ -983,3 +983,16 @@ P1
 E0
 
 !feature
+
+
+## Improved exception handling in multiprocessing scenarios
+
+In some very esoteric scenarios, when multiprocessing is enabled, inference modules can hang.  This never happens in normal operation, it's quirky stuff like piping stdin in odd ways, calling things from certain IPython environments, etc.  And even in those scenarios, it still required unexpected stuff to happen.
+
+An agent-authored note for the next agent to look at regarding this issue is available [here](https://github.com/agentmorris/MegaDetector/blob/main/agent-notes/improved_exception_handling.md).
+
+P3
+
+E1
+
+!bug
