@@ -359,11 +359,11 @@ markdown-link-validator .
 
 ### Test data
 
-A zipfile of camera trap images is available at:
+A zipfile of camera trap data is available at:
 
 <https://lila.science/public/md-test-package.zip>
 
-This contains:
+This zipfile contains:
 
 * Images with unusual filenames
 * Images that are corrupted
@@ -374,11 +374,12 @@ This contains:
 
 ### Testing conventions
 
-* Modules should have a cell called `#%% Tests`.  This should be the last cell in each module.  Functions within that cell should start with `test_`.
+* Modules may have a cell called `#%% Tests`.  This should be the last cell in each module.  Functions within that cell should start with `test_`.
 * Tests that require temporary folders should create them using `ct_utils.make_test_folder()`, which keeps temporary folders under a `megadetector/tests` folder within the system temp folder.  Temporary folders should be cleaned up after tests are complete.
+* Tests that require the sample data should download it using `md_tests.download_test_data()`
 
 
-### Running all tests
+### Running quick tests
 
 This repo uses `pytest` for testing; cd to the repo root and run:
 
@@ -390,10 +391,12 @@ This repo uses `pytest` for testing; cd to the repo root and run:
 
 ...will show output rather than eating it (-s) and quit after the first failure (-x).
 
+This only runs a subset of tests, since the full test suite is time-consuming.  The "quick" tests are the tests that get run with every commit/PR to main.
 
-### Running the most important tests
 
-The most important tests - the ones about actually running models - are in md_tests.py.  These are run by the automated test suite, but to run them manually, you can do something like:
+### Running the full test suite
+
+The longer tests that check detector correctness in a wide range of inference environments are in md_tests.py.  Run them via the main entry point in md_tests.py, e.g.:
 
 ```bash
 python -m megadetector.utils.md_tests --max_coord_error 0.01 --max_conf_error 0.01 --skip_download_tests --skip_cpu_tests --skip_video_tests

@@ -30,6 +30,7 @@ default_fourcc = 'h264'
 
 video_progress_bar_description = 'Processing video'
 
+
 #%% Path utilities
 
 VIDEO_EXTENSIONS = ('.mp4','.avi','.mpeg','.mpg','.mov','.mkv','.flv')
@@ -329,6 +330,32 @@ def _add_frame_numbers_to_results(results):
     return results
 
 
+def _seconds_to_frame_interval(every_n_seconds, frame_rate, input_video_file):
+    """
+    Converts a sampling interval in seconds to a sampling interval in frames.  If the interval
+    is shorter than the time between frames (so it would round to zero frames), samples every
+    frame, and prints a warning.
+
+    Args:
+        every_n_seconds (float): sampling interval in seconds
+        frame_rate (float): frame rate of [input_video_file]
+        input_video_file (str): the video we're sampling, only used for printing warnings
+
+    Returns:
+        int: the sampling interval in frames, which is always at least 1
+    """
+
+    every_n_frames = int(every_n_seconds * frame_rate)
+
+    if every_n_frames < 1:
+        print('Warning: a sampling interval of {} seconds is shorter than the time between '
+              'frames for {} ({} fps), sampling every frame'.format(
+                  every_n_seconds,input_video_file,frame_rate))
+        every_n_frames = 1
+
+    return every_n_frames
+
+
 def run_callback_on_frames(input_video_file,
                            frame_callback,
                            every_n_frames=None,
@@ -381,6 +408,11 @@ def run_callback_on_frames(input_video_file,
     try:
 
         vidcap,image = open_video(input_video_file,verbose=verbose)
+
+        # open_video() returns None if none of the OpenCV backends could open this file
+        if vidcap is None:
+            raise Exception('Could not open video {}'.format(input_video_file))
+
         n_frames = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
         frame_rate = vidcap.get(cv2.CAP_PROP_FPS)
 
@@ -394,7 +426,9 @@ def run_callback_on_frames(input_video_file,
 
             if (every_n_frames < 0):
                 every_n_seconds = abs(every_n_frames)
-                every_n_frames = int(every_n_seconds * frame_rate)
+                every_n_frames = _seconds_to_frame_interval(every_n_seconds,
+                                                            frame_rate,
+                                                            input_video_file)
                 if verbose:
                     print('Interpreting a time sampling rate of {} hz as a frame interval of {}'.format(
                         every_n_seconds,every_n_frames))
@@ -601,7 +635,7 @@ def _run_callback_on_frames_for_folder_core(input_video_folder,
                                             verbose=False,
                                             recursive=True,
                                             files_to_process_relative=None,
-                                            error_on_empty_video=False):
+                                            video_complete_callback=None):
     """
     Shared implementation for run_callback_on_frames_for_folder() and
     run_callback_on_frames_for_folder_batched(); those functions differ only in how they
@@ -615,8 +649,8 @@ def _run_callback_on_frames_for_folder_core(input_video_folder,
         verbose (bool, optional): enable additional debug console output
         recursive (bool, optional): recurse into [input_video_folder]
         files_to_process_relative (list, optional): only process specific relative paths
-        error_on_empty_video (bool, optional): by default, videos with errors or no valid frames
-            are silently stored as failures; this turns them into exceptions
+        video_complete_callback (function, optional): function to call after each video
+            has been processed; see run_callback_on_frames_for_folder() for details
 
     Returns:
         dict: dict with keys 'video_filenames' (list of str), 'frame_rates' (list of floats),
@@ -665,25 +699,35 @@ def _run_callback_on_frames_for_folder_core(input_video_folder,
 
         except Exception as e:
 
-            if (not error_on_empty_video):
-                print('Warning: error processing video {}: {}'.format(
-                    video_fn_abs,str(e)
-                ))
-                to_return['frame_rates'].append(-1.0)
-                failure_result = {}
-                failure_result['failure'] = 'Failure processing video: {}'.format(str(e))
-                to_return['results'].append(failure_result)
-                continue
-            else:
-                raise
+            print('Warning: error processing video {}: {}'.format(
+                video_fn_abs,str(e)
+            ))
+            video_results = None
+            failure_result = {}
+            failure_result['failure'] = 'Failure processing video: {}'.format(str(e))
 
         # ...try/except
 
-        to_return['frame_rates'].append(video_results['frame_rate'])
-        for r in video_results['results']:
-            assert r['file'].startswith('frame')
-            r['file'] = video_filename_relative + '/' + r['file']
-        to_return['results'].append(video_results['results'])
+        if video_results is None:
+
+            frame_rate = -1.0
+            results_this_video = failure_result
+
+        else:
+
+            frame_rate = video_results['frame_rate']
+            results_this_video = video_results['results']
+            for r in results_this_video:
+                assert r['file'].startswith('frame')
+                r['file'] = video_filename_relative + '/' + r['file']
+
+        to_return['frame_rates'].append(frame_rate)
+        to_return['results'].append(results_this_video)
+
+        # This happens outside the try/except above, so errors in [video_complete_callback]
+        # aren't recorded as failures for this video.
+        if video_complete_callback is not None:
+            video_complete_callback(video_filename_relative,frame_rate,results_this_video)
 
     # ...for each video
 
@@ -703,7 +747,7 @@ def run_callback_on_frames_for_folder(input_video_folder,
                                       verbose=False,
                                       recursive=True,
                                       files_to_process_relative=None,
-                                      error_on_empty_video=False):
+                                      video_complete_callback=None):
     """
     Calls the function frame_callback(np.array,image_id) on all (or selected) frames in
     all videos in [input_video_folder].
@@ -724,8 +768,11 @@ def run_callback_on_frames_for_folder(input_video_folder,
         verbose (bool, optional): enable additional debug console output
         recursive (bool, optional): recurse into [input_video_folder]
         files_to_process_relative (list, optional): only process specific relative paths
-        error_on_empty_video (bool, optional): by default, videos with errors or no valid frames
-            are silently stored as failures; this turns them into exceptions
+        video_complete_callback (function, optional): function to call after each video has
+            been processed, e.g. to save checkpoints.  Called with three arguments, which are
+            the values that will be stored for this video in the returned dict: the relative
+            filename of the video, the frame rate, and the results for this video (a list with
+            one element per frame, or a dict with the key "failure" for failed videos).
 
     Returns:
         dict: dict with keys 'video_filenames' (list of str), 'frame_rates' (list of floats),
@@ -751,7 +798,7 @@ def run_callback_on_frames_for_folder(input_video_folder,
         verbose=verbose,
         recursive=recursive,
         files_to_process_relative=files_to_process_relative,
-        error_on_empty_video=error_on_empty_video)
+        video_complete_callback=video_complete_callback)
 
 # ...def run_callback_on_frames_for_folder(...)
 
@@ -763,7 +810,7 @@ def run_callback_on_frames_for_folder_batched(input_video_folder,
                                               verbose=False,
                                               recursive=True,
                                               files_to_process_relative=None,
-                                              error_on_empty_video=False):
+                                              video_complete_callback=None):
     """
     Calls the function frame_batch_callback(list of np.array,list of image_id) on batches of up
     to [batch_size] frames from all videos in [input_video_folder].  Batches never span videos,
@@ -786,8 +833,8 @@ def run_callback_on_frames_for_folder_batched(input_video_folder,
         verbose (bool, optional): enable additional debug console output
         recursive (bool, optional): recurse into [input_video_folder]
         files_to_process_relative (list, optional): only process specific relative paths
-        error_on_empty_video (bool, optional): by default, videos with errors or no valid frames
-            are silently stored as failures; this turns them into exceptions
+        video_complete_callback (function, optional): function to call after each video has
+            been processed; see run_callback_on_frames_for_folder() for details
 
     Returns:
         dict: dict with keys 'video_filenames' (list of str), 'frame_rates' (list of floats),
@@ -816,7 +863,7 @@ def run_callback_on_frames_for_folder_batched(input_video_folder,
         verbose=verbose,
         recursive=recursive,
         files_to_process_relative=files_to_process_relative,
-        error_on_empty_video=error_on_empty_video)
+        video_complete_callback=video_complete_callback)
 
 # ...def run_callback_on_frames_for_folder_batched(...)
 
@@ -884,7 +931,7 @@ def video_to_frames(input_video_file,
 
     if (every_n_frames is not None) and (every_n_frames < 0):
         every_n_seconds = abs(every_n_frames)
-        every_n_frames = int(every_n_seconds * fs)
+        every_n_frames = _seconds_to_frame_interval(every_n_seconds,fs,input_video_file)
         if verbose:
             print('Interpreting a time sampling rate of {} hz as a frame interval of {}'.format(
                 every_n_seconds,every_n_frames))

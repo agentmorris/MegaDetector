@@ -68,28 +68,6 @@ E0
 !feature
 
 
-## Multiprocessing in process_video
-
-Video decoding currently happens in the same worker as inference in process_video; move video decoding to a worker pool.
-
-P0
-
-E1
-
-!bug
-
-
-## Very small negative values for every_n_frames crash process_video
-
-A very small negative value for every_n_frames (e.g. -0.01 on a 30 fps video) rounds to a frame interval of 0, so the mod operation leads to a ZeroDivisionError.
-
-P2
-
-E0
-
-!bug
-
-
 ## Improve and clarify statistics in analyze_classification_results
 
 analyze_classification_results.py takes a somewhat lazy approach to statistics computation: it is correct in a world where no categories are parents of other categories, and where each image contains a single species.  The more difficult cases should be handled more carefully, probably with additional options to, e.g., give "partial credit" for higher-level predictions that aren't wrong.  At the very least, explanatory text should be added to the reports to describe how statistics are computed wrt taxonomic levels and multi-species images.
@@ -626,6 +604,7 @@ I'm treating all of the following as a single work item, because they're easier 
 * run_md_and_speciesnet does not currently have the same checkpointing support that run_detector_batch has.  The core functionality is there for the detection step, because it's built in to run_detector_batch, but this needs to be exposed to the CLI.  Equivalent functionality needs to be added for the classification step. (P0)
 * Add other options from run_detector_batch (e.g. image_size, augment, detector options).  No new functionality needs to be added, these can just be passed through to run_detector_batch. (P0)
 * GPU utilization is not where I would like it to be during the classification step, though I have not compared it to run_model.  See whether GPU utilization goes up if I disable geofencing/rollup; if it does, push those back to the main process (which is currently just sitting idle) rather than the consumer process. (P0)
+* multiprocessing is supported via run_speciesnet_and_md for images, but not yet for videos.  All the relevant functionality is already present in process_video.py. (P0)
 * Run one-time testing of run_md_and_speciesnet against run_model. (P0)
 * Add permanent tests for run_md_and_speciesnet. (P0)
 
@@ -919,7 +898,7 @@ manage_local_batch contains a check indicating that preprocess_on_image_queue is
 
 "Standalone preprocessing is not yet supported for "modern" preprocessing"
 
-I'm not sure these are still incompatible; double-check on this.  This is P3 in as much as it concerns the notebook, P1 because I'm increasingly using "modern" preprocessing and want to make sure it's compatible with all the same options that "classic" preprocessing supports.
+I'm not sure these are still incompatible; double-check on this.  This is not really an important issue in manage_local_batch, but I'm marking this as P1 because I'm increasingly using "modern" preprocessing and want to make sure it's compatible with all the same options that "classic" preprocessing supports.
 
 P1
 
@@ -1004,3 +983,16 @@ P1
 E0
 
 !feature
+
+
+## Improved exception handling in multiprocessing scenarios
+
+In some very esoteric scenarios, when multiprocessing is enabled, inference modules can hang.  This never happens in normal operation, it's quirky stuff like piping stdin in odd ways, calling things from certain IPython environments, etc.  And even in those scenarios, it still required unexpected stuff to happen.
+
+An agent-authored note for the next agent to look at regarding this issue is available [here](https://github.com/agentmorris/MegaDetector/blob/main/agent-notes/improved_exception_handling.md).
+
+P3
+
+E1
+
+!bug
