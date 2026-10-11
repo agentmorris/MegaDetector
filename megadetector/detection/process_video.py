@@ -386,7 +386,13 @@ def _run_detector_on_videos_with_queue(video_folder,
         producers.append(producer)
 
     for producer in producers:
-        producer.daemon = False
+        # We launch workers with daemon=True if we are using threads, so they don't prevent
+        # the main process from exiting.  If we are using processes, we can clean up immediately
+        # if the main process has an error, as long as daemon=False, so we set daemon=False if
+        # we're using processes.
+        #
+        # Also see _stop_producers().
+        producer.daemon = use_threads_for_queue
         producer.start()
 
     ## Keep track of which videos are finished
@@ -517,33 +523,44 @@ def _run_detector_on_videos_with_queue(video_folder,
 
     ## Run the consumer
 
-    # This will block until all frames have been processed and the frame queue
-    # has had a sentinel value (None) inserted by every producer worker.  Every time
-    # results are available, _consumer_result_callback will get called.
-    all_frame_results = run_detector_batch._consumer_func(
-        frame_queue,
-        model_file,
-        confidence_threshold,
-        loader_workers,
-        image_size=image_size,
-        augment=augment,
-        detector_options=detector_options,
-        preprocess_on_image_queue=preprocess_on_image_queue,
-        n_total_images=None,
-        batch_size=batch_size,
-        checkpoint_path=None,
-        checkpoint_frequency=-1,
-        result_callback=_consumer_result_callback)
+    try:
 
-    ## Clean up
+        # This will block until all frames have been processed and the frame queue
+        # has had a sentinel value (None) inserted by every producer worker.  Every time
+        # results are available, _consumer_result_callback will get called.
+        all_frame_results = run_detector_batch._consumer_func(
+            frame_queue,
+            model_file,
+            confidence_threshold,
+            loader_workers,
+            image_size=image_size,
+            augment=augment,
+            detector_options=detector_options,
+            preprocess_on_image_queue=preprocess_on_image_queue,
+            n_total_images=None,
+            batch_size=batch_size,
+            checkpoint_path=None,
+            checkpoint_frequency=-1,
+            result_callback=_consumer_result_callback)
 
-    # All the producers have finished at this point, but some of the per-video information
-    # may still be in transit.  We need to read all of it before joining the producers.
-    _check_for_finished_videos(_receive_video_info(wait=True))
-    pbar.close()
+        ## Clean up
 
-    assert len(finished_videos) == n_videos, \
-        'Finished {} of {} videos'.format(len(finished_videos),n_videos)
+        # All the producers have finished at this point, but some of the per-video information
+        # may still be in transit.  We need to read all of it before joining the producers.
+        _check_for_finished_videos(_receive_video_info(wait=True))
+        pbar.close()
+
+        assert len(finished_videos) == n_videos, \
+            'Finished {} of {} videos'.format(len(finished_videos),n_videos)
+
+    except BaseException:
+
+        # E.g., the model couldn't be loaded, or a checkpoint couldn't be written
+        pbar.close()
+        run_detector_batch._stop_producers(producers,[frame_queue,metadata_queue])
+        raise
+
+    # ...try/except
 
     for i_producer,producer in enumerate(producers):
         producer.join()
@@ -809,6 +826,11 @@ def process_videos(options):
     model_file = try_download_known_detector(options.model_file,
                                              force_download=options.force_model_download,
                                              verbose=options.verbose)
+
+    # Check this before we start any workers; this is typically a typo in a model name or filename
+    if not os.path.isfile(model_file):
+        raise ValueError('{} is not a known model name or an existing model file'.format(
+            options.model_file))
 
     detector_options = options.detector_options
     if detector_options is None:

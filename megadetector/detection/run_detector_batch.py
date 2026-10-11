@@ -521,6 +521,39 @@ def _consumer_func(q,
 # ...def _consumer_func(...)
 
 
+def _stop_producers(producers, queues):
+    """
+    Stops the loader workers after a failure in the main/consume process (e.g., a model that can't
+    be loaded).  Without this, we would wait forever for workers that are blocked on a full queue.
+
+    Worker processes are terminated.  Worker threads can't be stopped (this is a Python limitation,
+    there is nothing special about our threads), but we launched them with daemon=True,
+    which means they won't prevent the main process from existing, and Python will drop them
+    when the main process terminates.
+
+    Args:
+        producers (list): the Thread or Process objects for the loader workers
+        queues (list): the queues that the loader workers put items on
+    """
+
+    for q in queues:
+        # If we're using threads, items that the workers put on a queue may be buffered in this
+        # process; don't wait at exit for those items to be written to a queue that nobody is
+        # reading.
+        q.cancel_join_thread()
+
+    # Processes that never started have no pid
+    started_processes = [p for p in producers if isinstance(p,Process) and (p.pid is not None)]
+
+    for p in started_processes:
+        p.terminate()
+
+    for p in started_processes:
+        p.join()
+
+# ...def _stop_producers(...)
+
+
 def _run_detector_with_image_queue(image_files,
                                    model_file,
                                    confidence_threshold,
@@ -618,27 +651,43 @@ def _run_detector_with_image_queue(image_files,
         producers.append(producer)
 
     for producer in producers:
-        producer.daemon = False
+        # We launch workers with daemon=True if we are using threads, so they don't prevent
+        # the main process from exiting.  If we are using processes, we can clean up immediately
+        # if the main process has an error, as long as daemon=False, so we set daemon=False if
+        # we're using processes.
+        #
+        # Also see _stop_producers().
+        producer.daemon = use_threads_for_queue
         producer.start()
 
     # The consumer runs here in the calling process, and returns when all the producers
     # have finished
-    results = _consumer_func(q,
-                             model_file,
-                             confidence_threshold,
-                             loader_workers,
-                             image_size,
-                             include_image_size,
-                             include_image_timestamp,
-                             include_exif_tags,
-                             augment,
-                             detector_options,
-                             preprocess_on_image_queue,
-                             n_total_images,
-                             batch_size,
-                             checkpoint_path,
-                             checkpoint_frequency,
-                             previous_results)
+    try:
+
+        results = _consumer_func(q,
+                                 model_file,
+                                 confidence_threshold,
+                                 loader_workers,
+                                 image_size,
+                                 include_image_size,
+                                 include_image_timestamp,
+                                 include_exif_tags,
+                                 augment,
+                                 detector_options,
+                                 preprocess_on_image_queue,
+                                 n_total_images,
+                                 batch_size,
+                                 checkpoint_path,
+                                 checkpoint_frequency,
+                                 previous_results)
+
+    except BaseException:
+
+        # E.g., the model couldn't be loaded, or a checkpoint couldn't be written
+        _stop_producers(producers,[q])
+        raise
+
+    # ...try/except
 
     if verbose:
         print('Consumer loop finished')
@@ -1200,6 +1249,10 @@ def load_and_run_detector_batch(model_file,
     model_file = try_download_known_detector(model_file,
                                              force_download=force_model_download,
                                              verbose=verbose)
+
+    # Check this before we start any workers; this is typically a typo in a model name or filename
+    if not os.path.isfile(model_file):
+        raise ValueError('{} is not a known model name or an existing model file'.format(model_file))
 
     # Print debug information about GPU availability
     gpu_available = is_gpu_available(model_file, context_string='load_and_run_detector_batch')
@@ -2398,6 +2451,12 @@ def test_checkpoints_when_resuming():
             Image.new('RGB', (32,32), color='green').save(image_file)
             image_files.append(image_file)
 
+        # load_and_run_detector_batch() checks that the model file exists, but we're using a
+        # fake detector, so the contents don't matter
+        model_file = os.path.join(test_folder,'fake-model.pt')
+        with open(model_file,'w') as f:
+            f.write('')
+
         # Pretend that the first few images were restored from a previous checkpoint
         n_restored_images = 4
         restored_results = [{'file': image_file, 'detections': []}
@@ -2430,7 +2489,7 @@ def test_checkpoints_when_resuming():
                 use_image_queue,batch_size))
             checkpoint_filenames.clear()
 
-            results = load_and_run_detector_batch(model_file='fake-model',
+            results = load_and_run_detector_batch(model_file=model_file,
                                                   image_file_names=image_files,
                                                   checkpoint_path=checkpoint_path,
                                                   checkpoint_frequency=checkpoint_frequency,
