@@ -145,9 +145,20 @@ def merge_detections(source_files,
 
     fn_to_image = {}
 
+    n_detections_transferred = 0
+    n_target_detections = 0
+    n_source_detections = 0
+
     # im = output_data['images'][0]
     for im in output_data['images']:
+
         fn_to_image[im['file']] = im
+
+        if 'detections' not in im or im['detections'] is None:
+            continue
+        n_target_detections += len(im['detections'])
+
+    # ...for each target image
 
     if 'detections_transferred_from' not in output_data['info']:
         output_data['info']['detections_transferred_from'] = []
@@ -259,6 +270,8 @@ def merge_detections(source_files,
             if 'detections' not in target_im or target_im['detections'] is None:
                 continue
 
+            n_source_detections += len(source_im['detections'])
+
             source_detections_this_image = source_im['detections']
             target_detections_this_image = target_im['detections']
 
@@ -342,9 +355,12 @@ def merge_detections(source_files,
 
             if len(detections_to_transfer) > 0:
 
+                n_detections_transferred += len(detections_to_transfer)
+
                 # print('Adding {} detections to image {}'.format(len(detections_to_transfer),image_filename))
                 detections = fn_to_image[image_filename]['detections']
                 detections.extend(detections_to_transfer)
+
 
                 if options.mark_copied_detections:
                     for det in detections_to_transfer:
@@ -360,6 +376,9 @@ def merge_detections(source_files,
         # ...for each image
 
     # ...for each source file
+
+    print('Transferred {} of {} source detections (adding to {} target detections)'.format(
+        n_detections_transferred, n_source_detections, n_target_detections))
 
     if output_file is not None:
         write_json(output_file,output_data)
