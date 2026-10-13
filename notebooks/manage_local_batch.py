@@ -1189,6 +1189,10 @@ custom_taxa_output_file = insert_before_extension(
 
 ## Miscellaneous
 
+# Geofencing will get disabled if we're using a custom label list
+enable_geofence = True
+
+# HTML footer with geofencing information, only generated if we run the geofence
 geofence_footer = None
 
 if filtered_output_filename is not None and os.path.isfile(filtered_output_filename):
@@ -1506,6 +1510,7 @@ if not run_tasks_in_notebook:
     # going to apply a custom taxa list.
     if (country_code is None) or \
        ((custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing')):
+        enable_geofence = False
         cmd += ' --nogeofence'
 
     ensemble_commands.append(cmd)
@@ -1531,6 +1536,19 @@ if not run_tasks_in_notebook:
     generate_md_results_from_predictions_json(predictions_json_file=ensemble_output_file_modular_crops,
                                               md_results_file=ensemble_output_file_crops_md_format,
                                               base_folder=crop_folder+'/')
+
+
+    ##%% Generate a list of corrections made by geofencing, and counts (still crops)
+
+    from megadetector.utils.wi_taxonomy_utils import find_geofence_adjustments, \
+        generate_geofence_adjustment_html_summary
+
+    # Only generate a geofence information footer if we ran the geofence
+    if enable_geofence:
+        rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular_crops,
+                                                        use_latin_names=False)
+
+        geofence_footer = generate_geofence_adjustment_html_summary(rollup_pair_to_count)
 
 
     ##%% Bring those crop-level results back to image level
@@ -1579,22 +1597,6 @@ for im in d['images']:
 
 print('Loaded results for {} images with {} failures'.format(
     len(images_in_folder),n_failures))
-
-
-##%% Generate a list of corrections made by geofencing, and counts (still crops)
-
-from megadetector.utils.wi_taxonomy_utils import find_geofence_adjustments, \
-    generate_geofence_adjustment_html_summary
-
-rollup_pair_to_count = find_geofence_adjustments(ensemble_output_file_modular_crops,
-                                                    use_latin_names=False)
-
-geofence_footer = generate_geofence_adjustment_html_summary(rollup_pair_to_count)
-
-# If we didn't run geofencing, there should have been no geofence adjustments
-if (custom_taxa_list is not None) and (custom_taxa_stage == 'before_smoothing'):
-    assert len(rollup_pair_to_count) == 0
-    assert len(geofence_footer) == 0
 
 
 #%% Preview (post-classification, pre-smoothing/pre-custom-taxa)
