@@ -88,7 +88,7 @@ class MDTestOptions:
         self.scratch_dir = None
 
         #: Where does the test data live?
-        self.test_data_url = 'https://lila.science/public/md-test-package.zip'
+        self.test_data_url = 'https://lila.science/md-test-package.zip'
 
         #: Download test data even if it appears to have already been downloaded
         self.force_data_download = False
@@ -2142,7 +2142,7 @@ def test_suite_entry_point():
     options.skip_python_tests = False
     options.skip_cli_tests = True
     options.scratch_dir = None
-    options.test_data_url = 'https://lila.science/public/md-test-package.zip'
+    options.test_data_url = 'https://lila.science/md-test-package.zip'
     options.force_data_download = False
     options.force_data_unzip = False
     options.warning_mode = False

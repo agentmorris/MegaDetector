@@ -860,9 +860,15 @@ def _process_classification_batch(batch: CropBatch,
             }
             continue
 
-        # Extract classification results; this is a dict with keys "classes"
-        # and "scores", each of which points to a list.
-        classifications = result['classifications']
+        # Extract classification results.  "classifications_list" contains one
+        # classification per crop associated with this entry in [filepaths]; we create
+        # a separate entry for each detection, so this list should have exactly one
+        # element.  Each classification is a dict with keys "classes" and "scores",
+        # each of which points to a list.
+        assert len(result['classifications_list']) == 1, \
+            'Expected one classification for {}, got {}'.format(
+                filepath,len(result['classifications_list']))
+        classifications = result['classifications_list'][0]
         classes = classifications['classes']
         scores = classifications['scores']
 

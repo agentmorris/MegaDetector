@@ -273,8 +273,7 @@ preview_options_base.parallelize_rendering_with_threads = parallelization_defaul
 preview_options_base.additional_image_fields_to_display = \
     {'pre_smoothing_description':'pre-smoothing labels',
      'pre_filtering_description':'pre-filtering labels',
-     'post_filtering_description':'post-filtering labels',
-     'top_classification_common_name':'top class'}
+     'post_filtering_description':'post-filtering labels'}
 preview_options_base.category_name_to_sort_weight = \
     {'animal':1,'blank':1,'unknown':1,'unreliable':1,'mammal':1}
 
@@ -1418,6 +1417,9 @@ if not run_tasks_in_notebook:
         cmd += ' --predictions_json "{}"'.format(chunk_predictions_json)
         cmd += ' --detections_json "{}"'.format(chunk_detections_json)
         cmd += ' --ignore_existing_predictions'
+
+        # Let create_crop_folder determine what gets classified
+        cmd += ' --detection_threshold_for_classification 0'
 
         if classifier_batch_size is not None:
             cmd += ' --batch_size {}'.format(classifier_batch_size)
