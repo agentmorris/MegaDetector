@@ -49,6 +49,11 @@ human_prediction_string = \
 vehicle_prediction_string = \
     'e2895ed5-780b-48f6-8a11-9e27cb594511;;;;;;vehicle'
 
+# Detection category and label used by SpeciesNet's run_model.py for the whole-image
+# pseudo-detection that carries the output of the whole-image classifier
+speciesnet_whole_image_category = '0'
+speciesnet_whole_image_label = 'whole_image_classification'
+
 non_taxonomic_prediction_strings = [blank_prediction_string,
                                     no_cv_result_prediction_string,
                                     animal_prediction_string,
@@ -391,115 +396,75 @@ def taxonomy_info_to_taxonomy_string(taxonomy_info, include_taxon_id_and_common_
 
 #%% Functions used to manipulate results files
 
-def generate_whole_image_detections_for_classifications(classifications_json_file,
-                                                        detections_json_file,
-                                                        ensemble_json_file=None,
-                                                        ignore_blank_classifications=True,
-                                                        verbose=True):
+def _get_md_classifications_for_detection(det_in,
+                                          classification_category_string_to_id,
+                                          convert_homo_species_to_human):
     """
-    Given a set of classification results in SpeciesNet format that were likely run on
-    already-cropped images, generate a file of [fake] detections in SpeciesNet format in which each
-    image is covered in a single whole-image detection.
+    Converts the classification information attached to a single detection in a
+    predictions.json file (the "processed_classification" and "raw_classifications"
+    fields) to MD-formatted [category_id, score] lists, creating new classification
+    category IDs as necessary.
 
     Args:
-        classifications_json_file (str): SpeciesNet-formatted file containing classifications
-        detections_json_file (str): SpeciesNet-formatted file to write with detections
-        ensemble_json_file (str, optional): SpeciesNet-formatted file to write with detections
-            and classfications
-        ignore_blank_classifications (bool, optional): use non-top classifications when
-            the top classification is "blank" or "no CV result"
-        verbose (bool, optional): enable additional debug output
+        det_in (dict): a detection from a predictions.json file
+        classification_category_string_to_id (dict): maps seven-token category strings
+            to classification category IDs; modified in place when new categories are
+            encountered
+        convert_homo_species_to_human (bool): whether to convert "homo species"
+            processed classifications to "homo sapiens"
 
     Returns:
-        dict: the contents of [detections_json_file]
+        tuple: a tuple of (classifications, raw_classifications), where each is a list
+        of [category_id, score] lists, or (None, None) if this detection was not
+        classified.  [classifications] contains the processed classification if it's
+        available, otherwise the top raw classification.
     """
 
-    with open(classifications_json_file,'r') as f:
-        classification_results = json.load(f)
-    predictions = classification_results['predictions']
+    def _get_category_id(category_string):
+        """
+        Returns the classification category ID for [category_string], creating a new
+        ID if necessary.
+        """
 
-    output_predictions = []
-    ensemble_predictions = []
+        if category_string not in classification_category_string_to_id:
+            classification_category_string_to_id[category_string] = \
+                str(len(classification_category_string_to_id))
+        return classification_category_string_to_id[category_string]
 
-    # i_prediction = 0; prediction = predictions[i_prediction]
-    for i_prediction,prediction in enumerate(predictions):
+    raw_classifications = None
+    classifications = None
 
-        output_prediction = {}
-        output_prediction['filepath'] = prediction['filepath']
-        i_score = 0
+    if 'raw_classifications' in det_in:
 
-        if ignore_blank_classifications:
+        raw = det_in['raw_classifications']
+        assert len(raw['scores']) == len(raw['classes']), \
+            'Mismatch between score list (length {}) and class list (length {})'.format(
+                len(raw['scores']),len(raw['classes']))
+        assert len(raw['classes']) > 0, 'Empty raw classification list'
+        assert is_list_sorted(raw['scores'],reverse=True), \
+            'Unsorted classification scores'
 
-            while (prediction['classifications']['classes'][i_score] in \
-                   (blank_prediction_string,no_cv_result_prediction_string)):
+        raw_classifications = []
+        for i_class in range(len(raw['classes'])):
+            raw_classifications.append([_get_category_id(raw['classes'][i_class]),
+                                        raw['scores'][i_class]])
 
-                i_score += 1
-                if (i_score >= len(prediction['classifications']['classes'])):
+        # Use the top raw classification if there's no processed classification
+        classifications = [list(raw_classifications[0])]
 
-                    if verbose:
+    if 'processed_classification' in det_in:
 
-                        print('Ignoring blank classifications, but ' + \
-                              'image {} has no non-blank values'.format(
-                                i_prediction))
+        processed = det_in['processed_classification']
+        class_to_assign = processed['class']
+        if convert_homo_species_to_human and \
+            (('hominidae;homo' in class_to_assign) or \
+             ('homo species' in class_to_assign)):
+            class_to_assign = human_prediction_string
+        classifications = [[_get_category_id(class_to_assign),processed['score']]]
 
-                    # Just use the first one
-                    i_score = 0
-                    break
+    return classifications, raw_classifications
 
-                # ...if we passed the last prediction
-
-            # ...iterate over classes within this prediction
-
-        # ...if we're supposed to ignore blank classifications
-
-        top_classification = prediction['classifications']['classes'][i_score]
-        top_classification_score = prediction['classifications']['scores'][i_score]
-        if is_animal_classification(top_classification):
-            category_name = 'animal'
-        elif is_human_classification(top_classification):
-            category_name = 'human'
-        else:
-            category_name = 'vehicle'
-
-        if category_name == 'human':
-            md_category_name = 'person'
-        else:
-            md_category_name = category_name
-
-        output_detection = {}
-        output_detection['label'] = category_name
-        output_detection['category'] = md_category_name_to_id[md_category_name]
-        output_detection['conf'] = 1.0
-        output_detection['bbox'] = [0.0, 0.0, 1.0, 1.0]
-        output_prediction['detections'] = [output_detection]
-        output_predictions.append(output_prediction)
-
-        ensemble_prediction = {}
-        ensemble_prediction['filepath'] = prediction['filepath']
-        ensemble_prediction['detections'] = [output_detection]
-        ensemble_prediction['prediction'] = top_classification
-        ensemble_prediction['prediction_score'] = top_classification_score
-        ensemble_prediction['prediction_source'] = 'fake_ensemble_file_utility'
-        ensemble_prediction['classifications'] = prediction['classifications']
-        ensemble_predictions.append(ensemble_prediction)
-
-    # ...for each image
-
-    ## Write output
-
-    if ensemble_json_file is not None:
-
-        ensemble_output_data = {'predictions':ensemble_predictions}
-        with open(ensemble_json_file,'w') as f:
-            json.dump(ensemble_output_data,f,indent=1)
-        _ = validate_predictions_file(ensemble_json_file)
-
-    output_data = {'predictions':output_predictions}
-    with open(detections_json_file,'w') as f:
-        json.dump(output_data,f,indent=1)
-    return validate_predictions_file(detections_json_file)
-
-# ...def generate_whole_image_detections_for_classifications(...)
+# ...def _get_md_classifications_for_detection(...)
 
 
 def generate_md_results_from_predictions_json(predictions_json_file,
@@ -508,19 +473,24 @@ def generate_md_results_from_predictions_json(predictions_json_file,
                                               max_decimals=5,
                                               convert_human_to_person=True,
                                               convert_homo_species_to_human=True,
+                                              include_raw_classifications=True,
                                               verbose=False):
     """
-    Generate an MD-formatted .json file from a predictions.json file, generated by the
-    SpeciesNet ensemble.  Typically, MD results files use relative paths, and predictions.json
-    files use absolute paths, so this function optionally removes the leading string
-    [base_folder] from all file names.
+    Generate an MD-formatted .json file from a predictions.json file, generated by
+    run_model.py from the SpeciesNet package.  Typically, MD results files use relative
+    paths, and predictions.json files use absolute paths, so this function optionally
+    removes the leading string [base_folder] from all file names.
 
-    Uses the classification from the "prediction" field if it's available, otherwise
-    uses the "classifications" field.
+    Each classified detection gets a "classifications" field containing the processed
+    classification for that detection (or the top raw classification, if no processed
+    classification is available), and optionally a "raw_classifications" field containing
+    the raw classifier output for that detection.  Detections that were not classified are
+    included without classifications.
 
-    When using the "prediction" field, records the top class in the "classifications" field to
-    a field in each image called "top_classification_common_name".  This is often different
-    from the value of  the "prediction" field.
+    For the whole-image classifier, the whole-image pseudo-detection is removed, and its
+    classification is attached to every detection in the image.  If a whole-image
+    classification is not blank, but the image has no detections, a whole-image detection
+    with the category "unknown" is created.
 
     speciesnet_to_md.py is a command-line driver for this function.
 
@@ -539,6 +509,8 @@ def generate_md_results_from_predictions_json(predictions_json_file,
         convert_homo_species_to_human (bool, optional): the ensemble often rolls human
             predictions up to "homo species", which isn't wrong, but looks odd.  This forces
             these back to "homo sapiens".
+        include_raw_classifications (bool, optional): include the raw classifier output for
+            each classified detection, in a field called "raw_classifications"
         verbose (bool, optional): enable additional debug output
 
     Returns:
@@ -554,6 +526,16 @@ def generate_md_results_from_predictions_json(predictions_json_file,
             'Illegal value for predictions_json_file (type {})'.format(
                 type(predictions_json_file))
         predictions = predictions_json_file
+
+    assert ('info' in predictions) and ('format_version' in predictions['info']), \
+        'No format version found in predictions.json file; this may be an older ' + \
+        'predictions.json file'
+    assert 'predictions' in predictions, \
+        'No "predictions" field found in predictions.json file'
+
+    if verbose:
+        print('Converting predictions.json file with format version {}'.format(
+            predictions['info']['format_version']))
 
     # Round floating-point values (confidence scores, coordinates) to a
     # reasonable number of decimal places
@@ -578,7 +560,8 @@ def generate_md_results_from_predictions_json(predictions_json_file,
     classification_category_string_to_id = {}
 
     # Keep track of detections that don't have an assigned detection category; these
-    # are fake detections we create for non-blank images with empty detection lists.
+    # are fake detections we create for non-blank whole-image classifications in images
+    # with empty detection lists.
     #
     # We need to go back later and give them a legitimate detection category ID.
     fake_detections = []
@@ -598,12 +581,14 @@ def generate_md_results_from_predictions_json(predictions_json_file,
 
         if base_folder is not None:
 
-            if fn.startswith(base_folder):
-                base_folder_replacements += 1
-                fn = fn.replace(base_folder,'',1)
-            elif fn.startswith(base_folder + '/'):
+            # Check for [base_folder] + '/' first, so we don't leave a leading slash
+            # when [base_folder] doesn't end in a slash
+            if fn.startswith(base_folder + '/'):
                 base_folder_replacements += 1
                 fn = fn.replace(base_folder + '/','',1)
+            elif fn.startswith(base_folder):
+                base_folder_replacements += 1
+                fn = fn.replace(base_folder,'',1)
 
         im_out['file'] = fn
 
@@ -616,107 +601,96 @@ def generate_md_results_from_predictions_json(predictions_json_file,
 
             im_out['detections'] = []
 
+            detections_in = []
             if 'detections' in im_in:
+                detections_in = im_in['detections']
 
-                if len(im_in['detections']) == 0:
-                    im_out['detections'] = []
+            # Separate the whole-image pseudo-detection (if present) from the detector output
+            whole_image_detections = [det for det in detections_in if \
+                                      (det['category'] == speciesnet_whole_image_category)]
+            assert len(whole_image_detections) <= 1, \
+                'Multiple whole-image detections found for {}'.format(im_in['filepath'])
+
+            # det_in = detections_in[0]
+            for det_in in detections_in:
+
+                if det_in['category'] == speciesnet_whole_image_category:
+                    assert det_in['label'] == speciesnet_whole_image_label, \
+                        'Unexpected label {} for whole-image detection'.format(det_in['label'])
+                    continue
+
+                if det_in['category'] in detection_category_id_to_name:
+                    assert detection_category_id_to_name[det_in['category']] == det_in['label'], \
+                        'Mismatch between category name {} and label {}'.format(
+                            detection_category_id_to_name[det_in['category']],
+                            det_in['label'])
                 else:
-                    # det_in = im_in['detections'][0]
-                    for det_in in im_in['detections']:
-                        det_out = {}
-                        if det_in['category'] in detection_category_id_to_name:
-                            assert detection_category_id_to_name[det_in['category']] == det_in['label'], \
-                                'Mismatch between category name {} and label {}'.format(
-                                    detection_category_id_to_name[det_in['category']],
-                                    det_in['label'])
-                        else:
-                            detection_category_id_to_name[det_in['category']] = det_in['label']
-                        det_out = {}
-                        for s in ['category','conf','bbox']:
-                            det_out[s] = det_in[s]
-                        im_out['detections'].append(det_out)
+                    detection_category_id_to_name[det_in['category']] = det_in['label']
 
-            # ...if detections are present
+                det_out = {}
+                for s in ['category','conf','bbox']:
+                    det_out[s] = det_in[s]
 
-            class_to_assign = None
-            class_confidence = None
-            top_classification_common_name = None
+                classifications, raw_classifications = \
+                    _get_md_classifications_for_detection(
+                        det_in,
+                        classification_category_string_to_id,
+                        convert_homo_species_to_human)
 
-            if 'classifications' in im_in:
+                if classifications is not None:
+                    det_out['classifications'] = classifications
+                    if include_raw_classifications and (raw_classifications is not None):
+                        det_out['raw_classifications'] = raw_classifications
 
-                classifications = im_in['classifications']
-                assert len(classifications['scores']) == len(classifications['classes']), \
-                    'Mismatch between score list (length {}) and class list (length {})'.format(
-                        len(classifications['scores']),
-                        len(classifications['classes']))
-                assert is_list_sorted(classifications['scores'],reverse=True), \
-                    'Unsorted classification scores'
-                class_to_assign = classifications['classes'][0]
-                class_confidence = classifications['scores'][0]
+                im_out['detections'].append(det_out)
 
-                # This gets stored as a sidecar field, and only gets used if the top
-                # classification is superseded by a "prediction" field
-                top_classification_common_name = \
-                    get_common_name_from_prediction_string(class_to_assign)
+            # ...for each detection
 
-            if 'prediction' in im_in:
+            # If this image has a whole-image classification, attach it to every detection
+            if len(whole_image_detections) > 0:
 
-                class_to_assign = None
-                im_out['top_classification_common_name'] = top_classification_common_name
-                class_to_assign = im_in['prediction']
-                if convert_homo_species_to_human and \
-                    (('hominidae;homo' in class_to_assign) or \
-                     ('homo species') in class_to_assign):
-                    class_to_assign = human_prediction_string
-                class_confidence = im_in['prediction_score']
+                classifications, raw_classifications = \
+                    _get_md_classifications_for_detection(
+                        whole_image_detections[0],
+                        classification_category_string_to_id,
+                        convert_homo_species_to_human)
 
-            if class_to_assign is not None:
+                if classifications is not None:
 
-                if class_to_assign == blank_prediction_string:
+                    classification_category_id_to_string = \
+                        invert_dictionary(classification_category_string_to_id)
+                    class_to_assign = classification_category_id_to_string[classifications[0][0]]
 
-                    # We have a blank prediction with detections present.  For now, don't do anything
-                    # special here, just making a note of this, in case I want to handle this differently
-                    # later.
-                    if len(im_out['detections']) > 0:
-                        pass
+                    # This is a scenario that's not captured well by the MD format: no detections
+                    # present, but a non-blank prediction.  For now, create a fake detection to
+                    # handle this prediction.
+                    if (len(im_out['detections']) == 0) and \
+                       (class_to_assign != blank_prediction_string):
 
-                else:
-
-                    assert not class_to_assign.endswith('blank'), \
-                        'Invalid blank prediction class {}'.format(class_to_assign)
-
-                    # This is a scenario that's not captured well by the MD format: no detections present,
-                    # but a non-blank prediction.  For now, create a fake detection to handle this prediction.
-                    if len(im_out['detections']) == 0:
+                        assert not class_to_assign.endswith('blank'), \
+                            'Invalid blank prediction class {}'.format(class_to_assign)
 
                         if verbose:
-                            print('Warning: creating fake detection for non-blank whole-image classification' + \
-                                  ' in {}'.format(im_in['file']))
+                            print('Warning: creating fake detection for non-blank whole-image ' + \
+                                  'classification in {}'.format(im_in['filepath']))
+
                         det_out = {}
                         fake_detections.append(det_out)
 
                         # We will change this to a string-int later
                         det_out['category'] = 'unknown'
-                        det_out['conf'] = class_confidence
+                        det_out['conf'] = classifications[0][1]
                         det_out['bbox'] = [0,0,1,1]
                         im_out['detections'].append(det_out)
 
-                # ...if this is/isn't a blank classification
+                    for det_out in im_out['detections']:
+                        det_out['classifications'] = deepcopy(classifications)
+                        if include_raw_classifications and (raw_classifications is not None):
+                            det_out['raw_classifications'] = deepcopy(raw_classifications)
 
-                # Attach that classification to each detection
+                # ...if the whole-image detection was classified
 
-                # Create a new category ID if necessary
-                if class_to_assign in classification_category_string_to_id:
-                    classification_category_id = classification_category_string_to_id[class_to_assign]
-                else:
-                    classification_category_id = str(len(classification_category_string_to_id))
-                    classification_category_string_to_id[class_to_assign] = classification_category_id
-
-                for det in im_out['detections']:
-                    det['classifications'] = []
-                    det['classifications'].append([classification_category_id,class_confidence])
-
-            # ...if we have some type of classification for this image
+            # ...if this image has a whole-image detection
 
         # ...if this is/isn't a failure
 
@@ -730,7 +704,7 @@ def generate_md_results_from_predictions_json(predictions_json_file,
                 base_folder))
 
     # fake_detections contains fake, whole-image detections we created for non-blank
-    # images with empty detection lists.
+    # whole-image classifications in images with empty detection lists.
     if len(fake_detections) > 0:
 
         if len(detection_category_id_to_name) == 0:
@@ -1020,7 +994,8 @@ def split_instances_into_n_batches(instances_json,n_batches,output_files=None):
 
 def merge_prediction_json_files(input_prediction_files,output_prediction_file):
     """
-    Merge all predictions.json files in [files] into a single .json file.
+    Merge all predictions.json files in [files] into a single .json file.  The "info" field
+    from the first file is used for the merged file.
 
     Args:
         input_prediction_files (list): list of predictions.json files to merge
@@ -1029,6 +1004,7 @@ def merge_prediction_json_files(input_prediction_files,output_prediction_file):
 
     predictions = []
     image_filenames_processed = set()
+    info = None
 
     # input_json_fn = input_prediction_files[0]
     for input_json_fn in tqdm(input_prediction_files):
@@ -1038,14 +1014,20 @@ def merge_prediction_json_files(input_prediction_files,output_prediction_file):
         with open(input_json_fn,'r') as f:
             results_this_file = json.load(f)
         assert isinstance(results_this_file,dict), 'Invalid results dict'
+        if info is None:
+            assert 'info' in results_this_file, \
+                'No "info" field found in {}; this may be an older predictions.json ' \
+                'file'.format(input_json_fn)
+            info = results_this_file['info']
         predictions_this_file = results_this_file['predictions']
         for prediction in predictions_this_file:
             image_fn = prediction['filepath']
             assert image_fn not in image_filenames_processed, \
                 'Image {} already processed'.format(image_fn)
+            image_filenames_processed.add(image_fn)
         predictions.extend(predictions_this_file)
 
-    output_dict = {'predictions':predictions}
+    output_dict = {'info':info,'predictions':predictions}
 
     output_dir = os.path.dirname(output_prediction_file)
     if len(output_dir) > 0:
@@ -1173,7 +1155,9 @@ def validate_predictions_file(fn,instances=None,verbose=True):
 
 def find_geofence_adjustments(ensemble_json_file,use_latin_names=False):
     """
-    Count the number of instances of each unique change made by the geofence.
+    Count the number of instances of each unique change made by the geofence.  Counts are
+    per detection, i.e. an image with three detections that were changed by the geofence
+    contributes three instances.
 
     Args:
         ensemble_json_file (str): SpeciesNet-formatted .json file produced
@@ -1183,7 +1167,7 @@ def find_geofence_adjustments(ensemble_json_file,use_latin_names=False):
 
     Returns:
         dict: maps strings that look like "puma,felidae family" to integers,
-            where that entry would indicate the number of times that "puma" was
+            where that entry would indicate the number of detections for which "puma" was
             predicted, but mapped to family level by the geofence.  Sorted in
             descending order by count.
     """
@@ -1206,15 +1190,27 @@ def find_geofence_adjustments(ensemble_json_file,use_latin_names=False):
             len(prediction['failures']) > 0:
                 continue
 
-        assert 'prediction_source' in prediction, \
-            'Prediction present without [prediction_source] field, are you sure this ' + \
-            'is an ensemble output file?'
+        detections = []
+        if ('detections' in prediction) and (prediction['detections'] is not None):
+            detections = prediction['detections']
 
-        if 'geofence' in prediction['prediction_source']:
+        # det = detections[0]
+        for det in detections:
 
-            classification_taxonomy_string = \
-                prediction['classifications']['classes'][0]
-            prediction_taxonomy_string = prediction['prediction']
+            if 'raw_classifications' not in det:
+                continue
+
+            assert 'processed_classification' in det, \
+                'Detection present without [processed_classification] field, are you sure ' + \
+                'this is an ensemble output file?'
+
+            processed_classification = det['processed_classification']
+
+            if 'geofence' not in processed_classification['source']:
+                continue
+
+            classification_taxonomy_string = det['raw_classifications']['classes'][0]
+            prediction_taxonomy_string = processed_classification['class']
             assert is_valid_prediction_string(classification_taxonomy_string), \
                 'Invalid prediction string {}'.format(classification_taxonomy_string)
             assert is_valid_prediction_string(prediction_taxonomy_string), \
@@ -1236,7 +1232,7 @@ def find_geofence_adjustments(ensemble_json_file,use_latin_names=False):
             rollup_pair = input_name.strip() + ',' + output_name.strip()
             rollup_pair_to_count[rollup_pair] += 1
 
-        # ...if we made a geofencing change
+        # ...for each detection
 
     # ...for each prediction
 
@@ -2013,6 +2009,396 @@ class TestWITaxonomyUtils:
                 'For string {}, expected common name {}, got {}'.format(
                     k,expected_output,actual_output)
 
+    def _get_speciesnet_conversion_test_data_folder(self):
+        """
+        Returns the folder containing sample predictions.json files and the corresponding
+        expected MD-formatted results, used to test generate_md_results_from_predictions_json().
+
+        Returns:
+            str: the test data folder
+        """
+
+        # TODO: replace this with the version of these files in the test data zipfile
+        test_data_folder = r'G:\temp\speciesnet-scratch\md-tests'
+        assert os.path.isdir(test_data_folder), \
+            'Test data folder {} not found'.format(test_data_folder)
+        return test_data_folder
+
+    def test_generate_md_results_from_predictions_json(self):
+        """
+        Test driver for generate_md_results_from_predictions_json(...), comparing the converted
+        results for sample predictions.json files to the expected MD-formatted results.
+        """
+
+        import shutil
+        from megadetector.utils.ct_utils import make_test_folder
+
+        test_data_folder = self._get_speciesnet_conversion_test_data_folder()
+
+        # Maps the base name for each test file to the base folder we should remove
+        # from each filename
+        test_file_base_to_base_folder = {
+            'speciesnet-v4.0.3a':'test_data',
+            'speciesnet-v4.0.3b':'test_data',
+            'speciesnet-edge-cases':r'c:\fake\base\folder'
+        }
+
+        output_folder = make_test_folder(subfolder='wi_taxonomy_utils_tests')
+
+        try:
+
+            for test_file_base in test_file_base_to_base_folder:
+
+                predictions_json_file = os.path.join(test_data_folder,
+                                                     test_file_base + '-predictions.json')
+                expected_md_results_file = os.path.join(test_data_folder,
+                                                        test_file_base + '-md-expected.json')
+                md_results_file = os.path.join(output_folder,test_file_base + '-md.json')
+
+                # This also validates the output file
+                md_results = generate_md_results_from_predictions_json(
+                    predictions_json_file,
+                    md_results_file=md_results_file,
+                    base_folder=test_file_base_to_base_folder[test_file_base])
+
+                with open(expected_md_results_file,'r') as f:
+                    expected_md_results = json.load(f)
+
+                # The MD format version may change independently of this conversion, so
+                # don't compare it to the expected results
+                assert md_results['info']['format_version'] == current_format_version, \
+                    'Unexpected format version {} for {}'.format(
+                        md_results['info']['format_version'],test_file_base)
+                md_results['info'].pop('format_version')
+                expected_md_results['info'].pop('format_version')
+
+                assert md_results == expected_md_results, \
+                    'Converted results for {} do not match the expected results'.format(
+                        test_file_base)
+
+                # Make sure the results we wrote to disk match the results we returned
+                with open(md_results_file,'r') as f:
+                    md_results_from_file = json.load(f)
+                md_results_from_file['info'].pop('format_version')
+                assert md_results_from_file == md_results, \
+                    'Converted results file for {} does not match the returned results'.format(
+                        test_file_base)
+
+            # ...for each test file
+
+        finally:
+
+            shutil.rmtree(output_folder)
+
+    # ...def test_generate_md_results_from_predictions_json(...)
+
+    def test_generate_md_results_from_predictions_json_edge_cases(self):
+        """
+        Test driver for generate_md_results_from_predictions_json(...), checking specific
+        behaviors on a sample predictions.json file containing unusual images.
+        """
+
+        test_data_folder = self._get_speciesnet_conversion_test_data_folder()
+        predictions_json_file = os.path.join(test_data_folder,
+                                             'speciesnet-edge-cases-predictions.json')
+
+        md_results = generate_md_results_from_predictions_json(
+            predictions_json_file,
+            base_folder=r'c:\fake\base\folder')
+
+        fn_to_im = {im['file']:im for im in md_results['images']}
+        classification_categories = md_results['classification_categories']
+        detection_categories = md_results['detection_categories']
+
+        def _get_class_name(classification):
+            """
+            Returns the class name for an MD-formatted [category_id, score] list.
+            """
+
+            return classification_categories[classification[0]]
+
+        ## Failures
+
+        im = fn_to_im['detector_failure.jpg']
+        assert ('failure' in im) and (im['detections'] is None), \
+            'Failed image not converted correctly'
+
+        ## Images with no classified detections
+
+        assert fn_to_im['no_detections.jpg']['detections'] == [], \
+            'Image with no detections not converted correctly'
+
+        detections = fn_to_im['below_threshold_only.jpg']['detections']
+        assert (len(detections) == 1) and ('classifications' not in detections[0]), \
+            'Unclassified detection not converted correctly'
+
+        ## Per-detection classifications
+
+        detections = fn_to_im['homo_species.jpg']['detections']
+        assert len(detections) == 3, 'Wrong number of detections'
+        assert detection_categories[detections[0]['category']] == 'person', \
+            'Detection category "human" not converted to "person"'
+        assert _get_class_name(detections[0]['classifications'][0]) == 'human', \
+            '"homo species" not converted to "human"'
+        assert _get_class_name(detections[1]['classifications'][0]) == 'domestic dog', \
+            'Incorrect classification for the second detection'
+        assert len(detections[1]['raw_classifications']) == 2, \
+            'Incorrect number of raw classifications for the second detection'
+        assert 'classifications' not in detections[2], \
+            'Unclassified detection should not have classifications'
+
+        # Detections with only raw classifications use the top raw classification
+        detections = fn_to_im['classifier_only.jpg']['detections']
+        assert detections[0]['classifications'] == detections[0]['raw_classifications'][0:1], \
+            'Top raw classification not used for a detection with no processed classification'
+
+        ## Whole-image classifications
+
+        # Non-blank whole-image classifications with no detections should create a fake
+        # whole-image detection
+        detections = fn_to_im['whole_image_no_detections.jpg']['detections']
+        assert len(detections) == 1, 'Fake whole-image detection not created'
+        assert detection_categories[detections[0]['category']] == 'unknown', \
+            'Incorrect category for fake whole-image detection'
+        assert detections[0]['bbox'] == [0,0,1,1], \
+            'Incorrect bounding box for fake whole-image detection'
+        assert _get_class_name(detections[0]['classifications'][0]) == 'ocelot', \
+            'Incorrect classification for fake whole-image detection'
+
+        # Blank whole-image classifications with no detections should not create a fake
+        # detection
+        assert fn_to_im['whole_image_blank_no_detections.jpg']['detections'] == [], \
+            'Fake detection created for blank whole-image classification'
+
+        # Whole-image classifications should be attached to every detection, and the
+        # whole-image pseudo-detection should not be included
+        detections = fn_to_im['whole_image_with_detections.jpg']['detections']
+        assert len(detections) == 2, 'Whole-image pseudo-detection not removed'
+        for det in detections:
+            assert _get_class_name(det['classifications'][0]) == 'mammal', \
+                'Whole-image classification not attached to every detection'
+        assert 'whole_image_classification' not in detection_categories.values(), \
+            'Whole-image pseudo-detection category should not be included'
+
+        ## Omitting raw classifications
+
+        md_results = generate_md_results_from_predictions_json(
+            predictions_json_file,
+            include_raw_classifications=False)
+        for im in md_results['images']:
+            for det in (im['detections'] or []):
+                assert 'raw_classifications' not in det, \
+                    'Raw classifications included with include_raw_classifications=False'
+
+    # ...def test_generate_md_results_from_predictions_json_edge_cases(...)
+
+    def test_generate_md_results_from_predictions_json_old_format(self):
+        """
+        Test driver for generate_md_results_from_predictions_json(...), making sure that
+        predictions.json files in the old format (with no "info" field) are rejected.
+        """
+
+        old_format_predictions = {
+            'predictions':[
+                {
+                    'filepath':'a.jpg',
+                    'classifications':{
+                        'classes':[blank_prediction_string],
+                        'scores':[0.9]
+                    },
+                    'detections':[],
+                    'prediction':blank_prediction_string,
+                    'prediction_score':0.9,
+                    'prediction_source':'classifier'
+                }
+            ]
+        }
+
+        rejected = False
+        try:
+            generate_md_results_from_predictions_json(old_format_predictions)
+        except AssertionError:
+            rejected = True
+        assert rejected, 'Old-format predictions.json file was not rejected'
+
+        # A file with an "info" field but no "predictions" field should also be rejected
+        rejected = False
+        try:
+            generate_md_results_from_predictions_json({'info':{'format_version':'20261015'}})
+        except AssertionError:
+            rejected = True
+        assert rejected, 'predictions.json file with no "predictions" field was not rejected'
+
+    # ...def test_generate_md_results_from_predictions_json_old_format(...)
+
+    def test_merge_prediction_json_files(self):
+        """
+        Test driver for merge_prediction_json_files(...)
+        """
+
+        import shutil
+        from megadetector.utils.ct_utils import make_test_folder
+
+        test_data_folder = self._get_speciesnet_conversion_test_data_folder()
+        with open(os.path.join(test_data_folder,'speciesnet-v4.0.3a-predictions.json'),'r') as f:
+            original_predictions = json.load(f)
+        assert len(original_predictions['predictions']) > 1, \
+            'Not enough predictions to test merging'
+
+        output_folder = make_test_folder(subfolder='wi_taxonomy_utils_tests')
+
+        try:
+
+            # Split the predictions file into two files, with different "info" fields
+            n_first_file = len(original_predictions['predictions']) // 2
+            first_file = os.path.join(output_folder,'first.json')
+            second_file = os.path.join(output_folder,'second.json')
+            with open(first_file,'w') as f:
+                json.dump({'info':original_predictions['info'],
+                           'predictions':original_predictions['predictions'][0:n_first_file]},f)
+            with open(second_file,'w') as f:
+                json.dump({'info':{'format_version':'not_the_first_file'},
+                           'predictions':original_predictions['predictions'][n_first_file:]},f)
+
+            # The merged file should match the original file, using the "info" field
+            # from the first file
+            merged_file = os.path.join(output_folder,'merged.json')
+            merge_prediction_json_files([first_file,second_file],merged_file)
+            with open(merged_file,'r') as f:
+                merged_predictions = json.load(f)
+            assert merged_predictions == original_predictions, \
+                'Merged predictions do not match the original predictions'
+
+            # Merging a file with itself should fail, since images would be duplicated
+            rejected = False
+            try:
+                merge_prediction_json_files([first_file,first_file],merged_file)
+            except AssertionError:
+                rejected = True
+            assert rejected, 'Duplicate images were not rejected'
+
+            # Merging files with no "info" field should fail
+            old_format_file = os.path.join(output_folder,'old_format.json')
+            with open(old_format_file,'w') as f:
+                json.dump({'predictions':original_predictions['predictions']},f)
+            rejected = False
+            try:
+                merge_prediction_json_files([old_format_file],merged_file)
+            except AssertionError:
+                rejected = True
+            assert rejected, 'Old-format predictions.json file was not rejected'
+
+        finally:
+
+            shutil.rmtree(output_folder)
+
+    # ...def test_merge_prediction_json_files(...)
+
+    def test_find_geofence_adjustments(self):
+        """
+        Test driver for find_geofence_adjustments(...)
+        """
+
+        import shutil
+        from megadetector.utils.ct_utils import make_test_folder
+
+        puma_string = \
+            '9c564562-9429-405c-8529-04cff7752282;mammalia;carnivora;felidae;puma;concolor;puma'
+        felidae_string = \
+            '1ac4b664-f6a1-4d4e-8f1b-7a7c3a6e2d7d;mammalia;carnivora;felidae;;;cat family'
+        ocelot_string = \
+            '22976d14-d424-4f18-a67a-d8e1689cefcc;mammalia;carnivora;felidae;leopardus;pardalis;ocelot'
+
+        def _make_detection(raw_class,processed_class,source):
+            """
+            Creates a classified detection in predictions.json format.
+            """
+
+            return {
+                'category':'1',
+                'label':'animal',
+                'conf':0.9,
+                'bbox':[0.1,0.1,0.2,0.2],
+                'raw_classifications':{'classes':[raw_class],'scores':[0.9]},
+                'processed_classification':{'class':processed_class,'score':0.9,'source':source}
+            }
+
+        ensemble_results = {
+            'info':{'format_version':'20261015'},
+            'predictions':[
+                {
+                    'filepath':'a.jpg',
+                    'detections':[
+                        _make_detection(puma_string,felidae_string,'classifier+geofence+rollup_to_family'),
+                        _make_detection(puma_string,felidae_string,'classifier+geofence+rollup_to_family'),
+                        _make_detection(ocelot_string,ocelot_string,'classifier'),
+                        {'category':'1','label':'animal','conf':0.05,'bbox':[0.5,0.5,0.1,0.1]}
+                    ]
+                },
+                {
+                    'filepath':'b.jpg',
+                    'detections':[
+                        _make_detection(puma_string,felidae_string,'classifier+geofence+rollup_to_family')
+                    ]
+                },
+                {
+                    'filepath':'c.jpg',
+                    'failures':['DETECTOR'],
+                    'detections':[
+                        _make_detection(puma_string,felidae_string,'classifier+geofence+rollup_to_family')
+                    ]
+                }
+            ]
+        }
+
+        output_folder = make_test_folder(subfolder='wi_taxonomy_utils_tests')
+
+        try:
+
+            ensemble_json_file = os.path.join(output_folder,'ensemble.json')
+            with open(ensemble_json_file,'w') as f:
+                json.dump(ensemble_results,f)
+
+            # Geofence changes are counted per detection, ignoring failed images
+            rollup_pair_to_count = find_geofence_adjustments(ensemble_json_file)
+            assert rollup_pair_to_count == {'puma,cat family':3}, \
+                'Unexpected geofence adjustments: {}'.format(str(rollup_pair_to_count))
+
+            rollup_pair_to_count = find_geofence_adjustments(ensemble_json_file,use_latin_names=True)
+            assert rollup_pair_to_count == {'concolor,':3}, \
+                'Unexpected geofence adjustments: {}'.format(str(rollup_pair_to_count))
+
+            # Classifier-only results should be rejected
+            for prediction in ensemble_results['predictions']:
+                for det in prediction['detections']:
+                    if 'processed_classification' in det:
+                        del det['processed_classification']
+            classifier_json_file = os.path.join(output_folder,'classifier.json')
+            with open(classifier_json_file,'w') as f:
+                json.dump(ensemble_results,f)
+            rejected = False
+            try:
+                find_geofence_adjustments(classifier_json_file)
+            except AssertionError:
+                rejected = True
+            assert rejected, 'Classifier-only results were not rejected'
+
+            # Real ensemble results with no geofence changes
+            test_data_folder = self._get_speciesnet_conversion_test_data_folder()
+            rollup_pair_to_count = find_geofence_adjustments(
+                os.path.join(test_data_folder,'speciesnet-v4.0.3a-predictions.json'))
+            assert len(rollup_pair_to_count) == 0, \
+                'Unexpected geofence adjustments: {}'.format(str(rollup_pair_to_count))
+
+        finally:
+
+            shutil.rmtree(output_folder)
+
+    # ...def test_find_geofence_adjustments(...)
+
+# ...class TestWITaxonomyUtils
+
+
 def test_wi_taxonomy_utils():
     """
     Module-level test entry point.
@@ -2020,3 +2406,8 @@ def test_wi_taxonomy_utils():
 
     test_instance = TestWITaxonomyUtils()
     test_instance.test_get_common_name_from_prediction_string()
+    test_instance.test_generate_md_results_from_predictions_json()
+    test_instance.test_generate_md_results_from_predictions_json_edge_cases()
+    test_instance.test_generate_md_results_from_predictions_json_old_format()
+    test_instance.test_merge_prediction_json_files()
+    test_instance.test_find_geofence_adjustments()
