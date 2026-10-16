@@ -2014,12 +2014,16 @@ class TestWITaxonomyUtils:
         Returns the folder containing sample predictions.json files and the corresponding
         expected MD-formatted results, used to test generate_md_results_from_predictions_json().
 
+        Downloads (if necessary) and unzips the test data zipfile.
+
         Returns:
             str: the test data folder
         """
 
-        # TODO: replace this with the version of these files in the test data zipfile
-        test_data_folder = r'G:\temp\speciesnet-scratch\md-tests'
+        from megadetector.utils.md_tests import download_test_data
+
+        options = download_test_data()
+        test_data_folder = os.path.join(options.scratch_dir,'speciesnet-format-tests')
         assert os.path.isdir(test_data_folder), \
             'Test data folder {} not found'.format(test_data_folder)
         return test_data_folder
