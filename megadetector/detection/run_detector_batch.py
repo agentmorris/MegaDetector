@@ -189,7 +189,8 @@ def _producer_func(q,
                    detector_options=None,
                    verbose=False,
                    image_size=None,
-                   augment=None):
+                   augment=None,
+                   keep_original_image=True):
     """
     Producer function; only used when using the (optional) image queue.
 
@@ -209,6 +210,9 @@ def _producer_func(q,
         verbose (bool, optional): enable additional debug output
         image_size (int, optional): image size to use for preprocessing
         augment (bool, optional): enable image augmentation during preprocessing
+        keep_original_image (bool, optional): if False, preprocessed images are queued without
+            the full-resolution copies of the original image (only used when "preprocessor" is
+            not None); the consumer only needs those to read image size, timestamp, or EXIF data
     """
 
     if verbose:
@@ -233,6 +237,15 @@ def _producer_func(q,
                                           im_file,
                                           image_size=image_size,
                                           verbose=verbose)
+
+                # The full-resolution copies of the original image (a numpy array and a PIL
+                # image) are most of the bytes that get pickled onto the queue for each image.
+                # Detectors that run inference on a separate preprocessed image record the
+                # shape of the original image, which is all they need from it; drop both copies
+                # for those detectors unless the consumer needs them for metadata.
+                if (not keep_original_image) and ('img_original_shape' in image):
+                    image['img_original_pil'] = None
+                    image['img_original'] = None
 
         except Exception as e:
             print('Producer process: image {} cannot be loaded:\n{}'.format(im_file,str(e)))
@@ -629,6 +642,10 @@ def _run_detector_with_image_queue(image_files,
 
     n_total_images = len(image_files)
 
+    # The consumer reads image size, timestamp, and EXIF data from the original image
+    keep_original_image = include_image_size or include_image_timestamp or \
+        (include_exif_tags is not None)
+
     chunks = split_list_into_n_chunks(image_files, loader_workers, chunk_strategy='greedy')
     for i_chunk,chunk in enumerate(chunks):
         if use_threads_for_queue:
@@ -638,7 +655,8 @@ def _run_detector_with_image_queue(image_files,
                                                           detector_options,
                                                           verbose,
                                                           image_size,
-                                                          augment))
+                                                          augment,
+                                                          keep_original_image))
         else:
             producer = Process(target=_producer_func,args=(q,
                                                            chunk,
@@ -647,7 +665,8 @@ def _run_detector_with_image_queue(image_files,
                                                            detector_options,
                                                            verbose,
                                                            image_size,
-                                                           augment))
+                                                           augment,
+                                                           keep_original_image))
         producers.append(producer)
 
     for producer in producers:

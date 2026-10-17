@@ -984,6 +984,8 @@ class PTDetector:
                 - img (the preprocessed np.array)
                 - img_original (the input image before preprocessing, as an np.array)
                 - img_original_pil (the input image before preprocessing, as a PIL Image)
+                - img_original_shape (the shape of img_original, which is all that inference
+                  needs from the original image)
                 - target_shape (the 2D shape to which the image was resized during preprocessing)
                 - scaling_shape (the 2D original size, for normalizing coordinates later)
                 - letterbox_ratio (letterbox parameter used for normalizing coordinates later)
@@ -1110,6 +1112,7 @@ class PTDetector:
 
         result['img_processed'] = img
         result['img_original'] = img_original
+        result['img_original_shape'] = img_original.shape
         result['img_original_pil'] = img_original_pil
         result['target_shape'] = target_shape
         result['scaling_shape'] = scaling_shape
@@ -1293,7 +1296,7 @@ class PTDetector:
                 'current_image_id': current_image_id,
                 'scaling_shape': image_info['scaling_shape'],
                 'letterbox_pad': image_info['letterbox_pad'],
-                'img_original': image_info['img_original']
+                'img_original_shape': image_info['img_original_shape']
             }
             batch_metadata.append(metadata)
 
@@ -1356,7 +1359,7 @@ class PTDetector:
             current_image_id = metadata['current_image_id']
             scaling_shape = metadata['scaling_shape']
             letterbox_pad = metadata['letterbox_pad']
-            img_original = metadata['img_original']
+            img_original_shape = metadata['img_original_shape']
 
             detections = []
             max_conf = 0.0
@@ -1370,13 +1373,13 @@ class PTDetector:
                     ratio = None
                     ratio_pad = None
                 else:
-                    ratio = (img_original.shape[0]/scaling_shape[0],
-                             img_original.shape[1]/scaling_shape[1])
+                    ratio = (img_original_shape[0]/scaling_shape[0],
+                             img_original_shape[1]/scaling_shape[1])
                     ratio_pad = (ratio, letterbox_pad)
 
                 # Rescale boxes
                 if 'classic' in self.compatibility_mode:
-                    det[:, :4] = scale_coords(batch_tensor.shape[2:], det[:, :4], img_original.shape).round()
+                    det[:, :4] = scale_coords(batch_tensor.shape[2:], det[:, :4], img_original_shape).round()
                 else:
                     det[:, :4] = scale_coords(batch_tensor.shape[2:], det[:, :4], scaling_shape, ratio_pad).round()
 
