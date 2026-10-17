@@ -119,20 +119,47 @@ current_format_version = '1.6'
 
 def _set_worker_torch_threads(n_workers):
     """
-    Initializer for the worker pool used for multi-CPU inference.  Each worker process would
-    otherwise use as many PyTorch threads as a single process uses on its own, i.e. n_workers
-    times as many threads as there are cores in total; this gives each worker its share.
+    Initializer for the worker pool used for multi-CPU inference (--ncores > 1).  This is
+    not related to the worker pool used for background loading, and this initializer has no
+    impact on single-process inference or GPU inference.
+
+    PyTorch creates threads within each process for intra-op parallelization; the number of
+    threads PyTorch creates defaults to the number of physical cores.  So when we start
+    multiple PyTorch processes, we are creating more threads than we have physical cores.
+
+    On Linux, where PyTorch uses GNU OpenMP, some of those extra threads spin even when
+    they're not kept busy, which hurts overall performance, so this initializer reduce the
+    number of threads per process to match the number of available cores on Linux.
+
+    On common Windows configurations, where PyTorch uses Intel OpenMP, those extra threads
+    yield rather than holding the CPU, and having the extra threads available appears to improve
+    performance, especially on CPUs with hyper-threading.
+
+    On Mac this isn't really relevant, since Macs without MPS are very rare now, but were it
+    to come up, PyTorch behavior wrt threads on Mac is similar to Windows.
+
+    So, tl;dr, this initializer reduces the number of threads per process, but only on Linux.
 
     Args:
         n_workers (int): number of worker processes in the pool
     """
+
+    if (not sys.platform.startswith('linux')):
+        return
 
     try:
         import torch
     except ImportError:
         return
 
-    torch.set_num_threads(max(1,torch.get_num_threads() // n_workers))
+    n_threads = torch.get_num_threads()
+    target_threads = max(1,n_threads // n_workers)
+
+    if target_threads < n_threads:
+        print('Reducing PyTorch per-process threads from {} to {}'.format(
+            n_threads,target_threads))
+
+    torch.set_num_threads(target_threads)
 
 # ...def _set_worker_torch_threads(...)
 
