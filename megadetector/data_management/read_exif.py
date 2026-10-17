@@ -123,7 +123,7 @@ class ExifResultsToCCTOptions:
 
 def _get_exif_ifd(exif):
     """
-    Read EXIF data from by finding the EXIF offset and reading tags directly
+    Read EXIF data from an image by finding the EXIF offset and reading tags directly.
 
     https://github.com/python-pillow/Pillow/issues/5863
     """
@@ -132,6 +132,12 @@ def _get_exif_ifd(exif):
     for key, value in ExifTags.TAGS.items():
         if value == "ExifOffset":
             break
+
+    # An IFD offset of 0 points at the TIFF header, i.e. there is no EXIF IFD;
+    # don't ask PIL to parse one, since PIL >= 13 will happily read garbage there.
+    if not exif.get(key):
+        return {}
+
     info = exif.get_ifd(key)
     return {
         ExifTags.TAGS.get(key, key): value
@@ -429,8 +435,13 @@ def read_pil_exif(im,options=None):
             gpsinfo_tag = next(tag for tag, name in ExifTags.TAGS.items() if name == "GPSInfo")
             assert gpsinfo_tag == 34853
 
-            # These are integer keys, e.g. {7: (14.0, 27.0, 7.24)}
-            gps_info_raw = exif_info.get_ifd(gpsinfo_tag)
+            # An IFD offset of 0 points at the TIFF header, i.e. there is no GPS IFD;
+            # don't ask PIL to parse one, since PIL >= 13 will happily read garbage there.
+            if not exif_info.get(gpsinfo_tag):
+                gps_info_raw = {}
+            else:
+                # These are integer keys, e.g. {7: (14.0, 27.0, 7.24)}
+                gps_info_raw = exif_info.get_ifd(gpsinfo_tag)
 
             # Convert to strings, e.g. 'GPSTimeStamp'
             gps_info = {}
