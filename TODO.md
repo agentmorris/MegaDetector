@@ -996,3 +996,18 @@ P3
 E1
 
 !bug
+
+
+## Avoid carrying original images around when they aren't necessary
+
+[PR 256](https://github.com/agentmorris/MegaDetector/pull/256) points out that even when we are processing images on the loader queue, we are passing the original images around just to later extract metadata, which is unnecessary memory overhead.  That PR solved it by selectively not passing the original image, but the more complete solution is probably to never store the original image once it's been preprocessed, and just pass the metadata that downstream code needs, for both images and video.
+
+An agent-authored note for the next agent to look at regarding this issue is available [here](https://github.com/agentmorris/MegaDetector/blob/main/agent-notes/drop-processed-image-copies.md).
+
+!name[drop-processed-image-copies]
+
+P1
+
+E2
+
+!optimization
