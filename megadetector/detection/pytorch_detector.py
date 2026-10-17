@@ -1302,11 +1302,7 @@ class PTDetector:
         # Stack images into a batch tensor
         batch_tensor = torch.stack(batch_images)
 
-        # On CUDA devices, copy the uint8 batch to the device before converting it to float;
-        # this moves 4x fewer bytes and takes the conversion off the CPU.  We divide by a
-        # tensor on the device: CUDA turns division by a Python number into multiplication
-        # by its reciprocal, which differs from the CPU result in the last bit for some pixel
-        # values, while this gives exactly the same float32 values as the CPU.
+        # On CUDA devices, copy the uint8 batch to the device before converting it to float
         if torch.device(self.device).type == 'cuda':
             batch_tensor = batch_tensor.to(self.device)
             batch_tensor = batch_tensor.float()
