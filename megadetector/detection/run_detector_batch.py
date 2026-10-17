@@ -117,6 +117,26 @@ current_format_version = '1.6'
 
 #%% Support functions for multiprocessing
 
+def _set_worker_torch_threads(n_workers):
+    """
+    Initializer for the worker pool used for multi-CPU inference.  Each worker process would
+    otherwise use as many PyTorch threads as a single process uses on its own, i.e. n_workers
+    times as many threads as there are cores in total; this gives each worker its share.
+
+    Args:
+        n_workers (int): number of worker processes in the pool
+    """
+
+    try:
+        import torch
+    except ImportError:
+        return
+
+    torch.set_num_threads(max(1,torch.get_num_threads() // n_workers))
+
+# ...def _set_worker_torch_threads(...)
+
+
 def _load_preprocessor(preprocessor, detector_options=None, verbose=False):
     """
     Loads a detector object that will only be used for preprocessing, i.e., without loading
@@ -1452,7 +1472,9 @@ def load_and_run_detector_batch(model_file,
 
         pool = None
         try:
-            pool = workerpool(n_cores)
+            pool = workerpool(n_cores,
+                              initializer=_set_worker_torch_threads,
+                              initargs=(n_cores,))
 
             if checkpoint_path is not None:
 
