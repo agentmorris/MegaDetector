@@ -1302,10 +1302,16 @@ class PTDetector:
         # Stack images into a batch tensor
         batch_tensor = torch.stack(batch_images)
 
-        batch_tensor = batch_tensor.float()
-        batch_tensor /= 255.0
+        # On CUDA devices, copy the uint8 batch to the device before converting it to float
+        if torch.device(self.device).type == 'cuda':
+            batch_tensor = batch_tensor.to(self.device)
+            batch_tensor = batch_tensor.float()
+            batch_tensor /= torch.tensor(255.0, device=self.device)
+        else:
+            batch_tensor = batch_tensor.float()
+            batch_tensor /= 255.0
+            batch_tensor = batch_tensor.to(self.device)
 
-        batch_tensor = batch_tensor.to(self.device)
         if self.half_precision:
             batch_tensor = batch_tensor.half()
 
