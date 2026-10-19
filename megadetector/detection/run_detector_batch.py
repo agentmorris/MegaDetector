@@ -46,6 +46,7 @@ import shutil
 import random
 import warnings
 import itertools
+import traceback
 import humanfriendly
 
 from datetime import datetime
@@ -236,13 +237,18 @@ def _producer_func(q,
                    detector_options=None,
                    verbose=False,
                    image_size=None,
-                   augment=None):
+                   augment=None,
+                   include_image_size=False,
+                   include_image_timestamp=False,
+                   include_exif_tags=None):
     """
     Producer function; only used when using the (optional) image queue.
 
     Reads images from disk and puts, optionally preprocesses them (depending on whether "preprocessor"
-    is None, then puts them on the blocking queue for processing.  Each image is queued as a tuple of
-    [filename,Image].  Sends "None" to the queue when finished.
+    is None, then puts them on the blocking queue for processing.  Each image is queued as a list of
+    [filename,image,producer_id,image_metadata], where image_metadata holds the metadata fields
+    requested for the output file (see _read_image_metadata()), read here so the consumer doesn't
+    need the original image.  Sends "None" to the queue when finished.
 
     The "detector" argument is only used for preprocessing.
 
@@ -256,6 +262,9 @@ def _producer_func(q,
         verbose (bool, optional): enable additional debug output
         image_size (int, optional): image size to use for preprocessing
         augment (bool, optional): enable image augmentation during preprocessing
+        include_image_size (bool, optional): read image dimensions for the output
+        include_image_timestamp (bool, optional): read image timestamps for the output
+        include_exif_tags (str, optional): comma-separated list of EXIF tags to read for the output
     """
 
     if verbose:
@@ -269,9 +278,16 @@ def _producer_func(q,
 
     for im_file in image_files:
 
+        image_metadata = {}
+
         try:
 
             image = vis_utils.load_image(im_file)
+
+            image_metadata = _read_image_metadata(image,
+                                                  include_image_size=include_image_size,
+                                                  include_image_timestamp=include_image_timestamp,
+                                                  include_exif_tags=include_exif_tags)
 
             if preprocessor is not None:
 
@@ -285,7 +301,7 @@ def _producer_func(q,
             print('Producer process: image {} cannot be loaded:\n{}'.format(im_file,str(e)))
             image = run_detector.FAILURE_IMAGE_OPEN
 
-        q.put([im_file,image,producer_id])
+        q.put([im_file,image,producer_id,image_metadata])
 
     # ...for each image
 
@@ -460,12 +476,13 @@ def _consumer_func(q,
         # At this point, we have a real image (i.e., not a sentinel indicating that a worker
         # finished).
         #
-        # "r" is always a tuple of (filename,image,producer_id).
+        # "r" is always a list of [filename,image,producer_id,image_metadata].
         #
         # Image can be a PIL image (if the loader wasn't doing preprocessing) or a dict with
         # a preprocessed image and associated metadata.
         im_file = r[0]
         image = r[1]
+        image_metadata = r[3]
 
         # Handle failed images immediately (don't batch them)
         #
@@ -500,7 +517,7 @@ def _consumer_func(q,
             if batch_size > 1:
 
                 # Add to current batch
-                current_batch_items.append([im_file, image, r[2]])
+                current_batch_items.append([im_file, image, r[2], image_metadata])
 
                 # Process batch when full
                 if len(current_batch_items) >= batch_size:
@@ -532,7 +549,8 @@ def _consumer_func(q,
                                         include_image_size=include_image_size,
                                         include_image_timestamp=include_image_timestamp,
                                         include_exif_tags=include_exif_tags,
-                                        augment=augment)
+                                        augment=augment,
+                                        image_metadata=image_metadata)
                 results.append(result)
                 n_images_processed += 1
 
@@ -685,7 +703,10 @@ def _run_detector_with_image_queue(image_files,
                                                           detector_options,
                                                           verbose,
                                                           image_size,
-                                                          augment))
+                                                          augment,
+                                                          include_image_size,
+                                                          include_image_timestamp,
+                                                          include_exif_tags))
         else:
             producer = Process(target=_producer_func,args=(q,
                                                            chunk,
@@ -694,7 +715,10 @@ def _run_detector_with_image_queue(image_files,
                                                            detector_options,
                                                            verbose,
                                                            image_size,
-                                                           augment))
+                                                           augment,
+                                                           include_image_size,
+                                                           include_image_timestamp,
+                                                           include_exif_tags))
         producers.append(producer)
 
     for producer in producers:
@@ -813,7 +837,8 @@ def _process_batch(image_items_batch,
     will be returned out of order.
 
     Args:
-        image_items_batch (list): list of image file paths (strings) or list of tuples [filename, image, producer_id]
+        image_items_batch (list): list of image file paths (strings) or list of lists
+            [filename, image, producer_id, image_metadata]
         detector: loaded detector object
         confidence_threshold (float): confidence threshold for detections
         quiet (bool, optional): suppress per-image output
@@ -834,6 +859,10 @@ def _process_batch(image_items_batch,
     valid_images = []
     valid_image_filenames = []
 
+    # The metadata fields requested for the output file, for each valid image (see
+    # _read_image_metadata())
+    valid_image_metadata = []
+
     batch_results = []
 
     for i_image, item in enumerate(image_items_batch):
@@ -851,12 +880,17 @@ def _process_batch(image_items_batch,
                     }
                     batch_results.append(failed_result)
                     continue
+                image_metadata = _read_image_metadata(image,
+                                                      include_image_size=include_image_size,
+                                                      include_image_timestamp=include_image_timestamp,
+                                                      include_exif_tags=include_exif_tags)
             else:
-                assert len(item) == 3
-                im_file, image, producer_id = item
+                assert len(item) == 4
+                im_file, image, producer_id, image_metadata = item
 
             valid_images.append(image)
             valid_image_filenames.append(im_file)
+            valid_image_metadata.append(image_metadata)
 
     # ...for each image in the batch
 
@@ -890,32 +924,7 @@ def _process_batch(image_items_batch,
                     image_result['detections'] = \
                         [det for det in image_result['detections'] if det['conf'] >= confidence_threshold]
 
-                    if include_image_size or include_image_timestamp or (include_exif_tags is not None):
-
-                        image = valid_images[i_valid_image]
-
-                        # If this was preprocessed by the producer thread, pull out the PIL version
-                        if isinstance(image,dict):
-
-                            image = image['img_original_pil']
-
-                        if include_image_size:
-
-                            image_result['width'] = image.width
-                            image_result['height'] = image.height
-
-                        if include_image_timestamp:
-
-                            image_result['datetime'] = get_image_datetime(image)
-
-                        if include_exif_tags is not None:
-
-                            exif_options = copy.copy(exif_options_base)
-                            exif_options.tags_to_include = include_exif_tags
-                            image_result['exif_metadata'] = read_exif.read_pil_exif(
-                                image,exif_options)
-
-                    # ...if we need to store metadata
+                    _add_image_metadata(image_result,valid_image_metadata[i_valid_image])
 
                 # ...if this image succeeded
 
@@ -956,6 +965,76 @@ def _process_batch(image_items_batch,
 
 
 #%% Image processing functions
+
+def _read_image_metadata(image,
+                         include_image_size=False,
+                         include_image_timestamp=False,
+                         include_exif_tags=None):
+    """
+    Reads the metadata fields requested for the output file from a loaded image.  When the
+    image queue is enabled, this runs on the loader workers, so the original image doesn't have
+    to be passed to the consumer.
+
+    Errors are returned rather than raised; _add_image_metadata() raises them once inference on
+    this image has succeeded.  That way an error has the same effect whether the metadata was
+    read on a loader worker or in the process that runs inference.
+
+    Args:
+        image (Image): the PIL image returned by vis_utils.load_image()
+        include_image_size (bool, optional): read the image dimensions
+        include_image_timestamp (bool, optional): read the EXIF timestamp
+        include_exif_tags (str, optional): comma-separated list of EXIF tags to read
+
+    Returns:
+        dict or str: dict with the requested fields ('width', 'height', 'datetime',
+        'exif_metadata'), in the order in which they appear in the output file, or the
+        traceback of the exception raised while reading them
+    """
+
+    image_metadata = {}
+
+    try:
+
+        if include_image_size:
+            image_metadata['width'] = image.width
+            image_metadata['height'] = image.height
+
+        if include_image_timestamp:
+            image_metadata['datetime'] = get_image_datetime(image)
+
+        if include_exif_tags is not None:
+            exif_options = copy.copy(exif_options_base)
+            exif_options.tags_to_include = include_exif_tags
+            image_metadata['exif_metadata'] = read_exif.read_pil_exif(image,exif_options)
+
+    except Exception:
+
+        # Return the error as a string, since exception objects aren't always picklable
+        return traceback.format_exc()
+
+    return image_metadata
+
+# ...def _read_image_metadata(...)
+
+
+def _add_image_metadata(result, image_metadata):
+    """
+    Copies the metadata fields returned by _read_image_metadata() into the result for an image,
+    or raises an exception if there was an error reading them.
+
+    Args:
+        result (dict): the result for one image, modified in place
+        image_metadata (dict or str): the return value of _read_image_metadata()
+    """
+
+    if isinstance(image_metadata,str):
+        raise Exception('Error reading metadata for {}:\n{}'.format(
+            result['file'],image_metadata))
+
+    result.update(image_metadata)
+
+# ...def _add_image_metadata(...)
+
 
 def _process_images(im_files,
                    detector,
@@ -1038,7 +1117,8 @@ def _process_image(im_file,
                    include_image_size=False,
                    include_image_timestamp=False,
                    include_exif_tags=False,
-                   augment=False):
+                   augment=False,
+                   image_metadata=None):
     """
     Runs a detector (typically MegaDetector) on a single image file.
 
@@ -1057,6 +1137,9 @@ def _process_image(im_file,
         include_image_timestamp (bool, optional): should we include image timestamps in the output for each image?
         include_exif_tags (str, optional): comma-separated list of EXIF tags to include in output
         augment (bool, optional): enable image augmentation
+        image_metadata (dict, optional): the metadata fields requested for the output file, as
+            returned by _read_image_metadata(), if they were read when [image] was loaded; if
+            this is None, they are read from [image]
 
     Returns:
         dict: dict representing detections on one image,
@@ -1078,6 +1161,12 @@ def _process_image(im_file,
             }
             return result
 
+    if image_metadata is None:
+        image_metadata = _read_image_metadata(image,
+                                              include_image_size=include_image_size,
+                                              include_image_timestamp=include_image_timestamp,
+                                              include_exif_tags=include_exif_tags)
+
     try:
 
         result = detector.generate_detections_one_image(
@@ -1097,21 +1186,7 @@ def _process_image(im_file,
         }
         return result
 
-    # If this image has already been preprocessed
-    if isinstance(image,dict):
-        image = image['img_original_pil']
-
-    if include_image_size:
-        result['width'] = image.width
-        result['height'] = image.height
-
-    if include_image_timestamp:
-        result['datetime'] = get_image_datetime(image)
-
-    if include_exif_tags is not None:
-        exif_options = copy.copy(exif_options_base)
-        exif_options.tags_to_include = include_exif_tags
-        result['exif_metadata'] = read_exif.read_pil_exif(image,exif_options)
+    _add_image_metadata(result,image_metadata)
 
     return result
 
@@ -2433,6 +2508,22 @@ class _FakeDetector:
 
         return [{'file': image_id, 'detections': []} for image_id in image_ids]
 
+    def preprocess_image(self, image, image_id='unknown', **kwargs):
+        """
+        Returns a stand-in for a preprocessed image.  Like the dicts returned by
+        PTDetector.preprocess_image(), this doesn't include the original image.
+
+        Args:
+            image (Image): the image (ignored)
+            image_id (str): the image filename
+            kwargs (dict): other arguments accepted by real detectors (ignored)
+
+        Returns:
+            dict: a dict with only the 'file' field
+        """
+
+        return {'file': image_id}
+
 # ...class _FakeDetector
 
 
@@ -2585,3 +2676,147 @@ def test_checkpoints_when_resuming():
         shutil.rmtree(test_folder,ignore_errors=True)
 
 # ...def test_checkpoints_when_resuming(...)
+
+
+def test_image_metadata_with_image_queue():
+    """
+    Tests that image size, timestamp, and EXIF fields are the same with and without the image
+    queue, with and without preprocessing on the queue, and with and without batching.  When
+    preprocessing on the queue, the consumer only receives what preprocess_image() returns,
+    so this also tests that the loaders pass these fields along.  Uses a fake detector, so this
+    doesn't require a model or a GPU.
+    """
+
+    from PIL import Image
+
+    global load_detector, is_gpu_available
+
+    original_load_detector = load_detector
+    original_is_gpu_available = is_gpu_available
+
+    def _fake_load_detector(*args, **kwargs):
+        """
+        Replaces load_detector() for this test.
+        """
+
+        return _FakeDetector()
+
+    def _fake_is_gpu_available(*args, **kwargs):
+        """
+        Replaces is_gpu_available() for this test; pretends a GPU is available, so batch
+        sizes > 1 aren't reduced to 1.
+        """
+
+        return True
+
+    test_folder = ct_utils.make_test_folder(subfolder='run_detector_batch_metadata_tests')
+
+    try:
+
+        load_detector = _fake_load_detector
+        is_gpu_available = _fake_is_gpu_available
+
+        ## Create test images
+
+        image_datetime = '2024:05:06 07:08:09'
+
+        def _make_exif(orientation=None):
+            exif = Image.Exif()
+            exif[0x010F] = 'TestCamera' # Make
+            if orientation is not None:
+                exif[0x0112] = orientation # Orientation
+            exif.get_ifd(0x8769)[0x9003] = image_datetime # DateTimeOriginal
+            return exif
+
+        exif_file = os.path.join(test_folder,'exif.jpg').replace('\\','/')
+        Image.new('RGB', (64,48), color='green').save(exif_file, exif=_make_exif())
+
+        # Orientation 6 means "rotate 90 degrees clockwise", so this loads as 48x64
+        rotated_file = os.path.join(test_folder,'rotated.jpg').replace('\\','/')
+        Image.new('RGB', (64,48), color='green').save(rotated_file, exif=_make_exif(6))
+
+        no_exif_file = os.path.join(test_folder,'no_exif.jpg').replace('\\','/')
+        Image.new('RGB', (64,48), color='green').save(no_exif_file)
+
+        not_an_image_file = os.path.join(test_folder,'not_an_image.jpg').replace('\\','/')
+        with open(not_an_image_file,'w') as f:
+            f.write('not an image')
+
+        image_files = [exif_file, rotated_file, no_exif_file, not_an_image_file]
+
+        # load_and_run_detector_batch() checks that the model file exists, but we're using a
+        # fake detector, so the contents don't matter
+        model_file = os.path.join(test_folder,'fake-model.pt')
+        with open(model_file,'w') as f:
+            f.write('')
+
+        ## Run inference with and without the image queue, preprocessing, and batching
+
+        # Each tuple is (use_image_queue, preprocess_on_image_queue, batch_size); the first case
+        # is the reference for the others
+        test_cases = [
+            (False, False, 1),
+            (False, False, 3),
+            (True, False, 1),
+            (True, False, 3),
+            (True, True, 1),
+            (True, True, 3)
+        ]
+
+        reference_results = None
+
+        for use_image_queue, preprocess_on_image_queue, batch_size in test_cases:
+
+            print('Testing image metadata with use_image_queue={}, preprocess_on_image_queue={}, '
+                  'batch_size={}'.format(use_image_queue,preprocess_on_image_queue,batch_size))
+
+            results = load_and_run_detector_batch(model_file=model_file,
+                                                  image_file_names=image_files,
+                                                  use_image_queue=use_image_queue,
+                                                  preprocess_on_image_queue=preprocess_on_image_queue,
+                                                  use_threads_for_queue=True,
+                                                  loader_workers=2,
+                                                  batch_size=batch_size,
+                                                  include_image_size=True,
+                                                  include_image_timestamp=True,
+                                                  include_exif_tags='all',
+                                                  quiet=True)
+            results = sort_list_of_dicts_by_key(results,'file')
+
+            if reference_results is None:
+                reference_results = results
+            else:
+                assert results == reference_results, \
+                    'Results differ from the results without the image queue'
+
+        # ...for each test case
+
+        ## Validate the reference results
+
+        file_to_result = {r['file']: r for r in reference_results}
+
+        r = file_to_result[exif_file]
+        assert (r['width'],r['height']) == (64,48)
+        assert r['datetime'] == image_datetime
+        assert r['exif_metadata']['Make'] == 'TestCamera'
+
+        r = file_to_result[rotated_file]
+        assert (r['width'],r['height']) == (48,64)
+        assert r['datetime'] == image_datetime
+
+        r = file_to_result[no_exif_file]
+        assert (r['width'],r['height']) == (64,48)
+        assert r['datetime'] is None
+        assert r['exif_metadata'] == {}
+
+        r = file_to_result[not_an_image_file]
+        assert r['failure'] == run_detector.FAILURE_IMAGE_OPEN
+        assert 'width' not in r
+
+    finally:
+
+        load_detector = original_load_detector
+        is_gpu_available = original_is_gpu_available
+        shutil.rmtree(test_folder,ignore_errors=True)
+
+# ...def test_image_metadata_with_image_queue(...)
