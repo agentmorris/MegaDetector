@@ -55,6 +55,7 @@ for model_name in model_names:
     model_file = model_name
     if model_name in model_name_to_model_file:
         model_file = model_name_to_model_file[model_name]
+        assert os.path.isfile(model_file)
     if 'detr' in model_file or 'detr' in model_name:
         import rfdetr
 
@@ -358,6 +359,8 @@ for i_job,job_info in enumerate(all_job_info):
 
     job_info['html_output_file'] = html_output_file
 
+    html_output_files.append(html_output_file)
+
     _ = visualize_detector_output(detector_output_path=file_to_visualize,
                                   out_dir=job_visualization_folder,
                                   images_dir=input_folder,
@@ -378,8 +381,6 @@ for i_job,job_info in enumerate(all_job_info):
                                   box_thickness=2,
                                   box_expansion=2,
                                   label_font_size=12)
-
-    html_output_files.append(html_output_file)
 
 # ...for each job
 
@@ -488,6 +489,7 @@ open_file(comparison_index_page)
 
 import shutil
 from tqdm import tqdm
+from megadetector.utils.path_utils import path_join
 from megadetector.utils.write_html_image_list import write_html_image_list
 
 images_relative = find_images(input_folder,recursive=True, return_relative_paths=True)
@@ -496,7 +498,7 @@ print('Found {} images'.format(len(images)))
 image_review_folder = os.path.join(test_folder_base,'image_review')
 os.makedirs(image_review_folder,exist_ok=True)
 
-image_fn_relative_to_image_index_file = {}
+image_fn_relative_to_image_index_file_relative = {}
 
 for i_image,image_fn_relative in tqdm(enumerate(images_relative),
                                       total=len(images_relative)):
@@ -507,11 +509,12 @@ for i_image,image_fn_relative in tqdm(enumerate(images_relative),
     # i_job = 0; job_info = all_job_info[i_job]
     for i_job,job_info in enumerate(all_job_info):
 
-        image_review_folder_this_image = os.path.join(image_review_folder,
-          image_fn_relative.replace('\\','/').replace('/','_'))
-        os.makedirs(image_review_folder_this_image,exist_ok=True)
-        job_visualization_folder = os.path.join(visualization_folder,
-                                                job_info['job_name'])
+        image_review_folder_this_image_relative = image_fn_relative.replace('/','_')
+        image_review_folder_this_image_abs = \
+            path_join(image_review_folder,image_review_folder_this_image_relative)
+        os.makedirs(image_review_folder_this_image_abs,exist_ok=True)
+        job_visualization_folder = path_join(visualization_folder,
+                                             job_info['job_name'])
         assert os.path.isdir(job_visualization_folder)
 
         # Find the annotated version of this image for this job
@@ -519,7 +522,7 @@ for i_image,image_fn_relative in tqdm(enumerate(images_relative),
         source_image = [fn for fn in annotated_images if image_fn_relative in fn]
         assert len(source_image) == 1
         source_image_relative = source_image[0]
-        source_image_abs = os.path.join(job_visualization_folder,source_image_relative)
+        source_image_abs = path_join(job_visualization_folder,source_image_relative)
         assert os.path.isfile(source_image_abs)
 
         # Copy it to the output folder, with a filename that includes the job name
@@ -530,8 +533,8 @@ for i_image,image_fn_relative in tqdm(enumerate(images_relative),
         #    os.path.splitext(source_image_relative)[1]
         target_image_relative = 'job_{}_image_{}{}'.format(
             i_job,i_image,os.path.splitext(source_image_relative)[1])
-        target_image_abs = os.path.join(image_review_folder_this_image,
-                                        target_image_relative)
+        target_image_abs = path_join(image_review_folder_this_image_abs,
+                                     target_image_relative)
         shutil.copyfile(source_image_abs,target_image_abs)
 
         im = {}
@@ -543,17 +546,20 @@ for i_image,image_fn_relative in tqdm(enumerate(images_relative),
 
     # Create an index page for this image
     options = write_html_image_list()
-    index_file_this_image = os.path.join(image_review_folder_this_image,'index.html')
-    write_html_image_list(filename=index_file_this_image,
+    index_file_this_image_relative = image_review_folder_this_image_relative + '/index.html'
+    index_file_this_image_abs = path_join(image_review_folder,index_file_this_image_relative)
+    write_html_image_list(filename=index_file_this_image_abs,
                           images=image_info,
                           options=options)
-    image_fn_relative_to_image_index_file[image_fn_relative] = \
-        index_file_this_image
+    image_fn_relative_to_image_index_file_relative[image_fn_relative] = \
+        index_file_this_image_relative
 
 # ...for each image
 
 
 #%% Generate the master index page
+
+from urllib.parse import quote
 
 master_index_page = os.path.join(image_review_folder,'index.html')
 
@@ -575,14 +581,20 @@ tbody tr:hover { background-color: #e8f0fe; }
 <body>"""
 
 with open(master_index_page,'w') as f:
+
     f.write(index_page_head + '\n')
 
-    for image_fn_relative in image_fn_relative_to_image_index_file:
+    for image_fn_relative in image_fn_relative_to_image_index_file_relative:
+
+        url = image_fn_relative_to_image_index_file_relative[image_fn_relative]
+        url = quote(url,safe='/')
         f.write('<a href="{}">{}</a><br/>\n'.format(
-            image_fn_relative_to_image_index_file[image_fn_relative],
+            url,
             image_fn_relative
         ))
+
     # ...for each image
+
     f.write('</body></html>')
 
 open_file(master_index_page)

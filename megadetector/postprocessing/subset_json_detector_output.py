@@ -173,6 +173,9 @@ def _write_detection_results(data, output_filename, options):
     Writes the detector-output-formatted dict *data* to *output_filename*.
     """
 
+    if output_filename is None:
+        return
+
     if (not options.overwrite_json_files) and os.path.isfile(output_filename):
         raise ValueError('File {} exists'.format(output_filename))
 
@@ -686,7 +689,7 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
     Args:
         input_filename (str): filename to load and subset; can be None if [data] is supplied
         output_filename (str): file or folder name (depending on [options]) to which we should
-            write subset results.
+            write subset results (None to bypass output).
         options (SubsetJsonDetectorOutputOptions): parameters for .json splitting/subsetting;
             see SubsetJsonDetectorOutputOptions for details.
         data (dict, optional): data loaded from a .json file; if this is not None, [input_filename]
@@ -707,7 +710,10 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
         assert options.split_folders and options.make_folder_relative, \
             'copy_jsons_to_folders set without make_folder_relative and split_folders'
 
+    # Output validation
     if options.split_folders:
+        if output_filename is None:
+            raise ValueError('output_filename cannot be None when splitting folders')
         if os.path.isfile(output_filename):
             raise ValueError('When splitting by folders, output must be a valid directory name, ' + \
                              'you specified an existing file')
@@ -828,27 +834,31 @@ def subset_json_detector_output(input_filename, output_filename, options, data=N
 
         print('Finished converting to json-relative paths, writing output')
 
-        os.makedirs(output_filename, exist_ok=True)
-        all_images = data['images']
+        if output_filename is not None:
 
-        # dirname = list(folders_to_images.keys())[0]
-        for dirname in tqdm(folders_to_images):
+            os.makedirs(output_filename, exist_ok=True)
+            all_images = data['images']
 
-            json_fn = dirname.replace('/', '_').replace('\\', '_') + '.json'
+            # dirname = list(folders_to_images.keys())[0]
+            for dirname in tqdm(folders_to_images):
 
-            if options.copy_jsons_to_folders:
-                json_fn = os.path.join(output_filename, dirname, json_fn)
-            else:
-                json_fn = os.path.join(output_filename, json_fn)
+                json_fn = dirname.replace('/', '_').replace('\\', '_') + '.json'
 
-            # Recycle the 'data' struct, replacing 'images' every time... medium-hacky, but
-            # forward-compatible in that I don't take dependencies on the other fields
-            dir_data = data
-            dir_data['images'] = folders_to_images[dirname]
-            _write_detection_results(dir_data, json_fn, options)
-            print('Wrote {} images to {}'.format(len(dir_data['images']), json_fn))
+                if options.copy_jsons_to_folders:
+                    json_fn = os.path.join(output_filename, dirname, json_fn)
+                else:
+                    json_fn = os.path.join(output_filename, json_fn)
 
-        # ...for each directory
+                # Recycle the 'data' struct, replacing 'images' every time... medium-hacky, but
+                # forward-compatible in that I don't take dependencies on the other fields
+                dir_data = data
+                dir_data['images'] = folders_to_images[dirname]
+                _write_detection_results(dir_data, json_fn, options)
+                print('Wrote {} images to {}'.format(len(dir_data['images']), json_fn))
+
+            # ...for each directory
+
+        # ...if we're writing output
 
         data['images'] = all_images
 
