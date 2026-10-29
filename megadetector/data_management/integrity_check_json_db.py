@@ -462,7 +462,7 @@ def integrity_check_json_db(json_file, options=None):
         for image in images:
             if image['_count'] == 0:
                 n_unannotated += 1
-                unannotated_images.append(im['file_name'])
+                unannotated_images.append(image['file_name'])
             elif image['_count'] > 1:
                 n_multi_annotated += 1
 
