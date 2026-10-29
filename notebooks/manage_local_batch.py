@@ -287,15 +287,15 @@ if render_animals_only:
 
 #%% Variables I set for each job
 
-input_path = '/drive/organization'
-organization_name_short = 'organization'
-job_date = None # '2026-10-01'
+input_path = 'g:/temp/md-test-images'
+organization_name_short = 'md-test'
+job_date = '2026-10-01'
 model_file = 'MDV5A' # 'MDV5A', 'MDV5B', 'MDV4', 'MDv1000-redwood'
 
 # Number of jobs to split data into, typically equal to the number of available GPUs, though
 # when using an image loading queue, I typically use ~10 jobs per GPU;  those serve as de
 # facto checkpoints.
-n_jobs = 10
+n_jobs = 1
 n_gpus = 1
 
 # Set to "None" when using an image loading queue, which doesn't currently support
@@ -323,7 +323,7 @@ max_images_per_chunk = None
 classifier_batch_size = 128
 
 # Text file containing binomial names and common names of allowed taxa
-custom_taxa_list = None
+custom_taxa_list = 'c:/git/agentmorrisprivate/taxonomy-lists/idfg_speciesnet.20251031.csv'
 
 # If custom_taxa_list is not None, when should we apply the custom taxonomy?  Can be
 # 'before_smoothing' or 'after_smoothing'.
@@ -422,6 +422,20 @@ if custom_taxa_list is not None:
         'Could not find custom taxa file {}'.format(custom_taxa_list)
     assert custom_taxa_stage in ('before_smoothing','after_smoothing')
 
+    # First try loading the SpeciesNet taxonomy from the public model package
+    if taxonomy_file is None:
+
+        try:
+            from speciesnet.utils import ModelInfo
+            from speciesnet import DEFAULT_MODEL as default_classification_model
+            model = ModelInfo(default_classification_model)
+            taxonomy_file = model.taxonomy
+        except Exception as e:
+            print('Warning: error retrieving SpeciesNet taxonomy file: {}'.format(str(e)))
+            taxonomy_file = None
+
+    # If that didn't work, download the latest version from GitHub (the lila.science URL points
+    # to the latest version)
     if taxonomy_file is None:
 
         local_taxonomy_file = os.path.join(filename_base,'taxonomy_release.txt')
