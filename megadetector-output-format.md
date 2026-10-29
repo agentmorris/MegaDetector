@@ -48,7 +48,7 @@ Example output with both detection and classification results:
     },
     // classification_categories is optional; if present, category IDs must be
     // non-negative string-formatted ints.  Category IDs are not required to be contiguous.
-	// Classification category names don't have to be unique, but they can't be blank.
+    // Classification category names don't have to be unique, but they can't be blank.
     "classification_categories": {
         "0": "fox",
         "1": "elk",

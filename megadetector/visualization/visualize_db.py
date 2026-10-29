@@ -100,7 +100,7 @@ class DbVizOptions:
         #:
         #: Mutually exclusive with classes_to_include
         #:
-        #: #: Category inclusion/exclusion happens *before* sampling.
+        #: Category inclusion/exclusion happens *before* sampling.
         self.classes_to_exclude = None
 
         #: Special tag used to say "show me all images with multiple categories"

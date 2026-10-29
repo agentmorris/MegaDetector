@@ -287,7 +287,7 @@ def integrity_check_json_db(json_file, options=None):
         if 'seq_id' in image:
             sequences.add(image['seq_id'])
 
-        assert not ('sequence_id' in image or 'sequence' in image), 'Illegal sequence identifier'
+    # ...for each image
 
     unused_files = []
 
@@ -451,6 +451,8 @@ def integrity_check_json_db(json_file, options=None):
 
     ##%% Print statistics
 
+    unannotated_images = []
+
     if options.verbose:
 
         # Find un-annotated images and multi-annotation images
@@ -460,6 +462,7 @@ def integrity_check_json_db(json_file, options=None):
         for image in images:
             if image['_count'] == 0:
                 n_unannotated += 1
+                unannotated_images.append(image['file_name'])
             elif image['_count'] > 1:
                 n_multi_annotated += 1
 
@@ -508,6 +511,7 @@ def integrity_check_json_db(json_file, options=None):
 
     error_info = {}
     error_info['unused_files'] = unused_files
+    error_info['unannotated_images'] = unannotated_images
     error_info['validation_errors'] = validation_errors
 
     return sorted_categories, data, error_info
