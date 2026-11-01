@@ -1042,6 +1042,35 @@ def _render_image_with_gt(file_info,
 # ...def _render_image_with_gt()
 
 
+def _can_resolve_image_paths(options, file_paths) -> bool:
+    """
+    Whether the images referenced by [file_paths] can be resolved for rendering, i.e.
+    whether we have an image base dir or ground truth, or the paths in the results are
+    already absolute paths or URLs.
+
+    :meta private:
+    """
+
+    if (options.image_base_dir is not None) and (len(options.image_base_dir) > 0):
+        return True
+
+    if (options.ground_truth_json_file is not None) and \
+       (len(options.ground_truth_json_file) > 0):
+        return True
+
+    for p in file_paths:
+        if not isinstance(p, str):
+            continue
+        if p.startswith('http://') or p.startswith('https://') or p.startswith('/') or \
+           (len(p) > 2 and p[1] == ':' and p[2] in ('/', '\\')):
+            continue
+        return False
+
+    return True
+
+# ...def _can_resolve_image_paths()
+
+
 #%% Main function
 
 def process_batch_results(options):
@@ -1162,6 +1191,14 @@ def process_batch_results(options):
         # Explicitly forcing a copy() operation here to suppress "trying to be set
         # on a copy" warnings (and associated risks) below.
         detections_df = detections_df[b_image_succeeded].copy()
+
+    # If we have no image base dir, no ground truth, and the paths in the results are
+    # relative, then there's no way to find the images when rendering the output
+    if 'file' in detections_df.columns and \
+       not _can_resolve_image_paths(options, detections_df['file']):
+        print('\n*** Warning: no image base dir and no ground truth, and the file paths '
+              'in the results are not absolute paths or URLs; the images in the rendered '
+              'output will not be viewable ***\n')
 
     assert other_fields is not None
 
@@ -2248,3 +2285,39 @@ def main(): # noqa
 
 if __name__ == '__main__':
     main()
+
+
+#%% Tests
+
+def test_image_path_resolution():
+    """
+    Check _can_resolve_image_paths(): an image base dir or ground truth makes any path
+    resolvable; otherwise only absolute paths and URLs are.
+    """
+
+    options = PostProcessingOptions()
+
+    options.image_base_dir = '/some/folder'
+    assert _can_resolve_image_paths(options, ['foo/bar.jpg'])
+
+    options.image_base_dir = ''
+    options.ground_truth_json_file = 'ground_truth.json'
+    assert _can_resolve_image_paths(options, ['foo/bar.jpg'])
+
+    options.ground_truth_json_file = ''
+
+    # With neither an image base dir nor ground truth, only absolute paths and URLs work
+    assert _can_resolve_image_paths(options, [
+        '/absolute/path/foo.jpg',
+        'c:/absolute/path/foo.jpg',
+        'https://example.com/foo.jpg'])
+
+    assert not _can_resolve_image_paths(options, ['relative/path/foo.jpg'])
+
+    # A mix of absolute and relative paths is not fully resolvable
+    assert not _can_resolve_image_paths(options, ['/absolute/path/foo.jpg', 'relative/foo.jpg'])
+
+    # Nothing to resolve
+    assert _can_resolve_image_paths(options, [])
+
+# ...def test_image_path_resolution()
