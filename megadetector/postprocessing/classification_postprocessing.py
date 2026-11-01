@@ -1220,9 +1220,10 @@ def restrict_to_taxa_list(taxa_list,
     a geofence applied, apply a custom taxa list.
 
     Args:
-        taxa_list (str): .csv file with at least the columns "latin" and "common"
+        taxa_list (str): .csv file with at least the columns "latin" and "common",
+            encoded as UTF-8
         speciesnet_taxonomy_file (str): taxonomy filename, in the same format used for
-            model release (with 7-token taxonomy entries)
+            model release (with 7-token taxonomy entries), encoded as UTF-8
         input_file (str): .json file to read, in MD format.  This can be None, in which
             case this function just validates [taxa_list].
         output_file (str): .json file to write, in MD format
@@ -1256,7 +1257,7 @@ def restrict_to_taxa_list(taxa_list,
 
     ##%% Read target taxa list
 
-    taxa_list_df = pd.read_csv(taxa_list)
+    taxa_list_df = pd.read_csv(taxa_list, encoding='utf-8')
 
     # Convert NaN values to empty strings
     taxa_list_df = taxa_list_df.fillna('')
@@ -1322,7 +1323,7 @@ def restrict_to_taxa_list(taxa_list,
 
     ##%% Read taxonomy file
 
-    with open(speciesnet_taxonomy_file,'r') as f:
+    with open(speciesnet_taxonomy_file,'r',encoding='utf-8') as f:
         speciesnet_taxonomy_list = f.readlines()
     speciesnet_taxonomy_list = [s.strip() for s in \
                                 speciesnet_taxonomy_list if len(s.strip()) > 0]
