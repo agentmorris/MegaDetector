@@ -5,7 +5,7 @@ that file.
 
 TODO.md is rendered by the Markdown Task Viewer (https://github.com/agentmorris/task-viewer),
 which silently leaves out any work item that doesn't have a priority, an effort level, and a
-tag, and silently drops description text that comes after those lines.  So this test parses
+tag, and silently drops description text that comes after those lines.  This test parses
 TODO.md the same way the task viewer does, and fails on anything the task viewer would leave
 out or misread.
 
