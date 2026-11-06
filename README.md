@@ -212,15 +212,6 @@ Code for:
 * Creating, visualizing, and  editing COCO Camera Traps .json databases
 
 
-#### megadetector/classification
-
-This folder is largely deprecated thanks to the release of [SpeciesNet](https://github.com/google/cameratrapai), a species classifier that is better than any of the classifiers we ever trained with the stuff in this folder.  That said, this folder contains code for training species classifiers on new data sets, generally trained on MegaDetector crops.
-
-Here's another "teaser image" of what you get at the end of training and running a classifier:
-
-<img src="images/warthog_classifications.jpg" width="700"><br/>Image credit University of Minnesota, from the Snapshot Safari program.
-
-
 #### megadetector/taxonomy_mapping
 
 Code to facilitate mapping data-set-specific category names (e.g. "lion", which means very different things in Idaho vs. South Africa) to a standard taxonomy.
