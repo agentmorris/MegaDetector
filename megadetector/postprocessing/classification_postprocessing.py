@@ -1220,10 +1220,10 @@ def restrict_to_taxa_list(taxa_list,
     a geofence applied, apply a custom taxa list.
 
     Args:
-        taxa_list (str): .csv file with at least the columns "latin" and "common",
-            encoded as UTF-8
+        taxa_list (str): .csv file with at least the columns "latin" and "common".
+            Will be read as UTF-8 (ASCII is fine).
         speciesnet_taxonomy_file (str): taxonomy filename, in the same format used for
-            model release (with 7-token taxonomy entries), encoded as UTF-8
+            model release (with 7-token taxonomy entries).
         input_file (str): .json file to read, in MD format.  This can be None, in which
             case this function just validates [taxa_list].
         output_file (str): .json file to write, in MD format

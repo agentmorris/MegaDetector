@@ -952,17 +952,6 @@ E0
 !docs
 
 
-## Handle encoding more carefully in restrict_to_taxa_list
-
-Taxonomy mapping .csv files are read with pd.read_csv() in restrict_to_taxa_list().  These files often contain non-standard characters, and odd stuff can happen.  Probably best to require utf-8, document it as such, and do a one-time search over my library of mapping files to make sure they're all UTF-8.
-
-P1
-
-E0
-
-!feature
-
-
 ## Improved exception handling in multiprocessing scenarios
 
 In some very esoteric scenarios, when multiprocessing is enabled, inference modules can hang.  This never happens in normal operation, it's quirky stuff like piping stdin in odd ways, calling things from certain IPython environments, etc.  And even in those scenarios, it still required unexpected stuff to happen.
