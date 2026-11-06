@@ -759,17 +759,6 @@ E1
 !training
 
 
-## Argument validation in postprocess_batch_results
-
-postprocess_batch_results should at least notify the user, and probably error, when it’s run without one of (1) absolute paths, (2) ground truth, or (3) an image folder.  I don't think there's a sensible case where you would not want to specify one of those things.
-
-P3
-
-E0
-
-!maintenance
-
-
 ## Add blurring to video rendering
 
 visualize_detector_output allows the caller to blur humans; add this functionality to visualize_video_output.
@@ -961,17 +950,6 @@ P2
 E0
 
 !docs
-
-
-## Handle encoding more carefully in restrict_to_taxa_list
-
-Taxonomy mapping .csv files are read with pd.read_csv() in restrict_to_taxa_list().  These files often contain non-standard characters, and odd stuff can happen.  Probably best to require utf-8, document it as such, and do a one-time search over my library of mapping files to make sure they're all UTF-8.
-
-P1
-
-E0
-
-!feature
 
 
 ## Improved exception handling in multiprocessing scenarios
