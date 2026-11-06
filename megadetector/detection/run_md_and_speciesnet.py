@@ -1458,8 +1458,8 @@ def run_md_and_speciesnet(options):
         elif options.overwrite_handling == 'error':
             raise ValueError('Output file {} exists, and overwrite_handling is "error"'.format(
                 options.output_file))
-        elif options.ovwrite_handling == 'skip':
-            print('Bypassing proecssing: output file {} exists, and overwrite_handling is "skip"'.format(
+        elif options.overwrite_handling == 'skip':
+            print('Bypassing processing: output file {} exists, and overwrite_handling is "skip"'.format(
                 options.output_file))
             return
 
