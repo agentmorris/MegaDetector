@@ -770,17 +770,6 @@ E1
 !training
 
 
-## Argument validation in postprocess_batch_results
-
-postprocess_batch_results should at least notify the user, and probably error, when it’s run without one of (1) absolute paths, (2) ground truth, or (3) an image folder.  I don't think there's a sensible case where you would not want to specify one of those things.
-
-P3
-
-E0
-
-!maintenance
-
-
 ## Add blurring to video rendering
 
 visualize_detector_output allows the caller to blur humans; add this functionality to visualize_video_output.
