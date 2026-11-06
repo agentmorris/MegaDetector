@@ -292,9 +292,7 @@ organization_name_short = 'md-test'
 job_date = '2026-10-01'
 model_file = 'MDV5A' # 'MDV5A', 'MDV5B', 'MDV4', 'MDv1000-redwood'
 
-# Number of jobs to split data into, typically equal to the number of available GPUs, though
-# when using an image loading queue, I typically use ~10 jobs per GPU;  those serve as de
-# facto checkpoints.
+# Number of jobs to split data into, I typically set this to be the same as n_gpus.
 n_jobs = 1
 n_gpus = 1
 
