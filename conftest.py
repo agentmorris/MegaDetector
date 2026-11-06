@@ -47,10 +47,6 @@ def pytest_ignore_collect(collection_path, config):
     # Ignore legacy folders
     if 'api_core' in s_path:
         return True
-    if 'classification' in s_path:
-        return True
-    # if 'md_tests' in s_path:
-    #    return True
 
     # Let pytest figure out what to do with non-py files, including folders
     if collection_path.suffix != '.py':
