@@ -215,7 +215,7 @@ def md_to_coco(md_results_file,
         for detection in im['detections']:
 
             # Skip below-threshold detections
-            if confidence_threshold is not None and detection['conf'] < confidence_threshold:
+            if (confidence_threshold is not None) and (detection['conf'] < confidence_threshold):
                 continue
 
             # Create an annotation
@@ -267,11 +267,11 @@ def md_to_coco(md_results_file,
                 pass
 
             if preserve_nonstandard_metadata:
-                # "Score" is a semi-standard string here, recognized by at least pycocotools
+                # "score" is a semi-standard string here, recognized by at least pycocotools
                 # ann['conf'] = detection['conf']
                 ann['score'] = detection['conf']
 
-            if 'bbox' in ann or include_annotations_without_bounding_boxes:
+            if ('bbox' in ann) or include_annotations_without_bounding_boxes:
                 coco_annotations.append(ann)
 
         # ...for each detection

@@ -1782,7 +1782,9 @@ def parallel_get_image_sizes(filenames,
                              max_workers=16,
                              use_threads=True,
                              recursive=True,
-                             verbose=False):
+                             verbose=False,
+                             return_relative_paths=False,
+                             use_forward_slashes=True):
     """
     Retrieve image sizes for a list or folder of images
 
@@ -1796,15 +1798,21 @@ def parallel_get_image_sizes(filenames,
         recursive (bool, optional): if [filenames] is a folder, whether to search recursively
             for images. Ignored if [filenames] is a list.
         verbose (bool, optional): enable additional debug output
+        return_relative_paths (bool, optional): if [filenames] is a folder, return relative
+            paths instead of absolute paths.  Ignored if [filenames] is not a folder
+        use_forward_slashes (bool, optional): always use forward slashes in returned filenames
 
     Returns:
         dict: a dict mapping filenames to (w,h) tuples; the value will be None for images that fail
-        to load.  Filenames will always be absolute.
+        to load.
     """
+
+    input_folder = None
 
     if isinstance(filenames,str) and os.path.isdir(filenames):
         if verbose:
             print('Enumerating images in {}'.format(filenames))
+        input_folder = filenames
         filenames = find_images(filenames,recursive=recursive,return_relative_paths=False)
 
     n_workers = min(max_workers,len(filenames))
@@ -1837,9 +1845,15 @@ def parallel_get_image_sizes(filenames,
 
     to_return = {}
     for i_file,filename in enumerate(filenames):
+        if (input_folder is not None) and return_relative_paths:
+            filename = os.path.relpath(filename,input_folder)
+        if use_forward_slashes:
+            filename = filename.replace('\\','/')
         to_return[filename] = results[i_file]
 
     return to_return
+
+# ...def parallel_get_image_sizes(...)
 
 
 #%% Image integrity checking functions
