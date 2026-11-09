@@ -18,7 +18,7 @@ input_lila_category_list_file = os.path.expanduser('~/lila/lila_categories_list/
 output_file = os.path.expanduser('~/lila/lila_additions_2026.09.01.csv')
 
 datasets_to_map = [
-    'Duck Pictures in Wetlands'
+    'Indiana Small Animals'
     ]
 
 
@@ -192,7 +192,7 @@ if False:
 
     # Use this when an iNat match includes an empty subgenus with the same name as the genus
     n_levels_to_pop = 0
-    q = 'cygnus'
+    q = 'rodentia'
 
     taxonomy_preference = 'inat'
     m = get_preferred_taxonomic_match(q,taxonomy_preference)
