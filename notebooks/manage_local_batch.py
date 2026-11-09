@@ -321,7 +321,7 @@ max_images_per_chunk = None
 classifier_batch_size = 128
 
 # Text file containing binomial names and common names of allowed taxa
-custom_taxa_list = 'c:/git/agentmorrisprivate/taxonomy-lists/idfg_speciesnet.20251031.csv'
+custom_taxa_list = None
 
 # If custom_taxa_list is not None, when should we apply the custom taxonomy?  Can be
 # 'before_smoothing' or 'after_smoothing'.
