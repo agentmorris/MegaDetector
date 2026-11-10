@@ -1,3 +1,5 @@
+#%% Header
+
 """
 
 visualization_utils.py
@@ -1784,7 +1786,7 @@ def parallel_get_image_sizes(filenames,
                              recursive=True,
                              verbose=False,
                              return_relative_paths=False,
-                             use_forward_slashes=True):
+                             force_forward_slashes=True):
     """
     Retrieve image sizes for a list or folder of images
 
@@ -1800,7 +1802,7 @@ def parallel_get_image_sizes(filenames,
         verbose (bool, optional): enable additional debug output
         return_relative_paths (bool, optional): if [filenames] is a folder, return relative
             paths instead of absolute paths.  Ignored if [filenames] is not a folder
-        use_forward_slashes (bool, optional): always use forward slashes in returned filenames
+        force_forward_slashes (bool, optional): always use forward slashes in returned filenames
 
     Returns:
         dict: a dict mapping filenames to (w,h) tuples; the value will be None for images that fail
@@ -1847,7 +1849,7 @@ def parallel_get_image_sizes(filenames,
     for i_file,filename in enumerate(filenames):
         if (input_folder is not None) and return_relative_paths:
             filename = os.path.relpath(filename,input_folder)
-        if use_forward_slashes:
+        if force_forward_slashes:
             filename = filename.replace('\\','/')
         to_return[filename] = results[i_file]
 
@@ -2228,7 +2230,9 @@ class TestVisualizationUtils:
         """
 
         # Good images: should return positive (w,h) tuples
-        sizes = parallel_get_image_sizes(self.good_images,max_workers=2)
+        sizes = parallel_get_image_sizes(self.good_images,
+                                         max_workers=2,
+                                         force_forward_slashes=False)
         assert set(sizes.keys()) == set(self.good_images)
         for fn,size in sizes.items():
             assert size is not None, 'No size returned for {}'.format(fn)
@@ -2237,7 +2241,9 @@ class TestVisualizationUtils:
                 'Invalid size {} for {}'.format(size,fn)
 
         # Corrupt images: should return None
-        sizes_corrupt = parallel_get_image_sizes(self.corrupt_images,max_workers=2)
+        sizes_corrupt = parallel_get_image_sizes(self.corrupt_images,
+                                                 max_workers=2,
+                                                 force_forward_slashes=False)
         for fn in self.corrupt_images:
             assert sizes_corrupt[fn] is None, \
                 'Expected None size for corrupt image {}, got {}'.format(
