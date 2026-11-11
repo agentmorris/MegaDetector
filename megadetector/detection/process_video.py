@@ -153,7 +153,7 @@ def _video_producer_func(q,
 
     Decodes the sampled frames from each video in [video_files_relative], optionally preprocesses
     them, and puts them on the blocking queue [q] for processing by
-    run_detector_batch._consumer_func().  Each frame is queued as [frame_id,image,producer_id],
+    run_detector_batch._consumer_func().  Each frame is queued as [frame_id,image,producer_id,{}],
     where frame_id is [relative video filename]/frameXXXXXX.jpg, the same frame identifiers that
     we use when we're not using the frame queue.  Sends "None" to [q] when finished.
 
@@ -215,7 +215,8 @@ def _video_producer_func(q,
                 # rather than an image.
                 image = run_detector.FAILURE_INFER
 
-        q.put([frame_id,image,producer_id])
+        # Frames have no per-image metadata (image size, timestamp, EXIF) to pass to the consumer
+        q.put([frame_id,image,producer_id,{}])
         current_video['n_frames_queued'] += 1
 
         # This function gets called for preprocessing only, results are discarded.

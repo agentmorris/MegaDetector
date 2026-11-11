@@ -515,9 +515,7 @@ class RFDETRDetector:
         Returns:
             dict: dict with fields:
                 - file (filename)
-                - img_original (the input image as an np.array)
-                - img_original_pil (the input image as a PIL Image, or None if a numpy array
-                  was supplied)
+                - img_original (the input image as an np.array, on which RF-DETR runs inference)
         """
 
         if (image_size is not None) and (image_size != self.image_size):
@@ -527,21 +525,12 @@ class RFDETRDetector:
 
         result = {'file': image_id}
 
-        # Store the PIL version of the original image; the caller may want to use it later
-        # (e.g. for metadata extraction).  This mirrors PTDetector.preprocess_image(): it
-        # remains None unless a PIL image (i.e., something that isn't already a numpy array)
-        # was supplied.
-        img_original_pil = None
-
         # If we were given a PIL image (or anything else that isn't already a numpy array),
         # convert it to a numpy array.
         if isinstance(img_original, np.ndarray):
             result['img_original'] = img_original
         else:
-            img_original_pil = img_original
             result['img_original'] = np.asarray(img_original)
-
-        result['img_original_pil'] = img_original_pil
 
         return result
 
