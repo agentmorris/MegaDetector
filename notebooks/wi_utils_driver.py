@@ -12,9 +12,18 @@ Utility cells to work with the wi_taxonomy_utils module.
 
 import os
 
+# Should we use the geofence from the released model package (True), or the source (False)?
+use_model_geofence = False
+
 model_base = os.path.expanduser('~/models/speciesnet')
-geofencing_file = os.path.join(model_base,'crop','geofence_release.20251208.json')
-taxonomy_file = os.path.join(model_base,'crop','taxonomy_release.20251208.txt')
+speciesnet_code_base = r'c:/git/cameratrapai'
+
+if use_model_geofence:
+    geofencing_file = os.path.join(model_base,'crop/geofence_release.20260609.json')
+    taxonomy_file = os.path.join(model_base,'crop/taxonomy_release.20260609.txt')
+else:
+    geofencing_file = os.path.join(speciesnet_code_base,'data/model_package/geofence_release.json')
+    taxonomy_file = os.path.join(speciesnet_code_base,'data/model_package/taxonomy_release.txt')
 
 # This is not part of the model package, it comes from:
 #
@@ -93,7 +102,7 @@ for taxon_five_token in allowed_taxa_five_token:
 
 # taxon_name = 'sciurus vulgaris'
 # taxonomy_info = taxonomy_handler.binomial_name_to_taxonomy_info[taxon_name]
-common_name = 'bear family'
+common_name = 'diprotodontia'
 taxonomy_info = taxonomy_handler.common_name_to_taxonomy_info[common_name]
 
 taxonomy_string_short = taxonomy_info_to_taxonomy_string(taxonomy_info)
@@ -212,8 +221,8 @@ for s in rows:
 
 #%% Determine whether a species is allowed in a location
 
-taxon = 'peromyscus species'
-country = 'ITA'
+taxon = 'diprotodontia'
+country = 'USA'
 state = None
 allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=state,return_status=False)
 taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)

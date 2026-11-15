@@ -1479,8 +1479,8 @@ class TaxonomyHandler:
 
             species_rules = self.taxonomy_string_to_geofencing_rules[species_string]
 
-            if len(species_rules.keys()) > 1:
-                print('Warning: taxon {} has both allow and block rules'.format(species_string))
+            # if len(species_rules.keys()) > 1:
+            #    print('Warning: taxon {} has both allow and block rules'.format(species_string))
 
             for rule_type in species_rules.keys():
 
