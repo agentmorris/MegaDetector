@@ -60,6 +60,7 @@ from megadetector.utils import ct_utils
 from megadetector.utils.path_utils import path_is_abs
 from megadetector.data_management import yolo_output_to_md_output
 from megadetector.detection.run_detector import try_download_known_detector
+from megadetector.detection.run_detector import MEGADETECTOR_MODEL_CLASS_NAMES
 from megadetector.postprocessing.combine_batch_outputs import combine_batch_output_files
 
 default_image_size_with_augmentation = int(1280 * 1.3)
@@ -157,12 +158,13 @@ class YoloInferenceOptions:
         self.remove_yolo_results_folder = True
 
         #: These are deliberately offset from the standard MD categories; YOLOv5
-        #: needs categories IDs to start at 0.
+        #: needs categories IDs to start at 0.  The default is the default MD categories,
+        #: offset by -1.
         #:
         #: This can also be a string that points to any class mapping file supported
         #: by read_classes_from_yolo_dataset_file(): a YOLO dataset.yaml file, a text
         #: file with a list of classes, or a .json file with an ID --> name dict
-        self.yolo_category_id_to_name = {0:'animal',1:'person',2:'vehicle'}
+        self.yolo_category_id_to_name = dict(MEGADETECTOR_MODEL_CLASS_NAMES)
 
         #: What should we do if the output file already exists?
         #:

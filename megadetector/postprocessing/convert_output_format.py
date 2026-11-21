@@ -254,7 +254,7 @@ def convert_csv_to_json(input_path,output_path=None,overwrite=True):
     }
 
     classification_categories = {}
-    detection_categories = annotation_constants.detector_bbox_categories
+    detection_categories = dict(annotation_constants.DEFAULT_DETECTOR_LABEL_MAP)
 
     images = []
 

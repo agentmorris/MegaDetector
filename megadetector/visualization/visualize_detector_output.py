@@ -19,7 +19,7 @@ from multiprocessing.pool import Pool
 from functools import partial
 from tqdm import tqdm
 
-from megadetector.data_management.annotation_constants import detector_bbox_category_id_to_name
+from megadetector.data_management.annotation_constants import DEFAULT_DETECTOR_LABEL_MAP
 from megadetector.detection.run_detector import get_typical_confidence_threshold_from_results
 from megadetector.utils.ct_utils import get_max_conf
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
@@ -32,14 +32,6 @@ from megadetector.visualization.visualization_utils import \
     blur_detections, DEFAULT_BOX_THICKNESS, DEFAULT_LABEL_FONT_SIZE
 
 default_box_sort_order = 'confidence'
-
-
-#%% Constants
-
-# This will only be used if a category mapping is not available in the results file.
-DEFAULT_DETECTOR_LABEL_MAP = {
-    str(k): v for k, v in detector_bbox_category_id_to_name.items()
-}
 
 
 #%% Support functions
@@ -289,6 +281,7 @@ def visualize_detector_output(detector_output_path,
     elif 'detection_categories' in detector_output:
         detector_label_map = detector_output['detection_categories']
     else:
+        # Only used if a category mapping is not available in the results file
         detector_label_map = DEFAULT_DETECTOR_LABEL_MAP
 
     num_images = len(images)

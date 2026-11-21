@@ -43,6 +43,7 @@ from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.utils.url_utils import download_url
 from megadetector.utils.ct_utils import parse_kvp_list
 from megadetector.utils.path_utils import compute_file_hash
+from megadetector.data_management.annotation_constants import DEFAULT_DETECTOR_LABEL_MAP
 
 # ignoring all "PIL cannot read EXIF metainfo for the images" warnings
 warnings.filterwarnings('ignore', '(Possibly )?corrupt EXIF data', UserWarning)
@@ -61,24 +62,12 @@ FAILURE_IMAGE_OPEN = 'image access failure'
 CONF_DIGITS = 3
 COORD_DIGITS = 4
 
-# Label mapping for MegaDetector
-DEFAULT_DETECTOR_LABEL_MAP = {
-    '1': 'animal',
-    '2': 'person',
-    '3': 'vehicle'  # available in megadetector v4+
-}
-
-# Should we allow classes that don't look anything like the MegaDetector classes?
-#
-# This flag needs to get set if you want to, for example, run an off-the-shelf
-# YOLO model with this package.
-#
-# By default, we error if we see unfamiliar classes.
-#
-# TODO: the use of a global variable to manage this was fine when this was really
-# experimental, but this is really sloppy now that we actually use this code for
-# models other than MegaDetector.
-USE_MODEL_NATIVE_CLASSES = False
+# All publicly released MegaDetector models store exactly these class names, with zero-indexed
+# integer class IDs ({0: 'animal', 1: 'person', 2: 'vehicle'}), i.e. the default MD categories
+# minus one.  When a model file contains exactly these names and IDs, we add 1 to every class ID
+# at inference time, to produce the default MD categories.  See get_detector_category_info().
+MEGADETECTOR_MODEL_CLASS_NAMES = \
+    {(int(k) - 1): v for k, v in DEFAULT_DETECTOR_LABEL_MAP.items()}
 
 # Detection threshold to recommend to callers when all other mechanisms for choosing
 # a model-specific threshold fail
@@ -654,7 +643,6 @@ def load_detector(model_file,
                     force_cpu,detector_options['force_cpu']))
         else:
             detector_options['force_cpu'] = force_cpu
-        detector_options['use_model_native_classes'] = USE_MODEL_NATIVE_CLASSES
         detector = PTDetector(model_file, detector_options, verbose=verbose)
 
     elif model_file.endswith('.pth'):
@@ -666,10 +654,6 @@ def load_detector(model_file,
         if detector_options is None:
             detector_options = {}
         detector = RFDETRDetector(model_file, detector_options, verbose=verbose)
-
-        # This is a hack
-        global DEFAULT_DETECTOR_LABEL_MAP
-        DEFAULT_DETECTOR_LABEL_MAP = detector.detection_categories
 
     else:
 
@@ -683,6 +667,427 @@ def load_detector(model_file,
     return detector
 
 # ...def load_detector(...)
+
+
+#%% Detector category functions
+
+# When reading class names from a model file, we unpickle the file without importing any
+# model code (e.g. YOLOv5, ultralytics), replacing every class that isn't from one of these
+# modules with a stub class that just stores its pickled state.  The stub approach works
+# regardless of which (if any) YOLO libraries are installed, and doesn't execute model code.
+_modules_allowed_when_reading_model_metadata = \
+    ('torch', 'collections', 'builtins', 'numpy', 'copyreg', '_codecs')
+
+
+class _StubObject:
+    """
+    Stand-in for classes that we don't import when reading metadata from a model file.  Instances
+    just store whatever state was pickled.  See _load_model_file_without_model_code().
+    """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Ignores all constructor arguments.
+        """
+
+        pass
+
+    def __setstate__(self, state):
+        """
+        Stores pickled state as attributes, where possible.
+        """
+
+        # Objects with __slots__ pickle their state as a (dict, dict) tuple
+        if isinstance(state, tuple) and (len(state) == 2) and \
+           ((state[0] is None) or isinstance(state[0], dict)) and \
+           ((state[1] is None) or isinstance(state[1], dict)):
+            for d in state:
+                if d is not None:
+                    self.__dict__.update(d)
+        elif isinstance(state, dict):
+            self.__dict__.update(state)
+        else:
+            self.__dict__['_stub_state'] = state
+
+    def __call__(self, *args, **kwargs):
+        """
+        Some pickled objects are reconstructed by calling functions that return types (e.g.
+        dill's _load_type()), which we've replaced with stubs; the "types" those stubs return
+        are stub instances, which then get called to create objects.
+        """
+
+        return _StubObject()
+
+    # Subclasses of list and dict get populated via append/extend/__setitem__ during unpickling
+
+    def append(self, item):
+        """
+        Supports unpickling of list subclasses.
+        """
+
+        self.__dict__.setdefault('_stub_items', []).append(item)
+
+    def extend(self, items):
+        """
+        Supports unpickling of list subclasses.
+        """
+
+        self.__dict__.setdefault('_stub_items', []).extend(items)
+
+    def __setitem__(self, key, value):
+        """
+        Supports unpickling of dict subclasses.
+        """
+
+        self.__dict__.setdefault('_stub_dict', {})[key] = value
+
+# ...class _StubObject
+
+
+def _load_model_file_without_model_code(model_file):
+    """
+    Loads a PyTorch model file (.pt or .pth) without importing the code that defines the model,
+    replacing all model classes with instances of _StubObject.  Tensors are loaded normally (on
+    the CPU).
+
+    Args:
+        model_file (str): the model file to load
+
+    Returns:
+        object: whatever torch.load() returns for this file, typically a dict, with stubs in place
+        of model objects
+    """
+
+    import pickle
+    import types
+    import torch
+
+    stub_classes = {}
+
+    class _StubUnpickler(pickle.Unpickler):
+
+        def find_class(self, module, name):
+            if module.split('.')[0] in _modules_allowed_when_reading_model_metadata:
+                return super().find_class(module, name)
+            key = module + '.' + name
+            if key not in stub_classes:
+                stub_classes[key] = type(name, (_StubObject,), {'__module__': 'stub.' + module})
+            return stub_classes[key]
+
+    def _stub_load(f, **kwargs):
+        return _StubUnpickler(f, **kwargs).load()
+
+    stub_pickle_module = types.ModuleType('stub_pickle')
+    stub_pickle_module.Unpickler = _StubUnpickler
+    stub_pickle_module.load = _stub_load
+
+    try:
+        checkpoint = torch.load(model_file, map_location='cpu', weights_only=False,
+                                pickle_module=stub_pickle_module)
+    # For a transitional period, we want to support torch 1.1x, where the weights_only
+    # parameter doesn't exist
+    except Exception as e:
+        if "'weights_only' is an invalid keyword" in str(e):
+            checkpoint = torch.load(model_file, map_location='cpu',
+                                    pickle_module=stub_pickle_module)
+        else:
+            raise
+
+    return checkpoint
+
+# ...def _load_model_file_without_model_code(...)
+
+
+def _normalize_class_names(class_names):
+    """
+    Converts class names in any of the formats we find in model files (a list of names, a
+    single name, or a dict mapping int or int-string IDs to names) to a dict mapping int
+    IDs to string names.
+
+    Args:
+        class_names (list, str, or dict): class names in any supported format
+
+    Returns:
+        dict: dict mapping int IDs to names, or None if [class_names] is None or empty
+    """
+
+    if class_names is None:
+        return None
+
+    if isinstance(class_names, str):
+        class_names = [class_names]
+
+    if isinstance(class_names, (list, tuple)):
+        class_names_dict = {}
+        for i_class, class_name in enumerate(class_names):
+            class_names_dict[i_class] = class_name
+        class_names = class_names_dict
+
+    if not isinstance(class_names, dict):
+        raise ValueError('Unrecognized class name format: {}'.format(type(class_names)))
+
+    if len(class_names) == 0:
+        return None
+
+    normalized_class_names = {}
+    for class_id, class_name in class_names.items():
+        try:
+            class_id = int(class_id)
+        except Exception:
+            raise ValueError('Illegal (non-integer) class ID in model file: {}'.format(class_id))
+        assert class_id >= 0, 'Illegal (negative) class ID in model file: {}'.format(class_id)
+        normalized_class_names[class_id] = str(class_name)
+
+    return normalized_class_names
+
+# ...def _normalize_class_names(...)
+
+
+def _read_class_names_from_yolo_checkpoint(checkpoint):
+    """
+    Finds class names in a checkpoint loaded from a YOLO-family (YOLOv5, YOLOv9, ultralytics)
+    .pt file.
+
+    Args:
+        checkpoint (object): checkpoint loaded via _load_model_file_without_model_code()
+
+    Returns:
+        tuple: (class_names, num_classes), where class_names is a dict mapping int IDs to names
+        (or None if no class names are available), and num_classes is the number of classes (or
+        None if we can't determine the number of classes)
+    """
+
+    # Models are typically in checkpoint['model']; un-stripped ultralytics checkpoints (e.g.
+    # last.pt during training) store None in checkpoint['model'], and store the model only in
+    # checkpoint['ema'].
+    candidate_models = []
+    if isinstance(checkpoint, dict):
+        for key in ('model', 'ema'):
+            if checkpoint.get(key, None) is not None:
+                candidate_models.append(checkpoint[key])
+    else:
+        candidate_models.append(checkpoint)
+
+    # Names are typically in model.names, either as a list (older YOLOv5 versions) or a dict
+    # (newer YOLOv5 versions, YOLOv9, ultralytics).  Also check model.yaml['names'], which is
+    # occasionally populated.
+    for model in candidate_models:
+        class_names = getattr(model, 'names', None)
+        model_yaml = getattr(model, 'yaml', None)
+        if (class_names is None) and isinstance(model_yaml, dict):
+            class_names = model_yaml.get('names', None)
+        class_names = _normalize_class_names(class_names)
+        if class_names is not None:
+            return class_names, len(class_names)
+
+    # If we didn't find names, see whether we can at least determine the number of classes
+    for model in candidate_models:
+        num_classes = getattr(model, 'nc', None)
+        model_yaml = getattr(model, 'yaml', None)
+        if (num_classes is None) and isinstance(model_yaml, dict):
+            num_classes = model_yaml.get('nc', None)
+        if num_classes is None:
+            # The detection head is the last layer
+            try:
+                num_classes = model.model[-1].nc
+            except Exception:
+                pass
+        if num_classes is not None:
+            return None, int(num_classes)
+
+    return None, None
+
+# ...def _read_class_names_from_yolo_checkpoint(...)
+
+
+def _read_class_names_from_rfdetr_checkpoint(checkpoint):
+    """
+    Finds class names in a checkpoint loaded from an RF-DETR .pth file.
+
+    Args:
+        checkpoint (dict): checkpoint loaded via _load_model_file_without_model_code()
+
+    Returns:
+        tuple: (class_names, num_classes), where class_names is a dict mapping int IDs to names
+        (or None if no class names are available), and num_classes is the number of classes (or
+        None if we can't determine the number of classes)
+    """
+
+    assert isinstance(checkpoint, dict), 'Unrecognized RF-DETR checkpoint format'
+
+    # The rfdetr package stores class names in checkpoint['args'].class_names (args may be
+    # a dict or an argparse.Namespace); PyTorch Lightning-format checkpoints store them in
+    # checkpoint['hyper_parameters'] instead.
+    for key in ('args', 'hyper_parameters'):
+        args = checkpoint.get(key, None)
+        if args is None:
+            continue
+        if isinstance(args, dict):
+            class_names = args.get('class_names', None)
+        else:
+            class_names = getattr(args, 'class_names', None)
+        class_names = _normalize_class_names(class_names)
+        if class_names is not None:
+            return class_names, len(class_names)
+
+    # If we didn't find names, determine the number of classes from the size of the
+    # classification head, which has one output per possible class ID.
+    for key in ('model', 'state_dict'):
+        state_dict = checkpoint.get(key, None)
+        if not isinstance(state_dict, dict):
+            continue
+        for tensor_name in state_dict.keys():
+            if tensor_name.endswith('class_embed.bias') and \
+               (not tensor_name.endswith('enc_out_class_embed.bias')):
+                return None, int(state_dict[tensor_name].shape[0])
+
+    return None, None
+
+# ...def _read_class_names_from_rfdetr_checkpoint(...)
+
+
+def _class_names_to_category_info(class_names, num_classes=None):
+    """
+    Converts class names read from a model file to MD-formatted detection categories, applying
+    the MegaDetector category ID offset if appropriate.
+
+    Args:
+        class_names (dict): dict mapping int class IDs (as produced by the model) to names, or
+            None if no names are available
+        num_classes (int, optional): number of classes, only used if [class_names] is None, in
+            which case we generate names like "category_00", "category_01", etc.
+
+    Returns:
+        dict: a dict with fields 'detection_categories' and 'category_id_offset'; see
+        get_detector_category_info()
+    """
+
+    # If we don't have class names, generate names like "category_00"
+    if class_names is None:
+
+        assert (num_classes is not None) and (num_classes > 0), \
+            'Cannot generate category names without a class count'
+        n_digits = max(2, len(str(num_classes - 1)))
+        detection_categories = {}
+        for class_id in range(0, num_classes):
+            detection_categories[str(class_id)] = 'category_' + str(class_id).zfill(n_digits)
+        return {'detection_categories': detection_categories, 'category_id_offset': 0}
+
+    # If these are exactly the MegaDetector classes, offset the class IDs to produce the
+    # default MD categories (1=animal, 2=person, 3=vehicle)
+    if class_names == MEGADETECTOR_MODEL_CLASS_NAMES:
+        return {'detection_categories': dict(DEFAULT_DETECTOR_LABEL_MAP), 'category_id_offset': 1}
+
+    # Otherwise use the model's class IDs as they are
+    detection_categories = {}
+    for class_id in sorted(class_names.keys()):
+        detection_categories[str(class_id)] = class_names[class_id]
+    return {'detection_categories': detection_categories, 'category_id_offset': 0}
+
+# ...def _class_names_to_category_info(...)
+
+
+def get_detector_category_info(model_file, detector_options=None):
+    """
+    Determines the detection categories that a detector will produce, and how class IDs
+    predicted by the model map to those categories.  This reads only the model file (it
+    doesn't load the model), so it can be used, e.g., to write results in a process that
+    didn't run the model.
+
+    Categories are determined as follows:
+
+    - If detector_options['class_mapping_filename'] is present, categories are read from that
+      file (see read_classes_from_yolo_dataset_file() for supported formats), and class IDs
+      are used exactly as the model produces them.
+    - TensorFlow (.pb) models use the default MD categories (MDv4 produces 1-indexed class IDs).
+    - For PyTorch models (YOLO .pt files, RF-DETR .pth files), class names are read from the
+      model file.  If the class names are exactly the MegaDetector class names with zero-indexed
+      IDs ({0: 'animal', 1: 'person', 2: 'vehicle'}), class IDs are offset by 1 to produce the
+      default MD categories.  Otherwise, class IDs are used exactly as the model produces them.
+      If the model file doesn't contain class names, we generate names like "category_00".
+
+    Args:
+        model_file (str): model filename (e.g. c:/x/z/md_v5a.0.0.pt) or known model name (e.g.
+            "MDV5A"), which will be downloaded if necessary
+        detector_options (dict, optional): key/value pairs that are interpreted differently
+            by different detectors; the only option used here is 'class_mapping_filename'
+
+    Returns:
+        dict: a dict with fields:
+            - 'detection_categories' (dict): maps string category IDs to category names, in the
+              format used for the 'detection_categories' field in MD output files
+            - 'category_id_offset' (int): the value to add to a class ID predicted by the model
+              to get the corresponding category ID in 'detection_categories'
+            - 'category_source' (str): a human-readable description of where the categories
+              came from
+    """
+
+    if isinstance(detector_options, str):
+        detector_options = parse_kvp_list(detector_options.split(','))
+    elif isinstance(detector_options, list):
+        detector_options = parse_kvp_list(detector_options)
+
+    # If the caller supplied a class mapping file, that takes precedence over the model file
+    if (detector_options is not None) and \
+       (detector_options.get('class_mapping_filename', None) is not None):
+
+        # This is imported here, rather than at module scope, to avoid a circular import
+        from megadetector.data_management.yolo_output_to_md_output import \
+            read_classes_from_yolo_dataset_file
+
+        class_mapping_filename = detector_options['class_mapping_filename']
+        class_mapping = read_classes_from_yolo_dataset_file(class_mapping_filename)
+        detection_categories = {}
+        for class_id in sorted(class_mapping.keys()):
+            detection_categories[str(class_id)] = class_mapping[class_id]
+        return {'detection_categories': detection_categories,
+                'category_id_offset': 0,
+                'category_source': 'class mapping file {}'.format(class_mapping_filename)}
+
+    model_file = try_download_known_detector(model_file)
+
+    if not os.path.isfile(model_file):
+        raise FileNotFoundError('Model file {} does not exist'.format(model_file))
+
+    if model_file.endswith('.pb'):
+
+        # TensorFlow MegaDetector models (MDv4 and earlier) don't store class names, and produce
+        # 1-indexed class IDs.
+        return {'detection_categories': dict(DEFAULT_DETECTOR_LABEL_MAP),
+                'category_id_offset': 0,
+                'category_source': 'default MegaDetector categories (TensorFlow model)'}
+
+    elif model_file.endswith('.pt') or model_file.endswith('.pth'):
+
+        checkpoint = _load_model_file_without_model_code(model_file)
+        if model_file.endswith('.pt'):
+            class_names, num_classes = _read_class_names_from_yolo_checkpoint(checkpoint)
+        else:
+            class_names, num_classes = _read_class_names_from_rfdetr_checkpoint(checkpoint)
+        del checkpoint
+
+        if (class_names is None) and (num_classes is None):
+            raise ValueError('Could not determine the classes for model file {}; consider '.format(
+                model_file) + 'supplying a class mapping file')
+
+        category_info = _class_names_to_category_info(class_names, num_classes)
+        if class_names is None:
+            category_info['category_source'] = \
+                'generated names (model file contains {} classes, but no class names)'.format(
+                num_classes)
+        elif category_info['category_id_offset'] == 0:
+            category_info['category_source'] = 'class names from model file'
+        else:
+            category_info['category_source'] = \
+                'MegaDetector class names from model file, class IDs offset by {}'.format(
+                category_info['category_id_offset'])
+        return category_info
+
+    else:
+
+        raise ValueError('Unrecognized model format: {}'.format(model_file))
+
+# ...def get_detector_category_info(...)
 
 
 #%% Main function
@@ -873,7 +1278,7 @@ def load_and_run_detector(model_file,
 
                 # Image is modified in place
                 vis_utils.render_detection_bounding_boxes(result['detections'], image,
-                            label_map=DEFAULT_DETECTOR_LABEL_MAP,
+                            label_map=detector.detection_categories,
                             confidence_threshold=render_confidence_threshold,
                             thickness=box_thickness, expansion=box_expansion,
                             label_font_size=label_font_size,
@@ -1318,3 +1723,187 @@ if False:
                           output_dir=output_dir,
                           render_confidence_threshold=render_confidence_threshold,
                           crop_images=crop_images)
+
+
+#%% Tests
+
+def test_class_names_to_category_info():
+    """
+    Tests the mapping from class names (as read from a model file) to detection categories.
+    """
+
+    # Exactly the MegaDetector classes: offset by 1
+    info = _class_names_to_category_info(_normalize_class_names(['animal', 'person', 'vehicle']))
+    assert info['detection_categories'] == DEFAULT_DETECTOR_LABEL_MAP, 'MD categories mismatch'
+    assert info['category_id_offset'] == 1, 'MD categories should be offset by 1'
+
+    # Dicts with int or int-string keys are equivalent to lists
+    info = _class_names_to_category_info(
+        _normalize_class_names({'0': 'animal', '1': 'person', '2': 'vehicle'}))
+    assert info['detection_categories'] == DEFAULT_DETECTOR_LABEL_MAP, 'MD categories mismatch'
+    assert info['category_id_offset'] == 1, 'MD categories should be offset by 1'
+
+    # The returned categories should be a copy of the defaults, not the defaults themselves
+    assert info['detection_categories'] is not DEFAULT_DETECTOR_LABEL_MAP, \
+        'Default categories should be copied'
+
+    # Anything other than exactly the MD classes and IDs: no offset
+    for class_names in (['fish'],
+                        ['person', 'animal', 'vehicle'],
+                        ['animal', 'person', 'vehicle', 'boat'],
+                        ['Animal', 'Person', 'Vehicle'],
+                        {1: 'animal', 2: 'person', 3: 'vehicle'}):
+        normalized_class_names = _normalize_class_names(class_names)
+        info = _class_names_to_category_info(normalized_class_names)
+        assert info['category_id_offset'] == 0, \
+            'Unexpected offset for {}'.format(str(class_names))
+        expected_categories = {str(k): v for k, v in normalized_class_names.items()}
+        assert info['detection_categories'] == expected_categories, \
+            'Unexpected categories for {}'.format(str(class_names))
+
+    # Names that look like IDs are used as provided
+    info = _class_names_to_category_info(_normalize_class_names({0: '0', 1: '1'}))
+    assert info['detection_categories'] == {'0': '0', '1': '1'}, 'Numeric names mismatch'
+
+    # No names: generate names
+    info = _class_names_to_category_info(None, num_classes=3)
+    assert info['detection_categories'] == \
+        {'0': 'category_00', '1': 'category_01', '2': 'category_02'}, 'Generated names mismatch'
+    assert info['category_id_offset'] == 0, 'Generated names should not be offset'
+
+    info = _class_names_to_category_info(None, num_classes=120)
+    assert info['detection_categories']['0'] == 'category_000', 'Generated name width mismatch'
+    assert info['detection_categories']['119'] == 'category_119', 'Generated name width mismatch'
+
+    assert _normalize_class_names(None) is None, 'None names should normalize to None'
+    assert _normalize_class_names([]) is None, 'Empty names should normalize to None'
+    assert _normalize_class_names('fish') == {0: 'fish'}, 'Single name normalization mismatch'
+
+# ...def test_class_names_to_category_info(...)
+
+
+def test_get_detector_category_info():
+    """
+    Tests reading detection categories from (synthetic) model files.
+    """
+
+    import shutil
+    import types
+    import torch
+    from megadetector.utils.ct_utils import make_test_folder
+
+    test_folder = make_test_folder(subfolder='detector_category_tests')
+
+    try:
+
+        def _write_model_file(fn, checkpoint):
+            fn = os.path.join(test_folder, fn)
+            torch.save(checkpoint, fn)
+            return fn
+
+        def _categories(fn, detector_options=None):
+            return get_detector_category_info(fn, detector_options=detector_options)
+
+        ## YOLO-style .pt files
+
+        # Names stored as a list (e.g. MDv5)
+        fn = _write_model_file('names_list.pt',
+            {'model': types.SimpleNamespace(names=['animal', 'person', 'vehicle'], nc=3)})
+        info = _categories(fn)
+        assert info['detection_categories'] == DEFAULT_DETECTOR_LABEL_MAP, 'List names mismatch'
+        assert info['category_id_offset'] == 1, 'List names offset mismatch'
+
+        # Names stored as a dict (e.g. ultralytics)
+        fn = _write_model_file('names_dict.pt',
+            {'model': types.SimpleNamespace(names={0: 'cat', 1: 'dog'}, nc=2)})
+        info = _categories(fn)
+        assert info['detection_categories'] == {'0': 'cat', '1': 'dog'}, 'Dict names mismatch'
+        assert info['category_id_offset'] == 0, 'Dict names offset mismatch'
+
+        # Un-stripped ultralytics checkpoint: model is None, names are on the EMA model
+        fn = _write_model_file('ema_only.pt',
+            {'model': None, 'ema': types.SimpleNamespace(names={0: 'cat'}, nc=1)})
+        assert _categories(fn)['detection_categories'] == {'0': 'cat'}, 'EMA names mismatch'
+
+        # Names only available in the model yaml
+        fn = _write_model_file('yaml_names.pt',
+            {'model': types.SimpleNamespace(yaml={'nc': 2, 'names': ['cat', 'dog']})})
+        assert _categories(fn)['detection_categories'] == {'0': 'cat', '1': 'dog'}, \
+            'YAML names mismatch'
+
+        # No names, but a class count
+        fn = _write_model_file('no_names.pt', {'model': types.SimpleNamespace(nc=2)})
+        info = _categories(fn)
+        assert info['detection_categories'] == {'0': 'category_00', '1': 'category_01'}, \
+            'Generated names mismatch'
+        assert info['category_id_offset'] == 0, 'Generated names offset mismatch'
+
+        # No names and no class count
+        fn = _write_model_file('no_classes.pt', {'model': types.SimpleNamespace()})
+        try:
+            _categories(fn)
+            raise AssertionError('Expected an error for a model with no class information')
+        except ValueError:
+            pass
+
+        ## RF-DETR-style .pth files
+
+        # class_names in an args dict
+        fn = _write_model_file('rfdetr_dict.pth',
+            {'args': {'class_names': ['animal', 'person', 'vehicle']},
+             'model': {'class_embed.bias': torch.zeros(4)}})
+        info = _categories(fn)
+        assert info['detection_categories'] == DEFAULT_DETECTOR_LABEL_MAP, \
+            'RF-DETR MD names mismatch'
+        assert info['category_id_offset'] == 1, 'RF-DETR MD names offset mismatch'
+
+        # class_names in an args Namespace
+        fn = _write_model_file('rfdetr_namespace.pth',
+            {'args': argparse.Namespace(class_names=['fish']),
+             'model': {'class_embed.bias': torch.zeros(2)}})
+        info = _categories(fn)
+        assert info['detection_categories'] == {'0': 'fish'}, 'RF-DETR Namespace names mismatch'
+        assert info['category_id_offset'] == 0, 'RF-DETR Namespace names offset mismatch'
+
+        # No class names: use the size of the classification head
+        fn = _write_model_file('rfdetr_no_names.pth',
+            {'args': {'num_queries': 300},
+             'model': {'transformer.enc_out_class_embed.0.bias': torch.zeros(3),
+                       'class_embed.bias': torch.zeros(3)}})
+        assert _categories(fn)['detection_categories'] == \
+            {'0': 'category_00', '1': 'category_01', '2': 'category_02'}, \
+            'RF-DETR generated names mismatch'
+
+        ## Class mapping files override the model file
+
+        class_mapping_file = os.path.join(test_folder, 'class_mapping.json')
+        with open(class_mapping_file, 'w') as f:
+            json.dump({'0': 'a', '1': 'b'}, f)
+        fn = os.path.join(test_folder, 'names_list.pt')
+        info = _categories(fn, detector_options={'class_mapping_filename': class_mapping_file})
+        assert info['detection_categories'] == {'0': 'a', '1': 'b'}, '.json class mapping mismatch'
+        assert info['category_id_offset'] == 0, 'Class mappings should not be offset'
+
+        class_mapping_file = os.path.join(test_folder, 'class_mapping.txt')
+        with open(class_mapping_file, 'w') as f:
+            for class_name in ('a', 'b', 'c'):
+                f.write(class_name + '\n')
+        info = _categories(fn,
+                           detector_options=['class_mapping_filename={}'.format(class_mapping_file)])
+        assert info['detection_categories'] == {'0': 'a', '1': 'b', '2': 'c'}, \
+            '.txt class mapping mismatch'
+
+        ## TensorFlow models use the default categories
+
+        fn = os.path.join(test_folder, 'model.pb')
+        with open(fn, 'wb') as f:
+            f.write(b'')
+        info = _categories(fn)
+        assert info['detection_categories'] == DEFAULT_DETECTOR_LABEL_MAP, 'TF categories mismatch'
+        assert info['category_id_offset'] == 0, 'TF categories offset mismatch'
+
+    finally:
+
+        shutil.rmtree(test_folder)
+
+# ...def test_get_detector_category_info(...)

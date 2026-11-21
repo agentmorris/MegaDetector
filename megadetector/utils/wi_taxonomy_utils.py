@@ -32,7 +32,7 @@ from megadetector.utils.ct_utils import (
 from megadetector.postprocessing.validate_batch_results import \
     validate_batch_results, ValidateBatchResultsOptions
 
-from megadetector.detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP
+from megadetector.data_management.annotation_constants import DEFAULT_DETECTOR_LABEL_MAP
 from megadetector.detection.run_detector_batch import current_format_version
 
 md_category_id_to_name = DEFAULT_DETECTOR_LABEL_MAP

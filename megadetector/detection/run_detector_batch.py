@@ -67,7 +67,8 @@ from megadetector.detection.run_detector import \
     load_detector,\
     try_download_known_detector,\
     get_detector_version_from_filename,\
-    get_detector_metadata_from_version_string
+    get_detector_metadata_from_version_string,\
+    get_detector_category_info
 
 from megadetector.utils import path_utils
 from megadetector.utils import ct_utils
@@ -76,7 +77,7 @@ from megadetector.utils.ct_utils import split_list_into_n_chunks
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 from megadetector.visualization import visualization_utils as vis_utils
 from megadetector.data_management import read_exif
-from megadetector.data_management.yolo_output_to_md_output import read_classes_from_yolo_dataset_file
+from megadetector.data_management.annotation_constants import DEFAULT_DETECTOR_LABEL_MAP
 
 # Numpy FutureWarnings from tensorflow import
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -1118,40 +1119,6 @@ def _process_image(im_file,
 # ...def _process_image(...)
 
 
-def _load_custom_class_mapping(class_mapping_filename):
-    """
-    Allows the use of non-MD models, disables the code that enforces MD-like class lists.
-
-    Args:
-        class_mapping_filename (str): .json file that maps int-strings to strings, or a YOLOv5
-            dataset.yaml file.
-
-    Returns:
-        dict: maps class IDs (int-strings) to class names
-    """
-
-    if class_mapping_filename is None:
-        return
-
-    run_detector.USE_MODEL_NATIVE_CLASSES = True
-    if class_mapping_filename.endswith('.json'):
-        with open(class_mapping_filename,'r') as f:
-            class_mapping = json.load(f)
-    elif (class_mapping_filename.endswith('.yml') or class_mapping_filename.endswith('.yaml')):
-        class_mapping = read_classes_from_yolo_dataset_file(class_mapping_filename)
-        # convert from ints to int-strings
-        class_mapping = {str(k):v for k,v in class_mapping.items()}
-    else:
-        raise ValueError('Unrecognized class mapping file {}'.format(class_mapping_filename))
-
-    print('Loaded custom class mapping:')
-    print(class_mapping)
-
-    # This determines what gets written by write_results_to_file
-    run_detector.DEFAULT_DETECTOR_LABEL_MAP = class_mapping
-    return class_mapping
-
-
 #%% Main function
 
 def load_and_run_detector_batch(model_file,
@@ -1197,8 +1164,11 @@ def load_and_run_detector_batch(model_file,
         image_size (int, optional): image size to use for inference, only mess with this
             if (a) you're using a model other than MegaDetector or (b) you know what you're
             doing
-        class_mapping_filename (str, optional): use a non-default class mapping supplied in a .json
-            file or YOLOv5 dataset.yaml file
+        class_mapping_filename (str, optional): use a class mapping supplied in a .json, .txt, or
+            YOLO dataset.yaml file, rather than the class names stored in the model file; class IDs
+            in this file should match the class IDs produced by the model (typically starting at
+            zero).  If you use this option, pass the same categories to write_results_to_file()
+            (see run_detector.get_detector_category_info()).
         include_image_size (bool, optional): should we include image size in the output for each image?
         include_image_timestamp (bool, optional): should we include image timestamps in the output for each image?
         include_exif_tags (str, optional): comma-separated list of EXIF tags to include in output
@@ -1244,8 +1214,10 @@ def load_and_run_detector_batch(model_file,
     if checkpoint_frequency is None or checkpoint_path is None:
         checkpoint_frequency = -1
 
+    # The class mapping file is passed to the detector via detector_options, so it's available
+    # wherever the detector is loaded (including worker processes)
     if class_mapping_filename is not None:
-        _load_custom_class_mapping(class_mapping_filename)
+        detector_options['class_mapping_filename'] = class_mapping_filename
 
     global verbose
     if verbose_output:
@@ -1770,7 +1742,8 @@ def write_results_to_file(results,
                           info=None,
                           include_max_conf=False,
                           custom_metadata=None,
-                          force_forward_slashes=True):
+                          force_forward_slashes=True,
+                          detection_categories=None):
     """
     Writes list of detection results to JSON output file. Format matches:
 
@@ -1781,8 +1754,9 @@ def write_results_to_file(results,
         output_file (str): path to JSON output file, should end in '.json'
         relative_path_base (str, optional): path to a directory as the base for relative paths, can
             be None if the paths in [results] are absolute
-        detector_file (str, optional): filename of the detector used to generate these results, only
-            used to pull out a version number for the "info" field
+        detector_file (str, optional): filename of the detector used to generate these results, used
+            to pull out a version number for the "info" field, and to determine the detection categories
+            if [detection_categories] is None
         info (dict, optional): dictionary to put in the results file instead of the default "info" field
         include_max_conf (bool, optional): old files (version 1.2 and earlier) included a "max_conf" field
             in each image; this was removed in version 1.3.  Set this flag to force the inclusion
@@ -1791,6 +1765,11 @@ def write_results_to_file(results,
             a dictionary, but no type/format checks are performed
         force_forward_slashes (bool, optional): convert all slashes in filenames within [results] to
             forward slashes
+        detection_categories (dict, optional): dict mapping string category IDs to category names; if
+            this is None, categories are read from [detector_file] (see
+            run_detector.get_detector_category_info()), or, if [detector_file] is also None, the
+            default MD categories are used.  Raises an error if any detection in [results] uses a
+            category that is not in the detection categories.
 
     Returns:
         dict: the MD-formatted dictionary that was written to [output_file]
@@ -1863,9 +1842,30 @@ def write_results_to_file(results,
             else:
                 im['detections'] = None
 
+    ## Determine the detection categories
+
+    if detection_categories is None:
+        if detector_file is not None:
+            detection_categories = \
+                get_detector_category_info(detector_file)['detection_categories']
+        else:
+            print('Warning (write_results_to_file): no detection categories or detector file ' + \
+                  'supplied, using default MegaDetector categories')
+            detection_categories = dict(DEFAULT_DETECTOR_LABEL_MAP)
+
+    # Make sure every detection uses one of these categories
+    for im in results:
+        if ('detections' not in im) or (im['detections'] is None):
+            continue
+        for det in im['detections']:
+            if det['category'] not in detection_categories:
+                raise ValueError(
+                    'Detection category {} (in {}) is not in the detection categories ({})'.format(
+                        det['category'], im['file'], ','.join(detection_categories.keys())))
+
     final_output = {
         'images': results,
-        'detection_categories': run_detector.DEFAULT_DETECTOR_LABEL_MAP,
+        'detection_categories': detection_categories,
         'info': info
     }
 
@@ -2079,9 +2079,10 @@ def main(): # noqa
         '--class_mapping_filename',
         type=str,
         default=None,
-        help='Use a non-default class mapping, supplied in a .json file with a dictionary mapping' + \
-            'int-strings to strings.  This will also disable the addition of "1" to all category ' + \
-            'IDs, so your class mapping should start at zero.  Can also be a YOLOv5 dataset.yaml file.')
+        help='Use a class mapping supplied in a .json file with a dictionary mapping int-strings ' + \
+            'to strings, rather than the class names stored in the model file.  Class IDs in this file ' + \
+            'should match the class IDs produced by the model (typically starting at zero).  Can also ' + \
+            'be a YOLO dataset.yaml file or a .txt file with one class name per line.')
     parser.add_argument(
         '--include_image_size',
         action='store_true',
@@ -2192,8 +2193,13 @@ def main(): # noqa
 
     assert not os.path.isdir(args.output_file), 'Specified output file is a directory'
 
+    # Determine the detection categories now (rather than after inference), so we fail early if
+    # we can't determine categories for this model.
+    category_detector_options = dict(detector_options)
     if args.class_mapping_filename is not None:
-        _load_custom_class_mapping(args.class_mapping_filename)
+        category_detector_options['class_mapping_filename'] = args.class_mapping_filename
+    detection_categories = get_detector_category_info(
+        args.detector_file, detector_options=category_detector_options)['detection_categories']
 
     # Load the checkpoint if available
     #
@@ -2271,7 +2277,7 @@ def main(): # noqa
         with open(args.previous_results_file,'r') as f:
             previous_results = json.load(f)
 
-        assert previous_results['detection_categories'] == run_detector.DEFAULT_DETECTOR_LABEL_MAP, \
+        assert previous_results['detection_categories'] == detection_categories, \
             "Can't merge previous results when those results use a different set of detection categories"
 
         print('Loaded previous results for {} images from {}'.format(
@@ -2383,7 +2389,8 @@ def main(): # noqa
                           args.output_file,
                           relative_path_base=relative_path_base,
                           detector_file=args.detector_file,
-                          include_max_conf=args.include_max_conf)
+                          include_max_conf=args.include_max_conf,
+                          detection_categories=detection_categories)
 
     if checkpoint_path and os.path.isfile(checkpoint_path):
         os.remove(checkpoint_path)

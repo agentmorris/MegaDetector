@@ -39,7 +39,7 @@ from megadetector.utils.wi_taxonomy_utils import is_valid_prediction_string
 from megadetector.utils.wi_taxonomy_utils import no_cv_result_prediction_string
 from megadetector.utils.wi_taxonomy_utils import blank_prediction_string
 
-from megadetector.detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP
+from megadetector.data_management.annotation_constants import DEFAULT_DETECTOR_LABEL_MAP
 
 # Only used when pushing results directly to the platform via the API; any detections we want
 # to show in the UI should have at least this confidence value.

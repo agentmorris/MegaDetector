@@ -29,7 +29,8 @@ from functools import partial
 from megadetector.visualization.visualization_utils import open_image
 from megadetector.utils.ct_utils import round_float
 from megadetector.utils.ct_utils import write_json
-from megadetector.detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP, FAILURE_IMAGE_OPEN
+from megadetector.detection.run_detector import FAILURE_IMAGE_OPEN
+from megadetector.data_management.annotation_constants import DEFAULT_DETECTOR_LABEL_MAP
 
 output_precision = 3
 default_confidence_threshold = 0.15

@@ -855,21 +855,6 @@ E3
 !maintenance
 
 
-## Address module-level globals in run_detector_batch and run_detector
-
-The DEFAULT_DETECTOR_LABEL_MAP module-level global variable in run_detector_batch is used to pass custom class mappings around; this is sloppy.  write_results_to_file should receive optional an optional category map, rather than communicating this via a global variable.  A good test case is RF-DETR/CFD support, which currently loads classes in a sensible way (in load_model()), then stashes them in a global variable.
-
-Similarly, the USE_MODEL_NATIVE_CLASSES module-level global in run_detector is used to pass a custom option around; this is also sloppy.
-
-Fix both of these.
-
-P0
-
-E2
-
-!maintenance
-
-
 ## Modern preprocessing with image queue in notebook
 
 manage_local_batch contains a check indicating that preprocess_on_image_queue is incompatible with "modern" compatibility mode, look for:

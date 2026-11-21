@@ -27,8 +27,8 @@ import argparse
 import pandas as pd
 
 from megadetector.utils.ct_utils import write_json
-from megadetector.detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP
-detection_category_id_to_name = DEFAULT_DETECTOR_LABEL_MAP
+from megadetector.data_management.annotation_constants import DEFAULT_DETECTOR_LABEL_MAP
+detection_category_id_to_name = dict(DEFAULT_DETECTOR_LABEL_MAP)
 
 
 #%% Main function
