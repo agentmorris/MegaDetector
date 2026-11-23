@@ -21,7 +21,7 @@ from tqdm import tqdm
 from PIL import Image
 import numpy as np
 
-from megadetector.data_management.annotation_constants import detector_bbox_category_id_to_name
+from megadetector.data_management.annotation_constants import DEFAULT_DETECTOR_LABEL_MAP
 from megadetector.detection.video_utils import run_callback_on_frames, default_fourcc, is_video_file
 from megadetector.utils.path_utils import path_is_abs
 from megadetector.utils.path_utils import clean_filename
@@ -31,11 +31,6 @@ from megadetector.visualization.visualization_utils import render_detection_boun
 
 
 #%% Constants
-
-# This will only be used if a category mapping is not available in the results file
-DEFAULT_DETECTOR_LABEL_MAP = {
-    str(k): v for k, v in detector_bbox_category_id_to_name.items()
-}
 
 DEFAULT_CLASSIFICATION_THRESHOLD = 0.4
 DEFAULT_DETECTION_THRESHOLD = 0.15
@@ -648,7 +643,8 @@ def visualize_video_output(detector_output_path,
     print('Loading results from {}'.format(detector_output_path))
     results_data = load_md_or_speciesnet_file(detector_output_path)
 
-    # Get label mappings
+    # Get label mappings; the default detector categories are only used if a category
+    # mapping is not available in the results file
     detector_label_map = results_data.get('detection_categories', DEFAULT_DETECTOR_LABEL_MAP)
     classification_label_map = results_data.get('classification_categories', {})
 

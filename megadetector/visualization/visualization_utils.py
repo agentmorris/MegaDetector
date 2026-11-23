@@ -26,8 +26,6 @@ from functools import partial
 
 from megadetector.utils.path_utils import find_images
 from megadetector.data_management import annotation_constants
-from megadetector.data_management.annotation_constants import \
-    detector_bbox_category_id_to_name
 from megadetector.utils.ct_utils import sort_list_of_dicts_by_key
 from megadetector.utils.ct_utils import round_float
 
@@ -49,11 +47,6 @@ TEXTALIGN_CENTER = 2
 
 VTEXTALIGN_TOP = 0
 VTEXTALIGN_BOTTOM = 1
-
-# Convert category ID from int to str
-DEFAULT_DETECTOR_LABEL_MAP = {
-    str(k): v for k, v in detector_bbox_category_id_to_name.items()
-}
 
 # Constants controlling retry behavior when fetching images from URLs
 n_retries = 10
@@ -1178,13 +1171,17 @@ def render_megadb_bounding_boxes(boxes_info, image):
     display_strs = []
     classes = []  # ints, for selecting colors
 
+    detector_category_name_to_id = {}
+    for category_id, category_name in annotation_constants.DEFAULT_DETECTOR_LABEL_MAP.items():
+        detector_category_name_to_id[category_name] = int(category_id)
+
     for b in boxes_info:
         x_min, y_min, w_rel, h_rel = b['bbox']
         y_max = y_min + h_rel
         x_max = x_min + w_rel
         display_boxes.append([y_min, x_min, y_max, x_max])
         display_strs.append([b['category']])
-        classes.append(annotation_constants.detector_bbox_category_name_to_id[b['category']])
+        classes.append(detector_category_name_to_id[b['category']])
 
     display_boxes = np.array(display_boxes)
     draw_bounding_boxes_on_image(image, display_boxes, classes, display_strs=display_strs)
@@ -1314,7 +1311,7 @@ def draw_bounding_boxes_on_file(input_file,
                                 output_file,
                                 detections,
                                 confidence_threshold=0.0,
-                                detector_label_map=DEFAULT_DETECTOR_LABEL_MAP,
+                                detector_label_map=annotation_constants.DEFAULT_DETECTOR_LABEL_MAP,
                                 thickness=DEFAULT_BOX_THICKNESS,
                                 expansion=0,
                                 colormap=None,

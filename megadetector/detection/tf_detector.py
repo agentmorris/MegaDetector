@@ -11,7 +11,7 @@ Module containing the class TFDetector, for loading and running a TensorFlow det
 import numpy as np
 
 from megadetector.detection.run_detector import \
-    CONF_DIGITS, COORD_DIGITS, FAILURE_INFER
+    CONF_DIGITS, COORD_DIGITS, FAILURE_INFER, get_detector_category_info
 from megadetector.utils.ct_utils import truncate_float
 
 import tensorflow.compat.v1 as tf
@@ -44,8 +44,15 @@ class TFDetector:
         Args:
             model_path (str): path to .pb file
             detector_options (dict, optional): key-value pairs that control detector
-                options; currently not used by TFDetector
+                options; only used to supply a custom class mapping file (see
+                run_detector.get_detector_category_info())
         """
+
+        #: Maps string category IDs to category names, in the format used for the
+        #: 'detection_categories' field in MD output files.  TF MegaDetector models produce
+        #: 1-indexed class IDs that correspond directly to the default MD categories.
+        category_info = get_detector_category_info(model_path, detector_options=detector_options)
+        self.detection_categories = category_info['detection_categories']
 
         detection_graph = TFDetector.__load_model(model_path)
         self.tf_session = tf.Session(graph=detection_graph)
@@ -183,8 +190,14 @@ class TFDetector:
             max_detection_conf = 0.0
             for b, s, c in zip(boxes, scores, classes): #noqa
                 if s > detection_threshold:
+                    # Use string type for the numerical class label, not int
+                    category_id = str(int(c))
+                    if category_id not in self.detection_categories:
+                        raise KeyError('Model predicted category {}, which is not one of '.format(
+                            category_id) + 'the categories for this detector ({})'.format(
+                            ','.join(self.detection_categories.keys())))
                     detection_entry = {
-                        'category': str(int(c)),  # use string type for the numerical class label, not int
+                        'category': category_id,
                         'conf': truncate_float(float(s),  # cast to float for json serialization
                                                precision=CONF_DIGITS),
                         'bbox': TFDetector.__convert_coords(b)

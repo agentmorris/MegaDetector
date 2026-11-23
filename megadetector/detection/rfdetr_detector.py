@@ -37,6 +37,7 @@ import torch
 import numpy as np
 
 from megadetector.detection.run_detector import CONF_DIGITS, COORD_DIGITS, FAILURE_INFER
+from megadetector.detection.run_detector import get_detector_category_info
 from megadetector.utils.ct_utils import round_float, round_float_array
 from megadetector.utils.ct_utils import parse_bool_string
 
@@ -165,7 +166,6 @@ def load_model(detector_file,
             - 'model': the loaded RF-DETR model
             - 'model_type' (str): model type name (e.g. 'RFDETRSmall')
             - 'image_size' (int): inference resolution
-            - 'detection_categories' (dict): mapping from string category IDs to class names
     """
 
     assert dtype in dtype_string_to_torch_dtype, \
@@ -247,24 +247,11 @@ def load_model(detector_file,
 
     # ...with TF32ExecutionContext(...)
 
-    # Get class names from model
-    #
-    # model.class_names is a list of strings.  Note to self: in older rfdetr versions, it was
-    # a dict mapping 1-indexed class IDs to names.
-    class_names = model.class_names
-    print('Class names: {}'.format(class_names))
-
-    # Build detection_categories dict
-    detection_categories = {}
-    for i_class,class_name in enumerate(class_names):
-        detection_categories[str(i_class)] = class_name
-
     return \
     {
         'model': model,
         'model_type': model_type,
-        'image_size': image_size,
-        'detection_categories': detection_categories
+        'image_size': image_size
     }
 
 # ...def load_model(...)
@@ -272,7 +259,11 @@ def load_model(detector_file,
 
 #%% Detection format conversion
 
-def convert_detections_to_md_format(detections, image_width, image_height):
+def convert_detections_to_md_format(detections,
+                                    image_width,
+                                    image_height,
+                                    category_id_offset=0,
+                                    detection_categories=None):
     """
     Convert RF-DETR/Supervision detections to MegaDetector format.
 
@@ -280,6 +271,11 @@ def convert_detections_to_md_format(detections, image_width, image_height):
         detections: supervision Detections object with xyxy, confidence, class_id
         image_width (int): image width in pixels
         image_height (int): image height in pixels
+        category_id_offset (int, optional): value to add to each class ID predicted by the
+            model to get the output category ID
+        detection_categories (dict, optional): the valid output category IDs (string IDs mapped
+            to names); if this is not None, raises an error if the model predicts a category that
+            is not in this dict
 
     Returns:
         list: list of detection dicts in MegaDetector format
@@ -313,7 +309,12 @@ def convert_detections_to_md_format(detections, image_width, image_height):
         # RF-DETR class_ids are 0-indexed when returned from the API
         class_id = int(detections.class_id[i_detection])
 
-        category = str(class_id)
+        category = str(class_id + category_id_offset)
+
+        if (detection_categories is not None) and (category not in detection_categories):
+            raise KeyError('Model predicted category {}, which is not one of '.format(
+                category) + 'the categories for this detector ({})'.format(
+                ','.join(detection_categories.keys())))
 
         bbox = round_float_array([x_min_norm, y_min_norm, width_norm, height_norm],
                                  precision=COORD_DIGITS)
@@ -401,8 +402,15 @@ class RFDETRDetector:
         #: The resolved variant class name (e.g. 'RFDETRNano'); None until the model is loaded
         self.model_type = None
 
-        #: Mapping from string category IDs to class names; None until the model is loaded
+        #: Maps string category IDs to category names, in the format used for the
+        #: 'detection_categories' field in MD output files; see
+        #: run_detector.get_detector_category_info().  None until the model is loaded.
         self.detection_categories = None
+
+        #: Value added to each class ID predicted by the model to get the corresponding key in
+        #: [detection_categories]; this is 1 for MegaDetector models, 0 for most other models.
+        #: None until the model is loaded.
+        self.category_id_offset = None
 
         #: The exact batch size this model requires at inference time, or None if any batch
         #: size is allowed.  This is only set when the model has been compiled, since
@@ -482,7 +490,13 @@ class RFDETRDetector:
         self.model = model_info['model']
         self.model_type = model_info['model_type']
         self.image_size = model_info['image_size']
-        self.detection_categories = model_info['detection_categories']
+
+        category_info = get_detector_category_info(model_path, detector_options=detector_options)
+        self.detection_categories = category_info['detection_categories']
+        self.category_id_offset = category_info['category_id_offset']
+
+        print('Detection categories ({}): {}'.format(
+            category_info['category_source'], self.detection_categories))
 
         # A compiled model can only be run at the batch size it was compiled for, so record
         # that batch size; generate_detections_one_batch() pads short batches accordingly.
@@ -716,7 +730,25 @@ class RFDETRDetector:
 
             image_width, image_height = image_shapes[i_img]
 
-            md_detections = convert_detections_to_md_format(detections, image_width, image_height)
+            # This will fail if the model predicts a category that is not in
+            # self.detection_categories; mark that image as failed, consistent with
+            # the behavior of PTDetector.
+            try:
+                md_detections = convert_detections_to_md_format(
+                    detections,
+                    image_width,
+                    image_height,
+                    category_id_offset=self.category_id_offset,
+                    detection_categories=self.detection_categories)
+            except Exception as e:
+                print('Warning: could not convert detections for image {}: {}'.format(
+                    image_ids[i_img], str(e)))
+                results.append({
+                    'file': image_ids[i_img],
+                    'detections': None,
+                    'failure': FAILURE_INFER + ': ' + str(e)
+                })
+                continue
 
             max_conf = 0.0
             for det in md_detections:

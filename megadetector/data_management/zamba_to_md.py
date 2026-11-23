@@ -40,7 +40,7 @@ from megadetector.utils.ct_utils import invert_dictionary
 from megadetector.utils.ct_utils import sort_dictionary_by_value
 from megadetector.utils.wi_taxonomy_utils import get_common_name_from_prediction_string
 from megadetector.utils.wi_taxonomy_utils import is_valid_prediction_string
-from megadetector.detection.run_detector import DEFAULT_DETECTOR_LABEL_MAP
+from megadetector.data_management.annotation_constants import DEFAULT_DETECTOR_LABEL_MAP
 from megadetector.utils.path_utils import find_images
 from megadetector.visualization.visualization_utils import get_image_size
 
@@ -180,7 +180,7 @@ def _zamba_image_results_to_md_results(df,output_file,image_folder):
         for detection_category_id in detection_category_ids:
             detection_category_id_to_name[detection_category_id] = detection_category_id
     else:
-        detection_category_id_to_name = DEFAULT_DETECTOR_LABEL_MAP
+        detection_category_id_to_name = dict(DEFAULT_DETECTOR_LABEL_MAP)
 
     filename_to_image = {}
 

@@ -2,32 +2,30 @@
 
 annotation_constants.py
 
-Defines default categories for MegaDetector output boxes.
+Defines the default categories for MegaDetector output boxes.  This is the one and only place
+where these defaults are defined.
 
-Used throughout the repo; do not change unless you are Dan or Siyu.  In fact, do not change unless
-you are both Dan *and* Siyu.
+Models are not required to use these categories; detectors read their categories from the
+model file where possible (see run_detector.get_detector_category_info()).  But all publicly
+released MegaDetector models use these categories, and things like box colors throughout this
+repo assume that "animal" is category "1".
 
-We use integer IDs here; this is different from the MD .json file format,
-where indices are string integers.
+Do not change unless you are Dan or Siyu.  In fact, do not change unless you are both Dan *and*
+Siyu.
 
 """
 
 #%% Constants
 
-# MegaDetector output categories (the "empty" category is implicit)
-detector_bbox_categories = [
-    {'id': 0, 'name': 'empty'},
-    {'id': 1, 'name': 'animal'},
-    {'id': 2, 'name': 'person'},
-    {'id': 3, 'name': 'vehicle'}
-]
+#: Default MegaDetector output categories, in the format used for the "detection_categories"
+#: field in the MD output format (string integer IDs mapped to names).  Category "0" is
+#: implicitly reserved for "empty", so these IDs start at 1.
+DEFAULT_DETECTOR_LABEL_MAP = {
+    '1': 'animal',
+    '2': 'person',
+    '3': 'vehicle'
+}
 
-# This is used for choosing colors, so it ignores the "empty" class.
-NUM_DETECTOR_CATEGORIES = len(detector_bbox_categories) - 1
-
-detector_bbox_category_id_to_name = {}
-detector_bbox_category_name_to_id = {}
-
-for cat in detector_bbox_categories:
-    detector_bbox_category_id_to_name[cat['id']] = cat['name']
-    detector_bbox_category_name_to_id[cat['name']] = cat['id']
+#: Number of default detector categories; this is used for choosing colors (e.g., classification
+#: categories are colored starting after the detector categories).
+NUM_DETECTOR_CATEGORIES = len(DEFAULT_DETECTOR_LABEL_MAP)

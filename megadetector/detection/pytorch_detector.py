@@ -25,6 +25,7 @@ import numpy as np
 from megadetector.detection.run_detector import \
     CONF_DIGITS, COORD_DIGITS, FAILURE_INFER, FAILURE_IMAGE_OPEN, \
     get_detector_version_from_model_file, \
+    get_detector_category_info, \
     known_models
 from megadetector.utils.ct_utils import parse_bool_string
 from megadetector.utils.ct_utils import is_running_in_gha
@@ -759,15 +760,12 @@ class PTDetector:
 
         # Parse options specific to this detector family
         force_cpu = False
-        use_model_native_classes = False
         compatibility_mode = default_compatibility_mode
 
         if detector_options is not None:
 
             if 'force_cpu' in detector_options:
                 force_cpu = parse_bool_string(detector_options['force_cpu'])
-            if 'use_model_native_classes' in detector_options:
-                use_model_native_classes = parse_bool_string(detector_options['use_model_native_classes'])
             if 'compatibility_mode' in detector_options:
                 if detector_options['compatibility_mode'] is None:
                     compatibility_mode = default_compatibility_mode
@@ -812,11 +810,15 @@ class PTDetector:
         #: :meta private:
         self.printed_image_size_warning = False
 
-        #: If this is False, we assume the underlying model is producing class indices in the
-        #: set (0,1,2) (and we assert() on this), and we add 1 to get to the backwards-compatible
-        #: MD classes (1,2,3) before generating output.  If this is True, we use whatever
-        #: indices the model provides
-        self.use_model_native_classes = use_model_native_classes
+        #: Maps string category IDs to category names, in the format used for the
+        #: 'detection_categories' field in MD output files; see
+        #: run_detector.get_detector_category_info().  None for preprocess-only instances.
+        self.detection_categories = None
+
+        #: Value added to each class ID predicted by the model to get the corresponding key in
+        #: [detection_categories]; this is 1 for MegaDetector models, 0 for most other models.
+        #: None for preprocess-only instances.
+        self.category_id_offset = None
 
         #: This allows us to maintain backwards compatibility across a set of changes to the
         #: way this class does inference.  Currently should start with either "default" or
@@ -849,6 +851,13 @@ class PTDetector:
 
         if preprocess_only:
             return
+
+        category_info = get_detector_category_info(model_path, detector_options=detector_options)
+        self.detection_categories = category_info['detection_categories']
+        self.category_id_offset = category_info['category_id_offset']
+
+        print('Detection categories ({}): {}'.format(
+            category_info['category_source'], self.detection_categories))
 
         if (detector_options is not None) and \
            ('device' in detector_options) and \
@@ -1402,15 +1411,14 @@ class PTDetector:
                         api_box = ct_utils.round_float_array(api_box, precision=COORD_DIGITS)
                         conf = ct_utils.round_float(conf.tolist(), precision=CONF_DIGITS)
 
-                    if not self.use_model_native_classes:
-                        cls = int(cls.tolist()) + 1
-                        if cls not in (1, 2, 3):
-                            raise KeyError(f'{cls} is not a valid class.')
-                    else:
-                        cls = int(cls.tolist())
+                    category_id = str(int(cls.tolist()) + self.category_id_offset)
+                    if category_id not in self.detection_categories:
+                        raise KeyError('Model predicted category {}, which is not one of '.format(
+                            category_id) + 'the categories for this detector ({})'.format(
+                            ','.join(self.detection_categories.keys())))
 
                     detections.append({
-                        'category': str(cls),
+                        'category': category_id,
                         'conf': conf,
                         'bbox': api_box
                     })
