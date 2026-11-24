@@ -1013,7 +1013,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
         if fn not in filename_to_image_b:
 
             # We shouldn't have gotten this far if error_on_non_matching_lists is set
-            assert not options.error_on_non_matching_lists, 'Internal error'
+            assert not options.error_on_non_matching_lists, 'Internal error 0'
 
             print('Skipping filename {}, not in image set B'.format(fn))
             continue
@@ -1032,7 +1032,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             if fn not in filename_to_image_gt:
 
                 # We shouldn't have gotten this far if error_on_non_matching_lists is set
-                assert not options.error_on_non_matching_lists, 'Internal error'
+                assert not options.error_on_non_matching_lists, 'Internal error 1'
 
                 print('Skipping filename {}, not in ground truth'.format(fn))
                 continue
@@ -1122,7 +1122,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             elif detection_a and (not detection_b):
                 comparison_category = 'detections_a_only'
             else:
-                assert detection_b and (not detection_a), 'Internal error'
+                assert detection_b and (not detection_a), 'Internal error 2'
                 comparison_category = 'detections_b_only'
 
             max_conf_a = _maxempty([det['conf'] for det in im_a['detections']])
@@ -1225,7 +1225,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
 
                     if annotation_matches_det:
                         # We should have found this when we looped over detections
-                        assert 'tp' in result_types_present, 'Internal error'
+                        assert 'tp' in result_types_present, 'Internal error 3'
                     else:
                         result_types_present.add('fn')
 
@@ -1246,17 +1246,17 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
 
             # TNs are mutually exclusive with other categories
             if 'tn' in result_types_present_a or 'tn' in result_types_present_b:
-                assert len(result_types_present_a) == 1, 'Internal error'
-                assert len(result_types_present_b) == 1, 'Internal error'
+                assert len(result_types_present_a) == 1, 'Internal error 4'
+                assert len(result_types_present_b) == 1, 'Internal error 5'
 
             # If either model has a TP or FN, the other has to have a TP or FN, since
             # there was something in the GT
             if ('tp' in result_types_present_a) or ('fn' in result_types_present_a):
                 assert 'tp' in result_types_present_b or 'fn' in result_types_present_b, \
-                    'Internal error'
+                    'Internal error 6'
             if ('tp' in result_types_present_b) or ('fn' in result_types_present_b):
                 assert 'tp' in result_types_present_a or 'fn' in result_types_present_a, \
-                    'Internal error'
+                    'Internal error 7'
 
 
             ## Choose a comparison category based on result types
@@ -1273,8 +1273,12 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
 
         else:
 
+            # Image-level GT comparison
+
             # Categorize each model into TP/TN/FP/FN
-            def _categorize_image_with_image_level_gt(im_detection,im_gt,annotations_gt,
+            def _categorize_image_with_image_level_gt(im_detection,
+                                                      im_gt,
+                                                      annotations_gt,
                                                       category_id_to_threshold):
 
                 assert im_detection['file'] == im_gt['file_name'], \
@@ -1302,12 +1306,15 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
                     category_name = gt_category_id_to_name[ann['category_id']]
                     category_names_in_gt.add(category_name)
 
-                for category_name in category_names_detected:
+                # If we're doing a class-agnostic comparison, we'll handle this
+                # when we loop over ground truth categories
+                if not options.class_agnostic_comparison:
 
-                    if category_name in category_names_in_gt:
-                        result_types_present.add('tp')
-                    else:
-                        result_types_present.add('fp')
+                    for category_name in category_names_detected:
+                        if (category_name in category_names_in_gt):
+                            result_types_present.add('tp')
+                        else:
+                            result_types_present.add('fp')
 
                 for category_name in category_names_in_gt:
 
@@ -1321,17 +1328,28 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
                             result_types_present.add('fp')
                             # If there is a false positive present in an empty image, there can't
                             # be any other result types present
-                            assert len(result_types_present) == 1, 'Internal error'
+                            assert len(result_types_present) == 1, 'Internal error 8'
                         else:
                             result_types_present.add('tn')
 
-                    elif category_name in category_names_detected:
+                    # If this a non-empty image, but we're doing class-agnostic comparisons,
+                    # and we detected stuff, that's a TP
+                    elif options.class_agnostic_comparison and len(category_names_detected) > 0:
 
-                        assert 'tp' in result_types_present, 'Internal error'
+                        result_types_present.add('tp')
+
+                    elif (category_name in category_names_detected):
+
+                        assert 'tp' in result_types_present, 'Internal error 9'
 
                     else:
 
                         result_types_present.add('fn')
+
+                # ...for each ground truth category
+
+                assert len(result_types_present) > 0, \
+                    'This function should have assigned at least one result type'
 
                 return result_types_present
 
@@ -1349,9 +1367,9 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
             # If either model has a TP or FN, the other has to have a TP or FN, since
             # there was something in the GT
             if ('tp' in result_types_present_a) or ('fn' in result_types_present_a):
-                assert 'tp' in result_types_present_b or 'fn' in result_types_present_b, 'Internal error'
+                assert 'tp' in result_types_present_b or 'fn' in result_types_present_b, 'Internal error 10'
             if ('tp' in result_types_present_b) or ('fn' in result_types_present_b):
-                assert 'tp' in result_types_present_a or 'fn' in result_types_present_a, 'Internal error'
+                assert 'tp' in result_types_present_a or 'fn' in result_types_present_a, 'Internal error 11'
 
 
             ## Choose a comparison category based on result types
@@ -1368,7 +1386,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
 
         # ...what kind of ground truth (if any) do we have?
 
-        assert comparison_category is not None, 'Internal error'
+        assert comparison_category is not None, 'Internal error 12'
         categories_to_image_pairs[comparison_category][fn] = im_pair
         im_pair['sort_conf'] = sort_conf
 
@@ -1467,7 +1485,7 @@ def _pairwise_compare_batch_results(options,output_index,pairwise_options):
         image_info = []
 
         assert len(category_image_output_paths_relative) == len(input_image_absolute_paths), \
-            'Internal error'
+            'Internal error 13'
 
         for i_fn,fn in enumerate(category_image_output_paths_relative):
 
