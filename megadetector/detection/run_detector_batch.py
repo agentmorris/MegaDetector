@@ -1149,7 +1149,8 @@ def load_and_run_detector_batch(model_file,
             of images.
         checkpoint_path (str, optional): path to use for checkpoints (if None, checkpointing
             is disabled)
-        confidence_threshold (float, optional): only detections above this threshold are returned
+        confidence_threshold (float, optional): only detections above this threshold are returned.
+            None is equivalent to the default; specify 0 if you want no thresholding.
         checkpoint_frequency (int, optional): int, write results to JSON checkpoint file every N
             images, -1 disabled checkpointing
         results (list, optional): list of dicts, existing results loaded from checkpoint; generally
@@ -1204,7 +1205,7 @@ def load_and_run_detector_batch(model_file,
     assert isinstance(detector_options,dict)
 
     if confidence_threshold is None:
-        confidence_threshold=run_detector.DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
+        confidence_threshold = run_detector.DEFAULT_OUTPUT_CONFIDENCE_THRESHOLD
 
     # Disable checkpointing if checkpoint_path is None
     if checkpoint_frequency is None or checkpoint_path is None:

@@ -137,6 +137,9 @@ image_size = None
 # Batch size when running MD (None for model default, typically 1)
 batch_size = None
 
+# Confidence threshold at inference time (None for default)
+detection_threshold = None
+
 # Should we include image size, timestamp, and/or EXIF data in MD output?
 include_image_size = False
 include_image_timestamp = False
@@ -611,6 +614,8 @@ for i_task,task in enumerate(task_info):
             cmd += ' --yolo_dataset_file "{}"'.format(yolo_dataset_file)
         if yolo_model_type is not None:
             cmd += ' --model_type {}'.format(yolo_model_type)
+        if detection_threshold is not None:
+            cmd += ' --conf_thres {}'.format(detection_threshold)
 
         if not use_symlinks_for_yolo_inference:
             cmd += ' --no_use_symlinks'
@@ -618,6 +623,11 @@ for i_task,task in enumerate(task_info):
         cmd += '\n'
 
     elif use_tiled_inference:
+
+        assert (batch_size is None) or (batch_size == 1), \
+            'Non-default batch sizes are not supported by tiled inference'
+        assert detection_threshold is None, \
+            'Non-default inference-time thresholds are not supported by tiled inference'
 
         if tiling_folder_base is None:
             tiling_folder_base = filename_base
@@ -700,6 +710,8 @@ for i_task,task in enumerate(task_info):
             cmd += ' --include_exif_data'
         if batch_size is not None:
             cmd += ' --batch_size {}'.format(batch_size)
+        if detection_threshold is not None:
+            cmd += ' --threshold {}'.format(detection_threshold)
         if augment:
             if image_size is None:
                 print('\n** Warning: you are using --augment with the default image size, '
