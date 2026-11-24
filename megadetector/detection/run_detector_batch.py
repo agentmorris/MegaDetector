@@ -64,6 +64,7 @@ from multiprocessing.pool import Pool as workerpool
 from megadetector.detection import run_detector
 from megadetector.detection.run_detector import \
     is_gpu_available,\
+    check_augmentation_support,\
     load_detector,\
     try_download_known_detector,\
     get_detector_version_from_filename,\
@@ -1269,6 +1270,10 @@ def load_and_run_detector_batch(model_file,
     # Check this before we start any workers; this is typically a typo in a model name or filename
     if not os.path.isfile(model_file):
         raise ValueError('{} is not a known model name or an existing model file'.format(model_file))
+
+    # Also before we start any workers: otherwise every image fails during inference
+    if augment:
+        check_augmentation_support(model_file)
 
     # Print debug information about GPU availability
     gpu_available = is_gpu_available(model_file, context_string='load_and_run_detector_batch')
