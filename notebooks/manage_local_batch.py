@@ -134,6 +134,9 @@ quiet_mode = True
 # unless you want to live at the cutting edge.
 image_size = None
 
+# Batch size when running MD (None for model default, typically 1)
+batch_size = None
+
 # Should we include image size, timestamp, and/or EXIF data in MD output?
 include_image_size = False
 include_image_timestamp = False
@@ -216,9 +219,6 @@ yolo_dataset_file = None
 
 # 'yolov5' or 'yolov8'; assumes YOLOv5 if this is None
 yolo_model_type = None
-
-# Inference batch size
-yolo_batch_size = 1
 
 # Should we remove intermediate files used for running YOLOv5's val.py?
 #
@@ -571,7 +571,7 @@ for i_task,task in enumerate(task_info):
         else:
             augment_string = '--augment_enabled 0'
 
-        batch_string = '--batch_size {}'.format(yolo_batch_size)
+        batch_string = '--batch_size {}'.format(batch_size)
 
         symlink_folder = path_join(filename_base,'symlinks','symlinks_{}'.format(
             str(i_task).zfill(3)))
@@ -698,6 +698,8 @@ for i_task,task in enumerate(task_info):
             cmd += ' --include_image_timestamp'
         if include_exif_data:
             cmd += ' --include_exif_data'
+        if batch_size is not None:
+            cmd += ' --batch_size {}'.format(batch_size)
         if augment:
             if image_size is None:
                 print('\n** Warning: you are using --augment with the default image size, '
@@ -850,6 +852,7 @@ if run_tasks_in_notebook:
                                               quiet=quiet_mode,
                                               image_size=image_size,
                                               augment=augment,
+                                              batch_size=batch_size,
                                               detector_options=detector_options)
         elapsed = time.time() - start_time
 

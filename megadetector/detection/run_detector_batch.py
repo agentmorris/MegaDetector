@@ -88,8 +88,8 @@ default_loaders = 4
 # Should we do preprocessing on the image queue?
 default_preprocess_on_image_queue = False
 
-# Number of images to pre-fetch per worker
-max_queue_size = 10
+# Maximum size of the image loading queue (in images).
+max_queue_size = 32
 
 # How often should we print progress when using the image queue?
 n_queue_print = 1000
@@ -104,10 +104,6 @@ exif_options_base.byte_handling = 'convert_to_string'
 # during testing to maximize the probability that latent bugs come up
 # eventually.
 randomize_batch_order_during_testing = True
-
-# TODO: it's a little sloppy that the following are module-level globals, but in practice it
-# doesn't really matter, so I'm not in a big rush to move these to options until I do
-# a larger cleanup of all the long argument lists in this module.
 
 # Enable additional debug output
 verbose = False
@@ -1287,6 +1283,9 @@ def load_and_run_detector_batch(model_file,
         print('Warning: multiple cores requested, but the image queue is enabled; parallelization ' + \
               'with the image queue is not currently supported, defaulting to one worker')
         n_cores = 1
+
+    if (batch_size is None) or (batch_size <=0):
+        batch_size = 1
 
     # Batching only helps on a GPU, so we reduce the batch size to 1 if batch inference is
     # requested on a CPU.  This needs to happen before we create any detector objects,

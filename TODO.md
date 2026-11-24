@@ -381,7 +381,7 @@ E3
 
 ## Add a batch_size argument to run_tiled_inference
 
-run_tiled_inference lacks the batch_size argument that run_detector_batch has; add it.
+run_tiled_inference lacks the batch_size argument that run_detector_batch has; add it.  Also add to the corresponding spot in manage_local_batch once this is supported by run_tiled_inference.
 
 P1
 
