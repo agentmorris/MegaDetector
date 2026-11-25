@@ -833,7 +833,7 @@ def process_videos(options):
         raise ValueError('{} is not a known model name or an existing model file'.format(
             options.model_file))
 
-    # Also before we start any workers: otherwise every frame fails during inference
+    # Error if augmentation is enabled for a no-augmentation-support model
     if options.augment:
         check_augmentation_support(model_file)
 

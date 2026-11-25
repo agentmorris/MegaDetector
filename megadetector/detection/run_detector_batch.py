@@ -1271,7 +1271,7 @@ def load_and_run_detector_batch(model_file,
     if not os.path.isfile(model_file):
         raise ValueError('{} is not a known model name or an existing model file'.format(model_file))
 
-    # Also before we start any workers: otherwise every image fails during inference
+    # Error if augmentation is enabled for a no-augmentation-support model
     if augment:
         check_augmentation_support(model_file)
 
